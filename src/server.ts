@@ -214,12 +214,24 @@ app.get('/api/v1/admin/users', authenticate, async (req: AuthRequest, res: Respo
   }
 });
 
-app.get('/api/v1/tables/todos', authenticate, async (req: AuthRequest, res: Response) => {
+// ============ GLOBAL AUTO-CRUD FOR ALL TABLES ============
+// This allows GHM.from('table').select() to work for any table in your DB!
+app.get('/api/v1/tables/:table', authenticate, async (req: AuthRequest, res: Response) => {
+  const table = req.params.table as string;
+
+  // SECURITY: Allow only specific tables you want your API to expose.
+  // (We will add all 54 Zaid Connect tables here later)
+  const allowedTables = ['todos', 'profiles', 'businesses', 'leads'];
+  
+  if (!allowedTables.includes(table)) {
+    return res.status(400).json({ error: `Table '${table}' is not currently allowed.` });
+  }
+
   try {
-    const result = await pool.query('SELECT * FROM todos ORDER BY created_at DESC');
+    const result = await pool.query(`SELECT * FROM ${table}`);
     res.json({ data: result.rows, count: result.rowCount });
   } catch (err) {
-    res.status(500).json({ error: 'Error fetching todos' });
+    res.status(500).json({ error: 'Error fetching data' });
   }
 });
 
