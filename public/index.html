@@ -3,215 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GHM Todo List</title>
+    <title>GHM Login</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1 { color: #333; text-align: center; }
-        #auth-section { margin-bottom: 20px; padding: 20px; border-bottom: 2px solid #eee; }
-        #todo-section { display: none; }
-        .input-group { display: flex; gap: 10px; margin-bottom: 10px; }
-        input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
-        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        .logout-btn { background: #dc3545; margin-top: 10px; }
-        ul { list-style: none; padding: 0; }
-        li { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
-        .done { text-decoration: line-through; color: #888; }
-        #status { text-align: center; margin-bottom: 20px; font-weight: bold; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121212; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; height: 100vh; color: #ccc; }
+        .container { max-width: 400px; width: 100%; background: #1e1e1e; padding: 40px; border-radius: 8px; border: 1px solid #333; }
+        h1 { color: #24b47e; text-align: center; margin-bottom: 30px; }
+        .input-group { margin-bottom: 15px; }
+        input { width: 100%; padding: 12px; border: 1px solid #333; border-radius: 4px; background: #222; color: white; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #24b47e; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px; font-size: 16px; }
+        button:hover { background: #1a9b67; }
+        #auth-message { text-align: center; color: #ff6b6b; margin-top: 10px; }
+        #dashboard-btn { text-decoration: none; color: #24b47e; text-align: center; display: block; margin-top: 20px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>GHM Todo List</h1>
-        <div id="status">Loading...</div>
-
-        <!-- Auth Section -->
-        <div id="auth-section">
-            <h3>Login / Sign Up</h3>
-            <div class="input-group">
-                <input type="email" id="auth-email" placeholder="Email">
-                <input type="password" id="auth-password" placeholder="Password">
-            </div>
-            <button onclick="login()">Login</button>
-            <button onclick="signup()" style="background:#28a745;">Sign Up</button>
-            <p id="auth-message" style="color:red;"></p>
-            <button onclick="logout()" class="logout-btn" style="display:none;" id="logout-btn">Logout</button>
+        <h1>GHM Login</h1>
+        <div class="input-group">
+            <input type="email" id="auth-email" placeholder="Email">
         </div>
-
-        <!-- Todo Section (Hidden until logged in) -->
-        <div id="todo-section">
-            <div class="input-group">
-                <input type="text" id="newTodo" placeholder="Enter new task...">
-                <button onclick="addTodo()">Add Task</button>
-            </div>
-            <ul id="todoList"></ul>
+        <div class="input-group">
+            <input type="password" id="auth-password" placeholder="Password">
         </div>
+        <button onclick="login()">Login</button>
+        <button onclick="signup()" style="background: #555;">Sign Up</button>
+        <p id="auth-message"></p>
+        <a href="dashboard.html" id="dashboard-btn">Go to Dashboard</a>
     </div>
-
     <script>
-        // ⚠️ CRITICAL FIX: Use localhost here to match your browser URL
         const API_URL = 'https://ghm-core.onrender.com';
         let authToken = localStorage.getItem('token');
-
-        // ============ AUTH ============
+        if (authToken) window.location.href = 'dashboard.html';
         async function login() {
             const email = document.getElementById('auth-email').value;
             const password = document.getElementById('auth-password').value;
-            document.getElementById('auth-message').innerText = 'Logging in...';
-
             try {
-                const response = await fetch(`${API_URL}/api/v1/auth/signin`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
-
+                const response = await fetch(`${API_URL}/api/v1/auth/signin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error);
-
-                authToken = data.token;
-                localStorage.setItem('token', authToken);
-                document.getElementById('auth-message').innerText = 'Logged in!';
-                checkAuth();
-            } catch (err) {
-                document.getElementById('auth-message').innerText = err.message;
-            }
+                localStorage.setItem('token', data.token);
+                window.location.href = 'dashboard.html';
+            } catch (err) { document.getElementById('auth-message').innerText = err.message; }
         }
-
         async function signup() {
             const email = document.getElementById('auth-email').value;
             const password = document.getElementById('auth-password').value;
-            document.getElementById('auth-message').innerText = 'Signing up...';
-
+            const invite_code = prompt("Enter your invite code:");
             try {
-                const response = await fetch(`${API_URL}/api/v1/auth/signup`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
-
+                const response = await fetch(`${API_URL}/api/v1/auth/signup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, invite_code }) });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error);
-
-                authToken = data.token;
-                localStorage.setItem('token', authToken);
-                document.getElementById('auth-message').innerText = 'Account created!';
-                checkAuth();
-            } catch (err) {
-                document.getElementById('auth-message').innerText = err.message;
-            }
+                localStorage.setItem('token', data.token);
+                window.location.href = 'dashboard.html';
+            } catch (err) { document.getElementById('auth-message').innerText = err.message; }
         }
-
-        function logout() {
-            localStorage.removeItem('token');
-            authToken = null;
-            document.getElementById('auth-message').innerText = 'Logged out.';
-            document.getElementById('status').innerText = 'Please login to view your todos.';
-            checkAuth();
-        }
-
-        function checkAuth() {
-            if (authToken) {
-                document.getElementById('auth-section').style.display = 'none';
-                document.getElementById('todo-section').style.display = 'block';
-                document.getElementById('logout-btn').style.display = 'block';
-                loadTodos();
-            } else {
-                document.getElementById('auth-section').style.display = 'block';
-                document.getElementById('todo-section').style.display = 'none';
-                document.getElementById('logout-btn').style.display = 'none';
-            }
-        }
-
-        // ============ TODOS ============
-        async function loadTodos() {
-            document.getElementById('status').innerText = 'Loading todos...';
-            try {
-                const response = await fetch(`${API_URL}/api/v1/tables/todos`, {
-                    headers: { 'Authorization': `Bearer ${authToken}` }
-                });
-
-                if (response.status === 401) {
-                    logout();
-                    return;
-                }
-
-                const data = await response.json();
-                
-                // Handle the backend's actual response format { data: [...] }
-                const todos = Array.isArray(data) ? data : (data.data || []);
-                
-                if (todos.length === 0) {
-                    document.getElementById('status').innerText = "No todos found. Add one below!";
-                } else {
-                    document.getElementById('status').innerText = `Loaded ${todos.length} todos`;
-                    renderTodos(todos);
-                }
-            } catch (err) {
-                document.getElementById('status').innerText = "Error connecting to backend. Check if server is running.";
-                console.error(err);
-            }
-        }
-
-        function renderTodos(todos) {
-            const list = document.getElementById('todoList');
-            list.innerHTML = '';
-            
-            todos.forEach(todo => {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <span class="${todo.is_completed ? 'done' : ''}">${todo.title}</span>
-                    <button onclick="toggleTodo(${todo.id}, ${!todo.is_completed})">${todo.is_completed ? 'Undo' : 'Complete'}</button>
-                `;
-                list.appendChild(li);
-            });
-        }
-
-        async function addTodo() {
-            const input = document.getElementById('newTodo');
-            const title = input.value.trim();
-            if (!title) return;
-
-            try {
-                const response = await fetch(`${API_URL}/api/v1/tables/todos`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
-                    body: JSON.stringify({ title: title })
-                });
-                
-                if (response.ok) {
-                    input.value = '';
-                    loadTodos();
-                } else {
-                    alert('Failed to add todo. Check the terminal for errors!');
-                }
-            } catch (err) {
-                console.error(err);
-            }
-        }
-
-        async function toggleTodo(id, currentStatus) {
-            try {
-                await fetch(`${API_URL}/api/v1/tables/todos/${id}`, {
-                    method: 'PUT',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
-                    body: JSON.stringify({ is_completed: currentStatus })
-                });
-                loadTodos();
-            } catch (err) {
-                console.error(err);
-            }
-        }
-
-        // Run on load
-        checkAuth();
     </script>
 </body>
 </html>

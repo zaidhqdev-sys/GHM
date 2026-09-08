@@ -7,10 +7,10 @@ import { Pool } from 'pg';
 import http from 'http';
 import { Server } from 'socket.io';
 import multer from 'multer';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import session from 'express-session';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
 
 const app = express();
 const server = http.createServer(app);
@@ -22,19 +22,10 @@ interface AuthRequest extends Request {
   userRole?: string;
 }
 
-interface UserRow {
-  id: number;
-  email: string;
-  password_hash: string;
-  full_name: string | null;
-  avatar_url: string | null;
-  role: string;
-  created_at: Date;
-}
-
 // ============ MIDDLEWARE ============
-// Only allow your specific frontend URL
-const allowedOrigins = [process.env.FRONTEND_URL || 'http://localhost:54134'];
+app.use(express.static(path.join(__dirname, '../public')));
+
+const allowedOrigins = [process.env.FRONTEND_URL || '*'];
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
@@ -53,13 +44,10 @@ app.use(session({
   cookie: { secure: false }
 }));
 
-// Rate limiting for auth endpoints
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit each IP to 10 requests per windowMs
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: "Too many auth attempts. Please try again later."
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: "Too many attempts. Please try again later."
 });
 
 // ============ DATABASE ============
@@ -73,16 +61,13 @@ const setupRLS = async (): Promise<void> => {
   try {
     await pool.query(`ALTER TABLE users ENABLE ROW LEVEL SECURITY;`);
     await pool.query(`ALTER TABLE todos ENABLE ROW LEVEL SECURITY;`);
-
     await pool.query(`DROP POLICY IF EXISTS user_todos_select ON todos;`);
     await pool.query(`DROP POLICY IF EXISTS user_todos_insert ON todos;`);
     await pool.query(`DROP POLICY IF EXISTS user_todos_update ON todos;`);
     await pool.query(`DROP POLICY IF EXISTS user_todos_delete ON todos;`);
-
     await pool.query(`DROP POLICY IF EXISTS user_self_select ON users;`);
     await pool.query(`DROP POLICY IF EXISTS user_admin_select ON users;`);
 
-    // Todo Policies
     await pool.query(`
       CREATE POLICY user_todos_select ON todos FOR SELECT
         USING (user_id = current_setting('app.current_user_id')::int);
@@ -99,18 +84,14 @@ const setupRLS = async (): Promise<void> => {
       CREATE POLICY user_todos_delete ON todos FOR DELETE
         USING (user_id = current_setting('app.current_user_id')::int);
     `);
-
-    // Users Policies
     await pool.query(`
       CREATE POLICY user_self_select ON users FOR SELECT
         USING (id = current_setting('app.current_user_id')::int);
     `);
-    // Only allow admins to view all users (Security Barrier)
     await pool.query(`
       CREATE POLICY user_admin_select ON users FOR SELECT
         USING (current_setting('app.current_user_role', true) = 'admin');
     `);
-
     console.log('✅ RLS Setup complete');
   } catch (err) {
     console.error('❌ RLS Setup error:', err);
@@ -172,16 +153,12 @@ initDB();
 // ============ AUTH ============
 const authenticate = (req: AuthRequest, res: Response, next: NextFunction): void => {
   const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    res.status(401).json({ error: 'No token provided' });
-    return;
-  }
+  if (!authHeader) return void res.status(401).json({ error: 'No token provided' });
   const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as { userId: number; role?: string };
     req.userId = decoded.userId;
     req.userRole = decoded.role || 'user';
-    // Set user context for RLS
     pool.query(`SELECT set_config('app.current_user_id', $1, true)`, [decoded.userId.toString()]);
     pool.query(`SELECT set_config('app.current_user_role', $1, true)`, [req.userRole]);
     next();
@@ -199,29 +176,19 @@ const isAdmin = (req: AuthRequest, res: Response, next: NextFunction): void => {
 };
 
 // ============ ROUTES ============
-// Serve static files (Your HTML)
-app.use(express.static('public'));
-
-// Health Check
 app.get('/', (req, res) => {
   res.json({ message: '⚡ GHM Core Engine (TS)', version: '2.0.0' });
 });
 
-// Signup is CLOSED. User must provide an invite code.
 app.post('/api/v1/auth/signup', authLimiter, async (req: Request, res: Response) => {
   const { email, password, full_name, invite_code } = req.body;
-  
   if (!invite_code || invite_code !== process.env.INVITE_CODE) {
     res.status(403).json({ error: 'Invalid invite code. Access denied.' });
     return;
   }
-
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-    const result = await pool.query<UserRow>(
-      'INSERT INTO users (email, password_hash, full_name) VALUES ($1, $2, $3) RETURNING id, email, full_name, created_at',
-      [email, hashedPassword, full_name || null]
-    );
+    const result = await pool.query('INSERT INTO users (email, password_hash, full_name) VALUES ($1, $2, $3) RETURNING id, email, full_name, created_at', [email, hashedPassword, full_name || null]);
     const user = result.rows[0];
     const token = jwt.sign({ userId: user.id, role: 'user' }, process.env.JWT_SECRET || 'fallback-secret', { expiresIn: '7d' });
     res.json({ user, token });
@@ -230,11 +197,10 @@ app.post('/api/v1/auth/signup', authLimiter, async (req: Request, res: Response)
   }
 });
 
-// Signin
 app.post('/api/v1/auth/signin', authLimiter, async (req: Request, res: Response) => {
   const { email, password } = req.body;
   try {
-    const result = await pool.query<UserRow>('SELECT * FROM users WHERE email = $1', [email]);
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     const user = result.rows[0];
     if (!user || !(await bcrypt.compare(password, user.password_hash))) {
       res.status(401).json({ error: 'Invalid credentials' });
@@ -247,28 +213,6 @@ app.post('/api/v1/auth/signin', authLimiter, async (req: Request, res: Response)
   }
 });
 
-// ============ API ROUTES ============
-// Get all todos (Admin or User)
-app.get('/api/v1/tables/todos', authenticate, async (req: AuthRequest, res: Response) => {
-  try {
-    const result = await pool.query('SELECT * FROM todos ORDER BY created_at DESC');
-    res.json({ data: result.rows, count: result.rowCount });
-  } catch (err) {
-    res.status(500).json({ error: 'Error fetching todos' });
-  }
-});
-
-// Get all users (ADMIN ONLY)
-app.get('/api/v1/admin/users', authenticate, isAdmin, async (req: AuthRequest, res: Response) => {
-  try {
-    const result = await pool.query('SELECT id, email, full_name, role, created_at FROM users ORDER BY created_at DESC');
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: 'Error fetching users' });
-  }
-});
-
-// Get all stats (ADMIN ONLY)
 app.get('/api/v1/admin/stats', authenticate, isAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const usersCount = await pool.query('SELECT COUNT(*) FROM users');
@@ -279,7 +223,25 @@ app.get('/api/v1/admin/stats', authenticate, isAdmin, async (req: AuthRequest, r
   }
 });
 
-// ============ STORAGE (Private S3) ============
+app.get('/api/v1/admin/users', authenticate, isAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await pool.query('SELECT id, email, full_name, role, created_at FROM users ORDER BY created_at DESC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching users' });
+  }
+});
+
+app.get('/api/v1/tables/todos', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await pool.query('SELECT * FROM todos ORDER BY created_at DESC');
+    res.json({ data: result.rows, count: result.rowCount });
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching todos' });
+  }
+});
+
+// ============ STORAGE ============
 const s3Client = new S3Client({
   endpoint: process.env.S3_ENDPOINT || 'http://localhost:9000',
   region: process.env.S3_REGION || 'us-east-1',
@@ -303,6 +265,15 @@ app.post('/api/v1/storage/upload', authenticate, upload.single('file'), async (r
     res.json({ message: 'File uploaded successfully', file: result.rows[0], url });
   } catch (err) {
     res.status(500).json({ error: 'Upload error' });
+  }
+});
+
+app.get('/api/v1/storage/files', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await pool.query('SELECT * FROM files WHERE user_id = $1 ORDER BY created_at DESC', [req.userId]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching files' });
   }
 });
 
