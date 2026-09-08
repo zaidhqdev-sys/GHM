@@ -10,7 +10,11 @@
         
         /* Sidebar */
         .sidebar { width: 220px; background: #1a1a1a; color: #999; display: flex; flex-direction: column; border-right: 1px solid #333; }
-        .sidebar h2 { color: #24b47e; padding: 20px; font-size: 20px; border-bottom: 1px solid #333; text-align: center; }
+        .sidebar h2 { color: #24b47e; padding: 20px; font-size: 20px; border-bottom: 1px solid #333; display: flex; align-items: center; gap: 10px; }
+        
+        /* Custom GHM Mountain Icon */
+        .ghm-logo { width: 24px; height: 24px; fill: #24b47e; }
+        
         .nav-item { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #2a2a2a; transition: 0.2s; }
         .nav-item:hover, .nav-item.active { background: #222; color: #24b47e; border-left: 4px solid #24b47e; }
         
@@ -50,7 +54,7 @@
 
     <!-- Sidebar -->
     <div class="sidebar">
-        <h2>⚡ GHM</h2>
+        <h2><svg class="ghm-logo" viewBox="0 0 24 24"><path d="M12 3L2 21h20L12 3zm0 5l5 10H7l5-10z"/></svg> GHM</h2>
         <div class="nav-item active" onclick="showSection('dashboard')">Dashboard</div>
         <div class="nav-item" onclick="showSection('users')">Auth / Users</div>
         <div class="nav-item" onclick="showSection('todos')">Table Editor: Todos</div>
@@ -146,13 +150,16 @@
             window.location.href = 'index.html';
         }
 
-        // ============ NAVIGATION ============
+        // ============ NAVIGATION & SCROLL ============
         function showSection(sectionId) {
             document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
             document.getElementById(sectionId).classList.add('active');
             
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
             event.target.classList.add('active');
+
+            // Scroll to the top of the content area
+            document.querySelector('.content').scrollTop = 0;
 
             if (sectionId === 'dashboard') loadStats();
             if (sectionId === 'users') loadUsers();
@@ -307,39 +314,13 @@
             }
         }
 
-        // ============ REALTIME (WebSockets) ============
+        // ============ REALTIME ============
         const socket = io(API_URL, { transports: ['websocket'] });
-
-        socket.on('connect', () => {
-            console.log('🔌 Connected to GHM Realtime');
-        });
-
-        // When a new todo is created, refresh the list instantly
-        socket.on('todos_created', (newTodo) => {
-            console.log('⚡ New todo created:', newTodo);
-            loadTodos();
-            loadStats();
-        });
-
-        // When a todo is updated, refresh the list instantly
-        socket.on('todos_updated', (updatedTodo) => {
-            console.log('⚡ Todo updated:', updatedTodo);
-            loadTodos();
-            loadStats();
-        });
-
-        // When a todo is deleted, refresh the list instantly
-        socket.on('todos_deleted', (deletedTodo) => {
-            console.log('⚡ Todo deleted:', deletedTodo);
-            loadTodos();
-            loadStats();
-        });
-
-        // When a new file is uploaded, refresh the storage list instantly
-        socket.on('file_uploaded', (newFile) => {
-            console.log('⚡ New file uploaded:', newFile);
-            loadFiles();
-        });
+        socket.on('connect', () => { console.log('🔌 Connected to GHM Realtime'); });
+        socket.on('todos_created', () => { loadTodos(); loadStats(); });
+        socket.on('todos_updated', () => { loadTodos(); loadStats(); });
+        socket.on('todos_deleted', () => { loadTodos(); loadStats(); });
+        socket.on('file_uploaded', () => { loadFiles(); });
 
        // Load everything immediately on page load
         loadStats();
