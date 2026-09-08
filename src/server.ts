@@ -206,13 +206,10 @@ app.post('/api/v1/auth/signup', authLimiter, async (req: Request, res: Response)
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await pool.query('INSERT INTO users (email, password_hash, full_name) VALUES ($1, $2, $3) RETURNING id, email, full_name, created_at', [email, hashedPassword, full_name || null]);
     const user = result.rows[0];
-    
-    // Create the profile with the proper role
     const profileResult = await pool.query(
       'INSERT INTO profiles (user_id, role, full_name, email) VALUES ($1, $2, $3, $4) RETURNING *',
       [user.id, role || 'customer', full_name || null, email]
     );
-    
     const token = jwt.sign({ userId: user.id, role: role || 'customer' }, process.env.JWT_SECRET || 'fallback-secret', { expiresIn: '7d' });
     res.json({ user, profile: profileResult.rows[0], token });
   } catch (err) {
@@ -236,7 +233,6 @@ app.post('/api/v1/auth/signin', authLimiter, async (req: Request, res: Response)
   }
 });
 
-// Route to get the user's profile role (For authentication)
 app.get('/api/v1/auth/me', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query('SELECT * FROM profiles WHERE user_id = $1', [req.userId]);
@@ -266,10 +262,54 @@ app.get('/api/v1/admin/users', authenticate, isAdmin, async (req: AuthRequest, r
   }
 });
 
+// NEW ROUTE FOR DATA EDITOR
+app.get('/api/v1/admin/tables', authenticate, isAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      ORDER BY table_name
+    `);
+    res.json(result.rows.map(r => r.table_name));
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching tables' });
+  }
+});
+
 // ============ GLOBAL AUTO-CRUD ============
 app.get('/api/v1/tables/:table', authenticate, async (req: AuthRequest, res: Response) => {
   const table = req.params.table as string;
-  const allowedTables = ['todos', 'profiles', 'businesses', 'leads'];
+  // ALL 54 TABLES NOW ALLOWED
+  const allowedTables = [
+    'todos', 'profiles', 'businesses', 'leads', 
+    'account_onboarding_progress', 'administrative_areas', 
+    'business_capabilities', 'business_capability_evidence', 
+    'business_categories', 'business_category_assignments', 
+    'business_commercial_trials', 'business_directory_review_events', 
+    'business_engagement_events', 'business_hours', 
+    'business_memberships', 'business_offerings', 
+    'business_profile_view_visitors', 'business_relationships', 
+    'business_subscriptions', 'capabilities', 
+    'commercial_consents', 'commercial_events', 
+    'commercial_founding_allocations', 'commercial_payment_attempts', 
+    'commercial_payment_transactions', 'commercial_plan_entitlements', 
+    'commercial_plan_prices', 'commercial_plan_versions', 
+    'commercial_plans', 'commercial_provider_events', 
+    'commercial_reconciliation_records', 'commercial_refund_records', 
+    'countries', 'currencies', 
+    'directory_listing_founder_reviewers', 'locales', 
+    'notifications', 'opportunities', 
+    'opportunity_capability_requirements', 'opportunity_participants', 
+    'opportunity_types', 'outcome_types', 
+    'outcomes', 'project_marketplace', 
+    'project_quotes', 'projects', 
+    'regional_configurations', 'regional_membership_prices', 
+    'regions', 'relationship_types', 
+    'reviews', 'saved_businesses', 
+    'support_request_messages', 'support_requests', 
+    'trust_scores'
+  ];
   
   if (!allowedTables.includes(table)) {
     return res.status(400).json({ error: `Table '${table}' is not currently allowed.` });
