@@ -23,9 +23,7 @@ interface AuthRequest extends Request {
 }
 
 // ============ MIDDLEWARE ============
-// CORS is now completely open for testing (we will lock it down later)
 app.use(cors());
-
 app.use(express.json());
 app.use(session({
   secret: process.env.JWT_SECRET || 'fallback-secret',
@@ -130,6 +128,17 @@ const initDB = async (): Promise<void> => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS profiles (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+        role VARCHAR(50) DEFAULT 'customer',
+        full_name VARCHAR(255),
+        email VARCHAR(255) UNIQUE,
+        company_name VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
     await pool.query(`UPDATE users SET role = 'admin' WHERE id = 1;`);
     await setupRLS();
     console.log('✅ Database Setup complete');
@@ -157,13 +166,38 @@ const authenticate = (req: AuthRequest, res: Response, next: NextFunction): void
   }
 };
 
+// ============ RBAC MIDDLEWARES ============
+const isAdmin = (req: AuthRequest, res: Response, next: NextFunction): void => {
+  if (req.userRole !== 'admin') {
+    res.status(403).json({ error: 'Admin access required' });
+    return;
+  }
+  next();
+};
+
+const isCustomer = (req: AuthRequest, res: Response, next: NextFunction): void => {
+  if (req.userRole !== 'customer' && req.userRole !== 'admin') {
+    res.status(403).json({ error: 'Customer access required' });
+    return;
+  }
+  next();
+};
+
+const isBusiness = (req: AuthRequest, res: Response, next: NextFunction): void => {
+  if (req.userRole !== 'business' && req.userRole !== 'admin') {
+    res.status(403).json({ error: 'Business access required' });
+    return;
+  }
+  next();
+};
+
 // ============ ROUTES ============
 app.get('/', (req, res) => {
   res.json({ message: '⚡ GHM Core Engine (TS)', version: '2.0.0' });
 });
 
 app.post('/api/v1/auth/signup', authLimiter, async (req: Request, res: Response) => {
-  const { email, password, full_name, invite_code } = req.body;
+  const { email, password, full_name, invite_code, role } = req.body;
   if (!invite_code || invite_code !== process.env.INVITE_CODE) {
     res.status(403).json({ error: 'Invalid invite code. Access denied.' });
     return;
@@ -172,8 +206,15 @@ app.post('/api/v1/auth/signup', authLimiter, async (req: Request, res: Response)
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await pool.query('INSERT INTO users (email, password_hash, full_name) VALUES ($1, $2, $3) RETURNING id, email, full_name, created_at', [email, hashedPassword, full_name || null]);
     const user = result.rows[0];
-    const token = jwt.sign({ userId: user.id, role: 'user' }, process.env.JWT_SECRET || 'fallback-secret', { expiresIn: '7d' });
-    res.json({ user, token });
+    
+    // Create the profile with the proper role
+    const profileResult = await pool.query(
+      'INSERT INTO profiles (user_id, role, full_name, email) VALUES ($1, $2, $3, $4) RETURNING *',
+      [user.id, role || 'customer', full_name || null, email]
+    );
+    
+    const token = jwt.sign({ userId: user.id, role: role || 'customer' }, process.env.JWT_SECRET || 'fallback-secret', { expiresIn: '7d' });
+    res.json({ user, profile: profileResult.rows[0], token });
   } catch (err) {
     res.status(500).json({ error: 'Signup error' });
   }
@@ -195,7 +236,18 @@ app.post('/api/v1/auth/signin', authLimiter, async (req: Request, res: Response)
   }
 });
 
-app.get('/api/v1/admin/stats', authenticate, async (req: AuthRequest, res: Response) => {
+// Route to get the user's profile role (For authentication)
+app.get('/api/v1/auth/me', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await pool.query('SELECT * FROM profiles WHERE user_id = $1', [req.userId]);
+    res.json(result.rows[0] || {});
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching profile' });
+  }
+});
+
+// ============ ADMIN ROUTES ============
+app.get('/api/v1/admin/stats', authenticate, isAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const usersCount = await pool.query('SELECT COUNT(*) FROM users');
     const todosCount = await pool.query('SELECT COUNT(*) FROM todos');
@@ -205,7 +257,7 @@ app.get('/api/v1/admin/stats', authenticate, async (req: AuthRequest, res: Respo
   }
 });
 
-app.get('/api/v1/admin/users', authenticate, async (req: AuthRequest, res: Response) => {
+app.get('/api/v1/admin/users', authenticate, isAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query('SELECT id, email, full_name, role, created_at FROM users ORDER BY created_at DESC');
     res.json(result.rows);
@@ -214,13 +266,9 @@ app.get('/api/v1/admin/users', authenticate, async (req: AuthRequest, res: Respo
   }
 });
 
-// ============ GLOBAL AUTO-CRUD FOR ALL TABLES ============
-// This allows GHM.from('table').select() to work for any table in your DB!
+// ============ GLOBAL AUTO-CRUD ============
 app.get('/api/v1/tables/:table', authenticate, async (req: AuthRequest, res: Response) => {
   const table = req.params.table as string;
-
-  // SECURITY: Allow only specific tables you want your API to expose.
-  // (We will add all 54 Zaid Connect tables here later)
   const allowedTables = ['todos', 'profiles', 'businesses', 'leads'];
   
   if (!allowedTables.includes(table)) {
@@ -277,7 +325,7 @@ io.on('connection', (socket) => {
   console.log('🔌 New client connected:', socket.id);
 });
 
-// ============ STATIC FILES (SERVED LAST) ============
+// ============ STATIC FILES ============
 app.use(express.static(path.join(__dirname, '../public')));
 
 // ============ START ============
