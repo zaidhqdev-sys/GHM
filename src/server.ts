@@ -254,6 +254,10 @@ const s3Client = new S3Client({
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
+// Handle GET requests to auth endpoints (prevents 404 and HTML errors)
+app.get('/api/v1/auth/*', (req, res) => {
+    res.status(405).json({ error: 'Method Not Allowed. Please use POST for authentication.' });
+});
 app.post('/api/v1/storage/upload', authenticate, upload.single('file'), async (req: AuthRequest, res: Response) => {
   try {
     const file = req.file;
