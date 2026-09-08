@@ -24,6 +24,7 @@ const io = new Server(server, {
 // ============ MIDDLEWARE ============
 app.use(cors());
 app.use(express.json());
+app.use(express.static('public'));
 app.use(session({
     secret: process.env.JWT_SECRET,
     resave: false,
