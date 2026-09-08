@@ -8,7 +8,6 @@ import { Pool } from 'pg';
 import http from 'http';
 import { Server } from 'socket.io';
 import multer from 'multer';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import session from 'express-session';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
@@ -385,16 +384,10 @@ app.get('/api/v1/tables/:table', authenticate, async (req: AuthRequest, res: Res
   }
 });
 
-// ============ STORAGE ============
-const s3Client = new S3Client({
-  endpoint: process.env.S3_ENDPOINT || 'http://localhost:9000',
-  region: process.env.S3_REGION || 'us-east-1',
-  credentials: {
-    accessKeyId: process.env.S3_ACCESS_KEY || 'minioadmin',
-    secretAccessKey: process.env.S3_SECRET_KEY || 'minioadmin',
-  },
-  forcePathStyle: true,
-});
+// ============ STORAGE (Supabase) ============
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+const STORAGE_BUCKET = 'ghm-storage';
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -402,10 +395,30 @@ app.post('/api/v1/storage/upload', authenticate, upload.single('file'), async (r
   try {
     const file = req.file;
     if (!file) { res.status(400).json({ error: 'No file uploaded' }); return; }
-    const storageKey = `${req.userId}/${Date.now()}-${file.originalname}`;
-    await s3Client.send(new PutObjectCommand({ Bucket: process.env.S3_BUCKET || 'ghm-storage', Key: storageKey, Body: file.buffer, ContentType: file.mimetype }));
-    const url = `${process.env.S3_ENDPOINT || 'http://localhost:9000'}/${process.env.S3_BUCKET || 'ghm-storage'}/${storageKey}`;
-    const result = await pool.query(`INSERT INTO files (user_id, filename, original_name, mime_type, size, storage_key, url) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`, [req.userId, storageKey, file.originalname, file.mimetype, file.size, storageKey, url]);
+    
+    const safeFileName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const filePath = `${req.userId}/${safeFileName}`;
+    
+    // Upload to Supabase Storage
+    const uploadResponse = await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${filePath}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+        'Content-Type': file.mimetype,
+        'x-upsert': 'true'
+      },
+      body: file.buffer
+    });
+
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text();
+      return res.status(500).json({ error: `Upload failed: ${errorText}` });
+    }
+
+    const url = `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${filePath}`;
+    
+    // Save file record to database
+    const result = await pool.query(`INSERT INTO files (user_id, filename, original_name, mime_type, size, storage_key, url) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`, [req.userId, filePath, file.originalname, file.mimetype, file.size, filePath, url]);
     res.json({ message: 'File uploaded successfully', file: result.rows[0], url });
   } catch (err) {
     res.status(500).json({ error: 'Upload error' });
