@@ -13,6 +13,13 @@ const session = require('express-session');
 
 const app = express();
 const PORT = 3000;
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
 
 // ============ MIDDLEWARE ============
 app.use(cors());
@@ -32,7 +39,6 @@ const pool = new Pool({
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD
 });
-// Test database connection
 pool.connect((err) => {
     if (err) {
         console.error('❌ Database connection error:', err.message);
@@ -46,14 +52,18 @@ const setupRLS = async () => {
     try {
         await pool.query(`ALTER TABLE users ENABLE ROW LEVEL SECURITY;`);
         await pool.query(`ALTER TABLE todos ENABLE ROW LEVEL SECURITY;`);
-        
-        // Drop old policies if they exist (so you can re-run this without crashing)
+
+        // Drop old policies
         await pool.query(`DROP POLICY IF EXISTS user_todos_select ON todos;`);
         await pool.query(`DROP POLICY IF EXISTS user_todos_insert ON todos;`);
         await pool.query(`DROP POLICY IF EXISTS user_todos_update ON todos;`);
         await pool.query(`DROP POLICY IF EXISTS user_todos_delete ON todos;`);
-        
-        // Create RLS policies for todos (removed IF NOT EXISTS)
+
+        // Drop user policies
+        await pool.query(`DROP POLICY IF EXISTS user_self_select ON users;`);
+        await pool.query(`DROP POLICY IF EXISTS user_admin_select ON users;`);
+
+        // Create RLS policies for todos
         await pool.query(`
             CREATE POLICY user_todos_select ON todos
                 FOR SELECT
@@ -77,7 +87,20 @@ const setupRLS = async () => {
                 FOR DELETE
                 USING (user_id = current_setting('app.current_user_id')::int);
         `);
-        
+
+        // Create RLS policies for users
+        await pool.query(`
+            CREATE POLICY user_self_select ON users
+                FOR SELECT
+                USING (id = current_setting('app.current_user_id')::int);
+        `);
+
+        await pool.query(`
+            CREATE POLICY user_admin_select ON users
+                FOR SELECT
+                USING (true);
+        `);
+
         console.log('✅ Row Level Security (RLS) policies created');
     } catch (err) {
         console.error('❌ RLS setup error:', err.message);
@@ -95,6 +118,7 @@ const initDB = async () => {
                 password_hash VARCHAR(255) NOT NULL,
                 full_name VARCHAR(255),
                 avatar_url TEXT,
+                role VARCHAR(50) DEFAULT 'user',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP
             )
@@ -118,7 +142,7 @@ const initDB = async () => {
         `);
         console.log('✅ Todos table ready');
 
-        // Files table (for storage)
+        // Files table
         await pool.query(`
             CREATE TABLE IF NOT EXISTS files (
                 id SERIAL PRIMARY KEY,
@@ -133,6 +157,11 @@ const initDB = async () => {
             )
         `);
         console.log('✅ Files table ready');
+
+        // Make the first user an admin automatically
+        await pool.query(`
+            UPDATE users SET role = 'admin' WHERE id = 1;
+        `);
 
         await setupRLS();
         console.log('✅ Database setup complete');
@@ -178,7 +207,7 @@ const authenticate = (req, res, next) => {
 // ============ AUTH ROUTES ============
 
 // Sign Up
-app.post('/api/auth/signup', async (req, res) => {
+app.post('/api/v1/auth/signup', async (req, res) => {
     try {
         const { email, password, full_name } = req.body;
         console.log('📝 Signup attempt for:', email);
@@ -220,7 +249,7 @@ app.post('/api/auth/signup', async (req, res) => {
 });
 
 // Sign In
-app.post('/api/auth/signin', async (req, res) => {
+app.post('/api/v1/auth/signin', async (req, res) => {
     try {
         const { email, password } = req.body;
         console.log('📝 Signin attempt for:', email);
@@ -242,14 +271,14 @@ app.post('/api/auth/signin', async (req, res) => {
         }
 
         const token = jwt.sign(
-            { userId: user.id, email: user.email },
+            { userId: user.id, email: user.email, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: '7d' }
         );
 
         console.log('✅ User signed in:', email);
         res.json({
-            user: { id: user.id, email: user.email, full_name: user.full_name, created_at: user.created_at },
+            user: { id: user.id, email: user.email, full_name: user.full_name, role: user.role, created_at: user.created_at },
             token
         });
     } catch (err) {
@@ -258,14 +287,31 @@ app.post('/api/auth/signin', async (req, res) => {
     }
 });
 
-// ============ AUTO-GENERATED REST API (Like Supabase) ============
+// Get Current Logged In User
+app.get('/api/v1/auth/me', authenticate, async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT id, email, full_name, avatar_url, role, created_at FROM users WHERE id = $1',
+            [req.userId]
+        );
 
-// Generic CRUD for ANY table
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error('❌ Error fetching current user:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ============ AUTO-GENERATED REST API (GHM Style) ============
+
 const autoCrud = (tableName, options = {}) => {
-    const { excludeColumns = [], joinColumns = [] } = options;
+    const { excludeColumns = [] } = options;
 
-    // GET /api/{table}
-    app.get(`/api/${tableName}`, authenticate, async (req, res) => {
+    app.get(`/api/v1/tables/${tableName}`, authenticate, async (req, res) => {
         try {
             const { limit = 100, offset = 0, order_by = 'created_at', order_dir = 'DESC', ...filters } = req.query;
 
@@ -274,7 +320,6 @@ const autoCrud = (tableName, options = {}) => {
             let paramCount = 1;
             const conditions = [];
 
-            // Apply filters
             for (const [key, value] of Object.entries(filters)) {
                 if (!excludeColumns.includes(key)) {
                     conditions.push(`${key} = $${paramCount}`);
@@ -293,7 +338,6 @@ const autoCrud = (tableName, options = {}) => {
 
             const result = await pool.query(query, values);
             
-            // Get total count
             const countResult = await pool.query(`SELECT COUNT(*) FROM ${tableName}`);
             
             res.json({
@@ -308,8 +352,7 @@ const autoCrud = (tableName, options = {}) => {
         }
     });
 
-    // GET /api/{table}/:id
-    app.get(`/api/${tableName}/:id`, authenticate, async (req, res) => {
+    app.get(`/api/v1/tables/${tableName}/:id`, authenticate, async (req, res) => {
         try {
             const result = await pool.query(
                 `SELECT * FROM ${tableName} WHERE id = $1`,
@@ -326,24 +369,25 @@ const autoCrud = (tableName, options = {}) => {
         }
     });
 
-    // POST /api/{table}
-    app.post(`/api/${tableName}`, authenticate, async (req, res) => {
+    app.post(`/api/v1/tables/${tableName}`, authenticate, async (req, res) => {
         try {
             const { ...data } = req.body;
+            
+            data.user_id = req.userId;
+
             const keys = Object.keys(data);
             const values = Object.values(data);
-            const placeholders = values.map((_, i) => `$${i + 2}`);
+            const placeholders = values.map((_, i) => `$${i + 1}`);
             
             const query = `
-                INSERT INTO ${tableName} (user_id, ${keys.join(', ')}) 
-                VALUES ($1, ${placeholders.join(', ')}) 
+                INSERT INTO ${tableName} (${keys.join(', ')}) 
+                VALUES (${placeholders.join(', ')}) 
                 RETURNING *
             `;
 
-            const result = await pool.query(query, [req.userId, ...values]);
+            const result = await pool.query(query, values);
             const newItem = result.rows[0];
 
-            // Broadcast real-time event
             io.emit(`${tableName}_created`, newItem);
 
             res.status(201).json(newItem);
@@ -353,8 +397,7 @@ const autoCrud = (tableName, options = {}) => {
         }
     });
 
-    // PUT /api/{table}/:id
-    app.put(`/api/${tableName}/:id`, authenticate, async (req, res) => {
+    app.put(`/api/v1/tables/${tableName}/:id`, authenticate, async (req, res) => {
         try {
             const { ...data } = req.body;
             const keys = Object.keys(data);
@@ -383,8 +426,7 @@ const autoCrud = (tableName, options = {}) => {
         }
     });
 
-    // DELETE /api/{table}/:id
-    app.delete(`/api/${tableName}/:id`, authenticate, async (req, res) => {
+    app.delete(`/api/v1/tables/${tableName}/:id`, authenticate, async (req, res) => {
         try {
             const result = await pool.query(
                 `DELETE FROM ${tableName} WHERE id = $1 AND user_id = $2 RETURNING id`,
@@ -404,7 +446,6 @@ const autoCrud = (tableName, options = {}) => {
     });
 };
 
-// ============ AUTO-GENERATE ROUTES ============
 autoCrud('todos', { 
     excludeColumns: ['user_id'] 
 });
@@ -415,7 +456,6 @@ autoCrud('users', {
 
 // ============ STORAGE (S3-Compatible) ============
 
-// Setup MinIO/S3 client
 const s3Client = new S3Client({
     endpoint: process.env.S3_ENDPOINT || 'http://localhost:9000',
     region: process.env.S3_REGION || 'us-east-1',
@@ -428,11 +468,10 @@ const s3Client = new S3Client({
 
 const upload = multer({ 
     storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+    limits: { fileSize: 10 * 1024 * 1024 }
 });
 
-// Upload file
-app.post('/api/storage/upload', authenticate, upload.single('file'), async (req, res) => {
+app.post('/api/v1/storage/upload', authenticate, upload.single('file'), async (req, res) => {
     try {
         const file = req.file;
         if (!file) {
@@ -450,7 +489,6 @@ app.post('/api/storage/upload', authenticate, upload.single('file'), async (req,
 
         const url = `${process.env.S3_ENDPOINT || 'http://localhost:9000'}/${process.env.S3_BUCKET || 'ghm-storage'}/${storageKey}`;
 
-        // Save file record to database
         const result = await pool.query(
             `INSERT INTO files (user_id, filename, original_name, mime_type, size, storage_key, url) 
              VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
@@ -470,8 +508,7 @@ app.post('/api/storage/upload', authenticate, upload.single('file'), async (req,
     }
 });
 
-// Get files
-app.get('/api/storage/files', authenticate, async (req, res) => {
+app.get('/api/v1/storage/files', authenticate, async (req, res) => {
     try {
         const result = await pool.query(
             'SELECT * FROM files WHERE user_id = $1 ORDER BY created_at DESC',
@@ -485,25 +522,18 @@ app.get('/api/storage/files', authenticate, async (req, res) => {
 
 // ============ ADMIN DASHBOARD ============
 
-// Admin middleware (you can add role-based access)
 const isAdmin = async (req, res, next) => {
-    // In a real app, check if user has admin role
-    // For now, we'll just check if user exists
-    const result = await pool.query(
-        'SELECT * FROM users WHERE id = $1',
-        [req.userId]
-    );
-    if (result.rows.length === 0) {
+    const result = await pool.query('SELECT role FROM users WHERE id = $1', [req.userId]);
+    if (result.rows.length === 0 || result.rows[0].role !== 'admin') {
         return res.status(403).json({ error: 'Admin access required' });
     }
     next();
 };
 
-// Admin: Get all users
-app.get('/api/admin/users', authenticate, isAdmin, async (req, res) => {
+app.get('/api/v1/admin/users', authenticate, isAdmin, async (req, res) => {
     try {
         const result = await pool.query(
-            'SELECT id, email, full_name, created_at FROM users ORDER BY created_at DESC'
+            'SELECT id, email, full_name, role, created_at FROM users ORDER BY created_at DESC'
         );
         res.json(result.rows);
     } catch (err) {
@@ -511,11 +541,10 @@ app.get('/api/admin/users', authenticate, isAdmin, async (req, res) => {
     }
 });
 
-// Admin: Get all todos (with user info)
-app.get('/api/admin/todos', authenticate, isAdmin, async (req, res) => {
+app.get('/api/v1/admin/todos', authenticate, isAdmin, async (req, res) => {
     try {
         const result = await pool.query(`
-            SELECT t.*, u.email, u.full_name 
+            SELECT t.*, u.email, u.full_name, u.role
             FROM todos t
             JOIN users u ON t.user_id = u.id
             ORDER BY t.created_at DESC
@@ -526,8 +555,7 @@ app.get('/api/admin/todos', authenticate, isAdmin, async (req, res) => {
     }
 });
 
-// Admin: Get system stats
-app.get('/api/admin/stats', authenticate, isAdmin, async (req, res) => {
+app.get('/api/v1/admin/stats', authenticate, isAdmin, async (req, res) => {
     try {
         const usersCount = await pool.query('SELECT COUNT(*) FROM users');
         const todosCount = await pool.query('SELECT COUNT(*) FROM todos');
@@ -547,19 +575,9 @@ app.get('/api/admin/stats', authenticate, isAdmin, async (req, res) => {
 });
 
 // ============ REAL-TIME (WebSocket) ============
-const server = http.createServer(app);
-
-const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
-});
-
 io.on('connection', (socket) => {
     console.log('🔌 New client connected:', socket.id);
 
-    // Subscribe to table events
     socket.on('subscribe', (table) => {
         socket.join(`table:${table}`);
         console.log(`📡 Client ${socket.id} subscribed to ${table}`);
@@ -578,24 +596,22 @@ io.on('connection', (socket) => {
 // ============ ROOT ROUTE ============
 app.get('/', (req, res) => {
     res.json({
-        message: '🚀 GHM Backend with Supabase-like features!',
-        version: '2.0.0',
+        message: '⚡ GHM Core Engine',
+        version: '1.0.0',
         features: {
             database: 'PostgreSQL',
-            auth: 'JWT',
-            realtime: 'WebSocket (Socket.io)',
-            rls: 'Row Level Security',
-            auto_api: 'Auto-generated CRUD',
-            storage: 'S3-compatible (MinIO)',
-            admin: 'Admin Dashboard'
+            auth: 'Custom JWT',
+            realtime: 'GHM Sockets',
+            rls: 'GHM Security',
+            auto_api: 'GHM Auto-CRUD',
+            storage: 'GHM Object Storage (MinIO)',
+            admin: 'GHM Studio'
         },
         endpoints: {
-            auth: '/api/auth/signup, /api/auth/signin',
-            todos: '/api/todos (CRUD)',
-            users: '/api/users (CRUD)',
-            storage: '/api/storage/upload, /api/storage/files',
-            admin: '/api/admin/users, /api/admin/todos, /api/admin/stats',
-            websocket: 'ws://localhost:3000'
+            auth: '/api/v1/auth/signup, /api/v1/auth/signin, /api/v1/auth/me',
+            tables: '/api/v1/tables/:table (CRUD)',
+            storage: '/api/v1/storage/upload, /api/v1/storage/files',
+            admin: '/api/v1/admin/stats'
         }
     });
 });
@@ -605,8 +621,8 @@ server.listen(PORT, () => {
     console.log(`🚀 GHM Backend running on http://localhost:${PORT}`);
     console.log(`🐘 PostgreSQL: ghm_db`);
     console.log(`🔌 WebSocket (real-time) enabled`);
-    console.log(`📦 Auto-API: /api/{table}`);
+    console.log(`📦 Auto-API: /api/v1/tables/{table}`);
     console.log(`🔒 RLS: Enabled on todos table`);
     console.log(`📁 Storage: S3-compatible (MinIO)`);
-    console.log(`🛡️  Admin Dashboard: /api/admin/*`);
+    console.log(`🛡️  Admin Dashboard: /api/v1/admin/*`);
 });
