@@ -132,6 +132,7 @@
 
     </div>
 
+    <script src="/socket.io/socket.io.js"></script>
     <script>
         const API_URL = 'https://ghm-core.onrender.com';
         let authToken = localStorage.getItem('token');
@@ -306,12 +307,46 @@
             }
         }
 
+        // ============ REALTIME (WebSockets) ============
+        const socket = io(API_URL, { transports: ['websocket'] });
+
+        socket.on('connect', () => {
+            console.log('🔌 Connected to GHM Realtime');
+        });
+
+        // When a new todo is created, refresh the list instantly
+        socket.on('todos_created', (newTodo) => {
+            console.log('⚡ New todo created:', newTodo);
+            loadTodos();
+            loadStats();
+        });
+
+        // When a todo is updated, refresh the list instantly
+        socket.on('todos_updated', (updatedTodo) => {
+            console.log('⚡ Todo updated:', updatedTodo);
+            loadTodos();
+            loadStats();
+        });
+
+        // When a todo is deleted, refresh the list instantly
+        socket.on('todos_deleted', (deletedTodo) => {
+            console.log('⚡ Todo deleted:', deletedTodo);
+            loadTodos();
+            loadStats();
+        });
+
+        // When a new file is uploaded, refresh the storage list instantly
+        socket.on('file_uploaded', (newFile) => {
+            console.log('⚡ New file uploaded:', newFile);
+            loadFiles();
+        });
+
        // Load everything immediately on page load
-loadStats();
-loadUsers();
-loadTodos();
-loadFiles();
-listTables();
+        loadStats();
+        loadUsers();
+        loadTodos();
+        loadFiles();
+        listTables();
     </script>
 </body>
 </html>
