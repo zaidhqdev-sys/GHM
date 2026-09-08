@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GHM Real-time Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        #status {
+            padding: 15px;
+            background: #fff;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #events {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-height: 200px;
+        }
+        .event {
+            padding: 10px;
+            margin: 5px 0;
+            border-left: 4px solid #4CAF50;
+            background: #f9f9f9;
+        }
+        .connected {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .disconnected {
+            color: #f44336;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 GHM Real-time Updates</h1>
+    <div id="status">⏳ Connecting...</div>
+    <div id="events">
+        <p><em>Real-time events will appear here...</em></p>
+    </div>
+
+    <script>
+        const socket = io('http://localhost:3000');
+        const eventsDiv = document.getElementById('events');
+        
+        socket.on('connect', () => {
+            document.getElementById('status').innerHTML = '✅ Connected to real-time server! 🟢';
+            document.getElementById('status').className = 'connected';
+            addEvent('🔌 Connected to server', '#4CAF50');
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('status').innerHTML = '❌ Disconnected from server 🔴';
+            document.getElementById('status').className = 'disconnected';
+        });
+
+        socket.on('todo_created', (todo) => {
+            addEvent(`📝 New todo created: <strong>"${todo.title}"</strong>`, '#2196F3');
+        });
+
+        socket.on('todo_updated', (todo) => {
+            const status = todo.is_completed ? '✅ COMPLETED' : '📋 Pending';
+            addEvent(`✏️ Todo updated: <strong>"${todo.title}"</strong> - ${status}`, '#FF9800');
+        });
+
+        socket.on('todo_deleted', (data) => {
+            addEvent(`🗑️ Todo deleted (ID: ${data.id})`, '#f44336');
+        });
+
+        function addEvent(message, color = '#4CAF50') {
+            const div = document.createElement('div');
+            div.className = 'event';
+            div.style.borderLeftColor = color;
+            div.innerHTML = `<span style="color: #999; font-size: 12px;">${new Date().toLocaleTimeString()}</span> ${message}`;
+            eventsDiv.appendChild(div);
+            // Scroll to bottom
+            eventsDiv.scrollTop = eventsDiv.scrollHeight;
+        }
+    </script>
+</body>
+</html>
