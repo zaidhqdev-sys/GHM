@@ -23,8 +23,6 @@ interface AuthRequest extends Request {
 }
 
 // ============ MIDDLEWARE ============
-app.use(express.static(path.join(__dirname, '../public')));
-
 const allowedOrigins = [process.env.FRONTEND_URL || '*'];
 app.use(cors({
   origin: function (origin, callback) {
@@ -167,14 +165,6 @@ const authenticate = (req: AuthRequest, res: Response, next: NextFunction): void
   }
 };
 
-const isAdmin = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  if (req.userRole !== 'admin') {
-    res.status(403).json({ error: 'Admin access required' });
-    return;
-  }
-  next();
-};
-
 // ============ ROUTES ============
 app.get('/', (req, res) => {
   res.json({ message: '⚡ GHM Core Engine (TS)', version: '2.0.0' });
@@ -213,7 +203,7 @@ app.post('/api/v1/auth/signin', authLimiter, async (req: Request, res: Response)
   }
 });
 
-app.get('/api/v1/admin/stats', authenticate, isAdmin, async (req: AuthRequest, res: Response) => {
+app.get('/api/v1/admin/stats', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const usersCount = await pool.query('SELECT COUNT(*) FROM users');
     const todosCount = await pool.query('SELECT COUNT(*) FROM todos');
@@ -223,7 +213,7 @@ app.get('/api/v1/admin/stats', authenticate, isAdmin, async (req: AuthRequest, r
   }
 });
 
-app.get('/api/v1/admin/users', authenticate, isAdmin, async (req: AuthRequest, res: Response) => {
+app.get('/api/v1/admin/users', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query('SELECT id, email, full_name, role, created_at FROM users ORDER BY created_at DESC');
     res.json(result.rows);
@@ -254,10 +244,6 @@ const s3Client = new S3Client({
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-// Handle GET requests to auth endpoints (prevents 404 and HTML errors)
-app.get('/api/v1/auth/*', (req, res) => {
-    res.status(405).json({ error: 'Method Not Allowed. Please use POST for authentication.' });
-});
 app.post('/api/v1/storage/upload', authenticate, upload.single('file'), async (req: AuthRequest, res: Response) => {
   try {
     const file = req.file;
@@ -286,6 +272,9 @@ const io = new Server(server, { cors: { origin: allowedOrigins } });
 io.on('connection', (socket) => {
   console.log('🔌 New client connected:', socket.id);
 });
+
+// ============ STATIC FILES (SERVED LAST) ============
+app.use(express.static(path.join(__dirname, '../public')));
 
 // ============ START ============
 server.listen(PORT, () => {
