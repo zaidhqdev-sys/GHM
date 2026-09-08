@@ -23,16 +23,8 @@ interface AuthRequest extends Request {
 }
 
 // ============ MIDDLEWARE ============
-const allowedOrigins = [process.env.FRONTEND_URL || '*'];
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  }
-}));
+// CORS is now completely open for testing (we will lock it down later)
+app.use(cors());
 
 app.use(express.json());
 app.use(session({
@@ -268,7 +260,7 @@ app.get('/api/v1/storage/files', authenticate, async (req: AuthRequest, res: Res
 });
 
 // ============ REALTIME ============
-const io = new Server(server, { cors: { origin: allowedOrigins } });
+const io = new Server(server, { cors: { origin: '*' } });
 io.on('connection', (socket) => {
   console.log('🔌 New client connected:', socket.id);
 });
