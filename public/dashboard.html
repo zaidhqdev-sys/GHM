@@ -128,7 +128,6 @@
     </div>
 
     <script>
-        // ⚠️ CRITICAL FIX: Use localhost here to match your browser URL
         const API_URL = 'https://ghm-core.onrender.com';
         let authToken = localStorage.getItem('token');
 
@@ -163,27 +162,12 @@
             if (sectionId === 'storage') loadFiles();
         }
 
-        // Helper to handle backend response format
-        async function getData(url) {
-            const response = await fetch(url, { headers: { 'Authorization': `Bearer ${authToken}` } });
-            if (response.status === 401) {
-                logout();
-                return [];
-            }
-            if (response.status === 403) {
-                showError("403 Forbidden: You are not an admin. Make sure you ran 'UPDATE users SET role = admin' in pgAdmin.");
-                return [];
-            }
-            const data = await response.json();
-            return Array.isArray(data) ? data : (data.data || []);
-        }
-
         // ============ DASHBOARD ============
         async function loadStats() {
             try {
                 const response = await fetch(`${API_URL}/api/v1/admin/stats`, { headers: { 'Authorization': `Bearer ${authToken}` } });
                 if (response.status === 403) {
-                    showError("403 Forbidden: You are not an admin. Check your role.");
+                    showError("403 Forbidden: You are not an admin.");
                     return;
                 }
                 const stats = await response.json();
@@ -193,7 +177,7 @@
                 document.querySelector('#stats-grid .stat-card:nth-child(3) .value').innerText = stats.completed_todos;
                 document.querySelector('#stats-grid .stat-card:nth-child(4) .value').innerText = stats.total_files;
             } catch (err) {
-                showError("Error: Backend not reachable. Make sure npm run dev is running.");
+                showError("Error: Backend not reachable.");
                 console.error(err);
             }
         }
@@ -201,7 +185,20 @@
         // ============ USERS ============
         async function loadUsers() {
             try {
-                const users = await getData(`${API_URL}/api/v1/admin/users`);
+                const response = await fetch(`${API_URL}/api/v1/admin/users`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+                if (response.status === 403) {
+                    showError("403 Forbidden: You are not an admin.");
+                    return;
+                }
+                if (response.status === 401) {
+                    logout();
+                    return;
+                }
+                
+                const data = await response.json();
+                // If backend returns { data: [...] } use that, otherwise just use the array
+                const users = Array.isArray(data) ? data : (data.data || []);
+                
                 const tbody = document.getElementById('users-table-body');
                 tbody.innerHTML = users.map(user => `
                     <tr>
@@ -219,7 +216,16 @@
         // ============ TODOS ============
         async function loadTodos() {
             try {
-                const todos = await getData(`${API_URL}/api/v1/tables/todos`);
+                const response = await fetch(`${API_URL}/api/v1/tables/todos`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+                if (response.status === 401) {
+                    logout();
+                    return;
+                }
+                
+                const data = await response.json();
+                // If backend returns { data: [...] } use that, otherwise just use the array
+                const todos = Array.isArray(data) ? data : (data.data || []);
+                
                 const tbody = document.getElementById('todos-table-body');
                 tbody.innerHTML = todos.map(todo => `
                     <tr>
@@ -253,7 +259,7 @@
                 if (response.ok) {
                     input.value = '';
                     loadTodos();
-                    loadStats(); // Refresh stats too
+                    loadStats();
                 } else {
                     alert('Failed to add todo. Check the terminal for errors!');
                 }
@@ -283,7 +289,15 @@
 
         async function loadFiles() {
             try {
-                const files = await getData(`${API_URL}/api/v1/storage/files`);
+                const response = await fetch(`${API_URL}/api/v1/storage/files`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+                if (response.status === 401) {
+                    logout();
+                    return;
+                }
+                
+                const data = await response.json();
+                const files = Array.isArray(data) ? data : (data.data || []);
+                
                 const tbody = document.getElementById('files-table-body');
                 tbody.innerHTML = files.map(file => `
                     <tr>
