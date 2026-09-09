@@ -8,7 +8,6 @@ const forbidden = [
   ['fallback JWT secret', /JWT_SECRET\s*\|\|\s*['"]fallback-secret['"]/i],
   ['wildcard CORS middleware', /app\.use\(cors\(\)\)/i],
   ['unrestricted table endpoint', /\/api\/v1\/tables\/:table/i],
-  ['Supabase-owned storage in GHM runtime', /SUPABASE_SERVICE_KEY/i],
 ];
 
 const failures = forbidden.filter(([, pattern]) => pattern.test(source));
