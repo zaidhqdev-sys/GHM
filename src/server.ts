@@ -49,12 +49,16 @@ const setupRLS = async (): Promise<void> => {
   try {
     await pool.query(`ALTER TABLE users ENABLE ROW LEVEL SECURITY;`);
     await pool.query(`ALTER TABLE todos ENABLE ROW LEVEL SECURITY;`);
+    await pool.query(`ALTER TABLE files ENABLE ROW LEVEL SECURITY;`); // FIXED: Added files table
+
     await pool.query(`DROP POLICY IF EXISTS user_todos_select ON todos;`);
     await pool.query(`DROP POLICY IF EXISTS user_todos_insert ON todos;`);
     await pool.query(`DROP POLICY IF EXISTS user_todos_update ON todos;`);
     await pool.query(`DROP POLICY IF EXISTS user_todos_delete ON todos;`);
     await pool.query(`DROP POLICY IF EXISTS user_self_select ON users;`);
     await pool.query(`DROP POLICY IF EXISTS user_admin_select ON users;`);
+    await pool.query(`DROP POLICY IF EXISTS user_files_select ON files;`);
+    await pool.query(`DROP POLICY IF EXISTS user_files_insert ON files;`);
 
     await pool.query(`
       CREATE POLICY user_todos_select ON todos FOR SELECT
@@ -79,6 +83,15 @@ const setupRLS = async (): Promise<void> => {
     await pool.query(`
       CREATE POLICY user_admin_select ON users FOR SELECT
         USING (current_setting('app.current_user_role', true) = 'admin');
+    `);
+    // FIXED: Added policies for files
+    await pool.query(`
+      CREATE POLICY user_files_select ON files FOR SELECT
+        USING (user_id = current_setting('app.current_user_id')::int);
+    `);
+    await pool.query(`
+      CREATE POLICY user_files_insert ON files FOR INSERT
+        WITH CHECK (user_id = current_setting('app.current_user_id')::int);
     `);
     console.log('✅ RLS Setup complete');
   } catch (err) {
@@ -139,7 +152,6 @@ const initDB = async (): Promise<void> => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    // NEW TABLE FOR PASSWORD RESET
     await pool.query(`
       CREATE TABLE IF NOT EXISTS password_reset_tokens (
         id SERIAL PRIMARY KEY,
@@ -243,7 +255,6 @@ app.post('/api/v1/auth/signin', authLimiter, async (req: Request, res: Response)
   }
 });
 
-// NEW ROUTE: Request password reset
 app.post('/api/v1/auth/forgot-password', authLimiter, async (req: Request, res: Response) => {
   const { email } = req.body;
   try {
@@ -254,22 +265,19 @@ app.post('/api/v1/auth/forgot-password', authLimiter, async (req: Request, res: 
 
     const userId = result.rows[0].id;
     const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     await pool.query(
       'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
       [userId, token, expiresAt]
     );
 
-    // In a production app, you would send an email with a link.
-    // For now, we return the token directly so you can test the flow.
     res.json({ message: 'Password reset token generated', token });
   } catch (err) {
     res.status(500).json({ error: 'Error generating reset token' });
   }
 });
 
-// NEW ROUTE: Reset password using token
 app.post('/api/v1/auth/reset-password', authLimiter, async (req: Request, res: Response) => {
   const { token, new_password } = req.body;
   try {
@@ -323,7 +331,6 @@ app.get('/api/v1/admin/users', authenticate, isAdmin, async (req: AuthRequest, r
   }
 });
 
-// NEW ROUTE FOR DATA EDITOR
 app.get('/api/v1/admin/tables', authenticate, isAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query(`
@@ -341,7 +348,6 @@ app.get('/api/v1/admin/tables', authenticate, isAdmin, async (req: AuthRequest, 
 // ============ GLOBAL AUTO-CRUD ============
 app.get('/api/v1/tables/:table', authenticate, async (req: AuthRequest, res: Response) => {
   const table = req.params.table as string;
-  // ALL 54 TABLES NOW ALLOWED
   const allowedTables = [
     'todos', 'profiles', 'businesses', 'leads', 
     'account_onboarding_progress', 'administrative_areas', 
@@ -399,13 +405,12 @@ app.post('/api/v1/storage/upload', authenticate, upload.single('file'), async (r
     const safeFileName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
     const filePath = `${req.userId}/${safeFileName}`;
     
-    // Upload to Supabase Storage
+    // CRITICAL FIX: Removed 'x-upsert' header
     const uploadResponse = await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${filePath}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-        'Content-Type': file.mimetype,
-        'x-upsert': 'true'
+        'Content-Type': file.mimetype
       },
       body: file.buffer
     });
@@ -417,7 +422,6 @@ app.post('/api/v1/storage/upload', authenticate, upload.single('file'), async (r
 
     const url = `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${filePath}`;
     
-    // Save file record to database
     const result = await pool.query(`INSERT INTO files (user_id, filename, original_name, mime_type, size, storage_key, url) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`, [req.userId, filePath, file.originalname, file.mimetype, file.size, filePath, url]);
     res.json({ message: 'File uploaded successfully', file: result.rows[0], url });
   } catch (err) {
