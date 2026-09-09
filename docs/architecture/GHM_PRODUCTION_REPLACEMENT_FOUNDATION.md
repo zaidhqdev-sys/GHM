@@ -21,6 +21,7 @@ Zaid Connect  ───────► Supabase PostgreSQL/Auth/Functions/Realti
 QuoteFlow     ───────► Supabase PostgreSQL/Auth/Functions/Storage
 
 GHM           ───────► GHM PostgreSQL + GHM-owned service boundaries
+                         └── temporary storage provider may be used behind a GHM boundary
 ```
 
 Zaid Connect's approved API specification explicitly describes its current interfaces as Supabase Authentication, Supabase table/view access, PostgreSQL RPC functions, and Supabase Edge Functions. QuoteFlow currently ships with `@supabase/supabase-js` and a `supabase/` directory. These facts establish migration scope, not a requirement that GHM reproduce Supabase internals.
@@ -32,16 +33,19 @@ Zaid Connect's approved API specification explicitly describes its current inter
                          │ GHM Core API  │
                          └───────┬───────┘
                                  │
-                 ┌───────────────┼───────────────┐
-                 ▼               ▼               ▼
-              Auth/API        PostgreSQL      Storage/Realtime
-                 │               │               │
-                 └───────────────┴───────────────┘
+                 ┌───────────────┼────────────────┐
+                 ▼               ▼                ▼
+              Auth/API        PostgreSQL      Storage adapter
+                 │               │                │
+                 └───────────────┴────────────────┘
                                  │
                          ZAID-owned backend
 
 Zaid Connect ──► GHM adapter ──► GHM
 QuoteFlow   ──► GHM adapter ──► GHM
+
+Storage adapter ──► current provider (e.g. Supabase Storage)
+                 └─► future ZAID-owned storage without product rewrites
 ```
 
 ## Authority Rules
@@ -52,6 +56,8 @@ QuoteFlow   ──► GHM adapter ──► GHM
 4. The legacy `ghm.db` SQLite file is not schema authority and must not be used to reconstruct production schema.
 5. No GHM migration is generated from guesswork or by copying Zaid Connect's schema wholesale.
 6. GHM implements the capabilities actually required by the products and their approved workflows.
+7. Infrastructure providers may implement a GHM capability temporarily, but provider choice must remain behind an explicit GHM boundary.
+8. Supabase Storage is currently treated as a replaceable storage provider, not as GHM backend authority.
 
 ## Migration Strategy
 
@@ -98,19 +104,32 @@ Only after sustained operational confidence may individual Supabase dependencies
 
 ## Current GHM Blocking Conditions
 
-The current GHM runtime still contains architectural debt that prevents production qualification:
+The current GHM construction line still has qualification gates that must be closed before production replacement:
 
-- runtime database/table creation instead of migration authority
-- unsafe implicit admin bootstrap (`users.id = 1`)
-- generic authenticated table API
-- RLS context set through unawaited pool queries, which does not guarantee the settings apply to the protected query's connection
-- Socket.IO wildcard CORS and missing authenticated channel authorization
-- storage implementation coupled to an external provider
-- missing complete operational health/readiness contract
-- missing automated qualification suite and CI
-- live GHM PostgreSQL endpoint has not yet been successfully inspected from the development environment
+- actual GHM PostgreSQL catalog has not yet been successfully captured from the development environment;
+- business/product migrations remain blocked pending catalog reconciliation;
+- product-facing repositories and adapters are not yet implemented against the reconciled GHM schema;
+- end-to-end shadow qualification and cutover/rollback evidence do not yet exist.
 
 These are construction blockers, not reasons to touch the live Connect or QuoteFlow deployments.
+
+## Storage Provider Position
+
+GHM does not need to own physical storage on day one. A free or otherwise available provider may be used while GHM's own storage capability is being constructed.
+
+The architectural requirement is that product code talks to a **GHM storage boundary**, not directly to a provider. The provider can therefore be replaced later without changing Zaid Connect or QuoteFlow contracts.
+
+Current position:
+
+```text
+Product → GHM storage boundary → Supabase Storage (temporary provider)
+
+Future:
+
+Product → GHM storage boundary → ZAID-owned storage
+```
+
+The temporary provider is not a production-replacement blocker by itself.
 
 ## Definition of Production-Ready Replacement
 
@@ -128,4 +147,4 @@ GHM is not production-ready merely because it builds or starts. It is production
 
 ## Immediate Construction Boundary
 
-**Next:** establish GHM database authority and migration foundation, without changing production product configuration.
+**Next:** capture and reconcile the real GHM PostgreSQL catalog, then establish the first canonical GHM business schema without changing production product configuration.
