@@ -5,9 +5,9 @@ import fs from 'fs/promises';
 import path from 'path';
 import { Pool } from 'pg';
 
-const databaseUrl = process.env.DATABASE_URL?.trim();
+const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
 if (!databaseUrl) {
-  throw new Error('Missing required environment variable: DATABASE_URL');
+  throw new Error('Missing required environment variable: GHM_MIGRATOR_DATABASE_URL');
 }
 
 const pool = new Pool({
@@ -19,6 +19,7 @@ const MIGRATION_PATTERN = /^(\d{14})_([a-z0-9][a-z0-9_-]*)\.sql$/;
 const MIGRATIONS_DIR = path.resolve(process.cwd(), 'database', 'migrations');
 const LEDGER_TABLE = 'ghm_schema_migrations';
 const MIGRATION_LOCK = 731824;
+const MIGRATION_OWNER_ROLE = 'ghm_schema_owner';
 
 type Migration = {
   version: string;
@@ -67,6 +68,28 @@ const migrate = async (): Promise<void> => {
   const client = await pool.connect();
 
   try {
+    await client.query('SET ROLE ' + MIGRATION_OWNER_ROLE);
+
+    const identity = await client.query<{
+      current_user: string;
+      session_user: string;
+      current_database: string;
+    }>(`
+      SELECT
+        current_user,
+        session_user,
+        current_database()
+    `);
+
+    if (
+      identity.rows[0]?.current_user !== MIGRATION_OWNER_ROLE ||
+      identity.rows[0]?.session_user !== 'ghm_migrator'
+    ) {
+      throw new Error(
+        `Migration authority identity mismatch: current_user=${identity.rows[0]?.current_user}, session_user=${identity.rows[0]?.session_user}`,
+      );
+    }
+
     await client.query('BEGIN');
     await client.query('SELECT pg_advisory_xact_lock($1)', [MIGRATION_LOCK]);
 
