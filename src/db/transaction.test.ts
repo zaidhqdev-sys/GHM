@@ -1,9 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { PoolClient } from 'pg';
-import { AuthContext } from '../auth/authorization';
-import { withAuthorizedTransaction } from './authorized-transaction';
-import { TransactionPool, withTransaction } from './transaction';
+import type { PoolClient } from 'pg';
+import type { AuthContext } from '../auth/authorization';
+import type { TransactionPool, withTransaction as WithTransaction } from './transaction';
+import type { withAuthorizedTransaction as WithAuthorizedTransaction } from './authorized-transaction';
+
+process.env.NODE_ENV = 'test';
+process.env.JWT_SECRET = 'test-jwt-secret-for-qualification';
+process.env.DATABASE_URL = 'postgres://qualification:test@localhost:5432/ghm';
+process.env.INVITE_CODE = 'test-invite-code';
+process.env.CORS_ORIGINS = 'http://localhost:3000';
 
 type FakeClient = {
   calls: string[];
@@ -31,7 +37,19 @@ const createFakePool = (client: FakeClient): TransactionPool => ({
   },
 });
 
+const loadTransactions = async (): Promise<{
+  withTransaction: typeof WithTransaction;
+  withAuthorizedTransaction: typeof WithAuthorizedTransaction;
+}> => {
+  const [{ withTransaction }, { withAuthorizedTransaction }] = await Promise.all([
+    import('./transaction'),
+    import('./authorized-transaction'),
+  ]);
+  return { withTransaction, withAuthorizedTransaction };
+};
+
 test('transaction uses one checked-out client and commits successful work', async () => {
+  const { withTransaction } = await loadTransactions();
   const client = createFakeClient();
   let workClient: PoolClient | undefined;
 
@@ -50,6 +68,7 @@ test('transaction uses one checked-out client and commits successful work', asyn
 });
 
 test('transaction rolls back failed work and releases the client', async () => {
+  const { withTransaction } = await loadTransactions();
   const client = createFakeClient();
   const failure = new Error('work failed');
 
@@ -63,6 +82,7 @@ test('transaction rolls back failed work and releases the client', async () => {
 });
 
 test('authorized transaction passes the same AuthContext into transaction work', async () => {
+  const { withAuthorizedTransaction } = await loadTransactions();
   const client = createFakeClient();
   const context: AuthContext = { userId: 7, role: 'customer' };
   let receivedContext: AuthContext | undefined;
