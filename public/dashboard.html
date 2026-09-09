@@ -8,18 +8,18 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #121212; display: flex; height: 100vh; color: #e0e0e0; }
         
-        /* Sidebar */
-        .sidebar { width: 220px; background: #1a1a1a; color: #999; display: flex; flex-direction: column; border-right: 1px solid #333; }
+        /* Sticky Sidebar */
+        .sidebar { width: 220px; background: #1a1a1a; color: #999; display: flex; flex-direction: column; border-right: 1px solid #333; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
         .sidebar h2 { color: #24b47e; padding: 20px; font-size: 20px; border-bottom: 1px solid #333; display: flex; align-items: center; gap: 10px; }
         
-        /* Custom GHM Mountain Icon */
-        .ghm-logo { width: 24px; height: 24px; fill: #24b47e; }
+        /* Custom GHM Mountain Range */
+        .ghm-logo { width: 32px; height: 32px; fill: #24b47e; }
         
         .nav-item { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #2a2a2a; transition: 0.2s; }
         .nav-item:hover, .nav-item.active { background: #222; color: #24b47e; border-left: 4px solid #24b47e; }
         
-        /* Content */
-        .content { flex: 1; padding: 30px; overflow-y: auto; }
+        /* Sticky Content */
+        .content { flex: 1; padding: 30px; overflow-y: auto; height: 100vh; position: relative; }
         .content h1 { font-size: 24px; margin-bottom: 20px; color: #fff; }
         
         /* Stats Grid */
@@ -48,13 +48,17 @@
         /* Links */
         a { color: #24b47e; text-decoration: none; }
         a:hover { text-decoration: underline; }
+        
+        /* Breadcrumbs */
+        .breadcrumbs { margin-bottom: 15px; font-size: 14px; color: #888; }
+        .breadcrumbs a { color: #24b47e; }
     </style>
 </head>
 <body>
 
     <!-- Sidebar -->
     <div class="sidebar">
-        <h2><svg class="ghm-logo" viewBox="0 0 24 24"><path d="M12 3L2 21h20L12 3zm0 5l5 10H7l5-10z"/></svg> GHM</h2>
+        <h2><svg class="ghm-logo" viewBox="0 0 32 32"><path d="M4 24L12 8L16 16L20 10L28 24H4Z" fill="#24b47e"/><circle cx="14" cy="14" r="4" fill="#fff"/></svg> GHM</h2>
         <div class="nav-item active" onclick="showSection('dashboard')">Dashboard</div>
         <div class="nav-item" onclick="showSection('users')">Auth / Users</div>
         <div class="nav-item" onclick="showSection('todos')">Table Editor: Todos</div>
@@ -103,13 +107,14 @@
         <!-- Data Editor Section -->
         <div id="dataEditor" class="section">
             <h1>Data Editor</h1>
+            <div class="breadcrumbs"><a href="#" onclick="clearDataView()">Home / Data Editor</a></div>
             <div class="table-container" style="margin-bottom: 20px;">
                 <table>
                     <thead><tr><th>Table Name</th></tr></thead>
                     <tbody id="tables-list"></tbody>
                 </table>
             </div>
-            <div class="table-container">
+            <div class="table-container" id="data-container" style="scroll-margin-top: 20px;">
                 <table>
                     <thead id="data-table-head"></thead>
                     <tbody id="data-table-body"><tr><td colspan="10">Select a table to view its data.</td></tr></tbody>
@@ -150,7 +155,7 @@
             window.location.href = 'index.html';
         }
 
-        // ============ NAVIGATION & SCROLL ============
+        // ============ NAVIGATION ============
         function showSection(sectionId) {
             document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
             document.getElementById(sectionId).classList.add('active');
@@ -158,14 +163,17 @@
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
             event.target.classList.add('active');
 
-            // Scroll to the top of the content area
-            document.querySelector('.content').scrollTop = 0;
-
             if (sectionId === 'dashboard') loadStats();
             if (sectionId === 'users') loadUsers();
             if (sectionId === 'todos') loadTodos();
             if (sectionId === 'storage') loadFiles();
             if (sectionId === 'dataEditor') listTables();
+        }
+
+        // ============ CLEAR DATA VIEW ============
+        function clearDataView() {
+            document.getElementById('data-table-head').innerHTML = '';
+            document.getElementById('data-table-body').innerHTML = '<tr><td colspan="10">Select a table to view its data.</td></tr>';
         }
 
         // ============ DASHBOARD ============
@@ -268,6 +276,10 @@
                     document.getElementById('data-table-head').innerHTML = '';
                     document.getElementById('data-table-body').innerHTML = '<tr><td colspan="10">No data found.</td></tr>';
                 }
+
+                // Scroll to the actual data container, not the top of the page
+                const dataContainer = document.getElementById('data-container');
+                dataContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
             } catch (err) {
                 console.error(err);
             }
