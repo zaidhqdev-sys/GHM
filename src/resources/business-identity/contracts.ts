@@ -86,7 +86,7 @@ export interface BusinessIdentityRepository {
   getBusinessById(context: AuthContext, businessId: BusinessId): Promise<BusinessIdentity | null>;
   getBusinessBySlug(context: AuthContext, slug: string): Promise<BusinessIdentity | null>;
   getMembershipsForAccount(context: AuthContext): Promise<readonly BusinessMembership[]>;
-  createBusiness(context: AuthContext, input: CreateBusinessInput): Promise<BusinessIdentity>;
+  createBusiness(context: AuthContext, input: CreateBusinessInput, slug: string): Promise<BusinessIdentity>;
   updateBusiness(context: AuthContext, businessId: BusinessId, input: UpdateBusinessProfileInput): Promise<BusinessIdentity>;
 }
 
