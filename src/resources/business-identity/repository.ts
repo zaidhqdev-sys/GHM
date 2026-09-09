@@ -11,6 +11,7 @@ import type {
 } from './contracts';
 import type { AuthContext } from '../../auth/authorization';
 import { withAuthorizedTransaction } from '../../db/authorized-transaction';
+import type { TransactionPool } from '../../db/transaction';
 
 const ACCOUNT_SELECT = `
   SELECT id, full_name, phone, avatar_ref, role, created_at, updated_at
@@ -125,67 +126,85 @@ const slugify = (name: string): string => {
 };
 
 export class PostgresBusinessIdentityRepository implements BusinessIdentityRepository {
+  constructor(private readonly transactionPool?: TransactionPool) {}
+
   async getAccount(context: AuthContext): Promise<AccountIdentity> {
-    return withAuthorizedTransaction(context, (client) => requireAccount(client, context));
+    return withAuthorizedTransaction(context, (client) => requireAccount(client, context), this.transactionPool);
   }
 
   async updateAccount(context: AuthContext, input: UpdateProfileInput): Promise<AccountIdentity> {
-    return withAuthorizedTransaction(context, async (client) => {
-      await requireAccount(client, context);
-      const result = await client.query(
-        `
-          UPDATE account_identity
-          SET full_name = $2,
-              phone = $3,
-              avatar_ref = $4,
-              updated_at = now()
-          WHERE id = $1
-          RETURNING id, full_name, phone, avatar_ref, role, created_at, updated_at
-        `,
-        [context.userId, input.fullName ?? null, input.phone ?? null, input.avatarRef ?? null],
-      );
-      if (result.rowCount !== 1) throw new Error('Authenticated account not found');
-      return mapAccount(result.rows[0]);
-    });
+    return withAuthorizedTransaction(
+      context,
+      async (client) => {
+        await requireAccount(client, context);
+        const result = await client.query(
+          `
+            UPDATE account_identity
+            SET full_name = CASE WHEN $2 THEN $3 ELSE full_name END,
+                phone = CASE WHEN $4 THEN $5 ELSE phone END,
+                avatar_ref = CASE WHEN $6 THEN $7 ELSE avatar_ref END,
+                updated_at = now()
+            WHERE id = $1
+            RETURNING id, full_name, phone, avatar_ref, role, created_at, updated_at
+          `,
+          [
+            context.userId,
+            Object.prototype.hasOwnProperty.call(input, 'fullName'),
+            input.fullName ?? null,
+            Object.prototype.hasOwnProperty.call(input, 'phone'),
+            input.phone ?? null,
+            Object.prototype.hasOwnProperty.call(input, 'avatarRef'),
+            input.avatarRef ?? null,
+          ],
+        );
+        if (result.rowCount !== 1) throw new Error('Authenticated account not found');
+        return mapAccount(result.rows[0]);
+      },
+      this.transactionPool,
+    );
   }
 
   async getBusinessById(context: AuthContext, businessId: BusinessId): Promise<BusinessIdentity | null> {
-    return withAuthorizedTransaction(context, (client) => findBusiness(client, businessId));
+    return withAuthorizedTransaction(context, (client) => findBusiness(client, businessId), this.transactionPool);
   }
 
   async getBusinessBySlug(context: AuthContext, slug: string): Promise<BusinessIdentity | null> {
-    return withAuthorizedTransaction(context, (client) => findBusinessBySlug(client, slug));
+    return withAuthorizedTransaction(context, (client) => findBusinessBySlug(client, slug), this.transactionPool);
   }
 
   async getMembershipsForAccount(context: AuthContext): Promise<readonly BusinessMembership[]> {
-    return withAuthorizedTransaction(context, (client) => findMemberships(client, context.userId));
+    return withAuthorizedTransaction(context, (client) => findMemberships(client, context.userId), this.transactionPool);
   }
 
   async createBusiness(context: AuthContext, input: CreateBusinessInput, slug: string): Promise<BusinessIdentity> {
-    return withAuthorizedTransaction(context, async (client) => {
-      await requireAccount(client, context);
-      const name = normalizeName(input.name);
-      const result = await client.query(
-        `
-          INSERT INTO business (name, slug, verification_status, is_active, created_at, updated_at)
-          VALUES ($1, $2, 'pending', true, now(), now())
-          RETURNING id, name, slug, verification_status, is_active, created_at, updated_at
-        `,
-        [name, slug],
-      );
-      if (result.rowCount !== 1) throw new Error('Business creation failed');
-      const business = mapBusiness(result.rows[0]);
-      const membership = await client.query(
-        `
-          INSERT INTO business_membership
-            (business_id, account_id, membership_role, membership_status, created_by, created_at, updated_at)
-          VALUES ($1, $2, 'owner', 'active', $2, now(), now())
-        `,
-        [business.id, context.userId],
-      );
-      if (membership.rowCount !== 1) throw new Error('Business owner membership creation failed');
-      return business;
-    });
+    return withAuthorizedTransaction(
+      context,
+      async (client) => {
+        await requireAccount(client, context);
+        const name = normalizeName(input.name);
+        const result = await client.query(
+          `
+            INSERT INTO business (name, slug, verification_status, is_active, created_at, updated_at)
+            VALUES ($1, $2, 'pending', true, now(), now())
+            RETURNING id, name, slug, verification_status, is_active, created_at, updated_at
+          `,
+          [name, slug],
+        );
+        if (result.rowCount !== 1) throw new Error('Business creation failed');
+        const business = mapBusiness(result.rows[0]);
+        const membership = await client.query(
+          `
+            INSERT INTO business_membership
+              (business_id, account_id, membership_role, membership_status, created_by, created_at, updated_at)
+            VALUES ($1, $2, 'owner', 'active', $2, now(), now())
+          `,
+          [business.id, context.userId],
+        );
+        if (membership.rowCount !== 1) throw new Error('Business owner membership creation failed');
+        return business;
+      },
+      this.transactionPool,
+    );
   }
 
   async updateBusiness(
@@ -198,28 +217,32 @@ export class PostgresBusinessIdentityRepository implements BusinessIdentityRepos
       throw new Error('Business profile fields are not yet present in the canonical first migration');
     }
 
-    return withAuthorizedTransaction(context, async (client) => {
-      await assertManagedMembership(client, context, businessId);
-      const current = await findBusiness(client, businessId);
-      if (!current) throw new Error('Business not found');
-      const name = input.name === undefined ? current.name : normalizeName(input.name);
-      const slug = input.slug === undefined ? current.slug : input.slug.trim();
-      if (!slug) throw new Error('Business slug is required');
+    return withAuthorizedTransaction(
+      context,
+      async (client) => {
+        await assertManagedMembership(client, context, businessId);
+        const current = await findBusiness(client, businessId);
+        if (!current) throw new Error('Business not found');
+        const name = input.name === undefined ? current.name : normalizeName(input.name);
+        const slug = input.slug === undefined ? current.slug : input.slug.trim();
+        if (!slug) throw new Error('Business slug is required');
 
-      const result = await client.query(
-        `
-          UPDATE business
-          SET name = $2,
-              slug = $3,
-              updated_at = now()
-          WHERE id = $1
-          RETURNING id, name, slug, verification_status, is_active, created_at, updated_at
-        `,
-        [businessId, name, slug],
-      );
-      if (result.rowCount !== 1) throw new Error('Business update failed');
-      return mapBusiness(result.rows[0]);
-    });
+        const result = await client.query(
+          `
+            UPDATE business
+            SET name = $2,
+                slug = $3,
+                updated_at = now()
+            WHERE id = $1
+            RETURNING id, name, slug, verification_status, is_active, created_at, updated_at
+          `,
+          [businessId, name, slug],
+        );
+        if (result.rowCount !== 1) throw new Error('Business update failed');
+        return mapBusiness(result.rows[0]);
+      },
+      this.transactionPool,
+    );
   }
 }
 
