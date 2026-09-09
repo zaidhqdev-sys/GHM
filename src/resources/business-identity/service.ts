@@ -19,12 +19,14 @@ export class BusinessIdentityServiceImpl {
   async resolveIdentity(input: ResolveIdentityInput): Promise<ApplicationIdentity> {
     const account = await this.repository.getAccount(input.context);
     const memberships = await this.repository.getMembershipsForAccount(input.context);
-    if (input.selectedBusinessId === undefined) {
+    const selectedBusinessId = input.selectedBusinessId ?? (memberships.length === 1 ? memberships[0].businessId : undefined);
+    if (selectedBusinessId === undefined) {
+      if (memberships.length > 1) throw new Error('Business selection required');
       return { account, memberships, activeMembership: null, activeBusiness: null };
     }
-    const membership = memberships.find(c => c.businessId === input.selectedBusinessId && c.status === 'active');
+    const membership = memberships.find(c => c.businessId === selectedBusinessId && c.status === 'active');
     if (!membership) throw new Error('Selected business context is not authorized');
-    const business = await this.repository.getBusinessById(input.context, input.selectedBusinessId);
+    const business = await this.repository.getBusinessById(input.context, selectedBusinessId);
     if (!business) throw new Error('Selected business not found');
     if (!business.isActive) throw new Error('Selected business is inactive');
     return { account, memberships, activeMembership: membership, activeBusiness: business };
