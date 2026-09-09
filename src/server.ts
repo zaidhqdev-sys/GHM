@@ -1,453 +1,64 @@
-import 'dotenv/config';
-import express, { Request, Response, NextFunction } from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
-import { Pool } from 'pg';
 import http from 'http';
-import { Server } from 'socket.io';
-import multer from 'multer';
-import session from 'express-session';
-import rateLimit from 'express-rate-limit';
-import path from 'path';
+import { Pool } from 'pg';
+import { config } from './config';
 
 const app = express();
 const server = http.createServer(app);
-const PORT = process.env.PORT || 3000;
 
-// ============ TYPES ============
-interface AuthRequest extends Request {
-  userId?: number;
-  userRole?: string;
-}
-
-// ============ MIDDLEWARE ============
-app.use(cors());
-app.use(express.json());
-app.use(session({
-  secret: process.env.JWT_SECRET || 'fallback-secret',
-  resave: false,
-  saveUninitialized: true,
-  cookie: { secure: false }
-}));
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: "Too many attempts. Please try again later."
-});
-
-// ============ DATABASE ============
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  connectionString: config.databaseUrl,
+  ssl: config.isProduction ? { rejectUnauthorized: false } : false,
 });
 
-// ============ RLS SETUP ============
-const setupRLS = async (): Promise<void> => {
-  try {
-    await pool.query(`ALTER TABLE users ENABLE ROW LEVEL SECURITY;`);
-    await pool.query(`ALTER TABLE todos ENABLE ROW LEVEL SECURITY;`);
-    await pool.query(`ALTER TABLE files ENABLE ROW LEVEL SECURITY;`); // FIXED: Added files table
+app.disable('x-powered-by');
+app.set('trust proxy', config.trustProxy);
+app.use(cors({ origin: config.corsOrigins }));
+app.use(express.json({ limit: '1mb' }));
 
-    await pool.query(`DROP POLICY IF EXISTS user_todos_select ON todos;`);
-    await pool.query(`DROP POLICY IF EXISTS user_todos_insert ON todos;`);
-    await pool.query(`DROP POLICY IF EXISTS user_todos_update ON todos;`);
-    await pool.query(`DROP POLICY IF EXISTS user_todos_delete ON todos;`);
-    await pool.query(`DROP POLICY IF EXISTS user_self_select ON users;`);
-    await pool.query(`DROP POLICY IF EXISTS user_admin_select ON users;`);
-    await pool.query(`DROP POLICY IF EXISTS user_files_select ON files;`);
-    await pool.query(`DROP POLICY IF EXISTS user_files_insert ON files;`);
+let ready = false;
 
-    await pool.query(`
-      CREATE POLICY user_todos_select ON todos FOR SELECT
-        USING (user_id = current_setting('app.current_user_id')::int);
-    `);
-    await pool.query(`
-      CREATE POLICY user_todos_insert ON todos FOR INSERT
-        WITH CHECK (user_id = current_setting('app.current_user_id')::int);
-    `);
-    await pool.query(`
-      CREATE POLICY user_todos_update ON todos FOR UPDATE
-        USING (user_id = current_setting('app.current_user_id')::int);
-    `);
-    await pool.query(`
-      CREATE POLICY user_todos_delete ON todos FOR DELETE
-        USING (user_id = current_setting('app.current_user_id')::int);
-    `);
-    await pool.query(`
-      CREATE POLICY user_self_select ON users FOR SELECT
-        USING (id = current_setting('app.current_user_id')::int);
-    `);
-    await pool.query(`
-      CREATE POLICY user_admin_select ON users FOR SELECT
-        USING (current_setting('app.current_user_role', true) = 'admin');
-    `);
-    // FIXED: Added policies for files
-    await pool.query(`
-      CREATE POLICY user_files_select ON files FOR SELECT
-        USING (user_id = current_setting('app.current_user_id')::int);
-    `);
-    await pool.query(`
-      CREATE POLICY user_files_insert ON files FOR INSERT
-        WITH CHECK (user_id = current_setting('app.current_user_id')::int);
-    `);
-    console.log('✅ RLS Setup complete');
-  } catch (err) {
-    console.error('❌ RLS Setup error:', err);
-  }
+app.get('/', (_req: Request, res: Response) => {
+  res.json({ service: 'GHM Core Engine', version: '2.0.0', status: ready ? 'ready' : 'starting' });
+});
+
+app.get('/healthz', (_req: Request, res: Response) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+app.get('/readyz', (_req: Request, res: Response) => {
+  res.status(ready ? 200 : 503).json({ status: ready ? 'ready' : 'not_ready' });
+});
+
+const start = async (): Promise<void> => {
+  await pool.query('SELECT 1');
+  server.listen(config.port, () => {
+    ready = true;
+    console.log(`GHM Core Engine listening on port ${config.port}`);
+  });
 };
 
-// ============ TABLE SETUP ============
-const initDB = async (): Promise<void> => {
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
-        full_name VARCHAR(255),
-        avatar_url TEXT,
-        role VARCHAR(50) DEFAULT 'user',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP
-      )
-    `);
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS todos (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        title VARCHAR(255) NOT NULL,
-        description TEXT,
-        category VARCHAR(100),
-        due_date TIMESTAMP,
-        priority VARCHAR(50) DEFAULT 'medium',
-        is_completed BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP
-      )
-    `);
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS files (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        filename VARCHAR(255) NOT NULL,
-        original_name VARCHAR(255) NOT NULL,
-        mime_type VARCHAR(100),
-        size INTEGER,
-        storage_key VARCHAR(255) UNIQUE NOT NULL,
-        url TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS profiles (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-        role VARCHAR(50) DEFAULT 'customer',
-        full_name VARCHAR(255),
-        email VARCHAR(255) UNIQUE,
-        company_name VARCHAR(255),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS password_reset_tokens (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        token VARCHAR(255) UNIQUE NOT NULL,
-        expires_at TIMESTAMP NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    await pool.query(`UPDATE users SET role = 'admin' WHERE id = 1;`);
-    await setupRLS();
-    console.log('✅ Database Setup complete');
-  } catch (err) {
-    console.error('❌ Database Setup error:', err);
-  }
+const shutdown = async (signal: string): Promise<void> => {
+  ready = false;
+  console.log(`Received ${signal}; shutting down GHM Core Engine`);
+  await new Promise<void>((resolve) => server.close(() => resolve()));
+  await pool.end();
 };
 
-initDB();
-
-// ============ AUTH ============
-const authenticate = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return void res.status(401).json({ error: 'No token provided' });
-  const token = authHeader.split(' ')[1];
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as { userId: number; role?: string };
-    req.userId = decoded.userId;
-    req.userRole = decoded.role || 'user';
-    pool.query(`SELECT set_config('app.current_user_id', $1, true)`, [decoded.userId.toString()]);
-    pool.query(`SELECT set_config('app.current_user_role', $1, true)`, [req.userRole]);
-    next();
-  } catch (err) {
-    res.status(401).json({ error: 'Invalid token' });
-  }
-};
-
-// ============ RBAC MIDDLEWARES ============
-const isAdmin = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  if (req.userRole !== 'admin') {
-    res.status(403).json({ error: 'Admin access required' });
-    return;
-  }
-  next();
-};
-
-const isCustomer = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  if (req.userRole !== 'customer' && req.userRole !== 'admin') {
-    res.status(403).json({ error: 'Customer access required' });
-    return;
-  }
-  next();
-};
-
-const isBusiness = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  if (req.userRole !== 'business' && req.userRole !== 'admin') {
-    res.status(403).json({ error: 'Business access required' });
-    return;
-  }
-  next();
-};
-
-// ============ AUTH ROUTES ============
-app.get('/', (req, res) => {
-  res.json({ message: '⚡ GHM Core Engine (TS)', version: '2.0.0' });
+process.once('SIGTERM', () => void shutdown('SIGTERM').finally(() => process.exit(0)));
+process.once('SIGINT', () => void shutdown('SIGINT').finally(() => process.exit(0)));
+process.on('uncaughtException', (error: Error) => {
+  console.error('Uncaught exception:', error);
+  process.exit(1);
+});
+process.on('unhandledRejection', (reason: unknown) => {
+  console.error('Unhandled rejection:', reason);
+  process.exit(1);
 });
 
-app.post('/api/v1/auth/signup', authLimiter, async (req: Request, res: Response) => {
-  const { email, password, full_name, invite_code, role } = req.body;
-  if (!invite_code || invite_code !== process.env.INVITE_CODE) {
-    res.status(403).json({ error: 'Invalid invite code. Access denied.' });
-    return;
-  }
-  try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const result = await pool.query('INSERT INTO users (email, password_hash, full_name) VALUES ($1, $2, $3) RETURNING id, email, full_name, created_at', [email, hashedPassword, full_name || null]);
-    const user = result.rows[0];
-    const profileResult = await pool.query(
-      'INSERT INTO profiles (user_id, role, full_name, email) VALUES ($1, $2, $3, $4) RETURNING *',
-      [user.id, role || 'customer', full_name || null, email]
-    );
-    const token = jwt.sign({ userId: user.id, role: role || 'customer' }, process.env.JWT_SECRET || 'fallback-secret', { expiresIn: '7d' });
-    res.json({ user, profile: profileResult.rows[0], token });
-  } catch (err) {
-    res.status(500).json({ error: 'Signup error' });
-  }
-});
-
-app.post('/api/v1/auth/signin', authLimiter, async (req: Request, res: Response) => {
-  const { email, password } = req.body;
-  try {
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    const user = result.rows[0];
-    if (!user || !(await bcrypt.compare(password, user.password_hash))) {
-      res.status(401).json({ error: 'Invalid credentials' });
-      return;
-    }
-    const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET || 'fallback-secret', { expiresIn: '7d' });
-    res.json({ user: { id: user.id, email: user.email, full_name: user.full_name, role: user.role, created_at: user.created_at }, token });
-  } catch (err) {
-    res.status(500).json({ error: 'Signin error' });
-  }
-});
-
-app.post('/api/v1/auth/forgot-password', authLimiter, async (req: Request, res: Response) => {
-  const { email } = req.body;
-  try {
-    const result = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const userId = result.rows[0].id;
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-
-    await pool.query(
-      'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
-      [userId, token, expiresAt]
-    );
-
-    res.json({ message: 'Password reset token generated', token });
-  } catch (err) {
-    res.status(500).json({ error: 'Error generating reset token' });
-  }
-});
-
-app.post('/api/v1/auth/reset-password', authLimiter, async (req: Request, res: Response) => {
-  const { token, new_password } = req.body;
-  try {
-    const result = await pool.query(
-      'SELECT * FROM password_reset_tokens WHERE token = $1 AND expires_at > NOW()',
-      [token]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(400).json({ error: 'Invalid or expired token' });
-    }
-
-    const userId = result.rows[0].user_id;
-    const hashedPassword = await bcrypt.hash(new_password, 10);
-
-    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hashedPassword, userId]);
-    await pool.query('DELETE FROM password_reset_tokens WHERE token = $1', [token]);
-
-    res.json({ message: 'Password reset successfully' });
-  } catch (err) {
-    res.status(500).json({ error: 'Error resetting password' });
-  }
-});
-
-app.get('/api/v1/auth/me', authenticate, async (req: AuthRequest, res: Response) => {
-  try {
-    const result = await pool.query('SELECT * FROM profiles WHERE user_id = $1', [req.userId]);
-    res.json(result.rows[0] || {});
-  } catch (err) {
-    res.status(500).json({ error: 'Error fetching profile' });
-  }
-});
-
-// ============ ADMIN ROUTES ============
-app.get('/api/v1/admin/stats', authenticate, isAdmin, async (req: AuthRequest, res: Response) => {
-  try {
-    const usersCount = await pool.query('SELECT COUNT(*) FROM users');
-    const todosCount = await pool.query('SELECT COUNT(*) FROM todos');
-    res.json({ total_users: parseInt(usersCount.rows[0].count), total_todos: parseInt(todosCount.rows[0].count) });
-  } catch (err) {
-    res.status(500).json({ error: 'Error fetching stats' });
-  }
-});
-
-app.get('/api/v1/admin/users', authenticate, isAdmin, async (req: AuthRequest, res: Response) => {
-  try {
-    const result = await pool.query('SELECT id, email, full_name, role, created_at FROM users ORDER BY created_at DESC');
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: 'Error fetching users' });
-  }
-});
-
-app.get('/api/v1/admin/tables', authenticate, isAdmin, async (req: AuthRequest, res: Response) => {
-  try {
-    const result = await pool.query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public' 
-      ORDER BY table_name
-    `);
-    res.json(result.rows.map(r => r.table_name));
-  } catch (err) {
-    res.status(500).json({ error: 'Error fetching tables' });
-  }
-});
-
-// ============ GLOBAL AUTO-CRUD ============
-app.get('/api/v1/tables/:table', authenticate, async (req: AuthRequest, res: Response) => {
-  const table = req.params.table as string;
-  const allowedTables = [
-    'todos', 'profiles', 'businesses', 'leads', 
-    'account_onboarding_progress', 'administrative_areas', 
-    'business_capabilities', 'business_capability_evidence', 
-    'business_categories', 'business_category_assignments', 
-    'business_commercial_trials', 'business_directory_review_events', 
-    'business_engagement_events', 'business_hours', 
-    'business_memberships', 'business_offerings', 
-    'business_profile_view_visitors', 'business_relationships', 
-    'business_subscriptions', 'capabilities', 
-    'commercial_consents', 'commercial_events', 
-    'commercial_founding_allocations', 'commercial_payment_attempts', 
-    'commercial_payment_transactions', 'commercial_plan_entitlements', 
-    'commercial_plan_prices', 'commercial_plan_versions', 
-    'commercial_plans', 'commercial_provider_events', 
-    'commercial_reconciliation_records', 'commercial_refund_records', 
-    'countries', 'currencies', 
-    'directory_listing_founder_reviewers', 'locales', 
-    'notifications', 'opportunities', 
-    'opportunity_capability_requirements', 'opportunity_participants', 
-    'opportunity_types', 'outcome_types', 
-    'outcomes', 'project_marketplace', 
-    'project_quotes', 'projects', 
-    'regional_configurations', 'regional_membership_prices', 
-    'regions', 'relationship_types', 
-    'reviews', 'saved_businesses', 
-    'support_request_messages', 'support_requests', 
-    'trust_scores'
-  ];
-  
-  if (!allowedTables.includes(table)) {
-    return res.status(400).json({ error: `Table '${table}' is not currently allowed.` });
-  }
-
-  try {
-    const result = await pool.query(`SELECT * FROM ${table}`);
-    res.json({ data: result.rows, count: result.rowCount });
-  } catch (err) {
-    res.status(500).json({ error: 'Error fetching data' });
-  }
-});
-
-// ============ STORAGE (Supabase) ============
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-const STORAGE_BUCKET = 'ghm-storage';
-
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
-
-app.post('/api/v1/storage/upload', authenticate, upload.single('file'), async (req: AuthRequest, res: Response) => {
-  try {
-    const file = req.file;
-    if (!file) { res.status(400).json({ error: 'No file uploaded' }); return; }
-    
-    const safeFileName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-    const filePath = `${req.userId}/${safeFileName}`;
-    
-    // CRITICAL FIX: Removed 'x-upsert' header
-    const uploadResponse = await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${filePath}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-        'Content-Type': file.mimetype
-      },
-      body: file.buffer
-    });
-
-    if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text();
-      return res.status(500).json({ error: `Upload failed: ${errorText}` });
-    }
-
-    const url = `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${filePath}`;
-    
-    const result = await pool.query(`INSERT INTO files (user_id, filename, original_name, mime_type, size, storage_key, url) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`, [req.userId, filePath, file.originalname, file.mimetype, file.size, filePath, url]);
-    res.json({ message: 'File uploaded successfully', file: result.rows[0], url });
-  } catch (err) {
-    res.status(500).json({ error: 'Upload error' });
-  }
-});
-
-app.get('/api/v1/storage/files', authenticate, async (req: AuthRequest, res: Response) => {
-  try {
-    const result = await pool.query('SELECT * FROM files WHERE user_id = $1 ORDER BY created_at DESC', [req.userId]);
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: 'Error fetching files' });
-  }
-});
-
-// ============ REALTIME ============
-const io = new Server(server, { cors: { origin: '*' } });
-io.on('connection', (socket) => {
-  console.log('🔌 New client connected:', socket.id);
-});
-
-// ============ STATIC FILES ============
-app.use(express.static(path.join(__dirname, '../public')));
-
-// ============ START ============
-server.listen(PORT, () => {
-  console.log(`🚀 GHM Core Engine (TS) running on http://localhost:${PORT}`);
+void start().catch(async (error: unknown) => {
+  console.error('GHM startup failed:', error);
+  await pool.end();
+  process.exitCode = 1;
 });
