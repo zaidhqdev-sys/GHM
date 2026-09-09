@@ -10,14 +10,23 @@
         
         /* Sidebar */
         .sidebar { width: 220px; background: #1a1a1a; color: #999; display: flex; flex-direction: column; border-right: 1px solid #333; }
-        .sidebar h2 { color: #24b47e; padding: 20px; font-size: 20px; border-bottom: 1px solid #333; text-align: center; }
+        .sidebar h2 { color: #24b47e; padding: 20px; border-bottom: 1px solid #333; text-align: center; }
         .nav-item { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #2a2a2a; transition: 0.2s; }
         .nav-item:hover, .nav-item.active { background: #222; color: #24b47e; border-left: 4px solid #24b47e; }
+        
+        /* Sidebar Mountain Logo */
+        .sidebar-logo {
+            width: 80px;
+            height: 80px;
+            margin: 20px auto;
+            display: block;
+            mix-blend-mode: multiply;
+        }
         
         /* Content */
         .content { flex: 1; padding: 30px; overflow-y: auto; height: 100vh; }
         
-        /* Mountain Logo Section */
+        /* Main Mountain Logo Section */
         .mountain-logo {
             width: 100%;
             max-width: 300px;
@@ -25,15 +34,11 @@
             display: block;
             position: relative;
         }
-        
-        /* Makes the white background transparent, blends into dark theme */
         .mountain-logo img {
             width: 100%;
             height: auto;
             mix-blend-mode: multiply;
         }
-        
-        /* Engraved GHM Text */
         .engraved-title {
             position: absolute;
             top: 40%;
@@ -41,7 +46,7 @@
             transform: translate(-50%, -50%);
             font-size: 36px;
             font-weight: 900;
-            color: rgba(255, 255, 255, 0.15); /* Light grey, looks engraved */
+            color: rgba(255, 255, 255, 0.15);
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
             pointer-events: none;
             user-select: none;
@@ -89,7 +94,7 @@
 
     <!-- Sidebar -->
     <div class="sidebar">
-        <h2>⚡ GHM</h2>
+        <img src="/mountain.jpg" alt="GHM Logo" class="sidebar-logo">
         <div class="nav-item active" onclick="showSection(event, 'dashboard')">Dashboard</div>
         <div class="nav-item" onclick="showSection(event, 'users')">Auth / Users</div>
         <div class="nav-item" onclick="showSection(event, 'todos')">Table Editor: Todos</div>
@@ -101,7 +106,7 @@
     <!-- Content Area -->
     <div class="content">
         
-        <!-- Mountain Logo with Engraving -->
+        <!-- Main Mountain Logo with Engraving -->
         <div class="mountain-logo">
             <img src="/mountain.jpg" alt="GHM Mountain">
             <div class="engraved-title">GHM</div>
