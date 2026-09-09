@@ -31,7 +31,7 @@ Before GHM can progress toward production replacement, the construction line mus
 
 `src/server.ts` is not authorized to become a second schema authority. Product/business schema must be introduced through `database/migrations` and recorded by `ghm_schema_migrations`.
 
-The migration runner already provides deterministic ordering, checksums, transaction scope, and an advisory lock. cite-not-real
+The migration runner already provides deterministic ordering, checksums, transaction scope, and an advisory lock.
 
 ## Production safety
 
