@@ -11,7 +11,7 @@ const outputPath = process.argv[2] ?? 'docs/evidence/ghm-postgres-catalog.json';
 
 const client = new Client({
   connectionString: databaseUrl,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: { rejectUnauthorized: false },
 });
 
 const query = async (text, values = []) => {
@@ -25,7 +25,9 @@ try {
   const server = await query(`
     SELECT
       current_database() AS database_name,
-      current_user AS connected_role,
+      session_user AS session_user,
+      current_user AS current_user,
+      current_role AS current_role,
       version() AS server_version,
       current_schema() AS current_schema,
       current_setting('server_version_num') AS server_version_num
@@ -99,6 +101,8 @@ try {
     JOIN pg_class i ON i.oid = ix.indexrelid
     JOIN pg_namespace n ON n.oid = t.relnamespace
     WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+     AND n.nspname NOT LIKE 'pg_toast%'
+     AND n.nspname NOT LIKE 'pg_temp_%'
     ORDER BY n.nspname, t.relname, i.relname
   `);
 
