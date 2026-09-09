@@ -61,23 +61,10 @@ export interface CreateBusinessInput {
   readonly name: string;
 }
 
+/** First-slice Business profile fields. Later profile fields require a reconciled migration. */
 export interface UpdateBusinessProfileInput {
   readonly name?: string;
   readonly slug?: string;
-  readonly description?: string | null;
-  readonly category?: string | null;
-  readonly province?: string | null;
-  readonly city?: string | null;
-  readonly physicalAddress?: string | null;
-  readonly latitude?: number | null;
-  readonly longitude?: number | null;
-  readonly phone?: string | null;
-  readonly whatsapp?: string | null;
-  readonly email?: string | null;
-  readonly website?: string | null;
-  readonly avatarLetter?: string | null;
-  readonly avatarColor?: string | null;
-  readonly yearsInBusiness?: number | null;
 }
 
 export interface BusinessIdentityRepository {
