@@ -1,10 +1,17 @@
 import { PoolClient } from 'pg';
 import { pool } from './pool';
 
+export interface TransactionPool {
+  connect(): Promise<PoolClient>;
+}
+
 export type TransactionWork<T> = (client: PoolClient) => Promise<T>;
 
-export const withTransaction = async <T>(work: TransactionWork<T>): Promise<T> => {
-  const client = await pool.connect();
+export const withTransaction = async <T>(
+  work: TransactionWork<T>,
+  transactionPool: TransactionPool = pool,
+): Promise<T> => {
+  const client = await transactionPool.connect();
 
   try {
     await client.query('BEGIN');

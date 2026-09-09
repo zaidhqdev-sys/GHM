@@ -8,6 +8,7 @@
     "build": "tsc",
     "migrate": "ts-node src/db/migrate.ts",
     "start": "node dist/server.js",
+    "test": "npm run build && node --test dist/auth/authorization.test.js dist/auth/request-context.test.js dist/resources/registry.test.js dist/db/transaction.test.js",
     "verify:runtime": "node scripts/verify-runtime-boundary.mjs"
   },
   "dependencies": {
