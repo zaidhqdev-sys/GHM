@@ -29,9 +29,32 @@ Verified evidence:
 
 The captured catalog is evidence of the **current legacy/infrastructure database state**, not yet the canonical GHM business schema.
 
+## Connect schema authority reconciliation
+
+Direct repository inspection has now established that Zaid Connect contains a canonical migration history under `supabase/migrations/` and also contains `src/supabase/supabase_schema.sql`.
+
+The migration history is the authoritative schema-evolution source for Connect. The consolidated `src/supabase/supabase_schema.sql` is a legacy/consolidated design artifact and must **not** be treated as the current production schema authority.
+
+This distinction is confirmed by concrete divergence:
+
+- the consolidated schema declares PostgreSQL ENUM types, while the authoritative migrations use text columns with explicit CHECK constraints;
+- the consolidated `profiles` definition requires `full_name`, while the identity migration permits it to be nullable;
+- the consolidated Business verification vocabulary and defaults differ from the migrated production contract;
+- the consolidated schema uses legacy/alternate structures such as `catalogue_items`, `conversations`, and `quotes`, while the migration history establishes `business_offerings`, support conversations, `project_quotes`, and the generalized Opportunity/Project model;
+- the migrated Business contract includes later governed fields and boundaries absent from the consolidated artifact, including active-directory visibility, registration classification, directory-review state, and protected/public column controls;
+- later migrations explicitly replace or reconcile earlier assumptions rather than leaving the consolidated file as a canonical snapshot.
+
+Therefore the GHM rule is now explicit: **read Connect migrations in timestamp order and reconcile their final state; never derive GHM schema from `src/supabase/supabase_schema.sql`.**
+
+The authoritative conceptual model independently confirms that Account/Profile, Account Role, Business ownership, and Business are distinct concepts, and that current production Business remains the canonical commercial entity. fileciteturn55file0L2-L2
+
+The foundational identity migration establishes `profiles` and `businesses`; the Business Membership migration then establishes the generalized Account-to-Business relationship through `business_memberships`, while preserving `businesses.owner_id` for compatibility. fileciteturn49file0L2-L2 fileciteturn50file0L2-L2
+
+The later production reconciliation also establishes governed Business Hours and Business Engagement Events, with backend-owned commands and explicit authorization, demonstrating that the final production model is capability/domain-oriented rather than a copy of the early consolidated schema. fileciteturn60file0L2-L2
+
 ## Important catalog interpretation
 
-The catalog capture's index query also returned PostgreSQL internal `pg_toast` indexes because the query excluded `pg_catalog`/`information_schema` but did not explicitly exclude `pg_toast`. These are PostgreSQL system internals and are not GHM application objects. They must not be treated as part of the GHM schema inventory. The capture query should be hardened to exclude system schemas explicitly on the next evidence refresh.
+The catalog capture is filtered to exclude PostgreSQL internal schemas such as `pg_toast`. PostgreSQL system internals are not GHM application objects and must not be treated as part of the application schema inventory.
 
 ## Legacy schema assessment
 
