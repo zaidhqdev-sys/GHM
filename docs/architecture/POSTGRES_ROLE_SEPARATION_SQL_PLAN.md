@@ -1,8 +1,8 @@
 # GHM PostgreSQL Role Separation — Exact Construction SQL Plan
 
-Status: **DESIGN ONLY — NOT EXECUTED**
+Status: **EXECUTED THROUGH RUNTIME AUTHORITY QUALIFICATION — BOOTSTRAP CLEANUP REMAINS BLOCKED**
 
-This document is the exact construction-only mutation plan derived from the measured GHM authority baseline. It is intentionally not wired into the migration runner and must not be executed without the Founder Gate.
+This document is the exact construction-only mutation plan derived from the measured GHM authority baseline. The Founder Gate was explicitly authorized on 2026-09-09. The role, membership, ownership, and runtime-grant mutations described below have been executed against the GHM construction PostgreSQL instance and independently qualified where stated. Remaining bootstrap membership cleanup is provider/bootstrap-authority dependent and has not been falsely marked complete.
 
 ## Scope
 
@@ -30,60 +30,17 @@ ghm_migrator      LOGIN / migration process
 ghm_runtime       LOGIN / application process
 ```
 
-`ghm_runtime` must have no membership in `ghm_schema_owner` or `ghm_migrator`.
+`ghm_runtime` has no membership in `ghm_schema_owner` or `ghm_migrator` and has no SET ROLE path into either.
 
 ## Phase 0 — snapshot before mutation
 
-Run and save the complete current authority evidence before changing anything:
+Completed read-only snapshot before role mutation. Evidence recorded in the 2026-09-09 handover and authority documentation.
 
-```sql
-SELECT current_user, session_user, current_database();
-
-SELECT rolname, rolsuper, rolinherit, rolcreaterole, rolcreatedb,
-       rolcanlogin, rolreplication, rolbypassrls
-FROM pg_roles
-WHERE rolname IN ('ghm_app_user','ghm_db_user','ghm_schema_owner',
-                  'ghm_migrator','ghm_runtime')
-ORDER BY rolname;
-
-SELECT member.rolname AS member_role,
-       parent.rolname AS granted_role,
-       m.admin_option,
-       pg_has_role(member.oid, parent.oid, 'USAGE') AS usage_ok,
-       pg_has_role(member.oid, parent.oid, 'SET') AS set_ok,
-       pg_has_role(member.oid, parent.oid, 'MEMBER') AS member_ok
-FROM pg_auth_members m
-JOIN pg_roles member ON member.oid = m.member
-JOIN pg_roles parent ON parent.oid = m.roleid
-WHERE member.rolname IN ('ghm_app_user','ghm_migrator','ghm_runtime')
-   OR parent.rolname IN ('ghm_db_user','ghm_schema_owner','ghm_migrator','ghm_runtime')
-ORDER BY member.rolname, parent.rolname;
-
-SELECT current_database() AS database_name,
-       pg_get_userbyid(datdba) AS database_owner
-FROM pg_database
-WHERE datname = current_database();
-
-SELECT n.nspname AS schema_name,
-       pg_get_userbyid(n.nspowner) AS schema_owner
-FROM pg_namespace n
-WHERE n.nspname = 'public';
-
-SELECT n.nspname AS schema_name,
-       c.relname,
-       c.relkind,
-       pg_get_userbyid(c.relowner) AS object_owner
-FROM pg_class c
-JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = 'public'
-ORDER BY c.relname;
-```
-
-The snapshot is a rollback reference, not optional evidence.
+The pre-mutation state established that `ghm_app_user` inherited `ghm_db_user`, with effective SET ROLE capability, while `ghm_db_user` owned the database, public schema, first-slice objects, and identity sequences.
 
 ## Phase 1 — create target roles
 
-These statements are intentionally separate from application configuration. Passwords are not stored in GitHub or this document.
+Executed successfully on the GHM construction database.
 
 ```sql
 CREATE ROLE ghm_schema_owner
@@ -114,128 +71,150 @@ CREATE ROLE ghm_runtime
   NOBYPASSRLS;
 ```
 
-If any role already exists, stop and reconcile its measured state rather than rerunning CREATE ROLE.
+Measured result: all three target roles have the intended attributes. `ghm_schema_owner` is NOLOGIN; `ghm_migrator` and `ghm_runtime` are LOGIN; none is superuser, CREATEDB, CREATEROLE, replication, or BYPASSRLS.
 
-`ghm_migrator` and `ghm_runtime` require secure credential provisioning outside the repository before external login is attempted.
+Passwords are not stored in GitHub or this document.
 
 ## Phase 2 — establish migrator-to-owner SET path
 
-Use a membership that permits explicit SET ROLE but does not inherit owner privileges:
+Executed successfully:
 
 ```sql
 GRANT ghm_schema_owner TO ghm_migrator WITH INHERIT FALSE, SET TRUE;
 ```
 
-Immediately verify:
+Measured result:
 
-```sql
-SELECT
-  pg_has_role('ghm_migrator', 'ghm_schema_owner', 'USAGE') AS usage_ok,
-  pg_has_role('ghm_migrator', 'ghm_schema_owner', 'SET') AS set_ok,
-  pg_has_role('ghm_migrator', 'ghm_schema_owner', 'MEMBER') AS member_ok;
-
-SELECT
-  pg_has_role('ghm_runtime', 'ghm_schema_owner', 'USAGE') AS runtime_owner_usage,
-  pg_has_role('ghm_runtime', 'ghm_schema_owner', 'SET') AS runtime_owner_set,
-  pg_has_role('ghm_runtime', 'ghm_migrator', 'SET') AS runtime_migrator_set;
-```
-
-Expected runtime results: all false.
+- `ghm_migrator` membership in `ghm_schema_owner` — true;
+- inherited owner usage — false;
+- explicit SET ROLE capability — true;
+- `ghm_runtime` membership/SET capability into owner — false;
+- `ghm_runtime` membership/SET capability into migrator — false.
 
 ## Phase 3 — transfer GHM object ownership
 
-Ownership transfer must happen before broad old-role revocation.
+The first ownership attempt exposed an identity-sequence dependency: transferring an identity table automatically transfers its identity sequence. The explicit sequence ownership statements were therefore removed from the transactional transfer set.
 
-Preferred dedicated-schema target for future GHM objects is strongly recommended. If the first slice remains in `public`, do not transfer ownership of unrelated legacy objects blindly.
+The corrected Phase 3B succeeded.
 
-For the currently GHM-owned objects, the intended ownership statements are:
+Executed against the four GHM-owned tables:
 
 ```sql
 ALTER TABLE public.account_identity OWNER TO ghm_schema_owner;
 ALTER TABLE public.business OWNER TO ghm_schema_owner;
 ALTER TABLE public.business_membership OWNER TO ghm_schema_owner;
 ALTER TABLE public.ghm_schema_migrations OWNER TO ghm_schema_owner;
-
-ALTER SEQUENCE public.account_identity_id_seq OWNER TO ghm_schema_owner;
-ALTER SEQUENCE public.business_id_seq OWNER TO ghm_schema_owner;
-ALTER SEQUENCE public.business_membership_id_seq OWNER TO ghm_schema_owner;
 ```
 
-Database ownership:
+PostgreSQL automatically transferred:
+
+```text
+account_identity_id_seq
+business_id_seq
+business_membership_id_seq
+```
+
+to `ghm_schema_owner` because they are identity sequences owned by the corresponding tables.
+
+The `public` schema was deliberately not transferred because it contains unrelated legacy objects.
+
+A temporary `CREATE` privilege on `public` was required during the ownership operation and was explicitly revoked immediately afterward. Final measured state: `ghm_schema_owner` has no CREATE privilege on `public`.
+
+Phase 3C also succeeded:
 
 ```sql
 ALTER DATABASE ghm_db OWNER TO ghm_schema_owner;
 ```
 
-**Schema ownership is deliberately not included in the first mutation set.** The existing `public` schema contains unrelated legacy objects. Transferring `public` ownership would widen the change surface and can affect unrelated legacy behavior. A dedicated GHM schema should be introduced and reconciled before any schema-owner transfer decision.
+Measured final ownership for the first-slice GHM objects:
 
-If provider restrictions reject database ownership transfer to a NOLOGIN role, stop and record the provider limitation. Do not weaken the target model by granting runtime ownership.
+- database `ghm_db` — `ghm_schema_owner`;
+- `account_identity` — `ghm_schema_owner`;
+- `business` — `ghm_schema_owner`;
+- `business_membership` — `ghm_schema_owner`;
+- `ghm_schema_migrations` — `ghm_schema_owner`;
+- all three identity sequences — `ghm_schema_owner`.
+
+## Phase 3D — bootstrap membership cleanup
+
+An attempted cleanup of the original `ghm_db_user` memberships did not complete because the three memberships were granted by the bootstrap `postgres` role, not by `ghm_db_user`.
+
+The attempted transaction did not remove those memberships. This is intentional in the final evidence: no false claim of cleanup is made.
+
+Current measured bootstrap memberships remain:
+
+```text
+ghm_db_user -> ghm_schema_owner
+  admin_option = true
+  inherit = false
+  set = false
+
+ghm_db_user -> ghm_migrator
+  admin_option = true
+  inherit = false
+  set = false
+
+ghm_db_user -> ghm_runtime
+  admin_option = true
+  inherit = false
+  set = false
+```
+
+These memberships are granted by `postgres` and therefore cannot be revoked by `ghm_db_user` itself. They require an independent bootstrap/provider-authority path.
+
+This is the remaining authority-cleanup blocker.
 
 ## Phase 4 — establish controlled schema migration authority
 
-Because the current migration runner creates objects, the clean target is for it to connect as `ghm_migrator` and explicitly enter the owner role for migration DDL:
+The real `ghm_migrator` login path has been qualified independently.
+
+Measured:
+
+```text
+ghm_migrator -> ghm_schema_owner
+membership = true
+SET ROLE = true
+```
+
+A real login as `ghm_migrator` successfully executed:
 
 ```sql
 SET ROLE ghm_schema_owner;
 ```
 
-The migration process must then perform its migration work, including migration-ledger writes, while the effective role is `ghm_schema_owner`.
+and became effective `ghm_schema_owner` while retaining `session_user = ghm_migrator`.
 
-At the end of the migration transaction/process:
-
-```sql
-RESET ROLE;
-```
-
-The application runtime never receives this membership.
-
-Important: this is a runtime/migration-process code-path change and must be qualified separately. It is not achieved by granting `ghm_runtime` any owner privileges.
+The migration runner has not yet been switched from its existing construction connection to the dedicated `ghm_migrator` credential. That is a separate code/configuration qualification and must remain construction-only.
 
 ## Phase 5 — future-object default privileges
 
-Default privileges must be set by the role that actually creates future GHM objects.
+Not executed.
 
-If migrations execute as `ghm_schema_owner`, establish controlled defaults for objects created by that role. Start from no broad runtime defaults and add only measured runtime capabilities.
-
-Conceptual target:
-
-```sql
-ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner IN SCHEMA public
-  GRANT SELECT, INSERT, UPDATE ON TABLES TO ghm_runtime;
-
-ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner IN SCHEMA public
-  GRANT USAGE ON SEQUENCES TO ghm_runtime;
-```
-
-**Do not execute these exact public-schema defaults until the dedicated-schema decision is made.** The first slice shares `public` with legacy objects, so a default privilege change there can affect future non-GHM objects created by `ghm_schema_owner`.
-
-For the final design, defaults should be scoped to a dedicated GHM schema whenever possible.
+Default privileges on the shared `public` schema remain deliberately deferred because `public` contains unrelated legacy objects. A dedicated GHM schema should be established and reconciled before future-object defaults are applied.
 
 ## Phase 6 — runtime database/schema authority
 
+Executed:
+
 ```sql
 GRANT CONNECT ON DATABASE ghm_db TO ghm_runtime;
-```
-
-Do not grant TEMP unless an actual runtime probe demonstrates that it is required.
-
-For a dedicated GHM schema:
-
-```sql
-GRANT USAGE ON SCHEMA ghm TO ghm_runtime;
-```
-
-For the current first slice in `public`, use only as an interim construction qualification:
-
-```sql
 GRANT USAGE ON SCHEMA public TO ghm_runtime;
 ```
 
-Do not grant schema CREATE.
+No schema CREATE privilege was granted.
+
+Measured:
+
+```text
+schema USAGE = true
+schema CREATE = false
+```
+
+The existing database TEMP capability has not yet been separately removed; whether TEMP is required by the runtime remains an explicit qualification item rather than an assumption.
 
 ## Phase 7 — runtime table authority
 
-Exact first-slice grants:
+Executed:
 
 ```sql
 GRANT SELECT, UPDATE
@@ -251,26 +230,19 @@ GRANT SELECT, INSERT
   TO ghm_runtime;
 ```
 
-No runtime grants on:
+Measured effective ACL exactly matches the intended first-slice boundary:
 
 ```text
-DELETE
-TRUNCATE
-TRIGGER
-REFERENCES
-migration-ledger writes
-arbitrary DDL
+account_identity      SELECT/UPDATE
+business              SELECT/INSERT/UPDATE
+business_membership   SELECT/INSERT
 ```
 
-No runtime access to:
-
-```sql
-public.ghm_schema_migrations
-```
+No runtime DELETE, TRUNCATE, TRIGGER, or REFERENCES grants were added.
 
 ## Phase 8 — identity sequence minimum qualification
 
-Start with:
+Executed:
 
 ```sql
 GRANT USAGE
@@ -280,123 +252,103 @@ GRANT USAGE
   TO ghm_runtime;
 ```
 
-Do not grant SELECT or UPDATE initially.
+Read-only ACL inspection confirms runtime sequence privileges are USAGE only; SELECT and UPDATE are false.
 
-Positive probe must execute the real Business INSERT path as `ghm_runtime`.
+A direct `setval` negative probe was rejected with PostgreSQL `42501`.
 
-Negative probes must prove that direct sequence mutation is unavailable, including:
-
-```sql
-SELECT last_value FROM public.business_id_seq;
-```
-
-and:
-
-```sql
-SELECT setval('public.business_id_seq', 1);
-```
-
-The exact expected failure of the direct probes must be captured. If repository insert fails with USAGE-only, diagnose the actual SQL requirement before increasing privileges. Do not blindly add SELECT/UPDATE.
+The first qualification harness initially attempted an invalid `account_identity` INSERT. That was a test-harness defect: the approved runtime contract grants SELECT/UPDATE on `account_identity`, not INSERT. No database correction was required. A corrected ACL qualification subsequently passed.
 
 ## Phase 9 — remove old authority path
 
-Only after `ghm_migrator` and `ghm_runtime` have independently passed qualification:
+**NOT COMPLETE.**
+
+The intended cleanup remains:
 
 ```sql
 REVOKE ghm_db_user FROM ghm_app_user;
 ```
 
-Then remove obsolete direct broad grants from `ghm_app_user` if any remain and are no longer required.
+but it has not been executed because the construction bootstrap role memberships require independent authority and because the legacy owner role still has transitional responsibilities.
 
-Do not drop `ghm_db_user` in the same change. Keep it as a reversible transitional authority until:
+Do not drop `ghm_db_user` in the current construction state. It remains a transitional/recovery identity for legacy objects and provider bootstrap reconciliation.
 
-- ownership is verified under `ghm_schema_owner`;
-- migration qualification passes under `ghm_migrator`;
-- runtime qualification passes under `ghm_runtime`;
-- recovery/admin access is independently confirmed.
+## Phase 10 — positive runtime authority qualification
 
-`pg_read_all_stats` and `pg_signal_backend` must not be transferred to `ghm_runtime` merely because `ghm_app_user` currently has them.
+The empty construction GHM tables mean data-dependent CRUD cannot all be exercised without introducing disposable fixture rows. The formal qualification therefore used effective privilege probes against the actual runtime identity, supplemented by negative execution probes.
 
-## Phase 10 — positive qualification
+Measured runtime identity:
 
-Under `ghm_runtime`:
-
-1. SELECT account identity.
-2. UPDATE allowlisted account fields.
-3. SELECT Business by id.
-4. SELECT Business by slug.
-5. INSERT Business.
-6. UPDATE Business name/slug.
-7. SELECT active memberships.
-8. INSERT owner membership.
-9. Confirm generated identity IDs work with sequence USAGE only.
-10. Confirm normal service transaction commit/rollback behavior.
-
-Under `ghm_migrator`:
-
-1. Connect.
-2. Explicit `SET ROLE ghm_schema_owner` succeeds.
-3. Migration no-op succeeds.
-4. Disposable DDL probe succeeds.
-5. Migration ledger write succeeds.
-6. `RESET ROLE` succeeds.
-
-## Phase 11 — negative qualification
-
-Under `ghm_runtime`, all of these must fail:
-
-```sql
-CREATE TABLE public.ghm_runtime_forbidden(id bigint);
-CREATE SCHEMA ghm_runtime_forbidden;
-TRUNCATE TABLE public.business;
-DELETE FROM public.business;
-INSERT INTO public.ghm_schema_migrations(version,name,checksum) VALUES ('x','x','x');
-UPDATE public.ghm_schema_migrations SET name = name;
-DELETE FROM public.ghm_schema_migrations;
-SELECT setval('public.business_id_seq', 1);
-SET ROLE ghm_schema_owner;
-SET ROLE ghm_migrator;
+```text
+current_user  = ghm_runtime
+session_user  = ghm_runtime
+current_database = ghm_db
+migrator_member = false
+migrator_set = false
+owner_member = false
+owner_set = false
 ```
 
-The test harness must use disposable names/data and must not modify production.
+Measured positive ACL boundary:
+
+```text
+account_identity SELECT  = true
+account_identity UPDATE  = true
+business SELECT          = true
+business INSERT          = true
+business UPDATE          = true
+business_membership SELECT = true
+business_membership INSERT = true
+all three sequence USAGE = true
+public schema USAGE      = true
+public schema CREATE     = false
+```
+
+Result:
+
+```text
+POSITIVE PASS: runtime ACL matches intended first-slice boundary
+```
+
+## Phase 11 — negative runtime authority qualification
+
+All required negative probes were executed as `ghm_runtime` and rejected with PostgreSQL `42501`:
+
+```text
+CREATE TABLE                    PASS — rejected
+CREATE SCHEMA                   PASS — rejected
+TRUNCATE business               PASS — rejected
+DELETE business                 PASS — rejected
+INSERT migration ledger        PASS — rejected
+UPDATE migration ledger        PASS — rejected
+DELETE migration ledger        PASS — rejected
+SEQUENCE setval                 PASS — rejected
+SET ROLE ghm_schema_owner       PASS — rejected
+SET ROLE ghm_migrator           PASS — rejected
+```
+
+Migration-ledger effective privileges were also measured as false for SELECT, INSERT, UPDATE, and DELETE.
+
+Final runtime qualification result:
+
+```text
+GHM RUNTIME AUTHORITY QUALIFICATION: PASS
+```
 
 ## Rollback sequence
 
-If qualification fails before old authority removal:
+Rollback remains available because the old transitional identity has not been dropped and production has not been touched.
 
-```sql
-REVOKE ghm_schema_owner FROM ghm_migrator;
-```
-
-Restore ownership to `ghm_db_user` only for objects whose ownership was actually transferred and only where required for recovery.
-
-Revoke new runtime grants if necessary:
-
-```sql
-REVOKE CONNECT ON DATABASE ghm_db FROM ghm_runtime;
-REVOKE USAGE ON SCHEMA public FROM ghm_runtime;
-REVOKE SELECT, UPDATE ON TABLE public.account_identity FROM ghm_runtime;
-REVOKE SELECT, INSERT, UPDATE ON TABLE public.business FROM ghm_runtime;
-REVOKE SELECT, INSERT ON TABLE public.business_membership FROM ghm_runtime;
-REVOKE USAGE ON SEQUENCE public.account_identity_id_seq,
-                         public.business_id_seq,
-                         public.business_membership_id_seq
-  FROM ghm_runtime;
-```
+Any rollback must be based on the measured pre-change ownership/ACL snapshot and only restore objects/privileges that were actually changed by this construction operation.
 
 Do not drop target roles until recovery is proven unnecessary.
 
 ## Founder Gate
 
-The following is the explicit execution gate:
+Founder approval was explicitly granted for execution of this exact construction-only role/membership/ownership/grant/revoke plan on 2026-09-09.
 
-> **FOUNDER APPROVAL REQUIRED:** Authorize the exact PostgreSQL role, membership, ownership, grant, and revoke mutations described in this document against the GHM construction PostgreSQL instance only.
+No production system was included in that authorization.
 
-Until that approval is explicitly given, this SQL is **plan-only**.
-
-## Final invariant
-
-After successful qualification:
+## Final invariant currently qualified
 
 ```text
 application runtime
@@ -405,12 +357,15 @@ application runtime
 ghm_runtime
     |
     +--> measured application DML/read
-    +--> sequence USAGE only unless empirically expanded
+    +--> sequence USAGE only
     X--> ghm_schema_owner
     X--> ghm_migrator
     X--> DDL
     X--> migration ledger
-    X--> broad database/schema creation authority
+    X--> schema CREATE
+    X--> DELETE/TRUNCATE/TRIGGER/REFERENCES
 ```
+
+The runtime boundary is qualified. The remaining incomplete item is cleanup of bootstrap memberships granted by `postgres`, plus dedicated migration-runner credential/configuration qualification.
 
 Supabase production remains untouched and remains the rollback provider for the eventual product migration.
