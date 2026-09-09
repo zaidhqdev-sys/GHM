@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BusinessIdentityServiceImpl } from './service';
-import type { AccountIdentity, BusinessIdentity, BusinessIdentityRepository, BusinessMembership } from './contracts';
+import type { AccountIdentity, BusinessIdentity, BusinessIdentityRepository, BusinessMembership, UpdateBusinessProfileInput, UpdateProfileInput } from './contracts';
 import type { AuthContext } from '../../auth/authorization';
 
 const account = (id: number, role: 'admin' | 'customer' | 'business'): AccountIdentity => ({ id, fullName: 'Test User', phone: null, avatarRef: null, role, createdAt: new Date(0), updatedAt: new Date(0) });
@@ -14,12 +14,12 @@ class FakeRepository implements BusinessIdentityRepository {
   memberships: BusinessMembership[] = [];
   created: Array<{ business: BusinessIdentity; membership: BusinessMembership }> = [];
   async getAccount(context: AuthContext) { const value = this.accounts.get(context.userId); if (!value) throw new Error('Authenticated account not found'); return value; }
-  async updateAccount(_context: AuthContext, _input: never) { throw new Error('not used'); }
+  async updateAccount(_context: AuthContext, _input: UpdateProfileInput): Promise<AccountIdentity> { throw new Error('not used'); }
   async getBusinessById(_context: AuthContext, id: number) { return this.businesses.get(id) ?? null; }
   async getBusinessBySlug(_context: AuthContext, slug: string) { return [...this.businesses.values()].find(v => v.slug === slug) ?? null; }
   async getMembershipsForAccount(context: AuthContext) { return this.memberships.filter(v => v.accountId === context.userId); }
   async createBusiness(context: AuthContext, input: { name: string }, slug: string) { const created = { ...business(this.businesses.size + 1, false), name: input.name.trim(), slug }; const owner = membership(created.id, context.userId, 'owner'); this.businesses.set(created.id, created); this.memberships.push(owner); this.created.push({ business: created, membership: owner }); return created; }
-  async updateBusiness(_context: AuthContext, _businessId: number, _input: never) { throw new Error('not used'); }
+  async updateBusiness(_context: AuthContext, _businessId: number, _input: UpdateBusinessProfileInput): Promise<BusinessIdentity> { throw new Error('not used'); }
 }
 const serviceFor = (context: AuthContext) => { const repository = new FakeRepository(); repository.accounts.set(context.userId, account(context.userId, context.role)); return { service: new BusinessIdentityServiceImpl(repository), repository }; };
 
