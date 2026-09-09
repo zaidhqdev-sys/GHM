@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "ts-node src/server.ts",
     "build": "tsc",
+    "migrate": "ts-node src/db/migrate.ts",
     "start": "node dist/server.js"
   },
   "dependencies": {
