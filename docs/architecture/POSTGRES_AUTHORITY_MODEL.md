@@ -14,10 +14,20 @@ The current role chain is:
 
 ```text
 ghm_app_user
+  -> ghm_db_user
   -> pg_read_all_stats
   -> pg_signal_backend
-  -> ghm_db_user
 ```
+
+Measured `ghm_app_user` attributes:
+
+- LOGIN: true
+- SUPERUSER: false
+- INHERIT: true
+- CREATEROLE: false
+- CREATEDB: false
+- REPLICATION: false
+- BYPASSRLS: false
 
 Measured `ghm_db_user` attributes:
 
@@ -29,15 +39,45 @@ Measured `ghm_db_user` attributes:
 - REPLICATION: false
 - BYPASSRLS: false
 
+Effective role-membership checks for `ghm_app_user` against `ghm_db_user` all returned true:
+
+- USAGE: true
+- SET: true
+- MEMBER: true
+
+Therefore the current application identity can inherit `ghm_db_user` authority and can also `SET ROLE ghm_db_user`. This is a direct target-model failure, not merely a broad table-grant issue.
+
+Measured effective database/schema privileges for `ghm_app_user` include:
+
+- database CONNECT: true
+- database CREATE: true
+- database TEMP: true
+- public schema USAGE: true
+- public schema CREATE: true
+
 Measured ownership:
 
 - database `ghm_db` owner: `ghm_db_user`
 - schema `public` owner: `ghm_db_user`
-- application tables and identity sequences: `ghm_db_user`
+- `account_identity`, `business`, `business_membership`, `ghm_schema_migrations`: `ghm_db_user`
+- `account_identity_id_seq`, `business_id_seq`, `business_membership_id_seq`: `ghm_db_user`
 
 Measured effective privileges for `ghm_app_user` include database CREATE, schema CREATE, and SELECT/INSERT/UPDATE/DELETE/TRUNCATE on `account_identity` and the migration ledger. The table-grant inventory also shows broad SELECT/INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER privileges on all inspected application tables.
 
 No mutation is implied by recording these facts.
+
+## Default privilege evidence
+
+Read-only inspection of `pg_default_acl` returned database-wide defaults created by `postgres`:
+
+- schemas: `postgres=rwU/postgres,ghm_db_user=rwU/postgres`
+- types: `=U/postgres,postgres=U/postgres,ghm_db_user=U/postgres`
+- functions: `=X/postgres,postgres=X/postgres,ghm_db_user=X/postgres`
+- tables: `postgres=arwdDxtm/postgres,ghm_db_user=arwdDxtm/postgres`
+
+These are **default ACLs for future objects created by the recorded grantor**, not evidence that `ghm_db_user` created the existing Business Identity objects. They nevertheless demonstrate that the construction instance currently has broad default authority paths that must be explicitly reconciled before the target runtime model is considered complete.
+
+The target design must not rely on these broad defaults for application runtime access. Future-object defaults must be controlled by the dedicated creator role used by GHM migrations and must not silently recreate runtime DDL or broad DML authority.
 
 ## Target identities
 
@@ -69,6 +109,8 @@ The exact DDL grant set remains provider/ownership dependent and must be qualifi
 - Must not have TRUNCATE, TRIGGER, or REFERENCES unless a measured runtime capability later proves one necessary.
 - Must not write the migration ledger.
 - Must not execute arbitrary DDL.
+- Must not be a member of `ghm_schema_owner` or `ghm_migrator`.
+- Must not have a role-membership path that permits `SET ROLE` into either authority role.
 
 ## Runtime grant derivation — first Business Identity slice
 
@@ -144,7 +186,9 @@ The runtime must not be granted UPDATE, DELETE, or TRUNCATE in the first slice.
 
 ### Identity sequences
 
-The first migration uses PostgreSQL identity columns for all three primary keys. The exact sequence privilege required by the runtime role must be verified in the construction database before finalizing grants. The qualification should establish the minimum sequence capability needed for inserts without granting sequence ownership or arbitrary sequence mutation.
+The first migration uses PostgreSQL identity columns for all three primary keys. The construction database currently gives `ghm_app_user` effective USAGE, SELECT, and UPDATE on all three identity sequences through the inherited broad authority path.
+
+The target runtime should start at **USAGE only**. SELECT and UPDATE must not be granted unless the actual repository insert paths fail without them. Qualification must run positive insert probes through the separated runtime identity and negative direct sequence-mutation probes to establish the minimum required capability.
 
 ### Migration ledger
 
@@ -181,6 +225,8 @@ The migration process alone may write the ledger.
 | REFERENCES | ownership | only if migration requires it | No unless measured |
 | Migration ledger write | ownership | Yes | No |
 | Arbitrary DDL | ownership | Yes, migration scope | No |
+| Membership into owner/migrator | No | No | No |
+| SET ROLE into owner/migrator | No | controlled only where explicitly required | No |
 
 The table uses conceptual authority. Exact PostgreSQL GRANT/REVOKE statements are intentionally deferred until ownership transfer and migration execution mechanics are verified.
 
@@ -191,6 +237,8 @@ The target design must avoid making the runtime a member of the schema-owner or 
 Where role membership is used for operational delegation, the membership must be explicit, minimal, and verified for both effective privileges and ability to `SET ROLE`.
 
 `pg_read_all_stats` and `pg_signal_backend` are not application data authorities. They should not be inherited by the final runtime identity unless an explicit operational requirement is documented and approved.
+
+The current construction evidence proves `ghm_app_user` can `SET ROLE ghm_db_user`; this path must be removed before runtime qualification.
 
 ## Ownership/default privilege rules
 
