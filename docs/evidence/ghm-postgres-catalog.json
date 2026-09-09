@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-09-09T14:43:14.965Z",
+  "captured_at": "2026-09-09T17:58:56.124Z",
   "source": "GHM PostgreSQL catalog capture",
   "note": "Metadata only. No row contents, passwords, tokens, DATABASE_URL, or secrets are captured.",
   "server": [
@@ -22,7 +22,27 @@
   "tables": [
     {
       "schema_name": "public",
+      "table_name": "account_identity",
+      "table_type": "BASE TABLE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "table_type": "BASE TABLE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "table_type": "BASE TABLE"
+    },
+    {
+      "schema_name": "public",
       "table_name": "files",
+      "table_type": "BASE TABLE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ghm_schema_migrations",
       "table_type": "BASE TABLE"
     },
     {
@@ -47,6 +67,248 @@
     }
   ],
   "columns": [
+    {
+      "schema_name": "public",
+      "table_name": "account_identity",
+      "ordinal_position": 1,
+      "column_name": "id",
+      "data_type": "bigint",
+      "udt_schema": "pg_catalog",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "schema_name": "public",
+      "table_name": "account_identity",
+      "ordinal_position": 2,
+      "column_name": "full_name",
+      "data_type": "text",
+      "udt_schema": "pg_catalog",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "schema_name": "public",
+      "table_name": "account_identity",
+      "ordinal_position": 3,
+      "column_name": "phone",
+      "data_type": "text",
+      "udt_schema": "pg_catalog",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "schema_name": "public",
+      "table_name": "account_identity",
+      "ordinal_position": 4,
+      "column_name": "avatar_ref",
+      "data_type": "text",
+      "udt_schema": "pg_catalog",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "schema_name": "public",
+      "table_name": "account_identity",
+      "ordinal_position": 5,
+      "column_name": "role",
+      "data_type": "text",
+      "udt_schema": "pg_catalog",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "schema_name": "public",
+      "table_name": "account_identity",
+      "ordinal_position": 6,
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "udt_schema": "pg_catalog",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "account_identity",
+      "ordinal_position": 7,
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "udt_schema": "pg_catalog",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "ordinal_position": 1,
+      "column_name": "id",
+      "data_type": "bigint",
+      "udt_schema": "pg_catalog",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "ordinal_position": 2,
+      "column_name": "name",
+      "data_type": "text",
+      "udt_schema": "pg_catalog",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "ordinal_position": 3,
+      "column_name": "slug",
+      "data_type": "text",
+      "udt_schema": "pg_catalog",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "ordinal_position": 4,
+      "column_name": "verification_status",
+      "data_type": "text",
+      "udt_schema": "pg_catalog",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'pending'::text"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "ordinal_position": 5,
+      "column_name": "is_active",
+      "data_type": "boolean",
+      "udt_schema": "pg_catalog",
+      "udt_name": "bool",
+      "is_nullable": "NO",
+      "column_default": "true"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "ordinal_position": 6,
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "udt_schema": "pg_catalog",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "ordinal_position": 7,
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "udt_schema": "pg_catalog",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "ordinal_position": 1,
+      "column_name": "id",
+      "data_type": "bigint",
+      "udt_schema": "pg_catalog",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "ordinal_position": 2,
+      "column_name": "business_id",
+      "data_type": "bigint",
+      "udt_schema": "pg_catalog",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "ordinal_position": 3,
+      "column_name": "account_id",
+      "data_type": "bigint",
+      "udt_schema": "pg_catalog",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "ordinal_position": 4,
+      "column_name": "membership_role",
+      "data_type": "text",
+      "udt_schema": "pg_catalog",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "ordinal_position": 5,
+      "column_name": "membership_status",
+      "data_type": "text",
+      "udt_schema": "pg_catalog",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'active'::text"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "ordinal_position": 6,
+      "column_name": "created_by",
+      "data_type": "bigint",
+      "udt_schema": "pg_catalog",
+      "udt_name": "int8",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "ordinal_position": 7,
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "udt_schema": "pg_catalog",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "ordinal_position": 8,
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "udt_schema": "pg_catalog",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
     {
       "schema_name": "public",
       "table_name": "files",
@@ -145,6 +407,50 @@
       "udt_name": "timestamp",
       "is_nullable": "YES",
       "column_default": "CURRENT_TIMESTAMP"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ghm_schema_migrations",
+      "ordinal_position": 1,
+      "column_name": "version",
+      "data_type": "character varying",
+      "udt_schema": "pg_catalog",
+      "udt_name": "varchar",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ghm_schema_migrations",
+      "ordinal_position": 2,
+      "column_name": "name",
+      "data_type": "character varying",
+      "udt_schema": "pg_catalog",
+      "udt_name": "varchar",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ghm_schema_migrations",
+      "ordinal_position": 3,
+      "column_name": "checksum",
+      "data_type": "character varying",
+      "udt_schema": "pg_catalog",
+      "udt_name": "varchar",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ghm_schema_migrations",
+      "ordinal_position": 4,
+      "column_name": "applied_at",
+      "data_type": "timestamp with time zone",
+      "udt_schema": "pg_catalog",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
     },
     {
       "schema_name": "public",
@@ -480,6 +786,262 @@
   "constraints": [
     {
       "schema_name": "public",
+      "table_name": "account_identity",
+      "constraint_name": "account_identity_created_at_not_null",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "account_identity",
+      "constraint_name": "account_identity_id_not_null",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "account_identity",
+      "constraint_name": "account_identity_pkey",
+      "constraint_type": "PRIMARY KEY",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "account_identity",
+      "constraint_name": "account_identity_role_check",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "account_identity",
+      "constraint_name": "account_identity_role_not_null",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "account_identity",
+      "constraint_name": "account_identity_updated_at_not_null",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "constraint_name": "business_created_at_not_null",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "constraint_name": "business_id_not_null",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "constraint_name": "business_is_active_not_null",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "constraint_name": "business_name_nonblank_check",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "constraint_name": "business_name_not_null",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "constraint_name": "business_pkey",
+      "constraint_type": "PRIMARY KEY",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "constraint_name": "business_slug_nonblank_check",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "constraint_name": "business_slug_not_null",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "constraint_name": "business_slug_unique",
+      "constraint_type": "UNIQUE",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "constraint_name": "business_updated_at_not_null",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "constraint_name": "business_verification_status_check",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "constraint_name": "business_verification_status_not_null",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_account_id_fkey",
+      "constraint_type": "FOREIGN KEY",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_account_id_not_null",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_business_account_unique",
+      "constraint_type": "UNIQUE",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_business_id_fkey",
+      "constraint_type": "FOREIGN KEY",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_business_id_not_null",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_created_at_not_null",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_created_by_fkey",
+      "constraint_type": "FOREIGN KEY",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_id_not_null",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_membership_role_not_null",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_membership_status_not_null",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_pkey",
+      "constraint_type": "PRIMARY KEY",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_role_check",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_status_check",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_updated_at_not_null",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
       "table_name": "files",
       "constraint_name": "files_filename_not_null",
       "constraint_type": "CHECK",
@@ -531,6 +1093,46 @@
       "table_name": "files",
       "constraint_name": "files_user_id_fkey",
       "constraint_type": "FOREIGN KEY",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ghm_schema_migrations",
+      "constraint_name": "ghm_schema_migrations_applied_at_not_null",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ghm_schema_migrations",
+      "constraint_name": "ghm_schema_migrations_checksum_not_null",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ghm_schema_migrations",
+      "constraint_name": "ghm_schema_migrations_name_not_null",
+      "constraint_type": "CHECK",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ghm_schema_migrations",
+      "constraint_name": "ghm_schema_migrations_pkey",
+      "constraint_type": "PRIMARY KEY",
+      "is_deferrable": "NO",
+      "initially_deferred": "NO"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ghm_schema_migrations",
+      "constraint_name": "ghm_schema_migrations_version_not_null",
+      "constraint_type": "CHECK",
       "is_deferrable": "NO",
       "initially_deferred": "NO"
     },
@@ -698,6 +1300,69 @@
   "constraint_columns": [
     {
       "schema_name": "public",
+      "table_name": "account_identity",
+      "constraint_name": "account_identity_pkey",
+      "column_name": "id",
+      "ordinal_position": 1
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "constraint_name": "business_pkey",
+      "column_name": "id",
+      "ordinal_position": 1
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "constraint_name": "business_slug_unique",
+      "column_name": "slug",
+      "ordinal_position": 1
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_account_id_fkey",
+      "column_name": "account_id",
+      "ordinal_position": 1
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_business_account_unique",
+      "column_name": "business_id",
+      "ordinal_position": 1
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_business_account_unique",
+      "column_name": "account_id",
+      "ordinal_position": 2
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_business_id_fkey",
+      "column_name": "business_id",
+      "ordinal_position": 1
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_created_by_fkey",
+      "column_name": "created_by",
+      "ordinal_position": 1
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_pkey",
+      "column_name": "id",
+      "ordinal_position": 1
+    },
+    {
+      "schema_name": "public",
       "table_name": "files",
       "constraint_name": "files_pkey",
       "column_name": "id",
@@ -715,6 +1380,13 @@
       "table_name": "files",
       "constraint_name": "files_user_id_fkey",
       "column_name": "user_id",
+      "ordinal_position": 1
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ghm_schema_migrations",
+      "constraint_name": "ghm_schema_migrations_pkey",
+      "column_name": "version",
       "ordinal_position": 1
     },
     {
@@ -798,6 +1470,39 @@
   "foreign_keys": [
     {
       "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_account_id_fkey",
+      "column_name": "account_id",
+      "referenced_schema_name": "public",
+      "referenced_table_name": "account_identity",
+      "referenced_column_name": "id",
+      "update_rule": "NO ACTION",
+      "delete_rule": "CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_business_id_fkey",
+      "column_name": "business_id",
+      "referenced_schema_name": "public",
+      "referenced_table_name": "business",
+      "referenced_column_name": "id",
+      "update_rule": "NO ACTION",
+      "delete_rule": "CASCADE"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "constraint_name": "business_membership_created_by_fkey",
+      "column_name": "created_by",
+      "referenced_schema_name": "public",
+      "referenced_table_name": "account_identity",
+      "referenced_column_name": "id",
+      "update_rule": "NO ACTION",
+      "delete_rule": "SET NULL"
+    },
+    {
+      "schema_name": "public",
       "table_name": "files",
       "constraint_name": "files_user_id_fkey",
       "column_name": "user_id",
@@ -844,6 +1549,70 @@
   "indexes": [
     {
       "schema_name": "public",
+      "table_name": "account_identity",
+      "index_name": "account_identity_pkey",
+      "is_unique": true,
+      "is_primary": true,
+      "definition": "CREATE UNIQUE INDEX account_identity_pkey ON public.account_identity USING btree (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "index_name": "business_pkey",
+      "is_unique": true,
+      "is_primary": true,
+      "definition": "CREATE UNIQUE INDEX business_pkey ON public.business USING btree (id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "index_name": "business_slug_unique",
+      "is_unique": true,
+      "is_primary": false,
+      "definition": "CREATE UNIQUE INDEX business_slug_unique ON public.business USING btree (slug)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "index_name": "business_membership_account_active_idx",
+      "is_unique": false,
+      "is_primary": false,
+      "definition": "CREATE INDEX business_membership_account_active_idx ON public.business_membership USING btree (account_id, membership_status, created_at, id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "index_name": "business_membership_business_account_unique",
+      "is_unique": true,
+      "is_primary": false,
+      "definition": "CREATE UNIQUE INDEX business_membership_business_account_unique ON public.business_membership USING btree (business_id, account_id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "index_name": "business_membership_business_status_idx",
+      "is_unique": false,
+      "is_primary": false,
+      "definition": "CREATE INDEX business_membership_business_status_idx ON public.business_membership USING btree (business_id, membership_status, membership_role, id)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "index_name": "business_membership_one_active_owner_idx",
+      "is_unique": true,
+      "is_primary": false,
+      "definition": "CREATE UNIQUE INDEX business_membership_one_active_owner_idx ON public.business_membership USING btree (business_id) WHERE ((membership_role = 'owner'::text) AND (membership_status = 'active'::text))"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "index_name": "business_membership_pkey",
+      "is_unique": true,
+      "is_primary": true,
+      "definition": "CREATE UNIQUE INDEX business_membership_pkey ON public.business_membership USING btree (id)"
+    },
+    {
+      "schema_name": "public",
       "table_name": "files",
       "index_name": "files_pkey",
       "is_unique": true,
@@ -857,6 +1626,14 @@
       "is_unique": true,
       "is_primary": false,
       "definition": "CREATE UNIQUE INDEX files_storage_key_key ON public.files USING btree (storage_key)"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ghm_schema_migrations",
+      "index_name": "ghm_schema_migrations_pkey",
+      "is_unique": true,
+      "is_primary": true,
+      "definition": "CREATE UNIQUE INDEX ghm_schema_migrations_pkey ON public.ghm_schema_migrations USING btree (version)"
     },
     {
       "schema_name": "public",
@@ -977,8 +1754,32 @@
   "row_level_security": [
     {
       "schema_name": "public",
+      "table_name": "account_identity",
+      "row_security_enabled": false,
+      "force_row_security": false
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "row_security_enabled": false,
+      "force_row_security": false
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "row_security_enabled": false,
+      "force_row_security": false
+    },
+    {
+      "schema_name": "public",
       "table_name": "files",
       "row_security_enabled": true,
+      "force_row_security": false
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ghm_schema_migrations",
+      "row_security_enabled": false,
       "force_row_security": false
     },
     {
@@ -1091,6 +1892,153 @@
   "grants": [
     {
       "schema_name": "public",
+      "table_name": "account_identity",
+      "grantee": "ghm_db_user",
+      "privilege_type": "DELETE",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "account_identity",
+      "grantee": "ghm_db_user",
+      "privilege_type": "INSERT",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "account_identity",
+      "grantee": "ghm_db_user",
+      "privilege_type": "REFERENCES",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "account_identity",
+      "grantee": "ghm_db_user",
+      "privilege_type": "SELECT",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "account_identity",
+      "grantee": "ghm_db_user",
+      "privilege_type": "TRIGGER",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "account_identity",
+      "grantee": "ghm_db_user",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "account_identity",
+      "grantee": "ghm_db_user",
+      "privilege_type": "UPDATE",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "grantee": "ghm_db_user",
+      "privilege_type": "DELETE",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "grantee": "ghm_db_user",
+      "privilege_type": "INSERT",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "grantee": "ghm_db_user",
+      "privilege_type": "REFERENCES",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "grantee": "ghm_db_user",
+      "privilege_type": "SELECT",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "grantee": "ghm_db_user",
+      "privilege_type": "TRIGGER",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "grantee": "ghm_db_user",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "grantee": "ghm_db_user",
+      "privilege_type": "UPDATE",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "grantee": "ghm_db_user",
+      "privilege_type": "DELETE",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "grantee": "ghm_db_user",
+      "privilege_type": "INSERT",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "grantee": "ghm_db_user",
+      "privilege_type": "REFERENCES",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "grantee": "ghm_db_user",
+      "privilege_type": "SELECT",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "grantee": "ghm_db_user",
+      "privilege_type": "TRIGGER",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "grantee": "ghm_db_user",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "grantee": "ghm_db_user",
+      "privilege_type": "UPDATE",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
       "table_name": "files",
       "grantee": "ghm_db_user",
       "privilege_type": "DELETE",
@@ -1134,6 +2082,55 @@
     {
       "schema_name": "public",
       "table_name": "files",
+      "grantee": "ghm_db_user",
+      "privilege_type": "UPDATE",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ghm_schema_migrations",
+      "grantee": "ghm_db_user",
+      "privilege_type": "DELETE",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ghm_schema_migrations",
+      "grantee": "ghm_db_user",
+      "privilege_type": "INSERT",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ghm_schema_migrations",
+      "grantee": "ghm_db_user",
+      "privilege_type": "REFERENCES",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ghm_schema_migrations",
+      "grantee": "ghm_db_user",
+      "privilege_type": "SELECT",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ghm_schema_migrations",
+      "grantee": "ghm_db_user",
+      "privilege_type": "TRIGGER",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ghm_schema_migrations",
+      "grantee": "ghm_db_user",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "YES"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ghm_schema_migrations",
       "grantee": "ghm_db_user",
       "privilege_type": "UPDATE",
       "is_grantable": "YES"
@@ -1338,7 +2335,27 @@
   "estimated_row_counts": [
     {
       "schema_name": "public",
+      "table_name": "account_identity",
+      "estimated_row_count": "-1"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business",
+      "estimated_row_count": "-1"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "business_membership",
+      "estimated_row_count": "-1"
+    },
+    {
+      "schema_name": "public",
       "table_name": "files",
+      "estimated_row_count": "-1"
+    },
+    {
+      "schema_name": "public",
+      "table_name": "ghm_schema_migrations",
       "estimated_row_count": "-1"
     },
     {
