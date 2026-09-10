@@ -31,8 +31,7 @@ GRANT USAGE
                ghm.business_membership_id_seq
   TO ghm_runtime;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner IN SCHEMA ghm
-  GRANT SELECT, UPDATE ON TABLES TO ghm_runtime;
-
+-- Future application DML remains explicitly qualified per resource migration.
+-- Do not grant blanket table DML to the runtime role.
 ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner IN SCHEMA ghm
   GRANT USAGE ON SEQUENCES TO ghm_runtime;
