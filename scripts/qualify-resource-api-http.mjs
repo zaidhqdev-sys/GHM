@@ -33,7 +33,7 @@ const createAccount = async (role) => {
   try {
     await client.query('BEGIN');
     await client.query('SET LOCAL ROLE ghm_schema_owner');
-    const result = await client.query(`INSERT INTO ghm.account_identity (full_name, role) VALUES ($1, $2) RETURNING id`, [`${marker}-${role}`, role]);
+    const result = await client.query(`INSERT INTO ghm.account_identity (full_name, role) VALUES ($1, $2) RETURNING id`, [`${marker}-${role}-${fixture.accountIds.length}`, role]);
     await client.query('COMMIT');
     const id = Number(result.rows[0].id);
     fixture.accountIds.push(id);
@@ -78,6 +78,7 @@ const server = http.createServer(createApp({ businessIdentityService: new Busine
 
 try {
   const businessAccountId = await createAccount('business');
+  const createAccountId = await createAccount('business');
   const customerAccountId = await createAccount('customer');
   const outsiderAccountId = await createAccount('business');
 
@@ -92,6 +93,7 @@ try {
   const baseUrl = `http://127.0.0.1:${address.port}`;
   const customerToken = sign(customerAccountId, 'customer');
   const businessToken = sign(businessAccountId, 'business');
+  const createToken = sign(createAccountId, 'business');
   const outsiderToken = sign(outsiderAccountId, 'business');
 
   assertError(await request(baseUrl, 'GET', `/api/v1/businesses/${approvedBusinessId}`), 401, 'Business read missing authentication');
@@ -122,7 +124,7 @@ try {
   assertStatus(managedRead, 200, 'Managed read owner/administrator access');
   console.log('RESOURCE API MANAGED READ AUTHORIZATION PASS');
 
-  const create = await request(baseUrl, 'POST', '/api/v1/businesses', businessToken, { name: `${marker} Created` });
+  const create = await request(baseUrl, 'POST', '/api/v1/businesses', createToken, { name: `${marker} Created` });
   assertStatus(create, 201, 'Business creation');
   const createdBusinessId = create.body?.business?.id;
   if (!Number.isSafeInteger(createdBusinessId) || create.body?.membership?.role !== 'owner' || create.body?.membership?.status !== 'active') throw new Error(`Business creation ownership boundary failed: ${JSON.stringify(create.body)}`);
@@ -130,7 +132,7 @@ try {
   console.log('RESOURCE API BUSINESS CREATE + OWNER MEMBERSHIP PASS');
 
   assertError(await request(baseUrl, 'POST', '/api/v1/businesses', customerToken, { name: `${marker} Customer Attempt` }), 403, 'Customer business creation denial');
-  assertError(await request(baseUrl, 'POST', '/api/v1/businesses', businessToken, { name: `${marker} Second Attempt` }), 409, 'Existing active membership creation conflict');
+  assertError(await request(baseUrl, 'POST', '/api/v1/businesses', createToken, { name: `${marker} Second Attempt` }), 409, 'Existing active membership creation conflict');
   console.log('RESOURCE API BUSINESS CREATE AUTHORIZATION + CONFLICT PASS');
 
   const update = await request(baseUrl, 'PATCH', `/api/v1/businesses/${managedBusinessId}`, businessToken, { name: `${marker} Managed Renamed`, slug: `${marker}-managed-renamed` });
