@@ -1,6 +1,6 @@
 # GHM PostgreSQL Authority Model
 
-Status: **CONSTRUCTION MODEL — ROLE SEPARATION EXECUTED THROUGH RUNTIME QUALIFICATION; BOOTSTRAP CLEANUP REMAINS OPEN**
+Status: **CONSTRUCTION MODEL — ROLE SEPARATION EXECUTED THROUGH RUNTIME AND DEDICATED MIGRATOR QUALIFICATION; BOOTSTRAP CLEANUP REMAINS OPEN**
 
 ## Purpose
 
@@ -287,9 +287,28 @@ The final model must explicitly cover:
 
 ## Migration runner status
 
-The standalone migration runner currently has a qualified TLS connection path and migration/ledger integrity is qualified.
+The standalone migration runner has now been switched to the dedicated `GHM_MIGRATOR_DATABASE_URL` connection path.
 
-The dedicated `ghm_migrator` login and SET ROLE path are qualified, but the migration runner has **not yet been switched to the dedicated `ghm_migrator` credential**. That construction-only application/configuration change is a separate qualification gate.
+The dedicated migration runner was independently qualified against the construction PostgreSQL database:
+
+- direct connection identity: `current_user = ghm_migrator`;
+- `session_user = ghm_migrator`;
+- `current_database = ghm_db`;
+- explicit `SET ROLE ghm_schema_owner` succeeded;
+- migration ledger reconciliation passed;
+- transaction commit path passed;
+- repeat/no-op behavior passed;
+- repository migration checksums matched the live ledger.
+
+Result:
+
+```text
+GHM DEDICATED MIGRATION RUNNER QUALIFICATION: PASS
+```
+
+The detailed evidence is recorded in `docs/MIGRATOR_QUALIFICATION_2026-09-10.md`.
+
+This closes the migration-runner qualification item. It does not close the broader authority reconciliation or the Transaction Qualification Gate.
 
 ## Final target permission matrix
 
@@ -318,12 +337,11 @@ The dedicated `ghm_migrator` login and SET ROLE path are qualified, but the migr
 ## Remaining gates
 
 1. Resolve bootstrap membership cleanup through the independent `postgres`/provider authority path.
-2. Switch the standalone migration runner to `ghm_migrator` and explicitly `SET ROLE ghm_schema_owner`, then qualify real migration/no-op/DDL/ledger behavior.
-3. Reconcile a dedicated GHM application schema and future-object default privileges.
-4. Measure whether runtime TEMP is required; if not, remove it from the final runtime authority where possible.
-5. Re-run full build/typecheck/test and authority qualification after migration-runner changes.
-6. Only after all replacement gates are satisfied consider final removal of the old `ghm_app_user -> ghm_db_user` authority path.
-7. Keep production Supabase unchanged throughout.
+2. Reconcile a dedicated GHM application schema and future-object default privileges.
+3. Measure whether runtime TEMP is required; if not, remove it from the final runtime authority where possible.
+4. Complete Transaction Qualification together with authentication, authorization, explicit resource repositories, runtime boundary, and reconciled schema.
+5. Only after all replacement gates are satisfied consider final removal of the old `ghm_app_user -> ghm_db_user` authority path.
+6. Keep production Supabase unchanged throughout.
 
 ## Safety invariant
 
