@@ -94,15 +94,15 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
-  app.get('/api/v1/businesses/:businessId', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
+  app.get('/api/v1/businesses/slug/:slug', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
-      const businessId = positiveIntegerId(req.params.businessId);
-      if (businessId === null) {
+      const slug = req.params.slug.trim();
+      if (!slug) {
         res.status(400).json({ error: 'invalid_request' });
         return;
       }
-      const business = await service.getPublicBusiness(context, businessId);
+      const business = await service.getPublicBusinessBySlug(context, slug);
       if (!business) {
         res.status(404).json({ error: 'not_found' });
         return;
@@ -113,15 +113,34 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
-  app.get('/api/v1/businesses/slug/:slug', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
+  app.get('/api/v1/businesses/:businessId/managed', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
-      const slug = req.params.slug.trim();
-      if (!slug) {
+      const businessId = positiveIntegerId(req.params.businessId);
+      if (businessId === null) {
         res.status(400).json({ error: 'invalid_request' });
         return;
       }
-      const business = await service.getPublicBusinessBySlug(context, slug);
+      const business = await service.getManagedBusiness(context, businessId);
+      if (!business) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      res.status(200).json({ business });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.get('/api/v1/businesses/:businessId', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const businessId = positiveIntegerId(req.params.businessId);
+      if (businessId === null) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const business = await service.getPublicBusiness(context, businessId);
       if (!business) {
         res.status(404).json({ error: 'not_found' });
         return;
@@ -142,25 +161,6 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       }
       const identity = await service.createBusiness(context, input);
       res.status(201).json({ business: identity.activeBusiness, membership: identity.activeMembership });
-    } catch (error) {
-      handleError(error, res);
-    }
-  });
-
-  app.get('/api/v1/businesses/:businessId/managed', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
-    try {
-      const context = req.authContext as AuthContext;
-      const businessId = positiveIntegerId(req.params.businessId);
-      if (businessId === null) {
-        res.status(400).json({ error: 'invalid_request' });
-        return;
-      }
-      const business = await service.getManagedBusiness(context, businessId);
-      if (!business) {
-        res.status(404).json({ error: 'not_found' });
-        return;
-      }
-      res.status(200).json({ business });
     } catch (error) {
       handleError(error, res);
     }
