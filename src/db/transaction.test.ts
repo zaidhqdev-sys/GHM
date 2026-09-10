@@ -104,3 +104,20 @@ test('authorized transaction passes the same AuthContext into transaction work',
   assert.deepEqual(client.calls, ['BEGIN', 'COMMIT']);
   assert.equal(client.released, true);
 });
+
+test('authorized transaction rejects invalid authentication context before checkout', async () => {
+  const { withAuthorizedTransaction } = await loadTransactions();
+  let connected = false;
+  const pool: TransactionPool = {
+    async connect(): Promise<PoolClient> {
+      connected = true;
+      throw new Error('pool must not be reached');
+    },
+  };
+
+  await assert.rejects(
+    () => withAuthorizedTransaction({ userId: 0, role: 'customer' }, async () => 'unreachable', pool),
+    /Authentication required/,
+  );
+  assert.equal(connected, false);
+});
