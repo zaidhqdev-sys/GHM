@@ -10,7 +10,7 @@
     "capture:postgres-catalog": "node scripts/capture-postgres-catalog.mjs",
     "qualify:business-identity-runtime": "npm run build && node scripts/qualify-business-identity-runtime.mjs",
     "start": "node dist/server.js",
-    "test": "npm run build && node --test dist/auth/authorization.test.js dist/auth/request-context.test.js dist/resources/registry.test.js dist/db/transaction.test.js dist/resources/business-identity/service.test.js",
+    "test": "npm run build && node --test dist/auth/authorization.test.js dist/auth/request-context.test.js dist/resources/registry.test.js dist/db/transaction.test.js dist/resources/business-identity/service.test.js dist/http/app.test.js",
     "verify:runtime": "node scripts/verify-runtime-boundary.mjs"
   },
   "dependencies": {
@@ -31,10 +31,10 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/express-session": "^1.17.7",
-    "@types/jsonwebtoken": "^9.0.6",
     "@types/multer": "^1.4.11",
     "@types/node": "^20.14.0",
     "@types/pg": "^8.11.5",
+    "@types/jsonwebtoken": "^9.0.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
   },
