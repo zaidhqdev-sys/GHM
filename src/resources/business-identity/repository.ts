@@ -51,8 +51,8 @@ const mapMembership = (row: any): BusinessMembership => ({
   createdAt: row.created_at, updatedAt: row.updated_at,
 });
 
-const requireAccount = async (client: PoolClient, context: AuthContext): Promise<AccountIdentity> => {
-  const result = await client.query(ACCOUNT_SELECT, [context.userId]);
+const requireAccount = async (client: PoolClient, context: AuthContext, lock = false): Promise<AccountIdentity> => {
+  const result = await client.query(lock ? `${ACCOUNT_SELECT} FOR UPDATE` : ACCOUNT_SELECT, [context.userId]);
   if (result.rowCount !== 1) throw new Error('Authenticated account not found');
   return mapAccount(result.rows[0]);
 };
@@ -114,7 +114,7 @@ export class PostgresBusinessIdentityRepository implements BusinessIdentityRepos
   async getMembershipsForAccount(context: AuthContext) { return withAuthorizedTransaction(context, c => findMemberships(c, context.userId), this.transactionPool); }
   async createBusiness(context: AuthContext, input: CreateBusinessInput, slug: string) {
     return withAuthorizedTransaction(context, async client => {
-      await requireAccount(client, context);
+      await requireAccount(client, context, true);
       const existing = await client.query(`SELECT 1 FROM business_membership WHERE account_id = $1 AND membership_status = 'active' LIMIT 1`, [context.userId]);
       if (existing.rowCount !== 0) throw new Error('Business creation requires no existing active business membership');
       const businessResult = await client.query(`INSERT INTO business (name, slug, verification_status, is_active)
