@@ -22,6 +22,8 @@ const requireRegisteredAccess = (resource: Parameters<typeof canAccessResource>[
     next();
   };
 
+const routeParam = (value: string | string[]): string | null => typeof value === 'string' ? value : null;
+
 const positiveIntegerId = (value: string): number | null => {
   if (!/^[1-9]\d*$/.test(value)) return null;
   const parsed = Number(value);
@@ -97,7 +99,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   app.get('/api/v1/businesses/slug/:slug', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
-      const slug = req.params.slug.trim();
+      const slugValue = routeParam(req.params.slug);
+      const slug = slugValue?.trim();
       if (!slug) {
         res.status(400).json({ error: 'invalid_request' });
         return;
@@ -116,7 +119,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   app.get('/api/v1/businesses/:businessId/managed', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
-      const businessId = positiveIntegerId(req.params.businessId);
+      const businessIdValue = routeParam(req.params.businessId);
+      const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
       if (businessId === null) {
         res.status(400).json({ error: 'invalid_request' });
         return;
@@ -135,7 +139,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   app.get('/api/v1/businesses/:businessId', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
-      const businessId = positiveIntegerId(req.params.businessId);
+      const businessIdValue = routeParam(req.params.businessId);
+      const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
       if (businessId === null) {
         res.status(400).json({ error: 'invalid_request' });
         return;
@@ -169,7 +174,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   app.patch('/api/v1/businesses/:businessId', requireAuth, requireRegisteredAccess('business', 'update'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
-      const businessId = positiveIntegerId(req.params.businessId);
+      const businessIdValue = routeParam(req.params.businessId);
+      const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
       const input = parseUpdateBusinessInput(req.body);
       if (businessId === null || !input) {
         res.status(400).json({ error: 'invalid_request' });
