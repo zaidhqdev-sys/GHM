@@ -1,6 +1,6 @@
 # GHM Business Identity Minimum Schema
 
-Status: construction design; migration authorization follows this document.
+Status: **construction schema qualified for the first slice; application repository qualification remains open.**
 
 ## Purpose
 
@@ -118,6 +118,16 @@ Business authorization is a service-layer responsibility in the first implementa
 
 This means the runtime SQL must be parameterized and scoped to authenticated identity/context, while PostgreSQL runtime grants remain least-privilege.
 
-## Migration gate
+## Applied migration evidence
 
-This schema is sufficient to authorize authoring the first canonical Business Identity migration, subject to final SQL review and repository validation. It does not authorize role mutation or production cutover.
+The schema defined here is now the canonical first-slice schema represented by repository migration `20260909150000_create_business_identity.sql`. The migration was applied to the construction database and recorded in `ghm_schema_migrations`; repeat/no-op and checksum integrity were qualified by the dedicated migration runner.
+
+The live catalog also confirmed the expected tables, identity sequences, constraints, indexes, foreign keys, and absence of newly introduced views, routines, triggers, and RLS on these first-slice tables.
+
+This schema qualification does **not** qualify the application repositories, authorization layer, transaction behavior, or production replacement.
+
+## Remaining gate
+
+The next work is to implement and qualify explicit repository SQL against this canonical schema, derive exact runtime privileges from that SQL, and complete positive/negative transaction and authorization qualification.
+
+No production role mutation or product cutover is authorized by this document.
