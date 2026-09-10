@@ -84,6 +84,9 @@ export interface BusinessIdentityService {
   createBusiness(context: AuthContext, input: CreateBusinessInput): Promise<ApplicationIdentity>;
   getBusiness(context: AuthContext, businessId: BusinessId): Promise<BusinessIdentity | null>;
   getBusinessBySlug(context: AuthContext, slug: string): Promise<BusinessIdentity | null>;
+  getPublicBusiness(context: AuthContext, businessId: BusinessId): Promise<BusinessIdentity | null>;
+  getPublicBusinessBySlug(context: AuthContext, slug: string): Promise<BusinessIdentity | null>;
+  getManagedBusiness(context: AuthContext, businessId: BusinessId): Promise<BusinessIdentity | null>;
   updateBusiness(context: AuthContext, businessId: BusinessId, input: UpdateBusinessProfileInput): Promise<BusinessIdentity>;
 }
 
