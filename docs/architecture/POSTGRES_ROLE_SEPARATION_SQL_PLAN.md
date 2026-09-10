@@ -1,6 +1,6 @@
 # GHM PostgreSQL Role Separation — Exact Construction SQL Plan
 
-Status: **EXECUTED THROUGH RUNTIME AUTHORITY QUALIFICATION — BOOTSTRAP CLEANUP REMAINS BLOCKED**
+Status: **EXECUTED THROUGH RUNTIME AND DEDICATED MIGRATOR QUALIFICATION — BOOTSTRAP CLEANUP REMAINS BLOCKED**
 
 This document is the exact construction-only mutation plan derived from the measured GHM authority baseline. The Founder Gate was explicitly authorized on 2026-09-09. The role, membership, ownership, and runtime-grant mutations described below have been executed against the GHM construction PostgreSQL instance and independently qualified where stated. Remaining bootstrap membership cleanup is provider/bootstrap-authority dependent and has not been falsely marked complete.
 
@@ -164,7 +164,7 @@ These memberships are granted by `postgres` and therefore cannot be revoked by `
 
 This is the remaining authority-cleanup blocker.
 
-## Phase 4 — establish controlled schema migration authority
+## Phase 4 — dedicated migration authority and runner qualification
 
 The real `ghm_migrator` login path has been qualified independently.
 
@@ -184,7 +184,26 @@ SET ROLE ghm_schema_owner;
 
 and became effective `ghm_schema_owner` while retaining `session_user = ghm_migrator`.
 
-The migration runner has not yet been switched from its existing construction connection to the dedicated `ghm_migrator` credential. That is a separate code/configuration qualification and must remain construction-only.
+The standalone migration runner is now switched to the dedicated `GHM_MIGRATOR_DATABASE_URL` connection path.
+
+Independent migration-runner qualification passed:
+
+- direct identity: `current_user = ghm_migrator`;
+- `session_user = ghm_migrator`;
+- `current_database = ghm_db`;
+- explicit `SET ROLE ghm_schema_owner` succeeded;
+- migration ledger reconciliation passed;
+- transaction commit path passed;
+- repeat/no-op behavior passed;
+- repository migration checksums matched the live ledger.
+
+Detailed evidence is recorded in `docs/MIGRATOR_QUALIFICATION_2026-09-10.md`.
+
+Result:
+
+```text
+GHM DEDICATED MIGRATION RUNNER QUALIFICATION: PASS
+```
 
 ## Phase 5 — future-object default privileges
 
@@ -280,7 +299,7 @@ Measured runtime identity:
 
 ```text
 current_user  = ghm_runtime
-session_user  = ghm_runtime
+session_user = ghm_runtime
 current_database = ghm_db
 migrator_member = false
 migrator_set = false
@@ -320,7 +339,7 @@ TRUNCATE business               PASS — rejected
 DELETE business                 PASS — rejected
 INSERT migration ledger        PASS — rejected
 UPDATE migration ledger        PASS — rejected
-DELETE migration ledger        PASS — rejected
+DELETE migration ledger         PASS — rejected
 SEQUENCE setval                 PASS — rejected
 SET ROLE ghm_schema_owner       PASS — rejected
 SET ROLE ghm_migrator           PASS — rejected
@@ -366,6 +385,6 @@ ghm_runtime
     X--> DELETE/TRUNCATE/TRIGGER/REFERENCES
 ```
 
-The runtime boundary is qualified. The remaining incomplete item is cleanup of bootstrap memberships granted by `postgres`, plus dedicated migration-runner credential/configuration qualification.
+The runtime boundary and dedicated migration runner are qualified for the current construction slice. The remaining incomplete authority items are bootstrap memberships granted by `postgres`, future-object defaults, the TEMP decision, and final removal of the old `ghm_app_user -> ghm_db_user` authority path after replacement/recovery gates are satisfied.
 
 Supabase production remains untouched and remains the rollback provider for the eventual product migration.
