@@ -55,6 +55,25 @@ const cleanupIdentity = async () => {
   return identity;
 };
 
+const createFixtureAccount = async (fullName) => {
+  const client = await cleanupPool.connect();
+  try {
+    await client.query(`BEGIN`);
+    await client.query(`SET LOCAL ROLE ghm_schema_owner`);
+    const { rows } = await client.query(
+      `INSERT INTO account_identity (full_name, role) VALUES ($1, $2) RETURNING id`,
+      [fullName, 'business'],
+    );
+    await client.query(`COMMIT`);
+    return Number(rows[0].id);
+  } catch (error) {
+    await client.query(`ROLLBACK`).catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 const fixture = {
   marker: `ghm-runtime-qualification-${randomUUID()}`,
   accountIds: [],
@@ -66,11 +85,7 @@ try {
   console.log(`RUNTIME IDENTITY PASS: ${runtime.database_name}/${runtime.current_user}`);
   console.log(`CLEANUP AUTHORITY PASS: ${cleanup.database_name}/${cleanup.current_user}`);
 
-  const { rows: accountRows } = await cleanupPool.query(
-    `INSERT INTO account_identity (full_name, role) VALUES ($1, $2) RETURNING id`,
-    [fixture.marker, 'business'],
-  );
-  const accountId = Number(accountRows[0].id);
+  const accountId = await createFixtureAccount(fixture.marker);
   fixture.accountIds.push(accountId);
   const context = { userId: accountId, role: 'business' };
 
@@ -122,11 +137,7 @@ try {
     'ACTIVE MEMBERSHIP REJECTION PASS',
   );
 
-  const { rows: rollbackAccountRows } = await cleanupPool.query(
-    `INSERT INTO account_identity (full_name, role) VALUES ($1, $2) RETURNING id`,
-    [`${fixture.marker} rollback`, 'business'],
-  );
-  const rollbackAccountId = Number(rollbackAccountRows[0].id);
+  const rollbackAccountId = await createFixtureAccount(`${fixture.marker} rollback`);
   fixture.accountIds.push(rollbackAccountId);
   const rollbackContext = { userId: rollbackAccountId, role: 'business' };
 
@@ -139,11 +150,7 @@ try {
   if (rollbackMemberships.length !== 0) throw new Error('Failed duplicate business creation left a membership behind');
   console.log('DUPLICATE SLUG ATOMIC ROLLBACK PASS');
 
-  const { rows: concurrentAccountRows } = await cleanupPool.query(
-    `INSERT INTO account_identity (full_name, role) VALUES ($1, $2) RETURNING id`,
-    [`${fixture.marker} concurrency`, 'business'],
-  );
-  const concurrentAccountId = Number(concurrentAccountRows[0].id);
+  const concurrentAccountId = await createFixtureAccount(`${fixture.marker} concurrency`);
   fixture.accountIds.push(concurrentAccountId);
   const concurrentContext = { userId: concurrentAccountId, role: 'business' };
 
@@ -167,15 +174,24 @@ try {
 
   console.log('GHM BUSINESS IDENTITY RUNTIME QUALIFICATION: PASS');
 } finally {
-  await cleanupPool.query(
-    `DELETE FROM business WHERE id = ANY($1::bigint[])`,
-    [fixture.businessIds],
-  );
-  await cleanupPool.query(
-    `DELETE FROM account_identity WHERE id = ANY($1::bigint[])`,
-    [fixture.accountIds],
-  );
-  await Promise.all([runtimePool.end(), cleanupPool.end()]);
+  try {
+    await cleanupPool.query(`BEGIN`);
+    await cleanupPool.query(`SET LOCAL ROLE ghm_schema_owner`);
+    await cleanupPool.query(
+      `DELETE FROM business WHERE id = ANY($1::bigint[])`,
+      [fixture.businessIds],
+    );
+    await cleanupPool.query(
+      `DELETE FROM account_identity WHERE id = ANY($1::bigint[])`,
+      [fixture.accountIds],
+    );
+    await cleanupPool.query(`COMMIT`);
+  } catch (cleanupError) {
+    await cleanupPool.query(`ROLLBACK`).catch(() => {});
+    throw cleanupError;
+  } finally {
+    await Promise.all([runtimePool.end(), cleanupPool.end()]);
+  }
 }
 
 async function assertRejected(work, expectedMessage, label) {
