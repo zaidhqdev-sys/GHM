@@ -2,9 +2,9 @@
 
 ## Purpose
 
-Define the intended PostgreSQL authority separation before any privilege or role changes are made to the construction database.
+Define the intended PostgreSQL authority separation before and during construction qualification.
 
-This document is an architecture contract. It does not authorize immediate role mutation.
+This document is an architecture contract. It does not authorize production changes.
 
 ## Core decision
 
@@ -43,12 +43,11 @@ Purpose: own GHM schemas and database objects.
 Requirements:
 
 - not used by application runtime;
-- not used by normal migration execution;
 - no application credential stored in product runtime configuration;
 - owns canonical application schemas/objects where PostgreSQL ownership is required;
 - authority is structural, not an application authorization mechanism.
 
-Preferred PostgreSQL posture: `NOLOGIN` owner role.
+Qualified construction posture: `ghm_schema_owner` is `NOLOGIN` and owns the first-slice GHM database objects.
 
 ### 2. Migration authority
 
@@ -63,9 +62,7 @@ Requirements:
 - is never exposed to product request handlers;
 - credentials are deployment/operator controlled, not product-request controlled.
 
-Preferred PostgreSQL posture: dedicated login role with explicit DDL authority, separate from runtime credentials.
-
-The existing migration runner remains standalone and is not startup-wired. Its authority must therefore be provisioned explicitly when migration execution is introduced.
+Qualified construction posture: dedicated `ghm_migrator` login with `NOINHERIT` and an explicit SET-capable membership into `ghm_schema_owner`.
 
 ### 3. Runtime application authority
 
@@ -83,7 +80,7 @@ Requirements:
 - no blanket `TRUNCATE`, `REFERENCES`, or `TRIGGER` privileges unless a measured runtime requirement proves them necessary;
 - runtime authorization remains in GHM application policy and transaction boundaries, not in a broad database role.
 
-Preferred PostgreSQL posture: dedicated login role with least-privilege grants.
+Qualified construction posture: dedicated `ghm_runtime` login with `NOINHERIT` and the measured first-slice ACL boundary.
 
 ### 4. Observation / diagnostics authority
 
@@ -97,76 +94,60 @@ Requirements:
 - no role/database administration;
 - should be separated from runtime if operational tooling requires privileges beyond the runtime role.
 
-This class is optional until an actual diagnostic requirement exists; it must not be invented merely for symmetry.
+This class remains optional until an actual diagnostic requirement exists; it must not be invented merely for symmetry.
 
 ## Application admin versus database admin
 
 A GHM `admin` application role is **not** equivalent to PostgreSQL administrative authority.
 
-Application-level administration means an authenticated principal may perform explicitly governed GHM operations. It must not imply `CREATEROLE`, `CREATEDB`, unrestricted DDL, or ownership of the database.
-
-```text
-GHM admin principal
-       |
-       v
-application authorization policy
-       |
-       v
-explicit repository operation
-       |
-       v
-runtime DB authority
-```
-
-Elevated database operations belong to the migration/operations boundary, not ordinary application requests.
+An application-level administrator may perform explicitly governed GHM operations. It must not imply `CREATEROLE`, `CREATEDB`, unrestricted DDL, or ownership of the database.
 
 ## Current-state reconciliation
 
-The live construction database currently authenticates `ghm_app_user` and resolves to effective role `ghm_db_user`. The effective role currently has broad database/schema/table authority.
+The original construction path authenticated `ghm_app_user` and resolved to effective role `ghm_db_user`, which had broad database/schema/table authority. That state has now been separated for the first Business Identity slice.
 
-This is a measured construction-state finding only. It is not the target model.
+Construction evidence confirms:
 
-No existing role should be revoked, deleted, or reconfigured until the required runtime privileges are measured against actual GHM repository SQL and the migration requirements are mapped separately.
+- `ghm_schema_owner` owns the `ghm_db` database and first-slice GHM objects;
+- `ghm_migrator` is the dedicated migration login and successfully SETs `ghm_schema_owner` explicitly;
+- `ghm_runtime` is separately qualified with only the measured first-slice application ACL;
+- the old `ghm_db_user` bootstrap memberships remain unresolved because they were granted by bootstrap `postgres`.
 
-## Reconciliation sequence
+The old `ghm_app_user -> ghm_db_user` path must not be removed until replacement migration/runtime paths and recovery access are independently qualified.
 
-1. Inventory every SQL statement currently reachable from GHM runtime code.
-2. Inventory migration SQL and classify each statement as schema-owner, migration, or runtime authority.
-3. Establish the canonical application schema boundary.
-4. Create dedicated role identities without removing the current construction path.
-5. Grant measured runtime privileges to the dedicated runtime role.
-6. Verify positive runtime operations.
-7. Verify negative operations: DDL, role creation, database creation, truncation, trigger/reference authority where not required, and access outside the application boundary.
-8. Run migration qualification separately with migration authority.
-9. Only after successful verification, remove unnecessary authority from the legacy construction role/path.
-10. Keep rollback available throughout construction.
+## Qualified first-slice runtime boundary
 
-## Qualification gate
+The measured construction runtime boundary is:
 
-The role boundary is not qualified merely because roles exist.
+```text
+account_identity      SELECT/UPDATE
+business              SELECT/INSERT/UPDATE
+business_membership   SELECT/INSERT
+identity sequences    USAGE only
+public schema         USAGE, no CREATE
+migration ledger      no SELECT/INSERT/UPDATE/DELETE
+```
 
-Qualification requires evidence that:
+Negative qualification rejected runtime CREATE/DDL, destructive operations, migration-ledger writes, direct sequence mutation, and SET ROLE into owner/migrator with PostgreSQL `42501`.
 
-- runtime can perform every required repository operation;
-- runtime cannot perform forbidden administrative operations;
-- migrations can perform required schema changes;
-- migrations are not callable from ordinary request handling;
-- application admin privileges do not become database admin privileges;
-- role configuration does not silently broaden runtime authority;
-- production products remain untouched during construction.
+## Reconciliation status
+
+The role separation and dedicated migration runner have been executed and qualified for the current construction slice.
+
+The dedicated migration runner uses `GHM_MIGRATOR_DATABASE_URL`, connects as `ghm_migrator`, explicitly SETs `ghm_schema_owner`, reconciles the migration ledger, commits its transaction, and passes repeat/no-op qualification. Detailed evidence is recorded in `docs/MIGRATOR_QUALIFICATION_2026-09-10.md`.
+
+This does not constitute production qualification.
+
+## Remaining authority work
+
+1. Resolve bootstrap `ghm_db_user` memberships through the independent `postgres`/provider authority path.
+2. Reconcile a dedicated GHM application schema and future-object default privileges.
+3. Measure whether runtime TEMP is required; if not, remove it from the final runtime authority where possible.
+4. Complete Transaction Qualification together with authentication, authorization, explicit resource repositories, runtime boundary, and reconciled schema.
+5. Only after all replacement gates are satisfied consider final removal of the old `ghm_app_user -> ghm_db_user` authority path.
 
 ## Production safety
 
 Zaid Connect and QuoteFlow remain on Supabase until GHM is fully qualified and a reversible migration plan exists.
 
-No production credentials, routing, DNS, environment variables, or product traffic are changed by this architecture decision.
-
-## Next evidence required
-
-The next implementation gate is a read-only privilege/SQL inventory:
-
-- enumerate runtime SQL call sites;
-- classify required table/sequence/schema privileges;
-- inspect migration SQL requirements;
-- identify privileges currently inherited through `ghm_db_user` that are not required by either path;
-- design the exact grant/revoke plan before applying it.
+No production credentials, routing, DNS, environment variables, or product traffic are changed by this construction authority work.
