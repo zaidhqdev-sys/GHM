@@ -6,7 +6,7 @@ Prevent GHM from acquiring an invented or accidentally incompatible production s
 
 ## Evidence currently available
 
-The live GHM PostgreSQL catalog has now been captured successfully from the intended Render PostgreSQL instance.
+The live GHM PostgreSQL catalog has been captured successfully from the intended Render PostgreSQL instance.
 
 Verified evidence:
 
@@ -14,8 +14,8 @@ Verified evidence:
 - database `ghm_db`;
 - current non-system schema: `public`;
 - live application authentication succeeds as `ghm_app_user`;
-- effective PostgreSQL role is currently `ghm_db_user`;
-- live catalog contains five application tables: `files`, `password_reset_tokens`, `profiles`, `todos`, and `users`;
+- effective PostgreSQL role is `ghm_db_user` on the legacy construction path;
+- live catalog contains five legacy application tables: `files`, `password_reset_tokens`, `profiles`, `todos`, and `users`;
 - no application views;
 - no materialized views;
 - no application routines/procedures;
@@ -24,33 +24,18 @@ Verified evidence:
 - existing RLS policies use `app.current_user_id` / `app.current_user_role` settings;
 - foreign keys from `files`, `password_reset_tokens`, `profiles`, and `todos` reference `users.id` with `ON DELETE CASCADE`;
 - unique constraints/indexes and identity sequences are present for the legacy tables;
-- current table grants are held by `ghm_db_user` and are broad, including `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `TRUNCATE`, `REFERENCES`, and `TRIGGER`, all grantable;
+- the legacy table grants held by `ghm_db_user` are broad and include `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `TRUNCATE`, `REFERENCES`, and `TRIGGER`, all grantable;
 - safe catalog capture contains metadata only and does not capture row contents, passwords, tokens, connection strings, or secrets.
 
-The captured catalog is evidence of the **current legacy/infrastructure database state**, not yet the canonical GHM business schema.
+The captured catalog is evidence of the **legacy/infrastructure database state**, not the canonical GHM business schema.
 
 ## Connect schema authority reconciliation
 
-Direct repository inspection has now established that Zaid Connect contains a canonical migration history under `supabase/migrations/` and also contains `src/supabase/supabase_schema.sql`.
+Direct repository inspection established that Zaid Connect contains a canonical migration history under `supabase/migrations/` and also contains `src/supabase/supabase_schema.sql`.
 
 The migration history is the authoritative schema-evolution source for Connect. The consolidated `src/supabase/supabase_schema.sql` is a legacy/consolidated design artifact and must **not** be treated as the current production schema authority.
 
-This distinction is confirmed by concrete divergence:
-
-- the consolidated schema declares PostgreSQL ENUM types, while the authoritative migrations use text columns with explicit CHECK constraints;
-- the consolidated `profiles` definition requires `full_name`, while the identity migration permits it to be nullable;
-- the consolidated Business verification vocabulary and defaults differ from the migrated production contract;
-- the consolidated schema uses legacy/alternate structures such as `catalogue_items`, `conversations`, and `quotes`, while the migration history establishes `business_offerings`, support conversations, `project_quotes`, and the generalized Opportunity/Project model;
-- the migrated Business contract includes later governed fields and boundaries absent from the consolidated artifact, including active-directory visibility, registration classification, directory-review state, and protected/public column controls;
-- later migrations explicitly replace or reconcile earlier assumptions rather than leaving the consolidated file as a canonical snapshot.
-
-Therefore the GHM rule is now explicit: **read Connect migrations in timestamp order and reconcile their final state; never derive GHM schema from `src/supabase/supabase_schema.sql`.**
-
-The authoritative conceptual model independently confirms that Account/Profile, Account Role, Business ownership, and Business are distinct concepts, and that current production Business remains the canonical commercial entity. fileciteturn55file0L2-L2
-
-The foundational identity migration establishes `profiles` and `businesses`; the Business Membership migration then establishes the generalized Account-to-Business relationship through `business_memberships`, while preserving `businesses.owner_id` for compatibility. fileciteturn49file0L2-L2 fileciteturn50file0L2-L2
-
-The later production reconciliation also establishes governed Business Hours and Business Engagement Events, with backend-owned commands and explicit authorization, demonstrating that the final production model is capability/domain-oriented rather than a copy of the early consolidated schema. fileciteturn60file0L2-L2
+Therefore the GHM rule is explicit: **read Connect migrations in timestamp order and reconcile their final state; never derive GHM schema from `src/supabase/supabase_schema.sql`.**
 
 ## Important catalog interpretation
 
@@ -65,15 +50,40 @@ The current application tables are not sufficient grounds for creating canonical
 - `todos` is legacy/demo state and is not a canonical ZAID business domain;
 - existing RLS policies are legacy database authorization behavior and must not be copied blindly into the target authorization architecture;
 - disabled RLS on `profiles` and `password_reset_tokens` is a legacy finding, not a target security decision;
-- no Connect or QuoteFlow product schema exists in this GHM database, which confirms that GHM has not been populated by blindly copying Connect's Supabase schema.
+- no Connect or QuoteFlow product schema existed in the captured legacy catalog, confirming that GHM was not populated by blindly copying Connect's Supabase schema.
 
-## Effective application privilege finding
+## First-slice GHM schema reconciliation
 
-The authenticated `ghm_app_user` session currently becomes `ghm_db_user` through the configured role relationship. The effective role can create databases/schema objects and has broad grantable privileges over the existing public tables.
+The first canonical GHM Business Identity slice has now been introduced through repository-owned migrations and applied to the construction database.
 
-This is acceptable as a **construction-state finding** but does not satisfy the intended least-privilege application boundary for a production-qualified GHM runtime.
+Canonical migration authority remains:
 
-Do not remove the role relationship, revoke privileges, or delete the legacy role until the canonical migration/admin/application role model has been designed and the required migration authority has been separated safely.
+- `database/migrations/00000000000000_create_migration_ledger.sql`
+- `database/migrations/20260909150000_create_business_identity.sql`
+
+The resulting first-slice objects are:
+
+- `account_identity`;
+- `business`;
+- `business_membership`;
+- `ghm_schema_migrations`;
+- their identity sequences.
+
+These objects are owned by `ghm_schema_owner`. Runtime authority is separately qualified through `ghm_runtime`, while migration execution is separately qualified through `ghm_migrator` with explicit `SET ROLE ghm_schema_owner`.
+
+This closes the original database-discovery/design dependency for the first slice. It does **not** mean the full GHM product schema is complete or that production replacement is qualified.
+
+## Authority reconciliation status
+
+The PostgreSQL authority distinction has now been executed and qualified for the current construction slice:
+
+- dedicated schema-owner role established;
+- dedicated migrator role and migration runner qualified;
+- dedicated runtime role and first-slice least-privilege boundary qualified;
+- runtime negative authority probes passed;
+- bootstrap `ghm_db_user` memberships remain unresolved because they were granted by the independent bootstrap `postgres` authority.
+
+The remaining database work is therefore **authority cleanup, dedicated schema/default-privilege reconciliation, and qualification of the next governed resource slices**, not basic connectivity discovery or definition of the initial role distinction.
 
 ## Required catalog capture
 
@@ -95,10 +105,19 @@ The reconciliation artifact must capture, at minimum:
 - grants/privileges;
 - row counts where safe to obtain.
 
-The required catalog categories above are now materially captured. The remaining database gate is **reconciliation and privilege-boundary design**, not connectivity discovery.
+The required catalog categories are materially captured. The remaining database gate is **reconciliation of the target schema and authority boundary**, with the first canonical GHM slice already established and qualified.
 
 ## Decision rule
 
-The first canonical GHM business migration is created only after the captured catalog has been reconciled against the intended GHM architecture and any legacy runtime behavior that must be preserved.
+Every future canonical GHM schema change must be introduced through repository-owned migrations, reconciled against the governing architecture, and qualified against the live construction catalog before dependent repository SQL is introduced.
 
-The next database gate is to define and safely establish the distinction between migration/admin authority and runtime application authority. Only then should canonical business tables and explicit repositories be introduced.
+No legacy Connect consolidated schema is a substitute for migration-history reconciliation.
+
+## Remaining gate dependencies
+
+1. Resolve bootstrap `ghm_db_user` memberships through the independent provider/bootstrap authority path.
+2. Establish and reconcile a dedicated GHM application schema before setting future-object defaults.
+3. Measure and decide the final TEMP privilege for `ghm_runtime`.
+4. Complete Transaction Qualification with authentication, authorization, explicit repositories, runtime boundary, and reconciled schema.
+5. Continue product-resource schema reconciliation only as each governed capability is ready.
+6. Keep Zaid Connect and QuoteFlow on Supabase throughout construction and qualification.
