@@ -8,6 +8,7 @@
     "build": "tsc",
     "migrate": "npm run build && node dist/db/migrate.js",
     "capture:postgres-catalog": "node scripts/capture-postgres-catalog.mjs",
+    "qualify:business-identity-runtime": "npm run build && node scripts/qualify-business-identity-runtime.mjs",
     "start": "node dist/server.js",
     "test": "npm run build && node --test dist/auth/authorization.test.js dist/auth/request-context.test.js dist/resources/registry.test.js dist/db/transaction.test.js dist/resources/business-identity/service.test.js",
     "verify:runtime": "node scripts/verify-runtime-boundary.mjs"
