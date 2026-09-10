@@ -1,33 +1,18 @@
-import express, { Request, Response } from 'express';
-import cors from 'cors';
 import http from 'http';
 import { Pool } from 'pg';
 import { config } from './config';
-
-const app = express();
-const server = http.createServer(app);
+import { createApp } from './http/app';
 
 const pool = new Pool({
   connectionString: config.databaseUrl,
   ssl: config.isProduction ? { rejectUnauthorized: false } : false,
 });
 
-app.disable('x-powered-by');
-app.set('trust proxy', config.trustProxy);
-app.use(cors({ origin: config.corsOrigins }));
-app.use(express.json({ limit: '1mb' }));
-
+const app = createApp();
+const server = http.createServer(app);
 let ready = false;
 
-app.get('/', (_req: Request, res: Response) => {
-  res.json({ service: 'GHM Core Engine', version: '2.0.0', status: ready ? 'ready' : 'starting' });
-});
-
-app.get('/healthz', (_req: Request, res: Response) => {
-  res.status(200).json({ status: 'ok' });
-});
-
-app.get('/readyz', (_req: Request, res: Response) => {
+app.get('/readyz', (_req, res) => {
   res.status(ready ? 200 : 503).json({ status: ready ? 'ready' : 'not_ready' });
 });
 
