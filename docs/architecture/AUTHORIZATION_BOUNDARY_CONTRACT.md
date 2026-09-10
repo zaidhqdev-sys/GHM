@@ -1,6 +1,6 @@
 # GHM Authorization Boundary Contract
 
-Status: construction / qualification gate
+**Status: CLOSED / PASS — construction qualification for the first canonical Business Identity slice**
 
 ## Purpose
 
@@ -31,7 +31,7 @@ Authentication
 AuthContext { userId, role }
    |
    v
-Resource + operation policy
+Registered resource + operation
    |
    +---- ownership check
    |
@@ -44,10 +44,31 @@ single checked-out DB client / transaction
 explicit resource repository
 ```
 
-## Current construction primitives
+## Current construction implementation
 
-`src/auth/authorization.ts` provides typed identity, resource vocabulary, ownership enforcement, and role enforcement. It is intentionally not yet connected to product endpoints.
+`src/auth/http.ts` authenticates the request into the immutable verified `AuthContext`. `src/resources/registry.ts` defines the fixed resource/operation vocabulary. `src/auth/authorization.ts` provides ownership and role assertions. `src/db/authorized-transaction.ts` carries the same context into the single checked-out PostgreSQL client used by protected resource work. The Business Identity repository uses fixed, reconciled `ghm.*` identifiers.
 
-## Qualification gate
+The real Express application currently exposes the protected first-slice profile route at `GET /api/v1/profile`. It is guarded by authentication and registered resource access before invoking the Business Identity service.
 
-The authorization gate remains blocked until the request authentication middleware, single-client transaction context, explicit resource repositories, and automated deny-path tests are implemented and verified together.
+## Qualification result
+
+The first canonical Business Identity slice passed the construction authorization qualification on 2026-09-10.
+
+Evidence includes:
+
+- automated authentication, registry, ownership, role, transaction, and repository deny-path tests;
+- live Business Identity qualification against the canonical `ghm` schema;
+- real HTTP qualification through the Express application against the canonical PostgreSQL path;
+- missing-auth, invalid-token, invalid-role, authenticated-profile, and verified-identity-binding checks.
+
+See `AUTHORIZATION_QUALIFICATION_GATE.md` for the gate record and exact qualification output.
+
+## Scope limitation
+
+This contract does not imply that every resource in the registry has an implemented HTTP endpoint. Registry membership is a governed vocabulary; route exposure requires a concrete resource contract, authorization rule, repository boundary, and qualification evidence.
+
+The Resource API gate remains open until explicit resource routes/contracts are qualified without generic table access.
+
+## Production safety
+
+This contract is construction-only. Zaid Connect and QuoteFlow remain on their existing production backend. No production cutover, product migration, credential rotation, or provider/bootstrap mutation is implied by the authorization qualification.
