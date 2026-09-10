@@ -19,6 +19,15 @@ const roleResources: Record<GhmRole, readonly Resource[]> = {
   business: ['profile', 'business', 'project', 'quote', 'notification', 'support_request'],
 };
 
+const isGhmRole = (value: unknown): value is GhmRole =>
+  value === 'admin' || value === 'customer' || value === 'business';
+
+export const requireAuthenticatedContext = (context: AuthContext): void => {
+  if (!context || !Number.isSafeInteger(context.userId) || context.userId <= 0 || !isGhmRole(context.role)) {
+    throw new Error('Authentication required');
+  }
+};
+
 export const canAccessResource = (context: AuthContext, resource: Resource): boolean =>
   roleResources[context.role].includes(resource);
 
