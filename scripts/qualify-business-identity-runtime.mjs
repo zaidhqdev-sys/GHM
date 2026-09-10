@@ -89,7 +89,7 @@ try {
   fixture.accountIds.push(accountId);
   const context = { userId: accountId, role: 'business' };
 
-  const repository = new PostgresBusinessIdentityRepository();
+  const repository = new PostgresBusinessIdentityRepository(runtimePool);
   const service = new BusinessIdentityServiceImpl(repository);
 
   const profile = await service.getOwnProfile(context);
@@ -142,7 +142,7 @@ try {
   const rollbackContext = { userId: rollbackAccountId, role: 'business' };
 
   await assertRejected(
-    () => repository.createBusiness(rollbackContext, { name: `${fixture.marker} rollback` }, createdBusiness.slug),
+    () => repository.createBusiness(rollbackContext, { name: `${fixture.marker} rollback` }, updated.slug),
     undefined,
     'DUPLICATE SLUG ATOMIC FAILURE PASS',
   );
