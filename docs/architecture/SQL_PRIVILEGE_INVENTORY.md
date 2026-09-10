@@ -2,9 +2,9 @@
 
 ## Status
 
-Read-only construction inventory completed against the current GHM source tree and the captured live PostgreSQL catalog.
+Construction inventory reconciled against the current GHM source tree and the captured live PostgreSQL catalog.
 
-No PostgreSQL roles or privileges were changed by this inventory.
+No PostgreSQL roles or privileges were changed by this documentation reconciliation.
 
 ## Runtime SQL inventory
 
@@ -45,7 +45,7 @@ Passes the authenticated `AuthContext` through the same checked-out PostgreSQL c
 
 The profile repository is intentionally contract-only. It performs authorization checks and then throws a reconciliation-blocking error. It currently executes **no SQL**.
 
-This is deliberate: no table privilege is being invented before the canonical schema is authorized.
+This is deliberate: no table privilege is being invented before the canonical schema and repository contract are qualified.
 
 ## Migration SQL inventory
 
@@ -64,13 +64,9 @@ Its database interactions are:
 7. `COMMIT`
 8. `ROLLBACK` on failure
 
-The first repository migration contains:
+The migration runner is now qualified using `GHM_MIGRATOR_DATABASE_URL`, connecting as `ghm_migrator` and explicitly setting `ghm_schema_owner` for migration work. Identity, ledger reconciliation, repeat/no-op behavior, commit, and checksum integrity have passed for the current construction migrations.
 
-```sql
-CREATE TABLE IF NOT EXISTS ghm_schema_migrations (...)
-```
-
-Therefore migration execution requires authority to create/modify the repository-owned migration ledger and later canonical schema objects. The exact DDL grant set must be designed against the final schema ownership model rather than granted to the runtime role.
+The exact DDL authority remains with `ghm_schema_owner`; the runtime role must not inherit migration/schema-owner authority.
 
 ## Current source-to-privilege conclusion
 
@@ -97,17 +93,17 @@ At the current construction stage:
 
 ## Live privilege reconciliation
 
-The captured live database shows the current effective role `ghm_db_user` has broad database/schema/table authority, including grantable table privileges and database/schema creation authority.
+The captured live database shows the current effective legacy role `ghm_db_user` has broad database/schema/table authority, including grantable table privileges and database/schema creation authority.
 
 That authority exceeds the current runtime source requirement and the intended runtime authority model.
 
 The discrepancy is therefore confirmed as architectural over-privilege, not as a demonstrated runtime requirement.
 
-The existing role relationship remains unchanged pending a controlled reconciliation plan.
+The legacy bootstrap relationship remains unchanged pending a controlled cleanup through the independent bootstrap/provider authority. Do not attempt to revoke those memberships through the current `ghm_app_user`/`ghm_db_user` path.
 
 ## Canonical application schema boundary
 
-The current GHM database contains only legacy/infrastructure tables:
+The captured legacy database contains:
 
 - `users`
 - `profiles`
@@ -117,22 +113,24 @@ The current GHM database contains only legacy/infrastructure tables:
 
 These are not sufficient grounds for authoring product business tables.
 
-The canonical GHM application schema remains **not yet authorized**. Business tables will be introduced only from verified product capability evidence through repository-owned migrations.
+The first canonical GHM Business Identity slice has now been introduced through repository-owned migrations and applied to the construction database. Its objects are `account_identity`, `business`, `business_membership`, `ghm_schema_migrations`, and their identity sequences.
+
+This first slice is canonical for GHM construction, but it is not the complete product schema and does not authorize arbitrary additional business tables. Each subsequent capability must be reconciled from verified product evidence before its migration and repository SQL are introduced.
 
 ## Qualification implications
 
-The current runtime can be made substantially less privileged than the existing `ghm_db_user` without losing any currently implemented repository operation, because the canonical runtime currently performs only a connectivity probe and no application-table SQL.
+The current runtime source can remain substantially less privileged than the legacy `ghm_db_user` authority because no currently implemented repository operation requires broad application-table or DDL privileges.
 
-However, privilege mutation is still deferred because the migration/admin ownership model must first be established and the first real repository SQL must be known.
+The dedicated runtime and migration authorities have now been qualified for the current first slice. Remaining privilege work is controlled cleanup and extension of the authority model as additional governed repository capabilities are introduced.
 
 ## Next gate
 
-1. Complete concrete remote/backend inventory for Zaid Connect and QuoteFlow where required for GHM capability design.
-2. Define the first canonical GHM identity/domain migration from verified product evidence, not legacy-table inference.
-3. Implement repository SQL for one explicitly authorized capability.
-4. Derive the exact runtime table/sequence/function privileges from that repository SQL.
-5. Create and qualify dedicated runtime and migration authorities.
-6. Run positive and negative privilege tests against the construction database.
+1. Resolve the bootstrap `ghm_db_user` memberships through the independent provider/bootstrap authority path.
+2. Establish the dedicated GHM application schema and reconcile future-object defaults before relying on them.
+3. Measure and decide the final TEMP privilege for `ghm_runtime`.
+4. Implement and qualify repository SQL for the next explicitly authorized capability.
+5. Derive exact runtime table/sequence/function privileges from that repository SQL.
+6. Complete transaction/authentication/authorization qualification and positive/negative privilege tests.
 7. Only then remove unnecessary privileges from the legacy construction authority.
 
 ## Production safety
