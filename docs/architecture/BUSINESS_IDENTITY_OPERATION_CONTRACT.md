@@ -6,31 +6,21 @@ Construction contract. No production cutover and no production Connect changes a
 
 ## Evidence basis
 
-Direct Connect source inspection confirms the current application resolves identity by loading the canonical Profile, loading active Business memberships for the Account, and deriving the active Business context and permissions from the selected membership. A single membership is auto-selected; multiple memberships require an eligible selection; an invalid or revoked selection fails closed. The active Business selection does not change the Account Role. fileciteturn124file0L2-L2 fileciteturn125file0L2-L2
-
-Connect's Business creation UI calls the Business service with the authenticated Account ID and Business name; the service derives the slug and persists the Business through the existing backend contract. fileciteturn132file0L2-L2
-
-The production Business service exposes public-safe reads, Business creation, Business update, owner registration identity retrieval, and ownership-scoped reads. Its public Business projection deliberately excludes registration number and directory-review fields. fileciteturn137file0L2-L2
-
-The owner editor defines the currently editable Business fields and separately identifies fields that owners must never mutate directly, including verification, activation, ownership, rating, review count, profile views, jobs completed, insurance verification, and logo binding. fileciteturn129file0L2-L2
-
-The approved Connect data architecture keeps Account identity, Profile, Account Role, Business ownership, and Business identity distinct. fileciteturn93file0L2-L2
+Direct Connect source inspection establishes the current identity, Business membership, Business creation, Business read, and Business update boundaries. GHM preserves those capability distinctions without copying Connect's Supabase/RLS/RPC implementation.
 
 ## Operation matrix
 
-| Operation | Product evidence | GHM boundary | Authorization | Transaction | Notes |
-|---|---|---|---|---|---|
-| Resolve account identity | `resolveApplicationIdentity` | `identity.resolve` | authenticated principal | read-only; independent reads acceptable | Profile is canonical for persisted role |
-| Read own profile | `profileService.getProfile` | `profile.readSelf` | principal owns account identity | read-only | Never expose arbitrary-account profile lookup |
-| Update own profile | `profileService.updateProfile` | `profile.updateSelf` | principal owns account identity | single transaction | Initial whitelist: `full_name`, `phone`, `avatar_url`; do not accept arbitrary columns |
-| List active Business memberships | `businessMembershipService.getForAccount` | `businessContext.listMemberships` | authenticated principal; account_id must equal principal | read-only | Only active memberships participate in context selection |
-| Resolve active Business context | identity selection logic | `businessContext.resolve` | membership must be active and belong to principal | read-only | Selection is application context, not persisted mutation |
-| Read Business public-safe | `businessService.getById/getBySlug/list` | `business.readPublic` | public eligibility rules | read-only | Projection must remain explicit; no `SELECT *` contract |
-| Read Business for authorized operator | `businessService.getForOwnerEditor` | `business.readManaged` | `business.read` / `business.manage` according to operation | read-only | Private registration identity is a separate sub-capability |
-| Create Business | `businessService.create` | `business.create` | authenticated business-operator context; no existing active membership for creation flow | required atomic write | Creation establishes owner participation atomically |
-| Update managed Business profile | `businessService.update` + owner editor payload | `business.updateProfile` | active membership with `business.manage` | single transaction | Explicit editable-field whitelist; protected state cannot be caller-written |
-| Read registration identity | `businessService.getRegistrationIdentity` | `business.readRegistrationIdentity` | owner/authorized managed operator | read-only | Private field set is separate from public Business projection |
-| Read Business memberships for managed Business | membership service | `businessContext.listBusinessMemberships` | owner/administrator according to final GHM policy | read-only | Membership administration is not part of first mutation scope |
+| Operation | GHM boundary | Authorization | Transaction | First-slice status |
+|---|---|---|---|---|
+| Resolve account identity | `identity.resolve` | authenticated principal | read-only; independent reads acceptable | contract defined |
+| Read own profile | `profile.readSelf` | principal owns account identity | read-only | contract defined |
+| Update own profile | `profile.updateSelf` | principal owns account identity | single transaction | contract defined; SQL pending |
+| List active Business memberships | `businessContext.listMemberships` | authenticated principal; account_id equals principal | read-only | contract defined |
+| Resolve active Business context | `businessContext.resolve` | active membership belongs to principal | read-only | contract defined |
+| Read Business public-safe | `business.readPublic` | public eligibility rules | read-only | first-slice SQL pending |
+| Create Business | `business.create` | authenticated business-operator context | required atomic write | first-slice SQL pending |
+| Update managed Business identity | `business.updateProfile` | active membership with `business.manage` | single transaction | first-slice SQL pending |
+| Read Business memberships for managed Business | `businessContext.listBusinessMemberships` | owner/administrator according to final policy | read-only | later qualification |
 
 ## Identity resolution contract
 
@@ -56,7 +46,22 @@ ApplicationIdentity
 - identityStatus
 ```
 
-The selected Business is valid only when the principal has an active membership for that Business. Multiple memberships with no valid selection produce `business-selection-required`. A stale selection must never grant Business context. fileciteturn102file0L2-L2
+A selected Business is valid only when the principal has an active membership for that Business. Multiple active memberships with no valid selection produce `business-selection-required`. A stale, inactive, or revoked selection must fail closed.
+
+## Profile contract
+
+The first GHM schema provides these account profile fields:
+
+```text
+full_name
+phone
+avatar_ref
+role
+```
+
+The repository contract must expose an explicit whitelist. It must not accept arbitrary column names or `SELECT *` as a public API contract.
+
+The first migration does not contain an `avatar_url` column; the GHM representation is `avatar_ref`. Any provider-specific URL/storage semantics remain outside this schema slice.
 
 ## Business creation contract
 
@@ -67,18 +72,17 @@ CreateBusinessInput
 - name: string
 ```
 
-The client currently validates that the trimmed name is present, at least two characters, and produces a non-empty slug. GHM must repeat the invariant server-side rather than trusting client validation. fileciteturn132file0L2-L2
+The server must validate the trimmed name, derive a deterministic slug, enforce uniqueness, and establish the owner membership atomically.
 
 ### Server behavior
 
 1. Authenticate principal.
 2. Verify business-operator context.
-3. Verify the principal is not already represented by an active Business membership for the creation flow.
-4. Normalize/derive a deterministic slug.
-5. Enforce Business-name and slug invariants.
-6. Create Business.
-7. Create the active owner membership in the same transaction.
-8. Return the newly created Business identity/context.
+3. Verify the creation-flow membership invariant.
+4. Normalize/derive deterministic slug.
+5. Insert the first-slice Business identity.
+6. Insert the active owner membership in the same transaction.
+7. Return the newly created Business identity/context.
 
 ### Failure behavior
 
@@ -86,91 +90,43 @@ If Business creation succeeds but owner membership creation fails, the transacti
 
 ## Business update contract
 
-The current owner editor exposes these editable fields:
-
-```text
-name
-slug
-description
-category
-province
-city
-physical_address
-latitude
-longitude
-phone
-whatsapp
-email
-website
-avatar_letter
-avatar_color
-years_in_business
-registration_status
-registration_number
-legal_name
-```
-
-However, GHM should not implement these as one unrestricted generic update object. Registration identity is a protected sub-capability and must be separated from ordinary public/profile fields. The current Connect editor itself distinguishes protected fields from owner-editable fields. fileciteturn129file0L2-L2
-
-### Ordinary managed Business profile update
-
-Candidate first-slice fields:
-
-```text
-name
-slug
-description
-category
-province
-city
-physical_address
-latitude
-longitude
-phone
-whatsapp
-email
-website
-avatar_letter
-avatar_color
-years_in_business
-```
-
-### Protected registration identity
-
-```text
-registration_status
-registration_number
-legal_name
-```
-
-This requires a dedicated operation because the production contract treats registration number as private and uses a separate registration-identity RPC for owner retrieval. fileciteturn137file0L2-L2
-
-### Never caller-writable through ordinary Business update
+The **first-slice GHM `business` table contains only**:
 
 ```text
 id
-owner_id
+name
+slug
 verification_status
-is_verified
 is_active
-directory_review_submitted_at
-directory_review_last_reason
-directory_review_last_event_type
-tier
-is_featured
-rating
-review_count
-profile_views
-jobs_completed
-insurance_verified
-logo_url
+created_at
+updated_at
 ```
 
-These are governed state, derived state, ownership, or separate capability state and must not be accepted through the ordinary Business profile update contract. fileciteturn129file0L2-L2
+Accordingly, the first repository implementation is limited to the fields actually present in the canonical schema. No nonexistent Connect profile fields may be accepted or granted merely because they exist in Connect.
+
+For the first slice:
+
+```text
+Allowed managed identity update:
+- name
+- slug
+```
+
+The service must still enforce the business-management authorization boundary and must reject attempts to mutate:
+
+```text
+id
+verification_status
+is_active
+created_at
+updated_at
+```
+
+Later fields such as description, category, location, contact information, registration identity, ratings, counters, logo binding, directory-review state, and commercial state require separately reconciled migrations and operation contracts.
 
 ## Membership contract
 
-The current Connect membership model is:
+The first-slice membership model is:
 
 ```text
 membership_role:
@@ -180,13 +136,13 @@ membership_status:
   active | inactive | revoked
 ```
 
-It enforces one active owner per Business and uniqueness of `(business_id, account_id)`. fileciteturn105file0L2-L2
+It enforces one active owner per Business and uniqueness of `(business_id, account_id)`.
 
-GHM should preserve these domain invariants while deciding its own physical representation. The first GHM migration must not blindly reproduce Connect's owner compatibility column and trigger merely because they exist in the current implementation.
+GHM preserves these domain invariants while using its own physical representation. Connect's compatibility `owner_id` column, RLS policies, and RPC names are not required to be reproduced.
 
 ## Permission contract
 
-Current Connect permission vocabulary observed in the identity layer:
+The application authorization vocabulary remains conceptually:
 
 ```text
 business.read
@@ -195,21 +151,11 @@ analytics.read
 trust.read
 ```
 
-Current role-to-permission derivation is:
+For the first Business Identity slice, `business.read` and `business.manage` are the relevant authorization capabilities. Role-to-permission derivation remains an application concern and must not be encoded as PostgreSQL administrative privilege.
 
-```text
-owner         → all four
-administrator → all four
-member        → business.read
-```
+## First canonical schema
 
-This is an application authorization contract, not a requirement to create PostgreSQL functions with the same names. fileciteturn124file0L2-L2
-
-GHM must keep authorization separate from PostgreSQL administrative privilege.
-
-## First-slice schema candidate
-
-The evidence now supports a deliberately small candidate schema for the first GHM business migration:
+The schema has now been authored and applied through repository migration `20260909150000_create_business_identity.sql`.
 
 ```text
 account_identity
@@ -218,7 +164,6 @@ account_identity
   phone
   avatar_ref
   role
-  referral_code (only if an actual first-slice operation requires it)
   created_at
   updated_at
 
@@ -242,9 +187,7 @@ business_membership
   updated_at
 ```
 
-This is a **candidate**, not an authorized migration schema. `verification_status` and `is_active` remain in the candidate because public Business resolution depends on governed visibility state, while directory-specific metadata remains outside the first slice.
-
-The existing Connect public Business projection contains many additional fields, but those fields belong to later directory/profile capabilities and should not be pulled into the first GHM migration unless a measured first-slice operation requires them. fileciteturn137file0L2-L2
+This is the canonical first-slice schema for construction. It is not the complete Zaid Connect schema and does not authorize later product domains.
 
 ## Qualification tests required
 
@@ -260,7 +203,7 @@ The existing Connect public Business projection contains many additional fields,
 - principal can read eligible Business identity;
 - authorized business operator can create a Business;
 - creation atomically creates owner participation;
-- authorized operator can update permitted Business profile fields.
+- authorized operator can update `name` and `slug` only.
 
 ### Negative
 
@@ -271,13 +214,13 @@ The existing Connect public Business projection contains many additional fields,
 - revoked/inactive membership cannot establish context;
 - Business creation cannot create an orphan Business;
 - member cannot perform `business.manage` operations;
-- ordinary Business update cannot change owner, verification, activation, rating, counters, or other governed fields;
+- ordinary Business update cannot change owner/participation, verification, activation, identifiers, or timestamps;
 - runtime cannot create/alter/drop schema objects;
 - runtime cannot create databases or roles;
 - runtime cannot use migration authority.
 
 ## Gate result
 
-**Operation contract reconciled. Candidate schema identified. Migration still not authorized.**
+**Contract reconciled to the applied first-slice schema. Application repository/transaction/authorization qualification remains open.**
 
-The next gate is to turn this contract into explicit GHM service/repository interfaces and SQL statements, then derive exact PostgreSQL privileges from those statements. Only after that should the first business migration be created.
+Next implementation work is explicit service/repository SQL for these operations, followed by measured runtime privileges and positive/negative transaction and authorization qualification.
