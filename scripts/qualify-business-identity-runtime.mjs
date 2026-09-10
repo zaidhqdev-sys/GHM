@@ -13,8 +13,9 @@ process.env.CORS_ORIGINS ??= 'http://localhost';
 const { BusinessIdentityServiceImpl } = await import('../dist/resources/business-identity/service.js');
 const { PostgresBusinessIdentityRepository } = await import('../dist/resources/business-identity/repository.js');
 
-const runtimePool = new Pool({ connectionString: runtimeUrl, ssl: false });
-const cleanupPool = new Pool({ connectionString: migratorUrl, ssl: false });
+const ssl = { rejectUnauthorized: false };
+const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
+const cleanupPool = new Pool({ connectionString: migratorUrl, ssl });
 
 const runtimeIdentity = async () => {
   const { rows } = await runtimePool.query(`
