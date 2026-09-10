@@ -2,7 +2,7 @@
 
 ## Status
 
-Construction contract reconciled to the applied first-slice schema and current repository implementation. Application repository/transaction/authorization qualification remains open. No production cutover and no production Connect changes are authorized by this document.
+Construction contract reconciled to the applied first-slice schema and current repository implementation. Live Resource API qualification remains open until the corrected multi-business qualification passes. No production cutover and no production Connect changes are authorized by this document.
 
 ## Evidence basis
 
@@ -12,14 +12,14 @@ Direct Connect source inspection establishes the current identity, Business memb
 
 | Operation | GHM boundary | Authorization | Transaction | First-slice status |
 |---|---|---|---|---|
-| Resolve account identity | `identity.resolve` | authenticated principal | read-only; independent reads acceptable | implementation present; qualification open |
-| Read own profile | `profile.readSelf` | principal owns account identity | read-only | implementation present; qualification open |
-| Update own profile | `profile.updateSelf` | principal owns account identity | single transaction | implementation present; qualification open |
-| List active Business memberships | `businessContext.listMemberships` | authenticated principal; account_id equals principal | read-only | implementation present; qualification open |
-| Resolve active Business context | `businessContext.resolve` | active membership belongs to principal | read-only | implementation present; qualification open |
-| Read Business public-safe | `business.readPublic` | public eligibility rules | read-only | implementation present; qualification open |
-| Create Business | `business.create` | authenticated business-operator context | required atomic write; account row locked before membership-invariant check | implementation present; qualification open |
-| Update managed Business identity | `business.updateProfile` | active membership with `business.manage` | single transaction | implementation present; qualification open |
+| Resolve account identity | `identity.resolve` | authenticated principal | read-only; independent reads acceptable | implementation present; qualified in prior construction evidence |
+| Read own profile | `profile.readSelf` | principal owns account identity | read-only | implementation present; qualified in prior construction evidence |
+| Update own profile | `profile.updateSelf` | principal owns account identity | single transaction | implementation present; qualified in prior construction evidence |
+| List active Business memberships | `businessContext.listMemberships` | authenticated principal; account_id equals principal | read-only | implementation present; qualified in prior construction evidence |
+| Resolve active Business context | `businessContext.resolve` | active membership belongs to principal | read-only | implementation present; multi-membership behavior implemented; qualification evidence remains part of Resource API closure |
+| Read Business public-safe | `business.readPublic` | public eligibility rules | read-only | implementation present; qualified in Resource API construction evidence except overall gate closure |
+| Create Business | `business.create` | authenticated business-operator context | required atomic write; account row locked before creation | implementation present; multi-business semantics reconciled; Resource API qualification open |
+| Update managed Business identity | `business.updateProfile` | active membership with `business.manage` | single transaction | implementation present; qualified in Resource API construction evidence except overall gate closure |
 | Read Business memberships for managed Business | `businessContext.listBusinessMemberships` | owner/administrator according to final policy | read-only | later qualification |
 
 ## Identity resolution contract
@@ -74,18 +74,24 @@ CreateBusinessInput
 
 The server must validate the trimmed name, derive a deterministic slug, enforce uniqueness, and establish the owner membership atomically.
 
+### Reconciled ownership rule
+
+A Business-operator account **may create more than one Business**. Existing active Business memberships do not block creation of another Business. This is required by the Connect source-of-truth model: Business ownership is Business-scoped through membership, and an account may participate in multiple Businesses. The account's active membership in one Business does not make it administrator of another Business, and creating a Business does not grant platform-wide administration.
+
+The newly created Business receives exactly one active owner membership for the creating account. Existing memberships remain unchanged. Multiple active memberships are resolved through explicit Business selection rather than by imposing one-account/one-Business semantics.
+
 ### Server behavior
 
 1. Authenticate principal.
 2. Verify business-operator context.
 3. Within the creation transaction, lock the authenticated `account_identity` row with `FOR UPDATE`.
-4. Verify the creation-flow membership invariant while that account-row lock is held.
+4. Do **not** reject the account merely because it already has an active Business membership.
 5. Normalize/derive deterministic slug.
-6. Insert the first-slice Business identity.
-7. Insert the active owner membership in the same transaction.
+6. Insert the new first-slice Business identity.
+7. Insert the active owner membership for the creating account in the same transaction.
 8. Return the newly created Business identity/context.
 
-The account-row lock serializes concurrent Business-creation attempts for the same authenticated account without requiring a new schema object.
+The account-row lock remains valuable for serializing concurrent Business-creation attempts for the same authenticated account, but it is not a one-Business invariant.
 
 ### Failure behavior
 
@@ -156,6 +162,8 @@ trust.read
 
 For the first Business Identity slice, `business.read` and `business.manage` are the relevant authorization capabilities. Role-to-permission derivation remains an application concern and must not be encoded as PostgreSQL administrative privilege.
 
+Business-management authorization is **Business-scoped**: an owner/administrator membership grants management for that Business only. It does not make the account a platform administrator and does not confer management of other Businesses.
+
 ## First canonical schema
 
 The schema has now been authored and applied through repository migration `20260909150000_create_business_identity.sql`.
@@ -204,8 +212,11 @@ This is the canonical first-slice schema for construction. It is not the complet
 - multiple active memberships require explicit valid selection;
 - invalid/revoked membership selection fails closed;
 - principal can read eligible Business identity;
-- authorized business operator can create a Business;
-- concurrent Business creation for one account cannot produce two active owner memberships;
+- authorized business operator can create a Business with no prior membership;
+- authorized business operator with an existing active Business membership can create an additional Business;
+- additional Business creation preserves existing memberships;
+- each created Business gets an active owner membership for its creating account;
+- concurrent Business creation for one account cannot create orphan Businesses or duplicate ownership within a single Business;
 - creation atomically creates owner participation;
 - authorized operator can update `name` and `slug` only.
 
@@ -225,6 +236,6 @@ This is the canonical first-slice schema for construction. It is not the complet
 
 ## Gate result
 
-**Contract reconciled to the applied first-slice schema and current repository implementation. Application repository/transaction/authorization qualification remains open.**
+**Business creation semantics are reconciled to Connect's multi-business ownership model. Resource API qualification remains open until the corrected live HTTP qualification demonstrates creation of an additional Business while preserving the existing Business membership and all authorization boundaries.**
 
-Next implementation work is live construction qualification of the repository/service SQL, transaction binding, authorization behavior, and exact runtime privilege use, followed by evidence reconciliation.
+No production Zaid Connect changes, production database cutover, provider/bootstrap mutations, or later product adapters are authorized by this reconciliation.
