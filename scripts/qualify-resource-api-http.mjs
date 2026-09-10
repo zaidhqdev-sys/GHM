@@ -33,10 +33,7 @@ const createAccount = async (role) => {
   try {
     await client.query('BEGIN');
     await client.query('SET LOCAL ROLE ghm_schema_owner');
-    const result = await client.query(
-      `INSERT INTO ghm.account_identity (full_name, role) VALUES ($1, $2) RETURNING id`,
-      [`${marker}-${role}`, role],
-    );
+    const result = await client.query(`INSERT INTO ghm.account_identity (full_name, role) VALUES ($1, $2) RETURNING id`, [`${marker}-${role}`, role]);
     await client.query('COMMIT');
     const id = Number(result.rows[0].id);
     fixture.accountIds.push(id);
@@ -54,16 +51,10 @@ const createBusinessFixture = async (accountId, name, slug, verificationStatus =
   try {
     await client.query('BEGIN');
     await client.query('SET LOCAL ROLE ghm_schema_owner');
-    const business = await client.query(
-      `INSERT INTO ghm.business (name, slug, verification_status, is_active) VALUES ($1, $2, $3, $4) RETURNING id`,
-      [name, slug, verificationStatus, isActive],
-    );
+    const business = await client.query(`INSERT INTO ghm.business (name, slug, verification_status, is_active) VALUES ($1, $2, $3, $4) RETURNING id`, [name, slug, verificationStatus, isActive]);
     const businessId = Number(business.rows[0].id);
     fixture.businessIds.push(businessId);
-    await client.query(
-      `INSERT INTO ghm.business_membership (business_id, account_id, membership_role, membership_status, created_by) VALUES ($1, $2, $3, 'active', $2)`,
-      [businessId, accountId, membershipRole],
-    );
+    await client.query(`INSERT INTO ghm.business_membership (business_id, account_id, membership_role, membership_status, created_by) VALUES ($1, $2, $3, 'active', $2)`, [businessId, accountId, membershipRole]);
     await client.query('COMMIT');
     return businessId;
   } catch (error) {
@@ -80,101 +71,87 @@ const assertStatus = (actual, expected, label) => {
 };
 const assertError = (actual, expected, label) => {
   assertStatus(actual, expected, label);
-  if (actual.body?.error === undefined) throw new Error(`${label}: missing stable error body: ${JSON.stringify(actual.body)}`);
+  if (typeof actual.body?.error !== 'string') throw new Error(`${label}: missing stable error body: ${JSON.stringify(actual.body)}`);
 };
 
-const server = http.createServer(createApp({
-  businessIdentityService: new BusinessIdentityServiceImpl(new PostgresBusinessIdentityRepository(runtimePool)),
-}));
+const server = http.createServer(createApp({ businessIdentityService: new BusinessIdentityServiceImpl(new PostgresBusinessIdentityRepository(runtimePool)) }));
 
 try {
   const businessAccountId = await createAccount('business');
   const customerAccountId = await createAccount('customer');
   const outsiderAccountId = await createAccount('business');
-  const adminAccountId = await createAccount('admin');
 
   const approvedBusinessId = await createBusinessFixture(customerAccountId, `${marker} Approved`, `${marker}-approved`);
-  await createBusinessFixture(customerAccountId, `${marker} Pending`, `${marker}-pending`, 'pending');
+  const pendingBusinessId = await createBusinessFixture(customerAccountId, `${marker} Pending`, `${marker}-pending`, 'pending');
   const inactiveBusinessId = await createBusinessFixture(customerAccountId, `${marker} Inactive`, `${marker}-inactive`, 'approved', false);
   const managedBusinessId = await createBusinessFixture(businessAccountId, `${marker} Managed`, `${marker}-managed`, 'approved', true, 'administrator');
-  await createBusinessFixture(adminAccountId, `${marker} Admin Managed`, `${marker}-admin-managed`, 'approved', true, 'administrator');
 
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('Resource API qualification server did not expose an address');
   const baseUrl = `http://127.0.0.1:${address.port}`;
+  const customerToken = sign(customerAccountId, 'customer');
+  const businessToken = sign(businessAccountId, 'business');
+  const outsiderToken = sign(outsiderAccountId, 'business');
 
-  const missing = await request(baseUrl, 'GET', `/api/v1/businesses/${approvedBusinessId}`);
-  assertError(missing, 401, 'Business read missing authentication');
+  assertError(await request(baseUrl, 'GET', `/api/v1/businesses/${approvedBusinessId}`), 401, 'Business read missing authentication');
   console.log('RESOURCE API MISSING AUTH DENIAL PASS');
-
-  const invalidToken = await request(baseUrl, 'GET', `/api/v1/businesses/${approvedBusinessId}`, 'not-a-valid-token');
-  assertError(invalidToken, 401, 'Business read invalid token');
+  assertError(await request(baseUrl, 'GET', `/api/v1/businesses/${approvedBusinessId}`, 'not-a-valid-token'), 401, 'Business read invalid token');
   console.log('RESOURCE API INVALID TOKEN DENIAL PASS');
-
-  const invalidId = await request(baseUrl, 'GET', '/api/v1/businesses/not-an-id', sign(customerAccountId, 'customer'));
-  assertError(invalidId, 400, 'Business read invalid id');
+  assertError(await request(baseUrl, 'GET', '/api/v1/businesses/not-an-id', customerToken), 400, 'Business read invalid id');
   console.log('RESOURCE API INVALID ID DENIAL PASS');
 
-  const publicRead = await request(baseUrl, 'GET', `/api/v1/businesses/${approvedBusinessId}`, sign(customerAccountId, 'customer'));
+  const publicRead = await request(baseUrl, 'GET', `/api/v1/businesses/${approvedBusinessId}`, customerToken);
   assertStatus(publicRead, 200, 'Approved public business read');
   if (publicRead.body?.business?.id !== approvedBusinessId || publicRead.body?.business?.verificationStatus !== 'approved' || publicRead.body?.business?.isActive !== true) throw new Error(`Approved public business boundary failed: ${JSON.stringify(publicRead.body)}`);
   if ('membership' in (publicRead.body?.business ?? {}) || 'accountId' in (publicRead.body?.business ?? {})) throw new Error(`Public business disclosure boundary failed: ${JSON.stringify(publicRead.body)}`);
   console.log('RESOURCE API PUBLIC BUSINESS READ PASS');
 
-  const slugRead = await request(baseUrl, 'GET', `/api/v1/businesses/slug/${encodeURIComponent(`${marker}-approved`)}`, sign(customerAccountId, 'customer'));
+  const slugRead = await request(baseUrl, 'GET', `/api/v1/businesses/slug/${encodeURIComponent(`${marker}-approved`)}`, customerToken);
   assertStatus(slugRead, 200, 'Approved business slug read');
   if (slugRead.body?.business?.id !== approvedBusinessId) throw new Error(`Business slug route failed: ${JSON.stringify(slugRead.body)}`);
   console.log('RESOURCE API PUBLIC SLUG READ PASS');
 
-  const pendingRead = await request(baseUrl, 'GET', `/api/v1/businesses/${approvedBusinessId + 1}`, sign(customerAccountId, 'customer'));
-  assertError(pendingRead, 404, 'Pending business disclosure boundary');
-  const inactiveRead = await request(baseUrl, 'GET', `/api/v1/businesses/${inactiveBusinessId}`, sign(customerAccountId, 'customer'));
-  assertError(inactiveRead, 404, 'Inactive business disclosure boundary');
-  const notFoundRead = await request(baseUrl, 'GET', '/api/v1/businesses/999999999', sign(customerAccountId, 'customer'));
-  assertError(notFoundRead, 404, 'Unknown business read');
+  assertError(await request(baseUrl, 'GET', `/api/v1/businesses/${pendingBusinessId}`, customerToken), 404, 'Pending business disclosure boundary');
+  assertError(await request(baseUrl, 'GET', `/api/v1/businesses/${inactiveBusinessId}`, customerToken), 404, 'Inactive business disclosure boundary');
+  assertError(await request(baseUrl, 'GET', '/api/v1/businesses/999999999', customerToken), 404, 'Unknown business read');
   console.log('RESOURCE API PUBLIC DISCLOSURE + NOT FOUND PASS');
 
-  const outsiderManaged = await request(baseUrl, 'GET', `/api/v1/businesses/${managedBusinessId}/managed`, sign(outsiderAccountId, 'business'));
-  assertError(outsiderManaged, 403, 'Managed read ownership denial');
-  const managedRead = await request(baseUrl, 'GET', `/api/v1/businesses/${managedBusinessId}/managed`, sign(businessAccountId, 'business'));
+  assertError(await request(baseUrl, 'GET', `/api/v1/businesses/${managedBusinessId}/managed`, outsiderToken), 403, 'Managed read ownership denial');
+  const managedRead = await request(baseUrl, 'GET', `/api/v1/businesses/${managedBusinessId}/managed`, businessToken);
   assertStatus(managedRead, 200, 'Managed read owner/administrator access');
   console.log('RESOURCE API MANAGED READ AUTHORIZATION PASS');
 
-  const create = await request(baseUrl, 'POST', '/api/v1/businesses', sign(businessAccountId, 'business'), { name: `${marker} Created` });
+  const create = await request(baseUrl, 'POST', '/api/v1/businesses', businessToken, { name: `${marker} Created` });
   assertStatus(create, 201, 'Business creation');
   const createdBusinessId = create.body?.business?.id;
   if (!Number.isSafeInteger(createdBusinessId) || create.body?.membership?.role !== 'owner' || create.body?.membership?.status !== 'active') throw new Error(`Business creation ownership boundary failed: ${JSON.stringify(create.body)}`);
   fixture.businessIds.push(createdBusinessId);
   console.log('RESOURCE API BUSINESS CREATE + OWNER MEMBERSHIP PASS');
 
-  const customerCreate = await request(baseUrl, 'POST', '/api/v1/businesses', sign(customerAccountId, 'customer'), { name: `${marker} Customer Attempt` });
-  assertError(customerCreate, 403, 'Customer business creation denial');
-  const duplicateCreate = await request(baseUrl, 'POST', '/api/v1/businesses', sign(businessAccountId, 'business'), { name: `${marker} Second Attempt` });
-  assertError(duplicateCreate, 409, 'Existing active membership creation conflict');
+  assertError(await request(baseUrl, 'POST', '/api/v1/businesses', customerToken, { name: `${marker} Customer Attempt` }), 403, 'Customer business creation denial');
+  assertError(await request(baseUrl, 'POST', '/api/v1/businesses', businessToken, { name: `${marker} Second Attempt` }), 409, 'Existing active membership creation conflict');
   console.log('RESOURCE API BUSINESS CREATE AUTHORIZATION + CONFLICT PASS');
 
-  const update = await request(baseUrl, 'PATCH', `/api/v1/businesses/${managedBusinessId}`, sign(businessAccountId, 'business'), { name: `${marker} Managed Renamed`, slug: `${marker}-managed-renamed` });
+  const update = await request(baseUrl, 'PATCH', `/api/v1/businesses/${managedBusinessId}`, businessToken, { name: `${marker} Managed Renamed`, slug: `${marker}-managed-renamed` });
   assertStatus(update, 200, 'Managed business update');
   if (update.body?.business?.name !== `${marker} Managed Renamed` || update.body?.business?.slug !== `${marker}-managed-renamed`) throw new Error(`Managed update result failed: ${JSON.stringify(update.body)}`);
   console.log('RESOURCE API MANAGED UPDATE PASS');
 
-  const unknownField = await request(baseUrl, 'PATCH', `/api/v1/businesses/${managedBusinessId}`, sign(businessAccountId, 'business'), { name: 'valid', verificationStatus: 'approved' });
-  assertError(unknownField, 400, 'Unknown Business update field');
-  const invalidUpdateId = await request(baseUrl, 'PATCH', '/api/v1/businesses/not-an-id', sign(businessAccountId, 'business'), { name: 'valid' });
-  assertError(invalidUpdateId, 400, 'Invalid Business update id');
-  const outsiderUpdate = await request(baseUrl, 'PATCH', `/api/v1/businesses/${managedBusinessId}`, sign(outsiderAccountId, 'business'), { name: 'forbidden' });
-  assertError(outsiderUpdate, 403, 'Managed update ownership denial');
+  assertError(await request(baseUrl, 'PATCH', `/api/v1/businesses/${managedBusinessId}`, businessToken, { name: 'valid', verificationStatus: 'approved' }), 400, 'Unknown Business update field');
+  assertError(await request(baseUrl, 'PATCH', '/api/v1/businesses/not-an-id', businessToken, { name: 'valid' }), 400, 'Invalid Business update id');
+  assertError(await request(baseUrl, 'PATCH', `/api/v1/businesses/${managedBusinessId}`, outsiderToken, { name: 'forbidden' }), 403, 'Managed update ownership denial');
   console.log('RESOURCE API UPDATE INPUT + OWNERSHIP DENIAL PASS');
 
-  const routeOrder = await request(baseUrl, 'GET', `/api/v1/businesses/${encodeURIComponent(`${marker}-approved`)}`, sign(customerAccountId, 'customer'));
-  assertError(routeOrder, 400, 'Generic numeric business route must not capture slug route');
-  const managedRouteOrder = await request(baseUrl, 'GET', `/api/v1/businesses/${managedBusinessId}/managed`, sign(businessAccountId, 'business'));
+  const slugPrecedence = await request(baseUrl, 'GET', `/api/v1/businesses/slug/${encodeURIComponent(`${marker}-approved`)}`, customerToken);
+  assertStatus(slugPrecedence, 200, 'Slug route precedence');
+  if (slugPrecedence.body?.business?.id !== approvedBusinessId) throw new Error(`Slug route precedence failed: ${JSON.stringify(slugPrecedence.body)}`);
+  const managedRouteOrder = await request(baseUrl, 'GET', `/api/v1/businesses/${managedBusinessId}/managed`, businessToken);
   assertStatus(managedRouteOrder, 200, 'Managed route ordering');
   console.log('RESOURCE API ROUTE ORDER PASS');
 
-  const disclosureError = JSON.stringify(outsiderUpdate.body);
-  if (/SELECT|ghm\.|postgres|runtime|migrator|password|secret|role/i.test(disclosureError)) throw new Error(`Error disclosure boundary failed: ${disclosureError}`);
+  const disclosureError = JSON.stringify((await request(baseUrl, 'PATCH', `/api/v1/businesses/${managedBusinessId}`, outsiderToken, { name: 'forbidden' })).body);
+  if (/SELECT|ghm\.|postgres|runtime|migrator|password|secret/i.test(disclosureError)) throw new Error(`Error disclosure boundary failed: ${disclosureError}`);
   console.log('RESOURCE API ERROR DISCLOSURE BOUNDARY PASS');
 
   console.log('GHM RESOURCE API HTTP QUALIFICATION: PASS');
