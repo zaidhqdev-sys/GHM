@@ -125,15 +125,23 @@ try {
   console.log('RESOURCE API MANAGED READ AUTHORIZATION PASS');
 
   const create = await request(baseUrl, 'POST', '/api/v1/businesses', createToken, { name: `${marker} Created` });
-  assertStatus(create, 201, 'Business creation');
+  assertStatus(create, 201, 'Business creation without prior membership');
   const createdBusinessId = create.body?.business?.id;
   if (!Number.isSafeInteger(createdBusinessId) || create.body?.membership?.role !== 'owner' || create.body?.membership?.status !== 'active') throw new Error(`Business creation ownership boundary failed: ${JSON.stringify(create.body)}`);
   fixture.businessIds.push(createdBusinessId);
   console.log('RESOURCE API BUSINESS CREATE + OWNER MEMBERSHIP PASS');
 
   assertError(await request(baseUrl, 'POST', '/api/v1/businesses', customerToken, { name: `${marker} Customer Attempt` }), 403, 'Customer business creation denial');
-  assertError(await request(baseUrl, 'POST', '/api/v1/businesses', createToken, { name: `${marker} Second Attempt` }), 409, 'Existing active membership creation conflict');
-  console.log('RESOURCE API BUSINESS CREATE AUTHORIZATION + CONFLICT PASS');
+  console.log('RESOURCE API BUSINESS CREATE AUTHORIZATION PASS');
+
+  const secondCreate = await request(baseUrl, 'POST', '/api/v1/businesses', createToken, { name: `${marker} Second` });
+  assertStatus(secondCreate, 201, 'Business creation with existing active membership');
+  const secondBusinessId = secondCreate.body?.business?.id;
+  if (!Number.isSafeInteger(secondBusinessId) || secondBusinessId === createdBusinessId || secondCreate.body?.membership?.role !== 'owner' || secondCreate.body?.membership?.status !== 'active') throw new Error(`Additional Business ownership boundary failed: ${JSON.stringify(secondCreate.body)}`);
+  fixture.businessIds.push(secondBusinessId);
+  const membershipsAfterSecondCreate = await request(baseUrl, 'GET', '/api/v1/profile', createToken);
+  assertStatus(membershipsAfterSecondCreate, 200, 'Identity after additional Business creation');
+  console.log('RESOURCE API MULTI-BUSINESS CREATION + MEMBERSHIP PRESERVATION PASS');
 
   const update = await request(baseUrl, 'PATCH', `/api/v1/businesses/${managedBusinessId}`, businessToken, { name: `${marker} Managed Renamed`, slug: `${marker}-managed-renamed` });
   assertStatus(update, 200, 'Managed business update');
