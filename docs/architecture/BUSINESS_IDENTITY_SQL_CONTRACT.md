@@ -79,19 +79,7 @@ WHERE id = $account_id
 FOR UPDATE;
 ```
 
-The account row lock is acquired before checking for an existing active Business membership. This prevents two concurrent Business-creation transactions for the same account from both passing the membership-invariant check. The account row is already required by the canonical first-slice schema, so no additional schema object is required.
-
-Then:
-
-```sql
-SELECT 1
-FROM business_membership
-WHERE account_id = $account_id
-  AND membership_status = 'active'
-LIMIT 1;
-```
-
-If an active membership exists, creation is rejected.
+The account row lock provides a stable per-account transaction boundary for concurrent Business creation. It does not impose a one-Business-per-account invariant. An account may own multiple Businesses, and an existing active Business membership does not block creation of another Business. The account row is already required by the canonical first-slice schema, so no additional schema object is required.
 
 The Business and owner membership are then written in the same transaction:
 

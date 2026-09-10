@@ -56,9 +56,27 @@ test('managed Business read requires active owner or administrator membership', 
   repository.memberships = [membership(1, 1, 'administrator')]; assert.deepEqual(await service.getManagedBusiness(context, 1), business(1));
 });
 
-test('business creation rejects an existing active membership', async () => {
-  const context: AuthContext = { userId: 1, role: 'business' }; const { service, repository } = serviceFor(context); repository.memberships.push(membership(1, 1, 'owner'));
-  await assert.rejects(() => service.createBusiness(context, { name: 'Second Business' }), /no existing active business membership/); assert.equal(repository.created.length, 0);
+test('business creation allows a second Business and preserves existing membership', async () => {
+  const context: AuthContext = { userId: 1, role: 'business' };
+  const { service, repository } = serviceFor(context);
+
+  repository.businesses.set(1, business(1));
+  repository.memberships.push(membership(1, 1, 'owner'));
+
+  const result = await service.createBusiness(context, { name: 'Second Business' });
+
+  assert.equal(repository.created.length, 1);
+  assert.equal(repository.created[0].business.name, 'Second Business');
+  assert.equal(repository.created[0].membership.role, 'owner');
+
+  const memberships = await repository.getMembershipsForAccount(context);
+  assert.equal(memberships.length, 2);
+  assert.deepEqual(memberships.map((value) => value.businessId), [1, 2]);
+  assert.equal(memberships[0].role, 'owner');
+  assert.equal(memberships[1].role, 'owner');
+
+  assert.equal(result.activeBusiness?.id, 2);
+  assert.equal(result.activeMembership?.businessId, 2);
 });
 
 test('customer cannot create a Business', async () => {

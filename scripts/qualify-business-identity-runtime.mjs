@@ -131,11 +131,19 @@ try {
     'ROLE AUTHORIZATION REJECTION PASS',
   );
 
-  await assertRejected(
-    () => service.createBusiness(context, { name: `${fixture.marker} duplicate-membership` }),
-    'Business creation requires no existing active business membership',
-    'ACTIVE MEMBERSHIP REJECTION PASS',
-  );
+
+  const second = await service.createBusiness(context, { name: `${fixture.marker} secondary` });
+  const secondBusiness = second.activeBusiness;
+  if (!secondBusiness || second.activeMembership?.role !== 'owner' || second.activeMembership.status !== 'active') {
+    throw new Error('Second Business creation did not establish the expected active owner context');
+  }
+  fixture.businessIds.push(secondBusiness.id);
+
+  const afterSecond = await repository.getMembershipsForAccount(context);
+  if (afterSecond.length !== 2 || afterSecond.some((membership) => membership.role !== 'owner' || membership.status !== 'active')) {
+    throw new Error('Second Business creation did not preserve both active owner memberships');
+  }
+  console.log(`MULTI-BUSINESS CREATION + MEMBERSHIP PRESERVATION PASS: businesses=${createdBusiness.id},${secondBusiness.id}`);
 
   const rollbackAccountId = await createFixtureAccount(`${fixture.marker} rollback`);
   fixture.accountIds.push(rollbackAccountId);
@@ -160,17 +168,31 @@ try {
   ]);
   const successes = concurrentResults.filter((result) => result.status === 'fulfilled');
   const failures = concurrentResults.filter((result) => result.status === 'rejected');
-  if (successes.length !== 1 || failures.length !== 1) {
-    throw new Error(`Concurrency qualification expected one success and one rejection; received ${successes.length}/${failures.length}`);
+  if (successes.length !== 2 || failures.length !== 0) {
+    throw new Error(`Concurrency qualification expected two successful Business creations; received ${successes.length}/${failures.length}`);
   }
-  const concurrentBusiness = successes[0].value.activeBusiness;
-  if (!concurrentBusiness) throw new Error('Concurrency winner did not return an active business');
-  fixture.businessIds.push(concurrentBusiness.id);
+
+  const concurrentBusinesses = successes
+    .map((result) => result.value.activeBusiness)
+    .filter((value) => value !== undefined);
+
+  if (concurrentBusinesses.length !== 2) {
+    throw new Error('Concurrent Business creations did not return two active Businesses');
+  }
+
+  for (const concurrentBusiness of concurrentBusinesses) {
+    fixture.businessIds.push(concurrentBusiness.id);
+  }
+
   const concurrentMemberships = await repository.getMembershipsForAccount(concurrentContext);
-  if (concurrentMemberships.length !== 1 || concurrentMemberships[0].status !== 'active') {
-    throw new Error('Concurrency qualification did not serialize active membership creation');
+  if (
+    concurrentMemberships.length !== 2 ||
+    concurrentMemberships.some((membership) => membership.role !== 'owner' || membership.status !== 'active')
+  ) {
+    throw new Error('Concurrency qualification did not preserve two active owner memberships');
   }
-  console.log('CONCURRENT BUSINESS CREATION SERIALIZATION PASS');
+
+  console.log('CONCURRENT MULTI-BUSINESS CREATION SERIALIZATION + PRESERVATION PASS');
 
   console.log('GHM BUSINESS IDENTITY RUNTIME QUALIFICATION: PASS');
 } finally {

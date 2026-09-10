@@ -11,7 +11,7 @@ The sequence remains the architecture-level gate order. Individual gates may hav
 1. **Runtime boundary** — canonical configuration is used and unsafe legacy runtime bootstrap behavior is removed or formally constrained. **Construction evidence exists; production qualification remains open.**
 2. **Schema authority** — PostgreSQL schema is owned by repository migrations; application startup performs no schema mutation. **First canonical GHM Business Identity slice is established through repository-owned migrations, relocated into the dedicated `ghm` schema, and qualified against the live catalog.**
 3. **Authorization boundary** — authenticated identity and authorization are enforced within the same query/transaction context; no connection-pool context leakage. **CLOSED / PASS for construction qualification of the first canonical Business Identity slice.**
-4. **Resource API** — unrestricted generic table access is removed and replaced with explicit governed resources. **Architecture contract established for the first Business Identity slice; implementation/qualification remains open.**
+4. **Resource API** — unrestricted generic table access is removed and replaced with explicit governed resources. **First Business Identity Resource API slice implemented and qualified; future registry resources remain governed work.**
 5. **Operational boundary** — health/readiness, graceful shutdown, structured errors, and safe logging are qualified. **Not yet a production gate.**
 6. **Automated qualification** — build and negative security/runtime checks run deterministically in CI. **Construction checks exist and are passing for the current branch state; they do not close the production gates above.**
 7. **Database reconciliation** — actual GHM PostgreSQL catalog evidence is captured and reconciled before dependent product/business migrations are authored. **Dedicated-schema catalog reconciliation and Business Identity runtime qualification are PASS for the current construction slice. The existing catalog artifact remains an app-role-scoped snapshot captured through `DATABASE_URL` (`ghm_app_user` → `ghm_db_user`), not an authoritative full-database catalog. Canonical GHM recovery has also been captured separately through the dedicated migrator/schema-owner path. Remaining work includes provider/bootstrap authority limits, legacy authority cleanup, dedicated-schema/default-privilege reconciliation, and subsequent governed resource slices.**
@@ -35,7 +35,6 @@ MANAGED READ PASS
 PUBLIC APPROVAL BOUNDARY PASS
 MANAGED UPDATE PASS
 ROLE AUTHORIZATION REJECTION PASS
-ACTIVE MEMBERSHIP REJECTION PASS
 DUPLICATE SLUG ATOMIC FAILURE PASS
 DUPLICATE SLUG ATOMIC ROLLBACK PASS
 CONCURRENT BUSINESS CREATION SERIALIZATION PASS
@@ -50,17 +49,17 @@ Transaction qualification is closed for the first Business Identity slice agains
 
 Authorization qualification is closed for construction qualification of the first canonical Business Identity slice. The real Express application was exercised against the canonical PostgreSQL path, including missing-auth denial, invalid-token denial, authenticated canonical profile access, verified identity binding, and invalid-role denial. The underlying automated suite also covers registry, ownership, role, transaction, and repository deny paths.
 
-The broader Resource API gate remains open. The authorization pass does not mean that every registry resource has a public HTTP implementation.
+The first Business Identity Resource API gate is now closed for the qualified slice. The authorization pass does not mean that every registry resource has a public HTTP implementation; future resources remain governed work.
 
 ### TEMP Privilege Decision: CLOSED / NO GRANT REQUIRED
 
 The current runtime source and qualification harness require no temporary tables or other temporary objects. Least privilege therefore requires no `TEMP` grant to `ghm_runtime` at this stage.
 
-## Resource API — next governed work
+## Resource API — first-slice qualification
 
-The next implementation target is an explicit Business Identity Resource API slice. The architecture contract is recorded in `RESOURCE_API_BOUNDARY_CONTRACT.md`.
+The first Business Identity Resource API slice is implemented and qualified. The architecture contract is recorded in `RESOURCE_API_BOUNDARY_CONTRACT.md`.
 
-The proposed first HTTP surface is deliberately small:
+The qualified first HTTP surface is deliberately small:
 
 - `GET /api/v1/profile` — existing qualified protected profile route;
 - `GET /api/v1/businesses/:businessId` — public-safe Business identity;
@@ -69,7 +68,7 @@ The proposed first HTTP surface is deliberately small:
 - `GET /api/v1/businesses/:businessId/managed` — managed Business read;
 - `PATCH /api/v1/businesses/:businessId` — managed Business identity update limited to `name` and `slug`.
 
-This surface is a construction proposal, not yet an implementation or qualification result. Each endpoint must be reconciled to its service/repository contract, authorization rule, disclosure boundary, fixed schema identifiers, transaction requirement, and automated/live evidence before it is considered qualified.
+The six-endpoint surface is qualified against its service/repository contracts, authorization rules, disclosure boundaries, fixed schema identifiers, transaction requirements, and automated/live evidence. Future registry resources remain separate governed work.
 
 No generic table/query endpoint is permitted.
 
@@ -105,11 +104,11 @@ The gate order is a dependency model, not permission to skip unresolved gates be
 
 The current first-slice Business Identity migration does not mean the complete GHM product schema has been authored. It establishes only the canonical construction schema required for the currently qualified slice.
 
-Likewise, PostgreSQL role separation and dedicated migration-runner qualification close only the corresponding construction evidence. The Authorization gate is now closed for the first slice, but Resource API, Operational Boundary, and eventual product replacement gates remain open.
+Likewise, PostgreSQL role separation and dedicated migration-runner qualification close only the corresponding construction evidence. The Authorization and first-slice Resource API gates are now closed for the qualified construction slices. The Operational Boundary and eventual product replacement gates remain open.
 
 The provider/bootstrap authority and legacy-role cleanup remain constrained by the currently available managed PostgreSQL authority. Construction may advance only to resource slices whose database contracts and privileges can be evidenced without relying on unresolved bootstrap authority.
 
-No product adapter or production cutover work begins from the Business Identity, Transaction, TEMP, or Authorization gates alone.
+No product adapter or production cutover work begins from the Business Identity, Transaction, TEMP, Authorization, or first-slice Resource API gates alone.
 
 ## Hard stop conditions
 

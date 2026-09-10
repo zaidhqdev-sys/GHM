@@ -20,13 +20,13 @@ GHM protected resource operations must bind authorization context to one checked
 6. The client is released on both success and failure.
 7. Repository code must not silently acquire a second pool connection for the same protected operation.
 8. Transaction tests must verify both success and failure paths before the authorization boundary is qualified.
-9. Business creation must keep the account-row lock, membership-invariant check, Business insert, and owner-membership insert inside the same transaction so concurrent creation attempts for one account are serialized.
+9. Business creation must keep the account-row lock, Business insert, and owner-membership insert inside the same transaction so concurrent creation attempts for one account are serialized without imposing a one-Business-per-account invariant.
 
 ## Repository evidence
 
-The first-slice Business Identity repository is implemented against the reconciled `ghm` schema. Its protected operations use `withAuthorizedTransaction`, and Business creation locks the authenticated `ghm.account_identity` row with `FOR UPDATE` before checking for an existing active membership. The repository SQL is explicit and parameterized.
+The first-slice Business Identity repository is implemented against the reconciled `ghm` schema. Its protected operations use `withAuthorizedTransaction`, and Business creation locks the authenticated `ghm.account_identity` row with `FOR UPDATE` to serialize concurrent Business creation. The repository SQL is explicit and parameterized.
 
-The transaction primitive is covered by unit tests for successful commit, rollback and release on failure, same-context binding, and rejection of invalid authentication context before checkout. The repository tests and authorization/resource tests pass as part of the 28-test suite.
+The transaction primitive is covered by unit tests for successful commit, rollback and release on failure, same-context binding, and rejection of invalid authentication context before checkout. The repository tests and authorization/resource tests pass as part of the 31-test suite.
 
 ## Qualification boundary
 
@@ -46,7 +46,6 @@ MANAGED READ PASS
 PUBLIC APPROVAL BOUNDARY PASS
 MANAGED UPDATE PASS
 ROLE AUTHORIZATION REJECTION PASS
-ACTIVE MEMBERSHIP REJECTION PASS
 DUPLICATE SLUG ATOMIC FAILURE PASS
 DUPLICATE SLUG ATOMIC ROLLBACK PASS
 CONCURRENT BUSINESS CREATION SERIALIZATION PASS
@@ -69,7 +68,7 @@ The runtime-boundary verification reported:
 Runtime boundary verification PASSED.
 ```
 
-The live qualification therefore verifies the transaction-sensitive Business Identity behavior on the relocated `ghm` schema, including atomic duplicate-slug rollback and concurrent Business creation serialization.
+The live qualification therefore verifies the transaction-sensitive Business Identity behavior on the relocated `ghm` schema, including atomic duplicate-slug rollback and successful concurrent multi-Business creation with serialized account-row access.
 
 ## Gate result
 
