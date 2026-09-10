@@ -65,6 +65,22 @@ const createBusinessFixture = async (accountId, name, slug, verificationStatus =
   }
 };
 
+const countActiveMemberships = async (accountId) => {
+  const client = await cleanupPool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SET LOCAL ROLE ghm_schema_owner');
+    const result = await client.query(`SELECT business_id FROM ghm.business_membership WHERE account_id = $1 AND membership_status = 'active' ORDER BY created_at, id`, [accountId]);
+    await client.query('ROLLBACK');
+    return result.rows.map((row) => Number(row.business_id));
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 const sign = (userId, role) => jwt.sign({ userId, role }, config.jwtSecret);
 const assertStatus = (actual, expected, label) => {
   if (actual.status !== expected) throw new Error(`${label}: expected ${expected}, got ${actual.status}: ${JSON.stringify(actual.body)}`);
@@ -124,6 +140,8 @@ try {
   assertStatus(managedRead, 200, 'Managed read owner/administrator access');
   console.log('RESOURCE API MANAGED READ AUTHORIZATION PASS');
 
+  const beforeCreateMemberships = await countActiveMemberships(createAccountId);
+  if (beforeCreateMemberships.length !== 0) throw new Error(`Business creation fixture invariant failed: ${JSON.stringify(beforeCreateMemberships)}`);
   const create = await request(baseUrl, 'POST', '/api/v1/businesses', createToken, { name: `${marker} Created` });
   assertStatus(create, 201, 'Business creation without prior membership');
   const createdBusinessId = create.body?.business?.id;
@@ -139,8 +157,8 @@ try {
   const secondBusinessId = secondCreate.body?.business?.id;
   if (!Number.isSafeInteger(secondBusinessId) || secondBusinessId === createdBusinessId || secondCreate.body?.membership?.role !== 'owner' || secondCreate.body?.membership?.status !== 'active') throw new Error(`Additional Business ownership boundary failed: ${JSON.stringify(secondCreate.body)}`);
   fixture.businessIds.push(secondBusinessId);
-  const membershipsAfterSecondCreate = await request(baseUrl, 'GET', '/api/v1/profile', createToken);
-  assertStatus(membershipsAfterSecondCreate, 200, 'Identity after additional Business creation');
+  const afterCreateMemberships = await countActiveMemberships(createAccountId);
+  if (afterCreateMemberships.length !== 2 || !afterCreateMemberships.includes(createdBusinessId) || !afterCreateMemberships.includes(secondBusinessId)) throw new Error(`Existing Business membership was not preserved: ${JSON.stringify(afterCreateMemberships)}`);
   console.log('RESOURCE API MULTI-BUSINESS CREATION + MEMBERSHIP PRESERVATION PASS');
 
   const update = await request(baseUrl, 'PATCH', `/api/v1/businesses/${managedBusinessId}`, businessToken, { name: `${marker} Managed Renamed`, slug: `${marker}-managed-renamed` });
