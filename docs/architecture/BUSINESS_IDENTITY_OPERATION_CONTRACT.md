@@ -2,7 +2,7 @@
 
 ## Status
 
-Construction contract. No production cutover and no production Connect changes are authorized by this document.
+Construction contract reconciled to the applied first-slice schema and current repository implementation. Application repository/transaction/authorization qualification remains open. No production cutover and no production Connect changes are authorized by this document.
 
 ## Evidence basis
 
@@ -12,14 +12,14 @@ Direct Connect source inspection establishes the current identity, Business memb
 
 | Operation | GHM boundary | Authorization | Transaction | First-slice status |
 |---|---|---|---|---|
-| Resolve account identity | `identity.resolve` | authenticated principal | read-only; independent reads acceptable | contract defined |
-| Read own profile | `profile.readSelf` | principal owns account identity | read-only | contract defined |
-| Update own profile | `profile.updateSelf` | principal owns account identity | single transaction | contract defined; SQL pending |
-| List active Business memberships | `businessContext.listMemberships` | authenticated principal; account_id equals principal | read-only | contract defined |
-| Resolve active Business context | `businessContext.resolve` | active membership belongs to principal | read-only | contract defined |
-| Read Business public-safe | `business.readPublic` | public eligibility rules | read-only | first-slice SQL pending |
-| Create Business | `business.create` | authenticated business-operator context | required atomic write | first-slice SQL pending |
-| Update managed Business identity | `business.updateProfile` | active membership with `business.manage` | single transaction | first-slice SQL pending |
+| Resolve account identity | `identity.resolve` | authenticated principal | read-only; independent reads acceptable | implementation present; qualification open |
+| Read own profile | `profile.readSelf` | principal owns account identity | read-only | implementation present; qualification open |
+| Update own profile | `profile.updateSelf` | principal owns account identity | single transaction | implementation present; qualification open |
+| List active Business memberships | `businessContext.listMemberships` | authenticated principal; account_id equals principal | read-only | implementation present; qualification open |
+| Resolve active Business context | `businessContext.resolve` | active membership belongs to principal | read-only | implementation present; qualification open |
+| Read Business public-safe | `business.readPublic` | public eligibility rules | read-only | implementation present; qualification open |
+| Create Business | `business.create` | authenticated business-operator context | required atomic write; account row locked before membership-invariant check | implementation present; qualification open |
+| Update managed Business identity | `business.updateProfile` | active membership with `business.manage` | single transaction | implementation present; qualification open |
 | Read Business memberships for managed Business | `businessContext.listBusinessMemberships` | owner/administrator according to final policy | read-only | later qualification |
 
 ## Identity resolution contract
@@ -78,11 +78,14 @@ The server must validate the trimmed name, derive a deterministic slug, enforce 
 
 1. Authenticate principal.
 2. Verify business-operator context.
-3. Verify the creation-flow membership invariant.
-4. Normalize/derive deterministic slug.
-5. Insert the first-slice Business identity.
-6. Insert the active owner membership in the same transaction.
-7. Return the newly created Business identity/context.
+3. Within the creation transaction, lock the authenticated `account_identity` row with `FOR UPDATE`.
+4. Verify the creation-flow membership invariant while that account-row lock is held.
+5. Normalize/derive deterministic slug.
+6. Insert the first-slice Business identity.
+7. Insert the active owner membership in the same transaction.
+8. Return the newly created Business identity/context.
+
+The account-row lock serializes concurrent Business-creation attempts for the same authenticated account without requiring a new schema object.
 
 ### Failure behavior
 
@@ -202,6 +205,7 @@ This is the canonical first-slice schema for construction. It is not the complet
 - invalid/revoked membership selection fails closed;
 - principal can read eligible Business identity;
 - authorized business operator can create a Business;
+- concurrent Business creation for one account cannot produce two active owner memberships;
 - creation atomically creates owner participation;
 - authorized operator can update `name` and `slug` only.
 
@@ -221,6 +225,6 @@ This is the canonical first-slice schema for construction. It is not the complet
 
 ## Gate result
 
-**Contract reconciled to the applied first-slice schema. Application repository/transaction/authorization qualification remains open.**
+**Contract reconciled to the applied first-slice schema and current repository implementation. Application repository/transaction/authorization qualification remains open.**
 
-Next implementation work is explicit service/repository SQL for these operations, followed by measured runtime privileges and positive/negative transaction and authorization qualification.
+Next implementation work is live construction qualification of the repository/service SQL, transaction binding, authorization behavior, and exact runtime privilege use, followed by evidence reconciliation.
