@@ -37,10 +37,6 @@ export class BusinessIdentityServiceImpl {
 
   async createBusiness(context: AuthContext, input: CreateBusinessInput): Promise<ApplicationIdentity> {
     if (!BUSINESS_OPERATOR_ROLES.has(context.role)) throw new Error('Business creation requires a business operator role');
-    const memberships = await this.repository.getMembershipsForAccount(context);
-    if (memberships.some(membership => membership.status === 'active')) {
-      throw new Error('Business creation requires no existing active business membership');
-    }
     const business = await this.repository.createBusiness(context, input, createBusinessSlug(input.name));
     return this.resolveIdentity({ context, selectedBusinessId: business.id });
   }
