@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
-import { BusinessIdentityServiceImpl } from '../dist/resources/business-identity/service.js';
-import { PostgresBusinessIdentityRepository } from '../dist/resources/business-identity/repository.js';
+import 'dotenv/config';
 
 const runtimeUrl = process.env.DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
@@ -9,6 +8,10 @@ const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 if (!runtimeUrl) throw new Error('Missing DATABASE_URL for the dedicated runtime qualification connection');
 if (!migratorUrl) throw new Error('Missing GHM_MIGRATOR_DATABASE_URL for construction cleanup authority');
 if (runtimeUrl === migratorUrl) throw new Error('Runtime and migrator connections must be distinct');
+
+process.env.CORS_ORIGINS ??= 'http://localhost';
+const { BusinessIdentityServiceImpl } = await import('../dist/resources/business-identity/service.js');
+const { PostgresBusinessIdentityRepository } = await import('../dist/resources/business-identity/repository.js');
 
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl: false });
 const cleanupPool = new Pool({ connectionString: migratorUrl, ssl: false });
