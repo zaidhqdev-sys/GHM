@@ -61,7 +61,7 @@ const createFixtureAccount = async (fullName) => {
     await client.query(`BEGIN`);
     await client.query(`SET LOCAL ROLE ghm_schema_owner`);
     const { rows } = await client.query(
-      `INSERT INTO account_identity (full_name, role) VALUES ($1, $2) RETURNING id`,
+      `INSERT INTO ghm.account_identity (full_name, role) VALUES ($1, $2) RETURNING id`,
       [fullName, 'business'],
     );
     await client.query(`COMMIT`);
@@ -178,11 +178,11 @@ try {
     await cleanupPool.query(`BEGIN`);
     await cleanupPool.query(`SET LOCAL ROLE ghm_schema_owner`);
     await cleanupPool.query(
-      `DELETE FROM business WHERE id = ANY($1::bigint[])`,
+      `DELETE FROM ghm.business WHERE id = ANY($1::bigint[])`,
       [fixture.businessIds],
     );
     await cleanupPool.query(
-      `DELETE FROM account_identity WHERE id = ANY($1::bigint[])`,
+      `DELETE FROM ghm.account_identity WHERE id = ANY($1::bigint[])`,
       [fixture.accountIds],
     );
     await cleanupPool.query(`COMMIT`);
