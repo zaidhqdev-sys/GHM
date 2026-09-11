@@ -54,8 +54,8 @@ export class PostgresEnquiryRepository implements EnquiryRepository {
       await assertEligibleMarketplaceTarget(client, context, input.businessId);
       const result = await client.query(
         `INSERT INTO ghm.enquiry
-          (business_id, customer_id, customer_name, customer_phone, customer_email, project, description, city, budget_min, budget_max, urgency, source, status)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'marketplace','new')
+          (business_id, customer_id, customer_name, customer_phone, customer_email, project, description, city, budget_min, budget_max, urgency, source)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'marketplace')
          RETURNING ${ENQUIRY_COLUMNS}`,
         [input.businessId, context.userId, input.customerName, input.customerPhone ?? null, input.customerEmail ?? null, input.project, input.description, input.city ?? null, input.budgetMin ?? null, input.budgetMax ?? null, input.urgency ?? 'standard'],
       );
@@ -90,7 +90,7 @@ export class PostgresEnquiryRepository implements EnquiryRepository {
       const existing = await this.getReceivedEnquiryInTransaction(client, context, enquiryId);
       if (!existing) throw new Error('Enquiry not found or business owner permission required');
       const result = await client.query(
-        `UPDATE ghm.enquiry SET status = $2, updated_at = now() WHERE id = $1 RETURNING ${ENQUIRY_COLUMNS}`,
+        `UPDATE ghm.enquiry SET status = $2 WHERE id = $1 RETURNING ${ENQUIRY_COLUMNS}`,
         [enquiryId, input.status],
       );
       return mapEnquiry(result.rows[0]);
