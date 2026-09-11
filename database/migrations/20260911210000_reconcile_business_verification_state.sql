@@ -7,14 +7,15 @@ BEGIN;
 ALTER TABLE ghm.business
   ADD COLUMN is_verified boolean NOT NULL DEFAULT false;
 
--- The original construction-only vocabulary used `pending`. Preserve the
--- existing construction meaning while moving to the reconciled vocabulary.
+-- The original construction-only vocabulary used `pending`. Drop the old
+-- constraint before translating the existing value into the reconciled
+-- vocabulary so the intermediate update remains valid PostgreSQL state.
+ALTER TABLE ghm.business
+  DROP CONSTRAINT business_verification_status_check;
+
 UPDATE ghm.business
 SET verification_status = 'unverified'
 WHERE verification_status = 'pending';
-
-ALTER TABLE ghm.business
-  DROP CONSTRAINT business_verification_status_check;
 
 ALTER TABLE ghm.business
   ADD CONSTRAINT business_verification_status_check
