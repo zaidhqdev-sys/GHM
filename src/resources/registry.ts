@@ -19,6 +19,7 @@ export const resourceRegistry: readonly ResourceDefinition[] = [
   { resource: 'quote', operations: ['read', 'create', 'update'] },
   { resource: 'notification', operations: ['read', 'update'] },
   { resource: 'support_request', operations: ['read', 'create', 'update'] },
+  { resource: 'enquiry', operations: ['read', 'create', 'update'] },
 ];
 
 export const isRegisteredOperation = (
