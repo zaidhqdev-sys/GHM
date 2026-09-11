@@ -52,7 +52,7 @@ const parseCreateEnquiryInput = (body: unknown): CreateEnquiryInput | null => {
   }
   if (Object.hasOwn(input, 'urgency') && !['standard', 'urgent', 'emergency'].includes(input.urgency as string)) return null;
   if (Object.hasOwn(input, 'source') && input.source !== 'marketplace') return null;
-  return input as CreateEnquiryInput;
+  return input as unknown as CreateEnquiryInput;
 };
 
 const parseStatusInput = (body: unknown): UpdateEnquiryStatusInput | null => {
