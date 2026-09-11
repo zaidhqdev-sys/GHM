@@ -1,6 +1,6 @@
 # GHM Project Schema Contract
 
-Status: **construction / schema qualification contract**
+Status: **qualified Project schema contract; construction-only, no production cutover authority**
 
 ## Purpose
 
@@ -148,9 +148,9 @@ This schema does not create:
 - lifecycle transition functions;
 - Project deletion workflow.
 
-## Qualification gate before migration execution
+## Qualification record
 
-Before applying the migration to the live GHM construction database, the repository must contain the migration and implementation contract, and the following must be qualified:
+The migration and implementation contract have now been reconciled against the live GHM construction database. The following qualification requirements have passed:
 
 1. schema/column/constraint reconciliation;
 2. foreign key to `ghm.account_identity`;
@@ -170,4 +170,4 @@ Before applying the migration to the live GHM construction database, the reposit
 16. automated positive and negative tests;
 17. live runtime qualification against the canonical GHM PostgreSQL path.
 
-Migration execution is construction-only and must not be interpreted as production cutover authority.
+The migration is applied only to the GHM construction database. This remains construction-only and must not be interpreted as production cutover authority.

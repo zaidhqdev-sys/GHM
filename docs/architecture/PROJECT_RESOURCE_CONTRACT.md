@@ -1,10 +1,10 @@
 # GHM Project Resource Contract
 
-Status: **construction / contract reconciliation**
+Status: **qualified private Project resource contract; public disclosure implementation not authorized**
 
 ## Purpose
 
-Define the provider-neutral Project capability that may follow the qualified Business Identity Resource API slice. This document is a construction contract only. It does not authorize a product adapter, production migration, or reproduction of the Connect `projects`/`project_quotes` schema as-is.
+Define the provider-neutral Project capability implemented in the dedicated GHM schema and qualified through the private owner-bound Resource API slice. This contract does not authorize product adapters, production cutover, public Project disclosure, or reproduction of the Connect `projects`/`project_quotes` schema as-is.
 
 ## Source boundary
 
@@ -54,7 +54,7 @@ Creation establishes the Project owner atomically with the Project row. The serv
 
 ### Read
 
-The Project contract must distinguish at least two disclosure contexts before implementation:
+The Project contract distinguishes the currently qualified private owner context from the separately governed public disclosure context:
 
 1. **Owner read** — the authenticated owning account may read its own Project and its lifecycle/history fields.
 2. **Marketplace/public read** — only fields explicitly classified as public may be returned for an eligible open Project.
@@ -154,7 +154,7 @@ The minimum candidate GHM table is a dedicated `ghm.project` relation containing
 - `created_at`;
 - `updated_at`.
 
-This is a proposed contract shape, not an applied migration. No Project table should be created until the live GHM catalog and runtime privilege evidence have been reconciled for this resource.
+The Project schema contract has been reconciled to the live GHM catalog, the migration has been applied to the construction database, and the runtime privilege evidence has been qualified. The applied relation is `ghm.project`; this does not authorize production cutover.
 
 ## Explicit exclusions
 
@@ -174,7 +174,7 @@ The first Project slice does not include:
 
 ## Qualification requirements
 
-Before Project implementation can be considered qualified, evidence must cover:
+The Project implementation qualification gate is closed for the current private owner-bound slice. Evidence covers:
 
 1. canonical GHM schema reconciliation;
 2. exact runtime privilege derivation;
@@ -193,15 +193,15 @@ Before Project implementation can be considered qualified, evidence must cover:
 
 ## Open reconciliation items
 
-The following must be resolved from current Connect evidence before SQL implementation:
+The current private Project slice is qualified. The remaining reconciliation boundary is deliberately limited to capabilities not included in that slice:
 
-- implementation of the dedicated public Project disclosure projection and its qualification;
-- exact account-to-Project ownership semantics across all current Connect workflows;
+- implementation and qualification of the dedicated public Project disclosure projection;
 - lifecycle transition authority beyond creation/open-owner editing;
-- whether any current workflow requires Project deletion in the GHM first slice;
-- exact indexes required by the GHM implementation rather than copied from Connect;
-- exact runtime ACL changes required after repository SQL exists.
+- whether any future GHM workflow requires Project deletion;
+- any additional query/index requirements introduced by a separately authorized public projection or future Project operation;
+- any additional runtime ACL changes required by a separately authorized capability.
 
+Account-based ownership, the canonical `ghm.account_identity` relationship, the current indexes, and the runtime ACLs for the private Project slice are already reconciled and qualified.
 ## Production safety
 
 This contract is construction-only. Zaid Connect and QuoteFlow remain on their existing production backend. It does not authorize a production database URL change, data migration, credential rotation, DNS/routing change, provider/bootstrap mutation, product adapter, shadow traffic, or cutover.
