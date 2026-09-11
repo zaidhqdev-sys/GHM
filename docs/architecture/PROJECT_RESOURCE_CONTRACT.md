@@ -61,7 +61,7 @@ The Project contract must distinguish at least two disclosure contexts before im
 
 The public representation must not expose private account identity or unrelated quote/business data merely because those rows are relationally available.
 
-The exact public-read eligibility rule must be reconciled with the current Connect marketplace behavior before HTTP implementation.
+The public-read eligibility rule has been reconciled with the current Connect marketplace behavior: only Projects with status = 'open' are eligible for public disclosure. Public disclosure must use a dedicated non-sensitive projection and must not expose private account identity or unrelated quote/business data.
 
 ### Update
 
@@ -182,7 +182,7 @@ Before Project implementation can be considered qualified, evidence must cover:
 4. create success and rollback behavior;
 5. owner read success;
 6. unauthorized/non-owner read denial where applicable;
-7. public disclosure boundary, if public Project reads are implemented;
+7. public disclosure boundary, if public Project reads are implemented; public eligibility is now reconciled as status = 'open'.
 8. owner update success for eligible Projects;
 9. non-owner update denial;
 10. immutable owner/status enforcement;
@@ -195,7 +195,7 @@ Before Project implementation can be considered qualified, evidence must cover:
 
 The following must be resolved from current Connect evidence before SQL implementation:
 
-- exact public Project visibility and disclosure projection;
+- implementation of the dedicated public Project disclosure projection and its qualification;
 - exact account-to-Project ownership semantics across all current Connect workflows;
 - lifecycle transition authority beyond creation/open-owner editing;
 - whether any current workflow requires Project deletion in the GHM first slice;
