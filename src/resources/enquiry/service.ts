@@ -1,4 +1,5 @@
 import type { AuthContext } from '../../auth/authorization';
+import { assertRole } from '../../auth/authorization';
 import type {
   CreateEnquiryInput,
   Enquiry,
@@ -75,15 +76,19 @@ const normalizeStatusInput = (input: UpdateEnquiryStatusInput): UpdateEnquirySta
 export class EnquiryServiceImpl implements EnquiryService {
   constructor(private readonly repository: EnquiryRepository) {}
   async createEnquiry(context: AuthContext, input: CreateEnquiryInput): Promise<Enquiry> {
+    assertRole(context, 'customer');
     return this.repository.createEnquiry(context, normalizeCreateInput(input));
   }
   async getOwnEnquiry(context: AuthContext, enquiryId: number): Promise<Enquiry | null> {
+    assertRole(context, 'customer');
     return this.repository.getOwnEnquiry(context, enquiryId);
   }
   async getReceivedEnquiry(context: AuthContext, enquiryId: number): Promise<Enquiry | null> {
+    assertRole(context, 'business');
     return this.repository.getReceivedEnquiry(context, enquiryId);
   }
   async updateReceivedEnquiryStatus(context: AuthContext, enquiryId: number, input: UpdateEnquiryStatusInput): Promise<Enquiry> {
+    assertRole(context, 'business');
     return this.repository.updateReceivedEnquiryStatus(context, enquiryId, normalizeStatusInput(input));
   }
 }
