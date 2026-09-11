@@ -142,7 +142,7 @@ try {
   await assertRejected(() => directRuntime(`INSERT INTO ghm.enquiry (business_id, customer_id, customer_name, project, description, source, status) VALUES ($1,$2,'x','x','long enough description','marketplace','contacted')`, [businessA, customerId]), 'ENQUIRY RUNTIME STATUS-ON-CREATE ACL DENIAL PASS');
 
   const { rows: acl } = await directRuntime(`SELECT has_table_privilege(current_user, 'ghm.enquiry', 'SELECT') AS can_select, has_table_privilege(current_user, 'ghm.enquiry', 'INSERT') AS can_insert, has_table_privilege(current_user, 'ghm.enquiry', 'UPDATE') AS can_update, has_table_privilege(current_user, 'ghm.enquiry', 'DELETE') AS can_delete`);
-  if (!acl[0].can_select || !acl[0].can_insert || !acl[0].can_update || acl[0].can_delete) throw new Error(`Unexpected Enquiry table ACL: ${JSON.stringify(acl[0])}`);
+  if (!acl[0].can_select || acl[0].can_insert || acl[0].can_update || acl[0].can_delete) throw new Error(`Unexpected Enquiry table ACL: ${JSON.stringify(acl[0])}`);
   console.log('ENQUIRY RUNTIME TABLE ACL PASS');
   console.log('GHM ENQUIRY RUNTIME QUALIFICATION: PASS');
 } finally {
