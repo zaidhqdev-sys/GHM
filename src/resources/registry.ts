@@ -1,6 +1,11 @@
-import { Resource } from '../auth/authorization';
+﻿import { Resource } from '../auth/authorization';
 
-export type ResourceOperation = 'read' | 'create' | 'update' | 'delete';
+export type ResourceOperation =
+  | 'read'
+  | 'readPublic'
+  | 'create'
+  | 'update'
+  | 'delete';
 
 export interface ResourceDefinition {
   readonly resource: Resource;
@@ -10,7 +15,7 @@ export interface ResourceDefinition {
 export const resourceRegistry: readonly ResourceDefinition[] = [
   { resource: 'profile', operations: ['read', 'update'] },
   { resource: 'business', operations: ['read', 'create', 'update'] },
-  { resource: 'project', operations: ['read', 'create', 'update'] },
+  { resource: 'project', operations: ['read', 'readPublic', 'create', 'update'] },
   { resource: 'quote', operations: ['read', 'create', 'update'] },
   { resource: 'notification', operations: ['read', 'update'] },
   { resource: 'support_request', operations: ['read', 'create', 'update'] },
@@ -22,5 +27,6 @@ export const isRegisteredOperation = (
 ): boolean =>
   resourceRegistry.some(
     (definition) =>
-      definition.resource === resource && definition.operations.includes(operation),
+      definition.resource === resource &&
+      definition.operations.includes(operation),
   );

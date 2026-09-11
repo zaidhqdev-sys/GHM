@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-09-11T00:08:39.430Z",
+  "captured_at": "2026-09-11T12:14:09.279Z",
   "source": "GHM PostgreSQL catalog capture",
   "note": "Metadata only. No row contents, passwords, tokens, DATABASE_URL, or secrets are captured.",
   "server": [
@@ -919,6 +919,30 @@
       "definition": "CREATE UNIQUE INDEX ghm_schema_migrations_pkey ON ghm.ghm_schema_migrations USING btree (version)"
     },
     {
+      "schema_name": "ghm",
+      "table_name": "project",
+      "index_name": "project_account_created_idx",
+      "is_unique": false,
+      "is_primary": false,
+      "definition": "CREATE INDEX project_account_created_idx ON ghm.project USING btree (account_id, created_at DESC)"
+    },
+    {
+      "schema_name": "ghm",
+      "table_name": "project",
+      "index_name": "project_open_created_idx",
+      "is_unique": false,
+      "is_primary": false,
+      "definition": "CREATE INDEX project_open_created_idx ON ghm.project USING btree (created_at DESC) WHERE (status = 'open'::text)"
+    },
+    {
+      "schema_name": "ghm",
+      "table_name": "project",
+      "index_name": "project_pkey",
+      "is_unique": true,
+      "is_primary": true,
+      "definition": "CREATE UNIQUE INDEX project_pkey ON ghm.project USING btree (id)"
+    },
+    {
       "schema_name": "public",
       "table_name": "files",
       "index_name": "files_pkey",
@@ -1072,6 +1096,12 @@
     {
       "schema_name": "ghm",
       "table_name": "ghm_schema_migrations",
+      "row_security_enabled": false,
+      "force_row_security": false
+    },
+    {
+      "schema_name": "ghm",
+      "table_name": "project",
       "row_security_enabled": false,
       "force_row_security": false
     },
@@ -1457,6 +1487,11 @@
       "estimated_row_count": "-1"
     },
     {
+      "schema_name": "ghm",
+      "table_name": "project",
+      "estimated_row_count": "-1"
+    },
+    {
       "schema_name": "public",
       "table_name": "files",
       "estimated_row_count": "-1"
@@ -1479,7 +1514,7 @@
     {
       "schema_name": "public",
       "table_name": "users",
-      "estimated_row_count": "-1"
+      "estimated_row_count": "2"
     }
   ]
 }

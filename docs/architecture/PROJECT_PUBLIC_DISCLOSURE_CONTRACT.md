@@ -324,8 +324,10 @@ The current implementation does NOT provide:
 - quote acceptance;
 - marketplace transactions.
 
-Therefore this contract defines the intended public boundary but does not
-authorize implementation of that boundary yet.
+Therefore this contract defines and governs the public disclosure boundary.
+Implementation is authorized only for construction qualification of the
+dedicated projection and runtime read boundary described below. Production
+deployment, product cutover, and provider migration remain unauthorized.
 
 
 16. REQUIRED IMPLEMENTATION QUALIFICATION
@@ -394,12 +396,15 @@ The canonical rule is:
 
 19. CURRENT DECISION
 
-PUBLIC DISCLOSURE DIRECTION: APPROVED AS ARCHITECTURAL DIRECTION
+PUBLIC DISCLOSURE DIRECTION: APPROVED
 
-PUBLIC DISCLOSURE IMPLEMENTATION: NOT YET AUTHORIZED
+PUBLIC DISCLOSURE IMPLEMENTATION: AUTHORIZED FOR CONSTRUCTION QUALIFICATION
 
-The next implementation stage, if approved, is to design and qualify the
-dedicated public projection and its runtime read boundary.
+The governed implementation stage is the dedicated public projection and its
+runtime read boundary. This authorization covers only construction database
+objects, application code, automated qualification, and live construction
+runtime evidence.
 
-No public route, database projection, privilege change, or production
-deployment is authorized by this document alone.
+This authorization does NOT authorize production deployment, production
+database migration, provider/bootstrap mutation, product cutover, shadow
+traffic, DNS/routing changes, or migration of Zaid Connect or QuoteFlow.

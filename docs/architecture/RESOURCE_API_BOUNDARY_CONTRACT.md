@@ -88,11 +88,11 @@ Do not add:
 - membership-management endpoints;
 - verification or activation mutation endpoints;
 - directory analytics or search;
-- public Project disclosure, marketplace/search, quotes, notifications, support requests, reviews, trust, commercial state, storage, or realtime routes;
+- marketplace/search, quotes, notifications, support requests, reviews, trust, commercial state, storage, or realtime routes;
 - Connect or QuoteFlow adapters;
 - provider/bootstrap authority mutations.
 
-Membership-management HTTP routes remain outside the currently qualified slices because their later policy and operation contract require separate qualification. Verification and activation state are not caller-managed Business identity fields. Project public disclosure is governed separately by `PROJECT_PUBLIC_DISCLOSURE_CONTRACT.md` and remains implementation-unauthorized.
+Membership-management HTTP routes remain outside the currently qualified slices because their later policy and operation contract require separate qualification. Verification and activation state are not caller-managed Business identity fields. Project public disclosure is governed separately by `PROJECT_PUBLIC_DISCLOSURE_CONTRACT.md` and is authorized only for construction qualification of its dedicated public projection and runtime read boundary.
 
 ## Contract requirements per endpoint
 
@@ -128,7 +128,7 @@ explicit route
 
 with positive, negative, ownership/role, transaction, and disclosure-boundary evidence and no generic table access.
 
-Passing the current private slices does not imply that every resource in the registry is implemented or production-ready. In particular, Project public disclosure remains outside the qualified implementation boundary.
+Passing the current private slices does not imply that every resource in the registry is implemented or production-ready. Project public disclosure is a separately governed construction qualification boundary and does not inherit the private Project authorization automatically.
 
 ## Production safety
 

@@ -10,16 +10,32 @@ import { ProjectServiceImpl } from '../resources/project/service';
 import { CreateProjectInput, ProjectService, UpdateProjectInput } from '../resources/project/contracts';
 import { isRegisteredOperation, ResourceOperation } from '../resources/registry';
 import { config } from '../config';
+import { PostgresPublicProjectRepository } from '../resources/project/public-repository';
+import { PublicProjectServiceImpl } from '../resources/project/public-service';
+import { PublicProjectService } from '../resources/project/public-contracts';
 
 export interface AppDependencies {
   readonly businessIdentityService?: BusinessIdentityService;
   readonly projectService?: ProjectService;
+  readonly publicProjectService?: PublicProjectService;
 }
 
 const requireRegisteredAccess = (resource: Parameters<typeof canAccessResource>[1], operation: ResourceOperation) =>
   (req: Request, res: Response, next: NextFunction): void => {
     const context = req.authContext as AuthContext | undefined;
     if (!context || !isRegisteredOperation(resource, operation) || !canAccessResource(context, resource)) {
+      res.status(403).json({ error: 'forbidden' });
+      return;
+    }
+    next();
+  };
+
+const requireRegisteredPublicAccess = (
+  resource: Parameters<typeof canAccessResource>[1],
+  operation: ResourceOperation,
+) =>
+  (_req: Request, res: Response, next: NextFunction): void => {
+    if (!isRegisteredOperation(resource, operation)) {
       res.status(403).json({ error: 'forbidden' });
       return;
     }
@@ -183,7 +199,9 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const app = express();
   const service = dependencies.businessIdentityService ?? new BusinessIdentityServiceImpl(new PostgresBusinessIdentityRepository());
   const projectService = dependencies.projectService ?? new ProjectServiceImpl(new PostgresProjectRepository());
-
+  const publicProjectService =
+    dependencies.publicProjectService ??
+    new PublicProjectServiceImpl(new PostgresPublicProjectRepository());
   app.disable('x-powered-by');
   app.set('trust proxy', config.trustProxy);
   app.use(cors({ origin: config.corsOrigins }));
@@ -319,6 +337,36 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         error.message === 'budgetMax must be greater than or equal to budgetMin' ||
         error.message === 'Invalid Project urgency'
       )) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      handleError(error, res);
+    }
+  });
+
+
+  app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
+    try {
+      const projectIdValue = routeParam(req.params.projectId);
+      const projectId =
+        projectIdValue === null ? null : positiveIntegerId(projectIdValue);
+
+      if (projectId === null) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      const project = await publicProjectService.getPublicProject(projectId);
+
+      if (!project) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+
+      res.status(200).json({ project });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Invalid Project id') {
         res.status(400).json({ error: 'invalid_request' });
         return;
       }

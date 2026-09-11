@@ -44,7 +44,7 @@ test('role assertions reject disallowed roles', () => {
 });
 
 test('resource operations remain a fixed vocabulary', () => {
-  const operations: ResourceOperation[] = ['read', 'create', 'update', 'delete'];
+  const operations: ResourceOperation[] = ['read', 'readPublic', 'create', 'update', 'delete'];
   for (const definition of resourceRegistry) {
     for (const operation of definition.operations) {
       assert.equal(operations.includes(operation), true);

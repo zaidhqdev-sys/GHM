@@ -6,6 +6,7 @@ import { createApp } from './app';
 import { AuthContext } from '../auth/authorization';
 import { config } from '../config';
 import { Project, ProjectService } from '../resources/project/contracts';
+import { PublicProject, PublicProjectService } from '../resources/project/public-contracts';
 import { AccountIdentity, BusinessIdentityService } from '../resources/business-identity/contracts';
 
 const profile = (context: AuthContext): AccountIdentity => ({
@@ -77,11 +78,19 @@ test('protected profile route rejects an invalid JWT', async () => {
 });
 
 
-const startProjectTestServer = async (projectService: ProjectService) => {
+const startProjectTestServer = async (
+  projectService: ProjectService,
+  publicProjectService: PublicProjectService = {
+    getPublicProject: async () => {
+      throw new Error('public Project service must not be called');
+    },
+  },
+) => {
   const businessService = {} as BusinessIdentityService;
   const server = http.createServer(createApp({
     businessIdentityService: businessService,
     projectService,
+    publicProjectService,
   }));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
@@ -106,6 +115,234 @@ const projectFixture = (context: AuthContext, overrides: Partial<Project> = {}):
   ...overrides,
 });
 
+const publicProjectFixture = (
+  overrides: Partial<PublicProject> = {},
+): PublicProject => ({
+  id: 101,
+  title: 'Kitchen renovation',
+  description: 'Renovation project for a residential kitchen and related finishes.',
+  category: 'construction',
+  province: 'KwaZulu-Natal',
+  city: 'Durban',
+  budgetMin: 50000,
+  budgetMax: 100000,
+  urgency: 'standard',
+  status: 'open',
+  createdAt: new Date('2026-09-10T00:00:00.000Z'),
+  updatedAt: new Date('2026-09-10T00:00:00.000Z'),
+  ...overrides,
+});
+
+
+test('public project route allows anonymous access through the public operation', async () => {
+  const project = publicProjectFixture();
+  const publicProjectService: PublicProjectService = {
+    getPublicProject: async (projectId) => {
+      assert.equal(projectId, project.id);
+      return project;
+    },
+  };
+
+  const projectService = {} as ProjectService;
+  const { server, baseUrl } = await startProjectTestServer(
+    projectService,
+    publicProjectService,
+  );
+
+  try {
+    const response = await fetch(
+      `${baseUrl}/api/v1/public/projects/${project.id}`,
+    );
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+  project: {
+    ...project,
+    createdAt: project.createdAt.toISOString(),
+    updatedAt: project.updatedAt.toISOString(),
+  },
+});
+  } finally {
+    server.close();
+  }
+});
+
+test('public project route allows authenticated non-owner disclosure without private authorization', async () => {
+  const project = publicProjectFixture({ id: 102 });
+  const publicProjectService: PublicProjectService = {
+    getPublicProject: async (projectId) => {
+      assert.equal(projectId, project.id);
+      return project;
+    },
+  };
+
+  const projectService = {} as ProjectService;
+  const { server, baseUrl } = await startProjectTestServer(
+    projectService,
+    publicProjectService,
+  );
+
+  try {
+    const token = jwt.sign(
+      { sub: '999', role: 'business' },
+      config.jwtSecret,
+    );
+
+    const response = await fetch(
+      `${baseUrl}/api/v1/public/projects/${project.id}`,
+      {
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+      },
+    );
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+  project: {
+    ...project,
+    createdAt: project.createdAt.toISOString(),
+    updatedAt: project.updatedAt.toISOString(),
+  },
+});
+  } finally {
+    server.close();
+  }
+});
+
+test('public project route ignores invalid authentication', async () => {
+  const project = publicProjectFixture({ id: 103 });
+  const publicProjectService: PublicProjectService = {
+    getPublicProject: async (projectId) => {
+      assert.equal(projectId, project.id);
+      return project;
+    },
+  };
+
+  const projectService = {} as ProjectService;
+  const { server, baseUrl } = await startProjectTestServer(
+    projectService,
+    publicProjectService,
+  );
+
+  try {
+    const response = await fetch(
+      `${baseUrl}/api/v1/public/projects/${project.id}`,
+      {
+        headers: {
+          authorization: 'Bearer definitely-invalid-token',
+        },
+      },
+    );
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+  project: {
+    ...project,
+    createdAt: project.createdAt.toISOString(),
+    updatedAt: project.updatedAt.toISOString(),
+  },
+});
+  } finally {
+    server.close();
+  }
+});
+
+test('public project route rejects invalid ids before service execution', async () => {
+  let called = false;
+
+  const publicProjectService: PublicProjectService = {
+    getPublicProject: async () => {
+      called = true;
+      throw new Error('must not be called');
+    },
+  };
+
+  const projectService = {} as ProjectService;
+  const { server, baseUrl } = await startProjectTestServer(
+    projectService,
+    publicProjectService,
+  );
+
+  try {
+    const response = await fetch(
+      `${baseUrl}/api/v1/public/projects/not-an-id`,
+    );
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: 'invalid_request',
+    });
+    assert.equal(called, false);
+  } finally {
+    server.close();
+  }
+});
+
+test('public project route returns not found when projection has no eligible project', async () => {
+  const publicProjectService: PublicProjectService = {
+    getPublicProject: async (projectId) => {
+      assert.equal(projectId, 104);
+      return null;
+    },
+  };
+
+  const projectService = {} as ProjectService;
+  const { server, baseUrl } = await startProjectTestServer(
+    projectService,
+    publicProjectService,
+  );
+
+  try {
+    const response = await fetch(
+      `${baseUrl}/api/v1/public/projects/104`,
+    );
+
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), {
+      error: 'not_found',
+    });
+  } finally {
+    server.close();
+  }
+});
+
+test('public project route does not expose a mutation surface', async () => {
+  let called = false;
+
+  const publicProjectService: PublicProjectService = {
+    getPublicProject: async () => {
+      called = true;
+      throw new Error('must not be called');
+    },
+  };
+
+  const projectService = {} as ProjectService;
+  const { server, baseUrl } = await startProjectTestServer(
+    projectService,
+    publicProjectService,
+  );
+
+  try {
+    const response = await fetch(
+      `${baseUrl}/api/v1/public/projects/101`,
+      {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: 'Attempted public mutation',
+        }),
+      },
+    );
+
+    assert.equal(response.status, 404);
+    assert.equal(called, false);
+  } finally {
+    server.close();
+  }
+});
 test('project create route requires authentication', async () => {
   const projectService = {
     createProject: async () => { throw new Error('must not be called'); },
