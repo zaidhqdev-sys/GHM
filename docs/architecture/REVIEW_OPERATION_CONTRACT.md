@@ -57,7 +57,11 @@ Only an authenticated account with canonical role `customer` may submit a Review
 
 The reviewed Business is the canonical `business.id` relation.
 
-The Business must be eligible under the GHM Business contract: active and approved. The authoritative Connect contract also requires verified/approved verification semantics; because the current GHM Business schema exposes `verification_status` and `is_active` but does not yet expose the full Connect verification vocabulary, the exact mapping must be reconciled before schema implementation rather than guessed.
+The Business eligibility dependency is now reconciled in GHM: `ghm.business` exposes independent `is_active` publication state plus `verification_status` and `is_verified`, with the invariant that `verification_status = 'approved'` implies `is_verified = true` and all non-approved states imply `is_verified = false`. The Review public/receive eligibility therefore maps exactly to Connect's three conditions: `is_active = true`, `is_verified = true`, and `verification_status = 'approved'`.
+
+### Business ownership
+
+Business ownership is determined through `ghm.business_membership`, where the target Business must not have an active `owner` membership for the authenticated reviewer. The membership model provides one active owner per Business and must be queried as a governed relationship, not supplied by the caller.
 
 ### Moderator
 
@@ -134,7 +138,7 @@ The Connect source requires all three Business conditions:
 - `is_verified = true`;
 - `verification_status = 'approved'`.
 
-GHM must not silently invent a replacement verification model. If the existing GHM Business contract cannot represent the same eligibility semantics, schema reconciliation is required before Review implementation is authorized.
+GHM now represents these conditions directly on `ghm.business`; Review implementation must enforce all three and must not collapse activation into verification.
 
 Public Review reads must not expose pending or rejected Reviews.
 
@@ -142,11 +146,16 @@ Public Review reads must not expose pending or rejected Reviews.
 
 The Connect source treats Business `rating` and `review_count` as canonical aggregates calculated from **approved Reviews only**. The aggregate is recalculated when Review moderation changes the approved set.
 
-For GHM construction, this establishes a required capability boundary but does **not** yet authorize adding rating columns to `ghm.business` or implementing aggregate mutation.
+The GHM Business schema has now reconciled these as physically stored Review/Trust-owned derived values on `ghm.business`:
 
-Before schema implementation, GHM must reconcile whether Business rating/review count belongs in the canonical Business resource, a projection, or a separately governed aggregate capability. No duplicate Business rating concept may be introduced merely to reproduce the Supabase table shape.
+- `rating numeric(3,2) NOT NULL DEFAULT 0`, constrained to 0–5;
+- `review_count integer NOT NULL DEFAULT 0`, constrained to non-negative values.
 
-If an aggregate is implemented, qualification must demonstrate:
+These are not caller-supplied Business identity fields. Their mutation belongs to the Review/Trust aggregate boundary and must not be exposed as ordinary Business profile mutation.
+
+The first Review implementation is therefore authorized to maintain these canonical Business aggregates, provided the mutation occurs within the same transaction as the moderation transition and qualification proves aggregate correctness.
+
+Qualification must demonstrate:
 
 - pending Reviews do not affect public rating/count;
 - approval adds exactly one approved Review to the aggregate;
@@ -215,7 +224,7 @@ The following must be atomic where applicable:
 - Review creation and all submission invariants that must hold at acceptance;
 - duplicate-review prevention under concurrent submissions;
 - moderation state transition and moderator metadata;
-- approved-review aggregate maintenance if the aggregate is implemented in the first slice.
+- approved-review aggregate maintenance.
 
 A failed duplicate submission must not leave a partial Review or other side effect.
 
@@ -228,7 +237,7 @@ The authoritative Connect rollback artifact for the source migration removes the
 Review depends on canonical Business Identity resources:
 
 - `ghm.account_identity` → reviewer and moderator identities;
-- `ghm.business` → reviewed Business;
+- `ghm.business` → reviewed Business and Review/Trust-owned aggregates;
 - `ghm.business_membership` → Business ownership check where required.
 
 Review is independent of Enquiry and Project in the first slice.
@@ -254,8 +263,7 @@ The first Review qualification does not implement or authorize:
 - production provider migration;
 - production data migration;
 - DNS/routing/cutover changes;
-- runtime DELETE;
-- schema changes to Business rating fields before the aggregate boundary is reconciled.
+- runtime DELETE.
 
 The Connect codebase contains AI review-moderation functionality, but the authoritative database contract requires administrator authorization for moderation. AI assistance must not silently become the authorization authority.
 
@@ -284,22 +292,22 @@ Before a GHM Review schema or runtime implementation is considered qualified, co
 19. live qualification using the dedicated `ghm_runtime` identity;
 20. cleanup using the dedicated `ghm_migrator` authority;
 21. rollback evidence for failed create/moderation paths;
-22. aggregate correctness if Business rating/count is included in the first slice;
+22. aggregate correctness;
 23. automated repository/service/API tests covering the authorization boundary.
 
 A schema existing in PostgreSQL is not sufficient evidence of qualification.
 
 ## 16. Construction dependency gate
 
-Before creating `ghm.review`, the following existing GHM contracts must be reconciled against this Review contract:
+The Review dependency gate is now reconciled for schema construction:
 
-- canonical Business eligibility/verification semantics;
-- Business owner lookup through `business_membership`;
-- administrator authorization semantics;
-- whether Business rating and review count are canonical Business fields or a separate projection/aggregate capability;
-- public Review projection shape and column exposure.
+- **Business eligibility/verification semantics:** resolved by the reconciled `ghm.business` `is_active`, `verification_status`, and `is_verified` contract;
+- **Business owner lookup:** resolved through `ghm.business_membership`, using the active `owner` relationship;
+- **administrator authorization:** resolved through the established canonical `AuthContext.role = 'admin'` boundary; Business membership does not confer moderation authority;
+- **Business rating/review count:** resolved as Review/Trust-owned derived fields physically stored on `ghm.business`;
+- **public Review projection:** must expose only the explicitly governed public Review fields and approved, eligible Business relationship; no raw table wildcard is authorized.
 
-Until those dependencies are resolved, Review schema creation is intentionally blocked.
+The dependency gate no longer blocks creation of `ghm.review`.
 
 ## 17. Founder boundary
 
@@ -307,6 +315,6 @@ Until those dependencies are resolved, Review schema creation is intentionally b
 
 **REVIEW CONTRACT: AUTHORIZED FOR CONSTRUCTION QUALIFICATION**
 
-**REVIEW SCHEMA IMPLEMENTATION: BLOCKED UNTIL THE DEPENDENCY GATE IN SECTION 16 IS RECONCILED**
+**REVIEW SCHEMA IMPLEMENTATION: AUTHORIZED FOR CONSTRUCTION QUALIFICATION**
 
 This authorization remains construction-only. Production deployment and product cutover remain separately gated.
