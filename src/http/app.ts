@@ -5,11 +5,15 @@ import { requireAuth } from '../auth/http';
 import { PostgresBusinessIdentityRepository } from '../resources/business-identity/repository';
 import { BusinessIdentityServiceImpl } from '../resources/business-identity/service';
 import { BusinessIdentityService, UpdateBusinessProfileInput } from '../resources/business-identity/contracts';
+import { PostgresProjectRepository } from '../resources/project/repository';
+import { ProjectServiceImpl } from '../resources/project/service';
+import { CreateProjectInput, ProjectService, UpdateProjectInput } from '../resources/project/contracts';
 import { isRegisteredOperation, ResourceOperation } from '../resources/registry';
 import { config } from '../config';
 
 export interface AppDependencies {
   readonly businessIdentityService?: BusinessIdentityService;
+  readonly projectService?: ProjectService;
 }
 
 const requireRegisteredAccess = (resource: Parameters<typeof canAccessResource>[1], operation: ResourceOperation) =>
@@ -50,17 +54,123 @@ const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | n
   };
 };
 
+const parseProjectCreateInput = (body: unknown): CreateProjectInput | null => {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+
+  const input = body as Record<string, unknown>;
+  const allowed = new Set([
+    'title',
+    'description',
+    'category',
+    'province',
+    'city',
+    'budgetMin',
+    'budgetMax',
+    'urgency',
+  ]);
+
+  if (Object.keys(input).some((key) => !allowed.has(key))) return null;
+
+  const stringFields = ['title', 'description', 'category', 'province', 'city'];
+  for (const field of stringFields) {
+    if (typeof input[field] !== 'string') return null;
+  }
+
+  if (
+    Object.hasOwn(input, 'budgetMin') &&
+    input.budgetMin !== null &&
+    typeof input.budgetMin !== 'number'
+  ) return null;
+
+  if (
+    Object.hasOwn(input, 'budgetMax') &&
+    input.budgetMax !== null &&
+    typeof input.budgetMax !== 'number'
+  ) return null;
+
+  if (
+    Object.hasOwn(input, 'urgency') &&
+    input.urgency !== 'standard' &&
+    input.urgency !== 'urgent' &&
+    input.urgency !== 'emergency'
+  ) return null;
+
+  return {
+    title: input.title as string,
+    description: input.description as string,
+    category: input.category as string,
+    province: input.province as string,
+    city: input.city as string,
+    ...(Object.hasOwn(input, 'budgetMin')
+      ? { budgetMin: input.budgetMin as number | null }
+      : {}),
+    ...(Object.hasOwn(input, 'budgetMax')
+      ? { budgetMax: input.budgetMax as number | null }
+      : {}),
+    ...(Object.hasOwn(input, 'urgency')
+      ? { urgency: input.urgency as CreateProjectInput['urgency'] }
+      : {}),
+  };
+};
+
+const parseProjectUpdateInput = (body: unknown): UpdateProjectInput | null => {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+
+  const input = body as Record<string, unknown>;
+  const allowed = new Set([
+    'title',
+    'description',
+    'category',
+    'province',
+    'city',
+    'budgetMin',
+    'budgetMax',
+    'urgency',
+  ]);
+
+  const keys = Object.keys(input);
+  if (keys.length === 0 || keys.some((key) => !allowed.has(key))) return null;
+
+  const stringFields = ['title', 'description', 'category', 'province', 'city'];
+  for (const field of stringFields) {
+    if (Object.hasOwn(input, field) && typeof input[field] !== 'string') {
+      return null;
+    }
+  }
+
+  if (
+    Object.hasOwn(input, 'budgetMin') &&
+    input.budgetMin !== null &&
+    typeof input.budgetMin !== 'number'
+  ) return null;
+
+  if (
+    Object.hasOwn(input, 'budgetMax') &&
+    input.budgetMax !== null &&
+    typeof input.budgetMax !== 'number'
+  ) return null;
+
+  if (
+    Object.hasOwn(input, 'urgency') &&
+    input.urgency !== 'standard' &&
+    input.urgency !== 'urgent' &&
+    input.urgency !== 'emergency'
+  ) return null;
+
+  return input as UpdateProjectInput;
+};
+
 const handleError = (error: unknown, res: Response): void => {
   if (error instanceof Error) {
     if (error.message === 'Business creation requires a business operator role' || error.message === 'Business management permission required') {
       res.status(403).json({ error: 'forbidden' });
       return;
     }
-    if (error.message === 'Authenticated account not found' || error.message === 'Business not found') {
+    if (error.message === 'Authenticated account not found' || error.message === 'Business not found' || error.message === 'Project not found or ownership required') {
       res.status(404).json({ error: 'not_found' });
       return;
     }
-    if (error.message === 'Business creation requires no existing active business membership' || (error as { code?: string }).code === '23505') {
+    if (error.message === 'Business creation requires no existing active business membership' || error.message === 'Only open Projects may be updated' || (error as { code?: string }).code === '23505') {
       res.status(409).json({ error: 'conflict' });
       return;
     }
@@ -72,6 +182,7 @@ const handleError = (error: unknown, res: Response): void => {
 export const createApp = (dependencies: AppDependencies = {}): express.Express => {
   const app = express();
   const service = dependencies.businessIdentityService ?? new BusinessIdentityServiceImpl(new PostgresBusinessIdentityRepository());
+  const projectService = dependencies.projectService ?? new ProjectServiceImpl(new PostgresProjectRepository());
 
   app.disable('x-powered-by');
   app.set('trust proxy', config.trustProxy);
@@ -184,6 +295,90 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       const business = await service.updateBusiness(context, businessId, input);
       res.status(200).json({ business });
     } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.post('/api/v1/projects', requireAuth, requireRegisteredAccess('project', 'create'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const input = parseProjectCreateInput(req.body);
+
+      if (!input) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      const project = await projectService.createProject(context, input);
+      res.status(201).json({ project });
+    } catch (error) {
+      if (error instanceof Error && (
+        error.message.includes(' is required') ||
+        error.message.includes(' must be between ') ||
+        error.message.includes('must be null or a non-negative number') ||
+        error.message === 'budgetMax must be greater than or equal to budgetMin' ||
+        error.message === 'Invalid Project urgency'
+      )) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      handleError(error, res);
+    }
+  });
+
+  app.get('/api/v1/projects/:projectId', requireAuth, requireRegisteredAccess('project', 'read'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const projectIdValue = routeParam(req.params.projectId);
+      const projectId = projectIdValue === null ? null : positiveIntegerId(projectIdValue);
+
+      if (projectId === null) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      const project = await projectService.getOwnedProject(context, projectId);
+
+      if (!project) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+
+      res.status(200).json({ project });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.patch('/api/v1/projects/:projectId', requireAuth, requireRegisteredAccess('project', 'update'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const projectIdValue = routeParam(req.params.projectId);
+      const projectId = projectIdValue === null ? null : positiveIntegerId(projectIdValue);
+      const input = parseProjectUpdateInput(req.body);
+
+      if (projectId === null || !input) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      const project = await projectService.updateOwnedProject(context, projectId, input);
+      res.status(200).json({ project });
+    } catch (error) {
+      if (error instanceof Error && (
+        error.message.includes(' is required') ||
+        error.message.includes(' must be between ') ||
+        error.message.includes('must be null or a non-negative number') ||
+        error.message === 'budgetMax must be greater than or equal to budgetMin' ||
+        error.message === 'Invalid Project urgency' ||
+        error.message === 'Project update requires at least one field' ||
+        error.message.startsWith('Unsupported Project update field:')
+      )) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
       handleError(error, res);
     }
   });

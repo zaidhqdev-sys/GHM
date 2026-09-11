@@ -15,12 +15,14 @@ const { config } = await import('../dist/config.js');
 const { createApp } = await import('../dist/http/app.js');
 const { BusinessIdentityServiceImpl } = await import('../dist/resources/business-identity/service.js');
 const { PostgresBusinessIdentityRepository } = await import('../dist/resources/business-identity/repository.js');
+const { ProjectServiceImpl } = await import('../dist/resources/project/service.js');
+const { PostgresProjectRepository } = await import('../dist/resources/project/repository.js');
 
 const ssl = { rejectUnauthorized: false };
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
 const cleanupPool = new Pool({ connectionString: migratorUrl, ssl });
 const marker = `ghm-resource-http-${randomUUID()}`;
-const fixture = { accountIds: [], businessIds: [] };
+const fixture = { accountIds: [], businessIds: [], projectIds: [] };
 
 const request = async (baseUrl, method, path, token, body) => {
   const headers = { ...(token ? { authorization: `Bearer ${token}` } : {}), ...(body !== undefined ? { 'content-type': 'application/json' } : {}) };
@@ -90,7 +92,10 @@ const assertError = (actual, expected, label) => {
   if (typeof actual.body?.error !== 'string') throw new Error(`${label}: missing stable error body: ${JSON.stringify(actual.body)}`);
 };
 
-const server = http.createServer(createApp({ businessIdentityService: new BusinessIdentityServiceImpl(new PostgresBusinessIdentityRepository(runtimePool)) }));
+const server = http.createServer(createApp({
+  businessIdentityService: new BusinessIdentityServiceImpl(new PostgresBusinessIdentityRepository(runtimePool)),
+  projectService: new ProjectServiceImpl(new PostgresProjectRepository(runtimePool)),
+}));
 
 try {
   const businessAccountId = await createAccount('business');
@@ -182,6 +187,238 @@ try {
   if (/SELECT|ghm\.|postgres|runtime|migrator|password|secret/i.test(disclosureError)) throw new Error(`Error disclosure boundary failed: ${disclosureError}`);
   console.log('RESOURCE API ERROR DISCLOSURE BOUNDARY PASS');
 
+﻿  assertError(
+    await request(baseUrl, 'POST', '/api/v1/projects', undefined, {
+      title: 'HTTP qualification project',
+      description: 'A live Project HTTP qualification fixture for the GHM resource API.',
+      category: 'construction',
+      province: 'KwaZulu-Natal',
+      city: 'Durban',
+    }),
+    401,
+    'Project create missing authentication',
+  );
+  console.log('PROJECT HTTP MISSING AUTH DENIAL PASS');
+
+  assertError(
+    await request(baseUrl, 'POST', '/api/v1/projects', createToken, {
+      title: 'HTTP qualification project',
+      description: 'A live Project HTTP qualification fixture for the GHM resource API.',
+      category: 'construction',
+      province: 'KwaZulu-Natal',
+      city: 'Durban',
+      accountId: outsiderAccountId,
+      status: 'completed',
+    }),
+    400,
+    'Project create server-owned fields',
+  );
+  console.log('PROJECT HTTP SERVER-OWNED FIELD DENIAL PASS');
+
+  // PROJECT QUALIFIER AUTHORITY FIX:
+  // The migrator is intentionally NOINHERIT. Direct verification/fixture
+  // mutation must explicitly assume ghm_schema_owner rather than granting
+  // ghm_runtime broader privileges.
+  await cleanupPool.query('SET ROLE ghm_schema_owner');
+
+  const projectCreate = await request(
+    baseUrl,
+    'POST',
+    '/api/v1/projects',
+    createToken,
+    {
+      title: 'HTTP qualification project',
+      description: 'A live Project HTTP qualification fixture for the GHM resource API.',
+      category: 'construction',
+      province: 'KwaZulu-Natal',
+      city: 'Durban',
+      budgetMin: 50000,
+      budgetMax: 100000,
+      urgency: 'urgent',
+    },
+  );
+
+  assertStatus(projectCreate, 201, 'Project creation');
+  const projectId = projectCreate.body?.project?.id;
+
+  if (!Number.isSafeInteger(projectId)) {
+    throw new Error('Project creation did not return a valid id: ' + JSON.stringify(projectCreate.body));
+  }
+
+  fixture.projectIds.push(projectId);
+
+  if (projectCreate.body?.project?.accountId !== createAccountId) {
+    throw new Error(
+      'Project owner binding failed: expected ' + createAccountId + ', got ' + JSON.stringify(projectCreate.body),
+    );
+  }
+
+  const projectRow = await cleanupPool.query(
+    `SELECT id, account_id, title, status
+       FROM ghm.project
+      WHERE id = $1`,
+    [projectId],
+  );
+
+  if (
+    projectRow.rows.length !== 1 ||
+    Number(projectRow.rows[0].id) !== projectId ||
+    Number(projectRow.rows[0].account_id) !== createAccountId ||
+    projectRow.rows[0].status !== 'open'
+  ) {
+    throw new Error(
+      'Live Project persistence/ownership boundary failed: ' + JSON.stringify(projectRow.rows),
+    );
+  }
+
+  console.log('PROJECT HTTP CREATE + OWNER BINDING PASS');
+
+  const projectRead = await request(
+    baseUrl,
+    'GET',
+    `/api/v1/projects/${projectId}`,
+    createToken,
+  );
+
+  assertStatus(projectRead, 200, 'Project owner read');
+
+  if (
+    projectRead.body?.project?.id !== projectId ||
+    projectRead.body?.project?.accountId !== createAccountId
+  ) {
+    throw new Error('Project owner read failed: ' + JSON.stringify(projectRead.body));
+  }
+
+  console.log('PROJECT HTTP OWNER READ PASS');
+
+  assertError(
+    await request(
+      baseUrl,
+      'GET',
+      `/api/v1/projects/${projectId}`,
+      outsiderToken,
+    ),
+    404,
+    'Project non-owner read',
+  );
+
+  console.log('PROJECT HTTP NON-OWNER READ DENIAL PASS');
+
+  assertError(
+    await request(
+      baseUrl,
+      'GET',
+      '/api/v1/projects/not-an-id',
+      createToken,
+    ),
+    400,
+    'Project invalid id',
+  );
+
+  console.log('PROJECT HTTP INVALID ID DENIAL PASS');
+
+  const projectUpdate = await request(
+    baseUrl,
+    'PATCH',
+    `/api/v1/projects/${projectId}`,
+    createToken,
+    {
+      title: 'HTTP qualification project updated',
+      urgency: 'standard',
+    },
+  );
+
+  assertStatus(projectUpdate, 200, 'Project owner update');
+
+  if (
+    projectUpdate.body?.project?.id !== projectId ||
+    projectUpdate.body?.project?.accountId !== createAccountId ||
+    projectUpdate.body?.project?.title !== 'HTTP qualification project updated'
+  ) {
+    throw new Error('Project owner update failed: ' + JSON.stringify(projectUpdate.body));
+  }
+
+  console.log('PROJECT HTTP OWNER UPDATE PASS');
+
+  assertError(
+    await request(
+      baseUrl,
+      'PATCH',
+      `/api/v1/projects/${projectId}`,
+      outsiderToken,
+      { title: 'Unauthorized project update' },
+    ),
+    404,
+    'Project non-owner update',
+  );
+
+  console.log('PROJECT HTTP NON-OWNER UPDATE DENIAL PASS');
+
+  await cleanupPool.query(
+    `UPDATE ghm.project
+        SET status = 'completed',
+            updated_at = now()
+      WHERE id = $1`,
+    [projectId],
+  );
+
+  const closedProjectUpdate = await request(
+    baseUrl,
+    'PATCH',
+    `/api/v1/projects/${projectId}`,
+    createToken,
+    { title: 'Closed project mutation attempt' },
+  );
+
+  assertError(
+    closedProjectUpdate,
+    409,
+    'Project closed update',
+  );
+
+  console.log('PROJECT HTTP CLOSED UPDATE DENIAL PASS');
+
+  const persistedClosedProject = await cleanupPool.query(
+    `SELECT id, account_id, title, status
+       FROM ghm.project
+      WHERE id = $1`,
+    [projectId],
+  );
+
+  if (
+    persistedClosedProject.rows.length !== 1 ||
+    persistedClosedProject.rows[0].status !== 'completed' ||
+    persistedClosedProject.rows[0].title !== 'HTTP qualification project updated'
+  ) {
+    throw new Error(
+      'Closed Project state was not preserved: ' + JSON.stringify(persistedClosedProject.rows),
+    );
+  }
+
+  console.log('PROJECT HTTP CLOSED STATE PRESERVATION PASS');
+
+  const projectDisclosureError = JSON.stringify(
+    (
+      await request(
+        baseUrl,
+        'PATCH',
+        `/api/v1/projects/${projectId}`,
+        outsiderToken,
+        { title: 'forbidden' },
+      )
+    ).body,
+  );
+
+  if (/SELECT|ghm\.|postgres|runtime|migrator|password|secret/i.test(projectDisclosureError)) {
+    throw new Error(
+      'Project HTTP error disclosure boundary failed: ' + projectDisclosureError,
+    );
+  }
+
+  console.log('PROJECT HTTP ERROR DISCLOSURE BOUNDARY PASS');
+
+  console.log('GHM PROJECT RESOURCE API HTTP QUALIFICATION: PASS');
+
   console.log('GHM RESOURCE API HTTP QUALIFICATION: PASS');
 } finally {
   await new Promise((resolve) => server.close(() => resolve()));
@@ -189,6 +426,7 @@ try {
     await cleanupPool.query('BEGIN');
     await cleanupPool.query('SET LOCAL ROLE ghm_schema_owner');
     await cleanupPool.query(`DELETE FROM ghm.business WHERE id = ANY($1::bigint[])`, [fixture.businessIds]);
+    await cleanupPool.query(`DELETE FROM ghm.project WHERE id = ANY($1::bigint[])`, [fixture.projectIds]);
     await cleanupPool.query(`DELETE FROM ghm.business WHERE slug LIKE $1`, [`${marker}%`]);
     await cleanupPool.query(`DELETE FROM ghm.account_identity WHERE id = ANY($1::bigint[])`, [fixture.accountIds]);
     await cleanupPool.query('COMMIT');

@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import { createApp } from './app';
 import { AuthContext } from '../auth/authorization';
 import { config } from '../config';
+import { Project, ProjectService } from '../resources/project/contracts';
 import { AccountIdentity, BusinessIdentityService } from '../resources/business-identity/contracts';
 
 const profile = (context: AuthContext): AccountIdentity => ({
@@ -70,6 +71,357 @@ test('protected profile route rejects an invalid JWT', async () => {
     });
     assert.equal(response.status, 401);
     assert.deepEqual(await response.json(), { error: 'unauthorized' });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+
+const startProjectTestServer = async (projectService: ProjectService) => {
+  const businessService = {} as BusinessIdentityService;
+  const server = http.createServer(createApp({
+    businessIdentityService: businessService,
+    projectService,
+  }));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  return { server, baseUrl: `http://127.0.0.1:${address.port}` };
+};
+
+const projectFixture = (context: AuthContext, overrides: Partial<Project> = {}): Project => ({
+  id: 101,
+  accountId: context.userId,
+  title: 'Kitchen renovation',
+  description: 'Renovation project for a residential kitchen and related finishes.',
+  category: 'construction',
+  province: 'KwaZulu-Natal',
+  city: 'Durban',
+  budgetMin: 50000,
+  budgetMax: 100000,
+  urgency: 'standard',
+  status: 'open',
+  createdAt: new Date('2026-09-10T00:00:00.000Z'),
+  updatedAt: new Date('2026-09-10T00:00:00.000Z'),
+  ...overrides,
+});
+
+test('project create route requires authentication', async () => {
+  const projectService = {
+    createProject: async () => { throw new Error('must not be called'); },
+  } as unknown as ProjectService;
+
+  const { server, baseUrl } = await startProjectTestServer(projectService);
+
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/projects`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Kitchen renovation',
+        description: 'Renovation project for a residential kitchen and related finishes.',
+        category: 'construction',
+        province: 'KwaZulu-Natal',
+        city: 'Durban',
+      }),
+    });
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: 'unauthorized' });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('project create route rejects server-owned fields before service execution', async () => {
+  let called = false;
+
+  const projectService = {
+    createProject: async () => {
+      called = true;
+      throw new Error('must not be called');
+    },
+  } as unknown as ProjectService;
+
+  const { server, baseUrl } = await startProjectTestServer(projectService);
+
+  try {
+    const token = jwt.sign({ userId: 42, role: 'business' }, config.jwtSecret);
+
+    const response = await fetch(`${baseUrl}/api/v1/projects`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Kitchen renovation',
+        description: 'Renovation project for a residential kitchen and related finishes.',
+        category: 'construction',
+        province: 'KwaZulu-Natal',
+        city: 'Durban',
+        accountId: 999,
+        status: 'completed',
+      }),
+    });
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: 'invalid_request' });
+    assert.equal(called, false);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('project create route binds authenticated context and returns the created project', async () => {
+  let receivedContext: AuthContext | undefined;
+  let receivedInput: unknown;
+
+  const projectService = {
+    createProject: async (context: AuthContext, input: unknown) => {
+      receivedContext = context;
+      receivedInput = input;
+      return projectFixture(context);
+    },
+  } as unknown as ProjectService;
+
+  const { server, baseUrl } = await startProjectTestServer(projectService);
+
+  try {
+    const token = jwt.sign({ userId: 42, role: 'business' }, config.jwtSecret);
+
+    const response = await fetch(`${baseUrl}/api/v1/projects`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Kitchen renovation',
+        description: 'Renovation project for a residential kitchen and related finishes.',
+        category: 'construction',
+        province: 'KwaZulu-Natal',
+        city: 'Durban',
+        budgetMin: 50000,
+        budgetMax: 100000,
+        urgency: 'urgent',
+      }),
+    });
+
+    assert.equal(response.status, 201);
+    assert.deepEqual(receivedContext, { userId: 42, role: 'business' });
+    assert.deepEqual(receivedInput, {
+      title: 'Kitchen renovation',
+      description: 'Renovation project for a residential kitchen and related finishes.',
+      category: 'construction',
+      province: 'KwaZulu-Natal',
+      city: 'Durban',
+      budgetMin: 50000,
+      budgetMax: 100000,
+      urgency: 'urgent',
+    });
+
+    const body = await response.json() as { project: Project };
+    assert.equal(body.project.id, 101);
+    assert.equal(body.project.accountId, 42);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('project owner read route returns the owned project', async () => {
+  let receivedContext: AuthContext | undefined;
+  let receivedProjectId: number | undefined;
+
+  const projectService = {
+    getOwnedProject: async (context: AuthContext, projectId: number) => {
+      receivedContext = context;
+      receivedProjectId = projectId;
+      return projectFixture(context);
+    },
+  } as unknown as ProjectService;
+
+  const { server, baseUrl } = await startProjectTestServer(projectService);
+
+  try {
+    const token = jwt.sign({ userId: 42, role: 'customer' }, config.jwtSecret);
+
+    const response = await fetch(`${baseUrl}/api/v1/projects/101`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(receivedContext, { userId: 42, role: 'customer' });
+    assert.equal(receivedProjectId, 101);
+
+    const body = await response.json() as { project: Project };
+    assert.equal(body.project.accountId, 42);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('project non-owner read route returns not found', async () => {
+  const projectService = {
+    getOwnedProject: async () => null,
+  } as unknown as ProjectService;
+
+  const { server, baseUrl } = await startProjectTestServer(projectService);
+
+  try {
+    const token = jwt.sign({ userId: 99, role: 'business' }, config.jwtSecret);
+
+    const response = await fetch(`${baseUrl}/api/v1/projects/101`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), { error: 'not_found' });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('project routes reject invalid ids', async () => {
+  const projectService = {
+    getOwnedProject: async () => { throw new Error('must not be called'); },
+    updateOwnedProject: async () => { throw new Error('must not be called'); },
+  } as unknown as ProjectService;
+
+  const { server, baseUrl } = await startProjectTestServer(projectService);
+
+  try {
+    const token = jwt.sign({ userId: 42, role: 'business' }, config.jwtSecret);
+
+    const getResponse = await fetch(`${baseUrl}/api/v1/projects/not-an-id`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    assert.equal(getResponse.status, 400);
+    assert.deepEqual(await getResponse.json(), { error: 'invalid_request' });
+
+    const patchResponse = await fetch(`${baseUrl}/api/v1/projects/0`, {
+      method: 'PATCH',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ title: 'Updated project title' }),
+    });
+    assert.equal(patchResponse.status, 400);
+    assert.deepEqual(await patchResponse.json(), { error: 'invalid_request' });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('project update route returns updated owner project', async () => {
+  let receivedContext: AuthContext | undefined;
+  let receivedProjectId: number | undefined;
+  let receivedInput: unknown;
+
+  const projectService = {
+    updateOwnedProject: async (
+      context: AuthContext,
+      projectId: number,
+      input: unknown,
+    ) => {
+      receivedContext = context;
+      receivedProjectId = projectId;
+      receivedInput = input;
+      return projectFixture(context, { title: 'Updated kitchen renovation' });
+    },
+  } as unknown as ProjectService;
+
+  const { server, baseUrl } = await startProjectTestServer(projectService);
+
+  try {
+    const token = jwt.sign({ userId: 42, role: 'business' }, config.jwtSecret);
+
+    const response = await fetch(`${baseUrl}/api/v1/projects/101`, {
+      method: 'PATCH',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Updated kitchen renovation',
+        urgency: 'urgent',
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(receivedContext, { userId: 42, role: 'business' });
+    assert.equal(receivedProjectId, 101);
+    assert.deepEqual(receivedInput, {
+      title: 'Updated kitchen renovation',
+      urgency: 'urgent',
+    });
+
+    const body = await response.json() as { project: Project };
+    assert.equal(body.project.title, 'Updated kitchen renovation');
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('project update route rejects status and account ownership mutation', async () => {
+  let called = false;
+
+  const projectService = {
+    updateOwnedProject: async () => {
+      called = true;
+      throw new Error('must not be called');
+    },
+  } as unknown as ProjectService;
+
+  const { server, baseUrl } = await startProjectTestServer(projectService);
+
+  try {
+    const token = jwt.sign({ userId: 42, role: 'business' }, config.jwtSecret);
+
+    const response = await fetch(`${baseUrl}/api/v1/projects/101`, {
+      method: 'PATCH',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        status: 'completed',
+        accountId: 999,
+      }),
+    });
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: 'invalid_request' });
+    assert.equal(called, false);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('project update route maps closed-project denial to conflict', async () => {
+  const projectService = {
+    updateOwnedProject: async () => {
+      throw new Error('Only open Projects may be updated');
+    },
+  } as unknown as ProjectService;
+
+  const { server, baseUrl } = await startProjectTestServer(projectService);
+
+  try {
+    const token = jwt.sign({ userId: 42, role: 'business' }, config.jwtSecret);
+
+    const response = await fetch(`${baseUrl}/api/v1/projects/101`, {
+      method: 'PATCH',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ title: 'Updated kitchen renovation' }),
+    });
+
+    assert.equal(response.status, 409);
+    assert.deepEqual(await response.json(), { error: 'conflict' });
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
