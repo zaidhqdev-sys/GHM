@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This record reconciles the governed construction state after commit `d35a49d` (`feat: establish governed public Project disclosure boundary`). It does not authorize production deployment, product cutover, provider mutation, DNS/routing changes, credential rotation, or migration of Zaid Connect or QuoteFlow.
+This record reconciles the governed construction state after the qualified Enquiry resource slice. It does not authorize production deployment, product cutover, provider mutation, DNS/routing changes, credential rotation, or migration of Zaid Connect or QuoteFlow.
 
 ## Current qualified state
 
@@ -16,72 +16,71 @@ This record reconciles the governed construction state after commit `d35a49d` (`
 
 ### Transaction boundary
 
-Transaction Qualification is already recorded as **CLOSED / PASS** for the first canonical Business Identity slice against the relocated `ghm` schema.
+Transaction Qualification is **CLOSED / PASS** for the first canonical Business Identity slice against the relocated `ghm` schema.
 
-The qualified transaction evidence covers:
+The qualified transaction evidence covers atomic duplicate-slug rollback, concurrent Business creation serialization, transaction commit, transaction rollback, checked-out client release, same-context propagation through `withAuthorizedTransaction`, and rejection of invalid authentication context before database checkout.
 
-- atomic duplicate-slug rollback;
-- concurrent Business creation serialization;
-- transaction commit;
-- transaction rollback;
-- checked-out client release;
-- same-context propagation through `withAuthorizedTransaction`;
-- rejection of invalid authentication context before database checkout.
-
-The existence of a later Project or public-disclosure slice does not reopen this primitive. Resource-specific qualification remains required where a resource introduces transaction-sensitive behavior.
+Resource-specific qualification remains required where a resource introduces transaction-sensitive behavior.
 
 ### TEMP privilege
 
-The TEMP privilege decision is **CLOSED / NO GRANT REQUIRED** for the current runtime source and qualification harness. No temporary tables or other temporary objects are required by the qualified runtime path.
+The TEMP privilege decision is **CLOSED / NO GRANT REQUIRED** for the current runtime source and qualification harness. No temporary tables or other temporary objects are required by the qualified runtime paths.
 
 No `TEMP` privilege is to be granted merely for future convenience.
 
 ### Project private resource
 
-The Project private resource is construction-qualified against the dedicated runtime boundary, including:
-
-- authenticated owner binding;
-- owner/non-owner read separation;
-- owner update rules;
-- owner/status immutability;
-- input validation;
-- closed-project update denial;
-- runtime DELETE denial;
-- multi-project ownership preservation.
+The Project private resource is construction-qualified against the dedicated runtime boundary, including authenticated owner binding, owner/non-owner read separation, owner update rules, owner/status immutability, input validation, closed-project update denial, runtime DELETE denial, and multi-project ownership preservation.
 
 ### Project public disclosure
 
-Commit `d35a49d` establishes the separately governed public Project disclosure boundary.
+The separately governed public Project disclosure boundary is construction-qualified. Its runtime evidence covers projection existence, approved disclosure-column allowlist, account-ownership exclusion, open-only lifecycle behavior, result disclosure allowlist, runtime mutation denial, private/public relation separation, and private ownership preservation. The HTTP boundary is covered by the automated suite.
 
-The construction qualification passed:
+### Enquiry resource
+
+The Enquiry construction slice is now **CLOSED / PASS**.
+
+The governing operation contract is `docs/architecture/ENQUIRY_OPERATION_CONTRACT.md`. Enquiry is a customer-to-Business relationship distinct from Project. Canonical identity bindings are `ghm.account_identity.id` for the customer and `ghm.business.id` for the recipient. Initial recipient authorization is limited to an active owner membership.
+
+The live dedicated-runtime qualification passed:
 
 ```text
 RUNTIME IDENTITY PASS: ghm_db/ghm_runtime
 CLEANUP AUTHORITY PASS: ghm_db/ghm_migrator
-PUBLIC PROJECTION VIEW EXISTENCE PASS
-PUBLIC PROJECTION COLUMN ALLOWLIST PASS
-PUBLIC ACCOUNT OWNERSHIP EXCLUSION PASS
-RUNTIME PUBLIC PROJECTION READ PASS
-PUBLIC OPEN-ONLY LIFECYCLE PASS
-PUBLIC VIEW OPEN-PREDICATE PASS
-PUBLIC RESULT DISCLOSURE ALLOWLIST PASS
-PUBLIC PROJECTION UPDATE ACL DENIAL PASS
-PUBLIC PROJECTION INSERT ACL DENIAL PASS
-PUBLIC PROJECTION DELETE ACL DENIAL PASS
-PUBLIC SELECT DISCLOSURE PASS
-PRIVATE PROJECT OWNERSHIP SEPARATION PASS
-PRIVATE/PUBLIC RELATION SEPARATION PASS
-PRIVATE PROJECT OWNERSHIP PRESERVATION PASS
-GHM PROJECT PUBLIC RUNTIME QUALIFICATION: PASS
+ENQUIRY CREATE + CUSTOMER BINDING + SNAPSHOT PASS
+ENQUIRY OWN READ PASS
+ENQUIRY CROSS-CUSTOMER READ DENIAL PASS
+ENQUIRY RECEIVED OWNER READ PASS
+ENQUIRY CROSS-BUSINESS READ DENIAL PASS
+ENQUIRY ADMINISTRATOR READ DENIAL PASS
+ENQUIRY MEMBER READ DENIAL PASS
+ENQUIRY OWN-BUSINESS CREATE DENIAL PASS
+ENQUIRY OWNER STATUS UPDATE PASS
+ENQUIRY LIFECYCLE PERSISTENCE PASS
+ENQUIRY ADMINISTRATOR STATUS DENIAL PASS
+ENQUIRY MEMBER STATUS DENIAL PASS
+ENQUIRY CROSS-BUSINESS STATUS DENIAL PASS
+ENQUIRY RUNTIME SNAPSHOT UPDATE ACL DENIAL PASS
+ENQUIRY RUNTIME RECIPIENT UPDATE ACL DENIAL PASS
+ENQUIRY RUNTIME DELETE ACL DENIAL PASS
+ENQUIRY RUNTIME STATUS-ON-CREATE ACL DENIAL PASS
+ENQUIRY RUNTIME TABLE ACL PASS
+GHM ENQUIRY RUNTIME QUALIFICATION: PASS
 ```
 
-The HTTP boundary is separately covered by the full automated suite, including anonymous disclosure, authenticated non-owner disclosure, invalid authentication handling, invalid-ID rejection, not-found behavior, and absence of a public mutation surface.
+The qualification used the dedicated `ghm_runtime` connection for application behavior and `ghm_migrator` with `SET LOCAL ROLE ghm_schema_owner` for fixture creation and cleanup. No production data or production credentials were used.
+
+The Enquiry runtime table boundary is intentionally least-privilege: table-wide `SELECT` is true while table-wide `INSERT`, table-wide `UPDATE`, and `DELETE` are false. Column-level INSERT permits only the approved create fields, and column-level UPDATE permits only `status`. The qualification explicitly proved denial of snapshot mutation, recipient mutation, DELETE, and client-supplied status on create.
+
+The repository was corrected to respect those grants: create relies on the database default for `status = 'new'`, and status mutation changes only `status` rather than attempting to update `updated_at`.
+
+The qualification harness was corrected to assert the intended table-level ACL boundary rather than incorrectly requiring table-wide INSERT/UPDATE privileges.
 
 ## Provider/bootstrap authority
 
 The provider/bootstrap authority gate remains **OPEN / BLOCKED FOR MUTATION**.
 
-The available construction evidence establishes Render resource/workspace administration but does not establish independent PostgreSQL `postgres` bootstrap authority through the customer-facing control plane. The legacy memberships granted by `postgres` therefore remain unresolved.
+The available construction evidence does not establish independent PostgreSQL `postgres` bootstrap authority through the customer-facing control plane. The legacy memberships granted by `postgres` therefore remain unresolved.
 
 The following remain prohibited until independent authority is established:
 
@@ -94,17 +93,9 @@ The following remain prohibited until independent authority is established:
 
 This limitation does not block separately governed construction resource slices whose database contracts and privileges can be qualified without bootstrap authority.
 
-## Next governed work
+## Current construction sequence
 
-The current sequence therefore does **not** require re-running the already-closed Transaction or TEMP gates.
-
-The next construction work may proceed with:
-
-1. reconciliation of product-resource requirements against evidenced source contracts;
-2. creation of only the concrete GHM resource slices required by those contracts;
-3. dedicated schema migrations and least-privilege grants for each slice;
-4. resource-specific repository/service/API qualification;
-5. live dedicated-runtime qualification and evidence reconciliation.
+Business Identity, Transaction, TEMP, Project private/public, and Enquiry resource-specific gates are now qualified as recorded above. The next construction work must proceed from evidenced product-resource requirements and must continue to use dedicated `ghm` schema ownership, least-privilege runtime grants, resource-specific qualification, and evidence reconciliation.
 
 Provider/bootstrap cleanup remains an independent blocked gate and must not be approximated through application roles.
 
@@ -112,4 +103,4 @@ Provider/bootstrap cleanup remains an independent blocked gate and must not be a
 
 Zaid Connect and QuoteFlow remain on Supabase.
 
-No production environment variables, DNS, credentials, routing, traffic, or production data are changed by this reconciliation. No product adapter or cutover authorization is implied.
+No production environment variables, DNS, credentials, routing, traffic, or production data were changed by this reconciliation. No product adapter or cutover authorization is implied.
