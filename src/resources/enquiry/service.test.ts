@@ -4,7 +4,9 @@ import type { AuthContext } from '../../auth/authorization';
 import type { Enquiry, EnquiryRepository } from './contracts';
 import { EnquiryServiceImpl } from './service';
 
-const context: AuthContext = { userId: 1, role: 'customer' };
+const customerContext: AuthContext = { userId: 1, role: 'customer' };
+const businessContext: AuthContext = { userId: 2, role: 'business' };
+const adminContext: AuthContext = { userId: 3, role: 'admin' };
 const enquiry = (): Enquiry => ({
   id: 1, businessId: 2, customerId: 1, customerName: 'Customer', customerPhone: null, customerEmail: null,
   project: 'Kitchen renovation', description: 'Need a kitchen renovation quote', city: 'Durban',
@@ -23,7 +25,7 @@ class FakeRepository implements EnquiryRepository {
 test('Enquiry creation normalizes snapshots and defaults', async () => {
   const repository = new FakeRepository();
   const service = new EnquiryServiceImpl(repository);
-  await service.createEnquiry(context, {
+  await service.createEnquiry(customerContext, {
     businessId: 2, customerName: '  Customer  ', customerPhone: ' 0712345678 ', customerEmail: ' customer@example.com ',
     project: '  Kitchen renovation ', description: ' Need a kitchen renovation quote ', city: ' Durban ', budgetMin: 10000, budgetMax: 20000,
   });
@@ -39,17 +41,33 @@ test('Enquiry creation normalizes snapshots and defaults', async () => {
 
 test('Enquiry creation rejects non-marketplace source', async () => {
   const service = new EnquiryServiceImpl(new FakeRepository());
-  await assert.rejects(() => service.createEnquiry(context, { businessId: 2, customerName: 'Customer', project: 'Project', description: 'A valid enquiry description', source: 'directory' }), /Only marketplace Enquiries may be created/);
+  await assert.rejects(() => service.createEnquiry(customerContext, { businessId: 2, customerName: 'Customer', project: 'Project', description: 'A valid enquiry description', source: 'directory' }), /Only marketplace Enquiries may be created/);
 });
 
 test('Enquiry creation rejects invalid budgets', async () => {
   const service = new EnquiryServiceImpl(new FakeRepository());
-  await assert.rejects(() => service.createEnquiry(context, { businessId: 2, customerName: 'Customer', project: 'Project', description: 'A valid enquiry description', budgetMin: 200, budgetMax: 100 }), /budgetMax must be greater than or equal to budgetMin/);
+  await assert.rejects(() => service.createEnquiry(customerContext, { businessId: 2, customerName: 'Customer', project: 'Project', description: 'A valid enquiry description', budgetMin: 200, budgetMax: 100 }), /budgetMax must be greater than or equal to budgetMin/);
+});
+
+test('Enquiry customer operations reject business and admin roles', async () => {
+  const service = new EnquiryServiceImpl(new FakeRepository());
+  await assert.rejects(() => service.createEnquiry(businessContext, { businessId: 2, customerName: 'Customer', project: 'Project', description: 'A valid enquiry description' }), /Insufficient role/);
+  await assert.rejects(() => service.getOwnEnquiry(businessContext, 1), /Insufficient role/);
+  await assert.rejects(() => service.createEnquiry(adminContext, { businessId: 2, customerName: 'Customer', project: 'Project', description: 'A valid enquiry description' }), /Insufficient role/);
+  await assert.rejects(() => service.getOwnEnquiry(adminContext, 1), /Insufficient role/);
+});
+
+test('Enquiry recipient operations reject customer and admin roles', async () => {
+  const service = new EnquiryServiceImpl(new FakeRepository());
+  await assert.rejects(() => service.getReceivedEnquiry(customerContext, 1), /Insufficient role/);
+  await assert.rejects(() => service.updateReceivedEnquiryStatus(customerContext, 1, { status: 'contacted' }), /Insufficient role/);
+  await assert.rejects(() => service.getReceivedEnquiry(adminContext, 1), /Insufficient role/);
+  await assert.rejects(() => service.updateReceivedEnquiryStatus(adminContext, 1, { status: 'contacted' }), /Insufficient role/);
 });
 
 test('Enquiry status mutation accepts only governed lifecycle values', async () => {
   const service = new EnquiryServiceImpl(new FakeRepository());
-  const result = await service.updateReceivedEnquiryStatus(context, 1, { status: 'contacted' });
+  const result = await service.updateReceivedEnquiryStatus(businessContext, 1, { status: 'contacted' });
   assert.equal(result.status, 'contacted');
-  await assert.rejects(() => service.updateReceivedEnquiryStatus(context, 1, { status: 'invalid' as never }), /Invalid Enquiry status/);
+  await assert.rejects(() => service.updateReceivedEnquiryStatus(businessContext, 1, { status: 'invalid' as never }), /Invalid Enquiry status/);
 });
