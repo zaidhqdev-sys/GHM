@@ -13,11 +13,16 @@ import { config } from '../config';
 import { PostgresPublicProjectRepository } from '../resources/project/public-repository';
 import { PublicProjectServiceImpl } from '../resources/project/public-service';
 import { PublicProjectService } from '../resources/project/public-contracts';
+import { PostgresEnquiryRepository } from '../resources/enquiry/repository';
+import { EnquiryServiceImpl } from '../resources/enquiry/service';
+import { EnquiryService } from '../resources/enquiry/contracts';
+import { registerEnquiryRoutes } from './enquiry-router';
 
 export interface AppDependencies {
   readonly businessIdentityService?: BusinessIdentityService;
   readonly projectService?: ProjectService;
   readonly publicProjectService?: PublicProjectService;
+  readonly enquiryService?: EnquiryService;
 }
 
 const requireRegisteredAccess = (resource: Parameters<typeof canAccessResource>[1], operation: ResourceOperation) =>
@@ -202,6 +207,9 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const publicProjectService =
     dependencies.publicProjectService ??
     new PublicProjectServiceImpl(new PostgresPublicProjectRepository());
+  const enquiryService =
+    dependencies.enquiryService ??
+    new EnquiryServiceImpl(new PostgresEnquiryRepository());
   app.disable('x-powered-by');
   app.set('trust proxy', config.trustProxy);
   app.use(cors({ origin: config.corsOrigins }));
@@ -345,6 +353,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
+  registerEnquiryRoutes(app, enquiryService);
 
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
     try {
