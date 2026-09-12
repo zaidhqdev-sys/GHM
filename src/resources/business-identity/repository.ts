@@ -53,7 +53,7 @@ export class PostgresBusinessIdentityRepository implements BusinessIdentityRepos
   async createBusiness(context: AuthContext, input: CreateBusinessInput, slug: string) {
     return withAuthorizedTransaction(context, async client => {
       await requireAccount(client, context, true);
-      const businessResult = await client.query(`INSERT INTO ghm.business (name, slug, verification_status, is_active) VALUES ($1, $2, 'pending', true) RETURNING id, name, slug, verification_status, is_active, created_at, updated_at`, [normalizeName(input.name), slug]);
+      const businessResult = await client.query(`INSERT INTO ghm.business (name, slug, verification_status, is_active) VALUES ($1, $2, 'unverified', true) RETURNING id, name, slug, verification_status, is_active, created_at, updated_at`, [normalizeName(input.name), slug]);
       const business = mapBusiness(businessResult.rows[0]);
       await client.query(`INSERT INTO ghm.business_membership (business_id, account_id, membership_role, membership_status, created_by) VALUES ($1, $2, 'owner', 'active', $2)`, [business.id, context.userId]);
       return business;

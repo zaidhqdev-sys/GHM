@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-09-11T12:14:09.279Z",
+  "captured_at": "2026-09-11T21:09:06.108Z",
   "source": "GHM PostgreSQL catalog capture",
   "note": "Metadata only. No row contents, passwords, tokens, DATABASE_URL, or secrets are captured.",
   "server": [
@@ -912,6 +912,38 @@
     },
     {
       "schema_name": "ghm",
+      "table_name": "enquiry",
+      "index_name": "enquiry_business_created_idx",
+      "is_unique": false,
+      "is_primary": false,
+      "definition": "CREATE INDEX enquiry_business_created_idx ON ghm.enquiry USING btree (business_id, created_at DESC, id)"
+    },
+    {
+      "schema_name": "ghm",
+      "table_name": "enquiry",
+      "index_name": "enquiry_business_status_created_idx",
+      "is_unique": false,
+      "is_primary": false,
+      "definition": "CREATE INDEX enquiry_business_status_created_idx ON ghm.enquiry USING btree (business_id, status, created_at DESC, id)"
+    },
+    {
+      "schema_name": "ghm",
+      "table_name": "enquiry",
+      "index_name": "enquiry_customer_created_idx",
+      "is_unique": false,
+      "is_primary": false,
+      "definition": "CREATE INDEX enquiry_customer_created_idx ON ghm.enquiry USING btree (customer_id, created_at DESC, id)"
+    },
+    {
+      "schema_name": "ghm",
+      "table_name": "enquiry",
+      "index_name": "enquiry_pkey",
+      "is_unique": true,
+      "is_primary": true,
+      "definition": "CREATE UNIQUE INDEX enquiry_pkey ON ghm.enquiry USING btree (id)"
+    },
+    {
+      "schema_name": "ghm",
       "table_name": "ghm_schema_migrations",
       "index_name": "ghm_schema_migrations_pkey",
       "is_unique": true,
@@ -1090,6 +1122,12 @@
     {
       "schema_name": "ghm",
       "table_name": "business_membership",
+      "row_security_enabled": false,
+      "force_row_security": false
+    },
+    {
+      "schema_name": "ghm",
+      "table_name": "enquiry",
       "row_security_enabled": false,
       "force_row_security": false
     },
@@ -1483,13 +1521,18 @@
     },
     {
       "schema_name": "ghm",
+      "table_name": "enquiry",
+      "estimated_row_count": "-1"
+    },
+    {
+      "schema_name": "ghm",
       "table_name": "ghm_schema_migrations",
       "estimated_row_count": "-1"
     },
     {
       "schema_name": "ghm",
       "table_name": "project",
-      "estimated_row_count": "-1"
+      "estimated_row_count": "0"
     },
     {
       "schema_name": "public",

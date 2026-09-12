@@ -4,7 +4,7 @@ export type BusinessId = number;
 export type AccountId = number;
 export type MembershipId = number;
 
-export type BusinessVerificationStatus = 'pending' | 'approved' | 'rejected';
+export type BusinessVerificationStatus = 'unverified' | 'under_review' | 'information_requested' | 'approved' | 'rejected';
 export type MembershipRole = 'owner' | 'administrator' | 'member';
 export type MembershipStatus = 'active' | 'inactive' | 'revoked';
 

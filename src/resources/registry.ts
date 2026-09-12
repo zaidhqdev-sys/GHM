@@ -5,6 +5,10 @@ export type ResourceOperation =
   | 'readPublic'
   | 'create'
   | 'update'
+  | 'readOwn'
+  | 'readPending'
+  | 'approve'
+  | 'reject'
   | 'delete';
 
 export interface ResourceDefinition {
@@ -20,6 +24,7 @@ export const resourceRegistry: readonly ResourceDefinition[] = [
   { resource: 'notification', operations: ['read', 'update'] },
   { resource: 'support_request', operations: ['read', 'create', 'update'] },
   { resource: 'enquiry', operations: ['read', 'create', 'update'] },
+  { resource: 'review', operations: ['create', 'readOwn', 'readPublic', 'readPending', 'approve', 'reject'] },
 ];
 
 export const isRegisteredOperation = (

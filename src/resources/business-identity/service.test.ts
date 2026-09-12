@@ -5,7 +5,7 @@ import type { AccountIdentity, BusinessIdentity, BusinessIdentityRepository, Bus
 import type { AuthContext } from '../../auth/authorization';
 
 const account = (id: number, role: 'admin' | 'customer' | 'business'): AccountIdentity => ({ id, fullName: 'Test User', phone: null, avatarRef: null, role, createdAt: new Date(0), updatedAt: new Date(0) });
-const business = (id: number, approved = true): BusinessIdentity => ({ id, name: `Business ${id}`, slug: `business-${id}`, verificationStatus: approved ? 'approved' : 'pending', isActive: true, createdAt: new Date(0), updatedAt: new Date(0) });
+const business = (id: number, approved = true): BusinessIdentity => ({ id, name: `Business ${id}`, slug: `business-${id}`, verificationStatus: approved ? 'approved' : 'unverified', isActive: true, createdAt: new Date(0), updatedAt: new Date(0) });
 const membership = (businessId: number, accountId: number, role: 'owner' | 'administrator' | 'member', status: 'active' | 'inactive' | 'revoked' = 'active'): BusinessMembership => ({ id: businessId, businessId, accountId, role, status, createdBy: accountId, createdAt: new Date(0), updatedAt: new Date(0) });
 
 class FakeRepository implements BusinessIdentityRepository {

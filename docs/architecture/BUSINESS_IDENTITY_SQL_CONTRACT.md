@@ -85,7 +85,7 @@ The Business and owner membership are then written in the same transaction:
 
 ```sql
 INSERT INTO business (name, slug, verification_status, is_active)
-VALUES ($1, $2, 'pending', true)
+VALUES ($1, $2, 'unverified', true)
 RETURNING id, name, slug, verification_status, is_active, created_at, updated_at;
 ```
 
