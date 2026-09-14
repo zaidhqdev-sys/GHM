@@ -1,5 +1,5 @@
 import type { AuthContext } from '../../auth/authorization';
-import type { CreateOpportunityInput, Opportunity, OpportunityLifecycleStatus, OpportunityRepository, OpportunityService, UpdateOpportunityInput } from './contracts';
+import type { CreateOpportunityInput, Opportunity, OpportunityLifecycleStatus, OpportunityPublicProjection, OpportunityRepository, OpportunityService, UpdateOpportunityInput } from './contracts';
 
 const validate = (input: CreateOpportunityInput): CreateOpportunityInput => {
   if (!input || typeof input !== 'object') throw new Error('Opportunity input is required');
@@ -13,7 +13,7 @@ export class OpportunityServiceImpl implements OpportunityService {
     return this.repository.createOpportunity(context, validate(input));
   }
 
-  async getOpportunity(context: AuthContext, opportunityId: number): Promise<Opportunity | null> {
+  async getOpportunity(context: AuthContext, opportunityId: number): Promise<Opportunity | OpportunityPublicProjection | null> {
     return this.repository.getOpportunity(context, opportunityId);
   }
 

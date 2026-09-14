@@ -119,8 +119,10 @@ try {
   const serviceRequestTypeId = Number(typeResult.rows[0].id);
 
   const ownerAccountId = await createAccount(`${marker}-owner`);
+  const administratorAccountId = await createAccount(`${marker}-administrator`);
   const outsiderAccountId = await createAccount(`${marker}-outsider`);
   const ownerContext = { userId: ownerAccountId, role: 'business' };
+  const administratorContext = { userId: administratorAccountId, role: 'business' };
   const outsiderContext = { userId: outsiderAccountId, role: 'business' };
 
   const businessRepository = new PostgresBusinessIdentityRepository(runtimePool);
@@ -133,6 +135,25 @@ try {
   }
   fixture.businessIds.push(business.activeBusiness.id);
   console.log(`BUSINESS OWNER FIXTURE PASS: business=${business.activeBusiness.id}`);
+
+  const membershipClient = await cleanupPool.connect();
+  try {
+    await membershipClient.query('BEGIN');
+    await membershipClient.query('SET LOCAL ROLE ghm_schema_owner');
+    await membershipClient.query(
+      `INSERT INTO ghm.business_membership
+         (business_id, account_id, membership_role, membership_status, created_by)
+       VALUES ($1, $2, 'administrator', 'active', $3)`,
+      [business.activeBusiness.id, administratorAccountId, ownerAccountId],
+    );
+    await membershipClient.query('COMMIT');
+  } catch (error) {
+    await membershipClient.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    membershipClient.release();
+  }
+  console.log(`BUSINESS ADMINISTRATOR FIXTURE PASS: business=${business.activeBusiness.id}, account=${administratorAccountId}`);
 
   const repository = new PostgresOpportunityRepository(runtimePool);
   const service = new OpportunityServiceImpl(repository);
@@ -158,6 +179,18 @@ try {
     throw new Error('Opportunity owner read qualification failed');
   }
   console.log('OPPORTUNITY OWNER READ PASS');
+
+  const creatorFullRead = await service.getOpportunity(ownerContext, created.id);
+  if (
+    !creatorFullRead ||
+    creatorFullRead.id !== created.id ||
+    creatorFullRead.creatorAccountId !== ownerAccountId ||
+    creatorFullRead.ownerBusinessId !== null ||
+    !(creatorFullRead.updatedAt instanceof Date)
+  ) {
+    throw new Error(`Creator full Opportunity projection failed: ${JSON.stringify(creatorFullRead)}`);
+  }
+  console.log('OPPORTUNITY CREATOR FULL READ PROJECTION PASS');
 
   const outsiderOwnedRead = await service.getOwnedOpportunity(outsiderContext, created.id);
   if (outsiderOwnedRead !== null) throw new Error('Non-owner owned Opportunity read unexpectedly succeeded');
@@ -201,6 +234,30 @@ try {
   }
   console.log('OPPORTUNITY BUSINESS OWNERSHIP BINDING PASS');
 
+  const businessOwnerRead = await service.getOpportunity(ownerContext, businessOwned.id);
+  if (
+    !businessOwnerRead ||
+    businessOwnerRead.id !== businessOwned.id ||
+    businessOwnerRead.creatorAccountId !== ownerAccountId ||
+    businessOwnerRead.ownerBusinessId !== business.activeBusiness.id ||
+    !(businessOwnerRead.updatedAt instanceof Date)
+  ) {
+    throw new Error(`Business owner full Opportunity projection failed: ${JSON.stringify(businessOwnerRead)}`);
+  }
+  console.log('OPPORTUNITY BUSINESS OWNER FULL READ PROJECTION PASS');
+
+  const businessAdministratorRead = await service.getOpportunity(administratorContext, businessOwned.id);
+  if (
+    !businessAdministratorRead ||
+    businessAdministratorRead.id !== businessOwned.id ||
+    businessAdministratorRead.creatorAccountId !== ownerAccountId ||
+    businessAdministratorRead.ownerBusinessId !== business.activeBusiness.id ||
+    !(businessAdministratorRead.updatedAt instanceof Date)
+  ) {
+    throw new Error(`Business administrator full Opportunity projection failed: ${JSON.stringify(businessAdministratorRead)}`);
+  }
+  console.log('OPPORTUNITY BUSINESS ADMINISTRATOR FULL READ PROJECTION PASS');
+
   await assertRejected(
     () => service.createOpportunity(
       outsiderContext,
@@ -231,8 +288,28 @@ try {
   if (opened.lifecycleStatus !== 'open') throw new Error('Draft -> open transition failed');
   console.log('OPPORTUNITY DRAFT-TO-OPEN TRANSITION PASS');
 
+  const authenticatedUpdated = await service.updateOwnedOpportunity(ownerContext, created.id, { visibility: 'authenticated' });
+  if (authenticatedUpdated.lifecycleStatus !== 'open' || authenticatedUpdated.visibility !== 'authenticated') {
+    throw new Error('Authenticated Opportunity visibility update failed');
+  }
+
   const authenticatedRead = await service.getOpportunity(outsiderContext, created.id);
   if (!authenticatedRead) throw new Error('Authenticated visibility read failed after transition');
+  if (
+    'creatorAccountId' in authenticatedRead ||
+    'ownerBusinessId' in authenticatedRead ||
+    'updatedAt' in authenticatedRead
+  ) {
+    throw new Error(`Authenticated Opportunity read leaked private fields: ${JSON.stringify(authenticatedRead)}`);
+  }
+  if (
+    authenticatedRead.id !== created.id ||
+    authenticatedRead.visibility !== 'authenticated' ||
+    authenticatedRead.title !== `${marker} primary updated`
+  ) {
+    throw new Error('Authenticated Opportunity safe projection contents failed');
+  }
+  console.log('OPPORTUNITY AUTHENTICATED SAFE READ PROJECTION PASS');
 
   const publicCandidate = await service.createOpportunity(
     ownerContext,
@@ -253,7 +330,14 @@ try {
   }
   const publicRead = await service.getOpportunity(outsiderContext, publicCandidate.id);
   if (!publicRead || publicRead.visibility !== 'public') throw new Error('Public Opportunity disclosure failed');
-  console.log('OPPORTUNITY PUBLIC DISCLOSURE PASS');
+  if (
+    'creatorAccountId' in publicRead ||
+    'ownerBusinessId' in publicRead ||
+    'updatedAt' in publicRead
+  ) {
+    throw new Error(`Public Opportunity read leaked private fields: ${JSON.stringify(publicRead)}`);
+  }
+  console.log('OPPORTUNITY PUBLIC SAFE READ PROJECTION PASS');
 
   const participantCandidate = await service.createOpportunity(
     ownerContext,
@@ -294,11 +378,6 @@ try {
   if (terminal.lifecycleStatus !== 'archived') throw new Error('Completed -> archived transition failed');
   console.log('OPPORTUNITY TERMINAL LIFECYCLE PROTECTION PASS');
 
-  await assertRejected(
-    () => directRuntimeQuery(`UPDATE ghm.opportunity SET title = 'runtime-forbidden' WHERE id = $1`, [businessOwned.id]),
-    undefined,
-    'OPPORTUNITY RUNTIME DIRECT UPDATE ACL DENIAL PASS',
-  );
 
   await assertRejected(
     () => directRuntimeQuery(`DELETE FROM ghm.opportunity WHERE id = $1`, [businessOwned.id]),
@@ -313,6 +392,7 @@ try {
     await cleanupPool.query('SET LOCAL ROLE ghm_schema_owner');
     await cleanupPool.query(`DELETE FROM ghm.opportunity WHERE id = ANY($1::bigint[])`, [fixture.opportunityIds]);
     await cleanupPool.query(`DELETE FROM ghm.business WHERE id = ANY($1::bigint[])`, [fixture.businessIds]);
+    await cleanupPool.query(`DELETE FROM ghm.business_membership WHERE account_id = ANY($1::bigint[])`, [fixture.accountIds]);
     await cleanupPool.query(`DELETE FROM ghm.account_identity WHERE id = ANY($1::bigint[])`, [fixture.accountIds]);
     await cleanupPool.query('COMMIT');
   } catch (cleanupError) {

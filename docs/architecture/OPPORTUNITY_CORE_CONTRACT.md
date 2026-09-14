@@ -56,6 +56,32 @@ The core entity contains:
 
 The GHM TypeScript contract uses camelCase names while repository SQL uses the canonical `ghm` snake_case columns.
 
+### Read Projections
+
+The full internal Opportunity projection contains the complete canonical entity, including:
+
+- `creatorAccountId`
+- `ownerBusinessId`
+- `updatedAt`
+
+The safe disclosure projection contains only:
+
+- `id`
+- `opportunityTypeId`
+- `countryId`
+- `currencyId`
+- `title`
+- `description`
+- `lifecycleStatus`
+- `visibility`
+- `budgetMin`
+- `budgetMax`
+- `opensAt`
+- `closesAt`
+- `createdAt`
+
+The repository must use an explicit safe-column selection for disclosure rather than selecting the full entity and removing private fields after retrieval.
+
 ## Lifecycle
 
 The canonical lifecycle vocabulary is:
@@ -99,12 +125,28 @@ Ownership:
 
 Read authorization must distinguish:
 
-- creator/owner access;
+- creator access;
+- owning Business owner/administrator access;
 - participant access (once the Participant slice exists);
 - authenticated visibility;
 - public visibility.
 
-The Core implementation must not invent participant authorization before the Participant slice exists. Until that slice is qualified, participant-specific access is a documented dependency rather than an implicit bypass.
+The Core read surface has two explicit projections:
+
+1. **Full Opportunity projection**
+   - returned to the creator;
+   - returned to an active owning-Business owner;
+   - returned to an active owning-Business administrator;
+   - includes creator identity, optional owner Business binding, and `updatedAt`.
+
+2. **Safe Opportunity public projection**
+   - returned to unrelated callers when visibility permits authenticated/public disclosure;
+   - contains only fields explicitly approved for disclosure by the Core contract;
+   - must not expose `creatorAccountId`, `ownerBusinessId`, or `updatedAt`.
+
+Private Opportunities remain isolated from unrelated callers.
+
+Participant visibility remains fail-closed until the Participant slice provides an explicit participant authorization operation. The Core implementation must not invent participant authorization before that slice exists. Until that slice is qualified, participant-specific access is a documented dependency rather than an implicit bypass.
 
 ## Validation Invariants
 
@@ -167,15 +209,20 @@ Opportunity Core cannot be marked qualified until all of the following are evide
 3. unit/service tests cover normalization, validation, lifecycle, visibility, ownership and error behavior;
 4. runtime identity is the qualified `ghm_runtime` identity;
 5. creation binds the authenticated Account server-side;
-6. cross-account ownership reads/updates are denied;
-7. unauthorized Business ownership changes are denied;
-8. public visibility exposes only the approved Core projection;
-9. invalid lifecycle/visibility transitions are denied;
-10. terminal Opportunities cannot be modified through Core update operations;
-11. transaction rollback is evidenced for a failed mutation;
-12. direct runtime access outside the repository contract is denied where the privilege model requires it;
-13. `npm run build`, `npm test`, and `git diff --check` pass;
-14. the resource-specific qualification evidence is documented before the slice is considered CLOSED/PASS.
+6. creator reads return the full Opportunity projection;
+7. active owning-Business owners and administrators receive the full Opportunity projection even when they are not the creator;
+8. cross-account owned reads/updates are denied;
+9. unauthorized Business ownership changes are denied;
+10. private Opportunities remain isolated from unrelated callers;
+11. authenticated and public disclosure return only the approved safe projection;
+12. safe disclosure does not expose `creatorAccountId`, `ownerBusinessId`, or `updatedAt`;
+13. participant visibility remains fail-closed before the Participant slice exists;
+14. invalid lifecycle/visibility transitions are denied;
+15. terminal Opportunities cannot be modified through Core update operations;
+16. transaction rollback is evidenced for a failed mutation;
+17. direct runtime access outside the repository contract is denied where the privilege model requires it;
+18. `npm run build`, `npm test`, and `git diff --check` pass;
+19. the resource-specific runtime qualification evidence is documented before the slice is considered CLOSED/PASS.
 
 ## Source Reconciliation
 

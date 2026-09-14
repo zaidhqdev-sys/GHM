@@ -28,6 +28,22 @@ export interface Opportunity {
   readonly updatedAt: Date;
 }
 
+export interface OpportunityPublicProjection {
+  readonly id: OpportunityId;
+  readonly opportunityTypeId: OpportunityTypeId;
+  readonly countryId: CountryId | null;
+  readonly currencyId: CurrencyId | null;
+  readonly title: string;
+  readonly description: string;
+  readonly lifecycleStatus: OpportunityLifecycleStatus;
+  readonly visibility: OpportunityVisibility;
+  readonly budgetMin: number | null;
+  readonly budgetMax: number | null;
+  readonly opensAt: Date | null;
+  readonly closesAt: Date | null;
+  readonly createdAt: Date;
+}
+
 export interface CreateOpportunityInput {
   readonly opportunityTypeId: OpportunityTypeId;
   readonly ownerBusinessId?: BusinessId | null;
@@ -58,7 +74,7 @@ export interface UpdateOpportunityInput {
 
 export interface OpportunityRepository {
   createOpportunity(context: AuthContext, input: CreateOpportunityInput): Promise<Opportunity>;
-  getOpportunity(context: AuthContext, opportunityId: OpportunityId): Promise<Opportunity | null>;
+  getOpportunity(context: AuthContext, opportunityId: OpportunityId): Promise<Opportunity | OpportunityPublicProjection | null>;
   getOwnedOpportunity(context: AuthContext, opportunityId: OpportunityId): Promise<Opportunity | null>;
   updateOwnedOpportunity(context: AuthContext, opportunityId: OpportunityId, input: UpdateOpportunityInput): Promise<Opportunity>;
   transitionOpportunity(context: AuthContext, opportunityId: OpportunityId, nextStatus: OpportunityLifecycleStatus): Promise<Opportunity>;
@@ -66,7 +82,7 @@ export interface OpportunityRepository {
 
 export interface OpportunityService {
   createOpportunity(context: AuthContext, input: CreateOpportunityInput): Promise<Opportunity>;
-  getOpportunity(context: AuthContext, opportunityId: OpportunityId): Promise<Opportunity | null>;
+  getOpportunity(context: AuthContext, opportunityId: OpportunityId): Promise<Opportunity | OpportunityPublicProjection | null>;
   getOwnedOpportunity(context: AuthContext, opportunityId: OpportunityId): Promise<Opportunity | null>;
   updateOwnedOpportunity(context: AuthContext, opportunityId: OpportunityId, input: UpdateOpportunityInput): Promise<Opportunity>;
   transitionOpportunity(context: AuthContext, opportunityId: OpportunityId, nextStatus: OpportunityLifecycleStatus): Promise<Opportunity>;
