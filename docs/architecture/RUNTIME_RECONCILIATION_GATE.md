@@ -2,51 +2,58 @@
 
 ## Status
 
-Construction gate. This document defines the boundary for replacing the legacy runtime bootstrap with repository-owned migrations and governed runtime behavior.
+**CONSTRUCTION GATE — QUALIFIED / PASS / CLOSED**
 
-## Problem
+This gate established the canonical repository-owned runtime boundary for GHM construction. Production replacement remains separately gated.
 
-The repository contains two runtime states:
+## Canonical runtime
 
-1. the hardened configuration/authentication changes developed locally; and
-2. the older `src/server.ts` currently represented on the construction branch.
+The construction line now has one canonical runtime implementation with:
 
-These states must not be treated as equivalent.
+- explicit configuration parsing and database SSL behavior;
+- no runtime schema mutation;
+- no fixed-user administrator bootstrap;
+- canonical database/configuration modules;
+- explicit resource routes rather than unrestricted table-name CRUD;
+- authorization bound to authenticated request context;
+- safe error/logging behavior;
+- explicit startup, readiness, health, and graceful shutdown behavior.
 
-## Required reconciliation
-
-Before GHM can progress toward production replacement, the construction line must converge on one canonical runtime implementation that:
-
-- fails closed when required configuration is missing;
-- does not create or alter product tables during application startup;
-- does not silently promote a fixed user ID to administrator;
-- uses the canonical configuration module for secrets, database URL, CORS, and runtime settings;
-- does not expose unrestricted table-name CRUD/query access;
-- keeps authorization decisions bound to the authenticated request and transaction/query context;
-- keeps password-reset tokens out of API responses and logs;
-- does not claim password-reset delivery exists until a trusted delivery mechanism is implemented;
-- has explicit startup, readiness, health, and shutdown behavior.
+The canonical database pool is repository-owned and startup uses that same pool for the readiness database check.
 
 ## Database boundary
 
-`src/server.ts` is not authorized to become a second schema authority. Product/business schema must be introduced through `database/migrations` and recorded by `ghm_schema_migrations`.
+`src/server.ts` is not a schema authority. Product/business schema is introduced through `database/migrations` and reconciled through the migration ledger.
 
-The migration runner already provides deterministic ordering, checksums, transaction scope, and an advisory lock.
+The standalone migration runner uses the dedicated migrator connection path and has been independently qualified. Runtime uses the dedicated runtime identity path.
+
+## Qualification result
+
+The operational boundary qualification passed construction runtime verification, including:
+
+- `/readyz` reached 200 only after the database startup check succeeded;
+- `/healthz` returned the stable 200 health contract;
+- runtime logs contained no forbidden credential patterns;
+- SIGTERM completed graceful shutdown with exit code 0;
+- runtime configuration did not rely on NODE_ENV for TLS behavior;
+- the canonical pool was used without introducing a second application pool.
+
+The broader resource/authentication/authorization gates were separately qualified on their respective construction slices.
 
 ## Production safety
 
-This reconciliation is construction-only. It must not change Zaid Connect or QuoteFlow production configuration, traffic, Supabase data, DNS, or credentials.
+This gate is construction-only. It does not authorize changes to Zaid Connect or QuoteFlow production configuration, traffic, Supabase data, DNS, or credentials.
 
-Supabase remains the live rollback path until GHM independently passes qualification.
+Supabase remains the live production backend and eventual rollback provider until GHM independently satisfies the production replacement gates.
 
-## Exit criteria
+## Remaining production-replacement gates
 
-This gate closes only when:
+Runtime reconciliation itself is closed. The following remain outside this gate:
 
-1. the hardened runtime is present on the construction line;
-2. runtime schema mutation is removed;
-3. unsafe admin bootstrap is removed;
-4. authorization semantics are explicitly governed;
-5. generic table access is replaced or formally constrained by an approved resource contract;
-6. build and automated qualification checks pass;
-7. the actual GHM PostgreSQL catalog has been captured and reconciled.
+1. provider/bootstrap authority cleanup;
+2. future governed resource slices;
+3. complete product-facing Connect and QuoteFlow adapters;
+4. shadow qualification against representative workflows;
+5. tested controlled cutover and rollback.
+
+These are not defects in the qualified runtime boundary and must not be represented as reopening this gate.
