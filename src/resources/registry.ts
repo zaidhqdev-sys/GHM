@@ -1,4 +1,4 @@
-﻿import { Resource } from '../auth/authorization';
+import { Resource } from '../auth/authorization';
 
 export type ResourceOperation =
   | 'read'
@@ -9,6 +9,7 @@ export type ResourceOperation =
   | 'readPending'
   | 'approve'
   | 'reject'
+  | 'transition'
   | 'delete';
 
 export interface ResourceDefinition {
@@ -25,7 +26,7 @@ export const resourceRegistry: readonly ResourceDefinition[] = [
   { resource: 'support_request', operations: ['read', 'create', 'update'] },
   { resource: 'enquiry', operations: ['read', 'create', 'update'] },
   { resource: 'review', operations: ['create', 'readOwn', 'readPublic', 'readPending', 'approve', 'reject'] },
-  { resource: 'opportunity', operations: ['read', 'create', 'update'] },
+  { resource: 'opportunity', operations: ['read', 'create', 'update', 'transition'] },
 ];
 
 export const isRegisteredOperation = (
