@@ -1,8 +1,8 @@
 # Product Backend Capability Inventory
 
-**Status:** Initial evidence inventory
+**Status:** Construction capability inventory — reconciled through current qualified GHM slices
 
-This document records capabilities GHM must eventually support to replace the current managed backend dependencies. It deliberately separates capability requirements from Supabase implementation details.
+This document records capabilities GHM may eventually support to replace current managed backend dependencies. It deliberately separates capability requirements from Supabase implementation details and does not authorize production migration.
 
 ## Zaid Connect
 
@@ -33,7 +33,20 @@ Known domain areas include:
 - business profile views
 - trust/saved-business relationships
 
-Important rule: this list is a capability inventory, not a proposed GHM schema. Exact data contracts remain subject to source and production reconciliation.
+This is a capability inventory, not a proposed wholesale GHM schema. Exact data contracts remain subject to source reconciliation and separate qualification.
+
+The following GHM construction capabilities have now been implemented and qualified where their individual gates are closed:
+
+- Business Identity and eligibility
+- Transaction boundary
+- Authorization boundary
+- Project private/public disclosure
+- Enquiry
+- Review and approved-only aggregate reconciliation
+- Resource API boundary
+- Operational boundary
+
+These qualifications establish GHM capability construction only. They do not establish a Connect adapter, production migration, or cutover.
 
 ## QuoteFlow
 
@@ -47,11 +60,11 @@ The current repository uses `@supabase/supabase-js` and contains a `supabase/` d
 
 The product also contains notification functionality and local/secure account state handling.
 
-The next inventory pass must inspect the concrete Supabase calls and database contracts behind these modules before designing GHM endpoints.
+Concrete QuoteFlow backend usage must continue to be inventoried from source before a product adapter is designed. A Supabase dependency alone does not authorize a corresponding remote GHM capability.
 
 ## Shared GHM Capability Candidates
 
-These are the likely platform primitives, subject to evidence validation:
+These remain platform-level candidates subject to evidence and qualification:
 
 1. Identity and authentication
 2. Session/token validation
@@ -66,10 +79,35 @@ These are the likely platform primitives, subject to evidence validation:
 11. Health/readiness/liveness
 12. Migration/version management
 
+Several of these are already present as qualified construction primitives; remaining candidates require their own evidence and gates.
+
 ## Governance Constraint
 
 GHM must not expose an unrestricted `tables/:table` interface as the long-term product contract. Product capabilities must be explicit, typed, authorized, and testable.
 
 ## Qualification Rule
 
-A capability is not considered migrated merely because a technically similar endpoint exists. The complete product workflow must be demonstrated against GHM, including authorization, persistence, failure behavior, and rollback behavior.
+A capability is not considered migrated merely because a technically similar endpoint exists. A production replacement requires the complete product workflow to be demonstrated against GHM, including authorization, persistence, failure behavior, observability, and rollback behavior.
+
+## Current Boundary
+
+```text
+QUALIFIED CONSTRUCTION
+  Business Identity
+  Transaction
+  Authorization
+  Project private/public disclosure
+  Enquiry
+  Review + aggregate reconciliation
+  Resource API
+  Operational boundary
+
+REQUIRES FUTURE GOVERNED WORK
+  remaining platform/resource capabilities
+  Connect product adapter
+  QuoteFlow product adapter
+  shadow qualification
+  controlled cutover
+```
+
+Provider/bootstrap authority cleanup remains an independent open construction concern. Production Connect and QuoteFlow remain on Supabase.
