@@ -2,9 +2,9 @@
 
 ## Status
 
-**CONSTRUCTION QUALIFICATION CONTRACT — AUTHORIZED**
+**CONSTRUCTION QUALIFICATION CONTRACT — QUALIFIED / CLOSED**
 
-This contract reconciles the authoritative Zaid Connect Review capability into the GHM identity and Business model. It authorizes construction qualification only.
+This contract reconciles the authoritative Zaid Connect Review capability into the GHM identity and Business model. The first canonical GHM Review slice has been implemented and construction-qualified.
 
 It does **not** authorize production deployment, production database migration, provider/bootstrap mutation, product cutover, DNS/routing changes, shadow traffic, or migration of Zaid Connect or QuoteFlow.
 
@@ -14,13 +14,13 @@ A **Review** is a customer-authored evaluation of a specific Business, subject t
 
 A Review is distinct from an Enquiry and Project. It records a customer-to-Business trust/reputation signal and moderation lifecycle.
 
-The GHM Review slice must bind to canonical GHM identities:
+The GHM Review slice binds to canonical GHM identities:
 
 - reviewer → `ghm.account_identity.id`
 - reviewed Business → `ghm.business.id`
 - moderation authorization → canonical GHM administrator authorization
 
-GHM must not reproduce Supabase `auth.uid()`, Supabase UUIDs, Supabase RLS policies, or security-definer functions as the authorization model.
+GHM does not reproduce Supabase `auth.uid()`, Supabase UUIDs, Supabase RLS policies, or security-definer functions as the authorization model.
 
 ## 2. Source-of-truth reconciliation
 
@@ -57,7 +57,7 @@ Only an authenticated account with canonical role `customer` may submit a Review
 
 The reviewed Business is the canonical `business.id` relation.
 
-The Business eligibility dependency is now reconciled in GHM: `ghm.business` exposes independent `is_active` publication state plus `verification_status` and `is_verified`, with the invariant that `verification_status = 'approved'` implies `is_verified = true` and all non-approved states imply `is_verified = false`. The Review public/receive eligibility therefore maps exactly to Connect's three conditions: `is_active = true`, `is_verified = true`, and `verification_status = 'approved'`.
+The Business eligibility dependency is reconciled in GHM: `ghm.business` exposes independent `is_active` publication state plus `verification_status` and `is_verified`, with the invariant that `verification_status = 'approved'` implies `is_verified = true` and all non-approved states imply `is_verified = false`. The Review public/receive eligibility therefore maps exactly to Connect's three conditions: `is_active = true`, `is_verified = true`, and `verification_status = 'approved'`.
 
 ### Business ownership
 
@@ -108,9 +108,9 @@ A create operation must establish all of the following before the Review is acce
 12. initial moderation status is `pending`;
 13. moderation fields are initially unset.
 
-The unique `(business_id, reviewer_id)` invariant is a database integrity requirement and must also be covered by runtime qualification under concurrency.
+The unique `(business_id, reviewer_id)` invariant is a database integrity requirement and was covered by runtime qualification under concurrency.
 
-The authorization contract must not depend on caller-supplied reviewer identity, moderation status, moderator identity, or Business ownership claims.
+The authorization contract does not depend on caller-supplied reviewer identity, moderation status, moderator identity, or Business ownership claims.
 
 ## 6. Moderation lifecycle
 
@@ -126,11 +126,11 @@ A rejected Review has a moderator, moderation timestamp, and a nonblank rejectio
 
 Only pending Reviews may transition through the moderation operation. Re-moderation of an already approved or rejected Review is outside the first slice unless separately contracted.
 
-The first slice must preserve these invariants transactionally.
+The first slice preserves these invariants transactionally.
 
 ## 7. Public visibility
 
-Public Review reads must expose only Reviews whose moderation status is `approved` and whose target Business satisfies the canonical public-eligibility contract.
+Public Review reads expose only Reviews whose moderation status is `approved` and whose target Business satisfies the canonical public-eligibility contract.
 
 The Connect source requires all three Business conditions:
 
@@ -138,30 +138,31 @@ The Connect source requires all three Business conditions:
 - `is_verified = true`;
 - `verification_status = 'approved'`.
 
-GHM now represents these conditions directly on `ghm.business`; Review implementation must enforce all three and must not collapse activation into verification.
+GHM represents these conditions directly on `ghm.business`; Review implementation enforces all three and does not collapse activation into verification.
 
-Public Review reads must not expose pending or rejected Reviews.
+Public Review reads do not expose pending or rejected Reviews.
 
 ## 8. Rating aggregate boundary
 
 The Connect source treats Business `rating` and `review_count` as canonical aggregates calculated from **approved Reviews only**. The aggregate is recalculated when Review moderation changes the approved set.
 
-The GHM Business schema has now reconciled these as physically stored Review/Trust-owned derived values on `ghm.business`:
+The GHM Business schema reconciles these as physically stored Review/Trust-owned derived values on `ghm.business`:
 
 - `rating numeric(3,2) NOT NULL DEFAULT 0`, constrained to 0–5;
 - `review_count integer NOT NULL DEFAULT 0`, constrained to non-negative values.
 
-These are not caller-supplied Business identity fields. Their mutation belongs to the Review/Trust aggregate boundary and must not be exposed as ordinary Business profile mutation.
+These are not caller-supplied Business identity fields. Their mutation belongs to the Review/Trust aggregate boundary and is not exposed as ordinary Business profile mutation.
 
-The first Review implementation is therefore authorized to maintain these canonical Business aggregates, provided the mutation occurs within the same transaction as the moderation transition and qualification proves aggregate correctness.
+The first Review implementation maintains these canonical Business aggregates within the same transaction as the moderation transition, with qualification proving aggregate correctness.
 
-Qualification must demonstrate:
+Qualification demonstrated:
 
 - pending Reviews do not affect public rating/count;
 - approval adds exactly one approved Review to the aggregate;
 - rejection does not add to the aggregate;
-- any later authorized removal policy preserves aggregate correctness;
 - moderation and aggregate mutation are transactionally consistent.
+
+Any future authorized removal policy must separately preserve aggregate correctness; no delete operation is currently authorized.
 
 ## 9. Data boundary
 
@@ -181,23 +182,15 @@ The minimum Review data boundary evidenced by Connect is:
 - created timestamp;
 - updated timestamp.
 
-The GHM implementation must use canonical snake_case database fields and map them to the repository's established camelCase domain contracts.
+The GHM implementation uses canonical snake_case database fields and maps them to the repository's established camelCase domain contracts.
 
-The reviewer snapshot is intentionally duplicated domain data: it records the identity presentation associated with the submission and must not be treated as a live mirror or authorization source.
+The reviewer snapshot is intentionally duplicated domain data: it records the identity presentation associated with the submission and is not treated as a live mirror or authorization source.
 
 ## 10. Least privilege
 
-The dedicated runtime role must receive only privileges required by qualified Review operations.
+The dedicated runtime role receives only privileges required by qualified Review operations.
 
-At minimum, construction must avoid blanket table DML and must prevent direct runtime mutation of:
-
-- reviewer identity;
-- reviewed Business identity;
-- reviewer snapshot;
-- moderation status except through the qualified moderation repository path;
-- moderator identity;
-- moderation timestamp;
-- moderation reason except through the qualified moderation path.
+Construction qualification demonstrated prevention of direct runtime mutation of protected Review identity/moderation fields and no runtime DELETE capability.
 
 Column-level PostgreSQL grants may be used where they improve the boundary, but table-wide privilege checks must not be mistaken for evidence of column-level privilege correctness.
 
@@ -215,22 +208,22 @@ Authorization is relationship- and operation-specific:
 - Business membership does not implicitly grant moderation authority;
 - caller-supplied reviewer or moderator IDs are never trusted as authorization proof.
 
-The GHM implementation must use the established `AuthContext` and authorization registry rather than duplicating role checks in ad-hoc HTTP handlers.
+The GHM implementation uses the established `AuthContext` and authorization registry rather than duplicating role checks in ad-hoc HTTP handlers.
 
 ## 12. Transaction and concurrency boundary
 
-The following must be atomic where applicable:
+The following are atomic where applicable:
 
 - Review creation and all submission invariants that must hold at acceptance;
 - duplicate-review prevention under concurrent submissions;
 - moderation state transition and moderator metadata;
 - approved-review aggregate maintenance.
 
-A failed duplicate submission must not leave a partial Review or other side effect.
+A failed duplicate submission does not leave a partial Review or other side effect.
 
-Rollback evidence is required for failed create and failed moderation paths.
+Rollback evidence was captured for failed create and failed moderation paths.
 
-The authoritative Connect rollback artifact for the source migration removes the Review table, triggers, policies, functions, and grants transactionally. GHM must maintain an equivalent explicit construction rollback plan for any migration it creates.
+The authoritative Connect rollback artifact for the source migration removes the Review table, triggers, policies, functions, and grants transactionally. GHM maintains an explicit construction rollback plan for the migration it creates.
 
 ## 13. Relationship to Business Identity, Enquiry, and Project
 
@@ -242,9 +235,9 @@ Review depends on canonical Business Identity resources:
 
 Review is independent of Enquiry and Project in the first slice.
 
-A Review must not automatically create or mutate an Enquiry or Project.
+A Review does not automatically create or mutate an Enquiry or Project.
 
-Any rule such as “a customer may review only after a completed Project” is **not** present in the authoritative Review migration and must not be invented during construction.
+Any rule such as “a customer may review only after a completed Project” is **not** present in the authoritative Review migration and was not invented during construction.
 
 ## 14. Explicitly out of scope
 
@@ -267,9 +260,11 @@ The first Review qualification does not implement or authorize:
 
 The Connect codebase contains AI review-moderation functionality, but the authoritative database contract requires administrator authorization for moderation. AI assistance must not silently become the authorization authority.
 
-## 15. Qualification gate
+## 15. Qualification result
 
-Before a GHM Review schema or runtime implementation is considered qualified, construction must demonstrate:
+The first canonical GHM Review slice is **QUALIFIED / PASS / CLOSED**.
+
+Construction evidence demonstrated:
 
 1. exact reviewer identity binding to `account_identity`;
 2. exact reviewed Business binding to `business`;
@@ -295,26 +290,26 @@ Before a GHM Review schema or runtime implementation is considered qualified, co
 22. aggregate correctness;
 23. automated repository/service/API tests covering the authorization boundary.
 
-A schema existing in PostgreSQL is not sufficient evidence of qualification.
+The qualification record establishes the Review construction boundary as closed. Future Review changes or additional operations require a separately governed contract and qualification evidence.
 
 ## 16. Construction dependency gate
 
-The Review dependency gate is now reconciled for schema construction:
+The Review dependency gate is reconciled and closed for the first canonical GHM Review slice:
 
 - **Business eligibility/verification semantics:** resolved by the reconciled `ghm.business` `is_active`, `verification_status`, and `is_verified` contract;
 - **Business owner lookup:** resolved through `ghm.business_membership`, using the active `owner` relationship;
 - **administrator authorization:** resolved through the established canonical `AuthContext.role = 'admin'` boundary; Business membership does not confer moderation authority;
 - **Business rating/review count:** resolved as Review/Trust-owned derived fields physically stored on `ghm.business`;
-- **public Review projection:** must expose only the explicitly governed public Review fields and approved, eligible Business relationship; no raw table wildcard is authorized.
+- **public Review projection:** implemented as the explicitly governed public Review read boundary; no raw table wildcard is authorized.
 
-The dependency gate no longer blocks creation of `ghm.review`.
+The dependency gate no longer blocks the qualified first-slice Review implementation.
 
 ## 17. Founder boundary
 
 **REVIEW DIRECTION: APPROVED**
 
-**REVIEW CONTRACT: AUTHORIZED FOR CONSTRUCTION QUALIFICATION**
+**REVIEW CONTRACT: QUALIFIED / CLOSED FOR THE FIRST CANONICAL CONSTRUCTION SLICE**
 
-**REVIEW SCHEMA IMPLEMENTATION: AUTHORIZED FOR CONSTRUCTION QUALIFICATION**
+**REVIEW SCHEMA AND RESOURCE IMPLEMENTATION: QUALIFIED / PASS**
 
-This authorization remains construction-only. Production deployment and product cutover remain separately gated.
+This closure remains construction-only. Production deployment and product cutover remain separately gated.
