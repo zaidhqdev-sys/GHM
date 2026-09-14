@@ -26,11 +26,11 @@ GHM protected resource operations must bind authorization context to one checked
 
 The first-slice Business Identity repository is implemented against the reconciled `ghm` schema. Its protected operations use `withAuthorizedTransaction`, and Business creation locks the authenticated `ghm.account_identity` row with `FOR UPDATE` to serialize concurrent Business creation. The repository SQL is explicit and parameterized.
 
-The transaction primitive is covered by unit tests for successful commit, rollback and release on failure, same-context binding, and rejection of invalid authentication context before checkout. The repository tests and authorization/resource tests pass as part of the 31-test suite.
+The transaction primitive is covered by unit tests for successful commit, rollback and release on failure, same-context binding, and rejection of invalid authentication context before checkout. The repository tests and authorization/resource tests pass as part of the qualification suite.
 
 ## Qualification boundary
 
-The schema reconciliation gate is closed: the first Business Identity schema is applied in `ghm`, its runtime privileges are measured, and the relocated runtime qualification passes. Transaction qualification therefore evaluates evidence against the actual relocated schema rather than treating schema design as an open dependency.
+The schema reconciliation gate is closed: the first Business Identity schema is applied in `ghm`, its runtime privileges are measured, and relocated runtime qualification passes. Transaction qualification therefore evaluates evidence against the actual relocated schema rather than treating schema design as an open dependency.
 
 ## Live qualification evidence — PASS
 
@@ -56,8 +56,7 @@ The repository validation run immediately preceding qualification also passed:
 
 ```text
 npm run build       PASS
-npm test            28/28 PASS
-git diff --check    PASS
+npm test            PASS
 npm run qualify:business-identity-runtime  PASS
 npm run verify:runtime                     PASS
 ```
@@ -87,14 +86,12 @@ It does **not** authorize:
 - Zaid Connect or QuoteFlow production changes;
 - merge of the construction branch into `main`.
 
-## Next governed gates
+## Current governed follow-on work
 
-1. Reconcile this transaction PASS into the construction handover/qualification sequence.
-2. Make the separate TEMP privilege decision if runtime use requires it.
-3. Establish independent provider/bootstrap authority and qualify cleanup of legacy `ghm_db_user` memberships.
-4. Qualify legacy-authority removal and recovery paths.
-5. Reconcile product-resource schema requirements without copying Zaid Connect's Supabase schema blindly.
-6. Only after recovery and shadow qualification gates, consider product migration/cutover.
+1. Maintain provider/bootstrap authority reconciliation as an open gate.
+2. Preserve the qualified first-slice boundary while future resource slices are separately governed.
+3. Reconcile product-resource schema requirements without copying Zaid Connect's Supabase schema blindly.
+4. Complete recovery/shadow/cutover gates only when their evidence requirements are met.
 
 ## Production gate
 
