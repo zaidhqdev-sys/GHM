@@ -1,12 +1,12 @@
 # GHM Business Listing Verification Contract
 
-Status: **construction architecture contract; schema implementation blocked pending Founder review of this boundary.**
+Status: **construction architecture contract; first-slice verification/eligibility boundary QUALIFIED / PASS.**
 
 ## 1. Purpose
 
-Define the provider-neutral Business listing verification capability required to reconcile Zaid Connect directory eligibility before Review can be implemented in GHM.
+Define the provider-neutral Business listing verification and eligibility capability required by the GHM Business and Review slices.
 
-This document is an architecture contract only. It does not authorize production changes, data migration, or a GHM schema mutation.
+This document is an architecture contract only. It does not authorize production changes, data migration, or product cutover.
 
 ## 2. Source-of-truth evidence
 
@@ -26,55 +26,69 @@ Therefore GHM must not silently collapse `is_verified` into `verification_status
 
 GHM owns Business state in `ghm.business`.
 
-Current canonical fields are:
+The first canonical construction slice reconciles these fields:
 
 - `id`
 - `name`
 - `slug`
 - `verification_status`
+- `is_verified`
 - `is_active`
+- `rating`
+- `review_count`
 - `created_at`
 - `updated_at`
 
-The existing GHM schema intentionally uses the reduced vocabulary `pending`, `approved`, `rejected`. This contract does not redefine that vocabulary implicitly.
+The GHM verification status vocabulary remains the reduced construction vocabulary `pending`, `approved`, `rejected`; this is not presented as a complete copy of Connect's internal workflow vocabulary.
 
-## 4. Required reconciliation
+## 4. Reconciliation decision
 
-Before implementing Review, GHM must establish a formal mapping between the current Connect verification model and GHM Business state.
+The first canonical GHM Business/Review construction slice resolves the previously open questions as follows:
 
-The mapping must answer, explicitly:
+1. **Separate `is_verified`: YES.** GHM retains a distinct `is_verified` capability field because Connect uses it independently and Review eligibility requires it explicitly.
+2. **Verification status vocabulary:** GHM retains its existing reduced construction vocabulary `pending`, `approved`, `rejected`. Connect-only workflow states such as `under_review` and `information_requested` are not silently invented in the GHM schema.
+3. **`is_active`: independent.** Activation/publication remains separate from verification state.
+4. **Public/Review eligibility:** a Business is eligible only when `is_active = true`, `is_verified = true`, and `verification_status = 'approved'`.
+5. **Mutation authority:** ordinary Business profile management does not authorize verification or activation mutation. Governed state changes require the explicit GHM authorization boundary.
+6. **Workflow history:** detailed verification workflow history is not part of the first Business Identity/Review slice and requires a separately governed capability if later required.
+7. **Review consumption:** Review uses the canonical Business eligibility predicate rather than provider-specific RLS/RPC mechanisms.
 
-1. Whether GHM needs a separate `is_verified` capability field.
-2. Whether GHM `verification_status` should remain the current reduced vocabulary or expand to represent workflow states such as `under_review` and `information_requested`.
-3. Whether `is_active` remains an independent publication/lifecycle gate.
-4. Which state combination constitutes public Business eligibility in GHM.
-5. Which actor/capability may change each field.
-6. Whether verification workflow history belongs to the Business capability or a separate governance capability.
-7. How Review's public-read invariant will consume Business eligibility without depending on provider-specific RLS/RPC mechanisms.
+The key invariant is:
 
-No one of these questions may be resolved by copying Connect columns without an explicit ownership decision.
+```text
+verification_status = 'approved'  =>  is_verified = true
+verification_status != 'approved' =>  is_verified = false
+```
+
+`is_active` remains independent of both.
 
 ## 5. Working semantic distinction
 
-Until formally reconciled:
+The construction decision is now explicit:
 
-- `verification_status` represents the Business verification workflow state.
-- `is_verified` represents a distinct verified flag used by current Connect workflows and must not be inferred to be redundant.
+- `verification_status` represents the GHM Business verification state within the reduced construction vocabulary;
+- `is_verified` is a distinct verified flag and is not authorization by itself;
 - `is_active` represents independent Business activation/publication state.
 
-This is a temporary architecture constraint, not permission to add `is_verified` immediately.
+This is no longer an unresolved placeholder for the first canonical slice. Any expansion of the verification workflow requires a new contract decision.
 
 ## 6. Public eligibility boundary
 
-The GHM public directory contract must expose a provider-neutral eligibility predicate owned by GHM. The predicate must be defined only after the reconciliation in Section 4.
+The GHM public directory contract owns the provider-neutral eligibility predicate:
 
-Review public visibility must consume that canonical Business eligibility boundary rather than duplicate provider-specific conditions.
+```text
+business.is_active = true
+AND business.is_verified = true
+AND business.verification_status = 'approved'
+```
+
+Review public visibility consumes this canonical Business eligibility boundary and does not reproduce Supabase-specific RLS/RPC conditions.
 
 ## 7. Authorization boundary
 
 Business owners/members must not be able to self-approve, self-verify, or otherwise mutate governed verification state merely because they can manage ordinary Business profile data.
 
-Any Founder/admin governance capability must use an explicit GHM authorization contract. Provider-specific Founder allowlists, fixed external profile UUIDs, Supabase `auth.uid()`, and security-definer RPCs are not portable authorization primitives and must not be copied into GHM.
+Any Founder/admin governance capability must use an explicit GHM authorization contract. Provider-specific Founder allowlists, fixed external profile UUIDs, Supabase `auth.uid()`, and security-definer RPCs are not portable authorization primitives and are not copied into GHM.
 
 ## 8. Review dependency
 
@@ -82,44 +96,44 @@ Review creation requires an eligible target Business.
 
 Review public reads require an eligible Business and an approved Review.
 
-Consequently Review schema implementation remains blocked until this Business eligibility contract is reconciled and its ownership is established.
+This dependency is now reconciled and qualified for the first canonical GHM Review slice. The Review dependency no longer blocks Review schema or runtime qualification.
 
 ## 9. Explicit non-goals
 
-This contract does not implement:
+This contract does not implement or authorize:
 
-- Review tables;
-- rating aggregates;
-- directory UI;
+- a separate verification-history subsystem;
+- arbitrary expansion of the Connect verification workflow vocabulary;
+- directory UI changes;
 - notifications;
 - provider migration;
 - production data synchronization;
 - Supabase RLS/RPC replication;
 - Founder account bootstrap;
 - automatic approval;
-- public Business data projection.
+- unrestricted public Business projection.
 
-## 10. Qualification gate
+## 10. Qualification result
 
-A future implementation must qualify, at minimum:
+The first canonical Business verification/eligibility boundary is **QUALIFIED / PASS** as a construction dependency.
 
-- state vocabulary and transition invariants;
-- public eligibility behavior;
-- owner/non-owner authorization boundaries;
-- governed verification mutation boundaries;
-- interaction with Business active state;
-- Review dependency consumption;
-- runtime identity and least-privilege SQL;
-- transaction/rollback behavior where state transitions are implemented;
-- live construction database evidence;
-- cleanup using the dedicated migrator.
+Qualification evidence establishes:
+
+- explicit separation of `verification_status`, `is_verified`, and `is_active`;
+- approved-status/verified invariant;
+- public/Review eligibility requiring all three conditions;
+- governed Business ownership and authorization boundaries;
+- Review consumption of the canonical eligibility boundary;
+- runtime and database evidence for the qualified first slice.
+
+Future verification workflow expansion or mutation endpoints require separate qualification.
 
 ## 11. Founder boundary
 
-**Direction:** Business listing verification/eligibility is a prerequisite dependency for Review.
+**Direction:** Business listing verification/eligibility is a canonical Business/Review dependency.
 
-**Authorized now:** evidence reconciliation and this architecture contract.
+**Current construction decision:** reconciled and qualified for the first canonical GHM slice.
 
-**Not authorized now:** schema mutation, production changes, data migration, or Review implementation.
+**Not authorized:** production changes, provider migration, production data migration, product adapters, or cutover.
 
-The next decision is the explicit reconciliation of the three Connect fields against the GHM Business ownership model, followed by a separately governed schema decision if a new field or workflow state is required.
+The first-slice reconciliation is closed. Future workflow states, verification history, and governance mutation surfaces remain separately governed.
