@@ -60,8 +60,9 @@ Canonical migration authority remains:
 
 - `database/migrations/00000000000000_create_migration_ledger.sql`
 - `database/migrations/20260909150000_create_business_identity.sql`
+- `database/migrations/20260910190000_establish_ghm_application_schema.sql`
 
-The resulting first-slice objects are:
+The resulting first-slice objects are in the dedicated `ghm` schema:
 
 - `account_identity`;
 - `business`;
@@ -70,6 +71,8 @@ The resulting first-slice objects are:
 - their identity sequences.
 
 These objects are owned by `ghm_schema_owner`. Runtime authority is separately qualified through `ghm_runtime`, while migration execution is separately qualified through `ghm_migrator` with explicit `SET ROLE ghm_schema_owner`.
+
+The dedicated application schema and first-slice authority boundary are established. Future-object defaults are restricted to the explicitly intended GHM schema and do not grant blanket application DML.
 
 This closes the original database-discovery/design dependency for the first slice. It does **not** mean the full GHM product schema is complete or that production replacement is qualified.
 
@@ -83,7 +86,7 @@ The PostgreSQL authority distinction has now been executed and qualified for the
 - runtime negative authority probes passed;
 - bootstrap `ghm_db_user` memberships remain unresolved because they were granted by the independent bootstrap `postgres` authority.
 
-The remaining database work is therefore **authority cleanup, dedicated schema/default-privilege reconciliation, and qualification of the next governed resource slices**, not basic connectivity discovery or definition of the initial role distinction.
+The remaining database work is therefore **bootstrap authority cleanup and qualification/reconciliation of future governed resource slices**, not basic connectivity discovery, initial role separation, or first-slice schema establishment.
 
 ## Required catalog capture
 
@@ -105,7 +108,7 @@ The reconciliation artifact must capture, at minimum:
 - grants/privileges;
 - row counts where safe to obtain.
 
-The required catalog categories are materially captured. The remaining database gate is **reconciliation of the target schema and authority boundary**, with the first canonical GHM slice already established and qualified.
+The required catalog categories are materially captured. The remaining database gate is **reconciliation of future target resources and the unresolved bootstrap authority boundary**, with the first canonical GHM slice already established and qualified.
 
 ## Decision rule
 
@@ -116,8 +119,6 @@ No legacy Connect consolidated schema is a substitute for migration-history reco
 ## Remaining gate dependencies
 
 1. Resolve bootstrap `ghm_db_user` memberships through the independent provider/bootstrap authority path.
-2. Establish and reconcile a dedicated GHM application schema before setting future-object defaults.
-3. Measure and decide the final TEMP privilege for `ghm_runtime`.
-4. Complete Transaction Qualification with authentication, authorization, explicit repositories, runtime boundary, and reconciled schema.
-5. Continue product-resource schema reconciliation only as each governed capability is ready.
-6. Keep Zaid Connect and QuoteFlow on Supabase throughout construction and qualification.
+2. Continue product-resource schema reconciliation only as each governed capability is ready, with each resource's live catalog and runtime ACLs independently qualified.
+3. Preserve the dedicated `ghm` application schema and least-privilege future-object defaults; do not introduce blanket runtime DML.
+4. Keep Zaid Connect and QuoteFlow on Supabase throughout construction and qualification.
