@@ -61,6 +61,7 @@ export interface OpportunityRepository {
   getOpportunity(context: AuthContext, opportunityId: OpportunityId): Promise<Opportunity | null>;
   getOwnedOpportunity(context: AuthContext, opportunityId: OpportunityId): Promise<Opportunity | null>;
   updateOwnedOpportunity(context: AuthContext, opportunityId: OpportunityId, input: UpdateOpportunityInput): Promise<Opportunity>;
+  transitionOpportunity(context: AuthContext, opportunityId: OpportunityId, nextStatus: OpportunityLifecycleStatus): Promise<Opportunity>;
 }
 
 export interface OpportunityService {
@@ -68,6 +69,7 @@ export interface OpportunityService {
   getOpportunity(context: AuthContext, opportunityId: OpportunityId): Promise<Opportunity | null>;
   getOwnedOpportunity(context: AuthContext, opportunityId: OpportunityId): Promise<Opportunity | null>;
   updateOwnedOpportunity(context: AuthContext, opportunityId: OpportunityId, input: UpdateOpportunityInput): Promise<Opportunity>;
+  transitionOpportunity(context: AuthContext, opportunityId: OpportunityId, nextStatus: OpportunityLifecycleStatus): Promise<Opportunity>;
 }
 
-export const OPPORTUNITY_OPERATIONS = Object.freeze({ read: 'opportunity.read', create: 'opportunity.create', update: 'opportunity.update' });
+export const OPPORTUNITY_OPERATIONS = Object.freeze({ read: 'opportunity.read', create: 'opportunity.create', update: 'opportunity.update', transition: 'opportunity.transition' });
