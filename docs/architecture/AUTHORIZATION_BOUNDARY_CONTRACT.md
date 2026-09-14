@@ -67,7 +67,7 @@ See `AUTHORIZATION_QUALIFICATION_GATE.md` for the gate record and exact qualific
 
 This contract does not imply that every resource in the registry has an implemented HTTP endpoint. Registry membership is a governed vocabulary; route exposure requires a concrete resource contract, authorization rule, repository boundary, and qualification evidence.
 
-The Resource API gate remains open until explicit resource routes/contracts are qualified without generic table access.
+The first Business Identity Resource API slice is now qualified. This closes the Resource API gate for that slice only; future registry resources remain separately governed and require their own contract and qualification evidence.
 
 ## Production safety
 
