@@ -2,7 +2,7 @@
 
 ## Status
 
-Construction-stage capability contract. The first canonical Business Identity schema slice has been authored and applied in the construction database. Production cutover and production Connect changes remain unauthorized.
+**CLOSED / PASS for the first canonical Business Identity construction slice.** The schema, repository, transaction, authorization, Resource API, and operational qualification required for this slice are complete. Production cutover and production Connect changes remain unauthorized.
 
 ## Purpose
 
@@ -61,9 +61,9 @@ The first slice contains:
 
 The physical schema is the GHM-owned representation defined by `BUSINESS_IDENTITY_MINIMUM_SCHEMA.md`; it is not a copy of Connect's full production schema.
 
-## Repository operations still to qualify
+## Qualified application operations
 
-The Business Identity operation contract remains the governing application behavior. Concrete repository SQL must still be implemented and qualified for the required operations, including:
+The Business Identity operation contract remains the governing application behavior. The first-slice repository operations have been implemented and qualified, including:
 
 - resolve authenticated account identity;
 - read/update permitted account profile fields;
@@ -73,13 +73,11 @@ The Business Identity operation contract remains the governing application behav
 - read account Business memberships;
 - resolve valid active Business context.
 
-Each operation must record its input/output contract, transaction requirement, authorization rule, actual SQL, exact PostgreSQL privileges, negative cases, and rollback behavior.
+Qualification covers input/output contracts, transaction requirements, authorization rules, actual SQL, exact PostgreSQL privileges, negative cases, concurrency, and rollback behavior for the qualified first slice.
 
 ## Qualification state
 
-The **schema-authoring gate is complete for the first Business Identity slice**. The **application repository/transaction/authorization qualification is not complete**.
-
-Required sequence from this point:
+The **schema-authoring gate, repository qualification, transaction qualification, authorization qualification, first-slice Resource API qualification, and operational-boundary qualification are complete for the first Business Identity slice**.
 
 ```text
 minimum canonical schema
@@ -91,6 +89,10 @@ measured runtime grants
 positive + negative qualification
         ↓
 transaction/auth/authorization qualification
+        ↓
+first-slice Resource API + operational qualification
+        ↓
+CLOSED / PASS
 ```
 
 No additional product schema should be introduced merely because it exists in Connect. Each later capability requires its own evidence-led reconciliation.
