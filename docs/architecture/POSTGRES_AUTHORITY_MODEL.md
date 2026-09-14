@@ -1,304 +1,132 @@
 # GHM PostgreSQL Authority Model
 
-Status: **CONSTRUCTION MODEL — ROLE SEPARATION EXECUTED THROUGH RUNTIME AND DEDICATED MIGRATOR QUALIFICATION; BOOTSTRAP CLEANUP REMAINS OPEN**
+Status: **CONSTRUCTION MODEL — ROLE SEPARATION, DEDICATED `ghm` SCHEMA, RUNTIME AUTHORITY, AND MIGRATOR QUALIFICATION COMPLETE; BOOTSTRAP CLEANUP REMAINS OPEN**
 
 ## Purpose
 
-GHM must separate database ownership, migration authority, and application runtime authority. The original construction database did not satisfy that separation: `ghm_app_user` inherited `ghm_db_user`, while `ghm_db_user` owned the database, `public` schema, application tables, and identity sequences and had CREATEDB/CREATEROLE plus broad object privileges.
-
-This document records the measured authority baseline, the target authority boundary, and the actual construction execution/qualification state.
+GHM separates database ownership, migration authority, and application runtime authority. This document records the measured legacy baseline, the current qualified construction boundary, and the remaining provider/bootstrap work.
 
 ## Production safety boundary
 
 This model applies only to the GHM construction PostgreSQL instance.
 
-Zaid Connect and QuoteFlow production remain on Supabase. No production environment variable, DNS, credential, routing, or live-traffic change is part of this authority work.
+Zaid Connect and QuoteFlow production remain on Supabase. No production environment variable, DNS, credential, routing, or live-traffic change is authorized by this document.
 
-## Original measured authority
+## Legacy measured authority
 
-The original role chain was:
+The original construction role chain was:
 
 ```text
-ghm_app_user
-  -> ghm_db_user
-  -> pg_read_all_stats
-  -> pg_signal_backend
+ghm_app_user -> ghm_db_user
 ```
 
-Measured `ghm_app_user` attributes:
+`ghm_db_user` had broad database/schema/object authority, including CREATEDB/CREATEROLE and broad legacy table privileges. The original `public` schema and legacy objects therefore represented an over-privileged transitional authority model.
 
-- LOGIN: true
-- SUPERUSER: false
-- INHERIT: true
-- CREATEROLE: false
-- CREATEDB: false
-- REPLICATION: false
-- BYPASSRLS: false
-
-Measured `ghm_db_user` attributes:
-
-- LOGIN: true
-- SUPERUSER: false
-- INHERIT: true
-- CREATEROLE: true
-- CREATEDB: true
-- REPLICATION: false
-- BYPASSRLS: false
-
-Effective role-membership checks for `ghm_app_user` against `ghm_db_user` returned USAGE, SET, and MEMBER true. Therefore the original application identity could inherit `ghm_db_user` authority and explicitly `SET ROLE ghm_db_user`.
-
-Original ownership was:
-
-- database `ghm_db` owner: `ghm_db_user`;
-- schema `public` owner: `ghm_db_user`;
-- first-slice GHM tables and identity sequences: `ghm_db_user`.
-
-Original effective application authority also included database/schema CREATE and broad table/sequence privileges through the inherited owner role.
+That legacy state remains evidence only. It is not the target runtime authority.
 
 ## Target identities
 
 ### `ghm_schema_owner`
 
 - NOLOGIN.
-- Owns GHM objects where ownership is required.
+- Owns GHM application objects where ownership is required.
 - Not an application runtime identity.
 - Not inherited by runtime.
-- No routine application credentials.
 
 ### `ghm_migrator`
 
 - LOGIN identity for the standalone migration process.
 - NOINHERIT.
-- Minimum migration DDL/ledger authority only.
-- Has an explicit SET-capable membership into `ghm_schema_owner` for controlled migration ownership/DDL operations.
-- Not an application runtime identity.
+- No application runtime use.
+- Has an explicit SET-capable membership into `ghm_schema_owner` for controlled migration DDL/ownership work.
 
 ### `ghm_runtime`
 
-- LOGIN identity for GHM HTTP/application runtime.
+- LOGIN identity for the GHM HTTP/application runtime.
 - NOINHERIT.
-- Must not own the database, application schema, tables, sequences, or migration ledger.
+- Does not own the database, GHM schema, tables, sequences, or migration ledger.
 - No CREATEDB or CREATEROLE.
-- No schema CREATE.
-- No DELETE, TRUNCATE, TRIGGER, REFERENCES, arbitrary DDL, migration-ledger access, or role escalation.
-- No membership or SET ROLE path into `ghm_schema_owner` or `ghm_migrator`.
+- No schema CREATE, destructive DML, arbitrary DDL, migration-ledger mutation, or role-escalation path.
 
 ## Executed role separation
 
-The Founder Gate was explicitly authorized on 2026-09-09 for the construction PostgreSQL instance only.
+The construction-only role-separation Founder Gate was authorized on 2026-09-09.
 
-The target roles were created and verified with the intended restricted attributes.
-
-The controlled migrator-to-owner path was established:
+The dedicated roles were created and verified with restricted attributes. The controlled migration path is:
 
 ```sql
 GRANT ghm_schema_owner TO ghm_migrator WITH INHERIT FALSE, SET TRUE;
 ```
 
-A real login as `ghm_migrator` successfully qualified `SET ROLE ghm_schema_owner`, with `session_user = ghm_migrator` and effective `current_user = ghm_schema_owner` after the role switch.
+A real `ghm_migrator` login qualified `SET ROLE ghm_schema_owner` while retaining `session_user = ghm_migrator`. `ghm_runtime` has no membership or SET path into either authority role.
 
-The four first-slice GHM tables were transferred to `ghm_schema_owner`:
+## Canonical GHM application schema
 
-```text
-account_identity
-business
-business_membership
-ghm_schema_migrations
-```
+The current canonical construction application schema is **`ghm`**.
 
-Their identity sequences were automatically transferred with the corresponding identity tables.
+The first canonical Business Identity slice and subsequent qualified resource slices are introduced through repository-owned migrations and are owned separately from runtime authority.
 
-The `ghm_db` database owner was transferred to `ghm_schema_owner`.
-
-The `public` schema was deliberately left under its existing ownership because unrelated legacy objects coexist there.
-
-A temporary `CREATE` privilege on `public` was used for ownership transfer and revoked immediately afterward. Final measured `ghm_schema_owner` CREATE privilege on `public` is false.
-
-## Runtime grant derivation — first Business Identity slice
-
-The implemented repository SQL establishes the following runtime requirements.
-
-### Database
-
-Required:
-
-- CONNECT
-
-TEMP remains an explicit measured decision. It is not included in the target application grant merely because the construction environment currently permits it through existing database privileges.
-
-### Schema
-
-Required:
-
-- USAGE on the application schema
-
-Not required:
-
-- CREATE
-
-### `account_identity`
-
-Observed runtime SQL:
-
-- SELECT by authenticated account id;
-- UPDATE only `full_name`, `phone`, `avatar_ref`, and `updated_at` through a fixed statement.
-
-Target:
-
-- SELECT
-- UPDATE
-
-Account INSERT is not part of the first-slice runtime contract.
-
-### `business`
-
-Observed runtime SQL:
-
-- SELECT by id;
-- SELECT by slug;
-- INSERT with server-controlled verification/status/timestamps and generated identity id;
-- UPDATE only `name`, `slug`, and `updated_at` through a fixed statement.
-
-Target:
-
-- SELECT
-- INSERT
-- UPDATE
-
-### `business_membership`
-
-Observed runtime SQL:
-
-- SELECT active memberships;
-- SELECT active owner/administrator membership for managed operations;
-- INSERT owner membership during Business creation.
-
-Target:
-
-- SELECT
-- INSERT
-
-### Identity sequences
-
-The first migration uses PostgreSQL identity columns for all three primary keys.
-
-Target runtime sequence privilege is **USAGE only** initially. SELECT and UPDATE are not granted.
-
-A direct `setval` probe under `ghm_runtime` was rejected with PostgreSQL `42501`, confirming direct sequence mutation is unavailable.
-
-### Migration ledger
-
-`ghm_schema_migrations` is migration authority, not runtime authority.
-
-Target runtime access:
-
-- no SELECT
-- no INSERT
-- no UPDATE
-- no DELETE
-- no TRUNCATE
+The `public` schema is legacy/shared construction state and is deliberately not the canonical GHM application schema. It was not converted into the GHM runtime boundary merely to simplify role separation.
 
 ## Current qualified runtime boundary
 
-Read-only ACL inspection under `ghm_runtime` confirmed:
+For the current qualified construction capabilities, runtime authority is measured against the dedicated `ghm` schema and concrete repository SQL.
+
+The first Business Identity runtime boundary is:
 
 ```text
-account_identity      SELECT/UPDATE
-business              SELECT/INSERT/UPDATE
-business_membership   SELECT/INSERT
-identity sequences    USAGE only
-public schema         USAGE, no CREATE
-migration ledger      no SELECT/INSERT/UPDATE/DELETE
+CONNECT on ghm_db
+USAGE on ghm
+
+account_identity      SELECT, UPDATE
+business              SELECT, INSERT, UPDATE
+business_membership   SELECT, INSERT
+required identity     USAGE only
+sequences
 ```
 
-Runtime identity qualification returned:
+The migration ledger is migration authority, not runtime authority.
+
+The exact live ACL evidence is canonical over illustrative grant syntax.
+
+## Runtime negative authority
+
+The qualified runtime identity was verified as:
 
 ```text
 current_user      = ghm_runtime
 session_user      = ghm_runtime
 current_database  = ghm_db
-migrator_member   = false
-migrator_set      = false
-owner_member      = false
-owner_set         = false
 ```
 
-Positive ACL qualification passed.
+Negative probes passed for:
 
-Negative execution qualification passed for:
-
-- CREATE TABLE;
 - CREATE SCHEMA;
-- TRUNCATE `business`;
-- DELETE `business`;
+- CREATE TABLE;
+- TRUNCATE first-slice tables;
+- DELETE first-slice tables;
 - migration-ledger INSERT/UPDATE/DELETE;
-- direct sequence `setval`;
+- direct sequence mutation;
 - `SET ROLE ghm_schema_owner`;
 - `SET ROLE ghm_migrator`.
 
-All forbidden probes were rejected with PostgreSQL `42501`.
+Forbidden PostgreSQL operations were rejected with `42501`.
 
-The first runtime CRUD harness failure on `account_identity` INSERT was a test-harness defect, not an ACL defect. The approved contract grants SELECT/UPDATE on `account_identity` and the ACL audit confirmed that exact boundary. No corrective database grant was required.
+The current TEMP decision is **NO GRANT REQUIRED** for the qualified runtime boundary.
 
-## Membership and inheritance rules
+## Dedicated migration authority
 
-The runtime must not be a member of the schema-owner or migrator roles. Runtime authority must not be recovered indirectly through role inheritance.
+The standalone migration runner uses `GHM_MIGRATOR_DATABASE_URL`.
 
-`pg_read_all_stats` and `pg_signal_backend` are not application data authorities and must not be inherited by the final runtime identity unless an explicit operational requirement is documented and approved.
-
-The controlled migrator-to-owner membership uses NOINHERIT plus SET capability so migration ownership/DDL is explicit rather than silently inherited.
-
-## Bootstrap membership cleanup — unresolved
-
-The construction database still contains memberships granted by the bootstrap `postgres` role:
+Qualification established:
 
 ```text
- ghm_db_user -> ghm_schema_owner
- ghm_db_user -> ghm_migrator
- ghm_db_user -> ghm_runtime
+current_user     = ghm_migrator
+session_user     = ghm_migrator
+current_database = ghm_db
 ```
 
-These were observed with admin option true, inherit false, set false. They were not removed because `ghm_db_user` is not the grantor and therefore cannot revoke them itself.
-
-This is a provider/bootstrap-authority blocker, not evidence that `ghm_runtime` has access to those roles. The direct runtime qualification proves `ghm_runtime` has no membership or SET path into owner/migrator.
-
-`ghm_db_user` must not be deleted merely to hide this unresolved membership state; it remains relevant to legacy-object recovery and provider bootstrap authority.
-
-## Ownership/default privilege rules
-
-Current first-slice ownership is separated under `ghm_schema_owner`, while the shared `public` schema remains deliberately unchanged.
-
-Future-object defaults remain deferred. No broad shared-`public` default privileges were added for the runtime.
-
-A dedicated GHM application schema should be reconciled before applying future-object defaults so GHM defaults cannot accidentally affect unrelated legacy objects.
-
-The final model must explicitly cover:
-
-1. database ownership;
-2. schema ownership;
-3. table/index/sequence ownership;
-4. migration-ledger ownership;
-5. default privileges for future tables and sequences;
-6. runtime table/sequence grants;
-7. migration DDL grants;
-8. role memberships and inheritance;
-9. SET ROLE exposure;
-10. provider-specific bootstrap restrictions.
-
-## Migration runner status
-
-The standalone migration runner has now been switched to the dedicated `GHM_MIGRATOR_DATABASE_URL` connection path.
-
-The dedicated migration runner was independently qualified against the construction PostgreSQL database:
-
-- direct connection identity: `current_user = ghm_migrator`;
-- `session_user = ghm_migrator`;
-- `current_database = ghm_db`;
-- explicit `SET ROLE ghm_schema_owner` succeeded;
-- migration ledger reconciliation passed;
-- transaction commit path passed;
-- repeat/no-op behavior passed;
-- repository migration checksums matched the live ledger.
+The explicit owner SET path, migration-ledger reconciliation, transaction commit, repeat/no-op behavior, and repository checksum matching passed.
 
 Result:
 
@@ -306,51 +134,70 @@ Result:
 GHM DEDICATED MIGRATION RUNNER QUALIFICATION: PASS
 ```
 
-The detailed evidence is recorded in `docs/MIGRATOR_QUALIFICATION_2026-09-10.md`.
+Detailed historical qualification evidence remains in `docs/MIGRATOR_QUALIFICATION_2026-09-10.md`.
 
-This closes the migration-runner qualification item. It does not close the broader authority reconciliation or the Transaction Qualification Gate.
+## Bootstrap membership cleanup — OPEN / BLOCKED
 
-## Final target permission matrix
-
-| Capability | schema owner | migrator | runtime |
-|---|---:|---:|---:|
-| LOGIN | No | Yes | Yes |
-| Database ownership | Yes | No | No |
-| Schema ownership | Yes | No | No |
-| Application object ownership | Yes | No | No |
-| CREATEDB | No | No | No |
-| CREATEROLE | No | No | No |
-| Application schema USAGE | N/A | Yes | Yes |
-| Application schema CREATE | ownership | only where migration requires it | No |
-| Business Identity SELECT | ownership | controlled migration access | Yes where required |
-| Business Identity INSERT | ownership | controlled migration access | Yes where required |
-| Business Identity UPDATE | ownership | controlled migration access | Yes where required |
-| Business Identity DELETE | ownership | only where migration requires it | No |
-| TRUNCATE | ownership | only where migration requires it | No |
-| TRIGGER | ownership | only where migration requires it | No |
-| REFERENCES | ownership | only where migration requires it | No |
-| Migration ledger write | Yes | Yes via controlled migration path | No |
-| Arbitrary DDL | Yes | Yes, migration scope | No |
-| Membership into owner/migrator | No | explicit owner SET path only | No |
-| SET ROLE into owner/migrator | No | controlled owner SET | No |
-
-## Remaining gates
-
-1. Resolve bootstrap membership cleanup through the independent `postgres`/provider authority path.
-2. Reconcile a dedicated GHM application schema and future-object default privileges.
-3. Measure whether runtime TEMP is required; if not, remove it from the final runtime authority where possible.
-4. Complete Transaction Qualification together with authentication, authorization, explicit resource repositories, runtime boundary, and reconciled schema.
-5. Only after all replacement gates are satisfied consider final removal of the old `ghm_app_user -> ghm_db_user` authority path.
-6. Keep production Supabase unchanged throughout.
-
-## Safety invariant
+The construction database still contains memberships granted by bootstrap `postgres` authority:
 
 ```text
-Zaid Connect production  -> unchanged / Supabase
-QuoteFlow production     -> unchanged / Supabase
-
-GHM construction:
-  ghm_schema_owner -> ownership
-  ghm_migrator     -> controlled migration authority
-  ghm_runtime      -> measured application DML/read only
+ghm_db_user -> ghm_schema_owner
+ghm_db_user -> ghm_migrator
+ghm_db_user -> ghm_runtime
 ```
+
+The current dedicated roles cannot revoke memberships whose grantor is the independent bootstrap authority. This is a provider/bootstrap-authority limitation, not evidence that `ghm_runtime` can assume owner/migrator authority.
+
+Do not delete `ghm_db_user`, rotate credentials merely to seek authority, or perform an unqualified revoke/drop workaround.
+
+## Ownership and default privileges
+
+The `ghm` application objects are separated under `ghm_schema_owner`.
+
+Future-object defaults are scoped deliberately and do not grant blanket runtime DML across unrelated schemas. Any future default privilege change must be qualified against the concrete GHM schema and object lifecycle.
+
+The legacy `public` schema remains unchanged except for the already-qualified temporary construction operations documented in the historical role-separation record.
+
+## Resource-derived authority rule
+
+Runtime privileges are not inferred from legacy ownership or from a generic database-wide grant.
+
+For every future governed capability:
+
+1. product source evidence is reconciled;
+2. the resource contract is defined;
+3. repository SQL is implemented;
+4. exact tables, sequences, and functions are measured;
+5. least-privilege runtime ACLs are granted;
+6. positive and negative qualification passes;
+7. the resulting evidence becomes canonical for that slice.
+
+No blanket runtime DML is permitted as a shortcut.
+
+## Current gate position
+
+Closed/qualified construction capabilities include:
+
+- Business Identity;
+- Transaction;
+- Authorization;
+- Resource API boundary;
+- Operational Boundary;
+- Project private/public disclosure;
+- Enquiry;
+- Review and aggregate reconciliation.
+
+The remaining database authority work is:
+
+1. resolve bootstrap role memberships through the independent provider/bootstrap authority;
+2. continue governed schema/ACL reconciliation for future resource slices;
+3. preserve least-privilege future-object defaults;
+4. only after all replacement gates and recovery requirements are satisfied, remove unnecessary legacy `ghm_app_user -> ghm_db_user` authority.
+
+These remaining items do **not** reopen the already-qualified runtime, migration, resource, authorization, transaction, project, enquiry, or review gates.
+
+## Production replacement boundary
+
+Construction qualification does not authorize production cutover.
+
+Zaid Connect and QuoteFlow remain on their existing Supabase production backends until product adapters, shadow qualification, controlled cutover, and tested rollback independently pass their gates.
