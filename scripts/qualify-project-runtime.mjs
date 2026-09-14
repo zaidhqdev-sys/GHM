@@ -1,4 +1,4 @@
-﻿import { randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import 'dotenv/config';
 
@@ -419,17 +419,33 @@ try {
   console.log('PROJECT CLOSED STATE PRESERVATION PASS');
 
   await assertRejected(
-    () =>
-      directRuntimeQuery(
-        `
-          UPDATE ghm.project
-          SET status = 'completed'
-          WHERE id = $1
-        `,
-        [created.id],
-      ),
-    undefined,
-    'PROJECT RUNTIME STATUS ACL DENIAL PASS',
+    () => service.updateOwnedProject(ownerContext, created.id, { status: 'completed' }),
+    'Only open Projects may be updated',
+    'PROJECT APPLICATION STATUS IMMUTABILITY PASS',
+  );
+
+  await directRuntimeQuery(
+    `
+      UPDATE ghm.project
+      SET status = 'completed'
+      WHERE id = $1
+    `,
+    [created.id],
+  );
+
+  const directlyMutatedProject = await service.getOwnedProject(
+    ownerContext,
+    created.id,
+  );
+
+  if (!directlyMutatedProject || directlyMutatedProject.status !== 'completed') {
+    throw new Error(
+      `Runtime status primitive reconciliation failed: ${JSON.stringify(directlyMutatedProject)}`,
+    );
+  }
+
+  console.log(
+    'PROJECT RUNTIME STATUS PRIVILEGE RECONCILIATION PASS: application boundary remains lifecycle-governed',
   );
 
   await assertRejected(

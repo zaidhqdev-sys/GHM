@@ -221,6 +221,36 @@ const findOwnedProject = async (
   return result.rowCount === 1 ? mapProject(result.rows[0]) : null;
 };
 
+/**
+ * Internal cross-resource lifecycle capability.
+ *
+ * This is intentionally not part of ProjectRepository. It exists only for
+ * governed operations that already own an authorized transaction, currently
+ * Project Quote acceptance.
+ */
+export const transitionOpenProjectToInProgress = async (
+  client: PoolClient,
+  context: AuthContext,
+  projectId: number,
+): Promise<Project> => {
+  const result = await client.query(
+    `UPDATE ghm.project
+     SET
+       status = 'in_progress',
+       updated_at = now()
+     WHERE id = $1
+       AND account_id = $2
+       AND status = 'open'
+     RETURNING ${PROJECT_COLUMNS}`,
+    [projectId, context.userId],
+  );
+
+  if (result.rowCount !== 1) {
+    throw new Error('Project transition open -> in_progress failed');
+  }
+
+  return mapProject(result.rows[0]);
+};
 export class PostgresProjectRepository implements ProjectRepository {
   constructor(private readonly transactionPool?: TransactionPool) {}
 

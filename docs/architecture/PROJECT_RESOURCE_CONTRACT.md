@@ -112,7 +112,7 @@ cancelled
 
 `open` and `in_progress` are active states; `completed` and `cancelled` are history states.
 
-The first Project slice should not expose arbitrary status mutation. Lifecycle transitions require their own explicit operation contract and evidence. In particular, accepting a future Project quote may transition a Project to `in_progress`, but quote acceptance is not part of this Project slice.
+The first Project slice should not expose arbitrary status mutation. Lifecycle transitions require their own explicit operation contract and evidence. In particular, accepting a Project Quote may transition a Project from `open` to `in_progress`. That transition is a dependency of the separately governed Project Quote decision operation and does not introduce a generic Project lifecycle operation.
 
 ## Transaction requirements
 
