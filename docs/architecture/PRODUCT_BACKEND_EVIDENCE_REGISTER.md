@@ -1,4 +1,4 @@
-# Product Backend Evidence Register
+﻿# Product Backend Evidence Register
 
 ## Status
 
@@ -10,7 +10,7 @@ Zaid Connect remains authoritative for its own application contracts and Supabas
 
 The Connect schema must not be copied into GHM by inference. GHM implements only capabilities required by verified product contracts and establishes its own canonical schema through GHM migrations.
 
-The current GHM construction line has independently reconciled and qualified Business Identity, Project, Enquiry, Review, Opportunity Core, and Project Quote capabilities against the verified product contracts. These are GHM construction capabilities, not evidence that Zaid Connect has been migrated or that a product adapter is authorized.
+The current GHM construction line has independently reconciled and qualified Business Identity, Project, Enquiry, Review, Opportunity Core, Project Quote, and Capability Catalogue capabilities against the verified product contracts. These are GHM construction capabilities, not evidence that Zaid Connect has been migrated or that a product adapter is authorized.
 
 ## QuoteFlow
 
@@ -47,6 +47,7 @@ QUALIFIED CONSTRUCTION
   Review + aggregate reconciliation
   Opportunity Core
   Project Quote
+  Capability Catalogue
   Resource API boundary
   Operational boundary
 
