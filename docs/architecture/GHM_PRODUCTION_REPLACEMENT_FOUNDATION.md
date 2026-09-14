@@ -1,6 +1,6 @@
 # GHM Production Replacement Foundation
 
-**Status:** Construction
+**Status:** Construction — foundation slices qualified; production replacement not yet authorized.
 
 **Purpose:** Define the non-destructive path for GHM Core Engine to become ZAID Technologies' backend while Zaid Connect and QuoteFlow remain live on their existing Supabase backends.
 
@@ -63,12 +63,12 @@ Storage adapter ──► current provider (e.g. Supabase Storage)
 
 ### Phase 0 — Foundation
 
-- Establish GHM schema authority and migration mechanism.
-- Establish deterministic configuration and startup behavior.
-- Establish authentication and authorization contracts.
-- Establish health/readiness and graceful shutdown.
-- Establish automated tests and CI.
-- Establish deployment qualification.
+- Establish GHM schema authority and migration mechanism. **Qualified for the current construction slice.**
+- Establish deterministic configuration and startup behavior. **Qualified.**
+- Establish authentication and authorization contracts. **Current construction boundaries qualified; future resource policies remain separately governed.**
+- Establish health/readiness and graceful shutdown. **Qualified.**
+- Establish automated tests and CI. **Construction validation passing.**
+- Establish deployment qualification. **Production deployment qualification remains open.**
 
 ### Phase 1 — Product capability inventory
 
@@ -90,13 +90,19 @@ Build explicit product-facing adapters rather than exposing an unrestricted gene
 
 Each capability must have an owner, contract, authorization model, and test coverage.
 
+Current construction resource slices have been qualified independently. Product-facing Connect and QuoteFlow adapters remain future work and are not authorized merely because underlying GHM resources exist.
+
 ### Phase 3 — Shadow qualification
 
 Exercise GHM against non-production/test copies and representative workflows while production continues to use Supabase.
 
+**Status: not started.**
+
 ### Phase 4 — Controlled cutover
 
 Migrate one product/capability at a time behind a reversible configuration boundary. Keep Supabase available as rollback until stability is demonstrated.
+
+**Status: not started / not authorized.**
 
 ### Phase 5 — Decommission
 
@@ -104,14 +110,16 @@ Only after sustained operational confidence may individual Supabase dependencies
 
 ## Current GHM Blocking Conditions
 
-The current GHM construction line still has qualification gates that must be closed before production replacement:
+The earlier construction blockers concerning absence of a GHM catalog and unimplemented first resource slices are no longer current for the qualified construction foundation.
 
-- actual GHM PostgreSQL catalog has not yet been successfully captured from the development environment;
-- business/product migrations remain blocked pending catalog reconciliation;
-- product-facing repositories and adapters are not yet implemented against the reconciled GHM schema;
+Current blockers to **production replacement** are:
+
+- provider/bootstrap authority cleanup remains unresolved because the available provider path does not expose the independent bootstrap authority required to remove legacy `ghm_db_user` memberships safely;
+- future GHM resource slices still require their own schema, repository, transaction, authorization, Resource API, operational, and ACL qualification;
+- product-facing Connect and QuoteFlow adapters have not yet been implemented or qualified against their concrete GHM contracts;
 - end-to-end shadow qualification and cutover/rollback evidence do not yet exist.
 
-These are construction blockers, not reasons to touch the live Connect or QuoteFlow deployments.
+These are deliberate gates, not reasons to touch the live Connect or QuoteFlow deployments.
 
 ## Storage Provider Position
 
@@ -147,4 +155,6 @@ GHM is not production-ready merely because it builds or starts. It is production
 
 ## Immediate Construction Boundary
 
-**Next:** capture and reconcile the real GHM PostgreSQL catalog, then establish the first canonical GHM business schema without changing production product configuration.
+**Current:** continue evidence-gated reconciliation of provider/bootstrap authority and future resource/product contracts. Do not infer production readiness from the completed construction slices.
+
+The first canonical Business Identity, Project, Enquiry, Review, Resource API, and Operational Boundary slices are construction-qualified. Product adapters, shadow qualification, and controlled cutover remain separately gated.
