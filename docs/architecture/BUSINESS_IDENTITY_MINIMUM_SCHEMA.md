@@ -1,6 +1,6 @@
 # GHM Business Identity Minimum Schema
 
-Status: **construction schema qualified for the first slice; application repository qualification remains open.**
+Status: **construction schema and first-slice application qualification CLOSED / PASS.**
 
 ## Purpose
 
@@ -124,10 +124,10 @@ The schema defined here is now the canonical first-slice schema represented by r
 
 The live catalog also confirmed the expected tables, identity sequences, constraints, indexes, foreign keys, and absence of newly introduced views, routines, triggers, and RLS on these first-slice tables.
 
-This schema qualification does **not** qualify the application repositories, authorization layer, transaction behavior, or production replacement.
+The application repository, transaction, authorization, Resource API, and operational qualification for this first slice are also CLOSED / PASS. This remains construction qualification, not production replacement authorization.
 
-## Remaining gate
+## Current qualification boundary
 
-The next work is to implement and qualify explicit repository SQL against this canonical schema, derive exact runtime privileges from that SQL, and complete positive/negative transaction and authorization qualification.
+The first canonical Business Identity slice is fully qualified at the construction layer. Future capabilities require their own schema reconciliation, repository SQL, runtime privilege evidence, authorization/transaction qualification, and resource/API qualification.
 
 No production role mutation or product cutover is authorized by this document.
