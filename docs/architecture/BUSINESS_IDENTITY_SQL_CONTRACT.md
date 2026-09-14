@@ -1,6 +1,6 @@
 # GHM Business Identity SQL Contract
 
-Status: **construction contract reconciled to the applied first-slice schema and current repository SQL; application qualification remains open.**
+Status: **construction contract reconciled to the applied first-slice schema, current repository SQL, and qualified application boundary.**
 
 ## Scope
 
@@ -79,7 +79,7 @@ WHERE id = $account_id
 FOR UPDATE;
 ```
 
-The account row lock provides a stable per-account transaction boundary for concurrent Business creation. It does not impose a one-Business-per-account invariant. An account may own multiple Businesses, and an existing active Business membership does not block creation of another Business. The account row is already required by the canonical first-slice schema, so no additional schema object is required.
+The account row lock provides a stable per-account transaction boundary for concurrent Business creation. It does not impose a one-Business-per-account invariant. An account may own multiple Businesses, and an existing active Business membership does not block creation of another Business.
 
 The Business and owner membership are then written in the same transaction:
 
@@ -129,7 +129,7 @@ No PostgreSQL `SECURITY DEFINER` function is required for this service contract.
 
 ## Privilege derivation
 
-For the first-slice SQL above, runtime authority requires only the privileges actually exercised by the repository implementation:
+For the first-slice SQL above, runtime authority requires only the privileges actually exercised by the qualified repository implementation:
 
 - CONNECT on the database;
 - USAGE on the application schema;
@@ -141,15 +141,12 @@ For the first-slice SQL above, runtime authority requires only the privileges ac
 
 The runtime role does **not** require CREATEDB, CREATEROLE, ownership, arbitrary DDL, blanket TRUNCATE, or migration-ledger authority.
 
-The exact grant set must remain evidence-derived from implemented repository SQL and measured against the live catalog. The current ACL qualification establishes a construction baseline; it does not authorize adding privileges merely because this document names a possible future operation.
+The exact grant set remains evidence-derived from implemented repository SQL and the live catalog. No privilege is added merely because a future operation is named in architecture documentation.
 
-## Qualification requirement
+## Qualification result
 
-The schema is applied and qualified for construction, and the Business Identity repository SQL is now reconciled to the first-slice contract. The remaining gate is application qualification:
+**Business Identity SQL boundary: QUALIFIED / PASS.**
 
-1. verify the repository/service implementation against these SQL shapes;
-2. verify transaction binding, including the per-account creation serialization invariant;
-3. execute positive and negative authorization/privilege tests against the live construction database;
-4. reconcile resulting evidence back into the operation contract, runtime-grants contract, handover, and governing architecture docs.
+The repository/service implementation, transaction binding, authorization boundary, positive/negative qualification, and live runtime privilege boundary have been reconciled against these SQL shapes. The first-slice Resource API is qualified. Future SQL operations remain separately governed.
 
 No production migration, product cutover, or Supabase change is authorized by this document.
