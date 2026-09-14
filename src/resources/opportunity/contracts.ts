@@ -6,23 +6,8 @@ export type AccountId = number;
 export type BusinessId = number;
 export type CountryId = number;
 export type CurrencyId = number;
-
-export type OpportunityLifecycleStatus =
-  | 'draft'
-  | 'open'
-  | 'responding'
-  | 'evaluating'
-  | 'awarded'
-  | 'in_progress'
-  | 'completed'
-  | 'cancelled'
-  | 'archived';
-
-export type OpportunityVisibility =
-  | 'private'
-  | 'participants'
-  | 'authenticated'
-  | 'public';
+export type OpportunityLifecycleStatus = 'draft' | 'open' | 'responding' | 'evaluating' | 'awarded' | 'in_progress' | 'completed' | 'cancelled' | 'archived';
+export type OpportunityVisibility = 'private' | 'participants' | 'authenticated' | 'public';
 
 export interface Opportunity {
   readonly id: OpportunityId;
@@ -50,7 +35,6 @@ export interface CreateOpportunityInput {
   readonly currencyId?: CurrencyId | null;
   readonly title: string;
   readonly description: string;
-  readonly lifecycleStatus?: OpportunityLifecycleStatus;
   readonly visibility?: OpportunityVisibility;
   readonly budgetMin?: number | null;
   readonly budgetMax?: number | null;
@@ -86,8 +70,4 @@ export interface OpportunityService {
   updateOwnedOpportunity(context: AuthContext, opportunityId: OpportunityId, input: UpdateOpportunityInput): Promise<Opportunity>;
 }
 
-export const OPPORTUNITY_OPERATIONS = Object.freeze({
-  read: 'opportunity.read',
-  create: 'opportunity.create',
-  update: 'opportunity.update',
-});
+export const OPPORTUNITY_OPERATIONS = Object.freeze({ read: 'opportunity.read', create: 'opportunity.create', update: 'opportunity.update' });
