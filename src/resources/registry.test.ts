@@ -3,10 +3,7 @@ import test from 'node:test';
 import { isRegisteredOperation, resourceRegistry } from './registry';
 
 test('resource registry contains only explicit governed resources', () => {
-  assert.deepEqual(
-    resourceRegistry.map((definition) => definition.resource),
-    ['profile', 'business', 'project', 'quote', 'notification', 'support_request', 'enquiry', 'review'],
-  );
+  assert.deepEqual(resourceRegistry.map((definition) => definition.resource), ['profile', 'business', 'project', 'quote', 'notification', 'support_request', 'enquiry', 'review', 'opportunity']);
 });
 
 test('registered operations are accepted', () => {
@@ -22,6 +19,9 @@ test('registered operations are accepted', () => {
   assert.equal(isRegisteredOperation('review', 'readPending'), true);
   assert.equal(isRegisteredOperation('review', 'approve'), true);
   assert.equal(isRegisteredOperation('review', 'reject'), true);
+  assert.equal(isRegisteredOperation('opportunity', 'read'), true);
+  assert.equal(isRegisteredOperation('opportunity', 'create'), true);
+  assert.equal(isRegisteredOperation('opportunity', 'update'), true);
 });
 
 test('unregistered operations are rejected', () => {
@@ -31,4 +31,5 @@ test('unregistered operations are rejected', () => {
   assert.equal(isRegisteredOperation('enquiry', 'delete'), false);
   assert.equal(isRegisteredOperation('review', 'update'), false);
   assert.equal(isRegisteredOperation('review', 'delete'), false);
+  assert.equal(isRegisteredOperation('opportunity', 'delete'), false);
 });
