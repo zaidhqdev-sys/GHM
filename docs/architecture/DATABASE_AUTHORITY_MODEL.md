@@ -108,7 +108,7 @@ The original construction path authenticated `ghm_app_user` and resolved to effe
 
 Construction evidence confirms:
 
-- `ghm_schema_owner` owns the `ghm_db` database and first-slice GHM objects;
+- `ghm_schema_owner` owns the first-slice GHM objects in the dedicated `ghm` application schema;
 - `ghm_migrator` is the dedicated migration login and successfully SETs `ghm_schema_owner` explicitly;
 - `ghm_runtime` is separately qualified with only the measured first-slice application ACL;
 - the old `ghm_db_user` bootstrap memberships remain unresolved because they were granted by bootstrap `postgres`.
@@ -136,15 +136,15 @@ The role separation and dedicated migration runner have been executed and qualif
 
 The dedicated migration runner uses `GHM_MIGRATOR_DATABASE_URL`, connects as `ghm_migrator`, explicitly SETs `ghm_schema_owner`, reconciles the migration ledger, commits its transaction, and passes repeat/no-op qualification. Detailed evidence is recorded in `docs/MIGRATOR_QUALIFICATION_2026-09-10.md`.
 
+The dedicated `ghm` application schema is established. Future-object defaults are scoped to the GHM schema and do not grant blanket application DML. The first-slice runtime boundary has been independently qualified, including negative authority probes and the Review runtime qualification using `ghm_runtime`.
+
 This does not constitute production qualification.
 
 ## Remaining authority work
 
 1. Resolve bootstrap `ghm_db_user` memberships through the independent `postgres`/provider authority path.
-2. Reconcile a dedicated GHM application schema and future-object default privileges.
-3. Measure whether runtime TEMP is required; if not, remove it from the final runtime authority where possible.
-4. Complete Transaction Qualification together with authentication, authorization, explicit resource repositories, runtime boundary, and reconciled schema.
-5. Only after all replacement gates are satisfied consider final removal of the old `ghm_app_user -> ghm_db_user` authority path.
+2. Continue qualification and reconciliation of each future governed resource slice against its concrete schema, repository, transaction, authorization, runtime, and ACL requirements.
+3. Only after all replacement gates are satisfied consider final removal of the old `ghm_app_user -> ghm_db_user` authority path.
 
 ## Production safety
 
