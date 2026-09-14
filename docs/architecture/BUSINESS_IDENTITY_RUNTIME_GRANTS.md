@@ -9,10 +9,10 @@ The canonical Business Identity migration uses identity-backed bigint columns. T
 The qualified construction runtime role is `ghm_runtime`. Its first-slice boundary is:
 
 - database CONNECT;
-- application-schema USAGE;
-- SELECT on `account_identity`, `business`, and `business_membership`;
-- INSERT/UPDATE authority on `account_identity` only as required by the implemented profile operations;
-- INSERT authority on `business` and `business_membership` for the creation flow;
+- `ghm` application-schema USAGE;
+- SELECT on `ghm.account_identity`, `ghm.business`, and `ghm.business_membership`;
+- INSERT/UPDATE authority on `ghm.account_identity` only as required by the implemented profile operations;
+- INSERT authority on `ghm.business` and `ghm.business_membership` for the creation flow;
 - identity-sequence usage sufficient for qualified inserts;
 - no migration-ledger authority;
 - no schema DDL authority.
@@ -25,33 +25,33 @@ Conceptually, the first repository implementation may require:
 
 ```sql
 GRANT CONNECT ON DATABASE ghm_db TO ghm_runtime;
-GRANT USAGE ON SCHEMA public TO ghm_runtime;
+GRANT USAGE ON SCHEMA ghm TO ghm_runtime;
 
-GRANT SELECT ON TABLE account_identity, business, business_membership
+GRANT SELECT ON TABLE ghm.account_identity, ghm.business, ghm.business_membership
   TO ghm_runtime;
 
 GRANT INSERT (full_name, phone, avatar_ref, role)
-  ON TABLE account_identity TO ghm_runtime;
+  ON TABLE ghm.account_identity TO ghm_runtime;
 
 GRANT UPDATE (full_name, phone, avatar_ref, updated_at)
-  ON TABLE account_identity TO ghm_runtime;
+  ON TABLE ghm.account_identity TO ghm_runtime;
 
 GRANT INSERT (name, slug, verification_status, is_active, created_at, updated_at)
-  ON TABLE business TO ghm_runtime;
+  ON TABLE ghm.business TO ghm_runtime;
 
 GRANT INSERT (
   business_id, account_id, membership_role, membership_status,
   created_by, created_at, updated_at
-) ON TABLE business_membership TO ghm_runtime;
+) ON TABLE ghm.business_membership TO ghm_runtime;
 ```
 
 These statements are a derivation target, not an instruction to mutate the database now. They must be checked against the actual repository SQL, defaults, identity strategy, and live ACL before any privilege mutation.
 
 ## Business update boundary
 
-The canonical first-slice `business` table contains only identity/lifecycle fields. Therefore no Business profile UPDATE grant is authorized merely because later Connect profile fields exist.
+The canonical first-slice `ghm.business` table contains only identity/lifecycle fields. Therefore no Business profile UPDATE grant is authorized merely because later Connect profile fields exist.
 
-If the first-slice managed Business update repository operation is implemented, its allowed fields are:
+The qualified first-slice managed Business update repository operation permits:
 
 ```text
 name
@@ -59,7 +59,7 @@ slug
 updated_at
 ```
 
-The service must independently enforce `business.manage` authorization and must reject governed fields such as `verification_status` and `is_active`.
+The service independently enforces `business.manage` authorization and rejects governed fields such as `verification_status` and `is_active`.
 
 ## Sequence boundary
 
@@ -86,7 +86,7 @@ Do not grant the runtime role:
 
 ## Qualification state
 
-Database role separation and the first-slice runtime boundary have already been qualified in construction. The remaining work is not to re-authorize the role model, but to reconcile the exact ACL against the repository SQL as that implementation is introduced.
+Database role separation and the first-slice runtime boundary have already been qualified in construction. The Business Identity repository, transaction, authorization, Resource API, and operational boundaries are also qualified for this slice. Further privilege changes remain gated by the same evidence-led sequence.
 
 Any new privilege must therefore follow this order:
 
