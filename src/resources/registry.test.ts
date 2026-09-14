@@ -22,6 +22,7 @@ test('registered operations are accepted', () => {
   assert.equal(isRegisteredOperation('opportunity', 'read'), true);
   assert.equal(isRegisteredOperation('opportunity', 'create'), true);
   assert.equal(isRegisteredOperation('opportunity', 'update'), true);
+  assert.equal(isRegisteredOperation('opportunity', 'transition'), true);
 });
 
 test('unregistered operations are rejected', () => {
