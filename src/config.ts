@@ -1,6 +1,7 @@
 import 'dotenv/config';
 
 const isProduction = process.env.NODE_ENV === 'production';
+const databaseSsl = process.env.DATABASE_SSL === 'true';
 
 const required = (name: string): string => {
   const value = process.env[name]?.trim();
@@ -26,6 +27,7 @@ export const config = Object.freeze({
   isProduction,
   port: Number.parseInt(process.env.PORT ?? '3000', 10),
   databaseUrl: required('DATABASE_URL'),
+  databaseSsl,
   jwtSecret,
   inviteCode: required('INVITE_CODE'),
   corsOrigins: parseOrigins(required('CORS_ORIGINS')),
