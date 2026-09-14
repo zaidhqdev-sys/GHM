@@ -196,7 +196,7 @@ const handleError = (error: unknown, res: Response): void => {
       return;
     }
   }
-  console.error('HTTP request failed:', error);
+  console.error(JSON.stringify({ event: 'http_request_failed', error: { name: error instanceof Error ? error.name : 'UnknownError' } }));
   res.status(500).json({ error: 'internal_error' });
 };
 

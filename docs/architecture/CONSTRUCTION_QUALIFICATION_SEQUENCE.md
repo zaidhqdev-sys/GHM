@@ -104,7 +104,7 @@ The gate order is a dependency model, not permission to skip unresolved gates be
 
 The current first-slice Business Identity migration does not mean the complete GHM product schema has been authored. It establishes only the canonical construction schema required for the currently qualified slice.
 
-Likewise, PostgreSQL role separation and dedicated migration-runner qualification close only the corresponding construction evidence. The Authorization and first-slice Resource API gates are now closed for the qualified construction slices. The Operational Boundary and eventual product replacement gates remain open.
+Likewise, PostgreSQL role separation and dedicated migration-runner qualification close only the corresponding construction evidence. The Authorization, first-slice Resource API, and Operational Boundary gates are now closed for their qualified construction slices. Eventual product replacement gates remain open.
 
 The provider/bootstrap authority and legacy-role cleanup remain constrained by the currently available managed PostgreSQL authority. Construction may advance only to resource slices whose database contracts and privileges can be evidenced without relying on unresolved bootstrap authority.
 

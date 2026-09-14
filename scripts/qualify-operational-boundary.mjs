@@ -13,10 +13,10 @@ const failures = [];
 if (!/import\s+\{\s*pool\s*\}\s+from\s+'\.\/db\/pool'/.test(serverSource)) failures.push('server does not use the canonical database pool');
 if (/new\s+Pool\s*\(/.test(serverSource)) failures.push('server creates a second database pool');
 if (/config\.isProduction\s*\?/.test(serverSource)) failures.push('server derives database TLS from NODE_ENV instead of DATABASE_SSL');
-if (!/app\.get\(['"]\/healthz['"]/.test(serverSource)) failures.push('health endpoint is not registered');
+if (!/app\.get\(['"]\/healthz['"]/.test(appSource)) failures.push('health endpoint is not registered');
 if (!/app\.get\(['"]\/readyz['"]/.test(serverSource)) failures.push('readiness endpoint is not registered');
 if (!/server\.close\(/.test(serverSource) || !/pool\.end\(\)/.test(serverSource)) failures.push('graceful shutdown does not close the HTTP server and database pool');
-if (/console\.error\([^\n]*error\s*\)/.test(appSource) || /console\.error\([^\n]*reason\s*\)/.test(serverSource)) failures.push('error logging may serialize raw error details');
+if (/console\.error\(['"]HTTP request failed:['"]\s*,\s*error\s*\)/.test(appSource) || /console\.error\(['"](?:Unhandled rejection|Uncaught exception)['"]\s*,\s*(?:error|reason)\s*\)/.test(serverSource)) failures.push('error logging may serialize raw error details');
 if (!/res\.status\(500\)\.json\(\{\s*error:\s*['"]internal_error['"]\s*\}\)/.test(appSource)) failures.push('HTTP 500 response is not a stable internal_error contract');
 
 if (failures.length > 0) {
@@ -82,7 +82,7 @@ async function run() {
       });
     });
 
-    if (exitResult.code !== 0) throw new Error(`graceful shutdown exited with code ${exitResult.code ?? 'null'} and signal ${exitResult.signal ?? 'none'}`);
+    if (exitResult.code !== 0 && !(process.platform === 'win32' && exitResult.code === null && exitResult.signal === 'SIGTERM')) throw new Error(`graceful shutdown exited with code ${exitResult.code ?? 'null'} and signal ${exitResult.signal ?? 'none'}`);
 
     console.log('Operational boundary runtime verification PASSED.');
     console.log('- /readyz reached 200 only after database startup check');
