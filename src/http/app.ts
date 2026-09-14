@@ -25,12 +25,6 @@ export interface AppDependencies {
   readonly enquiryService?: EnquiryService;
 }
 
-const safeErrorDetails = (error: unknown): { name: string; code?: string } => {
-  if (!(error instanceof Error)) return { name: 'UnknownError' };
-  const code = 'code' in error && typeof error.code === 'string' ? error.code : undefined;
-  return code ? { name: error.name, code } : { name: error.name };
-};
-
 const requireRegisteredAccess = (resource: Parameters<typeof canAccessResource>[1], operation: ResourceOperation) =>
   (req: Request, res: Response, next: NextFunction): void => {
     const context = req.authContext as AuthContext | undefined;
@@ -202,7 +196,7 @@ const handleError = (error: unknown, res: Response): void => {
       return;
     }
   }
-  console.error(JSON.stringify({ event: 'http_request_failed', error: safeErrorDetails(error) }));
+  console.error('HTTP request failed:', error);
   res.status(500).json({ error: 'internal_error' });
 };
 
@@ -213,20 +207,87 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const publicProjectService =
     dependencies.publicProjectService ??
     new PublicProjectServiceImpl(new PostgresPublicProjectRepository());
-  const enquiryService = dependencies.enquiryService ?? new EnquiryServiceImpl(new PostgresEnquiryRepository());
-
+  const enquiryService =
+    dependencies.enquiryService ??
+    new EnquiryServiceImpl(new PostgresEnquiryRepository());
+  app.disable('x-powered-by');
+  app.set('trust proxy', config.trustProxy);
   app.use(cors({ origin: config.corsOrigins }));
-  app.use(express.json());
+  app.use(express.json({ limit: '1mb' }));
 
-  app.get('/healthz', (_req, res) => {
+  app.get('/', (_req: Request, res: Response) => {
+    res.json({ service: 'GHM Core Engine', version: '2.0.0' });
+  });
+
+  app.get('/healthz', (_req: Request, res: Response) => {
     res.status(200).json({ status: 'ok' });
   });
 
-  app.get('/api/v1/profile', requireAuth, requireRegisteredAccess('business', 'readOwn'), async (req: Request, res: Response) => {
+  app.get('/api/v1/profile', requireAuth, requireRegisteredAccess('profile', 'read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
       const profile = await service.getOwnProfile(context);
       res.status(200).json({ profile });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.get('/api/v1/businesses/slug/:slug', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const slugValue = routeParam(req.params.slug);
+      const slug = slugValue?.trim();
+      if (!slug) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const business = await service.getPublicBusinessBySlug(context, slug);
+      if (!business) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      res.status(200).json({ business });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.get('/api/v1/businesses/:businessId/managed', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const businessIdValue = routeParam(req.params.businessId);
+      const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
+      if (businessId === null) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const business = await service.getManagedBusiness(context, businessId);
+      if (!business) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      res.status(200).json({ business });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.get('/api/v1/businesses/:businessId', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const businessIdValue = routeParam(req.params.businessId);
+      const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
+      if (businessId === null) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const business = await service.getPublicBusiness(context, businessId);
+      if (!business) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      res.status(200).json({ business });
     } catch (error) {
       handleError(error, res);
     }
@@ -240,22 +301,24 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         res.status(400).json({ error: 'invalid_request' });
         return;
       }
-      const business = await service.createBusiness(context, input);
-      res.status(201).json({ business });
+      const identity = await service.createBusiness(context, input);
+      res.status(201).json({ business: identity.activeBusiness, membership: identity.activeMembership });
     } catch (error) {
       handleError(error, res);
     }
   });
 
-  app.patch('/api/v1/businesses/me', requireAuth, requireRegisteredAccess('business', 'updateOwn'), async (req: Request, res: Response) => {
+  app.patch('/api/v1/businesses/:businessId', requireAuth, requireRegisteredAccess('business', 'update'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
+      const businessIdValue = routeParam(req.params.businessId);
+      const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
       const input = parseUpdateBusinessInput(req.body);
-      if (!input) {
+      if (businessId === null || !input) {
         res.status(400).json({ error: 'invalid_request' });
         return;
       }
-      const business = await service.updateOwnBusiness(context, input);
+      const business = await service.updateBusiness(context, businessId, input);
       res.status(200).json({ business });
     } catch (error) {
       handleError(error, res);
@@ -266,13 +329,57 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     try {
       const context = req.authContext as AuthContext;
       const input = parseProjectCreateInput(req.body);
+
       if (!input) {
         res.status(400).json({ error: 'invalid_request' });
         return;
       }
+
       const project = await projectService.createProject(context, input);
       res.status(201).json({ project });
     } catch (error) {
+      if (error instanceof Error && (
+        error.message.includes(' is required') ||
+        error.message.includes(' must be between ') ||
+        error.message.includes('must be null or a non-negative number') ||
+        error.message === 'budgetMax must be greater than or equal to budgetMin' ||
+        error.message === 'Invalid Project urgency'
+      )) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      handleError(error, res);
+    }
+  });
+
+  registerEnquiryRoutes(app, enquiryService);
+
+  app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
+    try {
+      const projectIdValue = routeParam(req.params.projectId);
+      const projectId =
+        projectIdValue === null ? null : positiveIntegerId(projectIdValue);
+
+      if (projectId === null) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      const project = await publicProjectService.getPublicProject(projectId);
+
+      if (!project) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+
+      res.status(200).json({ project });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Invalid Project id') {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
       handleError(error, res);
     }
   });
@@ -325,37 +432,6 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         error.message === 'Project update requires at least one field' ||
         error.message.startsWith('Unsupported Project update field:')
       )) {
-        res.status(400).json({ error: 'invalid_request' });
-        return;
-      }
-
-      handleError(error, res);
-    }
-  });
-
-  registerEnquiryRoutes(app, enquiryService);
-
-  app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
-    try {
-      const projectIdValue = routeParam(req.params.projectId);
-      const projectId =
-        projectIdValue === null ? null : positiveIntegerId(projectIdValue);
-
-      if (projectId === null) {
-        res.status(400).json({ error: 'invalid_request' });
-        return;
-      }
-
-      const project = await publicProjectService.getPublicProject(projectId);
-
-      if (!project) {
-        res.status(404).json({ error: 'not_found' });
-        return;
-      }
-
-      res.status(200).json({ project });
-    } catch (error) {
-      if (error instanceof Error && error.message === 'Invalid Project id') {
         res.status(400).json({ error: 'invalid_request' });
         return;
       }
