@@ -94,14 +94,17 @@ The HTTP qualification exercised the real Express application and canonical data
 
 This closes the previously missing end-to-end HTTP authorization evidence for the first governed slice.
 
-This does **not** close the broader GHM replacement program. In particular, it does not authorize:
+The first Business Identity Resource API slice and the Operational Boundary are also now qualified construction slices. Their closure does not imply production qualification of the complete GHM replacement program.
+
+This gate does **not** authorize:
 
 - production database URL changes;
 - production cutover from the existing backend;
 - Zaid Connect or QuoteFlow migration;
 - removal of legacy database authority such as `ghm_db_user`;
 - provider/bootstrap authority mutations;
-- completion of the Resource API, Operational Boundary, Product Adapter, Shadow Qualification, or Controlled Cutover gates.
+- future registry resource implementation;
+- Product Adapter, Shadow Qualification, or Controlled Cutover work without their own evidence and gates.
 
 The provider/bootstrap authority and legacy-role cleanup remain separately constrained by the currently available managed PostgreSQL authority.
 
