@@ -11,6 +11,7 @@
     "qualify:business-identity-runtime": "npm run build && node scripts/qualify-business-identity-runtime.mjs",
     "qualify:authorization-http": "npm run build && node scripts/qualify-authorization-http.mjs",
     "qualify:resource-api-http": "npm run build && node scripts/qualify-resource-api-http.mjs",
+    "qualify:operational-boundary": "npm run build && node scripts/qualify-operational-boundary.mjs",
     "start": "node dist/server.js",
     "test": "npm run build && node --test dist/auth/authorization.test.js dist/auth/request-context.test.js dist/resources/registry.test.js dist/db/transaction.test.js dist/resources/business-identity/service.test.js dist/resources/project/service.test.js dist/resources/enquiry/service.test.js dist/resources/review/service.test.js dist/http/app.test.js dist/http/enquiry-router.test.js",
     "verify:runtime": "node scripts/verify-runtime-boundary.mjs",
