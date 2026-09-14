@@ -1,12 +1,12 @@
 # GHM Resource API Boundary Contract
 
-**Status: construction / architecture qualification**
+**Status: construction qualification — current governed slices QUALIFIED / PASS**
 
 ## Purpose
 
-Define the governed Resource API boundary that exposes domain capabilities without generic table access. The Business Identity foundation and the private Project Resource API slice are qualified; additional resources remain subject to separate qualification.
+Define the governed Resource API boundary that exposes domain capabilities without generic table access. The Business Identity foundation, private Project Resource API slice, and dedicated Project public disclosure read boundary are qualified construction slices; additional resources remain subject to separate qualification.
 
-This document is an architecture contract. It does not authorize product adapters, production traffic, public Project disclosure, or production cutover.
+This document is an architecture contract. It does not authorize product adapters, production traffic, or production cutover.
 
 ## Non-negotiable rules
 
@@ -19,7 +19,7 @@ This document is an architecture contract. It does not authorize product adapter
 7. Repository SQL uses fixed, reconciled schema identifiers and parameterized values.
 8. Resource handlers must translate domain outcomes into stable HTTP outcomes without exposing SQL, PostgreSQL role details, secrets, or unrelated resource existence.
 9. Resource creation/update operations must preserve the transaction requirements established by the resource contract.
-10. New resource endpoints require schema reconciliation, authorization qualification, positive/negative tests, and live qualification before the Resource API gate can close.
+10. New resource endpoints require schema reconciliation, authorization qualification, positive/negative tests, and live qualification before that Resource API slice can close.
 11. Product adapters must consume resource contracts rather than bypassing the Resource API boundary.
 
 ## Boundary model
@@ -54,16 +54,17 @@ Reconciled GHM schema
 
 The authorization foundation is qualified for the canonical Business Identity slice and the private Project Resource API slice. The registry contains explicit resource/operation vocabulary, and the protected HTTP routes demonstrate the HTTP-to-AuthContext-to-service boundary against the canonical GHM PostgreSQL path.
 
-The Business Identity capability already has explicit contracts for account identity, Business identity, Business participation, public Business reads, Business creation, and managed Business identity updates. Its physical first-slice schema is `ghm.account_identity`, `ghm.business`, and `ghm.business_membership`.
+The Business Identity capability has explicit contracts for account identity, Business identity, Business participation, public Business reads, Business creation, and managed Business identity updates. Its physical first-slice schema is `ghm.account_identity`, `ghm.business`, and `ghm.business_membership`.
 
 The current protected HTTP surface is intentionally narrower than the full service surface. `GET /api/v1/profile` remains the qualified profile example, while the qualified private Project surface is limited to explicit create, owner-read, and owner-update operations. Service/repository operations must not become HTTP endpoints merely because they exist internally.
 
 ## Qualified Resource API slices
 
-The Resource API currently has two qualified private slices:
+The Resource API currently has three qualified construction slices:
 
-1. **Business Identity** — the existing governed profile/Business surface and its qualified authorization boundary.
-2. **Project** — the private owner-bound Project surface using the already-qualified Project schema, repository, service, authorization, and transaction contracts.
+1. **Business Identity** — the governed profile/Business surface and its qualified authorization boundary.
+2. **Project private** — the owner-bound Project surface using the qualified Project schema, repository, service, authorization, and transaction contracts.
+3. **Project public disclosure** — the separately governed public projection/read boundary using explicit disclosure fields and the qualified public-read contract.
 
 The qualified HTTP surface remains small and explicit:
 
@@ -77,9 +78,9 @@ The qualified HTTP surface remains small and explicit:
 - `GET /api/v1/projects/:projectId` - authenticated owner-bound Project read; non-owners receive the same not-found boundary.
 - `PATCH /api/v1/projects/:projectId` - authenticated owner-bound Project update; closed Projects reject mutation.
 
-The Business Identity routes in this contract are the established qualified foundation. The Project routes are separately qualified against the canonical GHM PostgreSQL path. Each endpoint has been verified for request shape, authorization, owner binding, route ordering, stable error mapping, and disclosure boundaries.
+The Business Identity routes are the established qualified foundation. The Project private routes are separately qualified against the canonical GHM PostgreSQL path. The Project public disclosure boundary is separately qualified and must not inherit private Project authorization automatically. Each qualified endpoint has been verified for request shape, authorization, owner binding where applicable, route ordering, stable error mapping, transaction requirements, and disclosure boundaries.
 
-## Explicit exclusions from the current qualified private slices
+## Explicit exclusions from the current qualified slices
 
 Do not add:
 
@@ -88,11 +89,11 @@ Do not add:
 - membership-management endpoints;
 - verification or activation mutation endpoints;
 - directory analytics or search;
-- marketplace/search, quotes, notifications, support requests, reviews, trust, commercial state, storage, or realtime routes;
+- marketplace/search, quotes, notifications, support requests, reviews, trust, commercial state, storage, or realtime routes unless separately qualified;
 - Connect or QuoteFlow adapters;
 - provider/bootstrap authority mutations.
 
-Membership-management HTTP routes remain outside the currently qualified slices because their later policy and operation contract require separate qualification. Verification and activation state are not caller-managed Business identity fields. Project public disclosure is governed separately by `PROJECT_PUBLIC_DISCLOSURE_CONTRACT.md` and is authorized only for construction qualification of its dedicated public projection and runtime read boundary.
+Membership-management HTTP routes remain outside the currently qualified slices because their later policy and operation contract require separate qualification. Verification and activation state are not caller-managed Business identity fields.
 
 ## Contract requirements per endpoint
 
@@ -114,13 +115,13 @@ Before an endpoint is considered qualified, its evidence record must identify:
 
 ## Gate closure condition
 
-The Resource API gate for the current private slices is closed only after the governed Business Identity and Project boundaries have demonstrated, end-to-end:
+The Resource API gate for each current governed slice is closed only after that slice has demonstrated, end-to-end:
 
 ```text
 explicit route
-  → authenticated AuthContext
+  → authenticated AuthContext where required
   → registered resource/operation
-  → resource-specific authorization
+  → resource-specific authorization or explicit public disclosure policy
   → explicit service contract
   → explicit repository
   → canonical GHM schema
@@ -128,7 +129,9 @@ explicit route
 
 with positive, negative, ownership/role, transaction, and disclosure-boundary evidence and no generic table access.
 
-Passing the current private slices does not imply that every resource in the registry is implemented or production-ready. Project public disclosure is a separately governed construction qualification boundary and does not inherit the private Project authorization automatically.
+**Current construction result: QUALIFIED / PASS for Business Identity, Project private, and Project public disclosure.**
+
+Passing the current slices does not imply that every resource in the registry is implemented or production-ready. Future resources require their own governed qualification and must not inherit qualification by analogy.
 
 ## Production safety
 
