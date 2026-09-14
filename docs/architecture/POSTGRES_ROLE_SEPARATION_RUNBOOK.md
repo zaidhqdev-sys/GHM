@@ -250,6 +250,6 @@ The remaining authority work is:
 
 The TEMP privilege decision is separately recorded as **NO GRANT REQUIRED** for the current qualified runtime boundary.
 
-Transaction, Resource API, Operational Boundary, Project, Enquiry, and Review first-slice qualification gates are already closed; they are not remaining role-separation prerequisites.
+Transaction, Resource API, Operational Boundary, Project, Enquiry, Review, Opportunity Core, and Project Quote qualification gates are already closed for their current construction slices; they are not remaining role-separation prerequisites.
 
 Production Supabase remains unchanged.

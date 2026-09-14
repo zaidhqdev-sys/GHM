@@ -157,4 +157,4 @@ GHM is not production-ready merely because it builds or starts. It is production
 
 **Current:** continue evidence-gated reconciliation of provider/bootstrap authority and future resource/product contracts. Do not infer production readiness from the completed construction slices.
 
-The first canonical Business Identity, Project, Enquiry, Review, Resource API, and Operational Boundary slices are construction-qualified. Product adapters, shadow qualification, and controlled cutover remain separately gated.
+The currently qualified canonical Business Identity, Project, Enquiry, Review, Opportunity Core, Project Quote, Resource API, and Operational Boundary slices are construction-qualified. Product adapters, shadow qualification, and controlled cutover remain separately gated.

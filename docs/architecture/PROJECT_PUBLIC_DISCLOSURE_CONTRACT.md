@@ -68,9 +68,9 @@ The public projection MUST NOT expose:
 
 6. QUOTE BOUNDARY
 
-GHM currently does not contain a Project quote relation. The public Project
+GHM now contains the canonical `ghm.project_quote` relation. The public Project
 projection MUST NOT introduce quote fields merely to reproduce Connect's
-`quotes_received` behavior.
+`quotes_received` behavior. Project Quote disclosure remains separately governed.
 
 7. ACCESS MODEL
 
@@ -173,7 +173,7 @@ The qualified public boundary must establish and preserve:
 8. non-open Projects are excluded;
 9. public access cannot mutate Projects;
 10. owner-resource authorization remains unchanged;
-11. Project quote functionality is not implicitly introduced;
+11. Project Quote functionality exists as a separately governed resource and is not implicitly introduced into the public Project disclosure projection;
 12. automated tests cover the projection boundary;
 13. live runtime qualification confirms the actual database boundary.
 

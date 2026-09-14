@@ -20,7 +20,7 @@ It does not mutate application schema or create product tables. Health/readiness
 
 ### Resource repositories
 
-The current construction resource repositories now contain governed SQL for the qualified Business Identity, Project, Enquiry, and Review slices. Their exact table/column and authorization requirements are owned by their respective resource contracts and qualification evidence.
+The current construction resource repositories now contain governed SQL for the qualified Business Identity, Project, Enquiry, Review, Opportunity Core, and Project Quote slices. Their exact table/column and authorization requirements are owned by their respective resource contracts and qualification evidence.
 
 Runtime privilege grants are therefore derived from measured repository SQL for each qualified slice rather than inferred from legacy database ownership.
 

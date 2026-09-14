@@ -223,10 +223,10 @@ A schema existing in PostgreSQL is not sufficient evidence of qualification.
 
 ## 14. Founder boundary
 
-**ENQUIRY DIRECTION: APPROVED**
+**ENQUIRY DIRECTION: QUALIFIED / CLOSED / PASS**
 
-**ENQUIRY CONTRACT: AUTHORIZED FOR CONSTRUCTION QUALIFICATION**
+**ENQUIRY CONTRACT: QUALIFIED / CLOSED / PASS**
 
-**ENQUIRY SCHEMA IMPLEMENTATION: AUTHORIZED AFTER THIS CONTRACT RECONCILIATION**
+**ENQUIRY SCHEMA + RUNTIME: QUALIFIED / CLOSED / PASS**
 
 This authorization remains construction-only. Production deployment and product cutover remain separately gated.

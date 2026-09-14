@@ -1,6 +1,6 @@
 # GHM Opportunity Core Construction Contract
 
-**Status:** Construction contract established — implementation not yet qualified.
+**Status:** QUALIFIED / CLOSED / PASS — Opportunity Core construction and runtime qualification completed.
 
 ## Purpose
 
@@ -232,7 +232,7 @@ The Connect product remains the source of behavioral truth for future adapter re
 
 ## Gate Position
 
-Opportunity Core construction may proceed.
+Opportunity Core construction is QUALIFIED / CLOSED / PASS.
 
 The following remain blocked and are not implied by this contract:
 

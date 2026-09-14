@@ -43,6 +43,8 @@ The following GHM construction capabilities have now been implemented and qualif
 - Project private/public disclosure
 - Enquiry
 - Review and approved-only aggregate reconciliation
+- Opportunity Core
+- Project Quote
 - Resource API boundary
 - Operational boundary
 
@@ -99,7 +101,8 @@ QUALIFIED CONSTRUCTION
   Project private/public disclosure
   Enquiry
   Review + aggregate reconciliation
-  Resource API
+  Opportunity Core
+  Project Quote
   Operational boundary
 
 REQUIRES FUTURE GOVERNED WORK
