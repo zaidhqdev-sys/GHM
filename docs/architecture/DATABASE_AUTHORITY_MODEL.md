@@ -80,7 +80,7 @@ Requirements:
 - no blanket `TRUNCATE`, `REFERENCES`, or `TRIGGER` privileges unless a measured runtime requirement proves them necessary;
 - runtime authorization remains in GHM application policy and transaction boundaries, not in a broad database role.
 
-Qualified construction posture: dedicated `ghm_runtime` login with `NOINHERIT` and the measured first-slice ACL boundary.
+Qualified construction posture: dedicated `ghm_runtime` login with `NOINHERIT` and the measured first-slice application ACL boundary.
 
 ### 4. Observation / diagnostics authority
 
@@ -120,12 +120,12 @@ The old `ghm_app_user -> ghm_db_user` path must not be removed until replacement
 The measured construction runtime boundary is:
 
 ```text
-account_identity      SELECT/UPDATE
-business              SELECT/INSERT/UPDATE
-business_membership   SELECT/INSERT
-identity sequences    USAGE only
-public schema         USAGE, no CREATE
-migration ledger      no SELECT/INSERT/UPDATE/DELETE
+ghm.account_identity      SELECT/UPDATE
+ghm.business              SELECT/INSERT/UPDATE
+ghm.business_membership   SELECT/INSERT
+identity sequences        USAGE only
+public schema             USAGE, no CREATE
+migration ledger          no SELECT/INSERT/UPDATE/DELETE
 ```
 
 Negative qualification rejected runtime CREATE/DDL, destructive operations, migration-ledger writes, direct sequence mutation, and SET ROLE into owner/migrator with PostgreSQL `42501`.
