@@ -1,14 +1,14 @@
 # Dedicated GHM Application Schema Decision
 
-**Status:** Construction — design decision only
-**Branch:** `construction/dedicated-ghm-schema`
-**Date:** 2026-09-10
+**Status:** Construction decision established; first-slice relocation and qualification CLOSED / PASS
+**Branch:** `construction/review-aggregate-reconciliation` carries the current qualified state.
+**Original decision date:** 2026-09-10
 
 ## Decision
 
 The canonical dedicated application schema for GHM Core Engine is **`ghm`**.
 
-This decision establishes the namespace boundary for GHM-owned application resources. It does **not** authorize a production cutover and does not by itself authorize mutation of the currently qualified first-slice database.
+This decision establishes the namespace boundary for GHM-owned application resources. It does **not** authorize a production cutover and does not by itself authorize mutation of production.
 
 ## Why `ghm`
 
@@ -21,7 +21,7 @@ This decision establishes the namespace boundary for GHM-owned application resou
 
 ## Boundary
 
-The intended future topology is:
+The intended and now-qualified topology is:
 
 ```text
 public
@@ -38,17 +38,19 @@ public
 
 `ghm_schema_owner` remains the owner of GHM-owned schema objects. `ghm_migrator` receives only the explicit migration elevation path. `ghm_runtime` receives only measured application privileges.
 
-## Existing First Slice
+## Existing First Slice — Current State
 
-The currently qualified Business Identity resources were created in `public`:
+The original 2026-09-10 design anticipated a possible first slice in `public`. That state has been superseded by the completed construction relocation.
 
-- `account_identity`
-- `business`
-- `business_membership`
+The qualified Business Identity first slice is now canonical under `ghm`:
+
+- `ghm.account_identity`
+- `ghm.business`
+- `ghm.business_membership`
 - associated identity sequences
-- `ghm_schema_migrations`
+- `ghm.ghm_schema_migrations`
 
-They must not be moved merely because this decision has been made. Any relocation from `public` to `ghm` is a separate migration and qualification event because it changes object addresses, grants, ownership evidence, and runtime qualification.
+The relocation was performed as a repository-owned construction migration and subsequently qualified against the live catalog and runtime harness. The original `public` placement is historical evidence only and is not the current GHM application contract.
 
 ## Future-Object Defaults
 
@@ -64,7 +66,7 @@ No global/default privilege mutation is part of this decision.
 
 The runtime role is `ghm_runtime`.
 
-The target schema boundary is:
+The qualified schema boundary is:
 
 ```text
 ghm_runtime
@@ -76,21 +78,21 @@ ghm_runtime
     X--> migration ledger mutation
 ```
 
-The exact schema-level and object-level ACL statements must be qualified against the live construction database before they become canonical migration behavior.
+The first-slice schema/object ACLs and runtime behavior have been qualified against the live construction database. New resource privileges remain evidence-gated.
 
 ## Migration Strategy
 
-A future schema migration must be designed as a controlled construction change. It must answer, before execution:
+Future schema migrations must be designed as controlled construction changes. They must answer, before execution:
 
-1. Whether the existing first-slice tables remain temporarily in `public` or are relocated into `ghm`.
+1. Whether the resource belongs in the canonical `ghm` namespace.
 2. How ownership is preserved.
 3. How sequences and constraints are preserved.
-4. How runtime grants are re-established.
+4. How runtime grants are established from actual repository SQL.
 5. How migration-ledger authority is preserved.
 6. How rollback/recovery is performed.
 7. How the resulting catalog is captured and reconciled.
 
-The migration must be repository-owned and idempotent through the existing migration ledger mechanism.
+Each migration must be repository-owned and idempotent through the existing migration ledger mechanism.
 
 ## Explicit Non-Goals
 
@@ -108,6 +110,6 @@ This decision does not:
 
 ## Gate
 
-This document closes the **schema naming/design decision** only.
+The **schema naming/design decision is closed**, and the **first Business Identity dedicated-schema relocation is also qualified**.
 
-The next gate is a read-only reconciliation of the exact relocation/default-privilege plan against the current migration runner, catalog, ownership, ACLs, and qualification harness. Only after that reconciliation should a construction migration be proposed for Founder approval.
+The remaining database authority issue is provider/bootstrap authority and legacy-role cleanup, which is blocked by the currently available managed PostgreSQL authority. Future resource slices require their own evidence-led reconciliation and qualification.
