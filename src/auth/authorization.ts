@@ -13,34 +13,20 @@ export type Resource =
   | 'quote'
   | 'notification'
   | 'support_request'
-  | 'review';
+  | 'review'
+  | 'opportunity';
 
 const roleResources: Record<GhmRole, readonly Resource[]> = {
-  admin: ['profile', 'business', 'project', 'enquiry', 'quote', 'notification', 'support_request', 'review'],
-  customer: ['profile', 'business', 'project', 'enquiry', 'quote', 'notification', 'support_request', 'review'],
-  business: ['profile', 'business', 'project', 'enquiry', 'quote', 'notification', 'support_request', 'review'],
+  admin: ['profile', 'business', 'project', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity'],
+  customer: ['profile', 'business', 'project', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity'],
+  business: ['profile', 'business', 'project', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity'],
 };
 
-const isGhmRole = (value: unknown): value is GhmRole =>
-  value === 'admin' || value === 'customer' || value === 'business';
+const isGhmRole = (value: unknown): value is GhmRole => value === 'admin' || value === 'customer' || value === 'business';
 
 export const requireAuthenticatedContext = (context: AuthContext): void => {
-  if (!context || !Number.isSafeInteger(context.userId) || context.userId <= 0 || !isGhmRole(context.role)) {
-    throw new Error('Authentication required');
-  }
+  if (!context || !Number.isSafeInteger(context.userId) || context.userId <= 0 || !isGhmRole(context.role)) throw new Error('Authentication required');
 };
-
-export const canAccessResource = (context: AuthContext, resource: Resource): boolean =>
-  roleResources[context.role].includes(resource);
-
-export const assertOwnership = (context: AuthContext, ownerId: number): void => {
-  if (context.role !== 'admin' && context.userId !== ownerId) {
-    throw new Error('Resource ownership required');
-  }
-};
-
-export const assertRole = (context: AuthContext, ...allowedRoles: GhmRole[]): void => {
-  if (!allowedRoles.includes(context.role)) {
-    throw new Error('Insufficient role');
-  }
-};
+export const canAccessResource = (context: AuthContext, resource: Resource): boolean => roleResources[context.role].includes(resource);
+export const assertOwnership = (context: AuthContext, ownerId: number): void => { if (context.role !== 'admin' && context.userId !== ownerId) throw new Error('Resource ownership required'); };
+export const assertRole = (context: AuthContext, ...allowedRoles: GhmRole[]): void => { if (!allowedRoles.includes(context.role)) throw new Error('Insufficient role'); };
