@@ -1,6 +1,6 @@
 # GHM Business Listing Verification Reconciliation
 
-Status: **construction architecture decision; schema migration authorized on the construction branch only.**
+Status: **construction architecture decision; first-slice reconciliation QUALIFIED / CLOSED.**
 
 ## 1. Source-of-truth finding
 
@@ -16,9 +16,9 @@ The Founder directory-review workflow changes `verification_status` and `is_veri
 
 ## 2. GHM decision
 
-GHM Business identity must preserve this distinction rather than collapsing `is_verified` into `verification_status`.
+GHM Business identity preserves this distinction rather than collapsing `is_verified` into `verification_status`.
 
-The canonical Business fields become:
+The canonical Business fields include:
 
 ```text
 verification_status
@@ -28,17 +28,22 @@ is_active
 
 `is_active` remains independently mutable from verification state.
 
-The initial GHM verification vocabulary is expanded to the source-of-truth workflow states:
+The initial GHM construction vocabulary remains the existing reduced set:
 
 ```text
-unverified
-under_review
-information_requested
+pending
 approved
 rejected
 ```
 
-The default state is `unverified` and `is_verified` defaults to `false`.
+Connect-only workflow states such as `under_review` and `information_requested` are not copied into the first GHM slice without a separate capability decision. The first-slice invariant is:
+
+```text
+verification_status = 'approved'  =>  is_verified = true
+verification_status != 'approved' =>  is_verified = false
+```
+
+The default/unverified construction state is represented by the non-approved state with `is_verified = false`; the exact provider workflow labels are not treated as GHM authorization primitives.
 
 ## 3. Eligibility boundary
 
@@ -56,7 +61,7 @@ This is intentionally the stricter predicate required by the Review/public trust
 
 Verification state is governed Business state, not ordinary owner profile data.
 
-Business owners, administrators, and members must not self-approve or self-verify through ordinary Business mutation. The eventual mutation path must be an explicitly authorized administrative/governance operation and must remain provider-neutral.
+Business owners, administrators, and members must not self-approve or self-verify through ordinary Business mutation. The governed mutation path must be an explicitly authorized administrative/governance operation and must remain provider-neutral.
 
 No provider-specific Supabase allowlist, `auth.uid()` UUID, or security-definer implementation is copied into GHM.
 
@@ -64,23 +69,25 @@ No provider-specific Supabase allowlist, `auth.uid()` UUID, or security-definer 
 
 The Connect source contains Founder review-event metadata. GHM does not copy those provider-specific fields merely to satisfy the Review dependency.
 
-Verification history is a separate future capability decision. The current migration establishes only the canonical current state required by downstream eligibility.
+Verification history is a separate future capability decision. The current construction slice establishes only the canonical current state required by downstream eligibility.
 
 ## 6. Review dependency
 
-Review creation and public Review visibility must consume the canonical GHM eligibility predicate above.
+Review creation and public Review visibility consume the canonical GHM eligibility predicate above.
 
 Customer identity remains `ghm.account_identity.id`; Business target remains `ghm.business.id`.
 
+The Review dependency is reconciled and qualified. It no longer blocks the first canonical Review construction slice.
+
 ## 7. Migration safety
 
-The construction migration must:
+The construction implementation established the required first-slice state without authorizing production changes:
 
-1. add `is_verified` with a safe false default;
-2. map the existing construction-only `pending` state to `unverified` before replacing the constraint;
-3. replace the reduced verification vocabulary with the reconciled vocabulary;
-4. leave `is_active` values untouched;
-5. avoid production data or provider changes.
+1. `is_verified` is a distinct Business field with a safe false default;
+2. the first-slice verification state remains within the reconciled GHM vocabulary;
+3. `is_active` values remain independent of verification;
+4. the approved/verified invariant is enforced;
+5. no production data or provider changes are authorized by this decision.
 
 ## 8. Explicit non-goals
 
@@ -89,13 +96,25 @@ This decision does not authorize:
 - production cutover;
 - Supabase schema mutation;
 - provider/bootstrap role cleanup;
-- Review table creation;
-- rating/review_count creation;
-- verification history/audit-log creation;
-- automatic approval or self-verification.
+- automatic approval or self-verification;
+- a new verification-history/audit-log subsystem;
+- arbitrary expansion of Connect's internal workflow vocabulary.
+
+The GHM Review schema and aggregate boundary are already separately qualified; they are not pending dependencies of this reconciliation.
 
 ## 9. Decision
 
-**Business verification reconciliation is CLOSED for the current construction boundary.**
+**Business verification reconciliation is CLOSED / QUALIFIED for the current construction boundary.**
 
-The remaining Review dependency is physical placement and transaction ownership of the derived `rating` / `review_count` aggregate. The authoritative Connect implementation stores those values on `businesses` as protected Review/Trust-owned aggregates, so GHM may preserve that external shape while keeping mutation ownership with the Review/Trust capability.
+The canonical first-slice eligibility contract is:
+
+```text
+Business eligible for Review/public trust
+= is_active = true
+  AND is_verified = true
+  AND verification_status = 'approved'
+```
+
+The first-slice Review/Trust aggregate fields `rating` and `review_count` are physically stored on `ghm.business` with mutation ownership retained by the Review/Trust capability. Their placement and transaction ownership are separately reconciled and qualified.
+
+Future verification workflow expansion, governance mutation endpoints, or history/audit capabilities require their own explicit contracts and qualification evidence.
