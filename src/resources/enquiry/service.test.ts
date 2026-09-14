@@ -3,6 +3,10 @@ import test from 'node:test';
 import type { AuthContext } from '../../auth/authorization';
 import type { Enquiry, EnquiryRepository } from './contracts';
 import { EnquiryServiceImpl } from './service';
+import {
+  ENQUIRY_STATUS_TRANSITIONS,
+  isEnquiryStatusTransitionAllowed,
+} from './contracts';
 
 const customerContext: AuthContext = { userId: 1, role: 'customer' };
 const businessContext: AuthContext = { userId: 2, role: 'business' };
@@ -70,4 +74,56 @@ test('Enquiry status mutation accepts only governed lifecycle values', async () 
   const result = await service.updateReceivedEnquiryStatus(businessContext, 1, { status: 'contacted' });
   assert.equal(result.status, 'contacted');
   await assert.rejects(() => service.updateReceivedEnquiryStatus(businessContext, 1, { status: 'invalid' as never }), /Invalid Enquiry status/);
+});
+
+
+test('Enquiry lifecycle contract permits only governed transitions', () => {
+  const expected: Record<string, readonly string[]> = {
+    new: ['contacted'],
+    contacted: ['qualified'],
+    qualified: ['quoted'],
+    quoted: ['won', 'lost', 'archived'],
+    won: [],
+    lost: [],
+    archived: [],
+  };
+
+  assert.deepEqual(ENQUIRY_STATUS_TRANSITIONS, expected);
+
+  for (const [from, allowed] of Object.entries(expected)) {
+    for (const to of allowed) {
+      assert.equal(
+        isEnquiryStatusTransitionAllowed(from as any, to as any),
+        true,
+        `Expected transition ${from} -> ${to} to be allowed`,
+      );
+    }
+  }
+});
+
+test('Enquiry lifecycle contract rejects invalid and terminal transitions', () => {
+  const invalid: Array<[string, string]> = [
+    ['new', 'qualified'],
+    ['new', 'quoted'],
+    ['contacted', 'new'],
+    ['contacted', 'quoted'],
+    ['qualified', 'contacted'],
+    ['qualified', 'won'],
+    ['quoted', 'contacted'],
+    ['quoted', 'qualified'],
+    ['won', 'lost'],
+    ['won', 'archived'],
+    ['lost', 'contacted'],
+    ['lost', 'won'],
+    ['archived', 'contacted'],
+    ['archived', 'won'],
+  ];
+
+  for (const [from, to] of invalid) {
+    assert.equal(
+      isEnquiryStatusTransitionAllowed(from as any, to as any),
+      false,
+      `Expected transition ${from} -> ${to} to be rejected`,
+    );
+  }
 });

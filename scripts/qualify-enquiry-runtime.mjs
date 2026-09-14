@@ -41,7 +41,7 @@ const createBusiness = async (name, ownerId) => {
   try {
     await client.query('BEGIN');
     await client.query('SET LOCAL ROLE ghm_schema_owner');
-    const { rows: businessRows } = await client.query(`INSERT INTO ghm.business (name, slug, verification_status, is_active) VALUES ($1,$2,'approved',true) RETURNING id`, [name, `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${randomUUID().slice(0,8)}`]);
+    const { rows: businessRows } = await client.query(`INSERT INTO ghm.business (name, slug, verification_status, is_active, is_verified) VALUES ($1,$2,'approved',true,true) RETURNING id`, [name, `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${randomUUID().slice(0,8)}`]);
     const businessId = Number(businessRows[0].id);
     const { rows: membershipRows } = await client.query(`INSERT INTO ghm.business_membership (business_id, account_id, membership_role, membership_status, created_by) VALUES ($1,$2,'owner','active',$2) RETURNING id`, [businessId, ownerId]);
     await client.query('COMMIT');
@@ -130,6 +130,116 @@ try {
   const afterUpdate = await service.getOwnEnquiry(customerContext, created.id);
   if (!afterUpdate || afterUpdate.status !== 'contacted') throw new Error('Enquiry lifecycle persistence failed');
   console.log('ENQUIRY LIFECYCLE PERSISTENCE PASS');
+  const createLifecycleEnquiry = async () => {
+    const enquiry = await service.createEnquiry(customerContext, {
+      businessId: businessA,
+      customerName: 'Lifecycle Customer',
+      project: 'Lifecycle Test',
+      description: 'This enquiry exists only for lifecycle runtime qualification.',
+      source: 'marketplace',
+    });
+    fixture.enquiryIds.push(enquiry.id);
+    if (enquiry.status !== 'new') throw new Error('Lifecycle fixture did not start at new');
+    return enquiry.id;
+  };
+
+  const fullPathId = await createLifecycleEnquiry();
+
+  const fullPath = [
+    ['new', 'contacted'],
+    ['contacted', 'qualified'],
+    ['qualified', 'quoted'],
+  ];
+
+  for (const [from, to] of fullPath) {
+    const current = await service.getReceivedEnquiry(ownerAContext, fullPathId);
+
+    if (!current || current.status !== from) {
+      throw new Error(`Lifecycle expected ${from} but found ${current?.status}`);
+    }
+
+    const result = await service.updateReceivedEnquiryStatus(
+      ownerAContext,
+      fullPathId,
+      { status: to },
+    );
+
+    if (result.status !== to) {
+      throw new Error(`Lifecycle transition ${from} -> ${to} failed`);
+    }
+  }
+
+  const quoted = await service.getReceivedEnquiry(ownerAContext, fullPathId);
+
+  if (!quoted || quoted.status !== 'quoted') {
+    throw new Error('Lifecycle full path did not reach quoted');
+  }
+
+  console.log('ENQUIRY LIFECYCLE NEW-CONTACTED-QUALIFIED-QUOTED PASS');
+
+  const invalidId = await createLifecycleEnquiry();
+
+  await assertRejected(
+    () => service.updateReceivedEnquiryStatus(
+      ownerAContext,
+      invalidId,
+      { status: 'qualified' },
+    ),
+    'ENQUIRY INVALID NEW-TO-QUALIFIED DENIAL PASS',
+  );
+
+  for (const terminal of ['won', 'lost', 'archived']) {
+    const terminalId = await createLifecycleEnquiry();
+
+    await service.updateReceivedEnquiryStatus(
+      ownerAContext,
+      terminalId,
+      { status: 'contacted' },
+    );
+
+    await service.updateReceivedEnquiryStatus(
+      ownerAContext,
+      terminalId,
+      { status: 'qualified' },
+    );
+
+    await service.updateReceivedEnquiryStatus(
+      ownerAContext,
+      terminalId,
+      { status: 'quoted' },
+    );
+
+    const terminalResult = await service.updateReceivedEnquiryStatus(
+      ownerAContext,
+      terminalId,
+      { status: terminal },
+    );
+
+    if (terminalResult.status !== terminal) {
+      throw new Error(`Lifecycle terminal transition to ${terminal} failed`);
+    }
+
+    await assertRejected(
+      () => service.updateReceivedEnquiryStatus(
+        ownerAContext,
+        terminalId,
+        { status: 'contacted' },
+      ),
+      `ENQUIRY TERMINAL ${terminal}-TO-CONTACTED DENIAL PASS`,
+    );
+  }
+
+  await assertRejected(
+    () => service.updateReceivedEnquiryStatus(
+      ownerAContext,
+      fullPathId,
+      { status: 'contacted' },
+    ),
+    'ENQUIRY INVALID QUOTED-TO-CONTACTED DENIAL PASS',
+  );
+
+  console.log('ENQUIRY LIFECYCLE COMPLETE PATHS PASS');
+
 
   await assertRejected(() => service.updateReceivedEnquiryStatus(adminContext, created.id, { status: 'qualified' }), 'ENQUIRY ADMINISTRATOR STATUS DENIAL PASS');
   await assertRejected(() => service.updateReceivedEnquiryStatus(memberContext, created.id, { status: 'qualified' }), 'ENQUIRY MEMBER STATUS DENIAL PASS');
@@ -140,6 +250,33 @@ try {
   await assertRejected(() => directRuntime(`UPDATE ghm.enquiry SET business_id = $2 WHERE id = $1`, [created.id, businessB]), 'ENQUIRY RUNTIME RECIPIENT UPDATE ACL DENIAL PASS');
   await assertRejected(() => directRuntime(`DELETE FROM ghm.enquiry WHERE id = $1`, [created.id]), 'ENQUIRY RUNTIME DELETE ACL DENIAL PASS');
   await assertRejected(() => directRuntime(`INSERT INTO ghm.enquiry (business_id, customer_id, customer_name, project, description, source, status) VALUES ($1,$2,'x','x','long enough description','marketplace','contacted')`, [businessA, customerId]), 'ENQUIRY RUNTIME STATUS-ON-CREATE ACL DENIAL PASS');
+
+  const { rows: columnAcl } = await directRuntime(`
+    SELECT
+      has_column_privilege(current_user, 'ghm.enquiry', 'business_id', 'INSERT') AS insert_business_id,
+      has_column_privilege(current_user, 'ghm.enquiry', 'customer_id', 'INSERT') AS insert_customer_id,
+      has_column_privilege(current_user, 'ghm.enquiry', 'customer_name', 'INSERT') AS insert_customer_name,
+      has_column_privilege(current_user, 'ghm.enquiry', 'status', 'INSERT') AS insert_status,
+      has_column_privilege(current_user, 'ghm.enquiry', 'business_id', 'UPDATE') AS update_business_id,
+      has_column_privilege(current_user, 'ghm.enquiry', 'customer_name', 'UPDATE') AS update_customer_name,
+      has_column_privilege(current_user, 'ghm.enquiry', 'status', 'UPDATE') AS update_status
+  `);
+
+  const columnAclValue = columnAcl[0];
+
+  if (
+    !columnAclValue.insert_business_id ||
+    !columnAclValue.insert_customer_id ||
+    !columnAclValue.insert_customer_name ||
+    columnAclValue.insert_status ||
+    columnAclValue.update_business_id ||
+    columnAclValue.update_customer_name ||
+    !columnAclValue.update_status
+  ) {
+    throw new Error(`Unexpected Enquiry column ACL: ${JSON.stringify(columnAclValue)}`);
+  }
+
+  console.log('ENQUIRY RUNTIME COLUMN ACL PASS');
 
   const { rows: acl } = await directRuntime(`SELECT has_table_privilege(current_user, 'ghm.enquiry', 'SELECT') AS can_select, has_table_privilege(current_user, 'ghm.enquiry', 'INSERT') AS can_insert, has_table_privilege(current_user, 'ghm.enquiry', 'UPDATE') AS can_update, has_table_privilege(current_user, 'ghm.enquiry', 'DELETE') AS can_delete`);
   if (!acl[0].can_select || acl[0].can_insert || acl[0].can_update || acl[0].can_delete) throw new Error(`Unexpected Enquiry table ACL: ${JSON.stringify(acl[0])}`);

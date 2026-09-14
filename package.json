@@ -16,7 +16,8 @@
     "test": "npm run build && node --test dist/auth/authorization.test.js dist/auth/request-context.test.js dist/resources/registry.test.js dist/db/transaction.test.js dist/resources/business-identity/service.test.js dist/resources/project/service.test.js dist/resources/enquiry/service.test.js dist/resources/review/service.test.js dist/resources/opportunity/service.test.js dist/http/app.test.js dist/http/enquiry-router.test.js",
     "verify:runtime": "node scripts/verify-runtime-boundary.mjs",
     "qualify:project-runtime": "npm run build && node scripts/qualify-project-runtime.mjs",
-    "qualify:opportunity-runtime": "npm run build && node scripts/qualify-opportunity-runtime.mjs"
+    "qualify:opportunity-runtime": "npm run build && node scripts/qualify-opportunity-runtime.mjs",
+    "qualify:enquiry-runtime": "npm run build && node scripts/qualify-enquiry-runtime.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",

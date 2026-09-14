@@ -3,6 +3,7 @@ import type { AuthContext } from '../../auth/authorization';
 import { withAuthorizedTransaction } from '../../db/authorized-transaction';
 import type { TransactionPool } from '../../db/transaction';
 import type { CreateEnquiryInput, Enquiry, EnquiryId, EnquiryRepository, UpdateEnquiryStatusInput } from './contracts';
+import { isEnquiryStatusTransitionAllowed } from './contracts';
 
 const ENQUIRY_COLUMNS = `id, business_id, customer_id, customer_name, customer_phone, customer_email, project, description, city, budget_min, budget_max, urgency, source, status, created_at, updated_at`;
 
@@ -89,6 +90,11 @@ export class PostgresEnquiryRepository implements EnquiryRepository {
     return withAuthorizedTransaction(context, async client => {
       const existing = await this.getReceivedEnquiryInTransaction(client, context, enquiryId);
       if (!existing) throw new Error('Enquiry not found or business owner permission required');
+
+      if (!isEnquiryStatusTransitionAllowed(existing.status, input.status)) {
+        throw new Error('Invalid Enquiry status transition');
+      }
+
       const result = await client.query(
         `UPDATE ghm.enquiry SET status = $2 WHERE id = $1 RETURNING ${ENQUIRY_COLUMNS}`,
         [enquiryId, input.status],

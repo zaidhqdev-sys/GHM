@@ -89,6 +89,10 @@ export class EnquiryServiceImpl implements EnquiryService {
   }
   async updateReceivedEnquiryStatus(context: AuthContext, enquiryId: number, input: UpdateEnquiryStatusInput): Promise<Enquiry> {
     assertRole(context, 'business');
-    return this.repository.updateReceivedEnquiryStatus(context, enquiryId, normalizeStatusInput(input));
+    return this.repository.updateReceivedEnquiryStatus(
+      context,
+      enquiryId,
+      normalizeStatusInput(input),
+    );
   }
 }
