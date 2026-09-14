@@ -1,12 +1,7 @@
 import http from 'http';
-import { Pool } from 'pg';
 import { config } from './config';
 import { createApp } from './http/app';
-
-const pool = new Pool({
-  connectionString: config.databaseUrl,
-  ssl: config.isProduction ? { rejectUnauthorized: false } : false,
-});
+import { pool } from './db/pool';
 
 const app = createApp();
 const server = http.createServer(app);
