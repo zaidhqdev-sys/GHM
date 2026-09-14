@@ -1,0 +1,122 @@
+import type { PoolClient } from 'pg';
+import type { AuthContext } from '../../auth/authorization';
+import { withAuthorizedTransaction } from '../../db/authorized-transaction';
+import type { TransactionPool } from '../../db/transaction';
+import type { CreateOpportunityInput, Opportunity, OpportunityRepository, OpportunityTypeId, UpdateOpportunityInput } from './contracts';
+
+const COLUMNS = `id, opportunity_type_id, creator_account_id, owner_business_id, country_id, currency_id, title, description, lifecycle_status, visibility, budget_min, budget_max, opens_at, closes_at, created_at, updated_at`;
+
+const mapOpportunity = (row: any): Opportunity => ({
+  id: Number(row.id), opportunityTypeId: Number(row.opportunity_type_id), creatorAccountId: Number(row.creator_account_id),
+  ownerBusinessId: row.owner_business_id === null ? null : Number(row.owner_business_id),
+  countryId: row.country_id === null ? null : Number(row.country_id), currencyId: row.currency_id === null ? null : Number(row.currency_id),
+  title: row.title, description: row.description, lifecycleStatus: row.lifecycle_status, visibility: row.visibility,
+  budgetMin: row.budget_min === null ? null : Number(row.budget_min), budgetMax: row.budget_max === null ? null : Number(row.budget_max),
+  opensAt: row.opens_at, closesAt: row.closes_at, createdAt: row.created_at, updatedAt: row.updated_at,
+});
+
+const requireText = (value: unknown, field: string, min: number, max: number): string => {
+  if (typeof value !== 'string') throw new Error(`${field} is required`);
+  const normalized = value.trim();
+  if (normalized.length < min || normalized.length > max) throw new Error(`${field} must be between ${min} and ${max} characters`);
+  return normalized;
+};
+
+const requirePositiveId = (value: unknown, field: string): number => {
+  if (!Number.isSafeInteger(value) || (value as number) <= 0) throw new Error(`${field} must be a positive integer`);
+  return value as number;
+};
+
+const validateBudget = (min: number | null | undefined, max: number | null | undefined) => {
+  for (const [value, field] of [[min, 'budgetMin'], [max, 'budgetMax']] as const) {
+    if (value !== undefined && value !== null && (typeof value !== 'number' || !Number.isFinite(value) || value < 0)) throw new Error(`${field} must be null or a non-negative number`);
+  }
+  if (min != null && max != null && max < min) throw new Error('budgetMax must be greater than or equal to budgetMin');
+};
+
+const validateLifecycle = (value: unknown): void => {
+  if (!['draft', 'open', 'responding', 'evaluating', 'awarded', 'in_progress', 'completed', 'cancelled', 'archived'].includes(String(value))) throw new Error('Invalid Opportunity lifecycle status');
+};
+
+const validateVisibility = (value: unknown): void => {
+  if (!['private', 'participants', 'authenticated', 'public'].includes(String(value))) throw new Error('Invalid Opportunity visibility');
+};
+
+const validateDates = (opensAt: Date | null | undefined, closesAt: Date | null | undefined): void => {
+  if (opensAt !== undefined && opensAt !== null && Number.isNaN(opensAt.getTime())) throw new Error('opensAt must be a valid date');
+  if (closesAt !== undefined && closesAt !== null && Number.isNaN(closesAt.getTime())) throw new Error('closesAt must be a valid date');
+  if (opensAt != null && closesAt != null && closesAt < opensAt) throw new Error('closesAt must be greater than or equal to opensAt');
+};
+
+const normalizeCreate = (input: CreateOpportunityInput): Required<Pick<CreateOpportunityInput, 'opportunityTypeId' | 'title' | 'description'>> & CreateOpportunityInput => {
+  const opportunityTypeId = requirePositiveId(input.opportunityTypeId, 'opportunityTypeId') as OpportunityTypeId;
+  const title = requireText(input.title, 'title', 1, 200);
+  const description = requireText(input.description, 'description', 1, 10000);
+  const lifecycleStatus = input.lifecycleStatus ?? 'draft';
+  const visibility = input.visibility ?? 'private';
+  validateLifecycle(lifecycleStatus); validateVisibility(visibility); validateBudget(input.budgetMin, input.budgetMax); validateDates(input.opensAt, input.closesAt);
+  if (visibility === 'public' && lifecycleStatus === 'draft') throw new Error('Public Opportunities cannot be draft');
+  return { ...input, opportunityTypeId, title, description, lifecycleStatus, visibility, budgetMin: input.budgetMin ?? null, budgetMax: input.budgetMax ?? null, opensAt: input.opensAt ?? null, closesAt: input.closesAt ?? null };
+};
+
+const findById = async (client: PoolClient, id: number, context: AuthContext, ownedOnly: boolean): Promise<Opportunity | null> => {
+  const where = ownedOnly ? 'id = $1 AND creator_account_id = $2' : `(id = $1 AND (creator_account_id = $2 OR visibility IN ('authenticated','public'))) OR (id = $1 AND visibility IN ('private','participants'))`;
+  const result = await client.query(`SELECT ${COLUMNS} FROM ghm.opportunity WHERE ${where}`, [id, context.userId]);
+  return result.rowCount === 1 ? mapOpportunity(result.rows[0]) : null;
+};
+
+export class PostgresOpportunityRepository implements OpportunityRepository {
+  constructor(private readonly transactionPool?: TransactionPool) {}
+
+  async createOpportunity(context: AuthContext, input: CreateOpportunityInput): Promise<Opportunity> {
+    const normalized = normalizeCreate(input);
+    return withAuthorizedTransaction(context, async client => {
+      const type = await client.query(`SELECT 1 FROM ghm.opportunity_type WHERE id = $1 AND is_active = true`, [normalized.opportunityTypeId]);
+      if (type.rowCount !== 1) throw new Error('Opportunity type not found or inactive');
+      if (normalized.ownerBusinessId !== null && normalized.ownerBusinessId !== undefined) {
+        const membership = await client.query(`SELECT 1 FROM ghm.business_membership WHERE business_id = $1 AND account_id = $2 AND membership_status = 'active' AND membership_role IN ('owner','administrator') LIMIT 1`, [normalized.ownerBusinessId, context.userId]);
+        if (membership.rowCount !== 1) throw new Error('Business management permission required');
+      }
+      const result = await client.query(`INSERT INTO ghm.opportunity (opportunity_type_id, creator_account_id, owner_business_id, country_id, currency_id, title, description, lifecycle_status, visibility, budget_min, budget_max, opens_at, closes_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING ${COLUMNS}`, [normalized.opportunityTypeId, context.userId, normalized.ownerBusinessId, normalized.countryId ?? null, normalized.currencyId ?? null, normalized.title, normalized.description, normalized.lifecycleStatus, normalized.visibility, normalized.budgetMin, normalized.budgetMax, normalized.opensAt, normalized.closesAt]);
+      if (result.rowCount !== 1) throw new Error('Opportunity creation failed');
+      return mapOpportunity(result.rows[0]);
+    }, this.transactionPool);
+  }
+
+  async getOpportunity(context: AuthContext, opportunityId: number): Promise<Opportunity | null> {
+    requirePositiveId(opportunityId, 'opportunityId');
+    return withAuthorizedTransaction(context, client => findById(client, opportunityId, context, false), this.transactionPool);
+  }
+
+  async getOwnedOpportunity(context: AuthContext, opportunityId: number): Promise<Opportunity | null> {
+    requirePositiveId(opportunityId, 'opportunityId');
+    return withAuthorizedTransaction(context, client => findById(client, opportunityId, context, true), this.transactionPool);
+  }
+
+  async updateOwnedOpportunity(context: AuthContext, opportunityId: number, input: UpdateOpportunityInput): Promise<Opportunity> {
+    requirePositiveId(opportunityId, 'opportunityId');
+    const entries = Object.entries(input).filter(([, value]) => value !== undefined);
+    if (entries.length === 0) throw new Error('Opportunity update requires at least one field');
+    const allowed = new Set(['opportunityTypeId','ownerBusinessId','countryId','currencyId','title','description','visibility','budgetMin','budgetMax','opensAt','closesAt']);
+    const unsupported = entries.find(([key]) => !allowed.has(key));
+    if (unsupported) throw new Error(`Unsupported Opportunity update field: ${unsupported[0]}`);
+    if (Object.hasOwn(input, 'opportunityTypeId')) requirePositiveId(input.opportunityTypeId, 'opportunityTypeId');
+    if (Object.hasOwn(input, 'title')) requireText(input.title, 'title', 1, 200);
+    if (Object.hasOwn(input, 'description')) requireText(input.description, 'description', 1, 10000);
+    if (Object.hasOwn(input, 'visibility')) validateVisibility(input.visibility);
+    validateBudget(input.budgetMin, input.budgetMax); validateDates(input.opensAt, input.closesAt);
+    if (input.visibility === 'public') throw new Error('Lifecycle transition is required before public visibility');
+    return withAuthorizedTransaction(context, async client => {
+      const current = await findById(client, opportunityId, context, true);
+      if (!current) throw new Error('Opportunity not found or ownership required');
+      if (['completed','cancelled','archived'].includes(current.lifecycleStatus)) throw new Error('Terminal Opportunities cannot be updated');
+      const fields: string[] = []; const values: unknown[] = [opportunityId, context.userId]; let parameter = 3;
+      const map: Record<string,string> = { opportunityTypeId:'opportunity_type_id', ownerBusinessId:'owner_business_id', countryId:'country_id', currencyId:'currency_id', title:'title', description:'description', visibility:'visibility', budgetMin:'budget_min', budgetMax:'budget_max', opensAt:'opens_at', closesAt:'closes_at' };
+      for (const [key,column] of Object.entries(map)) if (Object.hasOwn(input,key)) { fields.push(`${column} = $${parameter++}`); values.push((input as any)[key]); }
+      fields.push('updated_at = now()');
+      const result = await client.query(`UPDATE ghm.opportunity SET ${fields.join(', ')} WHERE id = $1 AND creator_account_id = $2 RETURNING ${COLUMNS}`, values);
+      if (result.rowCount !== 1) throw new Error('Opportunity update failed');
+      return mapOpportunity(result.rows[0]);
+    }, this.transactionPool);
+  }
+}
