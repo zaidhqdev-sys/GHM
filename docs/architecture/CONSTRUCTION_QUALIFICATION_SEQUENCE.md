@@ -12,9 +12,9 @@ The sequence remains the architecture-level gate order. Individual gates may hav
 2. **Schema authority** — PostgreSQL schema is owned by repository migrations; application startup performs no schema mutation. **First canonical GHM Business Identity slice is established through repository-owned migrations, relocated into the dedicated `ghm` schema, and qualified against the live catalog.**
 3. **Authorization boundary** — authenticated identity and authorization are enforced within the same query/transaction context; no connection-pool context leakage. **CLOSED / PASS for construction qualification of the first canonical Business Identity slice.**
 4. **Resource API** — unrestricted generic table access is removed and replaced with explicit governed resources. **First Business Identity Resource API slice implemented and qualified; future registry resources remain governed work.**
-5. **Operational boundary** — health/readiness, graceful shutdown, structured errors, and safe logging are qualified. **Not yet a production gate.**
-6. **Automated qualification** — build and negative security/runtime checks run deterministically in CI. **Construction checks exist and are passing for the current branch state; they do not close the production gates above.**
-7. **Database reconciliation** — actual GHM PostgreSQL catalog evidence is captured and reconciled before dependent product/business migrations are authored. **Dedicated-schema catalog reconciliation and Business Identity runtime qualification are PASS for the current construction slice. The existing catalog artifact remains an app-role-scoped snapshot captured through `DATABASE_URL` (`ghm_app_user` → `ghm_db_user`), not an authoritative full-database catalog. Canonical GHM recovery has also been captured separately through the dedicated migrator/schema-owner path. Remaining work includes provider/bootstrap authority limits, legacy authority cleanup, dedicated-schema/default-privilege reconciliation, and subsequent governed resource slices.**
+5. **Operational boundary** — health/readiness, graceful shutdown, structured errors, and safe logging are qualified. **CLOSED / PASS for construction qualification of the current operational boundary; production qualification remains open.**
+6. **Automated qualification** — build and negative security/runtime checks run deterministically in CI. **Construction checks exist and are passing for the current branch state; they do not close production gates.**
+7. **Database reconciliation** — actual GHM PostgreSQL catalog evidence is captured and reconciled before dependent product/business migrations are authored. **Dedicated-schema catalog reconciliation and Business Identity runtime qualification are PASS for the current construction slice. The existing catalog artifact remains an app-role-scoped snapshot captured through `DATABASE_URL` (`ghm_app_user` → `ghm_db_user`), not an authoritative full-database catalog. Canonical GHM recovery has also been captured separately through the dedicated migrator/schema-owner path. Remaining work is provider/bootstrap authority limits, legacy authority cleanup, and subsequent governed resource slices.**
 8. **Product adapters** — Connect and QuoteFlow adapters are implemented only after their concrete backend contracts are evidenced. **Not started as a cutover activity.**
 9. **Shadow qualification** — product workflows are exercised against GHM while Supabase remains authoritative. **Not started.**
 10. **Controlled cutover** — migrate one product at a time with an explicit rollback path. **Not started; production remains on Supabase.**
@@ -108,7 +108,7 @@ Likewise, PostgreSQL role separation and dedicated migration-runner qualificatio
 
 The provider/bootstrap authority and legacy-role cleanup remain constrained by the currently available managed PostgreSQL authority. Construction may advance only to resource slices whose database contracts and privileges can be evidenced without relying on unresolved bootstrap authority.
 
-No product adapter or production cutover work begins from the Business Identity, Transaction, TEMP, Authorization, or first-slice Resource API gates alone.
+No product adapter or production cutover work begins from the currently closed construction gates alone.
 
 ## Hard stop conditions
 
