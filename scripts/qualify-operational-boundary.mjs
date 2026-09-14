@@ -1,36 +1,23 @@
 import { readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 
-const root = new URL('../', import.meta.url);
-const serverSource = await readFile(new URL('../src/server.ts', import.meta.url), 'utf8');
-const appSource = await readFile(new URL('../src/http/app.ts', import.meta.url), 'utf8');
+const root = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(root, '..');
+const serverSource = await readFile(path.join(repoRoot, 'src/server.ts'), 'utf8');
+const appSource = await readFile(path.join(repoRoot, 'src/http/app.ts'), 'utf8');
 
 const failures = [];
 
-if (!/import\s+\{\s*pool\s*\}\s+from\s+'\.\/db\/pool'/.test(serverSource)) {
-  failures.push('server does not use the canonical database pool');
-}
-if (/new\s+Pool\s*\(/.test(serverSource)) {
-  failures.push('server creates a second database pool');
-}
-if (/config\.isProduction\s*\?/.test(serverSource)) {
-  failures.push('server derives database TLS from NODE_ENV instead of DATABASE_SSL');
-}
-if (!/app\.get\(['"]\/healthz['"]/.test(serverSource)) {
-  failures.push('health endpoint is not registered');
-}
-if (!/app\.get\(['"]\/readyz['"]/.test(serverSource)) {
-  failures.push('readiness endpoint is not registered');
-}
-if (!/server\.close\(.*\)/s.test(serverSource) || !/pool\.end\(\)/.test(serverSource)) {
-  failures.push('graceful shutdown does not close the HTTP server and database pool');
-}
-if (/console\.error\([^\n]*error\s*\)/.test(appSource) || /console\.error\([^\n]*reason\s*\)/.test(serverSource)) {
-  failures.push('error logging may serialize raw error details');
-}
-if (/res\.status\(500\)\.json\(\{\s*error:\s*['"]internal_error['"]\s*\}\)/.test(appSource) === false) {
-  failures.push('HTTP 500 response is not a stable internal_error contract');
-}
+if (!/import\s+\{\s*pool\s*\}\s+from\s+'\.\/db\/pool'/.test(serverSource)) failures.push('server does not use the canonical database pool');
+if (/new\s+Pool\s*\(/.test(serverSource)) failures.push('server creates a second database pool');
+if (/config\.isProduction\s*\?/.test(serverSource)) failures.push('server derives database TLS from NODE_ENV instead of DATABASE_SSL');
+if (!/app\.get\(['"]\/healthz['"]/.test(serverSource)) failures.push('health endpoint is not registered');
+if (!/app\.get\(['"]\/readyz['"]/.test(serverSource)) failures.push('readiness endpoint is not registered');
+if (!/server\.close\(/.test(serverSource) || !/pool\.end\(\)/.test(serverSource)) failures.push('graceful shutdown does not close the HTTP server and database pool');
+if (/console\.error\([^\n]*error\s*\)/.test(appSource) || /console\.error\([^\n]*reason\s*\)/.test(serverSource)) failures.push('error logging may serialize raw error details');
+if (!/res\.status\(500\)\.json\(\{\s*error:\s*['"]internal_error['"]\s*\}\)/.test(appSource)) failures.push('HTTP 500 response is not a stable internal_error contract');
 
 if (failures.length > 0) {
   console.error('Operational boundary static verification FAILED.');
@@ -46,15 +33,11 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
-const childEnv = {
-  ...process.env,
-  DATABASE_URL: databaseUrl,
-  PORT: port,
-};
+const childEnv = { ...process.env, DATABASE_URL: databaseUrl, PORT: port };
 
-aSync function run() {
+async function run() {
   const child = spawn(process.execPath, ['dist/server.js'], {
-    cwd: new URL('../', import.meta.url),
+    cwd: repoRoot,
     env: childEnv,
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
@@ -85,17 +68,13 @@ aSync function run() {
   try {
     await waitFor(`http://127.0.0.1:${port}/readyz`, 200);
     const health = await waitFor(`http://127.0.0.1:${port}/healthz`, 200);
-    if (health !== JSON.stringify({ status: 'ok' })) {
-      throw new Error(`unexpected /healthz response: ${health}`);
-    }
+    if (health !== JSON.stringify({ status: 'ok' })) throw new Error(`unexpected /healthz response: ${health}`);
 
     const forbiddenSecrets = /(postgres(?:ql)?:\/\/|password\s*=|JWT_SECRET|Authorization:\s*Bearer\s+)/i;
-    if (forbiddenSecrets.test(stdout) || forbiddenSecrets.test(stderr)) {
-      throw new Error('runtime logs contain a forbidden secret/credential pattern');
-    }
+    if (forbiddenSecrets.test(stdout) || forbiddenSecrets.test(stderr)) throw new Error('runtime logs contain a forbidden secret/credential pattern');
 
     child.kill('SIGTERM');
-    const exitCode = await new Promise((resolve, reject) => {
+    const exitResult = await new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('timeout waiting for graceful shutdown')), 10000);
       child.once('exit', (code, signal) => {
         clearTimeout(timer);
@@ -103,9 +82,7 @@ aSync function run() {
       });
     });
 
-    if (exitCode.code !== 0) {
-      throw new Error(`graceful shutdown exited with code ${exitCode.code ?? 'null'} and signal ${exitCode.signal ?? 'none'}`);
-    }
+    if (exitResult.code !== 0) throw new Error(`graceful shutdown exited with code ${exitResult.code ?? 'null'} and signal ${exitResult.signal ?? 'none'}`);
 
     console.log('Operational boundary runtime verification PASSED.');
     console.log('- /readyz reached 200 only after database startup check');
@@ -113,7 +90,7 @@ aSync function run() {
     console.log('- runtime logs contained no forbidden credential patterns');
     console.log('- SIGTERM completed graceful shutdown with exit code 0');
   } catch (error) {
-    child.kill('SIGTERM');
+    if (!child.killed) child.kill('SIGTERM');
     console.error('Operational boundary runtime verification FAILED.');
     console.error(`- ${error instanceof Error ? error.message : String(error)}`);
     if (stderr.trim()) console.error(`stderr: ${stderr.trim()}`);
