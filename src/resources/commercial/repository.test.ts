@@ -28,6 +28,7 @@ const createFakePool = (options: {
   activatedAt?: Date;
   trialRow?: Record<string, unknown>;
   subscriptionId?: number;
+  failEvent?: boolean;
 } = {}): { pool: TransactionPool; calls: string[]; params: unknown[][] } => {
   const calls: string[] = [];
   const params: unknown[][] = [];
@@ -65,7 +66,10 @@ const createFakePool = (options: {
         };
       }
       if (sql.includes('INSERT INTO ghm.commercial_subscription')) return { rowCount: 1, rows: [{ id: options.subscriptionId ?? 61 }] };
-      if (sql.includes('INSERT INTO ghm.commercial_event')) return { rowCount: 1, rows: [] };
+      if (sql.includes('INSERT INTO ghm.commercial_event')) {
+        if (options.failEvent) throw new Error('event failure');
+        return { rowCount: 1, rows: [] };
+      }
       throw new Error(`Unexpected SQL in test: ${sql}`);
     },
     release(): void {},
@@ -178,20 +182,6 @@ test('Commercial trial activation rejects when no eligible plan exists', async (
 
 test('Commercial trial activation rolls back when a later write fails', async () => {
   const activatedAt = new Date(1000);
-  const { pool } = createFakePool({ planRow: { id: 31, trial_days: 7 }, activatedAt });
-  const originalConnect = pool.connect;
-  let failed = false;
-  pool.connect = async () => {
-    const client = await originalConnect();
-    const originalQuery = client.query.bind(client);
-    client.query = async (sql: string, params?: unknown[]) => {
-      if (sql.includes('INSERT INTO ghm.commercial_event') && !failed) {
-        failed = true;
-        throw new Error('event failure');
-      }
-      return originalQuery(sql, params);
-    };
-    return client;
-  };
+  const { pool } = createFakePool({ planRow: { id: 31, trial_days: 7 }, activatedAt, failEvent: true });
   await assert.rejects(() => new PostgresCommercialRepository(pool).activateCommercialTrial(context(), { businessId, planCode: 'business_pro' }), /event failure/);
 });
