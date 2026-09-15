@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "ghm-core",
   "version": "2.0.0",
   "description": "GHM Core Engine - Private Backend as a Service",
@@ -13,13 +13,14 @@
     "qualify:resource-api-http": "npm run build && node scripts/qualify-resource-api-http.mjs",
     "qualify:operational-boundary": "npm run build && node scripts/qualify-operational-boundary.mjs",
     "start": "node dist/server.js",
-    "test": "npm run build && node --test dist/auth/authorization.test.js dist/auth/request-context.test.js dist/resources/registry.test.js dist/db/transaction.test.js dist/resources/business-identity/service.test.js dist/resources/project/service.test.js dist/resources/enquiry/service.test.js dist/resources/review/service.test.js dist/resources/opportunity/service.test.js dist/http/app.test.js dist/http/enquiry-router.test.js dist/resources/project-quote/service.test.js dist/resources/capability/service.test.js",
+    "test": "npm run build && node --test dist/auth/authorization.test.js dist/auth/request-context.test.js dist/resources/registry.test.js dist/db/transaction.test.js dist/resources/business-identity/service.test.js dist/resources/project/service.test.js dist/resources/enquiry/service.test.js dist/resources/review/service.test.js dist/resources/opportunity/service.test.js dist/http/app.test.js dist/http/enquiry-router.test.js dist/resources/project-quote/service.test.js dist/resources/opportunity-requirements/repository.test.js dist/resources/capability/service.test.js",
     "verify:runtime": "node scripts/verify-runtime-boundary.mjs",
     "qualify:project-runtime": "npm run build && node scripts/qualify-project-runtime.mjs",
     "qualify:opportunity-runtime": "npm run build && node scripts/qualify-opportunity-runtime.mjs",
     "qualify:enquiry-runtime": "npm run build && node scripts/qualify-enquiry-runtime.mjs",
     "qualify:project-quote-runtime": "npm run build && node scripts/qualify-project-quote-runtime.mjs",
-    "qualify:capability-runtime": "npm run build && node scripts/qualify-capability-runtime.mjs"
+    "qualify:capability-runtime": "npm run build && node scripts/qualify-capability-runtime.mjs",
+    "qualify:opportunity-requirements-runtime": "npm run build && node scripts/qualify-opportunity-requirements-runtime.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",
