@@ -257,8 +257,8 @@ const activateTrial = async (
        $1,
        $2,
        $3,
-       $4,
-       $4 + make_interval(days => $5),
+       $4::timestamptz,
+       $4::timestamptz + make_interval(days => $5::integer),
        'active'
      )
      RETURNING
