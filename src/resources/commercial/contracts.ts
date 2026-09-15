@@ -16,45 +16,12 @@ export type CommercialFoundingAllocationId = number;
 export type CountryId = number;
 export type CurrencyId = number;
 
-export type CommercialPlanLifecycle =
-  | 'draft'
-  | 'active'
-  | 'retired';
-
-export type CommercialTrialLifecycle =
-  | 'active'
-  | 'expired'
-  | 'converted'
-  | 'cancelled';
-
-export type CommercialSubscriptionLifecycle =
-  | 'trialing'
-  | 'active'
-  | 'past_due'
-  | 'grace_period'
-  | 'cancel_at_period_end'
-  | 'cancelled'
-  | 'expired'
-  | 'suspended';
-
-export type CommercialPaymentAttemptLifecycle =
-  | 'pending_checkout'
-  | 'pending_payment'
-  | 'succeeded'
-  | 'failed'
-  | 'expired'
-  | 'cancelled';
-
-export type CommercialPaymentTransactionKind =
-  | 'payment'
-  | 'refund'
-  | 'reversal'
-  | 'chargeback';
-
-export type CommercialPaymentTransactionStatus =
-  | 'pending'
-  | 'succeeded'
-  | 'failed';
+export type CommercialPlanLifecycle = 'draft' | 'active' | 'retired';
+export type CommercialTrialLifecycle = 'active' | 'expired' | 'converted' | 'cancelled';
+export type CommercialSubscriptionLifecycle = 'trialing' | 'active' | 'past_due' | 'grace_period' | 'cancel_at_period_end' | 'cancelled' | 'expired' | 'suspended';
+export type CommercialPaymentAttemptLifecycle = 'pending_checkout' | 'pending_payment' | 'succeeded' | 'failed' | 'expired' | 'cancelled';
+export type CommercialPaymentTransactionKind = 'payment' | 'refund' | 'reversal' | 'chargeback';
+export type CommercialPaymentTransactionStatus = 'pending' | 'succeeded' | 'failed';
 
 export type CommercialEventType =
   | 'trial_activated'
@@ -240,6 +207,7 @@ export interface CommercialFoundingAllocation {
 
 export interface ActivateCommercialTrialInput {
   readonly businessId: BusinessId;
+  readonly planCode: string;
 }
 
 export interface PrepareCommercialPaymentInput {
@@ -268,63 +236,23 @@ export interface ApplyCommercialPaymentResultInput {
 }
 
 export interface CommercialRepository {
-  getCommercialAccess(
-    context: AuthContext,
-    businessId: BusinessId,
-  ): Promise<CommercialAccess>;
-
-  getCommercialSubscription(
-    context: AuthContext,
-    businessId: BusinessId,
-  ): Promise<CommercialSubscription | null>;
-
-  activateCommercialTrial(
-    context: AuthContext,
-    input: ActivateCommercialTrialInput,
-  ): Promise<CommercialTrial>;
-
-  prepareCommercialPayment(
-    context: AuthContext,
-    input: PrepareCommercialPaymentInput,
-  ): Promise<CommercialPaymentAttempt>;
-
-  scheduleCommercialCancellation(
-    context: AuthContext,
-    input: ScheduleCommercialCancellationInput,
-  ): Promise<CommercialSubscription>;
+  getCommercialAccess(context: AuthContext, businessId: BusinessId): Promise<CommercialAccess>;
+  getCommercialSubscription(context: AuthContext, businessId: BusinessId): Promise<CommercialSubscription | null>;
+  activateCommercialTrial(context: AuthContext, input: ActivateCommercialTrialInput): Promise<CommercialTrial>;
+  prepareCommercialPayment(context: AuthContext, input: PrepareCommercialPaymentInput): Promise<CommercialPaymentAttempt>;
+  scheduleCommercialCancellation(context: AuthContext, input: ScheduleCommercialCancellationInput): Promise<CommercialSubscription>;
 }
 
 export interface CommercialService {
-  getCommercialAccess(
-    context: AuthContext,
-    businessId: BusinessId,
-  ): Promise<CommercialAccess>;
-
-  getCommercialSubscription(
-    context: AuthContext,
-    businessId: BusinessId,
-  ): Promise<CommercialSubscription | null>;
-
-  activateCommercialTrial(
-    context: AuthContext,
-    input: ActivateCommercialTrialInput,
-  ): Promise<CommercialTrial>;
-
-  prepareCommercialPayment(
-    context: AuthContext,
-    input: PrepareCommercialPaymentInput,
-  ): Promise<CommercialPaymentAttempt>;
-
-  scheduleCommercialCancellation(
-    context: AuthContext,
-    input: ScheduleCommercialCancellationInput,
-  ): Promise<CommercialSubscription>;
+  getCommercialAccess(context: AuthContext, businessId: BusinessId): Promise<CommercialAccess>;
+  getCommercialSubscription(context: AuthContext, businessId: BusinessId): Promise<CommercialSubscription | null>;
+  activateCommercialTrial(context: AuthContext, input: ActivateCommercialTrialInput): Promise<CommercialTrial>;
+  prepareCommercialPayment(context: AuthContext, input: PrepareCommercialPaymentInput): Promise<CommercialPaymentAttempt>;
+  scheduleCommercialCancellation(context: AuthContext, input: ScheduleCommercialCancellationInput): Promise<CommercialSubscription>;
 }
 
 export interface CommercialProviderBoundary {
-  applyCommercialPaymentResult(
-    input: ApplyCommercialPaymentResultInput,
-  ): Promise<CommercialPaymentTransaction>;
+  applyCommercialPaymentResult(input: ApplyCommercialPaymentResultInput): Promise<CommercialPaymentTransaction>;
 }
 
 export interface CommercialLifecycleBoundary {
@@ -343,3 +271,5 @@ export const COMMERCIAL_INTERNAL_OPERATIONS = Object.freeze({
   applyPaymentResult: 'commercial.internal.applyPaymentResult',
   expireAccess: 'commercial.internal.expireAccess',
 });
+
+export const COMMERCIAL_EVENT_SOURCE = 'ghm.commercial';
