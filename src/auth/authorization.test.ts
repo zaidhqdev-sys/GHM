@@ -20,6 +20,26 @@ test('all declared resources are accessible by the current construction primitiv
   }
 });
 
+test('Commercial is a coarse authorized resource for every authenticated GHM role', () => {
+  assert.equal(canAccessResource(contexts.admin, 'commercial'), true);
+  assert.equal(canAccessResource(contexts.customer, 'commercial'), true);
+  assert.equal(canAccessResource(contexts.business, 'commercial'), true);
+});
+
+test('Commercial domain operations remain outside the generic HTTP resource vocabulary', () => {
+  assert.equal(
+    isRegisteredOperation('commercial', 'read'),
+    false,
+  );
+  assert.equal(
+    isRegisteredOperation('commercial', 'create'),
+    false,
+  );
+  assert.equal(
+    isRegisteredOperation('commercial', 'update'),
+    false,
+  );
+});
 test('unregistered resource operations are denied by the registry', () => {
   assert.equal(isRegisteredOperation('profile', 'read'), true);
   assert.equal(isRegisteredOperation('profile', 'delete'), false);

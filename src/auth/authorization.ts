@@ -14,12 +14,13 @@ export type Resource =
   | 'notification'
   | 'support_request'
   | 'review'
-  | 'opportunity';
+  | 'opportunity'
+  | 'commercial';
 
 const roleResources: Record<GhmRole, readonly Resource[]> = {
-  admin: ['profile', 'business', 'project', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity'],
-  customer: ['profile', 'business', 'project', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity'],
-  business: ['profile', 'business', 'project', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity'],
+  admin: ['profile', 'business', 'project', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity', 'commercial'],
+  customer: ['profile', 'business', 'project', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity', 'commercial'],
+  business: ['profile', 'business', 'project', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity', 'commercial'],
 };
 
 const isGhmRole = (value: unknown): value is GhmRole => value === 'admin' || value === 'customer' || value === 'business';
