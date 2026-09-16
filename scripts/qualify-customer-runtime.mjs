@@ -176,7 +176,8 @@ try {
     FROM ghm.customer
     WHERE id = $1
   `, [created.id]);
-  if (persisted.rowCount !== 1 || persisted.rows[0].account_id !== ownerAccountId || persisted.rows[0].status !== 'active') throw new Error('Persisted Customer reconciliation failed');
+  const persistedAccountId = persisted.rowCount === 1 ? Number(persisted.rows[0].account_id) : null;
+  if (persisted.rowCount !== 1 || persistedAccountId !== ownerAccountId || persisted.rows[0].status !== 'active') throw new Error('Persisted Customer reconciliation failed');
   console.log('PERSISTED CUSTOMER RECONCILIATION PASS');
 
   console.log('CUSTOMER RUNTIME QUALIFICATION PASS');
