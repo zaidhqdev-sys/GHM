@@ -1,6 +1,8 @@
 import pg from 'pg';
 import dotenv from 'dotenv';
 
+import { randomUUID } from 'node:crypto';
+
 dotenv.config();
 
 const { Pool } = pg;
@@ -20,7 +22,7 @@ const { NotificationServiceImpl } = await import('../dist/resources/notification
 const { PostgresNotificationRepository } = await import('../dist/resources/notification/repository.js');
 
 const runtimeNotificationService = new NotificationServiceImpl(new PostgresNotificationRepository(runtimePool));
-const marker = `notification-qualification-${crypto.randomUUID()}`;
+const marker = `notification-qualification-${randomUUID()}`;
 const accountIds = [];
 const notificationIds = [];
 
@@ -113,7 +115,7 @@ try {
     ORDER BY x.privilege_type
   `);
   const tableGrantSet = tablePrivileges.rows.map(row => row.privilege_type);
-  if (JSON.stringify(tableGrantSet) !== JSON.stringify(['INSERT', 'SELECT', 'UPDATE'])) {
+  if (JSON.stringify(tableGrantSet) !== JSON.stringify(['SELECT'])) {
     throw new Error(`Unexpected Notification table grants: ${JSON.stringify(tableGrantSet)}`);
   }
 
