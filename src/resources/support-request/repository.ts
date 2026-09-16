@@ -77,9 +77,11 @@ export class PostgresSupportRequestRepository implements SupportRequestRepositor
   constructor(private readonly transactionPool?: TransactionPool) {}
 
   async createSupportRequest(context: AuthContext, input: CreateSupportRequestInput): Promise<SupportRequest> {
+    assertRole(context, 'customer');
     const normalized = normalizeCreate(input);
     return withAuthorizedTransaction(context, async client => {
-      await client.query(`SELECT 1 FROM ghm.account_identity WHERE id = $1 LIMIT 1`, [context.userId]);
+      const account = await client.query(`SELECT 1 FROM ghm.account_identity WHERE id = $1 LIMIT 1`, [context.userId]);
+      if (account.rowCount !== 1) throw new Error('Account not found');
       if (normalized.businessId !== null) await assertBusinessMember(client, context.userId, normalized.businessId);
 
       const requestResult = await client.query(
@@ -133,6 +135,7 @@ export class PostgresSupportRequestRepository implements SupportRequestRepositor
 
   async updateSupportRequestStatus(context: AuthContext, requestId: number, input: UpdateSupportRequestStatusInput): Promise<SupportRequest> {
     assertRole(context, 'admin');
+    assertPositiveId(requestId, 'requestId');
     const normalized = normalizeStatusInput(input);
     return withAuthorizedTransaction(context, async client => {
       const result = await client.query(
@@ -164,12 +167,22 @@ export class PostgresSupportRequestRepository implements SupportRequestRepositor
     }, this.transactionPool);
   }
 
-  async reply(context: AuthContext, requestId: number, body: string): Promise<SupportRequestMessage> {
+  async replyAsCustomer(context: AuthContext, requestId: number, body: string): Promise<SupportRequestMessage> {
+    assertRole(context, 'customer');
+    return this.replyInTransaction(context, requestId, body, 'customer');
+  }
+
+  async replyAsAdmin(context: AuthContext, requestId: number, body: string): Promise<SupportRequestMessage> {
+    assertRole(context, 'admin');
+    return this.replyInTransaction(context, requestId, body, 'admin');
+  }
+
+  private async replyInTransaction(context: AuthContext, requestId: number, body: string, senderKind: 'customer' | 'admin'): Promise<SupportRequestMessage> {
     assertPositiveId(requestId, 'requestId');
     const normalizedBody = normalizeText(body, 'body', 1, 4000);
     return withAuthorizedTransaction(context, async client => {
       let request: SupportRequest;
-      if (context.role === 'admin') {
+      if (senderKind === 'admin') {
         const result = await client.query(`SELECT ${REQUEST_COLUMNS} FROM ghm.support_request WHERE id = $1 FOR UPDATE`, [requestId]);
         if (result.rowCount !== 1) throw new Error('Support Request not found');
         request = mapRequest(result.rows[0]);
@@ -178,14 +191,13 @@ export class PostgresSupportRequestRepository implements SupportRequestRepositor
         await client.query(`SELECT id FROM ghm.support_request WHERE id = $1 FOR UPDATE`, [requestId]);
       }
 
-      const senderKind = context.role === 'admin' ? 'admin' : 'customer';
       const result = await client.query(
         `INSERT INTO ghm.support_request_message (support_request_id, account_id, sender_kind, body)
          VALUES ($1,$2,$3,$4) RETURNING ${MESSAGE_COLUMNS}`,
         [requestId, context.userId, senderKind, normalizedBody],
       );
 
-      if (context.role === 'customer') {
+      if (senderKind === 'customer') {
         await client.query(`UPDATE ghm.support_request SET status = 'open', resolution_summary = NULL, resolved_at = NULL, closed_at = NULL, updated_at = now() WHERE id = $1`, [requestId]);
       } else if (request.status === 'resolved' || request.status === 'closed') {
         await client.query(`UPDATE ghm.support_request SET status = 'in_progress', resolution_summary = NULL, resolved_at = NULL, closed_at = NULL, updated_at = now() WHERE id = $1`, [requestId]);
