@@ -13,7 +13,7 @@
     "qualify:resource-api-http": "npm run build && node scripts/qualify-resource-api-http.mjs",
     "qualify:operational-boundary": "npm run build && node scripts/qualify-operational-boundary.mjs",
     "start": "node dist/server.js",
-    "test": "npm run build && node --test dist/auth/authorization.test.js dist/auth/request-context.test.js dist/resources/registry.test.js dist/db/transaction.test.js dist/resources/business-identity/service.test.js dist/resources/project/service.test.js dist/resources/enquiry/service.test.js dist/resources/review/service.test.js dist/resources/opportunity/service.test.js dist/resources/opportunity/repository.test.js dist/http/app.test.js dist/http/enquiry-router.test.js dist/resources/project-quote/service.test.js dist/resources/opportunity-requirements/repository.test.js dist/resources/capability/service.test.js dist/resources/commercial/repository.test.js dist/resources/commercial/service.test.js dist/resources/customer/service.test.js",
+    "test": "npm run build && node --test dist/auth/authorization.test.js dist/auth/request-context.test.js dist/resources/registry.test.js dist/db/transaction.test.js dist/resources/business-identity/service.test.js dist/resources/project/service.test.js dist/resources/enquiry/service.test.js dist/resources/review/service.test.js dist/resources/opportunity/service.test.js dist/resources/opportunity/repository.test.js dist/http/app.test.js dist/http/enquiry-router.test.js dist/resources/project-quote/service.test.js dist/resources/opportunity-requirements/repository.test.js dist/resources/capability/service.test.js dist/resources/commercial/repository.test.js dist/resources/commercial/service.test.js dist/resources/customer/service.test.js dist/resources/quote/service.test.js",
     "verify:runtime": "node scripts/verify-runtime-boundary.mjs",
     "qualify:project-runtime": "npm run build && node scripts/qualify-project-runtime.mjs",
     "qualify:opportunity-runtime": "npm run build && node scripts/qualify-opportunity-runtime.mjs",
@@ -33,7 +33,6 @@
     "express": "^4.19.2",
     "express-rate-limit": "^7.4.0",
     "express-session": "^1.18.0",
-    "jsonwebtoken": "^9.0.6",
     "pg": "^8.12.0",
     "socket.io": "^4.7.5"
   },
