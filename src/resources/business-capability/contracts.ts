@@ -46,21 +46,15 @@ export interface BusinessCapability {
   readonly updatedAt: Date;
 }
 
+/** Initial mutation surface. Verification/lifecycle fields are server-governed and not caller-settable. */
 export interface CreateBusinessCapabilityInput {
   readonly businessId: BusinessId;
   readonly capabilityId: CapabilityId;
   readonly proficiencyLevel?: BusinessCapabilityProficiency | null;
   readonly description?: string | null;
-  readonly assertionStatus?: BusinessCapabilityAssertionStatus;
-  readonly assertionBasis?: BusinessCapabilityAssertionBasis;
-  readonly verificationStatus?: BusinessCapabilityVerificationStatus;
   readonly effectiveFrom?: Date;
   readonly effectiveUntil?: Date | null;
   readonly sourceReference?: string | null;
-  readonly submittedAt?: Date;
-  readonly verifiedBy?: AccountId | null;
-  readonly verifiedAt?: Date | null;
-  readonly verificationReason?: string | null;
 }
 
 export interface BusinessCapabilityRepository {
