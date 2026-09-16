@@ -146,10 +146,15 @@ try {
   fixture.businessIds.push(businessId);
 
   const approval = await cleanupPool.query(
-    `UPDATE ghm.business SET verification_status = 'approved' WHERE id = $1 AND is_active = true RETURNING id, verification_status, is_active`,
+    `UPDATE ghm.business SET verification_status = 'approved', is_verified = true WHERE id = $1 AND is_active = true RETURNING id, verification_status, is_verified, is_active`,
     [businessId],
   );
-  if (approval.rowCount !== 1 || approval.rows[0].verification_status !== 'approved' || approval.rows[0].is_active !== true) {
+  if (
+    approval.rowCount !== 1 ||
+    approval.rows[0].verification_status !== 'approved' ||
+    approval.rows[0].is_verified !== true ||
+    approval.rows[0].is_active !== true
+  ) {
     throw new Error('Approved Business participant fixture could not be established');
   }
   console.log(`APPROVED BUSINESS FIXTURE PASS: business=${businessId}`);
