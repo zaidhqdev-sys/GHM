@@ -15,7 +15,7 @@ const contexts: Record<'admin' | 'customer' | 'business', AuthContext> = {
 };
 
 test('all declared resources are accessible by the current construction primitive', () => {
-  for (const resource of ['profile', 'business', 'project', 'quote', 'notification', 'support_request'] as const) {
+  for (const resource of ['profile', 'business', 'project', 'quote', 'notification', 'support_request', 'saved_business'] as const) {
     assert.equal(canAccessResource(contexts.customer, resource), true);
   }
 });
@@ -35,6 +35,8 @@ test('unregistered resource operations are denied by the registry', () => {
   assert.equal(isRegisteredOperation('profile', 'read'), true);
   assert.equal(isRegisteredOperation('profile', 'delete'), false);
   assert.equal(isRegisteredOperation('notification', 'create'), true);
+  assert.equal(isRegisteredOperation('saved_business', 'create'), true);
+  assert.equal(isRegisteredOperation('saved_business', 'delete'), true);
 });
 
 test('ownership rejects a non-owner', () => {
