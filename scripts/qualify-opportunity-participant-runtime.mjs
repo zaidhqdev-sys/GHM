@@ -144,6 +144,16 @@ try {
   if (!business.activeBusiness || business.activeMembership?.role !== 'owner') throw new Error('Business fixture creation failed');
   const businessId = business.activeBusiness.id;
   fixture.businessIds.push(businessId);
+
+  const approval = await cleanupPool.query(
+    `UPDATE ghm.business SET verification_status = 'approved' WHERE id = $1 AND is_active = true RETURNING id, verification_status, is_active`,
+    [businessId],
+  );
+  if (approval.rowCount !== 1 || approval.rows[0].verification_status !== 'approved' || approval.rows[0].is_active !== true) {
+    throw new Error('Approved Business participant fixture could not be established');
+  }
+  console.log(`APPROVED BUSINESS FIXTURE PASS: business=${businessId}`);
+
   await createMembership(businessId, participantAccountId, 'member', ownerAccountId);
   console.log(`BUSINESS + MEMBERSHIP FIXTURE PASS: business=${businessId}`);
 
@@ -215,7 +225,7 @@ try {
     'UNAUTHORIZED PARTICIPANT CREATE DENIAL PASS',
   );
 
-  const duplicate = await assertRejected(
+  await assertRejected(
     () => participantService.createParticipant(ownerContext, {
       opportunityId: opportunity.id,
       accountId: participantAccountId,
@@ -225,7 +235,6 @@ try {
     null,
     'DUPLICATE PARTICIPANT DB CONSTRAINT PASS',
   );
-  void duplicate;
 
   await assertRejected(
     () => participantService.createParticipant(ownerContext, {
