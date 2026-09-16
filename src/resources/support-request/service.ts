@@ -27,7 +27,7 @@ export class SupportRequestServiceImpl implements SupportRequestService {
   constructor(private readonly repository: SupportRequestRepository) {}
 
   async createSupportRequest(context: AuthContext, input: CreateSupportRequestInput): Promise<SupportRequest> {
-    if (context.role !== 'customer') throw new Error('Customer role required');
+    assertRole(context, 'customer');
     return this.repository.createSupportRequest(context, {
       ...input,
       subject: assertText(input?.subject, 'subject', 3, 160),
@@ -52,7 +52,13 @@ export class SupportRequestServiceImpl implements SupportRequestService {
     return this.repository.getMessages(context, assertPositiveId(requestId, 'requestId'));
   }
 
-  async reply(context: AuthContext, requestId: SupportRequestId, body: string): Promise<SupportRequestMessage> {
-    return this.repository.reply(context, assertPositiveId(requestId, 'requestId'), assertText(body, 'body', 1, 4000));
+  async replyAsCustomer(context: AuthContext, requestId: SupportRequestId, body: string): Promise<SupportRequestMessage> {
+    assertRole(context, 'customer');
+    return this.repository.replyAsCustomer(context, assertPositiveId(requestId, 'requestId'), assertText(body, 'body', 1, 4000));
+  }
+
+  async replyAsAdmin(context: AuthContext, requestId: SupportRequestId, body: string): Promise<SupportRequestMessage> {
+    assertRole(context, 'admin');
+    return this.repository.replyAsAdmin(context, assertPositiveId(requestId, 'requestId'), assertText(body, 'body', 1, 4000));
   }
 }
