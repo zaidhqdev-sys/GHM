@@ -74,7 +74,6 @@ try {
   await expectReject(() => service.deleteSavedBusiness(outsiderContext, created.id), 'CROSS-ACCOUNT DELETE REJECTION PASS');
   await expectReject(() => service.createSavedBusiness(ownerContext, { businessId: fixture.inactiveBusinessId }), 'INACTIVE BUSINESS REJECTION PASS');
   await expectReject(() => service.createSavedBusiness(ownerContext, { businessId: fixture.unverifiedBusinessId }), 'UNVERIFIED BUSINESS REJECTION PASS');
-
   await expectReject(() => service.createSavedBusiness(ownerContext, { businessId: fixture.eligibleBusinessId }), 'DUPLICATE CREATE REJECTION PASS');
 
   const before = await runtimePool.query('SELECT count(*)::int AS count FROM ghm.saved_business WHERE account_id = $1 AND business_id = $2', [fixture.ownerId, fixture.eligibleBusinessId]);
@@ -89,10 +88,10 @@ try {
   await expectReject(() => runtimePool.query(`UPDATE ghm.saved_business SET account_id = $1 WHERE id = $2`, [fixture.outsiderId, created.id]), 'RUNTIME UPDATE DENIAL PASS');
   await expectReject(() => runtimePool.query(`DELETE FROM ghm.saved_business WHERE account_id = $1`, [fixture.ownerId]), 'RUNTIME DIRECT DELETE DENIAL PASS');
 
-  const grants = await runtimePool.query(`SELECT has_table_privilege(current_user, 'ghm.saved_business', 'SELECT') AS select_ok, has_table_privilege(current_user, 'ghm.saved_business', 'INSERT') AS insert_ok, has_table_privilege(current_user, 'ghm.saved_business', 'UPDATE') AS update_ok, has_table_privilege(current_user, 'ghm.saved_business', 'DELETE') AS delete_ok`);
+  const grants = await runtimePool.query(`SELECT has_table_privilege(current_user, 'ghm.saved_business', 'SELECT') AS select_ok, has_table_privilege(current_user, 'ghm.saved_business', 'INSERT') AS insert_ok, has_table_privilege(current_user, 'ghm.saved_business', 'UPDATE') AS update_ok, has_table_privilege(current_user, 'ghm.saved_business', 'DELETE') AS delete_ok, has_function_privilege(current_user, 'ghm.create_saved_business(bigint,bigint)', 'EXECUTE') AS create_fn_ok, has_function_privilege(current_user, 'ghm.delete_saved_business(bigint,bigint)', 'EXECUTE') AS delete_fn_ok`);
   const grant = grants.rows[0];
-  if (!grant.select_ok || !grant.insert_ok || grant.update_ok || !grant.delete_ok) throw new Error(`Unexpected Saved Business ACL: ${JSON.stringify(grant)}`);
-  console.log('RUNTIME PRIVILEGE PASS: SELECT=yes INSERT=yes UPDATE=no DELETE=yes');
+  if (!grant.select_ok || grant.insert_ok || grant.update_ok || grant.delete_ok || !grant.create_fn_ok || !grant.delete_fn_ok) throw new Error(`Unexpected Saved Business ACL: ${JSON.stringify(grant)}`);
+  console.log('RUNTIME PRIVILEGE PASS: SELECT=yes INSERT=no UPDATE=no DELETE=no CREATE/DELETE=execute-only');
 
   console.log('GHM SAVED BUSINESS RUNTIME QUALIFICATION: PASS');
 } finally {
