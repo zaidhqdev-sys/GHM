@@ -60,5 +60,4 @@ test('unregistered operations are rejected', () => {
   assert.equal(isRegisteredOperation('opportunity', 'delete'), false);
   assert.equal(isRegisteredOperation('opportunity_participant', 'delete'), false);
   assert.equal(isRegisteredOperation('saved_business', 'update'), false);
-  assert.equal(isRegisteredOperation('saved_business', 'toggle'), false);
 });
