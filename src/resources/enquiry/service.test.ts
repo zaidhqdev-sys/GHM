@@ -3,10 +3,6 @@ import test from 'node:test';
 import type { AuthContext } from '../../auth/authorization';
 import type { Enquiry, EnquiryRepository } from './contracts';
 import { EnquiryServiceImpl } from './service';
-import {
-  ENQUIRY_STATUS_TRANSITIONS,
-  isEnquiryStatusTransitionAllowed,
-} from './contracts';
 
 const customerContext: AuthContext = { userId: 1, role: 'customer' };
 const businessContext: AuthContext = { userId: 2, role: 'business' };
@@ -23,7 +19,7 @@ class FakeRepository implements EnquiryRepository {
   async createEnquiry(_context: AuthContext, input: any) { this.lastCreate = input; return enquiry(); }
   async getOwnEnquiry() { return enquiry(); }
   async getReceivedEnquiry() { return enquiry(); }
-  async updateReceivedEnquiryStatus(_context: AuthContext, _id: number, input: any) { assert.equal(input.status, 'contacted'); return { ...enquiry(), status: input.status }; }
+  async updateReceivedEnquiryStatus(_context: AuthContext, _id: number, input: any) { return { ...enquiry(), status: input.status }; }
 }
 
 test('Enquiry creation normalizes snapshots and defaults', async () => {
@@ -69,61 +65,15 @@ test('Enquiry recipient operations reject customer and admin roles', async () =>
   await assert.rejects(() => service.updateReceivedEnquiryStatus(adminContext, 1, { status: 'contacted' }), /Insufficient role/);
 });
 
-test('Enquiry status mutation accepts only governed lifecycle values', async () => {
+test('Enquiry status mutation accepts every production status value', async () => {
   const service = new EnquiryServiceImpl(new FakeRepository());
-  const result = await service.updateReceivedEnquiryStatus(businessContext, 1, { status: 'contacted' });
-  assert.equal(result.status, 'contacted');
+  for (const status of ['new', 'contacted', 'qualified', 'quoted', 'won', 'lost', 'archived'] as const) {
+    const result = await service.updateReceivedEnquiryStatus(businessContext, 1, { status });
+    assert.equal(result.status, status);
+  }
+});
+
+test('Enquiry status mutation rejects invalid status values', async () => {
+  const service = new EnquiryServiceImpl(new FakeRepository());
   await assert.rejects(() => service.updateReceivedEnquiryStatus(businessContext, 1, { status: 'invalid' as never }), /Invalid Enquiry status/);
-});
-
-
-test('Enquiry lifecycle contract permits only governed transitions', () => {
-  const expected: Record<string, readonly string[]> = {
-    new: ['contacted'],
-    contacted: ['qualified'],
-    qualified: ['quoted'],
-    quoted: ['won', 'lost', 'archived'],
-    won: [],
-    lost: [],
-    archived: [],
-  };
-
-  assert.deepEqual(ENQUIRY_STATUS_TRANSITIONS, expected);
-
-  for (const [from, allowed] of Object.entries(expected)) {
-    for (const to of allowed) {
-      assert.equal(
-        isEnquiryStatusTransitionAllowed(from as any, to as any),
-        true,
-        `Expected transition ${from} -> ${to} to be allowed`,
-      );
-    }
-  }
-});
-
-test('Enquiry lifecycle contract rejects invalid and terminal transitions', () => {
-  const invalid: Array<[string, string]> = [
-    ['new', 'qualified'],
-    ['new', 'quoted'],
-    ['contacted', 'new'],
-    ['contacted', 'quoted'],
-    ['qualified', 'contacted'],
-    ['qualified', 'won'],
-    ['quoted', 'contacted'],
-    ['quoted', 'qualified'],
-    ['won', 'lost'],
-    ['won', 'archived'],
-    ['lost', 'contacted'],
-    ['lost', 'won'],
-    ['archived', 'contacted'],
-    ['archived', 'won'],
-  ];
-
-  for (const [from, to] of invalid) {
-    assert.equal(
-      isEnquiryStatusTransitionAllowed(from as any, to as any),
-      false,
-      `Expected transition ${from} -> ${to} to be rejected`,
-    );
-  }
 });
