@@ -39,10 +39,40 @@ GRANT INSERT (
   ON TABLE ghm.saved_business
   TO ghm_runtime;
 
-GRANT DELETE
+REVOKE DELETE, UPDATE
   ON TABLE ghm.saved_business
-  TO ghm_runtime;
+  FROM ghm_runtime;
 
 GRANT USAGE
   ON SEQUENCE ghm.saved_business_id_seq
   TO ghm_runtime;
+
+CREATE OR REPLACE FUNCTION ghm.delete_saved_business(p_account_id bigint, p_saved_business_id bigint)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, ghm
+AS $$
+DECLARE
+  deleted_count integer;
+BEGIN
+  IF p_account_id IS NULL OR p_account_id <= 0 THEN
+    RAISE EXCEPTION 'Account ID must be a positive integer';
+  END IF;
+
+  IF p_saved_business_id IS NULL OR p_saved_business_id <= 0 THEN
+    RAISE EXCEPTION 'Saved Business ID must be a positive integer';
+  END IF;
+
+  DELETE FROM ghm.saved_business
+   WHERE id = p_saved_business_id
+     AND account_id = p_account_id;
+
+  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  RETURN deleted_count = 1;
+END;
+$$;
+
+ALTER FUNCTION ghm.delete_saved_business(bigint, bigint) OWNER TO ghm_schema_owner;
+REVOKE ALL ON FUNCTION ghm.delete_saved_business(bigint, bigint) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ghm.delete_saved_business(bigint, bigint) TO ghm_runtime;
