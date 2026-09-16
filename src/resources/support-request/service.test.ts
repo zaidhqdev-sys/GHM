@@ -21,9 +21,10 @@ const repository = (overrides: Partial<SupportRequestRepository> = {}): SupportR
   createSupportRequest: async () => request,
   getSupportRequest: async () => request,
   listSupportRequests: async () => [request],
-  updateSupportRequestStatus: async () => ({ ...request, status: 'resolved', resolutionSummary: 'Fixed.' }),
+  updateSupportRequestStatus: async () => ({ ...request, status: 'resolved', resolutionSummary: null }),
   getMessages: async () => [message],
-  reply: async () => message,
+  replyAsCustomer: async () => message,
+  replyAsAdmin: async () => ({ ...message, senderKind: 'admin' }),
   ...overrides,
 });
 
@@ -50,18 +51,34 @@ test('Support Request service rejects invalid subject and description lengths', 
 
 test('Support Request service requires admin for status changes', async () => {
   const service = new SupportRequestServiceImpl(repository());
-  await assert.rejects(service.updateSupportRequestStatus(customer, 1, { status: 'resolved', resolutionSummary: 'Fixed.' }), /Insufficient role/);
+  await assert.rejects(service.updateSupportRequestStatus(customer, 1, { status: 'resolved', resolutionSummary: null }), /Insufficient role/);
 });
 
 test('Support Request service permits admin status changes', async () => {
   let called = false;
   const service = new SupportRequestServiceImpl(repository({ updateSupportRequestStatus: async () => { called = true; return request; } }));
-  await service.updateSupportRequestStatus(admin, 1, { status: 'resolved', resolutionSummary: 'Fixed.' });
+  await service.updateSupportRequestStatus(admin, 1, { status: 'resolved', resolutionSummary: null });
   assert.equal(called, true);
 });
 
-test('Support Request service validates request ids and replies', async () => {
+test('Support Request service separates customer and admin reply authority', async () => {
+  let customerCalled = false;
+  let adminCalled = false;
+  const service = new SupportRequestServiceImpl(repository({
+    replyAsCustomer: async () => { customerCalled = true; return message; },
+    replyAsAdmin: async () => { adminCalled = true; return { ...message, senderKind: 'admin' }; },
+  }));
+  await service.replyAsCustomer(customer, 1, '  Customer reply  ');
+  await service.replyAsAdmin(admin, 1, '  Admin reply  ');
+  assert.equal(customerCalled, true);
+  assert.equal(adminCalled, true);
+  await assert.rejects(service.replyAsCustomer(admin, 1, 'Reply'), /Customer role required/);
+  await assert.rejects(service.replyAsAdmin(customer, 1, 'Reply'), /Insufficient role/);
+});
+
+test('Support Request service validates request ids and reply body', async () => {
   const service = new SupportRequestServiceImpl(repository());
   await assert.rejects(service.getSupportRequest(customer, 0), /Invalid requestId/);
-  await assert.rejects(service.reply(customer, 1, ''), /body must be between 1 and 4000 characters/);
+  await assert.rejects(service.replyAsCustomer(customer, 0, 'Reply'), /Invalid requestId/);
+  await assert.rejects(service.replyAsCustomer(customer, 1, ''), /body must be between 1 and 4000 characters/);
 });
