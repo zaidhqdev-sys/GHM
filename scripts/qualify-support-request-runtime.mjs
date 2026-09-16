@@ -79,7 +79,7 @@ try {
   const inProgress=await service.getSupportRequest(admin,created.id); if(!inProgress||inProgress.status!=='in_progress'||inProgress.resolvedAt!==null||inProgress.closedAt!==null||inProgress.resolutionSummary!==null) throw new Error('Admin reopen semantics failed');
   console.log('SUPPORT REQUEST CLOSE AND ADMIN REOPEN PASS');
   const messages=await service.getMessages(customer,created.id); if(messages.length!==4||messages.some((m,i)=>m.id!==messageIds[i])||messages[0].senderKind!=='customer'||messages[1].senderKind!=='customer'||messages[2].senderKind!=='admin'||messages[3].senderKind!=='admin') throw new Error('Message order/integrity failed');
-  if((await service.getMessages(outsider,created.id)).length!==0) throw new Error('Cross-account message read leaked'); if((await service.getMessages(admin,created.id)).length!==4) throw new Error('Admin message read failed'); console.log('SUPPORT REQUEST MESSAGE ORDER AND ISOLATION PASS');
+  await expectReject('SUPPORT REQUEST CROSS-ACCOUNT MESSAGE READ DENIAL',()=>service.getMessages(outsider,created.id)); if((await service.getMessages(admin,created.id)).length!==4) throw new Error('Admin message read failed'); console.log('SUPPORT REQUEST MESSAGE ORDER AND ISOLATION PASS');
   await expectReject('SUPPORT REQUEST RUNTIME ARBITRARY UPDATE DENIAL',()=>runtimeQuery('UPDATE ghm.support_request SET account_id=$1 WHERE id=$2',[outsiderId,created.id]));
   await expectReject('SUPPORT REQUEST RUNTIME DELETE DENIAL',()=>runtimeQuery('DELETE FROM ghm.support_request WHERE id=$1',[created.id]));
   await expectReject('SUPPORT REQUEST MESSAGE RUNTIME UPDATE DENIAL',()=>runtimeQuery("UPDATE ghm.support_request_message SET body='tampered' WHERE id=$1",[messageIds[0]]));
