@@ -9,7 +9,7 @@ CREATE TABLE ghm.quote (
   customer_phone text,
   customer_email text,
   description text NOT NULL,
-  amount numeric(14,2) NOT NULL,
+  amount numeric NOT NULL,
   follow_up_date date NOT NULL,
   status text NOT NULL DEFAULT 'active',
   reminder_id text,
