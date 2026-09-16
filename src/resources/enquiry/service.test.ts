@@ -11,7 +11,7 @@ const enquiry = (): Enquiry => ({
   id: 1, businessId: 2, customerId: 1, customerName: 'Customer', customerPhone: null, customerEmail: null,
   project: 'Kitchen renovation', description: 'Need a kitchen renovation quote', city: 'Durban',
   budgetMin: 10000, budgetMax: 20000, urgency: 'standard', source: 'marketplace', status: 'new',
-  createdAt: new Date(0), updatedAt: new Date(0),
+  opportunityId: 1, createdAt: new Date(0), updatedAt: new Date(0),
 });
 
 class FakeRepository implements EnquiryRepository {
