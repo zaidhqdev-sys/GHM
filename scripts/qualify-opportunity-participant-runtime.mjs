@@ -30,6 +30,22 @@ const identity = async (pool, expectedUser, label) => {
   return value;
 };
 
+const cleanupAuthorityQuery = async (sql, values = []) => {
+  const client = await cleanupPool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SET LOCAL ROLE ghm_schema_owner');
+    const result = await client.query(sql, values);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 const createAccount = async (fullName) => {
   const client = await cleanupPool.connect();
   try {
@@ -111,8 +127,7 @@ try {
   if (schema.rows[0].participant_table !== 'ghm.opportunity_participant') throw new Error('Opportunity participant table is not present');
   console.log('PARTICIPANT SCHEMA PRESENCE PASS');
 
-  await cleanupPool.query('SET ROLE ghm_schema_owner');
-  const privilege = await cleanupPool.query(`
+  const privilege = await cleanupAuthorityQuery(`
     SELECT privilege_type FROM information_schema.role_table_grants
     WHERE grantee = 'ghm_runtime' AND table_schema = 'ghm' AND table_name = 'opportunity_participant'
     ORDER BY privilege_type
@@ -121,7 +136,7 @@ try {
   if (!tablePrivileges.includes('SELECT') || tablePrivileges.includes('UPDATE') || tablePrivileges.includes('DELETE')) {
     throw new Error(`Unexpected participant table privileges: ${JSON.stringify(tablePrivileges)}`);
   }
-  const columnPrivileges = await cleanupPool.query(`
+  const columnPrivileges = await cleanupAuthorityQuery(`
     SELECT column_name FROM information_schema.column_privileges
     WHERE grantee = 'ghm_runtime' AND table_schema = 'ghm' AND table_name = 'opportunity_participant' AND privilege_type = 'INSERT'
     ORDER BY column_name
@@ -145,7 +160,7 @@ try {
   const businessId = business.activeBusiness.id;
   fixture.businessIds.push(businessId);
 
-  const approval = await cleanupPool.query(
+  const approval = await cleanupAuthorityQuery(
     `UPDATE ghm.business SET verification_status = 'approved', is_verified = true WHERE id = $1 AND is_active = true RETURNING id, verification_status, is_verified, is_active`,
     [businessId],
   );
@@ -298,7 +313,7 @@ try {
   if (visible.length !== 4) throw new Error(`Expected four participants after qualification writes, received ${visible.length}`);
   console.log('PARTICIPANT FULL-LIST RECONCILIATION PASS');
 
-  const rowCheck = await cleanupPool.query(`
+  const rowCheck = await cleanupAuthorityQuery(`
     SELECT participation_role, participation_status, account_id, business_id, created_by
     FROM ghm.opportunity_participant
     WHERE opportunity_id = $1
