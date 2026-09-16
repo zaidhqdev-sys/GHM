@@ -45,7 +45,7 @@ CREATE INDEX quote_line_item_quote_id_idx ON ghm.quote_line_item (quote_id, id);
 
 GRANT USAGE ON SCHEMA ghm TO ghm_runtime;
 GRANT SELECT ON TABLE ghm.quote, ghm.quote_line_item TO ghm_runtime;
-GRANT INSERT (account_id, customer_id, customer_name, customer_phone, customer_email, description, amount, follow_up_date, reminder_id, reminder_date, notes)
+GRANT INSERT (account_id, customer_id, customer_name, customer_phone, customer_email, description, amount, follow_up_date)
   ON TABLE ghm.quote TO ghm_runtime;
 GRANT INSERT (quote_id, description, quantity, unit_price, catalog_item_id)
   ON TABLE ghm.quote_line_item TO ghm_runtime;
