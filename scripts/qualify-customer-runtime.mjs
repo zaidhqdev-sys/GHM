@@ -88,9 +88,10 @@ try {
     ORDER BY privilege_type
   `);
   const tablePrivileges = privileges.rows.map(row => row.privilege_type);
-  if (!tablePrivileges.includes('SELECT') || !tablePrivileges.includes('INSERT') || !tablePrivileges.includes('UPDATE') || tablePrivileges.includes('DELETE')) {
-    throw new Error(`Unexpected customer table privileges: ${JSON.stringify(tablePrivileges)}`);
+  if (JSON.stringify(tablePrivileges) !== JSON.stringify(['SELECT'])) {
+    throw new Error(`Unexpected Customer table-level privileges: ${JSON.stringify(tablePrivileges)}`);
   }
+
   const insertPrivileges = await cleanupAuthorityQuery(`
     SELECT column_name FROM information_schema.column_privileges
     WHERE grantee = 'ghm_runtime' AND table_schema = 'ghm' AND table_name = 'customer' AND privilege_type = 'INSERT'
@@ -99,6 +100,7 @@ try {
   const expectedInsert = ['account_id', 'email', 'name', 'phone'];
   const actualInsert = insertPrivileges.rows.map(row => row.column_name);
   if (JSON.stringify(actualInsert) !== JSON.stringify(expectedInsert)) throw new Error(`Unexpected Customer INSERT columns: ${JSON.stringify(actualInsert)}`);
+
   const updatePrivileges = await cleanupAuthorityQuery(`
     SELECT column_name FROM information_schema.column_privileges
     WHERE grantee = 'ghm_runtime' AND table_schema = 'ghm' AND table_name = 'customer' AND privilege_type = 'UPDATE'
@@ -107,6 +109,12 @@ try {
   const expectedUpdate = ['status', 'updated_at'];
   const actualUpdate = updatePrivileges.rows.map(row => row.column_name);
   if (JSON.stringify(actualUpdate) !== JSON.stringify(expectedUpdate)) throw new Error(`Unexpected Customer UPDATE columns: ${JSON.stringify(actualUpdate)}`);
+
+  const deletePrivileges = await cleanupAuthorityQuery(`
+    SELECT privilege_type FROM information_schema.role_table_grants
+    WHERE grantee = 'ghm_runtime' AND table_schema = 'ghm' AND table_name = 'customer' AND privilege_type = 'DELETE'
+  `);
+  if (deletePrivileges.rowCount !== 0) throw new Error('Unexpected Customer DELETE privilege');
   console.log('CUSTOMER RUNTIME PRIVILEGE BOUNDARY PASS');
 
   const ownerAccountId = await createAccount(`${marker}-owner`);
