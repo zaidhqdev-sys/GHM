@@ -18,29 +18,14 @@ const requirePositiveId = (value: unknown, field: string): number => {
   return value as number;
 };
 
-const assertBusinessEligible = async (client: PoolClient, businessId: number): Promise<void> => {
-  const result = await client.query(
-    `SELECT 1 FROM ghm.business
-     WHERE id = $1
-       AND is_active = true
-       AND is_verified = true
-       AND verification_status = 'approved'`,
-    [businessId],
-  );
-  if (result.rowCount !== 1) throw new Error('Business is not eligible to be saved');
-};
-
 export class PostgresSavedBusinessRepository implements SavedBusinessRepository {
   constructor(private readonly transactionPool?: TransactionPool) {}
 
   async createSavedBusiness(context: AuthContext, input: CreateSavedBusinessInput): Promise<SavedBusiness> {
     const businessId = requirePositiveId(input.businessId, 'businessId');
     return withAuthorizedTransaction(context, async client => {
-      await assertBusinessEligible(client, businessId);
       const result = await client.query(
-        `INSERT INTO ghm.saved_business (account_id, business_id)
-         VALUES ($1, $2)
-         RETURNING ${COLUMNS}`,
+        `SELECT * FROM ghm.create_saved_business($1, $2)`,
         [context.userId, businessId],
       );
       return mapSavedBusiness(result.rows[0]);
