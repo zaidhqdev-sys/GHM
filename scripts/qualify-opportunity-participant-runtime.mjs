@@ -303,6 +303,74 @@ try {
     'PARTICIPANT UPDATE DEFERRED AUTHORITY PASS',
   );
 
+  const immutableFields = ['opportunityId', 'accountId', 'businessId', 'createdBy'];
+
+  for (const field of immutableFields) {
+    await assertRejected(
+      () => participantService.updateParticipant(ownerContext, accountParticipant.id, {
+        [field]:
+          field === 'opportunityId'
+            ? opportunity.id + 1
+            : field === 'accountId'
+              ? outsiderAccountId
+              : field === 'businessId'
+                ? businessId + 1
+                : ownerAccountId,
+      }),
+      'Participant updates are not supported until a concrete transition authority is qualified',
+      `PARTICIPANT IMMUTABLE FIELD ${field.toUpperCase()} DENIAL PASS`,
+    );
+  }
+
+  console.log('PARTICIPANT IMMUTABLE FIELD PROTECTION PASS');
+
+  const concurrentAccountId = await createAccount(`${marker}-concurrent`);
+
+  const concurrentResults = await Promise.allSettled([
+    participantService.createParticipant(ownerContext, {
+      opportunityId: opportunity.id,
+      accountId: concurrentAccountId,
+      participationRole: 'evaluator',
+      participationStatus: 'invited',
+    }),
+    participantService.createParticipant(ownerContext, {
+      opportunityId: opportunity.id,
+      accountId: concurrentAccountId,
+      participationRole: 'evaluator',
+      participationStatus: 'invited',
+    }),
+  ]);
+
+  const concurrentFulfilled = concurrentResults.filter(
+    result => result.status === 'fulfilled',
+  );
+
+  const concurrentRejected = concurrentResults.filter(
+    result => result.status === 'rejected',
+  );
+
+  if (concurrentFulfilled.length !== 1 || concurrentRejected.length !== 1) {
+    throw new Error(
+      `Expected exactly one concurrent participant create to succeed and one to fail; received ${JSON.stringify(concurrentResults)}`,
+    );
+  }
+
+  const concurrentPersisted = await cleanupAuthorityQuery(`
+    SELECT id, account_id, participation_role, participation_status
+    FROM ghm.opportunity_participant
+    WHERE opportunity_id = $1
+      AND account_id = $2
+      AND participation_role = 'evaluator'
+  `, [opportunity.id, concurrentAccountId]);
+
+  if (concurrentPersisted.rowCount !== 1) {
+    throw new Error(
+      `Concurrent duplicate qualification expected exactly one persisted canonical row, received ${concurrentPersisted.rowCount}`,
+    );
+  }
+
+  console.log('CONCURRENT DUPLICATE PARTICIPANT CREATION PASS');
+
   await assertRejected(
     () => directRuntimeQuery(`UPDATE ghm.opportunity_participant SET participation_status = 'completed' WHERE id = $1`, [accountParticipant.id]),
     null,
@@ -310,7 +378,7 @@ try {
   );
 
   const visible = await participantService.listOpportunityParticipants(ownerContext, opportunity.id);
-  if (visible.length !== 4) throw new Error(`Expected four participants after qualification writes, received ${visible.length}`);
+  if (visible.length !== 5) throw new Error(`Expected five participants after qualification writes, received ${visible.length}`);
   console.log('PARTICIPANT FULL-LIST RECONCILIATION PASS');
 
   const rowCheck = await cleanupAuthorityQuery(`
@@ -319,7 +387,7 @@ try {
     WHERE opportunity_id = $1
     ORDER BY id
   `, [opportunity.id]);
-  if (rowCheck.rowCount !== 4) throw new Error(`Expected four persisted participant rows, received ${rowCheck.rowCount}`);
+  if (rowCheck.rowCount !== 5) throw new Error(`Expected five persisted participant rows, received ${rowCheck.rowCount}`);
   console.log('PERSISTED PARTICIPANT ROW RECONCILIATION PASS');
 
   console.log('OPPORTUNITY PARTICIPANT RUNTIME QUALIFICATION PASS');
