@@ -18,20 +18,15 @@ const requirePositiveId = (value: unknown, field: string): number => {
   return value as number;
 };
 
-const setAccountContext = async (client: PoolClient, accountId: number): Promise<void> => {
-  await client.query(`SELECT set_config('ghm.saved_business_account_id', $1, true)`, [String(accountId)]);
-};
-
 export class PostgresSavedBusinessRepository implements SavedBusinessRepository {
   constructor(private readonly transactionPool?: TransactionPool) {}
 
   async createSavedBusiness(context: AuthContext, input: CreateSavedBusinessInput): Promise<SavedBusiness> {
     const businessId = requirePositiveId(input.businessId, 'businessId');
     return withAuthorizedTransaction(context, async client => {
-      await setAccountContext(client, context.userId);
       const result = await client.query(
-        `SELECT * FROM ghm.create_saved_business($1)`,
-        [businessId],
+        `SELECT * FROM ghm.create_saved_business($1, $2)`,
+        [context.userId, businessId],
       );
       return mapSavedBusiness(result.rows[0]);
     }, this.transactionPool);
@@ -64,10 +59,9 @@ export class PostgresSavedBusinessRepository implements SavedBusinessRepository 
   async deleteSavedBusiness(context: AuthContext, savedBusinessId: SavedBusinessId): Promise<void> {
     const id = requirePositiveId(savedBusinessId, 'savedBusinessId');
     return withAuthorizedTransaction(context, async client => {
-      await setAccountContext(client, context.userId);
       const result = await client.query(
-        `SELECT ghm.delete_saved_business($1) AS deleted`,
-        [id],
+        `SELECT ghm.delete_saved_business($1, $2) AS deleted`,
+        [context.userId, id],
       );
       if (result.rows[0]?.deleted !== true) throw new Error('Saved Business not found');
     }, this.transactionPool);
