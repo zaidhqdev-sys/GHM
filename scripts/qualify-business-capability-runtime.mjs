@@ -75,7 +75,7 @@ const createFixture = async () => {
     fixture.accountIds.push(ownerId, memberId, outsiderId, customerId);
 
     const businessResult = await client.query(
-      `INSERT INTO ghm.business (name, slug, verification_status, is_active) VALUES ($1, $2, 'approved', true) RETURNING id`,
+      `INSERT INTO ghm.business (name, slug, verification_status, is_verified, is_active) VALUES ($1, $2, 'approved', true, true) RETURNING id`,
       [`${fixture.marker} business`, `${fixture.marker}-business`],
     );
     const businessId = Number(businessResult.rows[0].id);
@@ -259,15 +259,16 @@ try {
   try {
     await cleanupPool.query('BEGIN');
     await cleanupPool.query('SET LOCAL ROLE ghm_schema_owner');
-    await cleanupPool.query(`DELETE FROM ghm.business_capability WHERE id = ANY($1::bigint[])`, [fixture.businessCapabilityIds]);
-    await cleanupPool.query(`DELETE FROM ghm.business WHERE id = ANY($1::bigint[])`, [fixture.businessIds]);
-    await cleanupPool.query(`DELETE FROM ghm.capability WHERE id = ANY($1::uuid[])`, [fixture.capabilityIds]);
-    await cleanupPool.query(`DELETE FROM ghm.account_identity WHERE id = ANY($1::bigint[])`, [fixture.accountIds]);
+    if (fixture.businessCapabilityIds.length > 0) await cleanupPool.query(`DELETE FROM ghm.business_capability WHERE id = ANY($1::bigint[])`, [fixture.businessCapabilityIds]);
+    if (fixture.businessIds.length > 0) await cleanupPool.query(`DELETE FROM ghm.business WHERE id = ANY($1::bigint[])`, [fixture.businessIds]);
+    if (fixture.capabilityIds.length > 0) await cleanupPool.query(`DELETE FROM ghm.capability WHERE id = ANY($1::uuid[])`, [fixture.capabilityIds]);
+    if (fixture.accountIds.length > 0) await cleanupPool.query(`DELETE FROM ghm.account_identity WHERE id = ANY($1::bigint[])`, [fixture.accountIds]);
     await cleanupPool.query('COMMIT');
   } catch (cleanupError) {
     await cleanupPool.query('ROLLBACK').catch(() => {});
-    throw cleanupError;
+    console.error(`Qualification cleanup failed: ${cleanupError?.message ?? cleanupError}`);
   } finally {
-    await Promise.all([runtimePool.end(), cleanupPool.end()]);
+    await runtimePool.end();
+    await cleanupPool.end();
   }
 }
