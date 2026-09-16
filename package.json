@@ -20,12 +20,13 @@
     "qualify:enquiry-runtime": "npm run build && node scripts/qualify-enquiry-runtime.mjs",
     "qualify:project-quote-runtime": "npm run build && node scripts/qualify-project-quote-runtime.mjs",
     "qualify:capability-runtime": "npm run build && node scripts/qualify-capability-runtime.mjs",
-    "qualify:opportunity-requirements-runtime": "npm run build && node scripts/qualify-opportunity-requirements-runtime.mjs"
+    "qualify:opportunity-requirements-runtime": "npm run build && node scripts/qualify-opportunity-requirements-runtime.mjs",
+    "qualify:opportunity-participant-runtime": "npm run build && node scripts/qualify-opportunity-participant-runtime.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",
     "@aws-sdk/client-s3-presigner": "^3.500.0",
-    "bcrypt": "^5.1.1",
+    "bcrypt": "^5.1.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
