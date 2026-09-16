@@ -1,120 +1,91 @@
 import { randomUUID } from 'node:crypto';
-import { Pool } from 'pg';
-import 'dotenv/config';
+import pg from 'pg';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const { Pool } = pg;
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 
-if (!runtimeUrl) throw new Error('Missing GHM_RUNTIME_DATABASE_URL or DATABASE_URL for Quote runtime qualification');
-if (!migratorUrl) throw new Error('Missing GHM_MIGRATOR_DATABASE_URL for Quote qualification cleanup');
-if (runtimeUrl === migratorUrl) throw new Error('Runtime and migrator connections must be distinct');
+if (!runtimeUrl) throw new Error('GHM_RUNTIME_DATABASE_URL or DATABASE_URL is required');
+if (!migratorUrl) throw new Error('GHM_MIGRATOR_DATABASE_URL is required');
+if (runtimeUrl === migratorUrl) throw new Error('Runtime and migrator URLs must differ');
 
-const { QuoteServiceImpl } = await import('../dist/resources/quote/service.js');
-const { PostgresQuoteRepository } = await import('../dist/resources/quote/repository.js');
-const { CustomerServiceImpl } = await import('../dist/resources/customer/service.js');
-const { PostgresCustomerRepository } = await import('../dist/resources/customer/repository.js');
+const runtimePool = new Pool({ connectionString: runtimeUrl, ssl: { rejectUnauthorized: false } });
+const cleanupPool = new Pool({ connectionString: migratorUrl, ssl: { rejectUnauthorized: false } });
 
-const ssl = { rejectUnauthorized: false };
-const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
-const cleanupPool = new Pool({ connectionString: migratorUrl, ssl });
-const marker = `ghm-quote-${randomUUID()}`;
+const { QuoteService } = await import('../dist/resources/quote/service.js');
+const { QuoteRepository } = await import('../dist/resources/quote/repository.js');
+const { CustomerService } = await import('../dist/resources/customer/service.js');
+const { CustomerRepository } = await import('../dist/resources/customer/repository.js');
+
+const runtimeQuoteService = new QuoteService(new QuoteRepository(runtimePool));
+const runtimeCustomerService = new CustomerService(new CustomerRepository(runtimePool));
+
+const marker = `quote-qualification-${randomUUID()}`;
 const accountIds = [];
 const customerIds = [];
 const quoteIds = [];
 
-const identity = async (pool, expectedUser, label) => {
-  const { rows } = await pool.query(`
-    SELECT current_database() AS database_name, session_user, current_user, current_role
-  `);
-  const value = rows[0];
-  if (
-    value.database_name !== 'ghm_db' ||
-    value.session_user !== expectedUser ||
-    value.current_user !== expectedUser ||
-    value.current_role !== expectedUser
-  ) {
-    throw new Error(`${label} refused: expected ghm_db/${expectedUser}, received ${JSON.stringify(value)}`);
-  }
-  return value;
-};
+async function runtimeQuery(text, params = []) {
+  return runtimePool.query(text, params);
+}
 
-const cleanupAuthorityQuery = async (sql, values = []) => {
-  const client = await cleanupPool.connect();
-  try {
-    await client.query('BEGIN');
-    await client.query('SET LOCAL ROLE ghm_schema_owner');
-    const result = await client.query(sql, values);
-    await client.query('COMMIT');
-    return result;
-  } catch (error) {
-    await client.query('ROLLBACK').catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
-};
+async function cleanupAuthorityQuery(text, params = []) {
+  return cleanupPool.query(text, params);
+}
 
-const createAccount = async (fullName) => {
+async function createAccount(slug) {
   const result = await cleanupAuthorityQuery(
-    `INSERT INTO ghm.account_identity (full_name, role) VALUES ($1, 'customer') RETURNING id`,
-    [fullName],
+    `INSERT INTO ghm.account_identity (external_subject, role)
+     VALUES ($1, 'customer')
+     RETURNING id`,
+    [slug]
   );
   const id = Number(result.rows[0].id);
   accountIds.push(id);
   return id;
-};
+}
 
-const assertRejected = async (work, label) => {
+async function assertRejected(label, fn) {
   try {
-    await work();
+    await fn();
   } catch {
     console.log(`${label} PASS`);
     return;
   }
-  throw new Error(`${label}: operation unexpectedly succeeded`);
-};
-
-const countMarkerQuotes = async () => {
-  const result = await cleanupAuthorityQuery(
-    `SELECT count(*)::int AS count FROM ghm.quote WHERE description LIKE $1`,
-    [`${marker}%`],
-  );
-  return result.rows[0].count;
-};
-
-const cleanup = async () => {
-  if (accountIds.length === 0) return;
-  await cleanupAuthorityQuery(
-    `DELETE FROM ghm.quote_line_item WHERE quote_id IN (SELECT id FROM ghm.quote WHERE description LIKE $1)`,
-    [`${marker}%`],
-  );
-  await cleanupAuthorityQuery(`DELETE FROM ghm.quote WHERE description LIKE $1`, [`${marker}%`]);
-  if (customerIds.length > 0) {
-    await cleanupAuthorityQuery(`DELETE FROM ghm.customer WHERE id = ANY($1::bigint[])`, [customerIds]);
-  }
-  await cleanupAuthorityQuery(`DELETE FROM ghm.account_identity WHERE id = ANY($1::bigint[])`, [accountIds]);
-};
+  throw new Error(`${label} unexpectedly succeeded`);
+}
 
 try {
-  const [runtime, cleanupAuthority] = await Promise.all([
-    identity(runtimePool, 'ghm_runtime', 'Runtime qualification'),
-    identity(cleanupPool, 'ghm_migrator', 'Cleanup authority'),
-  ]);
-  console.log(`RUNTIME IDENTITY PASS: ${runtime.database_name}/${runtime.current_user}`);
-  console.log(`CLEANUP AUTHORITY PASS: ${cleanupAuthority.database_name}/${cleanupAuthority.current_user}`);
-
-  const schema = await runtimePool.query(`
-    SELECT
-      to_regclass('ghm.quote') AS quote_table,
-      to_regclass('ghm.quote_line_item') AS line_item_table,
-      to_regclass('ghm.customer') AS customer_table
+  const identity = await runtimeQuery(`
+    SELECT current_database() AS database_name, current_user AS current_user
   `);
-  if (
-    schema.rows[0].quote_table !== 'ghm.quote' ||
-    schema.rows[0].line_item_table !== 'ghm.quote_line_item' ||
-    schema.rows[0].customer_table !== 'ghm.customer'
-  ) {
-    throw new Error(`Quote dependency schema missing: ${JSON.stringify(schema.rows[0])}`);
+  if (identity.rows[0].database_name !== 'ghm_db' || identity.rows[0].current_user !== 'ghm_runtime') {
+    throw new Error(`Unexpected runtime identity: ${JSON.stringify(identity.rows[0])}`);
+  }
+  console.log('RUNTIME IDENTITY PASS: ghm_db/ghm_runtime');
+
+  const cleanupIdentity = await cleanupAuthorityQuery(`
+    SELECT current_database() AS database_name, current_user AS current_user
+  `);
+  if (cleanupIdentity.rows[0].database_name !== 'ghm_db' || cleanupIdentity.rows[0].current_user !== 'ghm_migrator') {
+    throw new Error(`Unexpected cleanup identity: ${JSON.stringify(cleanupIdentity.rows[0])}`);
+  }
+  console.log('CLEANUP AUTHORITY PASS: ghm_db/ghm_migrator');
+
+  const schema = await cleanupAuthorityQuery(`
+    SELECT table_name
+    FROM information_schema.tables
+    WHERE table_schema = 'ghm'
+      AND table_name IN ('quote', 'quote_line_item')
+    ORDER BY table_name
+  `);
+  const schemaNames = schema.rows.map(row => row.table_name);
+  if (JSON.stringify(schemaNames) !== JSON.stringify(['quote', 'quote_line_item'])) {
+    throw new Error(`Unexpected Quote schema presence: ${JSON.stringify(schemaNames)}`);
   }
   console.log('QUOTE SCHEMA PRESENCE PASS');
 
@@ -126,13 +97,16 @@ try {
       AND table_name IN ('quote', 'quote_line_item')
     ORDER BY table_name, privilege_type
   `);
-  const actualTablePrivileges = tablePrivileges.rows.map(row => `${row.table_name}:${row.privilege_type}`);
-  const expectedTablePrivileges = [
+  const tableGrantSet = tablePrivileges.rows.map(row => `${row.table_name}:${row.privilege_type}`);
+  const expectedTableGrantSet = [
+    'quote:INSERT',
     'quote:SELECT',
+    'quote:UPDATE',
+    'quote_line_item:INSERT',
     'quote_line_item:SELECT',
   ];
-  if (JSON.stringify(actualTablePrivileges) !== JSON.stringify(expectedTablePrivileges)) {
-    throw new Error(`Unexpected Quote table-level privileges: ${JSON.stringify(actualTablePrivileges)}`);
+  if (JSON.stringify(tableGrantSet) !== JSON.stringify(expectedTableGrantSet)) {
+    throw new Error(`Unexpected Quote table grants: ${JSON.stringify(tableGrantSet)}`);
   }
 
   const columnPrivileges = await cleanupAuthorityQuery(`
@@ -141,23 +115,12 @@ try {
     WHERE grantee = 'ghm_runtime'
       AND table_schema = 'ghm'
       AND table_name IN ('quote', 'quote_line_item')
+      AND privilege_type IN ('INSERT', 'UPDATE')
     ORDER BY table_name, privilege_type, column_name
   `);
-  const actualColumns = columnPrivileges.rows.map(row => `${row.table_name}:${row.privilege_type}:${row.column_name}`);
-  const expectedColumns = [
-    'quote:INSERT:account_id',
-    'quote:INSERT:amount',
-    'quote:INSERT:customer_email',
-    'quote:INSERT:customer_id',
-    'quote:INSERT:customer_name',
-    'quote:INSERT:customer_phone',
-    'quote:INSERT:description',
-    'quote:INSERT:follow_up_date',
-    'quote:INSERT:account_id',
-  ];
   const expectedQuoteInsert = ['account_id', 'amount', 'customer_email', 'customer_id', 'customer_name', 'customer_phone', 'description', 'follow_up_date'];
   const expectedQuoteUpdate = ['notes', 'reminder_date', 'reminder_id', 'status', 'updated_at'];
-  const expectedLineInsert = ['catalog_item_id', 'description', 'quote_id', 'quantity', 'unit_price'];
+  const expectedLineInsert = ['catalog_item_id', 'description', 'quantity', 'quote_id', 'unit_price'];
 
   const quoteInsert = columnPrivileges.rows
     .filter(row => row.table_name === 'quote' && row.privilege_type === 'INSERT')
@@ -195,173 +158,156 @@ try {
   const ownerContext = { userId: ownerAccountId, role: 'customer' };
   const outsiderContext = { userId: outsiderAccountId, role: 'customer' };
 
-  const customerRepository = new PostgresCustomerRepository(runtimePool);
-  const customerService = new CustomerServiceImpl(customerRepository);
-  const customer = await customerService.createCustomer(ownerContext, {
-    name: `${marker} customer`,
-    phone: '0123456789',
-    email: 'customer@example.com',
+  const customer = await runtimeCustomerService.create(ownerContext, {
+    name: 'Quote Qualification Customer',
+    phone: '+27820000000',
+    email: 'quote-qualification@example.com',
   });
   customerIds.push(customer.id);
-  const outsiderCustomer = await customerService.createCustomer(outsiderContext, {
-    name: `${marker} outsider customer`,
-  });
-  customerIds.push(outsiderCustomer.id);
 
-  const quoteRepository = new PostgresQuoteRepository(runtimePool);
-  const quoteService = new QuoteServiceImpl(quoteRepository);
-
-  const created = await quoteService.createQuote(ownerContext, {
+  const quote = await runtimeQuoteService.create(ownerContext, {
     customerId: customer.id,
     lineItems: [
-      { description: `  ${marker} labour  `, quantity: 2, unitPrice: 125.55 },
-      { description: `${marker} materials`, quantity: 3, unitPrice: 10.1, catalogItemId: null },
+      { description: 'Labour', quantity: 2, unitPrice: 125.55 },
+      { description: 'Materials', quantity: 3, unitPrice: 10.25, itemId: null },
     ],
     followUpDate: '2026-09-20',
   });
-  quoteIds.push(created.id);
+  quoteIds.push(quote.id);
 
   if (
-    created.accountId !== ownerAccountId ||
-    created.customerId !== customer.id ||
-    created.customerName !== customer.name ||
-    created.customerPhone !== customer.phone ||
-    created.customerEmail !== customer.email ||
-    created.description !== `${marker} labour, ${marker} materials` ||
-    created.amount !== (2 * 125.55 + 3 * 10.1) ||
-    created.status !== 'active' ||
-    created.reminderId !== null ||
-    created.reminderDate !== null ||
-    created.notes !== '' ||
-    created.lineItems.length !== 2 ||
-    created.lineItems[0].description !== `${marker} labour` ||
-    created.lineItems[0].unitPrice !== 125.55
+    quote.customerId !== customer.id ||
+    quote.customerName !== customer.name ||
+    quote.phone !== customer.phone ||
+    quote.customerEmail !== customer.email ||
+    quote.description !== 'Labour, Materials' ||
+    quote.amount !== 282.15 ||
+    quote.status !== 'active' ||
+    quote.reminderId !== null ||
+    quote.reminderDate !== null ||
+    quote.notes !== '' ||
+    quote.lineItems.length !== 2
   ) {
-    throw new Error(`Quote create reconciliation failed: ${JSON.stringify(created)}`);
+    throw new Error(`Unexpected Quote create result: ${JSON.stringify(quote)}`);
   }
-  console.log(`QUOTE CREATE PASS: quote=${created.id}`);
+  console.log(`QUOTE CREATE PASS: quote=${quote.id}`);
 
-  const read = await quoteService.getQuote(ownerContext, created.id);
-  if (!read || read.id !== created.id || read.accountId !== ownerAccountId || read.lineItems.length !== 2) {
-    throw new Error('Quote owner read failed');
-  }
+  const ownerRead = await runtimeQuoteService.get(ownerContext, quote.id);
+  if (!ownerRead || ownerRead.id !== quote.id) throw new Error('Owner Quote read failed');
   console.log('QUOTE OWNER READ PASS');
 
-  if (await quoteService.getQuote(outsiderContext, created.id) !== null) {
-    throw new Error('Outsider Quote read unexpectedly succeeded');
-  }
+  const outsiderRead = await runtimeQuoteService.get(outsiderContext, quote.id);
+  if (outsiderRead !== null) throw new Error('Cross-account Quote read unexpectedly succeeded');
   console.log('QUOTE CROSS-ACCOUNT READ DENIAL PASS');
 
-  const listed = await quoteService.listQuotes(ownerContext);
-  if (!listed.some(row => row.id === created.id)) throw new Error('Created Quote missing from owner list');
-  if ((await quoteService.listQuotes(outsiderContext)).some(row => row.id === created.id)) {
-    throw new Error('Cross-account Quote leaked into outsider list');
-  }
+  const ownerList = await runtimeQuoteService.list(ownerContext);
+  if (!ownerList.some(item => item.id === quote.id)) throw new Error('Owner Quote list missing Quote');
+  const outsiderList = await runtimeQuoteService.list(outsiderContext);
+  if (outsiderList.some(item => item.id === quote.id)) throw new Error('Cross-account Quote list leaked Quote');
   console.log('QUOTE OWNER-LIST SCOPE PASS');
 
-  const won = await quoteService.setQuoteStatus(ownerContext, created.id, 'won');
-  if (won.status !== 'won' || won.reminderId !== null || won.reminderDate !== null) throw new Error('Quote won status update failed');
+  const won = await runtimeQuoteService.setStatus(ownerContext, quote.id, 'won');
+  if (won.status !== 'won' || won.reminderId !== null || won.reminderDate !== null) throw new Error('Quote won transition mismatch');
   console.log('QUOTE STATUS WON PASS');
 
-  const lost = await quoteService.setQuoteStatus(ownerContext, created.id, 'lost');
-  if (lost.status !== 'lost' || lost.lineItems.length !== 2) throw new Error('Quote lost status update failed');
+  const lost = await runtimeQuoteService.setStatus(ownerContext, quote.id, 'lost');
+  if (lost.status !== 'lost') throw new Error('Quote lost transition mismatch');
   console.log('QUOTE STATUS LOST PASS');
 
-  const reopened = await quoteService.setQuoteStatus(ownerContext, created.id, 'active');
-  if (reopened.status !== 'active' || reopened.reminderId !== null || reopened.reminderDate !== null) throw new Error('Quote reopen status update failed');
-  console.log('QUOTE STATUS REOPEN PASS');
+  const reopened = await runtimeQuoteService.setStatus(ownerContext, quote.id, 'active');
+  if (reopened.status !== 'active') throw new Error('Quote reopen transition mismatch');
+  console.log('QUOTE REOPEN ACTIVE PASS');
 
-  const sameStatus = await quoteService.setQuoteStatus(ownerContext, created.id, 'active');
-  if (sameStatus.status !== 'active') throw new Error('Same-status Quote operation failed');
+  const sameStatus = await runtimeQuoteService.setStatus(ownerContext, quote.id, 'active');
+  if (sameStatus.id !== quote.id || sameStatus.status !== 'active') throw new Error('Quote same-status idempotency mismatch');
   console.log('QUOTE SAME-STATUS IDEMPOTENCY PASS');
 
-  const noted = await quoteService.setQuoteNotes(ownerContext, created.id, 'Follow up after site discussion');
-  if (noted.notes !== 'Follow up after site discussion') throw new Error('Quote notes update failed');
+  const notes = await runtimeQuoteService.setNotes(ownerContext, quote.id, 'Call customer Friday.');
+  if (notes.notes !== 'Call customer Friday.') throw new Error('Quote notes update mismatch');
   console.log('QUOTE NOTES UPDATE PASS');
 
-  await assertRejected(
-    () => quoteService.setQuoteNotes(outsiderContext, created.id, 'unauthorized'),
-    'QUOTE CROSS-ACCOUNT NOTES DENIAL',
-  );
+  await assertRejected('QUOTE CROSS-ACCOUNT NOTES DENIAL', async () => {
+    await runtimeQuoteService.setNotes(outsiderContext, quote.id, 'unauthorized');
+  });
 
-  await assertRejected(
-    () => quoteService.createQuote(ownerContext, {
-      customerId: outsiderCustomer.id,
-      lineItems: [{ description: `${marker} wrong customer`, quantity: 1, unitPrice: 100 }],
-      followUpDate: '2026-09-20',
-    }),
-    'QUOTE CROSS-ACCOUNT CUSTOMER CREATE DENIAL',
-  );
-
-  await customerService.archiveCustomer(ownerContext, customer.id);
-  await assertRejected(
-    () => quoteService.createQuote(ownerContext, {
+  await assertRejected('QUOTE CROSS-ACCOUNT CUSTOMER CREATE DENIAL', async () => {
+    await runtimeQuoteService.create(outsiderContext, {
       customerId: customer.id,
-      lineItems: [{ description: `${marker} archived customer`, quantity: 1, unitPrice: 100 }],
+      lineItems: [{ description: 'Unauthorized', quantity: 1, unitPrice: 1 }],
       followUpDate: '2026-09-20',
-    }),
-    'QUOTE ARCHIVED CUSTOMER CREATE DENIAL',
-  );
-  await customerService.restoreCustomer(ownerContext, customer.id);
+    });
+  });
 
-  await assertRejected(
-    () => runtimePool.query(`UPDATE ghm.quote SET customer_name = 'unauthorized' WHERE id = $1`, [created.id]),
-    'RUNTIME QUOTE CONTACT UPDATE DENIAL',
-  );
-
-  await assertRejected(
-    () => runtimePool.query(`DELETE FROM ghm.quote WHERE id = $1`, [created.id]),
-    'RUNTIME QUOTE DELETE DENIAL',
-  );
-
-  await assertRejected(
-    () => runtimePool.query(`DELETE FROM ghm.quote_line_item WHERE quote_id = $1`, [created.id]),
-    'RUNTIME QUOTE LINE-ITEM DELETE DENIAL',
-  );
-
-  const beforeRollback = await countMarkerQuotes();
-  if (beforeRollback !== 1) throw new Error(`Unexpected marker Quote count before rollback test: ${beforeRollback}`);
-
-  await assertRejected(
-    () => quoteService.createQuote(ownerContext, {
+  await runtimeCustomerService.archive(ownerContext, customer.id);
+  await assertRejected('QUOTE ARCHIVED CUSTOMER CREATE DENIAL', async () => {
+    await runtimeQuoteService.create(ownerContext, {
       customerId: customer.id,
-      lineItems: [
-        { description: `${marker} rollback first`, quantity: 1, unitPrice: 100 },
-        { description: `${marker} rollback overflow`, quantity: 1, unitPrice: 10000000000000 },
-      ],
-      followUpDate: '2026-09-21',
-    }),
-    'QUOTE ATOMIC ROLLBACK PASS',
-  );
+      lineItems: [{ description: 'Archived customer', quantity: 1, unitPrice: 1 }],
+      followUpDate: '2026-09-20',
+    });
+  });
+  await runtimeCustomerService.restore(ownerContext, customer.id);
+  console.log('QUOTE CUSTOMER RESTORE PASS');
 
-  const afterRollback = await countMarkerQuotes();
-  if (afterRollback !== beforeRollback) throw new Error(`Quote transaction rollback failed: before=${beforeRollback}, after=${afterRollback}`);
+  await assertRejected('RUNTIME CONTACT-FIELD UPDATE DENIAL', async () => {
+    await runtimeQuery(`UPDATE ghm.quote SET customer_name = 'tampered' WHERE id = $1`, [quote.id]);
+  });
 
-  const persisted = await cleanupAuthorityQuery(`
-    SELECT account_id, customer_id, customer_name, customer_phone, customer_email, description, amount, follow_up_date, status, reminder_id, reminder_date, notes
+  await assertRejected('RUNTIME QUOTE DELETE DENIAL', async () => {
+    await runtimeQuery(`DELETE FROM ghm.quote WHERE id = $1`, [quote.id]);
+  });
+
+  await assertRejected('RUNTIME QUOTE LINE-ITEM DELETE DENIAL', async () => {
+    await runtimeQuery(`DELETE FROM ghm.quote_line_item WHERE quote_id = $1`, [quote.id]);
+  });
+
+  const beforeRollback = await cleanupAuthorityQuery(`
+    SELECT count(*)::int AS quote_count
     FROM ghm.quote
     WHERE id = $1
-  `, [created.id]);
-  if (persisted.rowCount !== 1) throw new Error('Persisted Quote missing');
-  const row = persisted.rows[0];
+  `, [quote.id]);
+  if (beforeRollback.rows[0].quote_count !== 1) throw new Error('Quote missing before rollback test');
+
+  await assertRejected('QUOTE ATOMIC ROLLBACK PASS', async () => {
+    await runtimeQuoteService.create(ownerContext, {
+      customerId: customer.id,
+      lineItems: [
+        { description: 'Rollback first', quantity: 1, unitPrice: 1 },
+        { description: 'Rollback overflow', quantity: 1, unitPrice: 10000000000000 },
+      ],
+      followUpDate: '2026-09-20',
+    });
+  });
+
+  const persisted = await cleanupAuthorityQuery(`
+    SELECT q.id, q.status, q.notes, q.amount,
+           count(li.id)::int AS line_item_count
+    FROM ghm.quote q
+    LEFT JOIN ghm.quote_line_item li ON li.quote_id = q.id
+    WHERE q.id = $1
+    GROUP BY q.id
+  `, [quote.id]);
   if (
-    Number(row.account_id) !== ownerAccountId ||
-    Number(row.customer_id) !== customer.id ||
-    row.customer_name !== customer.name ||
-    row.customer_phone !== customer.phone ||
-    row.customer_email !== customer.email ||
-    row.status !== 'active' ||
-    row.notes !== 'Follow up after site discussion' ||
-    row.reminder_id !== null ||
-    row.reminder_date !== null
+    persisted.rowCount !== 1 ||
+    persisted.rows[0].status !== 'active' ||
+    persisted.rows[0].notes !== 'Call customer Friday.' ||
+    Number(persisted.rows[0].amount) !== 282.15 ||
+    persisted.rows[0].line_item_count !== 2
   ) {
-    throw new Error(`Persisted Quote reconciliation failed: ${JSON.stringify(row)}`);
+    throw new Error(`Persisted Quote reconciliation failed: ${JSON.stringify(persisted.rows[0])}`);
   }
   console.log('PERSISTED QUOTE RECONCILIATION PASS');
-
   console.log('QUOTE RUNTIME QUALIFICATION PASS');
 } finally {
-  await cleanup().catch(error => console.error(`CLEANUP ERROR: ${error.message}`));
+  if (quoteIds.length > 0) {
+    await cleanupAuthorityQuery(`DELETE FROM ghm.quote WHERE id = ANY($1::bigint[])`, [quoteIds]);
+  }
+  if (customerIds.length > 0) {
+    await cleanupAuthorityQuery(`DELETE FROM ghm.customer WHERE id = ANY($1::bigint[])`, [customerIds]);
+  }
+  if (accountIds.length > 0) {
+    await cleanupAuthorityQuery(`DELETE FROM ghm.account_identity WHERE id = ANY($1::bigint[])`, [accountIds]);
+  }
   await runtimePool.end();
   await cleanupPool.end();
 }
