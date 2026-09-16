@@ -23,7 +23,7 @@ export const resourceRegistry: readonly ResourceDefinition[] = [
   { resource: 'project', operations: ['read', 'readPublic', 'create', 'update'] },
   { resource: 'customer', operations: ['read', 'create', 'update'] },
   { resource: 'quote', operations: ['read', 'create', 'update'] },
-  { resource: 'notification', operations: ['read', 'update'] },
+  { resource: 'notification', operations: ['read', 'create', 'update'] },
   { resource: 'support_request', operations: ['read', 'create', 'update'] },
   { resource: 'enquiry', operations: ['read', 'create', 'update'] },
   { resource: 'review', operations: ['create', 'readOwn', 'readPublic', 'readPending', 'approve', 'reject'] },
@@ -31,12 +31,5 @@ export const resourceRegistry: readonly ResourceDefinition[] = [
   { resource: 'opportunity_participant', operations: ['read', 'create', 'update'] },
 ];
 
-export const isRegisteredOperation = (
-  resource: Resource,
-  operation: ResourceOperation,
-): boolean =>
-  resourceRegistry.some(
-    (definition) =>
-      definition.resource === resource &&
-      definition.operations.includes(operation),
-  );
+export const isRegisteredOperation = (resource: Resource, operation: ResourceOperation): boolean =>
+  resourceRegistry.some(definition => definition.resource === resource && definition.operations.includes(operation));
