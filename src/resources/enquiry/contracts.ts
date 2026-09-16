@@ -59,21 +59,6 @@ export interface EnquiryService {
   updateReceivedEnquiryStatus(context: AuthContext, enquiryId: EnquiryId, input: UpdateEnquiryStatusInput): Promise<Enquiry>;
 }
 
-export const ENQUIRY_STATUS_TRANSITIONS: Readonly<Record<EnquiryStatus, readonly EnquiryStatus[]>> = Object.freeze({
-  new: ['contacted'],
-  contacted: ['qualified'],
-  qualified: ['quoted'],
-  quoted: ['won', 'lost', 'archived'],
-  won: [],
-  lost: [],
-  archived: [],
-});
-
-export const isEnquiryStatusTransitionAllowed = (
-  from: EnquiryStatus,
-  to: EnquiryStatus,
-): boolean => ENQUIRY_STATUS_TRANSITIONS[from].includes(to);
-
 export const ENQUIRY_OPERATIONS = Object.freeze({
   readOwn: 'enquiry.readOwn',
   readReceived: 'enquiry.readReceived',
