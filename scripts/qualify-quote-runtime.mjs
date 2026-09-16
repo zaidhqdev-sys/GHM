@@ -77,11 +77,13 @@ try {
   console.log('CLEANUP AUTHORITY PASS: ghm_db/ghm_migrator');
 
   const schema = await cleanupAuthorityQuery(`
-    SELECT table_name
-    FROM information_schema.tables
-    WHERE table_schema = 'ghm'
-      AND table_name IN ('quote', 'quote_line_item')
-    ORDER BY table_name
+    SELECT c.relname AS table_name
+    FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'ghm'
+      AND c.relkind IN ('r', 'p')
+      AND c.relname IN ('quote', 'quote_line_item')
+    ORDER BY c.relname
   `);
   const schemaNames = schema.rows.map(row => row.table_name);
   if (JSON.stringify(schemaNames) !== JSON.stringify(['quote', 'quote_line_item'])) {
