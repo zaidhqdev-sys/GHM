@@ -199,7 +199,7 @@ try {
   `);
   const insertColumns = columnPrivileges.rows.filter(row => row.privilege_type === 'INSERT').map(row => row.column_name);
   const updateColumns = columnPrivileges.rows.filter(row => row.privilege_type === 'UPDATE').map(row => row.column_name);
-  const expectedInsert = ['business_id','city','customer_email','customer_id','customer_name','customer_phone','description','opportunity_id','project','source','urgency'];
+  const expectedInsert = ['business_id','budget_max','budget_min','city','customer_email','customer_id','customer_name','customer_phone','description','opportunity_id','project','source','urgency'];
   if (JSON.stringify(insertColumns) !== JSON.stringify(expectedInsert)) throw new Error(`Unexpected Enquiry INSERT columns: ${JSON.stringify(insertColumns)}`);
   if (JSON.stringify(updateColumns) !== JSON.stringify(['status'])) throw new Error(`Unexpected Enquiry UPDATE columns: ${JSON.stringify(updateColumns)}`);
   console.log('ENQUIRY RUNTIME COLUMN ACL PASS');
