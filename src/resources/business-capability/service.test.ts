@@ -109,7 +109,7 @@ test('Business Capability reads and lists validate identifiers and preserve cont
 test('Business Capability creation rejects unauthenticated or invalid contexts', async () => {
   const repository = new FakeRepository();
   const service = new BusinessCapabilityServiceImpl(repository);
-  await assert.rejects(() => service.createBusinessCapability({ userId: 0, role: 'business' }, validInput), /Invalid authenticated context/);
-  await assert.rejects(() => service.createBusinessCapability({ userId: 10, role: 'invalid' as never }, validInput), /Invalid authenticated context/);
+  await assert.rejects(() => service.createBusinessCapability({ userId: 0, role: 'business' }, validInput), /Authentication required/);
+  await assert.rejects(() => service.createBusinessCapability({ userId: 10, role: 'invalid' as never }, validInput), /Authentication required/);
   assert.equal(repository.receivedCreate, null);
 });
