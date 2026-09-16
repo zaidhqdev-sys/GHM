@@ -39,7 +39,7 @@ Canonical columns:
 - `customer_phone text`
 - `customer_email text`
 - `description text NOT NULL`
-- `amount numeric(14,2) NOT NULL`
+- `amount numeric NOT NULL`
 - `follow_up_date date NOT NULL`
 - `status text NOT NULL DEFAULT 'active'`
 - `reminder_id text`
@@ -47,6 +47,8 @@ Canonical columns:
 - `notes text NOT NULL DEFAULT ''`
 - `created_at timestamptz NOT NULL DEFAULT now()`
 - `updated_at timestamptz NOT NULL DEFAULT now()`
+
+`amount` deliberately uses unconstrained PostgreSQL `numeric`: QuoteFlow derives the amount directly from `quantity * unitPrice` and does not round the stored Quote subtotal. The separate invoice implementation rounds invoice calculations and must not be silently substituted here.
 
 Quote line items are a child aggregate relation rather than JSON storage.
 
@@ -81,12 +83,10 @@ A Quote must contain at least one line item.
 Each line item requires:
 
 - trimmed non-empty description;
-- quantity > 0;
-- unit price > 0.
+- finite quantity > 0;
+- finite unit price > 0.
 
-The Quote amount is derived from the submitted line-item subtotal at creation time.
-
-GHM must preserve the production arithmetic semantics and must not silently substitute invoice rounding behavior for Quote arithmetic.
+The Quote amount is derived from the submitted line-item subtotal at creation time and is stored without additional Quote-level rounding.
 
 ## 7. Description
 
@@ -234,7 +234,7 @@ Before Quote is marked qualified, evidence must demonstrate:
 5. Quote line items are persisted atomically with Quote creation;
 6. at least one valid line item is required;
 7. invalid line-item quantity/price/description is rejected;
-8. amount matches the production line-item subtotal semantics;
+8. amount matches the production line-item subtotal semantics without Quote-level rounding;
 9. follow-up date validation is correct;
 10. exact status vocabulary is enforced;
 11. all differing status operations within the exact vocabulary match source evidence;
