@@ -24,6 +24,7 @@ export interface ResourceDefinition {
 export const resourceRegistry: readonly ResourceDefinition[] = [
   { resource: 'profile', operations: ['read', 'update'] },
   { resource: 'business', operations: ['read', 'create', 'update'] },
+  { resource: 'business_capability', operations: ['read', 'create'] },
   { resource: 'project', operations: ['read', 'readPublic', 'create', 'update'] },
   { resource: 'customer', operations: ['read', 'create', 'update'] },
   { resource: 'quote', operations: ['read', 'create', 'update'] },
