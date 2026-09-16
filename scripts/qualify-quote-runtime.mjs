@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import pg from 'pg';
 import dotenv from 'dotenv';
 
@@ -24,7 +23,7 @@ const { PostgresCustomerRepository } = await import('../dist/resources/customer/
 const runtimeQuoteService = new DefaultQuoteService(new PostgresQuoteRepository(runtimePool));
 const runtimeCustomerService = new CustomerServiceImpl(new PostgresCustomerRepository(runtimePool));
 
-const marker = `quote-qualification-${randomUUID()}`;
+const marker = `quote-qualification-${crypto.randomUUID()}`;
 const accountIds = [];
 const customerIds = [];
 const quoteIds = [];
@@ -92,19 +91,18 @@ try {
   console.log('QUOTE SCHEMA PRESENCE PASS');
 
   const tablePrivileges = await cleanupAuthorityQuery(`
-    SELECT table_name, privilege_type
-    FROM information_schema.role_table_grants
-    WHERE grantee = 'ghm_runtime'
-      AND table_schema = 'ghm'
-      AND table_name IN ('quote', 'quote_line_item')
-    ORDER BY table_name, privilege_type
+    SELECT c.relname AS table_name, x.privilege_type
+    FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    CROSS JOIN LATERAL aclexplode(c.relacl) x
+    WHERE n.nspname = 'ghm'
+      AND c.relname IN ('quote', 'quote_line_item')
+      AND x.grantee = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'ghm_runtime')
+    ORDER BY c.relname, x.privilege_type
   `);
   const tableGrantSet = tablePrivileges.rows.map(row => `${row.table_name}:${row.privilege_type}`);
   const expectedTableGrantSet = [
-    'quote:INSERT',
     'quote:SELECT',
-    'quote:UPDATE',
-    'quote_line_item:INSERT',
     'quote_line_item:SELECT',
   ];
   if (JSON.stringify(tableGrantSet) !== JSON.stringify(expectedTableGrantSet)) {
@@ -112,13 +110,18 @@ try {
   }
 
   const columnPrivileges = await cleanupAuthorityQuery(`
-    SELECT table_name, privilege_type, column_name
-    FROM information_schema.column_privileges
-    WHERE grantee = 'ghm_runtime'
-      AND table_schema = 'ghm'
-      AND table_name IN ('quote', 'quote_line_item')
-      AND privilege_type IN ('INSERT', 'UPDATE')
-    ORDER BY table_name, privilege_type, column_name
+    SELECT c.relname AS table_name, x.privilege_type, a.attname AS column_name
+    FROM pg_catalog.pg_attribute a
+    JOIN pg_catalog.pg_class c ON c.oid = a.attrelid
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    CROSS JOIN LATERAL aclexplode(a.attacl) x
+    WHERE n.nspname = 'ghm'
+      AND c.relname IN ('quote', 'quote_line_item')
+      AND a.attnum > 0
+      AND NOT a.attisdropped
+      AND x.grantee = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'ghm_runtime')
+      AND x.privilege_type IN ('INSERT', 'UPDATE')
+    ORDER BY c.relname, x.privilege_type, a.attname
   `);
   const expectedQuoteInsert = ['account_id', 'amount', 'customer_email', 'customer_id', 'customer_name', 'customer_phone', 'description', 'follow_up_date'];
   const expectedQuoteUpdate = ['notes', 'reminder_date', 'reminder_id', 'status', 'updated_at'];
@@ -145,12 +148,14 @@ try {
   }
 
   const unexpectedDelete = await cleanupAuthorityQuery(`
-    SELECT table_name, privilege_type
-    FROM information_schema.role_table_grants
-    WHERE grantee = 'ghm_runtime'
-      AND table_schema = 'ghm'
-      AND table_name IN ('quote', 'quote_line_item')
-      AND privilege_type = 'DELETE'
+    SELECT c.relname AS table_name, x.privilege_type
+    FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    CROSS JOIN LATERAL aclexplode(c.relacl) x
+    WHERE n.nspname = 'ghm'
+      AND c.relname IN ('quote', 'quote_line_item')
+      AND x.grantee = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'ghm_runtime')
+      AND x.privilege_type = 'DELETE'
   `);
   if (unexpectedDelete.rowCount !== 0) throw new Error('Unexpected Quote DELETE privilege');
   console.log('QUOTE RUNTIME PRIVILEGE BOUNDARY PASS');
