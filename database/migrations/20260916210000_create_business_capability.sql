@@ -147,11 +147,6 @@ CREATE INDEX business_capability_capability_state_idx
     business_id
   );
 
-CREATE TRIGGER business_capability_updated_at
-BEFORE UPDATE ON ghm.business_capability
-FOR EACH ROW
-EXECUTE FUNCTION ghm.touch_updated_at();
-
 ALTER TABLE ghm.business_capability OWNER TO ghm_schema_owner;
 
 GRANT USAGE ON SCHEMA ghm TO ghm_runtime;
