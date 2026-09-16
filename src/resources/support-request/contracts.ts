@@ -64,7 +64,8 @@ export interface SupportRequestRepository {
   listSupportRequests(context: AuthContext, options?: ListSupportRequestsOptions): Promise<SupportRequest[]>;
   updateSupportRequestStatus(context: AuthContext, requestId: SupportRequestId, input: UpdateSupportRequestStatusInput): Promise<SupportRequest>;
   getMessages(context: AuthContext, requestId: SupportRequestId): Promise<SupportRequestMessage[]>;
-  reply(context: AuthContext, requestId: SupportRequestId, body: string): Promise<SupportRequestMessage>;
+  replyAsCustomer(context: AuthContext, requestId: SupportRequestId, body: string): Promise<SupportRequestMessage>;
+  replyAsAdmin(context: AuthContext, requestId: SupportRequestId, body: string): Promise<SupportRequestMessage>;
 }
 
 export interface SupportRequestService extends SupportRequestRepository {}
@@ -74,5 +75,6 @@ export const SUPPORT_REQUEST_OPERATIONS = Object.freeze({
   create: 'support_request.create',
   updateStatus: 'support_request.updateStatus',
   readMessages: 'support_request.readMessages',
-  reply: 'support_request.reply',
+  replyAsCustomer: 'support_request.replyAsCustomer',
+  replyAsAdmin: 'support_request.replyAsAdmin',
 });
