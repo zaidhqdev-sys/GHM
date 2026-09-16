@@ -5,6 +5,7 @@ export type ResourceOperation =
   | 'readPublic'
   | 'create'
   | 'update'
+  | 'replace'
   | 'readOwn'
   | 'readPending'
   | 'approve'
@@ -25,6 +26,7 @@ export const resourceRegistry: readonly ResourceDefinition[] = [
   { resource: 'profile', operations: ['read', 'update'] },
   { resource: 'business', operations: ['read', 'create', 'update'] },
   { resource: 'business_capability', operations: ['read', 'create'] },
+  { resource: 'business_hours', operations: ['read', 'readPublic', 'replace'] },
   { resource: 'project', operations: ['read', 'readPublic', 'create', 'update'] },
   { resource: 'customer', operations: ['read', 'create', 'update'] },
   { resource: 'quote', operations: ['read', 'create', 'update'] },
