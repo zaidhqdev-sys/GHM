@@ -15,7 +15,6 @@ const ssl = { rejectUnauthorized: false };
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
 const cleanupPool = new Pool({ connectionString: migratorUrl, ssl });
 const marker = `ghm-customer-${randomUUID()}`;
-const fixture = { accountIds: [], customerIds: [] };
 
 const identity = async (pool, expectedUser, label) => {
   const { rows } = await pool.query(`SELECT current_database() AS database_name, session_user, current_user, current_role`);
@@ -47,9 +46,7 @@ const createAccount = async (fullName) => {
     `INSERT INTO ghm.account_identity (full_name, role) VALUES ($1, 'customer') RETURNING id`,
     [fullName],
   );
-  const id = Number(result.rows[0].id);
-  fixture.accountIds.push(id);
-  return id;
+  return Number(result.rows[0].id);
 };
 
 const assertRejected = async (work, label) => {
@@ -125,8 +122,7 @@ try {
     phone: ' 0123456789 ',
     email: ' customer@example.com ',
   });
-  fixture.customerIds.push(created.id);
-  if (created.accountId !== ownerAccountId || created.name !== `${marker} customer` || created.phone !== ' 0123456789 ' || created.email !== ' customer@example.com ' || created.status !== 'active') {
+  if (created.accountId !== ownerAccountId || created.name !== `${marker} customer` || created.phone !== '0123456789' || created.email !== 'customer@example.com' || created.status !== 'active') {
     throw new Error('Customer creation binding failed');
   }
   console.log(`CUSTOMER CREATE PASS: customer=${created.id}`);
