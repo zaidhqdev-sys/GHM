@@ -24,7 +24,8 @@
     "qualify:opportunity-participant-runtime": "npm run build && node scripts/qualify-opportunity-participant-runtime.mjs",
     "qualify:customer-runtime": "npm run build && node scripts/qualify-customer-runtime.mjs",
     "qualify:quote-runtime": "npm run build && node scripts/qualify-quote-runtime.mjs",
-    "qualify:notification-runtime": "npm run build && node scripts/qualify-notification-runtime.mjs"
+    "qualify:notification-runtime": "npm run build && node scripts/qualify-notification-runtime.mjs",
+    "qualify:support-request-runtime": "npm run build && node scripts/qualify-support-request-runtime.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",
