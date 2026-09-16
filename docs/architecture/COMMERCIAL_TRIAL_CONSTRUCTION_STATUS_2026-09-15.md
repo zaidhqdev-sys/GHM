@@ -1,6 +1,6 @@
 # GHM Commercial Trial Construction Status — 2026-09-15
 
-**Status:** CONSTRUCTION IMPLEMENTATION IN PROGRESS
+**Status:** CONSTRUCTION IMPLEMENTATION COMPLETE — RUNTIME QUALIFIED / CLOSED
 **Branch:** `construction/review-aggregate-reconciliation`
 **Production state:** Supabase remains production authority
 
@@ -69,24 +69,46 @@ Repository tests cover:
 
 Service tests reconcile the new explicit plan-code input.
 
-## Remaining qualification gate
+## Final qualification — PASS / CLOSED
 
-The implementation is not declared runtime-qualified from repository construction alone.
+The Commercial trial implementation has completed dedicated construction-database runtime qualification.
 
-Required next evidence:
+The qualification used ghm_runtime for runtime/application behavior and ghm_migrator for governed fixture setup and cleanup.
 
-- build;
-- full test suite;
-- `git diff --check`;
-- dedicated construction-database runtime qualification using `ghm_runtime` for application behavior and `ghm_migrator` for controlled fixtures/cleanup;
-- owner/administrator success;
+The final qualification passed:
+
+- runtime identity;
+- cleanup authority;
+- plan fixture;
+- Business fixture;
+- owner trial activation;
+- trial row correctness;
+- 	rialing subscription correctness;
+- 	rial_activated Commercial event correctness;
 - member denial;
-- invalid/ineligible plan rejection;
-- version/effective-date selection;
-- duplicate/concurrent trial protection;
-- subscription/event correctness;
-- rollback evidence;
-- runtime ACL verification.
+- duplicate trial denial;
+- duplicate-state preservation;
+- ineligible plan denial;
+- administrator trial activation;
+- concurrent trial protection;
+- concurrent state atomicity;
+- runtime trial update denial;
+- runtime trial delete denial;
+- runtime trial insert denial;
+- runtime subscription update denial;
+- runtime subscription delete denial;
+- runtime Commercial event read denial;
+- Commercial runtime ACL boundary.
+
+Final result:
+
+COMMERCIAL TRIAL RUNTIME QUALIFICATION PASS
+
+Commercial event audit evidence is obtained through the governed schema-owner qualification path. The final runtime boundary deliberately denies direct ghm_runtime read access to ghm.commercial_event.
+
+The Commercial trial operation is therefore **QUALIFIED / CLOSED for GHM construction**.
+
+Production migration, product-adapter activation, provider migration, shadow qualification, and controlled production cutover remain separately governed.
 
 ## Production boundary
 

@@ -242,13 +242,27 @@ try {
   assert.equal(new Date(subscription.current_period_end).getTime(), new Date(ownerRow.expires_at).getTime());
   console.log('TRIALING SUBSCRIPTION CORRECTNESS PASS');
 
-  const { rows: eventRows } = await runtimePool.query(
-    `SELECT id, business_id, subscription_id, event_type, actor_account_id, source, payload
-     FROM ghm.commercial_event
-     WHERE business_id = $1 AND event_type = 'trial_activated'
-     ORDER BY id DESC`,
-    [ownerBusinessId],
-  );
+  const eventClient = await cleanupPool.connect();
+  let eventRows;
+  try {
+    await eventClient.query('BEGIN');
+    await eventClient.query('SET LOCAL ROLE ghm_schema_owner');
+    const result = await eventClient.query(
+      `SELECT id, business_id, subscription_id, event_type, actor_account_id, source, payload
+       FROM ghm.commercial_event
+       WHERE business_id = $1 AND event_type = 'trial_activated'
+       ORDER BY id DESC`,
+      [ownerBusinessId],
+    );
+    eventRows = result.rows;
+    await eventClient.query('COMMIT');
+  } catch (error) {
+    await eventClient.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    eventClient.release();
+  }
+
   assert.equal(eventRows.length, 1);
   assert.equal(Number(eventRows[0].subscription_id), Number(subscription.id));
   assert.equal(Number(eventRows[0].actor_account_id), ownerId);
@@ -309,13 +323,33 @@ try {
   const { rows: concurrentState } = await runtimePool.query(
     `SELECT
        (SELECT count(*) FROM ghm.commercial_trial WHERE business_id = $1) AS trial_count,
-       (SELECT count(*) FROM ghm.commercial_subscription WHERE business_id = $1) AS subscription_count,
-       (SELECT count(*) FROM ghm.commercial_event WHERE business_id = $1 AND event_type = 'trial_activated') AS event_count`,
+       (SELECT count(*) FROM ghm.commercial_subscription WHERE business_id = $1) AS subscription_count`,
     [concurrentBusinessId],
   );
+
+  const concurrentEventClient = await cleanupPool.connect();
+  let concurrentEventCount;
+  try {
+    await concurrentEventClient.query('BEGIN');
+    await concurrentEventClient.query('SET LOCAL ROLE ghm_schema_owner');
+    const result = await concurrentEventClient.query(
+      `SELECT count(*) AS event_count
+       FROM ghm.commercial_event
+       WHERE business_id = $1 AND event_type = 'trial_activated'`,
+      [concurrentBusinessId],
+    );
+    concurrentEventCount = Number(result.rows[0].event_count);
+    await concurrentEventClient.query('COMMIT');
+  } catch (error) {
+    await concurrentEventClient.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    concurrentEventClient.release();
+  }
+
   assert.equal(Number(concurrentState[0].trial_count), 1);
   assert.equal(Number(concurrentState[0].subscription_count), 1);
-  assert.equal(Number(concurrentState[0].event_count), 1);
+  assert.equal(concurrentEventCount, 1);
   console.log('CONCURRENT STATE ATOMICITY PASS');
 
   await assertRejected(
@@ -329,7 +363,7 @@ try {
     'RUNTIME TRIAL DELETE DENIAL PASS',
   );
   await assertRejected(
-    () => runtimePool.query(`INSERT INTO ghm.commercial_trial (business_id, plan_version_id, activated_by, expires_at) VALUES ($1, $2, $3, now() + interval '1 day')`, [ownerBusinessId, Number(versions[0].id), ownerId]),
+    () => runtimePool.query(`INSERT INTO ghm.commercial_trial (business_id, plan_version_id, activated_by, expires_at, ended_at) VALUES ($1, $2, $3, now() + interval '1 day', now())`, [ownerBusinessId, Number(versions[0].id), ownerId]),
     /permission denied/i,
     'RUNTIME TRIAL INSERT DENIAL PASS',
   );
@@ -349,18 +383,31 @@ try {
     'RUNTIME COMMERCIAL EVENT READ DENIAL PASS',
   );
 
-  const { rows: acl } = await cleanupPool.query(`
-    SELECT
-      has_table_privilege('ghm_runtime', 'ghm.commercial_trial', 'SELECT') AS trial_select,
-      has_table_privilege('ghm_runtime', 'ghm.commercial_trial', 'INSERT') AS trial_insert,
-      has_table_privilege('ghm_runtime', 'ghm.commercial_trial', 'UPDATE') AS trial_update,
-      has_table_privilege('ghm_runtime', 'ghm.commercial_trial', 'DELETE') AS trial_delete,
-      has_table_privilege('ghm_runtime', 'ghm.commercial_subscription', 'SELECT') AS subscription_select,
-      has_table_privilege('ghm_runtime', 'ghm.commercial_subscription', 'INSERT') AS subscription_insert,
-      has_table_privilege('ghm_runtime', 'ghm.commercial_subscription', 'UPDATE') AS subscription_update,
-      has_table_privilege('ghm_runtime', 'ghm.commercial_subscription', 'DELETE') AS subscription_delete,
-      has_table_privilege('ghm_runtime', 'ghm.commercial_event', 'SELECT') AS event_select
-  `);
+  const aclClient = await cleanupPool.connect();
+  let acl;
+  try {
+    await aclClient.query('BEGIN');
+    await aclClient.query('SET LOCAL ROLE ghm_schema_owner');
+    const result = await aclClient.query(`
+      SELECT
+        has_table_privilege('ghm_runtime', 'ghm.commercial_trial', 'SELECT') AS trial_select,
+        has_table_privilege('ghm_runtime', 'ghm.commercial_trial', 'INSERT') AS trial_insert,
+        has_table_privilege('ghm_runtime', 'ghm.commercial_trial', 'UPDATE') AS trial_update,
+        has_table_privilege('ghm_runtime', 'ghm.commercial_trial', 'DELETE') AS trial_delete,
+        has_table_privilege('ghm_runtime', 'ghm.commercial_subscription', 'SELECT') AS subscription_select,
+        has_table_privilege('ghm_runtime', 'ghm.commercial_subscription', 'INSERT') AS subscription_insert,
+        has_table_privilege('ghm_runtime', 'ghm.commercial_subscription', 'UPDATE') AS subscription_update,
+        has_table_privilege('ghm_runtime', 'ghm.commercial_subscription', 'DELETE') AS subscription_delete,
+        has_table_privilege('ghm_runtime', 'ghm.commercial_event', 'SELECT') AS event_select
+    `);
+    acl = result.rows;
+    await aclClient.query('COMMIT');
+  } catch (error) {
+    await aclClient.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    aclClient.release();
+  }
   assert.deepEqual(acl[0], {
     trial_select: true, trial_insert: false, trial_update: false, trial_delete: false,
     subscription_select: true, subscription_insert: false, subscription_update: false, subscription_delete: false,

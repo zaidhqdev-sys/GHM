@@ -46,6 +46,7 @@ The following GHM construction capabilities have now been implemented and qualif
 - Opportunity Core
 - Project Quote
 - Resource API boundary
+- Commercial trial operation
 - Operational boundary
 
 These qualifications establish GHM capability construction only. They do not establish a Connect adapter, production migration, or cutover.

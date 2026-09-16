@@ -18,6 +18,12 @@ QuoteFlow currently contains a Supabase client configuration (`src/lib/supabase.
 
 This distinction remains important for migration scope: GHM must not create remote QuoteFlow tables merely because a Supabase dependency exists. Concrete remote calls and product workflows must be inventoried before a QuoteFlow adapter is designed.
 
+## Commercial trial operation
+
+The GHM Commercial trial operation has been independently constructed and runtime-qualified against its own Commercial architecture contract. The qualified boundary covers trial activation, subscription-state transition, audit-event provenance, duplicate/concurrent activation protection, runtime DML restrictions, and the governed internal event-read boundary.
+
+The qualification evidence is recorded in `docs/architecture/COMMERCIAL_TRIAL_CONSTRUCTION_STATUS_2026-09-15.md` and `scripts/qualify-commercial-trial-runtime.mjs`. The Commercial schema and subsequent reconciliation migrations remain GHM-owned construction artifacts; this qualification does not authorize a Connect or QuoteFlow adapter, production migration, provider integration, or Supabase replacement.
+
 ## Evidence rule
 
 For every capability proposed for GHM, record:
@@ -48,6 +54,7 @@ QUALIFIED CONSTRUCTION
   Opportunity Core
   Project Quote
   Capability Catalogue
+  Commercial trial operation
   Resource API boundary
   Operational boundary
 
