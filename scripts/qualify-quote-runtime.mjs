@@ -14,6 +14,7 @@ if (runtimeUrl === migratorUrl) throw new Error('Runtime and migrator URLs must 
 
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl: { rejectUnauthorized: false } });
 const cleanupPool = new Pool({ connectionString: migratorUrl, ssl: { rejectUnauthorized: false } });
+const cleanupClient = await cleanupPool.connect();
 
 const { DefaultQuoteService } = await import('../dist/resources/quote/service.js');
 const { PostgresQuoteRepository } = await import('../dist/resources/quote/repository.js');
@@ -33,7 +34,7 @@ async function runtimeQuery(text, params = []) {
 }
 
 async function cleanupAuthorityQuery(text, params = []) {
-  return cleanupPool.query(text, params);
+  return cleanupClient.query(text, params);
 }
 
 async function createAccount(slug) {
@@ -74,6 +75,21 @@ try {
     throw new Error(`Unexpected cleanup identity: ${JSON.stringify(cleanupIdentity.rows[0])}`);
   }
   console.log('CLEANUP AUTHORITY PASS: ghm_db/ghm_migrator');
+
+  await cleanupAuthorityQuery('SET ROLE ghm_schema_owner');
+  const elevatedIdentity = await cleanupAuthorityQuery(`
+    SELECT current_database() AS database_name,
+           current_user AS current_user,
+           session_user AS session_user
+  `);
+  if (
+    elevatedIdentity.rows[0].database_name !== 'ghm_db' ||
+    elevatedIdentity.rows[0].current_user !== 'ghm_schema_owner' ||
+    elevatedIdentity.rows[0].session_user !== 'ghm_migrator'
+  ) {
+    throw new Error(`Unexpected fixture identity: ${JSON.stringify(elevatedIdentity.rows[0])}`);
+  }
+  console.log('FIXTURE SCHEMA-OWNER SESSION PASS: ghm_schema_owner/ghm_migrator');
 
   const schema = await cleanupAuthorityQuery(`
     SELECT c.relname AS table_name
@@ -315,6 +331,7 @@ try {
   if (accountIds.length > 0) {
     await cleanupAuthorityQuery(`DELETE FROM ghm.account_identity WHERE id = ANY($1::bigint[])`, [accountIds]);
   }
+  cleanupClient.release();
   await runtimePool.end();
   await cleanupPool.end();
 }
