@@ -3,7 +3,7 @@ import test from 'node:test';
 import { isRegisteredOperation, resourceRegistry } from './registry';
 
 test('resource registry contains only explicit governed resources', () => {
-  assert.deepEqual(resourceRegistry.map((definition) => definition.resource), ['profile', 'business', 'business_capability', 'project', 'customer', 'quote', 'notification', 'support_request', 'enquiry', 'review', 'opportunity', 'opportunity_participant']);
+  assert.deepEqual(resourceRegistry.map((definition) => definition.resource), ['profile', 'business', 'business_capability', 'business_hours', 'project', 'customer', 'quote', 'notification', 'support_request', 'enquiry', 'review', 'opportunity', 'opportunity_participant']);
 });
 
 test('registered operations are accepted', () => {
@@ -11,6 +11,9 @@ test('registered operations are accepted', () => {
   assert.equal(isRegisteredOperation('business', 'create'), true);
   assert.equal(isRegisteredOperation('business_capability', 'read'), true);
   assert.equal(isRegisteredOperation('business_capability', 'create'), true);
+  assert.equal(isRegisteredOperation('business_hours', 'read'), true);
+  assert.equal(isRegisteredOperation('business_hours', 'readPublic'), true);
+  assert.equal(isRegisteredOperation('business_hours', 'replace'), true);
   assert.equal(isRegisteredOperation('customer', 'read'), true);
   assert.equal(isRegisteredOperation('customer', 'create'), true);
   assert.equal(isRegisteredOperation('customer', 'update'), true);
@@ -42,6 +45,9 @@ test('unregistered operations are rejected', () => {
   assert.equal(isRegisteredOperation('profile', 'create'), false);
   assert.equal(isRegisteredOperation('business_capability', 'delete'), false);
   assert.equal(isRegisteredOperation('business_capability', 'update'), false);
+  assert.equal(isRegisteredOperation('business_hours', 'create'), false);
+  assert.equal(isRegisteredOperation('business_hours', 'update'), false);
+  assert.equal(isRegisteredOperation('business_hours', 'delete'), false);
   assert.equal(isRegisteredOperation('customer', 'delete'), false);
   assert.equal(isRegisteredOperation('quote', 'delete'), false);
   assert.equal(isRegisteredOperation('support_request', 'delete'), false);
