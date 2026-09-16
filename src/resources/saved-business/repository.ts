@@ -75,11 +75,10 @@ export class PostgresSavedBusinessRepository implements SavedBusinessRepository 
     const id = requirePositiveId(savedBusinessId, 'savedBusinessId');
     return withAuthorizedTransaction(context, async client => {
       const result = await client.query(
-        `DELETE FROM ghm.saved_business
-         WHERE id = $1 AND account_id = $2`,
-        [id, context.userId],
+        `SELECT ghm.delete_saved_business($1, $2) AS deleted`,
+        [context.userId, id],
       );
-      if (result.rowCount !== 1) throw new Error('Saved Business not found');
+      if (result.rows[0]?.deleted !== true) throw new Error('Saved Business not found');
     }, this.transactionPool);
   }
 }
