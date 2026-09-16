@@ -3,7 +3,6 @@ import type { AuthContext } from '../../auth/authorization';
 import { withAuthorizedTransaction } from '../../db/authorized-transaction';
 import type { TransactionPool } from '../../db/transaction';
 import type { CreateEnquiryInput, Enquiry, EnquiryId, EnquiryRepository, UpdateEnquiryStatusInput } from './contracts';
-import { isEnquiryStatusTransitionAllowed } from './contracts';
 
 const ENQUIRY_COLUMNS = `id, business_id, customer_id, customer_name, customer_phone, customer_email, project, description, city, budget_min, budget_max, urgency, source, status, created_at, updated_at`;
 
@@ -71,18 +70,7 @@ export class PostgresEnquiryRepository implements EnquiryRepository {
 
   async getReceivedEnquiry(context: AuthContext, enquiryId: EnquiryId): Promise<Enquiry | null> {
     assertPositiveId(enquiryId, 'enquiryId');
-    return withAuthorizedTransaction(context, async client => {
-      const result = await client.query(
-        `SELECT ${ENQUIRY_COLUMNS} FROM ghm.enquiry e
-         WHERE e.id = $1 AND EXISTS (
-           SELECT 1 FROM ghm.business_membership bm
-           WHERE bm.business_id = e.business_id AND bm.account_id = $2
-             AND bm.membership_role = 'owner' AND bm.membership_status = 'active'
-         )`,
-        [enquiryId, context.userId],
-      );
-      return result.rowCount === 1 ? mapEnquiry(result.rows[0]) : null;
-    }, this.transactionPool);
+    return withAuthorizedTransaction(context, client => this.getReceivedEnquiryInTransaction(client, context, enquiryId), this.transactionPool);
   }
 
   async updateReceivedEnquiryStatus(context: AuthContext, enquiryId: EnquiryId, input: UpdateEnquiryStatusInput): Promise<Enquiry> {
@@ -90,10 +78,6 @@ export class PostgresEnquiryRepository implements EnquiryRepository {
     return withAuthorizedTransaction(context, async client => {
       const existing = await this.getReceivedEnquiryInTransaction(client, context, enquiryId);
       if (!existing) throw new Error('Enquiry not found or business owner permission required');
-
-      if (!isEnquiryStatusTransitionAllowed(existing.status, input.status)) {
-        throw new Error('Invalid Enquiry status transition');
-      }
 
       const result = await client.query(
         `UPDATE ghm.enquiry SET status = $2 WHERE id = $1 RETURNING ${ENQUIRY_COLUMNS}`,
