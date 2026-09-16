@@ -12,6 +12,9 @@ test('registered operations are accepted', () => {
   assert.equal(isRegisteredOperation('customer', 'read'), true);
   assert.equal(isRegisteredOperation('customer', 'create'), true);
   assert.equal(isRegisteredOperation('customer', 'update'), true);
+  assert.equal(isRegisteredOperation('quote', 'read'), true);
+  assert.equal(isRegisteredOperation('quote', 'create'), true);
+  assert.equal(isRegisteredOperation('quote', 'update'), true);
   assert.equal(isRegisteredOperation('notification', 'update'), true);
   assert.equal(isRegisteredOperation('enquiry', 'read'), true);
   assert.equal(isRegisteredOperation('enquiry', 'create'), true);
@@ -34,6 +37,7 @@ test('registered operations are accepted', () => {
 test('unregistered operations are rejected', () => {
   assert.equal(isRegisteredOperation('profile', 'create'), false);
   assert.equal(isRegisteredOperation('customer', 'delete'), false);
+  assert.equal(isRegisteredOperation('quote', 'delete'), false);
   assert.equal(isRegisteredOperation('notification', 'create'), false);
   assert.equal(isRegisteredOperation('support_request', 'delete'), false);
   assert.equal(isRegisteredOperation('enquiry', 'delete'), false);
