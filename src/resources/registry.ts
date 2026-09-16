@@ -12,7 +12,8 @@ export type ResourceOperation =
   | 'transition'
   | 'updateStatus'
   | 'readMessages'
-  | 'reply'
+  | 'replyAsCustomer'
+  | 'replyAsAdmin'
   | 'delete';
 
 export interface ResourceDefinition {
@@ -27,7 +28,7 @@ export const resourceRegistry: readonly ResourceDefinition[] = [
   { resource: 'customer', operations: ['read', 'create', 'update'] },
   { resource: 'quote', operations: ['read', 'create', 'update'] },
   { resource: 'notification', operations: ['read', 'create', 'update'] },
-  { resource: 'support_request', operations: ['read', 'create', 'updateStatus', 'readMessages', 'reply'] },
+  { resource: 'support_request', operations: ['read', 'create', 'updateStatus', 'readMessages', 'replyAsCustomer', 'replyAsAdmin'] },
   { resource: 'enquiry', operations: ['read', 'create', 'update'] },
   { resource: 'review', operations: ['create', 'readOwn', 'readPublic', 'readPending', 'approve', 'reject'] },
   { resource: 'opportunity', operations: ['read', 'create', 'update', 'transition'] },
