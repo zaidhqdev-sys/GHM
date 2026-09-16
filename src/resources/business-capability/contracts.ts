@@ -46,7 +46,6 @@ export interface BusinessCapability {
   readonly updatedAt: Date;
 }
 
-/** Initial mutation surface. Verification/lifecycle fields are server-governed and not caller-settable. */
 export interface CreateBusinessCapabilityInput {
   readonly businessId: BusinessId;
   readonly capabilityId: CapabilityId;
