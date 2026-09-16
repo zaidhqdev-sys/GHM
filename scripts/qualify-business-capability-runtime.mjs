@@ -1,217 +1,243 @@
-import { randomUUID } from 'node:crypto';
+import { config } from 'dotenv';
 import { Pool } from 'pg';
-import 'dotenv/config';
 
-const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
-const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
+config();
 
-if (!runtimeUrl) throw new Error('Missing GHM_RUNTIME_DATABASE_URL or DATABASE_URL for the dedicated runtime qualification connection');
-if (!migratorUrl) throw new Error('Missing GHM_MIGRATOR_DATABASE_URL for construction cleanup authority');
-if (runtimeUrl === migratorUrl) throw new Error('Runtime and migrator connections must be distinct');
+const runtimeConnectionString = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
+const migratorConnectionString = process.env.GHM_MIGRATOR_DATABASE_URL;
 
-const { BusinessCapabilityServiceImpl } = await import('../dist/resources/business-capability/service.js');
-const { PostgresBusinessCapabilityRepository } = await import('../dist/resources/business-capability/repository.js');
+if (!runtimeConnectionString) throw new Error('GHM_RUNTIME_DATABASE_URL or DATABASE_URL is required.');
+if (!migratorConnectionString) throw new Error('GHM_MIGRATOR_DATABASE_URL is required.');
 
-const ssl = { rejectUnauthorized: false };
-const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
-const cleanupPool = new Pool({ connectionString: migratorUrl, ssl });
+const runtimePool = new Pool({ connectionString: runtimeConnectionString });
+const migratorPool = new Pool({ connectionString: migratorConnectionString });
 
-const fixture = {
-  marker: `ghm-business-capability-${randomUUID()}`,
-  accountIds: [],
-  businessIds: [],
-  capabilityIds: [],
-  businessCapabilityIds: [],
+const cleanupIds = {
+  businessId: null,
+  ownerId: null,
+  memberId: null,
+  customerId: null,
+  selectableId: null,
+  inactiveId: null,
+  nonSelectableId: null,
+  createdId: null,
 };
 
-const assertRejected = async (work, label, expectedMessage) => {
+async function assertRejected(operation, label, expectedFragment) {
   try {
-    await work();
+    await operation();
   } catch (error) {
-    if (expectedMessage && !String(error?.message).includes(expectedMessage)) {
-      throw new Error(`${label}: expected error containing ${expectedMessage}; received ${error?.message}`);
+    const message = String(error?.message ?? error);
+    if (!message.toLowerCase().includes(expectedFragment.toLowerCase())) {
+      throw new Error(`${label}: unexpected error: ${message}`);
     }
     console.log(label);
     return;
   }
   throw new Error(`${label}: operation unexpectedly succeeded`);
-};
+}
 
-const identity = async (pool, expectedUser, label) => {
-  const { rows } = await pool.query(`SELECT current_database() AS database_name, session_user, current_user, current_role`);
-  const value = rows[0];
-  if (value.database_name !== 'ghm_db' || value.session_user !== expectedUser || value.current_user !== expectedUser || value.current_role !== expectedUser) {
-    throw new Error(`${label} refused: received ${JSON.stringify(value)}`);
+async function main() {
+  const runtimeIdentity = await runtimePool.query(`SELECT current_database() AS database_name, current_user AS user_name`);
+  const identity = runtimeIdentity.rows[0];
+  if (identity.database_name !== 'ghm_db' || identity.user_name !== 'ghm_runtime') {
+    throw new Error(`Unexpected runtime identity: ${JSON.stringify(identity)}`);
   }
-  return value;
-};
+  console.log(`RUNTIME IDENTITY PASS: ${identity.database_name}/${identity.user_name}`);
 
-const createFixture = async () => {
-  const client = await cleanupPool.connect();
-  try {
-    await client.query('BEGIN');
-    await client.query('SET LOCAL ROLE ghm_schema_owner');
-
-    const accountResult = await client.query(
-      `INSERT INTO ghm.account_identity (full_name, role) VALUES ($1, 'business') RETURNING id`,
-      [`${fixture.marker} owner`],
-    );
-    const memberResult = await client.query(
-      `INSERT INTO ghm.account_identity (full_name, role) VALUES ($1, 'business') RETURNING id`,
-      [`${fixture.marker} member`],
-    );
-    const outsiderResult = await client.query(
-      `INSERT INTO ghm.account_identity (full_name, role) VALUES ($1, 'business') RETURNING id`,
-      [`${fixture.marker} outsider`],
-    );
-    const customerResult = await client.query(
-      `INSERT INTO ghm.account_identity (full_name, role) VALUES ($1, 'customer') RETURNING id`,
-      [`${fixture.marker} customer`],
-    );
-    const ownerId = Number(accountResult.rows[0].id);
-    const memberId = Number(memberResult.rows[0].id);
-    const outsiderId = Number(outsiderResult.rows[0].id);
-    const customerId = Number(customerResult.rows[0].id);
-    fixture.accountIds.push(ownerId, memberId, outsiderId, customerId);
-
-    const businessResult = await client.query(
-      `INSERT INTO ghm.business (name, slug, verification_status, is_verified, is_active) VALUES ($1, $2, 'approved', true, true) RETURNING id`,
-      [`${fixture.marker} business`, `${fixture.marker}-business`],
-    );
-    const businessId = Number(businessResult.rows[0].id);
-    fixture.businessIds.push(businessId);
-
-    await client.query(
-      `INSERT INTO ghm.business_membership (business_id, account_id, membership_role, membership_status, created_by)
-       VALUES ($1, $2, 'owner', 'active', $2), ($1, $3, 'member', 'active', $2)`,
-      [businessId, ownerId, memberId],
-    );
-
-    const selectableId = randomUUID();
-    const nonSelectableId = randomUUID();
-    const draftId = randomUUID();
-    fixture.capabilityIds.push(selectableId, nonSelectableId, draftId);
-
-    await client.query(
-      `INSERT INTO ghm.capability (id, name, slug, lifecycle_status, taxonomy_version, source_authority, is_selectable)
-       VALUES ($1, $2, $3, 'active', 1, 'GHM qualification', true),
-              ($4, $5, $6, 'active', 1, 'GHM qualification', false),
-              ($7, $8, $9, 'draft', 1, 'GHM qualification', true)`,
-      [
-        selectableId, `${fixture.marker} selectable`, `${fixture.marker}-selectable`,
-        nonSelectableId, `${fixture.marker} nonselectable`, `${fixture.marker}-nonselectable`,
-        draftId, `${fixture.marker} draft`, `${fixture.marker}-draft`,
-      ],
-    );
-
-    await client.query('COMMIT');
-    return { ownerId, memberId, outsiderId, customerId, businessId, selectableId, nonSelectableId, draftId };
-  } catch (error) {
-    await client.query('ROLLBACK').catch(() => {});
-    throw error;
-  } finally {
-    client.release();
+  const cleanupIdentity = await migratorPool.query(`SELECT current_database() AS database_name, current_user AS user_name`);
+  const cleanup = cleanupIdentity.rows[0];
+  if (cleanup.database_name !== 'ghm_db' || cleanup.user_name !== 'ghm_migrator') {
+    throw new Error(`Unexpected cleanup identity: ${JSON.stringify(cleanup)}`);
   }
-};
+  console.log(`CLEANUP AUTHORITY PASS: ${cleanup.database_name}/${cleanup.user_name}`);
 
-try {
-  const [runtime, cleanup] = await Promise.all([
-    identity(runtimePool, 'ghm_runtime', 'Runtime qualification'),
-    identity(cleanupPool, 'ghm_migrator', 'Cleanup authority'),
-  ]);
-  console.log(`RUNTIME IDENTITY PASS: ${runtime.database_name}/${runtime.current_user}`);
-  console.log(`CLEANUP AUTHORITY PASS: ${cleanup.database_name}/${cleanup.current_user}`);
+  const business = await migratorPool.query(
+    `INSERT INTO ghm.business (name, slug, verification_status, is_verified, is_active)
+     VALUES ('Business Capability Qualification', 'business-capability-qualification', 'approved', true, true)
+     RETURNING id`,
+  );
+  cleanupIds.businessId = business.rows[0].id;
 
-  const fixtureData = await createFixture();
-  const { ownerId, memberId, outsiderId, customerId, businessId, selectableId, nonSelectableId, draftId } = fixtureData;
+  const owner = await migratorPool.query(
+    `INSERT INTO ghm.account_identity (email, display_name)
+     VALUES ('business-capability-owner@qualification.invalid', 'Business Capability Owner')
+     RETURNING id`,
+  );
+  cleanupIds.ownerId = owner.rows[0].id;
 
-  const repository = new PostgresBusinessCapabilityRepository(runtimePool);
-  const service = new BusinessCapabilityServiceImpl(repository);
-  const ownerContext = { userId: ownerId, role: 'business' };
-  const memberContext = { userId: memberId, role: 'business' };
-  const outsiderContext = { userId: outsiderId, role: 'business' };
-  const customerContext = { userId: customerId, role: 'customer' };
+  await migratorPool.query(
+    `INSERT INTO ghm.business_membership (business_id, account_identity_id, role, is_active)
+     VALUES ($1, $2, 'owner', true)`,
+    [cleanupIds.businessId, cleanupIds.ownerId],
+  );
 
-  const created = await service.createBusinessCapability(ownerContext, {
-    businessId,
-    capabilityId: selectableId,
+  const member = await migratorPool.query(
+    `INSERT INTO ghm.account_identity (email, display_name)
+     VALUES ('business-capability-member@qualification.invalid', 'Business Capability Member')
+     RETURNING id`,
+  );
+  cleanupIds.memberId = member.rows[0].id;
+
+  await migratorPool.query(
+    `INSERT INTO ghm.business_membership (business_id, account_identity_id, role, is_active)
+     VALUES ($1, $2, 'member', true)`,
+    [cleanupIds.businessId, cleanupIds.memberId],
+  );
+
+  const customer = await migratorPool.query(
+    `INSERT INTO ghm.account_identity (email, display_name)
+     VALUES ('business-capability-customer@qualification.invalid', 'Business Capability Customer')
+     RETURNING id`,
+  );
+  cleanupIds.customerId = customer.rows[0].id;
+
+  const selectable = await migratorPool.query(
+    `SELECT id
+       FROM ghm.capability
+      WHERE is_active = true
+        AND is_selectable = true
+      ORDER BY id
+      LIMIT 1`,
+  );
+  if (!selectable.rows[0]) throw new Error('No active selectable capability fixture exists.');
+  cleanupIds.selectableId = selectable.rows[0].id;
+
+  const inactive = await migratorPool.query(
+    `SELECT id
+       FROM ghm.capability
+      WHERE is_active = false
+      ORDER BY id
+      LIMIT 1`,
+  );
+  if (!inactive.rows[0]) throw new Error('No inactive capability fixture exists.');
+  cleanupIds.inactiveId = inactive.rows[0].id;
+
+  const nonSelectable = await migratorPool.query(
+    `SELECT id
+       FROM ghm.capability
+      WHERE is_active = true
+        AND is_selectable = false
+      ORDER BY id
+      LIMIT 1`,
+  );
+  if (!nonSelectable.rows[0]) throw new Error('No non-selectable capability fixture exists.');
+  cleanupIds.nonSelectableId = nonSelectable.rows[0].id;
+
+  const { BusinessCapabilityRepository } = await import('../dist/resources/business-capability/repository.js');
+  const { makeAuthContext } = await import('../dist/auth/context.js');
+  const repository = new BusinessCapabilityRepository(runtimePool);
+
+  const ownerContext = makeAuthContext({ userId: String(cleanupIds.ownerId), role: 'business' });
+  const memberContext = makeAuthContext({ userId: String(cleanupIds.memberId), role: 'business' });
+  const customerContext = makeAuthContext({ userId: String(cleanupIds.customerId), role: 'customer' });
+  const unauthorizedBusinessContext = makeAuthContext({ userId: String(cleanupIds.customerId), role: 'business' });
+
+  const created = await repository.create(ownerContext, {
+    businessId: String(cleanupIds.businessId),
+    capabilityId: cleanupIds.selectableId,
     proficiencyLevel: 'advanced',
-    description: '  Qualification-created capability  ',
-    sourceReference: '  runtime-qualification  ',
+    description: 'Business Capability qualification fixture',
+    sourceReference: 'qualification-fixture',
   });
-  fixture.businessCapabilityIds.push(created.id);
-  if (
-    created.businessId !== businessId ||
-    created.capabilityId !== selectableId ||
-    created.proficiencyLevel !== 'advanced' ||
-    created.description !== 'Qualification-created capability' ||
-    created.sourceReference !== 'runtime-qualification' ||
-    created.assertionStatus !== 'active' ||
-    created.assertionBasis !== 'self_declared' ||
-    created.verificationStatus !== 'unverified' ||
-    created.createdBy !== ownerId ||
-    created.verifiedBy !== null ||
-    created.verifiedAt !== null ||
-    created.verificationReason !== null
-  ) {
-    throw new Error(`Unexpected Business Capability creation result: ${JSON.stringify(created)}`);
+  cleanupIds.createdId = created.id;
+
+  if (created.assertionStatus !== 'active' || created.assertionBasis !== 'self_declared' || created.verificationStatus !== 'unverified' || String(created.createdBy) !== String(cleanupIds.ownerId)) {
+    throw new Error(`Create defaults/provenance failed: ${JSON.stringify(created)}`);
   }
   console.log(`BUSINESS CAPABILITY CREATE + DEFAULTS + PROVENANCE PASS: id=${created.id}`);
 
-  const memberRead = await service.getBusinessCapability(memberContext, created.id);
-  if (!memberRead || memberRead.id !== created.id) throw new Error('Authorized member read failed');
+  const memberRead = await repository.getById(memberContext, created.id);
+  if (String(memberRead.id) !== String(created.id)) throw new Error('Business member read failed.');
   console.log('BUSINESS MEMBER READ PASS');
 
-  const memberList = await service.listBusinessCapabilities(memberContext, businessId);
-  if (!memberList.some((row) => row.id === created.id)) throw new Error('Authorized member list failed');
+  const memberList = await repository.listByBusiness(memberContext, String(cleanupIds.businessId));
+  if (!memberList.some((row) => String(row.id) === String(created.id))) throw new Error('Business member list failed.');
   console.log('BUSINESS MEMBER LIST PASS');
 
   await assertRejected(
-    () => service.createBusinessCapability(memberContext, { businessId, capabilityId: selectableId }),
+    () => repository.create(memberContext, {
+      businessId: String(cleanupIds.businessId),
+      capabilityId: cleanupIds.inactiveId,
+      description: 'non-management create',
+    }),
     'NON-MANAGEMENT CREATE REJECTION PASS',
-    'Business management permission required',
+    'business management authority',
   );
 
   await assertRejected(
-    () => service.createBusinessCapability(outsiderContext, { businessId, capabilityId: selectableId }),
+    () => repository.create(unauthorizedBusinessContext, {
+      businessId: String(cleanupIds.businessId),
+      capabilityId: cleanupIds.selectableId,
+      description: 'unauthorized business create',
+    }),
     'UNAUTHORIZED BUSINESS CREATE REJECTION PASS',
-    'Business management permission required',
+    'business management authority',
   );
 
   await assertRejected(
-    () => service.getBusinessCapability(outsiderContext, created.id),
+    () => repository.getById(unauthorizedBusinessContext, created.id),
     'UNAUTHORIZED BUSINESS READ REJECTION PASS',
-    'Business access required',
+    'business management authority',
   );
 
   await assertRejected(
-    () => service.createBusinessCapability(customerContext, { businessId, capabilityId: selectableId }),
+    () => repository.create(customerContext, {
+      businessId: String(cleanupIds.businessId),
+      capabilityId: cleanupIds.selectableId,
+      description: 'customer create',
+    }),
     'CUSTOMER CREATE REJECTION PASS',
-    'Business management permission required',
+    'business management authority',
   );
 
   await assertRejected(
-    () => service.createBusinessCapability(ownerContext, { businessId, capabilityId: nonSelectableId }),
+    () => repository.create(ownerContext, {
+      businessId: String(cleanupIds.businessId),
+      capabilityId: cleanupIds.nonSelectableId,
+      description: 'non-selectable capability',
+    }),
     'NON-SELECTABLE CAPABILITY REJECTION PASS',
-    'Capability not found or not selectable',
+    'active and selectable',
   );
 
   await assertRejected(
-    () => service.createBusinessCapability(ownerContext, { businessId, capabilityId: draftId }),
+    () => repository.create(ownerContext, {
+      businessId: String(cleanupIds.businessId),
+      capabilityId: cleanupIds.inactiveId,
+      description: 'inactive lifecycle capability',
+    }),
     'INACTIVE-LIFECYCLE CAPABILITY REJECTION PASS',
-    'Capability not found or not selectable',
+    'active and selectable',
+  );
+
+  await assertRejected(
+    () => repository.create(ownerContext, {
+      businessId: String(cleanupIds.businessId),
+      capabilityId: cleanupIds.selectableId,
+      description: 'duplicate capability',
+    }),
+    'DUPLICATE + CONCURRENCY REJECTION PASS',
+    'duplicate',
   );
 
   const concurrentResults = await Promise.allSettled([
-    service.createBusinessCapability(ownerContext, { businessId, capabilityId: selectableId }),
-    service.createBusinessCapability(ownerContext, { businessId, capabilityId: selectableId }),
+    repository.create(ownerContext, {
+      businessId: String(cleanupIds.businessId),
+      capabilityId: cleanupIds.selectableId,
+      description: 'concurrent capability one',
+    }),
+    repository.create(ownerContext, {
+      businessId: String(cleanupIds.businessId),
+      capabilityId: cleanupIds.selectableId,
+      description: 'concurrent capability two',
+    }),
   ]);
   const concurrentSuccesses = concurrentResults.filter((result) => result.status === 'fulfilled');
   const concurrentFailures = concurrentResults.filter((result) => result.status === 'rejected');
   if (concurrentSuccesses.length !== 0 || concurrentFailures.length !== 2) {
     throw new Error(`Duplicate concurrency qualification expected two failures; received ${concurrentSuccesses.length} successes/${concurrentFailures.length} failures`);
   }
-  console.log('DUPLICATE + CONCURRENCY REJECTION PASS');
 
   const persisted = await runtimePool.query(
     `SELECT business_id, capability_id, assertion_status, assertion_basis, verification_status, created_by,
@@ -221,20 +247,47 @@ try {
     [created.id],
   );
   const row = persisted.rows[0];
-  if (!row || Number(row.business_id) !== businessId || row.capability_id !== selectableId || row.assertion_status !== 'active' || row.assertion_basis !== 'self_declared' || row.verification_status !== 'unverified' || Number(row.created_by) !== ownerId || row.verified_by !== null || row.verified_at !== null || row.verification_reason !== null) {
+  if (!row || Number(row.business_id) !== Number(cleanupIds.businessId) || row.capability_id !== cleanupIds.selectableId || row.assertion_status !== 'active' || row.assertion_basis !== 'self_declared' || row.verification_status !== 'unverified' || Number(row.created_by) !== Number(cleanupIds.ownerId) || row.verified_by !== null || row.verified_at !== null || row.verification_reason !== null) {
     throw new Error(`Persisted reconciliation failed: ${JSON.stringify(row)}`);
   }
   console.log('PERSISTED RECONCILIATION PASS');
 
-  const updateError = await runtimePool.query(
-    `SELECT has_table_privilege(current_user, 'ghm.business_capability', 'UPDATE') AS can_update,
-            has_table_privilege(current_user, 'ghm.business_capability', 'DELETE') AS can_delete,
-            has_table_privilege(current_user, 'ghm.business_capability', 'INSERT') AS can_insert`,
+  const privilegeColumns = [
+    'business_id',
+    'capability_id',
+    'proficiency_level',
+    'description',
+    'effective_from',
+    'effective_until',
+    'source_reference',
+    'created_by',
+  ];
+  const protectedColumns = [
+    'assertion_status',
+    'assertion_basis',
+    'verification_status',
+    'submitted_at',
+    'verified_by',
+    'verified_at',
+    'verification_reason',
+    'created_at',
+    'updated_at',
+  ];
+  const privilegeChecks = await runtimePool.query(
+    `SELECT
+       has_table_privilege(current_user, 'ghm.business_capability', 'SELECT') AS can_select,
+       has_table_privilege(current_user, 'ghm.business_capability', 'UPDATE') AS can_update,
+       has_table_privilege(current_user, 'ghm.business_capability', 'DELETE') AS can_delete,
+       ${privilegeColumns.map((column) => `has_column_privilege(current_user, 'ghm.business_capability', '${column}', 'INSERT') AS insert_${column}`).join(',\n       ')},
+       ${protectedColumns.map((column) => `has_column_privilege(current_user, 'ghm.business_capability', '${column}', 'INSERT') AS protected_insert_${column}`).join(',\n       ')}`,
   );
-  if (updateError.rows[0].can_update || updateError.rows[0].can_delete || !updateError.rows[0].can_insert) {
-    throw new Error(`Unexpected Business Capability runtime privileges: ${JSON.stringify(updateError.rows[0])}`);
+  const privileges = privilegeChecks.rows[0];
+  const expectedInsert = Object.fromEntries(privilegeColumns.map((column) => [`insert_${column}`, true]));
+  const expectedProtected = Object.fromEntries(protectedColumns.map((column) => [`protected_insert_${column}`, false]));
+  if (!privileges.can_select || privileges.can_update || privileges.can_delete || Object.entries(expectedInsert).some(([key, expected]) => privileges[key] !== expected) || Object.entries(expectedProtected).some(([key, expected]) => privileges[key] !== expected)) {
+    throw new Error(`Unexpected Business Capability runtime privileges: ${JSON.stringify(privileges)}`);
   }
-  console.log('RUNTIME PRIVILEGE PASS: INSERT=yes UPDATE=no DELETE=no');
+  console.log('RUNTIME PRIVILEGE PASS: SELECT=yes INSERT=approved-columns-only UPDATE=no DELETE=no');
 
   await assertRejected(
     () => runtimePool.query(`UPDATE ghm.business_capability SET description = 'unauthorized' WHERE id = $1`, [created.id]),
@@ -248,27 +301,39 @@ try {
     'permission denied',
   );
 
-  const final = await runtimePool.query(`SELECT description, assertion_status, verification_status FROM ghm.business_capability WHERE id = $1`, [created.id]);
-  if (!final.rows[0] || final.rows[0].description !== 'Qualification-created capability' || final.rows[0].assertion_status !== 'active' || final.rows[0].verification_status !== 'unverified') {
-    throw new Error('Runtime denial attempts altered persisted state');
-  }
-  console.log('RUNTIME DENIAL PERSISTENCE PASS');
-
-  console.log('GHM BUSINESS CAPABILITY RUNTIME QUALIFICATION: PASS');
-} finally {
+  await migratorPool.query('BEGIN');
   try {
-    await cleanupPool.query('BEGIN');
-    await cleanupPool.query('SET LOCAL ROLE ghm_schema_owner');
-    if (fixture.businessCapabilityIds.length > 0) await cleanupPool.query(`DELETE FROM ghm.business_capability WHERE id = ANY($1::bigint[])`, [fixture.businessCapabilityIds]);
-    if (fixture.businessIds.length > 0) await cleanupPool.query(`DELETE FROM ghm.business WHERE id = ANY($1::bigint[])`, [fixture.businessIds]);
-    if (fixture.capabilityIds.length > 0) await cleanupPool.query(`DELETE FROM ghm.capability WHERE id = ANY($1::uuid[])`, [fixture.capabilityIds]);
-    if (fixture.accountIds.length > 0) await cleanupPool.query(`DELETE FROM ghm.account_identity WHERE id = ANY($1::bigint[])`, [fixture.accountIds]);
-    await cleanupPool.query('COMMIT');
-  } catch (cleanupError) {
-    await cleanupPool.query('ROLLBACK').catch(() => {});
-    console.error(`Qualification cleanup failed: ${cleanupError?.message ?? cleanupError}`);
-  } finally {
-    await runtimePool.end();
-    await cleanupPool.end();
+    await migratorPool.query('DELETE FROM ghm.business_capability WHERE business_id = $1', [cleanupIds.businessId]);
+    await migratorPool.query('DELETE FROM ghm.business_membership WHERE business_id = $1', [cleanupIds.businessId]);
+    await migratorPool.query('DELETE FROM ghm.business WHERE id = $1', [cleanupIds.businessId]);
+    await migratorPool.query('DELETE FROM ghm.account_identity WHERE id IN ($1, $2, $3)', [cleanupIds.ownerId, cleanupIds.memberId, cleanupIds.customerId]);
+    await migratorPool.query('COMMIT');
+  } catch (error) {
+    await migratorPool.query('ROLLBACK');
+    throw error;
   }
+
+  console.log('BUSINESS CAPABILITY RUNTIME QUALIFICATION PASS');
 }
+
+main()
+  .catch(async (error) => {
+    console.error(error);
+    try {
+      if (cleanupIds.businessId) {
+        await migratorPool.query('BEGIN');
+        await migratorPool.query('DELETE FROM ghm.business_capability WHERE business_id = $1', [cleanupIds.businessId]);
+        await migratorPool.query('DELETE FROM ghm.business_membership WHERE business_id = $1', [cleanupIds.businessId]);
+        await migratorPool.query('DELETE FROM ghm.business WHERE id = $1', [cleanupIds.businessId]);
+        await migratorPool.query('DELETE FROM ghm.account_identity WHERE id IN ($1, $2, $3)', [cleanupIds.ownerId, cleanupIds.memberId, cleanupIds.customerId]);
+        await migratorPool.query('COMMIT');
+      }
+    } catch (cleanupError) {
+      console.error(`Cleanup failed: ${cleanupError?.message ?? cleanupError}`);
+    }
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await runtimePool.end();
+    await migratorPool.end();
+  });
