@@ -45,6 +45,14 @@ const assertPublicBusiness = async (client: any, businessId: number): Promise<vo
   if (result.rowCount !== 1) throw new Error('Public Business not found');
 };
 
+const toDatabaseHours = (input: ReplaceBusinessHoursInput['hours']) =>
+  input.map(hour => ({
+    day_of_week: hour.dayOfWeek,
+    is_closed: hour.isClosed,
+    open_time: hour.openTime ?? null,
+    close_time: hour.closeTime ?? null,
+  }));
+
 export class PostgresBusinessHoursRepository implements BusinessHoursRepository {
   constructor(private readonly transactionPool?: TransactionPool) {}
 
@@ -76,7 +84,7 @@ export class PostgresBusinessHoursRepository implements BusinessHoursRepository 
         `SELECT ${COLUMNS}
          FROM ghm.replace_business_hours($1, $2, $3::jsonb)
          ORDER BY day_of_week ASC, id ASC`,
-        [input.businessId, context.userId, JSON.stringify(input.hours)],
+        [input.businessId, context.userId, JSON.stringify(toDatabaseHours(input.hours))],
       );
       return result.rows.map(mapBusinessHours);
     }, this.transactionPool);
