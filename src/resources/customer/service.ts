@@ -27,7 +27,7 @@ const validateCreateInput = (input: CreateCustomerInput): CreateCustomerInput =>
   };
 };
 
-const validateStatus = (status: unknown): asserts status is CustomerStatus => {
+const validateStatus: (status: unknown) => asserts status is CustomerStatus = (status) => {
   if (status !== 'active' && status !== 'archived') {
     throw new Error('Invalid Customer status');
   }
