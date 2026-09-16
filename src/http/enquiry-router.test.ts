@@ -22,6 +22,7 @@ const enquiryFixture = (overrides: Partial<Enquiry> = {}): Enquiry => ({
   urgency: 'standard',
   source: 'marketplace',
   status: 'new',
+  opportunityId: null,
   createdAt: new Date('2026-09-11T00:00:00.000Z'),
   updatedAt: new Date('2026-09-11T00:00:00.000Z'),
   ...overrides,
