@@ -40,7 +40,7 @@ test('Support Request service allows customer creation and normalizes text', asy
 
 test('Support Request service rejects non-customer creation', async () => {
   const service = new SupportRequestServiceImpl(repository());
-  await assert.rejects(service.createSupportRequest(business, { category: 'technical', subject: 'Login issue', description: 'Unable to complete login from the workspace.' }), /Customer role required/);
+  await assert.rejects(service.createSupportRequest(business, { category: 'technical', subject: 'Login issue', description: 'Unable to complete login from the workspace.' }), /Insufficient role/);
 });
 
 test('Support Request service rejects invalid subject and description lengths', async () => {
@@ -72,7 +72,7 @@ test('Support Request service separates customer and admin reply authority', asy
   await service.replyAsAdmin(admin, 1, '  Admin reply  ');
   assert.equal(customerCalled, true);
   assert.equal(adminCalled, true);
-  await assert.rejects(service.replyAsCustomer(admin, 1, 'Reply'), /Customer role required/);
+  await assert.rejects(service.replyAsCustomer(admin, 1, 'Reply'), /Insufficient role/);
   await assert.rejects(service.replyAsAdmin(customer, 1, 'Reply'), /Insufficient role/);
 });
 
