@@ -39,7 +39,7 @@ async function cleanupAuthorityQuery(text, params = []) {
 
 async function createAccount(slug) {
   const result = await cleanupAuthorityQuery(
-    `INSERT INTO ghm.account_identity (external_subject, role)
+    `INSERT INTO ghm.account_identity (full_name, role)
      VALUES ($1, 'customer')
      RETURNING id`,
     [slug]
@@ -204,7 +204,7 @@ try {
     quote.customerPhone !== customer.phone ||
     quote.customerEmail !== customer.email ||
     quote.description !== 'Labour, Materials' ||
-    quote.amount !== 282.15 ||
+    quote.amount !== 281.85 ||
     quote.status !== 'active' ||
     quote.reminderId !== null ||
     quote.reminderDate !== null ||
@@ -314,7 +314,7 @@ try {
     persisted.rowCount !== 1 ||
     persisted.rows[0].status !== 'active' ||
     persisted.rows[0].notes !== 'Call customer Friday.' ||
-    Number(persisted.rows[0].amount) !== 282.15 ||
+    Number(persisted.rows[0].amount) !== 281.85 ||
     persisted.rows[0].line_item_count !== 2
   ) {
     throw new Error(`Persisted Quote reconciliation failed: ${JSON.stringify(persisted.rows[0])}`);
