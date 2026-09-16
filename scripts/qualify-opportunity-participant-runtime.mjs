@@ -111,6 +111,7 @@ try {
   if (schema.rows[0].participant_table !== 'ghm.opportunity_participant') throw new Error('Opportunity participant table is not present');
   console.log('PARTICIPANT SCHEMA PRESENCE PASS');
 
+  await cleanupPool.query('SET ROLE ghm_schema_owner');
   const privilege = await cleanupPool.query(`
     SELECT privilege_type FROM information_schema.role_table_grants
     WHERE grantee = 'ghm_runtime' AND table_schema = 'ghm' AND table_name = 'opportunity_participant'
@@ -273,12 +274,11 @@ try {
     'PARTICIPANT UPDATE DEFERRED AUTHORITY PASS',
   );
 
-  const runtimeUpdate = await assertRejected(
+  await assertRejected(
     () => directRuntimeQuery(`UPDATE ghm.opportunity_participant SET participation_status = 'completed' WHERE id = $1`, [accountParticipant.id]),
     null,
     'RUNTIME DIRECT UPDATE DENIAL PASS',
   );
-  void runtimeUpdate;
 
   const visible = await participantService.listOpportunityParticipants(ownerContext, opportunity.id);
   if (visible.length !== 4) throw new Error(`Expected four participants after qualification writes, received ${visible.length}`);
