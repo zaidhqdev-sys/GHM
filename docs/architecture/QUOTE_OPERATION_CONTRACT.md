@@ -75,7 +75,7 @@ Input contains only creation-authorized values:
 ```text
 customerId
 lineItems
-afollowUpDate
+followUpDate
 ```
 
 The implementation derives:
@@ -159,24 +159,23 @@ won
 lost
 ```
 
-Supported source-backed behavior:
+The production source exposes `setQuoteStatus(id, status)` for any differing target within the exact `active | won | lost` vocabulary. It does not establish a narrower transition graph. Therefore GHM must not invent one.
+
+Source-backed behavior is:
 
 ```text
-active -> won
-active -> lost
-won   -> active
-lost  -> active
+any current status -> any different allowed status
 ```
 
 Setting the same status is an idempotent no-op at the product behavior level.
 
-No other transition is authorized by this contract.
+No status outside the exact vocabulary is authorized by this contract.
 
 ## 10. Reminder metadata behavior
 
 When status changes, existing reminder metadata is cleared.
 
-When reopening to `active`, the existing follow-up date is retained and an external application adapter may schedule a replacement reminder.
+When the resulting status is `active`, the existing follow-up date is retained and an external application adapter may schedule a replacement reminder.
 
 GHM itself does not schedule device notifications.
 
@@ -343,8 +342,8 @@ Quote operation qualification must prove:
 10. description is derived correctly;
 11. follow-up date is validated;
 12. exact status vocabulary is enforced;
-13. source-backed status transitions pass;
-14. unsupported status transitions fail;
+13. all source-backed differing status changes pass;
+14. invalid status values fail;
 15. notes-only mutation cannot alter other Quote fields;
 16. reminder metadata follows the source-backed lifecycle boundary;
 17. unauthorized reads fail;
@@ -358,9 +357,7 @@ Quote operation qualification must prove:
 
 ## 21. Dependency gate
 
-Implementation of this operation contract is authorized only after the GHM Customer resource required by the schema contract has been constructed and qualified.
-
-Until then this document is the frozen provider-neutral Quote operation boundary, not authorization to invent a Customer implementation inside Quote.
+The GHM Customer resource required by the schema contract is now constructed and runtime-qualified. The Quote implementation may proceed against this frozen operation boundary.
 
 ## 22. Production safety
 
