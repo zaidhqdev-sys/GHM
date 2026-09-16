@@ -70,7 +70,10 @@ try {
   if (!ownRead || ownRead.accountId !== fixture.ownerId) throw new Error('Owner item read failed');
   console.log('OWNER ITEM READ PASS');
 
-  await expectReject(() => service.getSavedBusiness(outsiderContext, created.id), 'CROSS-ACCOUNT READ REJECTION PASS');
+  const outsiderRead = await service.getSavedBusiness(outsiderContext, created.id);
+  if (outsiderRead !== null) throw new Error('Cross-account read returned another account\'s Saved Business');
+  console.log('CROSS-ACCOUNT READ REJECTION PASS');
+
   await expectReject(() => service.deleteSavedBusiness(outsiderContext, created.id), 'CROSS-ACCOUNT DELETE REJECTION PASS');
   await expectReject(() => service.createSavedBusiness(ownerContext, { businessId: fixture.inactiveBusinessId }), 'INACTIVE BUSINESS REJECTION PASS');
   await expectReject(() => service.createSavedBusiness(ownerContext, { businessId: fixture.unverifiedBusinessId }), 'UNVERIFIED BUSINESS REJECTION PASS');
