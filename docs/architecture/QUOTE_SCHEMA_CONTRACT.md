@@ -22,14 +22,7 @@ The exact organization-to-`ghm.account_identity` mapping remains governed by the
 
 QuoteFlow requires a registered active Customer when creating a Quote. Customer is a distinct product concept and is not equivalent to `ghm.account_identity`.
 
-GHM currently has no qualified Customer resource. Therefore:
-
-- `customer_id` is a required logical Quote relationship;
-- it must eventually reference a canonical GHM Customer resource;
-- it must not reference `ghm.account_identity` merely to make the migration convenient;
-- Quote migration implementation must not invent a second customer identity model inside `ghm.quote`.
-
-The Customer capability is therefore a prerequisite for the final foreign-keyed Quote migration.
+The canonical GHM Customer resource is now constructed and runtime-qualified. `customer_id` therefore references `ghm.customer(id)` and Quote construction may proceed without inventing a second customer identity model.
 
 ## 4. Canonical Quote relation
 
@@ -129,13 +122,11 @@ No additional statuses are authorized.
 
 ## 10. Status mutation boundary
 
-The source-backed lifecycle operations are:
+The production source exposes `setQuoteStatus(id, status)` for any differing target within the exact `active | won | lost` vocabulary. It does not establish a narrower transition graph.
 
-- mark `active` → `won`;
-- mark `active` → `lost`;
-- reopen `won` or `lost` → `active`.
+Therefore the provider-neutral schema permits any differing status within the canonical vocabulary. Setting the same status is an idempotent no-op at the service behavior level.
 
-Changing status clears existing reminder metadata. Reopening may create replacement reminder metadata when application scheduling succeeds.
+Changing status clears existing reminder metadata. When the resulting status is `active`, an external application adapter may create replacement reminder metadata using the existing follow-up date.
 
 The database must not itself schedule notifications.
 
@@ -151,13 +142,13 @@ No separate Note resource is authorized by the current source.
 
 `account_id` must reference the canonical GHM account identity relation.
 
-`customer_id` must reference the future canonical GHM Customer relation once that capability is constructed.
+`customer_id` references `ghm.customer(id)`.
 
 `quote_line_item.quote_id` must reference `ghm.quote(id)` with Quote-owned child lifecycle semantics.
 
 Quote history must not be silently deleted by Customer archival.
 
-The final Customer deletion policy must be established by the Customer contract; Quote history must remain durable.
+The Customer resource currently has no runtime DELETE operation, so Quote history cannot be removed through Customer lifecycle operations.
 
 ## 13. Indexes
 
@@ -222,19 +213,15 @@ This schema does not include:
 
 ## 17. Construction dependency gate
 
-The Quote schema contract is frozen, but final migration construction is dependency-gated by the missing GHM Customer capability.
+The Quote schema contract was dependency-gated on the Customer capability. That dependency is now satisfied:
 
-The required sequence is:
-
-1. construct and qualify the canonical Customer resource;
-2. establish its account/organization ownership boundary;
-3. establish its active/archived lifecycle;
-4. establish durable historical references;
-5. then create the foreign-keyed `ghm.quote` and `ghm.quote_line_item` relations;
-6. implement Quote repository/service operations;
-7. qualify runtime privileges and lifecycle behavior.
-
-This dependency is deliberate. It prevents Quote from inventing a second customer identity model.
+1. canonical Customer resource constructed;
+2. Customer account ownership boundary qualified;
+3. Customer active/archived lifecycle qualified;
+4. Customer durable historical references established;
+5. final Quote foreign-keyed relations may now be constructed;
+6. Quote repository/service operations may be implemented;
+7. Quote runtime privileges and lifecycle behavior must then be qualified.
 
 ## 18. Qualification requirements
 
@@ -250,7 +237,7 @@ Before Quote is marked qualified, evidence must demonstrate:
 8. amount matches the production line-item subtotal semantics;
 9. follow-up date validation is correct;
 10. exact status vocabulary is enforced;
-11. status operations match source evidence;
+11. all differing status operations within the exact vocabulary match source evidence;
 12. notes mutation is isolated from unrelated fields;
 13. reminder metadata is cleared/replaced according to status behavior without introducing scheduler infrastructure;
 14. Customer archival does not erase Quote history;
