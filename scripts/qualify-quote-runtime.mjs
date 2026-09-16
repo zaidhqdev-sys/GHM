@@ -16,13 +16,13 @@ if (runtimeUrl === migratorUrl) throw new Error('Runtime and migrator URLs must 
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl: { rejectUnauthorized: false } });
 const cleanupPool = new Pool({ connectionString: migratorUrl, ssl: { rejectUnauthorized: false } });
 
-const { QuoteService } = await import('../dist/resources/quote/service.js');
-const { QuoteRepository } = await import('../dist/resources/quote/repository.js');
-const { CustomerService } = await import('../dist/resources/customer/service.js');
-const { CustomerRepository } = await import('../dist/resources/customer/repository.js');
+const { DefaultQuoteService } = await import('../dist/resources/quote/service.js');
+const { PostgresQuoteRepository } = await import('../dist/resources/quote/repository.js');
+const { CustomerServiceImpl } = await import('../dist/resources/customer/service.js');
+const { PostgresCustomerRepository } = await import('../dist/resources/customer/repository.js');
 
-const runtimeQuoteService = new QuoteService(new QuoteRepository(runtimePool));
-const runtimeCustomerService = new CustomerService(new CustomerRepository(runtimePool));
+const runtimeQuoteService = new DefaultQuoteService(new PostgresQuoteRepository(runtimePool));
+const runtimeCustomerService = new CustomerServiceImpl(new PostgresCustomerRepository(runtimePool));
 
 const marker = `quote-qualification-${randomUUID()}`;
 const accountIds = [];
@@ -158,18 +158,18 @@ try {
   const ownerContext = { userId: ownerAccountId, role: 'customer' };
   const outsiderContext = { userId: outsiderAccountId, role: 'customer' };
 
-  const customer = await runtimeCustomerService.create(ownerContext, {
+  const customer = await runtimeCustomerService.createCustomer(ownerContext, {
     name: 'Quote Qualification Customer',
     phone: '+27820000000',
     email: 'quote-qualification@example.com',
   });
   customerIds.push(customer.id);
 
-  const quote = await runtimeQuoteService.create(ownerContext, {
+  const quote = await runtimeQuoteService.createQuote(ownerContext, {
     customerId: customer.id,
     lineItems: [
       { description: 'Labour', quantity: 2, unitPrice: 125.55 },
-      { description: 'Materials', quantity: 3, unitPrice: 10.25, itemId: null },
+      { description: 'Materials', quantity: 3, unitPrice: 10.25, catalogItemId: null },
     ],
     followUpDate: '2026-09-20',
   });
@@ -178,7 +178,7 @@ try {
   if (
     quote.customerId !== customer.id ||
     quote.customerName !== customer.name ||
-    quote.phone !== customer.phone ||
+    quote.customerPhone !== customer.phone ||
     quote.customerEmail !== customer.email ||
     quote.description !== 'Labour, Materials' ||
     quote.amount !== 282.15 ||
@@ -192,61 +192,61 @@ try {
   }
   console.log(`QUOTE CREATE PASS: quote=${quote.id}`);
 
-  const ownerRead = await runtimeQuoteService.get(ownerContext, quote.id);
+  const ownerRead = await runtimeQuoteService.getQuote(ownerContext, quote.id);
   if (!ownerRead || ownerRead.id !== quote.id) throw new Error('Owner Quote read failed');
   console.log('QUOTE OWNER READ PASS');
 
-  const outsiderRead = await runtimeQuoteService.get(outsiderContext, quote.id);
+  const outsiderRead = await runtimeQuoteService.getQuote(outsiderContext, quote.id);
   if (outsiderRead !== null) throw new Error('Cross-account Quote read unexpectedly succeeded');
   console.log('QUOTE CROSS-ACCOUNT READ DENIAL PASS');
 
-  const ownerList = await runtimeQuoteService.list(ownerContext);
+  const ownerList = await runtimeQuoteService.listQuotes(ownerContext);
   if (!ownerList.some(item => item.id === quote.id)) throw new Error('Owner Quote list missing Quote');
-  const outsiderList = await runtimeQuoteService.list(outsiderContext);
+  const outsiderList = await runtimeQuoteService.listQuotes(outsiderContext);
   if (outsiderList.some(item => item.id === quote.id)) throw new Error('Cross-account Quote list leaked Quote');
   console.log('QUOTE OWNER-LIST SCOPE PASS');
 
-  const won = await runtimeQuoteService.setStatus(ownerContext, quote.id, 'won');
+  const won = await runtimeQuoteService.setQuoteStatus(ownerContext, quote.id, 'won');
   if (won.status !== 'won' || won.reminderId !== null || won.reminderDate !== null) throw new Error('Quote won transition mismatch');
   console.log('QUOTE STATUS WON PASS');
 
-  const lost = await runtimeQuoteService.setStatus(ownerContext, quote.id, 'lost');
+  const lost = await runtimeQuoteService.setQuoteStatus(ownerContext, quote.id, 'lost');
   if (lost.status !== 'lost') throw new Error('Quote lost transition mismatch');
   console.log('QUOTE STATUS LOST PASS');
 
-  const reopened = await runtimeQuoteService.setStatus(ownerContext, quote.id, 'active');
+  const reopened = await runtimeQuoteService.setQuoteStatus(ownerContext, quote.id, 'active');
   if (reopened.status !== 'active') throw new Error('Quote reopen transition mismatch');
   console.log('QUOTE REOPEN ACTIVE PASS');
 
-  const sameStatus = await runtimeQuoteService.setStatus(ownerContext, quote.id, 'active');
+  const sameStatus = await runtimeQuoteService.setQuoteStatus(ownerContext, quote.id, 'active');
   if (sameStatus.id !== quote.id || sameStatus.status !== 'active') throw new Error('Quote same-status idempotency mismatch');
   console.log('QUOTE SAME-STATUS IDEMPOTENCY PASS');
 
-  const notes = await runtimeQuoteService.setNotes(ownerContext, quote.id, 'Call customer Friday.');
+  const notes = await runtimeQuoteService.setQuoteNotes(ownerContext, quote.id, 'Call customer Friday.');
   if (notes.notes !== 'Call customer Friday.') throw new Error('Quote notes update mismatch');
   console.log('QUOTE NOTES UPDATE PASS');
 
   await assertRejected('QUOTE CROSS-ACCOUNT NOTES DENIAL', async () => {
-    await runtimeQuoteService.setNotes(outsiderContext, quote.id, 'unauthorized');
+    await runtimeQuoteService.setQuoteNotes(outsiderContext, quote.id, 'unauthorized');
   });
 
   await assertRejected('QUOTE CROSS-ACCOUNT CUSTOMER CREATE DENIAL', async () => {
-    await runtimeQuoteService.create(outsiderContext, {
+    await runtimeQuoteService.createQuote(outsiderContext, {
       customerId: customer.id,
       lineItems: [{ description: 'Unauthorized', quantity: 1, unitPrice: 1 }],
       followUpDate: '2026-09-20',
     });
   });
 
-  await runtimeCustomerService.archive(ownerContext, customer.id);
+  await runtimeCustomerService.archiveCustomer(ownerContext, customer.id);
   await assertRejected('QUOTE ARCHIVED CUSTOMER CREATE DENIAL', async () => {
-    await runtimeQuoteService.create(ownerContext, {
+    await runtimeQuoteService.createQuote(ownerContext, {
       customerId: customer.id,
       lineItems: [{ description: 'Archived customer', quantity: 1, unitPrice: 1 }],
       followUpDate: '2026-09-20',
     });
   });
-  await runtimeCustomerService.restore(ownerContext, customer.id);
+  await runtimeCustomerService.restoreCustomer(ownerContext, customer.id);
   console.log('QUOTE CUSTOMER RESTORE PASS');
 
   await assertRejected('RUNTIME CONTACT-FIELD UPDATE DENIAL', async () => {
@@ -269,7 +269,7 @@ try {
   if (beforeRollback.rows[0].quote_count !== 1) throw new Error('Quote missing before rollback test');
 
   await assertRejected('QUOTE ATOMIC ROLLBACK PASS', async () => {
-    await runtimeQuoteService.create(ownerContext, {
+    await runtimeQuoteService.createQuote(ownerContext, {
       customerId: customer.id,
       lineItems: [
         { description: 'Rollback first', quantity: 1, unitPrice: 1 },
