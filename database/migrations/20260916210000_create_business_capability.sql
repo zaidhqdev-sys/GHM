@@ -160,9 +160,16 @@ GRANT INSERT (
   capability_id,
   proficiency_level,
   description,
+  assertion_status,
+  assertion_basis,
+  verification_status,
   effective_from,
   effective_until,
   source_reference,
+  submitted_at,
+  verified_by,
+  verified_at,
+  verification_reason,
   created_by
 )
   ON TABLE ghm.business_capability
@@ -171,3 +178,6 @@ GRANT INSERT (
 GRANT USAGE
   ON SEQUENCE ghm.business_capability_id_seq
   TO ghm_runtime;
+
+-- No runtime UPDATE or DELETE is granted until concrete transition authority
+-- is separately specified and qualified. Runtime INSERT is still service-gated.
