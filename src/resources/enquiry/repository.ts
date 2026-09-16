@@ -4,13 +4,15 @@ import { withAuthorizedTransaction } from '../../db/authorized-transaction';
 import type { TransactionPool } from '../../db/transaction';
 import type { CreateEnquiryInput, Enquiry, EnquiryId, EnquiryRepository, UpdateEnquiryStatusInput } from './contracts';
 
-const ENQUIRY_COLUMNS = `id, business_id, customer_id, customer_name, customer_phone, customer_email, project, description, city, budget_min, budget_max, urgency, source, status, created_at, updated_at`;
+const ENQUIRY_COLUMNS = `id, business_id, customer_id, customer_name, customer_phone, customer_email, project, description, city, budget_min, budget_max, urgency, source, status, opportunity_id, created_at, updated_at`;
 
 const mapEnquiry = (row: any): Enquiry => ({
   id: Number(row.id), businessId: Number(row.business_id), customerId: Number(row.customer_id), customerName: row.customer_name,
   customerPhone: row.customer_phone, customerEmail: row.customer_email, project: row.project, description: row.description,
   city: row.city, budgetMin: row.budget_min === null ? null : Number(row.budget_min), budgetMax: row.budget_max === null ? null : Number(row.budget_max),
-  urgency: row.urgency, source: row.source, status: row.status, createdAt: row.created_at, updatedAt: row.updated_at,
+  urgency: row.urgency, source: row.source, status: row.status,
+  opportunityId: row.opportunity_id === null ? null : Number(row.opportunity_id),
+  createdAt: row.created_at, updatedAt: row.updated_at,
 });
 
 const assertPositiveId = (id: number, field: string): void => {
@@ -52,12 +54,53 @@ export class PostgresEnquiryRepository implements EnquiryRepository {
   async createEnquiry(context: AuthContext, input: CreateEnquiryInput): Promise<Enquiry> {
     return withAuthorizedTransaction(context, async client => {
       await assertEligibleMarketplaceTarget(client, context, input.businessId);
+
+      const opportunityType = await client.query(
+        `SELECT id FROM ghm.opportunity_type
+         WHERE code = 'service-request' AND is_active = true
+         ORDER BY version DESC
+         LIMIT 1`,
+      );
+      if (opportunityType.rowCount !== 1) throw new Error('Service-request Opportunity type unavailable');
+      const opportunityTypeId = Number(opportunityType.rows[0].id);
+
+      const opportunityResult = await client.query(
+        `INSERT INTO ghm.opportunity
+          (opportunity_type_id, creator_account_id, owner_business_id, title, description, lifecycle_status, visibility, budget_min, budget_max)
+         VALUES ($1,$2,$3,$4,$5,'open','participants',$6,$7)
+         RETURNING id`,
+        [opportunityTypeId, context.userId, input.businessId, input.project, input.description, input.budgetMin ?? null, input.budgetMax ?? null],
+      );
+      if (opportunityResult.rowCount !== 1) throw new Error('Opportunity creation failed');
+      const opportunityId = Number(opportunityResult.rows[0].id);
+
+      await client.query(
+        `INSERT INTO ghm.opportunity_participant
+          (opportunity_id, account_id, business_id, participation_role, participation_status, created_by)
+         VALUES ($1,$2,NULL,'creator','active',$2)`,
+        [opportunityId, context.userId],
+      );
+
+      await client.query(
+        `INSERT INTO ghm.opportunity_participant
+          (opportunity_id, account_id, business_id, participation_role, participation_status, created_by)
+         VALUES ($1,NULL,$2,'owner','active',$3)`,
+        [opportunityId, input.businessId, context.userId],
+      );
+
+      await client.query(
+        `INSERT INTO ghm.opportunity_participant
+          (opportunity_id, account_id, business_id, participation_role, participation_status, created_by)
+         VALUES ($1,NULL,$2,'recipient','active',$3)`,
+        [opportunityId, input.businessId, context.userId],
+      );
+
       const result = await client.query(
         `INSERT INTO ghm.enquiry
-          (business_id, customer_id, customer_name, customer_phone, customer_email, project, description, city, budget_min, budget_max, urgency, source)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'marketplace')
+          (business_id, customer_id, customer_name, customer_phone, customer_email, project, description, city, budget_min, budget_max, urgency, source, opportunity_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'marketplace',$12)
          RETURNING ${ENQUIRY_COLUMNS}`,
-        [input.businessId, context.userId, input.customerName, input.customerPhone ?? null, input.customerEmail ?? null, input.project, input.description, input.city ?? null, input.budgetMin ?? null, input.budgetMax ?? null, input.urgency ?? 'standard'],
+        [input.businessId, context.userId, input.customerName, input.customerPhone ?? null, input.customerEmail ?? null, input.project, input.description, input.city ?? null, input.budgetMin ?? null, input.budgetMax ?? null, input.urgency ?? 'standard', opportunityId],
       );
       return mapEnquiry(result.rows[0]);
     }, this.transactionPool);
