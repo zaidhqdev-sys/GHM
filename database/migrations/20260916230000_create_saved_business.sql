@@ -32,20 +32,47 @@ GRANT SELECT
   ON TABLE ghm.saved_business
   TO ghm_runtime;
 
-GRANT INSERT (
-  account_id,
-  business_id
-)
-  ON TABLE ghm.saved_business
-  TO ghm_runtime;
-
-REVOKE DELETE, UPDATE
+REVOKE INSERT, UPDATE, DELETE
   ON TABLE ghm.saved_business
   FROM ghm_runtime;
 
-GRANT USAGE
-  ON SEQUENCE ghm.saved_business_id_seq
-  TO ghm_runtime;
+CREATE OR REPLACE FUNCTION ghm.create_saved_business(p_account_id bigint, p_business_id bigint)
+RETURNS TABLE (id bigint, account_id bigint, business_id bigint, created_at timestamptz)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, ghm
+AS $$
+BEGIN
+  IF p_account_id IS NULL OR p_account_id <= 0 THEN
+    RAISE EXCEPTION 'Account ID must be a positive integer';
+  END IF;
+
+  IF p_business_id IS NULL OR p_business_id <= 0 THEN
+    RAISE EXCEPTION 'Business ID must be a positive integer';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM ghm.business
+     WHERE ghm.business.id = p_business_id
+       AND is_active = true
+       AND is_verified = true
+       AND verification_status = 'approved'
+  ) THEN
+    RAISE EXCEPTION 'Business is not eligible to be saved';
+  END IF;
+
+  RETURN QUERY
+  INSERT INTO ghm.saved_business (account_id, business_id)
+  VALUES (p_account_id, p_business_id)
+  RETURNING ghm.saved_business.id, ghm.saved_business.account_id,
+            ghm.saved_business.business_id, ghm.saved_business.created_at;
+END;
+$$;
+
+ALTER FUNCTION ghm.create_saved_business(bigint, bigint)
+  OWNER TO ghm_schema_owner;
+REVOKE ALL ON FUNCTION ghm.create_saved_business(bigint, bigint) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ghm.create_saved_business(bigint, bigint) TO ghm_runtime;
 
 CREATE OR REPLACE FUNCTION ghm.delete_saved_business(p_account_id bigint, p_saved_business_id bigint)
 RETURNS boolean
