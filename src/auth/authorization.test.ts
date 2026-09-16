@@ -27,18 +27,9 @@ test('Commercial is a coarse authorized resource for every authenticated GHM rol
 });
 
 test('Commercial domain operations remain outside the generic HTTP resource vocabulary', () => {
-  assert.equal(
-    isRegisteredOperation('commercial', 'read'),
-    false,
-  );
-  assert.equal(
-    isRegisteredOperation('commercial', 'create'),
-    false,
-  );
-  assert.equal(
-    isRegisteredOperation('commercial', 'update'),
-    false,
-  );
+  assert.equal(isRegisteredOperation('commercial', 'read'), false);
+  assert.equal(isRegisteredOperation('commercial', 'create'), false);
+  assert.equal(isRegisteredOperation('commercial', 'update'), false);
 });
 test('unregistered resource operations are denied by the registry', () => {
   assert.equal(isRegisteredOperation('profile', 'read'), true);
@@ -64,7 +55,7 @@ test('role assertions reject disallowed roles', () => {
 });
 
 test('resource operations remain a fixed vocabulary', () => {
-  const operations: ResourceOperation[] = ['read', 'readPublic', 'readOwn', 'readPending', 'create', 'approve', 'reject', 'update', 'transition', 'delete'];
+  const operations: ResourceOperation[] = ['read', 'readPublic', 'readOwn', 'readPending', 'create', 'approve', 'reject', 'update', 'updateStatus', 'transition', 'readMessages', 'replyAsCustomer', 'replyAsAdmin', 'delete'];
   for (const definition of resourceRegistry) {
     for (const operation of definition.operations) {
       assert.equal(operations.includes(operation), true);
