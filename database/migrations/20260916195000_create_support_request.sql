@@ -47,12 +47,7 @@ CREATE TABLE ghm.support_request (
       OR char_length(btrim(resolution_summary)) BETWEEN 1 AND 2000
     ),
   CONSTRAINT support_request_closed_requires_resolved_check
-    CHECK (closed_at IS NULL OR resolved_at IS NOT NULL),
-  CONSTRAINT support_request_resolution_state_check
-    CHECK (
-      status IN ('open', 'in_progress')
-      OR resolution_summary IS NOT NULL
-    )
+    CHECK (closed_at IS NULL OR resolved_at IS NOT NULL)
 );
 
 CREATE INDEX support_request_account_created_idx
@@ -85,8 +80,18 @@ GRANT INSERT (
   ON TABLE ghm.support_request
   TO ghm_runtime;
 
--- No generic runtime UPDATE privilege is granted. Lifecycle mutation is an
--- explicit service operation and will be authorized separately.
+-- Lifecycle mutation is explicit and column-scoped. Authorization remains
+-- inside the service/repository; arbitrary business/account mutation is not
+-- exposed to the runtime role.
+GRANT UPDATE (
+  status,
+  resolution_summary,
+  resolved_at,
+  closed_at,
+  updated_at
+)
+  ON TABLE ghm.support_request
+  TO ghm_runtime;
 
 GRANT USAGE
   ON SEQUENCE ghm.support_request_id_seq
