@@ -37,7 +37,7 @@ This follows the existing account-owned GHM resource pattern used by Project. îˆ
 
 Required. The implementation must reject blank/whitespace-only names.
 
-The source does not establish a canonical maximum length, so the implementation must choose only a bounded database-safe limit that does not change observed product semantics and document it before qualification.
+The source does not establish a canonical maximum length. The canonical GHM schema therefore does not introduce an arbitrary maximum that could reject valid source data.
 
 ### Phone
 
