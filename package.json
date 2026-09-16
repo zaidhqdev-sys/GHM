@@ -13,7 +13,7 @@
     "qualify:resource-api-http": "npm run build && node scripts/qualify-resource-api-http.mjs",
     "qualify:operational-boundary": "npm run build && node scripts/qualify-operational-boundary.mjs",
     "start": "node dist/server.js",
-    "test": "npm run build && node --test dist/auth/authorization.test.js dist/auth/request-context.test.js dist/resources/registry.test.js dist/db/transaction.test.js dist/resources/business-identity/service.test.js dist/resources/project/service.test.js dist/resources/enquiry/service.test.js dist/resources/review/service.test.js dist/resources/opportunity/service.test.js dist/resources/opportunity/repository.test.js dist/http/app.test.js dist/http/enquiry-router.test.js dist/resources/project-quote/service.test.js dist/resources/opportunity-requirements/repository.test.js dist/resources/capability/service.test.js dist/resources/commercial/repository.test.js dist/resources/commercial/service.test.js dist/resources/customer/service.test.js dist/resources/quote/service.test.js dist/resources/notification/service.test.js dist/resources/notification/repository.test.js",
+    "test": "npm run build && node --test dist/auth/authorization.test.js dist/auth/request-context.test.js dist/resources/registry.test.js dist/db/transaction.test.js dist/resources/business-identity/service.test.js dist/resources/project/service.test.js dist/resources/enquiry/service.test.js dist/resources/review/service.test.js dist/resources/opportunity/service.test.js dist/resources/opportunity/repository.test.js dist/http/app.test.js dist/http/enquiry-router.test.js dist/resources/project-quote/service.test.js dist/resources/opportunity-requirements/repository.test.js dist/resources/capability/service.test.js dist/resources/commercial/repository.test.js dist/resources/commercial/service.test.js dist/resources/customer/service.test.js dist/resources/quote/service.test.js dist/resources/notification/service.test.js dist/resources/notification/repository.test.js dist/resources/support-request/service.test.js",
     "verify:runtime": "node scripts/verify-runtime-boundary.mjs",
     "qualify:project-runtime": "npm run build && node scripts/qualify-project-runtime.mjs",
     "qualify:opportunity-runtime": "npm run build && node scripts/qualify-opportunity-runtime.mjs",
@@ -39,7 +39,7 @@
     "socket.io": "^4.7.5"
   },
   "devDependencies": {
-    "@types/bcrypt": "^5.1.1",
+    "@types/bcrypt": "^5.1.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/express-session": "^1.17.7",
