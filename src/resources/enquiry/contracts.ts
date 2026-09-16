@@ -3,6 +3,7 @@ import type { AuthContext } from '../../auth/authorization';
 export type EnquiryId = number;
 export type BusinessId = number;
 export type AccountId = number;
+export type OpportunityId = number;
 
 export type EnquiryUrgency = 'standard' | 'urgent' | 'emergency';
 export type EnquirySource = 'marketplace' | 'directory' | 'ai_quote' | 'direct';
@@ -23,6 +24,7 @@ export interface Enquiry {
   readonly urgency: EnquiryUrgency;
   readonly source: EnquirySource;
   readonly status: EnquiryStatus;
+  readonly opportunityId: OpportunityId | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
