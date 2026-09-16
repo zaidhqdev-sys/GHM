@@ -79,6 +79,13 @@ try {
   await expectReject(() => service.createSavedBusiness(ownerContext, { businessId: fixture.unverifiedBusinessId }), 'UNVERIFIED BUSINESS REJECTION PASS');
   await expectReject(() => service.createSavedBusiness(ownerContext, { businessId: fixture.eligibleBusinessId }), 'DUPLICATE CREATE REJECTION PASS');
 
+  const nonexistentBusiness = await runtimePool.query(`SELECT COALESCE(MAX(id), 0)::bigint + 1000000 AS id FROM ghm.business`);
+  const nonexistentBusinessId = Number(nonexistentBusiness.rows[0].id);
+  await expectReject(
+    () => service.createSavedBusiness(ownerContext, { businessId: nonexistentBusinessId }),
+    'NONEXISTENT BUSINESS REJECTION PASS',
+  );
+
   const before = await runtimePool.query('SELECT count(*)::int AS count FROM ghm.saved_business WHERE account_id = $1 AND business_id = $2', [fixture.ownerId, fixture.eligibleBusinessId]);
   if (before.rows[0].count !== 1) throw new Error('Unexpected Saved Business row count before delete');
 
@@ -86,6 +93,26 @@ try {
   const after = await service.listSavedBusinesses(ownerContext);
   if (after.length !== 0) throw new Error('Owner delete failed');
   console.log('OWNER DELETE PASS');
+
+  const concurrentResults = await Promise.allSettled(
+    Array.from({ length: 20 }, () => service.createSavedBusiness(ownerContext, { businessId: fixture.eligibleBusinessId })),
+  );
+  const concurrentSuccesses = concurrentResults.filter(result => result.status === 'fulfilled');
+  const concurrentFailures = concurrentResults.filter(result => result.status === 'rejected');
+  if (concurrentSuccesses.length !== 1 || concurrentFailures.length !== 19) {
+    throw new Error(`Concurrent duplicate create expected 1 success / 19 failures; received ${concurrentSuccesses.length}/${concurrentFailures.length}`);
+  }
+  const concurrentCreated = concurrentSuccesses[0].value;
+  if (concurrentCreated.accountId !== fixture.ownerId || concurrentCreated.businessId !== fixture.eligibleBusinessId) {
+    throw new Error('Concurrent Saved Business create returned unexpected ownership');
+  }
+  console.log(`CONCURRENT DUPLICATE CREATE PASS: success=${concurrentSuccesses.length} failures=${concurrentFailures.length}`);
+
+  const concurrentRows = await runtimePool.query('SELECT count(*)::int AS count FROM ghm.saved_business WHERE account_id = $1 AND business_id = $2', [fixture.ownerId, fixture.eligibleBusinessId]);
+  if (concurrentRows.rows[0].count !== 1) throw new Error(`Concurrent duplicate create left ${concurrentRows.rows[0].count} rows`);
+
+  await service.deleteSavedBusiness(ownerContext, concurrentCreated.id);
+  console.log('CONCURRENT CREATE CLEANUP PASS');
 
   await expectReject(() => runtimePool.query(`INSERT INTO ghm.saved_business (account_id, business_id) VALUES ($1, $2)`, [fixture.ownerId, fixture.eligibleBusinessId]), 'RUNTIME DIRECT INSERT DENIAL PASS');
   await expectReject(() => runtimePool.query(`UPDATE ghm.saved_business SET account_id = $1 WHERE id = $2`, [fixture.outsiderId, created.id]), 'RUNTIME UPDATE DENIAL PASS');
