@@ -16,13 +16,18 @@ import { PublicProjectService } from '../resources/project/public-contracts';
 import { PostgresEnquiryRepository } from '../resources/enquiry/repository';
 import { EnquiryServiceImpl } from '../resources/enquiry/service';
 import { EnquiryService } from '../resources/enquiry/contracts';
+import { PostgresCampaignRepository } from '../resources/campaign/repository';
+import { CampaignServiceImpl } from '../resources/campaign/service';
+import { CampaignService } from '../resources/campaign/contracts';
 import { registerEnquiryRoutes } from './enquiry-router';
+import { registerCampaignRoutes } from './campaign-router';
 
 export interface AppDependencies {
   readonly businessIdentityService?: BusinessIdentityService;
   readonly projectService?: ProjectService;
   readonly publicProjectService?: PublicProjectService;
   readonly enquiryService?: EnquiryService;
+  readonly campaignService?: CampaignService;
 }
 
 const requireRegisteredAccess = (resource: Parameters<typeof canAccessResource>[1], operation: ResourceOperation) =>
@@ -217,6 +222,9 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const enquiryService =
     dependencies.enquiryService ??
     new EnquiryServiceImpl(new PostgresEnquiryRepository());
+  const campaignService =
+    dependencies.campaignService ??
+    new CampaignServiceImpl(new PostgresCampaignRepository());
   app.disable('x-powered-by');
   app.set('trust proxy', config.trustProxy);
   app.use(cors({ origin: config.corsOrigins }));
@@ -361,6 +369,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   });
 
   registerEnquiryRoutes(app, enquiryService);
+  registerCampaignRoutes(app, campaignService);
 
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
     try {
