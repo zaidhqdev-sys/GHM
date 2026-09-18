@@ -39,11 +39,12 @@ A table existing in either repository is not treated as a complete capability.
 
 | Repository | Local path | Remote | Branch | Commit SHA |
 |---|---|---|---|---|
-| GHM | `C:\GHM` | `https://github.com/zaidhqdev-sys/GHM.git` | `construction/saved-business-resource` | `cf4fc08a8331bb8ecbf43e033b71431a8d7913b3` |
+| GHM (code tree audited) | `C:\GHM` | `https://github.com/zaidhqdev-sys/GHM.git` | `construction/saved-business-resource` | `cf4fc08a8331bb8ecbf43e033b71431a8d7913b3` |
 | Zaid Connect | `C:\zaid-connect-audit` | `https://github.com/zaidhqdev-sys/zaid-connect.git` | `main` | `abcffa73f893602c25310a58946bebb91fd7eeb5` |
 
 Notes:
 
+- GHM SHA `cf4fc08…` is the construction tree inspected for coverage. This audit document is itself a later documentation commit on the same branch and does not change application code.
 - `C:\Zaid Connect` exists but has no commits on `main` and was not used as source of truth.
 - Connect primary application backend client: `src/lib/lib_supabase.js`.
 - Connect migrations audited: 46 files under `supabase/migrations/`.
@@ -77,7 +78,7 @@ Additional domain services:
 | Avatar upload | `profileService.uploadAvatar` | Storage bucket `media` | storage write + profile URL | EXTERNAL PROVIDER + DB | Object storage + profile media reference |
 | Business create/read/update | `businessService` | `businesses` | CRUD subset | Supabase | Business identity persistence + ownership |
 | Business registration identity | `get_business_registration_identity` | RPC | read private | Supabase | Private registration projection for owners |
-| Business logo set/clear | `set_business_logo` / `clear_business_logo` | Storage `business-logos` + RPC | storage + write | EXTERNAL + Supabase | Governed logo object + Business logo fields |
+| Business logo set/clear | `set_business_logo` / `clear_business_logo` | Storage bucket `media` (object prefix `logos/`) + RPC | storage + write | EXTERNAL + Supabase | Governed logo object + Business logo fields |
 | Profile view increment | `increment_business_views` + engagement track | RPC + `business_engagement_events` | write | Supabase | Analytics/view counter contract |
 | Membership checks | `businessMembershipService` | `business_memberships` + RPCs | read/authz | Supabase | Membership roles/permissions |
 | Knowledge graph projection | `get_business_knowledge_graph_projection` | RPC | read | Supabase | Capability/knowledge projection |
@@ -133,8 +134,7 @@ Additional domain services:
 | Business public directory projection | `PUBLIC_DIRECTORY_BUSINESS_COLUMNS` (30+ columns) | first-slice public Business | `PARTIALLY PROVIDES` | Connect allowlist in `lib_supabase.js`; GHM SQL contract limits public fields to `id,name,slug,verification_status,is_active,created_at,updated_at` | Public projection parity; directory privacy rules for registration fields |
 | Directory search/geo/featured | `directoryService` | none dedicated | `DOES NOT YET PROVIDE` | Connect directory service | Search/sort/geo/featured query contract |
 | Membership | `business_memberships` + permission RPCs | `business_membership` | `PARTIALLY PROVIDES` | GHM membership create/resolve/manage checks | Full Connect permission vocabulary (`analytics.read`, `trust.read`, etc.) and membership management ops |
-| Business Hours weekly | replace/read/public | `business_hours` | `ALREADY PROVIDES` | QUALIFIED / CLOSED; `qualify-business-hours-runtime` | Exceptions/booking/open-now remain out of contract |
-| Business Hours exceptions/booking | excluded in Connect hours audit / not in weekly RPC | none | `DOES NOT YET PROVIDE` | GHM Business Hours source audit exclusions | Separate source authorization required |
+| Business Hours weekly | replace/read/public | `business_hours` | `ALREADY PROVIDES` | QUALIFIED / CLOSED; `qualify-business-hours-runtime` | Connect evidences weekly schedule only |
 | Capability catalogue selectable read | list/get selectable | `capability` | `ALREADY PROVIDES` | Catalogue contract + qualify script | Admin draft/transition lifecycle not provided by GHM app ops |
 | Capability catalogue governance writes | create/update/transition drafts | none as app ops | `DOES NOT YET PROVIDE` | Connect `capabilityService` draft/transition RPCs; GHM catalogue SELECT-only | Governance write contract + authorization |
 | Business capability assert create/read | assertions | `business_capability` | `PARTIALLY PROVIDES` | QUALIFIED create/read | Connect `replace` bulk assertions; evidence submit/review; verification update reserved in GHM |
@@ -163,7 +163,7 @@ Additional domain services:
 | Onboarding progress | onboarding RPCs/table | none | `DOES NOT YET PROVIDE` | Connect onboarding migration/service | Onboarding contract |
 | Regional configuration | regions/currencies/locales/countries/config/prices | `country`/`currency` exist for Opportunity | `PARTIALLY PROVIDES` | Connect regional foundation; GHM Opportunity refs | Full regional config/pricing/admin-area resources |
 | Relationships / outcomes | relationship/outcome tables | none | `DOES NOT YET PROVIDE` | Connect relationship foundation migration | Relationship/outcome contracts |
-| Storage media/private docs/logos | buckets `media`, `private-docs`, business logo bucket | none as GHM storage resource | `EXTERNAL PROVIDER` / `DOES NOT YET PROVIDE` | Connect storage call sites + logo migration | Storage abstraction + object authz contract |
+| Storage media/private docs/logos | buckets `media` (also used for logos under `logos/`) and `private-docs` | none as GHM storage resource | `EXTERNAL PROVIDER` / `DOES NOT YET PROVIDE` | Connect storage call sites + logo migration (`BUSINESS_LOGO_BUCKET = "media"`) | Storage abstraction + object authz contract |
 | Edge Functions runtime | checkout/webhook/ai-proxy | none | `EXTERNAL PROVIDER` / `DOES NOT YET PROVIDE` | `supabase/functions/*` | Hosting/runtime decision + contracts |
 | WhatsApp API send | Meta Cloud API | none | `EXTERNAL PROVIDER` | `lib_whatsapp.js` | Remains provider-owned unless separately authorized |
 | WhatsApp deep link CTA | client URL | n/a | `CONNECT-LOCAL` | UI components | — |
@@ -366,6 +366,7 @@ Closure means the frozen GHM construction slice is complete for its contract. It
 - Those closed slices are real backend contracts with least-privilege runtime evidence.
 - Connect’s production backend today remains Supabase Auth + Postgres/RLS + Storage + Realtime + Edge Functions + payment/messaging providers.
 - Several Connect domains are intentionally outside current GHM authorization (Trust, payment beyond trial, adapters, shadow, cutover).
+- Business Hours exceptions / booking / open-now were **not** found as Connect backend dependencies in the audited Connect tree (no matching tables/services). GHM’s Business Hours contract also excludes them. They are therefore **not** treated as Connect production-readiness requirements in this audit.
 
 ### What current evidence does not support
 
@@ -407,11 +408,11 @@ Counts are for distinct capability rows in §4 coverage matrix (one primary stat
 |---|---|
 | ALREADY PROVIDES | 12 |
 | PARTIALLY PROVIDES | 18 |
-| DOES NOT YET PROVIDE | 16 |
+| DOES NOT YET PROVIDE | 15 |
 | CONNECT-LOCAL | 2 |
 | EXTERNAL PROVIDER | 6 |
 | EVIDENCE INSUFFICIENT | 1 (grouped orphan-table set; expands to 13 referenced objects) |
-| **Total matrix rows** | **55** |
+| **Total matrix rows** | **54** |
 
 Dependency inventory rows in §3.3: **48** concrete Connect backend dependencies inventoried from live source.
 
