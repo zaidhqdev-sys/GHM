@@ -15,7 +15,8 @@ export type ResourceOperation =
   | 'readMessages'
   | 'replyAsCustomer'
   | 'replyAsAdmin'
-  | 'delete';
+  | 'delete'
+  | 'calculate';
 
 export interface ResourceDefinition {
   readonly resource: Resource;
@@ -37,6 +38,7 @@ export const resourceRegistry: readonly ResourceDefinition[] = [
   { resource: 'opportunity', operations: ['read', 'create', 'update', 'transition'] },
   { resource: 'opportunity_participant', operations: ['read', 'create', 'update'] },
   { resource: 'saved_business', operations: ['read', 'create', 'delete'] },
+  { resource: 'trust_score', operations: ['read', 'readPublic', 'calculate'] },
 ];
 
 export const isRegisteredOperation = (resource: Resource, operation: ResourceOperation): boolean =>

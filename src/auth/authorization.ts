@@ -20,12 +20,13 @@ export type Resource =
   | 'opportunity'
   | 'opportunity_participant'
   | 'saved_business'
+  | 'trust_score'
   | 'commercial';
 
 const roleResources: Record<GhmRole, readonly Resource[]> = {
-  admin: ['profile', 'business', 'business_capability', 'business_hours', 'project', 'customer', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'commercial'],
-  customer: ['profile', 'business', 'business_capability', 'business_hours', 'project', 'customer', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'commercial'],
-  business: ['profile', 'business', 'business_capability', 'business_hours', 'project', 'customer', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'commercial'],
+  admin: ['profile', 'business', 'business_capability', 'business_hours', 'project', 'customer', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'trust_score', 'commercial'],
+  customer: ['profile', 'business', 'business_capability', 'business_hours', 'project', 'customer', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'trust_score', 'commercial'],
+  business: ['profile', 'business', 'business_capability', 'business_hours', 'project', 'customer', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'trust_score', 'commercial'],
 };
 
 const isGhmRole = (value: unknown): value is GhmRole => value === 'admin' || value === 'customer' || value === 'business';

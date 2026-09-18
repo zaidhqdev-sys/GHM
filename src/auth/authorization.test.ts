@@ -15,7 +15,7 @@ const contexts: Record<'admin' | 'customer' | 'business', AuthContext> = {
 };
 
 test('all declared resources are accessible by the current construction primitive', () => {
-  for (const resource of ['profile', 'business', 'project', 'quote', 'notification', 'support_request', 'saved_business'] as const) {
+  for (const resource of ['profile', 'business', 'project', 'quote', 'notification', 'support_request', 'saved_business', 'trust_score'] as const) {
     assert.equal(canAccessResource(contexts.customer, resource), true);
   }
 });
@@ -57,7 +57,7 @@ test('role assertions reject disallowed roles', () => {
 });
 
 test('resource operations remain a fixed vocabulary', () => {
-  const operations: ResourceOperation[] = ['read', 'readPublic', 'readOwn', 'readPending', 'create', 'approve', 'reject', 'update', 'replace', 'updateStatus', 'transition', 'readMessages', 'replyAsCustomer', 'replyAsAdmin', 'delete'];
+  const operations: ResourceOperation[] = ['read', 'readPublic', 'readOwn', 'readPending', 'create', 'approve', 'reject', 'update', 'replace', 'updateStatus', 'transition', 'readMessages', 'replyAsCustomer', 'replyAsAdmin', 'delete', 'calculate'];
   for (const definition of resourceRegistry) {
     for (const operation of definition.operations) {
       assert.equal(operations.includes(operation), true);

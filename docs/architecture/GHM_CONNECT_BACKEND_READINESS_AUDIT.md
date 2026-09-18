@@ -156,7 +156,7 @@ Additional domain services:
 | Support request + messages | create/list/reply/status | `support_request` + messages | `ALREADY PROVIDES` | QUALIFIED / CLOSED | HTTP/adapter absent |
 | Commercial trial | activate/read access | commercial trial path | `ALREADY PROVIDES` | QUALIFIED / CLOSED trial | — |
 | Commercial payment prepare/cancel/provider result | payment RPCs + edge checkout/webhook | schema present; ops stubs | `PARTIALLY PROVIDES` | Commercial schema + stubs throw; Connect Paystack/PayFast edges | Payment operation contract + provider integration authorization |
-| Trust score | `trust_scores` + calculate RPC | none | `DOES NOT YET PROVIDE` | Connect trust migration + service; GHM handover forbids opening without authorization | Source/schema/operation contracts + construction authorization |
+| Trust score | `trust_scores` + calculate RPC | `trust_score` + `calculate_business_trust_score` | `ALREADY PROVIDES` | QUALIFIED / CLOSED Trust | Business profile input columns for full Connect score parity remain separately authorized; no HTTP/adapter |
 | Directory founder review (4A) | submit/review/list RPCs | verification fields partially on Business | `PARTIALLY PROVIDES` | Connect founder review migrations; GHM listing verification reconciliation docs | Full founder-reviewer workflow + event history ops |
 | Registration number private boundary | private RPC / excluded from public select | GHM excludes private 4A fields from Saved Business/public first slice | `PARTIALLY PROVIDES` | Connect public allowlist comments; GHM Saved Business/public contracts | Managed registration identity API parity |
 | Profile views / engagement analytics | engagement events + dashboard | none | `DOES NOT YET PROVIDE` | Connect engagement migrations/services | Analytics contract |
@@ -228,7 +228,7 @@ Evidence: `src/auth/authorization.ts`, `src/auth/request-context.ts`, `src/db/au
 | leads | enquiry migration | `ghm.enquiry` | PARTIAL | Connect field/RPC naming; atomic Opportunity workflow |
 | reviews | reviews migration | `ghm.review` | COVERED for qualified slice | — |
 | saved_businesses | trust/saved migration | `ghm.saved_business` | COVERED for relationship | No Business embed |
-| trust_scores | trust migration | none | MISSING | Trust score table/calc |
+| trust_scores | trust migration | `ghm.trust_score` | COVERED for calculated score | Business profile input parity for non-rating dimensions |
 | notifications | notifications migration | `ghm.notification` | COVERED for persistence | Realtime not schema |
 | support_requests / messages | support migrations | `ghm.support_request` (+ message) | COVERED | — |
 | projects / project_quotes | projects migration | `ghm.project` / `ghm.project_quote` | PARTIAL/COVERED | Project images/workspace missing |
@@ -316,7 +316,7 @@ These block GHM from actually becoming Connect’s backend. They are not impleme
 | 2 | Auth/session not interchangeable | Supabase Auth vs GHM JWT AuthContext | Sign-in, all authenticated ops | Auth/identity | Users cannot authenticate into GHM with current Connect auth flow | Identity mapping + bootstrap | Yes |
 | 3 | Identity keyspace mismatch | UUID vs bigint | All FKs | All resources | Data/API mapping unresolved | Mapping/migration design evidence | Yes |
 | 4 | Public Business/directory contract incomplete | Connect public allowlist ≫ GHM first-slice public Business; no directory search resource | Directory, Marketplace, Business Profile | Business public projection / directory | Connect screens cannot render current directory UX | Field-by-field reconciliation | Yes |
-| 5 | Missing Trust backend | `trust_scores` + calculate RPC | Trust feature | Trust | Trust workflows have no GHM resource | Trust source/schema/operation contracts | Yes (handover forbids opening without it) |
+| 5 | Trust backend constructed | `ghm.trust_score` + calculate | Trust feature | Trust | QUALIFIED / CLOSED | Business profile input parity for Connect score dimensions | Closed for Trust resource; profile fields separately authorized |
 | 6 | Missing commercial payment ops | Connect payment RPCs/edges; GHM stubs | Subscription checkout | Commercial | Paid subscription path cannot run on GHM | Payment operation contract + provider boundary | Yes |
 | 7 | Missing storage/media contracts | Logo/avatar/docs/images/workspace uploads | Profile, Business, Projects, Verification | Storage | Media workflows fail without object store contract | Storage abstraction + bucket authz | Yes |
 | 8 | Missing realtime delivery | Notification + leads channels | Notifications, Business lead inbox | Notification / Enquiry | Live updates not provided by GHM resources | Delivery ownership decision | Yes |
@@ -389,7 +389,7 @@ Only evidence needed to make future construction decisions. No speculative imple
 
 1. **Connect adapter evidence pack** — map each `lib_supabase.js` / feature service method to either an existing GHM operation, an external provider, Connect-local behavior, or a missing contract.
 2. **Public Business / directory field reconciliation** — exact Connect public allowlist vs GHM Business schema; decide which fields are first GHM public projection extensions.
-3. **Trust source audit** — tables, calculate RPC inputs/outputs, authorization, write triggers, UI consumers; only then decide construction authorization.
+3. **Business profile input parity for Trust** — authorize `description` / `phone` / `email` / `insurance_verified` / `jobs_completed` on GHM Business only with separate evidence; Trust calculation already zeros absent columns.
 4. **Commercial payment operation contract** — prepare/checkout/webhook/result/cancel flows from Connect migrations + edge functions; separate provider SDK ownership.
 5. **Storage boundary audit** — buckets, object paths, RLS/storage policies, which metadata tables are authoritative.
 6. **Realtime delivery ownership decision** — remain provider-owned vs GHM event transport; required for notifications/leads UX parity.

@@ -38,7 +38,7 @@ The principal platform blockers are identity/authentication, the Connect product
 | 2 | Auth/session compatibility | Not interchangeable | Identity issuance, bootstrap, token validation and session mapping | Explicit identity/auth authorization |
 | 3 | UUID â†” bigint identity mapping | Unresolved | Canonical mapping and migration/ownership design | Explicit identity mapping authorization |
 | 4 | Public Business + directory parity | Partial | Field-by-field public projection, search/geo/sort/featured contract | Explicit Business/directory authorization |
-| 5 | Trust backend | Missing | Trust schema, calculation inputs/outputs, authorization, lifecycle and consumers | Explicit Trust authorization |
+| 5 | Trust backend | **QUALIFIED / CLOSED** (`ghm.trust_score` + calculate) | — | Closed; Business profile input parity remains a separate blocker |
 | 6 | Commercial payment operations | Partial/stubbed | Prepare/cancel/provider result/webhook contract and provider boundary | Explicit payment authorization |
 | 7 | Storage/media | Missing GHM boundary | Bucket/object paths, metadata, ownership and storage authorization | Explicit storage authorization |
 | 8 | Realtime delivery | External/absent in GHM | Ownership and delivery contract for notifications/leads | Explicit realtime authorization |
@@ -60,7 +60,7 @@ These are **not** migration-missing. They remain blocked for GHM construction un
 - `business_capability_evidence`
 - `business_categories` / `business_category_assignments`
 - `business_offerings`
-- `trust_scores`
+- ~~`trust_scores`~~ → GHM `trust_score` QUALIFIED / CLOSED (Business profile input parity still open)
 - `account_onboarding_progress`
 - `business_engagement_events` / `business_profile_view_visitors`
 - `business_directory_review_events`
@@ -137,7 +137,7 @@ Evidence sprint documents now exist for items 2â€“9 below. Remaining work i
 
 1. Connect adapter operation map â€” **started:** `CONNECT_BACKEND_OPERATION_INVENTORY.md`
 2. Public Business/directory field reconciliation â€” **done:** `CONNECT_PUBLIC_BUSINESS_DIRECTORY_SOURCE_AUDIT.md`
-3. Trust source audit â€” **partial:** provider boundary + object reconciliation confirm DB-owned Trust; full Trust operation contract still required before authorization
+3. Trust source audit — **CLOSED:** Trust QUALIFIED / CLOSED; Business profile input parity for full Connect score dimensions remains a separate blocker
 4. Commercial payment operation contract â€” **partial:** server runtime + atomic workflow + provider audits; formal payment operation contract still required
 5. Storage boundary audit â€” **done:** `CONNECT_STORAGE_MEDIA_SOURCE_AUDIT.md`
 6. Realtime delivery ownership decision â€” **evidence done:** `CONNECT_REALTIME_SOURCE_AUDIT.md`; ownership decision pending
