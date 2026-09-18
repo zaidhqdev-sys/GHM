@@ -65,13 +65,20 @@ const parseCreateBusinessInput = (body: unknown): { name: string } | null => {
 const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   const input = body as Record<string, unknown>;
+  const allowed = new Set(['name', 'slug', 'description', 'phone', 'email']);
   const keys = Object.keys(input);
-  if (keys.length === 0 || keys.some((key) => key !== 'name' && key !== 'slug')) return null;
+  if (keys.length === 0 || keys.some((key) => !allowed.has(key))) return null;
   if (Object.hasOwn(input, 'name') && (typeof input.name !== 'string' || !input.name.trim())) return null;
   if (Object.hasOwn(input, 'slug') && (typeof input.slug !== 'string' || !input.slug.trim())) return null;
+  if (Object.hasOwn(input, 'description') && input.description !== null && typeof input.description !== 'string') return null;
+  if (Object.hasOwn(input, 'phone') && input.phone !== null && typeof input.phone !== 'string') return null;
+  if (Object.hasOwn(input, 'email') && input.email !== null && typeof input.email !== 'string') return null;
   return {
     ...(Object.hasOwn(input, 'name') ? { name: input.name as string } : {}),
     ...(Object.hasOwn(input, 'slug') ? { slug: input.slug as string } : {}),
+    ...(Object.hasOwn(input, 'description') ? { description: input.description as string | null } : {}),
+    ...(Object.hasOwn(input, 'phone') ? { phone: input.phone as string | null } : {}),
+    ...(Object.hasOwn(input, 'email') ? { email: input.email as string | null } : {}),
   };
 };
 

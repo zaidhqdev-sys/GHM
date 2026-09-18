@@ -22,6 +22,11 @@ export interface BusinessIdentity {
   readonly id: BusinessId;
   readonly name: string;
   readonly slug: string;
+  readonly description: string | null;
+  readonly phone: string | null;
+  readonly email: string | null;
+  readonly insuranceVerified: boolean;
+  readonly jobsCompleted: number;
   readonly verificationStatus: BusinessVerificationStatus;
   readonly isActive: boolean;
   readonly createdAt: Date;
@@ -61,10 +66,13 @@ export interface CreateBusinessInput {
   readonly name: string;
 }
 
-/** First-slice Business profile fields. Later profile fields require a reconciled migration. */
+/** Owner-managed Business profile fields. Protected Trust inputs are excluded. */
 export interface UpdateBusinessProfileInput {
   readonly name?: string;
   readonly slug?: string;
+  readonly description?: string | null;
+  readonly phone?: string | null;
+  readonly email?: string | null;
 }
 
 export interface BusinessIdentityRepository {
@@ -100,3 +108,25 @@ export const BUSINESS_IDENTITY_OPERATIONS = Object.freeze({
   createBusiness: 'business.create',
   updateBusiness: 'business.updateProfile',
 });
+
+export const BUSINESS_PROFILE_OWNER_FIELDS = Object.freeze([
+  'name',
+  'slug',
+  'description',
+  'phone',
+  'email',
+] as const);
+
+export const BUSINESS_PROFILE_PROTECTED_FIELDS = Object.freeze([
+  'insurance_verified',
+  'jobs_completed',
+  'rating',
+  'review_count',
+  'profile_views',
+  'verification_status',
+  'is_verified',
+  'is_active',
+  'tier',
+  'is_featured',
+  'logo_url',
+] as const);

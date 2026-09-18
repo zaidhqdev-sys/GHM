@@ -99,39 +99,50 @@ If Business creation succeeds but owner membership creation fails, the transacti
 
 ## Business update contract
 
-The **first-slice GHM `business` table contains only**:
+The Business Identity update surface is extended by the Business Profile Trust-input slice.
+
+Allowed managed profile update fields:
 
 ```text
-id
 name
 slug
-verification_status
-is_active
-created_at
-updated_at
+description
+phone
+email
 ```
 
-Accordingly, the first repository implementation is limited to the fields actually present in the canonical schema. No nonexistent Connect profile fields may be accepted or granted merely because they exist in Connect.
-
-For the first slice:
+Protected Trust input columns on `ghm.business` (not owner-mutable):
 
 ```text
-Allowed managed identity update:
-- name
-- slug
+insurance_verified
+jobs_completed
 ```
 
-The service must still enforce the business-management authorization boundary and must reject attempts to mutate:
+Authoritative contracts for this extension:
+
+```text
+docs/architecture/BUSINESS_PROFILE_SOURCE_AUDIT.md
+docs/architecture/BUSINESS_PROFILE_SCHEMA_CONTRACT.md
+docs/architecture/BUSINESS_PROFILE_OPERATION_CONTRACT.md
+docs/architecture/BUSINESS_PROFILE_QUALIFICATION.md
+```
+
+The service must still enforce the business-management authorization boundary and must reject attempts to mutate protected/lifecycle fields including:
 
 ```text
 id
 verification_status
+is_verified
 is_active
+rating
+review_count
+insurance_verified
+jobs_completed
 created_at
 updated_at
 ```
 
-Later fields such as description, category, location, contact information, registration identity, ratings, counters, logo binding, directory-review state, and commercial state require separately reconciled migrations and operation contracts.
+Directory/category/geo/logo/commercial fields remain out of scope until separately authorized.
 
 ## Membership contract
 

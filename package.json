@@ -29,7 +29,8 @@
     "qualify:business-capability-runtime": "npm run build && node scripts/qualify-business-capability-runtime.mjs",
     "qualify:business-hours-runtime": "npm run build && node scripts/qualify-business-hours-runtime.mjs",
     "qualify:saved-business-runtime": "npm run build && node scripts/qualify-saved-business-runtime.mjs",
-    "qualify:trust-score-runtime": "npm run build && node scripts/qualify-trust-score-runtime.mjs"
+    "qualify:trust-score-runtime": "npm run build && node scripts/qualify-trust-score-runtime.mjs",
+    "qualify:business-profile-runtime": "npm run build && node scripts/qualify-business-profile-runtime.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",

@@ -5,7 +5,20 @@ import type { AccountIdentity, BusinessIdentity, BusinessIdentityRepository, Bus
 import type { AuthContext } from '../../auth/authorization';
 
 const account = (id: number, role: 'admin' | 'customer' | 'business'): AccountIdentity => ({ id, fullName: 'Test User', phone: null, avatarRef: null, role, createdAt: new Date(0), updatedAt: new Date(0) });
-const business = (id: number, approved = true): BusinessIdentity => ({ id, name: `Business ${id}`, slug: `business-${id}`, verificationStatus: approved ? 'approved' : 'unverified', isActive: true, createdAt: new Date(0), updatedAt: new Date(0) });
+const business = (id: number, approved = true): BusinessIdentity => ({
+  id,
+  name: `Business ${id}`,
+  slug: `business-${id}`,
+  description: null,
+  phone: null,
+  email: null,
+  insuranceVerified: false,
+  jobsCompleted: 0,
+  verificationStatus: approved ? 'approved' : 'unverified',
+  isActive: true,
+  createdAt: new Date(0),
+  updatedAt: new Date(0),
+});
 const membership = (businessId: number, accountId: number, role: 'owner' | 'administrator' | 'member', status: 'active' | 'inactive' | 'revoked' = 'active'): BusinessMembership => ({ id: businessId, businessId, accountId, role, status, createdBy: accountId, createdAt: new Date(0), updatedAt: new Date(0) });
 
 class FakeRepository implements BusinessIdentityRepository {
@@ -92,4 +105,22 @@ test('valid business operator creation establishes owner participation', async (
 test('selected revoked or inactive membership fails closed', async () => {
   const context: AuthContext = { userId: 1, role: 'business' }; const { service, repository } = serviceFor(context); repository.businesses.set(1, business(1)); repository.memberships.push(membership(1, 1, 'owner', 'revoked'));
   await assert.rejects(() => service.resolveIdentity({ context, selectedBusinessId: 1 }), /Selected business context is not authorized/);
+});
+
+test('updateBusiness delegates owner-managed profile fields', async () => {
+  const context: AuthContext = { userId: 1, role: 'business' };
+  let received: unknown;
+  const repository = new FakeRepository();
+  repository.accounts.set(1, account(1, 'business'));
+  repository.updateBusiness = async (ctx, businessId, input) => {
+    received = { ctx, businessId, input };
+    return { ...business(businessId), ...input, description: input.description ?? null, phone: input.phone ?? null, email: input.email ?? null } as BusinessIdentity;
+  };
+  const service = new BusinessIdentityServiceImpl(repository);
+  await service.updateBusiness(context, 9, { description: 'Hello', phone: '0111234567', email: 'a@b.co' });
+  assert.deepEqual(received, {
+    ctx: context,
+    businessId: 9,
+    input: { description: 'Hello', phone: '0111234567', email: 'a@b.co' },
+  });
 });
