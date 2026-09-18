@@ -6,6 +6,12 @@
 
 Branch: `construction/saved-business-resource`
 
+Final construction commit:
+
+```text
+77cfb425ec33a1eac53a70773c9a4ffdf72a012f
+```
+
 Qualification command:
 
 ```text
