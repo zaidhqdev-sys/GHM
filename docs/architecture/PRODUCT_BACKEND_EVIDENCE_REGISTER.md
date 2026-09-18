@@ -10,7 +10,7 @@ Zaid Connect remains authoritative for its own application contracts and Supabas
 
 The Connect schema must not be copied into GHM by inference. GHM implements only capabilities required by verified product contracts and establishes its own canonical schema through GHM migrations.
 
-The current GHM construction line has independently reconciled and qualified Business Identity, Project, Enquiry, Review, Opportunity Core, Project Quote, and Capability Catalogue capabilities against the verified product contracts. These are GHM construction capabilities, not evidence that Zaid Connect has been migrated or that a product adapter is authorized.
+The current GHM construction line has independently reconciled and qualified Business Identity, Project, Customer, Quote, Enquiry, Review, Opportunity Core, Opportunity capability requirements, Opportunity Participation, Project Quote, Capability Catalogue, Business Capability, Business Hours, Commercial trial, Notification, Support Request, and Saved Business capabilities against verified product contracts. These are GHM construction capabilities, not evidence that Zaid Connect has been migrated or that a product adapter is authorized.
 
 ## QuoteFlow
 
@@ -49,22 +49,36 @@ QUALIFIED CONSTRUCTION
   Transaction
   Authorization
   Project private/public disclosure
-  Enquiry
+  Customer
+  Quote
+  Enquiry / Lead
   Review + aggregate reconciliation
   Opportunity Core
+  Opportunity capability requirements
+  Opportunity Participation (initial)
   Project Quote
   Capability Catalogue
+  Business Capability (read/create)
+  Business Hours
   Commercial trial operation
+  Notification
+  Support Request
+  Saved Business
   Resource API boundary
   Operational boundary
 
 OPEN / NOT YET AUTHORIZED
+  Trust score / Trust evidence
+  Commercial payment beyond trial
+  Opportunity participant transition workflows
+  Business Capability lifecycle/verification update
+  Opportunity outcome / matching workflows
+  Business Hours exceptions / booking / open-now
   provider/bootstrap authority cleanup
-  future resource slices
   Connect adapter
   QuoteFlow adapter
   shadow qualification
   controlled production cutover
 ```
 
-Nothing in this register authorizes production migration, product configuration changes, or Supabase replacement.
+Nothing in this register authorizes production migration, product configuration changes, or Supabase replacement. No next product-resource construction slice is currently authorized without new source evidence and an explicit construction authorization.

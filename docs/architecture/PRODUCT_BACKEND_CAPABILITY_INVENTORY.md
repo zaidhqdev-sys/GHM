@@ -1,6 +1,6 @@
 # Product Backend Capability Inventory
 
-**Status:** Construction capability inventory — reconciled through current qualified GHM slices
+**Status:** Construction capability inventory — reconciled through Saved Business QUALIFIED / CLOSED
 
 This document records capabilities GHM may eventually support to replace current managed backend dependencies. It deliberately separates capability requirements from Supabase implementation details and does not authorize production migration.
 
@@ -41,12 +41,22 @@ The following GHM construction capabilities have now been implemented and qualif
 - Transaction boundary
 - Authorization boundary
 - Project private/public disclosure
-- Enquiry
+- Customer
+- Quote
+- Enquiry / Lead
 - Review and approved-only aggregate reconciliation
 - Opportunity Core
+- Opportunity capability requirements
+- Opportunity Participation (initial boundary)
 - Project Quote
-- Resource API boundary
+- Capability Catalogue
+- Business Capability (read/create)
+- Business Hours
 - Commercial trial operation
+- Notification
+- Support Request
+- Saved Business
+- Resource API boundary
 - Operational boundary
 
 These qualifications establish GHM capability construction only. They do not establish a Connect adapter, production migration, or cutover.
@@ -100,18 +110,36 @@ QUALIFIED CONSTRUCTION
   Transaction
   Authorization
   Project private/public disclosure
-  Enquiry
+  Customer
+  Quote
+  Enquiry / Lead
   Review + aggregate reconciliation
   Opportunity Core
+  Opportunity capability requirements
+  Opportunity Participation (initial)
   Project Quote
+  Capability Catalogue
+  Business Capability (read/create)
+  Business Hours
+  Commercial trial operation
+  Notification
+  Support Request
+  Saved Business
+  Resource API boundary
   Operational boundary
 
-REQUIRES FUTURE GOVERNED WORK
-  remaining platform/resource capabilities
+REQUIRES FUTURE GOVERNED WORK (NOT CURRENTLY AUTHORIZED)
+  Trust score / Trust evidence
+  Commercial payment preparation / cancellation / provider result application
+  Opportunity participant transition workflows
+  Business Capability lifecycle/verification update
+  Opportunity outcome / matching workflows
+  Business Hours exceptions / booking / open-now
+  remaining platform candidates (storage, realtime, provider webhooks, telemetry)
   Connect product adapter
   QuoteFlow product adapter
   shadow qualification
   controlled cutover
 ```
 
-Provider/bootstrap authority cleanup remains an independent open construction concern. Production Connect and QuoteFlow remain on Supabase.
+No next product-resource slice is currently construction-authorized. Provider/bootstrap authority cleanup remains an independent open construction concern. Production Connect and QuoteFlow remain on Supabase.
