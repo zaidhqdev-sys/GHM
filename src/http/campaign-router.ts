@@ -114,24 +114,10 @@ const handleCampaignError = (error: unknown, res: Response): void => {
     }
   }
 
-  const diagnosticError = error instanceof Error
-    ? error as Error & {
-        code?: string;
-        detail?: string;
-        hint?: string;
-      }
-    : undefined;
-
   console.error(JSON.stringify({
     event: 'http_request_failed',
     resource: 'campaign',
-    error: {
-      name: error instanceof Error ? error.name : 'UnknownError',
-      message: error instanceof Error ? error.message : String(error),
-      code: diagnosticError?.code,
-      detail: diagnosticError?.detail,
-      hint: diagnosticError?.hint,
-    },
+    error: { name: error instanceof Error ? error.name : 'UnknownError' },
   }));
   res.status(500).json({ error: 'internal_error' });
 };
