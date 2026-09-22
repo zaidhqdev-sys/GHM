@@ -21,6 +21,8 @@ import { CampaignServiceImpl } from '../resources/campaign/service';
 import { CampaignService } from '../resources/campaign/contracts';
 import { registerEnquiryRoutes } from './enquiry-router';
 import { registerCampaignRoutes } from './campaign-router';
+import { registerAuthRoutes, type AuthRouterDependencies } from './auth-router';
+import type { GhmAuthService } from '../auth/ghm-auth-service';
 
 export interface AppDependencies {
   readonly businessIdentityService?: BusinessIdentityService;
@@ -28,6 +30,7 @@ export interface AppDependencies {
   readonly publicProjectService?: PublicProjectService;
   readonly enquiryService?: EnquiryService;
   readonly campaignService?: CampaignService;
+  readonly authService?: GhmAuthService;
 }
 
 const requireRegisteredAccess = (resource: Parameters<typeof canAccessResource>[1], operation: ResourceOperation) =>
@@ -370,6 +373,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
 
   registerEnquiryRoutes(app, enquiryService);
   registerCampaignRoutes(app, campaignService);
+  registerAuthRoutes(app, { authService: dependencies.authService } satisfies AuthRouterDependencies);
 
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
     try {
