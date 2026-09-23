@@ -22,8 +22,12 @@ import { EnquiryService } from '../resources/enquiry/contracts';
 import { PostgresCampaignRepository } from '../resources/campaign/repository';
 import { CampaignServiceImpl } from '../resources/campaign/service';
 import { CampaignService } from '../resources/campaign/contracts';
+import { PostgresOpportunityRepository } from '../resources/opportunity/repository';
+import { OpportunityServiceImpl } from '../resources/opportunity/service';
+import { OpportunityService } from '../resources/opportunity/contracts';
 import { registerEnquiryRoutes } from './enquiry-router';
 import { registerCampaignRoutes } from './campaign-router';
+import { registerOpportunityRoutes } from './opportunity-router';
 import { registerAuthRoutes, type AuthRouterDependencies } from './auth-router';
 import type { GhmAuthService } from '../auth/ghm-auth-service';
 
@@ -34,6 +38,7 @@ export interface AppDependencies {
   readonly publicProjectService?: PublicProjectService;
   readonly enquiryService?: EnquiryService;
   readonly campaignService?: CampaignService;
+  readonly opportunityService?: OpportunityService;
   readonly authService?: GhmAuthService;
 }
 
@@ -239,6 +244,9 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const campaignService =
     dependencies.campaignService ??
     new CampaignServiceImpl(new PostgresCampaignRepository());
+  const opportunityService =
+    dependencies.opportunityService ??
+    new OpportunityServiceImpl(new PostgresOpportunityRepository());
   app.disable('x-powered-by');
   app.set('trust proxy', config.trustProxy);
   app.use(cors({ origin: config.corsOrigins }));
@@ -405,6 +413,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
 
   registerEnquiryRoutes(app, enquiryService);
   registerCampaignRoutes(app, campaignService);
+  registerOpportunityRoutes(app, opportunityService);
   registerAuthRoutes(app, { authService: dependencies.authService } satisfies AuthRouterDependencies);
 
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
