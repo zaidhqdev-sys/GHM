@@ -5,6 +5,9 @@ import { requireAuth } from '../auth/http';
 import { PostgresBusinessIdentityRepository } from '../resources/business-identity/repository';
 import { BusinessIdentityServiceImpl } from '../resources/business-identity/service';
 import { BusinessIdentityService, UpdateBusinessProfileInput } from '../resources/business-identity/contracts';
+import { PostgresBusinessHoursRepository } from '../resources/business-hours/repository';
+import { BusinessHoursServiceImpl } from '../resources/business-hours/service';
+import { BusinessHoursService } from '../resources/business-hours/contracts';
 import { PostgresProjectRepository } from '../resources/project/repository';
 import { ProjectServiceImpl } from '../resources/project/service';
 import { CreateProjectInput, ProjectService, UpdateProjectInput } from '../resources/project/contracts';
@@ -26,6 +29,7 @@ import type { GhmAuthService } from '../auth/ghm-auth-service';
 
 export interface AppDependencies {
   readonly businessIdentityService?: BusinessIdentityService;
+  readonly businessHoursService?: BusinessHoursService;
   readonly projectService?: ProjectService;
   readonly publicProjectService?: PublicProjectService;
   readonly enquiryService?: EnquiryService;
@@ -198,7 +202,11 @@ const parseProjectUpdateInput = (body: unknown): UpdateProjectInput | null => {
 
 const handleError = (error: unknown, res: Response): void => {
   if (error instanceof Error) {
-    if (error.message === 'Business creation requires a business operator role' || error.message === 'Business management permission required') {
+    if (
+      error.message === 'Business creation requires a business operator role'
+      || error.message === 'Business management permission required'
+      || error.message === 'Business access required'
+    ) {
       res.status(403).json({ error: 'forbidden' });
       return;
     }
@@ -218,6 +226,9 @@ const handleError = (error: unknown, res: Response): void => {
 export const createApp = (dependencies: AppDependencies = {}): express.Express => {
   const app = express();
   const service = dependencies.businessIdentityService ?? new BusinessIdentityServiceImpl(new PostgresBusinessIdentityRepository());
+  const businessHoursService =
+    dependencies.businessHoursService
+    ?? new BusinessHoursServiceImpl(new PostgresBusinessHoursRepository());
   const projectService = dependencies.projectService ?? new ProjectServiceImpl(new PostgresProjectRepository());
   const publicProjectService =
     dependencies.publicProjectService ??
@@ -290,6 +301,27 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       handleError(error, res);
     }
   });
+
+  app.get(
+    '/api/v1/businesses/:businessId/hours',
+    requireAuth,
+    requireRegisteredAccess('business_hours', 'read'),
+    async (req: Request, res: Response) => {
+      try {
+        const context = req.authContext as AuthContext;
+        const businessIdValue = routeParam(req.params.businessId);
+        const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
+        if (businessId === null) {
+          res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+        const hours = await businessHoursService.getBusinessHours(context, businessId);
+        res.status(200).json({ hours });
+      } catch (error) {
+        handleError(error, res);
+      }
+    },
+  );
 
   app.get('/api/v1/businesses/:businessId', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
     try {
