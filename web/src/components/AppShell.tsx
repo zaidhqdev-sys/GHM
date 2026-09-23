@@ -1,12 +1,15 @@
 import { useState, type ReactNode } from 'react';
 import { useGhmSession } from '../auth/GhmSessionProvider';
 
+export type AppNavId = 'profile' | 'business-profile';
+
 interface AppShellProps {
   readonly children: ReactNode;
-  readonly activeNav: 'profile';
+  readonly activeNav: AppNavId;
+  readonly onNavigate: (nav: AppNavId) => void;
 }
 
-export const AppShell = ({ children, activeNav }: AppShellProps) => {
+export const AppShell = ({ children, activeNav, onNavigate }: AppShellProps) => {
   const { accountId, sessionId, client } = useGhmSession();
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -34,7 +37,20 @@ export const AppShell = ({ children, activeNav }: AppShellProps) => {
         </button>
       </header>
       <nav className="app-nav" aria-label="Primary">
-        <span className={activeNav === 'profile' ? 'nav-active' : undefined}>Profile</span>
+        <button
+          type="button"
+          className={activeNav === 'profile' ? 'nav-active nav-button' : 'nav-button'}
+          onClick={() => onNavigate('profile')}
+        >
+          Profile
+        </button>
+        <button
+          type="button"
+          className={activeNav === 'business-profile' ? 'nav-active nav-button' : 'nav-button'}
+          onClick={() => onNavigate('business-profile')}
+        >
+          Business Profile
+        </button>
       </nav>
       <main className="app-main">{children}</main>
     </div>
