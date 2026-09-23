@@ -4,6 +4,7 @@ import { AppShell, type AppNavId } from './components/AppShell';
 import { LoginPage } from './pages/LoginPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { BusinessProfilePage } from './pages/BusinessProfilePage';
+import { BusinessHoursPage } from './pages/BusinessHoursPage';
 
 const AppRoutes = () => {
   const { ready, authenticated } = useGhmSession();
@@ -24,7 +25,13 @@ const AppRoutes = () => {
 
   return (
     <AppShell activeNav={activeNav} onNavigate={setActiveNav}>
-      {activeNav === 'profile' ? <ProfilePage /> : <BusinessProfilePage />}
+      {activeNav === 'profile' ? (
+        <ProfilePage />
+      ) : activeNav === 'business-profile' ? (
+        <BusinessProfilePage />
+      ) : (
+        <BusinessHoursPage />
+      )}
     </AppShell>
   );
 };

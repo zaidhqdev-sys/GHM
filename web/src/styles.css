@@ -168,3 +168,7 @@ button:disabled {
   margin: 0;
   font-size: 1.05rem;
 }
+
+.hours-grid {
+  max-width: 28rem;
+}
