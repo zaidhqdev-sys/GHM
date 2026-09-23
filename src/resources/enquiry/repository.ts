@@ -116,6 +116,25 @@ export class PostgresEnquiryRepository implements EnquiryRepository {
     return withAuthorizedTransaction(context, client => this.getReceivedEnquiryInTransaction(client, context, enquiryId), this.transactionPool);
   }
 
+  async getReceivedEnquiries(context: AuthContext, businessId: number): Promise<readonly Enquiry[]> {
+    assertPositiveId(businessId, 'businessId');
+    return withAuthorizedTransaction(context, async client => {
+      await assertActiveOwner(client, context, businessId);
+      const result = await client.query(
+        `SELECT ${ENQUIRY_COLUMNS} FROM ghm.enquiry e
+         WHERE e.business_id = $1
+           AND EXISTS (
+             SELECT 1 FROM ghm.business_membership bm
+             WHERE bm.business_id = e.business_id AND bm.account_id = $2
+               AND bm.membership_role = 'owner' AND bm.membership_status = 'active'
+           )
+         ORDER BY e.created_at DESC, e.id DESC`,
+        [businessId, context.userId],
+      );
+      return result.rows.map(mapEnquiry);
+    }, this.transactionPool);
+  }
+
   async updateReceivedEnquiryStatus(context: AuthContext, enquiryId: EnquiryId, input: UpdateEnquiryStatusInput): Promise<Enquiry> {
     assertPositiveId(enquiryId, 'enquiryId');
     return withAuthorizedTransaction(context, async client => {

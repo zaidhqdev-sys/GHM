@@ -51,6 +51,7 @@ export interface EnquiryRepository {
   createEnquiry(context: AuthContext, input: CreateEnquiryInput): Promise<Enquiry>;
   getOwnEnquiry(context: AuthContext, enquiryId: EnquiryId): Promise<Enquiry | null>;
   getReceivedEnquiry(context: AuthContext, enquiryId: EnquiryId): Promise<Enquiry | null>;
+  getReceivedEnquiries(context: AuthContext, businessId: BusinessId): Promise<readonly Enquiry[]>;
   updateReceivedEnquiryStatus(context: AuthContext, enquiryId: EnquiryId, input: UpdateEnquiryStatusInput): Promise<Enquiry>;
 }
 
@@ -58,6 +59,7 @@ export interface EnquiryService {
   createEnquiry(context: AuthContext, input: CreateEnquiryInput): Promise<Enquiry>;
   getOwnEnquiry(context: AuthContext, enquiryId: EnquiryId): Promise<Enquiry | null>;
   getReceivedEnquiry(context: AuthContext, enquiryId: EnquiryId): Promise<Enquiry | null>;
+  getReceivedEnquiries(context: AuthContext, businessId: BusinessId): Promise<readonly Enquiry[]>;
   updateReceivedEnquiryStatus(context: AuthContext, enquiryId: EnquiryId, input: UpdateEnquiryStatusInput): Promise<Enquiry>;
 }
 

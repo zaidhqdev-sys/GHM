@@ -23,6 +23,12 @@ const positiveIntegerId = (value: string): number | null => {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 };
 
+const queryValue = (value: unknown): string | null => {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value) && typeof value[0] === 'string') return value[0];
+  return null;
+};
+
 const parseCreateEnquiryInput = (body: unknown): CreateEnquiryInput | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   const input = body as Record<string, unknown>;
@@ -64,7 +70,7 @@ const parseStatusInput = (body: unknown): UpdateEnquiryStatusInput | null => {
 
 const handleEnquiryError = (error: unknown, res: Response): void => {
   if (error instanceof Error) {
-    if (error.message === 'Business owner permission required') {
+    if (error.message === 'Business owner permission required' || error.message === 'Insufficient role') {
       res.status(403).json({ error: 'forbidden' });
       return;
     }
@@ -96,6 +102,26 @@ export const registerEnquiryRoutes = (app: Express, service: EnquiryService): vo
       }
       const enquiry = await service.createEnquiry(context, input);
       res.status(201).json({ enquiry });
+    } catch (error) {
+      handleEnquiryError(error, res);
+    }
+  });
+
+  app.get('/api/v1/enquiries/received', requireAuth, requireRegisteredEnquiryAccess('read'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const rawBusinessId = queryValue(req.query.businessId);
+      if (rawBusinessId === null) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const businessId = positiveIntegerId(rawBusinessId);
+      if (businessId === null) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const enquiries = await service.getReceivedEnquiries(context, businessId);
+      res.status(200).json({ enquiries });
     } catch (error) {
       handleEnquiryError(error, res);
     }

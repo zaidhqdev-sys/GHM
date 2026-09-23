@@ -16,9 +16,14 @@ const enquiry = (): Enquiry => ({
 
 class FakeRepository implements EnquiryRepository {
   lastCreate: any = null;
+  lastReceivedList: { context: AuthContext; businessId: number } | null = null;
   async createEnquiry(_context: AuthContext, input: any) { this.lastCreate = input; return enquiry(); }
   async getOwnEnquiry() { return enquiry(); }
   async getReceivedEnquiry() { return enquiry(); }
+  async getReceivedEnquiries(context: AuthContext, businessId: number) {
+    this.lastReceivedList = { context, businessId };
+    return [enquiry()];
+  }
   async updateReceivedEnquiryStatus(_context: AuthContext, _id: number, input: any) { return { ...enquiry(), status: input.status }; }
 }
 
@@ -63,6 +68,23 @@ test('Enquiry recipient operations reject customer and admin roles', async () =>
   await assert.rejects(() => service.updateReceivedEnquiryStatus(customerContext, 1, { status: 'contacted' }), /Insufficient role/);
   await assert.rejects(() => service.getReceivedEnquiry(adminContext, 1), /Insufficient role/);
   await assert.rejects(() => service.updateReceivedEnquiryStatus(adminContext, 1, { status: 'contacted' }), /Insufficient role/);
+  await assert.rejects(() => service.getReceivedEnquiries(customerContext, 2), /Insufficient role/);
+  await assert.rejects(() => service.getReceivedEnquiries(adminContext, 2), /Insufficient role/);
+});
+
+test('Enquiry received collection requires business role and delegates exact context and businessId', async () => {
+  const repository = new FakeRepository();
+  const service = new EnquiryServiceImpl(repository);
+  const result = await service.getReceivedEnquiries(businessContext, 265);
+  assert.equal(result.length, 1);
+  assert.deepEqual(repository.lastReceivedList, { context: businessContext, businessId: 265 });
+});
+
+test('Enquiry received collection rejects invalid businessId', async () => {
+  const service = new EnquiryServiceImpl(new FakeRepository());
+  await assert.rejects(() => service.getReceivedEnquiries(businessContext, 0), /Invalid businessId/);
+  await assert.rejects(() => service.getReceivedEnquiries(businessContext, -1), /Invalid businessId/);
+  await assert.rejects(() => service.getReceivedEnquiries(businessContext, 1.5), /Invalid businessId/);
 });
 
 test('Enquiry status mutation accepts every production status value', async () => {

@@ -87,6 +87,11 @@ export class EnquiryServiceImpl implements EnquiryService {
     assertRole(context, 'business');
     return this.repository.getReceivedEnquiry(context, enquiryId);
   }
+  async getReceivedEnquiries(context: AuthContext, businessId: number): Promise<readonly Enquiry[]> {
+    assertRole(context, 'business');
+    if (!Number.isSafeInteger(businessId) || businessId <= 0) throw new Error('Invalid businessId');
+    return this.repository.getReceivedEnquiries(context, businessId);
+  }
   async updateReceivedEnquiryStatus(context: AuthContext, enquiryId: number, input: UpdateEnquiryStatusInput): Promise<Enquiry> {
     assertRole(context, 'business');
     return this.repository.updateReceivedEnquiryStatus(
