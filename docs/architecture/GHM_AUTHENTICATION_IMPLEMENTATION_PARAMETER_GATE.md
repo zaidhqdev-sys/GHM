@@ -25,7 +25,7 @@ PARAMETERS BELOW = FOUNDER-APPROVED FOR CONSTRUCTION
 | Class | Meaning |
 |---|---|
 | **A. Founder-selected architecture** | Frozen — not reopened (§1) |
-| **B. Parameters proposed by this gate** | Implementation choices — **Founder approval required** before DDL/impl |
+| **B. Founder-approved implementation parameters** | Frozen for construction within this gate; changes require a new Founder decision |
 | **C. Intentionally deferred** | Not invented here (§19) |
 
 ---
