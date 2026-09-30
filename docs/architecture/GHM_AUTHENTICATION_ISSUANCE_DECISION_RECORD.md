@@ -1,7 +1,7 @@
 # GHM Authentication Issuance Decision Record
 
 **Canonical owner:** GHM platform governance
-**Status:** **FOUNDER ARCHITECTURE DECISION COMPLETE** — documentation only; **implementation NOT AUTHORIZED**
+**Status:** HISTORICAL FOUNDER ARCHITECTURE DECISION RECORD — architecture remains binding; implementation authorization was subsequently granted through Gate 3B and qualified on `main @ ffc4a2a`
 **Authority:** Local repository `C:\GHM`
 **Baseline:** branch `construction/saved-business-resource`, HEAD `239ef5d5065826ddbaae03a2b05c175bee9bce1d`
 **Evidence sprint:** authentication/identity read-only audit across GHM @ `239ef5d`, Connect @ `abcffa73` (`C:\zaid-connect-audit`), QuoteFlow live tree (`C:\QuoteFlow`)
