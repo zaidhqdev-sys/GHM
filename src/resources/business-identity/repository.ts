@@ -98,6 +98,28 @@ export const createBusinessSlug = (name: string): string => {
   return slug;
 };
 
+export const createBusinessInTransaction = async (
+  client: PoolClient,
+  context: AuthContext,
+  input: CreateBusinessInput,
+  slug: string,
+): Promise<BusinessIdentity> => {
+  await requireAccount(client, context, true);
+  const businessResult = await client.query(
+    `INSERT INTO ghm.business (name, slug, verification_status, is_active)
+     VALUES ($1, $2, 'unverified', true)
+     RETURNING ${BUSINESS_COLUMNS}`,
+    [normalizeName(input.name), slug],
+  );
+  const business = mapBusiness(businessResult.rows[0]);
+  await client.query(
+    `INSERT INTO ghm.business_membership (business_id, account_id, membership_role, membership_status, created_by)
+     VALUES ($1, $2, 'owner', 'active', $2)`,
+    [business.id, context.userId],
+  );
+  return business;
+};
+
 export class PostgresBusinessIdentityRepository implements BusinessIdentityRepository {
   constructor(private readonly transactionPool?: TransactionPool) {}
   async getAccount(context: AuthContext) { return withAuthorizedTransaction(context, c => requireAccount(c, context), this.transactionPool); }
@@ -113,18 +135,11 @@ export class PostgresBusinessIdentityRepository implements BusinessIdentityRepos
   async getBusinessBySlug(context: AuthContext, slug: string) { return withAuthorizedTransaction(context, c => findBusinessBySlug(c, slug), this.transactionPool); }
   async getMembershipsForAccount(context: AuthContext) { return withAuthorizedTransaction(context, c => findMemberships(c, context.userId), this.transactionPool); }
   async createBusiness(context: AuthContext, input: CreateBusinessInput, slug: string) {
-    return withAuthorizedTransaction(context, async client => {
-      await requireAccount(client, context, true);
-      const businessResult = await client.query(
-        `INSERT INTO ghm.business (name, slug, verification_status, is_active)
-         VALUES ($1, $2, 'unverified', true)
-         RETURNING ${BUSINESS_COLUMNS}`,
-        [normalizeName(input.name), slug],
-      );
-      const business = mapBusiness(businessResult.rows[0]);
-      await client.query(`INSERT INTO ghm.business_membership (business_id, account_id, membership_role, membership_status, created_by) VALUES ($1, $2, 'owner', 'active', $2)`, [business.id, context.userId]);
-      return business;
-    }, this.transactionPool);
+    return withAuthorizedTransaction(
+      context,
+      client => createBusinessInTransaction(client, context, input, slug),
+      this.transactionPool,
+    );
   }
   async updateBusiness(context: AuthContext, businessId: BusinessId, input: UpdateBusinessProfileInput) {
     const patch = buildProfilePatch(input);
