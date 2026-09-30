@@ -154,7 +154,7 @@ export const registerSupportRequestRoutes = (
   app.get(
     '/api/v1/support-requests/:requestId',
     requireAuth,
-    requireSupportAccess('read'),
+    requireSupportAccess('read', ['customer', 'admin']),
     async (req: Request, res: Response) => {
       try {
         const value = routeParam(req.params.requestId);
