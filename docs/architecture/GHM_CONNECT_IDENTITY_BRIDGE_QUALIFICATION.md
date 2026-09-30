@@ -1,7 +1,7 @@
 # GHM ↔ Zaid Connect Identity Bridge Qualification
 
 **Status:** CONSTRUCTION QUALIFIED — PRODUCT ADAPTER / CUTOVER NOT AUTHORIZED
-**Qualified main:** `42c4a22`
+**Qualified main:** `ffc4a2a`
 **Founder approval:** Authentication Gate 3B approved 2026-09-30
 
 ## Purpose
