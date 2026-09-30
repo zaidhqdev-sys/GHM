@@ -453,7 +453,7 @@ No code fixes in this gate.
 |---|---|---|
 | Argon2id parameters | 64MiB / time 3 / p=1 / hash 32 / salt 16 / PHC | **Founder approved 2026-09-30** |
 | Password rehash on login | Yes when params weaker | **Founder approved 2026-09-30** |
-| Email normalization | Trim + NFKC + case norm for login key only; max 320; not full i18n email | **Founder approval required** |
+| Email normalization | Trim + NFKC + case norm for login key only; max 320; not full i18n email | **Founder approved 2026-09-30** |
 | Recovery TTL | 30 minutes | **Founder approval required** |
 | Recovery token format | 32-byte CSPRNG; base64url wire | **Founder approval required** |
 | Recovery/refresh hash | HMAC-SHA256 with pepper → `bytea` | **Founder approval required** |
