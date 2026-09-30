@@ -8,11 +8,11 @@ const param = (v: string | string[]) => typeof v === 'string' ? v : null;
 const id = (v: string) => /^[1-9]\d*$/.test(v) && Number.isSafeInteger(Number(v)) ? Number(v) : null;
 
 const access = (
-  operation: 'read' | 'create' | 'update',
+  operation: 'readReceived' | 'readOwn' | 'create' | 'update' | 'accept' | 'reject',
   roles: readonly AuthContext['role'][],
 ) => (req: Request, res: Response, next: () => void): void => {
   const context = req.authContext as AuthContext | undefined;
-  if (!context || !roles.includes(context.role) || !isRegisteredOperation('project_quote', operation) || !canAccessResource(context, 'project')) {
+  if (!context || !roles.includes(context.role) || !isRegisteredOperation('project_quote', operation) || !canAccessResource(context, 'project_quote')) {
     res.status(403).json({ error: 'forbidden' });
     return;
   }
@@ -72,7 +72,7 @@ const error = (e: unknown, res: Response): void => {
 };
 
 export const registerProjectQuoteRoutes = (app: Express, service: ProjectQuoteService): void => {
-  app.get('/api/v1/projects/:projectId/quotes', requireAuth, access('read', ['customer']), async (req, res) => {
+  app.get('/api/v1/projects/:projectId/quotes', requireAuth, access('readReceived', ['customer']), async (req, res) => {
     try {
       const v = param(req.params.projectId); const projectId = v === null ? null : id(v);
       if (projectId === null) { res.status(400).json({ error: 'invalid_request' }); return; }
@@ -80,7 +80,7 @@ export const registerProjectQuoteRoutes = (app: Express, service: ProjectQuoteSe
     } catch (e) { error(e, res); }
   });
 
-  app.get('/api/v1/businesses/:businessId/project-quotes', requireAuth, access('read', ['business']), async (req, res) => {
+  app.get('/api/v1/businesses/:businessId/project-quotes', requireAuth, access('readOwn', ['business']), async (req, res) => {
     try {
       const v = param(req.params.businessId); const businessId = v === null ? null : id(v);
       if (businessId === null) { res.status(400).json({ error: 'invalid_request' }); return; }
@@ -105,21 +105,19 @@ export const registerProjectQuoteRoutes = (app: Express, service: ProjectQuoteSe
     } catch (e) { error(e, res); }
   });
 
-  app.post('/api/v1/project-quotes/:quoteId/accept', requireAuth, access('read', ['customer']), async (req, res) => {
+  app.post('/api/v1/project-quotes/:quoteId/accept', requireAuth, access('accept', ['customer']), async (req, res) => {
     try {
       const v = param(req.params.quoteId); const quoteId = v === null ? null : id(v);
       if (quoteId === null || Object.keys(req.body ?? {}).length !== 0) { res.status(400).json({ error: 'invalid_request' }); return; }
-      if (!isRegisteredOperation('project_quote', 'accept')) { res.status(403).json({ error: 'forbidden' }); return; }
-      res.status(200).json({ quote: await service.accept(req.authContext as AuthContext, quoteId) });
+            res.status(200).json({ quote: await service.accept(req.authContext as AuthContext, quoteId) });
     } catch (e) { error(e, res); }
   });
 
-  app.post('/api/v1/project-quotes/:quoteId/reject', requireAuth, access('read', ['customer']), async (req, res) => {
+  app.post('/api/v1/project-quotes/:quoteId/reject', requireAuth, access('reject', ['customer']), async (req, res) => {
     try {
       const v = param(req.params.quoteId); const quoteId = v === null ? null : id(v);
       if (quoteId === null || Object.keys(req.body ?? {}).length !== 0) { res.status(400).json({ error: 'invalid_request' }); return; }
-      if (!isRegisteredOperation('project_quote', 'reject')) { res.status(403).json({ error: 'forbidden' }); return; }
-      res.status(200).json({ quote: await service.reject(req.authContext as AuthContext, quoteId) });
+            res.status(200).json({ quote: await service.reject(req.authContext as AuthContext, quoteId) });
     } catch (e) { error(e, res); }
   });
 };
