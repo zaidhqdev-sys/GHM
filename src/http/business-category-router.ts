@@ -22,7 +22,7 @@ const uuidParam = (value: string | string[]): string | null => {
 
 const requireCategoryAccess = (
   resource: 'business_category' | 'business_category_assignment',
-  operation: 'read' | 'create' | 'update_primary',
+  operation: 'read' | 'create' | 'update',
 ) => (req: Request, res: Response, next: () => void): void => {
   const context = req.authContext as AuthContext | undefined;
   if (!context || !isRegisteredOperation(resource, operation) || !canAccessResource(context, resource)) {
@@ -130,7 +130,7 @@ export const registerBusinessCategoryRoutes = (app: Express, businessCategorySer
     } catch (error) { handleError(error, res); }
   });
 
-  app.patch('/api/v1/businesses/:businessId/categories/:categoryId/primary', requireAuth, requireCategoryAccess('business_category_assignment', 'update_primary'), async (req: Request, res: Response) => {
+  app.patch('/api/v1/businesses/:businessId/categories/:categoryId/primary', requireAuth, requireCategoryAccess('business_category_assignment', 'update'), async (req: Request, res: Response) => {
     try {
       const businessIdValue = routeParam(req.params.businessId);
       const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
