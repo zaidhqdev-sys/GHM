@@ -50,6 +50,10 @@ import { registerTrustScoreRoutes } from './trust-score-router';
 import { registerSupportRequestRoutes } from './support-request-router';
 import { registerReviewRoutes } from './review-router';
 import type { GhmAuthService } from '../auth/ghm-auth-service';
+import { PostgresProjectQuoteRepository } from '../resources/project-quote/repository';
+import { ProjectQuoteServiceImpl } from '../resources/project-quote/service';
+import type { ProjectQuoteService } from '../resources/project-quote/contracts';
+import { registerProjectQuoteRoutes } from './project-quote-router';
 
 export interface AppDependencies {
   readonly businessIdentityService?: BusinessIdentityService;
@@ -64,6 +68,7 @@ export interface AppDependencies {
   readonly trustScoreService?: TrustScoreService;
   readonly supportRequestService?: SupportRequestService;
   readonly reviewService?: ReviewService;
+  readonly projectQuoteService?: ProjectQuoteService;
   readonly authService?: GhmAuthService;
 }
 
@@ -287,6 +292,9 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const reviewService =
     dependencies.reviewService ??
     new ReviewServiceImpl(new PostgresReviewRepository());
+  const projectQuoteService =
+    dependencies.projectQuoteService ??
+    new ProjectQuoteServiceImpl(new PostgresProjectQuoteRepository());
   app.disable('x-powered-by');
   app.set('trust proxy', config.trustProxy);
   app.use(cors({ origin: config.corsOrigins }));
@@ -459,6 +467,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerTrustScoreRoutes(app, trustScoreService);
   registerSupportRequestRoutes(app, supportRequestService);
   registerReviewRoutes(app, reviewService);
+  registerProjectQuoteRoutes(app, projectQuoteService);
   registerAuthRoutes(app, { authService: dependencies.authService } satisfies AuthRouterDependencies);
 
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
