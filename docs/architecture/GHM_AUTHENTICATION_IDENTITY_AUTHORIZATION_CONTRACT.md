@@ -1,7 +1,7 @@
 # GHM Authentication Identity & Authorization Provisioning Contract
 
 **Canonical owner:** GHM platform governance
-**Status:** AUTHENTICATION GATE 2F — IDENTITY & AUTHORIZATION PROVISIONING CONTRACT — **DOCUMENTATION ONLY**; **implementation NOT AUTHORIZED**
+**Status:** AUTHENTICATION GATE 2F — IDENTITY & AUTHORIZATION PROVISIONING CONTRACT — **CONSTRUCTION FOUNDATION QUALIFIED**; product adapter / migration implementation remains separately authorized
 **Authority:** Local repository `C:\GHM`
 **Baseline:** branch `construction/saved-business-resource`, HEAD `239ef5d` (docs may advance ahead of HEAD)
 **Depends on:**
@@ -13,9 +13,8 @@
 - [PRODUCT_INTEGRATION_BOUNDARY_CONTRACT.md](./PRODUCT_INTEGRATION_BOUNDARY_CONTRACT.md)
 
 ```text
-IMPLEMENTATION AUTHORIZATION: NOT GRANTED
-DOCUMENTATION-ONLY GATE
-NO SCHEMA / AUTHCONTEXT / MIDDLEWARE CHANGES
+CONSTRUCTION STATUS: FOUNDATION IMPLEMENTED AND QUALIFIED ON MAIN
+PRODUCT ADAPTER / MIGRATION / CUTOVER AUTHORIZATION: NOT GRANTED
 ```
 
 This document defines how an **authenticated GHM identity** relates to `ghm.account_identity`, authentication state, business membership, authorization, account lifecycle, and controlled identity bootstrap. It establishes the boundary between **authentication** and **authorization** before any schema implementation begins.
