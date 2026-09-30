@@ -455,7 +455,7 @@ No code fixes in this gate.
 | Password rehash on login | Yes when params weaker | **Founder approved 2026-09-30** |
 | Email normalization | Trim + NFKC + case norm for login key only; max 320; not full i18n email | **Founder approved 2026-09-30** |
 | Recovery TTL | 30 minutes | **Founder approved 2026-09-30** |
-| Recovery token format | 32-byte CSPRNG; base64url wire | **Founder approval required** |
+| Recovery token format | 32-byte CSPRNG; base64url wire | **Founder approved 2026-09-30** |
 | Recovery/refresh hash | HMAC-SHA256 with pepper → `bytea` | **Founder approval required** |
 | Refresh token format/entropy | Opaque 32-byte; base64url | **Founder approval required** |
 | Token pepper | `GHM_AUTH_TOKEN_PEPPER` required | **Founder approval required** |
