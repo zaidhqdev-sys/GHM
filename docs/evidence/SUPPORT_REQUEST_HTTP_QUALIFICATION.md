@@ -1,6 +1,6 @@
 # Support Request HTTP Qualification
 
-**Status:** CONSTRUCTION QUALIFICATION — pending local execution
+**Status:** CONSTRUCTION QUALIFICATION — build correction applied; local execution pending
 **Branch:** `construction/support-request-http-api`
 **Date:** 2026-09-30
 
@@ -49,3 +49,8 @@ The branch is not considered locally qualified until the complete configured tes
 This branch is a construction slice only.
 
 Do not merge it into the authoritative branch until founder approval is explicitly given after local verification.
+
+
+## Build correction reconciliation
+
+The first local qualification attempt exposed a TypeScript error because `ListSupportRequestsOptions` intentionally uses readonly properties. The HTTP parser now constructs a mutable local parse object and returns it as the canonical readonly contract type. No domain contract was changed.
