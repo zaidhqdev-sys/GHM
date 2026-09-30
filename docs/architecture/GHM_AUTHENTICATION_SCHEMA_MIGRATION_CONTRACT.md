@@ -1,9 +1,9 @@
 # GHM Authentication Schema & Migration Contract
 
 **Canonical owner:** GHM platform governance
-**Status:** AUTHENTICATION GATE 3A — SCHEMA & MIGRATION CONTRACT — **DDL CONSTRUCTED** (construction migrations present); **Auth runtime / product cutover NOT AUTHORIZED**
-**Authority:** Local repository `C:\GHM`
-**Baseline:** branch `construction/saved-business-resource`, HEAD `239ef5d` (docs may advance ahead of HEAD)
+**Status:** AUTHENTICATION GATE 3A — HISTORICAL SCHEMA & MIGRATION CONTRACT; DDL was subsequently constructed and the authentication foundation was qualified under Gate 3B on the consolidated mainline.
+**Current qualified baseline:** `main` — current repository HEAD (see current qualification records)
+**Current boundary:** GHM authentication runtime foundation is qualified; Connect/QuoteFlow product migration and production cutover remain separately gated.
 **Depends on:** Founder decisions 1–12, C1–C10, R1–R7 and:
 - [GHM_AUTHENTICATION_ISSUANCE_DECISION_RECORD.md](./GHM_AUTHENTICATION_ISSUANCE_DECISION_RECORD.md) (§16.2 R1–R7 SELECTED)
 - [GHM_AUTHENTICATION_PERSISTENCE_CONTRACT.md](./GHM_AUTHENTICATION_PERSISTENCE_CONTRACT.md)
@@ -14,11 +14,15 @@
 - [GHM_AUTHENTICATION_CRYPTOGRAPHIC_CONTRACT.md](./GHM_AUTHENTICATION_CRYPTOGRAPHIC_CONTRACT.md)
 
 ```text
-AUTH RUNTIME AUTHORIZATION: NOT GRANTED
+HISTORICAL GATE 3A SNAPSHOT
 DDL MIGRATIONS: PRESENT UNDER database/migrations/20260921120*.sql
-NO Auth API / JWT CUTOVER / PRODUCT MIGRATION
+AT THAT GATE: AUTH RUNTIME / PRODUCT CUTOVER NOT AUTHORIZED
 NO SECRETS / PEPPER / KEYS IN MIGRATIONS
 ```
+
+### Current reconciliation
+
+The implementation boundary recorded above is historical Gate 3A state. It must not be read as the current authorization state. Gate 3B subsequently authorized the authentication runtime foundation, and that foundation is now construction-qualified on the consolidated `main` line. The current authority for implementation status is the Gate 3B qualification evidence and the current authentication/identity qualification records. Product authentication migration, Connect identity-adapter construction, and production cutover remain separately gated.
 
 This document defines the **concrete relational model**. Construction DDL matching this contract exists in the repository migrations listed in §23. Exact physical SQL may use the definitions below unless a later Founder/implementation amendment says otherwise.
 
