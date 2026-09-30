@@ -3,6 +3,7 @@
 **Status:** CONSTRUCTION QUALIFIED — PRODUCT ADAPTER / CUTOVER NOT AUTHORIZED
 **Qualified baseline:** current consolidated `main` (the qualification evidence below predates the documentation-only reconciliation commits and must be read as evidence for the same qualified foundation, not as the current HEAD)
 **Founder approval:** Authentication Gate 3B approved 2026-09-30
+**Current authority:** This qualification establishes the GHM identity foundation only; the Connect adapter requires a separate construction authorization.
 
 ## Purpose
 
