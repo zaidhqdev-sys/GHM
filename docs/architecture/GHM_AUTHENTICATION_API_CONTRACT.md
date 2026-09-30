@@ -1,7 +1,7 @@
 # GHM Authentication API Contract
 
 **Canonical owner:** GHM platform governance
-**Status:** AUTHENTICATION GATE 2E — AUTHENTICATION API CONTRACT — **DOCUMENTATION ONLY**; **implementation NOT AUTHORIZED**
+**Status:** AUTHENTICATION GATE 2E CONTRACT — HISTORICAL CONTRACT RECORD; current implementation status is governed by Gate 3B and the qualified mainline auth foundation (`ffc4a2a`)
 **Authority:** Local repository `C:\GHM`
 **Baseline:** branch `construction/saved-business-resource`, HEAD `239ef5d` (docs may advance ahead of HEAD)
 **Depends on:**
