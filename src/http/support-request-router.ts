@@ -134,7 +134,7 @@ export const registerSupportRequestRoutes = (
   app.get(
     '/api/v1/support-requests',
     requireAuth,
-    requireSupportAccess('read'),
+    requireSupportAccess('read', ['customer', 'admin']),
     async (req: Request, res: Response) => {
       try {
         const context = req.authContext as AuthContext;
@@ -225,7 +225,7 @@ export const registerSupportRequestRoutes = (
   app.get(
     '/api/v1/support-requests/:requestId/messages',
     requireAuth,
-    requireSupportAccess('readMessages'),
+    requireSupportAccess('readMessages', ['customer', 'admin']),
     async (req: Request, res: Response) => {
       try {
         const value = routeParam(req.params.requestId);
