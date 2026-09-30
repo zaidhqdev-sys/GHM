@@ -1,7 +1,7 @@
 # GHM Authentication Session Contract
 
 **Canonical owner:** GHM platform governance
-**Status:** AUTHENTICATION GATE 2B — SESSION / REFRESH CONTRACT — **PARTIAL FOUNDER DECISIONS RECORDED** (durations + refresh rotation/replay SELECTED; opaque refresh / persistence UNSELECTED); **implementation NOT AUTHORIZED**
+**Status:** AUTHENTICATION GATE 2B CONTRACT — HISTORICAL DECISION RECORD; session/refresh parameters were subsequently frozen by Gate 3B and the resulting construction foundation is qualified on `main @ ffc4a2a`
 **Authority:** Local repository `C:\GHM`
 **Baseline:** branch `construction/saved-business-resource`, HEAD `239ef5d5065826ddbaae03a2b05c175bee9bce1d`
 **Depends on:**
