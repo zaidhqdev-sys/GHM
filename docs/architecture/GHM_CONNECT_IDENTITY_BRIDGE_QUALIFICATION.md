@@ -1,7 +1,7 @@
 # GHM ↔ Zaid Connect Identity Bridge Qualification
 
 **Status:** CONSTRUCTION QUALIFIED — PRODUCT ADAPTER / CUTOVER NOT AUTHORIZED
-**Qualified main:** `ffc4a2a`
+**Qualified baseline:** current consolidated `main` (the qualification evidence below predates the documentation-only reconciliation commits and must be read as evidence for the same qualified foundation, not as the current HEAD)
 **Founder approval:** Authentication Gate 3B approved 2026-09-30
 
 ## Purpose
@@ -24,7 +24,7 @@ GHM now has a construction-qualified authentication and identity foundation:
 
 ## Qualification evidence
 
-The Authentication Gate 3B construction branch was verified locally:
+The Authentication Gate 3B construction branch was verified locally with:
 
 - 382 tests passed
 - 0 failed
@@ -32,9 +32,7 @@ The Authentication Gate 3B construction branch was verified locally:
 - 0 skipped
 - TypeScript build passed
 
-The branch was merged to `main` as:
-
-`42c4a22` — `merge: qualify authentication gate 3b`
+Gate 3B was subsequently merged to `main` as `42c4a22`. The consolidated mainline was then independently reconciled through the current documentation baseline. The 382-test/build result is qualification evidence for the authentication foundation; later documentation-only commits do not alter that implementation evidence.
 
 ## Connect mapping boundary
 
@@ -49,7 +47,7 @@ The Connect source audit established:
 
 with `provider=supabase` for existing Supabase Auth identities.
 
-Therefore the previous readiness statements that treated UUID↔bigint identity mapping as wholly absent are now stale with respect to the GHM construction foundation.
+Therefore previous readiness statements that treated UUID↔bigint identity mapping as wholly absent are stale with respect to the GHM construction foundation. Current readiness must distinguish the qualified GHM mapping foundation from the still-unimplemented Connect product adapter.
 
 ## What remains open
 
