@@ -52,7 +52,7 @@ class FakeClient {
     if (sql.includes('FROM ghm.business_external_mapping')) {
       return this.provisioning ? { rowCount: 0, rows: [] } : { rowCount: 1, rows: [mappingRow] };
     }
-    if (sql.includes('FROM ghm.business WHERE id = $1')) return { rowCount: 1, rows: [businessRow] };
+    if (sql.includes('FROM ghm.business') && sql.includes('WHERE id = $1')) return { rowCount: 1, rows: [businessRow] };
     if (sql.includes('FROM ghm.account_identity')) return { rowCount: 1, rows: [accountRow] };
     if (sql.includes('INSERT INTO ghm.business (')) return { rowCount: 1, rows: [businessRow] };
     if (sql.includes('INSERT INTO ghm.business_membership')) return { rowCount: 1, rows: [] };
