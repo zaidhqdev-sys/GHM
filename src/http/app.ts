@@ -66,6 +66,10 @@ import { PostgresCustomerRepository } from '../resources/customer/repository';
 import { CustomerServiceImpl } from '../resources/customer/service';
 import type { CustomerService } from '../resources/customer/contracts';
 import { registerCustomerRoutes } from './customer-router';
+import { PostgresQuoteRepository } from '../resources/quote/repository';
+import { DefaultQuoteService } from '../resources/quote/service';
+import { QuoteService } from '../resources/quote/contracts';
+import { registerQuoteRoutes } from './quote-router';
 
 export interface AppDependencies {
   readonly businessIdentityService?: BusinessIdentityService;
@@ -84,6 +88,7 @@ export interface AppDependencies {
   readonly opportunityRequirementsService?: OpportunityRequirementsService;
   readonly opportunityParticipantService?: OpportunityParticipantService;
   readonly customerService?: CustomerService;
+  readonly quoteService?: QuoteService;
   readonly authService?: GhmAuthService;
 }
 
@@ -317,6 +322,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     dependencies.opportunityParticipantService ??
     new OpportunityParticipantServiceImpl(new PostgresOpportunityParticipantRepository());
   const customerService = dependencies.customerService ?? new CustomerServiceImpl(new PostgresCustomerRepository());
+  const quoteService = dependencies.quoteService ?? new DefaultQuoteService(new PostgresQuoteRepository());
   app.disable('x-powered-by');
   app.set('trust proxy', config.trustProxy);
   app.use(cors({ origin: config.corsOrigins }));
@@ -493,6 +499,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerOpportunityRequirementsRoutes(app, opportunityRequirementsService);
   registerOpportunityParticipantRoutes(app, opportunityParticipantService);
   registerCustomerRoutes(app, customerService);
+  registerQuoteRoutes(app, quoteService);
   registerAuthRoutes(app, { authService: dependencies.authService } satisfies AuthRouterDependencies);
 
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
