@@ -14,12 +14,14 @@
 - [GHM_PRODUCT_FACING_HTTP_TRANSPORT_CONTRACT.md](./GHM_PRODUCT_FACING_HTTP_TRANSPORT_CONTRACT.md)
 
 ```text
-IMPLEMENTATION AUTHORIZATION: NOT GRANTED
-DOCUMENTATION-ONLY GATE
-NO ENDPOINTS
-NO MIDDLEWARE CHANGES
-NO KEYS / SECRETS / EMAIL / PACKAGES
+HISTORICAL GATE 2E SNAPSHOT
+AT THAT GATE: IMPLEMENTATION AUTHORIZATION NOT GRANTED
+AT THAT GATE: NO ENDPOINTS / MIDDLEWARE / KEY OR SECRET CHANGES
 ```
+
+### Current reconciliation
+
+Gate 2E is a historical logical API contract. Its original implementation-not-authorized boundary is preserved as historical evidence. Gate 3B subsequently authorized construction, and the GHM login/refresh/logout HTTP foundation plus governed ES256 authentication boundary are now construction-qualified on the consolidated `main` line. This does not authorize Connect/QuoteFlow product authentication migration or production cutover, and it does not authorize accepting Supabase JWTs as GHM credentials.
 
 This document defines the **externally observable logical Authentication API** that an eventual implementation must satisfy. It does **not** freeze framework handler names, exact URL prefixes, exact JSON property names, or deployment hostnames unless already established by repository evidence.
 
