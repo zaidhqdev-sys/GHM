@@ -1,7 +1,7 @@
 # GHM Authentication Persistence Contract
 
 **Canonical owner:** GHM platform governance
-**Status:** AUTHENTICATION GATE 2D — DURABLE PERSISTENCE CONCEPT CONTRACT — **DOCUMENTATION ONLY**; **implementation NOT AUTHORIZED**
+**Status:** AUTHENTICATION GATE 2D CONTRACT — HISTORICAL CONCEPT RECORD; the persistence foundation described here was subsequently constructed and qualified under Gate 3B. Current implementation status: `main @ ffc4a2a`
 **Authority:** Local repository `C:\GHM`
 **Baseline:** branch `construction/saved-business-resource`, HEAD `239ef5d` (docs may advance ahead of HEAD)
 **Depends on:**
