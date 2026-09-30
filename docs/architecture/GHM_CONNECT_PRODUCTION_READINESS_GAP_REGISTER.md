@@ -35,8 +35,8 @@ The principal platform blockers are identity/authentication, the Connect product
 | # | Blocker | Current state | Required evidence before construction | Authorization |
 |---|---|---|---|---|
 | 1 | Connect product adapter | Missing | Per-operation mapping from Connect services to GHM operations/providers/local behavior | Explicit adapter authorization |
-| 2 | Auth/session compatibility | Not interchangeable | Identity issuance, bootstrap, token validation and session mapping | Explicit identity/auth authorization |
-| 3 | UUID â†” bigint identity mapping | Unresolved | Canonical mapping and migration/ownership design | Explicit identity mapping authorization |
+| 2 | Auth/session compatibility | **GHM authentication foundation QUALIFIED; Connect sessions remain Supabase-owned and non-interchangeable** | Product identity adapter + session migration/cutover evidence | Separate product adapter authorization |
+| 3 | UUID â†” bigint identity mapping | **GHM mapping foundation QUALIFIED: (provider, subject) → GHM account identity; product migration still open** | Concrete Connect adapter operation + migration ownership/evidence | Separate product adapter authorization |
 | 4 | Public Business + directory parity | Partial | Field-by-field public projection, search/geo/sort/featured contract | Explicit Business/directory authorization |
 | 5 | Trust backend | **QUALIFIED / CLOSED** (`ghm.trust_score` + calculate) | — | Closed; Business profile input parity remains a separate blocker |
 | 6 | Commercial payment operations | Partial/stubbed | Prepare/cancel/provider result/webhook contract and provider boundary | Explicit payment authorization |
@@ -143,7 +143,7 @@ Evidence sprint documents now exist for items 2â€“9 below. Remaining work i
 6. Realtime delivery ownership decision â€” **evidence done:** `CONNECT_REALTIME_SOURCE_AUDIT.md`; ownership decision pending
 7. Orphan/referenced-table reconciliation â€” **done:** `CONNECT_REFERENCED_OBJECT_RECONCILIATION.md`
 8. Atomic workflow matrix â€” **done:** `CONNECT_ATOMIC_WORKFLOW_SOURCE_AUDIT.md`
-9. Identity mapping design â€” **evidence done:** `CONNECT_IDENTITY_BACKEND_SOURCE_AUDIT.md`; mapping design pending authorization
+9. Identity mapping design â€” **GHM foundation qualified:** `GHM_CONNECT_IDENTITY_BRIDGE_QUALIFICATION.md`; product adapter mapping operation still requires authorization
 10. HTTP-vs-adapter decision â€” pending product/architecture authorization
 
 These remain evidence/authorization gates, not implementation tasks.
@@ -204,7 +204,7 @@ The verified audit now gives the concrete gap boundary required to authorize fut
 
 ### Newly confirmed requirements (evidence-backed)
 
-- UUID Supabase Auth identity vs GHM bigint JWT AuthContext with **no mapping**
+- UUID Supabase Auth identity vs GHM bigint JWT identity; **GHM external-identity mapping is now qualified**
 - Connect public Business allowlist (35 fields) vs GHM first-slice public (7 fields)
 - Directory search/featured/nearby as Connect product behavior
 - Storage logos on bucket `media` / prefix `logos/` (not `business-logos`)
@@ -228,7 +228,7 @@ The verified audit now gives the concrete gap boundary required to authorize fut
 - Production bucket `private-docs` and non-logo `media` Storage policies
 - Leads Realtime publication in migrations vs client subscription
 - Whether dead client modules should be retired in Connect before GHM planning
-- Identity issuance ownership decision (keep Supabase Auth vs replace)
+- Product identity adapter operation and ownership
 - Realtime ownership decision (provider vs GHM vs polling)
 - HTTP vs adapter decision
 
@@ -241,4 +241,4 @@ The verified audit now gives the concrete gap boundary required to authorize fut
 
 ### Construction authorization
 
-**Still none.** Evidence sprint improves decision quality only.
+**Current next authorization:** Connect product identity adapter boundary only. The qualified GHM authentication foundation does not authorize product adapter construction by itself.
