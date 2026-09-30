@@ -9,11 +9,14 @@
 - [GHM_AUTHENTICATION_CONTRACT_GATE.md](./GHM_AUTHENTICATION_CONTRACT_GATE.md)
 
 ```text
-IMPLEMENTATION AUTHORIZATION: NOT GRANTED
-DOCUMENTATION-ONLY GATE
-NO KEYS GENERATED
-NO JWT BEHAVIOR CHANGED
+HISTORICAL GATE 2A SNAPSHOT
+AT THAT GATE: IMPLEMENTATION AUTHORIZATION NOT GRANTED
+AT THAT GATE: NO KEYS GENERATED / NO JWT BEHAVIOR CHANGED
 ```
+
+### Current reconciliation
+
+Gate 2A is a historical cryptographic decision record. The statements above describe the repository at that gate and are not current implementation status. Gate 3B subsequently approved the implementation parameters and the ES256 authentication foundation is now construction-qualified on the consolidated `main` line. Legacy HS verification remains isolated as a temporary compatibility boundary; it is not the current GHM authentication mechanism for governed routes. Product migration and production cutover remain separately gated.
 
 This document resolves the **cryptographic / access-token contract space** left open by Authentication Contract Gate 1. It evaluates options and records Founder decision checkpoints. It does **not** select unresolved cryptographic parameters on behalf of the Founder and does **not** authorize implementation.
 
