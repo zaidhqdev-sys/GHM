@@ -2,7 +2,7 @@
 
 **Status:** GOVERNED GAP REGISTER â€” NO CONSTRUCTION AUTHORIZATION
 **Source audit:** docs/architecture/GHM_CONNECT_BACKEND_READINESS_AUDIT.md
-**Audited GHM tree:** cf4fc08a8331bb8ecbf43e033b71431a8d7913b3
+**Audited GHM tree:** historical Connect audit checkpoint; current GHM construction state is `ffc4a2a`
 **Connect source:** abcffa73f893602c25310a58946bebb91fd7eeb5
 **Audit correction checkpoint:** 38bb9a4e4868994bde8615dce77bc64051b0e7cd
 **Evidence sprint checkpoint:** see Â§8 (this document update)
