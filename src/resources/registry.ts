@@ -18,8 +18,7 @@ export type ResourceOperation =
   | 'replyAsAdmin'
   | 'delete'
   | 'calculate'
-  | 'accept'
-  | 'update_primary';
+  | 'accept';
 
 export interface ResourceDefinition {
   readonly resource: Resource;
@@ -31,7 +30,7 @@ export const resourceRegistry: readonly ResourceDefinition[] = [
   { resource: 'business', operations: ['read', 'create', 'update'] },
   { resource: 'business_capability', operations: ['read', 'create'] },
   { resource: 'business_category', operations: ['read'] },
-  { resource: 'business_category_assignment', operations: ['read', 'create', 'update_primary'] },
+  { resource: 'business_category_assignment', operations: ['read', 'create', 'update'] },
   { resource: 'business_hours', operations: ['read', 'readPublic', 'replace'] },
   { resource: 'project', operations: ['read', 'readPublic', 'create', 'update'] },
   { resource: 'project_quote', operations: ['readReceived', 'readOwn', 'create', 'update', 'accept', 'reject'] },
