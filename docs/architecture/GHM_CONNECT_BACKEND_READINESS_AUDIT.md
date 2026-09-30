@@ -1,6 +1,6 @@
 # GHM ↔ Zaid Connect Backend Readiness Audit
 
-**Status:** READ-ONLY AUDIT — DOCUMENTATION ONLY  
+**Status:** HISTORICAL READ-ONLY AUDIT SNAPSHOT — NOT CURRENT QUALIFICATION AUTHORITY; current Connect readiness is governed by `GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md` and reconciled against `main @ ffc4a2a`.  
 **Audit date:** 2026-09-18  
 **Authority:** Live repository inspection of GHM and Zaid Connect. This document does not authorize construction, adapters, shadow qualification, cutover, or production change.
 
