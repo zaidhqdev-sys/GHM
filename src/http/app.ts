@@ -62,6 +62,10 @@ import { PostgresOpportunityParticipantRepository } from '../resources/opportuni
 import { OpportunityParticipantServiceImpl } from '../resources/opportunity-participant/service';
 import type { OpportunityParticipantService } from '../resources/opportunity-participant/contracts';
 import { registerOpportunityParticipantRoutes } from './opportunity-participant-router';
+import { PostgresCustomerRepository } from '../resources/customer/repository';
+import { CustomerServiceImpl } from '../resources/customer/service';
+import type { CustomerService } from '../resources/customer/contracts';
+import { registerCustomerRoutes } from './customer-router';
 
 export interface AppDependencies {
   readonly businessIdentityService?: BusinessIdentityService;
@@ -79,6 +83,7 @@ export interface AppDependencies {
   readonly projectQuoteService?: ProjectQuoteService;
   readonly opportunityRequirementsService?: OpportunityRequirementsService;
   readonly opportunityParticipantService?: OpportunityParticipantService;
+  readonly customerService?: CustomerService;
   readonly authService?: GhmAuthService;
 }
 
@@ -311,6 +316,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const opportunityParticipantService =
     dependencies.opportunityParticipantService ??
     new OpportunityParticipantServiceImpl(new PostgresOpportunityParticipantRepository());
+  const customerService = dependencies.customerService ?? new CustomerServiceImpl(new PostgresCustomerRepository());
   app.disable('x-powered-by');
   app.set('trust proxy', config.trustProxy);
   app.use(cors({ origin: config.corsOrigins }));
@@ -486,6 +492,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerProjectQuoteRoutes(app, projectQuoteService);
   registerOpportunityRequirementsRoutes(app, opportunityRequirementsService);
   registerOpportunityParticipantRoutes(app, opportunityParticipantService);
+  registerCustomerRoutes(app, customerService);
   registerAuthRoutes(app, { authService: dependencies.authService } satisfies AuthRouterDependencies);
 
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
