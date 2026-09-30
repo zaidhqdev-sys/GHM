@@ -3,7 +3,7 @@ import test from 'node:test';
 import { isRegisteredOperation, resourceRegistry } from './registry';
 
 test('resource registry contains only explicit governed resources', () => {
-  assert.deepEqual(resourceRegistry.map((definition) => definition.resource), ['profile', 'business', 'business_capability', 'business_hours', 'project', 'project_quote', 'customer', 'quote', 'notification', 'support_request', 'enquiry', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'trust_score', 'campaign']);
+  assert.deepEqual(resourceRegistry.map((definition) => definition.resource), ['profile', 'business', 'business_capability', 'business_hours', 'project', 'project_quote', 'opportunity_requirements', 'customer', 'quote', 'notification', 'support_request', 'enquiry', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'trust_score', 'campaign']);
 });
 
 test('registered operations are accepted', () => {
