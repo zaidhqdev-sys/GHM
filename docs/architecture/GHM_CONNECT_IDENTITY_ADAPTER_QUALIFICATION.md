@@ -1,6 +1,6 @@
 # GHM ↔ Zaid Connect Identity Adapter Qualification
 
-**Status:** CONSTRUCTION QUALIFIED — PRODUCT ADAPTER / CUTOVER NOT AUTHORIZED
+**Status:** CONSTRUCTION QUALIFIED — PRODUCT AUTHENTICATION MIGRATION / CUTOVER NOT AUTHORIZED
 **Qualified implementation branch:** `construction/connect-identity-adapter`
 **Qualified mainline:** `200434c`
 **Scope:** Connect external identity → GHM canonical identity resolution only
@@ -58,20 +58,20 @@ The implementation must preserve:
 
 ## 4. Qualification checklist
 
-Local evidence required before branch can be considered qualified:
+Qualification evidence recorded for the integrated construction slice:
 
 - [x] TypeScript build passes (`npm run build`).
 - [x] Full test suite passes: 388/388 (`npm test`).
 - [x] Adapter unit tests pass: 6/6.
 - [x] Database persistence qualification remains green, including external identity lookup/bootstrap/link tests.
 - [x] Documentation/readiness reconciliation updated with final evidence.
-- [x] Branch remains isolated from main pending integration review.
+- [x] Qualified implementation is integrated into consolidated `main` at `200434c`.
 
 ## 5. STOP boundary
 
 Do not add HTTP transport, product session migration, business mapping, membership migration, or production configuration under this qualification.
 
-The adapter remains a migration/reconciliation seam only. It is not an authentication provider for GHM, and it does not establish any trust in Supabase JWTs.
+The adapter remains a migration/reconciliation seam only and is not reopened by integration into `main`. It is not an authentication provider for GHM, and it does not establish any trust in Supabase JWTs.
 
 
 ## 6. Local qualification evidence — 2026-09-30
