@@ -1,7 +1,7 @@
 # GHM Authentication Cryptographic Contract
 
 **Canonical owner:** GHM platform governance
-**Status:** AUTHENTICATION GATE 2A — CRYPTOGRAPHIC/TOKEN CONTRACT — **PARTIAL FOUNDER DECISION** (claims/TTL/`kid`/secret-managed key class SELECTED; exact encoding/schedule UNSELECTED)
+**Status:** AUTHENTICATION GATE 2A CONTRACT — HISTORICAL DECISION RECORD; ES256 and the remaining implementation parameters were subsequently frozen by Gate 3B. Current qualified foundation: `main @ ffc4a2a`
 **Authority:** Local repository `C:\GHM`
 **Baseline:** branch `construction/saved-business-resource`, HEAD `239ef5d5065826ddbaae03a2b05c175bee9bce1d`
 **Depends on:**
