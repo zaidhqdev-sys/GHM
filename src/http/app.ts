@@ -54,7 +54,7 @@ import { PostgresProjectQuoteRepository } from '../resources/project-quote/repos
 import { ProjectQuoteServiceImpl } from '../resources/project-quote/service';
 import type { ProjectQuoteService } from '../resources/project-quote/contracts';
 import { registerProjectQuoteRoutes } from './project-quote-router';
-import { PostgresOpportunityRequirementsRepository } from '../resources/opportunity-requirements/repository';
+import { PgOpportunityRequirementsRepository } from '../resources/opportunity-requirements/repository';
 import { OpportunityRequirementsServiceImpl } from '../resources/opportunity-requirements/service';
 import type { OpportunityRequirementsService } from '../resources/opportunity-requirements/contracts';
 import { registerOpportunityRequirementsRoutes } from './opportunity-requirements-router';
