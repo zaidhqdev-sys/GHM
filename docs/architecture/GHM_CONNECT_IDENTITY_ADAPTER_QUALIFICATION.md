@@ -1,6 +1,6 @@
 # GHM ↔ Zaid Connect Identity Adapter Qualification
 
-**Status:** CONSTRUCTION IN PROGRESS — LOCAL QUALIFICATION REQUIRED
+**Status:** CONSTRUCTION QUALIFIED — PRODUCT ADAPTER / CUTOVER NOT AUTHORIZED
 **Construction branch:** `construction/connect-identity-adapter`
 **Scope:** Connect external identity → GHM canonical identity resolution only
 
@@ -59,15 +59,27 @@ The implementation must preserve:
 
 Local evidence required before branch can be considered qualified:
 
-- [ ] TypeScript build passes.
-- [ ] full test suite passes.
-- [ ] adapter unit tests pass.
-- [ ] database persistence qualification remains green.
-- [ ] documentation/readiness reconciliation updated with final evidence.
-- [ ] branch remains isolated from main until qualification review.
+- [x] TypeScript build passes (`npm run build`).
+- [x] Full test suite passes: 388/388 (`npm test`).
+- [x] Adapter unit tests pass: 6/6.
+- [x] Database persistence qualification remains green, including external identity lookup/bootstrap/link tests.
+- [x] Documentation/readiness reconciliation updated with final evidence.
+- [x] Branch remains isolated from main pending integration review.
 
 ## 5. STOP boundary
 
 Do not add HTTP transport, product session migration, business mapping, membership migration, or production configuration in this branch.
 
 Final construction status remains **not qualified** until local evidence is returned and reviewed.
+
+
+## 6. Local qualification evidence — 2026-09-30
+
+Verified on `construction/connect-identity-adapter` at commit `4f36dca`:
+
+- `npm test`: **388 pass / 0 fail / 0 cancelled / 0 skipped**.
+- Connect adapter tests: **6 pass / 0 fail**.
+- `npm run build`: **TypeScript compilation passed**.
+- Database auth persistence qualification remained green, including external identity lookup/bootstrap idempotency and non-admin bootstrap, external identity linking, disabled-account linking, and runtime privilege boundaries.
+
+This qualifies the constructed adapter seam as a construction slice only. It does not authorize product session migration, Supabase JWT acceptance, HTTP/service exposure, membership/ownership/admin migration, business mapping migration, production routing, shadow traffic, or cutover.
