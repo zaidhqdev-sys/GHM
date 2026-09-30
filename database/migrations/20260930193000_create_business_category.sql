@@ -60,13 +60,6 @@ CREATE INDEX business_category_assignment_category_idx
 ALTER TABLE ghm.business_category OWNER TO ghm_schema_owner;
 ALTER TABLE ghm.business_category_assignment OWNER TO ghm_schema_owner;
 
-CREATE TRIGGER business_category_updated_at
-BEFORE UPDATE ON ghm.business_category
-FOR EACH ROW EXECUTE FUNCTION ghm.set_updated_at();
-
-CREATE TRIGGER business_category_assignment_updated_at
-BEFORE UPDATE ON ghm.business_category_assignment
-FOR EACH ROW EXECUTE FUNCTION ghm.set_updated_at();
 
 GRANT USAGE ON SCHEMA ghm TO ghm_runtime;
 
