@@ -35,7 +35,7 @@ const parseCreate = (body: unknown): CreateProjectQuoteInput | null => {
   }
   if (Object.hasOwn(x, 'durationDays') && x.durationDays !== null && (!Number.isSafeInteger(x.durationDays) || Number(x.durationDays) < 1)) return null;
   if (Object.hasOwn(x, 'description') && x.description !== null && typeof x.description !== 'string') return null;
-  return x as CreateProjectQuoteInput;
+  return x as unknown as CreateProjectQuoteInput;
 };
 
 const parseUpdate = (body: unknown): UpdateProjectQuoteInput | null => {
