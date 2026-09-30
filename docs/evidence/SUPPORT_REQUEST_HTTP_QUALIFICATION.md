@@ -54,3 +54,8 @@ Do not merge it into the authoritative branch until founder approval is explicit
 ## Build correction reconciliation
 
 The first local qualification attempt exposed a TypeScript error because `ListSupportRequestsOptions` intentionally uses readonly properties. The HTTP parser now constructs a mutable local parse object and returns it as the canonical readonly contract type. No domain contract was changed.
+
+
+## Second local reconciliation
+
+The first full local run built successfully but exposed one HTTP authorization mapping defect: the single-resource read route still relied on broad resource access, so a `business` role reached the service and produced a 500 in the qualification fixture instead of the required 403. The route has now been narrowed to `customer | admin`, matching list/messages authority. No domain contract or service behavior was changed.
