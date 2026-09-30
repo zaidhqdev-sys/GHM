@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type {
   AuthPersistence,
-  ExternalIdentityMapping,
 } from '../../auth/foundation/persistence';
+import type { ExternalIdentityMapping } from '../../auth/foundation/types';
 import { ConnectIdentityAdapterImpl } from './identity-adapter';
 
 const mapping = (accountId: number): ExternalIdentityMapping => ({
