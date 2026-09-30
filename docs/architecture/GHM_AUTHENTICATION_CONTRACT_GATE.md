@@ -1,7 +1,7 @@
 # GHM Authentication Contract Gate
 
 **Canonical owner:** GHM platform governance
-**Status:** AUTHENTICATION CONTRACT GATE 1 — **DOCUMENTATION-ONLY**
+**Status:** HISTORICAL GATE 1 RECORD — SUPERSEDED FOR CURRENT AUTH IMPLEMENTATION STATUS; current Gate 3B construction foundation is qualified on `main @ ffc4a2a`
 **Authority:** Local repository `C:\GHM`
 **Baseline:** branch `construction/saved-business-resource`, HEAD `239ef5d5065826ddbaae03a2b05c175bee9bce1d`
 **Depends on:**
