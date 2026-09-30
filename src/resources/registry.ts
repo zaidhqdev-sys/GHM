@@ -7,6 +7,7 @@ export type ResourceOperation =
   | 'update'
   | 'replace'
   | 'readOwn'
+  | 'readReceived'
   | 'readPending'
   | 'approve'
   | 'reject'
@@ -16,7 +17,8 @@ export type ResourceOperation =
   | 'replyAsCustomer'
   | 'replyAsAdmin'
   | 'delete'
-  | 'calculate';
+  | 'calculate'
+  | 'accept';
 
 export interface ResourceDefinition {
   readonly resource: Resource;
