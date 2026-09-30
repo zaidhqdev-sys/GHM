@@ -83,7 +83,7 @@ const parseReplyBody = (body: unknown): string | null => {
 };
 
 const parseListOptions = (query: Request['query']): ListSupportRequestsOptions | null => {
-  const options: ListSupportRequestsOptions = {};
+  const options = {} as { status?: SupportRequestStatus; limit?: number };
   if (query.status !== undefined) {
     if (typeof query.status !== 'string' || !STATUSES.has(query.status as SupportRequestStatus)) return null;
     options.status = query.status as SupportRequestStatus;
