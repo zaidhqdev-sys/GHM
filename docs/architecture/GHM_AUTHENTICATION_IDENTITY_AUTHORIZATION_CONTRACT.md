@@ -3,7 +3,7 @@
 **Canonical owner:** GHM platform governance
 **Status:** AUTHENTICATION GATE 2F — IDENTITY & AUTHORIZATION PROVISIONING CONTRACT — **CONSTRUCTION FOUNDATION QUALIFIED**; product adapter / migration implementation remains separately authorized
 **Authority:** Local repository `C:\GHM`
-**Current qualified baseline:** `main` at `ffc4a2a` (2026-09-30)
+**Current qualified baseline:** consolidated `main` — current repository authority (2026-09-30)
 **Depends on:**
 - [GHM_AUTHENTICATION_ISSUANCE_DECISION_RECORD.md](./GHM_AUTHENTICATION_ISSUANCE_DECISION_RECORD.md)
 - [GHM_AUTHENTICATION_CONTRACT_GATE.md](./GHM_AUTHENTICATION_CONTRACT_GATE.md)
@@ -71,7 +71,7 @@ JWT role must not remain long-term membership truth.
 
 ## 2A. Current qualification reconciliation
 
-The authentication/identity foundation has since been implemented and construction-qualified on the consolidated `main` line. Current qualified behavior includes: canonical `ghm.account_identity.id`; `(provider, subject) → account_identity.id` external mapping; controlled bootstrap/link operations; ES256 access JWTs with decimal GHM identity `sub`; opaque single-use rotated refresh credentials; account disable/session/recovery semantics; and database-authoritative system-admin state. Supabase UUIDs remain external subjects and are never accepted as GHM JWT `sub` values.
+The authentication/identity foundation has since been implemented and construction-qualified on the consolidated `main` line. The specific Connect adapter contract is the next separately authorized boundary. Current qualified behavior includes: canonical `ghm.account_identity.id`; `(provider, subject) → account_identity.id` external mapping; controlled bootstrap/link operations; ES256 access JWTs with decimal GHM identity `sub`; opaque single-use rotated refresh credentials; account disable/session/recovery semantics; and database-authoritative system-admin state. Supabase UUIDs remain external subjects and are never accepted as GHM JWT `sub` values.
 
 This foundation does **not** authorize the Connect product identity adapter, automatic product migration, acceptance of Supabase JWTs as GHM credentials, business/product provisioning migration, shadow qualification, or production cutover. Those remain separate gates.
 
