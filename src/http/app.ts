@@ -74,6 +74,10 @@ import { PostgresNotificationRepository } from '../resources/notification/reposi
 import { NotificationServiceImpl } from '../resources/notification/service';
 import { NotificationService } from '../resources/notification/contracts';
 import { registerNotificationRoutes } from './notification-router';
+import { PostgresBusinessCategoryRepository } from '../resources/business-category/repository';
+import { BusinessCategoryServiceImpl } from '../resources/business-category/service';
+import type { BusinessCategoryService } from '../resources/business-category/contracts';
+import { registerBusinessCategoryRoutes } from './business-category-router';
 
 export interface AppDependencies {
   readonly businessIdentityService?: BusinessIdentityService;
@@ -94,6 +98,7 @@ export interface AppDependencies {
   readonly customerService?: CustomerService;
   readonly quoteService?: QuoteService;
   readonly notificationService?: NotificationService;
+  readonly businessCategoryService?: BusinessCategoryService;
   readonly authService?: GhmAuthService;
 }
 
@@ -329,6 +334,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const customerService = dependencies.customerService ?? new CustomerServiceImpl(new PostgresCustomerRepository());
   const quoteService = dependencies.quoteService ?? new DefaultQuoteService(new PostgresQuoteRepository());
   const notificationService = dependencies.notificationService ?? new NotificationServiceImpl(new PostgresNotificationRepository());
+  const businessCategoryService = dependencies.businessCategoryService ?? new BusinessCategoryServiceImpl(new PostgresBusinessCategoryRepository());
   app.disable('x-powered-by');
   app.set('trust proxy', config.trustProxy);
   app.use(cors({ origin: config.corsOrigins }));
@@ -507,6 +513,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerCustomerRoutes(app, customerService);
   registerQuoteRoutes(app, quoteService);
   registerNotificationRoutes(app, notificationService);
+  registerBusinessCategoryRoutes(app, businessCategoryService);
   registerAuthRoutes(app, { authService: dependencies.authService } satisfies AuthRouterDependencies);
 
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
