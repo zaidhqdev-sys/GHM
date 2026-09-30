@@ -58,6 +58,10 @@ import { PgOpportunityRequirementsRepository } from '../resources/opportunity-re
 import { OpportunityRequirementsServiceImpl } from '../resources/opportunity-requirements/service';
 import type { OpportunityRequirementsService } from '../resources/opportunity-requirements/contracts';
 import { registerOpportunityRequirementsRoutes } from './opportunity-requirements-router';
+import { PostgresOpportunityParticipantRepository } from '../resources/opportunity-participant/repository';
+import { OpportunityParticipantServiceImpl } from '../resources/opportunity-participant/service';
+import type { OpportunityParticipantService } from '../resources/opportunity-participant/contracts';
+import { registerOpportunityParticipantRoutes } from './opportunity-participant-router';
 
 export interface AppDependencies {
   readonly businessIdentityService?: BusinessIdentityService;
@@ -74,6 +78,7 @@ export interface AppDependencies {
   readonly reviewService?: ReviewService;
   readonly projectQuoteService?: ProjectQuoteService;
   readonly opportunityRequirementsService?: OpportunityRequirementsService;
+  readonly opportunityParticipantService?: OpportunityParticipantService;
   readonly authService?: GhmAuthService;
 }
 
@@ -303,6 +308,9 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const opportunityRequirementsService =
     dependencies.opportunityRequirementsService ??
     new OpportunityRequirementsServiceImpl(new PgOpportunityRequirementsRepository());
+  const opportunityParticipantService =
+    dependencies.opportunityParticipantService ??
+    new OpportunityParticipantServiceImpl(new PostgresOpportunityParticipantRepository());
   app.disable('x-powered-by');
   app.set('trust proxy', config.trustProxy);
   app.use(cors({ origin: config.corsOrigins }));
@@ -477,6 +485,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerReviewRoutes(app, reviewService);
   registerProjectQuoteRoutes(app, projectQuoteService);
   registerOpportunityRequirementsRoutes(app, opportunityRequirementsService);
+  registerOpportunityParticipantRoutes(app, opportunityParticipantService);
   registerAuthRoutes(app, { authService: dependencies.authService } satisfies AuthRouterDependencies);
 
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
