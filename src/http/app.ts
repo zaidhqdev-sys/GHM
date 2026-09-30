@@ -31,12 +31,16 @@ import { SavedBusinessService } from '../resources/saved-business/contracts';
 import { PostgresBusinessCapabilityRepository } from '../resources/business-capability/repository';
 import { BusinessCapabilityServiceImpl } from '../resources/business-capability/service';
 import { BusinessCapabilityService } from '../resources/business-capability/contracts';
+import { PostgresTrustScoreRepository } from '../resources/trust-score/repository';
+import { TrustScoreServiceImpl } from '../resources/trust-score/service';
+import { TrustScoreService } from '../resources/trust-score/contracts';
 import { registerEnquiryRoutes } from './enquiry-router';
 import { registerCampaignRoutes } from './campaign-router';
 import { registerOpportunityRoutes } from './opportunity-router';
 import { registerAuthRoutes, type AuthRouterDependencies } from './auth-router';
 import { registerSavedBusinessRoutes } from './saved-business-router';
 import { registerBusinessCapabilityRoutes } from './business-capability-router';
+import { registerTrustScoreRoutes } from './trust-score-router';
 import type { GhmAuthService } from '../auth/ghm-auth-service';
 
 export interface AppDependencies {
@@ -49,6 +53,7 @@ export interface AppDependencies {
   readonly opportunityService?: OpportunityService;
   readonly savedBusinessService?: SavedBusinessService;
   readonly businessCapabilityService?: BusinessCapabilityService;
+  readonly trustScoreService?: TrustScoreService;
   readonly authService?: GhmAuthService;
 }
 
@@ -263,6 +268,9 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const businessCapabilityService =
     dependencies.businessCapabilityService ??
     new BusinessCapabilityServiceImpl(new PostgresBusinessCapabilityRepository());
+  const trustScoreService =
+    dependencies.trustScoreService ??
+    new TrustScoreServiceImpl(new PostgresTrustScoreRepository());
   app.disable('x-powered-by');
   app.set('trust proxy', config.trustProxy);
   app.use(cors({ origin: config.corsOrigins }));
@@ -432,6 +440,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerOpportunityRoutes(app, opportunityService);
   registerSavedBusinessRoutes(app, savedBusinessService);
   registerBusinessCapabilityRoutes(app, businessCapabilityService);
+  registerTrustScoreRoutes(app, trustScoreService);
   registerAuthRoutes(app, { authService: dependencies.authService } satisfies AuthRouterDependencies);
 
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
