@@ -408,3 +408,32 @@ test('login issues ES256 access JWT with decimal sub and no role claim', async (
     (error: unknown) => error instanceof GhmAuthServiceError && error.code === 'INVALID_CREDENTIALS',
   );
 });
+
+test('POST /api/v1/auth/login enforces the approved 10-per-15-minute IP limit', async () => {
+  const authService: GhmAuthService = {
+    login: async () => sampleTokens(),
+    refresh: async () => sampleTokens(),
+    logout: async () => undefined,
+  };
+  const { server, baseUrl } = await startApp(authService);
+  try {
+    for (let index = 0; index < 7; index += 1) {
+      const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: `limit-${index}@example.com`, password: 'CorrectHorseBattery1' }),
+      });
+      assert.equal(response.status, 200);
+    }
+
+    const limited = await fetch(`${baseUrl}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'limit-final@example.com', password: 'CorrectHorseBattery1' }),
+    });
+    assert.equal(limited.status, 429);
+    assert.deepEqual(await limited.json(), { error: 'rate_limited' });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
