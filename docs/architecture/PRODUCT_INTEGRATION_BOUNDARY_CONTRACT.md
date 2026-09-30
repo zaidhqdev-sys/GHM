@@ -1,9 +1,10 @@
 # GHM Product Integration Boundary Contract
 
 **Canonical owner:** GHM platform governance
-**Status:** Semantic contract defined (documentation only)
+**Status:** Semantic platform contract — current authentication foundation qualified; product-specific adapters remain separately gated
 **Authority:** Local repository `C:\GHM`
-**Baseline:** branch `construction/saved-business-resource`, HEAD `0a9a9f7`
+**Current baseline:** consolidated `main` — current repository authority (2026-09-30)
+**Historical Campaign reference:** `0a9a9f7` remains a historical qualified Campaign root baseline; it is not the current repository HEAD.
 **Depends on:** [GHM_APPLICATION_BACKEND_PLATFORM_CHARTER.md](./GHM_APPLICATION_BACKEND_PLATFORM_CHARTER.md)
 **Related:** [RESOURCE_API_BOUNDARY_CONTRACT.md](./RESOURCE_API_BOUNDARY_CONTRACT.md)
 
@@ -107,14 +108,13 @@ Separate three concerns:
 
 | Concern | Status |
 |---|---|
-| A. Authentication issuance | Unresolved — separate platform decision |
+| A. Authentication issuance | **GHM foundation qualified under Gate 3B; product authentication migration remains separately gated** |
 | B. Authentication verification | GHM responsibility (present) |
 | C. Authorization | GHM responsibility (present) |
 
 GHM currently provides verification and AuthContext derivation.
 
-Authentication issuance remains a separate unresolved platform decision.
-This contract does **not** select an issuer or identity provider.
+GHM authentication issuance is now a qualified platform foundation under Authentication Gate 3B. This does **not** authorize any product to migrate authentication to GHM. Product-specific identity/session coexistence and migration remain separately gated.
 
 The integration contract requires that GHM receive a trustworthy authenticated identity represented semantically as:
 
@@ -495,10 +495,10 @@ Callable mechanism status:
 
 1. Founder selected / authorized callable mechanism — **DONE — HTTP/API**; Campaign HTTP implemented at `785df12`.
 2. Transport-specific Campaign HTTP contract — **DONE** (CAMPAIGN_HTTP_*).
-3. Authentication issuance decision — still required / **UNSELECTED**.
+3. Authentication foundation — **QUALIFIED under Gate 3B**; product authentication/session migration remains separately gated.
 4. Error / version / retry transport semantics — Campaign tokens locked; platform taxonomy + version lifecycle + retry/idempotency remain **OPEN**.
 5. Broader resource HTTP expansion — gated.
-6. Product adapter — separately authorized; KBM adapter **NOT AUTHORIZED**.
+6. Product adapter — separately authorized per product; Connect identity adapter **NOT AUTHORIZED** by this semantic contract.
 7. Shadow / cutover — separately authorized; **NOT AUTHORIZED**.
 
 ## 24. Relationship to the Platform Charter
