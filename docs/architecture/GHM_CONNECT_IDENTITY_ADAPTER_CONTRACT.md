@@ -1,6 +1,6 @@
 # GHM ↔ Zaid Connect Identity Adapter Contract
 
-**Status:** CONTRACT DEFINED — FOUNDER CONSTRUCTION AUTHORIZATION REQUIRED
+**Status:** CONSTRUCTION QUALIFIED — PRODUCT AUTHENTICATION MIGRATION / CUTOVER NOT AUTHORIZED
 **Canonical owner:** GHM platform governance
 **Current baseline:** consolidated `main` — current repository authority (2026-09-30)
 **Depends on:**
@@ -15,7 +15,7 @@
 
 Define the **single construction boundary** required to connect Zaid Connect's existing Supabase-authenticated identity model to GHM's already-qualified canonical identity foundation.
 
-This contract does **not** authorize implementation. It freezes the semantic boundary so that, if construction is later authorized, implementation cannot silently expand into product authentication migration, membership migration, business migration, or production cutover.
+The construction slice defined by this contract is now qualified on consolidated `main`. This contract remains the canonical semantic boundary for the adapter and does not authorize product authentication migration, membership migration, business migration, or production cutover.
 
 ## 2. Current authority
 
@@ -136,13 +136,17 @@ Business migration/provisioning is outside this identity adapter slice.
 
 ## 8. Session coexistence
 
-During construction and any future migration:
+During the migration period:
 
-- Supabase remains the Connect production session authority;
-- GHM sessions remain GHM-owned;
+- Connect may continue using its legacy Supabase Auth session path;
+- that legacy path is **outside the GHM trust boundary**;
+- GHM sessions remain exclusively GHM-owned;
 - the two credential systems are not interchangeable;
 - no automatic session conversion is implied by identity mapping;
-- no Supabase JWT is accepted by GHM bearer authentication.
+- no Supabase JWT is accepted by GHM bearer authentication;
+- GHM authentication and authorization must remain operable without trusting Supabase.
+
+The eventual product authentication state is GHM-native: Connect authenticates to GHM, receives GHM-issued credentials, and uses GHM canonical identity/authorization. Supabase availability is not a prerequisite for GHM authentication after migration.
 
 A later product authentication migration requires its own explicit contract, qualification, and authorization.
 
@@ -232,17 +236,18 @@ This slice does not include:
 **Current state:**
 
 `CONTRACT DEFINED`
-→ `FOUNDER CONSTRUCTION AUTHORIZATION REQUIRED`
-→ `IMPLEMENTATION NOT AUTHORIZED`
+→ `FOUNDER AUTHORIZED`
+→ `IMPLEMENTED`
+→ `CONSTRUCTION QUALIFIED`
 
-If Founder authorization is granted, implementation must remain limited to this contract. Any expansion requires a new authorization gate.
+The qualified implementation remains limited to this contract. Any expansion requires a new authorization gate.
 
 ## 15. Final boundary
 
 The qualified GHM identity foundation establishes the platform capability.
 
-This document establishes the **next product-specific semantic boundary**.
+This document establishes the **qualified Connect migration/reconciliation adapter boundary**.
 
-Neither document authorizes production migration.
+The adapter is a migration mechanism, not a permanent Supabase-authentication dependency and not a GHM trust authority. GHM must never accept a Supabase JWT as a bearer credential.
 
-**STOP — do not implement this adapter until the Founder construction gate explicitly authorizes it.**
+Neither this contract nor its qualification authorizes production authentication migration, traffic cutover, or provider decommissioning.
