@@ -302,7 +302,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     new ProjectQuoteServiceImpl(new PostgresProjectQuoteRepository());
   const opportunityRequirementsService =
     dependencies.opportunityRequirementsService ??
-    new OpportunityRequirementsServiceImpl(new PostgresOpportunityRequirementsRepository());
+    new OpportunityRequirementsServiceImpl(new PgOpportunityRequirementsRepository());
   app.disable('x-powered-by');
   app.set('trust proxy', config.trustProxy);
   app.use(cors({ origin: config.corsOrigins }));
