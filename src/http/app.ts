@@ -28,11 +28,15 @@ import { OpportunityService } from '../resources/opportunity/contracts';
 import { PostgresSavedBusinessRepository } from '../resources/saved-business/repository';
 import { SavedBusinessServiceImpl } from '../resources/saved-business/service';
 import { SavedBusinessService } from '../resources/saved-business/contracts';
+import { PostgresBusinessCapabilityRepository } from '../resources/business-capability/repository';
+import { BusinessCapabilityServiceImpl } from '../resources/business-capability/service';
+import { BusinessCapabilityService } from '../resources/business-capability/contracts';
 import { registerEnquiryRoutes } from './enquiry-router';
 import { registerCampaignRoutes } from './campaign-router';
 import { registerOpportunityRoutes } from './opportunity-router';
 import { registerAuthRoutes, type AuthRouterDependencies } from './auth-router';
 import { registerSavedBusinessRoutes } from './saved-business-router';
+import { registerBusinessCapabilityRoutes } from './business-capability-router';
 import type { GhmAuthService } from '../auth/ghm-auth-service';
 
 export interface AppDependencies {
@@ -44,6 +48,7 @@ export interface AppDependencies {
   readonly campaignService?: CampaignService;
   readonly opportunityService?: OpportunityService;
   readonly savedBusinessService?: SavedBusinessService;
+  readonly businessCapabilityService?: BusinessCapabilityService;
   readonly authService?: GhmAuthService;
 }
 
@@ -255,6 +260,9 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const savedBusinessService =
     dependencies.savedBusinessService ??
     new SavedBusinessServiceImpl(new PostgresSavedBusinessRepository());
+  const businessCapabilityService =
+    dependencies.businessCapabilityService ??
+    new BusinessCapabilityServiceImpl(new PostgresBusinessCapabilityRepository());
   app.disable('x-powered-by');
   app.set('trust proxy', config.trustProxy);
   app.use(cors({ origin: config.corsOrigins }));
@@ -423,6 +431,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerCampaignRoutes(app, campaignService);
   registerOpportunityRoutes(app, opportunityService);
   registerSavedBusinessRoutes(app, savedBusinessService);
+  registerBusinessCapabilityRoutes(app, businessCapabilityService);
   registerAuthRoutes(app, { authService: dependencies.authService } satisfies AuthRouterDependencies);
 
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
