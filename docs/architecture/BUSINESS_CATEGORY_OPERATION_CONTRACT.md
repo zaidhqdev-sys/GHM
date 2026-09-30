@@ -142,7 +142,7 @@ Authorization is evaluated from the authenticated `AuthContext` and canonical Bu
 
 ## 8. Primary-category transition
 
-The source Connect operation `set_primary_business_category` establishes a single primary category.
+The source Connect operation `set_primary_business_category` establishes a single primary category. GHM's construction slice requires the target category to have an existing assignment; assignment creation remains the separate `create` operation.
 
 GHM must implement this as a transactionally governed operation:
 
@@ -150,7 +150,7 @@ GHM must implement this as a transactionally governed operation:
 2. authorize Business management authority;
 3. validate the Business;
 4. validate the target category exists and is active/selectable;
-5. validate or create the target assignment according to the service contract;
+5. validate that the target assignment already exists;
 6. clear any existing primary assignment for that Business;
 7. set the target assignment as primary;
 8. commit atomically.
