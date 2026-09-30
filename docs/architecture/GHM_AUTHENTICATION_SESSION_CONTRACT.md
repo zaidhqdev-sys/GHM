@@ -10,11 +10,15 @@
 - [GHM_AUTHENTICATION_CRYPTOGRAPHIC_CONTRACT.md](./GHM_AUTHENTICATION_CRYPTOGRAPHIC_CONTRACT.md)
 
 ```text
-IMPLEMENTATION AUTHORIZATION: NOT GRANTED
-DOCUMENTATION-ONLY GATE
-NO REFRESH / REVOCATION / LOGOUT IMPLEMENTATION
-NO SESSION TABLES CREATED
+HISTORICAL GATE 2B SNAPSHOT
+AT THAT GATE: IMPLEMENTATION AUTHORIZATION NOT GRANTED
+AT THAT GATE: NO REFRESH / REVOCATION / LOGOUT IMPLEMENTATION
+AT THAT GATE: NO SESSION TABLES CREATED
 ```
+
+### Current reconciliation
+
+Gate 2B is a historical contract record. Its “not granted” and “absent” statements describe the repository state at the Gate 2B snapshot and are not current implementation status. Gate 3B subsequently froze the session/refresh parameters and authorized construction; the resulting session, refresh rotation, replay, revocation, recovery, and logout foundation is construction-qualified on the consolidated `main` line. Connect and QuoteFlow have not thereby been migrated to GHM authentication, and product cutover remains separately gated.
 
 This document defines the **target session / refresh architecture** for GHM-owned authentication. It is a **contract**, not an implementation.
 
@@ -33,7 +37,7 @@ Govern target behavior for:
 - session lifecycle
 - credential / session separation from `ghm.account_identity` profile data
 
-Live products (Connect, QuoteFlow) will eventually consume this model via the GHM authentication API. Exact lifetimes and replay policy remain Founder-unselected.
+Live products (Connect, QuoteFlow) will eventually consume this model via the GHM authentication API. The historical statement that exact lifetimes and replay policy were Founder-unselected is superseded by the Gate 3B Founder-approved parameters: 15-minute access tokens, 30-day inactivity, 90-day absolute session lifetime, rotation on refresh, single-use refresh credentials, and replay-family revocation.
 
 ---
 
