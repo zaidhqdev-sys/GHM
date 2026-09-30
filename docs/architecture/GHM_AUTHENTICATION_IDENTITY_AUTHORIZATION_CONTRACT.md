@@ -43,7 +43,10 @@ Preserve: `ghm_schema_owner` / `ghm_migrator` / `ghm_runtime`.
 
 ---
 
-## 2. Repository evidence (read-only)
+## 2. Repository evidence — historical Gate 2F snapshot
+
+> The evidence in this section is preserved from the pre-Gate-3B repository state. Statements such as “External mapping — Absent,” “Auth session store — Absent,” and the old HS/JWT-role `AuthContext` description are historical evidence, not the current qualified implementation state. Current implementation status is governed by the reconciliation note below and the current qualification records.
+
 
 | Topic | Evidence |
 |---|---|
@@ -60,11 +63,17 @@ Preserve: `ghm_schema_owner` / `ghm_migrator` / `ghm_runtime`.
 | Auth session store | **Absent** |
 
 ```text
-CURRENT AuthContext { userId, role } ≠ TARGET authentication → authorization model.
+HISTORICAL AuthContext { userId, role } ≠ TARGET authentication → authorization model.
 JWT role must not remain long-term membership truth.
 ```
 
 ---
+
+## 2A. Current qualification reconciliation
+
+The authentication/identity foundation has since been implemented and construction-qualified on the consolidated `main` line. Current qualified behavior includes: canonical `ghm.account_identity.id`; `(provider, subject) → account_identity.id` external mapping; controlled bootstrap/link operations; ES256 access JWTs with decimal GHM identity `sub`; opaque single-use rotated refresh credentials; account disable/session/recovery semantics; and database-authoritative system-admin state. Supabase UUIDs remain external subjects and are never accepted as GHM JWT `sub` values.
+
+This foundation does **not** authorize the Connect product identity adapter, automatic product migration, acceptance of Supabase JWTs as GHM credentials, business/product provisioning migration, shadow qualification, or production cutover. Those remain separate gates.
 
 ## 3. Canonical identity
 
@@ -454,7 +463,7 @@ Do **not** assume current Supabase UUID business/org IDs equal GHM `business.id`
 
 ---
 
-## 16. Current vs target gap
+## 16. Historical Gate 2F current-vs-target snapshot
 
 | Layer | Current | Target |
 |---|---|---|
