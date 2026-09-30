@@ -457,7 +457,7 @@ No code fixes in this gate.
 | Recovery TTL | 30 minutes | **Founder approved 2026-09-30** |
 | Recovery token format | 32-byte CSPRNG; base64url wire | **Founder approved 2026-09-30** |
 | Recovery/refresh hash | HMAC-SHA256 with pepper → `bytea` | **Founder approved 2026-09-30** |
-| Refresh token format/entropy | Opaque 32-byte; base64url | **Founder approval required** |
+| Refresh token format/entropy | Opaque 32-byte; base64url | **Founder approved 2026-09-30** |
 | Token pepper | `GHM_AUTH_TOKEN_PEPPER` required | **Founder approval required** |
 | JWT `sub` representation | Decimal string of bigint id | **Founder approval required** |
 | Clock skew | ±60 seconds | **Founder approval required** |
