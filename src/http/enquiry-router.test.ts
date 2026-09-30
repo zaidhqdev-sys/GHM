@@ -86,6 +86,7 @@ test('Enquiry create route binds authenticated customer context and rejects serv
     getReceivedEnquiry: async () => null,
     getReceivedEnquiries: async () => [],
     updateReceivedEnquiryStatus: async () => enquiryFixture(),
+    findAssociationByOpportunityId: async () => null,
   };
   const { server, baseUrl } = await startServer(service);
   try {
@@ -117,6 +118,7 @@ test('Enquiry create route returns created enquiry and binds customer context', 
     getReceivedEnquiry: async () => null,
     getReceivedEnquiries: async () => [],
     updateReceivedEnquiryStatus: async () => enquiryFixture(),
+    findAssociationByOpportunityId: async () => null,
   };
   const { server, baseUrl } = await startServer(service);
   try {
@@ -150,6 +152,7 @@ test('Enquiry own-read route binds customer context and returns only service res
     getReceivedEnquiry: async () => null,
     getReceivedEnquiries: async () => [],
     updateReceivedEnquiryStatus: async () => enquiry,
+    findAssociationByOpportunityId: async () => null,
   };
   const { server, baseUrl } = await startServer(service);
   try {
@@ -180,6 +183,7 @@ test('Enquiry received-read route uses the separate recipient-owner operation', 
     },
     getReceivedEnquiries: async () => [],
     updateReceivedEnquiryStatus: async () => enquiry,
+    findAssociationByOpportunityId: async () => null,
   };
   const { server, baseUrl } = await startServer(service);
   try {
@@ -207,6 +211,7 @@ test('Enquiry status route accepts only status mutation fields', async () => {
       assert.deepEqual(input, { status: 'contacted' });
       return enquiryFixture({ status: 'contacted' });
     },
+    findAssociationByOpportunityId: async () => null,
   };
   const { server, baseUrl } = await startServer(service);
   try {
@@ -245,6 +250,7 @@ test('Enquiry received list requires authentication', async () => {
       throw new Error('must not be called');
     },
     updateReceivedEnquiryStatus: async () => enquiryFixture(),
+    findAssociationByOpportunityId: async () => null,
   };
   const { server, baseUrl } = await startServer(service);
   try {
@@ -265,6 +271,7 @@ test('Enquiry received list rejects missing and invalid businessId', async () =>
       throw new Error('must not be called');
     },
     updateReceivedEnquiryStatus: async () => enquiryFixture(),
+    findAssociationByOpportunityId: async () => null,
   };
   const { server, baseUrl } = await startServer(service);
   try {
@@ -301,6 +308,7 @@ test('Enquiry received list returns enquiries envelope for authenticated busines
       return [enquiry];
     },
     updateReceivedEnquiryStatus: async () => enquiry,
+    findAssociationByOpportunityId: async () => null,
   };
   const { server, baseUrl } = await startServer(service);
   try {
@@ -333,6 +341,7 @@ test('Enquiry received list maps owner permission failure to forbidden', async (
       throw new Error('Business owner permission required');
     },
     updateReceivedEnquiryStatus: async () => enquiryFixture(),
+    findAssociationByOpportunityId: async () => null,
   };
   const { server, baseUrl } = await startServer(service);
   try {
@@ -355,6 +364,7 @@ test('Enquiry received list maps insufficient role to forbidden', async () => {
       throw new Error('Insufficient role');
     },
     updateReceivedEnquiryStatus: async () => enquiryFixture(),
+    findAssociationByOpportunityId: async () => null,
   };
   const { server, baseUrl } = await startServer(service);
   try {
@@ -375,6 +385,7 @@ test('Enquiry received list returns empty enquiries array without 404', async ()
     getReceivedEnquiry: async () => null,
     getReceivedEnquiries: async () => [],
     updateReceivedEnquiryStatus: async () => enquiryFixture(),
+    findAssociationByOpportunityId: async () => null,
   };
   const { server, baseUrl } = await startServer(service);
   try {

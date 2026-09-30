@@ -25,6 +25,9 @@ class FakeRepository implements EnquiryRepository {
     return [enquiry()];
   }
   async updateReceivedEnquiryStatus(_context: AuthContext, _id: number, input: any) { return { ...enquiry(), status: input.status }; }
+  async findAssociationByOpportunityId() {
+    return { enquiryId: 1, businessId: 2, opportunityId: 1 };
+  }
 }
 
 test('Enquiry creation normalizes snapshots and defaults', async () => {
@@ -98,4 +101,19 @@ test('Enquiry status mutation accepts every production status value', async () =
 test('Enquiry status mutation rejects invalid status values', async () => {
   const service = new EnquiryServiceImpl(new FakeRepository());
   await assert.rejects(() => service.updateReceivedEnquiryStatus(businessContext, 1, { status: 'invalid' as never }), /Invalid Enquiry status/);
+});
+
+test('Association adapter service requires business role and rejects customer/admin', async () => {
+  const service = new EnquiryServiceImpl(new FakeRepository());
+  const result = await service.findAssociationByOpportunityId(businessContext, 2, 1);
+  assert.deepEqual(result, { enquiryId: 1, businessId: 2, opportunityId: 1 });
+  assert.equal(JSON.stringify(result).includes('customerPhone'), false);
+  await assert.rejects(() => service.findAssociationByOpportunityId(customerContext, 2, 1), /Insufficient role/);
+  await assert.rejects(() => service.findAssociationByOpportunityId(adminContext, 2, 1), /Insufficient role/);
+});
+
+test('Association adapter service rejects invalid business and opportunity ids', async () => {
+  const service = new EnquiryServiceImpl(new FakeRepository());
+  await assert.rejects(() => service.findAssociationByOpportunityId(businessContext, 0, 1), /Invalid businessId/);
+  await assert.rejects(() => service.findAssociationByOpportunityId(businessContext, 2, 0), /Invalid opportunityId/);
 });

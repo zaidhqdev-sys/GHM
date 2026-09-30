@@ -55,6 +55,9 @@ class FakeClient {
     if (text.includes('FROM ghm.enquiry e') && text.includes('ORDER BY')) {
       return { rowCount: this.enquiryRows.length, rows: this.enquiryRows };
     }
+    if (text.includes('FROM ghm.enquiry') && text.includes('WHERE opportunity_id = $1')) {
+      return { rowCount: this.enquiryRows.length, rows: this.enquiryRows };
+    }
     throw new Error(`Unexpected query: ${text}`);
   }
 
@@ -122,4 +125,58 @@ test('Received enquiry list rejects non-positive businessId before querying', as
   const repository = new PostgresEnquiryRepository(new FakePool(client));
   await assert.rejects(() => repository.getReceivedEnquiries(ownerContext, 0), /Invalid businessId/);
   assert.equal(client.queries.length, 0);
+});
+
+test('Opportunity association adapter returns enquiryId and businessId without contact fields', async () => {
+  const client = new FakeClient(1, [enquiryRow({ id: '88', business_id: '265', opportunity_id: '501' })]);
+  const repository = new PostgresEnquiryRepository(new FakePool(client));
+  const association = await repository.findAssociationByOpportunityId(ownerContext, 265, 501);
+  assert.deepEqual(association, { enquiryId: 88, businessId: 265, opportunityId: 501 });
+  const membershipQuery = client.queries.find((q) => q.text.includes('FROM ghm.business_membership'));
+  assert.ok(membershipQuery);
+  assert.deepEqual(membershipQuery.values, [265, 468]);
+  const query = client.queries.find((q) => q.text.includes('WHERE opportunity_id = $1'));
+  assert.ok(query);
+  assert.match(query.text, /SELECT id, business_id, opportunity_id/);
+  assert.equal(query.text.includes('customer_name'), false);
+  assert.equal(query.text.includes('customer_phone'), false);
+  assert.equal(query.text.includes('customer_email'), false);
+  assert.equal(query.text.includes('customer_id'), false);
+});
+
+test('Opportunity association adapter returns null when no Enquiry is linked', async () => {
+  const client = new FakeClient(1, []);
+  const repository = new PostgresEnquiryRepository(new FakePool(client));
+  assert.equal(await repository.findAssociationByOpportunityId(ownerContext, 265, 501), null);
+});
+
+test('Opportunity association adapter rejects ambiguous multi-Enquiry linkage', async () => {
+  const client = new FakeClient(1, [
+    enquiryRow({ id: '1', opportunity_id: '501' }),
+    enquiryRow({ id: '2', opportunity_id: '501' }),
+  ]);
+  const repository = new PostgresEnquiryRepository(new FakePool(client));
+  await assert.rejects(
+    () => repository.findAssociationByOpportunityId(ownerContext, 265, 501),
+    /Opportunity Enquiry association is ambiguous/,
+  );
+});
+
+test('Opportunity association adapter rejects inactive membership', async () => {
+  const client = new FakeClient(0, [enquiryRow({ id: '88', business_id: '265', opportunity_id: '501' })]);
+  const repository = new PostgresEnquiryRepository(new FakePool(client));
+  await assert.rejects(
+    () => repository.findAssociationByOpportunityId(ownerContext, 265, 501),
+    /Business read permission required/,
+  );
+  assert.equal(client.queries.some((q) => q.text.includes('WHERE opportunity_id = $1')), false);
+});
+
+test('Opportunity association adapter fails closed on cross-Business Enquiry recipient', async () => {
+  const client = new FakeClient(1, [enquiryRow({ id: '88', business_id: '999', opportunity_id: '501' })]);
+  const repository = new PostgresEnquiryRepository(new FakePool(client));
+  await assert.rejects(
+    () => repository.findAssociationByOpportunityId(ownerContext, 265, 501),
+    /Contact Access Business does not match Enquiry recipient/,
+  );
 });

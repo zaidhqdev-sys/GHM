@@ -25,9 +25,13 @@ import { CampaignService } from '../resources/campaign/contracts';
 import { PostgresOpportunityRepository } from '../resources/opportunity/repository';
 import { OpportunityServiceImpl } from '../resources/opportunity/service';
 import { OpportunityService } from '../resources/opportunity/contracts';
+import type { ContactAccessService } from '../resources/contact-access/contracts';
+import { PostgresContactAccessRepository } from '../resources/contact-access/repository';
+import { ContactAccessServiceImpl } from '../resources/contact-access/service';
 import { registerEnquiryRoutes } from './enquiry-router';
 import { registerCampaignRoutes } from './campaign-router';
 import { registerOpportunityRoutes } from './opportunity-router';
+import { registerContactAccessRoutes } from './contact-access-router';
 import { registerAuthRoutes, type AuthRouterDependencies } from './auth-router';
 import type { GhmAuthService } from '../auth/ghm-auth-service';
 
@@ -39,6 +43,7 @@ export interface AppDependencies {
   readonly enquiryService?: EnquiryService;
   readonly campaignService?: CampaignService;
   readonly opportunityService?: OpportunityService;
+  readonly contactAccessService?: ContactAccessService;
   readonly authService?: GhmAuthService;
 }
 
@@ -247,6 +252,9 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const opportunityService =
     dependencies.opportunityService ??
     new OpportunityServiceImpl(new PostgresOpportunityRepository());
+  const contactAccessService =
+    dependencies.contactAccessService ??
+    new ContactAccessServiceImpl(new PostgresContactAccessRepository());
   app.disable('x-powered-by');
   app.set('trust proxy', config.trustProxy);
   app.use(cors({ origin: config.corsOrigins }));
@@ -414,6 +422,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerEnquiryRoutes(app, enquiryService);
   registerCampaignRoutes(app, campaignService);
   registerOpportunityRoutes(app, opportunityService);
+  registerContactAccessRoutes(app, contactAccessService);
   registerAuthRoutes(app, { authService: dependencies.authService } satisfies AuthRouterDependencies);
 
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {

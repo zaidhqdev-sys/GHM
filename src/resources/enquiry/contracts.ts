@@ -47,12 +47,33 @@ export interface UpdateEnquiryStatusInput {
   readonly status: EnquiryStatus;
 }
 
+/**
+ * Contact Access Slice A adapter: Opportunity → Enquiry association without contact fields.
+ * Does not disclose customerName / customerPhone / customerEmail / customerId.
+ */
+export interface EnquiryOpportunityAssociation {
+  readonly enquiryId: EnquiryId;
+  readonly businessId: BusinessId;
+  readonly opportunityId: OpportunityId;
+}
+
 export interface EnquiryRepository {
   createEnquiry(context: AuthContext, input: CreateEnquiryInput): Promise<Enquiry>;
   getOwnEnquiry(context: AuthContext, enquiryId: EnquiryId): Promise<Enquiry | null>;
   getReceivedEnquiry(context: AuthContext, enquiryId: EnquiryId): Promise<Enquiry | null>;
   getReceivedEnquiries(context: AuthContext, businessId: BusinessId): Promise<readonly Enquiry[]>;
   updateReceivedEnquiryStatus(context: AuthContext, enquiryId: EnquiryId, input: UpdateEnquiryStatusInput): Promise<Enquiry>;
+  /**
+   * Resolve the existing Enquiry.opportunity_id relationship for Contact Access eligibility.
+   * Requires active Business membership for businessId. Returns null when no Enquiry is linked
+   * to the Opportunity for that Business. Throws when association is ambiguous or belongs to
+   * another Business.
+   */
+  findAssociationByOpportunityId(
+    context: AuthContext,
+    businessId: BusinessId,
+    opportunityId: OpportunityId,
+  ): Promise<EnquiryOpportunityAssociation | null>;
 }
 
 export interface EnquiryService {
@@ -61,6 +82,11 @@ export interface EnquiryService {
   getReceivedEnquiry(context: AuthContext, enquiryId: EnquiryId): Promise<Enquiry | null>;
   getReceivedEnquiries(context: AuthContext, businessId: BusinessId): Promise<readonly Enquiry[]>;
   updateReceivedEnquiryStatus(context: AuthContext, enquiryId: EnquiryId, input: UpdateEnquiryStatusInput): Promise<Enquiry>;
+  findAssociationByOpportunityId(
+    context: AuthContext,
+    businessId: BusinessId,
+    opportunityId: OpportunityId,
+  ): Promise<EnquiryOpportunityAssociation | null>;
 }
 
 export const ENQUIRY_OPERATIONS = Object.freeze({

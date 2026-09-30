@@ -2,7 +2,16 @@ import type { PoolClient } from 'pg';
 import type { AuthContext } from '../../auth/authorization';
 import { withAuthorizedTransaction } from '../../db/authorized-transaction';
 import type { TransactionPool } from '../../db/transaction';
-import type { CreateEnquiryInput, Enquiry, EnquiryId, EnquiryRepository, UpdateEnquiryStatusInput } from './contracts';
+import type {
+  CreateEnquiryInput,
+  Enquiry,
+  EnquiryId,
+  EnquiryOpportunityAssociation,
+  EnquiryRepository,
+  BusinessId,
+  OpportunityId,
+  UpdateEnquiryStatusInput,
+} from './contracts';
 
 const ENQUIRY_COLUMNS = `id, business_id, customer_id, customer_name, customer_phone, customer_email, project, description, city, budget_min, budget_max, urgency, source, status, opportunity_id, created_at, updated_at`;
 
@@ -146,6 +155,50 @@ export class PostgresEnquiryRepository implements EnquiryRepository {
         [enquiryId, input.status],
       );
       return mapEnquiry(result.rows[0]);
+    }, this.transactionPool);
+  }
+
+  async findAssociationByOpportunityId(
+    context: AuthContext,
+    businessId: BusinessId,
+    opportunityId: OpportunityId,
+  ): Promise<EnquiryOpportunityAssociation | null> {
+    assertPositiveId(businessId, 'businessId');
+    assertPositiveId(opportunityId, 'opportunityId');
+    return withAuthorizedTransaction(context, async client => {
+      const membership = await client.query(
+        `SELECT 1 FROM ghm.business_membership
+         WHERE business_id = $1
+           AND account_id = $2
+           AND membership_status = 'active'
+         LIMIT 1`,
+        [businessId, context.userId],
+      );
+      if (membership.rowCount !== 1) {
+        throw new Error('Business read permission required');
+      }
+
+      const result = await client.query(
+        `SELECT id, business_id, opportunity_id
+         FROM ghm.enquiry
+         WHERE opportunity_id = $1
+         ORDER BY id ASC`,
+        [opportunityId],
+      );
+      if (result.rowCount === 0) return null;
+      if ((result.rowCount ?? 0) > 1) {
+        throw new Error('Opportunity Enquiry association is ambiguous');
+      }
+      const row = result.rows[0];
+      const associationBusinessId = Number(row.business_id);
+      if (associationBusinessId !== businessId) {
+        throw new Error('Contact Access Business does not match Enquiry recipient');
+      }
+      return {
+        enquiryId: Number(row.id),
+        businessId: associationBusinessId,
+        opportunityId: Number(row.opportunity_id),
+      };
     }, this.transactionPool);
   }
 

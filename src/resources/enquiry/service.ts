@@ -1,11 +1,14 @@
 import type { AuthContext } from '../../auth/authorization';
-import { assertRole } from '../../auth/authorization';
+import { assertRole, requireAuthenticatedContext } from '../../auth/authorization';
 import type {
   CreateEnquiryInput,
   Enquiry,
+  EnquiryOpportunityAssociation,
   EnquiryRepository,
   EnquiryService,
   EnquiryStatus,
+  BusinessId,
+  OpportunityId,
   UpdateEnquiryStatusInput,
 } from './contracts';
 
@@ -99,5 +102,16 @@ export class EnquiryServiceImpl implements EnquiryService {
       enquiryId,
       normalizeStatusInput(input),
     );
+  }
+  async findAssociationByOpportunityId(
+    context: AuthContext,
+    businessId: BusinessId,
+    opportunityId: OpportunityId,
+  ): Promise<EnquiryOpportunityAssociation | null> {
+    requireAuthenticatedContext(context);
+    assertRole(context, 'business');
+    if (!Number.isSafeInteger(businessId) || businessId <= 0) throw new Error('Invalid businessId');
+    if (!Number.isSafeInteger(opportunityId) || opportunityId <= 0) throw new Error('Invalid opportunityId');
+    return this.repository.findAssociationByOpportunityId(context, businessId, opportunityId);
   }
 }
