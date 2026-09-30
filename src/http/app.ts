@@ -54,6 +54,10 @@ import { PostgresProjectQuoteRepository } from '../resources/project-quote/repos
 import { ProjectQuoteServiceImpl } from '../resources/project-quote/service';
 import type { ProjectQuoteService } from '../resources/project-quote/contracts';
 import { registerProjectQuoteRoutes } from './project-quote-router';
+import { PostgresOpportunityRequirementsRepository } from '../resources/opportunity-requirements/repository';
+import { OpportunityRequirementsServiceImpl } from '../resources/opportunity-requirements/service';
+import type { OpportunityRequirementsService } from '../resources/opportunity-requirements/contracts';
+import { registerOpportunityRequirementsRoutes } from './opportunity-requirements-router';
 
 export interface AppDependencies {
   readonly businessIdentityService?: BusinessIdentityService;
@@ -69,6 +73,7 @@ export interface AppDependencies {
   readonly supportRequestService?: SupportRequestService;
   readonly reviewService?: ReviewService;
   readonly projectQuoteService?: ProjectQuoteService;
+  readonly opportunityRequirementsService?: OpportunityRequirementsService;
   readonly authService?: GhmAuthService;
 }
 
@@ -295,6 +300,9 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const projectQuoteService =
     dependencies.projectQuoteService ??
     new ProjectQuoteServiceImpl(new PostgresProjectQuoteRepository());
+  const opportunityRequirementsService =
+    dependencies.opportunityRequirementsService ??
+    new OpportunityRequirementsServiceImpl(new PostgresOpportunityRequirementsRepository());
   app.disable('x-powered-by');
   app.set('trust proxy', config.trustProxy);
   app.use(cors({ origin: config.corsOrigins }));
@@ -468,6 +476,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerSupportRequestRoutes(app, supportRequestService);
   registerReviewRoutes(app, reviewService);
   registerProjectQuoteRoutes(app, projectQuoteService);
+  registerOpportunityRequirementsRoutes(app, opportunityRequirementsService);
   registerAuthRoutes(app, { authService: dependencies.authService } satisfies AuthRouterDependencies);
 
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
