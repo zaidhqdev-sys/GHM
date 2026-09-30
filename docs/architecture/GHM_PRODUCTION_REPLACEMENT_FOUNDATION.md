@@ -12,6 +12,8 @@ GHM is being constructed as ZAID Technologies' own backend platform. It must be 
 
 **No production product is switched from Supabase to GHM until GHM has independently passed production qualification.**
 
+During migration, Supabase may remain a legacy product dependency, but it is not part of GHM's permanent trust boundary. GHM authentication, authorization, sessions, access tokens, refresh tokens, and revocation are GHM-owned and must not depend on Supabase JWT verification or Supabase claims.
+
 The migration must be parallel, observable, reversible, and product-by-product.
 
 ## Current State
@@ -22,11 +24,17 @@ QuoteFlow     ───────► Supabase PostgreSQL/Auth/Functions/Storag
 
 GHM           ───────► GHM PostgreSQL + GHM-owned service boundaries
                          └── temporary storage provider may be used behind a GHM boundary
+
+Legacy migration only:
+Connect/Supabase identity subject ──► GHM external identity mapping
+                                    └── no Supabase JWT trust by GHM
 ```
 
 Zaid Connect's approved API specification explicitly describes its current interfaces as Supabase Authentication, Supabase table/view access, PostgreSQL RPC functions, and Supabase Edge Functions. QuoteFlow currently ships with `@supabase/supabase-js` and a `supabase/` directory. These facts establish migration scope, not a requirement that GHM reproduce Supabase internals.
 
 ## Target State
+
+The permanent authentication target is explicitly GHM-native. Supabase is a migration source/dependency for legacy Connect identity data only, not a GHM authentication authority.
 
 ```text
                          ┌───────────────┐
@@ -58,6 +66,8 @@ Storage adapter ──► current provider (e.g. Supabase Storage)
 6. GHM implements the capabilities actually required by the products and their approved workflows.
 7. Infrastructure providers may implement a GHM capability temporarily, but provider choice must remain behind an explicit GHM boundary.
 8. Supabase Storage is currently treated as a replaceable storage provider, not as GHM backend authority.
+9. Supabase Auth is a legacy Connect authentication dependency during migration, not a GHM authentication authority. GHM must never accept a Supabase JWT as a GHM bearer credential.
+10. `provider=supabase` in GHM external identity mapping records legacy identity provenance only; it does not transfer Supabase trust into GHM.
 
 ## Migration Strategy
 
@@ -115,6 +125,7 @@ The earlier construction blockers concerning absence of a GHM catalog and unimpl
 Current blockers to **production replacement** are:
 
 - provider/bootstrap authority cleanup remains unresolved because the available provider path does not expose the independent bootstrap authority required to remove legacy `ghm_db_user` memberships safely;
+- GHM-native Connect authentication/session migration remains unimplemented and requires its own qualification, shadow evidence, rollback plan, and cutover authorization;
 - future GHM resource slices still require their own schema, repository, transaction, authorization, Resource API, operational, and ACL qualification;
 - product-facing Connect and QuoteFlow adapters have not yet been implemented or qualified against their concrete GHM contracts;
 - end-to-end shadow qualification and cutover/rollback evidence do not yet exist.
