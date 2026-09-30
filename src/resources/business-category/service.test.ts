@@ -39,7 +39,7 @@ test('category service validates authentication and identifiers', async () => {
   assert.equal((await service.listBusinessCategories(context)).length, 1);
   assert.throws(() => service.listBusinessCategories({ userId: 0, role: 'business' }, {}), /Authentication required/);
   assert.throws(() => service.getBusinessCategory(context, 'bad'), /valid UUID/);
-  await assert.rejects(() => service.listBusinessCategoryAssignments(context, 0), /positive integer/);
+  assert.throws(() => service.listBusinessCategoryAssignments(context, 0), /positive integer/);
 });
 
 test('assignment operations preserve authenticated context through service boundary', async () => {
