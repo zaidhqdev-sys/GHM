@@ -73,6 +73,7 @@ test('Connect Business provisioning/linking: live PostgreSQL concurrency and rol
   let accountB = 0;
   let preservedBusinessA = 0;
   let preservedBusinessB = 0;
+  const externalBusinessIds: string[] = [];
 
   const ownerClient = async <T>(work: (client: PoolClient) => Promise<T>): Promise<T> => {
     const client = await migratorPool.connect();
@@ -86,10 +87,12 @@ test('Connect Business provisioning/linking: live PostgreSQL concurrency and rol
 
   t.after(async () => {
     await ownerClient(async (client) => {
-      await client.query(
-        'DELETE FROM ghm.business_external_mapping WHERE provider = $1 AND external_business_id LIKE $2',
-        ['supabase', `${marker}%`],
-      );
+      if (externalBusinessIds.length > 0) {
+        await client.query(
+          'DELETE FROM ghm.business_external_mapping WHERE provider = $1 AND external_business_id = ANY($2::text[])',
+          ['supabase', externalBusinessIds],
+        );
+      }
       await client.query(
         'DELETE FROM ghm.business_membership WHERE account_id IN ($1, $2)',
         [accountA, accountB],
@@ -149,6 +152,7 @@ test('Connect Business provisioning/linking: live PostgreSQL concurrency and rol
   });
 
   const externalBusinessId = randomUUID();
+  externalBusinessIds.push(externalBusinessId);
 
   await t.test('two different accounts concurrently provision the same external Business UUID', async () => {
     const adapterA = new ConnectBusinessAdapter({ connect: () => runtimePool.connect() });
@@ -246,21 +250,22 @@ test('Connect Business provisioning/linking: live PostgreSQL concurrency and rol
     assert.equal(totals.named, 0);
   });
 
-  await t.test('pre-existing mapping conflict is deterministic and leaves mapping unchanged', async () => {
-    const conflictExternalId = randomUUID();
-    let otherBusiness = 0;
+  await t.test('pre-existing mapping resolves deterministically and is never relinked', async () => {
+    const mappedExternalId = randomUUID();
+    externalBusinessIds.push(mappedExternalId);
+    let mappedBusiness = 0;
 
     await ownerClient(async (client) => {
       const inserted = await client.query(
         `INSERT INTO ghm.business (name, slug, verification_status, is_active)
          VALUES ($1, $2, 'unverified', true) RETURNING id`,
-        [`${marker}-conflict-target`, `${marker}-conflict-target`],
+        [`${marker}-preexisting-target`, `${marker}-preexisting-target`],
       );
-      otherBusiness = Number(inserted.rows[0].id);
+      mappedBusiness = Number(inserted.rows[0].id);
       await client.query(
         `INSERT INTO ghm.business_external_mapping (provider, external_business_id, business_id)
          VALUES ('supabase', $1, $2)`,
-        [conflictExternalId, otherBusiness],
+        [mappedExternalId, mappedBusiness],
       );
     });
 
@@ -268,35 +273,34 @@ test('Connect Business provisioning/linking: live PostgreSQL concurrency and rol
     const before = await ownerClient(async (client) =>
       client.query(
         'SELECT business_id FROM ghm.business_external_mapping WHERE provider = $1 AND external_business_id = $2',
-        ['supabase', conflictExternalId],
+        ['supabase', mappedExternalId],
       ),
     );
 
-    await assert.rejects(
-      () => adapter.provisionOrResolve(accountAContext, {
-        externalBusinessId: conflictExternalId,
-        name: `${marker}-must-not-create`,
-      }),
-      /Connect Business mapping conflict/,
-    );
+    const result = await adapter.provisionOrResolve(accountAContext, {
+      externalBusinessId: mappedExternalId,
+      name: `${marker}-must-be-ignored`,
+    });
+
+    assert.equal(result.outcome, 'resolved');
+    assert.equal(result.business.id, mappedBusiness);
+    assert.equal(result.mapping.businessId, mappedBusiness);
 
     const after = await ownerClient(async (client) => ({
       mapping: await client.query(
         'SELECT business_id FROM ghm.business_external_mapping WHERE provider = $1 AND external_business_id = $2',
-        ['supabase', conflictExternalId],
+        ['supabase', mappedExternalId],
       ),
       created: await count(
-        client,
         'SELECT count(*)::int AS n FROM ghm.business WHERE name = $1',
-        [`${marker}-must-not-create`],
+        [`${marker}-must-be-ignored`],
       ),
     }));
 
-    assert.equal(Number(before.rows[0].business_id), otherBusiness);
-    assert.equal(Number(after.mapping.rows[0].business_id), otherBusiness);
+    assert.equal(Number(before.rows[0].business_id), mappedBusiness);
+    assert.equal(Number(after.mapping.rows[0].business_id), mappedBusiness);
     assert.equal(after.created, 0);
   });
-
   await t.test('forced link failure rolls back the Business and owner membership atomically', async () => {
     const rollbackExternalId = randomUUID();
     const rollbackName = `${marker}-rollback`;
