@@ -1,5 +1,6 @@
 node_modules/
 .env
+dist/
 # MinIO binaries and data
 minio.exe
 storage/

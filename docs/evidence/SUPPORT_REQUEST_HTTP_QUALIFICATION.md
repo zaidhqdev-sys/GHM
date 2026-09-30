@@ -1,0 +1,61 @@
+# Support Request HTTP Qualification
+
+**Status:** CONSTRUCTION QUALIFICATION — build correction applied; local execution pending
+**Branch:** `construction/support-request-http-api`
+**Date:** 2026-09-30
+
+## Construction evidence
+
+Implemented:
+
+- `src/http/support-request-router.ts`
+- `src/http/support-request-router.test.ts`
+- Support Request service wiring in `src/http/app.ts`
+- HTTP qualification inclusion in `package.json`
+- `docs/architecture/SUPPORT_REQUEST_HTTP_BOUNDARY_RECONCILIATION.md`
+
+## Required checks
+
+The HTTP qualification suite covers:
+
+1. authenticated list context binding;
+2. list filter validation;
+3. authenticated read and not-found mapping;
+4. request ID validation;
+5. customer-only creation;
+6. canonical create input and server-owned field rejection;
+7. admin-only status mutation;
+8. status input boundary;
+9. message read context/request binding;
+10. exact customer/admin reply dispatch;
+11. business-role denial for replies;
+12. business-role denial for request reads, lists, and messages;
+13. reply input and request ID validation.
+
+## Local qualification command
+
+```powershell
+cd C:\GHM
+git fetch --prune origin
+git switch construction/support-request-http-api
+git pull --ff-only origin construction/support-request-http-api
+npm test
+```
+
+The branch is not considered locally qualified until the complete configured test suite reports zero failures.
+
+## Gate
+
+This branch is a construction slice only.
+
+Do not merge it into the authoritative branch until founder approval is explicitly given after local verification.
+
+
+## Build correction reconciliation
+
+The first local qualification attempt exposed a TypeScript error because `ListSupportRequestsOptions` intentionally uses readonly properties. The HTTP parser now constructs a mutable local parse object and returns it as the canonical readonly contract type. No domain contract was changed.
+
+
+## Second local reconciliation
+
+The first full local run built successfully but exposed one HTTP authorization mapping defect: the single-resource read route still relied on broad resource access, so a `business` role reached the service and produced a 500 in the qualification fixture instead of the required 403. The route has now been narrowed to `customer | admin`, matching list/messages authority. No domain contract or service behavior was changed.

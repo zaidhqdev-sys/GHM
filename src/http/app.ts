@@ -1,0 +1,598 @@
+import express, { NextFunction, Request, Response } from 'express';
+import cors from 'cors';
+import { AuthContext, canAccessResource } from '../auth/authorization';
+import { requireAuth } from '../auth/http';
+import { PostgresBusinessIdentityRepository } from '../resources/business-identity/repository';
+import { BusinessIdentityServiceImpl } from '../resources/business-identity/service';
+import { BusinessIdentityService, UpdateBusinessProfileInput } from '../resources/business-identity/contracts';
+import { PostgresBusinessHoursRepository } from '../resources/business-hours/repository';
+import { BusinessHoursServiceImpl } from '../resources/business-hours/service';
+import { BusinessHoursService } from '../resources/business-hours/contracts';
+import { PostgresProjectRepository } from '../resources/project/repository';
+import { ProjectServiceImpl } from '../resources/project/service';
+import { CreateProjectInput, ProjectService, UpdateProjectInput } from '../resources/project/contracts';
+import { isRegisteredOperation, ResourceOperation } from '../resources/registry';
+import { config } from '../config';
+import { PostgresPublicProjectRepository } from '../resources/project/public-repository';
+import { PublicProjectServiceImpl } from '../resources/project/public-service';
+import { PublicProjectService } from '../resources/project/public-contracts';
+import { PostgresEnquiryRepository } from '../resources/enquiry/repository';
+import { EnquiryServiceImpl } from '../resources/enquiry/service';
+import { EnquiryService } from '../resources/enquiry/contracts';
+import { PostgresCampaignRepository } from '../resources/campaign/repository';
+import { CampaignServiceImpl } from '../resources/campaign/service';
+import { CampaignService } from '../resources/campaign/contracts';
+import { PostgresOpportunityRepository } from '../resources/opportunity/repository';
+import { OpportunityServiceImpl } from '../resources/opportunity/service';
+import { OpportunityService } from '../resources/opportunity/contracts';
+import { PostgresSavedBusinessRepository } from '../resources/saved-business/repository';
+import { SavedBusinessServiceImpl } from '../resources/saved-business/service';
+import { SavedBusinessService } from '../resources/saved-business/contracts';
+import { PostgresBusinessCapabilityRepository } from '../resources/business-capability/repository';
+import { BusinessCapabilityServiceImpl } from '../resources/business-capability/service';
+import { BusinessCapabilityService } from '../resources/business-capability/contracts';
+import { PostgresTrustScoreRepository } from '../resources/trust-score/repository';
+import { TrustScoreServiceImpl } from '../resources/trust-score/service';
+import { TrustScoreService } from '../resources/trust-score/contracts';
+import { PostgresSupportRequestRepository } from '../resources/support-request/repository';
+import { SupportRequestServiceImpl } from '../resources/support-request/service';
+import { SupportRequestService } from '../resources/support-request/contracts';
+import { PostgresReviewRepository } from '../resources/review/repository';
+import { ReviewServiceImpl } from '../resources/review/service';
+import { ReviewService } from '../resources/review/contracts';
+import { registerEnquiryRoutes } from './enquiry-router';
+import { registerCampaignRoutes } from './campaign-router';
+import { registerOpportunityRoutes } from './opportunity-router';
+import { registerAuthRoutes, type AuthRouterDependencies } from './auth-router';
+import { registerSavedBusinessRoutes } from './saved-business-router';
+import { registerBusinessCapabilityRoutes } from './business-capability-router';
+import { registerTrustScoreRoutes } from './trust-score-router';
+import { registerSupportRequestRoutes } from './support-request-router';
+import { registerReviewRoutes } from './review-router';
+import type { GhmAuthService } from '../auth/ghm-auth-service';
+import { PostgresProjectQuoteRepository } from '../resources/project-quote/repository';
+import { ProjectQuoteServiceImpl } from '../resources/project-quote/service';
+import type { ProjectQuoteService } from '../resources/project-quote/contracts';
+import { registerProjectQuoteRoutes } from './project-quote-router';
+import { PgOpportunityRequirementsRepository } from '../resources/opportunity-requirements/repository';
+import { OpportunityRequirementsServiceImpl } from '../resources/opportunity-requirements/service';
+import type { OpportunityRequirementsService } from '../resources/opportunity-requirements/contracts';
+import { registerOpportunityRequirementsRoutes } from './opportunity-requirements-router';
+import { PostgresOpportunityParticipantRepository } from '../resources/opportunity-participant/repository';
+import { OpportunityParticipantServiceImpl } from '../resources/opportunity-participant/service';
+import type { OpportunityParticipantService } from '../resources/opportunity-participant/contracts';
+import { registerOpportunityParticipantRoutes } from './opportunity-participant-router';
+import { PostgresCustomerRepository } from '../resources/customer/repository';
+import { CustomerServiceImpl } from '../resources/customer/service';
+import type { CustomerService } from '../resources/customer/contracts';
+import { registerCustomerRoutes } from './customer-router';
+import { PostgresQuoteRepository } from '../resources/quote/repository';
+import { DefaultQuoteService } from '../resources/quote/service';
+import { QuoteService } from '../resources/quote/contracts';
+import { registerQuoteRoutes } from './quote-router';
+import { PostgresNotificationRepository } from '../resources/notification/repository';
+import { NotificationServiceImpl } from '../resources/notification/service';
+import { NotificationService } from '../resources/notification/contracts';
+import { registerNotificationRoutes } from './notification-router';
+
+export interface AppDependencies {
+  readonly businessIdentityService?: BusinessIdentityService;
+  readonly businessHoursService?: BusinessHoursService;
+  readonly projectService?: ProjectService;
+  readonly publicProjectService?: PublicProjectService;
+  readonly enquiryService?: EnquiryService;
+  readonly campaignService?: CampaignService;
+  readonly opportunityService?: OpportunityService;
+  readonly savedBusinessService?: SavedBusinessService;
+  readonly businessCapabilityService?: BusinessCapabilityService;
+  readonly trustScoreService?: TrustScoreService;
+  readonly supportRequestService?: SupportRequestService;
+  readonly reviewService?: ReviewService;
+  readonly projectQuoteService?: ProjectQuoteService;
+  readonly opportunityRequirementsService?: OpportunityRequirementsService;
+  readonly opportunityParticipantService?: OpportunityParticipantService;
+  readonly customerService?: CustomerService;
+  readonly quoteService?: QuoteService;
+  readonly notificationService?: NotificationService;
+  readonly authService?: GhmAuthService;
+}
+
+const requireRegisteredAccess = (resource: Parameters<typeof canAccessResource>[1], operation: ResourceOperation) =>
+  (req: Request, res: Response, next: NextFunction): void => {
+    const context = req.authContext as AuthContext | undefined;
+    if (!context || !isRegisteredOperation(resource, operation) || !canAccessResource(context, resource)) {
+      res.status(403).json({ error: 'forbidden' });
+      return;
+    }
+    next();
+  };
+
+const requireRegisteredPublicAccess = (
+  resource: Parameters<typeof canAccessResource>[1],
+  operation: ResourceOperation,
+) =>
+  (_req: Request, res: Response, next: NextFunction): void => {
+    if (!isRegisteredOperation(resource, operation)) {
+      res.status(403).json({ error: 'forbidden' });
+      return;
+    }
+    next();
+  };
+
+const routeParam = (value: string | string[]): string | null => typeof value === 'string' ? value : null;
+
+const positiveIntegerId = (value: string): number | null => {
+  if (!/^[1-9]\d*$/.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
+const parseCreateBusinessInput = (body: unknown): { name: string } | null => {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  const input = body as Record<string, unknown>;
+  if (typeof input.name !== 'string' || !input.name.trim()) return null;
+  return { name: input.name };
+};
+
+const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | null => {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  const input = body as Record<string, unknown>;
+  const allowed = new Set(['name', 'slug', 'description', 'phone', 'email']);
+  const keys = Object.keys(input);
+  if (keys.length === 0 || keys.some((key) => !allowed.has(key))) return null;
+  if (Object.hasOwn(input, 'name') && (typeof input.name !== 'string' || !input.name.trim())) return null;
+  if (Object.hasOwn(input, 'slug') && (typeof input.slug !== 'string' || !input.slug.trim())) return null;
+  if (Object.hasOwn(input, 'description') && input.description !== null && typeof input.description !== 'string') return null;
+  if (Object.hasOwn(input, 'phone') && input.phone !== null && typeof input.phone !== 'string') return null;
+  if (Object.hasOwn(input, 'email') && input.email !== null && typeof input.email !== 'string') return null;
+  return {
+    ...(Object.hasOwn(input, 'name') ? { name: input.name as string } : {}),
+    ...(Object.hasOwn(input, 'slug') ? { slug: input.slug as string } : {}),
+    ...(Object.hasOwn(input, 'description') ? { description: input.description as string | null } : {}),
+    ...(Object.hasOwn(input, 'phone') ? { phone: input.phone as string | null } : {}),
+    ...(Object.hasOwn(input, 'email') ? { email: input.email as string | null } : {}),
+  };
+};
+
+const parseProjectCreateInput = (body: unknown): CreateProjectInput | null => {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+
+  const input = body as Record<string, unknown>;
+  const allowed = new Set([
+    'title',
+    'description',
+    'category',
+    'province',
+    'city',
+    'budgetMin',
+    'budgetMax',
+    'urgency',
+  ]);
+
+  if (Object.keys(input).some((key) => !allowed.has(key))) return null;
+
+  const stringFields = ['title', 'description', 'category', 'province', 'city'];
+  for (const field of stringFields) {
+    if (typeof input[field] !== 'string') return null;
+  }
+
+  if (
+    Object.hasOwn(input, 'budgetMin') &&
+    input.budgetMin !== null &&
+    typeof input.budgetMin !== 'number'
+  ) return null;
+
+  if (
+    Object.hasOwn(input, 'budgetMax') &&
+    input.budgetMax !== null &&
+    typeof input.budgetMax !== 'number'
+  ) return null;
+
+  if (
+    Object.hasOwn(input, 'urgency') &&
+    input.urgency !== 'standard' &&
+    input.urgency !== 'urgent' &&
+    input.urgency !== 'emergency'
+  ) return null;
+
+  return {
+    title: input.title as string,
+    description: input.description as string,
+    category: input.category as string,
+    province: input.province as string,
+    city: input.city as string,
+    ...(Object.hasOwn(input, 'budgetMin')
+      ? { budgetMin: input.budgetMin as number | null }
+      : {}),
+    ...(Object.hasOwn(input, 'budgetMax')
+      ? { budgetMax: input.budgetMax as number | null }
+      : {}),
+    ...(Object.hasOwn(input, 'urgency')
+      ? { urgency: input.urgency as CreateProjectInput['urgency'] }
+      : {}),
+  };
+};
+
+const parseProjectUpdateInput = (body: unknown): UpdateProjectInput | null => {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+
+  const input = body as Record<string, unknown>;
+  const allowed = new Set([
+    'title',
+    'description',
+    'category',
+    'province',
+    'city',
+    'budgetMin',
+    'budgetMax',
+    'urgency',
+  ]);
+
+  const keys = Object.keys(input);
+  if (keys.length === 0 || keys.some((key) => !allowed.has(key))) return null;
+
+  const stringFields = ['title', 'description', 'category', 'province', 'city'];
+  for (const field of stringFields) {
+    if (Object.hasOwn(input, field) && typeof input[field] !== 'string') {
+      return null;
+    }
+  }
+
+  if (
+    Object.hasOwn(input, 'budgetMin') &&
+    input.budgetMin !== null &&
+    typeof input.budgetMin !== 'number'
+  ) return null;
+
+  if (
+    Object.hasOwn(input, 'budgetMax') &&
+    input.budgetMax !== null &&
+    typeof input.budgetMax !== 'number'
+  ) return null;
+
+  if (
+    Object.hasOwn(input, 'urgency') &&
+    input.urgency !== 'standard' &&
+    input.urgency !== 'urgent' &&
+    input.urgency !== 'emergency'
+  ) return null;
+
+  return input as UpdateProjectInput;
+};
+
+const handleError = (error: unknown, res: Response): void => {
+  if (error instanceof Error) {
+    if (
+      error.message === 'Business creation requires a business operator role'
+      || error.message === 'Business management permission required'
+      || error.message === 'Business access required'
+    ) {
+      res.status(403).json({ error: 'forbidden' });
+      return;
+    }
+    if (error.message === 'Authenticated account not found' || error.message === 'Business not found' || error.message === 'Project not found or ownership required') {
+      res.status(404).json({ error: 'not_found' });
+      return;
+    }
+    if (error.message === 'Business creation requires no existing active business membership' || error.message === 'Only open Projects may be updated' || (error as { code?: string }).code === '23505') {
+      res.status(409).json({ error: 'conflict' });
+      return;
+    }
+  }
+  console.error(JSON.stringify({ event: 'http_request_failed', error: { name: error instanceof Error ? error.name : 'UnknownError' } }));
+  res.status(500).json({ error: 'internal_error' });
+};
+
+export const createApp = (dependencies: AppDependencies = {}): express.Express => {
+  const app = express();
+  const service = dependencies.businessIdentityService ?? new BusinessIdentityServiceImpl(new PostgresBusinessIdentityRepository());
+  const businessHoursService =
+    dependencies.businessHoursService
+    ?? new BusinessHoursServiceImpl(new PostgresBusinessHoursRepository());
+  const projectService = dependencies.projectService ?? new ProjectServiceImpl(new PostgresProjectRepository());
+  const publicProjectService =
+    dependencies.publicProjectService ??
+    new PublicProjectServiceImpl(new PostgresPublicProjectRepository());
+  const enquiryService =
+    dependencies.enquiryService ??
+    new EnquiryServiceImpl(new PostgresEnquiryRepository());
+  const campaignService =
+    dependencies.campaignService ??
+    new CampaignServiceImpl(new PostgresCampaignRepository());
+  const opportunityService =
+    dependencies.opportunityService ??
+    new OpportunityServiceImpl(new PostgresOpportunityRepository());
+  const savedBusinessService =
+    dependencies.savedBusinessService ??
+    new SavedBusinessServiceImpl(new PostgresSavedBusinessRepository());
+  const businessCapabilityService =
+    dependencies.businessCapabilityService ??
+    new BusinessCapabilityServiceImpl(new PostgresBusinessCapabilityRepository());
+  const trustScoreService =
+    dependencies.trustScoreService ??
+    new TrustScoreServiceImpl(new PostgresTrustScoreRepository());
+  const supportRequestService =
+    dependencies.supportRequestService ??
+    new SupportRequestServiceImpl(new PostgresSupportRequestRepository());
+  const reviewService =
+    dependencies.reviewService ??
+    new ReviewServiceImpl(new PostgresReviewRepository());
+  const projectQuoteService =
+    dependencies.projectQuoteService ??
+    new ProjectQuoteServiceImpl(new PostgresProjectQuoteRepository());
+  const opportunityRequirementsService =
+    dependencies.opportunityRequirementsService ??
+    new OpportunityRequirementsServiceImpl(new PgOpportunityRequirementsRepository());
+  const opportunityParticipantService =
+    dependencies.opportunityParticipantService ??
+    new OpportunityParticipantServiceImpl(new PostgresOpportunityParticipantRepository());
+  const customerService = dependencies.customerService ?? new CustomerServiceImpl(new PostgresCustomerRepository());
+  const quoteService = dependencies.quoteService ?? new DefaultQuoteService(new PostgresQuoteRepository());
+  const notificationService = dependencies.notificationService ?? new NotificationServiceImpl(new PostgresNotificationRepository());
+  app.disable('x-powered-by');
+  app.set('trust proxy', config.trustProxy);
+  app.use(cors({ origin: config.corsOrigins }));
+  app.use(express.json({ limit: '1mb' }));
+
+  app.get('/', (_req: Request, res: Response) => {
+    res.json({ service: 'GHM Core Engine', version: '2.0.0' });
+  });
+
+  app.get('/healthz', (_req: Request, res: Response) => {
+    res.status(200).json({ status: 'ok' });
+  });
+
+  app.get('/api/v1/profile', requireAuth, requireRegisteredAccess('profile', 'read'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const profile = await service.getOwnProfile(context);
+      res.status(200).json({ profile });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.get('/api/v1/businesses/slug/:slug', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const slugValue = routeParam(req.params.slug);
+      const slug = slugValue?.trim();
+      if (!slug) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const business = await service.getPublicBusinessBySlug(context, slug);
+      if (!business) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      res.status(200).json({ business });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.get('/api/v1/businesses/:businessId/managed', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const businessIdValue = routeParam(req.params.businessId);
+      const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
+      if (businessId === null) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const business = await service.getManagedBusiness(context, businessId);
+      if (!business) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      res.status(200).json({ business });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.get(
+    '/api/v1/businesses/:businessId/hours',
+    requireAuth,
+    requireRegisteredAccess('business_hours', 'read'),
+    async (req: Request, res: Response) => {
+      try {
+        const context = req.authContext as AuthContext;
+        const businessIdValue = routeParam(req.params.businessId);
+        const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
+        if (businessId === null) {
+          res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+        const hours = await businessHoursService.getBusinessHours(context, businessId);
+        res.status(200).json({ hours });
+      } catch (error) {
+        handleError(error, res);
+      }
+    },
+  );
+
+  app.get('/api/v1/businesses/:businessId', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const businessIdValue = routeParam(req.params.businessId);
+      const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
+      if (businessId === null) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const business = await service.getPublicBusiness(context, businessId);
+      if (!business) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      res.status(200).json({ business });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.post('/api/v1/businesses', requireAuth, requireRegisteredAccess('business', 'create'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const input = parseCreateBusinessInput(req.body);
+      if (!input) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const identity = await service.createBusiness(context, input);
+      res.status(201).json({ business: identity.activeBusiness, membership: identity.activeMembership });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.patch('/api/v1/businesses/:businessId', requireAuth, requireRegisteredAccess('business', 'update'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const businessIdValue = routeParam(req.params.businessId);
+      const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
+      const input = parseUpdateBusinessInput(req.body);
+      if (businessId === null || !input) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const business = await service.updateBusiness(context, businessId, input);
+      res.status(200).json({ business });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.post('/api/v1/projects', requireAuth, requireRegisteredAccess('project', 'create'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const input = parseProjectCreateInput(req.body);
+
+      if (!input) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      const project = await projectService.createProject(context, input);
+      res.status(201).json({ project });
+    } catch (error) {
+      if (error instanceof Error && (
+        error.message.includes(' is required') ||
+        error.message.includes(' must be between ') ||
+        error.message.includes('must be null or a non-negative number') ||
+        error.message === 'budgetMax must be greater than or equal to budgetMin' ||
+        error.message === 'Invalid Project urgency'
+      )) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      handleError(error, res);
+    }
+  });
+
+  registerEnquiryRoutes(app, enquiryService);
+  registerCampaignRoutes(app, campaignService);
+  registerOpportunityRoutes(app, opportunityService);
+  registerSavedBusinessRoutes(app, savedBusinessService);
+  registerBusinessCapabilityRoutes(app, businessCapabilityService);
+  registerTrustScoreRoutes(app, trustScoreService);
+  registerSupportRequestRoutes(app, supportRequestService);
+  registerReviewRoutes(app, reviewService);
+  registerProjectQuoteRoutes(app, projectQuoteService);
+  registerOpportunityRequirementsRoutes(app, opportunityRequirementsService);
+  registerOpportunityParticipantRoutes(app, opportunityParticipantService);
+  registerCustomerRoutes(app, customerService);
+  registerQuoteRoutes(app, quoteService);
+  registerNotificationRoutes(app, notificationService);
+  registerAuthRoutes(app, { authService: dependencies.authService } satisfies AuthRouterDependencies);
+
+  app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
+    try {
+      const projectIdValue = routeParam(req.params.projectId);
+      const projectId =
+        projectIdValue === null ? null : positiveIntegerId(projectIdValue);
+
+      if (projectId === null) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      const project = await publicProjectService.getPublicProject(projectId);
+
+      if (!project) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+
+      res.status(200).json({ project });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Invalid Project id') {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      handleError(error, res);
+    }
+  });
+
+  app.get('/api/v1/projects/:projectId', requireAuth, requireRegisteredAccess('project', 'read'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const projectIdValue = routeParam(req.params.projectId);
+      const projectId = projectIdValue === null ? null : positiveIntegerId(projectIdValue);
+
+      if (projectId === null) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      const project = await projectService.getOwnedProject(context, projectId);
+
+      if (!project) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+
+      res.status(200).json({ project });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.patch('/api/v1/projects/:projectId', requireAuth, requireRegisteredAccess('project', 'update'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const projectIdValue = routeParam(req.params.projectId);
+      const projectId = projectIdValue === null ? null : positiveIntegerId(projectIdValue);
+      const input = parseProjectUpdateInput(req.body);
+
+      if (projectId === null || !input) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      const project = await projectService.updateOwnedProject(context, projectId, input);
+      res.status(200).json({ project });
+    } catch (error) {
+      if (error instanceof Error && (
+        error.message.includes(' is required') ||
+        error.message.includes(' must be between ') ||
+        error.message.includes('must be null or a non-negative number') ||
+        error.message === 'budgetMax must be greater than or equal to budgetMin' ||
+        error.message === 'Invalid Project urgency' ||
+        error.message === 'Project update requires at least one field' ||
+        error.message.startsWith('Unsupported Project update field:')
+      )) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      handleError(error, res);
+    }
+  });
+
+  return app;
+};
