@@ -4,7 +4,7 @@
 **Source audit:** docs/architecture/GHM_CONNECT_BACKEND_READINESS_AUDIT.md
 **Audited GHM tree:** historical Connect audit checkpoint; current GHM construction state is `ffc4a2a`
 **Connect source:** abcffa73f893602c25310a58946bebb91fd7eeb5
-**Audit correction checkpoint:** 38bb9a4e4868994bde8615dce77bc64051b0e7cd
+**Current reconciliation checkpoint:** `ffc4a2a` (2026-09-30)
 **Evidence sprint checkpoint:** see Â§8 (this document update)
 
 ## Purpose
