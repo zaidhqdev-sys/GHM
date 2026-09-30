@@ -1,6 +1,6 @@
 # Connect Backend Operation Inventory
 
-**Status:** EVIDENCE INVENTORY — BRIDGE TO FUTURE ADAPTER WORK (NOT AUTHORIZED)  
+**Status:** HISTORICAL EVIDENCE INVENTORY — BRIDGE TO FUTURE ADAPTER WORK (NOT AUTHORIZED)  
 **Connect commit:** `abcffa73f893602c25310a58946bebb91fd7eeb5`  
 **GHM comparison tip:** docs/resources as of evidence sprint  
 **Date:** 2026-09-18
@@ -11,7 +11,15 @@ List Connect backend operations evidenced in application source and classify GHM
 
 Status values: `GHM_PROVIDES` | `GHM_PARTIAL` | `GHM_ABSENT` | `EXTERNAL` | `CONNECT_LOCAL` | `ORPHAN_REF`.
 
-## 2. Inventory
+## 2. Inventory — historical Connect/GHM comparison snapshot
+
+> This inventory records the evidence sprint state and is not a current qualification ledger. The later GHM authentication/identity foundation does not automatically upgrade any product operation from `GHM_PARTIAL` or `GHM_ABSENT`. Current product readiness is governed by `GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md`.
+
+## 2A. Current reconciliation
+
+The GHM authentication foundation is now construction-qualified, including the canonical identity mapping foundation. That changes the auth/identity evidence boundary only. It does **not** establish Connect product adapter behavior, business/profile provisioning parity, membership migration, storage/realtime/provider equivalence, or production cutover.
+
+## 2B. Historical inventory
 
 | Source | Operation | Entity | R/W | Provider | Auth | Txn | GHM equivalent | Status |
 |---|---|---|---|---|---|---|---|---|
