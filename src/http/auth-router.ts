@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from 'express';
+import { rateLimit } from 'express-rate-limit';
 import type { AuthTokenResponse, GhmAuthService } from '../auth/ghm-auth-service';
 
 const parseLoginBody = (body: unknown): { email: string; password: string } | null => {
@@ -39,6 +40,22 @@ const handleAuthError = (error: unknown, res: Response): void => {
   res.status(500).json({ error: 'internal_error' });
 };
 
+const loginRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  handler: (_req, res) => res.status(429).json({ error: 'rate_limited' }),
+});
+
+const refreshRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 60,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  handler: (_req, res) => res.status(429).json({ error: 'rate_limited' }),
+});
+
 export interface AuthRouterDependencies {
   readonly authService?: GhmAuthService;
 }
@@ -58,7 +75,7 @@ export const registerAuthRoutes = (
     return authService;
   };
 
-  app.post('/api/v1/auth/login', async (req: Request, res: Response) => {
+  app.post('/api/v1/auth/login', loginRateLimit, async (req: Request, res: Response) => {
     try {
       const input = parseLoginBody(req.body);
       if (!input) {
@@ -72,7 +89,7 @@ export const registerAuthRoutes = (
     }
   });
 
-  app.post('/api/v1/auth/refresh', async (req: Request, res: Response) => {
+  app.post('/api/v1/auth/refresh', refreshRateLimit, async (req: Request, res: Response) => {
     try {
       const input = parseRefreshBody(req.body);
       if (!input) {
