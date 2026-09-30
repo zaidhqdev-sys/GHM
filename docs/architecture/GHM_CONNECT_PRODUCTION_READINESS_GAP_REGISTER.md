@@ -160,7 +160,7 @@ Until separately authorized and qualified:
 - No provider cleanup.
 - No shadow qualification.
 - No adapter deployment.
-- No merge of construction branches into main.
+- No merge of unqualified product-adapter construction branches into main.
 
 ## 7. Next construction authorization
 
