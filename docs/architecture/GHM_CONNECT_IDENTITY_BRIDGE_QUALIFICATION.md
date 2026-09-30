@@ -77,3 +77,8 @@ No production database, DNS, credentials, traffic routing, provider cleanup, or 
 The next evidence-led construction target is the **Connect product identity adapter boundary**: define and qualify the concrete operation that resolves a Connect Supabase identity to a GHM canonical account without granting membership, ownership, system-admin privilege, or accepting a Supabase JWT as a GHM credential.
 
 That adapter must be separately authorized before implementation.
+
+
+## Current adapter reconciliation — 2026-09-30
+
+The separately authorized Connect identity adapter is now construction-qualified on `construction/connect-identity-adapter`. It resolves the existing `(provider=supabase, subject)` mapping and supports explicitly authorized minimum bootstrap through the qualified persistence boundary. This does not make Connect sessions GHM sessions, does not permit Supabase JWT acceptance by GHM, and does not authorize production migration or cutover.

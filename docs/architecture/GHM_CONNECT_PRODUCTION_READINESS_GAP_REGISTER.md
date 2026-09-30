@@ -164,7 +164,13 @@ Until separately authorized and qualified:
 
 ## 7. Next construction authorization
 
-None currently authorized by this register.
+**Connect identity adapter — FOUNDER-AUTHORIZED AND CONSTRUCTION-QUALIFIED.**
+
+Founder authorization was granted on 2026-09-30 for the frozen Connect identity adapter contract. The slice was constructed on `construction/connect-identity-adapter` and locally qualified with 388/388 tests passing and a successful TypeScript build. Qualification evidence is recorded in `GHM_CONNECT_IDENTITY_ADAPTER_QUALIFICATION.md`.
+
+This qualification is limited to the adapter seam. It does **not** authorize HTTP/service exposure, Supabase JWT acceptance, Connect session migration, membership/ownership/admin migration, business mapping migration, production routing, shadow traffic, provider cleanup, or cutover.
+
+The next product construction capability still requires a separate evidence-backed contract and explicit authorization.
 
 A future construction capability requires:
 
@@ -241,4 +247,4 @@ The verified audit now gives the concrete gap boundary required to authorize fut
 
 ### Construction authorization
 
-**Current next authorization:** Connect product identity adapter boundary only. The qualified GHM authentication foundation does not authorize product adapter construction by itself.
+**Current reconciled state:** Connect identity adapter boundary is Founder-authorized and construction-qualified. The qualified GHM authentication foundation and this adapter qualification do not authorize product session migration, production cutover, or any other Connect product adapter.
