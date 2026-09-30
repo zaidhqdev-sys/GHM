@@ -74,9 +74,10 @@ The initial adapter boundary must not:
 
 ### Existing mapping
 
-If `(supabase, subject)` already maps to an active GHM account identity:
+If `(supabase, subject)` maps to a GHM account identity:
 
-- return the canonical GHM account identity;
+- return the canonical GHM account identity as an identity-resolution result;
+- if the mapped GHM account is disabled, the identity must not be treated as an active authenticated principal; subsequent GHM authentication/authorization must fail according to the qualified account-lifecycle rules;
 - do not create another account;
 - do not alter membership or ownership;
 - do not elevate authorization.
@@ -198,7 +199,7 @@ The implementation must eventually demonstrate, at minimum:
 - first-time controlled bootstrap;
 - repeated bootstrap idempotency;
 - conflicting mapping rejection;
-- disabled-account behavior;
+- disabled-account behavior: mapping may resolve, but disabled account authentication/authorization must fail closed;
 - no membership creation during bootstrap;
 - no ownership creation during bootstrap;
 - no system-admin elevation;
