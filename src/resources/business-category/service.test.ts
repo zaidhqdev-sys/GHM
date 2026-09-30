@@ -37,7 +37,7 @@ class FakeRepository implements BusinessCategoryRepository {
 test('category service validates authentication and identifiers', async () => {
   const service = new BusinessCategoryServiceImpl(new FakeRepository());
   assert.equal((await service.listBusinessCategories(context)).length, 1);
-  await assert.rejects(() => service.listBusinessCategories({ userId: 0, role: 'business' }, {}), /Authentication required/);
+  assert.throws(() => service.listBusinessCategories({ userId: 0, role: 'business' }, {}), /Authentication required/);
   await assert.rejects(() => service.getBusinessCategory(context, 'bad'), /valid UUID/);
   await assert.rejects(() => service.listBusinessCategoryAssignments(context, 0), /positive integer/);
 });
@@ -48,6 +48,6 @@ test('assignment operations preserve authenticated context through service bound
   const primary = await service.setPrimaryBusinessCategory(context, { businessId: 12, categoryId: category.id });
   assert.equal(created.createdBy, 10);
   assert.equal(primary.isPrimary, true);
-  await assert.rejects(() => service.assignBusinessCategory(context, { businessId: 0, categoryId: category.id }), /positive integer/);
-  await assert.rejects(() => service.setPrimaryBusinessCategory(context, { businessId: 12, categoryId: 'bad' }), /valid UUID/);
+  assert.throws(() => service.assignBusinessCategory(context, { businessId: 0, categoryId: category.id }), /positive integer/);
+  assert.throws(() => service.setPrimaryBusinessCategory(context, { businessId: 12, categoryId: 'bad' }), /valid UUID/);
 });
