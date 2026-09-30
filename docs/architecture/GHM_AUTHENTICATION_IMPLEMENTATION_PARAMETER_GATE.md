@@ -1,7 +1,7 @@
 # GHM Authentication Implementation Parameter Gate
 
 **Canonical owner:** GHM platform governance
-**Status:** AUTHENTICATION GATE 3B — IMPLEMENTATION PARAMETER GATE — **DOCUMENTATION ONLY**; parameters proposed for **Founder approval**; **DDL / implementation NOT AUTHORIZED**
+**Status:** AUTHENTICATION GATE 3B — IMPLEMENTATION PARAMETER GATE — **FOUNDER APPROVED 2026-09-30**; construction implementation authorized on the approved parameter set; **production cutover remains separately gated**
 **Authority:** Local repository `C:\GHM`
 **Depends on:** Founder-selected architecture (Issuance ADR 1–12, C1–C10, R1–R7) and:
 - [GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md](./GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md)
@@ -12,8 +12,9 @@
 - [GHM_AUTHENTICATION_IDENTITY_AUTHORIZATION_CONTRACT.md](./GHM_AUTHENTICATION_IDENTITY_AUTHORIZATION_CONTRACT.md)
 
 ```text
-IMPLEMENTATION AUTHORIZATION: NOT GRANTED
-NO DDL / src / PACKAGES / SECRETS
+IMPLEMENTATION AUTHORIZATION: GRANTED FOR CONSTRUCTION
+DDL / src / PACKAGES / TESTS MAY CHANGE WITHIN THIS APPROVED PARAMETER SET
+NO PRODUCTION SECRETS / CUTOVER / PRODUCT MIGRATION
 PARAMETERS BELOW = PROPOSED UNTIL FOUNDER APPROVES
 ```
 
@@ -98,7 +99,7 @@ Rationale: OWASP-aligned interactive login costs; practical on private ZAID Node
 | Transparent rehash | **Yes** — on successful login, if stored params are weaker than current configured params, rehash and store new hash in same transaction as login success side-effects |
 
 ```text
-FOUNDER APPROVAL REQUIRED: Argon2id parameters + verification/rehash policy (§2)
+FOUNDER APPROVED 2026-09-30: Argon2id parameters + verification/rehash policy (§2)
 ```
 
 ---
@@ -127,7 +128,7 @@ First-implementation policy is **deliberately narrow and deterministic**. It doe
 | Bootstrap | Trusted boundary only; do not expose mapping existence on public surfaces |
 
 ```text
-FOUNDER APPROVAL REQUIRED: email normalization policy (§3)
+FOUNDER APPROVED 2026-09-30: email normalization policy (§3)
   (narrow first-gate deterministic login key — not full i18n email)
 ```
 
@@ -150,7 +151,7 @@ FOUNDER APPROVAL REQUIRED: email normalization policy (§3)
 Email **provider** = deferred (Class C).
 
 ```text
-FOUNDER APPROVAL REQUIRED: recovery TTL/format/hash/pepper (§4)
+FOUNDER APPROVED 2026-09-30: recovery TTL/format/hash/pepper (§4)
 ```
 
 ---
@@ -170,7 +171,7 @@ FOUNDER APPROVAL REQUIRED: recovery TTL/format/hash/pepper (§4)
 No JWT refresh tokens.
 
 ```text
-FOUNDER APPROVAL REQUIRED: refresh format/entropy/hash/pepper (§5)
+FOUNDER APPROVED 2026-09-30: refresh format/entropy/hash/pepper (§5)
 ```
 
 ---
@@ -196,7 +197,7 @@ FOUNDER APPROVAL REQUIRED: refresh format/entropy/hash/pepper (§5)
 | Roles/membership in JWT | **Not** authorization authority; if ever present for debug, ignore for authz |
 
 ```text
-FOUNDER APPROVAL REQUIRED: sub representation + clock skew (§6)
+FOUNDER APPROVED 2026-09-30: sub representation + clock skew (§6)
 ```
 
 ---
@@ -220,7 +221,7 @@ FOUNDER APPROVAL REQUIRED: sub representation + clock skew (§6)
 Do not write real key material in repo.
 
 ```text
-FOUNDER APPROVAL REQUIRED: key env names, kid format, overlap (§7)
+FOUNDER APPROVED 2026-09-30: key env names, kid format, overlap (§7)
 ```
 
 ---
@@ -264,7 +265,7 @@ authentication_session.id
 | Account disable | Revoke **all** families |
 
 ```text
-FOUNDER APPROVAL REQUIRED: last_seen_at update rule + session-id-as-family invariant (§8)
+FOUNDER APPROVED 2026-09-30: last_seen_at update rule + session-id-as-family invariant (§8)
 ```
 
 ---
@@ -296,7 +297,7 @@ Consumed/revoked credential → revoke **that session family only** → **401**;
 **DB invariant:** partial `UNIQUE (session_id) WHERE used_at IS NULL AND revoked_at IS NULL`.
 
 ```text
-FOUNDER APPROVAL REQUIRED: refresh concurrency/replay semantics (§9) — aligns with Founder architecture; confirm as implementation freeze
+FOUNDER APPROVED 2026-09-30: refresh concurrency/replay semantics (§9) — aligns with Founder architecture; confirm as implementation freeze
 ```
 
 ---
@@ -311,7 +312,7 @@ UPDATE recovery SET used_at = now()
 First wins; second fails. Same transaction: password replace + revoke all sessions. No new session issued.
 
 ```text
-FOUNDER APPROVAL REQUIRED: recovery concurrency (§10)
+FOUNDER APPROVED 2026-09-30: recovery concurrency (§10)
 ```
 
 ---
@@ -331,7 +332,7 @@ When `account_status = 'disabled'`:
 No account-deletion feature in this gate.
 
 ```text
-FOUNDER APPROVAL REQUIRED: disable semantics (§11) — confirms R1 operational detail
+FOUNDER APPROVED 2026-09-30: disable semantics (§11) — confirms R1 operational detail
 ```
 
 ---
@@ -343,7 +344,7 @@ FOUNDER APPROVAL REQUIRED: disable semantics (§11) — confirms R1 operational 
 - AuthContext (R3): may expose `isSystemAdmin: boolean` **loaded from DB after verify**, never from JWT alone.
 
 ```text
-FOUNDER APPROVAL REQUIRED: AuthContext exposure of isSystemAdmin from DB (§12)
+FOUNDER APPROVED 2026-09-30: AuthContext exposure of isSystemAdmin from DB (§12)
 ```
 
 ---
@@ -364,7 +365,7 @@ Use existing dependency class `express-rate-limit` (already in `package.json`) �
 Behind `TRUST_PROXY` when applicable. Exact numbers = Founder approval.
 
 ```text
-FOUNDER APPROVAL REQUIRED: rate-limit defaults (§13)
+FOUNDER APPROVED 2026-09-30: rate-limit defaults (§13)
 ```
 
 ---
@@ -383,7 +384,7 @@ Machine-readable codes: extend toward Auth API Contract catalogue (`INVALID_CRED
 Must not leak: email/account existence, mapping existence, which factor failed, DB internals, stack traces, secrets.
 
 ```text
-FOUNDER APPROVAL REQUIRED: 401/403/429 mapping + anti-enumeration (§14)
+FOUNDER APPROVED 2026-09-30: 401/403/429 mapping + anti-enumeration (§14)
 ```
 
 ---
@@ -398,7 +399,7 @@ FOUNDER APPROVAL REQUIRED: 401/403/429 mapping + anti-enumeration (§14)
 | Cleanup mechanism | **Deferred periodic job** (manual/SQL acceptable initially); not synchronous on every request |
 
 ```text
-FOUNDER APPROVAL REQUIRED: retention windows + deferred cleanup (§15)
+FOUNDER APPROVED 2026-09-30: retention windows + deferred cleanup (§15)
 ```
 
 ---
@@ -417,7 +418,7 @@ FOUNDER APPROVAL REQUIRED: retention windows + deferred cleanup (§15)
 | Auto-equivalence | **Forbidden** |
 
 ```text
-FOUNDER APPROVAL REQUIRED: migration safety rules (§16)
+FOUNDER APPROVED 2026-09-30: migration safety rules (§16)
 ```
 
 ---
@@ -450,8 +451,8 @@ No code fixes in this gate.
 
 | Parameter | Proposed value | Status |
 |---|---|---|
-| Argon2id parameters | 64MiB / time 3 / p=1 / hash 32 / salt 16 / PHC | **Founder approval required** |
-| Password rehash on login | Yes when params weaker | **Founder approval required** |
+| Argon2id parameters | 64MiB / time 3 / p=1 / hash 32 / salt 16 / PHC | **Founder approved 2026-09-30** |
+| Password rehash on login | Yes when params weaker | **Founder approved 2026-09-30** |
 | Email normalization | Trim + NFKC + case norm for login key only; max 320; not full i18n email | **Founder approval required** |
 | Recovery TTL | 30 minutes | **Founder approval required** |
 | Recovery token format | 32-byte CSPRNG; base64url wire | **Founder approval required** |
@@ -466,7 +467,7 @@ No code fixes in this gate.
 | `last_seen_at` updates | Successful refresh only | **Founder approval required** |
 | Rate limits | Defaults in §13 | **Founder approval required** |
 | Retention/cleanup | §15 windows; deferred job | **Founder approval required** |
-| Exact API paths | — | **Deferred** to API implementation gate |
+| Exact API paths | Existing `/api/v1/auth/login`, `/refresh`, `/logout` construction surface | **Implemented construction surface; recovery/change endpoints remain deferred** |
 | Exact SQL function names | Schema contract proposals | **Deferred** to implementation |
 | Email provider | — | **Deferred** |
 | Product migration/cutover | — | **Deferred** |
@@ -478,8 +479,8 @@ No code fixes in this gate.
 ## 20. Final gate
 
 ```text
-IMPLEMENTATION PARAMETER GATE DOCUMENTED.
-ALL CLASS-B PARAMETERS AWAIT FOUNDER APPROVAL.
-NO DDL / src / PACKAGES / SECRETS / COMMIT / PUSH.
-STOP.
+IMPLEMENTATION PARAMETER GATE — FOUNDER APPROVED 2026-09-30.
+CONSTRUCTION IMPLEMENTATION AUTHORIZED WITHIN THIS PARAMETER SET.
+PRODUCTION CUTOVER, PRODUCT MIGRATION, EMAIL PROVIDER, DISTRIBUTED RATE LIMITING, AND KMS/HSM REMAIN DEFERRED.
+
 ```
