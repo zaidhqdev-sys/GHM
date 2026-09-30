@@ -3,7 +3,7 @@
 **Canonical owner:** GHM platform governance
 **Status:** AUTHENTICATION GATE 2F — IDENTITY & AUTHORIZATION PROVISIONING CONTRACT — **CONSTRUCTION FOUNDATION QUALIFIED**; product adapter / migration implementation remains separately authorized
 **Authority:** Local repository `C:\GHM`
-**Baseline:** branch `construction/saved-business-resource`, HEAD `239ef5d` (docs may advance ahead of HEAD)
+**Current qualified baseline:** `main` at `ffc4a2a` (2026-09-30)
 **Depends on:**
 - [GHM_AUTHENTICATION_ISSUANCE_DECISION_RECORD.md](./GHM_AUTHENTICATION_ISSUANCE_DECISION_RECORD.md)
 - [GHM_AUTHENTICATION_CONTRACT_GATE.md](./GHM_AUTHENTICATION_CONTRACT_GATE.md)
