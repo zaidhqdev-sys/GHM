@@ -38,7 +38,7 @@ test('category service validates authentication and identifiers', async () => {
   const service = new BusinessCategoryServiceImpl(new FakeRepository());
   assert.equal((await service.listBusinessCategories(context)).length, 1);
   assert.throws(() => service.listBusinessCategories({ userId: 0, role: 'business' }, {}), /Authentication required/);
-  await assert.rejects(() => service.getBusinessCategory(context, 'bad'), /valid UUID/);
+  assert.throws(() => service.getBusinessCategory(context, 'bad'), /valid UUID/);
   await assert.rejects(() => service.listBusinessCategoryAssignments(context, 0), /positive integer/);
 });
 
