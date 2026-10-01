@@ -10,15 +10,15 @@ The live migration ledger is authoritative historical execution evidence. The re
 
 The live ledger contains 55 applied migrations. Its version cardinality and application chronology are intact, and every ledger entry has a corresponding repository migration file.
 
-Fifteen applied migrations currently have a repository SHA-256 different from the live ledger checksum.
+Nineteen applied migrations currently have a repository SHA-256 different from the live ledger checksum.
 
 Seven of those fifteen are fully explained by Windows checkout normalization: the ledger checksum matches the historical Git/index bytes exactly, while the current worktree representation uses CRLF under `core.autocrlf=true`. Those seven are not exceptions and must not be rewritten.
 
-The following eight migrations have no exact-byte match recoverable from the repository's visible Git history or repository text/artifact evidence as of 2026-09-30:
+The following fifteen migrations have no exact-byte match recoverable from the repository's visible Git history or repository text/artifact evidence as of 2026-09-30:
 
 | Version | Migration | Live ledger checksum |
 |---|---|---|
-| 20260911030000 | create_project_public_projection | 7c154d42d5444ee976fb0bf24c172783d7ff4f62ee89d2e9157d3f8333e401 |
+| 20260911030000 | create_project_public_projection | 7c154d42d5444ee976fb0bf0bf24c172783d7ff4f62ee89d2e9157d3f8333e401 |
 | 20260911210000 | reconcile_business_verification_state | 70d0ef6c298264462916197fb26f72c2a75480300dfb21750225975958062a36 |
 | 20260911211500 | reconcile_business_verification_default | 32db502ea3a79317a95a0e54b4c72269e717900e2c770d456276f091dd4685a3 |
 | 20260912030000 | grant_review_runtime_access | 6a8e49e62d8ce0c8f848ae6b90fb93ef724f3d1986c0736dd9a4962d6938500d |
@@ -26,10 +26,15 @@ The following eight migrations have no exact-byte match recoverable from the rep
 | 20260914130000 | reconcile_project_quote_transition_privilege | aaac327303f6f67c9742cfab2bcf39cde532854566afd1574fbebabefbad42a7 |
 | 20260914220000 | create_opportunity_capability_requirements | 076fd7a54c1e671bd4c7d49535a0540e4d6ac6c50fa97a21c6e0f0a4621892dd |
 | 20260915193000 | reconcile_commercial_payment_transaction | 55694a2e0359691cc4c5d5c990927aa9b11a73a78147c3fa0d35402170d22c67 |
+| 20260915194500 | reconcile_commercial_access_path_indexes | 24e65f01e364c7dc4b89340b8412e5f05f837dacc832d21d27e230ff8ad434d2 |
+| 20260915200000 | reconcile_commercial_payment_transaction_status | 721d5dccf2344afaf8aedfb858f037fc2a82df005d2e6580427a7f4c49de5a87 |
+| 20260915203000 | reconcile_commercial_runtime_sequence_acl | b2d883f1efa15c47d54fb948b1ce2e00d2aa7c959d91689e5637bae1b9c3a80c |
+| 20260915210000 | reconcile_commercial_subscription_access_path | 92e1142c0fd77dd17c54d95e4fa2d6368f95cbc08f183db586e56f9c03263aeb |
+| 20260915220000 | reconcile_commercial_payment_transaction_provider_event_idempotency | 7ba13a02205cf31be27008fad69f1fa2480b74e422b50567cc0ddf8792532cf4 |
 
 ## Canonical handling
 
-These eight records are classified as **HISTORICAL_PROVENANCE_EXCEPTION**.
+These fifteen records are classified as **HISTORICAL_PROVENANCE_EXCEPTION**.
 
 This classification does not assert that the current repository file bytes are the bytes originally executed. It also does not assert that the live schema is incorrect.
 
@@ -48,8 +53,8 @@ The reconciliation established:
 - all 55 ledger versions represented in the repository;
 - intact application chronology;
 - exact historical Git/index provenance for the seven line-ending-only cases;
-- no exact repository occurrence of any of the eight exception checksums;
-- independently qualified/inspected resulting database boundaries for the affected Project, Business verification, Review, Project Quote, Opportunity Capability Requirements, and Commercial slices.
+- no exact repository occurrence of any of the fifteen exception checksums;
+- independently qualified/inspected resulting database boundaries for the affected Project, Business verification, Review, Project Quote, Opportunity Capability Requirements, and Commercial slices, including the Commercial access-path index, payment-status, runtime ACL, subscription access-path, provider-event idempotency, and event runtime read-ACL reconciliations.
 
 The inability to recover eight historical byte streams is therefore a provenance limitation, not evidence that those database objects should be recreated or that migration history should be rewritten.
 

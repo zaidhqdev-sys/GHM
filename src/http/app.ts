@@ -5,6 +5,9 @@ import { requireAuth } from '../auth/http';
 import { PostgresBusinessIdentityRepository } from '../resources/business-identity/repository';
 import { BusinessIdentityServiceImpl } from '../resources/business-identity/service';
 import { BusinessIdentityService, UpdateBusinessProfileInput } from '../resources/business-identity/contracts';
+import { PostgresPublicBusinessRepository } from '../resources/business-identity/public-repository';
+import { PublicBusinessServiceImpl } from '../resources/business-identity/public-service';
+import type { PublicBusinessService } from '../resources/business-identity/public-contracts';
 import { PostgresBusinessHoursRepository } from '../resources/business-hours/repository';
 import { BusinessHoursServiceImpl } from '../resources/business-hours/service';
 import { BusinessHoursService } from '../resources/business-hours/contracts';
@@ -75,12 +78,16 @@ import { NotificationServiceImpl } from '../resources/notification/service';
 import { NotificationService } from '../resources/notification/contracts';
 import { registerNotificationRoutes } from './notification-router';
 import { PostgresBusinessCategoryRepository } from '../resources/business-category/repository';
+import { PostgresDirectoryRepository } from '../resources/directory/repository';
+import { DirectoryServiceImpl } from '../resources/directory/service';
+import type { DirectoryService } from '../resources/directory/contracts';
 import { BusinessCategoryServiceImpl } from '../resources/business-category/service';
 import type { BusinessCategoryService } from '../resources/business-category/contracts';
 import { registerBusinessCategoryRoutes } from './business-category-router';
 
 export interface AppDependencies {
   readonly businessIdentityService?: BusinessIdentityService;
+  readonly publicBusinessService?: PublicBusinessService;
   readonly businessHoursService?: BusinessHoursService;
   readonly projectService?: ProjectService;
   readonly publicProjectService?: PublicProjectService;
@@ -99,6 +106,7 @@ export interface AppDependencies {
   readonly quoteService?: QuoteService;
   readonly notificationService?: NotificationService;
   readonly businessCategoryService?: BusinessCategoryService;
+  readonly directoryService?: DirectoryService;
   readonly authService?: GhmAuthService;
 }
 
@@ -291,6 +299,7 @@ const handleError = (error: unknown, res: Response): void => {
 export const createApp = (dependencies: AppDependencies = {}): express.Express => {
   const app = express();
   const service = dependencies.businessIdentityService ?? new BusinessIdentityServiceImpl(new PostgresBusinessIdentityRepository());
+  const publicBusinessService = dependencies.publicBusinessService ?? new PublicBusinessServiceImpl(new PostgresPublicBusinessRepository());
   const businessHoursService =
     dependencies.businessHoursService
     ?? new BusinessHoursServiceImpl(new PostgresBusinessHoursRepository());
@@ -335,6 +344,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const quoteService = dependencies.quoteService ?? new DefaultQuoteService(new PostgresQuoteRepository());
   const notificationService = dependencies.notificationService ?? new NotificationServiceImpl(new PostgresNotificationRepository());
   const businessCategoryService = dependencies.businessCategoryService ?? new BusinessCategoryServiceImpl(new PostgresBusinessCategoryRepository());
+  const directoryService = dependencies.directoryService ?? new DirectoryServiceImpl(new PostgresDirectoryRepository());
   app.disable('x-powered-by');
   app.set('trust proxy', config.trustProxy);
   app.use(cors({ origin: config.corsOrigins }));
@@ -354,6 +364,89 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       const profile = await service.getOwnProfile(context);
       res.status(200).json({ profile });
     } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.get('/api/v1/public/businesses', requireRegisteredPublicAccess('directory', 'read'), async (req: Request, res: Response) => {
+    try {
+      const allowed = new Set(['q', 'category', 'page', 'pageSize']);
+      const keys = Object.keys(req.query);
+      if (keys.some((key) => !allowed.has(key))) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      const readStringQuery = (key: string): string | undefined => {
+        const value = req.query[key];
+        if (value === undefined) return undefined;
+        return typeof value === 'string' ? value : undefined;
+      };
+
+      const parsePositiveQueryInteger = (key: string): number | undefined => {
+        const value = readStringQuery(key);
+        if (value === undefined) return undefined;
+        if (!/^[1-9]\d*$/.test(value)) return undefined;
+        const parsed = Number(value);
+        return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
+      };
+
+      const q = readStringQuery('q');
+      const category = readStringQuery('category');
+      const pageValue = parsePositiveQueryInteger('page');
+      const pageSizeValue = parsePositiveQueryInteger('pageSize');
+
+      if (
+        (req.query.q !== undefined && q === undefined) ||
+        (req.query.category !== undefined && category === undefined) ||
+        (req.query.page !== undefined && pageValue === undefined) ||
+        (req.query.pageSize !== undefined && pageSizeValue === undefined)
+      ) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      if (pageSizeValue !== undefined && pageSizeValue > 50) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      const result = await directoryService.search({
+        q,
+        category,
+        page: pageValue ?? 1,
+        pageSize: pageSizeValue ?? 20,
+      });
+      res.status(200).json(result);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.message === 'invalid_query_parameter' ||
+          error.message === 'q must be a string' ||
+          error.message === 'category must be a string' ||
+          error.message === 'category must not be blank' ||
+          error.message === 'category must be a valid category id or slug' ||
+          error.message === 'page must be a positive integer' ||
+          error.message === 'pageSize must be a positive integer' ||
+          error.message === 'pageSize must be at most 50')
+      ) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      handleError(error, res);
+    }
+  });
+
+  app.get('/api/v1/public/businesses/slug/:slug', requireRegisteredPublicAccess('business', 'readPublic'), async (req: Request, res: Response) => {
+    try {
+      const slugValue = routeParam(req.params.slug);
+      const slug = slugValue?.trim();
+      if (!slug) { res.status(400).json({ error: 'invalid_request' }); return; }
+      const business = await publicBusinessService.getPublicBusinessBySlug(slug);
+      if (!business) { res.status(404).json({ error: 'not_found' }); return; }
+      res.status(200).json({ business });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Invalid Business slug') { res.status(400).json({ error: 'invalid_request' }); return; }
       handleError(error, res);
     }
   });
@@ -418,6 +511,20 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       }
     },
   );
+
+  app.get('/api/v1/public/businesses/:businessId', requireRegisteredPublicAccess('business', 'readPublic'), async (req: Request, res: Response) => {
+    try {
+      const businessIdValue = routeParam(req.params.businessId);
+      const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
+      if (businessId === null) { res.status(400).json({ error: 'invalid_request' }); return; }
+      const business = await publicBusinessService.getPublicBusiness(businessId);
+      if (!business) { res.status(404).json({ error: 'not_found' }); return; }
+      res.status(200).json({ business });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Invalid Business id') { res.status(400).json({ error: 'invalid_request' }); return; }
+      handleError(error, res);
+    }
+  });
 
   app.get('/api/v1/businesses/:businessId', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
     try {
