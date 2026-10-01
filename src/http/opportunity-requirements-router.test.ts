@@ -1,21 +1,20 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import test from 'node:test';
-import jwt from 'jsonwebtoken';
 import { createApp } from './app';
-import { config } from '../config';
+import { httpTestAuth, tokenFor as es256TokenFor } from './test-resource-auth';
 import type { AuthContext } from '../auth/authorization';
 import type { OpportunityCapabilityRequirement, OpportunityRequirementsService } from '../resources/opportunity-requirements/contracts';
 
 const context: AuthContext = { userId: 42, role: 'customer' };
-const token = jwt.sign({ userId: context.userId, role: context.role }, config.jwtSecret);
+const token = es256TokenFor;
 const requirement: OpportunityCapabilityRequirement = {
   id: 1, opportunityId: 101, capabilityId: '11111111-1111-4111-8111-111111111111',
   importance: 'required', minimumProficiencyLevel: 'proficient',
   description: 'Electrical installation', sortOrder: 0,
 };
 const start = async (service: OpportunityRequirementsService) => {
-  const server = http.createServer(createApp({ opportunityRequirementsService: service }));
+  const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth, opportunityRequirementsService: service }));
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   const address = server.address(); assert.ok(address && typeof address !== 'string');
   return { server, url: `http://127.0.0.1:${address.port}` };
