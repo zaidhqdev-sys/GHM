@@ -3,7 +3,7 @@ import test from 'node:test';
 import { isRegisteredOperation, resourceRegistry } from './registry';
 
 test('resource registry contains only explicit governed resources', () => {
-  assert.deepEqual(resourceRegistry.map((definition) => definition.resource), ['profile', 'business', 'directory', 'business_capability', 'business_category', 'business_category_assignment', 'business_hours', 'project', 'project_quote', 'opportunity_requirements', 'customer', 'quote', 'notification', 'support_request', 'enquiry', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'trust_score', 'campaign']);
+  assert.deepEqual(resourceRegistry.map((definition) => definition.resource), ['profile', 'business', 'directory', 'business_capability', 'business_category', 'business_category_assignment', 'business_offering', 'business_hours', 'project', 'project_quote', 'opportunity_requirements', 'customer', 'quote', 'notification', 'support_request', 'enquiry', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'trust_score', 'campaign']);
 });
 
 test('registered operations are accepted', () => {
@@ -16,6 +16,10 @@ test('registered operations are accepted', () => {
   assert.equal(isRegisteredOperation('business_category_assignment', 'read'), true);
   assert.equal(isRegisteredOperation('business_category_assignment', 'create'), true);
   assert.equal(isRegisteredOperation('business_category_assignment', 'update'), true);
+  assert.equal(isRegisteredOperation('business_offering', 'read'), true);
+  assert.equal(isRegisteredOperation('business_offering', 'readPublic'), true);
+  assert.equal(isRegisteredOperation('business_offering', 'create'), true);
+  assert.equal(isRegisteredOperation('business_offering', 'update'), true);
   assert.equal(isRegisteredOperation('business_hours', 'read'), true);
   assert.equal(isRegisteredOperation('business_hours', 'readPublic'), true);
   assert.equal(isRegisteredOperation('business_hours', 'replace'), true);
@@ -68,6 +72,7 @@ test('unregistered operations are rejected', () => {
   assert.equal(isRegisteredOperation('business_capability', 'update'), false);
   assert.equal(isRegisteredOperation('business_category', 'create'), false);
   assert.equal(isRegisteredOperation('business_category_assignment', 'delete'), false);
+  assert.equal(isRegisteredOperation('business_offering', 'delete'), false);
   assert.equal(isRegisteredOperation('business_hours', 'create'), false);
   assert.equal(isRegisteredOperation('business_hours', 'update'), false);
   assert.equal(isRegisteredOperation('business_hours', 'delete'), false);
