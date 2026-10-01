@@ -1,4 +1,4 @@
-import { Express, Request, Response } from 'express';
+import { Express, Request, Response, RequestHandler } from 'express';
 import { AuthContext, canAccessResource } from '../auth/authorization';
 import { requireAuth } from '../auth/http';
 import { isRegisteredOperation } from '../resources/registry';
@@ -87,8 +87,8 @@ const handleNotificationError = (error: unknown, res: Response): void => {
   res.status(500).json({ error: 'internal_error' });
 };
 
-export const registerNotificationRoutes = (app: Express, notificationService: NotificationService): void => {
-  app.get('/api/v1/notifications', requireAuth, requireNotificationAccess('read'),
+export const registerNotificationRoutes = (app: Express, notificationService: NotificationService, authMiddleware: RequestHandler = requireAuth): void => {
+  app.get('/api/v1/notifications', authMiddleware, requireNotificationAccess('read'),
     async (req: Request, res: Response) => {
       try {
         const limit = parseLimit(req.query.limit);
@@ -104,7 +104,7 @@ export const registerNotificationRoutes = (app: Express, notificationService: No
       }
     });
 
-  app.get('/api/v1/notifications/:notificationId', requireAuth, requireNotificationAccess('read'),
+  app.get('/api/v1/notifications/:notificationId', authMiddleware, requireNotificationAccess('read'),
     async (req: Request, res: Response) => {
       try {
         const value = routeParam(req.params.notificationId);
@@ -125,7 +125,7 @@ export const registerNotificationRoutes = (app: Express, notificationService: No
       }
     });
 
-  app.post('/api/v1/notifications', requireAuth, requireNotificationAccess('create'),
+  app.post('/api/v1/notifications', authMiddleware, requireNotificationAccess('create'),
     async (req: Request, res: Response) => {
       try {
         const input = parseCreateInput(req.body);
@@ -141,7 +141,7 @@ export const registerNotificationRoutes = (app: Express, notificationService: No
       }
     });
 
-  app.patch('/api/v1/notifications/:notificationId', requireAuth, requireNotificationAccess('update'),
+  app.patch('/api/v1/notifications/:notificationId', authMiddleware, requireNotificationAccess('update'),
     async (req: Request, res: Response) => {
       try {
         const value = routeParam(req.params.notificationId);
@@ -161,7 +161,7 @@ export const registerNotificationRoutes = (app: Express, notificationService: No
       }
     });
 
-  app.post('/api/v1/notifications/read-all', requireAuth, requireNotificationAccess('update'),
+  app.post('/api/v1/notifications/read-all', authMiddleware, requireNotificationAccess('update'),
     async (req: Request, res: Response) => {
       try {
         if (req.body !== undefined && req.body !== null &&

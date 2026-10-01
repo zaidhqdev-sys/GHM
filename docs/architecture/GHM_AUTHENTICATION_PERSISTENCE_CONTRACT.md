@@ -58,7 +58,7 @@ GHM protected Resource API
 | Membership | `ghm.business_membership` — `(business_id, account_id)` unique; status `active`/`inactive`/`revoked`; **authorization**, not auth session |
 | External IdP mapping | **Historical Gate 2D snapshot: absent** — current qualified mapping is defined by Gate 3A/3B and the identity-bridge qualification record |
 | Auth session / refresh / recovery stores | **Historical Gate 2D snapshot: absent** — current qualified persistence exists on the consolidated mainline |
-| Current JWT | HS `JWT_SECRET` verify only (`src/auth/request-context.ts`); no asymmetric key store |
+| Current JWT | GHM ES256 bearer verification with secret-managed asymmetric key material loaded by `src/auth/foundation/es256-keys.ts`; no JWT signing key is stored in the database |
 | Schema ownership | Tables `OWNER TO ghm_schema_owner` (later resource slices) |
 | Runtime role | `ghm_runtime` — typically `SELECT` + `EXECUTE` on `SECURITY DEFINER` functions; direct `INSERT`/`UPDATE`/`DELETE` often **REVOKED** (e.g. Campaign) |
 | Migrator | `ghm_migrator` / `GHM_MIGRATOR_DATABASE_URL` — migration authority, not product runtime |

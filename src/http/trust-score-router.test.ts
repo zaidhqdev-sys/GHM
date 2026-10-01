@@ -1,15 +1,14 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import test from 'node:test';
-import jwt from 'jsonwebtoken';
 import { createApp } from './app';
+import { httpTestAuth, tokenFor as es256TokenFor } from './test-resource-auth';
 import { AuthContext } from '../auth/authorization';
-import { config } from '../config';
 import type { TrustScore, TrustScoreService } from '../resources/trust-score/contracts';
 import type { BusinessIdentityService } from '../resources/business-identity/contracts';
 
 const startServer = async (trustScoreService: TrustScoreService) => {
-  const server = http.createServer(createApp({
+  const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth,
     businessIdentityService: {} as BusinessIdentityService,
     trustScoreService,
   }));
@@ -38,8 +37,7 @@ const fixture = (businessId = 20): TrustScore => ({
   updatedAt: new Date('2026-09-18T00:00:00.000Z'),
 });
 
-const tokenFor = (context: AuthContext) =>
-  jwt.sign({ userId: context.userId, role: context.role }, config.jwtSecret);
+const tokenFor = es256TokenFor;
 
 test('public trust score read does not require authentication', async () => {
   let receivedBusinessId: number | undefined;

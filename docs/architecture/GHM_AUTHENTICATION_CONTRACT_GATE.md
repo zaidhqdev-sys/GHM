@@ -42,16 +42,16 @@ Evidence inspected (read-only) at HEAD `239ef5d`:
 
 | Area | Path |
 |---|---|
-| JWT verification | `src/auth/request-context.ts` |
+| JWT verification | `src/auth/ghm-bearer.ts` + ES256 access-JWT foundation |
 | HTTP auth middleware | `src/auth/http.ts` |
 | Authorization helpers / `AuthContext` | `src/auth/authorization.ts` |
-| Config | `src/config.ts` (`JWT_SECRET`, `INVITE_CODE`) |
+| Config | `src/config.ts` (`INVITE_CODE` plus database/CORS/runtime settings); ES256 signing material is loaded by the canonical key loader from the dedicated `GHM_JWT_ES256_*` environment variables. |
 | Account / membership schema | `database/migrations/20260909150000_create_business_identity.sql` (later moved to `ghm` schema) |
 | Resource HTTP | `src/http/app.ts`, `enquiry-router.ts`, `campaign-router.ts` |
 | JWT signing | tests only (`jwt.sign` with `config.jwtSecret`) |
 | Founder ADR | `docs/architecture/GHM_AUTHENTICATION_ISSUANCE_DECISION_RECORD.md` |
 
-### 2.1 Current HS / `JWT_SECRET` verifier
+### 2.1 Historical HS / `JWT_SECRET` verifier baseline
 
 - `authenticateRequest` requires `Authorization: Bearer <token>`.
 - Verifies with `jwt.verify(token, config.jwtSecret)` — **HS shared-secret only**.
@@ -343,7 +343,7 @@ AUTHENTICATION ENDPOINT PATHS: OPEN — FOLLOW-ON IMPLEMENTATION DECISION
 
 ### 7.3 Relationship to current tokens
 
-Current HS tokens using `userId` + `role` and `JWT_SECRET` remain the **implemented** verifier until a later implementation gate. Target token contract supersedes that shape architecturally; it is not live.
+The HS tokens using `userId` + `role` and `JWT_SECRET` were the historical implementation baseline. That verifier is no longer active; the current governed resource verifier is the ES256 path.
 
 ---
 
@@ -512,7 +512,7 @@ IMPLEMENTATION AUTHORIZATION: NOT GRANTED
 ```text
 AUTHENTICATION CONTRACT GATE 1 COMPLETE (DOCUMENTATION).
 FOUNDER TARGET ARCHITECTURE REMAINS BINDING.
-CURRENT HS / JWT_SECRET VERIFIER REMAINS THE IMPLEMENTED STATE.
+CURRENT RESOURCE AUTH IMPLEMENTATION: GHM ES256 bearer verification with DB-backed account state.
 FOLLOW-ON CONTRACTS + OPEN DECISIONS REQUIRED BEFORE IMPLEMENTATION.
 GHM AUTHORIZATION REMAINS AUTHORITATIVE.
 DIRECT PRODUCT DATABASE ACCESS REMAINS NOT APPROVED.

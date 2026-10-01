@@ -1,4 +1,4 @@
-import type { Express, NextFunction, Request, Response } from 'express';
+import type { Express, NextFunction, Request, Response, RequestHandler } from 'express';
 import { AuthContext, canAccessResource } from '../auth/authorization';
 import { requireAuth } from '../auth/http';
 import { isRegisteredOperation, ResourceOperation } from '../resources/registry';
@@ -125,10 +125,11 @@ const handleCampaignError = (error: unknown, res: Response): void => {
 export const registerCampaignRoutes = (
   app: Express,
   service: CampaignService = new CampaignServiceImpl(new PostgresCampaignRepository()),
+  authMiddleware: RequestHandler = requireAuth,
 ): void => {
   app.get(
     '/api/v1/campaigns',
-    requireAuth,
+    authMiddleware,
     requireRegisteredCampaignAccess('read'),
     async (req: Request, res: Response) => {
       try {
@@ -153,7 +154,7 @@ export const registerCampaignRoutes = (
 
   app.get(
     '/api/v1/campaigns/:campaignId',
-    requireAuth,
+    authMiddleware,
     requireRegisteredCampaignAccess('read'),
     async (req: Request, res: Response) => {
       try {
@@ -178,7 +179,7 @@ export const registerCampaignRoutes = (
 
   app.post(
     '/api/v1/campaigns',
-    requireAuth,
+    authMiddleware,
     requireRegisteredCampaignAccess('create'),
     async (req: Request, res: Response) => {
       try {
@@ -198,7 +199,7 @@ export const registerCampaignRoutes = (
 
   app.patch(
     '/api/v1/campaigns/:campaignId',
-    requireAuth,
+    authMiddleware,
     requireRegisteredCampaignAccess('update'),
     async (req: Request, res: Response) => {
       try {

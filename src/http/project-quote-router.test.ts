@@ -1,21 +1,20 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import test from 'node:test';
-import jwt from 'jsonwebtoken';
 import { createApp } from './app';
+import { httpTestAuth, tokenFor as es256TokenFor } from './test-resource-auth';
 import type { AuthContext } from '../auth/authorization';
-import { config } from '../config';
 import type { ProjectQuoteService } from '../resources/project-quote/contracts';
 
 const start = async (service: ProjectQuoteService, context?: AuthContext) => {
-  const app = createApp({ projectQuoteService: service });
+  const app = createApp({ resourceAuthMiddleware: httpTestAuth, projectQuoteService: service });
   app.use((req, _res, next) => { if (context) req.authContext = context; next(); });
   const server = http.createServer(app);
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   const address = server.address(); assert.ok(address && typeof address !== 'string');
   return { server, baseUrl: `http://127.0.0.1:${address.port}` };
 };
-const token = (context: AuthContext) => jwt.sign({ userId: context.userId, role: context.role }, config.jwtSecret);
+const token = es256TokenFor;
 const quote = (status: 'submitted'|'accepted'|'rejected'|'withdrawn' = 'submitted') => ({
   id: 11, projectId: 21, businessId: 31, amount: 15000, labourMin: 5000, labourMax: 7000,
   materialsMin: 7000, materialsMax: 9000, totalMin: 12000, totalMax: 16000, durationDays: 30,

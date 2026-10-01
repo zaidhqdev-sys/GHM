@@ -1,4 +1,4 @@
-import { Express, Request, Response } from 'express';
+import { Express, Request, Response , RequestHandler} from 'express';
 import { AuthContext, canAccessResource } from '../auth/authorization';
 import { requireAuth } from '../auth/http';
 import type {
@@ -130,10 +130,11 @@ const handleError = (error: unknown, res: Response): void => {
 export const registerSupportRequestRoutes = (
   app: Express,
   service: SupportRequestService,
+  authMiddleware: RequestHandler = requireAuth,
 ): void => {
   app.get(
     '/api/v1/support-requests',
-    requireAuth,
+    authMiddleware,
     requireSupportAccess('read', ['customer', 'admin']),
     async (req: Request, res: Response) => {
       try {
@@ -153,7 +154,7 @@ export const registerSupportRequestRoutes = (
 
   app.get(
     '/api/v1/support-requests/:requestId',
-    requireAuth,
+    authMiddleware,
     requireSupportAccess('read', ['customer', 'admin']),
     async (req: Request, res: Response) => {
       try {
@@ -180,7 +181,7 @@ export const registerSupportRequestRoutes = (
 
   app.post(
     '/api/v1/support-requests',
-    requireAuth,
+    authMiddleware,
     requireSupportAccess('create', ['customer']),
     async (req: Request, res: Response) => {
       try {
@@ -199,7 +200,7 @@ export const registerSupportRequestRoutes = (
 
   app.patch(
     '/api/v1/support-requests/:requestId/status',
-    requireAuth,
+    authMiddleware,
     requireSupportAccess('updateStatus', ['admin']),
     async (req: Request, res: Response) => {
       try {
@@ -224,7 +225,7 @@ export const registerSupportRequestRoutes = (
 
   app.get(
     '/api/v1/support-requests/:requestId/messages',
-    requireAuth,
+    authMiddleware,
     requireSupportAccess('readMessages', ['customer', 'admin']),
     async (req: Request, res: Response) => {
       try {
@@ -244,7 +245,7 @@ export const registerSupportRequestRoutes = (
 
   app.post(
     '/api/v1/support-requests/:requestId/messages',
-    requireAuth,
+    authMiddleware,
     (req: Request, res: Response, next: () => void) => {
       const context = req.authContext as AuthContext | undefined;
       const operation = context?.role === 'admin' ? 'replyAsAdmin' : 'replyAsCustomer';

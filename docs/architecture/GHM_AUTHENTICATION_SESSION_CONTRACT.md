@@ -47,10 +47,10 @@ Inspected (read-only) at HEAD `239ef5d`:
 
 | Area | Evidence |
 |---|---|
-| JWT verification | `src/auth/request-context.ts` — HS Bearer via `JWT_SECRET`; claims `userId` + `role` |
+| JWT verification | `src/auth/ghm-bearer.ts` → ES256 access JWT verification; claims use canonical `sub` plus issuer/audience/expiry contract |
 | Auth middleware | `src/auth/http.ts` — `requireAuth` → `401` `{ error: 'unauthorized' }` |
 | Authorization | `src/auth/authorization.ts` — `AuthContext`; membership/role helpers |
-| Config | `src/config.ts` / `.env.example` — `JWT_SECRET`; no refresh/session secrets |
+| Config | `src/config.ts` / `.env.example` — no legacy `JWT_SECRET`; ES256 signing material is supplied through dedicated `GHM_JWT_ES256_*` environment variables |
 | Account identity | `ghm.account_identity` (bigint id; coarse `role`; no credential columns for refresh) |
 | Membership | `ghm.business_membership` (`active` / `inactive` / `revoked`) — **business** membership, not auth sessions |
 | JWT tests | Sign HS tokens in tests only; no refresh/logout suite |

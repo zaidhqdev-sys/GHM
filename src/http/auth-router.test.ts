@@ -1,12 +1,11 @@
 import assert from 'node:assert/strict';
+import jwt from 'jsonwebtoken';
 import http from 'node:http';
 import test from 'node:test';
 import { generateKeyPairSync } from 'node:crypto';
-import jwt from 'jsonwebtoken';
 import express from 'express';
 
 process.env.NODE_ENV = 'test';
-process.env.JWT_SECRET = 'test-jwt-secret-for-qualification';
 process.env.DATABASE_URL = 'postgres://qualification:test@localhost:5432/ghm';
 process.env.INVITE_CODE = 'test-invite-code';
 process.env.CORS_ORIGINS = 'http://localhost:3000';

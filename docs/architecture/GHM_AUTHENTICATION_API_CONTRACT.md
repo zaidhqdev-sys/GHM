@@ -55,7 +55,7 @@ GHM protected Resource API (`requireAuth` / AuthContext)
 | Resource prefix | `/api/v1/<resource>` (`src/http/app.ts`, routers) |
 | Auth routes | `POST /api/v1/auth/login`, `/refresh`, `/logout` (`src/http/auth-router.ts`) |
 | Resource middleware | `requireAuth` → `requireResourceAuth` (`src/auth/resource-auth.ts`): **ES256 GHM access JWT** (primary) verifies `sub`/`iss`/`aud`/`kid`/`exp`, loads `ghm.account_identity` state, builds `AuthContext` from **database role + `is_system_admin`** — JWT is not authorization truth |
-| Legacy HS boundary | `classifyBearerCredential` → `legacy-hs` only: isolated `authenticateRequest` (`request-context.ts`) for temporary local/legacy compatibility; **new GHM frontend must not use this path** |
+| Resource bearer boundary | Canonical GHM ES256 bearer authentication via `src/auth/ghm-bearer.ts`; non-ES256 bearer forms fail closed. The removed HS/`JWT_SECRET` path is historical provenance only. |
 | Legacy Render frontend | Must not use legacy `auth/signin` / generic `tables/*` / `admin/*` against new governed resource APIs |
 | Auth failure | HTTP `401` `{ error: 'unauthorized' }` |
 | Authz failure | HTTP `403` `{ error: 'forbidden' }` |
@@ -68,7 +68,7 @@ GHM protected Resource API (`requireAuth` / AuthContext)
 
 ```text
 Resource API authentication: ES256 GHM Auth is the target mechanism for governed routes.
-Legacy HS verification remains isolated (not removed) for the temporary compatibility boundary only.
+Legacy HS verification was the historical compatibility baseline; it has now been removed from the active resource-auth path.
 ```
 
 ---
@@ -460,7 +460,7 @@ During signing-key rotation: trust **active** public key and **previous** public
 
 Supabase JWTs: **always reject** as GHM credentials.
 
-Current HS verifier remains live until a separate implementation/cutover gate.
+The current resource verifier is the GHM ES256 path; no separate HS cutover remains.
 
 ---
 
@@ -549,7 +549,7 @@ Do not design an oversized security platform in this gate.
 |---|---|---|
 | Login | Absent | Email + password → session + JWT + refresh |
 | Refresh / logout / recovery | Absent | Present per §§8–12 |
-| Verify | HS `JWT_SECRET`; `userId`+`role` | ES256; `sub`/`iss`/`aud`/`iat`/`exp`/`kid` |
+| Verify | GHM ES256; canonical `sub`/`iss`/`aud`/`iat`/`exp`/`kid` |
 | Identity | Numeric claim only | `ghm.account_identity.id` via `sub` |
 | Persistence | No auth session/credential tables | Persistence Contract concepts |
 | Products | Connect/QuoteFlow use Supabase Auth | Consume GHM Auth API; never send Supabase JWT to GHM |
@@ -623,7 +623,7 @@ FOUNDER ARCHITECTURE (canonical — not reopened):
 IMPLEMENTATION:
 NOT AUTHORIZED.
 
-CURRENT HS VERIFIER:
+CURRENT RESOURCE VERIFIER: GHM ES256 only, with DB-backed account-state loading and authorization role derivation.
 UNCHANGED.
 ```
 

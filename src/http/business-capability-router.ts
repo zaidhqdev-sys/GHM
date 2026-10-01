@@ -1,4 +1,4 @@
-import { Express, Request, Response } from 'express';
+import { Express, Request, Response , RequestHandler} from 'express';
 import { AuthContext, canAccessResource } from '../auth/authorization';
 import { requireAuth } from '../auth/http';
 import type { BusinessCapabilityService, CreateBusinessCapabilityInput } from '../resources/business-capability/contracts';
@@ -128,10 +128,11 @@ const handleError = (error: unknown, res: Response): void => {
 export const registerBusinessCapabilityRoutes = (
   app: Express,
   service: BusinessCapabilityService,
+  authMiddleware: RequestHandler = requireAuth,
 ): void => {
   app.get(
     '/api/v1/business-capabilities',
-    requireAuth,
+    authMiddleware,
     requireCapabilityAccess('read'),
     async (req: Request, res: Response) => {
       try {
@@ -152,7 +153,7 @@ export const registerBusinessCapabilityRoutes = (
 
   app.get(
     '/api/v1/business-capabilities/:businessCapabilityId',
-    requireAuth,
+    authMiddleware,
     requireCapabilityAccess('read'),
     async (req: Request, res: Response) => {
       try {
@@ -177,7 +178,7 @@ export const registerBusinessCapabilityRoutes = (
 
   app.post(
     '/api/v1/business-capabilities',
-    requireAuth,
+    authMiddleware,
     requireCapabilityAccess('create'),
     async (req: Request, res: Response) => {
       try {

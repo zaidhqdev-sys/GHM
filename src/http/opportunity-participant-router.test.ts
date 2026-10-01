@@ -1,16 +1,15 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import test from 'node:test';
-import jwt from 'jsonwebtoken';
 import { createApp } from './app';
+import { httpTestAuth, tokenFor as es256TokenFor } from './test-resource-auth';
 import type { AuthContext } from '../auth/authorization';
-import { config } from '../config';
 import type { OpportunityParticipantService } from '../resources/opportunity-participant/contracts';
 
-const token=(c:AuthContext)=>jwt.sign({userId:c.userId,role:c.role},config.jwtSecret);
+const token = es256TokenFor;
 const participant=()=>({id:11,opportunityId:21,accountId:31,businessId:null,participationRole:'responder' as const,participationStatus:'invited' as const,createdBy:10,createdAt:new Date(),updatedAt:new Date()});
 const service=(o:Partial<OpportunityParticipantService>={}):OpportunityParticipantService=>({createParticipant:async()=>participant(),getParticipant:async()=>participant(),listOpportunityParticipants:async()=>[participant()],updateParticipant:async()=>{throw new Error('Participant updates are not supported until a concrete transition authority is qualified')},...o});
-const start=async(s:OpportunityParticipantService,c?:AuthContext)=>{const app=createApp({opportunityParticipantService:s});app.use((req,_res,next)=>{if(c)req.authContext=c;next()});const server=http.createServer(app);await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));const a=server.address();assert.ok(a&&typeof a!=='string');return{server,baseUrl:`http://127.0.0.1:${a.port}`}};
+const start=async(s:OpportunityParticipantService,c?:AuthContext)=>{const app=createApp({ resourceAuthMiddleware: httpTestAuth,opportunityParticipantService:s});app.use((req,_res,next)=>{if(c)req.authContext=c;next()});const server=http.createServer(app);await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));const a=server.address();assert.ok(a&&typeof a!=='string');return{server,baseUrl:`http://127.0.0.1:${a.port}`}};
 const close=(s:http.Server)=>new Promise<void>(r=>s.close(()=>r()));
 
 test('participant list requires authentication',async()=>{const{server,baseUrl}=await start(service());try{const r=await fetch(`${baseUrl}/api/v1/opportunities/21/participants`);assert.equal(r.status,401)}finally{await close(server)}});

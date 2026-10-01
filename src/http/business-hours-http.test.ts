@@ -1,14 +1,12 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import test from 'node:test';
-import jwt from 'jsonwebtoken';
 import { createApp } from './app';
+import { httpTestAuth, tokenFor as es256TokenFor } from './test-resource-auth';
 import type { AuthContext } from '../auth/authorization';
-import { config } from '../config';
 import type { BusinessHours, BusinessHoursService } from '../resources/business-hours/contracts';
 
-const tokenFor = (context: AuthContext): string =>
-  jwt.sign({ userId: context.userId, role: context.role }, config.jwtSecret);
+const tokenFor = es256TokenFor;
 
 const hoursFixture = (overrides: Partial<BusinessHours> = {}): BusinessHours => ({
   id: 1,
@@ -37,7 +35,7 @@ const stubHoursService = (overrides: Partial<BusinessHoursService> = {}): Busine
 });
 
 const startServer = async (businessHoursService: BusinessHoursService) => {
-  const server = http.createServer(createApp({
+  const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth,
     businessIdentityService: {} as never,
     businessHoursService,
     projectService: {} as never,

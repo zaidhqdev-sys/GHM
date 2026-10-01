@@ -1,4 +1,4 @@
-import { Express, Request, Response } from 'express';
+import { Express, Request, Response, RequestHandler } from 'express';
 import { AuthContext } from '../auth/authorization';
 import { requireAuth } from '../auth/http';
 import type { Customer, CustomerService, CustomerStatus } from '../resources/customer/contracts';
@@ -79,10 +79,10 @@ const handleCustomerError = (error: unknown, res: Response): void => {
   res.status(500).json({ error: 'internal_error' });
 };
 
-export const registerCustomerRoutes = (app: Express, customerService: CustomerService): void => {
+export const registerCustomerRoutes = (app: Express, customerService: CustomerService, authMiddleware: RequestHandler = requireAuth): void => {
   app.get(
     '/api/v1/customers',
-    requireAuth,
+    authMiddleware,
     requireCustomerAccess('read'),
     async (req: Request, res: Response) => {
       try {
@@ -107,7 +107,7 @@ export const registerCustomerRoutes = (app: Express, customerService: CustomerSe
 
   app.get(
     '/api/v1/customers/:customerId',
-    requireAuth,
+    authMiddleware,
     requireCustomerAccess('read'),
     async (req: Request, res: Response) => {
       try {
@@ -132,7 +132,7 @@ export const registerCustomerRoutes = (app: Express, customerService: CustomerSe
 
   app.post(
     '/api/v1/customers',
-    requireAuth,
+    authMiddleware,
     requireCustomerAccess('create'),
     async (req: Request, res: Response) => {
       try {
@@ -152,7 +152,7 @@ export const registerCustomerRoutes = (app: Express, customerService: CustomerSe
 
   app.patch(
     '/api/v1/customers/:customerId',
-    requireAuth,
+    authMiddleware,
     requireCustomerAccess('update'),
     async (req: Request, res: Response) => {
       try {

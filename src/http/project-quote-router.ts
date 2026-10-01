@@ -1,4 +1,4 @@
-import { Express, Request, Response } from 'express';
+import { Express, Request, Response, RequestHandler } from 'express';
 import { AuthContext, canAccessResource } from '../auth/authorization';
 import { requireAuth } from '../auth/http';
 import { isRegisteredOperation } from '../resources/registry';
@@ -71,8 +71,8 @@ const error = (e: unknown, res: Response): void => {
   res.status(500).json({ error: 'internal_error' });
 };
 
-export const registerProjectQuoteRoutes = (app: Express, service: ProjectQuoteService): void => {
-  app.get('/api/v1/projects/:projectId/quotes', requireAuth, access('readReceived', ['customer']), async (req, res) => {
+export const registerProjectQuoteRoutes = (app: Express, service: ProjectQuoteService, authMiddleware: RequestHandler = requireAuth): void => {
+  app.get('/api/v1/projects/:projectId/quotes', authMiddleware, access('readReceived', ['customer']), async (req, res) => {
     try {
       const v = param(req.params.projectId); const projectId = v === null ? null : id(v);
       if (projectId === null) { res.status(400).json({ error: 'invalid_request' }); return; }
@@ -80,7 +80,7 @@ export const registerProjectQuoteRoutes = (app: Express, service: ProjectQuoteSe
     } catch (e) { error(e, res); }
   });
 
-  app.get('/api/v1/businesses/:businessId/project-quotes', requireAuth, access('readOwn', ['business']), async (req, res) => {
+  app.get('/api/v1/businesses/:businessId/project-quotes', authMiddleware, access('readOwn', ['business']), async (req, res) => {
     try {
       const v = param(req.params.businessId); const businessId = v === null ? null : id(v);
       if (businessId === null) { res.status(400).json({ error: 'invalid_request' }); return; }
@@ -88,7 +88,7 @@ export const registerProjectQuoteRoutes = (app: Express, service: ProjectQuoteSe
     } catch (e) { error(e, res); }
   });
 
-  app.post('/api/v1/project-quotes', requireAuth, access('create', ['business']), async (req, res) => {
+  app.post('/api/v1/project-quotes', authMiddleware, access('create', ['business']), async (req, res) => {
     try {
       const input = parseCreate(req.body);
       if (!input) { res.status(400).json({ error: 'invalid_request' }); return; }
@@ -96,7 +96,7 @@ export const registerProjectQuoteRoutes = (app: Express, service: ProjectQuoteSe
     } catch (e) { error(e, res); }
   });
 
-  app.patch('/api/v1/project-quotes/:quoteId', requireAuth, access('update', ['business']), async (req, res) => {
+  app.patch('/api/v1/project-quotes/:quoteId', authMiddleware, access('update', ['business']), async (req, res) => {
     try {
       const v = param(req.params.quoteId); const quoteId = v === null ? null : id(v);
       const input = parseUpdate(req.body);
@@ -105,7 +105,7 @@ export const registerProjectQuoteRoutes = (app: Express, service: ProjectQuoteSe
     } catch (e) { error(e, res); }
   });
 
-  app.post('/api/v1/project-quotes/:quoteId/accept', requireAuth, access('accept', ['customer']), async (req, res) => {
+  app.post('/api/v1/project-quotes/:quoteId/accept', authMiddleware, access('accept', ['customer']), async (req, res) => {
     try {
       const v = param(req.params.quoteId); const quoteId = v === null ? null : id(v);
       if (quoteId === null || Object.keys(req.body ?? {}).length !== 0) { res.status(400).json({ error: 'invalid_request' }); return; }
@@ -113,7 +113,7 @@ export const registerProjectQuoteRoutes = (app: Express, service: ProjectQuoteSe
     } catch (e) { error(e, res); }
   });
 
-  app.post('/api/v1/project-quotes/:quoteId/reject', requireAuth, access('reject', ['customer']), async (req, res) => {
+  app.post('/api/v1/project-quotes/:quoteId/reject', authMiddleware, access('reject', ['customer']), async (req, res) => {
     try {
       const v = param(req.params.quoteId); const quoteId = v === null ? null : id(v);
       if (quoteId === null || Object.keys(req.body ?? {}).length !== 0) { res.status(400).json({ error: 'invalid_request' }); return; }
