@@ -1,6 +1,6 @@
-import { Express, Request, Response } from 'express';
+import { Express, Request, Response , RequestHandler} from 'express';
 import { AuthContext, canAccessResource } from '../auth/authorization';
-import { requireAuth } from '../auth/http';
+import {  requireAuth , requireAuth } from '../auth/http';
 import type { CreateSavedBusinessInput, SavedBusinessService } from '../resources/saved-business/contracts';
 import { isRegisteredOperation } from '../resources/registry';
 
@@ -64,7 +64,7 @@ export const registerSavedBusinessRoutes = (
 ): void => {
   app.get(
     '/api/v1/saved-businesses',
-    requireAuth,
+    authMiddleware,
     requireSavedBusinessAccess('read'),
     async (req: Request, res: Response) => {
       try {
@@ -79,7 +79,7 @@ export const registerSavedBusinessRoutes = (
 
   app.get(
     '/api/v1/saved-businesses/:savedBusinessId',
-    requireAuth,
+    authMiddleware,
     requireSavedBusinessAccess('read'),
     async (req: Request, res: Response) => {
       try {
@@ -104,7 +104,7 @@ export const registerSavedBusinessRoutes = (
 
   app.post(
     '/api/v1/saved-businesses',
-    requireAuth,
+    authMiddleware,
     requireSavedBusinessAccess('create'),
     async (req: Request, res: Response) => {
       try {
@@ -124,7 +124,7 @@ export const registerSavedBusinessRoutes = (
 
   app.delete(
     '/api/v1/saved-businesses/:savedBusinessId',
-    requireAuth,
+    authMiddleware,
     requireSavedBusinessAccess('delete'),
     async (req: Request, res: Response) => {
       try {
