@@ -72,7 +72,7 @@ const handleError = (error: unknown, res: Response): void => {
   res.status(500).json({ error: 'internal_error' });
 };
 
-export const registerOpportunityRequirementsRoutes = (app: Express, service: OpportunityRequirementsService): void => {
+export const registerOpportunityRequirementsRoutes = (app: Express, service: OpportunityRequirementsService, authMiddleware: RequestHandler = requireAuth): void => {
   app.get('/api/v1/opportunities/:opportunityId/requirements', authMiddleware, requireRequirementsAccess('read'), async (req, res) => {
     try {
       const value = typeof req.params.opportunityId === 'string' ? req.params.opportunityId : null;
