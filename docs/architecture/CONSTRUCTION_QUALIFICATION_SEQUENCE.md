@@ -15,6 +15,7 @@ The sequence remains the architecture-level gate order. Individual gates may hav
 5. **Operational boundary** — health/readiness, graceful shutdown, structured errors, and safe logging are qualified. **CLOSED / PASS for construction qualification of the current operational boundary; production qualification remains open.**
 6. **Automated qualification** — build and negative security/runtime checks run deterministically in CI. **Construction checks exist and are passing for the current branch state; they do not close production gates.**
 7. **Database reconciliation** — actual GHM PostgreSQL catalog evidence is captured and reconciled before dependent product/business migrations are authored. **Dedicated-schema catalog reconciliation and Business Identity runtime qualification are PASS for the current construction slice. The existing catalog artifact remains an app-role-scoped snapshot captured through `DATABASE_URL` (`ghm_app_user` → `ghm_db_user`), not an authoritative full-database catalog. Canonical GHM recovery has also been captured separately through the dedicated migrator/schema-owner path. Remaining work is provider/bootstrap authority limits, legacy authority cleanup, and subsequent governed resource slices.**
+7a. **Business Offering resource slice** — migration, repository, service, registry, and runtime privilege boundary are **CLOSED / PASS**. Live PostgreSQL qualification passed on 2026-10-01; public HTTP exposure remains separately gated.
 8. **Product adapters** — Connect and QuoteFlow adapters are implemented only after their concrete backend contracts are evidenced. **Not started as a cutover activity.**
 9. **Shadow qualification** — product workflows are exercised against GHM while Supabase remains authoritative. **Not started.**
 10. **Controlled cutover** — migrate one product at a time with an explicit rollback path. **Not started; production remains on Supabase.**
@@ -102,13 +103,13 @@ This artifact covers the canonical `ghm` schema only. It is not represented as a
 
 The gate order is a dependency model, not permission to skip unresolved gates because an earlier implementation exists.
 
-The current first-slice Business Identity migration does not mean the complete GHM product schema has been authored. It establishes only the canonical construction schema required for the currently qualified slice.
+The qualified Business Offering slice does not mean the complete GHM product schema has been authored. The current first-slice Business Identity migration does not mean the complete GHM product schema has been authored. It establishes only the canonical construction schema required for the currently qualified slice.
 
 Likewise, PostgreSQL role separation and dedicated migration-runner qualification close only the corresponding construction evidence. The Authorization, first-slice Resource API, and Operational Boundary gates are now closed for their qualified construction slices. Eventual product replacement gates remain open.
 
 The provider/bootstrap authority and legacy-role cleanup remain constrained by the currently available managed PostgreSQL authority. Construction may advance only to resource slices whose database contracts and privileges can be evidenced without relying on unresolved bootstrap authority.
 
-No product adapter or production cutover work begins from the currently closed construction gates alone.
+No unqualified product adapter or production cutover work begins from the currently closed construction gates alone.
 
 ## Hard stop conditions
 
