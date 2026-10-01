@@ -103,7 +103,7 @@ const handleQuoteError = (error: unknown, res: Response): void => {
   res.status(500).json({ error: 'internal_error' });
 };
 
-export const registerQuoteRoutes = (app: Express, quoteService: QuoteService): void => {
+export const registerQuoteRoutes = (app: Express, quoteService: QuoteService, authMiddleware: RequestHandler = requireAuth): void => {
   app.get('/api/v1/quotes', requireAuth, requireQuoteAccess('read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
