@@ -6,7 +6,7 @@ import path from 'node:path';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(root, '..');
-loadDotenv({ path: path.join(repoRoot, '.env') });
+const dotenvResult = loadDotenv({ path: path.join(repoRoot, '.env'), override: false });
 const serverSource = await readFile(path.join(repoRoot, 'src/server.ts'), 'utf8');
 const appSource = await readFile(path.join(repoRoot, 'src/http/app.ts'), 'utf8');
 
@@ -28,7 +28,7 @@ if (failures.length > 0) {
 }
 
 const port = '3101';
-const databaseUrl = process.env.GHM_RUNTIME_DATABASE_URL || process.env.DATABASE_URL;
+const databaseUrl = process.env.GHM_RUNTIME_DATABASE_URL || process.env.DATABASE_URL || dotenvResult.parsed?.GHM_RUNTIME_DATABASE_URL || dotenvResult.parsed?.DATABASE_URL;
 if (!databaseUrl) {
   console.error('Operational boundary runtime verification FAILED.');
   console.error('- GHM_RUNTIME_DATABASE_URL or DATABASE_URL is required');
