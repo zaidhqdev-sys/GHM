@@ -618,11 +618,11 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerReviewRoutes(app, reviewService, resourceAuthMiddleware);
   registerProjectQuoteRoutes(app, projectQuoteService, resourceAuthMiddleware);
   registerOpportunityRequirementsRoutes(app, opportunityRequirementsService, resourceAuthMiddleware);
-  registerOpportunityParticipantRoutes(app, resourceAuthMiddleware, opportunityParticipantService, resourceAuthMiddleware);
-  registerCustomerRoutes(app, resourceAuthMiddleware, customerService, resourceAuthMiddleware);
-  registerQuoteRoutes(app, resourceAuthMiddleware, quoteService, resourceAuthMiddleware);
-  registerNotificationRoutes(app, resourceAuthMiddleware, notificationService, resourceAuthMiddleware);
-  registerBusinessCategoryRoutes(app, resourceAuthMiddleware, businessCategoryService, resourceAuthMiddleware);
+  registerOpportunityParticipantRoutes(app, opportunityParticipantService, resourceAuthMiddleware);
+  registerCustomerRoutes(app, customerService, resourceAuthMiddleware);
+  registerQuoteRoutes(app, quoteService, resourceAuthMiddleware);
+  registerNotificationRoutes(app, notificationService, resourceAuthMiddleware);
+  registerBusinessCategoryRoutes(app, businessCategoryService, resourceAuthMiddleware);
   registerAuthRoutes(app, { authService: dependencies.authService } satisfies AuthRouterDependencies);
 
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
