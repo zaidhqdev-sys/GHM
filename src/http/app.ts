@@ -5,6 +5,9 @@ import { requireAuth } from '../auth/http';
 import { PostgresBusinessIdentityRepository } from '../resources/business-identity/repository';
 import { BusinessIdentityServiceImpl } from '../resources/business-identity/service';
 import { BusinessIdentityService, UpdateBusinessProfileInput } from '../resources/business-identity/contracts';
+import { PostgresPublicBusinessRepository } from '../resources/business-identity/public-repository';
+import { PublicBusinessServiceImpl } from '../resources/business-identity/public-service';
+import type { PublicBusinessService } from '../resources/business-identity/public-contracts';
 import { PostgresBusinessHoursRepository } from '../resources/business-hours/repository';
 import { BusinessHoursServiceImpl } from '../resources/business-hours/service';
 import { BusinessHoursService } from '../resources/business-hours/contracts';
@@ -81,6 +84,7 @@ import { registerBusinessCategoryRoutes } from './business-category-router';
 
 export interface AppDependencies {
   readonly businessIdentityService?: BusinessIdentityService;
+  readonly publicBusinessService?: PublicBusinessService;
   readonly businessHoursService?: BusinessHoursService;
   readonly projectService?: ProjectService;
   readonly publicProjectService?: PublicProjectService;
@@ -291,6 +295,7 @@ const handleError = (error: unknown, res: Response): void => {
 export const createApp = (dependencies: AppDependencies = {}): express.Express => {
   const app = express();
   const service = dependencies.businessIdentityService ?? new BusinessIdentityServiceImpl(new PostgresBusinessIdentityRepository());
+  const publicBusinessService = dependencies.publicBusinessService ?? new PublicBusinessServiceImpl(new PostgresPublicBusinessRepository());
   const businessHoursService =
     dependencies.businessHoursService
     ?? new BusinessHoursServiceImpl(new PostgresBusinessHoursRepository());
@@ -358,6 +363,20 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
+  app.get('/api/v1/public/businesses/slug/:slug', requireRegisteredPublicAccess('business', 'readPublic'), async (req: Request, res: Response) => {
+    try {
+      const slugValue = routeParam(req.params.slug);
+      const slug = slugValue?.trim();
+      if (!slug) { res.status(400).json({ error: 'invalid_request' }); return; }
+      const business = await publicBusinessService.getPublicBusinessBySlug(slug);
+      if (!business) { res.status(404).json({ error: 'not_found' }); return; }
+      res.status(200).json({ business });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Invalid Business slug') { res.status(400).json({ error: 'invalid_request' }); return; }
+      handleError(error, res);
+    }
+  });
+
   app.get('/api/v1/businesses/slug/:slug', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
@@ -418,6 +437,20 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       }
     },
   );
+
+  app.get('/api/v1/public/businesses/:businessId', requireRegisteredPublicAccess('business', 'readPublic'), async (req: Request, res: Response) => {
+    try {
+      const businessIdValue = routeParam(req.params.businessId);
+      const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
+      if (businessId === null) { res.status(400).json({ error: 'invalid_request' }); return; }
+      const business = await publicBusinessService.getPublicBusiness(businessId);
+      if (!business) { res.status(404).json({ error: 'not_found' }); return; }
+      res.status(200).json({ business });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Invalid Business id') { res.status(400).json({ error: 'invalid_request' }); return; }
+      handleError(error, res);
+    }
+  });
 
   app.get('/api/v1/businesses/:businessId', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
     try {
