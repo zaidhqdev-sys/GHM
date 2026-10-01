@@ -1,6 +1,6 @@
-import type { Express, NextFunction, Request, Response } from 'express';
+import type { Express, NextFunction, Request, Response, RequestHandler } from 'express';
 import { AuthContext, canAccessResource } from '../auth/authorization';
-import { requireAuth } from '../auth/http';
+import {  requireAuth , requireAuth } from '../auth/http';
 import { isRegisteredOperation, ResourceOperation } from '../resources/registry';
 import type { CreateEnquiryInput, EnquiryService, UpdateEnquiryStatusInput } from '../resources/enquiry/contracts';
 
@@ -92,7 +92,7 @@ const handleEnquiryError = (error: unknown, res: Response): void => {
 };
 
 export const registerEnquiryRoutes = (app: Express, service: EnquiryService): void => {
-  app.post('/api/v1/enquiries', requireAuth, requireRegisteredEnquiryAccess('create'), async (req: Request, res: Response) => {
+  app.post('/api/v1/enquiries', authMiddleware, requireRegisteredEnquiryAccess('create'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
       const input = parseCreateEnquiryInput(req.body);
@@ -107,7 +107,7 @@ export const registerEnquiryRoutes = (app: Express, service: EnquiryService): vo
     }
   });
 
-  app.get('/api/v1/enquiries/received', requireAuth, requireRegisteredEnquiryAccess('read'), async (req: Request, res: Response) => {
+  app.get('/api/v1/enquiries/received', authMiddleware, requireRegisteredEnquiryAccess('read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
       const rawBusinessId = queryValue(req.query.businessId);
@@ -127,7 +127,7 @@ export const registerEnquiryRoutes = (app: Express, service: EnquiryService): vo
     }
   });
 
-  app.get('/api/v1/enquiries/received/:enquiryId', requireAuth, requireRegisteredEnquiryAccess('read'), async (req: Request, res: Response) => {
+  app.get('/api/v1/enquiries/received/:enquiryId', authMiddleware, requireRegisteredEnquiryAccess('read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
       const rawId = routeParam(req.params.enquiryId);
@@ -147,7 +147,7 @@ export const registerEnquiryRoutes = (app: Express, service: EnquiryService): vo
     }
   });
 
-  app.get('/api/v1/enquiries/:enquiryId', requireAuth, requireRegisteredEnquiryAccess('read'), async (req: Request, res: Response) => {
+  app.get('/api/v1/enquiries/:enquiryId', authMiddleware, requireRegisteredEnquiryAccess('read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
       const rawId = routeParam(req.params.enquiryId);
@@ -167,7 +167,7 @@ export const registerEnquiryRoutes = (app: Express, service: EnquiryService): vo
     }
   });
 
-  app.patch('/api/v1/enquiries/received/:enquiryId/status', requireAuth, requireRegisteredEnquiryAccess('update'), async (req: Request, res: Response) => {
+  app.patch('/api/v1/enquiries/received/:enquiryId/status', authMiddleware, requireRegisteredEnquiryAccess('update'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
       const rawId = routeParam(req.params.enquiryId);
