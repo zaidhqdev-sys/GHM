@@ -78,6 +78,9 @@ import { NotificationServiceImpl } from '../resources/notification/service';
 import { NotificationService } from '../resources/notification/contracts';
 import { registerNotificationRoutes } from './notification-router';
 import { PostgresBusinessCategoryRepository } from '../resources/business-category/repository';
+import { PostgresDirectoryRepository } from '../resources/directory/repository';
+import { DirectoryServiceImpl } from '../resources/directory/service';
+import type { DirectoryService } from '../resources/directory/contracts';
 import { BusinessCategoryServiceImpl } from '../resources/business-category/service';
 import type { BusinessCategoryService } from '../resources/business-category/contracts';
 import { registerBusinessCategoryRoutes } from './business-category-router';
@@ -103,6 +106,7 @@ export interface AppDependencies {
   readonly quoteService?: QuoteService;
   readonly notificationService?: NotificationService;
   readonly businessCategoryService?: BusinessCategoryService;
+  readonly directoryService?: DirectoryService;
   readonly authService?: GhmAuthService;
 }
 
@@ -340,6 +344,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const quoteService = dependencies.quoteService ?? new DefaultQuoteService(new PostgresQuoteRepository());
   const notificationService = dependencies.notificationService ?? new NotificationServiceImpl(new PostgresNotificationRepository());
   const businessCategoryService = dependencies.businessCategoryService ?? new BusinessCategoryServiceImpl(new PostgresBusinessCategoryRepository());
+  const directoryService = dependencies.directoryService ?? new DirectoryServiceImpl(new PostgresDirectoryRepository());
   app.disable('x-powered-by');
   app.set('trust proxy', config.trustProxy);
   app.use(cors({ origin: config.corsOrigins }));
@@ -359,6 +364,57 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       const profile = await service.getOwnProfile(context);
       res.status(200).json({ profile });
     } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.get('/api/v1/public/businesses', requireRegisteredPublicAccess('directory', 'read'), async (req: Request, res: Response) => {
+    try {
+      const allowed = new Set(['q', 'category', 'page', 'pageSize']);
+      const keys = Object.keys(req.query);
+      if (keys.some((key) => !allowed.has(key))) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      const readStringQuery = (key: string): string | undefined => {
+        const value = req.query[key];
+        if (value === undefined) return undefined;
+        if (typeof value !== 'string') throw new Error('invalid_query_parameter');
+        return value;
+      };
+
+      const parsePositiveQueryInteger = (key: string): number | undefined => {
+        const value = readStringQuery(key);
+        if (value === undefined) return undefined;
+        if (!/^[1-9]\\d*$/.test(value)) throw new Error('invalid_query_parameter');
+        const parsed = Number(value);
+        if (!Number.isSafeInteger(parsed) || parsed <= 0) throw new Error('invalid_query_parameter');
+        return parsed;
+      };
+
+      const result = await directoryService.search({
+        q: readStringQuery('q'),
+        category: readStringQuery('category'),
+        page: parsePositiveQueryInteger('page'),
+        pageSize: parsePositiveQueryInteger('pageSize'),
+      });
+      res.status(200).json(result);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.message === 'invalid_query_parameter' ||
+          error.message === 'q must be a string' ||
+          error.message === 'category must be a string' ||
+          error.message === 'category must not be blank' ||
+          error.message === 'category must be a valid category id or slug' ||
+          error.message === 'page must be a positive integer' ||
+          error.message === 'pageSize must be a positive integer' ||
+          error.message === 'pageSize must be at most 50')
+      ) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
       handleError(error, res);
     }
   });
