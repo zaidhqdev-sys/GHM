@@ -1,6 +1,6 @@
 # GHM Business Offering Operation Contract
 
-**Status:** CONSTRUCTION AUTHORIZATION — contract frozen 2026-09-30
+**Status:** QUALIFIED / CLOSED — construction qualification passed 2026-10-01
 **Source:** Zaid Connect commit `abcffa73f893602c25310a58946bebb91fd7eeb5`
 **Scope:** Business offerings only
 
@@ -407,7 +407,38 @@ Before this slice is construction-qualified, evidence must demonstrate:
 23. previously qualified GHM capabilities remain green;
 24. architecture/readiness/evidence/handover documentation is reconciled to the resulting implementation.
 
-## 19. Construction sequence
+## 19. Qualification result
+
+**Status:** QUALIFIED / PASS / CLOSED for the GHM Business Offering construction slice.
+
+The implementation was reconciled onto current GHM mainline and independently qualified against live PostgreSQL using the dedicated runtime and migrator identities.
+
+Qualification evidence:
+
+```text
+RUNTIME IDENTITY PASS: ghm_db/ghm_runtime
+CLEANUP AUTHORITY PASS: ghm_db/ghm_migrator
+OUTSIDER READ REJECTION PASS
+CUSTOMER READ REJECTION PASS
+NON-MANAGEMENT CREATE REJECTION PASS
+OUTSIDER CREATE REJECTION PASS
+MANAGEMENT CREATE + SERVER PROVENANCE PASS
+AUTHORIZED MEMBER READ PASS
+SLUG LOOKUP PASS
+NON-MANAGEMENT UPDATE REJECTION PASS
+MANAGEMENT UPDATE + IMMUTABLE FIELD INVARIANT PASS
+ACTIVE FILTER + DEACTIVATION PASS
+PUBLIC INACTIVE FILTER PASS
+CONCURRENT DUPLICATE SLUG INVARIANT PASS
+RUNTIME DIRECT INSERT + UPDATE GRANT PASS
+RUNTIME DELETE DENIAL PASS
+RUNTIME PRIVILEGE PASS: SELECT=yes permitted INSERT/UPDATE columns=yes immutable UPDATE=no DELETE=no
+GHM BUSINESS OFFERING RUNTIME QUALIFICATION: PASS
+```
+
+The qualification covers managed/public authorization, canonical Business public visibility, server-derived provenance, validation, Business scoping, lifecycle deactivation, concurrency, least-privilege runtime grants, and delete denial. It does not authorize a public HTTP API, Connect cutover, provider migration, or any capability listed in the lifecycle non-authorizations.
+
+## 20. Construction sequence
 
 ```text
 migration
@@ -422,8 +453,8 @@ migration
 
 No Connect schema mutation, production migration, product cutover, shadow traffic, or Supabase provider cleanup is authorized by this contract.
 
-## 20. Explicit founder gate
+## 21. Explicit founder gate
 
 This contract records the founder authorization expressed on 2026-09-30 by proceeding after the evidence-backed Business Offering source audit.
 
-The authorization is limited to the Business Offering boundary defined here. It does not authorize Business Capability lifecycle/evidence, public Business directory expansion, commercial payment operations, Project↔Opportunity atomic workflows, directory founder-review workflows, or production cutover.
+The original construction authorization was limited to the Business Offering boundary defined here. The resulting qualification closes this construction slice; it does not authorize Business Capability lifecycle/evidence, public Business directory expansion, commercial payment operations, Project↔Opportunity atomic workflows, directory founder-review workflows, or production cutover.
