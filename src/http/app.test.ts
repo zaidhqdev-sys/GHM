@@ -64,7 +64,7 @@ test('public Business route allows anonymous access and returns only the public 
   try {
     const response = await fetch(`${baseUrl}/api/v1/public/businesses/${business.id}`);
     assert.equal(response.status, 200);
-    const body = await response.json();
+    const body = await response.json() as { business: PublicBusiness & { createdAt: string; updatedAt: string } };
     assert.deepEqual(body.business, {
       ...business,
       createdAt: business.createdAt.toISOString(),
@@ -114,7 +114,7 @@ test('public Business slug route resolves through the public projection', async 
   try {
     const response = await fetch(`${baseUrl}/api/v1/public/businesses/slug/${business.slug}`);
     assert.equal(response.status, 200);
-    const body = await response.json();
+    const body = await response.json() as { business: PublicBusiness & { createdAt: string; updatedAt: string } };
     assert.equal(body.business.id, business.id);
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
