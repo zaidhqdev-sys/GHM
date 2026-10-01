@@ -91,7 +91,7 @@ const handleEnquiryError = (error: unknown, res: Response): void => {
   res.status(500).json({ error: 'internal_error' });
 };
 
-export const registerEnquiryRoutes = (app: Express, service: EnquiryService): void => {
+export const registerEnquiryRoutes = (app: Express, service: EnquiryService, authMiddleware: RequestHandler = requireAuth): void => {
   app.post('/api/v1/enquiries', authMiddleware, requireRegisteredEnquiryAccess('create'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
