@@ -608,21 +608,21 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
-  registerEnquiryRoutes(app, enquiryService);
-  registerCampaignRoutes(app, campaignService);
-  registerOpportunityRoutes(app, opportunityService);
-  registerSavedBusinessRoutes(app, savedBusinessService);
-  registerBusinessCapabilityRoutes(app, businessCapabilityService);
-  registerTrustScoreRoutes(app, trustScoreService);
-  registerSupportRequestRoutes(app, supportRequestService);
-  registerReviewRoutes(app, reviewService);
-  registerProjectQuoteRoutes(app, projectQuoteService);
-  registerOpportunityRequirementsRoutes(app, opportunityRequirementsService);
-  registerOpportunityParticipantRoutes(app, opportunityParticipantService);
-  registerCustomerRoutes(app, customerService);
-  registerQuoteRoutes(app, quoteService);
-  registerNotificationRoutes(app, notificationService);
-  registerBusinessCategoryRoutes(app, businessCategoryService);
+  registerEnquiryRoutes(app, resourceAuthMiddleware, enquiryService);
+  registerCampaignRoutes(app, resourceAuthMiddleware, campaignService);
+  registerOpportunityRoutes(app, resourceAuthMiddleware, opportunityService);
+  registerSavedBusinessRoutes(app, resourceAuthMiddleware, savedBusinessService);
+  registerBusinessCapabilityRoutes(app, resourceAuthMiddleware, businessCapabilityService);
+  registerTrustScoreRoutes(app, resourceAuthMiddleware, trustScoreService);
+  registerSupportRequestRoutes(app, resourceAuthMiddleware, supportRequestService);
+  registerReviewRoutes(app, resourceAuthMiddleware, reviewService);
+  registerProjectQuoteRoutes(app, resourceAuthMiddleware, projectQuoteService);
+  registerOpportunityRequirementsRoutes(app, resourceAuthMiddleware, opportunityRequirementsService);
+  registerOpportunityParticipantRoutes(app, resourceAuthMiddleware, opportunityParticipantService);
+  registerCustomerRoutes(app, resourceAuthMiddleware, customerService);
+  registerQuoteRoutes(app, resourceAuthMiddleware, quoteService);
+  registerNotificationRoutes(app, resourceAuthMiddleware, notificationService);
+  registerBusinessCategoryRoutes(app, resourceAuthMiddleware, businessCategoryService);
   registerAuthRoutes(app, { authService: dependencies.authService } satisfies AuthRouterDependencies);
 
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
