@@ -128,6 +128,7 @@ const handleError = (error: unknown, res: Response): void => {
 export const registerBusinessCapabilityRoutes = (
   app: Express,
   service: BusinessCapabilityService,
+  authMiddleware: RequestHandler = requireAuth,
 ): void => {
   app.get(
     '/api/v1/business-capabilities',
