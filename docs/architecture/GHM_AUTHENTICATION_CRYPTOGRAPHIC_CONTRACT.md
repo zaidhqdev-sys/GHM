@@ -28,8 +28,8 @@ Inspected evidence (HEAD `239ef5d`):
 
 | Item | Evidence |
 |---|---|
-| Verifier | `src/auth/request-context.ts` — `jwt.verify(token, config.jwtSecret)` |
-| Config | `src/config.ts` / `.env.example` — `JWT_SECRET` required (HS shared secret) |
+| Verifier | `src/auth/ghm-bearer.ts` → ES256 access-JWT foundation; issuer/audience/expiration/subject and `kid` are enforced |
+| Config | `src/auth/foundation/es256-keys.ts` loads secret-managed ES256 key material from dedicated `GHM_JWT_ES256_*` variables |
 | Library | `package.json` / lock — `jsonwebtoken@^9.0.3` (installed `9.0.3`); Node `engines` `>=18` |
 | Claims (current) | numeric `userId` + `role` (`admin` \| `customer` \| `business`) |
 | `sub` / `iss` / `aud` | **Not** used by current verifier (`sub` ignored; `iss`/`aud` not checked) |
@@ -40,7 +40,7 @@ Inspected evidence (HEAD `239ef5d`):
 CURRENT IMPLEMENTATION ≠ TARGET CRYPTOGRAPHIC CONTRACT.
 ```
 
-The current HS / `JWT_SECRET` verifier **must remain unchanged during this gate**. Target asymmetric architecture is documentation-only until Founder decisions below are recorded and a later implementation gate is authorized.
+The HS / `JWT_SECRET` verifier was the historical baseline for this gate. The selected asymmetric architecture has since been implemented for governed resource authentication; the contract below remains the governing ES256 design.
 
 ---
 
@@ -92,13 +92,13 @@ Durable credential/session/refresh/recovery/mapping persistence concepts: see [G
 
 | Fact | Evidence |
 |---|---|
-| Current verify | `src/auth/request-context.ts` — `jwt.verify(token, config.jwtSecret)` (HS shared secret) |
+| Current verify | `src/auth/ghm-bearer.ts` → ES256 access-JWT foundation |
 | Current claims | numeric `userId` + `role`; no asymmetric algorithm allow-list |
 | Current dependency | `jsonwebtoken@9.0.3` (via `package.json`) |
 | Runtime | Node.js `>=18` (`package.json` engines) |
 
 ```text
-CURRENT HS VERIFIER ≠ TARGET ASYMMETRIC ALGORITHM.
+CURRENT RESOURCE VERIFIER = GHM ES256; historical HS/`JWT_SECRET` references describe the superseded baseline.
 Founder-selected target algorithm: ES256 (see §3.5 / §2).
 ```
 
@@ -190,12 +190,12 @@ The issuer (`iss`) must:
 
 | Evidence | Finding |
 |---|---|
-| Runtime config | `src/config.ts` / `.env.example` — `JWT_SECRET`, `PORT`, `CORS_ORIGINS`, `DATABASE_URL`, `INVITE_CODE`, `TRUST_PROXY`; **no** `JWT_ISS` / issuer string |
+| Runtime config | `src/config.ts` / `.env.example` — database/CORS/runtime settings plus `INVITE_CODE`, with ES256 key material loaded separately by `src/auth/foundation/es256-keys.ts` |
 | Package identity | `package.json` — `name: "ghm-core"`, description “Private Backend as a Service” — npm identity, **not** a JWT `iss` |
 | HTTP surface | Resource routes under `/api/v1/...` (`src/http/app.ts`, routers); **path ≠ issuer** |
 | CORS | `CORS_ORIGINS` = trusted **frontend** origins (e.g. example `http://localhost:3000`) — **not** an issuer identifier |
 | Host / deployment | No frozen canonical production hostname or public issuer URL established in repo config or architecture docs for JWT `iss` |
-| Current verifier | `src/auth/request-context.ts` — does **not** check `iss` |
+| Current verifier | `src/auth/ghm-bearer.ts` → ES256 access-JWT foundation; `iss` is enforced by the access-JWT verifier |
 | Auth API | SELECTED target (Issuance ADR) but **not implemented** — no live auth-service hostname to promote |
 | Charter | Platform charter explicitly does **not** select a JWT issuer string |
 
@@ -418,7 +418,7 @@ Do not invent cloud product names, key names, paths, or key values.
 
 #### 1. Environment / secret-managed private key
 
-Operator (or host “env/secrets” injection) supplies ES256 private key material to the GHM issuer process as configuration — same **class** of delivery as today’s `JWT_SECRET` (exact env var names **not invented**).
+Operator (or host “env/secrets” injection) supplies ES256 private key material to the GHM issuer process as configuration — same secret-managed delivery class as the historical `JWT_SECRET`, using the now-frozen `GHM_JWT_ES256_*` environment variables.
 
 | Aspect | Assessment |
 |---|---|
@@ -439,7 +439,7 @@ Host platform’s secret store mounts or injects key material at runtime (when t
 | Security boundary | Stronger control/audit than ad-hoc env files if platform provides it |
 | Operational complexity | Medium — depends on host; not evidenced as JWT-specific in repo |
 | Local development | Usually falls back to env/files for local |
-| Production | Good when platform already used for `DATABASE_URL` / `JWT_SECRET` class secrets |
+| Production | Good when the deployment already provides a managed secret facility for database/runtime credentials |
 | Rotation | Native versioning sometimes available — **not** assumed without evidence |
 | Paid infrastructure | Only if the platform charges for a secret product GHM does not already use |
 | Fit | Acceptable **upgrade path** when deployment evidence exists; **do not invent** a vendor product name here |
@@ -470,7 +470,7 @@ Private key never exportable; issuer calls KMS/HSM to sign.
 
 > **Technical recommendation — not a Founder decision.**
 
-Prefer **Option 1: environment / secret-managed private key** delivered only into the GHM issuer boundary — same operational class as current `JWT_SECRET`, without requiring new paid KMS/HSM infrastructure.
+Prefer **Option 1: environment / secret-managed private key** delivered only into the GHM issuer boundary — same operational class as current `JWT_SECRET`, without requiring new paid KMS/HSM infrastructure; the current implementation uses secret-managed ES256 key material.
 
 Treat **Option 2** as an optional hardening path **only when** the existing deployment already provides a managed secret facility (no vendor invented here).
 Do **not** require **Option 3 (KMS/HSM)** for the first authentication implementation gate.
