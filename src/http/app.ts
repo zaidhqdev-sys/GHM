@@ -108,6 +108,7 @@ export interface AppDependencies {
   readonly businessCategoryService?: BusinessCategoryService;
   readonly directoryService?: DirectoryService;
   readonly authService?: GhmAuthService;
+  readonly resourceAuthMiddleware?: import('express').RequestHandler;
 }
 
 const requireRegisteredAccess = (resource: Parameters<typeof canAccessResource>[1], operation: ResourceOperation) =>
@@ -298,6 +299,7 @@ const handleError = (error: unknown, res: Response): void => {
 
 export const createApp = (dependencies: AppDependencies = {}): express.Express => {
   const app = express();
+  const resourceAuthMiddleware = dependencies.resourceAuthMiddleware ?? requireAuth;
   const service = dependencies.businessIdentityService ?? new BusinessIdentityServiceImpl(new PostgresBusinessIdentityRepository());
   const publicBusinessService = dependencies.publicBusinessService ?? new PublicBusinessServiceImpl(new PostgresPublicBusinessRepository());
   const businessHoursService =
