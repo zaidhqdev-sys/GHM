@@ -242,10 +242,7 @@ test('Opportunity GET does not inspect JWT claims beyond requireAuth AuthContext
   const { server, baseUrl } = await startServer(service);
   try {
     // Token may carry extra claims; route must only forward AuthContext from requireAuth.
-    const token = jwt.sign(
-      { userId: 468, role: 'business', accessToken: 'leak', refreshToken: 'leak', session: 'leak' },
-      config.jwtSecret,
-    );
+    const token = tokenFor({ userId: 468, role: 'business' });
     const response = await fetch(`${baseUrl}/api/v1/opportunities/901`, {
       headers: { authorization: `Bearer ${token}` },
     });
