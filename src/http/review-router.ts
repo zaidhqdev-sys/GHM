@@ -1,6 +1,6 @@
 import { Express, Request, Response , RequestHandler} from 'express';
 import { AuthContext, canAccessResource } from '../auth/authorization';
-import {  requireAuth , requireAuth } from '../auth/http';
+import { requireAuth } from '../auth/http';
 import { isRegisteredOperation } from '../resources/registry';
 import type { CreateReviewInput, ModerateReviewInput, ReviewService } from '../resources/review/contracts';
 
