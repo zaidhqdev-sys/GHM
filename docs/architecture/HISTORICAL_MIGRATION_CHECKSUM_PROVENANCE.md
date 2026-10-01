@@ -10,11 +10,11 @@ The live migration ledger is authoritative historical execution evidence. The re
 
 The live ledger contains 55 applied migrations. Its version cardinality and application chronology are intact, and every ledger entry has a corresponding repository migration file.
 
-Sixteen applied migrations currently have a repository SHA-256 different from the live ledger checksum.
+Seventeen applied migrations currently have a repository SHA-256 different from the live ledger checksum.
 
 Seven of those fifteen are fully explained by Windows checkout normalization: the ledger checksum matches the historical Git/index bytes exactly, while the current worktree representation uses CRLF under `core.autocrlf=true`. Those seven are not exceptions and must not be rewritten.
 
-The following nine migrations have no exact-byte match recoverable from the repository's visible Git history or repository text/artifact evidence as of 2026-09-30:
+The following ten migrations have no exact-byte match recoverable from the repository's visible Git history or repository text/artifact evidence as of 2026-09-30:
 
 | Version | Migration | Live ledger checksum |
 |---|---|---|
@@ -27,10 +27,11 @@ The following nine migrations have no exact-byte match recoverable from the repo
 | 20260914220000 | create_opportunity_capability_requirements | 076fd7a54c1e671bd4c7d49535a0540e4d6ac6c50fa97a21c6e0f0a4621892dd |
 | 20260915193000 | reconcile_commercial_payment_transaction | 55694a2e0359691cc4c5d5c990927aa9b11a73a78147c3fa0d35402170d22c67 |
 | 20260915194500 | reconcile_commercial_access_path_indexes | 24e65f01e364c7dc4b89340b8412e5f05f837dacc832d21d27e230ff8ad434d2 |
+| 20260915200000 | reconcile_commercial_payment_transaction_status | 721d5dccf2344afaf8aedfb858f037fc2a82df005d2e6580427a7f4c49de5a87 |
 
 ## Canonical handling
 
-These nine records are classified as **HISTORICAL_PROVENANCE_EXCEPTION**.
+These ten records are classified as **HISTORICAL_PROVENANCE_EXCEPTION**.
 
 This classification does not assert that the current repository file bytes are the bytes originally executed. It also does not assert that the live schema is incorrect.
 
@@ -49,7 +50,7 @@ The reconciliation established:
 - all 55 ledger versions represented in the repository;
 - intact application chronology;
 - exact historical Git/index provenance for the seven line-ending-only cases;
-- no exact repository occurrence of any of the nine exception checksums;
+- no exact repository occurrence of any of the ten exception checksums;
 - independently qualified/inspected resulting database boundaries for the affected Project, Business verification, Review, Project Quote, Opportunity Capability Requirements, and Commercial slices, including the Commercial access-path index reconciliation.
 
 The inability to recover eight historical byte streams is therefore a provenance limitation, not evidence that those database objects should be recreated or that migration history should be rewritten.
