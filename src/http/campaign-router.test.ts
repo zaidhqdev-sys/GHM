@@ -1,10 +1,9 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import test from 'node:test';
-import jwt from 'jsonwebtoken';
 import { createApp } from './app';
+import { httpTestAuth, tokenFor as es256TokenFor } from './test-resource-auth';
 import { AuthContext } from '../auth/authorization';
-import { config } from '../config';
 import type { Campaign, CampaignService, CreateCampaignInput, UpdateCampaignInput } from '../resources/campaign/contracts';
 
 const campaignFixture = (overrides: Partial<Campaign> = {}): Campaign => ({
@@ -19,7 +18,7 @@ const campaignFixture = (overrides: Partial<Campaign> = {}): Campaign => ({
 });
 
 const startServer = async (campaignService: CampaignService) => {
-  const server = http.createServer(createApp({
+  const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth,
     businessIdentityService: {} as never,
     projectService: {} as never,
     publicProjectService: {} as never,
@@ -32,8 +31,7 @@ const startServer = async (campaignService: CampaignService) => {
   return { server, baseUrl: `http://127.0.0.1:${address.port}` };
 };
 
-const tokenFor = (context: AuthContext): string =>
-  jwt.sign({ userId: context.userId, role: context.role }, config.jwtSecret);
+const tokenFor = es256TokenFor;
 
 const stubService = (overrides: Partial<CampaignService> = {}): CampaignService => ({
   createCampaign: async () => { throw new Error('must not be called'); },
