@@ -130,6 +130,7 @@ const handleError = (error: unknown, res: Response): void => {
 export const registerSupportRequestRoutes = (
   app: Express,
   service: SupportRequestService,
+  authMiddleware: RequestHandler = requireAuth,
 ): void => {
   app.get(
     '/api/v1/support-requests',
