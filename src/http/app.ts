@@ -299,7 +299,7 @@ const handleError = (error: unknown, res: Response): void => {
 
 export const createApp = (dependencies: AppDependencies = {}): express.Express => {
   const app = express();
-  const resourceAuthMiddleware = dependencies.resourceAuthMiddleware ?? resourceAuthMiddleware;
+  const resourceAuthMiddleware = dependencies.resourceAuthMiddleware ?? requireAuth;
   const service = dependencies.businessIdentityService ?? new BusinessIdentityServiceImpl(new PostgresBusinessIdentityRepository());
   const publicBusinessService = dependencies.publicBusinessService ?? new PublicBusinessServiceImpl(new PostgresPublicBusinessRepository());
   const businessHoursService =
