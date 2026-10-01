@@ -1,18 +1,16 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import test from 'node:test';
-import jwt from 'jsonwebtoken';
 import { createApp } from './app';
+import { httpTestAuth, tokenFor as es256TokenFor } from './test-resource-auth';
 import type { AuthContext } from '../auth/authorization';
-import { config } from '../config';
 import type {
   Opportunity,
   OpportunityPublicProjection,
   OpportunityService,
 } from '../resources/opportunity/contracts';
 
-const tokenFor = (context: AuthContext): string =>
-  jwt.sign({ userId: context.userId, role: context.role }, config.jwtSecret);
+const tokenFor = es256TokenFor;
 
 const fullOpportunity = (overrides: Partial<Opportunity> = {}): Opportunity => ({
   id: 901,
@@ -73,7 +71,7 @@ const stubOpportunityService = (overrides: Partial<OpportunityService> = {}): Op
 });
 
 const startServer = async (opportunityService: OpportunityService) => {
-  const server = http.createServer(createApp({
+  const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth,
     businessIdentityService: {} as never,
     businessHoursService: {} as never,
     projectService: {} as never,
