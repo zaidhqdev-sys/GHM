@@ -470,7 +470,7 @@ Private key never exportable; issuer calls KMS/HSM to sign.
 
 > **Technical recommendation — not a Founder decision.**
 
-Prefer **Option 1: environment / secret-managed private key** delivered only into the GHM issuer boundary — same operational class as current `JWT_SECRET`, without requiring new paid KMS/HSM infrastructure; the current implementation uses secret-managed ES256 key material.
+Prefer **Option 1: environment / secret-managed private key** delivered only into the GHM issuer boundary — same operational class as the historical `JWT_SECRET`, without requiring new paid KMS/HSM infrastructure; the current implementation uses secret-managed ES256 key material.
 
 Treat **Option 2** as an optional hardening path **only when** the existing deployment already provides a managed secret facility (no vendor invented here).
 Do **not** require **Option 3 (KMS/HSM)** for the first authentication implementation gate.
