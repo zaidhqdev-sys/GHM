@@ -299,7 +299,7 @@ const handleError = (error: unknown, res: Response): void => {
 
 export const createApp = (dependencies: AppDependencies = {}): express.Express => {
   const app = express();
-  const resourceAuthMiddleware = dependencies.resourceAuthMiddleware ?? requireAuth;
+  const resourceAuthMiddleware = dependencies.resourceAuthMiddleware ?? resourceAuthMiddleware;
   const service = dependencies.businessIdentityService ?? new BusinessIdentityServiceImpl(new PostgresBusinessIdentityRepository());
   const publicBusinessService = dependencies.publicBusinessService ?? new PublicBusinessServiceImpl(new PostgresPublicBusinessRepository());
   const businessHoursService =
@@ -360,7 +360,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     res.status(200).json({ status: 'ok' });
   });
 
-  app.get('/api/v1/profile', requireAuth, requireRegisteredAccess('profile', 'read'), async (req: Request, res: Response) => {
+  app.get('/api/v1/profile', resourceAuthMiddleware, requireRegisteredAccess('profile', 'read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
       const profile = await service.getOwnProfile(context);
@@ -453,7 +453,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
-  app.get('/api/v1/businesses/slug/:slug', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
+  app.get('/api/v1/businesses/slug/:slug', resourceAuthMiddleware, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
       const slugValue = routeParam(req.params.slug);
@@ -473,7 +473,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
-  app.get('/api/v1/businesses/:businessId/managed', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
+  app.get('/api/v1/businesses/:businessId/managed', resourceAuthMiddleware, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
       const businessIdValue = routeParam(req.params.businessId);
@@ -495,7 +495,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
 
   app.get(
     '/api/v1/businesses/:businessId/hours',
-    requireAuth,
+    resourceAuthMiddleware,
     requireRegisteredAccess('business_hours', 'read'),
     async (req: Request, res: Response) => {
       try {
@@ -528,7 +528,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
-  app.get('/api/v1/businesses/:businessId', requireAuth, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
+  app.get('/api/v1/businesses/:businessId', resourceAuthMiddleware, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
       const businessIdValue = routeParam(req.params.businessId);
@@ -548,7 +548,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
-  app.post('/api/v1/businesses', requireAuth, requireRegisteredAccess('business', 'create'), async (req: Request, res: Response) => {
+  app.post('/api/v1/businesses', resourceAuthMiddleware, requireRegisteredAccess('business', 'create'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
       const input = parseCreateBusinessInput(req.body);
@@ -563,7 +563,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
-  app.patch('/api/v1/businesses/:businessId', requireAuth, requireRegisteredAccess('business', 'update'), async (req: Request, res: Response) => {
+  app.patch('/api/v1/businesses/:businessId', resourceAuthMiddleware, requireRegisteredAccess('business', 'update'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
       const businessIdValue = routeParam(req.params.businessId);
@@ -580,7 +580,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
-  app.post('/api/v1/projects', requireAuth, requireRegisteredAccess('project', 'create'), async (req: Request, res: Response) => {
+  app.post('/api/v1/projects', resourceAuthMiddleware, requireRegisteredAccess('project', 'create'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
       const input = parseProjectCreateInput(req.body);
@@ -654,7 +654,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
-  app.get('/api/v1/projects/:projectId', requireAuth, requireRegisteredAccess('project', 'read'), async (req: Request, res: Response) => {
+  app.get('/api/v1/projects/:projectId', resourceAuthMiddleware, requireRegisteredAccess('project', 'read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
       const projectIdValue = routeParam(req.params.projectId);
@@ -678,7 +678,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
-  app.patch('/api/v1/projects/:projectId', requireAuth, requireRegisteredAccess('project', 'update'), async (req: Request, res: Response) => {
+  app.patch('/api/v1/projects/:projectId', resourceAuthMiddleware, requireRegisteredAccess('project', 'update'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
       const projectIdValue = routeParam(req.params.projectId);
