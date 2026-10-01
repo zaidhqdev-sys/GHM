@@ -48,7 +48,7 @@ Founder decisions 1–12 (§16) define the **target** architecture: GHM authenti
 
 GHM does **not** yet implement that issuance architecture.
 
-As of HEAD `239ef5d`, GHM only **verifies** existing HS Bearer JWTs with `JWT_SECRET` and builds `AuthContext` from numeric `userId` + `role`. There is no product login/issuance path, no asymmetric signing, no identity-mapping table, and no refresh/revocation/logout product capability. Connect and QuoteFlow still use Supabase Auth UUID sessions in production product code.
+At the historical baseline recorded by this decision record, GHM only **verified** existing HS Bearer JWTs with `JWT_SECRET` and built `AuthContext` from numeric `userId` + `role`. The active resource-auth implementation has since been reconciled to the canonical ES256 bearer path. There is no product login/issuance path, no asymmetric signing, no identity-mapping table, and no refresh/revocation/logout product capability. Connect and QuoteFlow still use Supabase Auth UUID sessions in production product code.
 
 ---
 
@@ -61,7 +61,7 @@ These remain binding under the selected target architecture and during implement
 3. Products must **not** connect directly to GHM Postgres.
 4. GHM **authorization** remains authoritative over governed resource operations (membership/privileged roles are not JWT source of truth).
 5. Founder architecture decisions 1–12 are **SELECTED** (§16); **implementation remains NOT AUTHORIZED** until follow-on contracts and an explicit implementation gate.
-6. Existing GHM HTTP authentication middleware and JWT verification behavior remain unchanged by this documentation gate (current HS/`JWT_SECRET` implementation persists until a later implementation gate).
+6. This decision record preserves the historical implementation baseline. The active GHM HTTP resource-auth path is now the canonical ES256 verifier; no HS/`JWT_SECRET` cutover remains outstanding for resource authentication.
 
 ---
 
@@ -803,7 +803,7 @@ CRYPTO / SESSION / PERSISTENCE / API / IDENTITY-AUTHZ GATES DOCUMENTED.
 FOUNDER DECISIONS R1–R7 SELECTED (2026-09-21).
 DOCUMENTATION-ONLY GATE.
 IMPLEMENTATION NOT YET AUTHORIZED.
-CURRENT VERIFICATION REMAINS HS / JWT_SECRET UNTIL A LATER IMPLEMENTATION GATE.
+CURRENT RESOURCE VERIFICATION IS GHM ES256. Any remaining HS/`JWT_SECRET` references in this record describe the historical baseline and are not active runtime configuration.
 SUPABASE JWTS MUST NEVER BE ACCEPTED DIRECTLY BY GHM.
 PRODUCTS MUST NOT MANUFACTURE AUTHCONTEXT.
 PRODUCTS MUST NOT CONNECT DIRECTLY TO GHM POSTGRES.
