@@ -78,7 +78,7 @@ const categoryPredicate = (query: DirectoryQuery, parameterIndex: number): { sql
       JOIN ghm.business_category bc ON bc.id = bca.category_id
       WHERE bca.business_id = b.id
         AND bc.is_active = true
-        AND (bc.id = $${parameterIndex} OR bc.slug = $${parameterIndex})
+        AND (bc.id::text = ${parameterIndex} OR bc.slug = ${parameterIndex})
     )`,
     values: [query.category],
   };
