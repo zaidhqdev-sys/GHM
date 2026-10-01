@@ -38,7 +38,7 @@ const error=(e:unknown,res:Response)=>{
   }
   console.error(JSON.stringify({event:'http_request_failed',error:{name:e instanceof Error?e.name:'UnknownError'}}));res.status(500).json({error:'internal_error'});
 };
-export const registerReviewRoutes=(app:Express,service:ReviewService)=>{
+export const registerReviewRoutes=(app:Express,service:ReviewService,authMiddleware:RequestHandler=requireAuth)=>{
   app.get('/api/v1/public/reviews',pub('readPublic'),async(req,res)=>{
     try{const businessId=typeof req.query.businessId==='string'?id(req.query.businessId):null;const n=limit(req.query.limit);if(businessId===null||n===null){res.status(400).json({error:'invalid_request'});return;}res.status(200).json({reviews:await service.getPublicReviews(businessId,n)});}
     catch(e){error(e,res);}
