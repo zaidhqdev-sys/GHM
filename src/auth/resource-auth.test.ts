@@ -13,7 +13,6 @@ import {
 } from './foundation/access-jwt';
 import {
   authContextFromAccountState,
-  classifyBearerCredential,
   createRequireResourceAuth,
   resolveResourceAuthRole,
 } from './resource-auth';
@@ -23,7 +22,6 @@ import type { AccountIdentity, BusinessIdentityService } from '../resources/busi
 import type { AuthContext } from './authorization';
 
 process.env.NODE_ENV = 'test';
-process.env.JWT_SECRET = 'test-jwt-secret-for-resource-auth-qualification';
 process.env.DATABASE_URL = 'postgres://qualification:test@localhost:5432/ghm';
 process.env.INVITE_CODE = 'test-invite-code';
 process.env.CORS_ORIGINS = 'http://localhost:3000';
@@ -45,18 +43,6 @@ const requestWithBearer = (token?: string): Request =>
     header: (name: string) =>
       name.toLowerCase() === 'authorization' && token ? `Bearer ${token}` : undefined,
   }) as Request;
-
-test('classifyBearerCredential separates ES256+kid, legacy HS, and unrecognized', async () => {
-  const { config } = await import('../config');
-  const { jwtService } = makeKeys();
-  const es256 = jwtService.sign(1);
-  assert.equal(classifyBearerCredential(es256), 'ghm-es256');
-
-  const legacy = jwt.sign({ userId: 1, role: 'customer' }, config.jwtSecret, { algorithm: 'HS256' });
-  assert.equal(classifyBearerCredential(legacy), 'legacy-hs');
-
-  assert.equal(classifyBearerCredential('not-a-jwt'), 'unrecognized');
-});
 
 test('resolveResourceAuthRole uses isSystemAdmin from GHM state, not JWT', () => {
   assert.equal(
@@ -111,7 +97,7 @@ test('ES256 JWT with embedded admin role claim does not override database role',
   assert.deepEqual(authContext, { userId: 55, role: 'customer' });
 });
 
-test('resource auth middleware: ES256 → AuthContext; disabled → 401; legacy HS isolated', async () => {
+test('resource auth middleware: ES256 → AuthContext; disabled → 401; HS rejected', async () => {
   const { keys, jwtService } = makeKeys();
   const store: AccountAuthStateStore = {
     async getAccountAuthState(accountId) {
@@ -169,14 +155,7 @@ test('resource auth middleware: ES256 → AuthContext; disabled → 401; legacy 
     });
     assert.equal(disabled.status, 401);
 
-    const { config } = await import('../config');
-    const legacy = jwt.sign({ userId: 99, role: 'customer' }, config.jwtSecret, { algorithm: 'HS256' });
-    const hs = await fetch(`${baseUrl}/ctx`, { headers: { authorization: `Bearer ${legacy}` } });
-    assert.equal(hs.status, 200);
-    const hsBody = (await hs.json()) as { authContext: AuthContext; ghm: number | null };
-    assert.deepEqual(hsBody.authContext, { userId: 99, role: 'customer' });
-    assert.equal(hsBody.ghm, null);
-
+    const hs = await fetch(`${baseUrl}/ctx`, {\n      headers: { authorization: 'Bearer ' + jwt.sign({ userId: 99, role: 'customer' }, 'legacy-test-secret', { algorithm: 'HS256' }) },\n    });\n    assert.equal(hs.status, 401);\n
     const forbidden = await fetch(`${baseUrl}/forbid`, {
       headers: { authorization: `Bearer ${jwtService.sign(5)}` },
     });
