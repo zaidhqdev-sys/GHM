@@ -8,6 +8,7 @@ import { config } from '../config';
 import { Project, ProjectService } from '../resources/project/contracts';
 import { PublicProject, PublicProjectService } from '../resources/project/public-contracts';
 import { AccountIdentity, BusinessIdentityService } from '../resources/business-identity/contracts';
+import { PublicBusiness, PublicBusinessService } from '../resources/business-identity/public-contracts';
 
 const profile = (context: AuthContext): AccountIdentity => ({
   id: context.userId,
@@ -26,6 +27,97 @@ const startTestServer = async (service: BusinessIdentityService) => {
   assert.ok(address && typeof address !== 'string');
   return { server, baseUrl: `http://127.0.0.1:${address.port}` };
 };
+
+const publicBusinessFixture = (overrides: Partial<PublicBusiness> = {}): PublicBusiness => ({
+  id: 201,
+  name: 'Public Business',
+  slug: 'public-business',
+  description: 'Public description',
+  phone: '0111234567',
+  email: 'business@example.com',
+  rating: 4.5,
+  reviewCount: 12,
+  jobsCompleted: 8,
+  verificationStatus: 'approved',
+  isVerified: true,
+  createdAt: new Date('2026-09-10T00:00:00.000Z'),
+  updatedAt: new Date('2026-09-10T00:00:00.000Z'),
+  ...overrides,
+});
+
+const startPublicBusinessTestServer = async (publicBusinessService: PublicBusinessService) => {
+  const businessService = {} as BusinessIdentityService;
+  const server = http.createServer(createApp({ businessIdentityService: businessService, publicBusinessService }));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  return { server, baseUrl: `http://127.0.0.1:${address.port}` };
+};
+
+test('public Business route allows anonymous access and returns only the public projection', async () => {
+  const business = publicBusinessFixture();
+  const publicBusinessService: PublicBusinessService = {
+    getPublicBusiness: async (businessId) => { assert.equal(businessId, business.id); return business; },
+    getPublicBusinessBySlug: async (slug) => { assert.equal(slug, business.slug); return business; },
+  };
+  const { server, baseUrl } = await startPublicBusinessTestServer(publicBusinessService);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/public/businesses/${business.id}`);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.deepEqual(body.business, {
+      ...business,
+      createdAt: business.createdAt.toISOString(),
+      updatedAt: business.updatedAt.toISOString(),
+    });
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+test('public Business route does not require or trust invalid authentication', async () => {
+  const business = publicBusinessFixture({ id: 202 });
+  let called = false;
+  const publicBusinessService: PublicBusinessService = {
+    getPublicBusiness: async () => { called = true; return business; },
+    getPublicBusinessBySlug: async () => null,
+  };
+  const { server, baseUrl } = await startPublicBusinessTestServer(publicBusinessService);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/public/businesses/${business.id}`, { headers: { authorization: 'Bearer invalid-token' } });
+    assert.equal(response.status, 200);
+    assert.equal(called, true);
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+test('public Business routes reject invalid identifiers before service execution', async () => {
+  let called = false;
+  const publicBusinessService: PublicBusinessService = {
+    getPublicBusiness: async () => { called = true; throw new Error('must not be called'); },
+    getPublicBusinessBySlug: async () => { called = true; throw new Error('must not be called'); },
+  };
+  const { server, baseUrl } = await startPublicBusinessTestServer(publicBusinessService);
+  try {
+    const idResponse = await fetch(`${baseUrl}/api/v1/public/businesses/not-an-id`);
+    assert.equal(idResponse.status, 400);
+    const slugResponse = await fetch(`${baseUrl}/api/v1/public/businesses/slug/   `);
+    assert.equal(slugResponse.status, 400);
+    assert.equal(called, false);
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+test('public Business slug route resolves through the public projection', async () => {
+  const business = publicBusinessFixture();
+  const publicBusinessService: PublicBusinessService = {
+    getPublicBusiness: async () => null,
+    getPublicBusinessBySlug: async (slug) => { assert.equal(slug, business.slug); return business; },
+  };
+  const { server, baseUrl } = await startPublicBusinessTestServer(publicBusinessService);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/public/businesses/slug/${business.slug}`);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.business.id, business.id);
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
 
 test('protected profile route rejects missing authentication', async () => {
   const service = { getOwnProfile: async () => { throw new Error('must not be called'); } } as unknown as BusinessIdentityService;
