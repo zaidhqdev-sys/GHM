@@ -17,18 +17,12 @@ const parseOrigins = (value: string): string[] =>
     .map((origin) => origin.trim())
     .filter(Boolean);
 
-const jwtSecret = required('JWT_SECRET');
-if (isProduction && jwtSecret.length < 32) {
-  throw new Error('JWT_SECRET must be at least 32 characters in production');
-}
-
 export const config = Object.freeze({
   nodeEnv: process.env.NODE_ENV ?? 'development',
   isProduction,
   port: Number.parseInt(process.env.PORT ?? '3000', 10),
   databaseUrl: required('DATABASE_URL'),
   databaseSsl,
-  jwtSecret,
   inviteCode: required('INVITE_CODE'),
   corsOrigins: parseOrigins(required('CORS_ORIGINS')),
   trustProxy: process.env.TRUST_PROXY === 'true',
