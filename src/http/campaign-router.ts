@@ -125,6 +125,7 @@ const handleCampaignError = (error: unknown, res: Response): void => {
 export const registerCampaignRoutes = (
   app: Express,
   service: CampaignService = new CampaignServiceImpl(new PostgresCampaignRepository()),
+  authMiddleware: RequestHandler = requireAuth,
 ): void => {
   app.get(
     '/api/v1/campaigns',
