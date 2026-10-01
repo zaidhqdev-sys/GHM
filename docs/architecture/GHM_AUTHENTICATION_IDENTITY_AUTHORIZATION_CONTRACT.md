@@ -470,7 +470,7 @@ Do **not** assume current Supabase UUID business/org IDs equal GHM `business.id`
 | Login | Absent / products use Supabase | GHM Auth API email+password |
 | Identity claim | JWT `userId` | `sub` = `account_identity.id` |
 | AuthContext | `{ userId, role }` from JWT | Authenticated identity; authz from GHM state |
-| Verify | HS `JWT_SECRET` | ES256 + iss/aud/kid/exp |
+| Verify | GHM ES256 bearer path | ES256 + iss/aud/kid/exp + canonical `sub` + DB-backed account state |
 | Membership | SQL checks when implemented | Still SQL/state; never JWT-only |
 | Admin | JWT/`account_identity.role` trusted | Authoritative admin representation **UNSELECTED** |
 | Account disable | No status column | Lifecycle representation **UNSELECTED** |
