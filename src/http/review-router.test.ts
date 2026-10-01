@@ -1,19 +1,18 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import test from 'node:test';
-import jwt from 'jsonwebtoken';
 import { createApp } from './app';
+import { httpTestAuth, tokenFor as es256TokenFor } from './test-resource-auth';
 import { AuthContext } from '../auth/authorization';
-import { config } from '../config';
 import type { Review, ReviewService } from '../resources/review/contracts';
 
 const start=async(reviewService:ReviewService)=>{
-  const server=http.createServer(createApp({reviewService}));
+  const server=http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth,reviewService}));
   await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));
   const a=server.address(); assert.ok(a&&typeof a!=='string');
   return {server,baseUrl:`http://127.0.0.1:${a.port}`};
 };
-const token=(c:AuthContext)=>jwt.sign({userId:c.userId,role:c.role},config.jwtSecret);
+const token = es256TokenFor;
 const review=(businessId=20):Review=>({
   id:1,businessId,reviewerId:42,reviewerName:'Customer',rating:5,title:'Great',body:'Excellent service and delivery.',
   moderationStatus:'pending',moderationReason:null,moderatedBy:null,moderatedAt:null,
