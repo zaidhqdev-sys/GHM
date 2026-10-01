@@ -47,12 +47,12 @@ CREATE INDEX business_offering_type_active_idx
 CREATE OR REPLACE FUNCTION ghm.touch_business_offering()
 RETURNS trigger
 LANGUAGE plpgsql
-AS $
+AS $business_offering_updated_at$
 BEGIN
   NEW.updated_at := now();
   RETURN NEW;
 END;
-$;
+$business_offering_updated_at$;
 
 CREATE TRIGGER business_offering_updated_at
 BEFORE UPDATE ON ghm.business_offering
