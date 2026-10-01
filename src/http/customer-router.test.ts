@@ -1,15 +1,14 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import test from 'node:test';
-import jwt from 'jsonwebtoken';
 import { createApp } from './app';
+import { httpTestAuth, tokenFor as es256TokenFor } from './test-resource-auth';
 import { AuthContext } from '../auth/authorization';
-import { config } from '../config';
 import type { Customer, CustomerService } from '../resources/customer/contracts';
 import type { BusinessIdentityService } from '../resources/business-identity/contracts';
 
 const startServer = async (customerService: CustomerService) => {
-  const server = http.createServer(createApp({
+  const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth,
     businessIdentityService: {} as BusinessIdentityService,
     customerService,
   }));
@@ -31,8 +30,7 @@ const fixture = (context: AuthContext, overrides: Partial<Customer> = {}): Custo
   ...overrides,
 });
 
-const tokenFor = (context: AuthContext) =>
-  jwt.sign({ userId: context.userId, role: context.role }, config.jwtSecret);
+const tokenFor = es256TokenFor;
 
 test('customer list route requires authentication', async () => {
   const service = { listCustomers: async () => { throw new Error('must not be called'); } } as unknown as CustomerService;
