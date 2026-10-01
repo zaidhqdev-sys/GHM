@@ -46,18 +46,18 @@ const createFixture = async () => {
     fixture.accounts.push(ownerId);
 
     const businesses = [];
-    for (const [name, slug, active, verified, rating, reviewCount] of [
-      [`${marker} High`, `${marker}-high`, true, true, 5, 20],
-      [`${marker} Low`, `${marker}-low`, true, true, 3, 2],
-      [`${marker} Inactive`, `${marker}-inactive`, false, true, 5, 50],
-      [`${marker} Unverified`, `${marker}-unverified`, true, false, 5, 50],
+    for (const [name, slug, status, verified, active, rating, reviewCount] of [
+      [`${marker} High`, `${marker}-high`, 'approved', true, true, 5, 20],
+      [`${marker} Low`, `${marker}-low`, 'approved', true, true, 3, 2],
+      [`${marker} Inactive`, `${marker}-inactive`, 'approved', true, false, 5, 50],
+      [`${marker} Unverified`, `${marker}-unverified`, 'unverified', false, true, 5, 50],
     ]) {
       const result = await client.query(
         `INSERT INTO ghm.business
            (name, slug, verification_status, is_verified, is_active, rating, review_count)
-         VALUES ($1, $2, 'approved', $4, $3, $5, $6)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING id`,
-        [name, slug, active, verified, rating, reviewCount],
+        [name, slug, status, verified, active, rating, reviewCount],
       );
       const id = Number(result.rows[0].id);
       fixture.businesses.push(id);
