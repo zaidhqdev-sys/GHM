@@ -71,7 +71,7 @@ const error = (e: unknown, res: Response): void => {
   res.status(500).json({ error: 'internal_error' });
 };
 
-export const registerProjectQuoteRoutes = (app: Express, service: ProjectQuoteService): void => {
+export const registerProjectQuoteRoutes = (app: Express, service: ProjectQuoteService, authMiddleware: RequestHandler = requireAuth): void => {
   app.get('/api/v1/projects/:projectId/quotes', authMiddleware, access('readReceived', ['customer']), async (req, res) => {
     try {
       const v = param(req.params.projectId); const projectId = v === null ? null : id(v);
