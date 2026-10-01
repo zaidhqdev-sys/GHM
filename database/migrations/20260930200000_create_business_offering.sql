@@ -44,10 +44,20 @@ CREATE INDEX business_offering_business_active_sort_idx
 CREATE INDEX business_offering_type_active_idx
   ON ghm.business_offering (offering_type, is_active);
 
-CREATE TRIGGER business_offering_set_updated_at
+CREATE OR REPLACE FUNCTION ghm.touch_business_offering()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $
+BEGIN
+  NEW.updated_at := now();
+  RETURN NEW;
+END;
+$;
+
+CREATE TRIGGER business_offering_updated_at
 BEFORE UPDATE ON ghm.business_offering
 FOR EACH ROW
-EXECUTE FUNCTION ghm.set_updated_at();
+EXECUTE FUNCTION ghm.touch_business_offering();
 
 REVOKE ALL ON TABLE ghm.business_offering FROM PUBLIC, ghm_runtime;
 GRANT SELECT ON TABLE ghm.business_offering TO ghm_runtime;
