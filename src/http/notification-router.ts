@@ -87,7 +87,7 @@ const handleNotificationError = (error: unknown, res: Response): void => {
   res.status(500).json({ error: 'internal_error' });
 };
 
-export const registerNotificationRoutes = (app: Express, notificationService: NotificationService): void => {
+export const registerNotificationRoutes = (app: Express, notificationService: NotificationService, authMiddleware: RequestHandler = requireAuth): void => {
   app.get('/api/v1/notifications', requireAuth, requireNotificationAccess('read'),
     async (req: Request, res: Response) => {
       try {
