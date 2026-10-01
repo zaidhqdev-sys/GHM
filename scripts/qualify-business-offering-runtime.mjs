@@ -141,12 +141,21 @@ try {
 
   const privileges = (await runtimePool.query(
     `SELECT has_table_privilege(current_user,'ghm.business_offering','SELECT') AS select_ok,
-            has_table_privilege(current_user,'ghm.business_offering','INSERT') AS insert_ok,
-            has_table_privilege(current_user,'ghm.business_offering','UPDATE') AS update_ok,
+            has_column_privilege(current_user,'ghm.business_offering','business_id','INSERT') AS insert_business_id_ok,
+            has_column_privilege(current_user,'ghm.business_offering','name','INSERT') AS insert_name_ok,
+            has_column_privilege(current_user,'ghm.business_offering','created_by','INSERT') AS insert_created_by_ok,
+            has_column_privilege(current_user,'ghm.business_offering','name','UPDATE') AS update_name_ok,
+            has_column_privilege(current_user,'ghm.business_offering','is_active','UPDATE') AS update_active_ok,
+            has_column_privilege(current_user,'ghm.business_offering','id','UPDATE') AS update_id_ok,
             has_table_privilege(current_user,'ghm.business_offering','DELETE') AS delete_ok`
   )).rows[0];
-  if (!privileges.select_ok || !privileges.insert_ok || !privileges.update_ok || privileges.delete_ok) throw new Error(`Unexpected runtime privileges: ${JSON.stringify(privileges)}`);
-  console.log('RUNTIME PRIVILEGE PASS: SELECT=yes INSERT=yes UPDATE=yes DELETE=no');
+  if (!privileges.select_ok ||
+      !privileges.insert_business_id_ok || !privileges.insert_name_ok || !privileges.insert_created_by_ok ||
+      !privileges.update_name_ok || !privileges.update_active_ok || privileges.update_id_ok ||
+      privileges.delete_ok) {
+    throw new Error(`Unexpected runtime privileges: ${JSON.stringify(privileges)}`);
+  }
+  console.log('RUNTIME PRIVILEGE PASS: SELECT=yes permitted INSERT/UPDATE columns=yes immutable UPDATE=no DELETE=no');
 
   console.log('GHM BUSINESS OFFERING RUNTIME QUALIFICATION: PASS');
 } finally {
