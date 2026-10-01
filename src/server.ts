@@ -5,6 +5,9 @@ import { pool } from './db/pool';
 
 const app = createApp();
 const server = http.createServer(app);
+server.requestTimeout = 30_000;
+server.headersTimeout = 10_000;
+server.keepAliveTimeout = 5_000;
 let ready = false;
 
 const safeErrorDetails = (error: unknown): { name: string; code?: string } => {

@@ -1,3 +1,4 @@
+import { parse as parseDotenv } from 'dotenv';
 import { readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -5,6 +6,11 @@ import path from 'node:path';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(root, '..');
+const envText = await readFile(path.join(repoRoot, '.env'), 'utf8');
+const parsedEnv = parseDotenv(envText);
+for (const [key, value] of Object.entries(parsedEnv)) {
+  if (process.env[key] === undefined) process.env[key] = value;
+}
 const serverSource = await readFile(path.join(repoRoot, 'src/server.ts'), 'utf8');
 const appSource = await readFile(path.join(repoRoot, 'src/http/app.ts'), 'utf8');
 
@@ -26,14 +32,20 @@ if (failures.length > 0) {
 }
 
 const port = '3101';
-const databaseUrl = process.env.GHM_RUNTIME_DATABASE_URL || process.env.DATABASE_URL;
+const databaseUrl = parsedEnv.GHM_RUNTIME_DATABASE_URL || parsedEnv.DATABASE_URL || process.env.GHM_RUNTIME_DATABASE_URL || process.env.DATABASE_URL;
 if (!databaseUrl) {
   console.error('Operational boundary runtime verification FAILED.');
   console.error('- GHM_RUNTIME_DATABASE_URL or DATABASE_URL is required');
   process.exit(1);
 }
 
-const childEnv = { ...process.env, DATABASE_URL: databaseUrl, PORT: port };
+const childEnv = {
+  ...parsedEnv,
+  ...process.env,
+  DATABASE_URL: databaseUrl,
+  PORT: port,
+  CORS_ORIGINS: process.env.CORS_ORIGINS || parsedEnv.CORS_ORIGINS || `http://127.0.0.1:${port}`,
+};
 
 async function run() {
   const child = spawn(process.execPath, ['dist/server.js'], {
