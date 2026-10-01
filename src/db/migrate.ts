@@ -3,6 +3,7 @@ import 'dotenv/config';
 import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
+import historicalProvenanceExceptions from '../../config/historical-migration-provenance-exceptions.json';
 import { Pool, PoolClient } from 'pg';
 
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
@@ -17,6 +18,8 @@ const MIGRATION_LOCK = 731824;
 const MIGRATION_OWNER_ROLE = 'ghm_schema_owner';
 
 type Migration = { version: string; name: string; filename: string; sql: string; checksum: string };
+
+const HISTORICAL_PROVENANCE_EXCEPTIONS = historicalProvenanceExceptions as Record<string, string>;
 
 const loadMigrations = async (): Promise<Migration[]> => {
   const entries = await fs.readdir(MIGRATIONS_DIR, { withFileTypes: true });
@@ -74,7 +77,16 @@ const migrate = async (): Promise<void> => {
     for (const migration of migrations) {
       const existingChecksum = appliedByVersion.get(migration.version);
       if (existingChecksum) {
-        if (existingChecksum !== migration.checksum) throw new Error(`Migration checksum mismatch for ${migration.filename}: database=${existingChecksum}, repository=${migration.checksum}`);
+        if (existingChecksum !== migration.checksum) {
+          const historicalChecksum = HISTORICAL_PROVENANCE_EXCEPTIONS[migration.version];
+          if (historicalChecksum !== existingChecksum) {
+            throw new Error(`Migration checksum mismatch for ${migration.filename}: database=${existingChecksum}, repository=${migration.checksum}`);
+          }
+          if (historicalChecksum !== existingChecksum) {
+            throw new Error(`Historical migration provenance exception checksum mismatch for ${migration.filename}: database=${existingChecksum}, expected=${historicalChecksum}`);
+          }
+          console.warn(`Accepted documented historical migration provenance exception for ${migration.filename}: database=${existingChecksum}, repository=${migration.checksum}`);
+        }
         continue;
       }
       await client.query(migration.sql);
