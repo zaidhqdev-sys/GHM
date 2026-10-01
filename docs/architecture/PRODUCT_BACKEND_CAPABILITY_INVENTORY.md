@@ -1,6 +1,6 @@
 # Product Backend Capability Inventory
 
-**Status:** Construction capability inventory — reconciled through Saved Business QUALIFIED / CLOSED
+**Status:** Construction capability inventory — reconciled through Business Offering QUALIFIED / CLOSED (2026-10-01)
 
 This document records capabilities GHM may eventually support to replace current managed backend dependencies. It deliberately separates capability requirements from Supabase implementation details and does not authorize production migration.
 
@@ -56,6 +56,7 @@ The following GHM construction capabilities have now been implemented and qualif
 - Notification
 - Support Request
 - Saved Business
+- Business Offering (read/readPublic/create/update; deactivation; runtime qualification)
 - Resource API boundary
 - Operational boundary
 
@@ -120,6 +121,7 @@ QUALIFIED CONSTRUCTION
   Project Quote
   Capability Catalogue
   Business Capability (read/create)
+  Business Offering
   Business Hours
   Commercial trial operation
   Notification
