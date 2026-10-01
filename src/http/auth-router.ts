@@ -56,6 +56,14 @@ const loginRateLimit = rateLimit({
   handler: (_req, res) => res.status(429).json({ error: 'rate_limited' }),
 });
 
+const passwordRecoveryRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  handler: (_req, res) => res.status(429).json({ error: 'rate_limited' }),
+});
+
 const refreshRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 60,
@@ -85,7 +93,7 @@ export const registerAuthRoutes = (
     return authService;
   };
 
-  app.post('/api/v1/auth/password-recovery/request', async (req: Request, res: Response) => {
+  app.post('/api/v1/auth/password-recovery/request', passwordRecoveryRateLimit, async (req: Request, res: Response) => {
     try {
       const input = parseRecoveryBody(req.body);
       if (!input) {
