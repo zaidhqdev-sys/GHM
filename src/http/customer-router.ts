@@ -82,7 +82,7 @@ const handleCustomerError = (error: unknown, res: Response): void => {
 export const registerCustomerRoutes = (app: Express, customerService: CustomerService, authMiddleware: RequestHandler = requireAuth): void => {
   app.get(
     '/api/v1/customers',
-    requireAuth,
+    authMiddleware,
     requireCustomerAccess('read'),
     async (req: Request, res: Response) => {
       try {
@@ -107,7 +107,7 @@ export const registerCustomerRoutes = (app: Express, customerService: CustomerSe
 
   app.get(
     '/api/v1/customers/:customerId',
-    requireAuth,
+    authMiddleware,
     requireCustomerAccess('read'),
     async (req: Request, res: Response) => {
       try {
@@ -132,7 +132,7 @@ export const registerCustomerRoutes = (app: Express, customerService: CustomerSe
 
   app.post(
     '/api/v1/customers',
-    requireAuth,
+    authMiddleware,
     requireCustomerAccess('create'),
     async (req: Request, res: Response) => {
       try {
@@ -152,7 +152,7 @@ export const registerCustomerRoutes = (app: Express, customerService: CustomerSe
 
   app.patch(
     '/api/v1/customers/:customerId',
-    requireAuth,
+    authMiddleware,
     requireCustomerAccess('update'),
     async (req: Request, res: Response) => {
       try {
