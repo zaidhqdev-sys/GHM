@@ -46,6 +46,7 @@ const handleOpportunityError = (error: unknown, res: Response): void => {
 export const registerOpportunityRoutes = (
   app: Express,
   service: OpportunityService = new OpportunityServiceImpl(new PostgresOpportunityRepository()),
+  authMiddleware: RequestHandler = requireAuth,
 ): void => {
   app.get(
     '/api/v1/opportunities/:opportunityId',
