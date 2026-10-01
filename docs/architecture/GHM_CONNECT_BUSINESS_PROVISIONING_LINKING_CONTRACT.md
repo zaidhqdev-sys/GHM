@@ -94,18 +94,11 @@ The implementation must therefore use a transaction/concurrency mechanism that m
 
 A race that creates an unlinked orphan Business is not an acceptable qualified outcome.
 
-## 7. Conflict behavior
+## 7. Mapping immutability
 
-If the external mapping exists:
+An existing external mapping is authoritative. The adapter resolves the mapped canonical Business and never relinks, transfers, merges, or reassigns it.
 
-```text
-existing mapping -> Business X
-requested target -> Business Y
-```
-
-the operation returns a deterministic conflict and never changes the mapping.
-
-No merge, transfer, reassignment, or ownership inference is permitted.
+The underlying LINK-ONLY function retains deterministic conflict behavior for callers that explicitly attempt to link an already-mapped external identity to a different canonical Business. This provisioning adapter does not expose such a target-selection operation.
 
 ## 8. Ownership boundary
 
@@ -151,7 +144,7 @@ The implementation must distinguish at minimum:
 - business-operator authorization required;
 - existing mapping resolved;
 - Business provisioned and linked;
-- mapping conflict;
+- conflicting explicit mapping-link attempt (outside this provisioning adapter);
 - canonical Business creation failure;
 - mapping/link failure;
 - concurrency conflict.
@@ -207,7 +200,7 @@ Before this adapter is construction-qualified, evidence must demonstrate:
 8. the new external mapping points to the created canonical Business;
 9. repeated requests are idempotent;
 10. concurrent first-time requests converge on one canonical Business;
-11. mapping conflicts fail closed;
+11. the existing LINK-ONLY mapping boundary remains immutable and rejects conflicting explicit link attempts;
 12. mappings cannot be transferred;
 13. no name/email/slug matching occurs;
 14. Supabase JWTs are not accepted as GHM bearer credentials;
