@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import jwt from 'jsonwebtoken';
 import http from 'node:http';
 import test from 'node:test';
 import { generateKeyPairSync } from 'node:crypto';
