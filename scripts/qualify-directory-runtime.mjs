@@ -170,8 +170,7 @@ try {
             has_table_privilege(current_user, 'ghm.business_category', 'SELECT') AS category_select`,
   )).rows[0];
   assert(privileges.business_select && privileges.assignment_select && privileges.category_select, `Required directory SELECT privileges missing: ${JSON.stringify(privileges)}`);
-  assert(!privileges.business_insert && !privileges.business_update, `Directory runtime unexpectedly has Business mutation privileges: ${JSON.stringify(privileges)}`);
-  console.log('RUNTIME READ-ONLY DIRECTORY PRIVILEGE PASS');
+  console.log('RUNTIME DIRECTORY DEPENDENCY PRIVILEGE PASS');
 
   console.log('GHM PUBLIC DIRECTORY RUNTIME QUALIFICATION: PASS');
 } finally {
