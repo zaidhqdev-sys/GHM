@@ -90,11 +90,17 @@ export class BusinessOfferingServiceImpl implements BusinessOfferingService {
     assertKeys(input, UPDATE_KEYS);
     if (Object.keys(input).length === 0) throw new Error('Offering update input is required');
     validateCommon(input);
-    const normalized: UpdateBusinessOfferingInput = { ...input };
-    if (input.name !== undefined) normalized.name = text(input.name, 'Name', 1, 160);
-    if (input.slug !== undefined) normalized.slug = text(input.slug, 'Slug', 1, 120);
-    if (input.description !== undefined && input.description !== null) normalized.description = text(input.description, 'Description', 1, 4000);
-    if (input.priceUnit !== undefined && input.priceUnit !== null) normalized.priceUnit = text(input.priceUnit, 'Price unit', 1, 80);
+    const normalized: UpdateBusinessOfferingInput = Object.freeze({
+      ...input,
+      ...(input.name !== undefined ? { name: text(input.name, 'Name', 1, 160) } : {}),
+      ...(input.slug !== undefined ? { slug: text(input.slug, 'Slug', 1, 120) } : {}),
+      ...(input.description !== undefined && input.description !== null
+        ? { description: text(input.description, 'Description', 1, 4000) }
+        : {}),
+      ...(input.priceUnit !== undefined && input.priceUnit !== null
+        ? { priceUnit: text(input.priceUnit, 'Price unit', 1, 80) }
+        : {}),
+    });
     return this.repository.updateBusinessOffering(context, offeringId, normalized);
   }
 
