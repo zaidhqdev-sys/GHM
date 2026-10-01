@@ -387,7 +387,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       const parsePositiveQueryInteger = (key: string): number | undefined => {
         const value = readStringQuery(key);
         if (value === undefined) return undefined;
-        if (!/^[1-9]\\d*$/.test(value)) throw new Error('invalid_query_parameter');
+        if (!/^[1-9]\d*$/.test(value)) throw new Error('invalid_query_parameter');
         const parsed = Number(value);
         if (!Number.isSafeInteger(parsed) || parsed <= 0) throw new Error('invalid_query_parameter');
         return parsed;
