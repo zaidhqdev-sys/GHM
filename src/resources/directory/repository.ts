@@ -61,9 +61,9 @@ const textPredicate = (query: DirectoryQuery): { sql: string; values: unknown[] 
   const escaped = query.q.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
   return {
     sql: `AND (
-      b.name ILIKE '%' || $1 || '%' ESCAPE '\\\\'
-      OR b.slug ILIKE '%' || $1 || '%' ESCAPE '\\\\'
-      OR COALESCE(b.description, '') ILIKE '%' || $1 || '%' ESCAPE '\\\\'
+      b.name ILIKE '%' || $1 || '%' ESCAPE '\\'
+      OR b.slug ILIKE '%' || $1 || '%' ESCAPE '\\'
+      OR COALESCE(b.description, '') ILIKE '%' || $1 || '%' ESCAPE '\\'
     )`,
     values: [escaped],
   };
@@ -78,7 +78,7 @@ const categoryPredicate = (query: DirectoryQuery, parameterIndex: number): { sql
       JOIN ghm.business_category bc ON bc.id = bca.category_id
       WHERE bca.business_id = b.id
         AND bc.is_active = true
-        AND (bc.id::text = ${parameterIndex} OR bc.slug = ${parameterIndex})
+        AND (bc.id::text = $${parameterIndex} OR bc.slug = $${parameterIndex})
     )`,
     values: [query.category],
   };
