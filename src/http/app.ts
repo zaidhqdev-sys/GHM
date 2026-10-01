@@ -396,8 +396,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       const result = await directoryService.search({
         q: readStringQuery('q'),
         category: readStringQuery('category'),
-        page: parsePositiveQueryInteger('page'),
-        pageSize: parsePositiveQueryInteger('pageSize'),
+        page: parsePositiveQueryInteger('page') ?? 1,
+        pageSize: parsePositiveQueryInteger('pageSize') ?? 20,
       });
       res.status(200).json(result);
     } catch (error) {
