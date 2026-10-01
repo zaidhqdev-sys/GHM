@@ -120,19 +120,20 @@ try {
 
   const f = await createFixture();
   const service = new DirectoryServiceImpl(new PostgresDirectoryRepository(runtimePool));
+  const fixtureQuery = { q: marker, page: 1, pageSize: 20 };
 
-  const visible = await service.search({ page: 1, pageSize: 20 });
+  const visible = await service.search(fixtureQuery);
   assert(visible.total === 2, `Expected exactly two public fixture businesses, got ${visible.total}`);
   assert(visible.items.length === 2, `Expected two public fixture rows, got ${visible.items.length}`);
   assert(visible.items[0].id === f.high, 'Stable rating ordering did not place the high-rated fixture first');
   assert(!visible.items.some(item => item.id === f.inactive || item.id === f.unverified), 'Visibility predicate leaked inactive/unverified business');
   console.log('PUBLIC VISIBILITY + RATING ORDER PASS');
 
-  const categoryUuid = await service.search({ category: f.categoryA, page: 1, pageSize: 20 });
+  const categoryUuid = await service.search({ q: marker, category: f.categoryA, page: 1, pageSize: 20 });
   assert(categoryUuid.total === 1 && categoryUuid.items[0]?.id === f.high, 'Category UUID filter failed');
   console.log('CATEGORY UUID FILTER PASS');
 
-  const categorySlug = await service.search({ category: f.categoryBSlug, page: 1, pageSize: 20 });
+  const categorySlug = await service.search({ q: marker, category: f.categoryBSlug, page: 1, pageSize: 20 });
   assert(categorySlug.total === 1 && categorySlug.items[0]?.id === f.low, 'Category slug filter failed');
   console.log('CATEGORY SLUG FILTER PASS');
 
@@ -144,8 +145,8 @@ try {
   assert(escaped.total === 0, 'Escaped wildcard query unexpectedly matched fixture businesses');
   console.log('TEXT WILDCARD ESCAPING PASS');
 
-  const pageOne = await service.search({ page: 1, pageSize: 1 });
-  const pageTwo = await service.search({ page: 2, pageSize: 1 });
+  const pageOne = await service.search({ q: marker, page: 1, pageSize: 1 });
+  const pageTwo = await service.search({ q: marker, page: 2, pageSize: 1 });
   assert(pageOne.total === 2 && pageTwo.total === 2, 'Pagination total is inconsistent');
   assert(pageOne.items.length === 1 && pageTwo.items.length === 1, 'Pagination page size is inconsistent');
   assert(pageOne.items[0]?.id === f.high && pageTwo.items[0]?.id === f.low, 'Pagination ordering is not stable');
