@@ -42,7 +42,7 @@ Evidence inspected (read-only) at HEAD `239ef5d`:
 
 | Area | Path |
 |---|---|
-| JWT verification | `src/auth/request-context.ts` |
+| JWT verification | `src/auth/ghm-bearer.ts` + ES256 access-JWT foundation |
 | HTTP auth middleware | `src/auth/http.ts` |
 | Authorization helpers / `AuthContext` | `src/auth/authorization.ts` |
 | Config | `src/config.ts` (`INVITE_CODE` plus database/CORS/runtime settings); ES256 signing material is loaded by the canonical key loader from the dedicated `GHM_JWT_ES256_*` environment variables. |
