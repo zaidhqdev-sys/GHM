@@ -70,7 +70,7 @@ const parseCategoryBody = (body: unknown): { categoryId: string } | null => {
   return { categoryId: input.categoryId };
 };
 
-export const registerBusinessCategoryRoutes = (app: Express, businessCategoryService: BusinessCategoryService): void => {
+export const registerBusinessCategoryRoutes = (app: Express, businessCategoryService: BusinessCategoryService, authMiddleware: RequestHandler = requireAuth): void => {
   app.get('/api/v1/business-categories', requireAuth, requireCategoryAccess('business_category', 'read'), async (req: Request, res: Response) => {
     try {
       const activeOnly = parseActiveOnly(req.query.activeOnly);
