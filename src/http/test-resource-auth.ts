@@ -1,10 +1,11 @@
+import { generateKeyPairSync } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import type { AuthContext } from '../auth/authorization';
 import { loadEs256Keys } from '../auth/foundation/es256-keys';
 import { ACCESS_JWT_AUD, ACCESS_JWT_ISS } from '../auth/foundation/access-jwt';
 
-const { privateKey, publicKey } = require('node:crypto').generateKeyPairSync('ec', { namedCurve: 'P-256' });
+const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
 const privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
 const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
 const keys = loadEs256Keys({
