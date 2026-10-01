@@ -14,7 +14,7 @@ const requirement: OpportunityCapabilityRequirement = {
   description: 'Electrical installation', sortOrder: 0,
 };
 const start = async (service: OpportunityRequirementsService) => {
-  const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth, opportunityRequirementsService: service }));
+  const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth, resourceAuthMiddleware: httpTestAuth, opportunityRequirementsService: service }));
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   const address = server.address(); assert.ok(address && typeof address !== 'string');
   return { server, url: `http://127.0.0.1:${address.port}` };
