@@ -1,12 +1,14 @@
 # GHM Production Security Baseline
 
+**Current authentication reconciliation:** GHM resource APIs now use the canonical ES256 bearer path. The former HS/`JWT_SECRET` resource verifier has been removed. Historical architecture records may retain the old shape as provenance; they are not current runtime configuration.
+
 GHM is not production-approved until all controls below are satisfied.
 
 ## Runtime configuration
 
 - `NODE_ENV=production` must be explicit in production.
 - `DATABASE_URL` must be present and point to the approved PostgreSQL instance.
-- `JWT_SECRET` must be present, high-entropy, and unique per environment.
+- GHM ES256 signing configuration must be present in production: `GHM_JWT_ES256_PRIVATE_KEY_PEM`, `GHM_JWT_ES256_PUBLIC_KEY_PEM`, and `GHM_JWT_ES256_KID`; any configured previous public key must use the matching `GHM_JWT_ES256_PREVIOUS_PUBLIC_KEY_PEM` + `GHM_JWT_ES256_PREVIOUS_KID` pair.
 - The application must fail fast when required secrets are missing.
 - No fallback credentials, tokens, or secrets may exist in source code.
 
@@ -21,7 +23,7 @@ GHM is not production-approved until all controls below are satisfied.
 ## Authentication
 
 - Bearer tokens must use strict `Bearer <token>` parsing.
-- JWT verification must use the configured secret and approved algorithms.
+- Bearer JWT verification must be ES256-only, with explicit issuer/audience/algorithm/expiration/subject validation and key selection by `kid`.
 - Password-reset tokens must be stored hashed, expire quickly, be single-use, and never be returned in API responses.
 - Password-reset delivery must occur through an approved delivery boundary.
 
