@@ -401,7 +401,7 @@ Exact clock-skew tolerance remains an implementation detail. Refresh/session dur
 
 | Evidence | Finding |
 |---|---|
-| Current JWT secret | `JWT_SECRET` via env (`src/config.ts`, `.env.example`) — HS shared secret pattern; **no** asymmetric private-key config |
+| Current JWT signing/verification | GHM ES256 with secret-managed key material loaded from `src/auth/foundation/es256-keys.ts`; legacy HS/`JWT_SECRET` resource verification is removed |
 | Source control | Secrets must not be committed (Issuance ADR / handovers); `.env.example` leaves secret values empty |
 | Cloud SDKs in repo | `@aws-sdk/client-s3` + presigner only — **object storage**, not JWT signing, Secrets Manager, or KMS evidence |
 | KMS / HSM / Vault | **No** repository config, docs, or runtime wiring establishing a JWT signing KMS/HSM or named secret product |
@@ -409,8 +409,8 @@ Exact clock-skew tolerance remains an implementation detail. Refresh/session dur
 | Issuer boundary | Private signing material must remain inside GHM issuer process/host boundary (Founder-selected) |
 
 ```text
-CURRENT EVIDENCE = env-delivered JWT_SECRET (HS).
-NO ASYMMETRIC KEY STORE, KMS, OR NAMED SECRET PRODUCT SELECTED IN REPO.
+CURRENT EVIDENCE = secret-managed ES256 key material loaded from dedicated `GHM_JWT_ES256_*` environment variables.
+NO JWT signing key is stored in the database, and no mandatory KMS/HSM product is required by the current gate.
 Do not invent cloud product names, key names, paths, or key values.
 ```
 
@@ -589,7 +589,7 @@ A GHM API verifying an access token **must** validate:
 - tokens missing required claims
 - arbitrary product-created identity tokens
 - **Supabase JWTs presented directly as GHM credentials**
-- HS/`JWT_SECRET` product tokens once the target verifier is active (cutover mechanics are an implementation gate — current HS verifier remains live until then)
+- HS/`JWT_SECRET` product tokens — the legacy resource verifier has been removed and such bearer credentials fail closed
 
 Do **not** implement the verifier in this gate.
 
@@ -682,8 +682,7 @@ NOT GRANTED.
 
 ```text
 AUTHENTICATION GATE 2A DOCUMENTATION COMPLETE.
-CURRENT HS / JWT_SECRET IMPLEMENTATION UNCHANGED.
-TARGET CRYPTOGRAPHIC CONTRACT DOCUMENTED; JWT PARAMETERS PENDING FOUNDER DECISION.
+The HS / JWT_SECRET implementation described in this historical gate has since been reconciled to the selected ES256 implementation. The cryptographic selections and key-management invariants below remain the governing contract.
 CREDENTIAL SELECTIONS (EMAIL / PASSWORD / ARGON2ID) ARE DOCUMENTED IN THE CREDENTIAL CONTRACT AND DO NOT SELECT JWT ALGORITHM / ISS / AUD / KEY STORAGE.
 NO KEYS GENERATED.
 NO ENDPOINTS ADDED.
