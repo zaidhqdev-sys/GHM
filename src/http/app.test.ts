@@ -551,7 +551,7 @@ test('project create route rejects server-owned fields before service execution'
   const { server, baseUrl } = await startProjectTestServer(projectService);
 
   try {
-    const token = jwt.sign({ userId: 42, role: 'business' });
+    const token = tokenFor({ userId: 42, role: 'business' });
 
     const response = await fetch(`${baseUrl}/api/v1/projects`, {
       method: 'POST',
