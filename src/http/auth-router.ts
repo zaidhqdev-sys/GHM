@@ -34,7 +34,6 @@ const tokenPayload = (tokens: AuthTokenResponse) => ({
 });
 
 const handleAuthError = (error: unknown, res: Response): void => {
-  // Lazy import keeps HS product test suites from loading Auth secret config at import time.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { GhmAuthServiceError } = require('../auth/ghm-auth-service') as typeof import('../auth/ghm-auth-service');
   if (error instanceof GhmAuthServiceError) {
@@ -81,7 +80,7 @@ export const registerAuthRoutes = (
   app: Express,
   dependencies: AuthRouterDependencies = {},
 ): void => {
-  // Lazy default: existing HS product tests createApp() without GHM Auth secrets.
+  // Auth service construction remains lazy so callers may inject a qualified service in tests or composition roots.
   let authService = dependencies.authService;
   const passwordRecoveryService = dependencies.passwordRecoveryService;
   const getAuthService = (): GhmAuthService => {
