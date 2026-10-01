@@ -21,9 +21,9 @@ The audit identified 48 concrete Connect backend dependencies and 54 coverage ro
 
 | Classification | Count |
 |---|---:|
-| ALREADY PROVIDES | 12 |
+| ALREADY PROVIDES | 13 |
 | PARTIALLY PROVIDES | 18 |
-| DOES NOT YET PROVIDE | 15 |
+| DOES NOT YET PROVIDE | 14 |
 | CONNECT-LOCAL | 2 |
 | EXTERNAL PROVIDER | 6 |
 | EVIDENCE INSUFFICIENT | 1 grouped set / 13 referenced objects |
@@ -59,7 +59,6 @@ These are **not** migration-missing. They remain blocked for GHM construction un
 
 - `business_capability_evidence`
 - `business_categories` / `business_category_assignments`
-- `business_offerings`
 - ~~`trust_scores`~~ → GHM `trust_score` QUALIFIED / CLOSED (Business profile input parity still open)
 - `account_onboarding_progress`
 - `business_engagement_events` / `business_profile_view_visitors`
@@ -102,6 +101,7 @@ The following remain closed and must not be reopened merely because the readines
 - Project Quote
 - Capability Catalogue selectable/active read
 - Business Capability read/create
+- Business Offering (read/readPublic/create/update; deactivation; runtime qualification)
 - Business Hours weekly schedule
 - Commercial trial operation
 - Notification persistence
@@ -241,10 +241,12 @@ The verified audit now gives the concrete gap boundary required to authorize fut
 ### GHM impact
 
 - No closed capability reopened
-- No migrations/resources/adapters authorized
+- Business Offering migration/resource slice is now qualified and closed; no product adapter or cutover is authorized
 - Blockers 1â€“13, 15â€“16 remain production-readiness blockers
 - Blocker 14 narrowed: orphans vs proven-missing-contracts now separated
 
 ### Construction authorization
 
-**Current reconciled state:** Connect identity adapter boundary is Founder-authorized and construction-qualified. The qualified GHM authentication foundation and this adapter qualification do not authorize product session migration, production cutover, or any other Connect product adapter.
+**Current reconciled state:** Connect identity adapter boundary is Founder-authorized and construction-qualified. Business Offering is also **QUALIFIED / CLOSED** at the GHM construction boundary. Its qualification is recorded in `BUSINESS_OFFERING_OPERATION_CONTRACT.md` and the dedicated runtime evidence below.
+
+The Business Offering qualification does not authorize a public HTTP API, product session migration, production cutover, or any other Connect product adapter. The next product construction capability still requires a separate evidence-backed contract and explicit authorization.
