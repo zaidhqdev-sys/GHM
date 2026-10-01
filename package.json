@@ -33,7 +33,8 @@
     "qualify:business-profile-runtime": "npm run build && node scripts/qualify-business-profile-runtime.mjs",
     "qualify:campaign-runtime": "npm run build && node scripts/qualify-campaign-runtime.mjs",
     "qualify:business-category-runtime": "npm run build && node scripts/qualify-business-category-runtime.mjs",
-    "qualify:connect-business-provisioning-live": "npm run build && node --require ./scripts/test-env.cjs --test dist/integrations/connect/business-adapter.persistence.test.js"
+    "qualify:connect-business-provisioning-live": "npm run build && node --require ./scripts/test-env.cjs --test dist/integrations/connect/business-adapter.persistence.test.js",
+    "qualify:business-offering-runtime": "npm run build && node scripts/qualify-business-offering-runtime.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",
