@@ -1,22 +1,20 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import test from 'node:test';
-import jwt from 'jsonwebtoken';
 import { createApp } from './app';
-import { config } from '../config';
+import { httpTestAuth, tokenFor as es256TokenFor } from './test-resource-auth';
 import type { AuthContext } from '../auth/authorization';
 import type { BusinessCapability, BusinessCapabilityService } from '../resources/business-capability/contracts';
 
 const startServer = async (service: BusinessCapabilityService) => {
-  const server = http.createServer(createApp({ businessCapabilityService: service }));
+  const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth, businessCapabilityService: service }));
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
   return { server, baseUrl: `http://127.0.0.1:${address.port}` };
 };
 
-const tokenFor = (context: AuthContext) =>
-  jwt.sign({ userId: context.userId, role: context.role }, config.jwtSecret);
+const tokenFor = es256TokenFor;
 
 const fixture = (context: AuthContext): BusinessCapability => ({
   id: 101,
