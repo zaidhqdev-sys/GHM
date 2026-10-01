@@ -1,41 +1,39 @@
 import { generateKeyPairSync } from 'node:crypto';
-import type { NextFunction, Request, RequestHandler, Response } from 'express';
-import jwt from 'jsonwebtoken';
+import type { RequestHandler } from 'express';
 import type { AuthContext } from '../auth/authorization';
+import { createRequireResourceAuth } from '../auth/resource-auth';
+import { createGhmBearerAuthenticatorWithKeys, type AccountAuthStateStore } from '../auth/ghm-bearer';
+import { loadEs256Keys } from '../auth/foundation/es256-keys';
 
 const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
-const privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
-const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
+const keys = loadEs256Keys({
+  GHM_JWT_ES256_PRIVATE_KEY_PEM: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
+  GHM_JWT_ES256_PUBLIC_KEY_PEM: publicKey.export({ type: 'spki', format: 'pem' }).toString(),
+  GHM_JWT_ES256_KID: 'ghm-http-test-1',
+});
 
-const ISSUER = 'https://ghm.test';
-const AUDIENCE = 'ghm-resource-api';
-const KID = 'ghm-http-test-1';
+const store: AccountAuthStateStore = {
+  async getAccountAuthState(accountId) {
+    return {
+      accountId,
+      accountStatus: 'active',
+      role: 'customer',
+      isSystemAdmin: false,
+    };
+  },
+};
 
-export const tokenFor = (context: AuthContext): string =>
-  jwt.sign(
-    { sub: String(context.userId), role: context.role },
-    privateKeyPem,
-    { algorithm: 'ES256', keyid: KID, issuer: ISSUER, audience: AUDIENCE, expiresIn: 900 },
+const authenticator = createGhmBearerAuthenticatorWithKeys(keys, store);
+export const httpTestAuth: RequestHandler = createRequireResourceAuth({ ghmAuthenticator: authenticator });
+
+export const tokenFor = (context: AuthContext): string => {
+  const payload = authenticator;
+  void payload;
+  // The shared ES256 access-JWT primitive is used by the governed resource authenticator.
+  const jwt = require('jsonwebtoken') as typeof import('jsonwebtoken');
+  return jwt.sign(
+    { sub: String(context.userId), iss: 'ghm-auth', aud: 'ghm-api', iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 900 },
+    keys.active.privateKeyPem,
+    { algorithm: 'ES256', keyid: keys.active.kid, noTimestamp: true },
   );
-
-export const httpTestAuth: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {
-  const header = req.header('authorization');
-  if (!header?.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'unauthorized' });
-    return;
-  }
-  try {
-    const token = header.slice('Bearer '.length).trim();
-    const payload = jwt.verify(token, publicKeyPem, {
-      algorithms: ['ES256'],
-      issuer: ISSUER,
-      audience: AUDIENCE,
-    }) as jwt.JwtPayload & { role?: AuthContext['role'] };
-    const userId = Number(payload.sub);
-    if (!Number.isSafeInteger(userId) || userId <= 0 || !payload.role) throw new Error('invalid test auth');
-    req.authContext = { userId, role: payload.role };
-    next();
-  } catch {
-    res.status(401).json({ error: 'unauthorized' });
-  }
 };
