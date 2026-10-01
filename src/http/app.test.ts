@@ -354,9 +354,7 @@ test('public project route allows authenticated non-owner disclosure without pri
   );
 
   try {
-    const token = tokenFor({ sub: '999', role: 'business' },
-      config.jwtSecret,
-    );
+    const token = tokenFor({ userId: 999, role: 'business' });
 
     const response = await fetch(
       `${baseUrl}/api/v1/public/projects/${project.id}`,
