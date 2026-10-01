@@ -101,27 +101,29 @@ In particular, Connect's `owner_id` is a provider UUID and must not be copied in
 
 ## 5. Public Business read boundary
 
-GHM should expose a distinct `business.readPublic` projection rather than treating the managed Business Identity object as the public directory response.
+GHM exposes a distinct `business.readPublic` projection rather than treating the managed Business Identity object as the public directory response.
 
-The public projection should compose only fields whose canonical ownership and public visibility are already qualified.
-
-Initial qualified projection:
+The first construction slice is intentionally limited to fields already owned by `ghm.business` and proven safe for public disclosure:
 
 - canonical GHM `businessId`
 - `name`
 - `slug`
 - `description`
-- public-safe contact fields already owned by Business Identity
-- `verificationStatus` only where public eligibility permits it
-- `isActive` only as a visibility predicate, not as an uncontrolled public management field
+- `phone`
+- `email`
 - `rating`
 - `reviewCount`
-- public Trust summary where the existing Trust public contract is applicable
-- public category assignments where the existing category public semantics are applicable
-- public capabilities where the existing capability read contract permits them
-- public business hours where applicable
+- `jobsCompleted`
+- `verificationStatus`
+- `isVerified`
+- `createdAt`
+- `updatedAt`
 
-The projection must not expose private membership, owner identity, protected verification data, moderation data, or provider-specific identifiers.
+The projection enforces the existing public visibility predicate: active Business, verified Business, and approved verification status.
+
+Trust, reviews, categories, capabilities, and hours remain separate qualified public resources. They are not duplicated or implicitly embedded into this first projection slice. A later composed public Business response may consume those existing boundaries only after an explicit contract and qualification prove the response shape and authorization semantics.
+
+The projection must not expose private membership, owner identity, protected verification details, moderation data, or provider-specific identifiers.
 
 ## 6. Public visibility predicate
 
