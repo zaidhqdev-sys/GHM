@@ -79,7 +79,7 @@ const handleCustomerError = (error: unknown, res: Response): void => {
   res.status(500).json({ error: 'internal_error' });
 };
 
-export const registerCustomerRoutes = (app: Express, customerService: CustomerService): void => {
+export const registerCustomerRoutes = (app: Express, customerService: CustomerService, authMiddleware: RequestHandler = requireAuth): void => {
   app.get(
     '/api/v1/customers',
     requireAuth,
