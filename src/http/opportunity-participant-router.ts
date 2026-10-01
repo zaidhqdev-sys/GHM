@@ -64,7 +64,7 @@ const handleError = (error: unknown, res: Response): void => {
   res.status(500).json({ error: 'internal_error' });
 };
 
-export const registerOpportunityParticipantRoutes = (app: Express, service: OpportunityParticipantService): void => {
+export const registerOpportunityParticipantRoutes = (app: Express, service: OpportunityParticipantService, authMiddleware: RequestHandler = requireAuth): void => {
   app.get('/api/v1/opportunities/:opportunityId/participants', requireAuth, requireParticipantAccess('read'), async (req, res) => {
     try {
       const context = req.authContext as AuthContext;
