@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import { config as loadDotenv } from 'dotenv';
 import { readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -6,6 +6,7 @@ import path from 'node:path';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(root, '..');
+loadDotenv({ path: path.join(repoRoot, '.env') });
 const serverSource = await readFile(path.join(repoRoot, 'src/server.ts'), 'utf8');
 const appSource = await readFile(path.join(repoRoot, 'src/http/app.ts'), 'utf8');
 
