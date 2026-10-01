@@ -1,10 +1,9 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import test from 'node:test';
-import jwt from 'jsonwebtoken';
 import { createApp } from './app';
+import { httpTestAuth, tokenFor } from './test-resource-auth';
 import { AuthContext } from '../auth/authorization';
-import { config } from '../config';
 import { Project, ProjectService } from '../resources/project/contracts';
 import { PublicProject, PublicProjectService } from '../resources/project/public-contracts';
 import { AccountIdentity, BusinessIdentityService } from '../resources/business-identity/contracts';
@@ -22,7 +21,7 @@ const profile = (context: AuthContext): AccountIdentity => ({
 });
 
 const startTestServer = async (service: BusinessIdentityService) => {
-  const server = http.createServer(createApp({ businessIdentityService: service }));
+  const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth, businessIdentityService: service }));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
@@ -48,7 +47,7 @@ const publicBusinessFixture = (overrides: Partial<PublicBusiness> = {}): PublicB
 
 const startPublicBusinessTestServer = async (publicBusinessService: PublicBusinessService) => {
   const businessService = {} as BusinessIdentityService;
-  const server = http.createServer(createApp({ businessIdentityService: businessService, publicBusinessService }));
+  const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth, businessIdentityService: businessService, publicBusinessService }));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
@@ -57,7 +56,7 @@ const startPublicBusinessTestServer = async (publicBusinessService: PublicBusine
 
 const startDirectoryTestServer = async (directoryService: DirectoryService) => {
   const businessService = {} as BusinessIdentityService;
-  const server = http.createServer(createApp({ businessIdentityService: businessService, directoryService }));
+  const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth, businessIdentityService: businessService, directoryService }));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
@@ -221,7 +220,7 @@ test('protected profile route authenticates and binds the JWT context to the ser
   } as unknown as BusinessIdentityService;
   const { server, baseUrl } = await startTestServer(service);
   try {
-    const token = jwt.sign({ userId: 42, role: 'business' }, config.jwtSecret);
+    const token = tokenFor({ userId: 42, role: 'business' });
     const response = await fetch(`${baseUrl}/api/v1/profile`, {
       headers: { authorization: `Bearer ${token}` },
     });
@@ -259,7 +258,7 @@ const startProjectTestServer = async (
   },
 ) => {
   const businessService = {} as BusinessIdentityService;
-  const server = http.createServer(createApp({
+  const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth,
     businessIdentityService: businessService,
     projectService,
     publicProjectService,
@@ -355,8 +354,7 @@ test('public project route allows authenticated non-owner disclosure without pri
   );
 
   try {
-    const token = jwt.sign(
-      { sub: '999', role: 'business' },
+    const token = tokenFor({ sub: '999', role: 'business' },
       config.jwtSecret,
     );
 
@@ -555,7 +553,7 @@ test('project create route rejects server-owned fields before service execution'
   const { server, baseUrl } = await startProjectTestServer(projectService);
 
   try {
-    const token = jwt.sign({ userId: 42, role: 'business' }, config.jwtSecret);
+    const token = jwt.sign({ userId: 42, role: 'business' });
 
     const response = await fetch(`${baseUrl}/api/v1/projects`, {
       method: 'POST',
@@ -597,7 +595,7 @@ test('project create route binds authenticated context and returns the created p
   const { server, baseUrl } = await startProjectTestServer(projectService);
 
   try {
-    const token = jwt.sign({ userId: 42, role: 'business' }, config.jwtSecret);
+    const token = tokenFor({ userId: 42, role: 'business' });
 
     const response = await fetch(`${baseUrl}/api/v1/projects`, {
       method: 'POST',
@@ -653,7 +651,7 @@ test('project owner read route returns the owned project', async () => {
   const { server, baseUrl } = await startProjectTestServer(projectService);
 
   try {
-    const token = jwt.sign({ userId: 42, role: 'customer' }, config.jwtSecret);
+    const token = tokenFor({ userId: 42, role: 'customer' });
 
     const response = await fetch(`${baseUrl}/api/v1/projects/101`, {
       headers: { authorization: `Bearer ${token}` },
@@ -678,7 +676,7 @@ test('project non-owner read route returns not found', async () => {
   const { server, baseUrl } = await startProjectTestServer(projectService);
 
   try {
-    const token = jwt.sign({ userId: 99, role: 'business' }, config.jwtSecret);
+    const token = tokenFor({ userId: 99, role: 'business' });
 
     const response = await fetch(`${baseUrl}/api/v1/projects/101`, {
       headers: { authorization: `Bearer ${token}` },
@@ -700,7 +698,7 @@ test('project routes reject invalid ids', async () => {
   const { server, baseUrl } = await startProjectTestServer(projectService);
 
   try {
-    const token = jwt.sign({ userId: 42, role: 'business' }, config.jwtSecret);
+    const token = tokenFor({ userId: 42, role: 'business' });
 
     const getResponse = await fetch(`${baseUrl}/api/v1/projects/not-an-id`, {
       headers: { authorization: `Bearer ${token}` },
@@ -744,7 +742,7 @@ test('project update route returns updated owner project', async () => {
   const { server, baseUrl } = await startProjectTestServer(projectService);
 
   try {
-    const token = jwt.sign({ userId: 42, role: 'business' }, config.jwtSecret);
+    const token = tokenFor({ userId: 42, role: 'business' });
 
     const response = await fetch(`${baseUrl}/api/v1/projects/101`, {
       method: 'PATCH',
@@ -786,7 +784,7 @@ test('project update route rejects status and account ownership mutation', async
   const { server, baseUrl } = await startProjectTestServer(projectService);
 
   try {
-    const token = jwt.sign({ userId: 42, role: 'business' }, config.jwtSecret);
+    const token = tokenFor({ userId: 42, role: 'business' });
 
     const response = await fetch(`${baseUrl}/api/v1/projects/101`, {
       method: 'PATCH',
@@ -818,7 +816,7 @@ test('project update route maps closed-project denial to conflict', async () => 
   const { server, baseUrl } = await startProjectTestServer(projectService);
 
   try {
-    const token = jwt.sign({ userId: 42, role: 'business' }, config.jwtSecret);
+    const token = tokenFor({ userId: 42, role: 'business' });
 
     const response = await fetch(`${baseUrl}/api/v1/projects/101`, {
       method: 'PATCH',
