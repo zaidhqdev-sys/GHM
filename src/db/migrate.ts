@@ -21,6 +21,9 @@ type Migration = { version: string; name: string; filename: string; sql: string;
 
 const HISTORICAL_PROVENANCE_EXCEPTIONS = historicalProvenanceExceptions as Record<string, string>;
 
+const isDocumentedHistoricalProvenanceException = (version: string, checksum: string): boolean =>
+  HISTORICAL_PROVENANCE_EXCEPTIONS[version] === checksum;
+
 const loadMigrations = async (): Promise<Migration[]> => {
   const entries = await fs.readdir(MIGRATIONS_DIR, { withFileTypes: true });
   const migrations: Migration[] = [];
@@ -79,11 +82,8 @@ const migrate = async (): Promise<void> => {
       if (existingChecksum) {
         if (existingChecksum !== migration.checksum) {
           const historicalChecksum = HISTORICAL_PROVENANCE_EXCEPTIONS[migration.version];
-          if (historicalChecksum !== existingChecksum) {
+          if (!isDocumentedHistoricalProvenanceException(migration.version, existingChecksum)) {
             throw new Error(`Migration checksum mismatch for ${migration.filename}: database=${existingChecksum}, repository=${migration.checksum}`);
-          }
-          if (historicalChecksum !== existingChecksum) {
-            throw new Error(`Historical migration provenance exception checksum mismatch for ${migration.filename}: database=${existingChecksum}, expected=${historicalChecksum}`);
           }
           console.warn(`Accepted documented historical migration provenance exception for ${migration.filename}: database=${existingChecksum}, repository=${migration.checksum}`);
         }
