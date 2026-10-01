@@ -93,10 +93,10 @@ Evidence sources for this gate. This section describes **what exists today**, no
 
 | Behavior | Evidence |
 |---|---|
-| Reads `Authorization: Bearer …` | `src/auth/request-context.ts` |
-| Verifies JWT with shared secret `config.jwtSecret` (`JWT_SECRET`) via `jwt.verify(token, config.jwtSecret)` | `src/auth/request-context.ts`, `src/config.ts` |
-| Requires payload claims `userId` (positive safe integer `number`) and `role` (`admin` \| `customer` \| `business`) | `src/auth/request-context.ts`, `src/auth/authorization.ts` |
-| Returns immutable `AuthContext { userId, role }` | `src/auth/request-context.ts` |
+| Reads `Authorization: Bearer …` | `src/auth/ghm-bearer.ts` |
+| Historical verifier | Shared-secret `JWT_SECRET` via `src/auth/request-context.ts`, now removed from active resource authentication |
+| Historical claims | `userId` + `role`; superseded by canonical ES256 `sub` plus DB-backed authorization state |
+| Current resource context | `src/auth/ghm-bearer.ts` produces canonical GHM auth context; authorization role is derived from DB account state |
 | HTTP middleware `requireAuth` attaches `req.authContext` or returns `{ error: 'unauthorized' }` | `src/auth/http.ts` |
 | Protected Resource API routes use `requireAuth` then registry/ACL then services | `src/http/app.ts`, routers |
 | Services/repositories require `AuthContext` and bind actor ids from context (not caller-chosen creators) | resource modules; `src/db/authorized-transaction.ts` |
@@ -126,11 +126,11 @@ Evidence sources for this gate. This section describes **what exists today**, no
 
 ### 2.4 JWT verification parameters currently enforced
 
-From `src/auth/request-context.ts` (verified **current implementation**):
+Historical implementation evidence from `src/auth/request-context.ts` (removed from the active tree):
 
 - Bearer header required
 - `jwt.verify(token, config.jwtSecret)` — HS shared-secret verification only
-- Payload must include valid numeric `userId` and `role`
+- Historical payload required numeric `userId` and `role`; the active resource path uses canonical ES256 claims and DB-backed authorization state.
 - Claim name is **`userId`**, not `sub`
 - **`sub` is ignored** (not read)
 - **`iss` / `aud` are not checked**
@@ -149,9 +149,9 @@ These gaps are factual current-state observations. Target architecture requireme
 
 | Item | Evidence |
 |---|---|
-| Config requires `JWT_SECRET` (min length 32 in production) | `src/config.ts` |
+| Historical config | `JWT_SECRET` was required by the removed HS verifier; current `src/config.ts` no longer requires it |
 | Config requires `INVITE_CODE` | `src/config.ts` — required at startup; **no product auth issuance usage found under `src/`** |
-| `jsonwebtoken` imported by runtime verification | `src/auth/request-context.ts` |
+| Historical runtime dependency | `jsonwebtoken` was used by the removed HS verifier; active resource authentication uses the ES256 access-JWT foundation |
 | Packaging note | `@types/jsonwebtoken` in devDependencies; runtime packaging consistency remains an open ops question |
 
 ### 2.6 Live-product identity evidence (Connect + QuoteFlow)
@@ -161,9 +161,9 @@ These gaps are factual current-state observations. Target architecture requireme
 | **Zaid Connect** | Supabase Auth email/password; session UUID `session.user.id`; profile PK = `auth.users.id`; RLS/RPCs/`auth.uid()`; client `authService` + `resolveApplicationIdentity` | `C:\zaid-connect-audit` `lib_supabase.js`; `CONNECT_IDENTITY_BACKEND_SOURCE_AUDIT.md` |
 | **QuoteFlow** | Supabase Auth; UUID `user.id`; session persisted via AsyncStorage-backed Supabase client; org/legal/subscription RPCs use `auth.uid()` | `C:\QuoteFlow` `AuthContext.tsx`, `supabase.ts`, org/legal migrations |
 | **Both** | No GHM `{ userId, role }` JWT shape; no GHM identity mapping table/adapter | Cross-product read-only audit |
-| **Both** | Product Supabase JWTs are **not** accepted by the current GHM verifier (different signing material and claims) | GHM `request-context.ts` vs Supabase session model |
+| **Both** | Product Supabase JWTs are not accepted by the current GHM resource verifier; GHM now verifies its own ES256 bearer contract |
 
-Connect Edge checkout validates Bearer tokens with **Supabase** `auth.getUser()`, not GHM `JWT_SECRET` (`supabase/functions/commercial-payment-checkout`).
+Connect Edge checkout validates Bearer tokens with **Supabase** `auth.getUser()`; that product path is separate from GHM resource authentication.
 
 **Target coexistence note (architecture only):** Founder decision §16.9 selects temporary Supabase Auth coexistence during migration. That does **not** authorize accepting Supabase JWTs in GHM today, and does not change current product or GHM runtime behavior.
 
@@ -373,7 +373,7 @@ This ADR records the authentication **issuance architecture** decision. It does 
 | Layer | Architecture status | Current implementation status | Blocks trustworthy product → GHM HTTP auth today? |
 |---|---|---|---|
 | Issuer decision | **SELECTED: GHM** | Issuance absent | Yes (implementation gap) |
-| Token verification | Target: asymmetric + iss/aud/alg/exp | HS/`JWT_SECRET` + `userId`/`role` only | Yes for product Supabase JWTs |
+| Token verification | GHM target/current: asymmetric ES256 + iss/aud/alg/exp/sub/kid | Historical HS/`JWT_SECRET` + `userId`/`role` was the superseded resource shape |
 | Identity mapping | **SELECTED** `(provider, subject)` map | Absent | Yes |
 | Auth transport | **SELECTED:** GHM auth API → GHM bearer | Product login still Supabase | Yes |
 | HTTP Resource API transport | Present (thin) | Present | Not the first shared auth blocker once GHM credentials exist |
@@ -386,7 +386,7 @@ This ADR records the authentication **issuance architecture** decision. It does 
 
 | Item | Status |
 |---|---|
-| GHM JWT verification (current) | PRESENT (GHM-shaped HS Bearer / `JWT_SECRET` only) |
+| GHM JWT verification (current) | PRESENT — GHM-shaped ES256 Bearer with DB-backed account state |
 | AuthContext (current) | PRESENT |
 | GHM authorization | PRESENT (construction) |
 | Authentication issuance product capability (current) | ABSENT |
@@ -416,7 +416,7 @@ Founder selections dated `2026-09-21`. These define **SELECTED TARGET ARCHITECTU
 | 1 | Issuer | **GHM is the authentication issuer.** | 2026-09-21 | Target architecture. Issuance not implemented. |
 | 2 | Identity provider / credential-store owner | **GHM owns authentication and credential lifecycle. Credentials are stored separately from `ghm.account_identity`.** | 2026-09-21 | Credential store design is follow-on contract; not implemented. |
 | 3 | Product → GHM authentication transport | **Products authenticate through the GHM authentication API and receive GHM-issued bearer credentials.** | 2026-09-21 | Auth API not implemented. |
-| 4 | Token claims contract | **Use stable GHM identity as `sub`; include `iss`, `aud`, `iat`, and `exp`. Authorization/membership roles are resolved by GHM and are not treated as JWT source of truth.** | 2026-09-21 | `sub` = canonical `ghm.account_identity.id`. Differs from current HS token shape (`userId`+`role`). Claims/AuthContext derivation contracts required before implementation. |
+| 4 | Token claims contract | **Use stable GHM identity as `sub`; include `iss`, `aud`, `iat`, and `exp`. Authorization/membership roles are resolved by GHM and are not treated as JWT source of truth.** | 2026-09-21 | `sub` = canonical GHM identity reference. The prior HS `userId`+`role` shape is superseded. |
 | 5 | Issuer / audience / algorithm / key-material contract | **GHM uses asymmetric JWT signing. Private signing key remains inside the GHM issuer boundary. Products/APIs verify using trusted public keys. Verification must explicitly validate issuer, audience, algorithm, and expiration. Key rotation is supported.** | 2026-09-21 | **SELECTED:** ES256; `iss`=`ghm-auth`; `aud`=`ghm-api`; access TTL **15m**; **`kid` required**; secret-managed private key inside issuer boundary; prior public key trusted ≥ 15m + skew. Exact encoding/`kid` values/schedule UNSELECTED. Persistence concepts: Persistence Contract. Not implemented. |
 | 6 | External UUID/`sub` → `ghm.account_identity.id` mapping | **Create a provider-neutral mapping `(provider, subject) → ghm.account_identity.id`. Existing Supabase UUID identities are migrated into this mapping. `ghm.account_identity.id` becomes the canonical internal identity.** | 2026-09-21 | **IMPLEMENTED:** `ghm.account_external_identity`; provider vocabulary for Supabase Auth **SELECTED** as `supabase`; bootstrap + **link** DEFINER ops. No production backfill yet. |
 | 7 | Account bootstrap / lifecycle | **Use controlled just-in-time account bootstrap for authenticated identities. A missing mapping may create the minimum `account_identity` + mapping required for authentication, but authentication alone does not grant business/admin privileges. Membership and privileged roles require separate GHM provisioning. GHM controls account lifecycle.** | 2026-09-21 | Bootstrap not implemented. |
@@ -560,8 +560,8 @@ Exact storage representation = UNSELECTED (implementation gate)
 
 **Current evidence**
 
-- `AuthContext = { userId, role }` (`src/auth/authorization.ts`).
-- Services use `userId` for ownership/membership SQL and `role` for coarse/admin checks.
+- The historical compatibility path used `AuthContext = { userId, role }`; the current GHM bearer path supplies canonical account identity context and derives authorization role from DB state.
+- Historical services used `userId`/`role` from the compatibility AuthContext; current resource authorization derives the effective role from GHM account state.
 - Target: `sub` = `account_identity.id`; membership not JWT truth.
 
 **Options considered**
@@ -570,7 +570,7 @@ Exact storage representation = UNSELECTED (implementation gate)
 |---|---|
 | **A** | Minimal: authenticated identity id (+ optional session id); authorization resolved from GHM state |
 | **B** | Embed membership/roles/permissions snapshot in AuthContext |
-| **C** | Keep `{ userId, role }` permanently as the target model |
+| **C** | Historical compatibility model; not the current bearer-auth source of truth |
 
 **Technical recommendation — not a Founder decision**
 
