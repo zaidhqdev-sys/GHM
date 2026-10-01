@@ -1,6 +1,6 @@
-import { Express, Request, Response , RequestHandler} from 'express';
+import { Express, Request, Response, RequestHandler } from 'express';
 import { AuthContext, canAccessResource } from '../auth/authorization';
-import {  requireAuth , requireAuth } from '../auth/http';
+import { requireAuth } from '../auth/http';
 import type { OpportunityRequirementsService, ReplaceOpportunityCapabilityRequirementInput } from '../resources/opportunity-requirements/contracts';
 import { isRegisteredOperation } from '../resources/registry';
 
