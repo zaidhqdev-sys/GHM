@@ -9,6 +9,7 @@ test('resource registry contains only explicit governed resources', () => {
 test('registered operations are accepted', () => {
   assert.equal(isRegisteredOperation('profile', 'read'), true);
   assert.equal(isRegisteredOperation('business', 'create'), true);
+  assert.equal(isRegisteredOperation('business', 'readPublic'), true);
   assert.equal(isRegisteredOperation('business_capability', 'read'), true);
   assert.equal(isRegisteredOperation('business_capability', 'create'), true);
   assert.equal(isRegisteredOperation('business_category', 'read'), true);
