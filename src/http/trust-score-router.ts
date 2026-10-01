@@ -66,6 +66,7 @@ const handleError = (error: unknown, res: Response): void => {
 export const registerTrustScoreRoutes = (
   app: Express,
   service: TrustScoreService,
+  authMiddleware: RequestHandler = requireAuth,
 ): void => {
   app.get(
     '/api/v1/public/trust-scores',
