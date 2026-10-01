@@ -65,7 +65,7 @@ const handleError = (error: unknown, res: Response): void => {
 };
 
 export const registerOpportunityParticipantRoutes = (app: Express, service: OpportunityParticipantService, authMiddleware: RequestHandler = requireAuth): void => {
-  app.get('/api/v1/opportunities/:opportunityId/participants', requireAuth, requireParticipantAccess('read'), async (req, res) => {
+  app.get('/api/v1/opportunities/:opportunityId/participants', authMiddleware, requireParticipantAccess('read'), async (req, res) => {
     try {
       const context = req.authContext as AuthContext;
       const value = routeParam(req.params.opportunityId);
@@ -76,7 +76,7 @@ export const registerOpportunityParticipantRoutes = (app: Express, service: Oppo
     } catch (error) { handleError(error, res); }
   });
 
-  app.get('/api/v1/opportunity-participants/:participantId', requireAuth, requireParticipantAccess('read'), async (req, res) => {
+  app.get('/api/v1/opportunity-participants/:participantId', authMiddleware, requireParticipantAccess('read'), async (req, res) => {
     try {
       const context = req.authContext as AuthContext;
       const value = routeParam(req.params.participantId);
@@ -88,7 +88,7 @@ export const registerOpportunityParticipantRoutes = (app: Express, service: Oppo
     } catch (error) { handleError(error, res); }
   });
 
-  app.post('/api/v1/opportunity-participants', requireAuth, requireParticipantAccess('create'), async (req, res) => {
+  app.post('/api/v1/opportunity-participants', authMiddleware, requireParticipantAccess('create'), async (req, res) => {
     try {
       const context = req.authContext as AuthContext;
       const input = parseCreateInput(req.body);
