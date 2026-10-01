@@ -5,6 +5,16 @@ import { pool } from './db/pool';
 
 const app = createApp();
 const server = http.createServer(app);
+server.requestTimeout = 30_000;
+server.headersTimeout = 10_000;
+server.keepAliveTimeout = 5_000;
+app.disable('etag');
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  next();
+});
 let ready = false;
 
 const safeErrorDetails = (error: unknown): { name: string; code?: string } => {
