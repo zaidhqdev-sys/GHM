@@ -1,4 +1,4 @@
-import { Express, Request, Response } from 'express';
+import { Express, Request, Response, RequestHandler } from 'express';
 import { AuthContext, canAccessResource } from '../auth/authorization';
 import { requireAuth } from '../auth/http';
 import { isRegisteredOperation } from '../resources/registry';
