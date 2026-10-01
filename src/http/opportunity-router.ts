@@ -1,6 +1,6 @@
-import type { Express, NextFunction, Request, Response } from 'express';
+import type { Express, NextFunction, Request, Response, RequestHandler } from 'express';
 import { AuthContext, canAccessResource } from '../auth/authorization';
-import { requireAuth } from '../auth/http';
+import {  requireAuth , requireAuth } from '../auth/http';
 import { isRegisteredOperation, ResourceOperation } from '../resources/registry';
 import type { OpportunityService } from '../resources/opportunity/contracts';
 import { PostgresOpportunityRepository } from '../resources/opportunity/repository';
@@ -49,7 +49,7 @@ export const registerOpportunityRoutes = (
 ): void => {
   app.get(
     '/api/v1/opportunities/:opportunityId',
-    requireAuth,
+    authMiddleware,
     requireRegisteredOpportunityAccess('read'),
     async (req: Request, res: Response) => {
       try {
