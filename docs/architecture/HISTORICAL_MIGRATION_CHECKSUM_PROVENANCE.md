@@ -14,7 +14,7 @@ Nineteen applied migrations currently have a repository SHA-256 different from t
 
 Seven of those fifteen are fully explained by Windows checkout normalization: the ledger checksum matches the historical Git/index bytes exactly, while the current worktree representation uses CRLF under `core.autocrlf=true`. Those seven are not exceptions and must not be rewritten.
 
-The following twelve migrations have no exact-byte match recoverable from the repository's visible Git history or repository text/artifact evidence as of 2026-09-30:
+The following thirteen migrations have no exact-byte match recoverable from the repository's visible Git history or repository text/artifact evidence as of 2026-09-30:
 
 | Version | Migration | Live ledger checksum |
 |---|---|---|
@@ -30,6 +30,7 @@ The following twelve migrations have no exact-byte match recoverable from the re
 | 20260915200000 | reconcile_commercial_payment_transaction_status | 721d5dccf2344afaf8aedfb858f037fc2a82df005d2e6580427a7f4c49de5a87 |
 | 20260915203000 | reconcile_commercial_runtime_sequence_acl | b2d883f1efa15c47d54fb948b1ce2e00d2aa7c959d91689e5637bae1b9c3a80c |
 | 20260915210000 | reconcile_commercial_subscription_access_path | 92e1142c0fd77dd17c54d95e4fa2d6368f95cbc08f183db586e56f9c03263aeb |
+| 20260915220000 | reconcile_commercial_payment_transaction_provider_event_idempotency | 7ba13a02205cf31be27008fad69f1fa2480b74e422b50567cc0ddf8792532cf4 |
 
 ## Canonical handling
 
