@@ -71,7 +71,7 @@ const parseCategoryBody = (body: unknown): { categoryId: string } | null => {
 };
 
 export const registerBusinessCategoryRoutes = (app: Express, businessCategoryService: BusinessCategoryService, authMiddleware: RequestHandler = requireAuth): void => {
-  app.get('/api/v1/business-categories', requireAuth, requireCategoryAccess('business_category', 'read'), async (req: Request, res: Response) => {
+  app.get('/api/v1/business-categories', authMiddleware, requireCategoryAccess('business_category', 'read'), async (req: Request, res: Response) => {
     try {
       const activeOnly = parseActiveOnly(req.query.activeOnly);
       if (activeOnly === null) {
@@ -84,7 +84,7 @@ export const registerBusinessCategoryRoutes = (app: Express, businessCategorySer
     } catch (error) { handleError(error, res); }
   });
 
-  app.get('/api/v1/business-categories/:categoryId', requireAuth, requireCategoryAccess('business_category', 'read'), async (req: Request, res: Response) => {
+  app.get('/api/v1/business-categories/:categoryId', authMiddleware, requireCategoryAccess('business_category', 'read'), async (req: Request, res: Response) => {
     try {
       const categoryId = uuidParam(req.params.categoryId);
       if (categoryId === null) {
@@ -101,7 +101,7 @@ export const registerBusinessCategoryRoutes = (app: Express, businessCategorySer
     } catch (error) { handleError(error, res); }
   });
 
-  app.get('/api/v1/businesses/:businessId/categories', requireAuth, requireCategoryAccess('business_category_assignment', 'read'), async (req: Request, res: Response) => {
+  app.get('/api/v1/businesses/:businessId/categories', authMiddleware, requireCategoryAccess('business_category_assignment', 'read'), async (req: Request, res: Response) => {
     try {
       const businessIdValue = routeParam(req.params.businessId);
       const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
@@ -115,7 +115,7 @@ export const registerBusinessCategoryRoutes = (app: Express, businessCategorySer
     } catch (error) { handleError(error, res); }
   });
 
-  app.post('/api/v1/businesses/:businessId/categories', requireAuth, requireCategoryAccess('business_category_assignment', 'create'), async (req: Request, res: Response) => {
+  app.post('/api/v1/businesses/:businessId/categories', authMiddleware, requireCategoryAccess('business_category_assignment', 'create'), async (req: Request, res: Response) => {
     try {
       const businessIdValue = routeParam(req.params.businessId);
       const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
@@ -130,7 +130,7 @@ export const registerBusinessCategoryRoutes = (app: Express, businessCategorySer
     } catch (error) { handleError(error, res); }
   });
 
-  app.patch('/api/v1/businesses/:businessId/categories/:categoryId/primary', requireAuth, requireCategoryAccess('business_category_assignment', 'update'), async (req: Request, res: Response) => {
+  app.patch('/api/v1/businesses/:businessId/categories/:categoryId/primary', authMiddleware, requireCategoryAccess('business_category_assignment', 'update'), async (req: Request, res: Response) => {
     try {
       const businessIdValue = routeParam(req.params.businessId);
       const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
