@@ -64,7 +64,7 @@ Confirmed against repository decision records (not reopened):
 | JWT | `jsonwebtoken@^9.0.3` (HS today) |
 | Password libs | `bcrypt` present but **unused** under `src/` for auth; Founder = **Argon2id** → future `argon2` (or equivalent) dependency — **do not install in this gate** |
 | Rate limit | `express-rate-limit@^7.4.0` already in `package.json` (not wired for Auth API yet) |
-| Config | `dotenv`; `JWT_SECRET` HS only today |
+| Config | `dotenv`; canonical ES256 key loader uses `GHM_JWT_ES256_*` environment variables |
 | Errors | `{ error: 'unauthorized' \| 'forbidden' \| … }` |
 | IDs | `bigint` identity; AuthContext `userId: number` |
 | Schema contract | Tables/columns proposed; parameters left open — this gate freezes them |
@@ -428,7 +428,7 @@ FOUNDER APPROVED 2026-09-30: migration safety rules (§16)
 | Concern | Note |
 |---|---|
 | `bcrypt` in package.json | Must not be used for GHM passwords; Argon2id selected |
-| HS `JWT_SECRET` still live | Remains until separate cutover gate |
+| Legacy HS `JWT_SECRET` path | Removed from active resource authentication; retained only in historical evidence where applicable |
 | In-process rate limits | Multi-instance deploy needs later shared limiter — acceptable for first private gate |
 | Shared pepper env | Protect `GHM_AUTH_TOKEN_PEPPER` like signing material |
 
