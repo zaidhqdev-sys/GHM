@@ -53,7 +53,7 @@ Preserve: `ghm_schema_owner` / `ghm_migrator` / `ghm_runtime`.
 | Canonical identity | `ghm.account_identity` — `bigint` PK `id`; `full_name`, `phone`, `avatar_ref`; coarse `role` CHECK (`admin`/`customer`/`business`); `created_at`/`updated_at` — **no account status/disabled column** |
 | Membership | `ghm.business_membership` — `(business_id, account_id)` unique; `membership_role` ∈ `owner`/`administrator`/`member`; `membership_status` ∈ `active`/`inactive`/`revoked` |
 | Current AuthContext | `{ userId: number, role: GhmRole }` — `src/auth/authorization.ts` |
-| Current verify | HS Bearer → `userId` + `role` from JWT — `src/auth/request-context.ts` |
+| Current verify | GHM ES256 Bearer → canonical `sub`, then DB-backed account state — `src/auth/ghm-bearer.ts` |
 | Coarse resource ACL | `canAccessResource(context, resource)` — currently **all three roles** list the same resources |
 | Ownership helper | `assertOwnership` — non-admin must match `userId`; **admin bypasses** ownership |
 | Role helper | `assertRole(context, ...allowed)` — used e.g. review admin paths |
