@@ -292,6 +292,7 @@ test('Connect Business provisioning/linking: live PostgreSQL concurrency and rol
         ['supabase', mappedExternalId],
       ),
       created: await count(
+        client,
         'SELECT count(*)::int AS n FROM ghm.business WHERE name = $1',
         [`${marker}-must-be-ignored`],
       ),
