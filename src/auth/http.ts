@@ -10,7 +10,7 @@ declare global {
   }
 }
 
-/** Governed resource API authentication (ES256 + temporary legacy HS coexistence). */
+/** Governed resource API authentication (GHM ES256 only). */
 export const requireAuth: RequestHandler = requireResourceAuth;
 
 export { createRequireResourceAuth };
