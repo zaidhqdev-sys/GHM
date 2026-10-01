@@ -39,7 +39,7 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
-const childEnv = { ...process.env, DATABASE_URL: databaseUrl, PORT: port };
+const childEnv = { ...parsedEnv, ...process.env, DATABASE_URL: databaseUrl, PORT: port };
 
 async function run() {
   const child = spawn(process.execPath, ['dist/server.js'], {
