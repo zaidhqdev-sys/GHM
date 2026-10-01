@@ -7,7 +7,7 @@ import type { AuthContext } from '../auth/authorization';
 import type { OpportunityCapabilityRequirement, OpportunityRequirementsService } from '../resources/opportunity-requirements/contracts';
 
 const context: AuthContext = { userId: 42, role: 'customer' };
-const token = es256TokenFor;
+const token = es256TokenFor(context);
 const requirement: OpportunityCapabilityRequirement = {
   id: 1, opportunityId: 101, capabilityId: '11111111-1111-4111-8111-111111111111',
   importance: 'required', minimumProficiencyLevel: 'proficient',
