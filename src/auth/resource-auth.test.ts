@@ -155,7 +155,17 @@ test('resource auth middleware: ES256 → AuthContext; disabled → 401; HS reje
     });
     assert.equal(disabled.status, 401);
 
-    const hs = await fetch(`${baseUrl}/ctx`, {\n      headers: { authorization: 'Bearer ' + jwt.sign({ userId: 99, role: 'customer' }, 'legacy-test-secret', { algorithm: 'HS256' }) },\n    });\n    assert.equal(hs.status, 401);\n
+    const hs = await fetch(`${baseUrl}/ctx`, {
+      headers: {
+        authorization: `Bearer ${jwt.sign(
+          { userId: 99, role: 'customer' },
+          'legacy-test-secret',
+          { algorithm: 'HS256' },
+        )}`,
+      },
+    });
+    assert.equal(hs.status, 401);
+
     const forbidden = await fetch(`${baseUrl}/forbid`, {
       headers: { authorization: `Bearer ${jwtService.sign(5)}` },
     });
