@@ -1,12 +1,20 @@
 import type { Express, Request, Response } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import type { AuthTokenResponse, GhmAuthService } from '../auth/ghm-auth-service';
+import type { PasswordRecoveryService } from '../auth/password-recovery';
 
 const parseLoginBody = (body: unknown): { email: string; password: string } | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   const input = body as Record<string, unknown>;
   if (typeof input.email !== 'string' || typeof input.password !== 'string') return null;
   return { email: input.email, password: input.password };
+};
+
+const parseRecoveryBody = (body: unknown): { email: string } | null => {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  const input = body as Record<string, unknown>;
+  if (typeof input.email !== 'string') return null;
+  return { email: input.email };
 };
 
 const parseRefreshBody = (body: unknown): { refreshToken: string } | null => {
@@ -58,6 +66,7 @@ const refreshRateLimit = rateLimit({
 
 export interface AuthRouterDependencies {
   readonly authService?: GhmAuthService;
+  readonly passwordRecoveryService?: PasswordRecoveryService;
 }
 
 export const registerAuthRoutes = (
@@ -66,6 +75,7 @@ export const registerAuthRoutes = (
 ): void => {
   // Lazy default: existing HS product tests createApp() without GHM Auth secrets.
   let authService = dependencies.authService;
+  const passwordRecoveryService = dependencies.passwordRecoveryService;
   const getAuthService = (): GhmAuthService => {
     if (!authService) {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -74,6 +84,28 @@ export const registerAuthRoutes = (
     }
     return authService;
   };
+
+  app.post('/api/v1/auth/password-recovery/request', async (req: Request, res: Response) => {
+    try {
+      const input = parseRecoveryBody(req.body);
+      if (!input) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      if (!passwordRecoveryService) {
+        res.status(503).json({ error: 'service_unavailable' });
+        return;
+      }
+      await passwordRecoveryService.request(input.email);
+      res.status(202).json({ ok: true });
+    } catch (error) {
+      console.error(JSON.stringify({
+        event: 'ghm_password_recovery_delivery_failed',
+        error: { name: error instanceof Error ? error.name : 'UnknownError' },
+      }));
+      res.status(500).json({ error: 'internal_error' });
+    }
+  });
 
   app.post('/api/v1/auth/login', loginRateLimit, async (req: Request, res: Response) => {
     try {
