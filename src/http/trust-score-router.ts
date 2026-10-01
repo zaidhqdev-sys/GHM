@@ -1,6 +1,6 @@
-import { Express, Request, Response } from 'express';
+import { Express, Request, Response , RequestHandler} from 'express';
 import { AuthContext, canAccessResource } from '../auth/authorization';
-import { requireAuth } from '../auth/http';
+import {  requireAuth , requireAuth } from '../auth/http';
 import type { TrustLevel, TrustScoreService } from '../resources/trust-score/contracts';
 import { isRegisteredOperation } from '../resources/registry';
 
@@ -112,7 +112,7 @@ export const registerTrustScoreRoutes = (
 
   app.get(
     '/api/v1/trust-scores',
-    requireAuth,
+    authMiddleware,
     requireTrustScoreAccess('read'),
     async (req: Request, res: Response) => {
       try {
@@ -133,7 +133,7 @@ export const registerTrustScoreRoutes = (
 
   app.get(
     '/api/v1/trust-scores/:businessId',
-    requireAuth,
+    authMiddleware,
     requireTrustScoreAccess('read'),
     async (req: Request, res: Response) => {
       try {
@@ -160,7 +160,7 @@ export const registerTrustScoreRoutes = (
 
   app.post(
     '/api/v1/trust-scores/:businessId/calculate',
-    requireAuth,
+    authMiddleware,
     requireTrustScoreAccess('calculate'),
     async (req: Request, res: Response) => {
       try {
