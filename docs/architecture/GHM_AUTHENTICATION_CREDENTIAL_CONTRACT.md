@@ -51,7 +51,7 @@ Inspected (read-only) at HEAD `239ef5d`:
 | Account schema | `database/migrations/20260909150000_create_business_identity.sql` → `ghm.account_identity` |
 | JWT verify | `src/auth/request-context.ts` — HS Bearer; `userId` + `role` |
 | Auth middleware | `src/auth/http.ts` |
-| Config | `src/config.ts` — `JWT_SECRET`, `INVITE_CODE`; no credential store config |
+| Config | `src/config.ts` — runtime/database/CORS settings plus `INVITE_CODE`; ES256 signing material is loaded separately by `src/auth/foundation/es256-keys.ts` from `GHM_JWT_ES256_*` environment variables. |
 | Dependencies | `package.json` lists `bcrypt` / `@types/bcrypt`; **no** `argon2` / `scrypt` packages |
 | `bcrypt` usage under `src/` | **None found** (dependency present; not imported for auth) |
 | Login / signup endpoints | **Absent** under `src/http/` |
