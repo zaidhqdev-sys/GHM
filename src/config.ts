@@ -11,11 +11,20 @@ const required = (name: string): string => {
   return value;
 };
 
-const parseOrigins = (value: string): string[] =>
-  value
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
+const parseOrigins = (value: string): string[] => {
+  const origins = value.split(',').map((origin) => origin.trim()).filter(Boolean);
+  if (origins.some((origin) => origin === '*')) {
+    throw new Error('CORS_ORIGINS must not contain wildcard origin');
+  }
+  for (const origin of origins) {
+    let parsed: URL;
+    try { parsed = new URL(origin); } catch { throw new Error('CORS_ORIGINS must contain valid absolute origins'); }
+    if ((parsed.protocol !== 'http:' && parsed.protocol !== 'https:') || parsed.origin !== origin) {
+      throw new Error('CORS_ORIGINS must contain origin-only HTTP(S) URLs');
+    }
+  }
+  return origins;
+};
 
 export const config = Object.freeze({
   nodeEnv: process.env.NODE_ENV ?? 'development',
