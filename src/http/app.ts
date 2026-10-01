@@ -380,24 +380,42 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       const readStringQuery = (key: string): string | undefined => {
         const value = req.query[key];
         if (value === undefined) return undefined;
-        if (typeof value !== 'string') throw new Error('invalid_query_parameter');
-        return value;
+        return typeof value === 'string' ? value : undefined;
       };
 
       const parsePositiveQueryInteger = (key: string): number | undefined => {
         const value = readStringQuery(key);
         if (value === undefined) return undefined;
-        if (!/^[1-9]\d*$/.test(value)) throw new Error('invalid_query_parameter');
+        if (!/^[1-9]\d*$/.test(value)) return undefined;
         const parsed = Number(value);
-        if (!Number.isSafeInteger(parsed) || parsed <= 0) throw new Error('invalid_query_parameter');
-        return parsed;
+        return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
       };
 
+      const q = readStringQuery('q');
+      const category = readStringQuery('category');
+      const pageValue = parsePositiveQueryInteger('page');
+      const pageSizeValue = parsePositiveQueryInteger('pageSize');
+
+      if (
+        (req.query.q !== undefined && q === undefined) ||
+        (req.query.category !== undefined && category === undefined) ||
+        (req.query.page !== undefined && pageValue === undefined) ||
+        (req.query.pageSize !== undefined && pageSizeValue === undefined)
+      ) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      if (pageSizeValue !== undefined && pageSizeValue > 50) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
       const result = await directoryService.search({
-        q: readStringQuery('q'),
-        category: readStringQuery('category'),
-        page: parsePositiveQueryInteger('page') ?? 1,
-        pageSize: parsePositiveQueryInteger('pageSize') ?? 20,
+        q,
+        category,
+        page: pageValue ?? 1,
+        pageSize: pageSizeValue ?? 20,
       });
       res.status(200).json(result);
     } catch (error) {
