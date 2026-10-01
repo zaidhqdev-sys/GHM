@@ -32,7 +32,7 @@ if (failures.length > 0) {
 }
 
 const port = '3101';
-const databaseUrl = process.env.GHM_RUNTIME_DATABASE_URL || process.env.DATABASE_URL;
+const databaseUrl = parsedEnv.GHM_RUNTIME_DATABASE_URL || parsedEnv.DATABASE_URL || process.env.GHM_RUNTIME_DATABASE_URL || process.env.DATABASE_URL;
 if (!databaseUrl) {
   console.error('Operational boundary runtime verification FAILED.');
   console.error('- GHM_RUNTIME_DATABASE_URL or DATABASE_URL is required');
