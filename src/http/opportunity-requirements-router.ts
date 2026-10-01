@@ -1,6 +1,6 @@
-import { Express, Request, Response } from 'express';
+import { Express, Request, Response , RequestHandler} from 'express';
 import { AuthContext, canAccessResource } from '../auth/authorization';
-import { requireAuth } from '../auth/http';
+import {  requireAuth , requireAuth } from '../auth/http';
 import type { OpportunityRequirementsService, ReplaceOpportunityCapabilityRequirementInput } from '../resources/opportunity-requirements/contracts';
 import { isRegisteredOperation } from '../resources/registry';
 
@@ -73,7 +73,7 @@ const handleError = (error: unknown, res: Response): void => {
 };
 
 export const registerOpportunityRequirementsRoutes = (app: Express, service: OpportunityRequirementsService): void => {
-  app.get('/api/v1/opportunities/:opportunityId/requirements', requireAuth, requireRequirementsAccess('read'), async (req, res) => {
+  app.get('/api/v1/opportunities/:opportunityId/requirements', authMiddleware, requireRequirementsAccess('read'), async (req, res) => {
     try {
       const value = typeof req.params.opportunityId === 'string' ? req.params.opportunityId : null;
       const opportunityId = value === null ? null : positiveIntegerId(value);
@@ -83,7 +83,7 @@ export const registerOpportunityRequirementsRoutes = (app: Express, service: Opp
     } catch (error) { handleError(error, res); }
   });
 
-  app.put('/api/v1/opportunities/:opportunityId/requirements', requireAuth, requireRequirementsAccess('replace'), async (req, res) => {
+  app.put('/api/v1/opportunities/:opportunityId/requirements', authMiddleware, requireRequirementsAccess('replace'), async (req, res) => {
     try {
       const value = typeof req.params.opportunityId === 'string' ? req.params.opportunityId : null;
       const opportunityId = value === null ? null : positiveIntegerId(value);
