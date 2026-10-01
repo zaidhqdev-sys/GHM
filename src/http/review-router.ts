@@ -1,6 +1,6 @@
-import { Express, Request, Response } from 'express';
+import { Express, Request, Response , RequestHandler} from 'express';
 import { AuthContext, canAccessResource } from '../auth/authorization';
-import { requireAuth } from '../auth/http';
+import {  requireAuth , requireAuth } from '../auth/http';
 import { isRegisteredOperation } from '../resources/registry';
 import type { CreateReviewInput, ModerateReviewInput, ReviewService } from '../resources/review/contracts';
 
@@ -43,19 +43,19 @@ export const registerReviewRoutes=(app:Express,service:ReviewService)=>{
     try{const businessId=typeof req.query.businessId==='string'?id(req.query.businessId):null;const n=limit(req.query.limit);if(businessId===null||n===null){res.status(400).json({error:'invalid_request'});return;}res.status(200).json({reviews:await service.getPublicReviews(businessId,n)});}
     catch(e){error(e,res);}
   });
-  app.get('/api/v1/reviews',requireAuth,access('readPending',['admin']),async(req,res)=>{
+  app.get('/api/v1/reviews',authMiddleware,access('readPending',['admin']),async(req,res)=>{
     try{const n=limit(req.query.limit);if(n===null){res.status(400).json({error:'invalid_request'});return;}res.status(200).json({reviews:await service.getPendingReviews(req.authContext as AuthContext,n)});}
     catch(e){error(e,res);}
   });
-  app.post('/api/v1/reviews',requireAuth,access('create',['customer']),async(req,res)=>{
+  app.post('/api/v1/reviews',authMiddleware,access('create',['customer']),async(req,res)=>{
     try{const input=createInput(req.body);if(!input){res.status(400).json({error:'invalid_request'});return;}res.status(201).json({review:await service.createReview(req.authContext as AuthContext,input)});}
     catch(e){error(e,res);}
   });
-  app.get('/api/v1/reviews/:reviewId',requireAuth,access('readOwn',['customer']),async(req,res)=>{
+  app.get('/api/v1/reviews/:reviewId',authMiddleware,access('readOwn',['customer']),async(req,res)=>{
     try{const v=param(req.params.reviewId);const reviewId=v===null?null:id(v);if(reviewId===null){res.status(400).json({error:'invalid_request'});return;}const review=await service.getOwnReview(req.authContext as AuthContext,reviewId);if(!review){res.status(404).json({error:'not_found'});return;}res.status(200).json({review});}
     catch(e){error(e,res);}
   });
-  app.patch('/api/v1/reviews/:reviewId/moderation',requireAuth,access('approve',['admin']),async(req,res)=>{
+  app.patch('/api/v1/reviews/:reviewId/moderation',authMiddleware,access('approve',['admin']),async(req,res)=>{
     try{const v=param(req.params.reviewId);const reviewId=v===null?null:id(v);const input=moderation(req.body);if(reviewId===null||!input){res.status(400).json({error:'invalid_request'});return;}const op=input.decision==='approved'?'approve':'reject';if(!isRegisteredOperation('review',op)){res.status(403).json({error:'forbidden'});return;}res.status(200).json({review:await service.moderateReview(req.authContext as AuthContext,reviewId,input)});}
     catch(e){error(e,res);}
   });
