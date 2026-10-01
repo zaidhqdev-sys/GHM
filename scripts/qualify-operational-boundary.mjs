@@ -39,7 +39,13 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
-const childEnv = { ...parsedEnv, ...process.env, DATABASE_URL: databaseUrl, PORT: port };
+const childEnv = {
+  ...parsedEnv,
+  ...process.env,
+  DATABASE_URL: databaseUrl,
+  PORT: port,
+  CORS_ORIGINS: process.env.CORS_ORIGINS || parsedEnv.CORS_ORIGINS || `http://127.0.0.1:${port}`,
+};
 
 async function run() {
   const child = spawn(process.execPath, ['dist/server.js'], {
