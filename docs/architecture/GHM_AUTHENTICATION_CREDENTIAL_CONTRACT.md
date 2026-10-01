@@ -49,7 +49,7 @@ Inspected (read-only) at HEAD `239ef5d`:
 | Area | Evidence |
 |---|---|
 | Account schema | `database/migrations/20260909150000_create_business_identity.sql` → `ghm.account_identity` |
-| JWT verify | `src/auth/request-context.ts` — HS Bearer; `userId` + `role` |
+| JWT verify | `src/auth/ghm-bearer.ts` — ES256 Bearer; canonical `sub` + issuer/audience/expiry contract |
 | Auth middleware | `src/auth/http.ts` |
 | Config | `src/config.ts` — runtime/database/CORS settings plus `INVITE_CODE`; ES256 signing material is loaded separately by `src/auth/foundation/es256-keys.ts` from `GHM_JWT_ES256_*` environment variables. |
 | Dependencies | `package.json` lists `bcrypt` / `@types/bcrypt`; **no** `argon2` / `scrypt` packages |
