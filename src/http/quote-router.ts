@@ -104,7 +104,7 @@ const handleQuoteError = (error: unknown, res: Response): void => {
 };
 
 export const registerQuoteRoutes = (app: Express, quoteService: QuoteService, authMiddleware: RequestHandler = requireAuth): void => {
-  app.get('/api/v1/quotes', requireAuth, requireQuoteAccess('read'), async (req: Request, res: Response) => {
+  app.get('/api/v1/quotes', authMiddleware, requireQuoteAccess('read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
       const quotes = await quoteService.listQuotes(context);
@@ -114,7 +114,7 @@ export const registerQuoteRoutes = (app: Express, quoteService: QuoteService, au
     }
   });
 
-  app.get('/api/v1/quotes/:quoteId', requireAuth, requireQuoteAccess('read'), async (req: Request, res: Response) => {
+  app.get('/api/v1/quotes/:quoteId', authMiddleware, requireQuoteAccess('read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
       const quoteIdValue = routeParam(req.params.quoteId);
@@ -134,7 +134,7 @@ export const registerQuoteRoutes = (app: Express, quoteService: QuoteService, au
     }
   });
 
-  app.post('/api/v1/quotes', requireAuth, requireQuoteAccess('create'), async (req: Request, res: Response) => {
+  app.post('/api/v1/quotes', authMiddleware, requireQuoteAccess('create'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
       const input = parseCreateQuoteInput(req.body);
@@ -149,7 +149,7 @@ export const registerQuoteRoutes = (app: Express, quoteService: QuoteService, au
     }
   });
 
-  app.patch('/api/v1/quotes/:quoteId', requireAuth, requireQuoteAccess('update'), async (req: Request, res: Response) => {
+  app.patch('/api/v1/quotes/:quoteId', authMiddleware, requireQuoteAccess('update'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
       const quoteIdValue = routeParam(req.params.quoteId);
