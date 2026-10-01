@@ -53,6 +53,7 @@ import { registerTrustScoreRoutes } from './trust-score-router';
 import { registerSupportRequestRoutes } from './support-request-router';
 import { registerReviewRoutes } from './review-router';
 import type { GhmAuthService } from '../auth/ghm-auth-service';
+import type { PasswordRecoveryService } from '../auth/password-recovery';
 import { PostgresProjectQuoteRepository } from '../resources/project-quote/repository';
 import { ProjectQuoteServiceImpl } from '../resources/project-quote/service';
 import type { ProjectQuoteService } from '../resources/project-quote/contracts';
@@ -108,6 +109,7 @@ export interface AppDependencies {
   readonly businessCategoryService?: BusinessCategoryService;
   readonly directoryService?: DirectoryService;
   readonly authService?: GhmAuthService;
+  readonly passwordRecoveryService?: PasswordRecoveryService;
   readonly resourceAuthMiddleware?: import('express').RequestHandler;
 }
 
@@ -630,7 +632,10 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerQuoteRoutes(app, quoteService, resourceAuthMiddleware);
   registerNotificationRoutes(app, notificationService, resourceAuthMiddleware);
   registerBusinessCategoryRoutes(app, businessCategoryService, resourceAuthMiddleware);
-  registerAuthRoutes(app, { authService: dependencies.authService } satisfies AuthRouterDependencies);
+  registerAuthRoutes(app, {
+    authService: dependencies.authService,
+    passwordRecoveryService: dependencies.passwordRecoveryService,
+  } satisfies AuthRouterDependencies);
 
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
     try {
