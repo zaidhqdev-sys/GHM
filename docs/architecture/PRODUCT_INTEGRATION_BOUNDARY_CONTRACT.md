@@ -1,7 +1,7 @@
 # GHM Product Integration Boundary Contract
 
 **Canonical owner:** GHM platform governance
-**Status:** Semantic platform contract — current authentication foundation qualified; product-specific adapters remain separately gated
+**Status:** Semantic platform contract — current authentication foundation qualified; Connect Saved Business adapter constructed and unit-qualified; broader product adapters remain separately gated
 **Authority:** Local repository `C:\GHM`
 **Current baseline:** consolidated `main` — current repository authority (2026-10-02)
 **Historical Campaign reference:** `0a9a9f7` remains a historical qualified Campaign root baseline; it is not the current repository HEAD.
@@ -497,7 +497,7 @@ Callable mechanism status:
 3. Authentication foundation — **QUALIFIED under Gate 3B**; product authentication/session migration remains separately gated.
 4. Error / version / retry transport semantics — Campaign tokens locked; platform taxonomy + version lifecycle + retry/idempotency remain **OPEN**.
 5. Broader resource HTTP expansion — gated.
-6. Product adapter — separately authorized per product; Connect identity adapter **NOT AUTHORIZED** by this semantic contract.
+6. Product adapter — separately authorized per product/resource. Connect Saved Business adapter is **CONSTRUCTED / UNIT-QUALIFIED** under its dedicated contract; no HTTP exposure or production cutover is implied.
 7. Shadow / cutover — separately authorized; **NOT AUTHORIZED**.
 
 ## 24. Relationship to the Platform Charter
@@ -533,7 +533,8 @@ Registry membership and internal service existence do **not** imply a supported 
 | Error transport encoding | OPEN |
 | Versioning / compatibility | OPEN |
 | Retry / idempotency | OPEN |
-| Product adapters | FUTURE / GATED |
+| Connect Saved Business adapter | CONSTRUCTED / UNIT-QUALIFIED; no production cutover |
+| Other product adapters | FUTURE / GATED |
 | Shared storage | FUTURE / GATED |
 | Durable audit | FUTURE / GATED |
 | Jobs / realtime | FUTURE / GATED |
@@ -557,6 +558,7 @@ Registry membership and internal service existence do **not** imply a supported 
 | Transactions | `src/db/authorized-transaction.ts`, `src/db/transaction.ts` |
 | Narrow HTTP surface | `src/http/app.ts` |
 | Package shape (service entry; no consumer exports) | `package.json` |
+| Connect Saved Business adapter | `src/integrations/connect/saved-business-adapter.ts` + dedicated tests |
 | Campaign contracts | `docs/architecture/CAMPAIGN_SOURCE_AUDIT.md`, `CAMPAIGN_SCHEMA_CONTRACT.md`, `CAMPAIGN_OPERATION_CONTRACT.md` |
 | Campaign implementation | `src/resources/campaign/` |
 | Baseline | `0a9a9f7` |

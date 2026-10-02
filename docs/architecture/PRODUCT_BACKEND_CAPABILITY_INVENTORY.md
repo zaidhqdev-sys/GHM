@@ -1,6 +1,6 @@
 # Product Backend Capability Inventory
 
-**Status:** Construction capability inventory — reconciled through Business Offering QUALIFIED / CLOSED (2026-10-01)
+**Status:** Construction capability inventory — reconciled through Connect Saved Business adapter UNIT-QUALIFIED (2026-10-02)
 
 This document records capabilities GHM may eventually support to replace current managed backend dependencies. It deliberately separates capability requirements from Supabase implementation details and does not authorize production migration.
 
@@ -60,7 +60,7 @@ The following GHM construction capabilities have now been implemented and qualif
 - Resource API boundary
 - Operational boundary
 
-These qualifications establish GHM capability construction only. They do not establish a Connect adapter, production migration, or cutover.
+These qualifications establish GHM capability construction only. The Connect Saved Business adapter is now constructed and unit-qualified as a governed product/resource seam; this does not establish production migration or cutover.
 
 ## QuoteFlow
 
@@ -138,10 +138,10 @@ REQUIRES FUTURE GOVERNED WORK (NOT CURRENTLY AUTHORIZED)
   Opportunity outcome / matching workflows
   Business Hours exceptions / booking / open-now
   remaining platform candidates (storage, realtime, provider webhooks, telemetry)
-  Connect product adapter
+  remaining Connect product adapters
   QuoteFlow product adapter
   shadow qualification
   controlled cutover
 ```
 
-No next product-resource slice is currently construction-authorized. Provider/bootstrap authority cleanup remains an independent open construction concern. Production Connect and QuoteFlow remain on Supabase.
+Connect Saved Business adapter construction is authorized and unit-qualified. Broader product adapters remain separately gated. Provider/bootstrap authority cleanup remains an independent open construction concern. Production Connect and QuoteFlow remain on Supabase.
