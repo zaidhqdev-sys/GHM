@@ -22,6 +22,7 @@ const start = async (deps: {
 }) => {
   const app = createApp({
     savedBusinessService: deps.savedBusinesses,
+    customerService: deps.customers,
     connectService: {
       assertionService: deps.assertionService,
       replayStore: deps.replayStore,
