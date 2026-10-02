@@ -216,7 +216,7 @@ test('Connect service route returns invalid request for malformed input', async 
 
 test('Connect service route dispatches Customer read through the governed chain', async () => {
   const calls: string[] = [];
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService(calls) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService(calls), quotes: quoteService([]) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, {
       method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' },
@@ -230,7 +230,7 @@ test('Connect service route dispatches Customer read through the governed chain'
 
 test('Connect service route reaches Customer create capability but preserves service errors', async () => {
   const calls: string[] = [];
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService(calls) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService(calls), quotes: quoteService([]) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, {
       method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' },
@@ -243,7 +243,7 @@ test('Connect service route reaches Customer create capability but preserves ser
 
 test('Connect service route dispatches Quote read through the governed chain', async () => {
   const calls: string[] = [];
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]), quotes: quoteService(calls) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService(calls) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify({ operation: { resource: 'quote', operation: 'read' }, externalIdentity: { provider: 'supabase', subject: '550e8400-e29b-41d4-a716-446655440000' }, input: { quoteId: 7 } }) });
     assert.equal(response.status, 200);
