@@ -6,7 +6,6 @@ import type { TransactionPool, withTransaction as WithTransaction } from './tran
 import type { withAuthorizedTransaction as WithAuthorizedTransaction } from './authorized-transaction';
 
 process.env.NODE_ENV = 'test';
-process.env.JWT_SECRET = 'test-jwt-secret-for-qualification';
 process.env.DATABASE_URL = 'postgres://qualification:test@localhost:5432/ghm';
 process.env.INVITE_CODE = 'test-invite-code';
 process.env.CORS_ORIGINS = 'http://localhost:3000';
