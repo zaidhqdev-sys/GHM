@@ -1,9 +1,11 @@
 # Legacy Authentication / JWT_SECRET Reconciliation Contract
 
+> **Current-state note:** This document records the pre-PR #13 construction contract. The temporary HS/JWT_SECRET compatibility path described below was subsequently removed. For the current Issue #1 foundation state, see `docs/architecture/ISSUE_1_PRODUCTION_FOUNDATION_STATUS.md`.
+
 **Canonical owner:** GHM platform governance  
-**Status:** FOUNDER-AUTHORIZED CONSTRUCTION CONTRACT — BOUNDED RECONCILIATION SLICE  
+**Status:** HISTORICAL — COMPLETED AND MERGED  
 **Parent:** Issue #1 — Production hardening: establish secure backend baseline  
-**Branch:** `construction/legacy-auth-jwt-secret-reconciliation`  
+**Merged:** PR #13 (`de8143ff99a0b7ca1711cebb47af7091715d8265`)  
 **Baseline:** current `main` at construction start  
 **Scope:** reconcile the temporary HS `JWT_SECRET` compatibility path with the already-qualified GHM ES256 authentication boundary.
 
