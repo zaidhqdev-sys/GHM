@@ -3,7 +3,7 @@
 **Canonical owner:** GHM platform governance
 **Status:** Semantic platform contract — current authentication foundation qualified; product-specific adapters remain separately gated
 **Authority:** Local repository `C:\GHM`
-**Current baseline:** consolidated `main` — current repository authority (2026-09-30)
+**Current baseline:** consolidated `main` — current repository authority (2026-10-02)
 **Historical Campaign reference:** `0a9a9f7` remains a historical qualified Campaign root baseline; it is not the current repository HEAD.
 **Depends on:** [GHM_APPLICATION_BACKEND_PLATFORM_CHARTER.md](./GHM_APPLICATION_BACKEND_PLATFORM_CHARTER.md)
 **Related:** [RESOURCE_API_BOUNDARY_CONTRACT.md](./RESOURCE_API_BOUNDARY_CONTRACT.md)
@@ -12,11 +12,10 @@
 
 This document defines the **semantic contract** for how a ZAID software product is allowed to consume GHM.
 
-It is **transport-neutral**.
+It defines the semantic product-consumption contract. The callable transport has been selected as **HTTP/API**; transport-specific wire details remain separately governed.
 
 It does **not**:
 
-- choose HTTP, REST, RPC, package imports, generated SDK, events, queues, MCP, sockets, or database access
 - invent endpoint paths or wire schemas
 - authorize implementation
 - authorize hosting / deployment
@@ -125,7 +124,7 @@ AuthContext {
 }
 ```
 
-Transport representation of that identity remains **undefined**.
+Transport representation of that identity is governed by the selected HTTP/API transport contracts; this semantic contract does not itself invent wire fields.
 
 Products must not manufacture arbitrary privileged AuthContext values.
 
@@ -530,7 +529,7 @@ Registry membership and internal service existence do **not** imply a supported 
 | GHM platform charter | COMPLETE |
 | Product integration semantic contract | THIS DOCUMENT |
 | Callable transport | HTTP/API (SELECTED) |
-| JWT issuance | UNRESOLVED |
+| JWT issuance | GHM-owned foundation QUALIFIED; product migration/cutover separately gated |
 | Error transport encoding | OPEN |
 | Versioning / compatibility | OPEN |
 | Retry / idempotency | OPEN |
