@@ -13,6 +13,8 @@ import { ConnectIdentityAdapterImpl, type ConnectIdentityAdapter } from '../inte
 import { dispatchConnectResourceCapability } from '../integrations/connect/resource-capability-dispatch';
 import { parseProductConsumerRequest, ProductConsumerRequestError, type ProductConsumerRequest } from './product-consumer-contract';
 import type { SavedBusinessService } from '../resources/saved-business/contracts';
+import type { CustomerService, CustomerStatus } from '../resources/customer/contracts';
+import { dispatchConnectCustomerCapability, type ConnectCustomerDispatchInput } from '../integrations/connect/customer-adapter';
 
 export interface ConnectServiceHttpDependencies {
   readonly assertionService?: ConnectServiceAssertionService;
@@ -21,6 +23,7 @@ export interface ConnectServiceHttpDependencies {
   readonly identity?: ConnectIdentityAdapter;
   readonly accounts?: AccountAuthStateStore;
   readonly savedBusinesses: SavedBusinessService;
+  readonly customers: CustomerService;
 }
 export class ConnectServiceHttpError extends Error {
   constructor(message: string, readonly status = 401) { super(message); this.name = 'ConnectServiceHttpError'; }
@@ -48,6 +51,35 @@ const parseSavedBusinessReadInput = (input: unknown): { capability: 'saved_busin
   if (!Number.isSafeInteger(candidate.savedBusinessId) || (candidate.savedBusinessId as number) <= 0) throw new ConnectServiceHttpError('Invalid request', 400);
   return { capability: 'saved_business.read', savedBusinessId: candidate.savedBusinessId as number };
 };
+const parseCustomerInput = (operation: ProductConsumerRequest['operation']['operation'], input: unknown): ConnectCustomerDispatchInput => {
+  const objectInput = input === undefined ? {} : input;
+  if (!objectInput || typeof objectInput !== 'object' || Array.isArray(objectInput)) throw new ConnectServiceHttpError('Invalid request', 400);
+  const candidate = objectInput as Record<string, unknown>;
+  const rejectUnknown = (allowed: string[]) => {
+    if (Object.keys(candidate).some(key => !allowed.includes(key))) throw new ConnectServiceHttpError('Invalid request', 400);
+  };
+  if (operation === 'read') {
+    rejectUnknown(['customerId', 'status']);
+    if (candidate.customerId !== undefined && (!Number.isSafeInteger(candidate.customerId) || (candidate.customerId as number) <= 0)) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.status !== undefined && candidate.status !== 'active' && candidate.status !== 'archived') throw new ConnectServiceHttpError('Invalid request', 400);
+    return { capability: 'customer.read', ...(candidate.customerId !== undefined ? { customerId: candidate.customerId as number } : {}), ...(candidate.status !== undefined ? { status: candidate.status as CustomerStatus } : {}) };
+  }
+  if (operation === 'create') {
+    rejectUnknown(['name', 'phone', 'email']);
+    if (typeof candidate.name !== 'string' || !candidate.name.trim()) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.phone !== undefined && candidate.phone !== null && typeof candidate.phone !== 'string') throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.email !== undefined && candidate.email !== null && typeof candidate.email !== 'string') throw new ConnectServiceHttpError('Invalid request', 400);
+    return { capability: 'customer.create', name: candidate.name, ...(candidate.phone !== undefined ? { phone: candidate.phone as string | null } : {}), ...(candidate.email !== undefined ? { email: candidate.email as string | null } : {}) };
+  }
+  if (operation === 'update') {
+    rejectUnknown(['customerId', 'status']);
+    if (!Number.isSafeInteger(candidate.customerId) || (candidate.customerId as number) <= 0) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.status !== 'active' && candidate.status !== 'archived') throw new ConnectServiceHttpError('Invalid request', 400);
+    return { capability: 'customer.update', customerId: candidate.customerId as number, status: candidate.status as CustomerStatus };
+  }
+  throw new ConnectServiceHttpError('Unsupported Connect service operation', 403);
+};
+
 const sendError = (error: unknown, res: Response): void => {
   if (error instanceof ConnectServiceHttpError) { res.status(error.status).json({ error: error.status === 401 ? 'unauthorized' : error.status === 403 ? 'forbidden' : 'invalid_request' }); return; }
   if (error instanceof Error && (error.name === 'ConnectServiceAssertionError' || error.name === 'ConnectServiceAssertionReplayError' || error.name === 'ConnectIntegrationLifecycleError' || error.name === 'ConnectTrustedRequestContextError' || error.name === 'ConnectGovernedOperationResolutionError' || error.name === 'ConnectAuthorizationBindingError')) { res.status(401).json({ error: 'unauthorized' }); return; }
@@ -72,8 +104,15 @@ export const registerConnectServiceRoutes = (app: Express, dependencies: Connect
       const trusted = await establishConnectTrustedRequestContext(verified, parsed, dependencies.lifecycle ?? defaults.lifecycle());
       const governed = resolveConnectGovernedOperation(trusted);
       const authorized = await bindConnectAuthorization(trusted, governed, { identity: dependencies.identity ?? defaults.identity(), accounts: dependencies.accounts ?? defaults.accounts() });
-      if (authorized.capability !== 'saved_business.read') throw new ConnectServiceHttpError('Unsupported Connect service operation', 403);
-      const result = await dispatchConnectResourceCapability(authorized, parseSavedBusinessReadInput(parsed.input), { savedBusinesses: dependencies.savedBusinesses });
+      let result: unknown;
+      if (authorized.resource === 'saved_business') {
+        if (authorized.capability !== 'saved_business.read') throw new ConnectServiceHttpError('Unsupported Connect service operation', 403);
+        result = await dispatchConnectResourceCapability(authorized, parseSavedBusinessReadInput(parsed.input), { savedBusinesses: dependencies.savedBusinesses });
+      } else if (authorized.resource === 'customer') {
+        result = await dispatchConnectCustomerCapability(authorized, parseCustomerInput(authorized.operation, parsed.input), { customers: dependencies.customers });
+      } else {
+        throw new ConnectServiceHttpError('Unsupported Connect service operation', 403);
+      }
       res.status(200).json({ result });
     } catch (error) { sendError(error, res); }
   });
