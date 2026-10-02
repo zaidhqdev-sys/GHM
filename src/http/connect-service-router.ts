@@ -18,7 +18,7 @@ import { dispatchConnectCustomerCapability, type ConnectCustomerDispatchInput } 
 import type { QuoteService, QuoteStatus } from '../resources/quote/contracts';
 import { dispatchConnectQuoteCapability, type ConnectQuoteDispatchInput } from '../integrations/connect/quote-adapter';
 import { dispatchConnectEnquiryCapability, type ConnectEnquiryDispatchInput } from '../integrations/connect/enquiry-adapter';
-import type { EnquiryStatus } from '../resources/enquiry/contracts';
+import type { EnquiryService, EnquiryStatus, EnquiryUrgency } from '../resources/enquiry/contracts';
 
 export interface ConnectServiceHttpDependencies {
   readonly assertionService?: ConnectServiceAssertionService;
@@ -29,7 +29,7 @@ export interface ConnectServiceHttpDependencies {
   readonly savedBusinesses: SavedBusinessService;
   readonly customers: CustomerService;
   readonly quotes: QuoteService;
-  readonly enquiries: import('../resources/enquiry/contracts').EnquiryService;
+  readonly enquiries: EnquiryService;
 }
 export class ConnectServiceHttpError extends Error {
   constructor(message: string, readonly status = 401) { super(message); this.name = 'ConnectServiceHttpError'; }
@@ -153,7 +153,7 @@ const parseEnquiryInput = (operation: ProductConsumerRequest['operation']['opera
         ...(candidate.city !== undefined ? { city: candidate.city as string | null } : {}),
         ...(candidate.budgetMin !== undefined ? { budgetMin: candidate.budgetMin as number | null } : {}),
         ...(candidate.budgetMax !== undefined ? { budgetMax: candidate.budgetMax as number | null } : {}),
-        ...(candidate.urgency !== undefined ? { urgency: candidate.urgency as EnquiryStatus & never } : {}),
+        ...(candidate.urgency !== undefined ? { urgency: candidate.urgency as EnquiryUrgency } : {}),
         ...(candidate.source !== undefined ? { source: 'marketplace' as const } : {}),
       },
     };
