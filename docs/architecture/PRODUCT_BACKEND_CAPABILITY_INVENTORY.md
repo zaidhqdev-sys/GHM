@@ -134,6 +134,7 @@ QUALIFIED CONSTRUCTION
   Connect integration lifecycle authority
   Connect trusted request context
   Connect governed operation resolution
+  Connect GHM authorization binding
 
 REQUIRES FUTURE GOVERNED WORK (NOT CURRENTLY AUTHORIZED)
   Trust score / Trust evidence
