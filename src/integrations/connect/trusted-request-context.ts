@@ -32,7 +32,7 @@ export class ConnectTrustedRequestContextError extends Error {
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const OPAQUE_PATTERN = /^[!-~]{1,128}$/;
 
-const assertOpaque = (value: unknown, label: string): asserts value is string => {
+const assertOpaque: (value: unknown, label: string) => asserts value is string = (value, label) => {
   if (typeof value !== 'string' || !OPAQUE_PATTERN.test(value)) {
     throw new ConnectTrustedRequestContextError(
       `${label} must be printable ASCII <= 128 characters`,
@@ -40,9 +40,9 @@ const assertOpaque = (value: unknown, label: string): asserts value is string =>
   }
 };
 
-const assertExternalIdentity = (
+const assertExternalIdentity: (value: unknown) => asserts value is { provider: 'supabase'; subject: string } | null = (
   value: unknown,
-): asserts value is { provider: 'supabase'; subject: string } | null => {
+) => {
   if (value === null) return;
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new ConnectTrustedRequestContextError('External identity reference is invalid');
