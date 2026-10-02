@@ -106,7 +106,6 @@ export interface AppDependencies {
   readonly opportunityParticipantService?: OpportunityParticipantService;
   readonly customerService?: CustomerService;
   readonly quoteService?: QuoteService;
-  readonly enquiryService?: EnquiryService;
   readonly notificationService?: NotificationService;
   readonly businessCategoryService?: BusinessCategoryService;
   readonly directoryService?: DirectoryService;
