@@ -1,6 +1,6 @@
 # Product Backend Capability Inventory
 
-**Status:** Construction capability inventory — reconciled through Connect governed operation resolution (2026-10-02)
+**Status:** Construction capability inventory — reconciled through Connect service HTTP read boundary (2026-10-02)
 
 This document records capabilities GHM may eventually support to replace current managed backend dependencies. It deliberately separates capability requirements from Supabase implementation details and does not authorize production migration.
 
@@ -62,7 +62,7 @@ The following GHM construction capabilities have now been implemented and qualif
 
 These qualifications establish GHM capability construction only. The Connect Saved Business adapter is constructed and unit-qualified as a governed product/resource seam. The Connect integration lifecycle authority is construction-qualified as a persistent service-trust prerequisite.
 
-Connect trusted request context establishment and governed operation resolution are now construction-qualified as bounded in-process prerequisites. Governed operation resolution only derives a canonical capability name from the trusted request and re-checks the canonical registry. It does not authorize an end user, resolve identity, execute a resource service, expose HTTP, or establish production readiness.
+Connect trusted request context establishment, governed operation resolution, GHM authorization binding, resource capability dispatch, and the first saved_business.read service HTTP boundary are now construction-qualified bounded prerequisites. The HTTP slice is service-to-service only and does not establish production readiness, replay protection, mutation transport, or product cutover.
 
 ## QuoteFlow
 
