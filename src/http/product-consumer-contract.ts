@@ -1,22 +1,15 @@
-import type { Resource, ResourceOperation } from '../auth/authorization';
+import type { Resource } from '../auth/authorization';
+import type { ResourceOperation } from '../resources/registry';
 
 export type ProductConsumerErrorCode =
-  | 'unauthorized'
-  | 'forbidden'
-  | 'invalid_request'
-  | 'not_found'
-  | 'validation_failed'
-  | 'conflict'
-  | 'invalid_state'
-  | 'dependency_failure'
-  | 'internal_error';
+  | 'unauthorized' | 'forbidden' | 'invalid_request' | 'not_found'
+  | 'validation_failed' | 'conflict' | 'invalid_state' | 'dependency_failure' | 'internal_error';
 
 export interface ProductConsumerRequest {
   readonly operation: { readonly resource: Resource; readonly operation: ResourceOperation };
   readonly externalIdentity: { readonly provider: string; readonly subject: string };
   readonly input?: unknown;
 }
-
 export interface ProductConsumerResponse { readonly result: unknown }
 export interface ProductConsumerErrorResponse { readonly error: ProductConsumerErrorCode }
 
