@@ -20,6 +20,7 @@ const start = async (deps: {
   accounts: AccountAuthStateStore;
   savedBusinesses: SavedBusinessService;
   customers: CustomerService;
+  quotes: QuoteService;
 }) => {
   const app = createApp({
     savedBusinessService: deps.savedBusinesses,
@@ -31,6 +32,7 @@ const start = async (deps: {
       identity: deps.identity,
       accounts: deps.accounts,
       customers: deps.customers,
+      quotes: deps.quotes,
     },
   });
   const server = http.createServer(app);
@@ -82,13 +84,33 @@ const service = (calls: string[]): SavedBusinessService => ({
   deleteSavedBusiness: async () => { calls.push('delete'); },
 });
 
-const quoteService = (calls: string[]): QuoteService => ({
-  listQuotes: async () => { calls.push('list'); return []; },
-  getQuote: async (_context, id) => { calls.push(`get:${id}`); return null; },
-  createQuote: async (_context, input) => { calls.push(`create:${input.customerId}`); return null; },
-  setQuoteStatus: async (_context, id, status) => { calls.push(`status:${id}:${status}`); return null; },
-  setQuoteNotes: async (_context, id, notes) => { calls.push(`notes:${id}:${notes}`); return null; },
-});
+const quoteService = (calls: string[]): QuoteService => {
+  const result = {
+    id: 7,
+    accountId: 42,
+    customerId: 9,
+    customerName: 'Alice',
+    customerPhone: null,
+    customerEmail: null,
+    description: 'Test',
+    amount: 100,
+    followUpDate: '2026-10-10',
+    status: 'active' as const,
+    reminderId: null,
+    reminderDate: null,
+    notes: '',
+    lineItems: [],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  return {
+    listQuotes: async () => { calls.push('list'); return [result]; },
+    getQuote: async (_context, id) => { calls.push(`get:${id}`); return { ...result, id }; },
+    createQuote: async (_context, input) => { calls.push(`create:${input.customerId}`); return { ...result, id: 8 }; },
+    setQuoteStatus: async (_context, id, status) => { calls.push(`status:${id}:${status}`); return { ...result, id, status }; },
+    setQuoteNotes: async (_context, id, notes) => { calls.push(`notes:${id}:${notes}`); return { ...result, id, notes }; },
+  };
+};
 
 const customerService = (calls: string[]): CustomerService => ({
   listCustomers: async (_context, status) => { calls.push(`list:${status ?? 'all'}`); return []; },
@@ -221,7 +243,7 @@ test('Connect service route reaches Customer create capability but preserves ser
 
 test('Connect service route dispatches Quote read through the governed chain', async () => {
   const calls: string[] = [];
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService(calls) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]), quotes: quoteService(calls) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify({ operation: { resource: 'quote', operation: 'read' }, externalIdentity: { provider: 'supabase', subject: '550e8400-e29b-41d4-a716-446655440000' }, input: { quoteId: 7 } }) });
     assert.equal(response.status, 200);
