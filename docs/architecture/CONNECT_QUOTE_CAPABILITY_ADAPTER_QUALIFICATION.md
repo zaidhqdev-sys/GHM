@@ -2,7 +2,7 @@
 
 ## Status
 
-**CONSTRUCTION QUALIFIED — QUOTE CAPABILITY ADAPTER SUB-SLICE PENDING LOCAL VALIDATION**
+**CONSTRUCTION QUALIFIED — QUOTE CAPABILITY ADAPTER SUB-SLICE**
 
 ## Scope
 
@@ -46,4 +46,4 @@ This slice does not authorize auth/session migration, production cutover, QuoteF
 
 Focused tests cover list/read, item read, create, status/notes updates, capability mismatch, invalid identifiers and empty updates. The HTTP route also has a governed-chain Quote read test.
 
-Full test-suite and TypeScript-build success remain required before merge.
+Local qualification evidence: `npm test` passed **460/460** with zero failures and `npm run build` passed. The adapter and HTTP governed-chain test are therefore locally qualified for merge.
