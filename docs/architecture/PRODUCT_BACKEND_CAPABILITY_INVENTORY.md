@@ -1,6 +1,6 @@
 # Product Backend Capability Inventory
 
-**Status:** Construction capability inventory — reconciled through Connect Saved Business adapter and Connect integration lifecycle QUALIFIED (2026-10-02)
+**Status:** Construction capability inventory — reconciled through Connect governed operation resolution (2026-10-02)
 
 This document records capabilities GHM may eventually support to replace current managed backend dependencies. It deliberately separates capability requirements from Supabase implementation details and does not authorize production migration.
 
@@ -60,9 +60,9 @@ The following GHM construction capabilities have now been implemented and qualif
 - Resource API boundary
 - Operational boundary
 
-These qualifications establish GHM capability construction only. The Connect Saved Business adapter is constructed and unit-qualified as a governed product/resource seam. The Connect integration lifecycle authority is also construction-qualified as a persistent service-trust prerequisite. Neither establishes production migration or cutover.
+These qualifications establish GHM capability construction only. The Connect Saved Business adapter is constructed and unit-qualified as a governed product/resource seam. The Connect integration lifecycle authority is construction-qualified as a persistent service-trust prerequisite.
 
-Connect trusted request context establishment is now construction-qualified as a bounded in-process prerequisite. This does not qualify HTTP exposure, replay protection, end-user identity resolution, resource dispatch/authorization, production credentials, deployment, or cutover.
+Connect trusted request context establishment and governed operation resolution are now construction-qualified as bounded in-process prerequisites. Governed operation resolution only derives a canonical capability name from the trusted request and re-checks the canonical registry. It does not authorize an end user, resolve identity, execute a resource service, expose HTTP, or establish production readiness.
 
 ## QuoteFlow
 
@@ -132,6 +132,8 @@ QUALIFIED CONSTRUCTION
   Resource API boundary
   Operational boundary
   Connect integration lifecycle authority
+  Connect trusted request context
+  Connect governed operation resolution
 
 REQUIRES FUTURE GOVERNED WORK (NOT CURRENTLY AUTHORIZED)
   Trust score / Trust evidence
