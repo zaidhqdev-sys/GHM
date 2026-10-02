@@ -4,11 +4,11 @@
 **Status:** OPEN — foundation work is in progress  
 **Canonical source:** this document records the current repository state; individual construction contracts remain historical evidence for their bounded slices.
 
-**Documentation reconciliation:** 2026-10-02 — superseded authentication gate records remain in `docs/architecture` as historical provenance; this status document is the current Issue #1 roll-up.
+**Documentation reconciliation:** 2026-10-02 — this status document was reconciled against current `main`. Superseded authentication gate records remain historical provenance; this document is the current Issue #1 roll-up.
 
 ## Current baseline
 
-The production configuration/secret boundary is now construction-qualified on PR #21, but PR #21 remains unmerged. Its canonical contract is `PRODUCTION_CONFIGURATION_SECRET_BOUNDARY_CONTRACT.md`. The qualified rule is that production configuration fails closed unless `DATABASE_SSL=true`; this is a construction gate only and does not authorize production environment changes.
+The production configuration/secret boundary was construction-qualified on PR #21 and is now merged into `main` at `5c71846cd96b05c45956254d912dfc0a609760e6`. Its canonical contract is `PRODUCTION_CONFIGURATION_SECRET_BOUNDARY_CONTRACT.md`. The qualified rule is that production configuration fails closed unless `DATABASE_SSL=true`; this is a construction gate only and does not authorize production environment changes.
 
 Current main includes these completed Issue #1 slices:
 
@@ -17,7 +17,7 @@ Current main includes these completed Issue #1 slices:
 - PR #16 — CI quality gates — merged as c7b70e0e0bf9fea57817c66c80337bacc778cb3c. Repository CI runs install, build, test, and runtime-boundary verification.
 - PR #17 — password recovery delivery boundary — merged as 2237995ea3006c8e39fde7739e63e291be735fe1. Recovery credentials are handed only to an injected delivery boundary; HTTP does not disclose the raw recovery token.
 - PR #20 — Quote status concurrency reconciliation — merged as 74554bc6607d8c24c248d6cc516e726540a0af18. Quote status mutation re-reads/locks the target inside the authorized transaction boundary.
-- PR #21 — production configuration/secret boundary — **PENDING MERGE**. Construction qualification requires `DATABASE_SSL=true` in production and fails closed otherwise; 416/416 tests pass on the candidate branch.
+- PR #21 — production configuration/secret boundary — **MERGED** at `5c71846cd96b05c45956254d912dfc0a609760e6`. Construction qualification requires `DATABASE_SSL=true` in production and fails closed otherwise; the candidate passed 416/416 tests.
 
 ## Security/authentication authority
 
@@ -58,7 +58,7 @@ The workflow uses non-production qualification environment values only.
 
 ## Issue #1 remaining work
 
-Issue #1 is NOT closed. Remaining acceptance work includes migration-owned and reproducible PostgreSQL schema reconciliation against the application allowlist, governed table access with validation/authorization/tenant isolation/audit logging, and any remaining production startup/readiness/error-contract evidence required by the Issue #1 acceptance criteria.
+Issue #1 is NOT closed. Remaining acceptance work includes migration-owned and reproducible PostgreSQL schema reconciliation against the application allowlist, governed table access with validation/authorization/tenant isolation/audit logging, and any remaining production startup/readiness/error-contract evidence required by the Issue #1 acceptance criteria. The current evidence does not yet support closing Issue #1.
 
 Do not infer Issue #1 completion from the merged slices above. Each remaining acceptance criterion must be independently evidenced before closure.
 
