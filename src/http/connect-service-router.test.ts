@@ -246,8 +246,9 @@ test('Connect service route dispatches Quote read through the governed chain', a
   const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService(calls) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify({ operation: { resource: 'quote', operation: 'read' }, externalIdentity: { provider: 'supabase', subject: '550e8400-e29b-41d4-a716-446655440000' }, input: { quoteId: 7 } }) });
-    assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { result: null });
+    const payload = await response.json();
+    assert.equal(response.status, 200, JSON.stringify(payload));
+    assert.deepEqual(payload, { result: quoteService([]) });
     assert.deepEqual(calls, ['get:7']);
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
