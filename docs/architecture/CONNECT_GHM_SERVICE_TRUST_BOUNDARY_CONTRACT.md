@@ -72,6 +72,8 @@ Required semantic claims:
 | key id | required for rotation |
 | nonce/request identifier | required where replay detection is part of the transport contract |
 
+The current cryptographic construction uses the JWT `jti` claim as the request identifier. This establishes identifier carriage/consistency only; replay detection and persistence remain separately gated.
+
 Exact wire header names, token serialization, signing-key storage, clock-skew allowance, and rotation procedure are transport implementation details and must be frozen before implementation is considered qualified.
 
 ## 5. End-user identity carriage
