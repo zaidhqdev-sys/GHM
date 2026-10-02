@@ -17,6 +17,8 @@ import type { CustomerService, CustomerStatus } from '../resources/customer/cont
 import { dispatchConnectCustomerCapability, type ConnectCustomerDispatchInput } from '../integrations/connect/customer-adapter';
 import type { QuoteService, QuoteStatus } from '../resources/quote/contracts';
 import { dispatchConnectQuoteCapability, type ConnectQuoteDispatchInput } from '../integrations/connect/quote-adapter';
+import { dispatchConnectEnquiryCapability, type ConnectEnquiryDispatchInput } from '../integrations/connect/enquiry-adapter';
+import type { EnquiryStatus } from '../resources/enquiry/contracts';
 
 export interface ConnectServiceHttpDependencies {
   readonly assertionService?: ConnectServiceAssertionService;
@@ -27,6 +29,7 @@ export interface ConnectServiceHttpDependencies {
   readonly savedBusinesses: SavedBusinessService;
   readonly customers: CustomerService;
   readonly quotes: QuoteService;
+  readonly enquiries: import('../resources/enquiry/contracts').EnquiryService;
 }
 export class ConnectServiceHttpError extends Error {
   constructor(message: string, readonly status = 401) { super(message); this.name = 'ConnectServiceHttpError'; }
@@ -109,10 +112,65 @@ const parseQuoteInput = (operation: ProductConsumerRequest['operation']['operati
   throw new ConnectServiceHttpError('Unsupported Connect service operation', 403);
 };
 
+const parseEnquiryInput = (operation: ProductConsumerRequest['operation']['operation'], input: unknown): ConnectEnquiryDispatchInput => {
+  const objectInput = input === undefined ? {} : input;
+  if (!objectInput || typeof objectInput !== 'object' || Array.isArray(objectInput)) throw new ConnectServiceHttpError('Invalid request', 400);
+  const candidate = objectInput as Record<string, unknown>;
+  const keys = Object.keys(candidate);
+  const positive = (value: unknown): value is number => Number.isSafeInteger(value) && (value as number) > 0;
+  if (operation === 'read') {
+    if (keys.some(key => !['enquiryId', 'businessId'].includes(key)) || (candidate.enquiryId !== undefined && !positive(candidate.enquiryId)) || (candidate.businessId !== undefined && !positive(candidate.businessId))) {
+      throw new ConnectServiceHttpError('Invalid request', 400);
+    }
+    if (candidate.enquiryId === undefined && candidate.businessId === undefined) throw new ConnectServiceHttpError('Invalid request', 400);
+    return {
+      capability: 'enquiry.read',
+      ...(candidate.enquiryId !== undefined ? { enquiryId: candidate.enquiryId as number } : {}),
+      ...(candidate.businessId !== undefined ? { businessId: candidate.businessId as number } : {}),
+    };
+  }
+  if (operation === 'create') {
+    const allowed = ['businessId', 'customerName', 'customerPhone', 'customerEmail', 'project', 'description', 'city', 'budgetMin', 'budgetMax', 'urgency', 'source'];
+    if (keys.some(key => !allowed.includes(key)) || !positive(candidate.businessId) || typeof candidate.customerName !== 'string' || typeof candidate.project !== 'string' || typeof candidate.description !== 'string') {
+      throw new ConnectServiceHttpError('Invalid request', 400);
+    }
+    if (candidate.customerPhone !== undefined && candidate.customerPhone !== null && typeof candidate.customerPhone !== 'string') throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.customerEmail !== undefined && candidate.customerEmail !== null && typeof candidate.customerEmail !== 'string') throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.city !== undefined && candidate.city !== null && typeof candidate.city !== 'string') throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.budgetMin !== undefined && candidate.budgetMin !== null && typeof candidate.budgetMin !== 'number') throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.budgetMax !== undefined && candidate.budgetMax !== null && typeof candidate.budgetMax !== 'number') throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.urgency !== undefined && !['standard', 'urgent', 'emergency'].includes(candidate.urgency as string)) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.source !== undefined && candidate.source !== 'marketplace') throw new ConnectServiceHttpError('Invalid request', 400);
+    return {
+      capability: 'enquiry.create',
+      input: {
+        businessId: candidate.businessId as number,
+        customerName: candidate.customerName as string,
+        ...(candidate.customerPhone !== undefined ? { customerPhone: candidate.customerPhone as string | null } : {}),
+        ...(candidate.customerEmail !== undefined ? { customerEmail: candidate.customerEmail as string | null } : {}),
+        project: candidate.project as string,
+        description: candidate.description as string,
+        ...(candidate.city !== undefined ? { city: candidate.city as string | null } : {}),
+        ...(candidate.budgetMin !== undefined ? { budgetMin: candidate.budgetMin as number | null } : {}),
+        ...(candidate.budgetMax !== undefined ? { budgetMax: candidate.budgetMax as number | null } : {}),
+        ...(candidate.urgency !== undefined ? { urgency: candidate.urgency as EnquiryStatus & never } : {}),
+        ...(candidate.source !== undefined ? { source: 'marketplace' as const } : {}),
+      },
+    };
+  }
+  if (operation === 'update') {
+    if (keys.some(key => !['enquiryId', 'status'].includes(key)) || !positive(candidate.enquiryId) || !['new', 'contacted', 'qualified', 'quoted', 'won', 'lost', 'archived'].includes(candidate.status as string)) {
+      throw new ConnectServiceHttpError('Invalid request', 400);
+    }
+    return { capability: 'enquiry.update', enquiryId: candidate.enquiryId as number, status: candidate.status as EnquiryStatus };
+  }
+  throw new ConnectServiceHttpError('Unsupported Connect service operation', 403);
+};
+
 const sendError = (error: unknown, res: Response): void => {
   if (error instanceof ConnectServiceHttpError) { res.status(error.status).json({ error: error.status === 401 ? 'unauthorized' : error.status === 403 ? 'forbidden' : 'invalid_request' }); return; }
   if (error instanceof Error && (error.name === 'ConnectServiceAssertionError' || error.name === 'ConnectServiceAssertionReplayError' || error.name === 'ConnectIntegrationLifecycleError' || error.name === 'ConnectTrustedRequestContextError' || error.name === 'ConnectGovernedOperationResolutionError' || error.name === 'ConnectAuthorizationBindingError')) { res.status(401).json({ error: 'unauthorized' }); return; }
-  if (error instanceof Error && error.name === 'ConnectResourceCapabilityDispatchError') { res.status(403).json({ error: 'forbidden' }); return; }
+  if (error instanceof Error && (error.name === 'ConnectResourceCapabilityDispatchError' || error.name === 'ConnectCustomerAdapterError' || error.name === 'ConnectQuoteAdapterError' || error.name === 'ConnectEnquiryAdapterError')) { res.status(403).json({ error: 'forbidden' }); return; }
   console.error(JSON.stringify({ event: 'connect_service_request_failed', error: { name: error instanceof Error ? error.name : 'UnknownError' } }));
   res.status(500).json({ error: 'internal_error' });
 };
@@ -141,6 +199,8 @@ export const registerConnectServiceRoutes = (app: Express, dependencies: Connect
         result = await dispatchConnectCustomerCapability(authorized, parseCustomerInput(authorized.operation, parsed.input), { customers: dependencies.customers });
       } else if (authorized.resource === 'quote') {
         result = await dispatchConnectQuoteCapability(authorized, parseQuoteInput(authorized.operation, parsed.input), { quotes: dependencies.quotes });
+      } else if (authorized.resource === 'enquiry') {
+        result = await dispatchConnectEnquiryCapability(authorized, parseEnquiryInput(authorized.operation, parsed.input), { enquiries: dependencies.enquiries });
       } else {
         throw new ConnectServiceHttpError('Unsupported Connect service operation', 403);
       }
