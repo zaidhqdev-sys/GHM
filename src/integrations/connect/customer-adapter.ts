@@ -33,7 +33,7 @@ const assertAuthorized = (
   }
 };
 
-const assertPositiveId = (value: unknown): asserts value is number => {
+const assertPositiveId: (value: unknown) => asserts value is number = (value: unknown): asserts value is number => {
   if (!Number.isSafeInteger(value) || (value as number) <= 0) {
     throw new ConnectCustomerAdapterError('Invalid customer identifier');
   }
