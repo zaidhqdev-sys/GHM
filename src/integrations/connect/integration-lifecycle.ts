@@ -1,4 +1,3 @@
-import type { PoolClient } from 'pg';
 import type { TransactionPool } from '../../db/transaction';
 
 export type ConnectIntegrationStatus = 'active' | 'disabled' | 'revoked';
@@ -85,4 +84,3 @@ export const requireActiveConnectIntegration = async (
   return integration;
 };
 
-export type ConnectIntegrationLifecycleTransactionPool = TransactionPool;
