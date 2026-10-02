@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import http from 'node:http';
-import express from 'express';
 
 process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL = 'postgres://qualification:test@localhost:5432/ghm';
@@ -34,7 +33,8 @@ const fakePersistence = (overrides: Record<string, unknown> = {}) =>
   }) as never;
 
 test('password recovery passes the raw credential only to the delivery boundary', async () => {
-  let delivered: Record<string, unknown> | null = null;
+  type Delivered = Parameters<PasswordRecoveryDelivery['deliver']>[0];
+  let delivered: Delivered | undefined;
   const delivery: PasswordRecoveryDelivery = {
     deliver: async (input) => {
       delivered = input;
@@ -43,10 +43,11 @@ test('password recovery passes the raw credential only to the delivery boundary'
 
   await createPasswordRecoveryService(fakePersistence(), delivery).request('User@Example.com');
 
-  assert.equal(delivered?.accountId, 42);
-  assert.equal(delivered?.email, 'user@example.com');
-  assert.equal(delivered?.recoveryToken, 'opaque-recovery-token');
-  assert.equal(delivered?.expiresAt instanceof Date, true);
+  assert.ok(delivered);
+  assert.equal(delivered.accountId, 42);
+  assert.equal(delivered.email, 'user@example.com');
+  assert.equal(delivered.recoveryToken, 'opaque-recovery-token');
+  assert.equal(delivered.expiresAt instanceof Date, true);
 });
 
 test('password recovery does not deliver for unknown accounts', async () => {
