@@ -1,6 +1,6 @@
 # Product Backend Capability Inventory
 
-**Status:** Construction capability inventory — reconciled through Connect Saved Business adapter UNIT-QUALIFIED (2026-10-02)
+**Status:** Construction capability inventory — reconciled through Connect Saved Business adapter and Connect integration lifecycle QUALIFIED (2026-10-02)
 
 This document records capabilities GHM may eventually support to replace current managed backend dependencies. It deliberately separates capability requirements from Supabase implementation details and does not authorize production migration.
 
@@ -60,7 +60,7 @@ The following GHM construction capabilities have now been implemented and qualif
 - Resource API boundary
 - Operational boundary
 
-These qualifications establish GHM capability construction only. The Connect Saved Business adapter is now constructed and unit-qualified as a governed product/resource seam; this does not establish production migration or cutover.
+These qualifications establish GHM capability construction only. The Connect Saved Business adapter is constructed and unit-qualified as a governed product/resource seam. The Connect integration lifecycle authority is also construction-qualified as a persistent service-trust prerequisite. Neither establishes production migration or cutover.
 
 ## QuoteFlow
 
@@ -129,6 +129,7 @@ QUALIFIED CONSTRUCTION
   Saved Business
   Resource API boundary
   Operational boundary
+  Connect integration lifecycle authority
 
 REQUIRES FUTURE GOVERNED WORK (NOT CURRENTLY AUTHORIZED)
   Trust score / Trust evidence
