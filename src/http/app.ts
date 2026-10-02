@@ -106,6 +106,7 @@ export interface AppDependencies {
   readonly opportunityParticipantService?: OpportunityParticipantService;
   readonly customerService?: CustomerService;
   readonly quoteService?: QuoteService;
+  readonly enquiryService?: EnquiryService;
   readonly notificationService?: NotificationService;
   readonly businessCategoryService?: BusinessCategoryService;
   readonly directoryService?: DirectoryService;
@@ -643,6 +644,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     savedBusinesses: savedBusinessService,
     customers: customerService,
     quotes: quoteService,
+    enquiries: enquiryService,
   });
 
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
