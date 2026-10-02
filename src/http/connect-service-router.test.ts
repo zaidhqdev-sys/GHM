@@ -79,13 +79,13 @@ const service = (calls: string[]): SavedBusinessService => ({
   deleteSavedBusiness: async () => { calls.push('delete'); },
 });
 
-const customers: CustomerService = {
-  listCustomers: async () => [],
-  getCustomer: async () => null,
-  createCustomer: async () => { throw new Error('must not be called'); },
-  archiveCustomer: async () => { throw new Error('must not be called'); },
-  restoreCustomer: async () => { throw new Error('must not be called'); },
-};
+const customerService = (calls: string[]): CustomerService => ({
+  listCustomers: async (_context, status) => { calls.push(`list:${status ?? 'all'}`); return []; },
+  getCustomer: async (_context, id) => { calls.push(`get:${id}`); return null; },
+  createCustomer: async (_context, input) => { calls.push(`create:${input.name}`); throw new Error('test create result'); },
+  archiveCustomer: async (_context, id) => { calls.push(`archive:${id}`); throw new Error('test archive result'); },
+  restoreCustomer: async (_context, id) => { calls.push(`restore:${id}`); throw new Error('test restore result'); },
+});
 
 const body = (input?: unknown) => ({
   operation: { resource: 'saved_business', operation: 'read' },
@@ -178,5 +178,32 @@ test('Connect service route returns invalid request for malformed input', async 
       body: JSON.stringify({ operation: { resource: 'saved_business', operation: 'read' } }),
     });
     assert.equal(response.status, 400);
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+test('Connect service route dispatches Customer read through the governed chain', async () => {
+  const calls: string[] = [];
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService(calls) });
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/connect/service`, {
+      method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' },
+      body: JSON.stringify({ operation: { resource: 'customer', operation: 'read' }, externalIdentity: { provider: 'supabase', subject: '550e8400-e29b-41d4-a716-446655440000' }, input: { customerId: 7 } }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { result: null });
+    assert.deepEqual(calls, ['get:7']);
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+test('Connect service route reaches Customer create capability but preserves service errors', async () => {
+  const calls: string[] = [];
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService(calls) });
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/connect/service`, {
+      method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' },
+      body: JSON.stringify({ operation: { resource: 'customer', operation: 'create' }, externalIdentity: { provider: 'supabase', subject: '550e8400-e29b-41d4-a716-446655440000' }, input: { name: 'Alice' } }),
+    });
+    assert.equal(response.status, 500);
+    assert.deepEqual(calls, ['create:Alice']);
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
