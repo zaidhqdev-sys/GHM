@@ -60,23 +60,37 @@ A revoked integration cannot be re-enabled.
 
 The lifecycle module does not manufacture user identity, roles, membership, ownership, or AuthContext.
 
-## 5. Test evidence
+## 5. Qualification evidence
 
-Unit coverage added for:
+Local full suite:
 
-- active integration acceptance;
-- unknown integration rejection;
-- disabled integration rejection;
-- revoked integration rejection;
-- malformed integration identifier rejection before repository access.
+- **426 tests**
+- **426 passed**
+- **0 failed**
+- build passed
 
-The repository is wired into the normal TypeScript test build through `package.json`.
+Live PostgreSQL qualification:
+
+- **6 tests**
+- **6 passed**
+- **0 failed**
+
+The live qualification verified:
+
+1. runtime can read an active integration and the active gate accepts it;
+2. disabled integration is rejected by the runtime gate;
+3. disabled integration can return to active;
+4. revoked integration is rejected;
+5. revoked integration cannot be re-enabled;
+6. runtime cannot mutate lifecycle directly.
+
+The migration was applied successfully through the normal GHM migration runner. No manual database mutation was used.
 
 ## 6. Explicitly not qualified
 
 This slice does not qualify:
 
-- ES256 cryptographic verification beyond the already separate assertion qualification;
+- ES256 cryptographic verification beyond the separate assertion qualification;
 - replay/`jti` persistence;
 - HTTP exposure;
 - request envelopes;
@@ -91,8 +105,8 @@ This slice does not qualify:
 
 ## 7. Stop boundary
 
-The next slice is not assumed by this document.
+The next bounded service-trust slice is trusted request-envelope and integration-context establishment.
 
-The lifecycle authority must be verified against the real migrated PostgreSQL schema before it is treated as live construction evidence. Only after that evidence is green should the next bounded service-trust slice be considered: trusted request envelope and integration-context establishment.
+That next slice must not be treated as implemented merely because the lifecycle authority now exists.
 
-**Result:** GHM now has a bounded construction implementation for persistent Connect integration lifecycle authority, with runtime fail-closed semantics and no HTTP or production exposure.
+**Result:** GHM has a construction-qualified persistent Connect integration lifecycle authority with runtime fail-closed semantics and verified least-privilege database access, while the broader service boundary remains separately gated.
