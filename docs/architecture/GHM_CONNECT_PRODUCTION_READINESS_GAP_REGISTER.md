@@ -170,11 +170,11 @@ Founder authorization was granted on 2026-09-30 for the frozen Connect identity 
 
 This qualification is limited to the adapter seam. It does **not** authorize HTTP/service exposure, Supabase JWT acceptance, Connect session migration, membership/ownership/admin migration, business mapping migration, production routing, shadow traffic, provider cleanup, or cutover.
 
-The Connect service-trust track now has bounded construction-qualified prerequisites covering the ES256 service-assertion cryptographic primitive, persistent Connect integration lifecycle authority, trusted request context, governed operation resolution, GHM authorization binding, resource capability dispatch, and the first service-to-service HTTP read boundary. These do not qualify replay protection, mutation HTTP exposure, broader product adapters, or production cutover.
+The Connect service-trust track now has bounded construction-qualified prerequisites covering the ES256 service-assertion cryptographic primitive, persistent Connect integration lifecycle authority, trusted request context, governed operation resolution, GHM authorization binding, resource capability dispatch, and the first service-to-service HTTP read boundary. Replay protection is now separately construction-qualified; mutation HTTP exposure, broader product adapters, and production cutover remain unqualified.
 
 The historical next-slice statement is superseded: trusted request context, governed operation resolution, authorization binding, capability dispatch, and the first HTTP read boundary are now qualified on main.
 
-Trusted request-context establishment, governed operation resolution, GHM authorization binding, resource capability dispatch, and the first saved_business.read service HTTP boundary are now construction-qualified bounded prerequisites. The service-trust boundary remains separately gated; the first bounded HTTP read boundary is now construction-qualified for saved_business.read. Replay protection, mutation HTTP exposure, broader product adapters, and production cutover remain separately gated.
+Trusted request-context establishment, governed operation resolution, GHM authorization binding, resource capability dispatch, and the first saved_business.read service HTTP boundary are now construction-qualified bounded prerequisites. The service-trust boundary remains separately gated; the first bounded HTTP read boundary is now construction-qualified for saved_business.read. Mutation HTTP exposure, broader product adapters, and production cutover remain separately gated; replay protection is qualified by `CONNECT_SERVICE_REPLAY_PROTECTION_QUALIFICATION.md`.
 
 A future construction capability requires:
 
