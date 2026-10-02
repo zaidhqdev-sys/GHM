@@ -4,8 +4,7 @@ import { test } from 'node:test';
 
 const loadConfig = (overrides: Record<string, string | undefined>) => {
   const env = { ...process.env, ...overrides };
-  delete env.DATABASE_SSL;
-  if (overrides.DATABASE_SSL !== undefined) env.DATABASE_SSL = overrides.DATABASE_SSL;
+  env.DATABASE_SSL = overrides.DATABASE_SSL ?? '';
   return spawnSync(
     process.execPath,
     ['-e', "const { config } = require('./dist/config.js'); console.log(JSON.stringify(config));"],
