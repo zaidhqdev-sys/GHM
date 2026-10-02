@@ -38,7 +38,7 @@ REVOKE ALL ON TABLE ghm.connect_integration FROM PUBLIC;
 GRANT SELECT ON TABLE ghm.connect_integration TO ghm_runtime;
 
 CREATE OR REPLACE FUNCTION ghm.connect_integration_create(
-  p_id text,
+  p_id varchar(128),
   p_display_name text
 ) RETURNS TABLE (
   id text,
@@ -80,11 +80,11 @@ BEGIN
 END;
 $$;
 
-ALTER FUNCTION ghm.connect_integration_create(text, text) OWNER TO ghm_schema_owner;
+ALTER FUNCTION ghm.connect_integration_create(varchar, text) OWNER TO ghm_schema_owner;
 REVOKE ALL ON FUNCTION ghm.connect_integration_create(text, text) FROM PUBLIC;
 
 CREATE OR REPLACE FUNCTION ghm.connect_integration_disable(
-  p_id text
+  p_id varchar(128)
 ) RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -102,7 +102,7 @@ BEGIN
 END;
 $$;
 
-ALTER FUNCTION ghm.connect_integration_disable(text) OWNER TO ghm_schema_owner;
+ALTER FUNCTION ghm.connect_integration_disable(varchar) OWNER TO ghm_schema_owner;
 REVOKE ALL ON FUNCTION ghm.connect_integration_disable(text) FROM PUBLIC;
 
 CREATE OR REPLACE FUNCTION ghm.connect_integration_enable(
@@ -124,7 +124,7 @@ BEGIN
 END;
 $$;
 
-ALTER FUNCTION ghm.connect_integration_enable(text) OWNER TO ghm_schema_owner;
+ALTER FUNCTION ghm.connect_integration_enable(varchar) OWNER TO ghm_schema_owner;
 REVOKE ALL ON FUNCTION ghm.connect_integration_enable(text) FROM PUBLIC;
 
 CREATE OR REPLACE FUNCTION ghm.connect_integration_revoke(
@@ -147,11 +147,11 @@ BEGIN
 END;
 $$;
 
-ALTER FUNCTION ghm.connect_integration_revoke(text) OWNER TO ghm_schema_owner;
+ALTER FUNCTION ghm.connect_integration_revoke(varchar) OWNER TO ghm_schema_owner;
 REVOKE ALL ON FUNCTION ghm.connect_integration_revoke(text) FROM PUBLIC;
 
 CREATE OR REPLACE FUNCTION ghm.connect_integration_get(
-  p_id text
+  p_id varchar(128)
 ) RETURNS TABLE (
   id text,
   display_name text,
@@ -177,6 +177,6 @@ AS $$
   WHERE ci.id = p_id;
 $$;
 
-ALTER FUNCTION ghm.connect_integration_get(text) OWNER TO ghm_schema_owner;
+ALTER FUNCTION ghm.connect_integration_get(varchar) OWNER TO ghm_schema_owner;
 REVOKE ALL ON FUNCTION ghm.connect_integration_get(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ghm.connect_integration_get(text) TO ghm_runtime;
