@@ -4,7 +4,7 @@
 **Status:** CONSTRUCTION QUALIFIED — PR #21 PENDING MERGE  
 **Reconciliation date:** 2026-10-02  
 **Candidate branch:** `construction/production-config-boundary`  
-**Candidate HEAD:** `6525376f3666e95fba1bb857974fdbac7146dcf3`  
+**Candidate HEAD:** `becd5cfc5a1136e94bb37bf3d83e9e724ce3afc6`  
 **Base:** `main @ 74554bc6607d8c24c248d6cc516e726540a0af18`
 
 ## Purpose
