@@ -5,6 +5,7 @@ import { createApp } from './app';
 import { registerConnectServiceRoutes } from './connect-service-router';
 import type { SavedBusinessService } from '../resources/saved-business/contracts';
 import type { CustomerService } from '../resources/customer/contracts';
+import type { QuoteService } from '../resources/quote/contracts';
 import type { ConnectIntegrationLifecycleRepository } from '../integrations/connect/integration-lifecycle';
 import type { ConnectIdentityAdapter } from '../integrations/connect/identity-adapter';
 import type { AccountAuthStateStore } from '../auth/ghm-bearer';
@@ -81,6 +82,14 @@ const service = (calls: string[]): SavedBusinessService => ({
   deleteSavedBusiness: async () => { calls.push('delete'); },
 });
 
+const quoteService = (calls: string[]): QuoteService => ({
+  listQuotes: async () => { calls.push('list'); return []; },
+  getQuote: async (_context, id) => { calls.push(`get:${id}`); return null; },
+  createQuote: async (_context, input) => { calls.push(`create:${input.customerId}`); return null; },
+  setQuoteStatus: async (_context, id, status) => { calls.push(`status:${id}:${status}`); return null; },
+  setQuoteNotes: async (_context, id, notes) => { calls.push(`notes:${id}:${notes}`); return null; },
+});
+
 const customerService = (calls: string[]): CustomerService => ({
   listCustomers: async (_context, status) => { calls.push(`list:${status ?? 'all'}`); return []; },
   getCustomer: async (_context, id) => { calls.push(`get:${id}`); return null; },
@@ -97,7 +106,7 @@ const body = (input?: unknown) => ({
 
 test('Connect service read route executes the full governed chain', async () => {
   const calls: string[] = [];
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service(calls), customers: customerService([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service(calls), customers: customerService([]), quotes: quoteService([]) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, {
       method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify(body({ savedBusinessId: 7 })),
@@ -110,7 +119,7 @@ test('Connect service read route executes the full governed chain', async () => 
 
 test('Connect service route rejects browser-originated requests', async () => {
   const calls: string[] = [];
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service(calls), customers: customerService([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service(calls), customers: customerService([]), quotes: quoteService([]) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, {
       method: 'POST', headers: { authorization: 'Bearer valid', origin: 'https://example.com', 'content-type': 'application/json' }, body: JSON.stringify(body()),
@@ -122,7 +131,7 @@ test('Connect service route rejects browser-originated requests', async () => {
 });
 
 test('Connect service route rejects missing service credential', async () => {
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body()) });
     assert.equal(response.status, 401);
@@ -133,7 +142,7 @@ test('Connect service route rejects missing service credential', async () => {
 test('Connect service route fails closed for inactive integration', async () => {
   const inactive: ConnectIntegrationLifecycleRepository = { get: async () => ({ ...(await lifecycle.get('connect-test'))!, status: 'disabled' }) };
   const calls: string[] = [];
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle: inactive, identity, accounts, savedBusinesses: service(calls), customers: customerService([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle: inactive, identity, accounts, savedBusinesses: service(calls), customers: customerService([]), quotes: quoteService([]) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify(body()) });
     assert.equal(response.status, 401);
@@ -143,7 +152,7 @@ test('Connect service route fails closed for inactive integration', async () => 
 
 test('Connect service route rejects unsupported mutation capability', async () => {
   const calls: string[] = [];
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service(calls), customers: customerService([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service(calls), customers: customerService([]), quotes: quoteService([]) });
   const mutationBody = { ...body({ businessId: 9 }), operation: { resource: 'saved_business', operation: 'create' } };
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify(mutationBody) });
@@ -154,7 +163,7 @@ test('Connect service route rejects unsupported mutation capability', async () =
 
 test('Connect service route fails closed for unmapped identity', async () => {
   const unmapped: ConnectIdentityAdapter = { resolve: async () => ({ outcome: 'unmapped', mapping: null, created: false }) };
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity: unmapped, accounts, savedBusinesses: service([]), customers: customerService([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity: unmapped, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify(body()) });
     assert.equal(response.status, 401);
@@ -164,7 +173,7 @@ test('Connect service route fails closed for unmapped identity', async () => {
 test('Connect service route never enables identity bootstrap', async () => {
   let allowBootstrap: boolean | undefined;
   const guarded: ConnectIdentityAdapter = { resolve: async (subject, options) => { allowBootstrap = options?.allowBootstrap; return identity.resolve(subject, options); } };
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity: guarded, accounts, savedBusinesses: service([]), customers: customerService([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity: guarded, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify(body()) });
     assert.equal(response.status, 200);
@@ -173,7 +182,7 @@ test('Connect service route never enables identity bootstrap', async () => {
 });
 
 test('Connect service route returns invalid request for malformed input', async () => {
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, {
       method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' },
@@ -207,5 +216,16 @@ test('Connect service route reaches Customer create capability but preserves ser
     });
     assert.equal(response.status, 500);
     assert.deepEqual(calls, ['create:Alice']);
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+test('Connect service route dispatches Quote read through the governed chain', async () => {
+  const calls: string[] = [];
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService(calls) });
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify({ operation: { resource: 'quote', operation: 'read' }, externalIdentity: { provider: 'supabase', subject: '550e8400-e29b-41d4-a716-446655440000' }, input: { quoteId: 7 } }) });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { result: null });
+    assert.deepEqual(calls, ['get:7']);
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
