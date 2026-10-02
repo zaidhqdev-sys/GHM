@@ -85,6 +85,7 @@ import type { DirectoryService } from '../resources/directory/contracts';
 import { BusinessCategoryServiceImpl } from '../resources/business-category/service';
 import type { BusinessCategoryService } from '../resources/business-category/contracts';
 import { registerBusinessCategoryRoutes } from './business-category-router';
+import { registerConnectServiceRoutes, type ConnectServiceHttpDependencies } from './connect-service-router';
 
 export interface AppDependencies {
   readonly businessIdentityService?: BusinessIdentityService;
@@ -111,6 +112,7 @@ export interface AppDependencies {
   readonly authService?: GhmAuthService;
   readonly passwordRecoveryService?: PasswordRecoveryService;
   readonly resourceAuthMiddleware?: import('express').RequestHandler;
+  readonly connectService?: Omit<ConnectServiceHttpDependencies, 'savedBusinesses'>;
 }
 
 const requireRegisteredAccess = (resource: Parameters<typeof canAccessResource>[1], operation: ResourceOperation) =>
@@ -636,6 +638,10 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     authService: dependencies.authService,
     passwordRecoveryService: dependencies.passwordRecoveryService,
   } satisfies AuthRouterDependencies);
+  registerConnectServiceRoutes(app, {
+    ...dependencies.connectService,
+    savedBusinesses: savedBusinessService,
+  });
 
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
     try {
