@@ -8,9 +8,11 @@ import type { ConnectIntegrationLifecycleRepository } from '../integrations/conn
 import type { ConnectIdentityAdapter } from '../integrations/connect/identity-adapter';
 import type { AccountAuthStateStore } from '../auth/ghm-bearer';
 import type { ConnectServiceAssertionService } from '../integrations/connect/service-assertion';
+import type { ConnectServiceAssertionReplayStore } from '../integrations/connect/service-assertion-replay';
 
 const start = async (deps: {
   assertionService: ConnectServiceAssertionService;
+  replayStore: ConnectServiceAssertionReplayStore;
   lifecycle: ConnectIntegrationLifecycleRepository;
   identity: ConnectIdentityAdapter;
   accounts: AccountAuthStateStore;
@@ -20,6 +22,7 @@ const start = async (deps: {
     savedBusinessService: deps.savedBusinesses,
     connectService: {
       assertionService: deps.assertionService,
+      replayStore: deps.replayStore,
       lifecycle: deps.lifecycle,
       identity: deps.identity,
       accounts: deps.accounts,
@@ -43,6 +46,11 @@ const assertion = (integrationId = 'connect-test', requestId = 'request-1'): Con
     };
   },
 });
+
+const replayStore = (): ConnectServiceAssertionReplayStore => {
+  const seen = new Set<string>();
+  return { consume: async (requestId) => { if (seen.has(requestId)) return false; seen.add(requestId); return true; } };
+};
 
 const lifecycle: ConnectIntegrationLifecycleRepository = {
   get: async (id) => id === 'connect-test' ? {
@@ -77,7 +85,7 @@ const body = (input?: unknown) => ({
 
 test('Connect service read route executes the full governed chain', async () => {
   const calls: string[] = [];
-  const { server, baseUrl } = await start({ assertionService: assertion(), lifecycle, identity, accounts, savedBusinesses: service(calls) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service(calls) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, {
       method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify(body({ savedBusinessId: 7 })),
@@ -90,7 +98,7 @@ test('Connect service read route executes the full governed chain', async () => 
 
 test('Connect service route rejects browser-originated requests', async () => {
   const calls: string[] = [];
-  const { server, baseUrl } = await start({ assertionService: assertion(), lifecycle, identity, accounts, savedBusinesses: service(calls) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service(calls) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, {
       method: 'POST', headers: { authorization: 'Bearer valid', origin: 'https://example.com', 'content-type': 'application/json' }, body: JSON.stringify(body()),
@@ -102,7 +110,7 @@ test('Connect service route rejects browser-originated requests', async () => {
 });
 
 test('Connect service route rejects missing service credential', async () => {
-  const { server, baseUrl } = await start({ assertionService: assertion(), lifecycle, identity, accounts, savedBusinesses: service([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body()) });
     assert.equal(response.status, 401);
@@ -113,7 +121,7 @@ test('Connect service route rejects missing service credential', async () => {
 test('Connect service route fails closed for inactive integration', async () => {
   const inactive: ConnectIntegrationLifecycleRepository = { get: async () => ({ ...(await lifecycle.get('connect-test'))!, status: 'disabled' }) };
   const calls: string[] = [];
-  const { server, baseUrl } = await start({ assertionService: assertion(), lifecycle: inactive, identity, accounts, savedBusinesses: service(calls) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle: inactive, identity, accounts, savedBusinesses: service(calls) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify(body()) });
     assert.equal(response.status, 401);
@@ -123,7 +131,7 @@ test('Connect service route fails closed for inactive integration', async () => 
 
 test('Connect service route rejects unsupported mutation capability', async () => {
   const calls: string[] = [];
-  const { server, baseUrl } = await start({ assertionService: assertion(), lifecycle, identity, accounts, savedBusinesses: service(calls) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service(calls) });
   const mutationBody = { ...body({ businessId: 9 }), operation: { resource: 'saved_business', operation: 'create' } };
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify(mutationBody) });
@@ -134,7 +142,7 @@ test('Connect service route rejects unsupported mutation capability', async () =
 
 test('Connect service route fails closed for unmapped identity', async () => {
   const unmapped: ConnectIdentityAdapter = { resolve: async () => ({ outcome: 'unmapped', mapping: null, created: false }) };
-  const { server, baseUrl } = await start({ assertionService: assertion(), lifecycle, identity: unmapped, accounts, savedBusinesses: service([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity: unmapped, accounts, savedBusinesses: service([]) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify(body()) });
     assert.equal(response.status, 401);
@@ -144,7 +152,7 @@ test('Connect service route fails closed for unmapped identity', async () => {
 test('Connect service route never enables identity bootstrap', async () => {
   let allowBootstrap: boolean | undefined;
   const guarded: ConnectIdentityAdapter = { resolve: async (subject, options) => { allowBootstrap = options?.allowBootstrap; return identity.resolve(subject, options); } };
-  const { server, baseUrl } = await start({ assertionService: assertion(), lifecycle, identity: guarded, accounts, savedBusinesses: service([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity: guarded, accounts, savedBusinesses: service([]) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify(body()) });
     assert.equal(response.status, 200);
@@ -153,7 +161,7 @@ test('Connect service route never enables identity bootstrap', async () => {
 });
 
 test('Connect service route returns invalid request for malformed input', async () => {
-  const { server, baseUrl } = await start({ assertionService: assertion(), lifecycle, identity, accounts, savedBusinesses: service([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, {
       method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' },

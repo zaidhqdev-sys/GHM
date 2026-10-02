@@ -72,7 +72,7 @@ Required semantic claims:
 | key id | required for rotation |
 | nonce/request identifier | required where replay detection is part of the transport contract |
 
-The current cryptographic construction uses the JWT `jti` claim as the request identifier. This establishes identifier carriage/consistency only; replay detection and persistence remain separately gated.
+The current cryptographic construction uses the JWT `jti` claim as the request identifier. Durable replay detection and first-consumption persistence are now construction-qualified in `CONNECT_SERVICE_REPLAY_PROTECTION_QUALIFICATION.md`; the broader service-trust boundary remains separately gated.
 
 Exact wire header names, token serialization, signing-key storage, clock-skew allowance, and rotation procedure are transport implementation details and must be frozen before implementation is considered qualified.
 
@@ -366,7 +366,7 @@ Construction under this contract must stop before:
 - session migration;
 - broader product adapter expansion.
 
-A successful local qualification means only that the **cryptographic service-assertion sub-slice** is qualified. It does not qualify HTTP exposure, integration lifecycle/revocation, replay persistence, end-user identity carriage, resource dispatch, or make Connect production-GHM backed.
+A successful local qualification of the cryptographic assertion sub-slice does not by itself qualify HTTP exposure, integration lifecycle/revocation, end-user identity carriage, resource dispatch, or make Connect production-GHM backed. Replay persistence is separately qualified by its dedicated qualification document.
 
 ## 22. Authority chain
 
