@@ -296,7 +296,7 @@ test('Connect service dispatches Enquiry create through the governed chain', asy
       method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' },
       body: JSON.stringify({ operation: { resource: 'enquiry', operation: 'create' }, externalIdentity: { provider: 'supabase', subject: '550e8400-e29b-41d4-a716-446655440000' }, input: { businessId: 12, customerName: 'Alice', project: 'Website', description: 'Build a website' } }),
     });
-    assert.equal(response.status, 200);
+    assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
     assert.deepEqual(calls, ['create:12']);
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
@@ -310,7 +310,7 @@ test('Connect service dispatches business Enquiry read through the governed chai
       method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' },
       body: JSON.stringify({ operation: { resource: 'enquiry', operation: 'read' }, externalIdentity: { provider: 'supabase', subject: '550e8400-e29b-41d4-a716-446655440000' }, input: { businessId: 12 } }),
     });
-    assert.equal(response.status, 200);
+    assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
     assert.deepEqual(calls, ['list:12']);
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
@@ -324,7 +324,7 @@ test('Connect service dispatches business Enquiry status update through the gove
       method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' },
       body: JSON.stringify({ operation: { resource: 'enquiry', operation: 'update' }, externalIdentity: { provider: 'supabase', subject: '550e8400-e29b-41d4-a716-446655440000' }, input: { enquiryId: 11, status: 'contacted' } }),
     });
-    assert.equal(response.status, 200);
+    assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
     assert.deepEqual(calls, ['update:11:contacted']);
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
