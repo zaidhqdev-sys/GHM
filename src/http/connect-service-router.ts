@@ -11,8 +11,7 @@ import { resolveConnectGovernedOperation } from '../integrations/connect/governe
 import { establishConnectTrustedRequestContext } from '../integrations/connect/trusted-request-context';
 import { ConnectIdentityAdapterImpl, type ConnectIdentityAdapter } from '../integrations/connect/identity-adapter';
 import { dispatchConnectResourceCapability } from '../integrations/connect/resource-capability-dispatch';
-import type { Resource } from '../auth/authorization';
-import type { ResourceOperation } from '../resources/registry';
+import { parseProductConsumerRequest, ProductConsumerRequestError, type ProductConsumerRequest } from './product-consumer-contract';
 import type { SavedBusinessService } from '../resources/saved-business/contracts';
 
 export interface ConnectServiceHttpDependencies {
@@ -33,22 +32,12 @@ const readBearer = (req: Request): string => {
   if (!token) throw new ConnectServiceHttpError('Authentication required');
   return token;
 };
-const parseRequest = (body: unknown): {
-  operation: { resource: Resource; operation: ResourceOperation };
-  externalIdentity: { provider: 'supabase'; subject: string };
-  input: unknown;
-} => {
-  if (!body || typeof body !== 'object' || Array.isArray(body)) throw new ConnectServiceHttpError('Invalid request', 400);
-  const candidate = body as Record<string, unknown>;
-  const operation = candidate.operation;
-  const identity = candidate.externalIdentity;
-  if (!operation || typeof operation !== 'object' || Array.isArray(operation)) throw new ConnectServiceHttpError('Invalid request', 400);
-  const op = operation as Record<string, unknown>;
-  if (typeof op.resource !== 'string' || typeof op.operation !== 'string') throw new ConnectServiceHttpError('Invalid request', 400);
-  if (!identity || typeof identity !== 'object' || Array.isArray(identity)) throw new ConnectServiceHttpError('Invalid request', 400);
-  const ext = identity as Record<string, unknown>;
-  if (ext.provider !== 'supabase' || typeof ext.subject !== 'string') throw new ConnectServiceHttpError('Invalid request', 400);
-  return { operation: { resource: op.resource as Resource, operation: op.operation as ResourceOperation }, externalIdentity: { provider: 'supabase', subject: ext.subject }, input: candidate.input };
+const parseRequest = (body: unknown): ProductConsumerRequest & { externalIdentity: { provider: 'supabase'; subject: string } } => {
+  let parsed: ProductConsumerRequest;
+  try { parsed = parseProductConsumerRequest(body); }
+  catch (error) { if (error instanceof ProductConsumerRequestError) throw new ConnectServiceHttpError('Invalid request', 400); throw error; }
+  if (parsed.externalIdentity.provider !== 'supabase') throw new ConnectServiceHttpError('Invalid request', 400);
+  return parsed as ProductConsumerRequest & { externalIdentity: { provider: 'supabase'; subject: string } };
 };
 const parseSavedBusinessReadInput = (input: unknown): { capability: 'saved_business.read'; savedBusinessId?: number } => {
   if (input === undefined) return { capability: 'saved_business.read' };
