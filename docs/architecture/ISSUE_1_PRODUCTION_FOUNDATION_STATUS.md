@@ -16,6 +16,8 @@ Current main includes these completed Issue #1 slices:
 - PR #14 — runtime/HTTP hardening — merged as b18a407e0ad1184f2821b08736e0b638e835e1f1. CORS validation, HTTP timeouts, ETag/security headers, readiness/health and operational-boundary qualification were established.
 - PR #16 — CI quality gates — merged as c7b70e0e0bf9fea57817c66c80337bacc778cb3c. Repository CI runs install, build, test, and runtime-boundary verification.
 - PR #17 — password recovery delivery boundary — merged as 2237995ea3006c8e39fde7739e63e291be735fe1. Recovery credentials are handed only to an injected delivery boundary; HTTP does not disclose the raw recovery token.
+- PR #20 — Quote status concurrency reconciliation — merged as 74554bc6607d8c24c248d6cc516e726540a0af18. Quote status mutation re-reads/locks the target inside the authorized transaction boundary.
+- PR #21 — production configuration/secret boundary — **PENDING MERGE**. Construction qualification requires `DATABASE_SSL=true` in production and fails closed otherwise; 416/416 tests pass on the candidate branch.
 
 ## Security/authentication authority
 
