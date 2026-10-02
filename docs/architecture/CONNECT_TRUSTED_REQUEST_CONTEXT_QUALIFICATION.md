@@ -1,7 +1,7 @@
 # Connect Trusted Request Context Qualification
 
 **Status:** CONSTRUCTION QUALIFIED — TRUSTED REQUEST CONTEXT SUB-SLICE ONLY
-**Evidence:** 431/431 tests passing; TypeScript build passing on construction branch
+**Evidence:** 431/431 tests passing; TypeScript build passing on the qualification branch
 
 ## Scope
 
@@ -13,6 +13,7 @@ Canonical chain:
       → active Connect integration lifecycle
       → trusted integration principal
       → bounded request envelope
+      → governed operation resolution
 
 The context is not an end-user AuthContext. It identifies the calling Connect integration only. End-user identity, when present, remains an explicit Supabase external identity reference and is not authorization truth.
 
@@ -31,7 +32,7 @@ The context is not an end-user AuthContext. It identifies the calling Connect in
 
 ## Explicit non-qualification
 
-This slice does **not** qualify:
+This slice does not qualify:
 
 - HTTP exposure;
 - browser-origin enforcement;
@@ -49,4 +50,4 @@ The assertion remains responsible for cryptographic verification. This slice con
 
 ## Stop boundary
 
-Construction stops at trusted request-context establishment. The next slice, if separately authorized, may address the callable service boundary and operation dispatch contract without weakening this trust chain.
+Construction stops at trusted request-context establishment. Governed operation resolution is separately qualified in CONNECT_GOVERNED_OPERATION_RESOLUTION_QUALIFICATION.md; it only derives a canonical capability name from the trusted request and re-checks registry membership. It does not authorize an end user, resolve identity, execute a resource service, expose HTTP, or establish production readiness.
