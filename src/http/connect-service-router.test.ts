@@ -29,6 +29,7 @@ const start = async (deps: {
       lifecycle: deps.lifecycle,
       identity: deps.identity,
       accounts: deps.accounts,
+      customers: deps.customers,
     },
   });
   const server = http.createServer(app);
