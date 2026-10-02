@@ -251,6 +251,6 @@ The verified audit now gives the concrete gap boundary required to authorize fut
 
 ### Construction authorization
 
-**Current reconciled state:** Connect identity adapter boundary is Founder-authorized and construction-qualified. Business Offering is also **QUALIFIED / CLOSED** at the GHM construction boundary. Its qualification is recorded in `BUSINESS_OFFERING_OPERATION_CONTRACT.md` and the dedicated runtime evidence below.
+**Current reconciled state:** Connect identity adapter boundary, trusted request context, governed operation resolution, and GHM authorization binding are Founder-authorized construction slices with their qualification evidence recorded in dedicated architecture documents. Business Offering is also **QUALIFIED / CLOSED** at the GHM construction boundary. Its qualification is recorded in `BUSINESS_OFFERING_OPERATION_CONTRACT.md` and the dedicated runtime evidence below.
 
 The Business Offering qualification does not authorize a public HTTP API, product session migration, production cutover, or any other Connect product adapter. The next product construction capability still requires a separate evidence-backed contract and explicit authorization.
