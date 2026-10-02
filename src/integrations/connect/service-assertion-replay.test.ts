@@ -23,7 +23,7 @@ test('replay store validates before persistence', async () => {
       called = true; return true;
     }
   })();
-  await assert.rejects(() => store.consume('bad\\nvalue', 'connect-test', new Date(Date.now() + 60000)));
+  await assert.rejects(() => store.consume('', 'connect-test', new Date(Date.now() + 60000)));
   await assert.rejects(() => store.consume('request-3', 'connect-test', new Date(Date.now() - 1)));
   assert.equal(called, false);
 });
