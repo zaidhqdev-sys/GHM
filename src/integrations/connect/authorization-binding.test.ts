@@ -9,7 +9,7 @@ import { bindConnectAuthorization } from './authorization-binding';
 const subject = '123e4567-e89b-12d3-a456-426614174000';
 
 const request = (
-  externalIdentity: { provider: 'supabase'; subject } | null = { provider: 'supabase', subject },
+  externalIdentity: { provider: 'supabase'; subject: string } | null = { provider: 'supabase', subject },
 ): ConnectTrustedRequestContext =>
   Object.freeze({
     principal: Object.freeze({
