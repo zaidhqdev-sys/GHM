@@ -1,7 +1,7 @@
 # GHM Authentication Credential Contract
 
 **Canonical owner:** GHM platform governance
-**Status:** AUTHENTICATION GATE 2C — CREDENTIAL / LOGIN CONTRACT — **FOUNDER DECISIONS RECORDED** (`2026-09-21`); **implementation NOT AUTHORIZED**
+**Status:** AUTHENTICATION GATE 2C — HISTORICAL CREDENTIAL / LOGIN CONTRACT; Founder decisions remain binding and the credential/login foundation was subsequently constructed and qualified under Gate 3B.
 **Authority:** Local repository `C:\GHM`
 **Baseline:** branch `construction/saved-business-resource`, HEAD `239ef5d5065826ddbaae03a2b05c175bee9bce1d`
 **Depends on:**
@@ -11,10 +11,10 @@
 - [GHM_AUTHENTICATION_SESSION_CONTRACT.md](./GHM_AUTHENTICATION_SESSION_CONTRACT.md)
 
 ```text
-IMPLEMENTATION AUTHORIZATION: NOT GRANTED
-DOCUMENTATION-ONLY GATE
-NO PASSWORD / LOGIN / RECOVERY / BIOMETRIC IMPLEMENTATION
-NO CREDENTIAL TABLES CREATED
+HISTORICAL GATE 2C SNAPSHOT
+AT THAT GATE: IMPLEMENTATION AUTHORIZATION WAS NOT GRANTED
+CURRENT: CREDENTIAL / LOGIN / RECOVERY FOUNDATION IS CONSTRUCTION-QUALIFIED ON MAIN
+PRODUCT MIGRATION / PRODUCTION CUTOVER REMAIN SEPARATELY GATED
 FOUNDER CREDENTIAL DECISIONS RECORDED: 2026-09-21
 ```
 
@@ -44,7 +44,7 @@ Credentials (including password material) must remain **separate** from `account
 
 ## 2. Current-state audit
 
-Inspected (read-only) at HEAD `239ef5d`:
+Historical Gate 2C snapshot was inspected at HEAD `239ef5d`. Current implementation status is governed by the Gate 3B foundation and current auth qualification records.
 
 | Area | Evidence |
 |---|---|
@@ -61,7 +61,7 @@ Inspected (read-only) at HEAD `239ef5d`:
 | Membership | `ghm.business_membership` — authorization, not login credentials |
 | Email on `account_identity` | **Absent** today (phone exists; business/customer emails are other resources) |
 
-### Explicit current findings
+### Explicit historical findings
 
 | Capability | Present? |
 |---|---|
@@ -73,8 +73,7 @@ Inspected (read-only) at HEAD `239ef5d`:
 | GHM biometric / passkey / WebAuthn support | **No** |
 
 ```text
-CURRENT IMPLEMENTATION ≠ TARGET CREDENTIAL CONTRACT.
-SELECTED CREDENTIAL ARCHITECTURE ≠ IMPLEMENTED CREDENTIAL SYSTEM.
+The target credential architecture is now implemented for the GHM authentication foundation and construction-qualified. This contract remains the governing design; Connect/QuoteFlow product authentication migration and production cutover remain separately gated.
 ```
 
 ---
