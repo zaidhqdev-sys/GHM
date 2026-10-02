@@ -135,6 +135,7 @@ QUALIFIED CONSTRUCTION
   Connect trusted request context
   Connect governed operation resolution
   Connect GHM authorization binding
+  Connect service HTTP read boundary (saved_business.read)
 
 REQUIRES FUTURE GOVERNED WORK (NOT CURRENTLY AUTHORIZED)
   Trust score / Trust evidence
