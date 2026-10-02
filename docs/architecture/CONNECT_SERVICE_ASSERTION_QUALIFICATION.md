@@ -69,7 +69,7 @@ The service assertion test suite is part of the canonical test inclusion and cov
 This qualification does **not** establish:
 
 - integration persistence;
-- integration enable/disable/revocation state;
+- integration enable/disable/revocation state (now constructed separately under `construction/connect-integration-lifecycle`, but not part of this cryptographic qualification);
 - replay/`jti` persistence or replay rejection;
 - HTTP exposure;
 - end-user identity carriage;
