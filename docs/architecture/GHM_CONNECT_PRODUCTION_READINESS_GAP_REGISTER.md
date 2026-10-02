@@ -4,7 +4,7 @@
 **Source audit:** docs/architecture/GHM_CONNECT_BACKEND_READINESS_AUDIT.md
 **Audited GHM tree:** historical Connect audit checkpoint; current GHM construction state is the consolidated `main` line.
 **Connect source:** abcffa73f893602c25310a58946bebb91fd7eeb5
-**Current reconciliation checkpoint:** consolidated `main` — current repository authority; Connect service-trust construction evidence reconciled through the integration lifecycle slice (2026-10-02).
+**Current reconciliation checkpoint:** consolidated `main` — current repository authority; Connect service-trust construction evidence reconciled through the bounded HTTP read boundary (2026-10-02).
 **Evidence sprint checkpoint:** see Â§8 (this document update)
 
 ## Purpose
@@ -46,7 +46,7 @@ The principal platform blockers are identity/authentication, the Connect product
 | 10 | Missing product domains | Multiple absent | Separate source audits/contracts for each required domain | Per-domain authorization |
 | 11 | Atomic workflow parity | Partial | Exact workflow contracts and qualification for Connect atomic creates | Explicit workflow authorization |
 | 12 | Deferred participant / capability authorities | Deferred | Concrete transition/verification authority from source | Separate lifecycle authorization |
-| 13 | Thin HTTP surface | Partial | HTTP-vs-adapter decision and per-resource authorization contracts | Explicit API/adapter authorization |
+| 13 | Thin HTTP surface | Partial | First bounded service-to-service `saved_business.read` transport is qualified; broader per-resource HTTP exposure remains separately gated | Explicit API/adapter authorization |
 | 14 | Referenced tables without migration evidence | **Partially reconciled** â€” see Â§8 / `CONNECT_REFERENCED_OBJECT_RECONCILIATION.md` | Prove or retire remaining E/F objects in production; do not build GHM tables from client fiction | Source reconciliation before construction |
 | 15 | Shadow qualification/cutover | Not authorized | Shadow plan, rollback evidence, operational gates | Separate production authorization |
 | 16 | Provider/bootstrap authority cleanup | Open infra gate | Independent bootstrap authority evidence | Separate infrastructure authorization |
@@ -170,9 +170,9 @@ Founder authorization was granted on 2026-09-30 for the frozen Connect identity 
 
 This qualification is limited to the adapter seam. It does **not** authorize HTTP/service exposure, Supabase JWT acceptance, Connect session migration, membership/ownership/admin migration, business mapping migration, production routing, shadow traffic, provider cleanup, or cutover.
 
-The Connect service-trust track now also has two bounded construction-qualified prerequisites: the ES256 service-assertion cryptographic primitive (PR #23, documentation-only, currently open) and the persistent Connect integration lifecycle authority. These do not qualify the broader service boundary, HTTP exposure, request envelopes, replay protection, end-user identity carriage, resource dispatch, or production cutover.
+The Connect service-trust track now has bounded construction-qualified prerequisites covering the ES256 service-assertion cryptographic primitive, persistent Connect integration lifecycle authority, trusted request context, governed operation resolution, GHM authorization binding, resource capability dispatch, and the first service-to-service HTTP read boundary. These do not qualify replay protection, mutation HTTP exposure, broader product adapters, or production cutover.
 
-The next construction slice after the lifecycle authority is trusted request-envelope and integration-context establishment, subject to the existing service-trust contract and explicit gate.
+The historical next-slice statement is superseded: trusted request context, governed operation resolution, authorization binding, capability dispatch, and the first HTTP read boundary are now qualified on main.
 
 Trusted request-context establishment, governed operation resolution, GHM authorization binding, resource capability dispatch, and the first saved_business.read service HTTP boundary are now construction-qualified bounded prerequisites. The service-trust boundary remains separately gated; the first bounded HTTP read boundary is now construction-qualified for saved_business.read. Replay protection, mutation HTTP exposure, broader product adapters, and production cutover remain separately gated.
 
