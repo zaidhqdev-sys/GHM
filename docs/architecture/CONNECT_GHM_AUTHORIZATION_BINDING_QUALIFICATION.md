@@ -1,6 +1,7 @@
 # Connect GHM Authorization Binding Qualification
 
-**Status:** CONSTRUCTION CANDIDATE — AWAITING LOCAL QUALIFICATION — GHM AUTHORIZATION BINDING SUB-SLICE
+**Status:** CONSTRUCTION QUALIFIED — GHM AUTHORIZATION BINDING SUB-SLICE ONLY
+**Evidence:** 431/431 tests passing; TypeScript build passing on the qualification branch
 
 ## Scope
 
