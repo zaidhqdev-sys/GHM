@@ -18,19 +18,14 @@ const client = new Client({
   ssl: { rejectUnauthorized: false },
 });
 
-const fail = (message: string): never => {
+const fail = (message) => {
   throw new Error(message);
 };
 
-const main = async (): Promise<void> => {
+const main = async () => {
   await client.connect();
 
-  const before = await client.query<{
-    current_user: string;
-    session_user: string;
-    current_database: string;
-    can_set_schema_owner: boolean;
-  }>(`
+  const before = await client.query(`
     SELECT
       current_user,
       session_user,
@@ -43,11 +38,7 @@ const main = async (): Promise<void> => {
 
   await client.query('SET ROLE ghm_schema_owner');
 
-  const after = await client.query<{
-    current_user: string;
-    session_user: string;
-    current_database: string;
-  }>(`
+  const after = await client.query(`
     SELECT current_user, session_user, current_database()
   `);
 
@@ -69,19 +60,14 @@ const main = async (): Promise<void> => {
     );
   }
 
-  const ledger = await client.query<{
-    version: string;
-    name: string;
-    checksum: string;
-    applied_at: string;
-  }>(`
+  const ledger = await client.query(`
     SELECT version, name, checksum, applied_at
     FROM ghm.ghm_schema_migrations
     ORDER BY version
   `);
 
   const exceptionText = await fs.readFile(exceptionsPath, 'utf8');
-  const exceptions = JSON.parse(exceptionText) as Record<string, string>;
+  const exceptions = JSON.parse(exceptionText);
 
   const entries = await fs.readdir(migrationsDir, { withFileTypes: true });
   const repository = [];
@@ -111,22 +97,11 @@ const main = async (): Promise<void> => {
   const liveByVersion = new Map(ledger.rows.map((row) => [row.version, row]));
   const repoByVersion = new Map(repository.map((row) => [row.version, row]));
 
-  const exactMatches: string[] = [];
-  const approvedHistoricalMatches: Array<{
-    version: string;
-    name: string;
-    repository_checksum: string;
-    live_checksum: string;
-  }> = [];
-  const unexplainedMismatches: Array<{
-    version: string;
-    name: string;
-    repository_checksum: string;
-    live_checksum: string;
-    registered_exception_checksum: string | null;
-  }> = [];
-  const missing: typeof repository = [];
-  const extra: typeof ledger.rows = [];
+  const exactMatches = [];
+  const approvedHistoricalMatches = [];
+  const unexplainedMismatches = [];
+  const missing = [];
+  const extra = [];
 
   for (const migration of repository) {
     const live = liveByVersion.get(migration.version);
