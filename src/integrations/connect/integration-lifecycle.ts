@@ -23,7 +23,7 @@ export class ConnectIntegrationLifecycleError extends Error {
   }
 }
 
-const assertIntegrationId = (value: unknown): asserts value is string => {
+const assertIntegrationId: (value: unknown) => asserts value is string = (value: unknown) => {
   if (typeof value !== 'string' || !/^[!-~]{1,128}$/.test(value)) {
     throw new ConnectIntegrationLifecycleError(
       'Connect integration id must be printable ASCII ≤ 128 characters',
