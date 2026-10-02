@@ -19,12 +19,12 @@ GHM is **not** a product-specific backend for KBM AI Marketing, Zaid Connect, Qu
 
 This charter does **not**:
 
-- select a callable transport
-- authorize HTTP, package, RPC, or other implementation
 - authorize hosting/deployment implementation
 - authorize storage, jobs, audit platforms, or product adapters
 - select an identity provider or JWT issuer
 - modify Campaign or any other resource
+
+The callable transport has since been selected as HTTP/API; implementation remains governed by the transport-specific and product-specific gates below.
 
 ## 1. Mission
 
@@ -362,7 +362,7 @@ Campaign child resources, storage, jobs, and AI remain outside Campaign root qua
 |---|---|
 | GHM backend core | QUALIFIED (construction) |
 | Campaign root | QUALIFIED (`0a9a9f7`) |
-| Product-facing callable boundary | PARTIAL — Campaign HTTP present at `785df12`; KBM adapter + auth issuance still NOT AUTHORIZED / UNSELECTED |
+| Product-facing callable boundary | PARTIAL — Campaign HTTP present at `785df12`; broader product adapters and cutover remain separately gated |
 | Callable transport | HTTP/API (SELECTED) |
 | JWT issuance | GHM-owned construction foundation QUALIFIED; product migration/cutover separately gated |
 | Error semantic platform contract | OPEN |
@@ -380,7 +380,7 @@ Documentation sequence (historical). Transport selection and Campaign HTTP const
 
 1. GHM Application Backend Platform Charter *(this document)*
 2. Product Integration Boundary Contract
-3. Authentication Issuance Decision Record
+3. Authentication Issuance Decision Record — implemented/qualified foundation is now current; historical decision record remains provenance
 4. Error Semantic Contract
 5. Versioning / Compatibility Contract
 6. Founder decision on callable transport — **DONE — HTTP/API**
@@ -413,7 +413,7 @@ This charter does not claim evidence that was not inspected. External KBM docume
 ## Charter closure
 
 This document defines platform governance.
-It does **not** by itself authorize hosting, storage, jobs, audit platforms, product adapters, JWT issuance, or further implementation beyond separately Founder-authorized surfaces.
+It does **not** by itself authorize hosting, storage, jobs, audit platforms, product adapters, or further implementation beyond separately Founder-authorized surfaces. GHM-owned JWT issuance is already construction-qualified; product migration remains separately gated.
 
 ```text
 CALLABLE TRANSPORT = HTTP/API (SELECTED)
