@@ -12,10 +12,13 @@ if (!databaseUrl) {
 const migrationsDir = path.resolve(process.cwd(), 'database', 'migrations');
 const exceptionsPath = path.resolve(process.cwd(), 'config', 'historical-migration-provenance-exceptions.json');
 const migrationPattern = /^(\d{14})_([a-z0-9][a-z0-9_-]*)\.sql$/;
+const sha256Pattern = /^[a-f0-9]{64}$/;
 
 const client = new Client({
   connectionString: databaseUrl,
-  ssl: { rejectUnauthorized: false },
+  ssl: process.env.DATABASE_SSL === 'true'
+    ? { rejectUnauthorized: false }
+    : undefined,
 });
 
 const fail = (message) => {
@@ -68,6 +71,15 @@ const main = async () => {
 
   const exceptionText = await fs.readFile(exceptionsPath, 'utf8');
   const exceptions = JSON.parse(exceptionText);
+  if (!exceptions || typeof exceptions !== 'object' || Array.isArray(exceptions)) {
+    fail('Historical provenance exceptions must be a JSON object');
+  }
+  for (const [version, checksum] of Object.entries(exceptions)) {
+    if (!/^\d{14}$/.test(version)) fail(`Invalid historical provenance exception version: ${version}`);
+    if (typeof checksum !== 'string' || !sha256Pattern.test(checksum)) {
+      fail(`Invalid historical provenance exception checksum for ${version}`);
+    }
+  }
 
   const entries = await fs.readdir(migrationsDir, { withFileTypes: true });
   const repository = [];
@@ -99,6 +111,7 @@ const main = async () => {
 
   const exactMatches = [];
   const approvedHistoricalMatches = [];
+  const nameMismatches = [];
   const unexplainedMismatches = [];
   const missing = [];
   const extra = [];
@@ -109,6 +122,14 @@ const main = async () => {
     if (!live) {
       missing.push(migration);
       continue;
+    }
+
+    if (live.name !== migration.name) {
+      nameMismatches.push({
+        version: migration.version,
+        repository_name: migration.name,
+        live_name: live.name,
+      });
     }
 
     if (live.checksum === migration.checksum) {
@@ -155,6 +176,7 @@ const main = async () => {
     missing.length === 0 &&
     extra.length === 0 &&
     unexplainedMismatches.length === 0 &&
+    nameMismatches.length === 0 &&
     orphanedExceptions.length === 0;
 
   console.log(JSON.stringify({
@@ -170,11 +192,13 @@ const main = async () => {
       approved_historical_match_count: approvedHistoricalMatches.length,
       missing_count: missing.length,
       unexplained_mismatch_count: unexplainedMismatches.length,
+      name_mismatch_count: nameMismatches.length,
       extra_count: extra.length,
       orphaned_exception_count: orphanedExceptions.length,
       approved_historical_matches: approvedHistoricalMatches,
       missing,
       unexplained_mismatches: unexplainedMismatches,
+      name_mismatches: nameMismatches,
       extra,
       orphaned_exceptions: orphanedExceptions,
     },
