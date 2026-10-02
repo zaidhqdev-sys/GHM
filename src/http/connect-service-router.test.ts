@@ -16,8 +16,15 @@ const start = async (deps: {
   accounts: AccountAuthStateStore;
   savedBusinesses: SavedBusinessService;
 }) => {
-  const app = createApp({ savedBusinessService: deps.savedBusinesses });
-  registerConnectServiceRoutes(app, deps);
+  const app = createApp({
+    savedBusinessService: deps.savedBusinesses,
+    connectService: {
+      assertionService: deps.assertionService,
+      lifecycle: deps.lifecycle,
+      identity: deps.identity,
+      accounts: deps.accounts,
+    },
+  });
   const server = http.createServer(app);
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
