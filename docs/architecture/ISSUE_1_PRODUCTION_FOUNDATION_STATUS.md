@@ -8,6 +8,8 @@
 
 ## Current baseline
 
+The production configuration/secret boundary is now construction-qualified on PR #21, but PR #21 remains unmerged. Its canonical contract is `PRODUCTION_CONFIGURATION_SECRET_BOUNDARY_CONTRACT.md`. The qualified rule is that production configuration fails closed unless `DATABASE_SSL=true`; this is a construction gate only and does not authorize production environment changes.
+
 Current main includes these completed Issue #1 slices:
 
 - PR #13 — legacy authentication reconciliation — merged as de8143ff99a0b7ca1711cebb47af7091715d8265. The temporary HS/JWT_SECRET bearer path was removed. GHM resource authentication is ES256-only.
@@ -54,7 +56,7 @@ The workflow uses non-production qualification environment values only.
 
 ## Issue #1 remaining work
 
-Issue #1 is NOT closed. Remaining acceptance work includes independent qualification of the production configuration/secret boundary, migration-owned and reproducible PostgreSQL schema reconciliation against the application allowlist, governed table access with validation/authorization/tenant isolation/audit logging, and any remaining production startup/readiness/error-contract evidence required by the Issue #1 acceptance criteria.
+Issue #1 is NOT closed. Remaining acceptance work includes migration-owned and reproducible PostgreSQL schema reconciliation against the application allowlist, governed table access with validation/authorization/tenant isolation/audit logging, and any remaining production startup/readiness/error-contract evidence required by the Issue #1 acceptance criteria.
 
 Do not infer Issue #1 completion from the merged slices above. Each remaining acceptance criterion must be independently evidenced before closure.
 
