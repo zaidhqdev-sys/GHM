@@ -174,7 +174,7 @@ The Connect service-trust track now also has two bounded construction-qualified 
 
 The next construction slice after the lifecycle authority is trusted request-envelope and integration-context establishment, subject to the existing service-trust contract and explicit gate.
 
-Trusted request-context establishment is now construction-qualified as the next bounded prerequisite after the lifecycle authority. The service-trust boundary, HTTP exposure, replay protection, end-user identity resolution, resource dispatch, and production cutover remain separately gated.
+Trusted request-context establishment is construction-qualified, and governed operation resolution is now separately construction-qualified as the next bounded prerequisite. The service-trust boundary, HTTP exposure, replay protection, end-user identity resolution, GHM authorization, resource dispatch, and production cutover remain separately gated.
 
 A future construction capability requires:
 
