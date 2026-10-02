@@ -85,11 +85,16 @@ const loadLineItems = async (client: PoolClient, quoteId: QuoteId): Promise<Quot
   return result.rows.map(mapLineItem);
 };
 
-const loadQuote = async (client: PoolClient, context: AuthContext, quoteId: QuoteId): Promise<Quote | null> => {
+const loadQuote = async (
+  client: PoolClient,
+  context: AuthContext,
+  quoteId: QuoteId,
+  lock = false,
+): Promise<Quote | null> => {
   const result = await client.query(
     `SELECT ${QUOTE_COLUMNS}
      FROM ghm.quote
-     WHERE id = $1${ownerPredicate(context)}`,
+     WHERE id = $1${ownerPredicate(context)}${lock ? ' FOR UPDATE' : ''}`,
     ownerValues(context, quoteId),
   );
   if (result.rowCount !== 1) return null;
@@ -161,7 +166,7 @@ export class PostgresQuoteRepository implements QuoteRepository {
 
   async setQuoteStatus(context: AuthContext, quoteId: QuoteId, status: QuoteStatus): Promise<Quote> {
     return withAuthorizedTransaction(context, async client => {
-      const existing = await loadQuote(client, context, quoteId);
+      const existing = await loadQuote(client, context, quoteId, true);
       if (!existing) throw new Error('Quote not found or ownership required');
       if (existing.status === status) return existing;
 
