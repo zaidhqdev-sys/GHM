@@ -7,6 +7,7 @@
     "dev": "ts-node src/server.ts",
     "build": "tsc",
     "migrate": "npm run build && node dist/db/migrate.js",
+    "audit:migrations": "node scripts/forensic-migration-reconciliation.mjs",
     "capture:postgres-catalog": "node scripts/capture-postgres-catalog.mjs",
     "qualify:business-identity-runtime": "npm run build && node scripts/qualify-business-identity-runtime.mjs",
     "qualify:authorization-http": "npm run build && node scripts/qualify-authorization-http.mjs",
