@@ -3,7 +3,8 @@
 **Canonical owner:** GHM platform governance
 **Status:** Charter defined (documentation only)
 **Authority:** Local repository `C:\GHM`
-**Baseline:** branch `construction/saved-business-resource`, HEAD `0a9a9f7`
+**Current baseline:** consolidated `main` — current repository authority
+**Historical baseline:** branch `construction/saved-business-resource`, HEAD `0a9a9f7`
 **Nature:** Governance / architecture document — **not** an implementation plan
 
 ## Definition
@@ -252,14 +253,13 @@ Separate three concerns:
 
 | Concern | Status in this charter |
 |---|---|
-| Authentication issuance | Unresolved — separate decision |
+| Authentication issuance | GHM-owned foundation implemented and construction-qualified; product migration/cutover remains gated |
 | Authentication verification | GHM responsibility (present) |
 | Authorization | GHM responsibility (present) |
 
 GHM currently verifies JWTs and derives AuthContext.
 
-JWT issuance remains unresolved.
-This charter does **not** select an identity provider or issuer.
+JWT issuance is now GHM-owned and construction-qualified under the Gate 3B authentication foundation. Product authentication migration and production cutover remain separately gated.
 
 ## 11. Platform capability model
 
@@ -364,7 +364,7 @@ Campaign child resources, storage, jobs, and AI remain outside Campaign root qua
 | Campaign root | QUALIFIED (`0a9a9f7`) |
 | Product-facing callable boundary | PARTIAL — Campaign HTTP present at `785df12`; KBM adapter + auth issuance still NOT AUTHORIZED / UNSELECTED |
 | Callable transport | HTTP/API (SELECTED) |
-| JWT issuance | UNRESOLVED |
+| JWT issuance | GHM-owned construction foundation QUALIFIED; product migration/cutover separately gated |
 | Error semantic platform contract | OPEN |
 | Versioning / compatibility policy | OPEN |
 | Shared storage | FUTURE / GATED |
@@ -405,7 +405,8 @@ Material claims in this charter are grounded in inspected repository evidence:
 | Narrow HTTP Resource API surface | `src/http/app.ts` |
 | Deployable service package shape (`main`: `dist/server.js`; no consumer `exports`) | `package.json` |
 | Campaign qualified construction | `src/resources/campaign/`, `docs/architecture/CAMPAIGN_SOURCE_AUDIT.md`, `docs/architecture/CAMPAIGN_SCHEMA_CONTRACT.md`, `docs/architecture/CAMPAIGN_OPERATION_CONTRACT.md`, handover Campaign section |
-| Baseline commit | `0a9a9f7` (`feat: add campaign resource`) |
+| Historical Campaign baseline | `0a9a9f7` (`feat: add campaign resource`) |
+| Current construction authority | consolidated `main` |
 
 This charter does not claim evidence that was not inspected. External KBM documentation is referenced only as product-side context, not as GHM repository authority.
 
@@ -416,7 +417,8 @@ It does **not** by itself authorize hosting, storage, jobs, audit platforms, pro
 
 ```text
 CALLABLE TRANSPORT = HTTP/API (SELECTED)
-JWT ISSUANCE = UNRESOLVED
+JWT ISSUANCE = GHM-OWNED / CONSTRUCTION-QUALIFIED
+PRODUCT AUTHENTICATION MIGRATION = SEPARATELY GATED
 DIRECT DATABASE ACCESS BY PRODUCTS = NOT APPROVED
 SHARED STORAGE = FUTURE / GATED
 ZAID-CONTROLLED DEPLOYMENT / CLOUD = FUTURE / STRATEGIC

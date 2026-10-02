@@ -1,7 +1,7 @@
 # GHM Authentication Cryptographic Contract
 
 **Canonical owner:** GHM platform governance
-**Status:** AUTHENTICATION GATE 2A CONTRACT — HISTORICAL DECISION RECORD; ES256 and the remaining implementation parameters were subsequently frozen by Gate 3B. Current qualified foundation: `main @ ffc4a2a`
+**Status:** AUTHENTICATION GATE 2A — HISTORICAL CRYPTOGRAPHIC DECISION RECORD; ES256 implementation parameters and the authentication foundation were subsequently frozen/qualified under Gate 3B.
 **Authority:** Local repository `C:\GHM`
 **Baseline:** branch `construction/saved-business-resource`, HEAD `239ef5d5065826ddbaae03a2b05c175bee9bce1d`
 **Depends on:**
@@ -16,7 +16,7 @@ AT THAT GATE: NO KEYS GENERATED / NO JWT BEHAVIOR CHANGED
 
 ### Current reconciliation
 
-Gate 2A is a historical cryptographic decision record. The statements above describe the repository at that gate and are not current implementation status. Gate 3B subsequently approved the implementation parameters and the ES256 authentication foundation is now construction-qualified on the consolidated `main` line. Legacy HS verification remains isolated as a temporary compatibility boundary; it is not the current GHM authentication mechanism for governed routes. Product migration and production cutover remain separately gated.
+Gate 2A is a historical cryptographic decision record. The statements above describe the repository at that gate and are not current implementation status. Gate 3B subsequently approved the implementation parameters and the ES256 authentication foundation is now construction-qualified on the consolidated `main` line. Legacy HS verification has been removed from the active governed resource-authentication path; historical HS/`JWT_SECRET` references below are retained only as Gate 2A provenance. Product migration and production cutover remain separately gated.
 
 This document resolves the **cryptographic / access-token contract space** left open by Authentication Contract Gate 1. It evaluates options and records Founder decision checkpoints. It does **not** select unresolved cryptographic parameters on behalf of the Founder and does **not** authorize implementation.
 
@@ -24,20 +24,20 @@ This document resolves the **cryptographic / access-token contract space** left 
 
 ## 1. Current state
 
-Inspected evidence (HEAD `239ef5d`):
+Historical Gate 2A evidence was inspected at HEAD `239ef5d`. Current implementation evidence is the consolidated mainline authentication foundation.
 
 | Item | Evidence |
 |---|---|
 | Verifier | `src/auth/ghm-bearer.ts` → ES256 access-JWT foundation; issuer/audience/expiration/subject and `kid` are enforced |
 | Config | `src/auth/foundation/es256-keys.ts` loads secret-managed ES256 key material from dedicated `GHM_JWT_ES256_*` variables |
 | Library | `package.json` / lock — `jsonwebtoken@^9.0.3` (installed `9.0.3`); Node `engines` `>=18` |
-| Claims (current) | numeric `userId` + `role` (`admin` \| `customer` \| `business`) |
-| `sub` / `iss` / `aud` | **Not** used by current verifier (`sub` ignored; `iss`/`aud` not checked) |
-| Issuance | Absent in application `src/` (tests only sign HS tokens) |
-| Auth endpoints | Absent |
+| Historical claims | numeric `userId` + `role` (`admin` \| `customer` \| `business`) |
+| `sub` / `iss` / `aud` | Historical HS verifier did not enforce these; current ES256 verifier does |
+| Issuance | Current GHM login/refresh foundation is implemented; historical gate snapshot was issuance-absent |
+| Auth endpoints | Current `/api/v1/auth/login`, `/refresh`, `/logout` foundation is implemented; historical gate snapshot was absent |
 
 ```text
-CURRENT IMPLEMENTATION ≠ TARGET CRYPTOGRAPHIC CONTRACT.
+CURRENT GOVERNED RESOURCE AUTHENTICATION = ES256; HISTORICAL HS EVIDENCE IS PROVENANCE ONLY.
 ```
 
 The HS / `JWT_SECRET` verifier was the historical baseline for this gate. The selected asymmetric architecture has since been implemented for governed resource authentication; the contract below remains the governing ES256 design.
@@ -93,7 +93,7 @@ Durable credential/session/refresh/recovery/mapping persistence concepts: see [G
 | Fact | Evidence |
 |---|---|
 | Current verify | `src/auth/ghm-bearer.ts` → ES256 access-JWT foundation |
-| Current claims | numeric `userId` + `role`; no asymmetric algorithm allow-list |
+| Historical claims | numeric `userId` + `role`; no asymmetric algorithm allow-list |
 | Current dependency | `jsonwebtoken@9.0.3` (via `package.json`) |
 | Runtime | Node.js `>=18` (`package.json` engines) |
 

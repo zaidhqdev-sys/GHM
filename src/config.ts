@@ -44,3 +44,7 @@ if (!Number.isInteger(config.port) || config.port < 1 || config.port > 65535) {
 if (config.corsOrigins.length === 0) {
   throw new Error('CORS_ORIGINS must contain at least one origin');
 }
+
+if (config.isProduction && !config.databaseSsl) {
+  throw new Error('DATABASE_SSL must be true in production');
+}
