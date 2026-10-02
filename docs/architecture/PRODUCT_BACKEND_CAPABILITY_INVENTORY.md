@@ -62,6 +62,8 @@ The following GHM construction capabilities have now been implemented and qualif
 
 These qualifications establish GHM capability construction only. The Connect Saved Business adapter is constructed and unit-qualified as a governed product/resource seam. The Connect integration lifecycle authority is also construction-qualified as a persistent service-trust prerequisite. Neither establishes production migration or cutover.
 
+Connect trusted request context establishment is now construction-qualified as a bounded in-process prerequisite. This does not qualify HTTP exposure, replay protection, end-user identity resolution, resource dispatch/authorization, production credentials, deployment, or cutover.
+
 ## QuoteFlow
 
 The current repository uses `@supabase/supabase-js` and contains a `supabase/` directory. Its source structure also includes dedicated storage modules for:
