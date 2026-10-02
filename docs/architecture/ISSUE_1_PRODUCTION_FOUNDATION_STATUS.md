@@ -4,6 +4,8 @@
 **Status:** OPEN — foundation work is in progress  
 **Canonical source:** this document records the current repository state; individual construction contracts remain historical evidence for their bounded slices.
 
+**Documentation reconciliation:** 2026-10-02 — superseded authentication gate records remain in `docs/architecture` as historical provenance; this status document is the current Issue #1 roll-up.
+
 ## Current baseline
 
 Current main includes these completed Issue #1 slices:
