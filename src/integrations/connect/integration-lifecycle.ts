@@ -74,6 +74,7 @@ export const requireActiveConnectIntegration = async (
   repository: ConnectIntegrationLifecycleRepository,
   integrationId: string,
 ): Promise<ConnectIntegration> => {
+  assertIntegrationId(integrationId);
   const integration = await repository.get(integrationId);
   if (!integration) {
     throw new ConnectIntegrationLifecycleError('Connect integration is unknown');
