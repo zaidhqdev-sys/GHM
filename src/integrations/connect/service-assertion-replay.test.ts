@@ -17,7 +17,12 @@ test('replay guard fails closed when storage reports no consumption', async () =
 
 test('replay store validates before persistence', async () => {
   let called = false;
-  const store: ConnectServiceAssertionReplayStore = { consume: async () => { called = true; return true; } };
+  const store = new (class implements ConnectServiceAssertionReplayStore {
+    async consume(id: string, integrationId: string, expiresAt: Date): Promise<boolean> {
+      if (!/^[!-~]{1,128}$/.test(id) || !/^[!-~]{1,128}$/.test(integrationId) || expiresAt.getTime() <= Date.now()) throw new Error('invalid replay input');
+      called = true; return true;
+    }
+  })();
   await assert.rejects(() => store.consume('bad\\nvalue', 'connect-test', new Date(Date.now() + 60000)));
   await assert.rejects(() => store.consume('request-3', 'connect-test', new Date(Date.now() - 1)));
   assert.equal(called, false);
