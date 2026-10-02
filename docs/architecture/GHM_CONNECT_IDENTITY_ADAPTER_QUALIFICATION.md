@@ -1,7 +1,7 @@
 # GHM ↔ Zaid Connect Identity Adapter Qualification
 
-**Status:** CONSTRUCTION QUALIFIED — PRODUCT ADAPTER / CUTOVER NOT AUTHORIZED
-**Construction branch:** `construction/connect-identity-adapter`
+**Status:** CONSTRUCTION QUALIFIED — INTEGRATION FOUNDATION; PRODUCT ADAPTER / CUTOVER NOT AUTHORIZED
+**Construction branch:** historical `construction/connect-identity-adapter`; integrated into current `main`
 **Scope:** Connect external identity → GHM canonical identity resolution only
 
 ## 1. Authorized slice
@@ -63,14 +63,14 @@ Local evidence required before branch can be considered qualified:
 - [x] Full test suite passes: 388/388 (`npm test`).
 - [x] Adapter unit tests pass: 6/6.
 - [x] Database persistence qualification remains green, including external identity lookup/bootstrap/link tests.
-- [x] Documentation/readiness reconciliation updated with final evidence.
-- [x] Branch remains isolated from main pending integration review.
+- [x] Documentation/readiness reconciliation recorded.
+- [x] Adapter construction integrated into current mainline without production cutover.
 
 ## 5. STOP boundary
 
 Do not add HTTP transport, product session migration, business mapping, membership migration, or production configuration in this branch.
 
-Final construction status remains **not qualified** until local evidence is returned and reviewed.
+The identity adapter construction slice is **QUALIFIED** and integrated. Product session migration, HTTP/service exposure, and production cutover remain separately gated.
 
 
 ## 6. Local qualification evidence — 2026-09-30
