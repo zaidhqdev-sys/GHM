@@ -8,9 +8,11 @@ import type { ConnectIntegrationLifecycleRepository } from '../integrations/conn
 import type { ConnectIdentityAdapter } from '../integrations/connect/identity-adapter';
 import type { AccountAuthStateStore } from '../auth/ghm-bearer';
 import type { ConnectServiceAssertionService } from '../integrations/connect/service-assertion';
+import type { ConnectServiceAssertionReplayStore } from '../integrations/connect/service-assertion-replay';
 
 const start = async (deps: {
   assertionService: ConnectServiceAssertionService;
+  replayStore: ConnectServiceAssertionReplayStore;
   lifecycle: ConnectIntegrationLifecycleRepository;
   identity: ConnectIdentityAdapter;
   accounts: AccountAuthStateStore;
@@ -20,6 +22,7 @@ const start = async (deps: {
     savedBusinessService: deps.savedBusinesses,
     connectService: {
       assertionService: deps.assertionService,
+      replayStore: deps.replayStore,
       lifecycle: deps.lifecycle,
       identity: deps.identity,
       accounts: deps.accounts,
@@ -43,6 +46,11 @@ const assertion = (integrationId = 'connect-test', requestId = 'request-1'): Con
     };
   },
 });
+
+const replayStore = (): ConnectServiceAssertionReplayStore => {
+  const seen = new Set<string>();
+  return { consume: async (requestId) => { if (seen.has(requestId)) return false; seen.add(requestId); return true; } };
+};
 
 const lifecycle: ConnectIntegrationLifecycleRepository = {
   get: async (id) => id === 'connect-test' ? {
@@ -77,7 +85,7 @@ const body = (input?: unknown) => ({
 
 test('Connect service read route executes the full governed chain', async () => {
   const calls: string[] = [];
-  const { server, baseUrl } = await start({ assertionService: assertion(), lifecycle, identity, accounts, savedBusinesses: service(calls) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service(calls) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, {
       method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify(body({ savedBusinessId: 7 })),
