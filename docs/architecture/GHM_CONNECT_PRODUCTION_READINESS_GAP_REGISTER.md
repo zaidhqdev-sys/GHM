@@ -4,7 +4,7 @@
 **Source audit:** docs/architecture/GHM_CONNECT_BACKEND_READINESS_AUDIT.md
 **Audited GHM tree:** historical Connect audit checkpoint; current GHM construction state is the consolidated `main` line.
 **Connect source:** abcffa73f893602c25310a58946bebb91fd7eeb5
-**Current reconciliation checkpoint:** consolidated `main` — current repository authority (2026-09-30).
+**Current reconciliation checkpoint:** consolidated `main` — current repository authority; Connect service-trust construction evidence reconciled through the integration lifecycle slice (2026-10-02).
 **Evidence sprint checkpoint:** see Â§8 (this document update)
 
 ## Purpose
@@ -162,7 +162,7 @@ Until separately authorized and qualified:
 - No adapter deployment.
 - No merge of unqualified product-adapter construction branches into main.
 
-## 7. Next construction authorization
+## 7. Current construction reconciliation
 
 **Connect identity adapter — FOUNDER-AUTHORIZED AND CONSTRUCTION-QUALIFIED.**
 
@@ -170,7 +170,9 @@ Founder authorization was granted on 2026-09-30 for the frozen Connect identity 
 
 This qualification is limited to the adapter seam. It does **not** authorize HTTP/service exposure, Supabase JWT acceptance, Connect session migration, membership/ownership/admin migration, business mapping migration, production routing, shadow traffic, provider cleanup, or cutover.
 
-The next product construction capability still requires a separate evidence-backed contract and explicit authorization.
+The Connect service-trust track now also has two bounded construction-qualified prerequisites: the ES256 service-assertion cryptographic primitive (PR #23, documentation-only, currently open) and the persistent Connect integration lifecycle authority. These do not qualify the broader service boundary, HTTP exposure, request envelopes, replay protection, end-user identity carriage, resource dispatch, or production cutover.
+
+The next construction slice after the lifecycle authority is trusted request-envelope and integration-context establishment, subject to the existing service-trust contract and explicit gate.
 
 A future construction capability requires:
 
