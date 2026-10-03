@@ -107,7 +107,7 @@ export interface CreateAccountResult {
 }
 
 export interface AuthPersistence {
-  createAccount(fullName: string | null, role: 'customer' | 'business', email: string, password: string): Promise<CreateAccountResult>;
+  createAccount?(fullName: string | null, role: 'customer' | 'business', email: string, password: string): Promise<CreateAccountResult>;
   setPassword(accountId: number, email: string, password: string): Promise<PasswordHashResult>;
   lookupPasswordByEmail(email: string): Promise<(PasswordCredentialLookup & { accountStatus: string }) | null>;
   createSessionWithRefresh(accountId: number): Promise<CreateSessionResult>;
