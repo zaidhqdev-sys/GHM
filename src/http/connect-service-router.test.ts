@@ -10,6 +10,7 @@ import type { EnquiryService } from '../resources/enquiry/contracts';
 import type { ProjectService } from '../resources/project/contracts';
 import type { OpportunityService } from '../resources/opportunity/contracts';
 import type { OpportunityParticipantService } from '../resources/opportunity-participant/contracts';
+import type { ProjectQuoteService } from '../resources/project-quote/contracts';
 import type { ConnectIntegrationLifecycleRepository } from '../integrations/connect/integration-lifecycle';
 import type { ConnectIdentityAdapter } from '../integrations/connect/identity-adapter';
 import type { AccountAuthStateStore } from '../auth/ghm-bearer';
@@ -29,6 +30,7 @@ const start = async (deps: {
   projects: ProjectService;
   opportunities: OpportunityService;
   opportunityParticipants?: OpportunityParticipantService;
+  projectQuotes?: ProjectQuoteService;
 }) => {
   const app = createApp({
     savedBusinessService: deps.savedBusinesses,
@@ -38,6 +40,7 @@ const start = async (deps: {
     projectService: deps.projects,
     opportunityService: deps.opportunities,
     opportunityParticipantService: deps.opportunityParticipants ?? opportunityParticipantService([]),
+    projectQuoteService: deps.projectQuotes ?? projectQuoteService([]),
     connectService: {
       assertionService: deps.assertionService,
       replayStore: deps.replayStore,
@@ -50,6 +53,7 @@ const start = async (deps: {
       projects: deps.projects,
       opportunities: deps.opportunities,
       opportunityParticipants: deps.opportunityParticipants ?? opportunityParticipantService([]),
+      projectQuotes: deps.projectQuotes ?? projectQuoteService([]),
     },
   });
   const server = http.createServer(app);
@@ -196,6 +200,37 @@ const opportunityParticipantService = (calls: string[]): OpportunityParticipantS
   getParticipant: async (_context, id) => { calls.push(`participant:get:${id}`); return null; },
   listOpportunityParticipants: async (_context, id) => { calls.push(`participant:list:${id}`); return []; },
   updateParticipant: async (_context, id, input) => { calls.push(`participant:update:${id}:${input.participationStatus ?? ''}`); return { id, opportunityId: 9, accountId: null, businessId: 42, participationRole: input.participationRole ?? 'recipient', participationStatus: input.participationStatus ?? 'active', createdBy: 42, createdAt: new Date(), updatedAt: new Date() }; },
+});
+
+const projectQuoteService = (calls: string[]): ProjectQuoteService => ({
+  readReceived: async (_context, projectId) => { calls.push(`received:${projectId}`); return []; },
+  readOwn: async (_context, businessId) => { calls.push(`own:${businessId}`); return []; },
+  create: async (_context, input) => { calls.push(`create:${input.projectId}:${input.businessId}`); return {
+    id: 7, projectId: input.projectId, businessId: input.businessId, amount: input.amount,
+    labourMin: input.labourMin ?? null, labourMax: input.labourMax ?? null,
+    materialsMin: input.materialsMin ?? null, materialsMax: input.materialsMax ?? null,
+    totalMin: input.totalMin ?? null, totalMax: input.totalMax ?? null,
+    durationDays: input.durationDays ?? null, description: input.description ?? null,
+    status: 'submitted', createdAt: new Date(), updatedAt: new Date(),
+  }; },
+  update: async (_context, id, input) => { calls.push(`update:${id}:${input.amount ?? ''}`); return {
+    id, projectId: 11, businessId: 84, amount: input.amount ?? 1500,
+    labourMin: input.labourMin ?? null, labourMax: input.labourMax ?? null,
+    materialsMin: input.materialsMin ?? null, materialsMax: input.materialsMax ?? null,
+    totalMin: input.totalMin ?? null, totalMax: input.totalMax ?? null,
+    durationDays: input.durationDays ?? null, description: input.description ?? null,
+    status: 'submitted', createdAt: new Date(), updatedAt: new Date(),
+  }; },
+  accept: async (_context, id) => { calls.push(`accept:${id}`); return {
+    id, projectId: 11, businessId: 84, amount: 1500, labourMin: null, labourMax: null,
+    materialsMin: null, materialsMax: null, totalMin: null, totalMax: null,
+    durationDays: null, description: null, status: 'accepted', createdAt: new Date(), updatedAt: new Date(),
+  }; },
+  reject: async (_context, id) => { calls.push(`reject:${id}`); return {
+    id, projectId: 11, businessId: 84, amount: 1500, labourMin: null, labourMax: null,
+    materialsMin: null, materialsMax: null, totalMin: null, totalMax: null,
+    durationDays: null, description: null, status: 'rejected', createdAt: new Date(), updatedAt: new Date(),
+  }; },
 });
 
 const body = (input?: unknown) => ({
@@ -425,3 +460,44 @@ test('Connect service dispatches Opportunity Participant create through the gove
     assert.deepEqual(calls, ['participant:create:9']);
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
+
+test('Connect service project quote route dispatches through the governed capability', async () => {
+  const calls: string[] = [];
+  const { server, baseUrl } = await start({
+    assertionService: assertion('connect-project-quote', 'request-project-quote'),
+    replayStore: replayStore(),
+    lifecycle: {
+      get: async (id) => id === 'connect-project-quote' ? {
+        id, displayName: 'Connect Project Quote', status: 'active',
+        createdAt: new Date(), updatedAt: new Date(), disabledAt: null, revokedAt: null,
+      } : null,
+    },
+    identity,
+    accounts,
+    savedBusinesses: service([]),
+    customers: customerService([]),
+    quotes: quoteService([]),
+    enquiries: enquiryService([]),
+    projects: projectService([]),
+    opportunities: opportunityService([]),
+    opportunityParticipants: opportunityParticipantService([]),
+    projectQuotes: projectQuoteService(calls),
+  });
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/connect/service`, {
+      method: 'POST',
+      headers: { authorization: 'Bearer valid', 'content-type': 'application/json' },
+      body: JSON.stringify({
+        operation: { resource: 'project_quote', operation: 'readReceived' },
+        externalIdentity: { provider: 'supabase', subject: '550e8400-e29b-41d4-a716-446655440000' },
+        input: { projectId: 11 },
+      }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { result: [] });
+    assert.deepEqual(calls, ['received:11']);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
