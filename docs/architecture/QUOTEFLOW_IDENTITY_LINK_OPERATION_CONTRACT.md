@@ -1,6 +1,6 @@
 # QuoteFlow Identity Link — GHM Operation Contract
 
-**Status:** CONTRACT DRAFT — AUTHORITY NOT YET QUALIFIED  
+**Status:** GHM-SIDE AUTHORITY QUALIFIED — PERSISTENCE/IMPLEMENTATION NOT YET AUTHORIZED  
 **Scope:** GHM-side operation authority for dual-sided QuoteFlow ↔ GHM identity linking  
 **Construction branch:** `construction/quoteflow-identity-link-dual-confirmation`
 
@@ -8,62 +8,57 @@
 
 This contract defines the GHM-side operation boundary required before QuoteFlow identity links may be persisted or activated.
 
-The selected product authority is **dual-sided confirmation**. This document does not authorize a unilateral GHM link, schema mutation, adapter, HTTP route, shadow qualification, or production cutover.
+The selected product authority is **dual-sided confirmation**. GHM-side authority is now evidenced against the existing Business Identity/membership model. This document still does not authorize identity-link persistence, adapter implementation, HTTP exposure, shadow qualification, or production cutover.
 
 ## 2. Repository evidence reconciled
 
 Current GHM source establishes:
 
 - `AuthContext` contains `userId` and one of `admin | customer | business`.
-- Existing resource authorization is resource-level and does not expose a dedicated cross-system identity-link capability.
-- `ghm.account_external_identity` is a provider-neutral mapping from `(provider, subject)` to canonical `ghm.account_identity.id`.
-- `ghm.business_external_mapping` is a provider-neutral mapping from `(provider, external_business_id)` to canonical `ghm.business.id`.
-- Runtime has SELECT access to those mapping tables but direct INSERT/UPDATE/DELETE is revoked.
-- Existing SECURITY DEFINER functions `auth_link_external_identity` and `auth_link_business_external_mapping` provide controlled database writes, but their current signatures accept the target GHM account/business ID and do **not** establish QuoteFlow-side confirmation or a dedicated GHM cross-system authorization decision.
-- The existing business mapping function explicitly does not create businesses, alter membership/ownership, or infer identity from names/email.
+- `ghm.business_membership` is canonical for Business participation.
+- Membership roles are `owner | administrator | member`; statuses are `active | inactive | revoked`.
+- There can be only one active owner per Business.
+- Business management authority is already explicitly implemented as an **active membership with role `owner` or `administrator`**.
+- `getManagedBusiness` and `assertManagedMembership` both use that same active owner/administrator rule.
+- `ghm.account_external_identity` maps `(provider, subject)` to canonical `ghm.account_identity.id`.
+- `ghm.business_external_mapping` maps `(provider, external_business_id)` to canonical `ghm.business.id`.
+- Runtime direct INSERT/UPDATE/DELETE on the external mapping tables is revoked.
+- Existing SECURITY DEFINER functions `auth_link_external_identity` and `auth_link_business_external_mapping` provide controlled mapping writes, but do not establish the selected dual-confirmation ceremony.
 
-Therefore these existing mapping functions are **not themselves qualified as the dual-confirmation operation**.
-
-## 3. Canonical authority
+## 3. Qualified GHM-side confirmation authority
 
 ### Account link
 
-Relationship:
+For:
 
 `QuoteFlow Supabase user UUID ↔ GHM account_identity.id`
 
-Activation requires:
+the GHM-side confirmation authority is the **authenticated GHM account itself**: the authenticated `AuthContext.userId` must equal the exact target `account_identity.id`.
 
-1. authenticated QuoteFlow-side confirmation for the exact QuoteFlow principal;
-2. authenticated GHM-side confirmation for the exact target GHM account;
-3. proof that each actor controls or is authorized by its own system;
-4. explicit compatibility checks;
-5. uniqueness/cardinality checks;
-6. durable provenance for both confirmations.
-
-An account link does not authorize a Business link.
+GHM `admin` is not required merely because the target is an account, and a caller cannot claim another account by supplying its ID.
 
 ### Business link
 
-Relationship:
+For:
 
 `QuoteFlow organization UUID ↔ GHM business.id`
 
-Activation requires:
+the GHM-side confirmation authority is an authenticated GHM principal with:
 
-1. authenticated QuoteFlow-side confirmation for the exact organization;
-2. authenticated GHM-side confirmation for the exact target Business;
-3. GHM-side evidence of active membership and the separately qualified management authority required to confirm the link;
-4. compatibility and uniqueness checks;
-5. durable provenance for both confirmations.
+- the exact target Business in active membership;
+- membership role `owner` or `administrator`.
 
-Existing GHM `admin`, `business`, or Business ownership/admin semantics must not be silently promoted into cross-system link authority.
+This reuses the existing, evidenced GHM Business management rule rather than inventing a new interpretation of the generic `admin` platform role.
 
-## 4. Required GHM capability
+A GHM platform `admin` without the required Business membership is **not** automatically treated as the normal Business-side confirmation authority.
 
-GHM must expose a **dedicated cross-system identity-link capability**.
+## 4. Required cross-system capability
 
-The capability must be narrower than ordinary Business administration and must not grant:
+Dual-sided linking still requires a **dedicated cross-system identity-link capability**.
+
+The existing Business management permission is an input to that capability, not the capability itself.
+
+The capability must not grant:
 
 - arbitrary Business creation;
 - Business ownership transfer;
@@ -95,22 +90,21 @@ A confirmation must be bound to:
 
 ## 6. Existing mapping functions
 
-The current provider-neutral functions are retained as historical construction evidence, not reinterpreted as the final operation authority.
+The provider-neutral mapping functions remain useful persistence primitives but are **not** the final dual-confirmation authority:
 
-`auth_link_external_identity(provider, subject, account_id)` currently establishes a mapping if the supplied target account exists.
+- `auth_link_external_identity(provider, subject, account_id)`
+- `auth_link_business_external_mapping(provider, external_business_id, business_id)`
 
-`auth_link_business_external_mapping(provider, external_business_id, business_id)` currently establishes a mapping if the supplied target Business exists.
-
-Neither function currently proves:
+Neither currently proves:
 
 - QuoteFlow-side confirmation;
-- GHM-side management authority;
+- GHM-side actor authorization;
 - dual-confirmation ceremony identity;
-- cross-system compatibility;
-- lifecycle state such as PENDING/ACTIVE/REVOKED;
-- revocation provenance.
+- lifecycle state `PENDING | ACTIVE | REVOKED`;
+- revocation provenance;
+- cross-system compatibility.
 
-Consequently, the identity-link construction must not simply route the new product flow through these functions without an explicit authority wrapper/contract.
+They must therefore not be exposed as a substitute for the dedicated identity-link operation.
 
 ## 7. Persistence boundary
 
@@ -132,7 +126,7 @@ Required durable state must distinguish at minimum:
 - concurrency/version protection;
 - uniqueness constraints.
 
-Exact schema is intentionally deferred until the operation authority is qualified.
+Exact schema remains deferred until persistence design is separately qualified.
 
 ## 8. Concurrency and failure
 
@@ -160,25 +154,27 @@ Exceptional governance/recovery revocation may exist, but it must be separately 
 
 ## 10. Qualification requirements
 
-Before implementation is promoted from draft to qualified, live/repository evidence must demonstrate:
+Before runtime implementation is promoted to qualified, live/repository evidence must demonstrate:
 
-1. exact GHM-side authority resolution;
-2. non-authorized GHM principal denial;
-3. authorized GHM principal acceptance;
-4. QuoteFlow-side confirmation requirement;
-5. one-sided confirmation remains PENDING;
-6. exact-target binding;
-7. no email/phone/name/slug matching;
-8. duplicate/idempotent behavior;
-9. active-link uniqueness;
-10. stale ceremony denial;
-11. concurrent ceremony protection;
-12. revocation and re-ceremony behavior;
-13. direct table DML remains denied to runtime;
-14. only the narrow operation is executable by runtime;
-15. provenance is persisted correctly;
-16. rollback/atomicity;
-17. documentation reconciliation.
+1. exact account self-confirmation authority;
+2. non-target account denial;
+3. exact Business owner/administrator authority;
+4. active-member requirement;
+5. member-role denial;
+6. QuoteFlow-side confirmation requirement;
+7. one-sided confirmation remains PENDING;
+8. exact-target binding;
+9. no email/phone/name/slug matching;
+10. duplicate/idempotent behavior;
+11. active-link uniqueness;
+12. stale ceremony denial;
+13. concurrent ceremony protection;
+14. revocation and re-ceremony behavior;
+15. direct table DML remains denied to runtime;
+16. only the narrow operation is executable by runtime;
+17. provenance is persisted correctly;
+18. rollback/atomicity;
+19. documentation reconciliation.
 
 ## 11. Explicit non-goals
 
@@ -198,8 +194,6 @@ This contract does not authorize:
 
 ## 12. Current gate
 
-**BLOCKED FOR IMPLEMENTATION AUTHORITY.**
+**GHM-SIDE AUTHORITY QUALIFIED. PERSISTENCE/IMPLEMENTATION STILL BLOCKED PENDING THE DEDICATED IDENTITY-LINK PERSISTENCE CONTRACT AND QUALIFICATION PLAN.**
 
-The remaining Founder/Product engineering gate is to bind the GHM-side confirmation authority to an evidenced existing authority model or explicitly qualify a dedicated cross-system capability.
-
-Only after that gate passes should persistence and runtime construction begin.
+The next construction step is to define the exact persistence/lifecycle schema contract around the already-selected dual-confirmation authority. No runtime mutation should be introduced until that contract is reviewed and qualified.
