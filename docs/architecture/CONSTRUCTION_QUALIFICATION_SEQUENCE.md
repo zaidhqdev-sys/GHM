@@ -22,14 +22,13 @@ The sequence remains the architecture-level gate order. Individual gates may hav
 
 ## Current open construction gates
 
-### Trust Contract Definition: CLOSED / READY FOR IMPLEMENTATION DESIGN
+### Trust Score Resource: CLOSED / PASS
 
-The GHM Trust resource contract is defined in `docs/architecture/TRUST_RESOURCE_CONTRACT.md`. It establishes canonical ownership, one-current-result identity, evidence-input admission rules, calculation ownership, authorization identifiers, persistence/provenance requirements, compatibility boundaries, and the required qualification evidence. It deliberately does not authorize Trust implementation, data migration, Supabase mutation, production routing, or provider changes.
+The GHM Trust resource is constructed and runtime-qualified. `docs/architecture/TRUST_RESOURCE_CONTRACT.md` and `docs/architecture/TRUST_OPERATION_CONTRACT.md` record the reconciled current contract and qualified operation surface. The dedicated runtime harness passed the Trust schema, authorization, public/private disclosure, concurrency, direct-mutation denial, effective ACL, and cleanup checks; the Business Profile runtime harness also passed the Trust-input and protected-field checks.
 
-The next gate is implementation design: exact calculation/dimension contract, repository/service boundary, authorization registry mapping, live schema/privilege reconciliation, and qualification harness design.
+The remaining Trust work is future hardening only: calculation-version/provenance persistence and additional authoritative evidence domains. No production routing, shadow traffic, data migration, or cutover is authorized.
 
 ## Current closed construction gates
-## Trust Score Resource: CLOSED / PASS
 
 The canonical GHM Trust Score resource is constructed and runtime-qualified. The slice includes the ghm.trust_score schema, calculation function, repository/service boundary, authorization registry mapping, public/private HTTP routes, and negative runtime privilege/security qualification.
 
