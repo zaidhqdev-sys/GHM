@@ -41,7 +41,7 @@ const assertAuthorizedCapability = (
   }
 };
 
-const assertPositiveId = (value: unknown): asserts value is number => {
+const assertPositiveId: (value: unknown) => asserts value is number = (value: unknown): asserts value is number => {
   if (!Number.isSafeInteger(value) || (value as number) <= 0) {
     throw new ConnectOpportunityParticipantAdapterError('Invalid opportunity participant identifier');
   }
