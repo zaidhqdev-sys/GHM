@@ -20,6 +20,14 @@ The sequence remains the architecture-level gate order. Individual gates may hav
 9. **Shadow qualification** — product workflows are exercised against GHM while Supabase remains authoritative. **Not started.**
 10. **Controlled cutover** — migrate one product at a time with an explicit rollback path. **Not started; production remains on Supabase.**
 
+## Current open construction gates
+
+### Trust Contract Definition: CLOSED / READY FOR IMPLEMENTATION DESIGN
+
+The GHM Trust resource contract is defined in `docs/architecture/TRUST_RESOURCE_CONTRACT.md`. It establishes canonical ownership, one-current-result identity, evidence-input admission rules, calculation ownership, authorization identifiers, persistence/provenance requirements, compatibility boundaries, and the required qualification evidence. It deliberately does not authorize Trust implementation, data migration, Supabase mutation, production routing, or provider changes.
+
+The next gate is implementation design: exact calculation/dimension contract, repository/service boundary, authorization registry mapping, live schema/privilege reconciliation, and qualification harness design.
+
 ## Current closed construction gates
 
 ### Connect Business Offering Capability Adapter: CLOSED / PASS
