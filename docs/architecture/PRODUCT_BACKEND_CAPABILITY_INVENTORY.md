@@ -149,7 +149,7 @@ REQUIRES FUTURE GOVERNED WORK
 
   Trust evidence hardening / additional authoritative evidence domains
   Commercial payment provider result / webhook application
-  Opportunity participant lifecycle runtime qualification
+  Opportunity participant lifecycle transition workflows
   Business Capability lifecycle/verification update
   Opportunity outcome / matching workflows
   Business Hours exceptions / booking / open-now
@@ -162,6 +162,6 @@ REQUIRES FUTURE GOVERNED WORK
 
 Trust Score itself is **QUALIFIED / CLOSED** for its current construction boundary. Commercial reference data and provider-neutral payment preparation are also qualified; provider checkout, callbacks/results, webhook application, production credentials, and cutover remain separately governed.
 
-The Opportunity Participant adapter is **CONSTRUCTION QUALIFIED** at the unit/HTTP level, but its dedicated live PostgreSQL runtime qualification remains open. This distinction prevents adapter evidence from being mistaken for resource runtime qualification.
+The Opportunity Participant resource and Connect adapter are **CLOSED / PASS for construction qualification**. The full 515/515 repository suite and the dedicated live PostgreSQL runtime qualification both passed on 2026-10-03. Participant lifecycle transition workflows remain separately governed future work.
 
 Broader product adapters remain separately gated. Provider/bootstrap authority cleanup remains an independent open construction concern. Production Connect and QuoteFlow remain on Supabase.
