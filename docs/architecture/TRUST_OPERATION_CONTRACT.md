@@ -2,15 +2,15 @@
 
 ## Status
 
-**CONSTRUCTION CONTRACT — AUTHORIZED FOR DEDICATED RESOURCE SLICE**
+**QUALIFIED / CLOSED — CURRENT GHM TRUST RESOURCE SLICE**
 
-This contract freezes the first GHM Trust boundary reconciled from the live Zaid Connect source audit. It authorizes construction and qualification of this isolated resource only. It does not authorize production migration, provider cutover, data movement, DNS/routing changes, shadow traffic, or product configuration changes.
+This contract freezes the first GHM Trust boundary reconciled from the live Zaid Connect source audit. The isolated resource has been constructed and runtime-qualified. This contract records the current qualified boundary. It does not authorize production migration, provider cutover, data movement, DNS/routing changes, shadow traffic, or product configuration changes.
 
 ## 1. Canonical domain concept
 
 A **Trust score** is the calculated, persisted reputation score for one Business.
 
-It is derived from Business inputs by a database-owned calculation function and stored as a single upserted row per Business.
+It is derived from canonical Business/Review inputs by a governed GHM calculation function and stored as a single upserted row per Business.
 
 ## 2. Canonical identity mapping
 
@@ -76,7 +76,7 @@ Invariants:
 1. `p_account_id = context.userId`;
 2. Business exists;
 3. membership grants trust.read;
-4. dimensions computed by Connect formulas;
+4. dimensions computed by the current qualified GHM calculation contract;
 5. upsert on `business_id`;
 6. caller cannot supply dimension values.
 
@@ -129,9 +129,8 @@ Not authorized in this slice:
 - delete Trust row via product API;
 - Trust evidence upload;
 - Trust history listing;
-- public HTTP Trust routes;
 - Business profile column invention;
-- adapters / shadow / cutover.
+- adapters / shadow / cutover;
 
 ## 8. Registry
 
