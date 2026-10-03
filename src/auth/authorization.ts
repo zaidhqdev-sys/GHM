@@ -33,7 +33,7 @@ export type Resource =
 const roleResources: Record<GhmRole, readonly Resource[]> = {
   admin: ['profile', 'business', 'business_capability', 'business_category', 'business_category_assignment', 'business_offering', 'business_hours', 'project', 'project_quote', 'opportunity_requirements', 'customer', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'trust_score', 'campaign', 'directory', 'commercial'],
   customer: ['profile', 'business', 'business_capability', 'business_category', 'business_category_assignment', 'business_hours', 'project', 'project_quote', 'opportunity_requirements', 'customer', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'trust_score', 'campaign', 'commercial'],
-  business: ['profile', 'business', 'business_capability', 'business_category', 'business_category_assignment', 'business_hours', 'project', 'project_quote', 'opportunity_requirements', 'customer', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'trust_score', 'campaign', 'commercial'],
+  business: ['profile', 'business', 'business_capability', 'business_category', 'business_category_assignment', 'business_offering', 'business_hours', 'project', 'project_quote', 'opportunity_requirements', 'customer', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'trust_score', 'campaign', 'commercial'],
 };
 
 const isGhmRole = (value: unknown): value is GhmRole => value === 'admin' || value === 'customer' || value === 'business';
