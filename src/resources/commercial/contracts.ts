@@ -212,6 +212,7 @@ export interface ActivateCommercialTrialInput {
 
 export interface PrepareCommercialPaymentInput {
   readonly businessId: BusinessId;
+  readonly countryId?: CountryId | null;
   readonly idempotencyKey: string;
   readonly expiresAt?: Date | null;
 }
