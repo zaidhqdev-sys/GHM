@@ -1,28 +1,16 @@
-# Opportunity Participant Lifecycle Transition Contract
+# Opportunity Participant Lifecycle Transition Authority
 
-**Status:** CONSTRUCTION CONTRACT — FROZEN FOR REVIEW  
+**Status:** RECONCILIATION RESULT — TRANSITION AUTHORITY NOT YET AUTHORIZED  
 **Resource:** `ghm.opportunity_participant`  
-**Scope:** Lifecycle transition authority only
+**Scope:** Determine whether a participant lifecycle mutation contract can be constructed from current source evidence.
 
-## 1. Purpose
+## 1. Result
 
-The Opportunity Participant resource and Connect adapter are already construction-qualified for creation and read boundaries. Participant status mutation was explicitly deferred because a lifecycle transition authority had not yet been defined.
+The existing Opportunity Participant resource is construction-qualified for its initial persisted relationship boundary.
 
-This contract defines the allowed **participation-status** transitions and the invariants required before any runtime mutation authority is constructed.
+A separate participant lifecycle transition authority **cannot currently be frozen or implemented** without inventing product behavior.
 
-It does not authorize implementation, HTTP mutation exposure, production routing, provider integration, Supabase migration, shadow qualification, or cutover.
-
-## 2. Canonical owner
-
-`ghm.opportunity_participant.participation_status` is owned by the Opportunity Participant resource.
-
-No second domain may directly mutate this field.
-
-The lifecycle authority must operate through the canonical Opportunity Participant service/repository boundary and a narrow database mutation primitive. Broad runtime `UPDATE` remains prohibited.
-
-## 3. Current status vocabulary
-
-The existing canonical status set is:
+The current reconciled Zaid Connect source defines the status vocabulary:
 
 - `invited`
 - `active`
@@ -31,192 +19,138 @@ The existing canonical status set is:
 - `removed`
 - `completed`
 
-No new status is introduced by this contract.
+but the source audit explicitly does **not** establish a complete participant transition state machine.
 
-## 4. Transition matrix
+Therefore GHM must not infer transitions such as:
 
-Only the following transitions are authorized:
-
-| Current | Next | Meaning |
-|---|---|---|
-| invited | active | participant accepts/enters active participation |
-| invited | declined | participant declines the invitation |
-| invited | withdrawn | invitation/participation is withdrawn before activation |
-| invited | removed | participant is administratively removed before activation |
-| active | withdrawn | active participant withdraws |
-| active | removed | participant is administratively removed |
-| active | completed | participation is completed |
-| declined | invited | declined participant is re-invited |
-| withdrawn | invited | withdrawn participant is re-invited |
-| removed | invited | removed participant is re-invited |
-
-All other transitions are denied.
-
-In particular:
-
-- `completed` is terminal under this contract.
-- `declined`, `withdrawn`, and `removed` cannot directly become `active`; re-entry is through `invited`.
-- There is no direct `invited -> completed`.
-- There is no direct `declined -> completed`.
-- There is no direct `withdrawn -> completed`.
-- There is no direct `removed -> completed`.
-
-A future business workflow may extend this matrix only through a new explicit contract.
-
-## 5. Authority model
-
-Lifecycle mutation is a governed operation, not ordinary participant update.
-
-The existing participant management boundary establishes that the Opportunity creator or owner-business administrator may manage participation. This contract preserves that boundary for administrative transitions.
-
-Participant self-service is limited to transitions explicitly attributable to the participant's own principal:
-
-- account participant: `invited -> active`, `invited -> declined`, `active -> withdrawn`
-- business participant: the same transitions when the authenticated account is an active member of the participant business
-
-Administrative transitions:
-
-- `invited -> withdrawn`
-- `invited -> removed`
+- `invited -> active`
+- `invited -> declined`
+- `active -> withdrawn`
 - `active -> removed`
-- `declined -> invited`
-- `withdrawn -> invited`
-- `removed -> invited`
+- `active -> completed`
+- re-invitation transitions
 
-require existing Opportunity participant-management authority.
+merely because those states exist.
 
-Re-invitation does not itself authorize automatic activation.
+## 2. Canonical evidence
 
-## 6. Provenance
+The current GHM source reconciliation identifies:
 
-The authenticated GHM context is the source of transition authority.
+- `docs/architecture/OPPORTUNITY_PARTICIPATION_SOURCE_AUDIT.md`
+- `docs/architecture/OPPORTUNITY_PARTICIPATION_SCHEMA_CONTRACT.md`
+- `docs/architecture/OPPORTUNITY_PARTICIPATION_OPERATION_CONTRACT.md`
 
-The transition implementation must not accept a caller-supplied actor identifier as authority.
+as the canonical construction evidence.
 
-The persisted participant row remains authoritative for:
+The production Zaid Connect Opportunity foundation establishes the participant table, principal model, role vocabulary, status vocabulary, visibility semantics, and creation workflows.
 
-- current status
-- participant principal
-- opportunity
-- immutable creation provenance
+It does not establish a complete participant lifecycle workflow contract.
 
-The authenticated context establishes who is performing the transition.
+The production source also explicitly defers broader Opportunity workflows including Opportunity matching, recommendations, outcomes, notifications, and related workflow behavior.
 
-No verification, trust, membership, provider result, payment event, or matching result may be inferred as a lifecycle transition by this contract.
+## 3. Current GHM boundary
 
-## 7. Immutable fields
+The existing repository intentionally rejects participant updates with:
 
-Lifecycle transition must not modify:
+`Participant updates are not supported until a concrete transition authority is qualified`
 
-- `id`
-- `opportunity_id`
-- `account_id`
-- `business_id`
-- `created_by`
-- `created_at`
+This behavior is correct and must remain in place.
 
-The following are also outside lifecycle transition authority:
+The registered `update` operation must not be interpreted as permission to mutate status or role.
 
-- `participation_role`
-- participant principal
-- opportunity association
+## 4. What is authoritative now
 
-Role changes require a separate contract. They must not be smuggled through a status-transition operation.
+The following remain authoritative:
 
-Only:
+### Status vocabulary
 
-- `participation_status`
-- `updated_at`
+The six source-defined values remain valid physical states.
 
-may change as part of this lifecycle operation.
+### Status meaning
 
-## 8. Concurrency and stale-state protection
+Participation status is distinct from Opportunity lifecycle status.
 
-Every lifecycle mutation must carry the caller's expected current status.
+### Creation
 
-The database mutation must atomically:
+The existing source-backed creation workflows may establish:
 
-1. locate the participant;
-2. lock the participant row;
-3. verify the authenticated authority;
-4. verify the persisted status equals the expected current status;
-5. verify the transition exists in the frozen matrix;
-6. update the status and timestamp;
-7. return the resulting participant.
+- creator Account / `creator` / `active`
+- owner Business / `owner` / `active`
+- Marketplace recipient Business / `recipient` / `active`
 
-A stale expected status must fail without mutation.
+where those workflows are separately constructed and qualified.
 
-Last-write-wins behavior is prohibited.
+### Authorization
 
-## 9. Terminal and replay behavior
+Participant access remains distinct from Opportunity management authority.
 
-A successful transition is idempotence-sensitive:
+Management remains tied to the existing Opportunity creator / owner-Business management boundary.
 
-- repeating the same transition with the old expected status must fail as stale;
-- attempting the same current-to-next transition after it has already occurred must fail unless a separately authorized reverse/re-entry transition exists in this matrix;
-- `completed` cannot be reopened by this contract.
+### Immutability
 
-No silent normalization of invalid transitions is permitted.
+Participant principal, Opportunity association, and creation provenance are not generic lifecycle-update fields.
 
-## 10. Transaction and rollback requirements
+### Database privilege
 
-The transition must execute atomically inside the existing authorized transaction boundary.
+Runtime broad `UPDATE` and `DELETE` must remain denied until a concrete mutation authority is separately justified and qualified.
 
-Any authorization failure, stale-state failure, invalid transition, or database failure must leave the participant unchanged.
+## 5. What is explicitly not authorized
 
-No partial lifecycle state is acceptable.
+No GHM lifecycle mutation may currently be constructed for:
 
-## 11. Database privilege boundary
+- acceptance;
+- decline;
+- withdrawal;
+- removal;
+- completion;
+- re-invitation;
+- participant role reassignment.
 
-The runtime role must not receive broad `UPDATE` or `DELETE` privilege on `ghm.opportunity_participant` merely to implement lifecycle authority.
+No actor/self-service distinction may be invented for those transitions.
 
-Preferred construction is a narrow, governed mutation primitive with only the required execution privilege.
+No transition matrix may be inferred from the order of status names.
 
-The primitive must independently enforce the transition matrix and authority boundary rather than trusting the application alone.
+No lifecycle behavior may be inferred from the existence of an `update` registry operation.
 
-## 12. HTTP boundary
+## 6. Required future evidence
 
-This contract does not authorize a new public HTTP lifecycle route.
+A lifecycle transition authority may be opened only when current product evidence establishes, for each supported transition:
 
-Any future HTTP exposure must be separately qualified against this contract, including authenticated context, operation registration, authorization ordering, stale-state handling, and error semantics.
+1. initiating actor/principal;
+2. required Opportunity state;
+3. current participant state;
+4. resulting participant state;
+5. authorization rule;
+6. role-specific behavior;
+7. whether the transition is reversible;
+8. concurrency/stale-state semantics;
+9. notification or side-effect requirements, if any;
+10. whether the transition is actually implemented and production-supported.
 
-## 13. Non-goals
+Until those facts are evidenced, the safe canonical behavior is mutation denial.
 
-This contract does not define:
+## 7. Construction consequence
 
-- opportunity outcome
-- matching or recommendation
-- participant ranking
-- notification delivery
-- invitation transport
-- booking
-- payment/provider results
-- commercial entitlement
-- trust changes
-- evidence verification
-- automatic participation based on external events
-- production migration
-- Supabase cutover
-- shadow qualification
+Do **not** add:
 
-## 14. Construction gate
+- a lifecycle migration;
+- a transition function;
+- repository transition methods;
+- participant self-service transitions;
+- administrative transition methods;
+- HTTP transition routes;
+- runtime UPDATE privilege.
 
-Before runtime implementation can be qualified, the construction slice must prove:
+The existing deferred-update boundary is the correct implementation state.
 
-- all allowed transitions succeed;
-- all unsupported transitions fail;
-- participant self-service cannot perform administrative transitions;
-- administrative authority is enforced;
-- stale expected status fails without mutation;
-- completed is terminal;
-- re-invitation returns only to invited;
-- actor provenance is derived from authenticated context;
-- immutable fields cannot change;
-- role cannot change through lifecycle authority;
-- direct runtime UPDATE/DELETE remains denied;
-- rollback leaves state unchanged;
-- concurrent conflicting transitions serialize safely;
-- full repository tests remain green;
-- live PostgreSQL qualification reconciles persisted rows and privilege boundaries.
+## 8. Qualification boundary
 
-No production or cutover implication follows from construction qualification.
+The initial Opportunity Participant capability remains **QUALIFIED / CLOSED**.
+
+Participant lifecycle transitions remain **UNQUALIFIED / NOT AUTHORIZED**.
+
+This is not a regression or an incomplete implementation defect. It is an intentional evidence boundary inherited from the source reconciliation.
+
+## 9. Production safety
+
+No production database, Supabase schema, credentials, routing, provider integration, shadow traffic, or cutover is authorized by this document.
