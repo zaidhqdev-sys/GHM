@@ -112,7 +112,7 @@ export interface AppDependencies {
   readonly authService?: GhmAuthService;
   readonly passwordRecoveryService?: PasswordRecoveryService;
   readonly resourceAuthMiddleware?: import('express').RequestHandler;
-  readonly connectService?: Omit<ConnectServiceHttpDependencies, 'savedBusinesses'>;
+  readonly connectService?: Omit<ConnectServiceHttpDependencies, 'savedBusinesses' | 'projects'>;
 }
 
 const requireRegisteredAccess = (resource: Parameters<typeof canAccessResource>[1], operation: ResourceOperation) =>
@@ -644,6 +644,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     customers: customerService,
     quotes: quoteService,
     enquiries: enquiryService,
+    projects: projectService,
   });
 
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
