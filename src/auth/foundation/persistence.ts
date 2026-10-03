@@ -168,7 +168,7 @@ export class PostgresAuthPersistence implements AuthPersistence {
     try {
       const result = await this.tx(async (client) =>
         client.query(
-          \`SELECT * FROM ghm.auth_create_account($1, $2, $3, $4, $5, $6, $7, $8)\`,
+          `SELECT * FROM ghm.auth_create_account($1, $2, $3, $4, $5, $6, $7, $8)`,
           [
             fullName,
             role,
