@@ -23,6 +23,16 @@ const expectPermissionDenied = async (work, label) => {
   throw new Error(`${label}: operation unexpectedly succeeded`);
 };
 
+const paymentAttemptInsertColumns = [
+  'business_id', 'subscription_id', 'price_id', 'initiated_by',
+  'attempt_status', 'amount_minor_units', 'currency_id', 'billing_interval',
+  'idempotency_key', 'expires_at',
+];
+const eventInsertColumns = [
+  'business_id', 'subscription_id', 'event_type', 'actor_account_id',
+  'source', 'idempotency_key', 'payload', 'occurred_at',
+];
+
 let fixture;
 try {
   const identity = (await runtimePool.query(
@@ -39,34 +49,46 @@ try {
   }
   console.log('COMMERCIAL RUNTIME IDENTITY PASS');
 
+  const columnPrivilegeSql = (table, columns) => columns.map((column) =>
+    `has_column_privilege(current_user, '${table}', '${column}', 'INSERT') AS ${table.split('.')[1]}_${column}`,
+  ).join(',\n      ');
+
   const privileges = (await runtimePool.query(`
     SELECT
       has_table_privilege(current_user, 'ghm.commercial_payment_attempt', 'SELECT') AS attempt_select,
-      has_table_privilege(current_user, 'ghm.commercial_payment_attempt', 'INSERT') AS attempt_insert,
       has_table_privilege(current_user, 'ghm.commercial_payment_attempt', 'UPDATE') AS attempt_update,
       has_table_privilege(current_user, 'ghm.commercial_payment_attempt', 'DELETE') AS attempt_delete,
       has_table_privilege(current_user, 'ghm.commercial_event', 'SELECT') AS event_select,
-      has_table_privilege(current_user, 'ghm.commercial_event', 'INSERT') AS event_insert,
       has_table_privilege(current_user, 'ghm.commercial_event', 'UPDATE') AS event_update,
       has_table_privilege(current_user, 'ghm.commercial_event', 'DELETE') AS event_delete,
       has_sequence_privilege(current_user, 'ghm.commercial_payment_attempt_id_seq', 'USAGE') AS attempt_seq_usage,
-      has_sequence_privilege(current_user, 'ghm.commercial_event_id_seq', 'USAGE') AS event_seq_usage
+      has_sequence_privilege(current_user, 'ghm.commercial_event_id_seq', 'USAGE') AS event_seq_usage,
+      ${columnPrivilegeSql('ghm.commercial_payment_attempt', paymentAttemptInsertColumns)},
+      ${columnPrivilegeSql('ghm.commercial_event', eventInsertColumns)}
   `)).rows[0];
+
+  const attemptColumnsGranted = paymentAttemptInsertColumns.every(
+    (column) => privileges[`commercial_payment_attempt_${column}`] === true,
+  );
+  const eventColumnsGranted = eventInsertColumns.every(
+    (column) => privileges[`commercial_event_${column}`] === true,
+  );
 
   if (
     !privileges.attempt_select ||
-    !privileges.attempt_insert ||
     privileges.attempt_update ||
     privileges.attempt_delete ||
-    !privileges.event_insert ||
+    privileges.event_select ||
     privileges.event_update ||
     privileges.event_delete ||
     !privileges.attempt_seq_usage ||
-    !privileges.event_seq_usage
+    !privileges.event_seq_usage ||
+    !attemptColumnsGranted ||
+    !eventColumnsGranted
   ) {
     throw new Error(`Unexpected Commercial runtime privileges: ${JSON.stringify(privileges)}`);
   }
-  console.log('COMMERCIAL PAYMENT WRITE PRIVILEGE PASS');
+  console.log('COMMERCIAL PAYMENT COLUMN WRITE PRIVILEGE PASS');
 
   await expectPermissionDenied(
     () => runtimePool.query(
