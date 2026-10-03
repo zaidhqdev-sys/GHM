@@ -4,7 +4,7 @@
 
 **AUTHORITY NOT YET QUALIFIED — NO LINK PERSISTENCE OR MUTATION AUTHORIZED**
 
-This contract defines the decision boundary for establishing cross-system identity links. It deliberately does not select an implementation authority where product evidence is absent.
+This contract defines the decision boundary for establishing cross-system identity links. The selected authority model is dual-sided confirmation; persistence remains separately gated.
 
 ## Existing evidence
 
@@ -58,7 +58,7 @@ Proof must establish:
 
 Account and Business links must not be created merely because an account link exists.
 
-## Authority is intentionally unresolved
+## Authority decision
 
 Current GHM evidence establishes:
 
