@@ -7,7 +7,7 @@
 
 This document records the reconciled GHM-owned Trust contract after construction and runtime qualification. GHM Trust is the canonical backend Trust resource for future Connect and QuoteFlow use. Supabase remains the production authority until a separately authorized shadow/cutover gate.
 
-GHM Trust is a future backend-owned domain for Connect and QuoteFlow. During construction and qualification, Supabase remains the production authority. The Connect Trust implementation is source evidence for compatibility requirements only; its tables, RPCs, policies, and calculation code are not copied as GHM implementation.
+GHM Trust is the backend-owned domain for future Connect and QuoteFlow use within the qualified construction boundary. During construction and qualification, Supabase remains the production authority. The Connect Trust implementation is source evidence for compatibility requirements only; its tables, RPCs, policies, and calculation code are not copied as GHM implementation.
 
 ## Canonical ownership
 
@@ -17,7 +17,7 @@ GHM owns the canonical Trust domain once this contract is constructed and qualif
 - Review owns review facts and review lifecycle.
 - Project/outcome domains own their respective commercial-work facts when those domains are qualified and explicitly admitted as Trust evidence.
 - Verification/evidence domains own authoritative verification facts when such contracts exist.
-- Trust owns the derived Trust result, calculation version, and provenance of admitted inputs.
+- Trust owns the derived Trust result. Calculation-version and provenance hardening are future governed work.
 - Connect remains production authority until a separately authorized shadow/cutover gate is completed.
 
 Trust must not become a second owner of source facts.
@@ -36,15 +36,17 @@ The physical table name is intentionally not prescribed. GHM must not inherit Co
 
 ## Result contract
 
-A current Business Trust result must expose, at minimum:
+A current Business Trust result exposes:
 
 - `business_id`
 - bounded derived Trust dimensions
 - `total_score`
 - `trust_level`
-- `calculation_version`
-- `calculated_at`
+- `last_updated`
+- `created_at`
 - `updated_at`
+
+The current qualified implementation does not persist a separate `calculation_version` or `calculated_at` field.
 
 The current qualified dimension set and score ranges are declared in the Trust schema contract and enforced by schema. They are not caller-editable.
 
@@ -86,7 +88,7 @@ The calculation must be:
 - deterministic for a fixed set of admitted inputs and calculation version;
 - implemented in a GHM service/domain boundary;
 - transactionally consistent with the persisted result;
-- versioned so calculation changes are distinguishable;
+- deterministic for the current qualified calculation contract;
 - independently testable without Supabase.
 
 A provider or product adapter must never calculate or directly mutate Trust.
@@ -119,7 +121,6 @@ Persistence must enforce:
 - valid Business foreign-key ownership;
 - bounded score values;
 - valid Trust level values;
-- calculation-version presence;
 - timestamp integrity;
 - transaction rollback on failed calculation or persistence.
 
@@ -155,17 +156,15 @@ These facts constrain compatibility analysis. They do not authorize copying the 
 The Trust construction slice is qualified / closed. The dedicated runtime harness verifies:
 
 1. Business Trust identity and Business foreign-key integrity;
-2. calculation determinism;
-3. calculation-version behavior;
-4. unauthenticated denial;
-5. denial without the Trust permission;
-6. public disclosure boundary;
-7. direct dimension-write denial;
-8. atomic persistence and rollback;
-9. one-current-result invariant;
-10. provenance integrity;
-11. runtime least-privilege boundaries;
-12. compatibility with the existing GHM qualification suite.
+2. persisted result reconciliation;
+3. unauthenticated denial;
+4. denial without the required Trust membership entitlement;
+5. public disclosure boundary;
+6. direct dimension-write denial;
+7. atomic persistence and rollback;
+8. one-current-result invariant;
+9. runtime least-privilege boundaries;
+10. compatibility with the existing GHM qualification suite.
 
 A Trust HTTP adapter or Connect adapter is a separate gate after the canonical GHM resource is qualified.
 
@@ -185,17 +184,8 @@ This contract does not authorize:
 
 ## Construction gate
 
-**Trust Contract Definition: CLOSED / READY FOR IMPLEMENTATION DESIGN**
+**Trust Resource: CLOSED / QUALIFIED**
 
-The architecture contract is sufficiently defined to begin a separate implementation-design gate.
+The Trust implementation, authorization boundary, persistence boundary, HTTP surface, and negative runtime qualification are already constructed and qualified on GHM main. This document records the reconciled current state; it does not authorize a second implementation slice.
 
-Implementation still requires:
-
-- migration design;
-- exact calculation/dimension contract;
-- repository/service boundary;
-- authorization registry mapping;
-- live schema/privilege reconciliation for the new resource;
-- qualification harness and negative security tests.
-
-No implementation mutation is authorized by this document alone.
+Future hardening remains separately governed: calculation-version/provenance persistence and additional authoritative evidence domains. No production migration, shadow traffic, or cutover is authorized by this document.
