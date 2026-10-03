@@ -30,7 +30,8 @@ const service = (calls: string[]): OpportunityParticipantService => ({
 test('read participant delegates to canonical service', async () => {
   const calls: string[] = [];
   const result = await dispatchConnectOpportunityParticipantCapability(auth(), { capability: 'opportunity_participant.read', participantId: 7 }, { opportunityParticipants: service(calls) });
-  assert.equal(result?.id, 7);
+  assert.ok(result && !Array.isArray(result));
+  assert.equal(result.id, 7);
   assert.deepEqual(calls, ['get:7']);
 });
 
