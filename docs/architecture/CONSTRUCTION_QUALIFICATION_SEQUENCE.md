@@ -16,11 +16,43 @@ The sequence remains the architecture-level gate order. Individual gates may hav
 6. **Automated qualification** — build and negative security/runtime checks run deterministically in CI. **Construction checks exist and are passing for the current branch state; they do not close production gates.**
 7. **Database reconciliation** — actual GHM PostgreSQL catalog evidence is captured and reconciled before dependent product/business migrations are authored. **Dedicated-schema catalog reconciliation and Business Identity runtime qualification are PASS for the current construction slice. The existing catalog artifact remains an app-role-scoped snapshot captured through `DATABASE_URL` (`ghm_app_user` → `ghm_db_user`), not an authoritative full-database catalog. Canonical GHM recovery has also been captured separately through the dedicated migrator/schema-owner path. Remaining work is provider/bootstrap authority limits, legacy authority cleanup, and subsequent governed resource slices.**
 7a. **Business Offering resource slice** — migration, repository, service, registry, and runtime privilege boundary are **CLOSED / PASS**. Live PostgreSQL qualification passed on 2026-10-01; public HTTP exposure remains separately gated.
-8. **Product adapters** — governed Connect capability seams may be construction-qualified only after their concrete backend contracts and authorization boundaries are evidenced. **Connect Business Offering capability adapter: CLOSED / PASS. Connect Business Capability read adapter: CLOSED / PASS. Connect Opportunity Participant adapter: CLOSED / PASS for construction qualification. Broader adapters and QuoteFlow remain governed work; this does not authorize cutover.**
+8. **Product adapters** — governed Connect capability seams may be construction-qualified only after their concrete backend contracts and authorization boundaries are evidenced. **Connect Business Offering capability adapter: CLOSED / PASS. Connect Business Capability read adapter: CLOSED / PASS. Connect Opportunity Participant adapter: CLOSED / PASS for construction qualification. Connect Business Capability lifecycle/verification transition authority: CLOSED / PASS for construction qualification. Broader adapters and QuoteFlow remain governed work; this does not authorize cutover.**
 9. **Shadow qualification** — product workflows are exercised against GHM while Supabase remains authoritative. **Not started.**
 10. **Controlled cutover** — migrate one product at a time with an explicit rollback path. **Not started; production remains on Supabase.**
 
 ## Current closed construction gates
+
+### Business Capability Lifecycle / Verification Transition: CLOSED / PASS
+
+The Business Capability lifecycle transition authority is now constructed and runtime-qualified against the live PostgreSQL boundary.
+
+The qualified transition boundary is deliberately separate from Business Capability assertion/create/read: assertion records what a Business claims about a Capability; verification is a governed state transition; evidence remains a separate future boundary.
+
+Qualified transitions are:
+- `unverified → pending`
+- `pending → verified`
+- `pending → rejected`
+- `verified → revoked`
+- `verified → expired`
+- `rejected → pending`
+- `revoked → pending`
+- `expired → pending`
+
+The transition authority requires an authenticated GHM `admin` context. Non-admin and business-owner contexts are denied. Verifier identity is derived from the authenticated context.
+
+The boundary enforces expected-current-state matching, transaction/row-lock serialization, reason requirements, derived verification timestamps, and immutable assertion content. Direct runtime table UPDATE and DELETE remain denied; the runtime role receives only the narrowly governed transition execution privilege.
+
+On 2026-10-03:
+- repository suite: **516/516 PASS**
+- live migration/build: **PASS**
+- lifecycle runtime qualification: **PASS**
+- persisted assertion immutability reconciliation: **PASS**
+- runtime privilege boundary: **UPDATE=no, DELETE=no, TRANSITION=execute**
+
+Final result: **GHM BUSINESS CAPABILITY LIFECYCLE RUNTIME QUALIFICATION: PASS**.
+
+This closes the Business Capability lifecycle/verification construction slice. It does not authorize evidence storage, automated verification, public HTTP transition routes, production Connect traffic, provider integrations, Supabase migration, shadow qualification, or cutover.
+
 
 ### Trust Score Resource: CLOSED / PASS
 

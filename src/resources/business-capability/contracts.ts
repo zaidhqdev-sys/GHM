@@ -5,25 +5,10 @@ export type BusinessId = number;
 export type CapabilityId = string;
 export type AccountId = number;
 
-export type BusinessCapabilityProficiency =
-  | 'foundational'
-  | 'proficient'
-  | 'advanced'
-  | 'expert';
-
+export type BusinessCapabilityProficiency = 'foundational' | 'proficient' | 'advanced' | 'expert';
 export type BusinessCapabilityAssertionStatus = 'active' | 'withdrawn';
-export type BusinessCapabilityAssertionBasis =
-  | 'self_declared'
-  | 'documented'
-  | 'observed'
-  | 'third_party_attested';
-export type BusinessCapabilityVerificationStatus =
-  | 'unverified'
-  | 'pending'
-  | 'verified'
-  | 'rejected'
-  | 'revoked'
-  | 'expired';
+export type BusinessCapabilityAssertionBasis = 'self_declared' | 'documented' | 'observed' | 'third_party_attested';
+export type BusinessCapabilityVerificationStatus = 'unverified' | 'pending' | 'verified' | 'rejected' | 'revoked' | 'expired';
 
 export interface BusinessCapability {
   readonly id: BusinessCapabilityId;
@@ -56,10 +41,18 @@ export interface CreateBusinessCapabilityInput {
   readonly sourceReference?: string | null;
 }
 
+export interface TransitionBusinessCapabilityVerificationInput {
+  readonly businessCapabilityId: BusinessCapabilityId;
+  readonly expectedStatus: BusinessCapabilityVerificationStatus;
+  readonly targetStatus: BusinessCapabilityVerificationStatus;
+  readonly reason?: string | null;
+}
+
 export interface BusinessCapabilityRepository {
   createBusinessCapability(context: AuthContext, input: CreateBusinessCapabilityInput): Promise<BusinessCapability>;
   getBusinessCapability(context: AuthContext, businessCapabilityId: BusinessCapabilityId): Promise<BusinessCapability | null>;
   listBusinessCapabilities(context: AuthContext, businessId: BusinessId): Promise<BusinessCapability[]>;
+  transitionBusinessCapabilityVerification(context: AuthContext, input: TransitionBusinessCapabilityVerificationInput): Promise<BusinessCapability>;
 }
 
 export interface BusinessCapabilityService extends BusinessCapabilityRepository {}
@@ -67,4 +60,5 @@ export interface BusinessCapabilityService extends BusinessCapabilityRepository 
 export const BUSINESS_CAPABILITY_OPERATIONS = Object.freeze({
   read: 'business_capability.read',
   create: 'business_capability.create',
+  transition: 'business_capability.transition',
 });

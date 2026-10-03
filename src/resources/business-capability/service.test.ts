@@ -5,80 +5,57 @@ import type {
   BusinessCapability,
   BusinessCapabilityRepository,
   CreateBusinessCapabilityInput,
+  TransitionBusinessCapabilityVerificationInput,
 } from './contracts';
 import { BusinessCapabilityServiceImpl } from './service';
 
 const capability = (id: number, businessId: number, capabilityId = '11111111-1111-4111-8111-111111111111'): BusinessCapability => ({
-  id,
-  businessId,
-  capabilityId,
-  proficiencyLevel: 'proficient',
-  description: 'Construction services',
-  assertionStatus: 'active',
-  assertionBasis: 'self_declared',
-  verificationStatus: 'unverified',
-  effectiveFrom: new Date('2026-09-16T00:00:00.000Z'),
-  effectiveUntil: null,
-  sourceReference: null,
-  submittedAt: new Date('2026-09-16T00:00:00.000Z'),
-  verifiedBy: null,
-  verifiedAt: null,
-  verificationReason: null,
-  createdBy: 10,
-  createdAt: new Date('2026-09-16T00:00:00.000Z'),
+  id, businessId, capabilityId, proficiencyLevel: 'proficient', description: 'Construction services',
+  assertionStatus: 'active', assertionBasis: 'self_declared', verificationStatus: 'unverified',
+  effectiveFrom: new Date('2026-09-16T00:00:00.000Z'), effectiveUntil: null, sourceReference: null,
+  submittedAt: new Date('2026-09-16T00:00:00.000Z'), verifiedBy: null, verifiedAt: null,
+  verificationReason: null, createdBy: 10, createdAt: new Date('2026-09-16T00:00:00.000Z'),
   updatedAt: new Date('2026-09-16T00:00:00.000Z'),
 });
 
 class FakeRepository implements BusinessCapabilityRepository {
   receivedContext: AuthContext | null = null;
   receivedCreate: CreateBusinessCapabilityInput | null = null;
+  receivedTransition: TransitionBusinessCapabilityVerificationInput | null = null;
   rows = new Map<number, BusinessCapability>();
 
   async createBusinessCapability(context: AuthContext, input: CreateBusinessCapabilityInput): Promise<BusinessCapability> {
-    this.receivedContext = context;
-    this.receivedCreate = input;
-    const created = capability(1, input.businessId, input.capabilityId);
-    this.rows.set(created.id, created);
-    return created;
+    this.receivedContext = context; this.receivedCreate = input;
+    const created = capability(1, input.businessId, input.capabilityId); this.rows.set(created.id, created); return created;
   }
-
-  async getBusinessCapability(context: AuthContext, businessCapabilityId: number): Promise<BusinessCapability | null> {
-    this.receivedContext = context;
-    return this.rows.get(businessCapabilityId) ?? null;
+  async getBusinessCapability(context: AuthContext, id: number): Promise<BusinessCapability | null> {
+    this.receivedContext = context; return this.rows.get(id) ?? null;
   }
-
   async listBusinessCapabilities(context: AuthContext, businessId: number): Promise<BusinessCapability[]> {
-    this.receivedContext = context;
-    return [...this.rows.values()].filter((row) => row.businessId === businessId);
+    this.receivedContext = context; return [...this.rows.values()].filter(row => row.businessId === businessId);
+  }
+  async transitionBusinessCapabilityVerification(context: AuthContext, input: TransitionBusinessCapabilityVerificationInput): Promise<BusinessCapability> {
+    this.receivedContext = context; this.receivedTransition = input;
+    return this.rows.get(input.businessCapabilityId) ?? capability(input.businessCapabilityId, 12);
   }
 }
 
 const context: AuthContext = { userId: 10, role: 'business' };
 const validInput: CreateBusinessCapabilityInput = {
-  businessId: 12,
-  capabilityId: '11111111-1111-4111-8111-111111111111',
-  proficiencyLevel: 'proficient',
-  description: '  Construction services  ',
-  sourceReference: '  internal-profile  ',
-  effectiveFrom: new Date('2026-09-16T00:00:00.000Z'),
-  effectiveUntil: new Date('2026-12-16T00:00:00.000Z'),
+  businessId: 12, capabilityId: '11111111-1111-4111-8111-111111111111', proficiencyLevel: 'proficient',
+  description: '  Construction services  ', sourceReference: '  internal-profile  ',
+  effectiveFrom: new Date('2026-09-16T00:00:00.000Z'), effectiveUntil: new Date('2026-12-16T00:00:00.000Z'),
 };
 
 test('Business Capability creation passes authenticated context and narrowed input', async () => {
-  const repository = new FakeRepository();
-  const service = new BusinessCapabilityServiceImpl(repository);
+  const repository = new FakeRepository(); const service = new BusinessCapabilityServiceImpl(repository);
   const created = await service.createBusinessCapability(context, validInput);
-
-  assert.equal(repository.receivedContext, context);
-  assert.equal(repository.receivedCreate, validInput);
-  assert.equal(created.businessId, 12);
-  assert.equal(created.capabilityId, validInput.capabilityId);
+  assert.equal(repository.receivedContext, context); assert.equal(repository.receivedCreate, validInput);
+  assert.equal(created.businessId, 12); assert.equal(created.capabilityId, validInput.capabilityId);
 });
 
 test('Business Capability creation rejects invalid input before repository execution', async () => {
-  const repository = new FakeRepository();
-  const service = new BusinessCapabilityServiceImpl(repository);
-
+  const repository = new FakeRepository(); const service = new BusinessCapabilityServiceImpl(repository);
   await assert.rejects(() => service.createBusinessCapability(context, null as never), /input is required/);
   await assert.rejects(() => service.createBusinessCapability(context, { ...validInput, businessId: 0 }), /businessId must be a positive integer/);
   await assert.rejects(() => service.createBusinessCapability(context, { ...validInput, capabilityId: 'not-a-uuid' }), /valid UUID/);
@@ -94,21 +71,30 @@ test('Business Capability creation rejects invalid input before repository execu
 });
 
 test('Business Capability reads and lists validate identifiers and preserve context', async () => {
-  const repository = new FakeRepository();
-  repository.rows.set(1, capability(1, 12));
-  repository.rows.set(2, capability(2, 12, '22222222-2222-4222-8222-222222222222'));
+  const repository = new FakeRepository(); repository.rows.set(1, capability(1, 12)); repository.rows.set(2, capability(2, 12, '22222222-2222-4222-8222-222222222222'));
   const service = new BusinessCapabilityServiceImpl(repository);
-
   assert.equal((await service.getBusinessCapability(context, 1))?.id, 1);
-  assert.deepEqual((await service.listBusinessCapabilities(context, 12)).map((row) => row.id), [1, 2]);
+  assert.deepEqual((await service.listBusinessCapabilities(context, 12)).map(row => row.id), [1, 2]);
   assert.equal(repository.receivedContext, context);
   await assert.rejects(() => service.getBusinessCapability(context, 0), /businessCapabilityId must be a positive integer/);
   await assert.rejects(() => service.listBusinessCapabilities(context, 0), /businessId must be a positive integer/);
 });
 
+test('Business Capability transition validates admin authority and forwards narrowed input', async () => {
+  const repository = new FakeRepository(); const service = new BusinessCapabilityServiceImpl(repository);
+  const admin: AuthContext = { userId: 99, role: 'admin' };
+  const input: TransitionBusinessCapabilityVerificationInput = { businessCapabilityId: 7, expectedStatus: 'pending', targetStatus: 'verified' };
+  await service.transitionBusinessCapabilityVerification(admin, input);
+  assert.equal(repository.receivedContext, admin); assert.equal(repository.receivedTransition, input);
+  await assert.rejects(() => service.transitionBusinessCapabilityVerification(context, input), /requires admin role/);
+  await assert.rejects(() => service.transitionBusinessCapabilityVerification(admin, { ...input, businessCapabilityId: 0 }), /businessCapabilityId must be a positive integer/);
+  await assert.rejects(() => service.transitionBusinessCapabilityVerification(admin, { ...input, expectedStatus: 'bad' as never }), /Invalid expected verification status/);
+  await assert.rejects(() => service.transitionBusinessCapabilityVerification(admin, { ...input, targetStatus: 'bad' as never }), /Invalid target verification status/);
+  await assert.rejects(() => service.transitionBusinessCapabilityVerification(admin, { ...input, reason: 'x'.repeat(1001) }), /Verification reason must contain between 1 and 1000 characters/);
+});
+
 test('Business Capability creation rejects unauthenticated or invalid contexts', async () => {
-  const repository = new FakeRepository();
-  const service = new BusinessCapabilityServiceImpl(repository);
+  const repository = new FakeRepository(); const service = new BusinessCapabilityServiceImpl(repository);
   await assert.rejects(() => service.createBusinessCapability({ userId: 0, role: 'business' }, validInput), /Authentication required/);
   await assert.rejects(() => service.createBusinessCapability({ userId: 10, role: 'invalid' as never }, validInput), /Authentication required/);
   assert.equal(repository.receivedCreate, null);

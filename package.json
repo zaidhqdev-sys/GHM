@@ -28,6 +28,7 @@
     "qualify:notification-runtime": "npm run build && node scripts/qualify-notification-runtime.mjs",
     "qualify:support-request-runtime": "npm run build && node scripts/qualify-support-request-runtime.mjs",
     "qualify:business-capability-runtime": "npm run build && node scripts/qualify-business-capability-runtime.mjs",
+    "qualify:business-capability-lifecycle-runtime": "npm run build && node scripts/qualify-business-capability-lifecycle-runtime.mjs",
     "qualify:business-hours-runtime": "npm run build && node scripts/qualify-business-hours-runtime.mjs",
     "qualify:saved-business-runtime": "npm run build && node scripts/qualify-saved-business-runtime.mjs",
     "qualify:trust-score-runtime": "npm run build && node scripts/qualify-trust-score-runtime.mjs",
