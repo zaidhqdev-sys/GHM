@@ -40,7 +40,7 @@ trust_score.calculate
 
 Registry resource: `trust_score` with operations `read`, `readPublic`, `calculate`.
 
-No create/update/delete of score rows outside `calculate`. No HTTP routes in this slice.
+No create/update/delete of score rows outside `calculate`. HTTP routes are separately implemented and covered by `src/http/trust-score-router.test.ts`; production routing remains separately governed.
 
 ### `trust_score.readPublic`
 
@@ -109,7 +109,19 @@ Platform `admin` AuthContext role does **not** invent founder Trust override; Co
 - Concurrent calculate: both may succeed; final row reflects last completed upsert
 - Identical inputs → identical dimension/total/level results (idempotent content)
 
-## 6. Explicit non-operations
+## 6. HTTP qualification boundary
+
+The implemented HTTP surface is:
+
+- `GET /api/v1/public/trust-scores`
+- `GET /api/v1/public/trust-scores/:businessId`
+- `GET /api/v1/trust-scores`
+- `GET /api/v1/trust-scores/:businessId`
+- `POST /api/v1/trust-scores/:businessId/calculate`
+
+The HTTP tests qualify authentication, context binding, identifier validation, public/private visibility, and calculation routing. HTTP implementation does not authorize production cutover.
+
+## 7. Explicit non-operations
 
 Not authorized in this slice:
 
@@ -121,7 +133,7 @@ Not authorized in this slice:
 - Business profile column invention;
 - adapters / shadow / cutover.
 
-## 7. Registry
+## 8. Registry
 
 Register `trust_score` because GHM registry semantics require an explicit resource entry for governed capabilities with AuthContext resource access.
 
