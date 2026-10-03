@@ -12,13 +12,10 @@ create table ghm.currency (
 
   constraint currency_code_format
     check (code ~ '^[A-Z]{3}$'),
-
   constraint currency_name_not_blank
     check (btrim(name) <> ''),
-
   constraint currency_symbol_not_blank
     check (btrim(symbol) <> ''),
-
   constraint currency_minor_unit_range
     check (minor_unit between 0 and 6)
 );
@@ -37,10 +34,8 @@ create table ghm.country (
 
   constraint country_alpha2_code_format
     check (code_alpha2 ~ '^[A-Z]{2}$'),
-
   constraint country_alpha3_code_format
     check (code_alpha3 ~ '^[A-Z]{3}$'),
-
   constraint country_name_not_blank
     check (btrim(name) <> '')
 );
@@ -48,15 +43,54 @@ create table ghm.country (
 create index country_default_currency_id_idx
   on ghm.country(default_currency_id);
 
+create or replace function ghm.set_currency_updated_at()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, ghm
+as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+alter function ghm.set_currency_updated_at() owner to ghm_schema_owner;
+revoke all on function ghm.set_currency_updated_at() from public;
+
+create or replace function ghm.set_country_updated_at()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, ghm
+as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+alter function ghm.set_country_updated_at() owner to ghm_schema_owner;
+revoke all on function ghm.set_country_updated_at() from public;
+
 create trigger currency_set_updated_at
 before update on ghm.currency
 for each row
-execute function ghm.set_updated_at();
+execute function ghm.set_currency_updated_at();
 
 create trigger country_set_updated_at
 before update on ghm.country
 for each row
-execute function ghm.set_updated_at();
+execute function ghm.set_country_updated_at();
+
+alter table ghm.currency owner to ghm_schema_owner;
+alter table ghm.country owner to ghm_schema_owner;
+
+comment on table ghm.currency is
+  'Canonical GHM currency reference identity used by governed resources.';
+
+comment on table ghm.country is
+  'Canonical GHM country reference identity used by governed resources.';
 
 insert into ghm.currency (
   code,
@@ -85,7 +119,15 @@ select
 from ghm.currency
 where code = 'ZAR';
 
-grant select on table ghm.currency to ghm_runtime;
-grant select on table ghm.country to ghm_runtime;
+grant usage on schema ghm to ghm_runtime;
+
+grant select on table ghm.currency, ghm.country to ghm_runtime;
+
+revoke insert, update, delete, truncate, references, trigger
+  on table ghm.currency, ghm.country
+  from ghm_runtime;
+
+grant usage, select on sequence ghm.currency_id_seq, ghm.country_id_seq
+  to ghm_runtime;
 
 commit;
