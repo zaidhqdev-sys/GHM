@@ -20,6 +20,7 @@ type AuthTokenResponse = {
 };
 
 type GhmAuthService = {
+  register(input: { fullName?: string | null; role?: 'customer' | 'business'; email: string; password: string }): Promise<AuthTokenResponse>;
   login(email: string, password: string): Promise<AuthTokenResponse>;
   refresh(refreshToken: string): Promise<AuthTokenResponse>;
   logout(refreshToken: string): Promise<void>;
@@ -68,7 +69,7 @@ const makeKeys = async () => {
 };
 
 test('POST /api/v1/auth/register returns GHM-issued tokens', async () => {
-  const authService: GhmAuthService & { register: NonNullable<GhmAuthService['register']> } = {
+  const authService: GhmAuthService = {
     register: async (input) => {
       assert.equal(input.email, 'new@example.com');
       assert.equal(input.password, 'CorrectHorse1');
