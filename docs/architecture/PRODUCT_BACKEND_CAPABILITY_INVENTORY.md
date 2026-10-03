@@ -1,6 +1,6 @@
 # Product Backend Capability Inventory
 
-**Status:** Construction capability inventory — reconciled through Connect Opportunity Participant adapter construction qualification (2026-10-03)
+**Status:** Construction capability inventory — reconciled through Business Capability lifecycle/verification transition qualification (2026-10-03)
 
 This document records capabilities GHM may eventually support to replace current managed backend dependencies. It deliberately separates capability requirements from Supabase implementation details and does not authorize production migration.
 
@@ -50,7 +50,8 @@ The following GHM construction capabilities have now been implemented and qualif
 - Opportunity Participation initial boundary
 - Project Quote
 - Capability Catalogue
-- Business Capability (read/create)
+- Business Capability assertion/read/create boundary
+- Business Capability lifecycle/verification transition authority
 - Business Hours
 - Commercial trial operation
 - Commercial reference data and payment preparation boundary
@@ -124,7 +125,8 @@ QUALIFIED CONSTRUCTION
   Opportunity Participation initial boundary
   Project Quote
   Capability Catalogue
-  Business Capability (read/create)
+  Business Capability assertion/read/create boundary
+  Business Capability lifecycle/verification transition authority
   Business Hours
   Commercial trial operation
   Commercial reference data + payment preparation boundary
@@ -150,7 +152,6 @@ REQUIRES FUTURE GOVERNED WORK
   Trust evidence hardening / additional authoritative evidence domains
   Commercial payment provider result / webhook application
   Opportunity participant lifecycle transition workflows
-  Business Capability lifecycle/verification update
   Opportunity outcome / matching workflows
   Business Hours exceptions / booking / open-now
   remaining platform candidates (storage, realtime, provider webhooks, telemetry)
@@ -165,3 +166,6 @@ Trust Score itself is **QUALIFIED / CLOSED** for its current construction bounda
 The Opportunity Participant resource and Connect adapter are **CLOSED / PASS for construction qualification**. The full 515/515 repository suite and the dedicated live PostgreSQL runtime qualification both passed on 2026-10-03. Participant lifecycle transition workflows remain separately governed future work.
 
 Broader product adapters remain separately gated. Provider/bootstrap authority cleanup remains an independent open construction concern. Production Connect and QuoteFlow remain on Supabase.
+
+
+The Business Capability lifecycle/verification transition authority is **CLOSED / PASS for construction qualification**. On 2026-10-03 the repository suite passed 516/516 tests and the dedicated live PostgreSQL lifecycle qualification passed, including authorization, transition validity, stale-state protection, verifier provenance, assertion immutability, direct-mutation denial, and the runtime transition execution boundary.
