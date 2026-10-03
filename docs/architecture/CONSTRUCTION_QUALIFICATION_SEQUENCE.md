@@ -16,7 +16,7 @@ The sequence remains the architecture-level gate order. Individual gates may hav
 6. **Automated qualification** — build and negative security/runtime checks run deterministically in CI. **Construction checks exist and are passing for the current branch state; they do not close production gates.**
 7. **Database reconciliation** — actual GHM PostgreSQL catalog evidence is captured and reconciled before dependent product/business migrations are authored. **Dedicated-schema catalog reconciliation and Business Identity runtime qualification are PASS for the current construction slice. The existing catalog artifact remains an app-role-scoped snapshot captured through `DATABASE_URL` (`ghm_app_user` → `ghm_db_user`), not an authoritative full-database catalog. Canonical GHM recovery has also been captured separately through the dedicated migrator/schema-owner path. Remaining work is provider/bootstrap authority limits, legacy authority cleanup, and subsequent governed resource slices.**
 7a. **Business Offering resource slice** — migration, repository, service, registry, and runtime privilege boundary are **CLOSED / PASS**. Live PostgreSQL qualification passed on 2026-10-01; public HTTP exposure remains separately gated.
-8. **Product adapters** — governed Connect capability seams may be construction-qualified only after their concrete backend contracts and authorization boundaries are evidenced. **Connect Business Offering capability adapter: CLOSED / PASS. Connect Business Capability read adapter: CLOSED / PASS. Connect Opportunity Participant adapter: CONSTRUCTION QUALIFIED. Broader adapters and QuoteFlow remain governed work; this does not authorize cutover.**
+8. **Product adapters** — governed Connect capability seams may be construction-qualified only after their concrete backend contracts and authorization boundaries are evidenced. **Connect Business Offering capability adapter: CLOSED / PASS. Connect Business Capability read adapter: CLOSED / PASS. Connect Opportunity Participant adapter: CLOSED / PASS for construction qualification. Broader adapters and QuoteFlow remain governed work; this does not authorize cutover.**
 9. **Shadow qualification** — product workflows are exercised against GHM while Supabase remains authoritative. **Not started.**
 10. **Controlled cutover** — migrate one product at a time with an explicit rollback path. **Not started; production remains on Supabase.**
 
@@ -42,7 +42,7 @@ The explicit Connect Business Offering capability seam is construction-qualified
 
 The Connect Business Capability read seam has been constructed as a bounded adapter. It binds `business_capability.read` to the `business_capability` resource and `read` operation, validates the business identifier, and delegates to the canonical GHM Business Capability service. GHM repository authorization remains authoritative for active-business membership. Connect currently projects nested Capability and Business Capability Evidence data; those projections are deliberately not fabricated here because GHM has no separately qualified projection contract. Local qualification passed 510/510 tests. This seam does not reproduce Connect's nested Capability/Evidence projection and therefore does not authorize production replacement of that richer Connect projection.
 
-### Connect Opportunity Participant Capability Adapter: CONSTRUCTION QUALIFIED
+### Connect Opportunity Participant Capability Adapter: CLOSED / PASS
 
 The Connect Opportunity Participant adapter exposes the already-qualified Opportunity Participant service through the governed capability path:
 
@@ -52,9 +52,13 @@ The Connect Opportunity Participant adapter exposes the already-qualified Opport
 
 The adapter enforces resource/capability/operation alignment, positive identifiers, and delegation through the canonical service with the authenticated GHM context. Governed HTTP tests exercise the service chain.
 
-The full repository qualification run on 2026-10-03 passed **515/515 tests**, including the Opportunity Participant adapter and Connect service HTTP coverage. This closes the adapter's construction-level unit/HTTP gate.
+The full repository qualification run on 2026-10-03 passed **515/515 tests**, including the Opportunity Participant adapter and Connect service HTTP coverage.
 
-This does **not** close the dedicated live PostgreSQL runtime qualification for the Opportunity Participant resource. `npm run qualify:opportunity-participant-runtime` remains the required runtime evidence before the resource is treated as runtime-qualified.
+The dedicated live PostgreSQL runtime qualification was then executed on 2026-10-03 and passed the participant schema, least-privilege, authorization, validation, immutable-field, concurrency, direct-mutation-denial, list, persistence-reconciliation, and cleanup checks.
+
+Final result: **OPPORTUNITY PARTICIPANT RUNTIME QUALIFICATION PASS**.
+
+The Opportunity Participant resource and Connect adapter are therefore closed for construction qualification.
 
 No production Connect traffic, public/browser exposure, provider change, Supabase migration, shadow qualification, or cutover is authorized.
 
