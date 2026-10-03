@@ -1,16 +1,20 @@
 # QuoteFlow ↔ GHM Identity / Business Mapping Contract
 
+> **Canonical identity reconciliation:** GHM is the target canonical identity authority for QuoteFlow-backed runtime operations. Supabase identifiers are legacy/source identifiers during migration only.
+
 ## Status
 
-**RECONCILED — AUTHORITY AND PERSISTENCE CONTRACTED; NO DATABASE OBJECT OR ADAPTER AUTHORIZED**
+**RECONCILED — GHM CANONICAL IDENTITY SELECTED; LEGACY SUPABASE CROSSWALK ONLY; NO DATABASE OBJECT OR ADAPTER AUTHORIZED**
 
 This document closes the source-reconciliation investigation for the cross-system identity boundary. It does not authorize an identity-link table, account migration, adapter, Supabase mutation, production routing, shadow qualification, or cutover.
 
 ## Evidence
 
-### QuoteFlow principal
+### Current QuoteFlow principal (legacy implementation)
 
-QuoteFlow is built around Supabase Auth and uses the authenticated Supabase user as the principal for organization, membership, and legal-acceptance operations.
+The current QuoteFlow repository is still built around Supabase Auth. The authenticated Supabase user and its identifier therefore describe the **current/legacy implementation state**, not the target GHM-owned identity architecture.
+
+The current repository also contains a direct `@supabase/supabase-js` dependency and Supabase RPC-based organization context. This dependency must be removed from the canonical runtime path through a separately qualified migration.
 
 Its organization context is organization-scoped and contains:
 
@@ -43,12 +47,12 @@ GHM Business membership is the canonical relationship between an account and a B
 
 ## Fundamental boundary
 
-The two systems currently have **different principal identifiers and different tenant identifiers**:
+The current implementations have different principal and tenant identifiers. This is a migration-state observation, not a permanent architecture:
 
 | Boundary | QuoteFlow | GHM |
 |---|---|---|
-| Principal | Supabase Auth user UUID | GHM numeric account identity |
-| Tenant | QuoteFlow organization UUID | GHM Business numeric ID |
+| Principal | Current legacy Supabase user identifier | GHM canonical `account_identity.id` |
+| Tenant | Current legacy QuoteFlow organization identifier | GHM canonical Business numeric ID |
 | Membership | organization_members | business_membership |
 | Owner/admin/member | owner/admin/member | owner/administrator/member |
 | Active state | active | active |
@@ -75,11 +79,13 @@ Those fields are mutable, non-unique, product-scoped, or otherwise insufficient 
 
 The mapping must be an explicit, authenticated association established by a separately governed identity-link contract.
 
-## Account mapping
+## Canonical account identity
 
-A future mapping must establish:
+The target runtime path is:
 
-`QuoteFlow Supabase user UUID → GHM account_identity.id`
+`QuoteFlow authenticated session → GHM account_identity.id`
+
+A legacy Supabase user identifier may be retained only in migration provenance/crosswalk data where required to reconcile an existing QuoteFlow record. It is not a canonical GHM identity and must not become the principal used by GHM authorization.
 
 Required properties:
 
@@ -93,11 +99,13 @@ Required properties:
 
 No mapping persistence mechanism is authorized by this document.
 
-## Organization / Business mapping
+## Canonical tenant identity
 
-A future mapping must separately establish:
+The target runtime path is:
 
-`QuoteFlow organization UUID → GHM business.id`
+`QuoteFlow business context → GHM business.id → GHM business_membership`
+
+The current QuoteFlow organization identifier is a legacy/source identifier until QuoteFlow is migrated to GHM-owned identity and Business context. It must not be added to canonical GHM identity or Business tables.
 
 This is intentionally **not** a consequence of account mapping.
 
@@ -115,10 +123,13 @@ Required properties:
 
 ## Ownership
 
-The canonical owners remain:
+The target canonical owners are:
 
-- QuoteFlow/Supabase: QuoteFlow principal, organization, organization membership, legal acceptance, subscription state, and local entitlements until separately cut over;
-- GHM: GHM account identity, Business identity, Business membership, and qualified GHM commercial foundations.
+- GHM: authenticated account identity, Business identity, Business membership, and GHM authorization;
+- QuoteFlow: QuoteFlow product data and product-specific semantics that remain outside GHM's canonical identity/authorization domain;
+- legacy Supabase: migration/source provenance only until separately retired.
+
+Legal acceptance and subscription/entitlement ownership remain product-specific and are not transferred by this identity reconciliation.
 
 An identity mapping is a **bridge**, not a new canonical owner for either domain.
 
@@ -160,9 +171,10 @@ Before implementation, a separate contract must define:
 
 This contract does not authorize:
 
-- identity-link database tables;
+- permanent identity-link database tables;
 - UUID columns added to GHM Business or account identity;
-- Supabase Auth migration;
+- treating a Supabase UUID as the canonical QuoteFlow identity;
+- immediate Supabase Auth removal or production authentication cutover;
 - GHM credential issuance to QuoteFlow;
 - email/phone matching;
 - organization-to-Business automatic matching;
@@ -180,4 +192,4 @@ This contract does not authorize:
 
 This is the final prerequisite before an eventual QuoteFlow adapter can be designed safely.
 
-The authority model is now separately qualified by dual confirmation, and the persistence boundary is separately contracted. The next construction step is persistence implementation qualification, not adapter implementation.
+The authority model is now separately qualified by dual confirmation, and the persistence boundary is separately contracted. The next construction step is **GHM-owned QuoteFlow authentication and migration-boundary qualification**, not permanent identity-link persistence.
