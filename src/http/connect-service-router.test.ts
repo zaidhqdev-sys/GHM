@@ -167,7 +167,7 @@ const projectService = (calls: string[]): ProjectService => ({
   },
   updateOwnedProject: async (_context, id, input) => {
     calls.push(`update:${id}:${input.title ?? ''}`);
-    return null;
+    return { id, accountId: 42, title: input.title ?? 'Updated Project', description: input.description ?? 'Updated description', category: input.category ?? 'web', province: input.province ?? 'KwaZulu-Natal', city: input.city ?? 'Durban', budgetMin: input.budgetMin ?? null, budgetMax: input.budgetMax ?? null, urgency: input.urgency ?? 'standard', status: 'open', createdAt: new Date(), updatedAt: new Date() };
   },
 });
 
