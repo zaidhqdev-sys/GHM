@@ -2,7 +2,7 @@ import type { PoolClient } from 'pg';
 import type { AuthContext } from '../../auth/authorization';
 import { withAuthorizedTransaction } from '../../db/authorized-transaction';
 import type { TransactionPool } from '../../db/transaction';
-import type { BusinessCapability, BusinessCapabilityId, BusinessCapabilityRepository, CreateBusinessCapabilityInput } from './contracts';
+import type { BusinessCapability, BusinessCapabilityId, BusinessCapabilityRepository, CreateBusinessCapabilityInput, TransitionBusinessCapabilityVerificationInput } from './contracts';
 
 const COLUMNS = `id, business_id, capability_id, proficiency_level, description, assertion_status, assertion_basis, verification_status, effective_from, effective_until, source_reference, submitted_at, verified_by, verified_at, verification_reason, created_by, created_at, updated_at`;
 
@@ -87,6 +87,19 @@ export class PostgresBusinessCapabilityRepository implements BusinessCapabilityR
       await assertBusinessReadAuthority(client, context, id);
       const result = await client.query(`SELECT ${COLUMNS} FROM ghm.business_capability WHERE business_id = $1 ORDER BY created_at ASC, id ASC`, [id]);
       return result.rows.map(mapBusinessCapability);
+    }, this.transactionPool);
+  }
+
+  async transitionBusinessCapabilityVerification(context: AuthContext, input: TransitionBusinessCapabilityVerificationInput): Promise<BusinessCapability> {
+    const id = requirePositiveId(input.businessCapabilityId, 'businessCapabilityId');
+    return withAuthorizedTransaction(context, async client => {
+      const result = await client.query(
+        `SELECT ${COLUMNS}
+           FROM ghm.transition_business_capability_verification($1, $2, $3, $4, $5)`,
+        [id, input.expectedStatus, input.targetStatus, context.userId, input.reason ?? null],
+      );
+      if (result.rowCount !== 1) throw new Error('Business capability transition returned no row');
+      return mapBusinessCapability(result.rows[0]);
     }, this.transactionPool);
   }
 }
