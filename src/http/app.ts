@@ -112,7 +112,7 @@ export interface AppDependencies {
   readonly authService?: GhmAuthService;
   readonly passwordRecoveryService?: PasswordRecoveryService;
   readonly resourceAuthMiddleware?: import('express').RequestHandler;
-  readonly connectService?: Omit<ConnectServiceHttpDependencies, 'savedBusinesses' | 'projects'>;
+  readonly connectService?: Omit<ConnectServiceHttpDependencies, 'savedBusinesses'>;
 }
 
 const requireRegisteredAccess = (resource: Parameters<typeof canAccessResource>[1], operation: ResourceOperation) =>
