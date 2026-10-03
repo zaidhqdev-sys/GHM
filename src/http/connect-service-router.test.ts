@@ -44,7 +44,7 @@ const start = async (deps: {
       customers: deps.customers,
       quotes: deps.quotes,
       enquiries: deps.enquiries,
-      projects: deps.projects, opportunities: deps.opportunities,
+      projects: deps.projects,
       opportunities: deps.opportunities,
     },
   });
