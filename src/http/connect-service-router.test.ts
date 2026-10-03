@@ -192,7 +192,7 @@ test('Connect service read route executes the full governed chain', async () => 
 
 test('Connect service route rejects browser-originated requests', async () => {
   const calls: string[] = [];
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service(calls), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service(calls), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService([]) , projects: projectService([])});
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, {
       method: 'POST', headers: { authorization: 'Bearer valid', origin: 'https://example.com', 'content-type': 'application/json' }, body: JSON.stringify(body()),
@@ -215,7 +215,7 @@ test('Connect service route rejects missing service credential', async () => {
 test('Connect service route fails closed for inactive integration', async () => {
   const inactive: ConnectIntegrationLifecycleRepository = { get: async () => ({ ...(await lifecycle.get('connect-test'))!, status: 'disabled' }) };
   const calls: string[] = [];
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle: inactive, identity, accounts, savedBusinesses: service(calls), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle: inactive, identity, accounts, savedBusinesses: service(calls), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService([]) , projects: projectService([])});
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify(body()) });
     assert.equal(response.status, 401);
@@ -225,7 +225,7 @@ test('Connect service route fails closed for inactive integration', async () => 
 
 test('Connect service route rejects unsupported mutation capability', async () => {
   const calls: string[] = [];
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service(calls), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service(calls), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService([]) , projects: projectService([])});
   const mutationBody = { ...body({ businessId: 9 }), operation: { resource: 'saved_business', operation: 'create' } };
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify(mutationBody) });
@@ -310,7 +310,7 @@ test('Connect service route dispatches Quote read through the governed chain', a
 
 test('Connect service dispatches Enquiry create through the governed chain', async () => {
   const calls: string[] = [];
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService(calls) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService(calls) , projects: projectService([])});
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, {
       method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' },
@@ -324,7 +324,7 @@ test('Connect service dispatches Enquiry create through the governed chain', asy
 test('Connect service dispatches business Enquiry read through the governed chain', async () => {
   const calls: string[] = [];
   const businessAccounts: AccountAuthStateStore = { getAccountAuthState: async (accountId) => ({ accountId, accountStatus: 'active', role: 'business', isSystemAdmin: false }) };
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts: businessAccounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService(calls) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts: businessAccounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService(calls) , projects: projectService([])});
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, {
       method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' },
@@ -338,7 +338,7 @@ test('Connect service dispatches business Enquiry read through the governed chai
 test('Connect service dispatches business Enquiry status update through the governed chain', async () => {
   const calls: string[] = [];
   const businessAccounts: AccountAuthStateStore = { getAccountAuthState: async (accountId) => ({ accountId, accountStatus: 'active', role: 'business', isSystemAdmin: false }) };
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts: businessAccounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService(calls) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts: businessAccounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService(calls) , projects: projectService([])});
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, {
       method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' },
