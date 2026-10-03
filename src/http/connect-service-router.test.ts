@@ -28,7 +28,7 @@ const start = async (deps: {
   enquiries: EnquiryService;
   projects: ProjectService;
   opportunities: OpportunityService;
-  opportunityParticipants: OpportunityParticipantService;
+  opportunityParticipants?: OpportunityParticipantService;
 }) => {
   const app = createApp({
     savedBusinessService: deps.savedBusinesses,
@@ -37,7 +37,7 @@ const start = async (deps: {
     enquiryService: deps.enquiries,
     projectService: deps.projects,
     opportunityService: deps.opportunities,
-    opportunityParticipantService: deps.opportunityParticipants,
+    opportunityParticipantService: deps.opportunityParticipants ?? opportunityParticipantService([]),
     connectService: {
       assertionService: deps.assertionService,
       replayStore: deps.replayStore,
@@ -49,7 +49,7 @@ const start = async (deps: {
       enquiries: deps.enquiries,
       projects: deps.projects,
       opportunities: deps.opportunities,
-      opportunityParticipants: deps.opportunityParticipants,
+      opportunityParticipants: deps.opportunityParticipants ?? opportunityParticipantService([]),
     },
   });
   const server = http.createServer(app);
