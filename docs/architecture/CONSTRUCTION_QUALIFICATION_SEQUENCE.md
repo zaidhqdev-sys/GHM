@@ -29,6 +29,16 @@ The GHM Trust resource contract is defined in `docs/architecture/TRUST_RESOURCE_
 The next gate is implementation design: exact calculation/dimension contract, repository/service boundary, authorization registry mapping, live schema/privilege reconciliation, and qualification harness design.
 
 ## Current closed construction gates
+## Trust Score Resource: CLOSED / PASS
+
+The canonical GHM Trust Score resource is constructed and runtime-qualified. The slice includes the ghm.trust_score schema, calculation function, repository/service boundary, authorization registry mapping, public/private HTTP routes, and negative runtime privilege/security qualification.
+
+Trust consumes qualified Business Profile inputs (description, phone, email) and the Review-owned rating aggregate. Protected Trust inputs (insurance_verified, jobs_completed) remain non-owner-mutable. Identity/CIPC/VAT dimensions remain zero pending authoritative evidence contracts.
+
+The dedicated Trust qualification records schema integrity, runtime least privilege, calculate/read authorization, public disclosure, private isolation, concurrent one-row-per-Business behavior, direct mutation denial, and governed cleanup. Business Profile qualification separately records successful Trust input consumption and protected-field denial.
+
+The Trust resource is closed for the current construction slice. Calculation-version/provenance hardening and future evidence domains are separately governed work; no production routing, shadow traffic, migration, or cutover is authorized.
+
 
 ### Connect Business Offering Capability Adapter: CLOSED / PASS
 
