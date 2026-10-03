@@ -603,6 +603,9 @@ export class PostgresCommercialRepository implements CommercialRepository {
     context: AuthContext,
     input: PrepareCommercialPaymentInput,
   ): Promise<CommercialPaymentAttempt> {
+    requireBusinessId(input.businessId);
+    requireIdempotencyKey(input.idempotencyKey);
+
     return withAuthorizedTransaction(
       context,
       (client) => preparePayment(client, context, input),
