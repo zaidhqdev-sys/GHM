@@ -2,9 +2,11 @@
 
 ## Status
 
-**CONSTRUCTION CONTRACT — PERSISTENCE DESIGN QUALIFIED FOR IMPLEMENTATION REVIEW; NO MIGRATION AUTHORIZED**
+**SUPERSEDED — DO NOT IMPLEMENT AS A PERMANENT RUNTIME IDENTITY BRIDGE**
 
-This contract turns the already-qualified dual-confirmation authority into a persistence boundary. It does not create the database objects, routes, adapters, production configuration, or cutover.
+The earlier persistence design assumed that QuoteFlow's Supabase user/organization identifiers should remain durable cross-system identifiers. Repository audit and founder architecture direction establish that this is not the target architecture.
+
+This document is retained as historical design evidence only. It must not be used to authorize permanent identity-link tables.
 
 ## Canonical ownership
 
@@ -12,23 +14,31 @@ GHM owns the persisted cross-system link record because the record is required t
 
 The link is a bridge, not a replacement owner for either product domain:
 
-- QuoteFlow remains authoritative for QuoteFlow principal and organization identity.
+- GHM is the target canonical identity authority for QuoteFlow-backed runtime operations.
 - GHM remains authoritative for GHM account identity, Business identity, membership, and GHM authorization.
 - The persisted bridge records the explicit association and its provenance.
 
 No QuoteFlow identifier becomes a GHM canonical identity.
 
-## Separate link resources
+## Reconciliation
+
+A permanent runtime bridge is unnecessary if QuoteFlow is migrated to GHM-owned authentication and Business identity.
+
+The required migration concern is a **temporary legacy crosswalk**, separately qualified, whose only purpose is to reconcile existing QuoteFlow/Supabase records to GHM records during migration.
+
+That crosswalk must never become a runtime authorization primitive.
+
+## Historical proposed link resources
 
 Account and Business mappings are separate logical resources:
 
 ### Account link
 
-`QuoteFlow user UUID → GHM account_identity.id`
+`legacy QuoteFlow/Supabase user identifier → GHM account_identity.id` (migration provenance only)
 
 ### Business link
 
-`QuoteFlow organization UUID → GHM business.id`
+`legacy QuoteFlow organization identifier → GHM business.id` (migration provenance only)
 
 One does not imply the other.
 
@@ -236,15 +246,15 @@ Schema ownership remains with `ghm_schema_owner`; migration execution remains se
 
 Do not introduce a generic `external_identity` table that permits arbitrary provider/type/value combinations.
 
-The first persisted slice must remain explicitly typed to QuoteFlow account and QuoteFlow Business associations.
+Any future migration crosswalk must be explicitly scoped to legacy-source provenance and must not be treated as a generic external identity registry or runtime trust relationship.
 
 This prevents the identity bridge from becoming an uncontrolled universal identity registry.
 
 ## Explicit non-goals
 
-This contract does not authorize:
+This historical contract does not authorize:
 
-- migration SQL;
+- permanent identity-link migration SQL;
 - identity-link tables;
 - confirmation persistence tables;
 - HTTP endpoints;
@@ -276,4 +286,6 @@ Before migration or code is authored, the following must be independently qualif
 11. read-only resolution;
 12. cleanup/recovery semantics.
 
-**No database object is authorized merely by this document.**
+**No database object is authorized by this historical document.**
+
+The next implementation gate is GHM-owned authentication and migration-boundary qualification.

@@ -1,6 +1,6 @@
 # QuoteFlow ↔ GHM Identity Link — Attestation Verifier Contract
 
-**Status:** CONSTRUCTION SLICE — DEDICATED VERIFIER ONLY
+**Status:** HISTORICAL CONSTRUCTION SLICE — MIGRATION BOUNDARY REQUIRES RECONCILIATION
 
 ## Purpose
 
@@ -14,9 +14,11 @@ The verifier reuses only the existing ES256 key-map primitive and the jsonwebtok
 
 ## Accepted contract
 
-A valid attestation must contain:
+The current verifier contract accepts a positive safe-integer decimal `sub`. Repository audit of current QuoteFlow shows its authenticated user identifier is Supabase-backed and UUID-shaped.
 
-- sub: positive safe-integer QuoteFlow identity id encoded as decimal text;
+This mismatch is intentional evidence that the verifier cannot be treated as the canonical QuoteFlow identity protocol.
+
+Before reuse, its subject contract must be separately qualified against the actual legacy source identity. No UUID must be cast to a number and no invented numeric identity may be introduced.
 - iss: quoteflow;
 - aud: ghm-identity-link;
 - ceremony: identity-link;
@@ -43,4 +45,4 @@ This slice does not:
 
 Unit qualification covers acceptance of a valid attestation and fail-closed rejection of wrong issuer, audience, ceremony, version, unknown key id, non-ES256 header, malformed subject, and invalid timestamp ordering.
 
-The next construction slice may compose this verifier with the already-defined identity-link authority and dual-confirmation contracts. Persistence remains a separate gate.
+The verifier must not be used to authorize permanent GHM runtime identity. Any continued use is migration-only and requires a new, explicitly scoped contract/qualification slice.

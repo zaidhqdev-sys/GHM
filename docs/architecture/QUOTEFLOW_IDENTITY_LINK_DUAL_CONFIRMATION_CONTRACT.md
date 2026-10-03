@@ -2,7 +2,7 @@
 
 ## Status
 
-**AUTHORITY SELECTED — DUAL CONFIRMATION; PERSISTENCE NOT YET AUTHORIZED**
+**HISTORICAL AUTHORITY CONTRACT — DUAL CONFIRMATION RETAINED FOR MIGRATION CEREMONIES ONLY**
 
 This contract resolves the Founder/Product authority gate for establishing a cross-system identity link.
 
@@ -12,11 +12,11 @@ This contract defines authority and lifecycle semantics only. It does not author
 
 ## Selected authority model
 
-A link may become eligible for creation only when both sides independently confirm the same proposed association.
+A migration-only crosswalk may be established only when the exact legacy source record and GHM target record are independently confirmed. This is migration provenance, not permanent runtime identity authority.
 
-### Account link
+### Legacy account crosswalk
 
-The two confirmations are:
+The legacy source identifier and GHM account identity may be confirmed as a migration pair. The source identifier must remain opaque and source-owned; no UUID-to-GHM canonical identity conversion is implied.
 
 1. **QuoteFlow-side confirmation**
    - the authenticated QuoteFlow principal controls the QuoteFlow user UUID being linked;
@@ -29,9 +29,9 @@ The two confirmations are:
 
 The two confirmations must identify the same QuoteFlow principal and GHM account pair.
 
-### Business link
+### Legacy Business crosswalk
 
-The two confirmations are:
+The legacy QuoteFlow organization identifier and GHM Business may be confirmed as a migration pair. The crosswalk does not create GHM membership or translate QuoteFlow roles.
 
 1. **QuoteFlow-side confirmation**
    - the authenticated QuoteFlow organization owner or active organization admin confirms the proposed QuoteFlow organization;
@@ -160,7 +160,7 @@ In particular:
 - QuoteFlow `admin` is not automatically a GHM `administrator`;
 - QuoteFlow `member` is not automatically a GHM `member`.
 
-After a link exists, GHM authorization continues to derive from GHM authentication and GHM Business membership.
+After migration, GHM authorization derives directly from GHM authentication and GHM Business membership. The legacy crosswalk is not consulted for ordinary authorization.
 
 ## Interaction with the dedicated verifier
 
@@ -174,9 +174,11 @@ It does not:
 - establish Business membership;
 - replace GHM authorization.
 
-The future ceremony boundary is therefore:
+The migration ceremony boundary, if still required, is:
 
-`QuoteFlow attestation → GHM authenticated confirmation → exact-pair authority decision → persistence`
+`legacy QuoteFlow source proof → GHM authenticated confirmation → exact migration pair decision → migration crosswalk`
+
+This ceremony must not be used as the target GHM authentication protocol.
 
 The existing verifier remains unchanged.
 
@@ -204,7 +206,7 @@ This contract does not authorize:
 
 The authority decision is now closed at the architecture level.
 
-The next construction slice is a **persistence-free dual-confirmation decision contract/service boundary** that composes:
+The next construction slice is **GHM-owned QuoteFlow authentication and migration-boundary qualification**.
 
 1. the qualified QuoteFlow attestation verifier;
 2. authenticated GHM-side confirmation;

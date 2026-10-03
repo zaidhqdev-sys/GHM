@@ -2,16 +2,20 @@
 
 ## Status
 
-**AUTHORITY QUALIFIED — DUAL CONFIRMATION SELECTED; PERSISTENCE SEPARATELY CONTRACTED**
+**RECONCILIATION REQUIRED — DUAL CONFIRMATION IS NOT A PERMANENT RUNTIME IDENTITY AUTHORITY**
 
 This contract defines the decision boundary for establishing cross-system identity links. The selected authority model is dual-sided confirmation; persistence remains separately gated.
 
 ## Existing evidence
 
-The preceding reconciliation establishes two independent mappings:
+The preceding persistence design used legacy QuoteFlow/Supabase identifiers as if they were durable runtime identity keys. That assumption is superseded.
 
-- QuoteFlow Supabase user UUID ↔ GHM `account_identity.id`
-- QuoteFlow organization UUID ↔ GHM `business.id`
+The target architecture is GHM-owned:
+
+- QuoteFlow authenticated session → GHM `account_identity.id`
+- QuoteFlow Business context → GHM `business.id` → `business_membership`
+
+Legacy Supabase identifiers may participate in a migration-only crosswalk, but do not establish ongoing GHM trust.
 
 Neither mapping currently has an authorized persistence mechanism in GHM.
 
@@ -124,6 +128,6 @@ The cross-system mapping boundary and link authority are now explicitly resolved
 
 The dual-confirmation authority model and persistence design are separately documented. Database objects and mutation remain implementation gates and require independent qualification for schema ownership, uniqueness, transactionality, concurrency, audit provenance, and runtime least privilege.
 
-The next construction gate is persistence implementation qualification, not adapter or production integration.
+The next construction gate is qualification of GHM-owned QuoteFlow authentication and migration provenance. Permanent identity-link persistence is not the next slice.
 
 Until then, QuoteFlow remains Supabase-authoritative and GHM remains authoritative only for its already-qualified domains.
