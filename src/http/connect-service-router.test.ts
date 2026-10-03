@@ -9,6 +9,7 @@ import type { QuoteService } from '../resources/quote/contracts';
 import type { EnquiryService } from '../resources/enquiry/contracts';
 import type { ProjectService } from '../resources/project/contracts';
 import type { OpportunityService } from '../resources/opportunity/contracts';
+import type { OpportunityParticipantService } from '../resources/opportunity-participant/contracts';
 import type { ConnectIntegrationLifecycleRepository } from '../integrations/connect/integration-lifecycle';
 import type { ConnectIdentityAdapter } from '../integrations/connect/identity-adapter';
 import type { AccountAuthStateStore } from '../auth/ghm-bearer';
@@ -27,6 +28,7 @@ const start = async (deps: {
   enquiries: EnquiryService;
   projects: ProjectService;
   opportunities: OpportunityService;
+  opportunityParticipants: OpportunityParticipantService;
 }) => {
   const app = createApp({
     savedBusinessService: deps.savedBusinesses,
@@ -35,6 +37,7 @@ const start = async (deps: {
     enquiryService: deps.enquiries,
     projectService: deps.projects,
     opportunityService: deps.opportunities,
+    opportunityParticipantService: deps.opportunityParticipants,
     connectService: {
       assertionService: deps.assertionService,
       replayStore: deps.replayStore,
@@ -46,6 +49,7 @@ const start = async (deps: {
       enquiries: deps.enquiries,
       projects: deps.projects,
       opportunities: deps.opportunities,
+      opportunityParticipants: deps.opportunityParticipants,
     },
   });
   const server = http.createServer(app);
@@ -186,6 +190,14 @@ const opportunityService = (calls: string[]): OpportunityService => ({
   transitionOpportunity: async (_context, id, status) => { calls.push(`transition:${id}:${status}`); return { id, opportunityTypeId: 1, creatorAccountId: 42, ownerBusinessId: null, countryId: null, currencyId: null, title: 'Website', description: 'Build website', lifecycleStatus: status, visibility: 'private', budgetMin: null, budgetMax: null, opensAt: null, closesAt: null, createdAt: new Date(), updatedAt: new Date() }; },
 });
 
+
+const opportunityParticipantService = (calls: string[]): OpportunityParticipantService => ({
+  createParticipant: async (_context, input) => { calls.push(`participant:create:${input.opportunityId}`); return { id: 7, opportunityId: input.opportunityId, accountId: input.accountId ?? null, businessId: input.businessId ?? null, participationRole: input.participationRole, participationStatus: input.participationStatus ?? 'invited', createdBy: 42, createdAt: new Date(), updatedAt: new Date() }; },
+  getParticipant: async (_context, id) => { calls.push(`participant:get:${id}`); return null; },
+  listOpportunityParticipants: async (_context, id) => { calls.push(`participant:list:${id}`); return []; },
+  updateParticipant: async (_context, id, input) => { calls.push(`participant:update:${id}:${input.participationStatus ?? ''}`); return { id, opportunityId: 9, accountId: null, businessId: 42, participationRole: input.participationRole ?? 'recipient', participationStatus: input.participationStatus ?? 'active', createdBy: 42, createdAt: new Date(), updatedAt: new Date() }; },
+});
+
 const body = (input?: unknown) => ({
   operation: { resource: 'saved_business', operation: 'read' },
   externalIdentity: { provider: 'supabase', subject: '550e8400-e29b-41d4-a716-446655440000' },
@@ -194,7 +206,7 @@ const body = (input?: unknown) => ({
 
 test('Connect service read route executes the full governed chain', async () => {
   const calls: string[] = [];
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service(calls), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService(calls), projects: projectService(calls), opportunities: opportunityService(calls) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service(calls), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService(calls), projects: projectService(calls), opportunities: opportunityService(calls), opportunityParticipants: opportunityParticipantService(calls) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, {
       method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify(body({ savedBusinessId: 7 })),
@@ -219,7 +231,7 @@ test('Connect service route rejects browser-originated requests', async () => {
 });
 
 test('Connect service route rejects missing service credential', async () => {
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService([]), projects: projectService([]), opportunities: opportunityService([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService([]), projects: projectService([]), opportunities: opportunityService([]), opportunityParticipants: opportunityParticipantService([]) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body()) });
     assert.equal(response.status, 401);
@@ -251,7 +263,7 @@ test('Connect service route rejects unsupported mutation capability', async () =
 
 test('Connect service route fails closed for unmapped identity', async () => {
   const unmapped: ConnectIdentityAdapter = { resolve: async () => ({ outcome: 'unmapped', mapping: null, created: false }) };
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity: unmapped, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService([]), projects: projectService([]), opportunities: opportunityService([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity: unmapped, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService([]), projects: projectService([]), opportunities: opportunityService([]), opportunityParticipants: opportunityParticipantService([]) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify(body()) });
     assert.equal(response.status, 401);
@@ -261,7 +273,7 @@ test('Connect service route fails closed for unmapped identity', async () => {
 test('Connect service route never enables identity bootstrap', async () => {
   let allowBootstrap: boolean | undefined;
   const guarded: ConnectIdentityAdapter = { resolve: async (subject, options) => { allowBootstrap = options?.allowBootstrap; return identity.resolve(subject, options); } };
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity: guarded, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService([]), projects: projectService([]), opportunities: opportunityService([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity: guarded, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService([]), projects: projectService([]), opportunities: opportunityService([]), opportunityParticipants: opportunityParticipantService([]) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify(body()) });
     assert.equal(response.status, 200);
@@ -270,7 +282,7 @@ test('Connect service route never enables identity bootstrap', async () => {
 });
 
 test('Connect service route returns invalid request for malformed input', async () => {
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService([]), projects: projectService([]), opportunities: opportunityService([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService([]), projects: projectService([]), opportunities: opportunityService([]), opportunityParticipants: opportunityParticipantService([]) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, {
       method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' },
@@ -282,7 +294,7 @@ test('Connect service route returns invalid request for malformed input', async 
 
 test('Connect service route dispatches Customer read through the governed chain', async () => {
   const calls: string[] = [];
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService(calls), quotes: quoteService([]), enquiries: enquiryService([]), projects: projectService([]), opportunities: opportunityService([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService(calls), quotes: quoteService([]), enquiries: enquiryService([]), projects: projectService([]), opportunities: opportunityService([]), opportunityParticipants: opportunityParticipantService([]) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, {
       method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' },
@@ -296,7 +308,7 @@ test('Connect service route dispatches Customer read through the governed chain'
 
 test('Connect service route reaches Customer create capability but preserves service errors', async () => {
   const calls: string[] = [];
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService(calls), quotes: quoteService([]), enquiries: enquiryService([]), projects: projectService([]), opportunities: opportunityService([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService(calls), quotes: quoteService([]), enquiries: enquiryService([]), projects: projectService([]), opportunities: opportunityService([]), opportunityParticipants: opportunityParticipantService([]) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, {
       method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' },
@@ -309,7 +321,7 @@ test('Connect service route reaches Customer create capability but preserves ser
 
 test('Connect service route dispatches Quote read through the governed chain', async () => {
   const calls: string[] = [];
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService(calls), enquiries: enquiryService([]), projects: projectService([]), opportunities: opportunityService([]) });
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService(calls), enquiries: enquiryService([]), projects: projectService([]), opportunities: opportunityService([]), opportunityParticipants: opportunityParticipantService([]) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify({ operation: { resource: 'quote', operation: 'read' }, externalIdentity: { provider: 'supabase', subject: '550e8400-e29b-41d4-a716-446655440000' }, input: { quoteId: 7 } }) });
     const payload = await response.json() as { result: { id: number; accountId: number; customerId: number; status: string } };
@@ -401,5 +413,15 @@ test('Connect service dispatches Opportunity transition through the governed cha
     });
     assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
     assert.deepEqual(calls, ['transition:7:open']);
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+test('Connect service dispatches Opportunity Participant create through the governed chain', async () => {
+  const calls: string[] = [];
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity, accounts: { getAccountAuthState: async (accountId) => ({ accountId, accountStatus: 'active', role: 'business', isSystemAdmin: false }) }, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService([]), projects: projectService([]), opportunities: opportunityService([]), opportunityParticipants: opportunityParticipantService(calls) });
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify({ operation: { resource: 'opportunity_participant', operation: 'create' }, externalIdentity: { provider: 'supabase', subject: '550e8400-e29b-41d4-a716-446655440000' }, input: { opportunityId: 9, businessId: 42, participationRole: 'recipient' } }) });
+    assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
+    assert.deepEqual(calls, ['participant:create:9']);
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
