@@ -138,8 +138,8 @@ try {
     `)).rows[0];
 
     const business = (await setup.query(`
-      INSERT INTO ghm.business (name, slug, verification_status)
-      VALUES ('Commercial Payment Runtime Qualification', $1, 'approved')
+      INSERT INTO ghm.business (name, slug, verification_status, is_verified)
+      VALUES ('Commercial Payment Runtime Qualification', $1, 'approved', true)
       RETURNING id
     `, [`commercial-payment-runtime-${Date.now()}`])).rows[0];
 
@@ -269,6 +269,7 @@ try {
       await cleanup.query('DELETE FROM ghm.commercial_plan WHERE id = $1', [fixture.planId]);
       await cleanup.query('DELETE FROM ghm.business_membership WHERE business_id = $1', [fixture.businessId]);
       await cleanup.query('DELETE FROM ghm.business WHERE id = $1', [fixture.businessId]);
+      await cleanup.query('DELETE FROM ghm.account_identity WHERE id = $1', [fixture.accountId]);
       await cleanup.query('DELETE FROM ghm.account_identity WHERE id = $1', [fixture.accountId]);
       await cleanup.query('COMMIT');
     } catch (error) {
