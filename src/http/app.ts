@@ -645,6 +645,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     quotes: quoteService,
     enquiries: enquiryService,
     projects: projectService,
+    opportunities: opportunityService,
   });
 
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {

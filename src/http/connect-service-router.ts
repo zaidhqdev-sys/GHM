@@ -19,8 +19,10 @@ import type { QuoteService, QuoteStatus } from '../resources/quote/contracts';
 import { dispatchConnectQuoteCapability, type ConnectQuoteDispatchInput } from '../integrations/connect/quote-adapter';
 import { dispatchConnectEnquiryCapability, type ConnectEnquiryDispatchInput } from '../integrations/connect/enquiry-adapter';
 import { dispatchConnectProjectCapability, type ConnectProjectDispatchInput } from '../integrations/connect/project-adapter';
+import { dispatchConnectOpportunityCapability, type ConnectOpportunityDispatchInput } from '../integrations/connect/opportunity-adapter';
 import type { EnquiryService, EnquiryStatus, EnquiryUrgency } from '../resources/enquiry/contracts';
 import type { ProjectService, ProjectUrgency, UpdateProjectInput } from '../resources/project/contracts';
+import type { OpportunityService, OpportunityLifecycleStatus, OpportunityVisibility, CreateOpportunityInput, UpdateOpportunityInput } from '../resources/opportunity/contracts';
 
 export interface ConnectServiceHttpDependencies {
   readonly assertionService?: ConnectServiceAssertionService;
@@ -33,6 +35,7 @@ export interface ConnectServiceHttpDependencies {
   readonly quotes: QuoteService;
   readonly enquiries: EnquiryService;
   readonly projects: ProjectService;
+  readonly opportunities: OpportunityService;
 }
 export class ConnectServiceHttpError extends Error {
   constructor(message: string, readonly status = 401) { super(message); this.name = 'ConnectServiceHttpError'; }
@@ -51,6 +54,75 @@ const parseRequest = (body: unknown): ProductConsumerRequest & { externalIdentit
   if (parsed.externalIdentity.provider !== 'supabase') throw new ConnectServiceHttpError('Invalid request', 400);
   return parsed as ProductConsumerRequest & { externalIdentity: { provider: 'supabase'; subject: string } };
 };
+const parseOpportunityInput = (operation: ProductConsumerRequest['operation']['operation'], input: unknown): ConnectOpportunityDispatchInput => {
+  const objectInput = input === undefined ? {} : input;
+  if (!objectInput || typeof objectInput !== 'object' || Array.isArray(objectInput)) throw new ConnectServiceHttpError('Invalid request', 400);
+  const candidate = objectInput as Record<string, unknown>;
+  const keys = Object.keys(candidate);
+  const positive = (value: unknown): value is number => Number.isSafeInteger(value) && (value as number) > 0;
+  if (operation === 'read') {
+    if (keys.length !== 1 || !positive(candidate.opportunityId)) throw new ConnectServiceHttpError('Invalid request', 400);
+    return { capability: 'opportunity.read', opportunityId: candidate.opportunityId as number };
+  }
+  if (operation === 'create') {
+    const allowed = ['opportunityTypeId','ownerBusinessId','countryId','currencyId','title','description','visibility','budgetMin','budgetMax','opensAt','closesAt'];
+    if (keys.some(key => !allowed.includes(key)) || !positive(candidate.opportunityTypeId) || typeof candidate.title !== 'string' || !candidate.title.trim() || typeof candidate.description !== 'string' || !candidate.description.trim()) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.ownerBusinessId !== undefined && candidate.ownerBusinessId !== null && !positive(candidate.ownerBusinessId)) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.countryId !== undefined && candidate.countryId !== null && !positive(candidate.countryId)) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.currencyId !== undefined && candidate.currencyId !== null && !positive(candidate.currencyId)) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.visibility !== undefined && !['private','participants','authenticated','public'].includes(candidate.visibility as string)) throw new ConnectServiceHttpError('Invalid request', 400);
+    for (const key of ['budgetMin','budgetMax']) if (candidate[key] !== undefined && candidate[key] !== null && (typeof candidate[key] !== 'number' || !Number.isFinite(candidate[key] as number) || (candidate[key] as number) < 0)) throw new ConnectServiceHttpError('Invalid request', 400);
+    for (const key of ['opensAt','closesAt']) if (candidate[key] !== undefined && candidate[key] !== null && (typeof candidate[key] !== 'string' || Number.isNaN(Date.parse(candidate[key] as string)))) throw new ConnectServiceHttpError('Invalid request', 400);
+    const input: CreateOpportunityInput = {
+      opportunityTypeId: candidate.opportunityTypeId as number,
+      ...(candidate.ownerBusinessId !== undefined ? { ownerBusinessId: candidate.ownerBusinessId as number | null } : {}),
+      ...(candidate.countryId !== undefined ? { countryId: candidate.countryId as number | null } : {}),
+      ...(candidate.currencyId !== undefined ? { currencyId: candidate.currencyId as number | null } : {}),
+      title: candidate.title as string, description: candidate.description as string,
+      ...(candidate.visibility !== undefined ? { visibility: candidate.visibility as OpportunityVisibility } : {}),
+      ...(candidate.budgetMin !== undefined ? { budgetMin: candidate.budgetMin as number | null } : {}),
+      ...(candidate.budgetMax !== undefined ? { budgetMax: candidate.budgetMax as number | null } : {}),
+      ...(candidate.opensAt !== undefined ? { opensAt: candidate.opensAt === null ? null : new Date(candidate.opensAt as string) } : {}),
+      ...(candidate.closesAt !== undefined ? { closesAt: candidate.closesAt === null ? null : new Date(candidate.closesAt as string) } : {}),
+    };
+    return { capability: 'opportunity.create', input };
+  }
+  if (operation === 'update') {
+    if (!positive(candidate.opportunityId)) throw new ConnectServiceHttpError('Invalid request', 400);
+    const allowed = ['opportunityId','opportunityTypeId','ownerBusinessId','countryId','currencyId','title','description','visibility','budgetMin','budgetMax','opensAt','closesAt'];
+    if (keys.some(key => !allowed.includes(key)) || keys.length < 2) throw new ConnectServiceHttpError('Invalid request', 400);
+    const input: UpdateOpportunityInput = {};
+    if (candidate.opportunityTypeId !== undefined && !positive(candidate.opportunityTypeId)) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.ownerBusinessId !== undefined && candidate.ownerBusinessId !== null && !positive(candidate.ownerBusinessId)) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.countryId !== undefined && candidate.countryId !== null && !positive(candidate.countryId)) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.currencyId !== undefined && candidate.currencyId !== null && !positive(candidate.currencyId)) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.title !== undefined && (typeof candidate.title !== 'string' || !candidate.title.trim())) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.description !== undefined && (typeof candidate.description !== 'string' || !candidate.description.trim())) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.visibility !== undefined && !['private','participants','authenticated','public'].includes(candidate.visibility as string)) throw new ConnectServiceHttpError('Invalid request', 400);
+    for (const key of ['budgetMin','budgetMax']) if (candidate[key] !== undefined && candidate[key] !== null && (typeof candidate[key] !== 'number' || !Number.isFinite(candidate[key] as number) || (candidate[key] as number) < 0)) throw new ConnectServiceHttpError('Invalid request', 400);
+    for (const key of ['opensAt','closesAt']) if (candidate[key] !== undefined && candidate[key] !== null && (typeof candidate[key] !== 'string' || Number.isNaN(Date.parse(candidate[key] as string)))) throw new ConnectServiceHttpError('Invalid request', 400);
+    Object.assign(input, {
+      ...(candidate.opportunityTypeId !== undefined ? { opportunityTypeId: candidate.opportunityTypeId as number } : {}),
+      ...(candidate.ownerBusinessId !== undefined ? { ownerBusinessId: candidate.ownerBusinessId as number | null } : {}),
+      ...(candidate.countryId !== undefined ? { countryId: candidate.countryId as number | null } : {}),
+      ...(candidate.currencyId !== undefined ? { currencyId: candidate.currencyId as number | null } : {}),
+      ...(candidate.title !== undefined ? { title: candidate.title as string } : {}),
+      ...(candidate.description !== undefined ? { description: candidate.description as string } : {}),
+      ...(candidate.visibility !== undefined ? { visibility: candidate.visibility as OpportunityVisibility } : {}),
+      ...(candidate.budgetMin !== undefined ? { budgetMin: candidate.budgetMin as number | null } : {}),
+      ...(candidate.budgetMax !== undefined ? { budgetMax: candidate.budgetMax as number | null } : {}),
+      ...(candidate.opensAt !== undefined ? { opensAt: candidate.opensAt === null ? null : new Date(candidate.opensAt as string) } : {}),
+      ...(candidate.closesAt !== undefined ? { closesAt: candidate.closesAt === null ? null : new Date(candidate.closesAt as string) } : {}),
+    });
+    return { capability: 'opportunity.update', opportunityId: candidate.opportunityId as number, input };
+  }
+  if (operation === 'transition') {
+    if (keys.length !== 2 || !positive(candidate.opportunityId) || !['draft','open','responding','evaluating','awarded','in_progress','completed','cancelled','archived'].includes(candidate.nextStatus as string)) throw new ConnectServiceHttpError('Invalid request', 400);
+    return { capability: 'opportunity.transition', opportunityId: candidate.opportunityId as number, nextStatus: candidate.nextStatus as OpportunityLifecycleStatus };
+  }
+  throw new ConnectServiceHttpError('Unsupported Connect service operation', 403);
+};
+
 const parseSavedBusinessReadInput = (input: unknown): { capability: 'saved_business.read'; savedBusinessId?: number } => {
   if (input === undefined) return { capability: 'saved_business.read' };
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new ConnectServiceHttpError('Invalid request', 400);
@@ -240,6 +312,8 @@ export const registerConnectServiceRoutes = (app: Express, dependencies: Connect
         result = await dispatchConnectEnquiryCapability(authorized, parseEnquiryInput(authorized.operation, parsed.input), { enquiries: dependencies.enquiries });
       } else if (authorized.resource === 'project') {
         result = await dispatchConnectProjectCapability(authorized, parseProjectInput(authorized.operation, parsed.input), { projects: dependencies.projects });
+      } else if (authorized.resource === 'opportunity') {
+        result = await dispatchConnectOpportunityCapability(authorized, parseOpportunityInput(authorized.operation, parsed.input), { opportunities: dependencies.opportunities });
       } else {
         throw new ConnectServiceHttpError('Unsupported Connect service operation', 403);
       }
