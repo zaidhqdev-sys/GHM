@@ -33,6 +33,7 @@ const probeAuthSchemaReady = async (): Promise<boolean> => {
       SELECT
         to_regclass('ghm.authentication_session') IS NOT NULL
         AND to_regprocedure('ghm.auth_rotate_refresh(bytea,bytea)') IS NOT NULL
+        AND to_regprocedure('ghm.auth_create_account(text,text,text,text,text,integer,integer,integer)') IS NOT NULL
         AND to_regprocedure('ghm.auth_link_external_identity(text,text,bigint)') IS NOT NULL
         AND to_regprocedure('ghm.auth_link_business_external_mapping(text,text,bigint)') IS NOT NULL
         AS ready
@@ -87,6 +88,34 @@ test('auth foundation persistence (database)', async (t) => {
       client.release();
       await runtimePool.end();
       await migratorPool.end();
+    }
+  });
+
+  await t.test('create canonical account is atomic and duplicate email is rejected', async () => {
+    const registrationEmail = `registration-${marker}@example.com`;
+    const created = await persistence.createAccount!('QuoteFlow Registration', 'customer', registrationEmail, 'CorrectHorse1');
+    assert.ok(created.accountId > 0);
+    assert.equal(created.loginEmail, registrationEmail);
+    const credential = await persistence.lookupPasswordByEmail(registrationEmail);
+    assert.equal(credential?.accountId, created.accountId);
+    assert.equal(credential?.accountStatus, 'active');
+
+    await assert.rejects(
+      () => persistence.createAccount!('Duplicate', 'customer', registrationEmail, 'CorrectHorse1'),
+      AuthPersistenceError,
+    );
+
+    const client = await migratorPool.connect();
+    try {
+      await client.query('SET ROLE ghm_schema_owner');
+      const membership = await client.query(
+        'SELECT 1 FROM ghm.business_membership WHERE account_id = $1',
+        [created.accountId],
+      );
+      assert.equal(membership.rowCount, 0);
+      await client.query('DELETE FROM ghm.account_identity WHERE id = $1', [created.accountId]);
+    } finally {
+      client.release();
     }
   });
 
