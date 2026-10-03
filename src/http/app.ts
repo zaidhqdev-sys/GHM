@@ -85,6 +85,10 @@ import type { DirectoryService } from '../resources/directory/contracts';
 import { BusinessCategoryServiceImpl } from '../resources/business-category/service';
 import type { BusinessCategoryService } from '../resources/business-category/contracts';
 import { registerBusinessCategoryRoutes } from './business-category-router';
+import { PostgresBusinessOfferingRepository } from '../resources/business-offering/repository';
+import { BusinessOfferingServiceImpl } from '../resources/business-offering/service';
+import type { BusinessOfferingService } from '../resources/business-offering/contracts';
+import { registerBusinessOfferingRoutes } from './business-offering-router';
 import { registerConnectServiceRoutes, type ConnectServiceHttpDependencies } from './connect-service-router';
 
 
@@ -109,6 +113,7 @@ export interface AppDependencies {
   readonly quoteService?: QuoteService;
   readonly notificationService?: NotificationService;
   readonly businessCategoryService?: BusinessCategoryService;
+  readonly businessOfferingService?: BusinessOfferingService;
   readonly directoryService?: DirectoryService;
   readonly authService?: GhmAuthService;
   readonly passwordRecoveryService?: PasswordRecoveryService;
@@ -352,6 +357,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const notificationService = dependencies.notificationService ?? new NotificationServiceImpl(new PostgresNotificationRepository());
   const businessCategoryService = dependencies.businessCategoryService ?? new BusinessCategoryServiceImpl(new PostgresBusinessCategoryRepository());
   const directoryService = dependencies.directoryService ?? new DirectoryServiceImpl(new PostgresDirectoryRepository());
+  const businessOfferingService = dependencies.businessOfferingService ?? new BusinessOfferingServiceImpl(new PostgresBusinessOfferingRepository());
   app.disable('x-powered-by');
   app.disable('etag');
   app.use((_req: Request, res: Response, next: NextFunction) => {
@@ -635,6 +641,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerQuoteRoutes(app, quoteService, resourceAuthMiddleware);
   registerNotificationRoutes(app, notificationService, resourceAuthMiddleware);
   registerBusinessCategoryRoutes(app, businessCategoryService, resourceAuthMiddleware);
+  registerBusinessOfferingRoutes(app, businessOfferingService, resourceAuthMiddleware);
   registerAuthRoutes(app, {
     authService: dependencies.authService,
     passwordRecoveryService: dependencies.passwordRecoveryService,
