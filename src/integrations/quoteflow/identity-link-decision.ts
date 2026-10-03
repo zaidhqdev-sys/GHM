@@ -77,8 +77,8 @@ export const decideQuoteFlowAccountLink = (
   if (!confirmation) return { outcome: 'reject', reason: 'missing-ghm-confirmation' };
   if (confirmation.kind !== 'account') return { outcome: 'reject', reason: 'confirmation-kind-mismatch' };
 
-  const ghmAccountId = Number(attestation.claims.sub);
-  if (!positiveSafeInteger(ghmAccountId) || confirmation.actorUserId !== ghmAccountId) {
+  const ghmAccountId = confirmation.actorUserId;
+  if (!positiveSafeInteger(ghmAccountId)) {
     return { outcome: 'reject', reason: 'account-principal-mismatch' };
   }
 
