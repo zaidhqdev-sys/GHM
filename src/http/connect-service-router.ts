@@ -21,10 +21,12 @@ import { dispatchConnectEnquiryCapability, type ConnectEnquiryDispatchInput } fr
 import { dispatchConnectProjectCapability, type ConnectProjectDispatchInput } from '../integrations/connect/project-adapter';
 import { dispatchConnectOpportunityCapability, type ConnectOpportunityDispatchInput } from '../integrations/connect/opportunity-adapter';
 import { dispatchConnectOpportunityParticipantCapability, type ConnectOpportunityParticipantDispatchInput } from '../integrations/connect/opportunity-participant-adapter';
+import { dispatchConnectProjectQuoteCapability, type ConnectProjectQuoteDispatchInput } from '../integrations/connect/project-quote-adapter';
 import type { EnquiryService, EnquiryStatus, EnquiryUrgency } from '../resources/enquiry/contracts';
 import type { ProjectService, ProjectUrgency, UpdateProjectInput } from '../resources/project/contracts';
 import type { OpportunityService, OpportunityLifecycleStatus, OpportunityVisibility, CreateOpportunityInput, UpdateOpportunityInput } from '../resources/opportunity/contracts';
 import type { OpportunityParticipantService, ParticipationRole, ParticipationStatus, CreateOpportunityParticipantInput, UpdateOpportunityParticipantInput } from '../resources/opportunity-participant/contracts';
+import type { ProjectQuoteService, CreateProjectQuoteInput, UpdateProjectQuoteInput } from '../resources/project-quote/contracts';
 
 export interface ConnectServiceHttpDependencies {
   readonly assertionService?: ConnectServiceAssertionService;
@@ -39,6 +41,7 @@ export interface ConnectServiceHttpDependencies {
   readonly projects: ProjectService;
   readonly opportunities: OpportunityService;
   readonly opportunityParticipants: OpportunityParticipantService;
+  readonly projectQuotes: ProjectQuoteService;
 }
 export class ConnectServiceHttpError extends Error {
   constructor(message: string, readonly status = 401) { super(message); this.name = 'ConnectServiceHttpError'; }
@@ -122,6 +125,76 @@ const parseOpportunityInput = (operation: ProductConsumerRequest['operation']['o
   if (operation === 'transition') {
     if (keys.length !== 2 || !positive(candidate.opportunityId) || !['draft','open','responding','evaluating','awarded','in_progress','completed','cancelled','archived'].includes(candidate.nextStatus as string)) throw new ConnectServiceHttpError('Invalid request', 400);
     return { capability: 'opportunity.transition', opportunityId: candidate.opportunityId as number, nextStatus: candidate.nextStatus as OpportunityLifecycleStatus };
+  }
+  throw new ConnectServiceHttpError('Unsupported Connect service operation', 403);
+};
+
+const parseProjectQuoteInput = (operation: ProductConsumerRequest['operation']['operation'], input: unknown): ConnectProjectQuoteDispatchInput => {
+  const objectInput = input === undefined ? {} : input;
+  if (!objectInput || typeof objectInput !== 'object' || Array.isArray(objectInput)) throw new ConnectServiceHttpError('Invalid request', 400);
+  const candidate = objectInput as Record<string, unknown>;
+  const keys = Object.keys(candidate);
+  const positive = (value: unknown): value is number => Number.isSafeInteger(value) && (value as number) > 0;
+
+  if (operation === 'readReceived') {
+    if (keys.length !== 1 || !positive(candidate.projectId)) throw new ConnectServiceHttpError('Invalid request', 400);
+    return { capability: 'project_quote.readReceived', projectId: candidate.projectId as number };
+  }
+  if (operation === 'readOwn') {
+    if (keys.length !== 1 || !positive(candidate.businessId)) throw new ConnectServiceHttpError('Invalid request', 400);
+    return { capability: 'project_quote.readOwn', businessId: candidate.businessId as number };
+  }
+  if (operation === 'create') {
+    const allowed = ['projectId','businessId','amount','labourMin','labourMax','materialsMin','materialsMax','totalMin','totalMax','durationDays','description'];
+    if (keys.some(key => !allowed.includes(key)) || !positive(candidate.projectId) || !positive(candidate.businessId) || typeof candidate.amount !== 'number' || !Number.isFinite(candidate.amount)) throw new ConnectServiceHttpError('Invalid request', 400);
+    for (const key of ['labourMin','labourMax','materialsMin','materialsMax','totalMin','totalMax']) {
+      if (candidate[key] !== undefined && candidate[key] !== null && (typeof candidate[key] !== 'number' || !Number.isFinite(candidate[key] as number))) throw new ConnectServiceHttpError('Invalid request', 400);
+    }
+    if (candidate.durationDays !== undefined && candidate.durationDays !== null && (!Number.isSafeInteger(candidate.durationDays) || (candidate.durationDays as number) < 1)) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.description !== undefined && candidate.description !== null && typeof candidate.description !== 'string') throw new ConnectServiceHttpError('Invalid request', 400);
+    return {
+      capability: 'project_quote.create',
+      input: {
+        projectId: candidate.projectId as number,
+        businessId: candidate.businessId as number,
+        amount: candidate.amount as number,
+        ...(candidate.labourMin !== undefined ? { labourMin: candidate.labourMin as number | null } : {}),
+        ...(candidate.labourMax !== undefined ? { labourMax: candidate.labourMax as number | null } : {}),
+        ...(candidate.materialsMin !== undefined ? { materialsMin: candidate.materialsMin as number | null } : {}),
+        ...(candidate.materialsMax !== undefined ? { materialsMax: candidate.materialsMax as number | null } : {}),
+        ...(candidate.totalMin !== undefined ? { totalMin: candidate.totalMin as number | null } : {}),
+        ...(candidate.totalMax !== undefined ? { totalMax: candidate.totalMax as number | null } : {}),
+        ...(candidate.durationDays !== undefined ? { durationDays: candidate.durationDays as number | null } : {}),
+        ...(candidate.description !== undefined ? { description: candidate.description as string | null } : {}),
+      } satisfies CreateProjectQuoteInput,
+    };
+  }
+  if (operation === 'update') {
+    if (!positive(candidate.quoteId)) throw new ConnectServiceHttpError('Invalid request', 400);
+    const allowed = ['quoteId','amount','labourMin','labourMax','materialsMin','materialsMax','totalMin','totalMax','durationDays','description'];
+    if (keys.length < 2 || keys.some(key => !allowed.includes(key))) throw new ConnectServiceHttpError('Invalid request', 400);
+    for (const key of ['amount','labourMin','labourMax','materialsMin','materialsMax','totalMin','totalMax']) {
+      if (candidate[key] !== undefined && candidate[key] !== null && (typeof candidate[key] !== 'number' || !Number.isFinite(candidate[key] as number))) throw new ConnectServiceHttpError('Invalid request', 400);
+    }
+    if (candidate.durationDays !== undefined && candidate.durationDays !== null && !Number.isSafeInteger(candidate.durationDays)) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.description !== undefined && candidate.description !== null && typeof candidate.description !== 'string') throw new ConnectServiceHttpError('Invalid request', 400);
+    const update: UpdateProjectQuoteInput = {};
+    Object.assign(update, {
+      ...(candidate.amount !== undefined ? { amount: candidate.amount as number } : {}),
+      ...(candidate.labourMin !== undefined ? { labourMin: candidate.labourMin as number | null } : {}),
+      ...(candidate.labourMax !== undefined ? { labourMax: candidate.labourMax as number | null } : {}),
+      ...(candidate.materialsMin !== undefined ? { materialsMin: candidate.materialsMin as number | null } : {}),
+      ...(candidate.materialsMax !== undefined ? { materialsMax: candidate.materialsMax as number | null } : {}),
+      ...(candidate.totalMin !== undefined ? { totalMin: candidate.totalMin as number | null } : {}),
+      ...(candidate.totalMax !== undefined ? { totalMax: candidate.totalMax as number | null } : {}),
+      ...(candidate.durationDays !== undefined ? { durationDays: candidate.durationDays as number | null } : {}),
+      ...(candidate.description !== undefined ? { description: candidate.description as string | null } : {}),
+    });
+    return { capability: 'project_quote.update', quoteId: candidate.quoteId as number, input: update };
+  }
+  if (operation === 'accept' || operation === 'reject') {
+    if (keys.length !== 1 || !positive(candidate.quoteId)) throw new ConnectServiceHttpError('Invalid request', 400);
+    return { capability: `project_quote.${operation}`, quoteId: candidate.quoteId as number };
   }
   throw new ConnectServiceHttpError('Unsupported Connect service operation', 403);
 };
@@ -364,6 +437,8 @@ export const registerConnectServiceRoutes = (app: Express, dependencies: Connect
         result = await dispatchConnectOpportunityCapability(authorized, parseOpportunityInput(authorized.operation, parsed.input), { opportunities: dependencies.opportunities });
       } else if (authorized.resource === 'opportunity_participant') {
         result = await dispatchConnectOpportunityParticipantCapability(authorized, parseOpportunityParticipantInput(authorized.operation, parsed.input), { opportunityParticipants: dependencies.opportunityParticipants });
+      } else if (authorized.resource === 'project_quote') {
+        result = await dispatchConnectProjectQuoteCapability(authorized, parseProjectQuoteInput(authorized.operation, parsed.input), { projectQuotes: dependencies.projectQuotes });
       } else {
         throw new ConnectServiceHttpError('Unsupported Connect service operation', 403);
       }
