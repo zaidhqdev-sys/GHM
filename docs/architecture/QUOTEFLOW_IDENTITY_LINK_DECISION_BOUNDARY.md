@@ -14,7 +14,7 @@ It does not persist links.
 
 The QuoteFlow attestation is cryptographically verified by the dedicated verifier.
 
-For an account link, the GHM account identity is derived from the authenticated GHM context. A caller cannot supply an arbitrary GHM account identifier as proof.
+For an account link, the QuoteFlow identity is taken from the verified QuoteFlow attestation while the GHM account identity is derived from the authenticated GHM context. These are independent identifiers and are never required to have the same numeric value. A caller cannot supply an arbitrary GHM account identifier as proof.
 
 For a Business link, the GHM Business identifier must already have been resolved through an authenticated and authorized GHM Business-membership decision. The decision boundary accepts that resolved identifier; it does not treat a caller-supplied arbitrary identifier as authority.
 
