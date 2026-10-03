@@ -6,10 +6,12 @@ import type {
   BusinessId,
   CommercialAccess,
   CommercialEntitlement,
+  CommercialPaymentAttempt,
   CommercialRepository,
   CommercialSubscription,
   CommercialTrial,
   ActivateCommercialTrialInput,
+  PrepareCommercialPaymentInput,
 } from './contracts';
 import { COMMERCIAL_EVENT_SOURCE } from './contracts';
 
@@ -23,6 +25,14 @@ const requirePlanCode = (planCode: string): string => {
   const normalized = planCode.trim();
   if (!normalized) {
     throw new Error('planCode is required');
+  }
+  return normalized;
+};
+
+const requireIdempotencyKey = (idempotencyKey: string): string => {
+  const normalized = idempotencyKey.trim();
+  if (normalized.length < 8 || normalized.length > 200) {
+    throw new Error('idempotencyKey must be between 8 and 200 characters');
   }
   return normalized;
 };
@@ -96,6 +106,26 @@ const mapSubscription = (row: any): CommercialSubscription => ({
     row.founding_sequence === null ? null : Number(row.founding_sequence),
   foundingProtectedUntil: row.founding_protected_until,
   providerReference: row.provider_reference,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
+const mapPaymentAttempt = (row: any): CommercialPaymentAttempt => ({
+  id: Number(row.id),
+  businessId: Number(row.business_id),
+  subscriptionId:
+    row.subscription_id === null ? null : Number(row.subscription_id),
+  priceId: Number(row.price_id),
+  initiatedByAccountId: Number(row.initiated_by),
+  amountMinorUnits: Number(row.amount_minor_units),
+  currencyId: Number(row.currency_id),
+  billingInterval: row.billing_interval,
+  lifecycleStatus: row.attempt_status,
+  idempotencyKey: row.idempotency_key,
+  checkoutReference: row.checkout_reference,
+  expiresAt: row.expires_at,
+  failureCode: row.failure_code,
+  failureMessage: row.failure_message,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -338,6 +368,188 @@ const activateTrial = async (
   return trial;
 };
 
+const preparePayment = async (
+  client: PoolClient,
+  context: AuthContext,
+  input: PrepareCommercialPaymentInput,
+): Promise<CommercialPaymentAttempt> => {
+  requireBusinessId(input.businessId);
+  const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
+  await assertBusinessManagementAccess(client, context, input.businessId);
+
+  const existingResult = await client.query(
+    `SELECT
+       id,
+       business_id,
+       subscription_id,
+       price_id,
+       initiated_by,
+       attempt_status,
+       amount_minor_units,
+       currency_id,
+       billing_interval,
+       idempotency_key,
+       checkout_reference,
+       expires_at,
+       failure_code,
+       failure_message,
+       created_at,
+       updated_at
+     FROM ghm.commercial_payment_attempt
+     WHERE idempotency_key = $1
+     LIMIT 1`,
+    [idempotencyKey],
+  );
+
+  if (existingResult.rowCount === 1) {
+    const existing = existingResult.rows[0];
+    if (
+      Number(existing.business_id) !== input.businessId ||
+      Number(existing.initiated_by) !== context.userId
+    ) {
+      throw new Error('Payment preparation idempotency conflict');
+    }
+    return mapPaymentAttempt(existing);
+  }
+
+  const subscription = await getCurrentSubscription(client, input.businessId);
+  if (!subscription) {
+    throw new Error('Commercial subscription required');
+  }
+
+  const timestampResult = await client.query('SELECT now() AS prepared_at');
+  const preparedAt = timestampResult.rows[0].prepared_at;
+
+  const priceResult = await client.query(
+    `SELECT
+       price.id,
+       price.amount_minor_units,
+       price.currency_id,
+       price.billing_interval
+     FROM ghm.commercial_plan_price AS price
+     WHERE price.plan_version_id = $1
+       AND price.lifecycle_status = 'active'
+       AND price.effective_from <= $2
+       AND (
+         price.effective_until IS NULL
+         OR price.effective_until > $2
+       )
+       AND (
+         ($3::bigint IS NOT NULL AND price.country_id = $3::bigint)
+         OR
+         ($3::bigint IS NULL AND price.country_id IS NULL)
+       )
+     ORDER BY
+       CASE WHEN price.price_kind = 'founding' THEN 0 ELSE 1 END,
+       price.effective_from DESC,
+       price.id DESC
+     LIMIT 1`,
+    [subscription.planVersionId, preparedAt, input.countryId ?? null],
+  );
+
+  if (priceResult.rowCount !== 1) {
+    throw new Error('Eligible commercial price not found');
+  }
+
+  const price = priceResult.rows[0];
+
+  const attemptResult = await client.query(
+    `INSERT INTO ghm.commercial_payment_attempt (
+       business_id,
+       subscription_id,
+       price_id,
+       initiated_by,
+       attempt_status,
+       amount_minor_units,
+       currency_id,
+       billing_interval,
+       idempotency_key,
+       expires_at
+     ) VALUES (
+       $1,
+       $2,
+       $3,
+       $4,
+       'pending_checkout',
+       $5,
+       $6,
+       $7,
+       $8,
+       $9
+     )
+     RETURNING
+       id,
+       business_id,
+       subscription_id,
+       price_id,
+       initiated_by,
+       attempt_status,
+       amount_minor_units,
+       currency_id,
+       billing_interval,
+       idempotency_key,
+       checkout_reference,
+       expires_at,
+       failure_code,
+       failure_message,
+       created_at,
+       updated_at`,
+    [
+      input.businessId,
+      subscription.id,
+      Number(price.id),
+      context.userId,
+      Number(price.amount_minor_units),
+      Number(price.currency_id),
+      price.billing_interval,
+      idempotencyKey,
+      input.expiresAt ?? null,
+    ],
+  );
+
+  const attempt = mapPaymentAttempt(attemptResult.rows[0]);
+
+  await client.query(
+    `INSERT INTO ghm.commercial_event (
+       business_id,
+       subscription_id,
+       event_type,
+       actor_account_id,
+       source,
+       idempotency_key,
+       payload,
+       occurred_at
+     ) VALUES (
+       $1,
+       $2,
+       'subscription_payment_prepared',
+       $3,
+       $4,
+       $5,
+       $6::jsonb,
+       $7
+     )`,
+    [
+      input.businessId,
+      subscription.id,
+      context.userId,
+      COMMERCIAL_EVENT_SOURCE,
+      idempotencyKey,
+      JSON.stringify({
+        payment_attempt_id: attempt.id,
+        price_id: attempt.priceId,
+        amount_minor_units: attempt.amountMinorUnits,
+        currency_id: attempt.currencyId,
+        billing_interval: attempt.billingInterval,
+        expires_at: attempt.expiresAt,
+      }),
+      preparedAt,
+    ],
+  );
+
+  return attempt;
+};
+
 export class PostgresCommercialRepository implements CommercialRepository {
   constructor(private readonly transactionPool?: TransactionPool) {}
 
@@ -387,8 +599,18 @@ export class PostgresCommercialRepository implements CommercialRepository {
     );
   }
 
-  async prepareCommercialPayment(): Promise<never> {
-    throw new Error('Commercial payment preparation is not implemented');
+  async prepareCommercialPayment(
+    context: AuthContext,
+    input: PrepareCommercialPaymentInput,
+  ): Promise<CommercialPaymentAttempt> {
+    requireBusinessId(input.businessId);
+    requireIdempotencyKey(input.idempotencyKey);
+
+    return withAuthorizedTransaction(
+      context,
+      (client) => preparePayment(client, context, input),
+      this.transactionPool,
+    );
   }
 
   async scheduleCommercialCancellation(): Promise<never> {

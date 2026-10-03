@@ -185,3 +185,149 @@ test('Commercial trial activation rolls back when a later write fails', async ()
   const { pool } = createFakePool({ planRow: { id: 31, trial_days: 7 }, activatedAt, failEvent: true });
   await assert.rejects(() => new PostgresCommercialRepository(pool).activateCommercialTrial(context(), { businessId, planCode: 'business_pro' }), /event failure/);
 });
+
+
+test('Commercial payment preparation requires management membership before payment reads', async () => {
+  const { pool, calls } = createFakePool({ management: false });
+  await assert.rejects(
+    () => new PostgresCommercialRepository(pool).prepareCommercialPayment(
+      context(),
+      { businessId, idempotencyKey: 'idem-key-123' },
+    ),
+    /Business management permission required/,
+  );
+  assert.equal(calls.some((sql) => sql.includes('FROM ghm.commercial_payment_attempt')), false);
+});
+
+test('Commercial payment preparation rejects invalid idempotency keys before opening a transaction', async () => {
+  let connected = false;
+  const pool: TransactionPool = {
+    async connect(): Promise<PoolClient> {
+      connected = true;
+      throw new Error('transaction should not be opened');
+    },
+  };
+  await assert.rejects(
+    () => new PostgresCommercialRepository(pool).prepareCommercialPayment(
+      context(),
+      { businessId, idempotencyKey: 'short' },
+    ),
+    /idempotencyKey must be between 8 and 200 characters/,
+  );
+  assert.equal(connected, false);
+});
+
+test('Commercial payment preparation rejects idempotency reuse by another actor', async () => {
+  const existing = {
+    id: 71, business_id: businessId, subscription_id: 21, price_id: 41, initiated_by: 8,
+    attempt_status: 'pending_checkout', amount_minor_units: 19900, currency_id: 1,
+    billing_interval: 'month', idempotency_key: 'idem-key-123', checkout_reference: null,
+    expires_at: null, failure_code: null, failure_message: null,
+    created_at: new Date(1000), updated_at: new Date(1000),
+  };
+  const client = {
+    async query(sql: string): Promise<{ rowCount: number; rows: Record<string, unknown>[] }> {
+      if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rowCount: 0, rows: [] };
+      if (sql.includes('FROM ghm.business_membership')) return { rowCount: 1, rows: [] };
+      if (sql.includes('FROM ghm.commercial_payment_attempt')) return { rowCount: 1, rows: [existing] };
+      throw new Error(`Unexpected SQL in conflict test: ${sql}`);
+    },
+    release(): void {},
+  };
+  const pool: TransactionPool = { async connect(): Promise<PoolClient> { return client as unknown as PoolClient; } };
+  await assert.rejects(
+    () => new PostgresCommercialRepository(pool).prepareCommercialPayment(
+      context(),
+      { businessId, idempotencyKey: 'idem-key-123' },
+    ),
+    /Payment preparation idempotency conflict/,
+  );
+});
+
+test('Commercial payment preparation resolves price and persists a provider-neutral attempt atomically', async () => {
+  const preparedAt = new Date('2026-10-03T10:00:00.000Z');
+  const calls: string[] = [];
+  const params: unknown[][] = [];
+  const client = {
+    async query(sql: string, queryParams?: unknown[]): Promise<{ rowCount: number; rows: Record<string, unknown>[] }> {
+      calls.push(sql);
+      params.push(queryParams ?? []);
+      if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rowCount: 0, rows: [] };
+      if (sql.includes('FROM ghm.business_membership')) return { rowCount: 1, rows: [] };
+      if (sql.includes('FROM ghm.commercial_payment_attempt')) return { rowCount: 0, rows: [] };
+      if (sql.includes('FROM ghm.commercial_subscription')) return { rowCount: 1, rows: [subscriptionRow] };
+      if (sql === 'SELECT now() AS prepared_at') return { rowCount: 1, rows: [{ prepared_at: preparedAt }] };
+      if (sql.includes('FROM ghm.commercial_plan_price')) {
+        return { rowCount: 1, rows: [{ id: 41, amount_minor_units: 19900, currency_id: 1, billing_interval: 'month' }] };
+      }
+      if (sql.includes('INSERT INTO ghm.commercial_payment_attempt')) {
+        return { rowCount: 1, rows: [{
+          id: 71, business_id: businessId, subscription_id: 21, price_id: 41, initiated_by: userId,
+          attempt_status: 'pending_checkout', amount_minor_units: 19900, currency_id: 1,
+          billing_interval: 'month', idempotency_key: 'idem-key-123', checkout_reference: null,
+          expires_at: new Date(preparedAt.getTime() + 15 * 60000), failure_code: null, failure_message: null,
+          created_at: preparedAt, updated_at: preparedAt,
+        }] };
+      }
+      if (sql.includes('INSERT INTO ghm.commercial_event')) return { rowCount: 1, rows: [] };
+      throw new Error(`Unexpected SQL in payment preparation test: ${sql}`);
+    },
+    release(): void {},
+  };
+  const pool: TransactionPool = { async connect(): Promise<PoolClient> { return client as unknown as PoolClient; } };
+  const result = await new PostgresCommercialRepository(pool).prepareCommercialPayment(
+    context(),
+    {
+      businessId,
+      countryId: 1,
+      idempotencyKey: 'idem-key-123',
+      expiresAt: new Date(preparedAt.getTime() + 15 * 60000),
+    },
+  );
+  assert.equal(result.id, 71);
+  assert.equal(result.lifecycleStatus, 'pending_checkout');
+  assert.equal(result.priceId, 41);
+  assert.equal(result.amountMinorUnits, 19900);
+  assert.equal(result.currencyId, 1);
+  const priceSql = calls.find((sql) => sql.includes('FROM ghm.commercial_plan_price'));
+  assert.ok(priceSql);
+  assert.match(priceSql, /price\.plan_version_id = \$1/);
+  assert.match(priceSql, /price\.lifecycle_status = 'active'/);
+  assert.match(priceSql, /price\.country_id = \$3::bigint/);
+  assert.deepEqual(params[calls.indexOf(priceSql!)], [31, preparedAt, 1]);
+  assert.equal(calls.filter((sql) => sql.includes('INSERT INTO ghm.commercial_payment_attempt')).length, 1);
+  assert.equal(calls.filter((sql) => sql.includes('INSERT INTO ghm.commercial_event')).length, 1);
+  assert.equal(calls[0], 'BEGIN');
+  assert.equal(calls.at(-1), 'COMMIT');
+});
+
+test('Commercial payment preparation rolls back when event persistence fails', async () => {
+  const client = {
+    async query(sql: string): Promise<{ rowCount: number; rows: Record<string, unknown>[] }> {
+      if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rowCount: 0, rows: [] };
+      if (sql.includes('FROM ghm.business_membership')) return { rowCount: 1, rows: [] };
+      if (sql.includes('FROM ghm.commercial_payment_attempt')) return { rowCount: 0, rows: [] };
+      if (sql.includes('FROM ghm.commercial_subscription')) return { rowCount: 1, rows: [subscriptionRow] };
+      if (sql === 'SELECT now() AS prepared_at') return { rowCount: 1, rows: [{ prepared_at: new Date(1000) }] };
+      if (sql.includes('FROM ghm.commercial_plan_price')) return { rowCount: 1, rows: [{ id: 41, amount_minor_units: 19900, currency_id: 1, billing_interval: 'month' }] };
+      if (sql.includes('INSERT INTO ghm.commercial_payment_attempt')) return { rowCount: 1, rows: [{
+        id: 71, business_id: businessId, subscription_id: 21, price_id: 41, initiated_by: userId,
+        attempt_status: 'pending_checkout', amount_minor_units: 19900, currency_id: 1,
+        billing_interval: 'month', idempotency_key: 'idem-key-123', checkout_reference: null,
+        expires_at: null, failure_code: null, failure_message: null,
+        created_at: new Date(1000), updated_at: new Date(1000),
+      }] };
+      if (sql.includes('INSERT INTO ghm.commercial_event')) throw new Error('payment event failure');
+      throw new Error(`Unexpected SQL in rollback test: ${sql}`);
+    },
+    release(): void {},
+  };
+  const pool: TransactionPool = { async connect(): Promise<PoolClient> { return client as unknown as PoolClient; } };
+  await assert.rejects(
+    () => new PostgresCommercialRepository(pool).prepareCommercialPayment(
+      context(),
+      { businessId, idempotencyKey: 'idem-key-123' },
+    ),
+    /payment event failure/,
+  );
+});
