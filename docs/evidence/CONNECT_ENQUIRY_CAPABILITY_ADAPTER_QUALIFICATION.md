@@ -46,6 +46,8 @@ Enquiry persistence, ownership, marketplace-target eligibility, status semantics
 
 Implementation and focused tests are present on branch `construction/connect-enquiry-capability-adapter`.
 
-**PASS is withheld until the branch build/test suite is executed and the resulting evidence is reconciled here.**
+**PASS — branch build/test evidence executed on 2026-10-03: `npm test` = 469 tests, 469 passed, 0 failed, 0 cancelled, 0 skipped, 0 todo.**
+
+The final HTTP harness wiring fix is included in commit `f73983f6e3b765a1825c4208353de05fcd429f6b`; it supplies the canonical `EnquiryService` to `createApp()` as well as the Connect dependency bundle. The complete suite passes with that fix.
 
 No production migration, Supabase change, provider change, or direct database privilege change is part of this slice.
