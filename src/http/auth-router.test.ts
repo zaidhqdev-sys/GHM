@@ -20,7 +20,7 @@ type AuthTokenResponse = {
 };
 
 type GhmAuthService = {
-  register(input: { fullName?: string | null; role?: 'customer' | 'business'; email: string; password: string }): Promise<AuthTokenResponse>;
+  register?(input: { fullName?: string | null; role?: 'customer' | 'business'; email: string; password: string }): Promise<AuthTokenResponse>;
   login(email: string, password: string): Promise<AuthTokenResponse>;
   refresh(refreshToken: string): Promise<AuthTokenResponse>;
   logout(refreshToken: string): Promise<void>;
