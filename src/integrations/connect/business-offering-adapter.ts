@@ -39,6 +39,9 @@ const assertAuthorizedCapability: (
   if (authorized.operation !== capability.slice('business_offering.'.length)) {
     throw new ConnectBusinessOfferingAdapterError('Authorized operation does not match capability');
   }
+  if (authorized.context.role !== 'business' && authorized.context.role !== 'admin') {
+    throw new ConnectBusinessOfferingAdapterError('Business Offering access requires business or admin context');
+  }
 };
 
 const assertPositiveId: (value: unknown) => asserts value is number = (value: unknown): asserts value is number => {
