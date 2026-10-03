@@ -2,9 +2,9 @@
 
 ## Qualification boundary
 
-**CONSTRUCTION QUALIFIED — OPPORTUNITY PARTICIPANT CAPABILITY ADAPTER SUB-SLICE**
+**CLOSED / PASS — OPPORTUNITY PARTICIPANT RESOURCE + CONNECT ADAPTER**
 
-This slice exposes the already-qualified Opportunity Participant domain service through the governed Connect capability path. It does not introduce persistence, provider access, or a second domain owner.
+This slice exposes the already-qualified Opportunity Participant domain service through the governed Connect capability path. It introduces no second domain owner, provider access, or production routing.
 
 ## Capabilities
 
@@ -27,22 +27,51 @@ The canonical `OpportunityParticipantService` remains the sole owner of particip
 
 ## Qualification evidence
 
-The current `main` line contains the complete adapter and governed HTTP dispatch path, including:
+### Repository / HTTP
+
+The current `main` line contains the complete adapter and governed HTTP dispatch path:
 
 - `src/integrations/connect/opportunity-participant-adapter.ts`
 - `src/integrations/connect/opportunity-participant-adapter.test.ts`
 - `src/http/connect-service-router.ts`
 - `src/http/connect-service-router.test.ts`
 
-The full repository qualification run on 2026-10-03 passed **515/515 tests**, including the Opportunity Participant adapter and governed Connect service HTTP coverage. The adapter therefore satisfies its construction-level unit/HTTP qualification gate.
+The full repository qualification run on 2026-10-03 passed **515/515 tests**.
 
-This evidence does **not** claim live PostgreSQL runtime qualification for the participant resource itself. The dedicated `qualify:opportunity-participant-runtime` harness remains the required runtime evidence before the resource can be treated as runtime-qualified.
+### Live PostgreSQL runtime
+
+The dedicated runtime qualification was executed on 2026-10-03 against the canonical GHM PostgreSQL roles and passed:
+
+- runtime identity: PASS
+- cleanup authority: PASS
+- participant schema presence: PASS
+- participant runtime privilege boundary: PASS
+- approved business fixture: PASS
+- business + membership fixture: PASS
+- opportunity creation: PASS
+- creator + owner participation atomic binding: PASS
+- account participant create/read/list: PASS
+- business participant create/member-read: PASS
+- unrelated-account read denial: PASS
+- unauthorized participant create denial: PASS
+- duplicate participant database constraint: PASS
+- principal XOR / required validation: PASS
+- role/status validation: PASS
+- update authority deferred boundary: PASS
+- immutable field protection: PASS
+- concurrent duplicate creation: PASS
+- runtime direct update denial: PASS
+- full-list and persisted-row reconciliation: PASS
+
+Final result:
+
+**OPPORTUNITY PARTICIPANT RUNTIME QUALIFICATION PASS**
 
 ## Closure
 
-The **Connect Opportunity Participant adapter seam is CONSTRUCTION QUALIFIED**.
+The **Opportunity Participant resource and its Connect capability adapter are now CLOSED / PASS for construction qualification**.
 
-The underlying Opportunity Participant resource remains governed by its existing resource contract and runtime qualification boundary. This adapter qualification does not authorize:
+This closes the current participant construction gate. It does not authorize:
 
 - production Connect traffic
 - Supabase replacement or data migration
@@ -50,5 +79,5 @@ The underlying Opportunity Participant resource remains governed by its existing
 - provider changes
 - shadow qualification
 - controlled cutover
-- reopening the Opportunity Participant resource
 
+Those remain separately governed release boundaries.
