@@ -28,6 +28,7 @@ const start = async (deps: {
     savedBusinessService: deps.savedBusinesses,
     customerService: deps.customers,
     quoteService: deps.quotes,
+    enquiryService: deps.enquiries,
     connectService: {
       assertionService: deps.assertionService,
       replayStore: deps.replayStore,
