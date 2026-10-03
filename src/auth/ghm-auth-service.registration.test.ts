@@ -6,15 +6,12 @@ test('GHM registration creates a canonical account and immediately issues a GHM 
   const { loadEs256Keys } = await import('./foundation/es256-keys');
   const { createAccessJwtService } = await import('./foundation/access-jwt');
   const { createGhmAuthService } = await import('./ghm-auth-service');
-  const { defaultPasswordHasher } = await import('./foundation/password');
-
   const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
   const keys = loadEs256Keys({
     GHM_JWT_ES256_PRIVATE_KEY_PEM: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
     GHM_JWT_ES256_PUBLIC_KEY_PEM: publicKey.export({ type: 'spki', format: 'pem' }).toString(),
     GHM_JWT_ES256_KID: 'test-registration',
   });
-  const passwordHash = (await defaultPasswordHasher.hash('CorrectHorse1')).passwordHash;
   let createdInput: unknown = null;
 
   const persistence = {
@@ -49,7 +46,7 @@ test('GHM registration creates a canonical account and immediately issues a GHM 
   assert.deepEqual(createdInput, {
     fullName: 'QuoteFlow User',
     role: 'business',
-    email: 'User@example.com',
+    email: 'User@Example.com',
     password: 'CorrectHorse1',
   });
   assert.equal(tokens.accountId, 73);
