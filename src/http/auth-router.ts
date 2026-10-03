@@ -3,6 +3,15 @@ import { rateLimit } from 'express-rate-limit';
 import type { AuthTokenResponse, GhmAuthService } from '../auth/ghm-auth-service';
 import type { PasswordRecoveryService } from '../auth/password-recovery';
 
+const parseRegistrationBody = (body: unknown): { fullName?: string | null; role?: 'customer' | 'business'; email: string; password: string } | null => {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  const input = body as Record<string, unknown>;
+  if (typeof input.email !== 'string' || typeof input.password !== 'string') return null;
+  if (input.fullName !== undefined && input.fullName !== null && typeof input.fullName !== 'string') return null;
+  if (input.role !== undefined && input.role !== 'customer' && input.role !== 'business') return null;
+  return { fullName: input.fullName === undefined ? null : input.fullName as string | null, role: input.role as 'customer' | 'business' | undefined, email: input.email, password: input.password };
+};
+
 const parseLoginBody = (body: unknown): { email: string; password: string } | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   const input = body as Record<string, unknown>;
@@ -112,6 +121,25 @@ export const registerAuthRoutes = (
         error: { name: error instanceof Error ? error.name : 'UnknownError' },
       }));
       res.status(500).json({ error: 'internal_error' });
+    }
+  });
+
+  app.post('/api/v1/auth/register', loginRateLimit, async (req: Request, res: Response) => {
+    try {
+      const input = parseRegistrationBody(req.body);
+      if (!input) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const service = getAuthService();
+      if (!service.register) {
+        res.status(503).json({ error: 'service_unavailable' });
+        return;
+      }
+      const tokens = await service.register(input);
+      res.status(201).json(tokenPayload(tokens));
+    } catch (error) {
+      handleAuthError(error, res);
     }
   });
 
