@@ -33,7 +33,7 @@ const assertAuthorizedCapability = (
   }
 };
 
-const assertPositiveId = (value: unknown): asserts value is number => {
+const assertPositiveId: (value: unknown) => asserts value is number = (value: unknown) => {
   if (!Number.isSafeInteger(value) || (value as number) <= 0) {
     throw new ConnectBusinessCapabilityAdapterError('Invalid business identifier');
   }
