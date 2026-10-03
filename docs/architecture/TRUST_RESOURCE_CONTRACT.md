@@ -1,11 +1,11 @@
 # GHM Trust Resource Contract
 
-**Status:** DEFINED — construction gate, implementation not authorized  
+**Status:** QUALIFIED / CLOSED — canonical GHM Trust construction slice  
 **Date:** 2026-10-03
 
 ## Purpose
 
-This document defines the GHM-owned Trust resource contract required before any Trust migration, repository, service, HTTP adapter, or product adapter is constructed.
+This document records the reconciled GHM-owned Trust contract after construction and runtime qualification. GHM Trust is the canonical backend Trust resource for future Connect and QuoteFlow use. Supabase remains the production authority until a separately authorized shadow/cutover gate.
 
 GHM Trust is a future backend-owned domain for Connect and QuoteFlow. During construction and qualification, Supabase remains the production authority. The Connect Trust implementation is source evidence for compatibility requirements only; its tables, RPCs, policies, and calculation code are not copied as GHM implementation.
 
@@ -46,7 +46,7 @@ A current Business Trust result must expose, at minimum:
 - `calculated_at`
 - `updated_at`
 
-The exact dimension set and score ranges must be declared in the calculation contract and enforced by schema. They must not be inferred from UI labels or duplicated from Connect code.
+The current qualified dimension set and score ranges are declared in the Trust schema contract and enforced by schema. They are not caller-editable.
 
 A Trust level is derived from the calculated score and is not independently editable.
 
@@ -101,7 +101,7 @@ Required operation identifiers:
 - `trust.calculate` — request recalculation for an entitled Business context.
 - Administrative access may be granted only through the existing governed administrator boundary.
 
-The permission names are contract identifiers. Registry mapping, role grants, transaction-context enforcement, and HTTP exposure must be qualified before implementation.
+`trust_score.calculate` is membership-gated to active Business owners/administrators. Members, outsiders, and unauthenticated callers are denied. Public reads require active + verified + approved Business visibility. No direct Trust row create/update/delete operation is exposed.
 
 Public read behavior is a resource disclosure rule, not an authorization bypass. A public-safe Trust projection may be exposed only for Businesses satisfying the canonical public Business visibility/approval boundary. Private or non-public Trust data remains permission-controlled.
 
@@ -129,7 +129,7 @@ The runtime role receives only the minimum Trust privileges required by the qual
 
 A Trust result must be explainable from its admitted inputs and calculation version.
 
-The implementation must preserve enough provenance to answer:
+The current implementation does not persist a separate calculation-version or provenance record. Those remain future hardening requirements. The current implementation records enough persisted result state to support the qualified calculation/read boundary.\n\nThe future provenance contract must preserve enough information to answer:
 
 - which calculation version produced the result;
 - when it was calculated;
@@ -152,7 +152,7 @@ These facts constrain compatibility analysis. They do not authorize copying the 
 
 ## Qualification contract
 
-Before implementation is closed, GHM must qualify at least:
+The Trust construction slice is qualified / closed. The dedicated runtime harness verifies:
 
 1. Business Trust identity and Business foreign-key integrity;
 2. calculation determinism;
