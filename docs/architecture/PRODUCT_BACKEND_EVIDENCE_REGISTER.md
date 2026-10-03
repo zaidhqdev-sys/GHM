@@ -10,7 +10,7 @@ Zaid Connect remains authoritative for its own application contracts and Supabas
 
 The Connect schema must not be copied into GHM by inference. GHM implements only capabilities required by verified product contracts and establishes its own canonical schema through GHM migrations.
 
-The current GHM construction line has independently reconciled and qualified Business Identity, Project, Customer, Quote, Enquiry, Review, Opportunity Core, Opportunity capability requirements, Opportunity Participation, Project Quote, Capability Catalogue, Business Capability, Business Hours, Commercial trial, Notification, Support Request, Saved Business, and Business Offering capabilities against verified product contracts. These are GHM construction capabilities, not evidence that Zaid Connect has been migrated or that a product adapter is authorized.
+The current GHM construction line has independently reconciled and qualified Business Identity, Project, Customer, Quote, Enquiry, Review, Opportunity Core, Opportunity capability requirements, Opportunity Participation, Project Quote, Capability Catalogue, Business Capability, Business Hours, Commercial trial, Notification, Support Request, Saved Business, and Business Offering capabilities against verified product contracts. The Connect Business Offering capability adapter is now also construction-qualified as a bounded product/resource seam. These are GHM construction capabilities, not evidence that Zaid Connect has been migrated or that production product traffic has moved.
 
 ## QuoteFlow
 
@@ -65,6 +65,7 @@ QUALIFIED CONSTRUCTION
   Support Request
   Saved Business
   Business Offering
+  Connect Business Offering adapter seam
   Resource API boundary
   Operational boundary
 
@@ -76,7 +77,7 @@ OPEN / NOT YET AUTHORIZED
   Opportunity outcome / matching workflows
   Business Hours exceptions / booking / open-now
   provider/bootstrap authority cleanup
-  Connect adapter
+  broader Connect adapters
   QuoteFlow adapter
   shadow qualification
   controlled production cutover

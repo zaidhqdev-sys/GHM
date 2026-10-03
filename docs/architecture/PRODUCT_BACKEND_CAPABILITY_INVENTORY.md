@@ -60,7 +60,7 @@ The following GHM construction capabilities have now been implemented and qualif
 - Resource API boundary
 - Operational boundary
 
-These qualifications establish GHM capability construction only. The Connect Saved Business adapter is constructed and unit-qualified as a governed product/resource seam. The Connect integration lifecycle authority is construction-qualified as a persistent service-trust prerequisite.
+These qualifications establish GHM capability construction only. The Connect Saved Business adapter is constructed and unit-qualified as a governed product/resource seam. The Connect Business Offering adapter is also construction-qualified as an explicit capability seam with business/admin role enforcement before canonical service access. The Connect integration lifecycle authority is construction-qualified as a persistent service-trust prerequisite.
 
 Connect trusted request context establishment, governed operation resolution, GHM authorization binding, resource capability dispatch, and the first saved_business.read service HTTP boundary are now construction-qualified bounded prerequisites. The HTTP slice is service-to-service only and does not establish production readiness, mutation transport, or product cutover. Durable service-assertion replay protection is separately construction-qualified.
 
@@ -137,6 +137,7 @@ QUALIFIED CONSTRUCTION
   Connect GHM authorization binding
   Connect service HTTP read boundary (saved_business.read)
   Connect service assertion replay protection
+  Connect Business Offering adapter seam
 
 REQUIRES FUTURE GOVERNED WORK (NOT CURRENTLY AUTHORIZED)
   Trust score / Trust evidence
@@ -146,10 +147,10 @@ REQUIRES FUTURE GOVERNED WORK (NOT CURRENTLY AUTHORIZED)
   Opportunity outcome / matching workflows
   Business Hours exceptions / booking / open-now
   remaining platform candidates (storage, realtime, provider webhooks, telemetry)
-  remaining Connect product adapters
+  broader Connect product adapters
   QuoteFlow product adapter
   shadow qualification
   controlled cutover
 ```
 
-Connect Saved Business adapter construction is authorized and unit-qualified. Broader product adapters remain separately gated. Provider/bootstrap authority cleanup remains an independent open construction concern. Production Connect and QuoteFlow remain on Supabase.
+Connect Saved Business and Connect Business Offering adapter construction is authorized and unit-qualified as bounded seams. Broader product adapters remain separately gated. Provider/bootstrap authority cleanup remains an independent open construction concern. Production Connect and QuoteFlow remain on Supabase.
