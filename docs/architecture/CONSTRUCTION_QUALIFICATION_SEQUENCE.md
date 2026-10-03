@@ -16,67 +16,63 @@ The sequence remains the architecture-level gate order. Individual gates may hav
 6. **Automated qualification** — build and negative security/runtime checks run deterministically in CI. **Construction checks exist and are passing for the current branch state; they do not close production gates.**
 7. **Database reconciliation** — actual GHM PostgreSQL catalog evidence is captured and reconciled before dependent product/business migrations are authored. **Dedicated-schema catalog reconciliation and Business Identity runtime qualification are PASS for the current construction slice. The existing catalog artifact remains an app-role-scoped snapshot captured through `DATABASE_URL` (`ghm_app_user` → `ghm_db_user`), not an authoritative full-database catalog. Canonical GHM recovery has also been captured separately through the dedicated migrator/schema-owner path. Remaining work is provider/bootstrap authority limits, legacy authority cleanup, and subsequent governed resource slices.**
 7a. **Business Offering resource slice** — migration, repository, service, registry, and runtime privilege boundary are **CLOSED / PASS**. Live PostgreSQL qualification passed on 2026-10-01; public HTTP exposure remains separately gated.
-8. **Product adapters** — governed Connect capability seams may be construction-qualified only after their concrete backend contracts and authorization boundaries are evidenced. **Connect Business Offering capability adapter: CLOSED / PASS for construction qualification. Connect Business Capability read adapter: CLOSED / PASS for construction qualification. Broader adapters and QuoteFlow remain governed work; this does not authorize cutover.**
+8. **Product adapters** — governed Connect capability seams may be construction-qualified only after their concrete backend contracts and authorization boundaries are evidenced. **Connect Business Offering capability adapter: CLOSED / PASS. Connect Business Capability read adapter: CLOSED / PASS. Connect Opportunity Participant adapter: CLOSED / PASS for construction qualification. Broader adapters and QuoteFlow remain governed work; this does not authorize cutover.**
 9. **Shadow qualification** — product workflows are exercised against GHM while Supabase remains authoritative. **Not started.**
 10. **Controlled cutover** — migrate one product at a time with an explicit rollback path. **Not started; production remains on Supabase.**
 
-## Current open construction gates
+## Current closed construction gates
 
 ### Trust Score Resource: CLOSED / PASS
 
 The GHM Trust resource is constructed and runtime-qualified. `docs/architecture/TRUST_RESOURCE_CONTRACT.md` and `docs/architecture/TRUST_OPERATION_CONTRACT.md` record the reconciled current contract and qualified operation surface. The dedicated runtime harness passed the Trust schema, authorization, public/private disclosure, concurrency, direct-mutation denial, effective ACL, and cleanup checks; the Business Profile runtime harness also passed the Trust-input and protected-field checks.
 
-The remaining Trust work is future hardening only: calculation-version/provenance persistence and additional authoritative evidence domains. No production routing, shadow traffic, data migration, or cutover is authorized.
-
-## Current closed construction gates
-
-The canonical GHM Trust Score resource is constructed and runtime-qualified. The slice includes the ghm.trust_score schema, calculation function, repository/service boundary, authorization registry mapping, public/private HTTP routes, and negative runtime privilege/security qualification.
-
 Trust consumes qualified Business Profile inputs (description, phone, email) and the Review-owned rating aggregate. Protected Trust inputs (insurance_verified, jobs_completed) remain non-owner-mutable. Identity/CIPC/VAT dimensions remain zero pending authoritative evidence contracts.
-
-The dedicated Trust qualification records schema integrity, runtime least privilege, calculate/read authorization, public disclosure, private isolation, concurrent one-row-per-Business behavior, direct mutation denial, and governed cleanup. Business Profile qualification separately records successful Trust input consumption and protected-field denial.
 
 The Trust resource is closed for the current construction slice. Calculation-version/provenance hardening and future evidence domains are separately governed work; no production routing, shadow traffic, migration, or cutover is authorized.
 
+### Commercial Payment Preparation: CLOSED / PASS for construction boundary
+
+Canonical country/currency reference data and provider-neutral commercial payment preparation are qualified. Runtime commercial payment write qualification, transactional rollback, and least-privilege boundaries passed. Provider checkout, callbacks/results, webhook application, production credentials, and cutover remain separately governed.
 
 ### Connect Business Offering Capability Adapter: CLOSED / PASS
 
 The explicit Connect Business Offering capability seam is construction-qualified. The adapter binds the resolved resource/capability/operation, requires an authenticated `business` or `admin` role before service access, validates identifiers, delegates to the canonical Business Offering service, and rejects customer context before any service call. Local validation passed 504/504 tests. This seam does not authorize production traffic, shadow qualification, or Supabase replacement.
 
-
 ### Connect Business Capability Read Adapter: CLOSED / PASS
 
 The Connect Business Capability read seam has been constructed as a bounded adapter. It binds `business_capability.read` to the `business_capability` resource and `read` operation, validates the business identifier, and delegates to the canonical GHM Business Capability service. GHM repository authorization remains authoritative for active-business membership. Connect currently projects nested Capability and Business Capability Evidence data; those projections are deliberately not fabricated here because GHM has no separately qualified projection contract. Local qualification passed 510/510 tests. This seam does not reproduce Connect's nested Capability/Evidence projection and therefore does not authorize production replacement of that richer Connect projection.
 
+### Connect Opportunity Participant Capability Adapter: CLOSED / PASS
+
+The Connect Opportunity Participant adapter exposes the already-qualified Opportunity Participant service through the governed capability path:
+
+- `opportunity_participant.read`
+- `opportunity_participant.create`
+- `opportunity_participant.update`
+
+The adapter enforces resource/capability/operation alignment, positive identifiers, and delegation through the canonical service with the authenticated GHM context. Governed HTTP tests exercise the service chain.
+
+The full repository qualification run on 2026-10-03 passed **515/515 tests**, including the Opportunity Participant adapter and Connect service HTTP coverage.
+
+The dedicated live PostgreSQL runtime qualification was then executed on 2026-10-03 and passed the participant schema, least-privilege, authorization, validation, immutable-field, concurrency, direct-mutation-denial, list, persistence-reconciliation, and cleanup checks.
+
+Final result: **OPPORTUNITY PARTICIPANT RUNTIME QUALIFICATION PASS**.
+
+The Opportunity Participant resource and Connect adapter are therefore closed for construction qualification.
+
+No production Connect traffic, public/browser exposure, provider change, Supabase migration, shadow qualification, or cutover is authorized.
+
 ### Dedicated Schema → Business Identity Runtime: CLOSED / PASS
 
-The relocated first-slice Business Identity runtime qualification was rerun after the qualification harness was reconciled to the canonical `ghm.*` resource names. The final run passed all checks:
-
-```text
-RUNTIME IDENTITY PASS: ghm_db/ghm_runtime
-CLEANUP AUTHORITY PASS: ghm_db/ghm_migrator
-PROFILE READ PASS
-EMPTY MEMBERSHIP READ PASS
-BUSINESS CREATE + OWNER MEMBERSHIP PASS
-MANAGED READ PASS
-PUBLIC APPROVAL BOUNDARY PASS
-MANAGED UPDATE PASS
-ROLE AUTHORIZATION REJECTION PASS
-DUPLICATE SLUG ATOMIC FAILURE PASS
-DUPLICATE SLUG ATOMIC ROLLBACK PASS
-CONCURRENT BUSINESS CREATION SERIALIZATION PASS
-GHM BUSINESS IDENTITY RUNTIME QUALIFICATION: PASS
-```
+The relocated first-slice Business Identity runtime qualification passed the canonical `ghm.*` checks, including atomic duplicate-slug rollback and concurrent Business creation serialization.
 
 ### Transaction Qualification: CLOSED / PASS
 
-Transaction qualification is closed for the first Business Identity slice against the relocated `ghm` schema. The live qualification verified atomic duplicate-slug rollback and concurrent Business creation serialization, with the transaction primitive covered for commit, rollback, release, same-context binding, and rejection of invalid authentication context before checkout.
+Transaction qualification is closed for the first Business Identity slice against the relocated `ghm` schema.
 
 ### Authorization Qualification: CLOSED / PASS
 
-Authorization qualification is closed for construction qualification of the first canonical Business Identity slice. The real Express application was exercised against the canonical PostgreSQL path, including missing-auth denial, invalid-token denial, authenticated canonical profile access, verified identity binding, and invalid-role denial. The underlying automated suite also covers registry, ownership, role, transaction, and repository deny paths.
-
-The first Business Identity Resource API gate is now closed for the qualified slice. The authorization pass does not mean that every registry resource has a public HTTP implementation; future resources remain governed work.
+Authorization qualification is closed for construction qualification of the first canonical Business Identity slice.
 
 ### TEMP Privilege Decision: CLOSED / NO GRANT REQUIRED
 
@@ -84,76 +80,32 @@ The current runtime source and qualification harness require no temporary tables
 
 ## Resource API — first-slice qualification
 
-The first Business Identity Resource API slice is implemented and qualified. The architecture contract is recorded in `RESOURCE_API_BOUNDARY_CONTRACT.md`.
-
-The qualified first HTTP surface is deliberately small:
-
-- `GET /api/v1/profile` — existing qualified protected profile route;
-- `GET /api/v1/businesses/:businessId` — public-safe Business identity;
-- `GET /api/v1/businesses/slug/:slug` — public-safe Business identity by slug;
-- `POST /api/v1/businesses` — Business creation with atomic owner participation;
-- `GET /api/v1/businesses/:businessId/managed` — managed Business read;
-- `PATCH /api/v1/businesses/:businessId` — managed Business identity update limited to `name` and `slug`.
-
-The six-endpoint surface is qualified against its service/repository contracts, authorization rules, disclosure boundaries, fixed schema identifiers, transaction requirements, and automated/live evidence. Future registry resources remain separate governed work.
-
-No generic table/query endpoint is permitted.
+The first Business Identity Resource API slice is implemented and qualified. No generic table/query endpoint is permitted.
 
 ## Provider / bootstrap authority gate
 
 **Status: OPEN / BLOCKED FOR MUTATION**
 
-Render workspace and resource administration have been evidenced through the customer-facing Render control plane. The `ghm-db` PostgreSQL resource exposes the Render-managed credentials `ghm_app_user` (default) and `ghm_db_user`, while the dedicated GHM roles (`ghm_runtime`, `ghm_migrator`, and `ghm_schema_owner`) are PostgreSQL-created roles and are not Render-managed credentials.
+Render workspace/resource administration is established, but PostgreSQL bootstrap/superuser authority is not established through the customer-facing control plane. Dedicated GHM roles cannot independently revoke legacy `ghm_db_user` memberships granted by `postgres`.
 
-The customer-facing PostgreSQL connection controls do not expose a separate PostgreSQL `postgres` superuser/bootstrap credential. Existing live catalog evidence shows that the legacy `ghm_db_user` memberships to `ghm_schema_owner`, `ghm_migrator`, and `ghm_runtime` were granted by `postgres`. The dedicated roles do not have authority to revoke those memberships themselves.
-
-Therefore:
-
-- Render workspace/resource administration is established;
-- PostgreSQL bootstrap/superuser authority is not established through the customer-facing control plane;
-- `ghm_db_user` cleanup remains blocked;
-- no credential rotation is authorized merely to seek authority;
-- no pgAdmin deployment is authorized merely to seek authority;
-- no production `DATABASE_URL` change is authorized;
-- no production cutover is authorized.
-
-This is a provider-authority limitation, not permission to approximate bootstrap authority through an application role.
+Therefore no credential rotation, pgAdmin deployment, production `DATABASE_URL` change, or cutover is authorized merely to seek bootstrap authority.
 
 ## Recovery evidence
 
-A canonical GHM-only recovery dump was captured using `GHM_MIGRATOR_DATABASE_URL`, `ghm_schema_owner`, and `--schema=ghm`. The custom-format archive was successfully created and its restore catalog was independently verified with PostgreSQL 18.6 tooling. No restore was performed.
-
-This artifact covers the canonical `ghm` schema only. It is not represented as a full-database backup because the legacy `public` catalog is not fully accessible through the dedicated GHM roles.
+A canonical GHM-only recovery dump was captured through the dedicated migrator/schema-owner path and verified as a custom archive. No restore was performed. It covers the canonical `ghm` schema only.
 
 ## Important sequencing interpretation
 
-The gate order is a dependency model, not permission to skip unresolved gates because an earlier implementation exists.
-
-The qualified Business Offering slice does not mean the complete GHM product schema has been authored. The current first-slice Business Identity migration does not mean the complete GHM product schema has been authored. It establishes only the canonical construction schema required for the currently qualified slice.
-
-Likewise, PostgreSQL role separation and dedicated migration-runner qualification close only the corresponding construction evidence. The Authorization, first-slice Resource API, and Operational Boundary gates are now closed for their qualified construction slices. Eventual product replacement gates remain open.
+Qualified resource slices establish only their governed construction boundaries. They do not imply complete GHM product parity.
 
 The provider/bootstrap authority and legacy-role cleanup remain constrained by the currently available managed PostgreSQL authority. Construction may advance only to resource slices whose database contracts and privileges can be evidenced without relying on unresolved bootstrap authority.
 
-No unqualified product adapter or production cutover work begins from the currently closed construction gates alone.
-
 ## Hard stop conditions
 
-Do not proceed to product adapters or cutover while any of these remain true:
-
-- live PostgreSQL schema is unknown or unreconciled for the resource being implemented;
-- application startup creates/changes product tables;
-- fixed-ID administrator bootstrap exists;
-- generic table querying can cross an approved resource boundary;
-- authorization relies on a separate, unawaited pool query for request context;
-- password-reset secrets are returned to clients or logs;
-- storage/realtime still require Supabase as an undisclosed GHM runtime dependency;
-- rollback has not been tested;
-- required authentication, authorization, transaction, repository, or runtime-boundary qualification evidence is missing for the resource being advanced;
-- legacy authority cleanup requires PostgreSQL bootstrap privileges that are not independently available.
+Do not proceed where live PostgreSQL schema is unknown/reconciled inadequately, startup mutates product schema, generic table querying crosses resource boundaries, authorization leaks query context, required rollback/evidence is missing, or legacy authority cleanup requires unavailable bootstrap privileges.
 
 ## Production safety
 
-This sequence is construction-only until a separate release authorization is issued. Supabase remains the production authority for Connect and QuoteFlow throughout construction and qualification.
+This sequence is construction-only until separate release authorization. Supabase remains the production authority for Connect and QuoteFlow.
 
-No construction qualification in this sequence authorizes production environment-variable changes, DNS/routing changes, credential rotation, data migration, or product traffic cutover.
+No construction qualification authorizes production environment-variable changes, DNS/routing changes, credential rotation, data migration, or product traffic cutover.

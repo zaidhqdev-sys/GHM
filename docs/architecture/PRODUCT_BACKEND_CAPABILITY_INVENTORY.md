@@ -1,6 +1,6 @@
 # Product Backend Capability Inventory
 
-**Status:** Construction capability inventory — reconciled through Connect service assertion replay protection (2026-10-02)
+**Status:** Construction capability inventory — reconciled through Connect Opportunity Participant adapter construction qualification (2026-10-03)
 
 This document records capabilities GHM may eventually support to replace current managed backend dependencies. It deliberately separates capability requirements from Supabase implementation details and does not authorize production migration.
 
@@ -47,12 +47,13 @@ The following GHM construction capabilities have now been implemented and qualif
 - Review and approved-only aggregate reconciliation
 - Opportunity Core
 - Opportunity capability requirements
-- Opportunity Participation (initial boundary)
+- Opportunity Participation initial boundary
 - Project Quote
 - Capability Catalogue
 - Business Capability (read/create)
 - Business Hours
 - Commercial trial operation
+- Commercial reference data and payment preparation boundary
 - Notification
 - Support Request
 - Saved Business
@@ -60,9 +61,9 @@ The following GHM construction capabilities have now been implemented and qualif
 - Resource API boundary
 - Operational boundary
 
-These qualifications establish GHM capability construction only. The Connect Saved Business adapter is constructed and unit-qualified as a governed product/resource seam. The Connect Business Offering adapter is also construction-qualified as an explicit capability seam with business/admin role enforcement before canonical service access. The Connect Business Capability read adapter is constructed as a bounded assertion-read seam; nested Capability/Evidence projection remains separately governed. The Connect integration lifecycle authority is construction-qualified as a persistent service-trust prerequisite.
+These qualifications establish GHM capability construction only. The Connect Saved Business adapter, Business Offering adapter, Business Capability read adapter, and Opportunity Participant adapter are bounded governed product/resource seams; they do not constitute production product migration.
 
-Connect trusted request context establishment, governed operation resolution, GHM authorization binding, resource capability dispatch, and the first saved_business.read service HTTP boundary are now construction-qualified bounded prerequisites. The HTTP slice is service-to-service only and does not establish production readiness, mutation transport, or product cutover. Durable service-assertion replay protection is separately construction-qualified.
+Connect trusted request context establishment, governed operation resolution, GHM authorization binding, resource capability dispatch, the first saved_business.read service HTTP boundary, and durable service-assertion replay protection are construction-qualified bounded prerequisites.
 
 ## QuoteFlow
 
@@ -95,7 +96,7 @@ These remain platform-level candidates subject to evidence and qualification:
 11. Health/readiness/liveness
 12. Migration/version management
 
-Several of these are already present as qualified construction primitives; remaining candidates require their own evidence and gates.
+Several are already present as qualified construction primitives; remaining candidates require their own evidence and gates.
 
 ## Governance Constraint
 
@@ -109,6 +110,7 @@ A capability is not considered migrated merely because a technically similar end
 
 ```text
 QUALIFIED CONSTRUCTION
+
   Business Identity
   Transaction
   Authorization
@@ -119,18 +121,20 @@ QUALIFIED CONSTRUCTION
   Review + aggregate reconciliation
   Opportunity Core
   Opportunity capability requirements
-  Opportunity Participation (initial)
+  Opportunity Participation initial boundary
   Project Quote
   Capability Catalogue
   Business Capability (read/create)
-  Business Offering
   Business Hours
   Commercial trial operation
+  Commercial reference data + payment preparation boundary
   Notification
   Support Request
   Saved Business
+  Business Offering
   Resource API boundary
   Operational boundary
+
   Connect integration lifecycle authority
   Connect trusted request context
   Connect governed operation resolution
@@ -138,12 +142,14 @@ QUALIFIED CONSTRUCTION
   Connect service HTTP read boundary (saved_business.read)
   Connect service assertion replay protection
   Connect Business Offering adapter seam
-  Connect Business Capability read adapter seam (qualified construction)
+  Connect Business Capability read adapter seam
+  Connect Opportunity Participant adapter seam
 
-REQUIRES FUTURE GOVERNED WORK (NOT CURRENTLY AUTHORIZED)
-  Trust score / Trust evidence
-  Commercial payment preparation / cancellation / provider result application
-  Opportunity participant transition workflows
+REQUIRES FUTURE GOVERNED WORK
+
+  Trust evidence hardening / additional authoritative evidence domains
+  Commercial payment provider result / webhook application
+  Opportunity participant lifecycle transition workflows
   Business Capability lifecycle/verification update
   Opportunity outcome / matching workflows
   Business Hours exceptions / booking / open-now
@@ -154,4 +160,8 @@ REQUIRES FUTURE GOVERNED WORK (NOT CURRENTLY AUTHORIZED)
   controlled cutover
 ```
 
-Connect Saved Business and Connect Business Offering adapter construction is authorized and unit-qualified as bounded seams. Broader product adapters remain separately gated. Provider/bootstrap authority cleanup remains an independent open construction concern. Production Connect and QuoteFlow remain on Supabase.
+Trust Score itself is **QUALIFIED / CLOSED** for its current construction boundary. Commercial reference data and provider-neutral payment preparation are also qualified; provider checkout, callbacks/results, webhook application, production credentials, and cutover remain separately governed.
+
+The Opportunity Participant resource and Connect adapter are **CLOSED / PASS for construction qualification**. The full 515/515 repository suite and the dedicated live PostgreSQL runtime qualification both passed on 2026-10-03. Participant lifecycle transition workflows remain separately governed future work.
+
+Broader product adapters remain separately gated. Provider/bootstrap authority cleanup remains an independent open construction concern. Production Connect and QuoteFlow remain on Supabase.
