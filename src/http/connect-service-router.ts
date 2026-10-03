@@ -20,9 +20,11 @@ import { dispatchConnectQuoteCapability, type ConnectQuoteDispatchInput } from '
 import { dispatchConnectEnquiryCapability, type ConnectEnquiryDispatchInput } from '../integrations/connect/enquiry-adapter';
 import { dispatchConnectProjectCapability, type ConnectProjectDispatchInput } from '../integrations/connect/project-adapter';
 import { dispatchConnectOpportunityCapability, type ConnectOpportunityDispatchInput } from '../integrations/connect/opportunity-adapter';
+import { dispatchConnectOpportunityParticipantCapability, type ConnectOpportunityParticipantDispatchInput } from '../integrations/connect/opportunity-participant-adapter';
 import type { EnquiryService, EnquiryStatus, EnquiryUrgency } from '../resources/enquiry/contracts';
 import type { ProjectService, ProjectUrgency, UpdateProjectInput } from '../resources/project/contracts';
 import type { OpportunityService, OpportunityLifecycleStatus, OpportunityVisibility, CreateOpportunityInput, UpdateOpportunityInput } from '../resources/opportunity/contracts';
+import type { OpportunityParticipantService, ParticipationRole, ParticipationStatus, CreateOpportunityParticipantInput, UpdateOpportunityParticipantInput } from '../resources/opportunity-participant/contracts';
 
 export interface ConnectServiceHttpDependencies {
   readonly assertionService?: ConnectServiceAssertionService;
@@ -36,6 +38,7 @@ export interface ConnectServiceHttpDependencies {
   readonly enquiries: EnquiryService;
   readonly projects: ProjectService;
   readonly opportunities: OpportunityService;
+  readonly opportunityParticipants: OpportunityParticipantService;
 }
 export class ConnectServiceHttpError extends Error {
   constructor(message: string, readonly status = 401) { super(message); this.name = 'ConnectServiceHttpError'; }
@@ -276,6 +279,51 @@ const parseProjectInput = (operation: ProductConsumerRequest['operation']['opera
   throw new ConnectServiceHttpError('Unsupported Connect service operation', 403);
 };
 
+const parseOpportunityParticipantInput = (operation: ProductConsumerRequest['operation']['operation'], input: unknown): ConnectOpportunityParticipantDispatchInput => {
+  const objectInput = input === undefined ? {} : input;
+  if (!objectInput || typeof objectInput !== 'object' || Array.isArray(objectInput)) throw new ConnectServiceHttpError('Invalid request', 400);
+  const candidate = objectInput as Record<string, unknown>;
+  const keys = Object.keys(candidate);
+  const positive = (value: unknown): value is number => Number.isSafeInteger(value) && (value as number) > 0;
+  const roles: readonly ParticipationRole[] = ['creator','owner','recipient','responder','evaluator','fulfiller'];
+  const statuses: readonly ParticipationStatus[] = ['invited','active','declined','withdrawn','removed','completed'];
+  if (operation === 'read') {
+    if (keys.length !== 1 || (candidate.participantId === undefined && candidate.opportunityId === undefined) || (candidate.participantId !== undefined && candidate.opportunityId !== undefined)) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.participantId !== undefined && !positive(candidate.participantId)) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.opportunityId !== undefined && !positive(candidate.opportunityId)) throw new ConnectServiceHttpError('Invalid request', 400);
+    return candidate.participantId !== undefined
+      ? { capability: 'opportunity_participant.read', participantId: candidate.participantId as number }
+      : { capability: 'opportunity_participant.read', opportunityId: candidate.opportunityId as number };
+  }
+  if (operation === 'create') {
+    const allowed = ['opportunityId','accountId','businessId','participationRole','participationStatus'];
+    if (keys.some(key => !allowed.includes(key)) || !positive(candidate.opportunityId) || typeof candidate.participationRole !== 'string' || !roles.includes(candidate.participationRole as ParticipationRole)) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.accountId !== undefined && candidate.accountId !== null && !positive(candidate.accountId)) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.businessId !== undefined && candidate.businessId !== null && !positive(candidate.businessId)) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.participationStatus !== undefined && (typeof candidate.participationStatus !== 'string' || !statuses.includes(candidate.participationStatus as ParticipationStatus))) throw new ConnectServiceHttpError('Invalid request', 400);
+    const input: CreateOpportunityParticipantInput = {
+      opportunityId: candidate.opportunityId as number,
+      ...(candidate.accountId !== undefined ? { accountId: candidate.accountId as number | null } : {}),
+      ...(candidate.businessId !== undefined ? { businessId: candidate.businessId as number | null } : {}),
+      participationRole: candidate.participationRole as ParticipationRole,
+      ...(candidate.participationStatus !== undefined ? { participationStatus: candidate.participationStatus as ParticipationStatus } : {}),
+    };
+    return { capability: 'opportunity_participant.create', input };
+  }
+  if (operation === 'update') {
+    const allowed = ['participantId','participationRole','participationStatus'];
+    if (keys.length < 2 || keys.some(key => !allowed.includes(key)) || !positive(candidate.participantId)) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.participationRole !== undefined && (typeof candidate.participationRole !== 'string' || !roles.includes(candidate.participationRole as ParticipationRole))) throw new ConnectServiceHttpError('Invalid request', 400);
+    if (candidate.participationStatus !== undefined && (typeof candidate.participationStatus !== 'string' || !statuses.includes(candidate.participationStatus as ParticipationStatus))) throw new ConnectServiceHttpError('Invalid request', 400);
+    const update: UpdateOpportunityParticipantInput = {
+      ...(candidate.participationRole !== undefined ? { participationRole: candidate.participationRole as ParticipationRole } : {}),
+      ...(candidate.participationStatus !== undefined ? { participationStatus: candidate.participationStatus as ParticipationStatus } : {}),
+    };
+    return { capability: 'opportunity_participant.update', participantId: candidate.participantId as number, input: update };
+  }
+  throw new ConnectServiceHttpError('Unsupported Connect service operation', 403);
+};
+
 const sendError = (error: unknown, res: Response): void => {
   if (error instanceof ConnectServiceHttpError) { res.status(error.status).json({ error: error.status === 401 ? 'unauthorized' : error.status === 403 ? 'forbidden' : 'invalid_request' }); return; }
   if (error instanceof Error && (error.name === 'ConnectServiceAssertionError' || error.name === 'ConnectServiceAssertionReplayError' || error.name === 'ConnectIntegrationLifecycleError' || error.name === 'ConnectTrustedRequestContextError' || error.name === 'ConnectGovernedOperationResolutionError' || error.name === 'ConnectAuthorizationBindingError')) { res.status(401).json({ error: 'unauthorized' }); return; }
@@ -314,6 +362,8 @@ export const registerConnectServiceRoutes = (app: Express, dependencies: Connect
         result = await dispatchConnectProjectCapability(authorized, parseProjectInput(authorized.operation, parsed.input), { projects: dependencies.projects });
       } else if (authorized.resource === 'opportunity') {
         result = await dispatchConnectOpportunityCapability(authorized, parseOpportunityInput(authorized.operation, parsed.input), { opportunities: dependencies.opportunities });
+      } else if (authorized.resource === 'opportunity_participant') {
+        result = await dispatchConnectOpportunityParticipantCapability(authorized, parseOpportunityParticipantInput(authorized.operation, parsed.input), { opportunityParticipants: dependencies.opportunityParticipants });
       } else {
         throw new ConnectServiceHttpError('Unsupported Connect service operation', 403);
       }
