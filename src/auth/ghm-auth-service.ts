@@ -99,6 +99,9 @@ export const createGhmAuthService = (
       }
       try {
         const normalized = normalizeLoginEmail(input.email);
+        if (!persistence.createAccount) {
+          throw new GhmAuthServiceError('Account registration unavailable', 'REGISTRATION_UNAVAILABLE', 503);
+        }
         const created = await persistence.createAccount(
           typeof input.fullName === 'string' ? input.fullName : null,
           role,
