@@ -2,7 +2,7 @@
 
 ## Status
 
-**RECONCILED — MAPPING CONTRACT DEFERRED; NO IDENTITY BRIDGE AUTHORIZED**
+**RECONCILED — AUTHORITY AND PERSISTENCE CONTRACTED; NO DATABASE OBJECT OR ADAPTER AUTHORIZED**
 
 This document closes the source-reconciliation investigation for the cross-system identity boundary. It does not authorize an identity-link table, account migration, adapter, Supabase mutation, production routing, shadow qualification, or cutover.
 
@@ -180,4 +180,4 @@ This contract does not authorize:
 
 This is the final prerequisite before an eventual QuoteFlow adapter can be designed safely.
 
-The next construction step is therefore a dedicated **identity-link ownership/authority contract**, not adapter implementation.
+The authority model is now separately qualified by dual confirmation, and the persistence boundary is separately contracted. The next construction step is persistence implementation qualification, not adapter implementation.

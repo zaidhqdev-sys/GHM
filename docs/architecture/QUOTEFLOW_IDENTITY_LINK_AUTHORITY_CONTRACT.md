@@ -2,7 +2,7 @@
 
 ## Status
 
-**AUTHORITY NOT YET QUALIFIED — NO LINK PERSISTENCE OR MUTATION AUTHORIZED**
+**AUTHORITY QUALIFIED — DUAL CONFIRMATION SELECTED; PERSISTENCE SEPARATELY CONTRACTED**
 
 This contract defines the decision boundary for establishing cross-system identity links. The selected authority model is dual-sided confirmation; persistence remains separately gated.
 
@@ -60,26 +60,11 @@ Account and Business links must not be created merely because an account link ex
 
 ## Authority decision
 
-Current GHM evidence establishes:
+The Founder/Product authority decision is resolved by the dedicated dual-confirmation contract.
 
-- `admin` as a platform-level application role;
-- Business-scoped owner/administrator management;
-- authenticated account identity;
-- Business membership authorization.
+Neither QuoteFlow nor GHM may unilaterally establish a cross-system link. Account and Business links require independent confirmation from both sides.
 
-It does **not** establish a product requirement saying that GHM administrators should be the sole operators of cross-system linking, nor does QuoteFlow source establish a corresponding integration administrator role.
-
-Therefore this document does not invent one.
-
-The following choices remain Founder/Product authority decisions:
-
-- GHM-admin-controlled linking;
-- dual-sided user confirmation;
-- a dedicated integration-management principal;
-- a one-time migration/bootstrap ceremony;
-- another explicitly evidenced mechanism.
-
-Until one is selected and documented, link mutation remains prohibited.
+The persistence boundary is separately defined in `QUOTEFLOW_IDENTITY_LINK_PERSISTENCE_CONTRACT.md`. That document does not itself authorize migration or runtime mutation.
 
 ## Link lifecycle requirements
 
@@ -135,8 +120,10 @@ This contract does not authorize:
 
 ## Construction decision
 
-The cross-system mapping boundary is now fully identified, but **link authority remains a Founder/Product gate** because current repository evidence does not establish who may create or revoke a trust relationship between the two systems.
+The cross-system mapping boundary and link authority are now explicitly resolved.
 
-The next action requiring Founder/Product authority is to choose the link-creation model. Once selected, its exact lifecycle and persistence contract can be authored and separately qualified.
+The dual-confirmation authority model and persistence design are separately documented. Database objects and mutation remain implementation gates and require independent qualification for schema ownership, uniqueness, transactionality, concurrency, audit provenance, and runtime least privilege.
+
+The next construction gate is persistence implementation qualification, not adapter or production integration.
 
 Until then, QuoteFlow remains Supabase-authoritative and GHM remains authoritative only for its already-qualified domains.

@@ -212,7 +212,7 @@ The next construction slice is a **persistence-free dual-confirmation decision c
 4. cardinality/conflict checks expressed as contract rules;
 5. deterministic outcomes for missing, mismatched, expired, duplicate, and conflicting confirmations.
 
-Only after that boundary is qualified may an identity-link persistence schema and transaction contract be considered.
+Only after that boundary is qualified may the persistence implementation proceed. The persistence design is now separately documented in `QUOTEFLOW_IDENTITY_LINK_PERSISTENCE_CONTRACT.md`; database objects and mutation remain independently gated.
 
 ## Qualification requirements
 
