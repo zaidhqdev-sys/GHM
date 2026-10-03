@@ -117,6 +117,18 @@ try {
 
   const setup = await migratorPool.connect();
   try {
+    await setup.query('SET ROLE ghm_schema_owner');
+    const setupIdentity = (await setup.query(
+      'SELECT session_user, current_user, current_role',
+    )).rows[0];
+    if (
+      setupIdentity.session_user !== 'ghm_migrator' ||
+      setupIdentity.current_user !== 'ghm_schema_owner' ||
+      setupIdentity.current_role !== 'ghm_schema_owner'
+    ) {
+      throw new Error(`Unexpected Commercial fixture setup identity: ${JSON.stringify(setupIdentity)}`);
+    }
+
     await setup.query('BEGIN');
 
     const account = (await setup.query(`
@@ -238,6 +250,18 @@ try {
   if (fixture) {
     const cleanup = await migratorPool.connect();
     try {
+      await cleanup.query('SET ROLE ghm_schema_owner');
+      const cleanupIdentity = (await cleanup.query(
+        'SELECT session_user, current_user, current_role',
+      )).rows[0];
+      if (
+        cleanupIdentity.session_user !== 'ghm_migrator' ||
+        cleanupIdentity.current_user !== 'ghm_schema_owner' ||
+        cleanupIdentity.current_role !== 'ghm_schema_owner'
+      ) {
+        throw new Error(`Unexpected Commercial fixture cleanup identity: ${JSON.stringify(cleanupIdentity)}`);
+      }
+
       await cleanup.query('BEGIN');
       await cleanup.query('DELETE FROM ghm.commercial_subscription WHERE id = $1', [fixture.subscriptionId]);
       await cleanup.query('DELETE FROM ghm.commercial_plan_price WHERE id = $1', [fixture.priceId]);
