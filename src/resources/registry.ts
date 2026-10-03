@@ -1,24 +1,6 @@
 import { Resource } from '../auth/authorization';
 
-export type ResourceOperation =
-  | 'read'
-  | 'readPublic'
-  | 'create'
-  | 'update'
-  | 'replace'
-  | 'readOwn'
-  | 'readReceived'
-  | 'readPending'
-  | 'approve'
-  | 'reject'
-  | 'transition'
-  | 'updateStatus'
-  | 'readMessages'
-  | 'replyAsCustomer'
-  | 'replyAsAdmin'
-  | 'delete'
-  | 'calculate'
-  | 'accept';
+export type ResourceOperation = 'read' | 'readPublic' | 'create' | 'update' | 'replace' | 'readOwn' | 'readReceived' | 'readPending' | 'approve' | 'reject' | 'transition' | 'updateStatus' | 'readMessages' | 'replyAsCustomer' | 'replyAsAdmin' | 'delete' | 'calculate' | 'accept';
 
 export interface ResourceDefinition {
   readonly resource: Resource;
@@ -29,7 +11,7 @@ export const resourceRegistry: readonly ResourceDefinition[] = [
   { resource: 'profile', operations: ['read', 'update'] },
   { resource: 'business', operations: ['read', 'readPublic', 'create', 'update'] },
   { resource: 'directory', operations: ['read'] },
-  { resource: 'business_capability', operations: ['read', 'create'] },
+  { resource: 'business_capability', operations: ['read', 'create', 'transition'] },
   { resource: 'business_category', operations: ['read'] },
   { resource: 'business_category_assignment', operations: ['read', 'create', 'update'] },
   { resource: 'business_offering', operations: ['read', 'readPublic', 'create', 'update'] },
@@ -40,7 +22,7 @@ export const resourceRegistry: readonly ResourceDefinition[] = [
   { resource: 'customer', operations: ['read', 'create', 'update'] },
   { resource: 'quote', operations: ['read', 'create', 'update'] },
   { resource: 'notification', operations: ['read', 'create', 'update'] },
-  { resource: 'support_request', operations: ['read', 'create', 'updateStatus', 'readMessages', 'replyAsCustomer', 'replyAsAdmin'] },
+  { resource: 'support_request', operations: ['read', 'create', 'updateStatus', 'readMessages', 'replyAsCustomer', 'readMessages', 'replyAsAdmin'] },
   { resource: 'enquiry', operations: ['read', 'create', 'update'] },
   { resource: 'review', operations: ['create', 'readOwn', 'readPublic', 'readPending', 'approve', 'reject'] },
   { resource: 'opportunity', operations: ['read', 'create', 'update', 'transition'] },
