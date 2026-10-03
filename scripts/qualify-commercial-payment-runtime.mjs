@@ -270,7 +270,6 @@ try {
       await cleanup.query('DELETE FROM ghm.business_membership WHERE business_id = $1', [fixture.businessId]);
       await cleanup.query('DELETE FROM ghm.business WHERE id = $1', [fixture.businessId]);
       await cleanup.query('DELETE FROM ghm.account_identity WHERE id = $1', [fixture.accountId]);
-      await cleanup.query('DELETE FROM ghm.account_identity WHERE id = $1', [fixture.accountId]);
       await cleanup.query('COMMIT');
     } catch (error) {
       await cleanup.query('ROLLBACK');
