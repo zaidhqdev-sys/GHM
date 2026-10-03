@@ -2,141 +2,85 @@
 
 ## Status
 
-**AUTHORITY NOT YET QUALIFIED — NO LINK PERSISTENCE OR MUTATION AUTHORIZED**
+**DUAL-SIDED CONFIRMATION SELECTED — LIFECYCLE/PERSISTENCE CONTRACT STILL TO BE QUALIFIED**
 
-This contract defines the decision boundary for establishing cross-system identity links. It deliberately does not select an implementation authority where product evidence is absent.
+Founder/Product decision: normal cross-system identity linking will use explicit confirmation from both independently authoritative systems. GHM platform governance may provide narrowly defined recovery/revocation authority; it does not silently become ordinary unilateral link-creation authority.
 
-## Existing evidence
+## Authority model
 
-The preceding reconciliation establishes two independent mappings:
+The normal pathway requires:
 
-- QuoteFlow Supabase user UUID ↔ GHM `account_identity.id`
-- QuoteFlow organization UUID ↔ GHM `business.id`
+1. an authenticated QuoteFlow principal with authority over the target QuoteFlow organization;
+2. an authenticated GHM principal with the required authority over the target GHM account/Business;
+3. explicit confirmation on each side;
+4. compatibility and existing-link checks;
+5. auditable actor and timestamp provenance;
+6. idempotent handling of repeated identical requests.
 
-Neither mapping currently has an authorized persistence mechanism in GHM.
+Neither side may establish the active relationship from a caller-supplied identifier alone.
 
-GHM's existing application authorization is Business-scoped and derives permissions from the authenticated GHM context and Business membership. It does not currently contain a cross-system identity-link resource.
+### Account relationship
 
-## Authority distinction
+The QuoteFlow principal confirms control of the QuoteFlow identity. The GHM side independently confirms control/authorization for the target GHM account identity.
 
-A cross-system link is not ordinary Business data.
+### Business relationship
 
-Creating a link changes the trust relationship between two independently authoritative systems. Therefore:
+The QuoteFlow organization authority confirms control of the organization. The GHM side independently confirms authority over the target Business and active membership with the required management authority.
 
-- a QuoteFlow user must not self-assert an arbitrary GHM account identity;
-- a QuoteFlow organization must not self-assert an arbitrary GHM Business;
-- GHM Business membership must not by itself prove ownership of a QuoteFlow organization;
-- matching email, phone, name, slug, or other profile fields is not sufficient proof;
-- ordinary Business owner/admin permission is not automatically link-management authority.
+An account link does not automatically authorize or create a Business link.
 
-The link authority must therefore be separately governed.
+## GHM governance boundary
 
-## Required proof before link creation
+A GHM platform administrator may be considered for exceptional recovery/revocation operations, but this contract does **not** grant the existing `admin` role ordinary unilateral link-creation authority.
 
-A future link-creation workflow must establish both sides of the association:
+Any recovery/revocation authority must be separately specified with audit provenance, scope, and fail-closed behavior before implementation.
 
-### Account link
+## Required lifecycle contract
 
-Proof must establish:
+The implementation contract must define:
 
-1. control of the authenticated QuoteFlow principal;
-2. control/authorization for the target GHM account identity;
-3. that neither identity is already actively linked incompatibly;
-4. an auditable actor and timestamp;
-5. an idempotent outcome for repeated identical requests.
-
-### Business link
-
-Proof must establish:
-
-1. control of the authenticated QuoteFlow organization;
-2. authority over the target GHM Business;
-3. active GHM Business membership with the required management authority;
-4. that the QuoteFlow organization is compatible with the target Business;
-5. an auditable actor and timestamp;
-6. an idempotent outcome for repeated identical requests.
-
-Account and Business links must not be created merely because an account link exists.
-
-## Authority is intentionally unresolved
-
-Current GHM evidence establishes:
-
-- `admin` as a platform-level application role;
-- Business-scoped owner/administrator management;
-- authenticated account identity;
-- Business membership authorization.
-
-It does **not** establish a product requirement saying that GHM administrators should be the sole operators of cross-system linking, nor does QuoteFlow source establish a corresponding integration administrator role.
-
-Therefore this document does not invent one.
-
-The following choices remain Founder/Product authority decisions:
-
-- GHM-admin-controlled linking;
-- dual-sided user confirmation;
-- a dedicated integration-management principal;
-- a one-time migration/bootstrap ceremony;
-- another explicitly evidenced mechanism.
-
-Until one is selected and documented, link mutation remains prohibited.
-
-## Link lifecycle requirements
-
-A future contract must define at minimum:
-
-- proposed/pending state, if any;
+- pending/proposed state;
+- confirmation by each side;
 - active state;
 - revoked state;
-- who may create;
-- who may approve;
-- who may revoke;
-- whether relinking is allowed;
-- whether one QuoteFlow principal may map to multiple GHM accounts;
-- whether one GHM account may map to multiple QuoteFlow principals;
-- organization/Business cardinality;
-- account-to-organization consistency rules;
+- who may initiate, confirm, revoke, and recover;
+- relinking rules;
+- cardinality and uniqueness;
+- account-to-organization consistency;
 - revocation propagation;
 - audit provenance;
-- concurrency and uniqueness;
-- behavior when either system is unavailable;
-- recovery after partial failure;
-- rollback;
+- concurrency;
+- partial failure and unavailable-system behavior;
+- recovery and rollback;
 - shadow-read behavior;
 - cutover ownership.
 
-## Fail-closed rules
+## Security rules
 
-Until the authority contract is qualified:
-
-- no implicit mapping;
-- no fallback matching;
-- no caller-supplied GHM identity accepted as proof;
-- no adapter bypass of GHM authorization;
-- no link creation from ordinary Business create/update operations;
-- no production traffic routed through an unverified mapping;
-- unresolved mapping must fail closed.
+- No email/phone/name/slug matching as proof.
+- No implicit mapping.
+- No caller-supplied GHM identity accepted as authorization.
+- No adapter may bypass GHM authorization.
+- No ordinary Business operation creates a cross-system link.
+- No production routing through an unqualified mapping.
+- Unresolved or ambiguous mapping fails closed.
 
 ## Explicit non-goals
 
-This contract does not authorize:
+This decision does not yet authorize:
 
-- `identity_link` tables;
+- `identity_link` persistence;
 - external UUID columns;
-- mapping RPCs;
-- mapping HTTP routes;
-- Supabase changes;
-- QuoteFlow changes;
-- account migration;
-- Business migration;
-- adapter implementation;
+- mapping RPCs or HTTP routes;
+- Supabase mutation;
+- QuoteFlow runtime changes;
+- account or Business migration;
+- adapters;
 - shadow qualification;
-- cutover.
+- production cutover.
 
 ## Construction decision
 
-The cross-system mapping boundary is now fully identified, but **link authority remains a Founder/Product gate** because current repository evidence does not establish who may create or revoke a trust relationship between the two systems.
+The Founder/Product authority gate for the **normal link-creation model** is resolved: **dual-sided confirmation**.
 
-The next action requiring Founder/Product authority is to choose the link-creation model. Once selected, its exact lifecycle and persistence contract can be authored and separately qualified.
-
-Until then, QuoteFlow remains Supabase-authoritative and GHM remains authoritative only for its already-qualified domains.
+The next engineering gate is to author and qualify the exact lifecycle/persistence contract. No runtime mutation is authorized until that contract is independently qualified.
