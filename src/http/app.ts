@@ -87,6 +87,7 @@ import type { BusinessCategoryService } from '../resources/business-category/con
 import { registerBusinessCategoryRoutes } from './business-category-router';
 import { registerConnectServiceRoutes, type ConnectServiceHttpDependencies } from './connect-service-router';
 
+
 export interface AppDependencies {
   readonly businessIdentityService?: BusinessIdentityService;
   readonly publicBusinessService?: PublicBusinessService;
@@ -646,6 +647,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     enquiries: enquiryService,
     projects: projectService,
     opportunities: opportunityService,
+    opportunityParticipants: opportunityParticipantService,
   });
 
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
