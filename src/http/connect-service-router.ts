@@ -20,7 +20,7 @@ import { dispatchConnectQuoteCapability, type ConnectQuoteDispatchInput } from '
 import { dispatchConnectEnquiryCapability, type ConnectEnquiryDispatchInput } from '../integrations/connect/enquiry-adapter';
 import { dispatchConnectProjectCapability, type ConnectProjectDispatchInput } from '../integrations/connect/project-adapter';
 import type { EnquiryService, EnquiryStatus, EnquiryUrgency } from '../resources/enquiry/contracts';
-import type { ProjectService, ProjectUrgency } from '../resources/project/contracts';
+import type { ProjectService, ProjectUrgency, UpdateProjectInput } from '../resources/project/contracts';
 
 export interface ConnectServiceHttpDependencies {
   readonly assertionService?: ConnectServiceAssertionService;
@@ -199,7 +199,7 @@ const parseProjectInput = (operation: ProductConsumerRequest['operation']['opera
     delete update.projectId;
     if (Object.keys(update).length === 0) throw new ConnectServiceHttpError('Invalid request', 400);
     validateFields(update);
-    return { capability: 'project.update', projectId: candidate.projectId as number, input: update as never };
+    return { capability: 'project.update', projectId: candidate.projectId as number, input: update as UpdateProjectInput };
   }
   throw new ConnectServiceHttpError('Unsupported Connect service operation', 403);
 };
