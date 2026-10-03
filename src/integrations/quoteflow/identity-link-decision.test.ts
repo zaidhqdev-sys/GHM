@@ -12,7 +12,7 @@ import {
 const ghmContext: AuthContext = { userId: 42, role: 'customer' };
 const businessContext: AuthContext = { userId: 84, role: 'business' };
 
-const attestation = (sub = '42'): VerifiedQuoteFlowIdentityLinkAttestation => ({
+const attestation = (sub = '9001'): VerifiedQuoteFlowIdentityLinkAttestation => ({
   kid: 'quoteflow-test-key',
   claims: {
     sub,
@@ -45,27 +45,27 @@ test('business confirmation requires a resolved authorized Business identity', (
 test('account link requires both sides and exact principal match', () => {
   assert.deepEqual(
     decideQuoteFlowAccountLink(attestation(), createGhmAccountConfirmation(ghmContext), []),
-    { outcome: 'eligible', kind: 'account', quoteFlowIdentityId: '42', ghmAccountId: 42 },
+    { outcome: 'eligible', kind: 'account', quoteFlowIdentityId: '9001', ghmAccountId: 42 },
   );
   assert.deepEqual(
     decideQuoteFlowAccountLink(attestation(), null, []),
     { outcome: 'reject', reason: 'missing-ghm-confirmation' },
   );
   assert.deepEqual(
-    decideQuoteFlowAccountLink(attestation('43'), createGhmAccountConfirmation(ghmContext), []),
+    decideQuoteFlowAccountLink(attestation('9002'), createGhmAccountConfirmation(ghmContext), []),
     { outcome: 'reject', reason: 'account-principal-mismatch' },
   );
 });
 
 test('account link rejects incompatible active mappings but is idempotent for identical mapping', () => {
-  const existing = [{ quoteFlowIdentityId: '42', ghmAccountId: 42 }];
+  const existing = [{ quoteFlowIdentityId: '9001', ghmAccountId: 42 }];
   assert.deepEqual(
     decideQuoteFlowAccountLink(attestation(), createGhmAccountConfirmation(ghmContext), existing),
     { outcome: 'eligible', kind: 'account', quoteFlowIdentityId: '42', ghmAccountId: 42 },
   );
   assert.deepEqual(
     decideQuoteFlowAccountLink(attestation(), createGhmAccountConfirmation(ghmContext), [
-      { quoteFlowIdentityId: '42', ghmAccountId: 99 },
+      { quoteFlowIdentityId: '9001', ghmAccountId: 99 },
     ]),
     { outcome: 'reject', reason: 'account-link-conflict' },
   );
