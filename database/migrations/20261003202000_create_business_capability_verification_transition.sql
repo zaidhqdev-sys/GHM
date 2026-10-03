@@ -16,6 +16,7 @@ AS $$
 DECLARE
   v_row ghm.business_capability%ROWTYPE;
   v_reason text;
+  v_verifier_role text;
 BEGIN
   IF p_business_capability_id IS NULL OR p_business_capability_id <= 0 THEN
     RAISE EXCEPTION 'Business capability ID must be a positive integer';
@@ -23,6 +24,14 @@ BEGIN
 
   IF p_verifier_id IS NULL OR p_verifier_id <= 0 THEN
     RAISE EXCEPTION 'Verifier ID must be a positive integer';
+  END IF;
+
+  SELECT role INTO v_verifier_role
+    FROM ghm.account_identity
+   WHERE id = p_verifier_id;
+
+  IF v_verifier_role IS DISTINCT FROM 'admin' THEN
+    RAISE EXCEPTION 'Verification authority requires admin role';
   END IF;
 
   v_reason = NULLIF(btrim(p_reason), '');
@@ -35,6 +44,10 @@ BEGIN
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Business capability not found';
+  END IF;
+
+  IF v_row.created_by = p_verifier_id THEN
+    RAISE EXCEPTION 'Self-verification is not permitted';
   END IF;
 
   IF v_row.verification_status IS DISTINCT FROM p_expected_status THEN
