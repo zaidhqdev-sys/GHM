@@ -78,7 +78,7 @@ The current repository uses `@supabase/supabase-js` and contains a `supabase/` d
 
 The product also contains notification functionality and local/secure account state handling.
 
-Concrete QuoteFlow backend usage must continue to be inventoried from source before a product adapter is designed. A Supabase dependency alone does not authorize a corresponding remote GHM capability.
+Concrete QuoteFlow backend usage must continue to be inventoried from source before a product adapter is designed. QuoteFlow Customer and Business Profile boundaries are reconciled with no adapters authorized. QuoteFlow Quote has a materially corresponding GHM resource, but account, organization, and customer mapping authority remains unqualified; no QuoteFlow Quote adapter is authorized. A Supabase dependency alone does not authorize a corresponding remote GHM capability.
 
 ## Shared GHM Capability Candidates
 
