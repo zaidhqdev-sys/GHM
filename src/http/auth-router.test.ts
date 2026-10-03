@@ -67,6 +67,32 @@ const makeKeys = async () => {
   });
 };
 
+test('POST /api/v1/auth/register returns GHM-issued tokens', async () => {
+  const authService: GhmAuthService & { register: NonNullable<GhmAuthService['register']> } = {
+    register: async (input) => {
+      assert.equal(input.email, 'new@example.com');
+      assert.equal(input.password, 'CorrectHorse1');
+      assert.equal(input.role, 'business');
+      return sampleTokens({ accountId: 88, sessionId: 99 });
+    },
+    login: async () => sampleTokens(),
+    refresh: async () => sampleTokens(),
+    logout: async () => undefined,
+  };
+  const { server, baseUrl } = await startApp(authService);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/auth/register`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'new@example.com', password: 'CorrectHorse1', role: 'business' }),
+    });
+    assert.equal(response.status, 201);
+    assert.deepEqual(await response.json(), sampleTokens({ accountId: 88, sessionId: 99 }));
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
 test('POST /api/v1/auth/login returns tokens for valid credentials', async () => {
   const authService: GhmAuthService = {
     login: async (email, password) => {
