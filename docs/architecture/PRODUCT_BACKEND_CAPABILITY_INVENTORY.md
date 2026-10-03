@@ -138,7 +138,7 @@ QUALIFIED CONSTRUCTION
   Connect service HTTP read boundary (saved_business.read)
   Connect service assertion replay protection
   Connect Business Offering adapter seam
-  Connect Business Capability read adapter seam (constructed; pending local qualification)
+  Connect Business Capability read adapter seam (qualified construction)
 
 REQUIRES FUTURE GOVERNED WORK (NOT CURRENTLY AUTHORIZED)
   Trust score / Trust evidence
