@@ -1,6 +1,6 @@
 # QuoteFlow → GHM Account Onboarding and Migration Boundary
 
-**Status:** ARCHITECTURE CONTRACT — QUALIFICATION PENDING
+**Status:** ARCHITECTURE CONTRACT — CONSTRUCTION QUALIFICATION IN PROGRESS
 
 ## Decision
 
@@ -93,6 +93,23 @@ The next implementation slice is a narrowly scoped GHM account-onboarding capabi
 - tests and documentation.
 
 No production cutover is included.
+
+## Construction qualification decisions
+
+The account-onboarding implementation now uses the existing GHM Auth foundation rather than introducing a second authentication protocol:
+
+- Registration endpoint: `POST /api/v1/auth/register`.
+- Success: HTTP `201` with the same GHM access/refresh token envelope used by login.
+- Default registration role: `customer`; accepted explicit role values are `customer` and `business`.
+- Registration creates exactly one `account_identity` plus one password credential atomically and creates **no** Business or membership.
+- Duplicate normalized login email: HTTP `409` / `ACCOUNT_ALREADY_EXISTS`.
+- Invalid registration shape: HTTP `400` / `invalid_request`.
+- Password policy failure: HTTP `400` / `PASSWORD_POLICY_VIOLATION`.
+- Registration is rate-limited by the existing 10 requests / 15 minutes per-IP Auth limiter. This is an implementation reuse, not a new security threshold.
+- Account creation fails closed if the registration persistence capability is unavailable.
+- Existing-user migration still requires explicit legacy provenance and verified password reset/re-enrollment where password-hash migration is unsupported.
+
+The persistence primitive is SECURITY DEFINER and runtime-executable only. It does not grant direct runtime table DML and does not create membership.
 
 ## Non-goals
 
