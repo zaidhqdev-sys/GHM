@@ -60,4 +60,8 @@ Base: `d07deb019cea2dd18316f36040d9626ca78f9754`
 
 Tests added in `src/http/business-offering-router.test.ts` cover public access, invalid identifiers, private role gating, context/input binding, not-found handling, create/update allowlists, and customer denial.
 
-Validation evidence:\n- `npm test`: 487 passed, 0 failed, 0 cancelled, 0 skipped, 0 todo\n- `npm run build`: PASS\n\nMerge gate: founder-approved and executed after repository reconciliation.
+Validation evidence:
+- `npm test`: 487 passed, 0 failed, 0 cancelled, 0 skipped, 0 todo
+- `npm run build`: PASS
+
+Merge gate: founder-approved and executed after repository reconciliation.
