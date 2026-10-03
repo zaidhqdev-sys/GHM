@@ -60,7 +60,7 @@ The following GHM construction capabilities have now been implemented and qualif
 - Resource API boundary
 - Operational boundary
 
-These qualifications establish GHM capability construction only. The Connect Saved Business adapter is constructed and unit-qualified as a governed product/resource seam. The Connect Business Offering adapter is also construction-qualified as an explicit capability seam with business/admin role enforcement before canonical service access. The Connect integration lifecycle authority is construction-qualified as a persistent service-trust prerequisite.
+These qualifications establish GHM capability construction only. The Connect Saved Business adapter is constructed and unit-qualified as a governed product/resource seam. The Connect Business Offering adapter is also construction-qualified as an explicit capability seam with business/admin role enforcement before canonical service access. The Connect Business Capability read adapter is constructed as a bounded assertion-read seam; nested Capability/Evidence projection remains separately governed. The Connect integration lifecycle authority is construction-qualified as a persistent service-trust prerequisite.
 
 Connect trusted request context establishment, governed operation resolution, GHM authorization binding, resource capability dispatch, and the first saved_business.read service HTTP boundary are now construction-qualified bounded prerequisites. The HTTP slice is service-to-service only and does not establish production readiness, mutation transport, or product cutover. Durable service-assertion replay protection is separately construction-qualified.
 
@@ -138,6 +138,7 @@ QUALIFIED CONSTRUCTION
   Connect service HTTP read boundary (saved_business.read)
   Connect service assertion replay protection
   Connect Business Offering adapter seam
+  Connect Business Capability read adapter seam (qualified construction)
 
 REQUIRES FUTURE GOVERNED WORK (NOT CURRENTLY AUTHORIZED)
   Trust score / Trust evidence

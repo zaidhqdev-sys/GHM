@@ -16,7 +16,7 @@ The sequence remains the architecture-level gate order. Individual gates may hav
 6. **Automated qualification** — build and negative security/runtime checks run deterministically in CI. **Construction checks exist and are passing for the current branch state; they do not close production gates.**
 7. **Database reconciliation** — actual GHM PostgreSQL catalog evidence is captured and reconciled before dependent product/business migrations are authored. **Dedicated-schema catalog reconciliation and Business Identity runtime qualification are PASS for the current construction slice. The existing catalog artifact remains an app-role-scoped snapshot captured through `DATABASE_URL` (`ghm_app_user` → `ghm_db_user`), not an authoritative full-database catalog. Canonical GHM recovery has also been captured separately through the dedicated migrator/schema-owner path. Remaining work is provider/bootstrap authority limits, legacy authority cleanup, and subsequent governed resource slices.**
 7a. **Business Offering resource slice** — migration, repository, service, registry, and runtime privilege boundary are **CLOSED / PASS**. Live PostgreSQL qualification passed on 2026-10-01; public HTTP exposure remains separately gated.
-8. **Product adapters** — governed Connect capability seams may be construction-qualified only after their concrete backend contracts and authorization boundaries are evidenced. **Connect Business Offering capability adapter: CLOSED / PASS for construction qualification. Broader adapters and QuoteFlow remain governed work; this does not authorize cutover.**
+8. **Product adapters** — governed Connect capability seams may be construction-qualified only after their concrete backend contracts and authorization boundaries are evidenced. **Connect Business Offering capability adapter: CLOSED / PASS for construction qualification. Connect Business Capability read adapter: CLOSED / PASS for construction qualification. Broader adapters and QuoteFlow remain governed work; this does not authorize cutover.**
 9. **Shadow qualification** — product workflows are exercised against GHM while Supabase remains authoritative. **Not started.**
 10. **Controlled cutover** — migrate one product at a time with an explicit rollback path. **Not started; production remains on Supabase.**
 
@@ -26,6 +26,10 @@ The sequence remains the architecture-level gate order. Individual gates may hav
 
 The explicit Connect Business Offering capability seam is construction-qualified. The adapter binds the resolved resource/capability/operation, requires an authenticated `business` or `admin` role before service access, validates identifiers, delegates to the canonical Business Offering service, and rejects customer context before any service call. Local validation passed 504/504 tests. This seam does not authorize production traffic, shadow qualification, or Supabase replacement.
 
+
+### Connect Business Capability Read Adapter: CLOSED / PASS
+
+The Connect Business Capability read seam has been constructed as a bounded adapter. It binds `business_capability.read` to the `business_capability` resource and `read` operation, validates the business identifier, and delegates to the canonical GHM Business Capability service. GHM repository authorization remains authoritative for active-business membership. Connect currently projects nested Capability and Business Capability Evidence data; those projections are deliberately not fabricated here because GHM has no separately qualified projection contract. Local qualification passed 510/510 tests. This seam does not reproduce Connect's nested Capability/Evidence projection and therefore does not authorize production replacement of that richer Connect projection.
 
 ### Dedicated Schema → Business Identity Runtime: CLOSED / PASS
 
