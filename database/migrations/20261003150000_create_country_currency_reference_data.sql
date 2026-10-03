@@ -88,5 +88,6 @@ create index if not exists country_default_currency_id_idx on ghm.country(defaul
 grant usage on schema ghm to ghm_runtime;
 grant select on table ghm.currency, ghm.country to ghm_runtime;
 revoke insert, update, delete, truncate, references, trigger on table ghm.currency, ghm.country from ghm_runtime;
+revoke usage, select, update on sequence ghm.currency_id_seq, ghm.country_id_seq from ghm_runtime;
 
 commit;
