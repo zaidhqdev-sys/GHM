@@ -66,7 +66,7 @@ QUALIFIED CONSTRUCTION
   Saved Business
   Business Offering
   Connect Business Offering adapter seam
-  Connect Business Capability read adapter seam (constructed; pending local qualification)
+  Connect Business Capability read adapter seam (qualified construction)
   Resource API boundary
   Operational boundary
 
