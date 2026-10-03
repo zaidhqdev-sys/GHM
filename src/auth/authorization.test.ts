@@ -20,7 +20,7 @@ test('all declared resources are accessible by the current construction primitiv
   }
 });
 
-test('Commercial is a coarse authorized resource for every authenticated GHM role', () => {
+test('Business Offering access is available to business operators and admin, not customer', () => {\n  assert.equal(canAccessResource(contexts.admin, 'business_offering'), true);\n  assert.equal(canAccessResource(contexts.business, 'business_offering'), true);\n  assert.equal(canAccessResource(contexts.customer, 'business_offering'), false);\n});\n\ntest('Commercial is a coarse authorized resource for every authenticated GHM role', () => {
   assert.equal(canAccessResource(contexts.admin, 'commercial'), true);
   assert.equal(canAccessResource(contexts.customer, 'commercial'), true);
   assert.equal(canAccessResource(contexts.business, 'commercial'), true);
