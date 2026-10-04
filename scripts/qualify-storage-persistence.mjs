@@ -75,13 +75,13 @@ try {
   evidence.push({ label: "direct table DML privileges", status: "OBSERVED", ...tablePrivileges.rows[0] });
 
   const probe = await q(`
-    select ghm.storage_create_pending(
+    select (ghm.storage_create_pending(
       $1, 'qualification', 0, 'qualification_probe',
       'qualification/probe-' || gen_random_uuid()::text,
       'image/png', 1, 'private', 'probe.png'
-    ) as row
+    )).id as object_id
   `, [tenantBusinessId]);
-  const objectId = probe.rows[0].row?.id ?? probe.rows[0].row;
+  const objectId = probe.rows[0].object_id;
   if (objectId === null || objectId === undefined) {
     throw new Error("storage_create_pending returned no object id");
   }
