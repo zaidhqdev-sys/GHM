@@ -55,6 +55,8 @@ import { registerReviewRoutes } from './review-router';
 import type { GhmAuthService } from '../auth/ghm-auth-service';
 import type { PasswordRecoveryService } from '../auth/password-recovery';
 import type { PasswordResetService } from '../auth/password-reset';
+import { createPasswordResetService } from '../auth/password-reset';
+import { PostgresAuthPersistence } from '../auth/foundation/persistence';
 import { PostgresProjectQuoteRepository } from '../resources/project-quote/repository';
 import { ProjectQuoteServiceImpl } from '../resources/project-quote/service';
 import type { ProjectQuoteService } from '../resources/project-quote/contracts';
@@ -644,10 +646,13 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerNotificationRoutes(app, notificationService, resourceAuthMiddleware);
   registerBusinessCategoryRoutes(app, businessCategoryService, resourceAuthMiddleware);
   registerBusinessOfferingRoutes(app, businessOfferingService, resourceAuthMiddleware);
+  const passwordResetService =
+    dependencies.passwordResetService
+    ?? createPasswordResetService(new PostgresAuthPersistence());
   registerAuthRoutes(app, {
     authService: dependencies.authService,
     passwordRecoveryService: dependencies.passwordRecoveryService,
-    passwordResetService: dependencies.passwordResetService,
+    passwordResetService,
   } satisfies AuthRouterDependencies);
   registerConnectServiceRoutes(app, {
     ...dependencies.connectService,
