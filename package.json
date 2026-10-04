@@ -48,7 +48,8 @@
     "qualify:quoteflow-migration-reset-reenrollment-db": "npm run build && node scripts/qualify-quoteflow-migration-reset-reenrollment-db.mjs",
     "qualify:quoteflow-migration-reset-enrollment-db": "npm run build && node scripts/qualify-quoteflow-migration-reset-enrollment-db.mjs && node --require ./scripts/test-env.cjs --test dist/migrations/quoteflow-migration-reset-enrollment.test.js",
     "qualify:quoteflow-migration-reset-ceremony-db": "npm run build && node scripts/qualify-quoteflow-migration-reset-ceremony-db.mjs && node --require ./scripts/test-env.cjs --test dist/migrations/quoteflow-migration-reset-recovery.test.js dist/migrations/quoteflow-migration-reset-completion.test.js dist/http/auth-router.test.js",
-    "audit:legacy-object-disposition": "npm run build && node scripts/audit-legacy-object-disposition.mjs"
+    "audit:legacy-object-disposition": "npm run build && node scripts/audit-legacy-object-disposition.mjs",
+    "audit:legacy-data-disposition": "npm run build && node scripts/audit-legacy-data-disposition.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",
@@ -75,4 +76,4 @@
   "engines": {
     "node": ">=18.0.0"
   }
-}
+}\n
