@@ -1,6 +1,6 @@
 # QuoteFlow Migration Reset / Re-enrollment Documentation Reconciliation
 
-**Status: DOCUMENTATION RECONCILED — DB QUALIFICATION EXECUTION PENDING**
+**Status: DOCUMENTATION RECONCILED — DB QUALIFICATION PASSED**
 
 ## Scope
 
@@ -43,10 +43,10 @@ The construction branch contains:
 
 ### Pending execution
 
-- [ ] Run the DB-backed QuoteFlow reset/re-enrollment qualification against the governed construction database.
-- [ ] Record the DB qualification result and commit/reference it in this reconciliation.
-- [ ] Reconcile the ceremony checkboxes with the actual DB qualification result.
-- [ ] Merge only after the DB qualification passes and the remaining founder gates are explicitly preserved.
+- [x] Run the DB-backed QuoteFlow reset/re-enrollment qualification against the governed construction database.
+- [x] Record the DB qualification result and run ID `c5244bf7-0542-4e60-86fc-9f8ce9f52f39` in this reconciliation.
+- [x] Reconcile the ceremony checkboxes with the actual DB qualification result.
+- [ ] Merge only after the final PR diff and remaining founder gates are explicitly reviewed.
 
 ## Important boundary
 
@@ -74,6 +74,8 @@ PR merge requires:
 
 ## Decision
 
-The implementation is ready for DB-backed qualification, **not yet for merge**.
+The implementation is **DB-qualified** and ready for final PR review. The qualification passed after recovery expiry was derived from the database transaction clock; the database ordering constraint remains unchanged.
 
-The next action is to pull the corrected construction branch and rerun the existing qualification artifact. The DB qualification remains pending until that execution passes; the timestamp constraint must not be weakened or removed to obtain a pass.
+Qualification evidence: `c5244bf7-0542-4e60-86fc-9f8ce9f52f39` — PASS. Checks covered synthetic credentialless migration account, Argon2id password establishment, existing session revocation, legacy external identity preservation, recovery single-use, transaction rollback, expired recovery rejection, and runtime secret-table DML sealing.
+
+The remaining decision is final PR review/merge only. Production delivery, production migration, and QuoteFlow runtime cutover remain founder-gated.
