@@ -1,6 +1,6 @@
 # QuoteFlow Existing-User Migration Boundary
 
-**Status:** ARCHITECTURE DECISION — MIGRATION BOUNDARY SELECTED; PROVISIONING STILL SEPARATELY GATED
+**Status: ARCHITECTURE DECISION — MIGRATION BOUNDARY SELECTED; PROVISIONING STILL SEPARATELY GATED**
 
 GHM is the canonical runtime owner for QuoteFlow authentication and account identity. Existing QuoteFlow Supabase Auth state is legacy migration input only.
 
@@ -27,31 +27,13 @@ For each legacy user:
 7. Establish a fresh GHM session only after a verified GHM credential/re-enrollment path exists.
 8. Treat email as metadata/login credential, not identity-link authority. Email-only matching is prohibited.
 
-## Verified external-identity primitive
+## Current qualified execution slices
 
-The canonical current mutation primitive is:
+The migration snapshot validator and deterministic dry-run manifest are qualified.
 
-ghm.auth_link_external_identity(provider, subject, account_id)
+The existing-account reconciliation executor is qualified and invokes only the existing idempotent external-identity link capability.
 
-It requires an existing GHM account and returns created, already_linked, conflict, or account_not_found.
-
-It does not create accounts, match by email, merge/move mappings, or change account status.
-
-The previously referenced auth_bootstrap_external_identity function is not a current canonical capability and must not be used or referenced as an executable migration primitive.
-
-## Current qualified execution slice
-
-The migration reconciliation executor now consumes a validated dry-run manifest plus explicit account resolutions and invokes only the already-qualified external identity link capability.
-
-Qualified behavior:
-
-- new mapping → created → RESET_REQUIRED or MIGRATED according to the reviewed credential disposition;
-- exact existing mapping → already_linked and safe to repeat;
-- unresolved account → BLOCKED with no mutation attempt;
-- incompatible mapping → CONFLICT with no overwrite;
-- no account creation, credential creation, session issuance, Business mutation, membership mutation, or role translation.
-
-This proves the legacy provenance reconciliation seam without inventing an account-provisioning primitive.
+The migration account provisioning contract is now defined and synthetically qualified. It deliberately separates credentialless migration provisioning from public registration and requires account creation plus external-identity linking to be one atomic operation.
 
 ## Migration outcomes
 
@@ -110,13 +92,11 @@ No permanent UUID bridge, Supabase JWT import, unsupported password-hash import,
 - [ ] local AsyncStorage scope transition defined.
 - [x] snapshot validator and dry-run manifest capability qualified.
 - [x] existing-account external-identity reconciliation executor qualified.
-- [ ] GHM migration account provisioning capability separately qualified.
+- [x] migration account provisioning contract synthetically qualified.
+- [ ] GHM migration account provisioning database capability qualified.
+- [ ] password reset/re-enrollment execution qualified.
 - [ ] QuoteFlow GHM session client separately qualified.
 - [ ] end-to-end cutover qualification separately qualified.
-
-## Current construction result
-
-Synthetic non-production snapshot validation, deterministic dry-run manifest generation, and existing-account external-identity reconciliation are now executable and qualified. No production source access, credential extraction, or production GHM mutation occurred.
 
 ## Founder gate
 
