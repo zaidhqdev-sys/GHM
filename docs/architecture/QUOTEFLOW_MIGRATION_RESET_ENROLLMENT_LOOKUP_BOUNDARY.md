@@ -132,7 +132,7 @@ Non-production DB qualification has passed. The qualification proved the synthet
 
 The migration-approved email source has been reconciled to the existing qualified QuoteFlow migration manifest/source-export contract. The approved email remains migration enrollment metadata and does not become GHM runtime identity authority.
 
-The implementation and non-production qualification now prove:
+The implementation now preserves the already-applied lookup migration checksum and adds a follow-on migration for the approved-email return column. The implementation and non-production qualification now prove:
 
 - one synthetic source user resolves to one approved enrollment;
 - exact retry registration is idempotent;
