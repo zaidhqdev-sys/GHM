@@ -90,15 +90,26 @@ The canonical construction is now:
 - Account creation fails closed if the registration persistence capability is unavailable.
 - The persistence primitive is `SECURITY DEFINER`, owned by `ghm_schema_owner`, with `EXECUTE` granted to `ghm_runtime`; it does not grant direct runtime table DML.
 
-The registration service, persistence boundary, HTTP boundary, password policy, duplicate-email behavior, no-membership invariant, and rate-limit behavior are covered by the construction qualification suite.
+The registration service, persistence boundary, HTTP boundary, password policy, duplicate-email behavior, no-membership invariant, rate-limit behavior, and database-backed Auth foundation are covered by the construction qualification suite.
 
 ## Qualification result
 
-Construction qualification is complete on the branch represented by the onboarding PR, subject to the database-backed Auth foundation test being executed against the configured runtime/migrator database rather than skipped for unavailable configuration.
+**Construction qualification is complete.**
 
-The full local suite reached **502 passing, 0 failing, 1 skipped** before this test-environment reconciliation. The skipped test is the database-backed Auth foundation suite; it intentionally skips when the Auth schema/functions are unavailable or the required runtime/migrator database URLs are absent. The implementation does not treat that skip as a successful database qualification.
+The qualification database was reconciled through the canonical migration runner, which applied the new registration migration `20261004020000_create_auth_account_registration.sql`. Existing documented historical migration checksum exceptions were accepted by the migration runner; no undocumented checksum drift was introduced by this slice.
 
-The test preload has therefore been corrected to load the local dotenv configuration before applying fallback defaults. The next local qualification must confirm that the database-backed suite executes rather than skips and must pass against the intended runtime/migrator separation.
+The resulting full local qualification suite completed:
+
+- **518 tests**
+- **518 passing**
+- **0 failing**
+- **0 skipped**
+- **0 cancelled**
+- **0 todo**
+
+The database-backed Auth foundation suite executed against the configured runtime/migrator separation rather than skipping. It qualified canonical account creation, duplicate-email behavior, no-membership invariant, Auth persistence/runtime ACLs, session/refresh behavior, replay handling, expiry/disable behavior, recovery behavior, external-identity migration functions, business external mapping, and password persistence.
+
+The test preload was corrected to load local dotenv configuration before fallback defaults so database-backed qualification can use the configured runtime/migrator separation.
 
 ## Non-goals
 
@@ -125,8 +136,8 @@ Before PR merge:
 - [x] legacy account provenance semantics selected;
 - [x] legacy organization → GHM Business reconciliation remains separately gated;
 - [x] GHM onboarding API/service implementation qualified by automated tests;
-- [ ] database-backed Auth foundation suite executes against the intended runtime/migrator database and passes;
-- [ ] final full-suite result has no unexpected skip;
+- [x] database-backed Auth foundation suite executes against the intended runtime/migrator database and passes;
+- [x] final full-suite result has no unexpected skip;
 - [x] documentation reconciled with current construction evidence;
 - [x] QuoteFlow production migration remains separately gated.
 
