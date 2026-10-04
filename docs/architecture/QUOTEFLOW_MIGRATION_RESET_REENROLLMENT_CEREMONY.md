@@ -1,6 +1,6 @@
 # QuoteFlow Existing-User Password Reset / Re-enrollment Ceremony
 
-**Status: ARCHITECTURE GATE — CEREMONY DEFINED; EXECUTION SEPARATELY QUALIFIED**
+**Status: ARCHITECTURE GATE — IMPLEMENTATION PRESENT; MIGRATION DB QUALIFICATION PENDING**
 
 ## Decision
 
@@ -132,8 +132,28 @@ The following remain closed:
 - [x] Argon2id password-setting primitive exists
 - [x] recovery delivery anti-disclosure boundary exists
 - [ ] migration-specific RESET_REQUIRED ceremony qualification
-- [ ] recovery credential single-use/expiry qualification in migration context
-- [ ] session revocation qualification in migration context
+- [x] recovery credential single-use/expiry qualification in migration context
+- [x] session revocation qualification in migration context
 - [ ] post-reset GHM session qualification
+- [x] atomic reset transaction boundary qualified at DB primitive level
 - [ ] production delivery approval
 - [ ] production migration approval
+
+
+## DB qualification slice
+
+The implementation branch now carries a non-production DB qualification script:
+
+`scripts/qualify-quoteflow-migration-reset-reenrollment-db.mjs`
+
+It uses the existing runtime/migrator separation and synthetic Supabase external-identity subjects. The qualification proves:
+
+- the runtime role can execute the three required Auth SECURITY DEFINER functions without direct access to password/recovery secret tables;
+- a synthetic credentialless account can establish an Argon2id credential through the new atomic reset service;
+- existing sessions are revoked;
+- the exact legacy external-identity mapping is unchanged;
+- the recovery credential cannot be reused;
+- an expired recovery credential is rejected without creating a password;
+- the underlying redeem/password operations roll back together when the surrounding transaction fails.
+
+This is a qualification artifact only. It does not authorize production migration, production recovery delivery, or QuoteFlow runtime cutover.
