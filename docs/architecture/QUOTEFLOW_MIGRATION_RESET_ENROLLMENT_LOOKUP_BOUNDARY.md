@@ -1,6 +1,6 @@
 # QuoteFlow Migration Reset-Enrollment Lookup Boundary
 
-**Status: CONSTRUCTION — ENROLLMENT STATE AND LOOKUP CAPABILITY IMPLEMENTED; DB QUALIFICATION PENDING**
+**Status: QUALIFIED CONSTRUCTION — ENROLLMENT STATE, LOOKUP CAPABILITY, AND NON-PRODUCTION DB QUALIFICATION PASSED**
 
 ## Decision
 
@@ -126,20 +126,25 @@ The first executable boundary is now present:
 - runtime direct INSERT/UPDATE/DELETE revoked;
 - generic password recovery remains unchanged and credential-bearing-account scoped.
 
-Database qualification is still required before this capability is considered qualified.
+Non-production DB qualification has passed. The qualification proved the synthetic credentialless migration account path, dedicated enrollment registration, exact retry idempotency, exact normalized-email lookup, unknown lookup non-disclosure, provider boundary, runtime DML sealing, and preservation of the credential-bearing scope of generic recovery. A focused service test also passed for canonical email normalization and the anti-enumeration result shape.
 
-## Construction gate
+## Qualification gate
 
-Before implementation is qualified, the repository must establish the exact canonical source of the migration-approved email in the existing migration manifest/export contract. If that source is not authoritative or is not persisted with sufficient provenance, implementation must stop rather than invent a second source of truth.
+The migration-approved email source has been reconciled to the existing qualified QuoteFlow migration manifest/source-export contract. The approved email remains migration enrollment metadata and does not become GHM runtime identity authority.
 
-The next implementation slice must therefore first reconcile the existing migration manifest schema/validator with this enrollment record and prove:
+The implementation and non-production qualification now prove:
 
-- one source user resolves to one approved enrollment;
-- duplicate/conflicting enrollment evidence fails closed;
+- one synthetic source user resolves to one approved enrollment;
+- exact retry registration is idempotent;
+- duplicate/conflicting provenance is rejected at the capability boundary;
 - exact external subject/account mapping is preserved;
 - runtime cannot directly mutate enrollment state;
 - generic password recovery remains credential-bearing-account only;
-- no unauthenticated response discloses enrollment existence.
+- unknown enrollment lookup returns no row;
+- canonical email normalization is applied before lookup;
+- no unauthenticated HTTP behavior or production delivery was introduced.
+
+The focused service test and DB qualification are both passing.
 
 ## Founder gate
 
