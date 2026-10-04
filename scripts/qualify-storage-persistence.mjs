@@ -81,7 +81,10 @@ try {
       'image/png', 1, 'private', 'probe.png'
     ) as row
   `, [tenantBusinessId]);
-  const objectId = probe.rows[0].row.id;
+  const objectId = probe.rows[0].row?.id ?? probe.rows[0].row;
+  if (objectId === null || objectId === undefined) {
+    throw new Error("storage_create_pending returned no object id");
+  }
   evidence.push({ label: "create pending through canonical function", status: "PASS", object_id: objectId });
 
   await expectFailure("pending object cannot be marked deleted directly", async () => {
