@@ -19,6 +19,10 @@ The audit inspects:
 - same-name objects under canonical `ghm`;
 - routine definitions referencing legacy role names.
 
+## Implementation note
+
+PostgreSQL aggregate catalog entries are excluded from function-definition inspection because `pg_get_functiondef` is not valid for aggregate objects. Ordinary functions and procedures remain in scope.
+
 ## Safety
 
 This harness is catalog/read-only plus SELECT row counts. It performs no DDL, GRANT, REVOKE, role change, ownership change, DELETE, UPDATE, INSERT, or data migration.
