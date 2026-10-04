@@ -34,3 +34,7 @@ No legacy role retirement, ownership transfer, or legacy-object removal is autho
 ## Decision
 
 **DISPOSITION PENDING** until the live evidence is reconciled.
+
+## Exact row counts
+
+The audit uses a fixed, explicit UNION query for the five known legacy tables. PostgreSQL does not permit a table identifier to be supplied through a value parameter; the earlier parameterized identifier form was invalid and has been removed.
