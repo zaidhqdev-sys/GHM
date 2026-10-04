@@ -107,6 +107,12 @@ try {
     ORDER BY tablename,policyname
   `);
 
+  // Legacy tables may retain historical RLS policies that call app.current_user_id.
+  // Run aggregate counts under the non-login schema owner, which is the canonical
+  // catalog/schema authority and is already an approved SET ROLE target for the migrator.
+  await c.query('SET ROLE ghm_schema_owner');
+  const countExecutionRole=await q("SELECT current_user");
+
   const counts=await q(`
     SELECT 'users' AS object_name,count(*)::bigint AS row_count FROM public.users
     UNION ALL
