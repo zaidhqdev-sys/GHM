@@ -18,7 +18,7 @@ export const createQuoteFlowMigrationResetEnrollmentService = (
 ) => ({
   async lookup(email: string): Promise<QuoteFlowMigrationResetEnrollmentResult> {
     const normalized = normalizeLoginEmail(email);
-    const match = await store.lookupQuoteFlowMigrationResetEnrollment(normalized.loginEmail);
+    const match = await store.lookupQuoteFlowMigrationResetEnrollment(normalized.loginEmailNormalized);
     if (!match) return { eligible: false, enrollmentId: null, accountId: null };
     return { eligible: true, enrollmentId: match.enrollmentId, accountId: match.accountId };
   },
