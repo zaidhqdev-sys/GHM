@@ -42,7 +42,7 @@ export class PostgresBusinessOfferingRepository implements BusinessOfferingRepos
 
   async listBusinessOfferings(context: AuthContext, input: { businessId: number; activeOnly?: boolean }) {
     return withAuthorizedTransaction(context, async client => {
-      const tenant = await resolveTenantContext(client, context, input.businessId);
+      await resolveTenantContext(client, context, input.businessId);
       const result = await client.query(`SELECT ${COLUMNS} FROM ghm.business_offering WHERE business_id = $1 ${input.activeOnly === false ? '' : 'AND is_active = true'} ORDER BY sort_order, name, id`, [input.businessId]);
       return result.rows.map(mapOffering);
     }, this.transactionPool);
@@ -50,7 +50,7 @@ export class PostgresBusinessOfferingRepository implements BusinessOfferingRepos
 
   async getBusinessOfferingBySlug(context: AuthContext, businessId: number, slug: string) {
     return withAuthorizedTransaction(context, async client => {
-      const tenant = await resolveTenantContext(client, context, businessId);
+      await resolveTenantContext(client, context, businessId);
       const result = await client.query(`SELECT ${COLUMNS} FROM ghm.business_offering WHERE business_id = $1 AND slug = $2`, [businessId, slug]);
       return result.rowCount === 1 ? mapOffering(result.rows[0]) : null;
     }, this.transactionPool);
