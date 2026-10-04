@@ -6,11 +6,11 @@ function deps() {
   const calls: string[] = [];
   const record = {
     id: "object-1",
-    businessId: "b1",
+    businessId: "1",
     resourceType: "business",
-    resourceId: "b1",
+    resourceId: "1",
     objectClass: "business_logo" as const,
-    providerKey: "business/b1/object-1",
+    providerKey: "media/logos/1/550e8400-e29b-41d4-a716-446655440000",
     contentType: "image/png",
     byteSize: 100,
     visibility: "public" as const,
@@ -56,8 +56,8 @@ test("storage service rejects unsupported content type before any side effect", 
   const d = deps();
   const service = createStorageService(d);
   await assert.rejects(service.createUpload({
-    caller: { userId: "u1", businessId: "b1" },
-    resource: { type: "business", id: "b1", businessId: "b1" },
+    caller: { userId: "u1", businessId: "1" },
+    resource: { type: "business", id: "1", businessId: "1" },
     objectClass: "business_logo",
     contentType: "application/pdf",
     byteSize: 10,
