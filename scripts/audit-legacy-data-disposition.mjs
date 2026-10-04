@@ -87,12 +87,23 @@ try{
     FROM public.files
   `);
 
+  const resetColumns=new Set(columns.filter((row)=>row.table_name==='password_reset_tokens').map((row)=>row.column_name));
+  const resetExpressions=[
+    'count(*)::bigint AS reset_token_rows',
+    resetColumns.has('expires_at')
+      ? 'count(*) FILTER (WHERE expires_at < CURRENT_TIMESTAMP)::bigint AS expired_tokens'
+      : 'NULL::bigint AS expired_tokens',
+    resetColumns.has('used_at')
+      ? 'count(*) FILTER (WHERE used_at IS NOT NULL)::bigint AS used_tokens'
+      : 'NULL::bigint AS used_tokens',
+    resetColumns.has('expires_at') && resetColumns.has('used_at')
+      ? 'count(*) FILTER (WHERE expires_at >= CURRENT_TIMESTAMP AND used_at IS NULL)::bigint AS active_unused_tokens'
+      : resetColumns.has('expires_at')
+        ? 'count(*) FILTER (WHERE expires_at >= CURRENT_TIMESTAMP)::bigint AS active_unused_tokens'
+        : 'NULL::bigint AS active_unused_tokens'
+  ];
   const resetData=await q(`
-    SELECT
-      count(*)::bigint AS reset_token_rows,
-      count(*) FILTER (WHERE expires_at < CURRENT_TIMESTAMP)::bigint AS expired_tokens,
-      count(*) FILTER (WHERE used_at IS NOT NULL)::bigint AS used_tokens,
-      count(*) FILTER (WHERE expires_at >= CURRENT_TIMESTAMP AND used_at IS NULL)::bigint AS active_unused_tokens
+    SELECT ${resetExpressions.join(',\n      ')}
     FROM public.password_reset_tokens
   `);
 
