@@ -1,0 +1,17 @@
+import 'dotenv/config';
+import { Client } from 'pg';
+const url=process.env.GHM_MIGRATOR_DATABASE_URL?.trim()||process.env.DATABASE_URL?.trim();
+if(!url) throw new Error('Missing GHM_MIGRATOR_DATABASE_URL or DATABASE_URL');
+const c=new Client({connectionString:url,ssl:{rejectUnauthorized:false}});
+const q=sql=>c.query(sql).then(r=>r.rows);
+try{
+ await c.connect();
+ const roles=await q("SELECT rolname,rolsuper,rolinherit,rolcreaterole,rolcreatedb,rolcanlogin,rolreplication,rolbypassrls FROM pg_roles WHERE rolname IN ('ghm_app_user','ghm_db_user','ghm_runtime','ghm_migrator','ghm_schema_owner') ORDER BY rolname");
+ const membership=await q("SELECT member.rolname AS member,parent.rolname AS granted_role,m.admin_option,member.rolinherit FROM pg_auth_members m JOIN pg_roles member ON member.oid=m.member JOIN pg_roles parent ON parent.oid=m.roleid WHERE member.rolname IN ('ghm_app_user','ghm_runtime','ghm_migrator','ghm_schema_owner') OR parent.rolname IN ('ghm_app_user','ghm_db_user','ghm_runtime','ghm_migrator','ghm_schema_owner') ORDER BY member.rolname,parent.rolname");
+ const ownership=await q("SELECT n.nspname AS schema_name,c.relname AS object_name,c.relkind,r.rolname AS owner FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_roles r ON r.oid=c.relowner WHERE r.rolname IN ('ghm_app_user','ghm_db_user') ORDER BY n.nspname,c.relname");
+ const schema=await q("SELECT r.rolname AS role_name,n.nspname AS schema_name,has_schema_privilege(r.rolname,n.oid,'USAGE') AS usage,has_schema_privilege(r.rolname,n.oid,'CREATE') AS create_priv FROM pg_roles r CROSS JOIN pg_namespace n WHERE r.rolname IN ('ghm_app_user','ghm_db_user','ghm_runtime','ghm_migrator','ghm_schema_owner') AND n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema' ORDER BY r.rolname,n.nspname");
+ const table=await q("SELECT table_schema AS schema_name,table_name,grantee,privilege_type,is_grantable FROM information_schema.role_table_grants WHERE grantee IN ('ghm_app_user','ghm_db_user','ghm_runtime','ghm_migrator','ghm_schema_owner') AND table_schema NOT IN ('pg_catalog','information_schema') ORDER BY grantee,table_schema,table_name,privilege_type");
+ const routine=await q("SELECT routine_schema AS schema_name,routine_name,grantee,privilege_type,is_grantable FROM information_schema.routine_privileges WHERE grantee IN ('ghm_app_user','ghm_db_user','ghm_runtime','ghm_migrator','ghm_schema_owner') AND routine_schema NOT IN ('pg_catalog','information_schema') ORDER BY grantee,routine_schema,routine_name,privilege_type");
+ const db=await q("SELECT rolname AS role_name,has_database_privilege(rolname,current_database(),'CONNECT') AS connect,has_database_privilege(rolname,current_database(),'CREATE') AS create_priv,has_database_privilege(rolname,current_database(),'TEMP') AS temp FROM pg_roles WHERE rolname IN ('ghm_app_user','ghm_db_user','ghm_runtime','ghm_migrator','ghm_schema_owner') ORDER BY rolname");
+ console.log(JSON.stringify({audit:'GHM legacy bootstrap authority audit',version:1,captured_at:new Date().toISOString(),mutation:false,roles,membership,ownership,schema_privileges:schema,table_privileges:table,routine_privileges:routine,database_privileges:db,decision:'DO_NOT_RETIRE_LEGACY_ROLES_FROM_THIS_AUDIT_ALONE'},null,2));
+}finally{await c.end().catch(()=>{});}
