@@ -4,7 +4,7 @@ import { createStorageService } from "./service.js";
 
 function deps() {
   const calls: string[] = [];
-  const record = {
+  const record: any = {
     id: "object-1",
     businessId: "1",
     resourceType: "business",
@@ -41,7 +41,7 @@ function deps() {
       async markAvailable() { calls.push("available"); return { ...record, status: "available" as const }; },
       async markDeletionPending() { calls.push("deletion-pending"); return { ...record, status: "deletion_pending" as const }; },
       async markDeleted() { calls.push("deleted"); return { ...record, status: "deleted" as const }; },
-      async getById() { calls.push("get"); return record; },
+      async getById() { calls.push("get"); return record as typeof record; },
     },
     authorization: {
       async assertCanManage() { calls.push("manage"); },
