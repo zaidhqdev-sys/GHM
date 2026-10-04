@@ -1,6 +1,8 @@
 # QuoteFlow Legacy Organization → GHM Business Reconciliation Contract
 
-**Status:** CONSTRUCTION QUALIFICATION — NON-PRODUCTION RECONCILIATION ONLY
+**Status:** CONSTRUCTION QUALIFIED — NON-PRODUCTION RECONCILIATION ONLY
+
+Qualification evidence: `e225ba4` — synthetic qualification PASS for all four outcomes; no mutation and no name/email matching.
 
 This contract defines the deterministic migration boundary for reconciling a legacy QuoteFlow organization to canonical GHM Business identity. It does not create Businesses, mutate production data, create memberships, or change QuoteFlow runtime behavior.
 
