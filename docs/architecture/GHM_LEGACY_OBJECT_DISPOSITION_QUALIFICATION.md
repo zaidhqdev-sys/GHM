@@ -33,3 +33,6 @@ The next mutation slice, if separately approved, must transfer/reconcile ownersh
 
 ## Documentation reconciliation
 This document is subordinate to the canonical database authority model, role-separation runbook, migration ownership model, and QuoteFlow migration provenance boundary. Historical legacy references remain valid evidence and must not be removed merely to satisfy static scanners.
+
+## TLS qualification
+The audit client uses the repository's `DATABASE_SSL` setting for the read-only legacy audit connection. TLS is never disabled by default; the audit does not weaken database transport security.
