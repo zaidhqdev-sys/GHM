@@ -88,7 +88,7 @@ try {
   await expectRejected(() => service.listBusinessOfferings(owner, { businessId: f.otherBusiness }), 'CROSS-BUSINESS READ REJECTION PASS', 'Business tenant access denied');
   await expectRejected(() => service.listBusinessOfferings(customer, { businessId: f.business }), 'CUSTOMER READ REJECTION PASS', 'Business tenant access denied');
   await expectRejected(() => service.createBusinessOffering(member, { businessId: f.business, name: 'Member', slug: `${marker}-member` }), 'NON-MANAGEMENT CREATE REJECTION PASS', 'Business management permission required');
-  await expectRejected(() => service.createBusinessOffering(outsider, { businessId: f.business, name: 'Outsider', slug: `${marker}-outsider` }), 'OUTSIDER CREATE REJECTION PASS', 'Business management permission required');
+  await expectRejected(() => service.createBusinessOffering(outsider, { businessId: f.business, name: 'Outsider', slug: `${marker}-outsider` }), 'OUTSIDER CREATE REJECTION PASS', 'Business tenant access denied');
 
   const created = await service.createBusinessOffering(owner, {
     businessId: f.business, offeringType: 'service', name: 'Primary Offering', slug: `${marker}-primary`,
