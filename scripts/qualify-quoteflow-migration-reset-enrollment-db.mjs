@@ -5,10 +5,16 @@ import 'dotenv/config';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
+const databaseSsl = process.env.DATABASE_SSL === 'true';
 assert(runtimeUrl && migratorUrl && runtimeUrl !== migratorUrl);
 
-const runtime = new Client({ connectionString: runtimeUrl });
-const migrator = new Client({ connectionString: migratorUrl });
+const clientOptions = (connectionString) => ({
+  connectionString,
+  ...(databaseSsl ? { ssl: { rejectUnauthorized: false } } : {}),
+});
+
+const runtime = new Client(clientOptions(runtimeUrl));
+const migrator = new Client(clientOptions(migratorUrl));
 const runId = randomUUID();
 const subject = `qualify-enrollment-${runId}`;
 const email = `quoteflow-${runId}@example.test`;
