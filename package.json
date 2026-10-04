@@ -46,7 +46,7 @@
     "qualify:quoteflow-migration-account-provisioning-db": "npm run build && node scripts/qualify-quoteflow-migration-account-provisioning-db.mjs",
     "qualify:quoteflow-business-migration-reconciliation": "node scripts/qualify-quoteflow-business-migration-reconciliation.mjs",
     "qualify:quoteflow-migration-reset-reenrollment-db": "npm run build && node scripts/qualify-quoteflow-migration-reset-reenrollment-db.mjs",
-    "qualify:quoteflow-migration-reset-enrollment-db": "npm run build && node scripts/qualify-quoteflow-migration-reset-enrollment-db.mjs"
+    "qualify:quoteflow-migration-reset-enrollment-db": "npm run build && node scripts/qualify-quoteflow-migration-reset-enrollment-db.mjs && node --require ./scripts/test-env.cjs --test dist/migrations/quoteflow-migration-reset-enrollment.test.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",
