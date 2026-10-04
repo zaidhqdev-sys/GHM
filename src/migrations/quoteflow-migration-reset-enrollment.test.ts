@@ -6,7 +6,7 @@ const calls: string[] = [];
 const service = createQuoteFlowMigrationResetEnrollmentService({
   async lookupQuoteFlowMigrationResetEnrollment(email) {
     calls.push(email);
-    if (email === 'eligible@example.com') return { enrollmentId: 41, accountId: 701 };
+    if (email === 'eligible@example.com') return { enrollmentId: 41, accountId: 701, approvedEmail: 'eligible@example.com' };
     return null;
   },
 });
