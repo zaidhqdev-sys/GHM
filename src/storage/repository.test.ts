@@ -33,6 +33,6 @@ test("storage metadata repository recognizes canonical missing-object error", as
       throw new Error("storage object does not exist");
     },
   };
-  const repo = createPostgresStorageMetadataStore({ userId: 1, role: "business" });
+  const repo = new TransactionalPostgresStorageMetadataStore({ userId: 1, role: "business" }, async (work) => work(client as any));
   assert.equal(await repo.getById("999"), null);
 });
