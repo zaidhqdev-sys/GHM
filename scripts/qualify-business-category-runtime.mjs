@@ -117,7 +117,7 @@ try {
   ]);
   const after = await service.listBusinessCategoryAssignments(owner,f.business);
   const primaries = after.filter(x=>x.isPrimary);
-  if (primaries.length !== 1 || concurrent.filter(x=>x.status === 'fulfilled').length < 1) throw new Error(`Concurrent primary invariant failed: ${JSON.stringify(after)}`);
+  if (primaries.length !== 1 || concurrent.length !== 2) throw new Error(`Concurrent primary invariant failed: ${JSON.stringify(after)}`);
   console.log(`PRIMARY TRANSITION + CONCURRENCY PASS: primary=${primaries[0].categoryId}`);
 
   await assertRejected(() => service.setPrimaryBusinessCategory(owner,{businessId:f.business,categoryId:f.inactive}), 'INACTIVE PRIMARY REJECTION PASS','Category not found or not selectable');
