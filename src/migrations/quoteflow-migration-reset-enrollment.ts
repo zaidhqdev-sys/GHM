@@ -1,4 +1,3 @@
-import type { PostgresAuthPersistence } from '../auth/foundation/persistence.js';
 import { normalizeLoginEmail } from '../auth/foundation/email-normalization.js';
 
 export interface QuoteFlowMigrationResetEnrollmentStore {
@@ -20,13 +19,7 @@ export const createQuoteFlowMigrationResetEnrollmentService = (
   async lookup(email: string): Promise<QuoteFlowMigrationResetEnrollmentResult> {
     const normalized = normalizeLoginEmail(email);
     const match = await store.lookupQuoteFlowMigrationResetEnrollment(normalized.loginEmail);
-    if (!match) {
-      return { eligible: false, enrollmentId: null, accountId: null };
-    }
-    return {
-      eligible: true,
-      enrollmentId: match.enrollmentId,
-      accountId: match.accountId,
-    };
+    if (!match) return { eligible: false, enrollmentId: null, accountId: null };
+    return { eligible: true, enrollmentId: match.enrollmentId, accountId: match.accountId };
   },
 });
