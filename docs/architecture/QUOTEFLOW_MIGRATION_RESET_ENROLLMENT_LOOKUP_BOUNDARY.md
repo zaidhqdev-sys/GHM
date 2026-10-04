@@ -1,6 +1,6 @@
 # QuoteFlow Migration Reset-Enrollment Lookup Boundary
 
-**Status: ARCHITECTURE DECISION — CANONICAL ENROLLMENT LOOKUP BOUNDARY SELECTED; IMPLEMENTATION PENDING**
+**Status: CONSTRUCTION — ENROLLMENT STATE AND LOOKUP CAPABILITY IMPLEMENTED; DB QUALIFICATION PENDING**
 
 ## Decision
 
@@ -112,6 +112,21 @@ It does not authorize:
 - Business or membership mutation;
 - bulk migration queues/workers;
 - changes to already-qualified resources.
+
+
+## Implemented construction
+
+The first executable boundary is now present:
+
+- dedicated `ghm.quoteflow_migration_reset_enrollment` state;
+- migration-only registration capability bound to the exact canonical account and Supabase subject;
+- immutable approved normalized enrollment email;
+- source evidence reference;
+- exact anti-enumeration lookup capability restricted to `reset_required` and active accounts;
+- runtime direct INSERT/UPDATE/DELETE revoked;
+- generic password recovery remains unchanged and credential-bearing-account scoped.
+
+Database qualification is still required before this capability is considered qualified.
 
 ## Construction gate
 
