@@ -78,13 +78,15 @@ try {
     assert.equal(Number(completed.rows[0].account_id), accountId);
     assert.equal(completed.rows[0].login_email, 'Owner@Example.com');
 
-    const enrollment = await runtime.query(
+    const verifier = await migratorPool.connect();
+    await verifier.query('set role ghm_schema_owner');
+    const enrollment = await verifier.query(
       'select enrollment_status from ghm.quoteflow_migration_reset_enrollment where id=$1',
       [enrollmentId],
     );
     assert.equal(enrollment.rows[0].enrollment_status, 'completed');
 
-    const credential = await runtime.query(
+    const credential = await verifier.query(
       'select login_email, login_email_normalized, credential_status from ghm.account_password_credential where account_id=$1',
       [accountId],
     );
@@ -94,13 +96,13 @@ try {
       credential_status: 'active',
     });
 
-    const oldSession = await runtime.query(
+    const oldSession = await verifier.query(
       'select session_status from ghm.authentication_session where id=$1',
       [oldSessionId],
     );
     assert.equal(oldSession.rows[0].session_status, 'revoked');
 
-    const reuse = await runtime.query(
+    const reuse = await verifier.query(
       'select enrollment_status from ghm.quoteflow_migration_reset_enrollment where id=$1',
       [enrollmentId],
     );
@@ -111,6 +113,7 @@ try {
       [accountId, createHmac('sha256', Buffer.from(pepperText, 'utf8')).update(randomBytes(32)).digest()],
     );
     assert.equal(newSession.rowCount, 1);
+    verifier.release();
 
     console.log('QuoteFlow migration reset ceremony DB qualification: PASS');
     console.log(JSON.stringify({
