@@ -1,6 +1,6 @@
 # QuoteFlow Existing-User Migration Boundary
 
-**Status: ARCHITECTURE DECISION — MIGRATION BOUNDARY SELECTED; PROVISIONING STILL SEPARATELY GATED**
+**Status: ARCHITECTURE DECISION — MIGRATION BOUNDARY SELECTED; ACCOUNT PROVISIONING QUALIFIED**
 
 GHM is the canonical runtime owner for QuoteFlow authentication and account identity. Existing QuoteFlow Supabase Auth state is legacy migration input only.
 
@@ -33,7 +33,7 @@ The migration snapshot validator and deterministic dry-run manifest are qualifie
 
 The existing-account reconciliation executor is qualified and invokes only the existing idempotent external-identity link capability.
 
-The migration account provisioning contract is now defined and synthetically qualified. It deliberately separates credentialless migration provisioning from public registration and requires account creation plus external-identity linking to be one atomic operation.
+The migration account provisioning contract is defined, and its database-backed SECURITY DEFINER capability is qualified. It deliberately separates credentialless migration provisioning from public registration and requires account creation plus external-identity linking to be one atomic operation.
 
 ## Migration outcomes
 
@@ -93,7 +93,7 @@ No permanent UUID bridge, Supabase JWT import, unsupported password-hash import,
 - [x] snapshot validator and dry-run manifest capability qualified.
 - [x] existing-account external-identity reconciliation executor qualified.
 - [x] migration account provisioning contract synthetically qualified.
-- [ ] GHM migration account provisioning database capability qualified.
+- [x] GHM migration account provisioning database capability qualified.
 - [ ] password reset/re-enrollment execution qualified.
 - [ ] QuoteFlow GHM session client separately qualified.
 - [ ] end-to-end cutover qualification separately qualified.
