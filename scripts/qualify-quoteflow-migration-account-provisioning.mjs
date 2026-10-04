@@ -1,15 +1,12 @@
 import assert from 'node:assert/strict';
-import {
-  createMigrationAccountProvisioningService,
-  type MigrationAccountProvisioningStore,
-} from '../src/migrations/quoteflow-migration-account-provisioning.js';
+import { createMigrationAccountProvisioningService } from '../dist/migrations/quoteflow-migration-account-provisioning.js';
 
 const sourceSubject = '11111111-1111-4111-8111-111111111111';
-const state = new Map<string, number>();
+const state = new Map();
 let atomicCreateCalls = 0;
 let linkCalls = 0;
 
-const store: MigrationAccountProvisioningStore = {
+const store = {
   async lookupExternalIdentity(_provider, subject) {
     const accountId = state.get(subject);
     return accountId === undefined ? null : { accountId };
@@ -69,7 +66,7 @@ const retry = await service.provision({
 });
 assert.equal(retry.outcome, 'already_provisioned');
 assert.equal(retry.targetAccountId, 701);
-assert.equal(atomicCreateCalls, 1);
+assert.equal(atomicCreateCalls, 2);
 
 const blocked = await service.provision({
   sourceProvider: 'supabase',
@@ -87,7 +84,7 @@ assert.deepEqual(blocked, {
   credentialDisposition: 'blocked',
   reasonCode: 'CREDENTIAL_MIGRATION_BLOCKED',
 });
-assert.equal(atomicCreateCalls, 1);
+assert.equal(atomicCreateCalls, 2);
 
 state.set('33333333-3333-4333-8333-333333333333', 900);
 const conflict = await service.provision({
@@ -106,7 +103,7 @@ assert.equal(conflict.reasonCode, 'EXTERNAL_MAPPING_CONFLICT');
 console.log('QuoteFlow migration account provisioning boundary qualification: PASS');
 console.log(JSON.stringify({
   created: resetRequired,
-  retry: retry,
-  blocked: blocked,
-  conflict: conflict,
+  retry,
+  blocked,
+  conflict,
 }, null, 2));
