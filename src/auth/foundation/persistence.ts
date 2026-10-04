@@ -124,6 +124,11 @@ export interface AuthPersistence {
   disableAccount(accountId: number): Promise<void>;
   issueRecovery(accountId: number, ttlMinutes?: number): Promise<{ recoveryTokenWire: string; credentialId: number; expiresAt: Date }>;
   redeemRecovery(recoveryTokenWire: string): Promise<number>;
+  resetPasswordWithRecovery(
+    recoveryTokenWire: string,
+    email: string,
+    password: string,
+  ): Promise<{ password: PasswordHashResult; revokedSessionCount: number }>;
   lookupExternalIdentity(provider: string, subject: string): Promise<ExternalIdentityMapping | null>;
   bootstrapExternalIdentity(
     provider: string,
@@ -394,19 +399,21 @@ export class PostgresAuthPersistence implements AuthPersistence {
   ): Promise<{ recoveryTokenWire: string; credentialId: number; expiresAt: Date }> {
     const token = generateOpaqueToken();
     const tokenHash = protectOpaqueToken(this.pepper, 'recovery', token.raw);
-    const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
     try {
-      const result = await this.tx(async (client) =>
-        client.query(`SELECT ghm.auth_issue_recovery($1, $2, $3) AS id`, [
+      const result = await this.tx(async (client) => {
+        const clock = await client.query<{ now: Date }>(`SELECT current_timestamp AS now`);
+        const expiresAt = new Date(clock.rows[0].now.getTime() + ttlMinutes * 60 * 1000);
+        const recovery = await client.query(`SELECT ghm.auth_issue_recovery($1, $2, $3) AS id`, [
           accountId,
           tokenHash,
           expiresAt.toISOString(),
-        ]),
-      );
+        ]);
+        return { recovery, expiresAt };
+      });
       return {
         recoveryTokenWire: token.wire,
-        credentialId: Number(result.rows[0].id),
-        expiresAt,
+        credentialId: Number(result.recovery.rows[0].id),
+        expiresAt: result.expiresAt,
       };
     } catch (error) {
       throw mapPgError(error);
@@ -421,6 +428,52 @@ export class PostgresAuthPersistence implements AuthPersistence {
         client.query(`SELECT ghm.auth_redeem_recovery($1) AS account_id`, [tokenHash]),
       );
       return Number(result.rows[0].account_id);
+    } catch (error) {
+      throw mapPgError(error);
+    }
+  }
+
+  async resetPasswordWithRecovery(
+    recoveryTokenWire: string,
+    email: string,
+    password: string,
+  ): Promise<{ password: PasswordHashResult; revokedSessionCount: number }> {
+    const raw = decodeOpaqueTokenWire(recoveryTokenWire);
+    const tokenHash = protectOpaqueToken(this.pepper, 'recovery', raw);
+    const normalized = normalizeLoginEmail(email);
+    const hashed = await this.passwordHasher.hash(password);
+    try {
+      const result = await this.tx(async (client) => {
+        const redeemed = await client.query(
+          `SELECT ghm.auth_redeem_recovery($1) AS account_id`,
+          [tokenHash],
+        );
+        if (redeemed.rowCount !== 1) {
+          throw new AuthPersistenceError('Recovery credential invalid', 'RECOVERY_CREDENTIAL_INVALID');
+        }
+        const accountId = Number(redeemed.rows[0].account_id);
+        const passwordResult = await client.query(
+          `SELECT ghm.auth_set_password($1, $2, $3, $4, $5, $6, $7) AS ok`,
+          [
+            accountId,
+            normalized.loginEmail,
+            normalized.loginEmailNormalized,
+            hashed.passwordHash,
+            hashed.argon2MemoryKib,
+            hashed.argon2TimeCost,
+            hashed.argon2Parallelism,
+          ],
+        );
+        if (passwordResult.rowCount !== 1) {
+          throw new AuthPersistenceError('Password reset failed');
+        }
+        const revoked = await client.query(
+          `SELECT ghm.auth_revoke_all_sessions_for_account($1, $2) AS count`,
+          [accountId, 'password_recovery'],
+        );
+        return Number(revoked.rows[0]?.count ?? 0);
+      });
+      return { password: hashed, revokedSessionCount: result };
     } catch (error) {
       throw mapPgError(error);
     }
