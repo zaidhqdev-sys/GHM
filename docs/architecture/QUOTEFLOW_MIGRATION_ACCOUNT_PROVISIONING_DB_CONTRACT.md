@@ -1,6 +1,6 @@
 # QuoteFlow Migration Account Provisioning — Database Capability
 
-**Status: CONSTRUCTION — DATABASE QUALIFICATION PENDING**
+**Status: CONSTRUCTION QUALIFIED — PRODUCTION MIGRATION SEPARATELY GATED**
 
 The migration account provisioning contract is now backed by a dedicated SECURITY
 DEFINER PostgreSQL function:
@@ -47,15 +47,19 @@ direct runtime DML on the identity/mapping tables remains revoked.
 
 ## Qualification
 
-Database-backed qualification is still pending. The next local gate must apply the
-migration in the governed construction database and exercise:
+Database-backed qualification has passed against the governed construction database.
 
-- create;
-- exact retry;
-- concurrent/idempotent identity handling;
-- invalid provider;
-- mapping conflict;
-- transaction rollback on failure;
-- runtime privilege boundary.
+The qualification proved:
+
+- fresh create returns `created`;
+- exact retry returns `already_provisioned` with the same canonical account id;
+- four concurrent calls for one source identity produce exactly one `created` and three `already_provisioned` results;
+- the provider boundary rejects a non-`supabase` provider;
+- caller transaction rollback removes both the created account and its external mapping;
+- runtime can execute the SECURITY DEFINER function but cannot directly INSERT/UPDATE/DELETE either identity table;
+- the deployed function contains the direct mapping insert and `created` outcome path and has no internal `unique_violation` exception handler.
+
+Conflict semantics remain owned by the higher-level migration reconciliation executor; this
+database primitive does not resolve or overwrite an existing conflicting mapping.
 
 No production migration is authorized.
