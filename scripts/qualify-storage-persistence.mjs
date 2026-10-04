@@ -100,7 +100,13 @@ try {
   await q("select ghm.storage_mark_deleted($1)", [objectId]);
   evidence.push({ label: "deletion_pending -> deleted", status: "PASS" });
 
-  const final = await q("select id, status, checksum, deleted_at from ghm.storage_object where id = $1", [objectId]);
+  const final = await q(`
+    select
+      (ghm.storage_get_object($1)).id as id,
+      (ghm.storage_get_object($1)).status as status,
+      (ghm.storage_get_object($1)).checksum as checksum,
+      (ghm.storage_get_object($1)).deleted_at as deleted_at
+  `, [objectId]);
   evidence.push({ label: "final lifecycle state", status: final.rows[0].status === "deleted" ? "PASS" : "FAIL", row: final.rows[0] });
 
   await q("begin");
