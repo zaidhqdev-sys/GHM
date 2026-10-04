@@ -70,7 +70,7 @@ export interface StorageService {
     caller: StorageCaller;
     objectId: string;
     expiresInSeconds: number;
-  }): Promise<StorageDownloadGrant | { public: true; providerKey: string }>;
+  }): Promise<StorageDownloadGrant>;
 
   deleteObject(input: {
     caller: StorageCaller;
@@ -155,9 +155,6 @@ export function createStorageService(deps: {
         throw new Error("storage object not available");
       }
       await deps.authorization.assertCanRead(input.caller, record);
-      if (record.visibility === "public") {
-        return { public: true, providerKey: record.providerKey };
-      }
       return deps.provider.createDownloadGrant({
         key: record.providerKey,
         expiresInSeconds: input.expiresInSeconds,
