@@ -53,7 +53,7 @@ try {
       `insert into ghm.storage_object
        (tenant_business_id, resource_type, resource_id, object_class, provider_key, content_type, byte_size, visibility)
        values (1, 'qualification', 0, 'qualification_probe', 'qualification/probe', 'image/png', 1, 'private')`
-    );
+    , [tenantBusinessId]);
   });
 
   const functionPrivileges = await q(`
@@ -80,7 +80,7 @@ try {
       'qualification/probe-' || gen_random_uuid()::text,
       'image/png', 1, 'private', 'probe.png'
     ) as row
-  `);
+  `, [tenantBusinessId]);
   const objectId = probe.rows[0].row.id;
   evidence.push({ label: "create pending through canonical function", status: "PASS", object_id: objectId });
 
