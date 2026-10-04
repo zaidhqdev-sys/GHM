@@ -2,6 +2,8 @@ import type { Express, Request, Response } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import type { AuthTokenResponse, GhmAuthService } from '../auth/ghm-auth-service';
 import type { PasswordRecoveryService } from '../auth/password-recovery';
+import type { PasswordResetService } from '../auth/password-reset';
+import { AuthPersistenceError } from '../auth/foundation/persistence';
 
 const parseRegistrationBody = (body: unknown): { fullName?: string | null; role?: 'customer' | 'business'; email: string; password: string } | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
@@ -24,6 +26,13 @@ const parseRecoveryBody = (body: unknown): { email: string } | null => {
   const input = body as Record<string, unknown>;
   if (typeof input.email !== 'string') return null;
   return { email: input.email };
+};
+
+const parseResetBody = (body: unknown): { token: string; email: string; password: string } | null => {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  const input = body as Record<string, unknown>;
+  if (typeof input.token !== 'string' || typeof input.email !== 'string' || typeof input.password !== 'string') return null;
+  return { token: input.token, email: input.email, password: input.password };
 };
 
 const parseRefreshBody = (body: unknown): { refreshToken: string } | null => {
@@ -60,6 +69,7 @@ const handleAuthError = (error: unknown, res: Response): void => {
 export interface AuthRouterDependencies {
   readonly authService?: GhmAuthService;
   readonly passwordRecoveryService?: PasswordRecoveryService;
+  readonly passwordResetService?: PasswordResetService;
 }
 
 export const registerAuthRoutes = (
@@ -92,6 +102,7 @@ export const registerAuthRoutes = (
   // Lazy default: existing HS product tests createApp() without GHM Auth secrets.
   let authService = dependencies.authService;
   const passwordRecoveryService = dependencies.passwordRecoveryService;
+  const passwordResetService = dependencies.passwordResetService;
   const getAuthService = (): GhmAuthService => {
     if (!authService) {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -117,6 +128,33 @@ export const registerAuthRoutes = (
     } catch (error) {
       console.error(JSON.stringify({
         event: 'ghm_password_recovery_delivery_failed',
+        error: { name: error instanceof Error ? error.name : 'UnknownError' },
+      }));
+      res.status(500).json({ error: 'internal_error' });
+    }
+  });
+
+
+  app.post('/api/v1/auth/password-recovery/reset', passwordRecoveryRateLimit, async (req: Request, res: Response) => {
+    try {
+      const input = parseResetBody(req.body);
+      if (!input) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      if (!passwordResetService) {
+        res.status(503).json({ error: 'service_unavailable' });
+        return;
+      }
+      await passwordResetService.reset(input.token, input.email, input.password);
+      res.status(200).json({ ok: true });
+    } catch (error) {
+      if (error instanceof AuthPersistenceError && error.code === 'RECOVERY_CREDENTIAL_INVALID') {
+        res.status(400).json({ error: 'invalid_recovery' });
+        return;
+      }
+      console.error(JSON.stringify({
+        event: 'ghm_password_reset_failed',
         error: { name: error instanceof Error ? error.name : 'UnknownError' },
       }));
       res.status(500).json({ error: 'internal_error' });
