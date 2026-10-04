@@ -150,6 +150,9 @@ export function createStorageService(deps: {
     },
 
     async getAccess(input) {
+      if (!Number.isSafeInteger(input.expiresInSeconds) || input.expiresInSeconds < 1 || input.expiresInSeconds > 3600) {
+        throw new Error("invalid storage access grant expiry");
+      }
       const record = await deps.metadata.getById(input.objectId);
       if (!record || record.status === "deleted" || record.status === "deletion_pending") {
         throw new Error("storage object not available");
