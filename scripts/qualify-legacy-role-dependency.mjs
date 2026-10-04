@@ -110,7 +110,7 @@ if (runtimeUrl && migratorUrl) {
   if (runtimeIdentity === migratorIdentity) failures.push('runtime and migrator credentials resolve to the same PostgreSQL role');
 }
 
-const legacyReferenceFiles = findings.filter((x) => x.type === 'legacy_role_reference').map((x) => x.file.replaceAll('\\\\', '/'));
+const legacyReferenceFiles = findings.filter((x) => x.type === 'legacy_role_reference').map((x) => x.file.split(path.sep).join('/'));
 const executableLegacyReferences = [...new Set(legacyReferenceFiles.filter((file) => !file.startsWith('docs/') && file !== 'scripts/qualify-legacy-role-dependency.mjs' && file !== 'scripts/audit-legacy-role-remediation.mjs'))];
 if (executableLegacyReferences.length) failures.push(`unexpected executable/config reference to legacy roles: ${executableLegacyReferences.join(', ')}`);
 
