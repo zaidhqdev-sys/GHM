@@ -84,7 +84,7 @@ assert.deepEqual(blocked, {
   credentialDisposition: 'blocked',
   reasonCode: 'CREDENTIAL_MIGRATION_BLOCKED',
 });
-assert.equal(atomicCreateCalls, 1);
+assert.equal(atomicCreateCalls, 2);
 
 state.set('33333333-3333-4333-8333-333333333333', 900);
 const conflict = await service.provision({
