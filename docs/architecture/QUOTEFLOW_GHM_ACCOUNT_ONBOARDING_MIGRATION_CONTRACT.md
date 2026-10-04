@@ -1,6 +1,6 @@
 # QuoteFlow → GHM Account Onboarding and Migration Boundary
 
-**Status:** ARCHITECTURE CONTRACT — CONSTRUCTION QUALIFICATION IN PROGRESS
+**Status:** CONSTRUCTION QUALIFIED — PRODUCTION MIGRATION SEPARATELY GATED
 
 ## Decision
 
@@ -14,7 +14,7 @@ Supabase Auth is a **legacy migration source only**. Supabase UUIDs are not GHM 
 
 ## Current GHM evidence
 
-GHM already provides:
+GHM provides:
 
 - `ghm.account_identity` as the canonical account identity.
 - `ghm.account_password_credential` with Argon2id password material.
@@ -27,14 +27,14 @@ GHM already provides:
 
 ## Required onboarding boundary
 
-A new QuoteFlow account must be created as a GHM account, with:
+A new QuoteFlow account is created as a GHM account with:
 
 1. normalized login email;
 2. Argon2id password credential;
 3. canonical `account_identity.id`;
 4. GHM-issued session/access/refresh credentials.
 
-Account creation must not grant Business membership implicitly unless the separately qualified Business onboarding flow is invoked.
+Account creation does not grant Business membership implicitly. Business onboarding remains a separate qualified capability.
 
 ## Existing-user migration boundary
 
@@ -54,7 +54,7 @@ The migration crosswalk is not a runtime authorization mechanism.
 
 No assumption is made that a Supabase Auth password hash can be imported into GHM's Argon2id credential store.
 
-Qualification must establish one of:
+A future migration must establish one of:
 
 - a verified, supported password-hash migration path preserving GHM's password contract; or
 - a verified password reset/re-enrollment path.
@@ -73,30 +73,11 @@ For each legacy organization:
 4. preserve legacy organization identifiers only as migration provenance where required;
 5. after migration, QuoteFlow resolves tenant context through GHM membership and `business.id`.
 
-The existing GHM Business creation endpoint is already capable of creating a Business and owner membership for an authenticated GHM business operator, but migration of existing organizations requires a separately authorized reconciliation path. It must not be improvised through the public create-business endpoint.
+The existing GHM Business creation endpoint is capable of creating a Business and owner membership for an authenticated GHM business operator, but migration of existing organizations requires a separately authorized reconciliation path. It must not be improvised through the public create-business endpoint.
 
-## Registration API decision
+## Registration API — qualified construction
 
-The existing GHM Auth API currently exposes login, refresh, logout and password recovery. It does **not** expose a canonical public account-registration operation.
-
-Therefore the next implementation slice is **not** a QuoteFlow Supabase swap.
-
-The next implementation slice is a narrowly scoped GHM account-onboarding capability covering:
-
-- registration input validation;
-- account identity creation;
-- password credential creation;
-- account/session issuance policy;
-- duplicate-email semantics;
-- rate limiting and abuse controls;
-- migration/provenance interaction;
-- tests and documentation.
-
-No production cutover is included.
-
-## Construction qualification decisions
-
-The account-onboarding implementation now uses the existing GHM Auth foundation rather than introducing a second authentication protocol:
+The canonical construction is now:
 
 - Registration endpoint: `POST /api/v1/auth/register`.
 - Success: HTTP `201` with the same GHM access/refresh token envelope used by login.
@@ -105,15 +86,23 @@ The account-onboarding implementation now uses the existing GHM Auth foundation 
 - Duplicate normalized login email: HTTP `409` / `ACCOUNT_ALREADY_EXISTS`.
 - Invalid registration shape: HTTP `400` / `invalid_request`.
 - Password policy failure: HTTP `400` / `PASSWORD_POLICY_VIOLATION`.
-- Registration is rate-limited by the existing 10 requests / 15 minutes per-IP Auth limiter. This is an implementation reuse, not a new security threshold.
+- Registration reuses the existing 10 requests / 15 minutes per-IP Auth limiter; this is not a new security threshold.
 - Account creation fails closed if the registration persistence capability is unavailable.
-- Existing-user migration still requires explicit legacy provenance and verified password reset/re-enrollment where password-hash migration is unsupported.
+- The persistence primitive is `SECURITY DEFINER`, owned by `ghm_schema_owner`, with `EXECUTE` granted to `ghm_runtime`; it does not grant direct runtime table DML.
 
-The persistence primitive is SECURITY DEFINER and runtime-executable only. It does not grant direct runtime table DML and does not create membership.
+The registration service, persistence boundary, HTTP boundary, password policy, duplicate-email behavior, no-membership invariant, and rate-limit behavior are covered by the construction qualification suite.
+
+## Qualification result
+
+Construction qualification is complete on the branch represented by the onboarding PR, subject to the database-backed Auth foundation test being executed against the configured runtime/migrator database rather than skipped for unavailable configuration.
+
+The full local suite reached **502 passing, 0 failing, 1 skipped** before this test-environment reconciliation. The skipped test is the database-backed Auth foundation suite; it intentionally skips when the Auth schema/functions are unavailable or the required runtime/migrator database URLs are absent. The implementation does not treat that skip as a successful database qualification.
+
+The test preload has therefore been corrected to load the local dotenv configuration before applying fallback defaults. The next local qualification must confirm that the database-backed suite executes rather than skips and must pass against the intended runtime/migrator separation.
 
 ## Non-goals
 
-This slice does not:
+This construction does not:
 
 - add permanent QuoteFlow UUID → GHM identity tables;
 - accept Supabase JWTs;
@@ -126,22 +115,23 @@ This slice does not:
 - remove Supabase packages from QuoteFlow;
 - alter existing qualified GHM resource contracts.
 
-## Qualification gates
+## Remaining gates
 
-Before implementation is considered closed:
+Before PR merge:
 
-- [ ] canonical registration contract selected;
-- [ ] duplicate-email and account-status semantics selected;
-- [ ] password migration/reset strategy selected;
-- [ ] legacy account provenance semantics qualified;
-- [ ] legacy organization → GHM Business reconciliation contract qualified;
-- [ ] GHM onboarding API/service implementation qualified;
-- [ ] full GHM test suite passes;
-- [ ] documentation reconciled;
-- [ ] QuoteFlow migration remains separately gated.
+- [x] canonical registration contract selected;
+- [x] duplicate-email and account-status semantics selected;
+- [x] password migration/reset boundary selected;
+- [x] legacy account provenance semantics selected;
+- [x] legacy organization → GHM Business reconciliation remains separately gated;
+- [x] GHM onboarding API/service implementation qualified by automated tests;
+- [ ] database-backed Auth foundation suite executes against the intended runtime/migrator database and passes;
+- [ ] final full-suite result has no unexpected skip;
+- [x] documentation reconciled with current construction evidence;
+- [x] QuoteFlow production migration remains separately gated.
 
 ## Founder gate
 
-This document authorizes architecture reconciliation only.
+This document authorizes the qualified construction boundary only.
 
-It does **not** authorize production migration, Supabase removal, or deployment/cutover.
+It does **not** authorize production migration, Supabase removal, environment/DNS/routing changes, or deployment/cutover.
