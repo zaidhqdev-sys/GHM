@@ -116,7 +116,7 @@ test("storage service rejects provider metadata mismatch", async () => {
 
 test("storage service only grants access to available objects", async () => {
   const d = deps();
-  d.metadata.getById = async () => ({ ...d.record, status: "pending" });
+  d.metadata.getById = async () => { d.calls.push("get"); return { ...d.record, status: "pending" }; };
   const service = createStorageService(d);
   await assert.rejects(
     service.getAccess({ caller: { userId: "u1", businessId: "1" }, objectId: "object-1", expiresInSeconds: 300 }),
@@ -127,7 +127,7 @@ test("storage service only grants access to available objects", async () => {
 
 test("storage service returns provider-neutral download grants", async () => {
   const d = deps();
-  d.metadata.getById = async () => ({ ...d.record, status: "available" });
+  d.metadata.getById = async () => { d.calls.push("get"); return { ...d.record, status: "available" }; };
   const service = createStorageService(d);
   const result = await service.getAccess({ caller: { userId: "u1", businessId: "1" }, objectId: "object-1", expiresInSeconds: 300 });
   assert.equal(result.url, "https://download.invalid");
@@ -148,6 +148,7 @@ test("storage service rejects unsafe access-grant expiry before persistence/prov
 test("storage service leaves deletion pending when provider deletion fails", async () => {
   const d = deps();
   d.provider.deleteObject = async () => { d.calls.push("delete"); throw new Error("provider unavailable"); };
+  d.metadata.getById = async () => { d.calls.push("get"); return { ...d.record, status: "available" }; };
   const service = createStorageService(d);
   await assert.rejects(
     service.deleteObject({ caller: { userId: "u1", businessId: "1" }, objectId: "object-1" }),
@@ -158,6 +159,7 @@ test("storage service leaves deletion pending when provider deletion fails", asy
 
 test("storage service completes deletion only after provider deletion", async () => {
   const d = deps();
+  d.metadata.getById = async () => { d.calls.push("get"); return { ...d.record, status: "available" }; };
   const service = createStorageService(d);
   await service.deleteObject({ caller: { userId: "u1", businessId: "1" }, objectId: "object-1" });
   assert.deepEqual(d.calls, ["get", "delete-auth", "deletion-pending", "delete", "deleted"]);
