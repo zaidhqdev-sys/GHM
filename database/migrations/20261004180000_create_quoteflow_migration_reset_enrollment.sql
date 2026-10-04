@@ -76,10 +76,6 @@ BEGIN
     RAISE EXCEPTION 'migration account is not active' USING ERRCODE = 'P0001';
   END IF;
 
-  IF v_identity.login_email_normalized <> p_approved_email_normalized THEN
-    RAISE EXCEPTION 'migration approved email does not match canonical account email' USING ERRCODE = 'P0001';
-  END IF;
-
   IF NOT EXISTS (
     SELECT 1 FROM ghm.account_external_identity
      WHERE provider = p_provider
