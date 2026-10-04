@@ -14,7 +14,7 @@ It requires the one-off `GHM_LEGACY_AUDIT_DATABASE_URL`. It must never fall back
 ## Required evidence
 - Exact live columns, RLS state, and row counts for the five legacy public tables.
 - Every object still owned by `ghm_app_user` or `ghm_db_user`.
-- Dependency edges touching legacy objects.
+- Dependency edges touching legacy objects, classified into PostgreSQL structural/internal edges and application/external edges.
 - Functions/views/triggers/constraints referencing legacy objects or legacy roles.
 - Explicit disposition for each legacy dataset.
 - Preservation of the two legacy `public.users` rows pending authoritative QuoteFlow/source provenance reconciliation.
@@ -27,7 +27,7 @@ It requires the one-off `GHM_LEGACY_AUDIT_DATABASE_URL`. It must never fall back
 - `public.password_reset_tokens`: empty; retire after preservation check; canonical recovery is already separate.
 
 ## Qualification meaning
-A PASS means the evidence is sufficient to **design** an ownership/disposition mutation. It does not authorize mutation.
+Structural PostgreSQL dependencies such as TOAST and owned sequences do not by themselves constitute application blockers. A PASS means the evidence is sufficient to **design** an ownership/disposition mutation. It does not authorize mutation.
 
 The next mutation slice, if separately approved, must transfer/reconcile ownership and sever legacy authority in a controlled order, followed by a fresh role/object authority audit.
 
