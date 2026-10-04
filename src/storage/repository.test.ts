@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createPostgresStorageMetadataStore } from "./repository.js";
+import { TransactionalPostgresStorageMetadataStore } from "./repository.js";
 
 test("storage metadata repository uses canonical persistence functions", async () => {
   const calls: string[] = [];
@@ -16,7 +16,7 @@ test("storage metadata repository uses canonical persistence functions", async (
       }}] };
     },
   };
-  const repo = createPostgresStorageMetadataStore({ userId: 1, role: "business" });
+  const repo = new TransactionalPostgresStorageMetadataStore({ userId: 1, role: "business" }, async (work) => work(client as any));
   const row = await repo.createPending({
     businessId: "42", resourceType: "business", resourceId: "42",
     objectClass: "business_logo",
