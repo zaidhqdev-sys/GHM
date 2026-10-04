@@ -66,7 +66,10 @@ try {
     'select * from ghm.auth_lookup_quoteflow_migration_reset_enrollment($1)',
     [email],
   );
-  assert.deepEqual(lookup.rows[0], { enrollment_id: enrollmentId, account_id: accountId });
+  assert.deepEqual({
+    enrollment_id: Number(lookup.rows[0].enrollment_id),
+    account_id: Number(lookup.rows[0].account_id),
+  }, { enrollment_id: enrollmentId, account_id: accountId });
 
   const unknown = await runtime.query(
     'select * from ghm.auth_lookup_quoteflow_migration_reset_enrollment($1)',
