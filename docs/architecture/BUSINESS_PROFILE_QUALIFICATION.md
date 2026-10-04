@@ -4,7 +4,7 @@
 
 **QUALIFIED / CLOSED**
 
-Separate construction slice for Business Profile Trust-input parity. Trust Score and Saved Business remain QUALIFIED / CLOSED and are not reopened.
+Business Profile Trust-input parity and durable tenant-boundary adoption are qualified and closed. Trust Score and Saved Business remain QUALIFIED / CLOSED and are not reopened.
 
 ## Command
 
@@ -24,6 +24,9 @@ Positive:
 
 - owner update of `description`, `phone`, `email`;
 - administrator update of permitted profile fields;
+- authenticated updates resolve the canonical tenant through `resolveTenantContext` on the same PostgreSQL transaction used for the mutation;
+- cross-Business update denial occurs at the durable tenant boundary;
+- caller cannot select or rebind tenant identity through the profile mutation;
 - persisted reconciliation;
 - Trust calculation consumes owner-managed profile values (`profile_complete` / `phone_verified` / `email_verified`).
 
@@ -48,7 +51,7 @@ npm test
 git diff --check
 ```
 
-Result: `181/181` automated tests passed; `git diff --check` clean.
+Result: `520/520` automated tests passed on the tenant-adoption branch; runtime qualification passed; `git diff --check` clean.
 
 ## Explicit limitations
 
