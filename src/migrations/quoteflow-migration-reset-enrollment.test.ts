@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import { createQuoteFlowMigrationResetEnrollmentService } from './quoteflow-migration-reset-enrollment.js';
 
 const calls: string[] = [];
