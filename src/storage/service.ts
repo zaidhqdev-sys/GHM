@@ -35,6 +35,7 @@ export interface StorageMetadataRecord {
   byteSize: number;
   visibility: StoragePolicy["visibility"];
   status: "pending" | "available" | "deletion_pending" | "deleted";
+  checksum?: string | null;
 }
 
 export interface StorageMetadataStore {
@@ -151,10 +152,10 @@ export function createStorageService(deps: {
 
     async getAccess(input) {
       if (!Number.isSafeInteger(input.expiresInSeconds) || input.expiresInSeconds < 1 || input.expiresInSeconds > 3600) {
-        throw new Error("invalid storage access grant expiry");
+        throw new Error("invalid storage grant expiry");
       }
       const record = await deps.metadata.getById(input.objectId);
-      if (!record || record.status === "deleted" || record.status === "deletion_pending") {
+      if (!record || record.status !== "available") {
         throw new Error("storage object not available");
       }
       await deps.authorization.assertCanRead(input.caller, record);
