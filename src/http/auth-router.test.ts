@@ -357,6 +357,7 @@ test('login issues ES256 access JWT with decimal sub and no role claim', async (
     disableAccount: async () => undefined,
     issueRecovery: async () => ({ recoveryTokenWire: 'x', credentialId: 1, expiresAt: new Date() }),
     redeemRecovery: async () => 1,
+    lookupQuoteFlowMigrationResetEnrollment: async () => null,
     lookupExternalIdentity: async () => null,
     bootstrapExternalIdentity: async () => ({
       id: 1,
