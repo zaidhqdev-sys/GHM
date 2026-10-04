@@ -66,3 +66,12 @@ The output is evidence, not authorization to mutate. The next decision requires:
 7. explicit disposition for each legacy dataset.
 
 Only after those are reconciled should role/object retirement be considered.
+
+
+## Legacy users versus QuoteFlow migration authority
+
+The live legacy `public.users` table contains two account rows, but it is not itself an authoritative QuoteFlow migration snapshot. The table exposes a numeric legacy id, email, password hash, profile metadata, role, and timestamps; it does not expose the required Supabase Auth UUID or a reproducible source-evidence reference. The canonical QuoteFlow source-export boundary requires those authoritative provenance fields and explicitly prohibits email-only account resolution.
+
+Therefore the two legacy `users` rows cannot be automatically migrated into GHM from this table alone. They remain subject to operator-reviewed provenance reconciliation against an approved QuoteFlow source snapshot. Until that evidence exists, the correct disposition is preserve/archive or retire only after provenance reconciliation—not automatic migration.
+
+This audit does not treat the legacy password hashes as migration credentials and does not inspect or emit their values.
