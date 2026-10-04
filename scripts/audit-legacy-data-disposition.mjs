@@ -20,7 +20,7 @@ if(!auditUrl){
 }
 
 const c=new Client({connectionString:auditUrl,ssl:{rejectUnauthorized:false}});
-const q=sql=>c.query(sql).then(r=>r.rows);
+const q=(sql,params=[])=>c.query(sql,params).then(r=>r.rows);
 
 const hash= s => crypto.createHash('sha256').update(s,'utf8').digest('hex');
 
@@ -100,7 +100,7 @@ try{
   let knownAccountMatch=null;
   if(knownEmailHash){
     const rows=await q("SELECT count(*)::bigint AS matches FROM public.users WHERE encode(digest(lower(trim(email)),'sha256'),'hex')=$1",[knownEmailHash]);
-    knownAccountMatch={provided_email_sha256:hash(knownEmailHash),matches:rows[0]?.matches??0};
+    knownAccountMatch={provided_email_sha256:knownEmailHash,matches:rows[0]?.matches??0};
   }
 
   const disposition=[
