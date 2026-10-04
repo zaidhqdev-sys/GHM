@@ -60,8 +60,8 @@ try {
     'select pg_get_functiondef(\'ghm.auth_provision_migration_account(text,text,text,text)\'::regprocedure) as definition',
   );
   const definition = functionDefinition.rows[0].definition;
-  assert.match(definition, /INSERT\\s+INTO\\s+ghm\\.account_external_identity/i);
-  assert.match(definition, /outcome\\s*:=\\s*'created'/i);
+  assert.match(definition, /INSERT\s+INTO\s+ghm\.account_external_identity/i);
+  assert.match(definition, /outcome\s*:=\s*'created'/i);
   assert.doesNotMatch(definition, /EXCEPTION\\s+WHEN\\s+unique_violation/i);
 
   const first = await runtime.query(
