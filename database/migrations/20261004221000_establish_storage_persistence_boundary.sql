@@ -139,7 +139,7 @@ RETURNS ghm.storage_object
 LANGUAGE plpgsql
 SECURITY INVOKER
 SET search_path = pg_catalog, ghm
-AS $
+AS $$
 DECLARE
   v_row ghm.storage_object;
 BEGIN
@@ -153,7 +153,7 @@ BEGIN
 
   RETURN v_row;
 END;
-$;
+$$;
 
 GRANT EXECUTE ON FUNCTION ghm.storage_get_object(bigint) TO ghm_runtime;
 
