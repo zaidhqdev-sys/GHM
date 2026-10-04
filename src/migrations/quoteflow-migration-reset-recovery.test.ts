@@ -6,11 +6,11 @@ test('migration reset recovery uses approved enrollment email and never exposes 
   let issuedFor: number | null = null;
   let delivered: { accountId: number; email: string; recoveryToken: string } | null = null;
   const service = createQuoteFlowMigrationResetRecoveryService({
-    lookupQuoteFlowMigrationResetEnrollment: async (email) => {
+        lookupQuoteFlowMigrationResetEnrollment: async (email: string) => {
       assert.equal(email, 'legacy@example.com');
       return { enrollmentId: 7, accountId: 42, approvedEmail: 'Legacy@Example.com' };
     },
-    issueRecovery: async (accountId) => {
+        issueRecovery: async (accountId: number) => {
       issuedFor = accountId;
       return { recoveryTokenWire: 'opaque-token', credentialId: 8, expiresAt: new Date('2026-10-04T01:00:00Z') };
     },
