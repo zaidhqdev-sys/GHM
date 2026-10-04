@@ -107,24 +107,34 @@ try {
     ORDER BY tablename,policyname
   `);
 
-  // Legacy tables may retain historical RLS policies that call app.current_user_id.
-  // Run aggregate counts under the non-login schema owner, which is the canonical
-  // catalog/schema authority and is already an approved SET ROLE target for the migrator.
-  await c.query('SET ROLE ghm_schema_owner');
+  const rlsState=await q(`
+    SELECT c.oid::regclass::text AS table_name,
+           c.relrowsecurity AS row_security_enabled,
+           c.relforcerowsecurity AS force_row_security,
+           pg_get_userbyid(c.relowner) AS owner
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public'
+      AND c.relname IN ('users','profiles','todos','files','password_reset_tokens')
+    ORDER BY c.relname
+  `);
+
+  // First attempt counts under the actual legacy owner. This is intentionally
+  // session-local and read-only. Do not invent app.current_user_id: if RLS still
+  // blocks the owner, the audit records the failure rather than changing GUC state.
+  await c.query('RESET ROLE');
+  await c.query('SET ROLE ghm_db_user');
   const countExecutionRole=await q("SELECT current_user");
 
-  const counts=await q(`
-    SELECT 'users' AS object_name,count(*)::bigint AS row_count FROM public.users
-    UNION ALL
-    SELECT 'profiles',count(*)::bigint FROM public.profiles
-    UNION ALL
-    SELECT 'todos',count(*)::bigint FROM public.todos
-    UNION ALL
-    SELECT 'files',count(*)::bigint FROM public.files
-    UNION ALL
-    SELECT 'password_reset_tokens',count(*)::bigint FROM public.password_reset_tokens
-    ORDER BY object_name
-  `);
+  const counts=[];
+  for(const name of ['users','profiles','todos','files','password_reset_tokens']){
+    try{
+      const rows=await q(`SELECT '${name}' AS object_name,count(*)::bigint AS row_count FROM public.${name}`);
+      counts.push(rows[0]);
+    }catch(err){
+      counts.push({object_name:name,error_code:err.code||null,error_message:err.message});
+    }
+  }
 
   const ghmNameOverlap=await q(`
     SELECT c.relname AS object_name,c.relkind,pg_get_userbyid(c.relowner) AS owner
