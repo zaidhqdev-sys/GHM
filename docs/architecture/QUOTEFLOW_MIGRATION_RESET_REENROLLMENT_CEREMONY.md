@@ -139,7 +139,6 @@ The following remain closed:
 - [ ] production delivery approval
 - [ ] production migration approval
 
-
 ## DB qualification slice
 
 The implementation branch carries a non-production DB qualification script:
@@ -159,5 +158,13 @@ It uses the existing runtime/migrator separation and synthetic Supabase external
 This qualifies the **reset operation and its database invariants**. It does **not** yet qualify the complete user-facing migration ceremony because the credentialless migrated account does not currently have a canonical migration email/reset-enrollment lookup boundary.
 
 That remaining boundary is intentionally not hidden by this qualification and remains a founder gate before production migration.
+
+## Documentation reconciliation
+
+The implementation, test, qualification, and remaining-gate state is reconciled in:
+
+`docs/architecture/QUOTEFLOW_MIGRATION_RESET_REENROLLMENT_RECONCILIATION.md`
+
+The reconciliation is part of the merge gate and must be updated from actual DB qualification evidence before merge.
 
 This is a qualification artifact only. It does not authorize production migration, production recovery delivery, or QuoteFlow runtime cutover.
