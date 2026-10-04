@@ -443,7 +443,7 @@ test('POST /api/v1/auth/login enforces the approved 10-per-15-minute IP limit', 
   };
   const { server, baseUrl } = await startApp(authService);
   try {
-    for (let index = 0; index < 7; index += 1) {
+    for (let index = 0; index < 10; index += 1) {
       const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
