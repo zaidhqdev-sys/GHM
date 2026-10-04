@@ -20,6 +20,7 @@ const createPersistence = (
   bootstrap: AuthPersistence['bootstrapExternalIdentity'],
 ): AuthPersistence => ({
   setPassword: async () => { throw new Error('unused'); },
+  resetPasswordWithRecovery: async () => { throw new Error('unused'); },
   lookupPasswordByEmail: async () => null,
   createSessionWithRefresh: async () => { throw new Error('unused'); },
   validateSession: async () => { throw new Error('unused'); },
