@@ -26,3 +26,13 @@ test("storage metadata repository uses canonical persistence functions", async (
   assert.equal(row.id, "7");
   assert.match(calls[0], /ghm\.storage_create_pending/);
 });
+
+test("storage metadata repository recognizes canonical missing-object error", async () => {
+  const client = {
+    async query() {
+      throw new Error("storage object does not exist");
+    },
+  };
+  const repo = new PostgresStorageMetadataStore(client);
+  assert.equal(await repo.getById("999"), null);
+});
