@@ -2,7 +2,7 @@
 
 ## Status
 
-**CONSTRUCTION CONTRACT — AUTHORIZED FOR BUSINESS PROFILE TRUST-INPUT EXTENSION**
+**QUALIFIED / CLOSED — BUSINESS PROFILE TRUST-INPUT EXTENSION + DURABLE TENANT ADOPTION**
 
 Extends existing Business Identity `business.updateProfile`. Does not authorize production cutover, adapters, shadow traffic, HTTP product endpoints, or Trust/Saved Business reopen.
 
@@ -80,13 +80,13 @@ Empty patch rejected.
 
 ## 5. Transaction / privilege boundary
 
-Single authorized transaction calling:
+Single tenant-authorized transaction calling:
 
 ```text
 ghm.update_business_profile(context.userId, businessId, patch jsonb)
 ```
 
-No caller-controlled session GUCs. No blanket runtime UPDATE of profile/protected columns.
+Tenant identity is resolved from the active membership on the same checked-out PostgreSQL client used for mutation. No caller-controlled session GUCs. No blanket runtime UPDATE of profile/protected columns.
 
 ## 6. Read surface
 
