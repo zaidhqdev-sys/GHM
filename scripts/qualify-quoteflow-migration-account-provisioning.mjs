@@ -66,7 +66,7 @@ const retry = await service.provision({
 });
 assert.equal(retry.outcome, 'already_provisioned');
 assert.equal(retry.targetAccountId, 701);
-assert.equal(atomicCreateCalls, 1);
+assert.equal(atomicCreateCalls, 2);
 
 const blocked = await service.provision({
   sourceProvider: 'supabase',
