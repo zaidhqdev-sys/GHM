@@ -11,7 +11,9 @@ if (!databaseUrl) {
 
 const client = new Client({
   connectionString: databaseUrl,
-  ssl: process.env.DATABASE_SSL === "require" ? { rejectUnauthorized: false } : undefined,
+  ssl: ["true", "require"].includes((process.env.DATABASE_SSL ?? "").trim().toLowerCase())
+    ? { rejectUnauthorized: false }
+    : undefined,
 });
 
 let mutationObserved = false;
