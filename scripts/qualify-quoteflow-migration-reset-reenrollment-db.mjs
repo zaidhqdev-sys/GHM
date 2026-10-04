@@ -92,7 +92,7 @@ try {
   const credential = await persistence.lookupPasswordByEmail('quoteflow-reset-success@example.test');
   assert(credential);
   assert.equal(credential.accountId, accountId);
-  assert.match(credential.passwordHash, /^\\$argon2id\\$/);
+  assert.equal(credential.passwordHash.startsWith('$argon2id$'), true);
   assert.equal(credential.argon2MemoryKib, 65536);
   assert.equal(credential.argon2TimeCost, 3);
   assert.equal(credential.argon2Parallelism, 1);
