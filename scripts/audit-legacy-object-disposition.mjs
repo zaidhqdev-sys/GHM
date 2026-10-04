@@ -99,15 +99,18 @@ try {
     ORDER BY n.nspname,c.relname,con.conname
   `);
 
-  const counts=[];
-  for(const name of ['users','profiles','todos','files','password_reset_tokens']){
-    try{
-      const rows=await q(`SELECT $1::text AS object_name,(SELECT count(*) FROM public.${name})::bigint AS row_count`);
-      counts.push(rows[0]);
-    }catch(err){
-      counts.push({object_name:name,error:err.code||err.message});
-    }
-  }
+  const counts=await q(`
+    SELECT 'users' AS object_name,count(*)::bigint AS row_count FROM public.users
+    UNION ALL
+    SELECT 'profiles',count(*)::bigint FROM public.profiles
+    UNION ALL
+    SELECT 'todos',count(*)::bigint FROM public.todos
+    UNION ALL
+    SELECT 'files',count(*)::bigint FROM public.files
+    UNION ALL
+    SELECT 'password_reset_tokens',count(*)::bigint FROM public.password_reset_tokens
+    ORDER BY object_name
+  `);
 
   const ghmNameOverlap=await q(`
     SELECT c.relname AS object_name,c.relkind,pg_get_userbyid(c.relowner) AS owner
