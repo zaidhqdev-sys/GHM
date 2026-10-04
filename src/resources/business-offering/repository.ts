@@ -24,19 +24,6 @@ const mapOffering = (row: Record<string, unknown>): BusinessOffering => ({
   updatedAt: new Date(String(row.updated_at)),
 });
 
-const requireBusinessManagement = async (client: PoolClient, context: AuthContext, businessId: number) => {
-  const r = await client.query(`SELECT 1 FROM ghm.business b WHERE b.id = $1 AND b.is_active = true
-    AND EXISTS (SELECT 1 FROM ghm.business_membership bm WHERE bm.business_id = b.id AND bm.account_id = $2
-      AND bm.membership_status = 'active' AND bm.membership_role IN ('owner', 'administrator'))`, [businessId, context.userId]);
-  if (r.rowCount !== 1) throw new Error('Business management permission required');
-};
-
-const requireBusinessRead = async (client: PoolClient, context: AuthContext, businessId: number) => {
-  const r = await client.query(`SELECT 1 FROM ghm.business b WHERE b.id = $1 AND b.is_active = true
-    AND EXISTS (SELECT 1 FROM ghm.business_membership bm WHERE bm.business_id = b.id AND bm.account_id = $2 AND bm.membership_status = 'active')`, [businessId, context.userId]);
-  if (r.rowCount !== 1) throw new Error('Business access required');
-};
-
 export class PostgresBusinessOfferingRepository implements BusinessOfferingRepository {
   constructor(private readonly transactionPool?: TransactionPool) {}
 
