@@ -48,7 +48,6 @@ function deps() {
       async assertCanRead() { calls.push("read"); },
       async assertCanDelete() { calls.push("delete-auth"); },
     },
-    createProviderKey: (businessId: string, objectId: string) => `business/${businessId}/${objectId}`,
   };
 }
 
@@ -69,8 +68,8 @@ test("storage service rejects oversized objects before authorization or persiste
   const d = deps();
   const service = createStorageService(d);
   await assert.rejects(service.createUpload({
-    caller: { userId: "u1", businessId: "b1" },
-    resource: { type: "business", id: "b1", businessId: "b1" },
+    caller: { userId: "u1", businessId: "1" },
+    resource: { type: "business", id: "1", businessId: "1" },
     objectClass: "business_logo",
     contentType: "image/png",
     byteSize: 2 * 1024 * 1024 + 1,
@@ -82,8 +81,8 @@ test("storage service creates pending metadata before issuing upload grant", asy
   const d = deps();
   const service = createStorageService(d);
   const result = await service.createUpload({
-    caller: { userId: "u1", businessId: "b1" },
-    resource: { type: "business", id: "b1", businessId: "b1" },
+    caller: { userId: "u1", businessId: "1" },
+    resource: { type: "business", id: "1", businessId: "1" },
     objectClass: "business_logo",
     contentType: "image/png",
     byteSize: 100,
@@ -95,7 +94,7 @@ test("storage service creates pending metadata before issuing upload grant", asy
 test("storage service verifies provider state before making an object available", async () => {
   const d = deps();
   const service = createStorageService(d);
-  const result = await service.completeUpload({ caller: { userId: "u1", businessId: "b1" }, objectId: "object-1" });
+  const result = await service.completeUpload({ caller: { userId: "u1", businessId: "1" }, objectId: "object-1" });
   assert.equal(result.status, "available");
   assert.deepEqual(d.calls, ["get", "manage", "head", "available"]);
 });
@@ -109,7 +108,7 @@ test("storage service rejects provider metadata mismatch", async () => {
   });
   const service = createStorageService(d);
   await assert.rejects(
-    service.completeUpload({ caller: { userId: "u1", businessId: "b1" }, objectId: "object-1" }),
+    service.completeUpload({ caller: { userId: "u1", businessId: "1" }, objectId: "object-1" }),
     /storage provider metadata mismatch/,
   );
   assert.deepEqual(d.calls, ["get", "manage"]);
@@ -120,7 +119,7 @@ test("storage service only grants access to available objects", async () => {
   d.metadata.getById = async () => ({ ...d.record, status: "pending" });
   const service = createStorageService(d);
   await assert.rejects(
-    service.getAccess({ caller: { userId: "u1", businessId: "b1" }, objectId: "object-1", expiresInSeconds: 300 }),
+    service.getAccess({ caller: { userId: "u1", businessId: "1" }, objectId: "object-1", expiresInSeconds: 300 }),
     /storage object not available/,
   );
   assert.deepEqual(d.calls, ["get"]);
@@ -130,7 +129,7 @@ test("storage service returns provider-neutral download grants", async () => {
   const d = deps();
   d.metadata.getById = async () => ({ ...d.record, status: "available" });
   const service = createStorageService(d);
-  const result = await service.getAccess({ caller: { userId: "u1", businessId: "b1" }, objectId: "object-1", expiresInSeconds: 300 });
+  const result = await service.getAccess({ caller: { userId: "u1", businessId: "1" }, objectId: "object-1", expiresInSeconds: 300 });
   assert.equal(result.url, "https://download.invalid");
   assert.equal("providerKey" in result, false);
   assert.deepEqual(d.calls, ["get", "read", "download-grant"]);
@@ -140,7 +139,7 @@ test("storage service rejects unsafe access-grant expiry before persistence/prov
   const d = deps();
   const service = createStorageService(d);
   await assert.rejects(
-    service.getAccess({ caller: { userId: "u1", businessId: "b1" }, objectId: "object-1", expiresInSeconds: 0 }),
+    service.getAccess({ caller: { userId: "u1", businessId: "1" }, objectId: "object-1", expiresInSeconds: 0 }),
     /invalid storage grant expiry/,
   );
   assert.deepEqual(d.calls, []);
@@ -151,7 +150,7 @@ test("storage service leaves deletion pending when provider deletion fails", asy
   d.provider.deleteObject = async () => { d.calls.push("delete"); throw new Error("provider unavailable"); };
   const service = createStorageService(d);
   await assert.rejects(
-    service.deleteObject({ caller: { userId: "u1", businessId: "b1" }, objectId: "object-1" }),
+    service.deleteObject({ caller: { userId: "u1", businessId: "1" }, objectId: "object-1" }),
     /provider unavailable/,
   );
   assert.deepEqual(d.calls, ["get", "delete-auth", "deletion-pending", "delete"]);
@@ -160,6 +159,6 @@ test("storage service leaves deletion pending when provider deletion fails", asy
 test("storage service completes deletion only after provider deletion", async () => {
   const d = deps();
   const service = createStorageService(d);
-  await service.deleteObject({ caller: { userId: "u1", businessId: "b1" }, objectId: "object-1" });
+  await service.deleteObject({ caller: { userId: "u1", businessId: "1" }, objectId: "object-1" });
   assert.deepEqual(d.calls, ["get", "delete-auth", "deletion-pending", "delete", "deleted"]);
 });
