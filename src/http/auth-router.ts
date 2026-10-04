@@ -57,30 +57,6 @@ const handleAuthError = (error: unknown, res: Response): void => {
   res.status(500).json({ error: 'internal_error' });
 };
 
-const loginRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 10,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false,
-  handler: (_req, res) => res.status(429).json({ error: 'rate_limited' }),
-});
-
-const passwordRecoveryRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 5,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false,
-  handler: (_req, res) => res.status(429).json({ error: 'rate_limited' }),
-});
-
-const refreshRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 60,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false,
-  handler: (_req, res) => res.status(429).json({ error: 'rate_limited' }),
-});
-
 export interface AuthRouterDependencies {
   readonly authService?: GhmAuthService;
   readonly passwordRecoveryService?: PasswordRecoveryService;
@@ -90,6 +66,29 @@ export const registerAuthRoutes = (
   app: Express,
   dependencies: AuthRouterDependencies = {},
 ): void => {
+  // Keep limiter state scoped to the registered app instance. This prevents one in-process
+  // app/test fixture from consuming another fixture's authentication budget.
+  const loginRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    handler: (_req, res) => res.status(429).json({ error: 'rate_limited' }),
+  });
+  const passwordRecoveryRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 5,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    handler: (_req, res) => res.status(429).json({ error: 'rate_limited' }),
+  });
+  const refreshRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 60,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    handler: (_req, res) => res.status(429).json({ error: 'rate_limited' }),
+  });
   // Lazy default: existing HS product tests createApp() without GHM Auth secrets.
   let authService = dependencies.authService;
   const passwordRecoveryService = dependencies.passwordRecoveryService;
