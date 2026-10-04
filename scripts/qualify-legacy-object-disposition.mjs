@@ -1,10 +1,13 @@
 import 'dotenv/config';
 import { Client } from 'pg';
 
+const sslMode = (process.env.DATABASE_SSL ?? 'require').toLowerCase();
+const ssl = sslMode === 'disable' ? false : { rejectUnauthorized: sslMode === 'verify-full' ? true : false };
+
 const url = process.env.GHM_LEGACY_AUDIT_DATABASE_URL;
 if (!url) throw new Error('GHM_LEGACY_AUDIT_DATABASE_URL is required; no fallback to runtime/migrator credentials is permitted');
 
-const client = new Client({ connectionString: url });
+const client = new Client({ connectionString: url, ssl });
 const legacy = ['users','profiles','todos','files','password_reset_tokens'];
 const out = { audit:'GHM legacy object ownership and data preservation qualification', version:1, mutation:false, captured_at:new Date().toISOString(), decision:'BLOCKED', server:null, tables:[], ownership:[], dependencies:[], routines:[], views:[], triggers:[], constraints:[], disposition:[] };
 
