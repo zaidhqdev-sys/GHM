@@ -32,21 +32,30 @@ export interface MigrationAccountProvisioningResult {
  *
  * Public registration creates a credential and session. Migration provisioning
  * must never invent a credential, import an unqualified legacy hash, or issue a
- * session. This contract therefore only permits an already-reviewed target
- * account to be treated as provisioned by a future migration-owned primitive.
+ * session.
+ *
+ * New-account creation and provenance linking are one atomic store operation.
+ * This prevents an account from being left behind if the external mapping
+ * cannot be established.
  */
 export interface MigrationAccountProvisioningStore {
-  createCredentiallessAccount(input: {
-    fullName: string | null;
-    role: 'customer' | 'business';
-    loginEmail: string;
-    normalizedEmail: string;
-  }): Promise<{ accountId: number }>;
-
   lookupExternalIdentity(
     provider: 'supabase',
     subject: string,
   ): Promise<{ accountId: number } | null>;
+
+  provisionCredentiallessAccountAndLink(input: {
+    sourceProvider: 'supabase';
+    sourceSubject: string;
+    fullName: string | null;
+    role: 'customer' | 'business';
+    loginEmail: string;
+    normalizedEmail: string;
+  }): Promise<
+    | { outcome: 'created'; accountId: number }
+    | { outcome: 'already_provisioned'; accountId: number }
+    | { outcome: 'conflict'; accountId: number }
+  >;
 
   linkExternalIdentity(
     provider: 'supabase',
@@ -111,44 +120,33 @@ export const createMigrationAccountProvisioningService = (
         outcome: 'already_provisioned',
         targetAccountId: input.targetAccountId,
         credentialDisposition: input.credentialDisposition,
-        reasonCode: 'GHM_ACCOUNT_ALREADY_RESOLVED',
+        reasonCode: input.credentialDisposition === 'reset_required'
+          ? 'GHM_ACCOUNT_ALREADY_RESOLVED_RESET_REQUIRED'
+          : 'GHM_ACCOUNT_ALREADY_RESOLVED_READY_FOR_CREDENTIAL_MIGRATION',
       };
     }
 
-    const account = await store.createCredentiallessAccount({
+    const result = await store.provisionCredentiallessAccountAndLink({
+      sourceProvider: input.sourceProvider,
+      sourceSubject: input.sourceSubject,
       fullName: input.fullName,
       role: input.role,
       loginEmail: input.loginEmail,
       normalizedEmail: input.normalizedEmail,
     });
 
-    const mapping = await store.linkExternalIdentity(
-      input.sourceProvider,
-      input.sourceSubject,
-      account.accountId,
-    );
-
-    if (mapping === 'conflict') {
+    if (result.outcome === 'conflict') {
       return {
         outcome: 'conflict',
-        targetAccountId: account.accountId,
+        targetAccountId: result.accountId,
         credentialDisposition: input.credentialDisposition,
         reasonCode: 'EXTERNAL_MAPPING_CONFLICT',
       };
     }
 
-    if (mapping === 'account_not_found') {
-      return {
-        outcome: 'blocked',
-        targetAccountId: account.accountId,
-        credentialDisposition: input.credentialDisposition,
-        reasonCode: 'GHM_ACCOUNT_NOT_FOUND',
-      };
-    }
-
     return {
-      outcome: 'created',
-      targetAccountId: account.accountId,
+      outcome: result.outcome,
+      targetAccountId: result.accountId,
       credentialDisposition: input.credentialDisposition,
       reasonCode: input.credentialDisposition === 'reset_required'
         ? 'ACCOUNT_PROVISIONED_RESET_REQUIRED'
