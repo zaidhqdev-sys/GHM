@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import { generateDryRunManifest, MigrationSnapshotValidationError, validateMigrationSnapshot } from '../dist/migrations/quoteflow-snapshot-contract.js';
+const snapshot={schemaVersion:1,evidence:{sourceSystem:'supabase',extractionMechanism:'controlled-non-production-fixture',extractionTimestamp:'2026-10-04T00:00:00Z',datasetVersion:'fixture-1',evidenceReference:'fixture:quoteflow-migration-1',environment:'non_production',recordCounts:{accounts:2,organizations:1,memberships:2}},accounts:[{sourceSubject:'11111111-1111-4111-8111-111111111111',status:'active',email:'Owner@Example.com'},{sourceSubject:'22222222-2222-4222-8222-222222222222',status:'active',email:'member@example.com'}],organizations:[{sourceOrganizationId:'legacy-org-001',name:'Fixture Business',ownerSourceSubject:'11111111-1111-4111-8111-111111111111',evidenceReference:'fixture:org-001'}],memberships:[{sourceOrganizationId:'legacy-org-001',sourceSubject:'11111111-1111-4111-8111-111111111111',sourceRole:'owner',status:'active'},{sourceOrganizationId:'legacy-org-001',sourceSubject:'22222222-2222-4222-8222-222222222222',sourceRole:'member',status:'active'}]};
+validateMigrationSnapshot(snapshot);
+const manifest=generateDryRunManifest(snapshot,[{sourceSubject:'11111111-1111-4111-8111-111111111111',targetAccountId:101,externalMappingOutcome:'created',credentialDisposition:'reset_required',reviewedBy:'fixture-operator',reviewedAt:'2026-10-04T00:05:00Z'},{sourceSubject:'22222222-2222-4222-8222-222222222222',targetAccountId:102,externalMappingOutcome:'already_linked',credentialDisposition:'blocked',reviewedBy:'fixture-operator',reviewedAt:'2026-10-04T00:05:00Z'}],[{sourceOrganizationId:'legacy-org-001',outcome:'MAPPED',targetBusinessId:501,reviewedBy:'fixture-operator',reviewedAt:'2026-10-04T00:05:00Z'}]);
+assert.equal(manifest.accounts[0].migrationOutcome,'RESET_REQUIRED');
+assert.equal(manifest.accounts[0].normalizedEmail,'owner@example.com');
+assert.equal(manifest.accounts[1].migrationOutcome,'BLOCKED');
+assert.equal(manifest.organizations[0].outcome,'MAPPED');
+const duplicate=structuredClone(snapshot); duplicate.accounts[1].sourceSubject=duplicate.accounts[0].sourceSubject;
+assert.throws(()=>validateMigrationSnapshot(duplicate),(e)=>e instanceof MigrationSnapshotValidationError && e.issues.includes('ACCOUNT_1_DUPLICATE_UUID'));
+const production=structuredClone(snapshot); production.evidence.environment='production';
+assert.throws(()=>validateMigrationSnapshot(production),(e)=>e instanceof MigrationSnapshotValidationError && e.issues.includes('SOURCE_ENVIRONMENT_NOT_NON_PRODUCTION'));
+const broken=structuredClone(snapshot); broken.memberships[0].sourceOrganizationId='missing-org';
+assert.throws(()=>validateMigrationSnapshot(broken),(e)=>e instanceof MigrationSnapshotValidationError && e.issues.includes('MEMBERSHIP_0_UNKNOWN_ORGANIZATION'));
+console.log('QuoteFlow migration snapshot qualification: PASS');
+console.log(JSON.stringify({accounts:manifest.accounts.length,organizations:manifest.organizations.length,outcomes:manifest.accounts.map((a)=>a.migrationOutcome)},null,2));
