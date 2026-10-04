@@ -89,10 +89,13 @@ try {
   assert.equal(rolled.rows[0].outcome, 'created');
   await runtime.query('rollback');
 
+  await migrator.query('begin');
+  await migrator.query('set local role ghm_schema_owner');
   const rollbackCheck = await migrator.query(
     'select (select count(*) from ghm.account_external_identity where provider=$1 and subject=$2) mapping_count, (select count(*) from ghm.account_identity where id=$3) account_count',
     ['supabase', subjects[2], rolled.rows[0].account_id],
   );
+  await migrator.query('commit');
   assert.deepEqual(rollbackCheck.rows[0], { mapping_count: '0', account_count: '0' });
 
   const catalog = await migrator.query(`
@@ -108,7 +111,13 @@ try {
   console.log(JSON.stringify({ created_accounts: created, concurrent_outcomes: outcomes.map(r => r.outcome), rollback: rollbackCheck.rows[0] }, null, 2));
 } finally {
   if (created.length) {
-    const cleanup = await migrator.query('set local role ghm_schema_owner; delete from ghm.account_external_identity where account_id = any($1::bigint[]); delete from ghm.account_identity where id = any($1::bigint[]);', [created]).catch(() => null);
+    await migrator.query('begin').catch(() => {});
+    await migrator.query('set local role ghm_schema_owner').catch(() => {});
+    await migrator.query(
+      'delete from ghm.account_external_identity where account_id = any($1::bigint[]); delete from ghm.account_identity where id = any($1::bigint[]);',
+      [created],
+    ).catch(() => {});
+    await migrator.query('commit').catch(() => {});
   }
   await runtime.end().catch(() => {});
   await migrator.end().catch(() => {});
