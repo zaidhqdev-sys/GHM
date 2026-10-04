@@ -5,7 +5,8 @@ import { createQuoteFlowMigrationResetCompletionService } from './quoteflow-migr
 test('migration reset completion delegates the atomic ceremony boundary', async () => {
   let seen: { token: string; password: string } | null = null;
   const service = createQuoteFlowMigrationResetCompletionService({
-    completeQuoteFlowMigrationReset: async (token, password) => {
+      const service = createQuoteFlowMigrationResetCompletionService({
+    completeQuoteFlowMigrationReset: async (token: string, password: string) => {
       seen = { token, password };
       return { accountId: 42, loginEmail: 'legacy@example.com', revokedSessionCount: 2 };
     },
