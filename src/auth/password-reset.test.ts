@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createPasswordResetService } from './password-reset';
+import type { AuthPersistence } from './foundation/persistence';
 
 test('recovery reset delegates token, email and password to atomic persistence', async () => {
   let received: unknown[] | undefined;
   const service = createPasswordResetService({
-    resetPasswordWithRecovery: async (...args) => {
+    resetPasswordWithRecovery: async (...args: Parameters<AuthPersistence['resetPasswordWithRecovery']>) => {
       received = args;
       return {
         password: {
