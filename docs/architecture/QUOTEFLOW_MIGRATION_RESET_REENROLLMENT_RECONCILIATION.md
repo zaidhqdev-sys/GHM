@@ -1,6 +1,6 @@
 # QuoteFlow Migration Reset / Re-enrollment Documentation Reconciliation
 
-**Status: DOCUMENTATION RECONCILED — RESET AND ENROLLMENT CONSTRUCTION QUALIFIED; COMPLETE CEREMONY PENDING**
+**Status: DOCUMENTATION RECONCILED — RESET, ENROLLMENT, AND SESSION-ISSUANCE CONSTRUCTION QUALIFIED; NON-PRODUCTION CEREMONY QUALIFICATION PENDING**
 
 ## Scope
 
@@ -85,3 +85,10 @@ The reset implementation and enrollment lookup construction are **DB-qualified**
 Qualification evidence: `c5244bf7-0542-4e60-86fc-9f8ce9f52f39` — PASS. Checks covered synthetic credentialless migration account, Argon2id password establishment, existing session revocation, legacy external identity preservation, recovery single-use, transaction rollback, expired recovery rejection, and runtime secret-table DML sealing.
 
 The remaining decision is final PR review/merge only. Production delivery, production migration, and QuoteFlow runtime cutover remain founder-gated.
+
+
+## 2026-10-04 ceremony construction reconciliation
+
+The migration-specific ceremony now has a dedicated request and completion path. Request resolves only the qualified migration enrollment and passes its approved email to the existing protected delivery port. Completion is a dedicated SECURITY DEFINER transaction that consumes the recovery credential, verifies the active canonical account and unchanged Supabase mapping, establishes the Argon2id credential under the approved enrollment email, revokes existing sessions, and marks the enrollment completed. HTTP then performs canonical GHM login only after successful completion.
+
+Construction remains non-production. The remaining gate is the non-production DB + HTTP qualification of the complete ceremony and its anti-enumeration, single-use, rollback, session-revocation, and post-reset-session invariants.
