@@ -99,6 +99,14 @@ try {
     ORDER BY n.nspname,c.relname,con.conname
   `);
 
+  const rlsPolicies=await q(`
+    SELECT schemaname,tablename,policyname,cmd,roles,qual,with_check
+    FROM pg_policies
+    WHERE schemaname='public'
+      AND tablename IN ('users','profiles','todos','files','password_reset_tokens')
+    ORDER BY tablename,policyname
+  `);
+
   const counts=await q(`
     SELECT 'users' AS object_name,count(*)::bigint AS row_count FROM public.users
     UNION ALL
