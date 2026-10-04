@@ -31,6 +31,7 @@ const createPersistence = (
   disableAccount: async () => {},
   issueRecovery: async () => { throw new Error('unused'); },
   redeemRecovery: async () => { throw new Error('unused'); },
+  lookupQuoteFlowMigrationResetEnrollment: async () => null,
   lookupExternalIdentity: lookup,
   bootstrapExternalIdentity: bootstrap,
   linkExternalIdentity: async () => { throw new Error('unused'); },
