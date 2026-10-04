@@ -41,6 +41,13 @@ try {
 
   await q("set search_path = ghm, public");
 
+  const tenant = await q("select id from ghm.business order by id asc limit 1");
+  if (tenant.rows.length === 0) {
+    throw new Error("no qualifying tenant business exists in ghm.business");
+  }
+  const tenantBusinessId = tenant.rows[0].id;
+  evidence.push({ label: "qualification tenant", status: "OBSERVED", tenant_business_id: tenantBusinessId });
+
   await expectFailure("direct runtime INSERT is denied", async () => {
     await q(
       `insert into ghm.storage_object
@@ -69,7 +76,7 @@ try {
 
   const probe = await q(`
     select ghm.storage_create_pending(
-      1, 'qualification', 0, 'qualification_probe',
+      $1, 'qualification', 0, 'qualification_probe',
       'qualification/probe-' || gen_random_uuid()::text,
       'image/png', 1, 'private', 'probe.png'
     ) as row
