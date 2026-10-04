@@ -1,0 +1,32 @@
+# GHM Legacy Object and Data Disposition Audit
+
+## Status
+
+**CONSTRUCTION — READ-ONLY AUDIT**
+
+The live authority audit established that `ghm_app_user` and `ghm_db_user` remain present, with `ghm_db_user` owning legacy `public.*` objects. This boundary determines whether those objects contain data or retain database dependencies before any ownership transfer or role retirement.
+
+## Scope
+
+The audit inspects:
+
+- legacy-role-owned relations and estimated row counts;
+- exact row counts for legacy `public.users`, `profiles`, `todos`, `files`, and `password_reset_tokens`;
+- PostgreSQL dependency edges;
+- routine definitions referencing legacy objects or roles;
+- views and triggers referencing legacy objects;
+- constraints involving legacy objects;
+- same-name objects under canonical `ghm`;
+- routine definitions referencing legacy role names.
+
+## Safety
+
+This harness is catalog/read-only plus SELECT row counts. It performs no DDL, GRANT, REVOKE, role change, ownership change, DELETE, UPDATE, INSERT, or data migration.
+
+## Gate
+
+No legacy role retirement, ownership transfer, or legacy-object removal is authorized by this audit alone. The resulting evidence must be reconciled against application source, migration history, data-preservation requirements, and operational recovery requirements.
+
+## Decision
+
+**DISPOSITION PENDING** until the live evidence is reconciled.
