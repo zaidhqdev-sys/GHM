@@ -38,3 +38,7 @@ No legacy role retirement, ownership transfer, or legacy-object removal is autho
 ## Exact row counts
 
 The audit uses a fixed, explicit UNION query for the five known legacy tables. PostgreSQL does not permit a table identifier to be supplied through a value parameter; the earlier parameterized identifier form was invalid and has been removed.
+
+## RLS count execution boundary
+
+Legacy tables may retain historical row-level-security policies that reference the application GUC `app.current_user_id`. Exact aggregate counts therefore execute after a session-only `SET ROLE ghm_schema_owner`, using the canonical non-login schema owner already reachable by the migrator. This does not grant, revoke, alter, or persist any database privilege.
