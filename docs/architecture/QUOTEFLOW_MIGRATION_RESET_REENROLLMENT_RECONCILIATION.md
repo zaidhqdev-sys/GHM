@@ -38,6 +38,8 @@ The construction branch contains:
 - [x] Runtime/migrator separation is represented in the DB qualification artifact.
 - [x] Synthetic-account, recovery single-use/expiry, session revocation, provenance preservation, and rollback checks are represented in the DB qualification artifact.
 - [x] No production delivery, migration, Supabase runtime cutover, or payment change is included.
+- [x] First DB qualification execution reached the real recovery-credential insert and exposed a timestamp-ordering failure: the database recorded `expires_at` approximately 75ms before its independently generated `created_at`.
+- [x] Recovery issuance was corrected to derive the expiry timestamp from the database transaction clock before invoking the canonical recovery function; the database check constraint remains unchanged.
 
 ### Pending execution
 
@@ -74,4 +76,4 @@ PR merge requires:
 
 The implementation is ready for DB-backed qualification, **not yet for merge**.
 
-The next action is execution of the existing qualification artifact, followed by documentation reconciliation from the actual result.
+The next action is to pull the corrected construction branch and rerun the existing qualification artifact. The DB qualification remains pending until that execution passes; the timestamp constraint must not be weakened or removed to obtain a pass.
