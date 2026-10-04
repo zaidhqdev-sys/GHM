@@ -49,6 +49,16 @@ try {
     );
   });
 
+  const functionPrivileges = await q(\`
+    select
+      has_function_privilege(current_user, 'ghm.storage_create_pending(bigint,text,bigint,text,text,text,bigint,text,text)', 'EXECUTE') as create_pending_execute,
+      has_function_privilege(current_user, 'ghm.storage_mark_available(bigint,text)', 'EXECUTE') as mark_available_execute,
+      has_function_privilege(current_user, 'ghm.storage_mark_deletion_pending(bigint)', 'EXECUTE') as mark_deletion_pending_execute,
+      has_function_privilege(current_user, 'ghm.storage_mark_deleted(bigint)', 'EXECUTE') as mark_deleted_execute,
+      has_function_privilege(current_user, 'ghm.storage_get_object(bigint)', 'EXECUTE') as get_object_execute
+  \`);
+  evidence.push({ label: "canonical lifecycle EXECUTE privileges", status: "OBSERVED", ...functionPrivileges.rows[0] });
+
   const tablePrivileges = await q(`
     select
       has_table_privilege(current_user, 'ghm.storage_object', 'INSERT') as insert_allowed,
