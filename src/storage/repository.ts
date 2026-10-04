@@ -3,6 +3,8 @@ import { withAuthorizedTransaction } from "../db/authorized-transaction.js";
 import type { AuthContext } from "../auth/authorization.js";
 import type { StorageMetadataRecord, StorageMetadataStore } from "./service.js";
 
+export type StorageTransactionRunner = <T>(work: (client: PoolClient) => Promise<T>) => Promise<T>;
+
 const mapStorageMetadata = (row: any): StorageMetadataRecord => ({
   id: String(row.id),
   businessId: String(row.tenant_business_id),
@@ -16,11 +18,14 @@ const mapStorageMetadata = (row: any): StorageMetadataRecord => ({
   status: row.status,
 });
 
-class TransactionalPostgresStorageMetadataStore implements StorageMetadataStore {
-  constructor(private readonly context: AuthContext) {}
+export class TransactionalPostgresStorageMetadataStore implements StorageMetadataStore {
+  constructor(
+    private readonly context: AuthContext,
+    private readonly transactionRunner: StorageTransactionRunner = (work) => withAuthorizedTransaction(context, work),
+  ) {}
 
   private async run<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
-    return withAuthorizedTransaction(this.context, work);
+    return this.transactionRunner(work);
   }
 
   async createPending(input: Omit<StorageMetadataRecord, "id" | "status">): Promise<StorageMetadataRecord> {
