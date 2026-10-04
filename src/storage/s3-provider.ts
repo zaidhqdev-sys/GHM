@@ -30,6 +30,8 @@ export class S3StorageProvider implements StorageProvider {
   constructor(options: S3StorageProviderOptions) {
     if (!options.bucket.trim()) throw new Error("storage bucket must not be empty");
     if (!options.region.trim()) throw new Error("storage region must not be empty");
+    if (!options.accessKeyId.trim()) throw new Error("storage access key must not be empty");
+    if (!options.secretAccessKey.trim()) throw new Error("storage secret key must not be empty");
 
     this.bucket = options.bucket;
     this.client = new S3Client({
@@ -98,6 +100,10 @@ export class S3StorageProvider implements StorageProvider {
     byteSize: number;
     expiresInSeconds: number;
   }): Promise<StorageUploadGrant> {
+    if (!input.key.trim()) throw new StorageProviderError("INVALID_OBJECT", "storage key must not be empty");
+    if (!input.contentType.trim()) throw new StorageProviderError("INVALID_OBJECT", "content type must not be empty");
+    if (!Number.isSafeInteger(input.byteSize) || input.byteSize < 0) throw new StorageProviderError("INVALID_OBJECT", "byte size must be a non-negative safe integer");
+    if (!Number.isSafeInteger(input.expiresInSeconds) || input.expiresInSeconds <= 0) throw new StorageProviderError("INVALID_OBJECT", "upload grant expiry must be a positive safe integer");
     try {
       const command = new PutObjectCommand({
         Bucket: this.bucket,
@@ -121,6 +127,8 @@ export class S3StorageProvider implements StorageProvider {
     key: string;
     expiresInSeconds: number;
   }): Promise<StorageDownloadGrant> {
+    if (!input.key.trim()) throw new StorageProviderError("INVALID_OBJECT", "storage key must not be empty");
+    if (!Number.isSafeInteger(input.expiresInSeconds) || input.expiresInSeconds <= 0) throw new StorageProviderError("INVALID_OBJECT", "download grant expiry must be a positive safe integer");
     try {
       const command = new GetObjectCommand({
         Bucket: this.bucket,
