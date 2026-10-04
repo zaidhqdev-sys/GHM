@@ -39,7 +39,8 @@
     "qualify:business-offering-runtime": "npm run build && node scripts/qualify-business-offering-runtime.mjs",
     "qualify:connect-integration-lifecycle": "npm run build && node --require ./scripts/test-env.cjs --test dist/integrations/connect/integration-lifecycle.persistence.test.js",
     "qualify:country-currency-runtime": "node scripts/qualify-country-currency-runtime.mjs",
-    "qualify:commercial-payment-runtime": "node scripts/qualify-commercial-payment-runtime.mjs"
+    "qualify:commercial-payment-runtime": "node scripts/qualify-commercial-payment-runtime.mjs",
+    "qualify:quoteflow-migration-snapshot": "npm run build && node scripts/qualify-quoteflow-migration-snapshot.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",
