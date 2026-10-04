@@ -93,9 +93,8 @@ try {
   console.log('CATEGORY READ + ACTIVE FILTER PASS');
 
   await assertRejected(() => service.assignBusinessCategory(member,{businessId:f.business,categoryId:f.categoryA}), 'NON-MANAGEMENT ASSIGN REJECTION PASS','Business management permission required');
-  await assertRejected(() => service.assignBusinessCategory(outsider,{businessId:f.business,categoryId:f.categoryA}), 'OUTSIDER ASSIGN REJECTION PASS','Business tenant access denied');
+  await assertRejected(() => service.assignBusinessCategory(outsider,{businessId:f.business,categoryId:f.categoryA}), 'CROSS-BUSINESS MEMBER ASSIGN REJECTION PASS','Business tenant access denied');
   await assertRejected(() => service.assignBusinessCategory(customer,{businessId:f.business,categoryId:f.categoryA}), 'CUSTOMER ASSIGN REJECTION PASS','Business tenant access denied');
-  await assertRejected(() => service.listBusinessCategoryAssignments(outsider,f.business), 'OUTSIDER READ REJECTION PASS','Business tenant access denied');
   await assertRejected(() => service.listBusinessCategoryAssignments(outsider,f.business), 'CROSS-BUSINESS MEMBER READ REJECTION PASS','Business tenant access denied');
   await assertRejected(() => service.assignBusinessCategory(owner,{businessId:f.business,categoryId:f.inactive}), 'INACTIVE CATEGORY REJECTION PASS','Category not found or not selectable');
 
