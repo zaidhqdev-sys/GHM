@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { PostgresStorageMetadataStore } from "./repository.js";
+import { createPostgresStorageMetadataStore } from "./repository.js";
 
 test("storage metadata repository uses canonical persistence functions", async () => {
   const calls: string[] = [];
@@ -16,7 +16,7 @@ test("storage metadata repository uses canonical persistence functions", async (
       }}] };
     },
   };
-  const repo = new PostgresStorageMetadataStore(client);
+  const repo = createPostgresStorageMetadataStore({ userId: 1, role: "business" });
   const row = await repo.createPending({
     businessId: "42", resourceType: "business", resourceId: "42",
     objectClass: "business_logo",
@@ -33,6 +33,6 @@ test("storage metadata repository recognizes canonical missing-object error", as
       throw new Error("storage object does not exist");
     },
   };
-  const repo = new PostgresStorageMetadataStore(client);
+  const repo = createPostgresStorageMetadataStore({ userId: 1, role: "business" });
   assert.equal(await repo.getById("999"), null);
 });
