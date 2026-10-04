@@ -62,7 +62,7 @@ try {
   const definition = functionDefinition.rows[0].definition;
   assert.match(definition, /INSERT\s+INTO\s+ghm\.account_external_identity/i);
   assert.match(definition, /outcome\s*:=\s*'created'/i);
-  assert.doesNotMatch(definition, /EXCEPTION\\s+WHEN\\s+unique_violation/i);
+  assert.doesNotMatch(definition, /EXCEPTION\s+WHEN\s+unique_violation/i);
 
   const first = await runtime.query(
     'select * from ghm.auth_provision_migration_account($1,$2,$3,$4)',
@@ -86,7 +86,8 @@ try {
     'select * from ghm.auth_provision_migration_account($1,$2,$3,$4)',
     ['supabase', subjects[0], 'Different Name', 'customer'],
   );
-  assert.deepEqual(retry.rows[0], first.rows[0]);
+  assert.equal(retry.rows[0].outcome, 'already_provisioned');
+  assert.equal(retry.rows[0].account_id, first.rows[0].account_id);
 
   await assert.rejects(
     runtime.query('select * from ghm.auth_provision_migration_account($1,$2,$3,$4)', ['not-supabase', subjects[1], null, 'customer']),
