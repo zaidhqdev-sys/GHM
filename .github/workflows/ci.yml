@@ -20,6 +20,7 @@ jobs:
       DATABASE_URL: postgres://qualification:test@localhost:5432/ghm
       INVITE_CODE: test-invite-code
       CORS_ORIGINS: http://localhost:3000
+      GHM_AUTH_TOKEN_PEPPER: ci-test-token-pepper-32-bytes-minimum-length-000
     steps:
       - name: Checkout
         uses: actions/checkout@v4

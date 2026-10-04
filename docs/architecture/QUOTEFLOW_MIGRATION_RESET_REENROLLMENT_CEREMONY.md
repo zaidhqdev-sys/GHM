@@ -1,6 +1,6 @@
 # QuoteFlow Existing-User Password Reset / Re-enrollment Ceremony
 
-**Status: ARCHITECTURE GATE — RESET OPERATION IMPLEMENTED; COMPLETE MIGRATION CEREMONY PENDING**
+**Status: CONSTRUCTION QUALIFIED — RESET OPERATION AND MIGRATION ENROLLMENT LOOKUP BOUNDARY QUALIFIED; COMPLETE CEREMONY PENDING**
 
 ## Decision
 
@@ -25,16 +25,18 @@ No email-only account matching is permitted.
 
 1. Migration provisioning establishes the canonical GHM account without a password credential.
 2. The migration record marks the account `RESET_REQUIRED`.
-3. The user initiates GHM password recovery using the canonical recovery request boundary.
-4. GHM normalizes the supplied email and looks up only an active credential-bearing account.
-5. Recovery material is generated as an opaque one-time credential and stored only in protected form.
-6. The raw recovery credential is handed only to the approved delivery boundary.
-7. The HTTP boundary returns no recovery credential and uses the existing anti-enumeration response.
-8. The user presents the recovery credential through a dedicated reset operation.
-9. GHM atomically redeems the recovery credential and establishes a new Argon2id password credential.
-10. Existing sessions are revoked according to the password-recovery security policy.
-11. The recovery credential becomes unusable after redemption or expiry.
-12. Only after successful re-enrollment may canonical GHM Auth establish a new authenticated session.
+3. The user initiates the dedicated QuoteFlow migration reset-enrollment request boundary.
+4. GHM normalizes the supplied migration-approved enrollment email and resolves only an eligible `RESET_REQUIRED` migration enrollment through the dedicated SECURITY DEFINER lookup capability.
+5. The migration enrollment boundary proves the exact Supabase subject/account mapping, active account, and `reset_required` state; it does not perform email-only identity matching.
+6. The existing protected recovery-token issuance/delivery boundary is then used only for the eligible migration account.
+7. Recovery material is generated as an opaque one-time credential and stored only in protected form.
+8. The raw recovery credential is handed only to the approved delivery boundary.
+9. The HTTP boundary returns no recovery credential and uses anti-enumeration behavior.
+10. The user presents the recovery credential through the dedicated reset operation.
+11. GHM atomically redeems the recovery credential and establishes a new Argon2id password credential.
+12. Existing sessions are revoked according to the password-recovery security policy.
+13. The recovery credential becomes unusable after redemption or expiry.
+14. Only after successful re-enrollment may canonical GHM Auth establish a new authenticated session.
 
 ## Security invariants
 
@@ -64,11 +66,11 @@ The repository already contains the foundational recovery delivery boundary and 
 
 Those capabilities are not, by themselves, proof that the complete QuoteFlow migration re-enrollment ceremony is qualified.
 
-## Migration-specific proof required
+## Migration-specific proof still required
 
 Before this ceremony can be marked qualified, non-production qualification must prove:
 
-1. a provisioned `RESET_REQUIRED` account can request recovery;
+1. a provisioned `RESET_REQUIRED` account can traverse the migration enrollment request through recovery issuance and delivery;
 2. unknown/ineligible accounts do not disclose account existence;
 3. a valid recovery credential can be redeemed exactly once;
 4. expired recovery credentials are rejected;
@@ -131,7 +133,7 @@ The following remain closed:
 - [x] recovery-token redemption primitive exists
 - [x] Argon2id password-setting primitive exists
 - [x] recovery delivery anti-disclosure boundary exists
-- [ ] migration-specific RESET_REQUIRED ceremony qualification
+- [ ] complete migration-specific RESET_REQUIRED ceremony qualification
 - [x] recovery credential single-use/expiry qualification for the synthetic migrated-account reset operation
 - [x] session revocation qualification for the synthetic migrated-account reset operation
 - [ ] post-reset GHM session qualification
@@ -139,11 +141,15 @@ The following remain closed:
 - [ ] production delivery approval
 - [ ] production migration approval
 
-## DB qualification slice
+## Migration enrollment qualification slice
 
-The implementation branch carries a non-production DB qualification script:
+The implementation branch carries a non-production DB qualification script for the reset operation:
 
 `scripts/qualify-quoteflow-migration-reset-reenrollment-db.mjs`
+
+The separate enrollment-boundary qualification is:
+
+`scripts/qualify-quoteflow-migration-reset-enrollment-db.mjs`
 
 It uses the existing runtime/migrator separation and synthetic Supabase external-identity subjects. The qualification proves:
 
@@ -155,9 +161,9 @@ It uses the existing runtime/migrator separation and synthetic Supabase external
 - an expired recovery credential is rejected without creating a password;
 - the underlying recovery redemption/password write rolls back together when the surrounding transaction fails.
 
-This qualifies the **reset operation and its database invariants**. It does **not** yet qualify the complete user-facing migration ceremony because the credentialless migrated account does not currently have a canonical migration email/reset-enrollment lookup boundary.
+The reset qualification proves the atomic reset operation and its database invariants. The enrollment qualification now separately proves the canonical migration-approved email lookup boundary and exact migration provenance binding. The complete user-facing ceremony remains pending because the enrollment lookup is not yet integrated into a migration-specific HTTP recovery request/delivery path and post-reset session qualification.
 
-That remaining boundary is intentionally not hidden by this qualification and remains a founder gate before production migration.
+This distinction is intentional: the new lookup capability is qualified construction, not authorization for production delivery, production migration, or runtime cutover.
 
 ## Documentation reconciliation
 
