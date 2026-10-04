@@ -1,6 +1,6 @@
 # QuoteFlow Migration Account Provisioning Boundary
 
-**Status: CONSTRUCTION QUALIFICATION — CREDENTIALLESS PROVISIONING CONTRACT ONLY**
+**Status: CONSTRUCTION QUALIFIED — CREDENTIALLESS PROVISIONING CONTRACT**
 
 ## Decision
 
@@ -54,7 +54,7 @@ This account slice does not create Businesses, memberships, or translate legacy 
 
 ## Qualification
 
-Synthetic non-production qualification proves:
+Synthetic qualification and database-backed construction qualification prove:
 
 - RESET_REQUIRED can be represented without password material;
 - first provisioning is created;
@@ -63,11 +63,10 @@ Synthetic non-production qualification proves:
 - conflicting reviewed mappings stop as CONFLICT;
 - the service requires an atomic create-and-link store boundary for new accounts.
 
-No database migration, Supabase access, credential extraction, production mutation,
-QuoteFlow runtime change, or cutover is included.
+Database-backed qualification additionally proves the governed SECURITY DEFINER primitive executes for `ghm_runtime`, direct runtime DML remains revoked, fresh creation and exact retry are idempotent, concurrent provisioning converges to one account, caller rollback removes both account and mapping, and non-`supabase` providers are rejected.
+
+No production migration, Supabase source access, credential extraction, QuoteFlow runtime change, or cutover is included.
 
 ## Next gate
 
-The next construction gate is the database-backed migration provisioning primitive
-plus an explicit reset/re-enrollment ceremony. It must be implemented as a
-migration-owned SECURITY DEFINER capability, not by reusing public registration.
+The next construction gate is the explicit password reset/re-enrollment ceremony. Database provisioning is qualified; credential migration remains separately gated.
