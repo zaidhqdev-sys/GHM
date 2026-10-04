@@ -1,26 +1,10 @@
 import assert from 'node:assert/strict';
 
-type Outcome = 'MAPPED' | 'CREATE_REQUIRED' | 'CONFLICT' | 'BLOCKED';
-
-interface SourceOrg {
-  sourceOrganizationId: string;
-  name: string;
-  ownerSourceSubject: string;
-  evidenceReference: string;
-}
-
-interface Resolution {
-  sourceOrganizationId: string;
-  outcome: Outcome;
-  targetBusinessId: number | null;
-  reasonCode: string;
-}
-
 function reconcile(
-  org: SourceOrg,
-  exactMapping: { businessId: number } | null,
-  reviewedTarget: { businessId: number; evidenceReference: string } | null,
-): Resolution {
+  org,
+  exactMapping,
+  reviewedTarget,
+) {
   if (!org.sourceOrganizationId.trim() || !org.evidenceReference.trim()) {
     return { sourceOrganizationId: org.sourceOrganizationId, outcome: 'BLOCKED', targetBusinessId: null, reasonCode: 'BUSINESS_RESOLUTION_EVIDENCE_REQUIRED' };
   }
@@ -39,7 +23,7 @@ function reconcile(
   return { sourceOrganizationId: org.sourceOrganizationId, outcome: 'CREATE_REQUIRED', targetBusinessId: null, reasonCode: 'BUSINESS_CREATE_REQUIRED' };
 }
 
-const base: SourceOrg = {
+const base = {
   sourceOrganizationId: 'org-legacy-001',
   name: 'Example Business',
   ownerSourceSubject: 'legacy-user-001',
