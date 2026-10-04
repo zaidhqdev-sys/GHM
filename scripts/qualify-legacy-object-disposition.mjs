@@ -93,11 +93,13 @@ try {
     {dataset:'public.files',status:'PRESERVE_OR_ARCHIVE_AFTER_SUCCESSOR_CHECK',reason:'Legacy table is empty; storage semantics must remain explicitly dispositioned.'},
     {dataset:'public.password_reset_tokens',status:'RETIRE_AFTER_PRESERVATION_CHECK',reason:'Legacy table is empty and lacks used_at; canonical recovery is elsewhere.'}
   ];
+  const applicationDependencies = out.dependencies.filter(x => x.deptype !== 'i' && !(x.dependent_schema === 'public' && x.dependent_kind === 'S' && x.deptype === 'a'));
+  out.dependency_classification = { structural_internal: out.dependencies.length - applicationDependencies.length, application_or_external: applicationDependencies.length, application_or_external_edges: applicationDependencies };
   const blocking = [];
   if (userCount !== 2) blocking.push('legacy users row count is not the previously reconciled value of 2');
   if (!emptyExceptUsers) blocking.push('one or more non-user legacy tables are not empty');
   if (unresolvedOwner) blocking.push('legacy-owned public objects remain and require explicit ownership disposition');
-  if (out.dependencies.length > 0) blocking.push('legacy dependency edges require explicit review before object retirement');
+  if (applicationDependencies.length > 0) blocking.push('application or externally relevant legacy dependency edges require explicit review before object retirement');
   out.decision = blocking.length ? 'BLOCKED' : 'QUALIFIED_FOR_OWNERSHIP_DISPOSITION_DESIGN';
   out.blockers = blocking;
   console.log(JSON.stringify(out,null,2));
