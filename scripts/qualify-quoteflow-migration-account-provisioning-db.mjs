@@ -11,7 +11,8 @@ assert.notEqual(runtimeUrl, migratorUrl, 'runtime and migrator URLs must be dist
 
 const runtime = new Client({ connectionString: runtimeUrl, ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined });
 const migrator = new Client({ connectionString: migratorUrl, ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined });
-const subjects = Array.from({ length: 3 }, () => `qualify-${randomUUID()}`);
+const runId = randomUUID();
+const subjects = Array.from({ length: 3 }, (_, i) => `qualify-${runId}-${i}-${randomUUID()}`);
 const created = [];
 
 try {
@@ -45,11 +46,14 @@ try {
     await assert.rejects(runtime.query(sql), /permission denied|insufficient_privilege/i);
   }
 
+  const preflight = await migrator.query('select count(*)::int as count from ghm.account_external_identity where provider=$1 and subject=$2', ['supabase', subjects[0]]);
+  assert.equal(preflight.rows[0].count, 0, `qualification subject unexpectedly exists: ${subjects[0]}`);
+
   const first = await runtime.query(
     'select * from ghm.auth_provision_migration_account($1,$2,$3,$4)',
     ['supabase', subjects[0], 'DB Qualification User', 'customer'],
   );
-  assert.deepEqual(first.rows[0].outcome, 'created');
+  assert.equal(first.rows[0].outcome, 'created', `unexpected first outcome for ${subjects[0]}: ${JSON.stringify(first.rows[0])}`);
   created.push(first.rows[0].account_id);
 
   const retry = await runtime.query(
@@ -100,6 +104,7 @@ try {
   assert.deepEqual(catalog.rows[0], { runtime_insert_identity: false, runtime_insert_mapping: false, runtime_execute: true });
 
   console.log('QuoteFlow migration account provisioning DB qualification: PASS');
+  console.log(JSON.stringify({ run_id: runId, subjects }, null, 2));
   console.log(JSON.stringify({ created_accounts: created, concurrent_outcomes: outcomes.map(r => r.outcome), rollback: rollbackCheck.rows[0] }, null, 2));
 } finally {
   if (created.length) {
