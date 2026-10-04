@@ -129,6 +129,7 @@ export interface AuthPersistence {
     email: string,
     password: string,
   ): Promise<{ password: PasswordHashResult; revokedSessionCount: number }>;
+  lookupQuoteFlowMigrationResetEnrollment(email: string): Promise<{ enrollmentId: number; accountId: number } | null>;
   lookupExternalIdentity(provider: string, subject: string): Promise<ExternalIdentityMapping | null>;
   bootstrapExternalIdentity(
     provider: string,
@@ -477,6 +478,23 @@ export class PostgresAuthPersistence implements AuthPersistence {
     } catch (error) {
       throw mapPgError(error);
     }
+  }
+
+  async lookupQuoteFlowMigrationResetEnrollment(
+    email: string,
+  ): Promise<{ enrollmentId: number; accountId: number } | null> {
+    const normalized = normalizeLoginEmail(email);
+    const result = await this.tx(async (client) =>
+      client.query(
+        `SELECT * FROM ghm.auth_lookup_quoteflow_migration_reset_enrollment($1)`,
+        [normalized.loginEmailNormalized],
+      ),
+    );
+    if (result.rowCount !== 1) return null;
+    return {
+      enrollmentId: Number(result.rows[0].enrollment_id),
+      accountId: Number(result.rows[0].account_id),
+    };
   }
 
   async lookupExternalIdentity(
