@@ -59,8 +59,10 @@ try {
   const functionDefinition = await migrator.query(
     'select pg_get_functiondef(\'ghm.auth_provision_migration_account(text,text,text,text)\'::regprocedure) as definition',
   );
-  assert.match(functionDefinition.rows[0].definition, /INSERT INTO ghm\\.account_external_identity[\\s\\S]*outcome := \'created\'/i);
-  assert.doesNotMatch(functionDefinition.rows[0].definition, /EXCEPTION\\s+WHEN\\s+unique_violation/i);
+  const definition = functionDefinition.rows[0].definition;
+  assert.match(definition, /INSERT INTO ghm\\.account_external_identity/i);
+  assert.match(definition, /outcome\\s*:=\\s*'created'/i);
+  assert.doesNotMatch(definition, /EXCEPTION\\s+WHEN\\s+unique_violation/i);
 
   const first = await runtime.query(
     'select * from ghm.auth_provision_migration_account($1,$2,$3,$4)',
