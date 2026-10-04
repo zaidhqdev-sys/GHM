@@ -114,8 +114,19 @@ try{
     knownAccountMatch={provided_email_sha256:knownEmailHash,matches:rows[0]?.matches??0};
   }
 
+  const userColumnNames=new Set(columns.filter((row)=>row.table_name==='users').map((row)=>row.column_name));
+  const migrationAuthorityAssessment={
+    source_authority:'BLOCKED_FROM_LEGACY_USERS_TABLE',
+    required_source_fields:['supabase_auth_uuid','source_account_status','source_email_when_present','source_creation_or_update_timestamp_when_available','source_evidence_reference'],
+    available_legacy_user_fields:[...userColumnNames],
+    missing_required_fields:['supabase_auth_uuid','source_evidence_reference'],
+    reason:'The legacy public.users table is not an authoritative QuoteFlow migration snapshot. It contains numeric legacy ids, email/password/profile metadata, but no Supabase Auth UUID or reproducible source evidence reference. Email-only matching is explicitly prohibited by the QuoteFlow migration source boundary.',
+    automated_identity_migration_authorized:false,
+    operator_reconciliation_required:true
+  };
+
   const disposition=[
-    {object_name:'users',candidate_disposition:'MIGRATE_OR_PRESERVE_ARCHIVE',basis:'Legacy identity/account records require reconciliation with canonical GHM identity and QuoteFlow migration provenance.'},
+    {object_name:'users',candidate_disposition:'PRESERVE_ARCHIVE_OR_RETIRE_AFTER_PROVENANCE_RECONCILIATION',basis:'Two legacy account rows exist, but this table lacks the authoritative Supabase UUID and source evidence required for QuoteFlow migration. Do not migrate by email or numeric legacy id.'},
     {object_name:'profiles',candidate_disposition:'MIGRATE_OR_PRESERVE_ARCHIVE',basis:'Profile data may carry identity/business presentation data; preserve until mapped to canonical GHM resources.'},
     {object_name:'files',candidate_disposition:'PRESERVE_ARCHIVE_OR_MIGRATE',basis:'File metadata may reference stored objects; deletion is blocked until storage preservation is verified.'},
     {object_name:'password_reset_tokens',candidate_disposition:'RETIRE_AFTER_PRESERVATION_CHECK',basis:'Historical recovery artifacts should not become a live authentication dependency.'},
@@ -138,6 +149,7 @@ try{
     todos:todoData[0],
     files:fileData[0],
     password_reset_tokens:resetData[0],
+    migration_authority_assessment:migrationAuthorityAssessment,
     known_account_match:knownAccountMatch,
     disposition_matrix:disposition,
     decision:'DISPOSITION_PENDING',
