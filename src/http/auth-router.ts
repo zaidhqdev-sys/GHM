@@ -3,7 +3,6 @@ import { rateLimit } from 'express-rate-limit';
 import type { AuthTokenResponse, GhmAuthService } from '../auth/ghm-auth-service';
 import type { PasswordRecoveryService } from '../auth/password-recovery';
 import type { PasswordResetService } from '../auth/password-reset';
-import { AuthPersistenceError } from '../auth/foundation/persistence';
 
 const parseRegistrationBody = (body: unknown): { fullName?: string | null; role?: 'customer' | 'business'; email: string; password: string } | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
@@ -149,7 +148,7 @@ export const registerAuthRoutes = (
       await passwordResetService.reset(input.token, input.email, input.password);
       res.status(200).json({ ok: true });
     } catch (error) {
-      if (error instanceof AuthPersistenceError && error.code === 'RECOVERY_CREDENTIAL_INVALID') {
+      if (error instanceof Error && (error as { code?: string }).code === 'RECOVERY_CREDENTIAL_INVALID') {
         res.status(400).json({ error: 'invalid_recovery' });
         return;
       }
