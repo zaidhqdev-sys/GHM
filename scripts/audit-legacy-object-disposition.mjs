@@ -48,7 +48,8 @@ try {
            pg_get_functiondef(p.oid) AS definition
     FROM pg_proc p
     JOIN pg_namespace n ON n.oid=p.pronamespace
-    WHERE pg_get_functiondef(p.oid) ILIKE ANY(ARRAY[
+    WHERE p.prokind IN ('f','p')
+      AND pg_get_functiondef(p.oid) ILIKE ANY(ARRAY[
       '%public.users%','%public.profiles%','%public.todos%',
       '%public.files%','%public.password_reset_tokens%',
       '%ghm_app_user%','%ghm_db_user%'
@@ -124,7 +125,8 @@ try {
            pg_get_functiondef(p.oid) AS definition
     FROM pg_proc p
     JOIN pg_namespace n ON n.oid=p.pronamespace
-    WHERE pg_get_functiondef(p.oid) ILIKE ANY(ARRAY['%ghm_app_user%','%ghm_db_user%'])
+    WHERE p.prokind IN ('f','p')
+      AND pg_get_functiondef(p.oid) ILIKE ANY(ARRAY['%ghm_app_user%','%ghm_db_user%'])
     ORDER BY n.nspname,p.proname
   `);
 
