@@ -119,22 +119,39 @@ try {
     ORDER BY c.relname
   `);
 
-  // First attempt counts under the actual legacy owner. This is intentionally
-  // session-local and read-only. Do not invent app.current_user_id: if RLS still
-  // blocks the owner, the audit records the failure rather than changing GUC state.
-  await c.query('RESET ROLE');
-  await c.query('SET ROLE ghm_db_user');
-  const countExecutionRole=await q("SELECT current_user");
-
-  const counts=[];
-  for(const name of ['users','profiles','todos','files','password_reset_tokens']){
-    try{
-      const rows=await q(`SELECT '${name}' AS object_name,count(*)::bigint AS row_count FROM public.${name}`);
-      counts.push(rows[0]);
-    }catch(err){
-      counts.push({object_name:name,error_code:err.code||null,error_message:err.message});
-    }
+  // Do not expand the migrator privilege boundary merely to count legacy data.
+  // The migrator is intentionally not a member of ghm_db_user. Record PostgreSQL's
+  // refusal, then capture catalog estimates as explicitly non-authoritative evidence.
+  // Exact counts require a separately authorized legacy-owner/audit boundary.
+  let countExecutionRole=null;
+  let roleSwitchError=null;
+  try {
+    await c.query('RESET ROLE');
+    await c.query('SET ROLE ghm_db_user');
+    countExecutionRole=(await q("SELECT current_user"))[0]?.current_user ?? null;
+  } catch(err) {
+    roleSwitchError={error_code:err.code||null,error_message:err.message};
+    await c.query('RESET ROLE');
   }
+
+  const counts=await q(`
+    SELECT 'users' AS object_name,c.reltuples::bigint AS estimated_row_count
+    FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND c.relname='users'
+    UNION ALL
+    SELECT 'profiles',c.reltuples::bigint FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND c.relname='profiles'
+    UNION ALL
+    SELECT 'todos',c.reltuples::bigint FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND c.relname='todos'
+    UNION ALL
+    SELECT 'files',c.reltuples::bigint FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND c.relname='files'
+    UNION ALL
+    SELECT 'password_reset_tokens',c.reltuples::bigint FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND c.relname='password_reset_tokens'
+    ORDER BY object_name
+  `);
 
   const ghmNameOverlap=await q(`
     SELECT c.relname AS object_name,c.relkind,pg_get_userbyid(c.relowner) AS owner
@@ -164,6 +181,10 @@ try {
     mutation:false,
     server,
     legacy_objects:legacyObjects,
+    rls_policies:rlsPolicies,
+    rls_state:rlsState,
+    count_execution_role:countExecutionRole,
+    count_role_switch_error:roleSwitchError,
     object_row_counts:counts,
     dependencies,
     routines,
