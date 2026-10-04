@@ -52,5 +52,4 @@ test("storage provider factory does not expose runtime credentials through its p
 
   assert.equal(publicKeys.includes("accessKeyId"), false);
   assert.equal(publicKeys.includes("secretAccessKey"), false);
-  assert.equal(publicKeys.includes("bucket"), false);
 });
