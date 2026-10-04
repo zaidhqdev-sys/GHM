@@ -129,7 +129,8 @@ export interface AuthPersistence {
     email: string,
     password: string,
   ): Promise<{ password: PasswordHashResult; revokedSessionCount: number }>;
-  lookupQuoteFlowMigrationResetEnrollment(email: string): Promise<{ enrollmentId: number; accountId: number } | null>;
+  lookupQuoteFlowMigrationResetEnrollment(email: string): Promise<{ enrollmentId: number; accountId: number; approvedEmail: string } | null>;
+  completeQuoteFlowMigrationReset(recoveryTokenWire: string, password: string): Promise<{ accountId: number; loginEmail: string; revokedSessionCount: number }>;
   lookupExternalIdentity(provider: string, subject: string): Promise<ExternalIdentityMapping | null>;
   bootstrapExternalIdentity(
     provider: string,
@@ -482,7 +483,7 @@ export class PostgresAuthPersistence implements AuthPersistence {
 
   async lookupQuoteFlowMigrationResetEnrollment(
     email: string,
-  ): Promise<{ enrollmentId: number; accountId: number } | null> {
+  ): Promise<{ enrollmentId: number; accountId: number; approvedEmail: string } | null> {
     const normalized = normalizeLoginEmail(email);
     const result = await this.tx(async (client) =>
       client.query(
@@ -494,7 +495,38 @@ export class PostgresAuthPersistence implements AuthPersistence {
     return {
       enrollmentId: Number(result.rows[0].enrollment_id),
       accountId: Number(result.rows[0].account_id),
+      approvedEmail: String(result.rows[0].approved_email),
     };
+  }
+
+  async completeQuoteFlowMigrationReset(
+    recoveryTokenWire: string,
+    password: string,
+  ): Promise<{ accountId: number; loginEmail: string; revokedSessionCount: number }> {
+    const raw = decodeOpaqueTokenWire(recoveryTokenWire);
+    const tokenHash = protectOpaqueToken(this.pepper, 'recovery', raw);
+    const hashed = await this.passwordHasher.hash(password);
+    try {
+      const result = await this.tx(async (client) =>
+        client.query(`SELECT * FROM ghm.auth_complete_quoteflow_migration_reset($1, $2, $3, $4, $5)`, [
+          tokenHash,
+          hashed.passwordHash,
+          hashed.argon2MemoryKib,
+          hashed.argon2TimeCost,
+          hashed.argon2Parallelism,
+        ]),
+      );
+      if (result.rowCount !== 1) {
+        throw new AuthPersistenceError('Recovery credential invalid', 'RECOVERY_CREDENTIAL_INVALID');
+      }
+      return {
+        accountId: Number(result.rows[0].account_id),
+        loginEmail: String(result.rows[0].login_email),
+        revokedSessionCount: Number(result.rows[0].revoked_session_count ?? 0),
+      };
+    } catch (error) {
+      throw mapPgError(error);
+    }
   }
 
   async lookupExternalIdentity(

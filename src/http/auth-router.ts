@@ -3,6 +3,8 @@ import { rateLimit } from 'express-rate-limit';
 import type { AuthTokenResponse, GhmAuthService } from '../auth/ghm-auth-service';
 import type { PasswordRecoveryService } from '../auth/password-recovery';
 import type { PasswordResetService } from '../auth/password-reset';
+import type { QuoteFlowMigrationResetRecoveryService } from '../migrations/quoteflow-migration-reset-recovery';
+import type { QuoteFlowMigrationResetCompletionService } from '../migrations/quoteflow-migration-reset-completion';
 
 const parseRegistrationBody = (body: unknown): { fullName?: string | null; role?: 'customer' | 'business'; email: string; password: string } | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
@@ -69,6 +71,8 @@ export interface AuthRouterDependencies {
   readonly authService?: GhmAuthService;
   readonly passwordRecoveryService?: PasswordRecoveryService;
   readonly passwordResetService?: PasswordResetService;
+  readonly quoteFlowMigrationResetRecoveryService?: QuoteFlowMigrationResetRecoveryService;
+  readonly quoteFlowMigrationResetCompletionService?: QuoteFlowMigrationResetCompletionService;
 }
 
 export const registerAuthRoutes = (
@@ -102,6 +106,8 @@ export const registerAuthRoutes = (
   let authService = dependencies.authService;
   const passwordRecoveryService = dependencies.passwordRecoveryService;
   const passwordResetService = dependencies.passwordResetService;
+  const quoteFlowMigrationResetRecoveryService = dependencies.quoteFlowMigrationResetRecoveryService;
+  const quoteFlowMigrationResetCompletionService = dependencies.quoteFlowMigrationResetCompletionService;
   const getAuthService = (): GhmAuthService => {
     if (!authService) {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -110,6 +116,66 @@ export const registerAuthRoutes = (
     }
     return authService;
   };
+
+  app.post('/api/v1/auth/quoteflow-migration-reset/request', passwordRecoveryRateLimit, async (req: Request, res: Response) => {
+    try {
+      const input = parseRecoveryBody(req.body);
+      if (!input) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      if (!quoteFlowMigrationResetRecoveryService) {
+        res.status(503).json({ error: 'service_unavailable' });
+        return;
+      }
+      await quoteFlowMigrationResetRecoveryService.request(input.email);
+      res.status(202).json({ ok: true });
+    } catch (error) {
+      // Preserve migration anti-enumeration at HTTP: malformed email is a request error,
+      // but unknown/ineligible migration state is intentionally indistinguishable from success.
+      if (error instanceof Error && error.name === 'EmailNormalizationError') {
+        res.status(202).json({ ok: true });
+        return;
+      }
+      console.error(JSON.stringify({
+        event: 'ghm_quoteflow_migration_reset_request_failed',
+        error: { name: error instanceof Error ? error.name : 'UnknownError' },
+      }));
+      res.status(500).json({ error: 'internal_error' });
+    }
+  });
+
+  app.post('/api/v1/auth/quoteflow-migration-reset/complete', passwordRecoveryRateLimit, async (req: Request, res: Response) => {
+    try {
+      if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const input = req.body as Record<string, unknown>;
+      if (typeof input.token !== 'string' || typeof input.password !== 'string' || !input.token || !input.password) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      if (!quoteFlowMigrationResetCompletionService) {
+        res.status(503).json({ error: 'service_unavailable' });
+        return;
+      }
+      const completed = await quoteFlowMigrationResetCompletionService.complete(input.token, input.password);
+      // Session issuance happens only after the atomic migration reset transaction commits.
+      const tokens = await getAuthService().login(completed.loginEmail, input.password);
+      res.status(200).json(tokenPayload(tokens));
+    } catch (error) {
+      if (error instanceof Error && (error as { code?: string }).code === 'RECOVERY_CREDENTIAL_INVALID') {
+        res.status(400).json({ error: 'invalid_recovery' });
+        return;
+      }
+      console.error(JSON.stringify({
+        event: 'ghm_quoteflow_migration_reset_complete_failed',
+        error: { name: error instanceof Error ? error.name : 'UnknownError' },
+      }));
+      res.status(500).json({ error: 'internal_error' });
+    }
+  });
 
   app.post('/api/v1/auth/password-recovery/request', passwordRecoveryRateLimit, async (req: Request, res: Response) => {
     try {

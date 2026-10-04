@@ -55,6 +55,8 @@ import { registerReviewRoutes } from './review-router';
 import type { GhmAuthService } from '../auth/ghm-auth-service';
 import type { PasswordRecoveryService } from '../auth/password-recovery';
 import type { PasswordResetService } from '../auth/password-reset';
+import type { QuoteFlowMigrationResetRecoveryService } from '../migrations/quoteflow-migration-reset-recovery';
+import type { QuoteFlowMigrationResetCompletionService } from '../migrations/quoteflow-migration-reset-completion';
 import { createPasswordResetService } from '../auth/password-reset';
 import { PostgresAuthPersistence } from '../auth/foundation/persistence';
 import { PostgresProjectQuoteRepository } from '../resources/project-quote/repository';
@@ -121,6 +123,8 @@ export interface AppDependencies {
   readonly authService?: GhmAuthService;
   readonly passwordRecoveryService?: PasswordRecoveryService;
   readonly passwordResetService?: PasswordResetService;
+  readonly quoteFlowMigrationResetRecoveryService?: QuoteFlowMigrationResetRecoveryService;
+  readonly quoteFlowMigrationResetCompletionService?: QuoteFlowMigrationResetCompletionService;
   readonly resourceAuthMiddleware?: import('express').RequestHandler;
   readonly connectService?: Omit<ConnectServiceHttpDependencies, 'savedBusinesses'>;
 }
@@ -653,6 +657,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     authService: dependencies.authService,
     passwordRecoveryService: dependencies.passwordRecoveryService,
     passwordResetService,
+    quoteFlowMigrationResetRecoveryService: dependencies.quoteFlowMigrationResetRecoveryService,
+    quoteFlowMigrationResetCompletionService: dependencies.quoteFlowMigrationResetCompletionService,
   } satisfies AuthRouterDependencies);
   registerConnectServiceRoutes(app, {
     ...dependencies.connectService,

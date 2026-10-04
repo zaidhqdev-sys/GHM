@@ -1,6 +1,6 @@
 # QuoteFlow Existing-User Password Reset / Re-enrollment Ceremony
 
-**Status: CONSTRUCTION QUALIFIED — RESET OPERATION AND MIGRATION ENROLLMENT LOOKUP BOUNDARY QUALIFIED; COMPLETE CEREMONY PENDING**
+**Status: CONSTRUCTION QUALIFIED — RESET, ENROLLMENT, AND SESSION-ISSUANCE CEREMONY IMPLEMENTED; NON-PRODUCTION QUALIFICATION PENDING**
 
 ## Decision
 
@@ -174,3 +174,14 @@ The implementation, test, qualification, and remaining-gate state is reconciled 
 The reconciliation is part of the merge gate and must be updated from actual DB qualification evidence before merge.
 
 This is a qualification artifact only. It does not authorize production migration, production recovery delivery, or QuoteFlow runtime cutover.
+
+
+## Current construction
+
+The complete migration-specific HTTP ceremony is now wired without changing generic recovery:
+
+- `POST /api/v1/auth/quoteflow-migration-reset/request` uses the dedicated enrollment lookup and approved migration email delivery boundary and always returns the anti-enumeration success shape for unknown/ineligible enrollment.
+- `POST /api/v1/auth/quoteflow-migration-reset/complete` accepts only the opaque recovery credential and new password; the database atomically validates the eligible migration enrollment, consumes the recovery credential, establishes the Argon2id password using the approved migration email, revokes existing sessions, and transitions the enrollment to `completed`.
+- Only after that transaction returns successfully does HTTP invoke canonical GHM Auth login, which creates the fresh GHM session/token pair.
+
+No production delivery, production migration, Supabase runtime cutover, payment change, or QuoteFlow runtime-auth swap is included.

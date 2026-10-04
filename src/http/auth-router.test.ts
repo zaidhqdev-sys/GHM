@@ -68,6 +68,87 @@ const makeKeys = async () => {
   });
 };
 
+test('POST /api/v1/auth/quoteflow-migration-reset/request is anti-enumerating and delegates to migration delivery', async () => {
+  let seen: string | null = null;
+  const { server, baseUrl } = await (async () => {
+    const { createApp } = await loadApp();
+    const server = http.createServer(createApp({
+      businessIdentityService: {} as never,
+      projectService: {} as never,
+      publicProjectService: {} as never,
+      enquiryService: {} as never,
+      campaignService: {} as never,
+      quoteFlowMigrationResetRecoveryService: {
+        request: async (email) => { seen = email; },
+      },
+    }));
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    return { server, baseUrl: `http://127.0.0.1:${address.port}` };
+  })();
+
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/auth/quoteflow-migration-reset/request`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'legacy@example.com' }),
+    });
+    assert.equal(response.status, 202);
+    assert.deepEqual(await response.json(), { ok: true });
+    assert.equal(seen, 'legacy@example.com');
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('POST /api/v1/auth/quoteflow-migration-reset/complete issues GHM session only after completion', async () => {
+  const order: string[] = [];
+  const authService: GhmAuthService = {
+    login: async (email, password) => {
+      order.push(`login:${email}:${password}`);
+      return sampleTokens({ accountId: 42, sessionId: 99 });
+    },
+    refresh: async () => sampleTokens(),
+    logout: async () => undefined,
+  };
+  const { createApp } = await loadApp();
+  const server = http.createServer(createApp({
+    businessIdentityService: {} as never,
+    projectService: {} as never,
+    publicProjectService: {} as never,
+    enquiryService: {} as never,
+    campaignService: {} as never,
+    authService,
+    quoteFlowMigrationResetCompletionService: {
+      complete: async (token, password) => {
+        order.push(`complete:${token}:${password}`);
+        return { accountId: 42, loginEmail: 'legacy@example.com' };
+      },
+    },
+  }));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/auth/quoteflow-migration-reset/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: 'opaque-token', password: 'CorrectHorseBattery1' }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), sampleTokens({ accountId: 42, sessionId: 99 }));
+    assert.deepEqual(order, [
+      'complete:opaque-token:CorrectHorseBattery1',
+      'login:legacy@example.com:CorrectHorseBattery1',
+    ]);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
 test('POST /api/v1/auth/register returns GHM-issued tokens', async () => {
   const authService: GhmAuthService = {
     register: async (input) => {
@@ -308,6 +389,7 @@ test('login issues ES256 access JWT with decimal sub and no role claim', async (
 
   const persistence: AuthPersistence = {
     setPassword: async () => ({ passwordHash, argon2MemoryKib: 65536, argon2TimeCost: 3, argon2Parallelism: 1 }),
+    completeQuoteFlowMigrationReset: async () => ({ accountId: 42, loginEmail: 'user@example.com', revokedSessionCount: 0 }),
     resetPasswordWithRecovery: async () => ({ password: { passwordHash, argon2MemoryKib: 65536, argon2TimeCost: 3, argon2Parallelism: 1 }, revokedSessionCount: 0 }),
     lookupPasswordByEmail: async () => ({
       accountId: 42,

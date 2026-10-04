@@ -132,7 +132,7 @@ Non-production DB qualification has passed. The qualification proved the synthet
 
 The migration-approved email source has been reconciled to the existing qualified QuoteFlow migration manifest/source-export contract. The approved email remains migration enrollment metadata and does not become GHM runtime identity authority.
 
-The implementation and non-production qualification now prove:
+The implementation now preserves the already-applied lookup migration checksum and adds a follow-on migration for the approved-email return column. The implementation and non-production qualification now prove:
 
 - one synthetic source user resolves to one approved enrollment;
 - exact retry registration is idempotent;
@@ -149,3 +149,9 @@ The focused service test and DB qualification are both passing.
 ## Founder gate
 
 Architecture and construction qualification only. No production migration, delivery provider, runtime cutover, payment change, or Supabase removal is authorized.
+
+## Ceremony completion boundary
+
+The next construction slice adds the completion side of the same migration boundary. The dedicated completion function does not reuse generic password-reset HTTP semantics: it binds the opaque recovery credential to an eligible `reset_required` enrollment, uses the enrollment's approved email as the credential's initial GHM login email, revokes existing sessions, and transitions the enrollment to `completed` atomically. HTTP issues a canonical GHM session only after that transaction succeeds.
+
+The dedicated request and completion routes remain dependency-injected and therefore have no production delivery/provider behavior by default.

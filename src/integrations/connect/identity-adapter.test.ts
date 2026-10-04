@@ -19,6 +19,7 @@ const createPersistence = (
   lookup: AuthPersistence['lookupExternalIdentity'],
   bootstrap: AuthPersistence['bootstrapExternalIdentity'],
 ): AuthPersistence => ({
+  completeQuoteFlowMigrationReset: async () => ({ accountId: 0, loginEmail: '', revokedSessionCount: 0 }),
   setPassword: async () => { throw new Error('unused'); },
   resetPasswordWithRecovery: async () => { throw new Error('unused'); },
   lookupPasswordByEmail: async () => null,
