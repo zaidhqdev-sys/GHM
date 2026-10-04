@@ -399,19 +399,21 @@ export class PostgresAuthPersistence implements AuthPersistence {
   ): Promise<{ recoveryTokenWire: string; credentialId: number; expiresAt: Date }> {
     const token = generateOpaqueToken();
     const tokenHash = protectOpaqueToken(this.pepper, 'recovery', token.raw);
-    const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
     try {
-      const result = await this.tx(async (client) =>
-        client.query(`SELECT ghm.auth_issue_recovery($1, $2, $3) AS id`, [
+      const result = await this.tx(async (client) => {
+        const clock = await client.query<{ now: Date }>(`SELECT current_timestamp AS now`);
+        const expiresAt = new Date(clock.rows[0].now.getTime() + ttlMinutes * 60 * 1000);
+        const recovery = await client.query(`SELECT ghm.auth_issue_recovery($1, $2, $3) AS id`, [
           accountId,
           tokenHash,
           expiresAt.toISOString(),
-        ]),
-      );
+        ]);
+        return { recovery, expiresAt };
+      });
       return {
         recoveryTokenWire: token.wire,
-        credentialId: Number(result.rows[0].id),
-        expiresAt,
+        credentialId: Number(result.recovery.rows[0].id),
+        expiresAt: result.expiresAt,
       };
     } catch (error) {
       throw mapPgError(error);
