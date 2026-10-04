@@ -1,6 +1,6 @@
-import type { PoolClient } from 'pg';
 import type { AuthContext } from '../../auth/authorization.js';
 import { withAuthorizedTransaction } from '../../db/authorized-transaction.js';
+import { resolveTenantContext } from '../../auth/tenant-resolver.js';
 import { withTransaction } from '../../db/transaction.js';
 import type { TransactionPool } from '../../db/transaction.js';
 import type { BusinessOffering, BusinessOfferingRepository, CreateBusinessOfferingInput, UpdateBusinessOfferingInput } from './contracts.js';
@@ -24,25 +24,12 @@ const mapOffering = (row: Record<string, unknown>): BusinessOffering => ({
   updatedAt: new Date(String(row.updated_at)),
 });
 
-const requireBusinessManagement = async (client: PoolClient, context: AuthContext, businessId: number) => {
-  const r = await client.query(`SELECT 1 FROM ghm.business b WHERE b.id = $1 AND b.is_active = true
-    AND EXISTS (SELECT 1 FROM ghm.business_membership bm WHERE bm.business_id = b.id AND bm.account_id = $2
-      AND bm.membership_status = 'active' AND bm.membership_role IN ('owner', 'administrator'))`, [businessId, context.userId]);
-  if (r.rowCount !== 1) throw new Error('Business management permission required');
-};
-
-const requireBusinessRead = async (client: PoolClient, context: AuthContext, businessId: number) => {
-  const r = await client.query(`SELECT 1 FROM ghm.business b WHERE b.id = $1 AND b.is_active = true
-    AND EXISTS (SELECT 1 FROM ghm.business_membership bm WHERE bm.business_id = b.id AND bm.account_id = $2 AND bm.membership_status = 'active')`, [businessId, context.userId]);
-  if (r.rowCount !== 1) throw new Error('Business access required');
-};
-
 export class PostgresBusinessOfferingRepository implements BusinessOfferingRepository {
   constructor(private readonly transactionPool?: TransactionPool) {}
 
   async listBusinessOfferings(context: AuthContext, input: { businessId: number; activeOnly?: boolean }) {
     return withAuthorizedTransaction(context, async client => {
-      await requireBusinessRead(client, context, input.businessId);
+      await resolveTenantContext(client, context, input.businessId);
       const result = await client.query(`SELECT ${COLUMNS} FROM ghm.business_offering WHERE business_id = $1 ${input.activeOnly === false ? '' : 'AND is_active = true'} ORDER BY sort_order, name, id`, [input.businessId]);
       return result.rows.map(mapOffering);
     }, this.transactionPool);
@@ -50,7 +37,7 @@ export class PostgresBusinessOfferingRepository implements BusinessOfferingRepos
 
   async getBusinessOfferingBySlug(context: AuthContext, businessId: number, slug: string) {
     return withAuthorizedTransaction(context, async client => {
-      await requireBusinessRead(client, context, businessId);
+      await resolveTenantContext(client, context, businessId);
       const result = await client.query(`SELECT ${COLUMNS} FROM ghm.business_offering WHERE business_id = $1 AND slug = $2`, [businessId, slug]);
       return result.rowCount === 1 ? mapOffering(result.rows[0]) : null;
     }, this.transactionPool);
@@ -58,7 +45,8 @@ export class PostgresBusinessOfferingRepository implements BusinessOfferingRepos
 
   async createBusinessOffering(context: AuthContext, input: CreateBusinessOfferingInput) {
     return withAuthorizedTransaction(context, async client => {
-      await requireBusinessManagement(client, context, input.businessId);
+      const tenant = await resolveTenantContext(client, context, input.businessId);
+      if (!['owner', 'administrator'].includes(tenant.membershipRole)) throw new Error('Business management permission required');
       const result = await client.query(`INSERT INTO ghm.business_offering
         (business_id, offering_type, name, slug, description, price_amount, currency_code, price_unit, sort_order, created_by)
         VALUES ($1,$2,$3,NULLIF(btrim($4),''),NULLIF(btrim($5),''),$6,$7,NULLIF(btrim($8),''),$9,$10)
@@ -73,7 +61,8 @@ export class PostgresBusinessOfferingRepository implements BusinessOfferingRepos
       const target = await client.query('SELECT business_id FROM ghm.business_offering WHERE id = $1 FOR UPDATE', [offeringId]);
       if (target.rowCount !== 1) throw new Error('Offering not found');
       const businessId = Number(target.rows[0].business_id);
-      await requireBusinessManagement(client, context, businessId);
+      const tenant = await resolveTenantContext(client, context, businessId);
+      if (!['owner', 'administrator'].includes(tenant.membershipRole)) throw new Error('Business management permission required');
 
       const keys = Object.keys(input) as (keyof UpdateBusinessOfferingInput)[];
       if (keys.length === 0) throw new Error('Offering update input is required');
