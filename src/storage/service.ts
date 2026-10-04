@@ -1,3 +1,4 @@
+import { createBusinessLogoProviderKey } from "./key.js";
 import type {
   StorageDownloadGrant,
   StorageProvider,
@@ -93,7 +94,6 @@ export function createStorageService(deps: {
   provider: StorageProvider;
   metadata: StorageMetadataStore;
   authorization: StorageAuthorization;
-  createProviderKey: (businessId: string, objectId: string) => string;
 }): StorageService {
   return {
     async createUpload(input) {
@@ -108,7 +108,7 @@ export function createStorageService(deps: {
       await deps.authorization.assertCanManage(input.caller, input.resource);
 
       const objectId = crypto.randomUUID();
-      const providerKey = deps.createProviderKey(input.resource.businessId, objectId);
+      const providerKey = createBusinessLogoProviderKey(input.resource.businessId, objectId);
       const metadata = await deps.metadata.createPending({
         businessId: input.resource.businessId,
         resourceType: input.resource.type,
