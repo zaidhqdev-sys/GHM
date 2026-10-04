@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 import type { AuthContext } from '../../auth/authorization.js';
-import { withAuthorizedTransaction } from '../../db/authorized-transaction.js';
+import { withAuthorizedTransaction, withTenantTransaction } from '../../db/authorized-transaction.js';
 import type { TransactionPool } from '../../db/transaction.js';
 import type {
   AssignBusinessCategoryInput,
@@ -50,37 +50,6 @@ const mapAssignment = (row: Record<string, unknown>): BusinessCategoryAssignment
   updatedAt: new Date(String(row.updated_at)),
 });
 
-const assertBusinessManagementAuthority = async (client: PoolClient, context: AuthContext, businessId: number): Promise<void> => {
-  const result = await client.query(
-    `SELECT 1 FROM ghm.business b
-     WHERE b.id = $1 AND b.is_active = true
-       AND EXISTS (
-         SELECT 1 FROM ghm.business_membership bm
-         WHERE bm.business_id = b.id
-           AND bm.account_id = $2
-           AND bm.membership_status = 'active'
-           AND bm.membership_role IN ('owner', 'administrator')
-       )`,
-    [businessId, context.userId],
-  );
-  if (result.rowCount !== 1) throw new Error('Business management permission required');
-};
-
-const assertBusinessReadAuthority = async (client: PoolClient, context: AuthContext, businessId: number): Promise<void> => {
-  const result = await client.query(
-    `SELECT 1 FROM ghm.business b
-     WHERE b.id = $1 AND b.is_active = true
-       AND EXISTS (
-         SELECT 1 FROM ghm.business_membership bm
-         WHERE bm.business_id = b.id
-           AND bm.account_id = $2
-           AND bm.membership_status = 'active'
-       )`,
-    [businessId, context.userId],
-  );
-  if (result.rowCount !== 1) throw new Error('Business access required');
-};
-
 const getSelectableCategory = async (client: PoolClient, categoryId: string): Promise<void> => {
   const result = await client.query(
     'SELECT 1 FROM ghm.business_category WHERE id = $1 AND is_active = true',
@@ -114,8 +83,7 @@ export class PostgresBusinessCategoryRepository implements BusinessCategoryRepos
 
   async listBusinessCategoryAssignments(context: AuthContext, businessId: BusinessId): Promise<BusinessCategoryAssignment[]> {
     const id = requirePositiveId(businessId, 'businessId');
-    return withAuthorizedTransaction(context, async client => {
-      await assertBusinessReadAuthority(client, context, id);
+    return withTenantTransaction(context, id, async (client) => {
       const result = await client.query(
         `SELECT ${ASSIGNMENT_COLUMNS}
          FROM ghm.business_category_assignment
@@ -130,8 +98,8 @@ export class PostgresBusinessCategoryRepository implements BusinessCategoryRepos
   async assignBusinessCategory(context: AuthContext, input: AssignBusinessCategoryInput): Promise<BusinessCategoryAssignment> {
     const businessId = requirePositiveId(input.businessId, 'businessId');
     const categoryId = requireUuid(input.categoryId, 'categoryId');
-    return withAuthorizedTransaction(context, async client => {
-      await assertBusinessManagementAuthority(client, context, businessId);
+    return withTenantTransaction(context, businessId, async (client, _context, tenant) => {
+      if (tenant.membershipRole !== 'owner' && tenant.membershipRole !== 'administrator') throw new Error('Business management permission required');
       await getSelectableCategory(client, categoryId);
       const result = await client.query(
         `INSERT INTO ghm.business_category_assignment (business_id, category_id, created_by)
@@ -146,8 +114,8 @@ export class PostgresBusinessCategoryRepository implements BusinessCategoryRepos
   async setPrimaryBusinessCategory(context: AuthContext, input: SetPrimaryBusinessCategoryInput): Promise<BusinessCategoryAssignment> {
     const businessId = requirePositiveId(input.businessId, 'businessId');
     const categoryId = requireUuid(input.categoryId, 'categoryId');
-    return withAuthorizedTransaction(context, async client => {
-      await assertBusinessManagementAuthority(client, context, businessId);
+    return withTenantTransaction(context, businessId, async (client, _context, tenant) => {
+      if (tenant.membershipRole !== 'owner' && tenant.membershipRole !== 'administrator') throw new Error('Business management permission required');
       await getSelectableCategory(client, categoryId);
 
       const target = await client.query(
