@@ -73,5 +73,6 @@ try {
   output.source_account_count = snapshot.value.accounts.length;
   output.problems = problems;
   output.status = problems.length === 0 && rows.rows.length === 2 && mappings.length === 2 ? 'RECONCILED_READ_ONLY' : 'CONFLICT_REQUIRES_REVIEW';
+  output.mutation_authorized = false;
 } finally { await client.end(); }
 console.log(JSON.stringify(output, null, 2));
