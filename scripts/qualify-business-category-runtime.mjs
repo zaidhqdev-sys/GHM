@@ -61,7 +61,7 @@ const createFixture = async () => {
       [ids.business, ids.owner, ids.member],
     );
     await client.query(`INSERT INTO ghm.business_membership (business_id, account_id, membership_role, membership_status, created_by) VALUES ($1,$2,'owner','active',$2)`, [ids.otherBusiness, ids.outsider]);
-    for (const [name, active] of [['Category A',true],['Category B',true],['Inactive',false]]) {
+    for (const [name, active] of [['Category A',true],['Category B',true],['Category C',true],['Inactive',false]]) {
       const id = randomUUID();
       fixture.categories.push(id);
       await client.query(
@@ -70,7 +70,7 @@ const createFixture = async () => {
       );
     }
     await client.query('COMMIT');
-    return { ...ids, categoryA: fixture.categories[0], categoryB: fixture.categories[1], inactive: fixture.categories[2] };
+    return { ...ids, categoryA: fixture.categories[0], categoryB: fixture.categories[1], unassigned: fixture.categories[2], inactive: fixture.categories[3] };
   } catch (e) { await client.query('ROLLBACK').catch(()=>{}); throw e; }
   finally { client.release(); }
 };
