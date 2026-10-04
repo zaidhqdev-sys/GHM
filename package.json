@@ -47,7 +47,8 @@
     "qualify:quoteflow-business-migration-reconciliation": "node scripts/qualify-quoteflow-business-migration-reconciliation.mjs",
     "qualify:quoteflow-migration-reset-reenrollment-db": "npm run build && node scripts/qualify-quoteflow-migration-reset-reenrollment-db.mjs",
     "qualify:quoteflow-migration-reset-enrollment-db": "npm run build && node scripts/qualify-quoteflow-migration-reset-enrollment-db.mjs && node --require ./scripts/test-env.cjs --test dist/migrations/quoteflow-migration-reset-enrollment.test.js",
-    "qualify:quoteflow-migration-reset-ceremony-db": "npm run build && node scripts/qualify-quoteflow-migration-reset-ceremony-db.mjs && node --require ./scripts/test-env.cjs --test dist/migrations/quoteflow-migration-reset-recovery.test.js dist/migrations/quoteflow-migration-reset-completion.test.js dist/http/auth-router.test.js"
+    "qualify:quoteflow-migration-reset-ceremony-db": "npm run build && node scripts/qualify-quoteflow-migration-reset-ceremony-db.mjs && node --require ./scripts/test-env.cjs --test dist/migrations/quoteflow-migration-reset-recovery.test.js dist/migrations/quoteflow-migration-reset-completion.test.js dist/http/auth-router.test.js",
+    "qualify:legacy-object-disposition": "npm run build && node scripts/qualify-legacy-object-disposition.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",
