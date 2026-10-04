@@ -1,4 +1,6 @@
 import type { PoolClient } from "pg";
+import { withAuthorizedTransaction } from "../db/authorized-transaction.js";
+import type { AuthContext } from "../auth/authorization.js";
 import type { StorageMetadataRecord, StorageMetadataStore } from "./service.js";
 
 const mapStorageMetadata = (row: any): StorageMetadataRecord => ({
