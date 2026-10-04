@@ -139,7 +139,31 @@ try {
       await migrator.query('begin');
       await migrator.query('set local role ghm_schema_owner');
       await migrator.query(
-        'delete from ghm.quoteflow_migration_reset_enrollment where account_id=$1; delete from ghm.password_recovery_credential where account_id=$1; delete from ghm.refresh_credential where session_id in (select id from ghm.authentication_session where account_id=$1); delete from ghm.authentication_session where account_id=$1; delete from ghm.account_external_identity where account_id=$1; delete from ghm.account_password_credential where account_id=$1; delete from ghm.account_identity where id=$1;',
+        'delete from ghm.quoteflow_migration_reset_enrollment where account_id=$1',
+        [accountId],
+      );
+      await migrator.query(
+        'delete from ghm.password_recovery_credential where account_id=$1',
+        [accountId],
+      );
+      await migrator.query(
+        'delete from ghm.refresh_credential where session_id in (select id from ghm.authentication_session where account_id=$1)',
+        [accountId],
+      );
+      await migrator.query(
+        'delete from ghm.authentication_session where account_id=$1',
+        [accountId],
+      );
+      await migrator.query(
+        'delete from ghm.account_external_identity where account_id=$1',
+        [accountId],
+      );
+      await migrator.query(
+        'delete from ghm.account_password_credential where account_id=$1',
+        [accountId],
+      );
+      await migrator.query(
+        'delete from ghm.account_identity where id=$1',
         [accountId],
       );
       await migrator.query('commit');
