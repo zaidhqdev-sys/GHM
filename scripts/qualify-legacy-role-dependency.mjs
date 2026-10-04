@@ -46,7 +46,7 @@ const migrationResetSource = await readFile(path.join(repoRoot, 'src', 'migratio
 if (!/required\('DATABASE_URL'\)/.test(configSource)) failures.push('runtime configuration does not require DATABASE_URL');
 if (!/connectionString:\s*config\.databaseUrl/.test(poolSource)) failures.push('canonical runtime pool does not use config.databaseUrl');
 if (!/process\.env\.GHM_MIGRATOR_DATABASE_URL\?\.trim\(\)/.test(migrateSource)) failures.push('migration runner does not require GHM_MIGRATOR_DATABASE_URL');
-if (!/SET ROLE ghm_schema_owner/.test(migrateSource)) failures.push('migration runner does not explicitly enter ghm_schema_owner');
+if (!/SET ROLE \$\{MIGRATION_OWNER_ROLE\}/.test(migrateSource) || !/MIGRATION_OWNER_ROLE = 'ghm_schema_owner'/.test(migrateSource)) failures.push('migration runner does not explicitly enter ghm_schema_owner');
 if (!/new PostgresAuthPersistence\(\)/.test((await readFile(path.join(repoRoot, 'src', 'auth', 'ghm-auth-service.ts'), 'utf8')))) failures.push('auth service does not use canonical PostgresAuthPersistence by default');
 if (!/persistence\.issueRecovery/.test(recoverySource)) failures.push('password recovery does not use canonical persistence boundary');
 if (!/persistence\.lookupQuoteFlowMigrationResetEnrollment/.test(migrationResetSource)) failures.push('QuoteFlow migration reset does not use canonical persistence boundary');
@@ -110,12 +110,9 @@ if (runtimeUrl && migratorUrl) {
   if (runtimeIdentity === migratorIdentity) failures.push('runtime and migrator credentials resolve to the same PostgreSQL role');
 }
 
-const legacyReferenceFiles = findings.filter((x) => x.type === 'legacy_role_reference').map((x) => x.file);
-if (legacyReferenceFiles.length > 0) {
-  const expectedAuditDocs = new Set(['scripts/audit-legacy-role-remediation.mjs', 'docs/architecture/GHM_LEGACY_ROLE_REMEDIATION_AUDIT.md', 'docs/architecture/DATABASE_AUTHORITY_MODEL.md', 'docs/architecture/POSTGRES_ROLE_SEPARATION_RUNBOOK.md', 'docs/architecture/POSTGRES_ROLE_SEPARATION_SQL_PLAN.md']);
-  const unexpected = legacyReferenceFiles.filter((f) => !expectedAuditDocs.has(f));
-  if (unexpected.length) failures.push(`unexpected source/config reference to legacy roles: ${[...new Set(unexpected)].join(', ')}`);
-}
+const legacyReferenceFiles = findings.filter((x) => x.type === 'legacy_role_reference').map((x) => x.file.replaceAll('\\\\', '/'));
+const executableLegacyReferences = [...new Set(legacyReferenceFiles.filter((file) => !file.startsWith('docs/') && file !== 'scripts/qualify-legacy-role-dependency.mjs' && file !== 'scripts/audit-legacy-role-remediation.mjs'))];
+if (executableLegacyReferences.length) failures.push(`unexpected executable/config reference to legacy roles: ${executableLegacyReferences.join(', ')}`);
 
 const decision = failures.length ? 'BLOCKED' : 'QUALIFIED';
 console.log(JSON.stringify({
