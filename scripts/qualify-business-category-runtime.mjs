@@ -53,11 +53,14 @@ const createFixture = async () => {
       [`${marker} business`, `${marker}-business`],
     );
     ids.business = Number(b.rows[0].id); fixture.businesses.push(ids.business);
+    const other = await client.query(`INSERT INTO ghm.business (name, slug, verification_status, is_verified, is_active) VALUES ($1,$2,'approved',true,true) RETURNING id`, [`${marker} other business`, `${marker}-other-business`]);
+    ids.otherBusiness = Number(other.rows[0].id); fixture.businesses.push(ids.otherBusiness);
     await client.query(
       `INSERT INTO ghm.business_membership (business_id, account_id, membership_role, membership_status, created_by)
        VALUES ($1,$2,'owner','active',$2),($1,$3,'member','active',$2)`,
       [ids.business, ids.owner, ids.member],
     );
+    await client.query(`INSERT INTO ghm.business_membership (business_id, account_id, membership_role, membership_status, created_by) VALUES ($1,$2,'owner','active',$2)`, [ids.otherBusiness, ids.outsider]);
     for (const [name, active] of [['Category A',true],['Category B',true],['Inactive',false]]) {
       const id = randomUUID();
       fixture.categories.push(id);
@@ -90,9 +93,10 @@ try {
   console.log('CATEGORY READ + ACTIVE FILTER PASS');
 
   await assertRejected(() => service.assignBusinessCategory(member,{businessId:f.business,categoryId:f.categoryA}), 'NON-MANAGEMENT ASSIGN REJECTION PASS','Business management permission required');
-  await assertRejected(() => service.assignBusinessCategory(outsider,{businessId:f.business,categoryId:f.categoryA}), 'OUTSIDER ASSIGN REJECTION PASS','Business management permission required');
-  await assertRejected(() => service.assignBusinessCategory(customer,{businessId:f.business,categoryId:f.categoryA}), 'CUSTOMER ASSIGN REJECTION PASS','Business management permission required');
-  await assertRejected(() => service.listBusinessCategoryAssignments(outsider,f.business), 'OUTSIDER READ REJECTION PASS','Business access required');
+  await assertRejected(() => service.assignBusinessCategory(outsider,{businessId:f.business,categoryId:f.categoryA}), 'OUTSIDER ASSIGN REJECTION PASS','Business tenant access denied');
+  await assertRejected(() => service.assignBusinessCategory(customer,{businessId:f.business,categoryId:f.categoryA}), 'CUSTOMER ASSIGN REJECTION PASS','Business tenant access denied');
+  await assertRejected(() => service.listBusinessCategoryAssignments(outsider,f.business), 'OUTSIDER READ REJECTION PASS','Business tenant access denied');
+  await assertRejected(() => service.listBusinessCategoryAssignments(outsider,f.business), 'CROSS-BUSINESS MEMBER READ REJECTION PASS','Business tenant access denied');
   await assertRejected(() => service.assignBusinessCategory(owner,{businessId:f.business,categoryId:f.inactive}), 'INACTIVE CATEGORY REJECTION PASS','Category not found or not selectable');
 
   const a = await service.assignBusinessCategory(owner,{businessId:f.business,categoryId:f.categoryA});
