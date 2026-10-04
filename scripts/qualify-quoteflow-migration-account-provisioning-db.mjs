@@ -18,6 +18,7 @@ const created = [];
 try {
   await runtime.connect();
   await migrator.connect();
+  await migrator.query('set role ghm_schema_owner');
 
   const identity = await runtime.query('select current_database() database, current_user user_name');
   assert.equal(identity.rows[0].database, 'ghm_db');
