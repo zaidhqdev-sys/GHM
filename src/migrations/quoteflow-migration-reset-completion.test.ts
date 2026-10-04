@@ -12,6 +12,6 @@ test('migration reset completion delegates the atomic ceremony boundary', async 
   } as never);
 
   const result = await service.complete('opaque-token', 'CorrectHorseBattery1');
-  assert.deepEqual(result, { accountId: 42, loginEmail: 'legacy@example.com' });
+  assert.deepEqual(result, { accountId: 42, loginEmail: 'legacy@example.com', revokedSessionCount: 2 });
   assert.deepEqual(seen, { token: 'opaque-token', password: 'CorrectHorseBattery1' });
 });
