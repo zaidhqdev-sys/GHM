@@ -5,7 +5,8 @@ CREATE OR REPLACE FUNCTION ghm.auth_lookup_quoteflow_migration_reset_enrollment(
   p_approved_email_normalized text
 ) RETURNS TABLE (
   enrollment_id bigint,
-  account_id bigint
+  account_id bigint,
+  approved_email text
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -17,7 +18,7 @@ BEGIN
   END IF;
 
   RETURN QUERY
-  SELECT e.id, e.account_id
+  SELECT e.id, e.account_id, e.approved_email
     FROM ghm.quoteflow_migration_reset_enrollment e
     JOIN ghm.account_identity a ON a.id = e.account_id
     JOIN ghm.account_external_identity x
