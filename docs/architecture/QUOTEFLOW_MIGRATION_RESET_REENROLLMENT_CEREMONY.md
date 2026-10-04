@@ -1,6 +1,6 @@
 # QuoteFlow Existing-User Password Reset / Re-enrollment Ceremony
 
-**Status: ARCHITECTURE GATE — IMPLEMENTATION PRESENT; MIGRATION DB QUALIFICATION PENDING**
+**Status: ARCHITECTURE GATE — RESET OPERATION IMPLEMENTED; COMPLETE MIGRATION CEREMONY PENDING**
 
 ## Decision
 
@@ -132,8 +132,8 @@ The following remain closed:
 - [x] Argon2id password-setting primitive exists
 - [x] recovery delivery anti-disclosure boundary exists
 - [ ] migration-specific RESET_REQUIRED ceremony qualification
-- [x] recovery credential single-use/expiry qualification in migration context
-- [x] session revocation qualification in migration context
+- [x] recovery credential single-use/expiry qualification for the synthetic migrated-account reset operation
+- [x] session revocation qualification for the synthetic migrated-account reset operation
 - [ ] post-reset GHM session qualification
 - [x] atomic reset transaction boundary qualified at DB primitive level
 - [ ] production delivery approval
@@ -142,18 +142,22 @@ The following remain closed:
 
 ## DB qualification slice
 
-The implementation branch now carries a non-production DB qualification script:
+The implementation branch carries a non-production DB qualification script:
 
 `scripts/qualify-quoteflow-migration-reset-reenrollment-db.mjs`
 
 It uses the existing runtime/migrator separation and synthetic Supabase external-identity subjects. The qualification proves:
 
 - the runtime role can execute the three required Auth SECURITY DEFINER functions without direct access to password/recovery secret tables;
-- a synthetic credentialless account can establish an Argon2id credential through the new atomic reset service;
-- existing sessions are revoked;
+- a synthetic credentialless migrated account can establish an Argon2id credential through the new atomic reset service;
+- an existing session is revoked by successful recovery redemption;
 - the exact legacy external-identity mapping is unchanged;
 - the recovery credential cannot be reused;
 - an expired recovery credential is rejected without creating a password;
-- the underlying redeem/password operations roll back together when the surrounding transaction fails.
+- the underlying recovery redemption/password write rolls back together when the surrounding transaction fails.
+
+This qualifies the **reset operation and its database invariants**. It does **not** yet qualify the complete user-facing migration ceremony because the credentialless migrated account does not currently have a canonical migration email/reset-enrollment lookup boundary.
+
+That remaining boundary is intentionally not hidden by this qualification and remains a founder gate before production migration.
 
 This is a qualification artifact only. It does not authorize production migration, production recovery delivery, or QuoteFlow runtime cutover.
