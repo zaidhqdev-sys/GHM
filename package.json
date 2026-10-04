@@ -42,7 +42,8 @@
     "qualify:commercial-payment-runtime": "node scripts/qualify-commercial-payment-runtime.mjs",
     "qualify:quoteflow-migration-snapshot": "npm run build && node scripts/qualify-quoteflow-migration-snapshot.mjs",
     "qualify:quoteflow-migration-reconciliation": "npm run build && node scripts/qualify-quoteflow-migration-reconciliation.mjs",
-    "qualify:quoteflow-migration-account-provisioning": "npm run build && node scripts/qualify-quoteflow-migration-account-provisioning.mjs"
+    "qualify:quoteflow-migration-account-provisioning": "npm run build && node scripts/qualify-quoteflow-migration-account-provisioning.mjs",
+    "qualify:quoteflow-migration-account-provisioning-db": "npm run build && node scripts/qualify-quoteflow-migration-account-provisioning-db.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",
