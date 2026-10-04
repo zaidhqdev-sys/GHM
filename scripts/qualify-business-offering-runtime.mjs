@@ -52,6 +52,11 @@ const createFixture = async () => {
       [`${marker} business`, `${marker}-business`],
     );
     ids.business = Number(b.rows[0].id); fixture.businesses.push(ids.business);
+    const b2 = await client.query(
+      `INSERT INTO ghm.business (name, slug, verification_status, is_verified, is_active) VALUES ($1,$2,'approved',true,true) RETURNING id`,
+      [`${marker} second business`, `${marker}-second-business`],
+    );
+    ids.otherBusiness = Number(b2.rows[0].id); fixture.businesses.push(ids.otherBusiness);
     await client.query(
       `INSERT INTO ghm.business_membership (business_id, account_id, membership_role, membership_status, created_by)
        VALUES ($1,$2,'owner','active',$2),($1,$3,'member','active',$2)`,
@@ -79,7 +84,8 @@ try {
   const outsider = { userId: f.outsider, role: 'business' };
   const customer = { userId: f.customer, role: 'customer' };
 
-  await expectRejected(() => service.listBusinessOfferings(outsider, { businessId: f.business }), 'OUTSIDER READ REJECTION PASS', 'Business access required');
+  await expectRejected(() => service.listBusinessOfferings(outsider, { businessId: f.business }), 'OUTSIDER READ REJECTION PASS', 'Business tenant access denied');
+  await expectRejected(() => service.listBusinessOfferings(owner, { businessId: f.otherBusiness }), 'CROSS-BUSINESS READ REJECTION PASS', 'Business tenant access denied');
   await expectRejected(() => service.listBusinessOfferings(customer, { businessId: f.business }), 'CUSTOMER READ REJECTION PASS', 'Business access required');
   await expectRejected(() => service.createBusinessOffering(member, { businessId: f.business, name: 'Member', slug: `${marker}-member` }), 'NON-MANAGEMENT CREATE REJECTION PASS', 'Business management permission required');
   await expectRejected(() => service.createBusinessOffering(outsider, { businessId: f.business, name: 'Outsider', slug: `${marker}-outsider` }), 'OUTSIDER CREATE REJECTION PASS', 'Business management permission required');
@@ -100,6 +106,26 @@ try {
   if (!bySlug || bySlug.id !== created.id) throw new Error('Slug lookup failed');
   console.log('SLUG LOOKUP PASS');
 
+  const setupOther = await cleanupPool.connect();
+  let otherOfferingId;
+  try {
+    await setupOther.query('BEGIN');
+    await setupOther.query('SET LOCAL ROLE ghm_schema_owner');
+    const otherOffering = await setupOther.query(
+      `INSERT INTO ghm.business_offering (business_id, name, slug, created_by) VALUES ($1,$2,$3,$4) RETURNING id`,
+      [f.otherBusiness, 'Other Tenant Offering', `${marker}-other`, f.owner],
+    );
+    otherOfferingId = String(otherOffering.rows[0].id);
+    fixture.offerings.push(otherOfferingId);
+    await setupOther.query('COMMIT');
+  } catch (error) {
+    await setupOther.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    setupOther.release();
+  }
+  await expectRejected(() => service.updateBusinessOffering(owner, otherOfferingId, { name: 'Cross Tenant Update' }), 'CROSS-BUSINESS UPDATE REJECTION PASS', 'Business tenant access denied');
+  await expectRejected(() => service.updateBusinessOffering(member, created.id, { name: 'Nope' }), 'NON-MANAGEMENT UPDATE REJECTION PASS', 'Business management permission required');
   await expectRejected(() => service.updateBusinessOffering(member, created.id, { name: 'Nope' }), 'NON-MANAGEMENT UPDATE REJECTION PASS', 'Business management permission required');
   const updated = await service.updateBusinessOffering(owner, created.id, {
     name: 'Updated Offering', description: 'Updated description', priceAmount: '0.00', isActive: false, sortOrder: 2,
