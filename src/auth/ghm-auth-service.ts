@@ -19,6 +19,7 @@ import {
   type PasswordHasher,
 } from './foundation/password';
 import { EmailNormalizationError, normalizeLoginEmail } from './foundation/email-normalization';
+import { PasswordPolicyError, validateRegistrationPassword } from './foundation/password-policy';
 
 export class GhmAuthServiceError extends Error {
   constructor(
@@ -41,6 +42,7 @@ export interface AuthTokenResponse {
 }
 
 export interface GhmAuthService {
+  register?(input: { fullName?: string | null; role?: 'customer' | 'business'; email: string; password: string }): Promise<AuthTokenResponse>;
   login(email: string, password: string): Promise<AuthTokenResponse>;
   refresh(refreshToken: string): Promise<AuthTokenResponse>;
   logout(refreshToken: string): Promise<void>;
@@ -79,6 +81,49 @@ export const createGhmAuthService = (
   };
 
   return {
+    async register(input: { fullName?: string | null; role?: 'customer' | 'business'; email: string; password: string }): Promise<AuthTokenResponse> {
+      const role = input.role ?? 'customer';
+      if (role !== 'customer' && role !== 'business') {
+        throw new GhmAuthServiceError('Invalid registration role', 'INVALID_REGISTRATION', 400);
+      }
+      if (typeof input.email !== 'string' || typeof input.password !== 'string') {
+        throw new GhmAuthServiceError('Invalid registration request', 'INVALID_REGISTRATION', 400);
+      }
+      try {
+        validateRegistrationPassword(input.password);
+      } catch (error) {
+        if (error instanceof PasswordPolicyError) {
+          throw new GhmAuthServiceError('Password policy violation', 'PASSWORD_POLICY_VIOLATION', 400);
+        }
+        throw error;
+      }
+      try {
+        const normalized = normalizeLoginEmail(input.email);
+        if (!persistence.createAccount) {
+          throw new GhmAuthServiceError('Account registration unavailable', 'REGISTRATION_UNAVAILABLE', 503);
+        }
+        const created = await persistence.createAccount(
+          typeof input.fullName === 'string' ? input.fullName : null,
+          role,
+          normalized.loginEmail,
+          input.password,
+        );
+        const session = await persistence.createSessionWithRefresh(created.accountId);
+        return issuePair(created.accountId, session.session.id, session.refreshTokenWire);
+      } catch (error) {
+        if (error instanceof EmailNormalizationError) {
+          throw new GhmAuthServiceError('Invalid registration request', 'INVALID_REGISTRATION', 400);
+        }
+        if (error instanceof AuthPersistenceError) {
+          const message = error.message.toLowerCase();
+          if (message.includes('duplicate') || message.includes('unique')) {
+            throw new GhmAuthServiceError('Registration conflict', 'ACCOUNT_ALREADY_EXISTS', 409);
+          }
+        }
+        throw error;
+      }
+    },
+
     async login(email: string, password: string): Promise<AuthTokenResponse> {
       if (typeof email !== 'string' || typeof password !== 'string' || password.length === 0) {
         failCredentials();

@@ -20,6 +20,7 @@ type AuthTokenResponse = {
 };
 
 type GhmAuthService = {
+  register?(input: { fullName?: string | null; role?: 'customer' | 'business'; email: string; password: string }): Promise<AuthTokenResponse>;
   login(email: string, password: string): Promise<AuthTokenResponse>;
   refresh(refreshToken: string): Promise<AuthTokenResponse>;
   logout(refreshToken: string): Promise<void>;
@@ -66,6 +67,32 @@ const makeKeys = async () => {
     GHM_JWT_ES256_KID: 'ghm-es256-20260921-1',
   });
 };
+
+test('POST /api/v1/auth/register returns GHM-issued tokens', async () => {
+  const authService: GhmAuthService = {
+    register: async (input) => {
+      assert.equal(input.email, 'new@example.com');
+      assert.equal(input.password, 'CorrectHorse1');
+      assert.equal(input.role, 'business');
+      return sampleTokens({ accountId: 88, sessionId: 99 });
+    },
+    login: async () => sampleTokens(),
+    refresh: async () => sampleTokens(),
+    logout: async () => undefined,
+  };
+  const { server, baseUrl } = await startApp(authService);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/auth/register`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'new@example.com', password: 'CorrectHorse1', role: 'business' }),
+    });
+    assert.equal(response.status, 201);
+    assert.deepEqual(await response.json(), sampleTokens({ accountId: 88, sessionId: 99 }));
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
 
 test('POST /api/v1/auth/login returns tokens for valid credentials', async () => {
   const authService: GhmAuthService = {
@@ -416,7 +443,7 @@ test('POST /api/v1/auth/login enforces the approved 10-per-15-minute IP limit', 
   };
   const { server, baseUrl } = await startApp(authService);
   try {
-    for (let index = 0; index < 7; index += 1) {
+    for (let index = 0; index < 10; index += 1) {
       const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },

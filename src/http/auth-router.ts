@@ -3,6 +3,15 @@ import { rateLimit } from 'express-rate-limit';
 import type { AuthTokenResponse, GhmAuthService } from '../auth/ghm-auth-service';
 import type { PasswordRecoveryService } from '../auth/password-recovery';
 
+const parseRegistrationBody = (body: unknown): { fullName?: string | null; role?: 'customer' | 'business'; email: string; password: string } | null => {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  const input = body as Record<string, unknown>;
+  if (typeof input.email !== 'string' || typeof input.password !== 'string') return null;
+  if (input.fullName !== undefined && input.fullName !== null && typeof input.fullName !== 'string') return null;
+  if (input.role !== undefined && input.role !== 'customer' && input.role !== 'business') return null;
+  return { fullName: input.fullName === undefined ? null : input.fullName as string | null, role: input.role as 'customer' | 'business' | undefined, email: input.email, password: input.password };
+};
+
 const parseLoginBody = (body: unknown): { email: string; password: string } | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   const input = body as Record<string, unknown>;
@@ -48,30 +57,6 @@ const handleAuthError = (error: unknown, res: Response): void => {
   res.status(500).json({ error: 'internal_error' });
 };
 
-const loginRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 10,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false,
-  handler: (_req, res) => res.status(429).json({ error: 'rate_limited' }),
-});
-
-const passwordRecoveryRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 5,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false,
-  handler: (_req, res) => res.status(429).json({ error: 'rate_limited' }),
-});
-
-const refreshRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 60,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false,
-  handler: (_req, res) => res.status(429).json({ error: 'rate_limited' }),
-});
-
 export interface AuthRouterDependencies {
   readonly authService?: GhmAuthService;
   readonly passwordRecoveryService?: PasswordRecoveryService;
@@ -81,6 +66,29 @@ export const registerAuthRoutes = (
   app: Express,
   dependencies: AuthRouterDependencies = {},
 ): void => {
+  // Keep limiter state scoped to the registered app instance. This prevents one in-process
+  // app/test fixture from consuming another fixture's authentication budget.
+  const loginRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    handler: (_req, res) => res.status(429).json({ error: 'rate_limited' }),
+  });
+  const passwordRecoveryRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 5,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    handler: (_req, res) => res.status(429).json({ error: 'rate_limited' }),
+  });
+  const refreshRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 60,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    handler: (_req, res) => res.status(429).json({ error: 'rate_limited' }),
+  });
   // Lazy default: existing HS product tests createApp() without GHM Auth secrets.
   let authService = dependencies.authService;
   const passwordRecoveryService = dependencies.passwordRecoveryService;
@@ -112,6 +120,25 @@ export const registerAuthRoutes = (
         error: { name: error instanceof Error ? error.name : 'UnknownError' },
       }));
       res.status(500).json({ error: 'internal_error' });
+    }
+  });
+
+  app.post('/api/v1/auth/register', loginRateLimit, async (req: Request, res: Response) => {
+    try {
+      const input = parseRegistrationBody(req.body);
+      if (!input) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const service = getAuthService();
+      if (!service.register) {
+        res.status(503).json({ error: 'service_unavailable' });
+        return;
+      }
+      const tokens = await service.register(input);
+      res.status(201).json(tokenPayload(tokens));
+    } catch (error) {
+      handleAuthError(error, res);
     }
   });
 

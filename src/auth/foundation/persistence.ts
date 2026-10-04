@@ -101,7 +101,13 @@ export interface RotateRefreshPersistenceResult extends RotateRefreshResult {
   refreshTokenWire: string;
 }
 
+export interface CreateAccountResult {
+  accountId: number;
+  loginEmail: string;
+}
+
 export interface AuthPersistence {
+  createAccount?(fullName: string | null, role: 'customer' | 'business', email: string, password: string): Promise<CreateAccountResult>;
   setPassword(accountId: number, email: string, password: string): Promise<PasswordHashResult>;
   lookupPasswordByEmail(email: string): Promise<(PasswordCredentialLookup & { accountStatus: string }) | null>;
   createSessionWithRefresh(accountId: number): Promise<CreateSessionResult>;
@@ -149,6 +155,40 @@ export class PostgresAuthPersistence implements AuthPersistence {
 
   private async tx<T>(work: (client: Queryable) => Promise<T>): Promise<T> {
     return withTransaction(work, this.transactionPool);
+  }
+
+  async createAccount(
+    fullName: string | null,
+    role: 'customer' | 'business',
+    email: string,
+    password: string,
+  ): Promise<CreateAccountResult> {
+    const normalized = normalizeLoginEmail(email);
+    const hashed = await this.passwordHasher.hash(password);
+    try {
+      const result = await this.tx(async (client) =>
+        client.query(
+          `SELECT * FROM ghm.auth_create_account($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [
+            fullName,
+            role,
+            normalized.loginEmail,
+            normalized.loginEmailNormalized,
+            hashed.passwordHash,
+            hashed.argon2MemoryKib,
+            hashed.argon2TimeCost,
+            hashed.argon2Parallelism,
+          ],
+        ),
+      );
+      if (result.rowCount !== 1) throw new AuthPersistenceError('Account creation failed');
+      return {
+        accountId: Number(result.rows[0].account_id),
+        loginEmail: String(result.rows[0].login_email),
+      };
+    } catch (error) {
+      throw mapPgError(error);
+    }
   }
 
   async setPassword(accountId: number, email: string, password: string): Promise<PasswordHashResult> {
