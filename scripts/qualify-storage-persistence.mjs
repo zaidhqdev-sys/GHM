@@ -3,9 +3,9 @@ import "dotenv/config";
 import pg from "pg";
 
 const { Client } = pg;
-const databaseUrl = process.env.GHM_QUALIFICATION_DATABASE_URL || process.env.DATABASE_URL;
+const databaseUrl = process.env.GHM_QUALIFICATION_DATABASE_URL || process.env.GHM_RUNTIME_DATABASE_URL || process.env.DATABASE_URL;
 if (!databaseUrl) {
-  console.error("missing GHM_QUALIFICATION_DATABASE_URL or DATABASE_URL");
+  console.error("missing GHM_QUALIFICATION_DATABASE_URL, GHM_RUNTIME_DATABASE_URL, or DATABASE_URL");
   process.exit(2);
 }
 
