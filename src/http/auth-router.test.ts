@@ -308,6 +308,7 @@ test('login issues ES256 access JWT with decimal sub and no role claim', async (
 
   const persistence: AuthPersistence = {
     setPassword: async () => ({ passwordHash, argon2MemoryKib: 65536, argon2TimeCost: 3, argon2Parallelism: 1 }),
+    resetPasswordWithRecovery: async () => ({ password: { passwordHash, argon2MemoryKib: 65536, argon2TimeCost: 3, argon2Parallelism: 1 }, revokedSessionCount: 0 }),
     lookupPasswordByEmail: async () => ({
       accountId: 42,
       loginEmail: 'user@example.com',
