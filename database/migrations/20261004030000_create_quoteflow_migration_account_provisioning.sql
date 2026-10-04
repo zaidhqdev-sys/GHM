@@ -19,6 +19,7 @@ DECLARE
   v_existing ghm.account_external_identity%ROWTYPE;
   v_account_id bigint;
   v_role text := COALESCE(NULLIF(btrim(p_role), ''), 'customer');
+  v_lock_key bigint;
 BEGIN
   IF p_provider IS NULL OR btrim(p_provider) = '' THEN
     RAISE EXCEPTION 'provider must be non-blank' USING ERRCODE = '22023';
@@ -35,6 +36,9 @@ BEGIN
   IF v_role NOT IN ('customer', 'business') THEN
     RAISE EXCEPTION 'migration role must be customer or business' USING ERRCODE = '22023';
   END IF;
+
+  v_lock_key := pg_catalog.hashtextextended(p_provider || E'\\x1f' || p_subject, 0);
+  PERFORM pg_catalog.pg_advisory_xact_lock(v_lock_key);
 
   SELECT m.* INTO v_existing
     FROM ghm.account_external_identity m
