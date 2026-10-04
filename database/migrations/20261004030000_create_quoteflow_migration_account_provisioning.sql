@@ -52,9 +52,6 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Keep both inserts in the same function statement transaction boundary.
-  -- Any failure in the mapping insert aborts the function call and therefore
-  -- cannot leave an orphan canonical account.
   INSERT INTO ghm.account_identity (
     full_name,
     role,
@@ -69,16 +66,37 @@ BEGIN
   )
   RETURNING id INTO v_account_id;
 
-  INSERT INTO ghm.account_external_identity (
-    provider,
-    subject,
-    account_id
-  )
-  VALUES (
-    p_provider,
-    p_subject,
-    v_account_id
-  );
+  BEGIN
+    INSERT INTO ghm.account_external_identity (
+      provider,
+      subject,
+      account_id
+    )
+    VALUES (
+      p_provider,
+      p_subject,
+      v_account_id
+    );
+  EXCEPTION
+    WHEN unique_violation THEN
+      SELECT m.* INTO v_existing
+        FROM ghm.account_external_identity m
+       WHERE m.provider = p_provider
+         AND m.subject = p_subject;
+
+      IF NOT FOUND THEN
+        RAISE;
+      END IF;
+
+      outcome := CASE
+        WHEN v_existing.account_id = v_account_id
+          THEN 'already_provisioned'
+        ELSE 'conflict'
+      END;
+      account_id := v_existing.account_id;
+      RETURN NEXT;
+      RETURN;
+  END;
 
   outcome := 'created';
   account_id := v_account_id;
