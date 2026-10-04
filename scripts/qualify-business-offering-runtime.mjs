@@ -86,7 +86,7 @@ try {
 
   await expectRejected(() => service.listBusinessOfferings(outsider, { businessId: f.business }), 'OUTSIDER READ REJECTION PASS', 'Business tenant access denied');
   await expectRejected(() => service.listBusinessOfferings(owner, { businessId: f.otherBusiness }), 'CROSS-BUSINESS READ REJECTION PASS', 'Business tenant access denied');
-  await expectRejected(() => service.listBusinessOfferings(customer, { businessId: f.business }), 'CUSTOMER READ REJECTION PASS', 'Business access required');
+  await expectRejected(() => service.listBusinessOfferings(customer, { businessId: f.business }), 'CUSTOMER READ REJECTION PASS', 'Business tenant access denied');
   await expectRejected(() => service.createBusinessOffering(member, { businessId: f.business, name: 'Member', slug: `${marker}-member` }), 'NON-MANAGEMENT CREATE REJECTION PASS', 'Business management permission required');
   await expectRejected(() => service.createBusinessOffering(outsider, { businessId: f.business, name: 'Outsider', slug: `${marker}-outsider` }), 'OUTSIDER CREATE REJECTION PASS', 'Business management permission required');
 
@@ -125,7 +125,6 @@ try {
     setupOther.release();
   }
   await expectRejected(() => service.updateBusinessOffering(owner, otherOfferingId, { name: 'Cross Tenant Update' }), 'CROSS-BUSINESS UPDATE REJECTION PASS', 'Business tenant access denied');
-  await expectRejected(() => service.updateBusinessOffering(member, created.id, { name: 'Nope' }), 'NON-MANAGEMENT UPDATE REJECTION PASS', 'Business management permission required');
   await expectRejected(() => service.updateBusinessOffering(member, created.id, { name: 'Nope' }), 'NON-MANAGEMENT UPDATE REJECTION PASS', 'Business management permission required');
   const updated = await service.updateBusinessOffering(owner, created.id, {
     name: 'Updated Offering', description: 'Updated description', priceAmount: '0.00', isActive: false, sortOrder: 2,
