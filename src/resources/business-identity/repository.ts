@@ -41,10 +41,6 @@ const requireAccount = async (client: PoolClient, context: AuthContext, lock = f
 const findBusiness = async (client: PoolClient, businessId: BusinessId) => { const result = await client.query(BUSINESS_SELECT, [businessId]); return result.rowCount === 1 ? mapBusiness(result.rows[0]) : null; };
 const findBusinessBySlug = async (client: PoolClient, slug: string) => { const result = await client.query(BUSINESS_BY_SLUG_SELECT, [slug]); return result.rowCount === 1 ? mapBusiness(result.rows[0]) : null; };
 const findMemberships = async (client: PoolClient, accountId: number) => { const result = await client.query(MEMBERSHIPS_SELECT, [accountId]); return result.rows.map(mapMembership); };
-const assertManagedMembership = async (client: PoolClient, context: AuthContext, businessId: BusinessId) => {
-  const result = await client.query(`SELECT 1 FROM ghm.business_membership WHERE business_id = $1 AND account_id = $2 AND membership_status = 'active' AND membership_role IN ('owner', 'administrator') LIMIT 1`, [businessId, context.userId]);
-  if (result.rowCount !== 1) throw new Error('Business management permission required');
-};
 const normalizeName = (name: string) => { const normalized = name.trim(); if (!normalized) throw new Error('Business name is required'); return normalized; };
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
