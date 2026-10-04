@@ -16,8 +16,17 @@ if (missing.length) {
   process.exit(0);
 }
 
-const snapshot = readJson(process.env.GHM_QUOTEFLOW_SOURCE_SNAPSHOT_FILE);
-const mapping = readJson(process.env.GHM_LEGACY_USER_RECONCILIATION_FILE);
+let snapshot;
+let mapping;
+try {
+  snapshot = readJson(process.env.GHM_QUOTEFLOW_SOURCE_SNAPSHOT_FILE);
+  mapping = readJson(process.env.GHM_LEGACY_USER_RECONCILIATION_FILE);
+} catch (error) {
+  output.status = 'BLOCKED_MISSING_EVIDENCE';
+  output.reason = 'unable to read required provenance artifact';
+  console.log(JSON.stringify(output, null, 2));
+  process.exit(0);
+}
 output.inputs = {
   source_snapshot_sha256: sha256(snapshot.raw),
   reconciliation_sha256: sha256(mapping.raw),
