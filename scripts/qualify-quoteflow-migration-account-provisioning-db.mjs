@@ -50,11 +50,22 @@ try {
   const preflight = await migrator.query('select count(*)::int as count from ghm.account_external_identity where provider=$1 and subject=$2', ['supabase', subjects[0]]);
   assert.equal(preflight.rows[0].count, 0, `qualification subject unexpectedly exists: ${subjects[0]}`);
 
+  const runtimePreflight = await runtime.query(
+    'select count(*)::int as count from ghm.account_external_identity where provider=$1 and subject=$2',
+    ['supabase', subjects[0]],
+  );
+  assert.equal(runtimePreflight.rows[0].count, 0, `runtime sees unexpected existing mapping: ${subjects[0]}`);
+
   const first = await runtime.query(
     'select * from ghm.auth_provision_migration_account($1,$2,$3,$4)',
     ['supabase', subjects[0], 'DB Qualification User', 'customer'],
   );
   assert.equal(first.rows[0].outcome, 'created', `unexpected first outcome for ${subjects[0]}: ${JSON.stringify(first.rows[0])}`);
+  const postFirst = await migrator.query(
+    'select provider, subject, account_id from ghm.account_external_identity where provider=$1 and subject=$2',
+    ['supabase', subjects[0]],
+  );
+  assert.deepEqual(postFirst.rows[0], { provider: 'supabase', subject: subjects[0], account_id: first.rows[0].account_id });
   created.push(first.rows[0].account_id);
 
   const retry = await runtime.query(
