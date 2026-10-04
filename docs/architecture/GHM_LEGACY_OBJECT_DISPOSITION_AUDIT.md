@@ -42,3 +42,7 @@ The audit uses a fixed, explicit UNION query for the five known legacy tables. P
 ## RLS count execution boundary
 
 Legacy tables may retain historical row-level-security policies that reference the application GUC `app.current_user_id`. Exact aggregate counts therefore execute after a session-only `SET ROLE ghm_schema_owner`, using the canonical non-login schema owner already reachable by the migrator. This does not grant, revoke, alter, or persist any database privilege.
+
+## Legacy RLS owner boundary
+
+The audit does not synthesize `app.current_user_id`. It captures `relrowsecurity` and `relforcerowsecurity`, then performs session-local read-only counts as the actual legacy table owner `ghm_db_user`. If RLS blocks that owner, the harness records the per-table failure instead of altering RLS state or inventing application identity context.
