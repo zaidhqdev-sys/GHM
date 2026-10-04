@@ -46,3 +46,7 @@ Legacy tables may retain historical row-level-security policies that reference t
 ## Legacy RLS owner boundary
 
 The audit does not synthesize `app.current_user_id`. It captures `relrowsecurity` and `relforcerowsecurity`, then performs session-local read-only counts as the actual legacy table owner `ghm_db_user`. If RLS blocks that owner, the harness records the per-table failure instead of altering RLS state or inventing application identity context.
+
+## Migrator privilege boundary
+
+The audit does not grant or infer membership from `ghm_migrator` to `ghm_db_user`. If PostgreSQL rejects `SET ROLE ghm_db_user`, the harness records that refusal and reports catalog `reltuples` estimates only, explicitly as non-authoritative. Exact legacy row counts require a separately authorized legacy-owner/audit boundary and are not fabricated by this audit.
