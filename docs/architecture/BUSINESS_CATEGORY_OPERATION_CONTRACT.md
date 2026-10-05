@@ -1,6 +1,6 @@
 # GHM Business Category Boundary Contract
 
-**Status:** CONSTRUCTION AUTHORIZED — contract frozen 2026-09-30  
+**Status:** QUALIFIED — tenant adoption qualified 2026-10-05  
 **Source:** Zaid Connect commit `abcffa73f893602c25310a58946bebb91fd7eeb5`  
 **Scope:** Business category taxonomy + Business category assignment only
 
@@ -130,7 +130,7 @@ The initial resource may expose read access to authenticated contexts through th
 
 ### Assignment read
 
-The caller must have an active relationship to the Business through the canonical GHM membership model.
+The caller must have an active relationship to the Business through the canonical GHM membership model. Tenant resolution is canonical and is performed on the same PostgreSQL transaction client as protected assignment work; cross-Business access is denied.
 
 ### Assignment create / primary transition
 
@@ -138,7 +138,7 @@ The caller must have Business management authority.
 
 For this slice, Business management authority means an active membership with the canonical management roles already established by GHM: owner or administrator.
 
-Authorization is evaluated from the authenticated `AuthContext` and canonical Business membership. It must not be inferred from Connect claims, Supabase JWTs, caller-supplied roles, or assignment fields.
+Authorization is evaluated from the authenticated `AuthContext` and canonical Business membership. The caller cannot rebind the resolved tenant through mutation input. It must not be inferred from Connect claims, Supabase JWTs, caller-supplied roles, or assignment fields.
 
 ## 8. Primary-category transition
 
@@ -255,7 +255,11 @@ This construction contract does not authorize a public GHM category API.
 
 Resource registration may be prepared only to support internal qualification. Public HTTP exposure requires a separate authorization decision.
 
-## 16. Qualification requirements
+## 16. Qualification evidence
+
+The 2026-10-05 runtime qualification passed with runtime identity `ghm_runtime` and cleanup authority `ghm_migrator`. Evidence covered category reads and active filtering, management authorization, cross-Business read/assignment denial, server-derived provenance, duplicate assignment rejection, atomic/concurrent primary transitions, inactive/unassigned primary rejection, runtime privilege boundaries, runtime insert/delete denial, invalid UUID validation, and the existing 520-test suite.
+
+## 17. Qualification requirements
 
 Before this slice is considered construction-qualified, evidence must demonstrate:
 
@@ -279,7 +283,7 @@ Before this slice is considered construction-qualified, evidence must demonstrat
 18. existing qualified GHM capabilities remain green;
 19. architecture/readiness/handover documentation is reconciled to the resulting implementation.
 
-## 17. Construction sequence
+## 18. Construction sequence
 
 ```text
 migration
@@ -294,7 +298,7 @@ migration
 
 No Connect schema mutation, production migration, product cutover, shadow traffic, or Supabase provider cleanup is authorized by this contract.
 
-## 18. Explicit founder gate
+## 19. Explicit founder gate
 
 This contract records the construction authorization expressed on 2026-09-30 by proceeding after the evidence-backed source audit.
 
