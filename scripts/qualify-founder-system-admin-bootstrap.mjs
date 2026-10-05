@@ -33,17 +33,17 @@ try {
   assert.equal(metadata.rows[0].runtime_execute, false);
   assert.equal(metadata.rows[0].signature, 'p_full_name text, p_login_email text, p_login_email_normalized text, p_password_hash text, p_argon2_memory_kib integer, p_argon2_time_cost integer, p_argon2_parallelism integer');
 
+  await assert.rejects(
+    () =>
+      client.query(
+        "SELECT * FROM ghm.auth_bootstrap_founder_system_admin($1, 'not-the-founder@example.com', 'not-the-founder@example.com', $2, 65536, 3, 1)",
+        ['Qualification Founder', passwordHash],
+      ),
+    /designated founder email/i,
+  );
+
   await client.query('BEGIN');
   try {
-    await assert.rejects(
-      () =>
-        client.query(
-          "SELECT * FROM ghm.auth_bootstrap_founder_system_admin($1, 'not-the-founder@example.com', 'not-the-founder@example.com', $2, 65536, 3, 1)",
-          ['Qualification Founder', passwordHash],
-        ),
-      /designated founder email/i,
-    );
-
     const created = await client.query(
       "SELECT * FROM ghm.auth_bootstrap_founder_system_admin($1, 'zaidhqdev@gmail.com', 'zaidhqdev@gmail.com', $2, 65536, 3, 1)",
       ['Qualification Founder', passwordHash],
