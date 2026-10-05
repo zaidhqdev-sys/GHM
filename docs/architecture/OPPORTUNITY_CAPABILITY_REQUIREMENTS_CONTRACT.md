@@ -2,7 +2,7 @@
 
 ## Status
 
-CONSTRUCTION — TENANT ADOPTION IN PROGRESS — 2026-10-05
+QUALIFIED — TENANT ADOPTION — 2026-10-05
 
 Canonical source reconciled against Zaid Connect migration:
 
@@ -119,4 +119,4 @@ The canonical Connect RPC accepts operation version `1`. GHM does not reproduce 
 
 ## Production boundary
 
-This contract establishes the qualified GHM construction capability and durable tenant adoption. Zaid Connect and QuoteFlow remain on Supabase. No production migration, adapter, routing change, credential change, or cutover is authorized by this contract.
+This contract records the qualified GHM construction capability and durable tenant adoption. Zaid Connect and QuoteFlow remain on Supabase. No production migration, adapter, routing change, credential change, or cutover is authorized by this contract.
