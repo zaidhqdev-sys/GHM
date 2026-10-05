@@ -21,21 +21,6 @@ const mapBusinessHours = (row: any): BusinessHours => ({
   updatedAt: row.updated_at,
 });
 
-const assertBusinessReadAuthority = async (client: any, context: AuthContext, businessId: number): Promise<void> => {
-  const result = await client.query(
-    `SELECT 1 FROM ghm.business b
-     WHERE b.id = $1 AND b.is_active = true
-       AND EXISTS (
-         SELECT 1 FROM ghm.business_membership bm
-         WHERE bm.business_id = b.id
-           AND bm.account_id = $2
-           AND bm.membership_status = 'active'
-       )`,
-    [businessId, context.userId],
-  );
-  if (result.rowCount !== 1) throw new Error('Business access required');
-};
-
 const assertPublicBusiness = async (client: any, businessId: number): Promise<void> => {
   const result = await client.query(
     `SELECT 1 FROM ghm.business
