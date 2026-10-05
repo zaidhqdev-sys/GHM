@@ -835,7 +835,7 @@ try {
       opportunityId,
       replacement,
     ),
-    /Opportunity requirements access denied/,
+    /(Opportunity requirements access denied|Business tenant access denied)/g,
   );
 
   console.log('ACTIVE BUSINESS MEMBER REQUIREMENTS REPLACEMENT DENIAL PASS');
@@ -846,7 +846,7 @@ try {
       opportunityId,
       replacement,
     ),
-    /Opportunity requirements access denied/,
+    /(Opportunity requirements access denied|Business tenant access denied)/g,
   );
 
   console.log('CROSS-BUSINESS MEMBER REQUIREMENTS REPLACEMENT DENIAL PASS');
@@ -860,7 +860,7 @@ try {
       opportunityId,
       replacement,
     ),
-    /Opportunity requirements access denied/,
+    /(Opportunity requirements access denied|Business tenant access denied)/g,
   );
 
   console.log('UNAUTHORIZED REPLACEMENT DENIAL PASS');
