@@ -37,18 +37,19 @@ The existing `is_system_admin` column is already protected as auth lifecycle sta
 
 A future implementation must enforce all of these invariants atomically:
 
-1. **One-time:** bootstrap succeeds only when no active system-admin account exists.
-2. **Fail closed:** if the precondition cannot be established, no bootstrap mutation occurs.
-3. **Exact founder identity:** the ceremony accepts an explicitly supplied normalized founder email; it does not infer identity from legacy records.
-4. **GHM-native credentials:** password material is created through the existing GHM Argon2id password contract.
-5. **No external identity:** no Supabase UUID, external subject, or migration crosswalk is required.
-6. **No public exposure:** bootstrap is not added to `POST /api/v1/auth/register` and does not accept a caller-selected admin role.
-7. **No Business side effect:** founder account creation does not implicitly create Business or membership state.
-8. **No direct table DML for runtime:** runtime authority remains mediated by controlled database functions.
-9. **No secret in source control:** founder password and any bootstrap secret are operator-provided at ceremony time and are never committed.
-10. **Auditable result:** the ceremony records only non-secret outcome evidence sufficient to prove whether bootstrap occurred; plaintext passwords, password hashes, bearer tokens, and recovery credentials are never logged.
-11. **Idempotency is explicit:** a repeat attempt after successful bootstrap is rejected as already initialized; it must not create a second admin.
-12. **Legacy isolation:** legacy `public.users` and Supabase data are not consulted to authorize the new founder account.
+1. **One-time forever:** bootstrap succeeds only when zero `ghm.account_identity` rows have ever been designated `is_system_admin = true`. A disabled/deleted admin must not reopen the founder gate.
+2. **Concurrency-safe:** concurrent bootstrap attempts serialize at the authority boundary; at most one can establish the first system administrator.
+3. **Fail closed:** if the initialization precondition cannot be established, no bootstrap mutation occurs.
+4. **Exact founder identity:** the ceremony accepts an explicitly supplied normalized founder email; it does not infer identity from legacy records.
+5. **GHM-native credentials:** password material is created through the existing GHM Argon2id password contract.
+6. **No external identity:** no Supabase UUID, external subject, or migration crosswalk is required.
+7. **No public exposure:** bootstrap is not added to `POST /api/v1/auth/register` and does not accept a caller-selected admin role.
+8. **No Business side effect:** founder account creation does not implicitly create Business or membership state.
+9. **No direct table DML for runtime:** runtime authority remains mediated by controlled database functions.
+10. **No secret in source control:** founder password and any bootstrap secret are operator-provided at ceremony time and are never committed.
+11. **Auditable result:** the ceremony records only non-secret outcome evidence sufficient to prove whether bootstrap occurred; plaintext passwords, password hashes, bearer tokens, and recovery credentials are never logged.
+12. **Explicit repeat rejection:** a repeat attempt after successful bootstrap is rejected as already initialized; it must not create another administrator.
+13. **Legacy isolation:** legacy `public.users` and Supabase data are not consulted to authorize the new founder account.
 
 ## Authority model
 
@@ -74,7 +75,8 @@ Implementation must use a dedicated, narrowly scoped `SECURITY DEFINER` function
 
 The primitive must:
 
-- verify the one-time initialization precondition;
+- verify the one-time initialization precondition using historical system-admin state, not active-state filtering;
+- serialize concurrent initialization attempts;
 - create the founder identity and password credential atomically;
 - set `is_system_admin = true`;
 - use the existing account/password data contract rather than duplicating credential storage;
@@ -115,7 +117,7 @@ Before any production founder bootstrap:
 
 - [ ] current `account_identity` schema and constraints reconciled;
 - [ ] current Auth password contract reused without duplication;
-- [ ] one-time precondition qualified;
+- [ ] historical system-admin precondition qualified;
 - [ ] concurrent bootstrap attempts cannot create two admins;
 - [ ] duplicate/second attempt fails closed;
 - [ ] non-admin public registration cannot create an admin;
