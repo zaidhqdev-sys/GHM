@@ -20,6 +20,7 @@ const passwordHash = await argon2.hash('GHM-founder-bootstrap-qualification-only
 });
 
 await client.connect();
+await client.query('SET ROLE ghm_schema_owner');
 
 try {
   const metadata = await client.query(
