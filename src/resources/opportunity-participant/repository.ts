@@ -1,6 +1,7 @@
 import type { PoolClient } from 'pg';
 import type { AuthContext } from '../../auth/authorization';
 import { withAuthorizedTransaction } from '../../db/authorized-transaction';
+import { resolveTenantContext } from '../../auth/tenant-resolver';
 import type { TransactionPool } from '../../db/transaction';
 import type {
   CreateOpportunityParticipantInput,
@@ -121,24 +122,15 @@ const assertParticipantReadAuthority = async (client: PoolClient, context: AuthC
 
 const assertParticipantManagementAuthority = async (client: PoolClient, context: AuthContext, opportunityId: number): Promise<void> => {
   const result = await client.query(
-    `SELECT 1 FROM ghm.opportunity o
-     WHERE o.id = $1
-       AND (
-         o.creator_account_id = $2
-         OR (
-           o.owner_business_id IS NOT NULL
-           AND EXISTS (
-             SELECT 1 FROM ghm.business_membership bm
-             WHERE bm.business_id = o.owner_business_id
-               AND bm.account_id = $2
-               AND bm.membership_status = 'active'
-               AND bm.membership_role IN ('owner','administrator')
-           )
-         )
-       )`,
-    [opportunityId, context.userId],
+    `SELECT creator_account_id, owner_business_id FROM ghm.opportunity WHERE id = $1`,
+    [opportunityId],
   );
   if (result.rowCount !== 1) throw new Error('Opportunity participant management permission required');
+  const opportunity = result.rows[0];
+  if (Number(opportunity.creator_account_id) === context.userId) return;
+  if (opportunity.owner_business_id === null) throw new Error('Opportunity participant management permission required');
+  const tenant = await resolveTenantContext(client, context, Number(opportunity.owner_business_id));
+  if (!['owner', 'administrator'].includes(tenant.membershipRole)) throw new Error('Opportunity participant management permission required');
 };
 
 export class PostgresOpportunityParticipantRepository implements OpportunityParticipantRepository {
@@ -185,8 +177,10 @@ export class PostgresOpportunityParticipantRepository implements OpportunityPart
     return withAuthorizedTransaction(context, async client => {
       const result = await client.query(`SELECT ${COLUMNS} FROM ghm.opportunity_participant WHERE id = $1`, [participantId]);
       if (result.rowCount !== 1) return null;
+      const row = result.rows[0];
       await assertParticipantReadAuthority(client, context, participantId);
-      return mapParticipant(result.rows[0]);
+      if (row.business_id !== null) await resolveTenantContext(client, context, Number(row.business_id));
+      return mapParticipant(row);
     }, this.transactionPool);
   }
 
@@ -201,7 +195,17 @@ export class PostgresOpportunityParticipantRepository implements OpportunityPart
          ORDER BY created_at ASC, id ASC`,
         [opportunityId],
       );
-      return result.rows.map(mapParticipant);
+      const rows = result.rows;
+      const businessIds = [...new Set(rows.map(row => row.business_id).filter(value => value !== null).map(Number))];
+      for (const businessId of businessIds) {
+        try {
+          await resolveTenantContext(client, context, businessId);
+          break;
+        } catch {
+          // A caller may legitimately see an Account participation without belonging to a participating Business.
+        }
+      }
+      return rows.map(mapParticipant);
     }, this.transactionPool);
   }
 
