@@ -293,6 +293,8 @@ test(
   'Opportunity requirements read returns an empty set for an unrelated private Opportunity',
   async () => {
     const { pool, calls } = createFakePool(false, {
+      businessMember: false,
+      creator: false,
       requirementRows: [requirementRow],
     });
     const repository = new PgOpportunityRequirementsRepository(pool);
@@ -350,6 +352,8 @@ test(
   async () => {
     const { pool } = createFakePool(true, {
       manager: false,
+      businessMember: false,
+      creator: false,
       capabilitiesSelectable: true,
     });
     const repository = new PgOpportunityRequirementsRepository(pool);
