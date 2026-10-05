@@ -2,7 +2,9 @@
 
 ## Status
 
-Construction contract reconciled to the applied first-slice schema and current repository implementation. Live Resource API qualification remains open until the corrected multi-business qualification passes. No production cutover and no production Connect changes are authorized by this document.
+**QUALIFIED / CLOSED — Business Identity + Business Profile durable-tenant boundary**
+
+The Business Identity operation contract is reconciled to the current consolidated `main` implementation. Business Profile and durable tenant adoption are qualified. No production cutover, product migration, provider mutation, or Supabase replacement is authorized by this document.
 
 ## Evidence basis
 
@@ -16,11 +18,11 @@ Direct Connect source inspection establishes the current identity, Business memb
 | Read own profile | `profile.readSelf` | principal owns account identity | read-only | implementation present; qualified in prior construction evidence |
 | Update own profile | `profile.updateSelf` | principal owns account identity | single transaction | implementation present; qualified in prior construction evidence |
 | List active Business memberships | `businessContext.listMemberships` | authenticated principal; account_id equals principal | read-only | implementation present; qualified in prior construction evidence |
-| Resolve active Business context | `businessContext.resolve` | active membership belongs to principal | read-only | implementation present; multi-membership behavior implemented; qualification evidence remains part of Resource API closure |
-| Read Business public-safe | `business.readPublic` | public eligibility rules | read-only | implementation present; qualified in Resource API construction evidence except overall gate closure |
-| Create Business | `business.create` | authenticated business-operator context | required atomic write; account row locked before creation | implementation present; multi-business semantics reconciled; Resource API qualification open |
-| Update managed Business identity | `business.updateProfile` | active membership with `business.manage` | single transaction | implementation present; qualified in Resource API construction evidence except overall gate closure |
-| Read Business memberships for managed Business | `businessContext.listBusinessMemberships` | owner/administrator according to final policy | read-only | later qualification |
+| Resolve active Business context | `businessContext.resolve` | active membership belongs to principal | read-only | qualified construction |
+| Read Business public-safe | `business.readPublic` | public eligibility rules | read-only | qualified construction |
+| Create Business | `business.create` | authenticated business-operator context | required atomic write; account row locked before creation | qualified construction |
+| Update managed Business identity | `business.updateProfile` | active membership with `business.manage` | single transaction | qualified construction |
+| Read Business memberships for managed Business | `businessContext.listBusinessMemberships` | owner/administrator according to final policy | read-only | qualified construction |
 
 ## Identity resolution contract
 
@@ -247,6 +249,6 @@ This is the canonical first-slice schema for construction. It is not the complet
 
 ## Gate result
 
-**Business creation semantics are reconciled to Connect's multi-business ownership model. Resource API qualification remains open until the corrected live HTTP qualification demonstrates creation of an additional Business while preserving the existing Business membership and all authorization boundaries.**
+**CLOSED / PASS.** Business Identity and Business Profile construction boundaries are qualified on the current mainline. The corrected multi-business semantics and durable tenant boundary are no longer open work.
 
 No production Zaid Connect changes, production database cutover, provider/bootstrap mutations, or later product adapters are authorized by this reconciliation.
