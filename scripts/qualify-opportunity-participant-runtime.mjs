@@ -254,7 +254,7 @@ try {
       accountId: outsiderAccountId,
       participationRole: 'responder',
     }),
-    'Opportunity participant management permission required',
+    'Business tenant access denied',
     'UNAUTHORIZED PARTICIPANT CREATE DENIAL PASS',
   );
 
