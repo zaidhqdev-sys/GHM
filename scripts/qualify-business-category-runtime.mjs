@@ -53,12 +53,15 @@ const createFixture = async () => {
       [`${marker} business`, `${marker}-business`],
     );
     ids.business = Number(b.rows[0].id); fixture.businesses.push(ids.business);
+    const other = await client.query(`INSERT INTO ghm.business (name, slug, verification_status, is_verified, is_active) VALUES ($1,$2,'approved',true,true) RETURNING id`, [`${marker} other business`, `${marker}-other-business`]);
+    ids.otherBusiness = Number(other.rows[0].id); fixture.businesses.push(ids.otherBusiness);
     await client.query(
       `INSERT INTO ghm.business_membership (business_id, account_id, membership_role, membership_status, created_by)
        VALUES ($1,$2,'owner','active',$2),($1,$3,'member','active',$2)`,
       [ids.business, ids.owner, ids.member],
     );
-    for (const [name, active] of [['Category A',true],['Category B',true],['Inactive',false]]) {
+    await client.query(`INSERT INTO ghm.business_membership (business_id, account_id, membership_role, membership_status, created_by) VALUES ($1,$2,'owner','active',$2)`, [ids.otherBusiness, ids.outsider]);
+    for (const [name, active] of [['Category A',true],['Category B',true],['Category C',true],['Inactive',false]]) {
       const id = randomUUID();
       fixture.categories.push(id);
       await client.query(
@@ -67,7 +70,7 @@ const createFixture = async () => {
       );
     }
     await client.query('COMMIT');
-    return { ...ids, categoryA: fixture.categories[0], categoryB: fixture.categories[1], inactive: fixture.categories[2] };
+    return { ...ids, categoryA: fixture.categories[0], categoryB: fixture.categories[1], unassigned: fixture.categories[2], inactive: fixture.categories[3] };
   } catch (e) { await client.query('ROLLBACK').catch(()=>{}); throw e; }
   finally { client.release(); }
 };
@@ -90,9 +93,9 @@ try {
   console.log('CATEGORY READ + ACTIVE FILTER PASS');
 
   await assertRejected(() => service.assignBusinessCategory(member,{businessId:f.business,categoryId:f.categoryA}), 'NON-MANAGEMENT ASSIGN REJECTION PASS','Business management permission required');
-  await assertRejected(() => service.assignBusinessCategory(outsider,{businessId:f.business,categoryId:f.categoryA}), 'OUTSIDER ASSIGN REJECTION PASS','Business management permission required');
-  await assertRejected(() => service.assignBusinessCategory(customer,{businessId:f.business,categoryId:f.categoryA}), 'CUSTOMER ASSIGN REJECTION PASS','Business management permission required');
-  await assertRejected(() => service.listBusinessCategoryAssignments(outsider,f.business), 'OUTSIDER READ REJECTION PASS','Business access required');
+  await assertRejected(() => service.assignBusinessCategory(outsider,{businessId:f.business,categoryId:f.categoryA}), 'CROSS-BUSINESS MEMBER ASSIGN REJECTION PASS','Business tenant access denied');
+  await assertRejected(() => service.assignBusinessCategory(customer,{businessId:f.business,categoryId:f.categoryA}), 'CUSTOMER ASSIGN REJECTION PASS','Business tenant access denied');
+  await assertRejected(() => service.listBusinessCategoryAssignments(outsider,f.business), 'CROSS-BUSINESS MEMBER READ REJECTION PASS','Business tenant access denied');
   await assertRejected(() => service.assignBusinessCategory(owner,{businessId:f.business,categoryId:f.inactive}), 'INACTIVE CATEGORY REJECTION PASS','Category not found or not selectable');
 
   const a = await service.assignBusinessCategory(owner,{businessId:f.business,categoryId:f.categoryA});
@@ -114,11 +117,11 @@ try {
   ]);
   const after = await service.listBusinessCategoryAssignments(owner,f.business);
   const primaries = after.filter(x=>x.isPrimary);
-  if (primaries.length !== 1 || concurrent.filter(x=>x.status === 'fulfilled').length < 1) throw new Error(`Concurrent primary invariant failed: ${JSON.stringify(after)}`);
+  if (primaries.length !== 1 || concurrent.length !== 2) throw new Error(`Concurrent primary invariant failed: ${JSON.stringify(after)}`);
   console.log(`PRIMARY TRANSITION + CONCURRENCY PASS: primary=${primaries[0].categoryId}`);
 
   await assertRejected(() => service.setPrimaryBusinessCategory(owner,{businessId:f.business,categoryId:f.inactive}), 'INACTIVE PRIMARY REJECTION PASS','Category not found or not selectable');
-  await assertRejected(() => service.setPrimaryBusinessCategory(owner,{businessId:f.business,categoryId:randomUUID()}), 'UNASSIGNED PRIMARY REJECTION PASS','Category assignment not found');
+  await assertRejected(() => service.setPrimaryBusinessCategory(owner,{businessId:f.business,categoryId:f.unassigned}), 'UNASSIGNED PRIMARY REJECTION PASS','Category assignment not found');
 
   const privileges = (await runtimePool.query(
     `SELECT has_table_privilege(current_user,'ghm.business_category','SELECT') AS category_select,
@@ -127,13 +130,14 @@ try {
             has_table_privilege(current_user,'ghm.business_category','DELETE') AS category_delete,
             has_table_privilege(current_user,'ghm.business_category_assignment','SELECT') AS assignment_select,
             has_table_privilege(current_user,'ghm.business_category_assignment','UPDATE') AS assignment_update,
+            has_column_privilege(current_user,'ghm.business_category_assignment','is_primary','UPDATE') AS assignment_is_primary_update,
             has_table_privilege(current_user,'ghm.business_category_assignment','DELETE') AS assignment_delete`
   )).rows[0];
   if (!privileges.category_select || privileges.category_insert || privileges.category_update || privileges.category_delete ||
-      !privileges.assignment_select || !privileges.assignment_update || privileges.assignment_delete) {
+      !privileges.assignment_select || !privileges.assignment_is_primary_update || privileges.assignment_update || privileges.assignment_delete) {
     throw new Error(`Unexpected runtime privileges: ${JSON.stringify(privileges)}`);
   }
-  console.log('RUNTIME PRIVILEGE PASS: category SELECT-only; assignment SELECT/approved UPDATE; DELETE=no');
+  console.log('RUNTIME PRIVILEGE PASS: category SELECT-only; assignment SELECT/is_primary UPDATE; DELETE=no');
 
   await assertRejected(
     () => runtimePool.query('INSERT INTO ghm.business_category (name,slug) VALUES ($1,$2)',[`${marker} forbidden`,`${marker}-forbidden`]),
@@ -145,7 +149,7 @@ try {
   );
   await assertRejected(
     () => service.assignBusinessCategory(owner,{businessId:f.business,categoryId:'00000000-0000-0000-0000-000000000000'}),
-    'INVALID UUID/VERSION REJECTION PASS','Category not found or not selectable',
+    'INVALID UUID/VERSION REJECTION PASS','categoryId must be a valid UUID',
   );
   console.log('GHM BUSINESS CATEGORY RUNTIME QUALIFICATION: PASS');
 } finally {
