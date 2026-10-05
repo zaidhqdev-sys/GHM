@@ -1,6 +1,6 @@
 # GHM ↔ Zaid Connect Identity Adapter Contract
 
-**Status:** CONTRACT DEFINED — FOUNDER CONSTRUCTION AUTHORIZATION REQUIRED
+**Status:** CONSTRUCTION QUALIFIED — INTEGRATION FOUNDATION; PRODUCT CUTOVER NOT AUTHORIZED
 **Canonical owner:** GHM platform governance
 **Current baseline:** consolidated `main` — current repository authority (2026-09-30)
 **Depends on:**
