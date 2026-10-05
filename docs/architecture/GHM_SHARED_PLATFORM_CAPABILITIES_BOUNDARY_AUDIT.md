@@ -1,9 +1,9 @@
 # GHM Shared Platform Capabilities Boundary Audit
 
 **Canonical owner:** GHM platform governance
-**Status:** Read-only architecture audit — documentation only
+**Status:** HISTORICAL PLATFORM CAPABILITY AUDIT — SUPERSEDED FOR CURRENT STORAGE STATE
 **Authority:** Local repository `C:\GHM`
-**Baseline:** branch `construction/saved-business-resource`, HEAD `0a9a9f7`
+**Baseline:** historical audit checkpoint; current mainline storage authority is `GHM_STORAGE_PERSISTENCE_QUALIFICATION.md` and `GHM_STORAGE_PROVIDER_ADAPTER_RECONCILIATION.md`
 **Depends on:**
 - [GHM_APPLICATION_BACKEND_PLATFORM_CHARTER.md](./GHM_APPLICATION_BACKEND_PLATFORM_CHARTER.md)
 - [PRODUCT_INTEGRATION_BOUNDARY_CONTRACT.md](./PRODUCT_INTEGRATION_BOUNDARY_CONTRACT.md)
@@ -503,7 +503,7 @@ It:
 
 ## Final gate
 
-GHM SHARED PLATFORM CAPABILITIES BOUNDARY AUDIT COMPLETE.
+GHM SHARED PLATFORM CAPABILITIES BOUNDARY AUDIT COMPLETE AS A HISTORICAL DECISION RECORD. Current remaining work is governed by `docs/GHM_REMAINING_WORK_REGISTER_2026-10-05.md`.
 
 DOCUMENTATION-ONLY GATE.
 
