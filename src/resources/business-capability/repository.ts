@@ -1,6 +1,7 @@
 import type { PoolClient } from 'pg';
 import type { AuthContext } from '../../auth/authorization';
-import { withAuthorizedTransaction } from '../../db/authorized-transaction';
+import { resolveTenantContext } from '../../auth/tenant-resolver';
+import { withAuthorizedTransaction, withTenantTransaction } from '../../db/authorized-transaction';
 import type { TransactionPool } from '../../db/transaction';
 import type { BusinessCapability, BusinessCapabilityId, BusinessCapabilityRepository, CreateBusinessCapabilityInput, TransitionBusinessCapabilityVerificationInput } from './contracts';
 
@@ -26,34 +27,14 @@ const requireUuid = (value: unknown): string => {
   return value;
 };
 
-const assertBusinessManagementAuthority = async (client: PoolClient, context: AuthContext, businessId: number): Promise<void> => {
-  const result = await client.query(
-    `SELECT 1 FROM ghm.business b WHERE b.id = $1 AND b.is_active = true
-      AND EXISTS (SELECT 1 FROM ghm.business_membership bm WHERE bm.business_id = b.id AND bm.account_id = $2
-        AND bm.membership_status = 'active' AND bm.membership_role IN ('owner', 'administrator'))`,
-    [businessId, context.userId],
-  );
-  if (result.rowCount !== 1) throw new Error('Business management permission required');
-};
-
-const assertBusinessReadAuthority = async (client: PoolClient, context: AuthContext, businessId: number): Promise<void> => {
-  const result = await client.query(
-    `SELECT 1 FROM ghm.business b WHERE b.id = $1 AND b.is_active = true
-      AND EXISTS (SELECT 1 FROM ghm.business_membership bm WHERE bm.business_id = b.id AND bm.account_id = $2
-        AND bm.membership_status = 'active')`,
-    [businessId, context.userId],
-  );
-  if (result.rowCount !== 1) throw new Error('Business access required');
-};
-
 export class PostgresBusinessCapabilityRepository implements BusinessCapabilityRepository {
   constructor(private readonly transactionPool?: TransactionPool) {}
 
   async createBusinessCapability(context: AuthContext, input: CreateBusinessCapabilityInput): Promise<BusinessCapability> {
     const businessId = requirePositiveId(input.businessId, 'businessId');
     const capabilityId = requireUuid(input.capabilityId);
-    return withAuthorizedTransaction(context, async client => {
-      await assertBusinessManagementAuthority(client, context, businessId);
+    return withTenantTransaction(context, businessId, async (client, _context, tenant) => {
+      if (tenant.membershipRole !== 'owner' && tenant.membershipRole !== 'administrator') throw new Error('Business management permission required');
       const capability = await client.query(
         `SELECT 1 FROM ghm.capability WHERE id = $1 AND lifecycle_status = 'active' AND is_selectable = true`,
         [capabilityId],
@@ -76,15 +57,14 @@ export class PostgresBusinessCapabilityRepository implements BusinessCapabilityR
     return withAuthorizedTransaction(context, async client => {
       const result = await client.query(`SELECT ${COLUMNS} FROM ghm.business_capability WHERE id = $1`, [id]);
       if (result.rowCount !== 1) return null;
-      await assertBusinessReadAuthority(client, context, Number(result.rows[0].business_id));
+      await resolveTenantContext(client, context, Number(result.rows[0].business_id));
       return mapBusinessCapability(result.rows[0]);
     }, this.transactionPool);
   }
 
   async listBusinessCapabilities(context: AuthContext, businessId: number): Promise<BusinessCapability[]> {
     const id = requirePositiveId(businessId, 'businessId');
-    return withAuthorizedTransaction(context, async client => {
-      await assertBusinessReadAuthority(client, context, id);
+    return withTenantTransaction(context, id, async (client) => {
       const result = await client.query(`SELECT ${COLUMNS} FROM ghm.business_capability WHERE business_id = $1 ORDER BY created_at ASC, id ASC`, [id]);
       return result.rows.map(mapBusinessCapability);
     }, this.transactionPool);
