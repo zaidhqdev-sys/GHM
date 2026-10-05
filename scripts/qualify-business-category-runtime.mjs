@@ -121,7 +121,7 @@ try {
   console.log(`PRIMARY TRANSITION + CONCURRENCY PASS: primary=${primaries[0].categoryId}`);
 
   await assertRejected(() => service.setPrimaryBusinessCategory(owner,{businessId:f.business,categoryId:f.inactive}), 'INACTIVE PRIMARY REJECTION PASS','Category not found or not selectable');
-  await assertRejected(() => service.setPrimaryBusinessCategory(owner,{businessId:f.business,categoryId:randomUUID()}), 'UNASSIGNED PRIMARY REJECTION PASS','Category assignment not found');
+  await assertRejected(() => service.setPrimaryBusinessCategory(owner,{businessId:f.business,categoryId:f.unassigned}), 'UNASSIGNED PRIMARY REJECTION PASS','Category assignment not found');
 
   const privileges = (await runtimePool.query(
     `SELECT has_table_privilege(current_user,'ghm.business_category','SELECT') AS category_select,
