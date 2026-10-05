@@ -47,11 +47,12 @@ GHM storage is **not missing**. The current foundation includes:
 - runtime direct-DML denial;
 - provider-neutral storage service/repository contracts;
 - provider factory/configuration/key boundaries;
-- persistence qualification.
+- persistence qualification;
+- live S3-compatible provider data-path qualification against Cloudflare R2 (signed PUT/HEAD/GET/DELETE and payload integrity).
 
-Qualified storage boundary: metadata persistence/lifecycle authority.
+Qualified storage boundary: metadata persistence/lifecycle authority plus live concrete-provider data-path evidence.
 
-Still open: concrete production provider credentials and side effects, full service-level tenant/resource authorization qualification, HTTP/product exposure, recovery/backup, orphan/reconciliation processing, and production provider enablement.
+Still open: application composition-root wiring, grant expiry/enforcement, broader provider error mapping, full service-level tenant/resource authorization qualification, HTTP/product exposure, recovery/backup, orphan/reconciliation processing, deployment-managed production configuration, and production provider enablement.
 
 ## Connect integration
 

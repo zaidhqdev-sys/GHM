@@ -1,9 +1,9 @@
 # GHM Storage Provider Adapter Reconciliation
 
 ## Status
-**CONSTRUCTION — PROVIDER FACTORY BOUNDARY**
+**CONSTRUCTION — PROVIDER FACTORY BOUNDARY / LIVE PROVIDER DATA-PATH QUALIFIED — 2026-10-05**
 
-The provider-adapter implementation is reconciled onto the already-qualified PostgreSQL persistence boundary. This follow-on slice defines the single runtime provider-construction boundary without enabling production storage.
+The provider-adapter implementation is reconciled onto the already-qualified PostgreSQL persistence boundary. The concrete S3-compatible adapter has additionally passed a controlled live Cloudflare R2 data-path qualification. Production application enablement remains separately gated.
 
 The qualified persistence branch remains the source of truth for `ghm.storage_object`. This slice does not modify the database, grant runtime table privileges, provision a bucket, or enable production credentials.
 
@@ -80,6 +80,12 @@ Provider outages remain provider errors; they must not cause metadata to be mark
 A successful upload grant is not proof of object existence. The canonical completion flow must verify provider state before the metadata transition to `available`.
 
 Deletion remains two-phase: `deletion_pending` is durable before provider deletion, and `deleted` is written only after provider deletion succeeds. A failed provider deletion therefore remains recoverable.
+
+## Live qualification boundary
+
+The controlled live qualification proved signed upload grant, real PUT, provider HEAD and metadata verification, signed download grant, SHA-256 payload integrity, DELETE, and post-delete NOT_FOUND mapping. The application composition root was not changed by the qualification harness.
+
+Remaining separate gates are grant-expiry enforcement, broader provider-error mapping, full service-level tenant/resource authorization, failed-operation recovery/orphan reconciliation, backup/recovery, HTTP/product exposure, deployment-managed production configuration, and production cutover.
 
 ## Explicitly not authorized by this slice
 
