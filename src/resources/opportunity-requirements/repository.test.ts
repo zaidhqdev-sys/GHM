@@ -67,7 +67,7 @@ const createFakePool = (
           rowCount: 1,
           rows: [{
             owner_business_id: 42,
-            creator_account_id: options.creator ? 7 : 99,
+            creator_account_id: options.creator ? 7 : 8,
             visibility: opportunityReadable ? 'authenticated' : 'private',
           }],
         };
