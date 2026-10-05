@@ -159,9 +159,7 @@ Future hosting / cloud adoption is a **separate architectural phase**. It is not
 
 For the current KBM operating model, generated assets may remain local.
 
-**GHM Storage is a FUTURE / GATED platform capability.**
-
-This charter does not create storage implementation.
+**GHM Storage foundation is CURRENT / QUALIFIED.** Metadata persistence, lifecycle authority, provider abstraction/factory/configuration/key boundaries, and persistence qualification are complete. Live-provider enablement, full service authorization, HTTP/product exposure, recovery/reconciliation, and production provider configuration remain separately gated.
 
 If shared / durable storage is later required, it requires its own:
 
@@ -280,7 +278,7 @@ Campaign root resource is QUALIFIED at `0a9a9f7` (persistence / authz). Campaign
 
 - supported product callable boundary
 - durable audit
-- shared storage
+- storage provider/product enablement
 - shared jobs / queues
 - realtime where genuinely cross-product
 - product adapters
@@ -331,7 +329,7 @@ Do not expose unrestricted table access as a long-term product contract (see Res
 3. Cross-product capability requires an ownership decision.
 4. Transport requires explicit Founder authorization.
 5. Product adapters require explicit gates.
-6. Storage / jobs / audit require explicit gates.
+6. Storage provider/product enablement, jobs, and platform-wide audit require explicit gates.
 7. No silent expansion of existing resources.
 8. No implementation from an unresolved architectural decision.
 9. No direct database consumption by products.
@@ -367,7 +365,7 @@ Campaign child resources, storage, jobs, and AI remain outside Campaign root qua
 | JWT issuance | GHM-owned construction foundation QUALIFIED; product migration/cutover separately gated |
 | Error semantic platform contract | OPEN |
 | Versioning / compatibility policy | OPEN |
-| Shared storage | FUTURE / GATED |
+| Shared storage | FOUNDATION QUALIFIED; provider/product enablement separately gated |
 | Durable audit | FUTURE / GATED |
 | Jobs / realtime | FUTURE / GATED |
 | Product adapters | FUTURE / GATED |

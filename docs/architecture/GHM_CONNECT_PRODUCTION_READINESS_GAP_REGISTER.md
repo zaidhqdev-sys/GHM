@@ -28,7 +28,7 @@ The audit identified 48 concrete Connect backend dependencies and 54 coverage ro
 | EXTERNAL PROVIDER | 6 |
 | EVIDENCE INSUFFICIENT | 1 grouped set / 13 referenced objects |
 
-The principal platform blockers are identity/authentication, the Connect product adapter, public Business/directory parity, storage/media, realtime delivery, provider runtime equivalents, missing product domains, atomic workflow parity, and unresolved source evidence for referenced tables.
+The principal remaining blockers are the Connect/QuoteFlow product adapters and migration paths, public Business/directory parity where selected, commercial/provider runtime integration, storage provider/service/product exposure, realtime ownership, atomic workflow parity, unresolved source evidence, bootstrap authority cleanup, and production shadow/cutover gates.
 
 ## 1. Production-readiness blockers
 
@@ -40,7 +40,7 @@ The principal platform blockers are identity/authentication, the Connect product
 | 4 | Public Business + directory parity | Partial | Field-by-field public projection, search/geo/sort/featured contract | Explicit Business/directory authorization |
 | 5 | Trust backend | **QUALIFIED / CLOSED** (`ghm.trust_score` + calculate) | — | Closed; Business profile input parity remains a separate blocker |
 | 6 | Commercial payment operations | Partial/stubbed | Prepare/cancel/provider result/webhook contract and provider boundary | Explicit payment authorization |
-| 7 | Storage/media | Missing GHM boundary | Bucket/object paths, metadata, ownership and storage authorization | Explicit storage authorization |
+| 7 | Storage/media | **GHM metadata/persistence foundation QUALIFIED; provider/service/product exposure remains open** | Live provider, service authorization, HTTP/product exposure, recovery/reconciliation | Separate storage/provider authorization |
 | 8 | Realtime delivery | External/absent in GHM | Ownership and delivery contract for notifications/leads | Explicit realtime authorization |
 | 9 | Edge/runtime equivalents | External/absent in GHM | Runtime placement for checkout/webhooks/AI proxy | Explicit runtime/provider authorization |
 | 10 | Missing product domains | Multiple absent | Separate source audits/contracts for each required domain | Per-domain authorization |
@@ -65,7 +65,7 @@ These are **not** migration-missing. They remain blocked for GHM construction un
 - `business_directory_review_events`
 - relationship/outcome tables (`relationship_types`, `business_relationships`, `outcome_types`, `outcomes`)
 - commercial payment operation workflows (tables exist; GHM ops stubbed)
-- storage/media contracts (governed logo path proven; other prefixes/policies incomplete)
+- storage/media product integration (GHM storage foundation is now qualified; provider/product exposure remains separately gated)
 - realtime delivery ownership (notifications + leads subscriptions)
 
 ### 2.2 Client-referenced objects without migration creates (do not invent GHM tables)
