@@ -30,7 +30,7 @@ try {
   assert.equal(metadata.rows[0].security_definer, true);
   assert.equal(metadata.rows[0].owner, 'ghm_schema_owner');
   assert.equal(metadata.rows[0].runtime_execute, false);
-  assert.equal(metadata.rows[0].signature, 'text, text, text, text, integer, integer, integer');
+  assert.equal(metadata.rows[0].signature, 'p_full_name text, p_login_email text, p_login_email_normalized text, p_password_hash text, p_argon2_memory_kib integer, p_argon2_time_cost integer, p_argon2_parallelism integer');
 
   await client.query('BEGIN');
   try {
