@@ -130,13 +130,14 @@ try {
             has_table_privilege(current_user,'ghm.business_category','DELETE') AS category_delete,
             has_table_privilege(current_user,'ghm.business_category_assignment','SELECT') AS assignment_select,
             has_table_privilege(current_user,'ghm.business_category_assignment','UPDATE') AS assignment_update,
+            has_column_privilege(current_user,'ghm.business_category_assignment','is_primary','UPDATE') AS assignment_is_primary_update,
             has_table_privilege(current_user,'ghm.business_category_assignment','DELETE') AS assignment_delete`
   )).rows[0];
   if (!privileges.category_select || privileges.category_insert || privileges.category_update || privileges.category_delete ||
-      !privileges.assignment_select || !privileges.assignment_update || privileges.assignment_delete) {
+      !privileges.assignment_select || !privileges.assignment_is_primary_update || privileges.assignment_update || privileges.assignment_delete) {
     throw new Error(`Unexpected runtime privileges: ${JSON.stringify(privileges)}`);
   }
-  console.log('RUNTIME PRIVILEGE PASS: category SELECT-only; assignment SELECT/approved UPDATE; DELETE=no');
+  console.log('RUNTIME PRIVILEGE PASS: category SELECT-only; assignment SELECT/is_primary UPDATE; DELETE=no');
 
   await assertRejected(
     () => runtimePool.query('INSERT INTO ghm.business_category (name,slug) VALUES ($1,$2)',[`${marker} forbidden`,`${marker}-forbidden`]),
