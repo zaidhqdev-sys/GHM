@@ -21,7 +21,6 @@ const fixture = {
   accountIds: [],
   businessIds: [],
   capabilityIds: [],
-  crossBusinessCapabilityIds: [],
   businessCapabilityIds: [],
 };
 
@@ -91,8 +90,8 @@ const createFixture = async () => {
 
     await client.query(
       `INSERT INTO ghm.business_membership (business_id, account_id, membership_role, membership_status, created_by)
-       VALUES ($1, $2, 'owner', 'active', $2), ($1, $3, 'member', 'active', $2), ($4, $3, 'member', 'active', $2)`,
-      [businessId, ownerId, memberId, crossBusinessId],
+       VALUES ($1, $2, 'owner', 'active', $2), ($1, $3, 'member', 'active', $2), ($4, $5, 'member', 'active', $2)`,
+      [businessId, ownerId, memberId, crossBusinessId, outsiderId],
     );
 
     const selectableId = randomUUID();
