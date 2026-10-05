@@ -1,6 +1,6 @@
 # Business Offering Tenant Adoption
 
-Status: CONSTRUCTION — tenant adoption implemented, runtime qualification pending.
+**Status: QUALIFIED / CLOSED — durable tenant adoption qualified 2026-10-05**
 
 ## Decision
 
@@ -20,7 +20,11 @@ The canonical protected path is:
 - Public offering reads remain intentionally outside authenticated tenant resolution because they are public projection reads.
 - Existing field-level validation and runtime database privilege boundaries remain intact.
 
-## Qualification
+## Qualification result
+
+The durable tenant adoption was runtime-qualified on 2026-10-05. The qualification proved runtime identity/cleanup authority, owner/member access, cross-business and unauthorized denials, management-only mutation, canonical update ownership, public inactive filtering, concurrent slug protection, and the existing runtime privilege boundary. The repository regression suite was green at 520/520 tests.
+
+Historical qualification target:
 
 The runtime qualification must prove:
 
@@ -33,4 +37,4 @@ The runtime qualification must prove:
 - public inactive filtering remains intact;
 - database privilege boundaries remain unchanged.
 
-No broad resource refactor is included in this slice.
+No broad resource refactor is included in this slice. No production cutover or provider migration is authorized by this document.

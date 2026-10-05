@@ -1,5 +1,9 @@
 # GHM Storage Persistence Qualification
 
+## Status
+
+**QUALIFIED / PASS — 2026-10-05**
+
 ## Purpose
 
 Qualify the narrow PostgreSQL persistence boundary for `ghm.storage_object`.
@@ -10,7 +14,7 @@ This qualification is intentionally provider-free. It proves database authority 
 
 The qualification must run as the intended `ghm_runtime` identity. It records both session and current role.
 
-## Required evidence
+## Qualified evidence
 
 The harness checks:
 
@@ -23,7 +27,7 @@ The harness checks:
 7. deletion_pending -> deleted succeeds;
 8. final metadata records deleted state.
 
-The qualification fails closed on unexpected direct table mutation.
+The qualification fails closed on unexpected direct table mutation. The completed runtime qualification passed the required direct-DML denial and lifecycle transition gates.
 
 ## Cleanup
 
@@ -40,7 +44,7 @@ This does not qualify:
 - provider/object reconciliation;
 - backup/recovery.
 
-Those are subsequent gates.
+Those remain subsequent gates: provider credentials, live upload/download, full tenant/resource authorization, provider reconciliation, backup/recovery, HTTP/product exposure, and production provider enablement.
 
 ## Documentation reconciliation
 

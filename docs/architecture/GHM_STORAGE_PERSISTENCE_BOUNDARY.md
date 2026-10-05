@@ -2,7 +2,7 @@
 
 ## Status
 
-**CONSTRUCTION — NARROW RUNTIME MUTATION**
+**QUALIFIED — narrow runtime persistence boundary — 2026-10-05**
 
 The storage metadata table is intentionally not directly writable by `ghm_runtime`.
 
@@ -13,11 +13,11 @@ Runtime storage lifecycle mutations are exposed through four narrowly scoped GHM
 - `ghm.storage_mark_deletion_pending`
 - `ghm.storage_mark_deleted`
 
-The functions are `SECURITY INVOKER`. They do not bypass database privileges or resource authorization.
+The functions are controlled `SECURITY DEFINER` persistence boundaries owned by the non-login `ghm_schema_owner`, with fixed `search_path` and public execution revoked. They do not replace application authorization.
 
 ## Security boundary
 
-Direct table privileges are revoked from `ghm_runtime` and `ghm_migrator`.
+Direct table DML is denied to `ghm_runtime`; lifecycle execution is limited to the explicitly granted runtime function boundary.
 
 Only the explicitly granted function executions are available to the runtime role.
 
@@ -57,7 +57,9 @@ No provider-specific credential, bucket, URL, or SDK type is persisted by this m
 
 ## Qualification required
 
-Before merging into the canonical backend path:
+The persistence boundary was runtime-qualified on 2026-10-05: direct runtime DML denial, allowed lifecycle execution, invalid transition rejection, terminal deleted-state persistence, and restricted execution authority all passed.
+
+Historical gate criteria:
 
 1. migration applies cleanly;
 2. runtime direct table DML fails;

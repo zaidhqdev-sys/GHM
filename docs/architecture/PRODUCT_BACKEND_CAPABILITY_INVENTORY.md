@@ -99,6 +99,10 @@ These remain platform-level candidates subject to evidence and qualification:
 
 Several are already present as qualified construction primitives; remaining candidates require their own evidence and gates.
 
+## Current documentation reconciliation
+
+The storage capability is no longer a missing GHM boundary. The current mainline has a qualified metadata/persistence foundation; remaining storage work is provider enablement, full service authorization qualification, HTTP/product exposure, recovery/backup, and reconciliation operations.
+
 ## Governance Constraint
 
 GHM must not expose an unrestricted `tables/:table` interface as the long-term product contract. Product capabilities must be explicit, typed, authorized, and testable.

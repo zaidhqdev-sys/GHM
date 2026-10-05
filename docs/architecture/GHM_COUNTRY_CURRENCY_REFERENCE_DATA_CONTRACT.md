@@ -1,13 +1,13 @@
 # GHM Canonical Country and Currency Reference-Data Contract
 
-**Status:** PROPOSED CONSTRUCTION CONTRACT — FOUNDER AUTHORIZATION REQUIRED
+**Status:** QUALIFIED / CLOSED — reference-data dependency constructed and runtime-qualified 2026-10-03
 **Date:** 2026-10-03
 
 ## 1. Purpose
 
 Define the smallest provider-neutral GHM reference-data boundary required to satisfy the already-authorized Commercial schema dependency on `ghm.country` and `ghm.currency`.
 
-This contract does not authorize schema mutation, seed insertion, payment preparation, provider integration, shadow operation, or production cutover.
+The bounded country/currency dependency has been constructed and runtime-qualified. This document records the resulting provider-neutral ownership and read-only runtime boundary. It does not authorize provider integration, shadow operation, or production cutover.
 
 ## 2. Ownership
 
