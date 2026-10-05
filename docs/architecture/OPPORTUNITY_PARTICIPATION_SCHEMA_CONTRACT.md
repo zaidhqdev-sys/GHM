@@ -1,6 +1,6 @@
 # GHM Opportunity Participation Schema Contract
 
-**Status:** CONSTRUCTION AUTHORIZED — schema contract frozen 2026-09-16
+**Status:** QUALIFIED / CLOSED — schema constructed and durable tenant adoption qualified 2026-10-05
 
 ## 1. Purpose
 
