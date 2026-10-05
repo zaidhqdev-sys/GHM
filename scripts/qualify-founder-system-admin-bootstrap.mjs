@@ -84,7 +84,12 @@ try {
       [accountId],
     );
 
-    assert.deepEqual(identity.rows[0], {
+    assert.deepEqual({
+      id: Number(identity.rows[0].id),
+      role: identity.rows[0].role,
+      account_status: identity.rows[0].account_status,
+      is_system_admin: identity.rows[0].is_system_admin,
+    }, {
       id: accountId,
       role: 'business',
       account_status: 'active',
