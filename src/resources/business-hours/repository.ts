@@ -63,7 +63,8 @@ export class PostgresBusinessHoursRepository implements BusinessHoursRepository 
   }
 
   async replaceBusinessHours(context: AuthContext, input: ReplaceBusinessHoursInput): Promise<BusinessHours[]> {
-    return withAuthorizedTransaction(context, async client => {
+    return withTenantTransaction(context, input.businessId, async (client, _context, tenant) => {
+      if (tenant.membershipRole !== 'owner' && tenant.membershipRole !== 'administrator') throw new Error('Business management permission required');
       const result = await client.query(
         `SELECT ${COLUMNS}
          FROM ghm.replace_business_hours($1, $2, $3::jsonb)
