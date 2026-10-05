@@ -1,6 +1,6 @@
 # Opportunity Requirements HTTP Boundary Reconciliation
 
-**Status:** CONSTRUCTION — TENANT ADOPTION IN PROGRESS — 2026-10-05
+**Status:** QUALIFIED — TENANT ADOPTION — 2026-10-05
 
 Canonical domain authority remains `OPPORTUNITY_CAPABILITY_REQUIREMENTS_CONTRACT.md` and the typed contracts/service/repository under `src/resources/opportunity-requirements/`.
 
@@ -21,4 +21,4 @@ No DELETE, arbitrary PATCH, individual requirement mutation, Capability governan
 
 ## Qualification
 
-Router tests are included in the configured suite. Tenant adoption and the existing HTTP boundary require full local qualification before this slice is marked qualified.
+Qualified on 2026-10-05 after independent local verification: TypeScript build passed, the configured full GHM suite passed 520/520, and `npm run qualify:opportunity-requirements-runtime` passed. The existing HTTP boundary remains unchanged in shape and remains subordinate to the canonical repository/service authorization boundary.
