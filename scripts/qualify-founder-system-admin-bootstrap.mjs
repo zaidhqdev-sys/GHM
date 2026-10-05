@@ -71,6 +71,14 @@ try {
     assert.equal(beforeCredential.login_email_normalized, 'zaidhqdev@gmail.com');
     assert.equal(beforeCredential.credential_status, 'active');
 
+    const membershipBefore = await client.query(
+      `SELECT *
+       FROM ghm.business_membership
+       WHERE account_id = $1
+       ORDER BY 1, 2, 3, 4`,
+      [accountId],
+    );
+
     const promoted = await client.query(
       "SELECT * FROM ghm.auth_bootstrap_founder_system_admin('zaidhqdev@gmail.com')",
     );
@@ -120,14 +128,6 @@ try {
     assert.equal(credential.rows[0].argon2_memory_kib, beforeCredential.argon2_memory_kib);
     assert.equal(credential.rows[0].argon2_time_cost, beforeCredential.argon2_time_cost);
     assert.equal(credential.rows[0].argon2_parallelism, beforeCredential.argon2_parallelism);
-
-    const membershipBefore = await client.query(
-      `SELECT *
-       FROM ghm.business_membership
-       WHERE account_id = $1
-       ORDER BY 1, 2, 3, 4`,
-      [accountId],
-    );
 
     const membershipAfter = await client.query(
       `SELECT *
