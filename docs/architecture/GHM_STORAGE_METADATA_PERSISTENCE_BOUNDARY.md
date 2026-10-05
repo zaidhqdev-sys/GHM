@@ -2,9 +2,9 @@
 
 ## Status
 
-**CONSTRUCTION — SCHEMA FOUNDATION**
+**QUALIFIED — storage metadata foundation / persistence boundary — 2026-10-05**
 
-This migration establishes the canonical PostgreSQL metadata record for GHM object storage.
+The storage metadata foundation is constructed and qualified on the current mainline. `ghm.storage_object` is the authoritative PostgreSQL metadata record for GHM object storage.
 
 It does not provision an object-storage provider, expose an HTTP endpoint, migrate existing objects, or grant broad runtime DML.
 
@@ -36,11 +36,9 @@ A pending object cannot claim availability.
 
 A deleted object retains its metadata record so deletion history remains explicit.
 
-## Authorization
+## Runtime persistence boundary
 
-This migration intentionally does not grant broad runtime DML.
-
-The next storage implementation slice must establish the narrow runtime persistence boundary, with service-owned authorization and lifecycle transitions.
+Direct runtime table DML is denied. Narrow GHM-owned lifecycle functions provide the approved persistence path. See `GHM_STORAGE_PERSISTENCE_BOUNDARY.md`, `GHM_STORAGE_PERSISTENCE_FUNCTION_AUTHORITY.md`, and `GHM_STORAGE_PERSISTENCE_QUALIFICATION.md`.
 
 ## Provider independence
 
@@ -54,17 +52,13 @@ The first planned object class is `business_logo`.
 
 No historical Supabase object is imported by this migration.
 
-## Qualification required
+## Qualification scope
 
 Before runtime enablement:
 
-- schema migration qualification;
-- least-privilege runtime grants;
-- lifecycle transition tests;
-- tenant isolation tests;
-- provider metadata reconciliation;
-- orphan cleanup;
-- recovery qualification.
+**Qualified:** metadata schema, persistence boundary, lifecycle authority, provider-neutral storage service/provider contract foundations, configuration/key boundaries, and persistence qualification.
+
+**Not yet qualified:** concrete production provider credentials, live upload/download side effects, full service-level tenant/resource authorization, HTTP/product exposure, recovery/backup, orphan/reconciliation jobs, and production provider enablement.
 
 ## Documentation reconciliation
 
