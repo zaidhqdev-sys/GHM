@@ -1,6 +1,8 @@
 # GHM Business Hours Operation Contract
 
-**Status:** CONSTRUCTION AUTHORIZED — contract frozen 2026-09-16
+**Status:** QUALIFIED — tenant adoption qualified 2026-10-05
+
+The Business Hours resource is adopted onto the durable tenant boundary. Managed reads and replacement resolve the canonical tenant context on the same transaction client used for protected work; caller-supplied business identity cannot rebind the transaction, and cross-business membership access fails closed.
 
 ## 1. Purpose
 
@@ -53,13 +55,13 @@ A replacement payload contains at most seven distinct days. An empty replacement
 
 ## 6. Read boundary
 
-Managed reads require an authenticated Account with an active Business membership. Public reads require the Business to be active and directory-approved.
+Managed reads require an authenticated Account with an active Business membership resolved through the canonical durable tenant boundary. Public reads require the Business to be active and directory-approved.
 
 Public reads expose only Business Hours fields. No private Business identity or membership data is part of this resource.
 
 ## 7. Replace boundary
 
-Replacement requires authenticated Business management authority: active membership with role `owner` or `administrator`.
+Replacement requires authenticated Business management authority: active membership with role `owner` or `administrator`, resolved through the canonical durable tenant boundary on the same transaction client as the replacement operation.
 
 Replacement is atomic. The previous schedule is removed and the supplied bounded schedule becomes authoritative within one transaction.
 

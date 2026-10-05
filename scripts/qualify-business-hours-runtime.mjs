@@ -44,9 +44,11 @@ try {
     const outsiderId = Number(outsider.rows[0].id);
     const business = await client.query(`INSERT INTO ghm.business (name, slug, verification_status, is_verified, is_active) VALUES ($1, $2, 'approved', true, true) RETURNING id`, [`${marker} business`, `${marker}-business`]);
     const businessId = Number(business.rows[0].id);
-    await client.query(`INSERT INTO ghm.business_membership (business_id, account_id, membership_role, membership_status, created_by) VALUES ($1, $2, 'owner', 'active', $2), ($1, $3, 'member', 'active', $2)`, [businessId, ownerId, memberId]);
+    const otherBusiness = await client.query(`INSERT INTO ghm.business (name, slug, verification_status, is_verified, is_active) VALUES ($1, $2, 'approved', true, true) RETURNING id`, [`${marker} other business`, `${marker}-other-business`]);
+    const otherBusinessId = Number(otherBusiness.rows[0].id);
+    await client.query(`INSERT INTO ghm.business_membership (business_id, account_id, membership_role, membership_status, created_by) VALUES ($1, $2, 'owner', 'active', $2), ($1, $3, 'member', 'active', $2), ($4, $5, 'member', 'active', $2)`, [businessId, ownerId, memberId, otherBusinessId, outsiderId]);
     await client.query('COMMIT');
-    fixture = { ownerId, memberId, outsiderId, businessId };
+    fixture = { ownerId, memberId, outsiderId, businessId, otherBusinessId };
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     throw error;
@@ -79,6 +81,7 @@ try {
 
   await expectReject(() => service.replaceBusinessHours(memberContext, { businessId: fixture.businessId, hours: [] }), 'NON-MANAGEMENT REPLACE REJECTION PASS');
   await expectReject(() => service.replaceBusinessHours(outsiderContext, { businessId: fixture.businessId, hours: [] }), 'UNAUTHORIZED REPLACE REJECTION PASS');
+  await expectReject(() => service.getBusinessHours(outsiderContext, fixture.businessId), 'CROSS-BUSINESS MEMBER READ REJECTION PASS');
 
   await expectReject(() => runtimePool.query(`INSERT INTO ghm.business_hours (business_id, day_of_week, is_closed, created_by) VALUES ($1, 0, true, $2)`, [fixture.businessId, fixture.ownerId]), 'RUNTIME DIRECT INSERT DENIAL PASS');
   await expectReject(() => runtimePool.query(`UPDATE ghm.business_hours SET is_closed = true WHERE business_id = $1`, [fixture.businessId]), 'RUNTIME UPDATE DENIAL PASS');
@@ -97,8 +100,8 @@ try {
       await client.query('BEGIN');
       await client.query('SET LOCAL ROLE ghm_schema_owner');
       await client.query('DELETE FROM ghm.business_hours WHERE business_id = $1', [fixture.businessId]);
-      await client.query('DELETE FROM ghm.business_membership WHERE business_id = $1', [fixture.businessId]);
-      await client.query('DELETE FROM ghm.business WHERE id = $1', [fixture.businessId]);
+      await client.query('DELETE FROM ghm.business_membership WHERE business_id = ANY($1::bigint[])', [[fixture.businessId, fixture.otherBusinessId]]);
+      await client.query('DELETE FROM ghm.business WHERE id = ANY($1::bigint[])', [[fixture.businessId, fixture.otherBusinessId]]);
       await client.query('DELETE FROM ghm.account_identity WHERE id = ANY($1::bigint[])', [[fixture.ownerId, fixture.memberId, fixture.outsiderId]]);
       await client.query('COMMIT');
     } catch (error) {
