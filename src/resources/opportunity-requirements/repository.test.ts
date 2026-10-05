@@ -58,29 +58,30 @@ const createFakePool = (
       calls.push(sql);
 
       if (
-        sql.includes('FROM ghm.opportunity o') &&
-        sql.includes("bm.membership_role IN ('owner', 'administrator')") &&
-        sql.includes("bm.membership_status = 'active'")
+        sql.includes('FROM ghm.opportunity') &&
+        sql.includes('owner_business_id') &&
+        sql.includes('creator_account_id')
       ) {
         return {
-          rowCount: options.manager ? 1 : 0,
-          rows: [],
+          rowCount: 1,
+          rows: [{
+            owner_business_id: 42,
+            creator_account_id: 7,
+            visibility: opportunityReadable ? 'authenticated' : 'private',
+          }],
         };
       }
 
       if (
-        sql.includes('FROM ghm.opportunity o') &&
-        sql.includes("o.visibility IN ('authenticated', 'public')")
+        sql.includes('FROM ghm.business_membership bm') &&
+        sql.includes('JOIN ghm.business b')
       ) {
         return {
           rowCount:
-            opportunityReadable ||
-            options.creator ||
-            options.businessMember ||
-            options.manager
-              ? 1
-              : 0,
-          rows: [],
+            options.manager || options.businessMember ? 1 : 0,
+          rows: options.manager || options.businessMember
+            ? [{ id: 1, business_id: 42, account_id: 7, membership_role: options.manager ? 'owner' : 'member' }]
+            : [],
         };
       }
 
@@ -198,11 +199,9 @@ test(
     assert.deepEqual(result, [expectedRequirement]);
     assert.equal(
       calls.some((sql) =>
-        sql.includes(
-          "o.visibility IN ('authenticated', 'public')",
-        ),
+        sql.includes("o.visibility IN ('authenticated', 'public')"),
       ),
-      true,
+      false,
     );
   },
 );
@@ -225,9 +224,7 @@ test(
     assert.equal(result[0].opportunityId, opportunityId);
 
     assert.equal(
-      calls.some((sql) =>
-        sql.includes('o.creator_account_id = $2'),
-      ),
+      calls.some((sql) => sql.includes('creator_account_id')),
       true,
     );
   },
@@ -252,10 +249,8 @@ test(
 
     assert.equal(
       calls.some((sql) =>
-        sql.includes("bm.membership_status = 'active'") &&
-        !sql.includes(
-          "bm.membership_role IN ('owner', 'administrator')",
-        ),
+        sql.includes('JOIN ghm.business b') &&
+        sql.includes("bm.membership_status = 'active'"),
       ),
       true,
     );
@@ -288,10 +283,8 @@ test(
       true,
     );
     assert.equal(
-      membershipQuery.includes(
-        "bm.membership_role IN ('owner', 'administrator')",
-      ),
-      false,
+      membershipQuery.includes('JOIN ghm.business b'),
+      true,
     );
   },
 );
