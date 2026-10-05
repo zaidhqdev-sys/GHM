@@ -132,9 +132,9 @@ const cleanup = async () => {
   await cleanupClient.query(
     `
       DELETE FROM ghm.business
-      WHERE name = $1
+      WHERE name IN ($1, $2)
     `,
-    [marker],
+    [marker, `${marker} Outsider Business`],
   );
 
   await cleanupClient.query(
@@ -561,6 +561,25 @@ try {
 
   const businessId = Number(businessResult.rows[0].id);
 
+  const outsiderBusinessResult = await cleanupClient.query(
+    `
+      INSERT INTO ghm.business (
+        name,
+        slug
+      )
+      VALUES ($1, $2)
+      RETURNING id
+    `,
+    [
+      `${marker} Outsider Business`,
+      `${marker.toLowerCase()}-outsider-business`,
+    ],
+  );
+
+  const outsiderBusinessId = Number(
+    outsiderBusinessResult.rows[0].id,
+  );
+
   const ownerResult = await cleanupClient.query(
     `
       INSERT INTO ghm.account_identity (
@@ -638,6 +657,19 @@ try {
       administratorAccountId,
       memberAccountId,
     ],
+  );
+
+  await cleanupClient.query(
+    `
+      INSERT INTO ghm.business_membership (
+        business_id,
+        account_id,
+        membership_role,
+        membership_status
+      )
+      VALUES ($1, $2, 'member', 'active')
+    `,
+    [outsiderBusinessId, outsiderAccountId],
   );
 
   await cleanupClient.query(
@@ -779,7 +811,7 @@ try {
 
   assert.equal(outsiderListed.length, 0);
 
-  console.log('UNRELATED OUTSIDER REQUIREMENTS READ DENIAL PASS');
+  console.log('CROSS-BUSINESS MEMBER REQUIREMENTS READ DENIAL PASS');
 
   await repository.replaceOpportunityRequirements(
     ownerContext,
@@ -817,7 +849,7 @@ try {
     /Opportunity requirements access denied/,
   );
 
-  console.log('UNRELATED OUTSIDER REQUIREMENTS REPLACEMENT DENIAL PASS');
+  console.log('CROSS-BUSINESS MEMBER REQUIREMENTS REPLACEMENT DENIAL PASS');
 
   await expectRejected(
     repository.replaceOpportunityRequirements(
