@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 import type { AuthContext } from '../../auth/authorization';
-import { withAuthorizedTransaction } from '../../db/authorized-transaction';
+import { withAuthorizedTransaction, withTenantTransaction } from '../../db/authorized-transaction';
 import type { TransactionPool } from '../../db/transaction';
 import type { BusinessCapability, BusinessCapabilityId, BusinessCapabilityRepository, CreateBusinessCapabilityInput, TransitionBusinessCapabilityVerificationInput } from './contracts';
 
@@ -52,8 +52,8 @@ export class PostgresBusinessCapabilityRepository implements BusinessCapabilityR
   async createBusinessCapability(context: AuthContext, input: CreateBusinessCapabilityInput): Promise<BusinessCapability> {
     const businessId = requirePositiveId(input.businessId, 'businessId');
     const capabilityId = requireUuid(input.capabilityId);
-    return withAuthorizedTransaction(context, async client => {
-      await assertBusinessManagementAuthority(client, context, businessId);
+    return withTenantTransaction(context, businessId, async (client, _context, tenant) => {
+      if (tenant.membershipRole !== 'owner' && tenant.membershipRole !== 'administrator') throw new Error('Business management permission required');
       const capability = await client.query(
         `SELECT 1 FROM ghm.capability WHERE id = $1 AND lifecycle_status = 'active' AND is_selectable = true`,
         [capabilityId],
@@ -83,8 +83,7 @@ export class PostgresBusinessCapabilityRepository implements BusinessCapabilityR
 
   async listBusinessCapabilities(context: AuthContext, businessId: number): Promise<BusinessCapability[]> {
     const id = requirePositiveId(businessId, 'businessId');
-    return withAuthorizedTransaction(context, async client => {
-      await assertBusinessReadAuthority(client, context, id);
+    return withTenantTransaction(context, id, async (client) => {
       const result = await client.query(`SELECT ${COLUMNS} FROM ghm.business_capability WHERE business_id = $1 ORDER BY created_at ASC, id ASC`, [id]);
       return result.rows.map(mapBusinessCapability);
     }, this.transactionPool);
