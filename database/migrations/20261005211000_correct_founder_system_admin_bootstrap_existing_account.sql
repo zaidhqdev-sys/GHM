@@ -1,4 +1,4 @@
--- Correct GHM founder system-admin bootstrap authority.
+﻿-- Correct GHM founder system-admin bootstrap authority.
 -- Replaces the original create-account primitive with a promotion-only
 -- primitive for an already-existing canonical founder account.
 --
