@@ -23,13 +23,14 @@ await client.connect();
 
 try {
   const metadata = await client.query(
-    "SELECT p.prosecdef AS security_definer, pg_get_userbyid(p.proowner) AS owner, has_function_privilege('ghm_runtime', p.oid, 'EXECUTE') AS runtime_execute FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'ghm' AND p.proname = 'auth_bootstrap_founder_system_admin' AND pg_get_function_identity_arguments(p.oid) = 'text, text, text, text, integer, integer, integer'",
+    "SELECT p.prosecdef AS security_definer, pg_get_userbyid(p.proowner) AS owner, has_function_privilege('ghm_runtime', p.oid, 'EXECUTE') AS runtime_execute, pg_get_function_identity_arguments(p.oid) AS signature FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'ghm' AND p.proname = 'auth_bootstrap_founder_system_admin' AND p.pronargs = 7",
   );
 
   assert.equal(metadata.rowCount, 1);
   assert.equal(metadata.rows[0].security_definer, true);
   assert.equal(metadata.rows[0].owner, 'ghm_schema_owner');
   assert.equal(metadata.rows[0].runtime_execute, false);
+  assert.equal(metadata.rows[0].signature, 'text, text, text, text, integer, integer, integer');
 
   await client.query('BEGIN');
   try {
@@ -69,8 +70,8 @@ try {
     );
     assert.equal(credential.rowCount, 1);
     assert.equal(credential.rows[0].account_id, accountId);
-    assert.equal(credential.rows[0].login_email, 'zaidHqdev@gmail.com');
-    assert.equal(credential.rows[0].login_email_normalized, 'zaidHqdev@gmail.com');
+    assert.equal(credential.rows[0].login_email, 'zaidhqdev@gmail.com');
+    assert.equal(credential.rows[0].login_email_normalized, 'zaidhqdev@gmail.com');
     assert.equal(credential.rows[0].credential_status, 'active');
 
     const membership = await client.query(
@@ -84,7 +85,7 @@ try {
     );
     assert.deepEqual(state.rows[0], {
       account_id: accountId,
-      founder_login_email: 'zaidHqdev@gmail.com',
+      founder_login_email: 'zaidhqdev@gmail.com',
     });
 
     await client.query(
@@ -95,7 +96,7 @@ try {
     await assert.rejects(
       () =>
         client.query(
-          "SELECT * FROM ghm.auth_bootstrap_founder_system_admin($1, 'zaidHqdev@gmail.com', 'zaidHqdev@gmail.com', $2, 65536, 3, 1)",
+          "SELECT * FROM ghm.auth_bootstrap_founder_system_admin($1, 'zaidhqdev@gmail.com', 'zaidhqdev@gmail.com', $2, 65536, 3, 1)",
           ['Qualification Founder', passwordHash],
         ),
       /already initialized/i,
