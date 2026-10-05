@@ -10,8 +10,6 @@ if (runtimeUrl === migratorUrl) throw new Error('Runtime and migrator connection
 
 const { OpportunityServiceImpl } = await import('../dist/resources/opportunity/service.js');
 const { PostgresOpportunityRepository } = await import('../dist/resources/opportunity/repository.js');
-const { BusinessIdentityServiceImpl } = await import('../dist/resources/business-identity/service.js');
-const { PostgresBusinessIdentityRepository } = await import('../dist/resources/business-identity/repository.js');
 const { OpportunityParticipantServiceImpl } = await import('../dist/resources/opportunity-participant/service.js');
 const { PostgresOpportunityParticipantRepository } = await import('../dist/resources/opportunity-participant/repository.js');
 
@@ -67,6 +65,30 @@ const createAccount = async (fullName) => {
   }
 };
 
+const createBusinessFixture = async (name, slug, ownerAccountId) => {
+  const client = await cleanupPool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SET LOCAL ROLE ghm_schema_owner');
+    const businessResult = await client.query(
+      `INSERT INTO ghm.business (name, slug, verification_status, is_active) VALUES ($1, $2, 'approved', true) RETURNING id`,
+      [name, slug],
+    );
+    const businessId = Number(businessResult.rows[0].id);
+    await client.query(
+      `INSERT INTO ghm.business_membership (business_id, account_id, membership_role, membership_status, created_by) VALUES ($1, $2, 'owner', 'active', $2)`,
+      [businessId, ownerAccountId],
+    );
+    await client.query('COMMIT');
+    fixture.businessIds.push(businessId);
+    return businessId;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+};
 const createMembership = async (businessId, accountId, role, createdBy) => {
   const client = await cleanupPool.connect();
   try {
@@ -154,41 +176,14 @@ try {
   const participantContext = { userId: participantAccountId, role: 'business' };
   const outsiderContext = { userId: outsiderAccountId, role: 'business' };
 
-  const businessRepository = new PostgresBusinessIdentityRepository(runtimePool);
-  const businessService = new BusinessIdentityServiceImpl(businessRepository);
-  const business = await businessService.createBusiness(ownerContext, { name: `${marker} business` });
-  if (!business.activeBusiness || business.activeMembership?.role !== 'owner') throw new Error('Business fixture creation failed');
-  const businessId = business.activeBusiness.id;
-  fixture.businessIds.push(businessId);
-
-  const approval = await cleanupAuthorityQuery(
-    `UPDATE ghm.business SET verification_status = 'approved', is_verified = true WHERE id = $1 AND is_active = true RETURNING id, verification_status, is_verified, is_active`,
-    [businessId],
-  );
-  if (
-    approval.rowCount !== 1 ||
-    approval.rows[0].verification_status !== 'approved' ||
-    approval.rows[0].is_verified !== true ||
-    approval.rows[0].is_active !== true
-  ) {
-    throw new Error('Approved Business participant fixture could not be established');
-  }
+  const businessId = await createBusinessFixture(`${marker} business`, `${marker}-business`, ownerAccountId);
   console.log(`APPROVED BUSINESS FIXTURE PASS: business=${businessId}`);
 
   await createMembership(businessId, participantAccountId, 'member', ownerAccountId);
   console.log(`BUSINESS + MEMBERSHIP FIXTURE PASS: business=${businessId}`);
 
-  const crossBusiness = await businessService.createBusiness(outsiderContext, { name: `${marker} cross-business` });
-  if (!crossBusiness.activeBusiness || crossBusiness.activeMembership?.role !== 'owner') throw new Error('Cross-business fixture creation failed');
-  const crossBusinessId = crossBusiness.activeBusiness.id;
-  fixture.businessIds.push(crossBusinessId);
-  const crossApproval = await cleanupAuthorityQuery(
-    `UPDATE ghm.business SET verification_status = 'approved', is_verified = true WHERE id = $1 AND is_active = true RETURNING id`,
-    [crossBusinessId],
-  );
-  if (crossApproval.rowCount !== 1) throw new Error('Cross-business approval fixture failed');
+  const crossBusinessId = await createBusinessFixture(`${marker} cross-business`, `${marker}-cross-business`, crossBusinessOwnerAccountId);
   console.log(`CROSS-BUSINESS TENANT FIXTURE PASS: business=${crossBusinessId} account=${crossBusinessOwnerAccountId}`);
-
   const opportunityRepository = new PostgresOpportunityRepository(runtimePool);
   const opportunityService = new OpportunityServiceImpl(opportunityRepository);
   const opportunity = await opportunityService.createOpportunity(ownerContext, {
