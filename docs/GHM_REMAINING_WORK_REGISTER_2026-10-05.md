@@ -53,7 +53,7 @@ The following are excluded from construction backlog unless a new product requir
 ## 3. Genuine GHM-core remaining construction
 
 ### GHM-01 — Storage live-provider/service qualification
-**Classification:** GHM core — open.
+**Classification:** GHM core — partially qualified / open.
 
 Already qualified:
 - metadata/persistence boundary;
@@ -64,18 +64,17 @@ Already qualified:
 - configuration/key boundary.
 
 Still required before production storage enablement:
-1. choose the concrete non-production provider/bucket/container;
-2. wire the provider factory through the application composition root;
-3. qualify real PUT/HEAD/DELETE behaviour;
-4. qualify signed upload/download behaviour and expiry;
-5. qualify checksum/content metadata integrity;
-6. qualify provider error mapping;
-7. qualify full tenant/resource authorization at service level;
-8. qualify failed-upload/deletion recovery and orphan reconciliation;
-9. define backup/recovery expectations;
-10. promote only after deployment-managed credentials and non-production live-provider evidence pass.
+1. wire the provider factory through the application composition root;
+2. qualify grant expiry/enforcement;
+3. qualify broader provider error mapping;
+4. qualify full tenant/resource authorization at service level;
+5. qualify failed-upload/deletion recovery and orphan reconciliation;
+6. define and exercise backup/recovery expectations;
+7. expose storage through HTTP/product paths only where explicitly selected;
+8. move credentials into deployment-managed production secret/configuration;
+9. perform founder-authorized production enablement/cutover.
 
-No production provider credential or bucket is authorized by this register.
+The 2026-10-05 live qualification used Cloudflare R2 bucket zaid-ghm-production with a narrowly scoped R2 bucket-item Read/Write credential. The credential is not stored in the repository. This live test is evidence of provider capability, not production cutover authorization.
 
 ### GHM-02 — Database bootstrap authority cleanup
 **Classification:** infrastructure/database gate — open and externally constrained.
