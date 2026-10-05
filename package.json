@@ -50,7 +50,13 @@
     "qualify:quoteflow-migration-reset-ceremony-db": "npm run build && node scripts/qualify-quoteflow-migration-reset-ceremony-db.mjs && node --require ./scripts/test-env.cjs --test dist/migrations/quoteflow-migration-reset-recovery.test.js dist/migrations/quoteflow-migration-reset-completion.test.js dist/http/auth-router.test.js",
     "qualify:quoteflow-legacy-identity-provenance": "npm run build && node scripts/qualify-quoteflow-legacy-identity-provenance.mjs",
     "qualify:storage-persistence": "node scripts/qualify-storage-persistence.mjs",
-    "qualify:tenant-isolation-runtime": "npm run build && node scripts/qualify-tenant-isolation-runtime.mjs"
+    "qualify:tenant-isolation-runtime": "npm run build && node scripts/qualify-tenant-isolation-runtime.mjs",
+    "audit:legacy-bootstrap-authority": "npm run build && node scripts/audit-legacy-bootstrap-authority.mjs",
+    "audit:legacy-object-disposition": "npm run build && node scripts/audit-legacy-object-disposition.mjs",
+    "audit:legacy-data-disposition": "npm run build && node scripts/audit-legacy-data-disposition.mjs",
+    "qualify:legacy-object-disposition": "npm run build && node scripts/qualify-legacy-object-disposition.mjs",
+    "qualify:legacy-role-dependency": "npm run build && node scripts/qualify-legacy-role-dependency.mjs",
+    "audit:legacy-role-remediation": "npm run build && node scripts/audit-legacy-role-remediation.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",
