@@ -1,6 +1,6 @@
 # GHM Opportunity Participation Operation Contract
 
-**Status:** CONSTRUCTION AUTHORIZED — operation contract frozen 2026-09-16
+**Status:** CONSTRUCTION — tenant-boundary adoption in progress 2026-10-05
 
 ## 1. Purpose
 
@@ -23,6 +23,8 @@ ghm.opportunity_participant
 ```
 
 The resource is subordinate to the Opportunity domain but has its own typed repository/service boundary.
+
+For tenant isolation, the canonical tenant is derived from the parent Opportunity's `owner_business_id` when that Business governs the Opportunity. A Business participant's own `business_id` is also a canonical tenant subject for Business-participant disclosure. Account participation remains Account-scoped and must not be forced through an unrelated Business tenant.
 
 ## 3. Operations
 
@@ -199,6 +201,8 @@ The authenticated Account's membership in that Business is a separate authorizat
 
 GHM must evaluate Business membership using the canonical Business/membership model and must not copy membership role/status onto the participant row.
 
+Where a Business tenant governs the authorization decision, tenant resolution must use `resolveTenantContext` on the same checked-out PostgreSQL transaction client as the participant read/create authorization. The caller cannot select or rebind a tenant independently of the canonical Opportunity/participant Business relationship. Account-participant self-access remains Account-scoped even when the parent Opportunity has an owner Business.
+
 ## 11. Opportunity management separation
 
 Participant operations must not bypass Opportunity management authorization.
@@ -212,6 +216,8 @@ authorized member of owner Business with governed management permission
 ```
 
 The participant operation layer may consult that authority but must not redefine it.
+
+For an Opportunity with an `owner_business_id`, management authority is resolved through the canonical tenant boundary on that Business. Creator Account authority remains an explicit Account-level exception established by the Opportunity Core contract; it is not converted into a caller-selected tenant.
 
 ## 12. Cross-resource atomicity
 
@@ -341,19 +347,21 @@ Before this operation contract can be marked qualified, evidence must demonstrat
 18. runtime privileges are least-privilege and match actual operations;
 19. repository/service authorization remains in one checked-out DB context where required;
 20. build, tests, and diff checks pass;
-21. no previously qualified GHM capability regresses.
+21. no previously qualified GHM capability regresses;
+22. cross-Business members cannot read a participant belonging to another Business tenant;
+23. Business participant authorization and Opportunity management authorization use canonical tenant resolution on the same transaction client;
+24. Account participant self-access is preserved without requiring membership in an unrelated owner Business.
 
 ## 20. Construction boundary
 
 The operation contract authorizes the following next implementation sequence:
 
 ```text
-migration
-  -> repository
-  -> service
-  -> registry
-  -> unit/integration qualification
+existing schema
+  -> canonical tenant-boundary repository authorization
+  -> qualification harness
   -> runtime privilege qualification
+  -> merge only after full suite + runtime qualification
 ```
 
 It does not authorize production migration or product backend changes.
