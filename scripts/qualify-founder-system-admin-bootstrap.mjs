@@ -3,7 +3,7 @@ import { Client } from 'pg';
 import 'dotenv/config';
 const url = process.env.GHM_MIGRATOR_DATABASE_URL || process.env.DATABASE_URL;
 if (!url) throw new Error('GHM_MIGRATOR_DATABASE_URL or DATABASE_URL is required');
-const client = new Client({ connectionString: url });
+const client = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } });
 await client.connect();
 try {
   const result = await client.query("SELECT p.prosecdef AS security_definer, pg_get_userbyid(p.proowner) AS owner, has_function_privilege('ghm_runtime', p.oid, 'EXECUTE') AS runtime_execute FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'ghm' AND p.proname = 'auth_bootstrap_founder_system_admin'");
