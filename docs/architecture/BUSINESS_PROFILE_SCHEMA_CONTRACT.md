@@ -1,6 +1,6 @@
 # GHM Business Profile Schema Contract
 
-**Status:** CONSTRUCTION CONTRACT — SCHEMA DESIGN FROZEN
+**Status:** QUALIFIED / CLOSED — Trust-input schema extension and durable tenant adoption qualified
 
 ## 1. Purpose
 

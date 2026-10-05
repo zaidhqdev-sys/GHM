@@ -1,6 +1,6 @@
 # GHM Business Capability Operation Contract
 
-**Status:** CONSTRUCTION AUTHORIZED — contract frozen 2026-09-16
+**Status:** QUALIFIED / CLOSED — Business Capability tenant adoption and governed lifecycle boundary qualified 2026-10-05
 
 ## 1. Purpose
 

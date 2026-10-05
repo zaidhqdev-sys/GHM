@@ -1,6 +1,6 @@
 ﻿# GHM Capability Catalogue Contract
 
-**Status:** CONSTRUCTION CONTRACT — QUALIFICATION COMPLETE / COMMIT PENDING
+**Status:** QUALIFIED / CLOSED — catalogue dependency constructed and qualification complete
 
 ## 1. Purpose
 

@@ -1,6 +1,6 @@
 # GHM Commercial Trial Operation Contract
 
-**Status:** CONSTRUCTION CONTRACT — OPERATION IMPLEMENTATION AUTHORIZED
+**Status:** QUALIFIED / CLOSED — commercial trial operation runtime-qualified
 **Date:** 2026-09-15
 **Scope:** `commercial.activateTrial`
 **Production state:** Supabase remains production authority

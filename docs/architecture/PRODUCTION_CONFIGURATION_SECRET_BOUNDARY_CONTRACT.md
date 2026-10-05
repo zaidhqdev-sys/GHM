@@ -1,7 +1,7 @@
 # Production Configuration and Secret Boundary Contract
 
 **Canonical owner:** GHM platform governance  
-**Status:** CONSTRUCTION QUALIFIED — PR #21 PENDING MERGE  
+**Status:** CONSTRUCTION QUALIFIED — PR #21 MERGED  
 **Reconciliation date:** 2026-10-02  
 **Candidate branch:** `construction/production-config-boundary`  
 **Candidate HEAD:** `becd5cfc5a1136e94bb37bf3d83e9e724ce3afc6`  

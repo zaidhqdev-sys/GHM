@@ -78,3 +78,8 @@ The existence of qualified construction slices does **not** mean GHM has replace
 ## Rule
 
 **Code, migrations, qualification evidence, and current living contracts outrank historical roadmap language. When a document conflicts with current mainline evidence, the document is stale and must be reconciled before it is used to authorize new construction.**
+
+
+## Documentation reconciliation second pass — 2026-10-05
+
+The first reconciliation merge is now followed by a document-by-document living-status cleanup. Current qualified resources are no longer described as open construction gaps in their living contracts. Historical source audits and gate snapshots remain historical and are explicitly treated as provenance. The remaining production gap register is product/cutover readiness, not reconstruction of closed GHM resources.

@@ -2,7 +2,7 @@
 
 ## Status
 
-**CONSTRUCTION CONTRACT — AUTHORIZED FOR DEDICATED RESOURCE SLICE**
+**QUALIFIED / CLOSED — Saved Business construction and runtime qualification complete**
 
 This contract freezes the first GHM Saved Business boundary reconciled from the live Zaid Connect source audit. It authorizes construction and qualification of this isolated resource only. It does not authorize production migration, provider cutover, data movement, DNS/routing changes, shadow traffic, or product configuration changes.
 
