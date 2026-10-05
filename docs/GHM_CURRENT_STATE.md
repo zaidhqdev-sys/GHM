@@ -2,7 +2,7 @@
 
 **Status:** CURRENT / AUTHORITATIVE DOCUMENTATION INDEX — 2026-10-05
 **Repository authority:** consolidated `main`
-**Current main:** `53f5d3c29781dd4b1012bfeeb78ccaeda07b15b4`
+**Current main:** `3e73f69549b9f55c383e83277b97172dea9f8b67`
 
 ## Purpose
 
@@ -82,4 +82,4 @@ The existence of qualified construction slices does **not** mean GHM has replace
 
 ## Documentation reconciliation second pass — 2026-10-05
 
-The first reconciliation merge is now followed by a document-by-document living-status cleanup. Current qualified resources are no longer described as open construction gaps in their living contracts. Historical source audits and gate snapshots remain historical and are explicitly treated as provenance. The remaining production gap register is product/cutover readiness, not reconstruction of closed GHM resources.
+The first reconciliation merge is now followed by a document-by-document living-status cleanup. Current qualified resources are no longer described as open construction gaps in their living contracts. Historical source audits and gate snapshots remain historical and are explicitly treated as provenance. The remaining production gap register is `docs/GHM_REMAINING_WORK_REGISTER_2026-10-05.md`. It is the current planning authority for open work; it explicitly separates GHM-core construction, product integration, provider/configuration, migration/provenance, and production cutover.
