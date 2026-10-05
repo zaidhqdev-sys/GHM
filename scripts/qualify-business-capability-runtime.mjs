@@ -21,6 +21,7 @@ const fixture = {
   accountIds: [],
   businessIds: [],
   capabilityIds: [],
+  crossBusinessCapabilityIds: [],
   businessCapabilityIds: [],
 };
 
@@ -81,10 +82,17 @@ const createFixture = async () => {
     const businessId = Number(businessResult.rows[0].id);
     fixture.businessIds.push(businessId);
 
+    const crossBusinessResult = await client.query(
+      `INSERT INTO ghm.business (name, slug, verification_status, is_verified, is_active) VALUES ($1, $2, 'approved', true, true) RETURNING id`,
+      [`${fixture.marker} cross business`, `${fixture.marker}-cross-business`],
+    );
+    const crossBusinessId = Number(crossBusinessResult.rows[0].id);
+    fixture.businessIds.push(crossBusinessId);
+
     await client.query(
       `INSERT INTO ghm.business_membership (business_id, account_id, membership_role, membership_status, created_by)
-       VALUES ($1, $2, 'owner', 'active', $2), ($1, $3, 'member', 'active', $2)`,
-      [businessId, ownerId, memberId],
+       VALUES ($1, $2, 'owner', 'active', $2), ($1, $3, 'member', 'active', $2), ($4, $3, 'member', 'active', $2)`,
+      [businessId, ownerId, memberId, crossBusinessId],
     );
 
     const selectableId = randomUUID();
@@ -105,7 +113,7 @@ const createFixture = async () => {
     );
 
     await client.query('COMMIT');
-    return { ownerId, memberId, outsiderId, customerId, businessId, selectableId, nonSelectableId, draftId };
+    return { ownerId, memberId, outsiderId, customerId, businessId, crossBusinessId, selectableId, nonSelectableId, draftId };
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     throw error;
@@ -123,7 +131,7 @@ try {
   console.log(`CLEANUP AUTHORITY PASS: ${cleanup.database_name}/${cleanup.current_user}`);
 
   const fixtureData = await createFixture();
-  const { ownerId, memberId, outsiderId, customerId, businessId, selectableId, nonSelectableId, draftId } = fixtureData;
+  const { ownerId, memberId, outsiderId, customerId, businessId, crossBusinessId, selectableId, nonSelectableId, draftId } = fixtureData;
 
   const repository = new PostgresBusinessCapabilityRepository(runtimePool);
   const service = new BusinessCapabilityServiceImpl(repository);
@@ -175,19 +183,31 @@ try {
   await assertRejected(
     () => service.createBusinessCapability(outsiderContext, { businessId, capabilityId: selectableId }),
     'UNAUTHORIZED BUSINESS CREATE REJECTION PASS',
-    'Business management permission required',
+    'Business tenant access denied',
   );
 
   await assertRejected(
     () => service.getBusinessCapability(outsiderContext, created.id),
     'UNAUTHORIZED BUSINESS READ REJECTION PASS',
-    'Business access required',
+    'Business tenant access denied',
   );
 
   await assertRejected(
     () => service.createBusinessCapability(customerContext, { businessId, capabilityId: selectableId }),
     'CUSTOMER CREATE REJECTION PASS',
-    'Business management permission required',
+    'Business tenant access denied',
+  );
+
+  await assertRejected(
+    () => service.listBusinessCapabilities(memberContext, crossBusinessId),
+    'CROSS-BUSINESS MEMBER READ REJECTION PASS',
+    'Business tenant access denied',
+  );
+
+  await assertRejected(
+    () => service.createBusinessCapability(memberContext, { businessId: crossBusinessId, capabilityId: selectableId }),
+    'CROSS-BUSINESS MEMBER CREATE REJECTION PASS',
+    'Business tenant access denied',
   );
 
   await assertRejected(
