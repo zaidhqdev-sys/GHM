@@ -1,6 +1,6 @@
 # Business Capability Tenant Adoption
 
-**Status:** CONSTRUCTION — tenant adoption under qualification
+**Status:** QUALIFIED / CLOSED — durable tenant adoption qualified 2026-10-05**
 
 ## Scope
 
@@ -20,7 +20,11 @@ Business Capability is a Business-owned resource and now adopts the durable GHM 
 
 Missing or inactive membership, inactive Business state, and cross-Business access fail through the canonical `Business tenant access denied` boundary.
 
-## Qualification target
+## Qualification result
+
+Runtime qualification passed on 2026-10-05, including runtime identity and cleanup authority, authorized member reads, owner/administrator creation, non-management/customer/cross-business denials, capability selectability/lifecycle rules, provenance, duplicate/concurrency protection, persisted reconciliation, and runtime UPDATE/DELETE denial. The repository regression suite was green at 520/520 tests.
+
+## Historical qualification target
 
 Runtime qualification must prove:
 
