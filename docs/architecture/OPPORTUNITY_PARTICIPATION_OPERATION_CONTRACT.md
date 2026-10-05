@@ -1,6 +1,6 @@
 # GHM Opportunity Participation Operation Contract
 
-**Status:** CONSTRUCTION — tenant-boundary adoption in progress 2026-10-05
+**Status:** QUALIFIED / CLOSED — durable tenant adoption qualified 2026-10-05
 
 ## 1. Purpose
 
