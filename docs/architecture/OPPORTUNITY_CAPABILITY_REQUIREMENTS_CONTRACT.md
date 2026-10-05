@@ -2,7 +2,7 @@
 
 ## Status
 
-CONSTRUCTION QUALIFICATION — TENANT ADOPTION QUALIFIED — 2026-10-05
+CONSTRUCTION — TENANT ADOPTION IN PROGRESS — 2026-10-05
 
 Canonical source reconciled against Zaid Connect migration:
 
