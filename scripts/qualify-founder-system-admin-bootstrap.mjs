@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import { Client } from 'pg';
 import 'dotenv/config';
 
@@ -107,7 +107,7 @@ try {
     );
 
     assert.equal(credential.rowCount, 1);
-    assert.equal(credential.rows[0].account_id, accountId);
+    assert.equal(Number(credential.rows[0].account_id), accountId);
     assert.equal(credential.rows[0].login_email, beforeCredential.login_email);
     assert.equal(credential.rows[0].login_email_normalized, beforeCredential.login_email_normalized);
     assert.equal(credential.rows[0].credential_status, beforeCredential.credential_status);
@@ -126,10 +126,8 @@ try {
       'SELECT account_id, founder_login_email FROM ghm.founder_system_admin_bootstrap_state WHERE id = true',
     );
 
-    assert.deepEqual(state.rows[0], {
-      account_id: accountId,
-      founder_login_email: 'zaidhqdev@gmail.com',
-    });
+    assert.equal(Number(state.rows[0].account_id), accountId);
+    assert.equal(state.rows[0].founder_login_email, 'zaidhqdev@gmail.com');
 
     await assert.rejects(
       () =>
@@ -171,4 +169,3 @@ try {
 } finally {
   await client.end();
 }
-
