@@ -149,6 +149,7 @@ try {
   const ownerAccountId = await createAccount(`${marker}-owner`);
   const participantAccountId = await createAccount(`${marker}-participant`);
   const outsiderAccountId = await createAccount(`${marker}-outsider`);
+  const crossBusinessOwnerAccountId = outsiderAccountId;
   const ownerContext = { userId: ownerAccountId, role: 'business' };
   const participantContext = { userId: participantAccountId, role: 'business' };
   const outsiderContext = { userId: outsiderAccountId, role: 'business' };
@@ -176,6 +177,17 @@ try {
 
   await createMembership(businessId, participantAccountId, 'member', ownerAccountId);
   console.log(`BUSINESS + MEMBERSHIP FIXTURE PASS: business=${businessId}`);
+
+  const crossBusiness = await businessService.createBusiness(outsiderContext, { name: `${marker} cross-business` });
+  if (!crossBusiness.activeBusiness || crossBusiness.activeMembership?.role !== 'owner') throw new Error('Cross-business fixture creation failed');
+  const crossBusinessId = crossBusiness.activeBusiness.id;
+  fixture.businessIds.push(crossBusinessId);
+  const crossApproval = await cleanupAuthorityQuery(
+    `UPDATE ghm.business SET verification_status = 'approved', is_verified = true WHERE id = $1 AND is_active = true RETURNING id`,
+    [crossBusinessId],
+  );
+  if (crossApproval.rowCount !== 1) throw new Error('Cross-business approval fixture failed');
+  console.log(`CROSS-BUSINESS TENANT FIXTURE PASS: business=${crossBusinessId} account=${crossBusinessOwnerAccountId}`);
 
   const opportunityRepository = new PostgresOpportunityRepository(runtimePool);
   const opportunityService = new OpportunityServiceImpl(opportunityRepository);
@@ -235,6 +247,12 @@ try {
     'Opportunity participant access required',
     'UNRELATED ACCOUNT READ DENIAL PASS',
   );
+  await assertRejected(
+    () => participantService.getParticipant(outsiderContext, businessParticipant.id),
+    'Opportunity participant access required',
+    'CROSS-BUSINESS MEMBER READ DENIAL PASS',
+  );
+
   await assertRejected(
     () => participantService.createParticipant(outsiderContext, {
       opportunityId: opportunity.id,
