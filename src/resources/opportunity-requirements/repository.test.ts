@@ -39,6 +39,7 @@ const createFakePool = (
     manager?: boolean;
     creator?: boolean;
     businessMember?: boolean;
+    tenantAuthorized?: boolean;
     capabilitiesSelectable?: boolean;
     requirementRows?: Record<string, unknown>[];
   } = {},
@@ -78,8 +79,8 @@ const createFakePool = (
       ) {
         return {
           rowCount:
-            options.manager || options.businessMember ? 1 : 0,
-          rows: options.manager || options.businessMember
+            options.tenantAuthorized ?? options.manager ?? options.businessMember ? 1 : 0,
+          rows: options.tenantAuthorized ?? options.manager ?? options.businessMember
             ? [{ id: 1, business_id: 42, account_id: 7, membership_role: options.manager ? 'owner' : 'member' }]
             : [],
         };
@@ -295,6 +296,7 @@ test(
     const { pool, calls } = createFakePool(false, {
       businessMember: false,
       creator: false,
+      tenantAuthorized: false,
       requirementRows: [requirementRow],
     });
     const repository = new PgOpportunityRequirementsRepository(pool);
@@ -354,6 +356,7 @@ test(
       manager: false,
       businessMember: false,
       creator: false,
+      tenantAuthorized: false,
       capabilitiesSelectable: true,
     });
     const repository = new PgOpportunityRequirementsRepository(pool);
