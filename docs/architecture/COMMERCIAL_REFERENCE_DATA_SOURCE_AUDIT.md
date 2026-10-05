@@ -1,6 +1,6 @@
 # GHM Canonical Commercial Reference-Data Source Audit
 
-**Status:** SOURCE RECONCILIATION — CONSTRUCTION CONTRACT CANDIDATE  
+**Status:** HISTORICAL SOURCE AUDIT — REFERENCE-DATA GAP CLOSED / QUALIFIED 2026-10-03  
 **Date:** 2026-10-03
 
 ## Purpose
