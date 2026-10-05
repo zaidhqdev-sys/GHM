@@ -57,7 +57,8 @@
     "qualify:legacy-object-disposition": "npm run build && node scripts/qualify-legacy-object-disposition.mjs",
     "qualify:legacy-role-dependency": "npm run build && node scripts/qualify-legacy-role-dependency.mjs",
     "audit:legacy-role-remediation": "npm run build && node scripts/audit-legacy-role-remediation.mjs",
-    "qualify:storage-live-provider": "npm run build && node scripts/qualify-storage-live-provider.mjs"
+    "qualify:storage-live-provider": "npm run build && node scripts/qualify-storage-live-provider.mjs",
+    "qualify:founder-system-admin-bootstrap": "node scripts/qualify-founder-system-admin-bootstrap.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",
