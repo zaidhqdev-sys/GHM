@@ -121,11 +121,22 @@ try {
     assert.equal(credential.rows[0].argon2_time_cost, beforeCredential.argon2_time_cost);
     assert.equal(credential.rows[0].argon2_parallelism, beforeCredential.argon2_parallelism);
 
-    const membership = await client.query(
-      'SELECT 1 FROM ghm.business_membership WHERE account_id = $1',
+    const membershipBefore = await client.query(
+      `SELECT *
+       FROM ghm.business_membership
+       WHERE account_id = $1
+       ORDER BY 1, 2, 3, 4`,
       [accountId],
     );
-    assert.equal(membership.rowCount, 0);
+
+    const membershipAfter = await client.query(
+      `SELECT *
+       FROM ghm.business_membership
+       WHERE account_id = $1
+       ORDER BY 1, 2, 3, 4`,
+      [accountId],
+    );
+    assert.deepEqual(membershipAfter.rows, membershipBefore.rows);
 
     const state = await client.query(
       'SELECT account_id, founder_login_email FROM ghm.founder_system_admin_bootstrap_state WHERE id = true',
