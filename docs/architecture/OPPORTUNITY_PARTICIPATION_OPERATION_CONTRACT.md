@@ -317,11 +317,11 @@ The registry entry must not imply that all three operations are available to eve
 
 Authorization remains resource- and operation-specific.
 
-## 18. No HTTP exposure yet
+## 18. HTTP boundary
 
-This contract deliberately does not authorize a new `/api/v1/opportunity-participants` route or equivalent public endpoint.
+An authenticated Opportunity Participant HTTP boundary already exists and is registered for `read`, `create`, and `update` operations. This construction slice does **not** add a new route or broaden the HTTP surface.
 
-The existing production source currently lacks a general standalone participant-management API. GHM construction therefore begins with the domain/resource boundary and qualification tests, not speculative API exposure.
+The tenant-boundary work applies beneath that existing route: HTTP authorization remains the resource-registry gate, while repository authorization remains authoritative for the parent Opportunity and participant Business/Account relationships. Unsupported participant updates continue to fail closed.
 
 ## 19. Qualification requirements
 
