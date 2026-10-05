@@ -1,6 +1,6 @@
 # Opportunity Requirements HTTP Boundary Reconciliation
 
-**Status:** CONSTRUCTION QUALIFICATION — TENANT ADOPTION QUALIFIED — 2026-10-05
+**Status:** CONSTRUCTION — TENANT ADOPTION IN PROGRESS — 2026-10-05
 
 Canonical domain authority remains `OPPORTUNITY_CAPABILITY_REQUIREMENTS_CONTRACT.md` and the typed contracts/service/repository under `src/resources/opportunity-requirements/`.
 
