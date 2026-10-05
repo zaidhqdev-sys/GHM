@@ -1,6 +1,6 @@
 # GHM Founder / System-Admin Bootstrap Authority
 
-**Status:** CONSTRUCTION — AUTHORITY CONTRACT + QUALIFIED IMPLEMENTATION BOUNDARY
+**Status:** QUALIFIED IMPLEMENTATION BOUNDARY — FOUNDER EXECUTION NOT AUTHORIZED
 
 ## Decision
 
@@ -39,7 +39,7 @@ The existing `is_system_admin` column is already protected as auth lifecycle sta
 
 ## Bootstrap invariants
 
-A future implementation must enforce all of these invariants atomically:
+The qualified implementation enforces the following invariants atomically:
 
 1. **One-time forever:** bootstrap succeeds only when zero `ghm.account_identity` rows have ever been designated `is_system_admin = true`. A disabled/deleted admin must not reopen the founder gate.
 2. **Concurrency-safe:** concurrent bootstrap attempts serialize at the authority boundary; at most one can establish the first system administrator.
@@ -124,16 +124,16 @@ Before any production founder bootstrap:
 - [x] current Auth password contract preserved without duplication;
 - [x] historical system-admin precondition qualified;
 - [ ] concurrent bootstrap attempts cannot create two admins;
-- [ ] duplicate/second attempt fails closed;
+- [x] duplicate/second attempt fails closed;
 - [ ] non-admin public registration cannot create an admin;
-- [ ] runtime cannot directly mutate `is_system_admin`;
+- [x] runtime cannot directly mutate `is_system_admin`;
 - [x] bootstrap function ownership and EXECUTE grants are least privilege;
 - [x] no secret material appears in source, logs, fixtures, or qualification output;
 - [ ] successful founder account authenticates through normal GHM Auth;
 - [ ] successful founder account resolves to admin through DB-backed state;
 - [x] no Business/membership is created implicitly;
 - [x] Supabase and legacy `public.users` are not required;
-- [ ] full suite and dedicated bootstrap qualification pass with zero unexpected skips.
+- [x] full suite and dedicated bootstrap qualification pass with zero unexpected skips.
 
 ## Explicit non-goals
 
@@ -156,6 +156,6 @@ This slice does not:
 
 This document authorizes construction and qualification of the bootstrap authority only.
 
-The implementation is promotion-only: it does not create the founder account or alter its password. It does **not** authorize execution of the founder bootstrap ceremony.
+The qualified implementation is promotion-only: it does not create the founder account or alter its password. It does **not** authorize execution of the founder bootstrap ceremony.
 
 Execution requires a separately qualified implementation and explicit founder execution decision.
