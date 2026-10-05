@@ -2,7 +2,7 @@
 
 ## Status
 
-CONSTRUCTION QUALIFICATION — CLOSED / PASS
+QUALIFIED — TENANT ADOPTION — 2026-10-05
 
 Canonical source reconciled against Zaid Connect migration:
 
@@ -23,6 +23,8 @@ database/migrations/20260914220000_create_opportunity_capability_requirements.sq
 Capability vocabulary remains owned by `ghm.capability`.
 
 Opportunity management authorization remains owned by the Opportunity authorization boundary.
+
+For Business-owned Opportunities, Business access is resolved through the canonical durable tenant boundary on the same transaction client. The Opportunity's `owner_business_id` is the parent resource's tenant source; callers cannot supply or rebind a tenant for requirement operations.
 
 ## Data contract
 
@@ -65,6 +67,12 @@ Complete replacement is restricted to:
 
 Active Business members who are not owners/administrators may read where the Opportunity boundary permits, but may not replace requirements.
 
+## Durable tenant boundary
+
+Business-scoped requirement reads and replacement operations derive the Opportunity's canonical `owner_business_id`, then resolve the authenticated account's active Business membership through `resolveTenantContext` on the same PostgreSQL transaction client. Cross-Business access fails closed. Creator-account authority remains Account-scoped and is preserved for Opportunities created by the authenticated account.
+
+This adoption does not reopen or modify the qualified Opportunity Core resource and does not flatten Account-scoped creator access into Business membership.
+
 ## Atomic replacement
 
 Replacement is one authorized transaction:
@@ -101,6 +109,8 @@ When `sort_order` is omitted by the application input, the input ordinal is used
 
 No blanket UPDATE or ALL privilege is granted.
 
+The tenant adoption changes application authorization only; it does not broaden the runtime database privilege boundary.
+
 DELETE is intentionally confined to this child-resource table because complete replacement requires removal of the previous set. Authorization remains in the application repository/service transaction boundary.
 
 ## Versioning
@@ -109,4 +119,4 @@ The canonical Connect RPC accepts operation version `1`. GHM does not reproduce 
 
 ## Production boundary
 
-This contract establishes construction capability only. Zaid Connect and QuoteFlow remain on Supabase. No production migration, adapter, routing change, credential change, or cutover is authorized by this contract.
+This contract records the qualified GHM construction capability and durable tenant adoption. Zaid Connect and QuoteFlow remain on Supabase. No production migration, adapter, routing change, credential change, or cutover is authorized by this contract.

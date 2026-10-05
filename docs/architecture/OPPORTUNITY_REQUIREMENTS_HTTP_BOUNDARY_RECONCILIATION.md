@@ -1,6 +1,6 @@
 # Opportunity Requirements HTTP Boundary Reconciliation
 
-**Status:** CONSTRUCTION QUALIFICATION — HTTP SLICE IN PROGRESS
+**Status:** QUALIFIED — TENANT ADOPTION — 2026-10-05
 
 Canonical domain authority remains `OPPORTUNITY_CAPABILITY_REQUIREMENTS_CONTRACT.md` and the typed contracts/service/repository under `src/resources/opportunity-requirements/`.
 
@@ -11,7 +11,7 @@ This slice does not reopen the qualified Opportunity Capability Requirements dom
 - GET `/api/v1/opportunities/:opportunityId/requirements` → `read`
 - PUT `/api/v1/opportunities/:opportunityId/requirements` → `replace`
 
-The HTTP layer requires authenticated GHM context, explicit registry operation, and resource access. The canonical repository/service remains authoritative for Opportunity visibility and management authority.
+The HTTP layer requires authenticated GHM context, explicit registry operation, and resource access. The canonical repository/service remains authoritative for Opportunity visibility and management authority. Business-owned Opportunities use the durable tenant boundary on the same transaction client; creator-account authority remains preserved.
 
 ## Input ownership
 
@@ -21,4 +21,4 @@ No DELETE, arbitrary PATCH, individual requirement mutation, Capability governan
 
 ## Qualification
 
-Router tests are included in the configured suite. Full local qualification is required before this slice is marked qualified.
+Qualified on 2026-10-05 after independent local verification: TypeScript build passed, the configured full GHM suite passed 520/520, and `npm run qualify:opportunity-requirements-runtime` passed. The existing HTTP boundary remains unchanged in shape and remains subordinate to the canonical repository/service authorization boundary.

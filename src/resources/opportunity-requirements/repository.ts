@@ -1,5 +1,6 @@
 ﻿import type { PoolClient } from 'pg';
 import type { AuthContext } from '../../auth/authorization';
+import { resolveTenantContext } from '../../auth/tenant-resolver';
 import { withAuthorizedTransaction } from '../../db/authorized-transaction';
 import type { TransactionPool } from '../../db/transaction';
 import type {
@@ -158,36 +159,35 @@ const mapRequirement = (
   sortOrder: Number(row.sort_order),
 });
 
-const assertOpportunityManager = async (
+interface OpportunityAccessRecord {
+  readonly ownerBusinessId: number | null;
+  readonly creatorAccountId: number;
+  readonly visibility: string;
+}
+
+const findOpportunityAccessRecord = async (
   client: PoolClient,
-  context: AuthContext,
   opportunityId: OpportunityId,
-): Promise<void> => {
+): Promise<OpportunityAccessRecord | null> => {
   const result = await client.query(
-    `SELECT 1
-     FROM ghm.opportunity o
-     WHERE o.id = $1
-       AND (
-         o.creator_account_id = $2
-         OR (
-           o.owner_business_id IS NOT NULL
-           AND EXISTS (
-             SELECT 1
-             FROM ghm.business_membership bm
-             WHERE bm.business_id = o.owner_business_id
-               AND bm.account_id = $2
-               AND bm.membership_role IN ('owner', 'administrator')
-               AND bm.membership_status = 'active'
-           )
-         )
-       )
+    `SELECT owner_business_id, creator_account_id, visibility
+     FROM ghm.opportunity
+     WHERE id = $1
      LIMIT 1`,
-    [opportunityId, context.userId],
+    [opportunityId],
   );
 
   if (result.rowCount !== 1) {
-    throw new Error('Opportunity requirements access denied');
+    return null;
   }
+
+  const row = result.rows[0];
+  return {
+    ownerBusinessId:
+      row.owner_business_id === null ? null : Number(row.owner_business_id),
+    creatorAccountId: Number(row.creator_account_id),
+    visibility: String(row.visibility),
+  };
 };
 
 const canReadOpportunity = async (
@@ -195,29 +195,67 @@ const canReadOpportunity = async (
   context: AuthContext,
   opportunityId: OpportunityId,
 ): Promise<boolean> => {
-  const result = await client.query(
-    `SELECT 1
-     FROM ghm.opportunity o
-     WHERE o.id = $1
-       AND (
-         o.creator_account_id = $2
-         OR (
-           o.owner_business_id IS NOT NULL
-           AND EXISTS (
-             SELECT 1
-             FROM ghm.business_membership bm
-             WHERE bm.business_id = o.owner_business_id
-               AND bm.account_id = $2
-               AND bm.membership_status = 'active'
-           )
-         )
-         OR o.visibility IN ('authenticated', 'public')
-       )
-     LIMIT 1`,
-    [opportunityId, context.userId],
-  );
+  const opportunity = await findOpportunityAccessRecord(client, opportunityId);
 
-  return result.rowCount === 1;
+  if (!opportunity) {
+    return false;
+  }
+
+  if (opportunity.creatorAccountId === context.userId) {
+    return true;
+  }
+
+  if (opportunity.ownerBusinessId !== null) {
+    try {
+      await resolveTenantContext(client, context, opportunity.ownerBusinessId);
+      return true;
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        error.message !== 'Business tenant access denied'
+      ) {
+        throw error;
+      }
+    }
+  }
+
+  return (
+    opportunity.visibility === 'authenticated' ||
+    opportunity.visibility === 'public'
+  );
+};
+
+const assertOpportunityManager = async (
+  client: PoolClient,
+  context: AuthContext,
+  opportunityId: OpportunityId,
+): Promise<void> => {
+  const opportunity = await findOpportunityAccessRecord(client, opportunityId);
+
+  if (!opportunity) {
+    throw new Error('Opportunity requirements access denied');
+  }
+
+  if (opportunity.creatorAccountId === context.userId) {
+    return;
+  }
+
+  if (opportunity.ownerBusinessId !== null) {
+    const tenant = await resolveTenantContext(
+      client,
+      context,
+      opportunity.ownerBusinessId,
+    );
+
+    if (
+      tenant.membershipRole === 'owner' ||
+      tenant.membershipRole === 'administrator'
+    ) {
+      return;
+    }
+  }
+
+  throw new Error('Opportunity requirements access denied');
 };
 
 const assertActiveCapabilities = async (
