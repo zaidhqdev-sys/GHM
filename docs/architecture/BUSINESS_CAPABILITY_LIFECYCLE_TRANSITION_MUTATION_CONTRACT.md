@@ -1,6 +1,6 @@
 # Business Capability Lifecycle Transition Mutation Contract
 
-**Status:** CONSTRUCTION ARCHITECTURE CONTRACT — MUTATION MECHANISM DEFINED; IMPLEMENTATION NOT YET QUALIFIED
+**Status:** QUALIFIED / CLOSED — governed Business Capability lifecycle transition boundary qualified on the consolidated mainline
 
 ## Purpose
 
