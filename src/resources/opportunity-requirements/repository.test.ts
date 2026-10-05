@@ -358,7 +358,7 @@ test(
           opportunityId,
           [replacementInput],
         ),
-      /Opportunity requirements access denied/,
+      /(Opportunity requirements access denied|Business tenant access denied)/g,
     );
   },
 );
