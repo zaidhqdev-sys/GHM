@@ -149,7 +149,7 @@ try {
   );
   await assertRejected(
     () => service.assignBusinessCategory(owner,{businessId:f.business,categoryId:'00000000-0000-0000-0000-000000000000'}),
-    'INVALID UUID/VERSION REJECTION PASS','Category not found or not selectable',
+    'INVALID UUID/VERSION REJECTION PASS','categoryId must be a valid UUID',
   );
   console.log('GHM BUSINESS CATEGORY RUNTIME QUALIFICATION: PASS');
 } finally {
