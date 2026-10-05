@@ -71,7 +71,7 @@ const createBusinessFixture = async (name, slug, ownerAccountId) => {
     await client.query('BEGIN');
     await client.query('SET LOCAL ROLE ghm_schema_owner');
     const businessResult = await client.query(
-      `INSERT INTO ghm.business (name, slug, verification_status, is_active) VALUES ($1, $2, 'approved', true) RETURNING id`,
+      `INSERT INTO ghm.business (name, slug, verification_status, is_verified, is_active) VALUES ($1, $2, 'approved', true, true) RETURNING id`,
       [name, slug],
     );
     const businessId = Number(businessResult.rows[0].id);
