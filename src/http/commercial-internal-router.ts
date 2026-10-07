@@ -53,13 +53,13 @@ export const registerCommercialInternalRoutes = (
   app: Express,
   providerBoundary: CommercialProviderBoundary = new PostgresCommercialProviderBoundary(),
 ): void => {
-  const assertionService = createConnectServiceAssertionService(loadEs256Keys());
   const replayStore = new PostgresConnectServiceAssertionReplayStore(pool);
   const lifecycle = new PostgresConnectIntegrationLifecycleRepository(pool);
   app.post('/api/v1/internal/commercial/payment-result', async (req: Request, res: Response) => {
     try {
       if (req.header('origin')) throw new CommercialInternalHttpError('Browser-originated requests are not permitted');
       const token = readBearer(req);
+      const assertionService = createConnectServiceAssertionService(loadEs256Keys());
       const verified = assertionService.verify(token);
       await requireFreshConnectServiceAssertion(replayStore, verified.requestId, verified.integrationId, new Date(verified.claims.exp * 1000));
       await requireActiveConnectIntegration(lifecycle, verified.integrationId);
