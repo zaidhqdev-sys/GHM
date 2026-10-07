@@ -109,7 +109,13 @@ const parsePrepareInput = (body: unknown): { businessId: number; externalIdentit
   };
 };
 
-export type PayfastHttpRouteBoundary = Pick<PayfastHttpBoundary, 'createCheckout' | 'handleItn'>;
+export type PayfastHttpRouteBoundary = {
+  createCheckout: PayfastHttpBoundary['createCheckout'];
+  handleItn: (
+    fields: Readonly<Record<string, string>>,
+    sourceIp: string,
+  ) => Promise<unknown>;
+};
 
 export const registerCommercialInternalRoutes = (
   app: Express,
