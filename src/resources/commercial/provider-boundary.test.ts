@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'node:test';
+import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { PostgresCommercialProviderBoundary } from './provider-boundary';
 
@@ -37,10 +37,10 @@ describe('PostgresCommercialProviderBoundary', () => {
       metadata: { source: 'test' },
     });
 
-    expect(queries[0]).toBe('BEGIN');
-    expect(queries[1]).toContain('ghm.commercial_apply_payment_result');
-    expect(queries.at(-1)).toBe('COMMIT');
-    expect(result.id).toBe(7);
-    expect(result.transactionStatus).toBe('succeeded');
+    assert.equal(queries[0], 'BEGIN');
+    assert.match(queries[1], /ghm\.commercial_apply_payment_result/);
+    assert.equal(queries.at(-1), 'COMMIT');
+    assert.equal(result.id, 7);
+    assert.equal(result.transactionStatus, 'succeeded');
   });
 });
