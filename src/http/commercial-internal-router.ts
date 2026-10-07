@@ -12,6 +12,7 @@ import { DefaultCommercialService } from '../resources/commercial/service';
 import { PostgresCommercialRepository } from '../resources/commercial/repository';
 import type { ApplyCommercialPaymentResultInput } from '../resources/commercial/contracts';
 import type { CommercialProviderBoundary } from '../resources/commercial/contracts';
+import { PayfastHttpBoundary } from '../resources/commercial/payfast-http';
 
 export const resolveCommercialPaymentActor = async (
   accountId: number,
@@ -153,6 +154,39 @@ export const registerCommercialInternalRoutes = (
       if (error instanceof Error && /permission required|not found|idempotency conflict|eligible commercial|subscription required/i.test(error.message)) { res.status(409).json({ error: 'commercial_conflict' }); return; }
       console.error(JSON.stringify({ event: 'commercial_internal_payment_prepare_failed', error: { name: error instanceof Error ? error.name : 'UnknownError' } }));
       res.status(500).json({ error: 'internal_error' });
+    }
+  });
+
+  const payfastBoundary = new PayfastHttpBoundary(pool, providerBoundary);
+
+  app.get('/api/v1/internal/commercial/payfast/checkout/:paymentAttemptId', async (req: Request, res: Response) => {
+    try {
+      if (req.header('origin')) throw new CommercialInternalHttpError('Browser-originated requests are not permitted');
+      const token = readBearer(req);
+      const assertionService = createConnectServiceAssertionService(loadEs256Keys());
+      const verified = assertionService.verify(token);
+      await requireFreshConnectServiceAssertion(replayStore, verified.requestId, verified.integrationId, new Date(verified.claims.exp * 1000));
+      await requireActiveConnectIntegration(lifecycle, verified.integrationId);
+      const checkout = await payfastBoundary.createCheckout(req.params.paymentAttemptId);
+      res.status(200).json({ checkout });
+    } catch (error) {
+      if (error instanceof CommercialInternalHttpError) { res.status(error.status).json({ error: error.status === 401 ? 'unauthorized' : 'forbidden' }); return; }
+      if (error instanceof Error && /not found|not payable|requires ZAR|not configured/i.test(error.message)) { res.status(409).json({ error: 'commercial_conflict' }); return; }
+      console.error(JSON.stringify({ event: 'payfast_checkout_failed', error: { name: error instanceof Error ? error.name : 'UnknownError' } }));
+      res.status(500).json({ error: 'internal_error' });
+    }
+  });
+
+  app.post('/api/v1/commercial/payfast/itn', require('express').urlencoded({ extended: false, limit: '64kb' }), async (req: Request, res: Response) => {
+    try {
+      const sourceIp = req.ip;
+      const fields = Object.fromEntries(Object.entries(req.body ?? {}).map(([key, value]) => [key, Array.isArray(value) ? String(value[0]) : String(value ?? '')]));
+      await payfastBoundary.handleItn(fields, sourceIp);
+      res.status(200).send('OK');
+    } catch (error) {
+      if (error instanceof Error && /Payfast|not found|not payable/i.test(error.message)) { res.status(400).send('INVALID'); return; }
+      console.error(JSON.stringify({ event: 'payfast_itn_failed', error: { name: error instanceof Error ? error.name : 'UnknownError' } }));
+      res.status(500).send('ERROR');
     }
   });
 
