@@ -176,6 +176,7 @@ try {
       await cleanup.query('SET ROLE ghm_schema_owner');
       await cleanup.query('BEGIN');
       await cleanup.query('DELETE FROM ghm.commercial_payment_attempt WHERE business_id = $1', [fixture.businessId]);
+      await cleanup.query('DELETE FROM ghm.commercial_event WHERE subscription_id = $1', [fixture.subscriptionId]);
       await cleanup.query('DELETE FROM ghm.commercial_subscription WHERE id = $1', [fixture.subscriptionId]);
       await cleanup.query('DELETE FROM ghm.commercial_plan_price WHERE id = $1', [fixture.priceId]);
       await cleanup.query('DELETE FROM ghm.commercial_plan_version WHERE id = $1', [fixture.versionId]);
