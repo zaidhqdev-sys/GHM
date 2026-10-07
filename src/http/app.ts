@@ -95,6 +95,7 @@ import { BusinessOfferingServiceImpl } from '../resources/business-offering/serv
 import type { BusinessOfferingService } from '../resources/business-offering/contracts';
 import { registerBusinessOfferingRoutes } from './business-offering-router';
 import { registerConnectServiceRoutes, type ConnectServiceHttpDependencies } from './connect-service-router';
+import { registerCommercialInternalRoutes } from './commercial-internal-router';
 
 
 export interface AppDependencies {
@@ -681,6 +682,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     quoteFlowMigrationResetRecoveryService: dependencies.quoteFlowMigrationResetRecoveryService,
     quoteFlowMigrationResetCompletionService: dependencies.quoteFlowMigrationResetCompletionService,
   } satisfies AuthRouterDependencies);
+  registerCommercialInternalRoutes(app);
   registerConnectServiceRoutes(app, {
     ...dependencies.connectService,
     savedBusinesses: savedBusinessService,
