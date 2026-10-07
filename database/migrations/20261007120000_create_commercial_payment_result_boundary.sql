@@ -88,16 +88,16 @@ BEGIN
       AND provider_event_id = p_external_provider_event_id
     FOR UPDATE;
 
+    IF v_provider_event.payload_hash <> p_provider_payload_hash THEN
+      RAISE EXCEPTION 'commercial provider event payload hash conflict';
+    END IF;
+
     SELECT * INTO v_existing
     FROM ghm.commercial_payment_transaction
     WHERE provider_event_id = v_provider_event.id;
 
     IF FOUND THEN
       RETURN v_existing;
-    END IF;
-
-    IF v_provider_event.payload_hash <> p_provider_payload_hash THEN
-      RAISE EXCEPTION 'commercial provider event payload hash conflict';
     END IF;
   END IF;
 
