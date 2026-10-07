@@ -117,7 +117,7 @@ Required before construction:
 The internal commercial lifecycle and provider-event ledgers already exist and must remain distinct.
 
 Qualified foundations:
-- governed commercial payment preparation boundary (PR #116 construction-qualified; merge pending);
+- governed commercial payment preparation boundary (PR #116 merged as `7d934e3` and runtime-qualified);
 - governed commercial payment-result boundary (PR #115 merged and runtime-qualified);
 - canonical Connect identity → GHM account resolution;
 - active-account and business-management authorization;
@@ -125,9 +125,10 @@ Qualified foundations:
 - provider-event idempotent application at the GHM boundary.
 
 Remaining:
-- provider-specific checkout/redirect boundary;
-- provider callback/webhook contract and provider-specific signature verification;
-- approved-provider integration and production credential/configuration boundary;
+- PayFast checkout/redirect boundary;
+- PayFast ITN callback contract and provider-specific signature verification;
+- PayFast provider integration and production credential/configuration boundary;
+- PayFast sandbox qualification, including checkout signature generation, ITN signature/source/amount validation, and governed payment-result application;
 - runtime qualification against a non-production provider environment;
 - only then production provider enablement/cutover.
 
