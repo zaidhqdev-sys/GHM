@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from 'express';
 import { loadEs256Keys } from '../auth/foundation/es256-keys';
-import { PostgresAccountAuthStateStore } from '../auth/ghm-bearer';
+import { PostgresAccountAuthStateStore, type AccountAuthStateStore } from '../auth/ghm-bearer';
 import { pool } from '../db/pool';
 import { PostgresConnectIntegrationLifecycleRepository, requireActiveConnectIntegration } from '../integrations/connect/integration-lifecycle';
 import { createConnectServiceAssertionService } from '../integrations/connect/service-assertion';
@@ -12,6 +12,15 @@ import { DefaultCommercialService } from '../resources/commercial/service';
 import { PostgresCommercialRepository } from '../resources/commercial/repository';
 import type { ApplyCommercialPaymentResultInput } from '../resources/commercial/contracts';
 import type { CommercialProviderBoundary } from '../resources/commercial/contracts';
+
+export const resolveCommercialPaymentActor = async (
+  accountId: number,
+  accounts: AccountAuthStateStore,
+): Promise<{ userId: number; role: 'admin' | 'customer' | 'business' } | null> => {
+  const state = await accounts.getAccountAuthState(accountId);
+  if (!state || state.accountStatus !== 'active') return null;
+  return { userId: state.accountId, role: state.role };
+};
 
 class CommercialInternalHttpError extends Error {
   constructor(message: string, readonly status = 401) { super(message); this.name = 'CommercialInternalHttpError'; }
@@ -122,15 +131,15 @@ export const registerCommercialInternalRoutes = (
         return;
       }
 
-      const accountState = await new PostgresAccountAuthStateStore(pool).getAccountAuthState(identity.mapping.accountId);
-      if (!accountState || accountState.accountStatus !== 'active') {
+      const actor = await resolveCommercialPaymentActor(identity.mapping.accountId, new PostgresAccountAuthStateStore(pool));
+      if (!actor) {
         res.status(409).json({ error: 'commercial_conflict' });
         return;
       }
 
       const service = new DefaultCommercialService(new PostgresCommercialRepository());
       const paymentAttempt = await service.prepareCommercialPayment(
-        { userId: accountState.accountId, role: accountState.role },
+        actor,
         {
           businessId: input.businessId,
           countryId: input.countryId,
