@@ -179,3 +179,30 @@ export const registerCommercialInternalRoutes = (
     }
   });
 };
+export const registerPayfastRoutes = (app: Express, boundary: import('../resources/commercial/payfast-http').PayfastHttpBoundary): void => {
+  app.get('/api/v1/commercial/payfast/checkout/:paymentAttemptId', async (req: Request, res: Response) => {
+    try {
+      const checkout = await boundary.createCheckout(req.params.paymentAttemptId);
+      res.status(200).json({ checkout });
+    } catch (error) {
+      if (error instanceof Error && /not found|not payable|requires ZAR|not configured/i.test(error.message)) {
+        res.status(409).json({ error: 'commercial_conflict' }); return;
+      }
+      console.error(JSON.stringify({ event: 'payfast_checkout_failed', error: { name: error instanceof Error ? error.name : 'UnknownError' } }));
+      res.status(500).json({ error: 'internal_error' });
+    }
+  });
+
+  app.post('/api/v1/commercial/payfast/itn', async (req: Request, res: Response) => {
+    try {
+      const sourceIp = req.ip;
+      const fields = Object.fromEntries(Object.entries(req.body ?? {}).map(([key, value]) => [key, Array.isArray(value) ? String(value[0]) : String(value ?? '')]));
+      await boundary.handleItn(fields, sourceIp);
+      res.status(200).send('OK');
+    } catch (error) {
+      if (error instanceof Error && /Payfast|not found|not payable/i.test(error.message)) { res.status(400).send('INVALID'); return; }
+      console.error(JSON.stringify({ event: 'payfast_itn_failed', error: { name: error instanceof Error ? error.name : 'UnknownError' } }));
+      res.status(500).send('ERROR');
+    }
+  });
+};
