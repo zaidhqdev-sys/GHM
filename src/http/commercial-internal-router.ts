@@ -1,11 +1,9 @@
 import type { Express, Request, Response } from 'express';
-import { PostgresAccountAuthStateStore } from '../auth/ghm-bearer';
 import { loadEs256Keys } from '../auth/foundation/es256-keys';
 import { pool } from '../db/pool';
-import { PostgresConnectIntegrationLifecycleRepository } from '../integrations/connect/integration-lifecycle';
+import { PostgresConnectIntegrationLifecycleRepository, requireActiveConnectIntegration } from '../integrations/connect/integration-lifecycle';
 import { createConnectServiceAssertionService } from '../integrations/connect/service-assertion';
 import { PostgresConnectServiceAssertionReplayStore, requireFreshConnectServiceAssertion } from '../integrations/connect/service-assertion-replay';
-import { requireActiveConnectIntegration } from '../integrations/connect/integration-lifecycle';
 import { PostgresCommercialProviderBoundary } from '../resources/commercial/provider-boundary';
 import type { ApplyCommercialPaymentResultInput } from '../resources/commercial/contracts';
 import type { CommercialProviderBoundary } from '../resources/commercial/contracts';
