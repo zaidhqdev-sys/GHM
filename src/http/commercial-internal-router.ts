@@ -32,7 +32,7 @@ const parseInput = (body: unknown): ApplyCommercialPaymentResultInput | null => 
   const kind = b.transactionKind;
   if (!positive(b.paymentAttemptId) || !opaque(b.providerCode) || !opaque(b.externalProviderEventId)
     || !opaque(b.providerEventType) || !hash(b.providerPayloadHash)
-    || !['payment','refund','reversal','chargeback'].includes(kind as string)
+    || kind !== 'payment'
     || !['pending','succeeded','failed'].includes(status as string)
     || typeof b.occurredAt !== 'string' || Number.isNaN(Date.parse(b.occurredAt as string))) return null;
   if (b.providerTransactionReference !== undefined && b.providerTransactionReference !== null && !opaque(b.providerTransactionReference)) return null;
