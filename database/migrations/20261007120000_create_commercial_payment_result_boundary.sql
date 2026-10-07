@@ -35,7 +35,7 @@ BEGIN
      OR p_external_provider_event_id IS NULL OR length(p_external_provider_event_id) NOT BETWEEN 1 AND 200
      OR p_provider_event_type IS NULL OR length(p_provider_event_type) NOT BETWEEN 1 AND 100
      OR p_provider_payload_hash IS NULL OR p_provider_payload_hash !~ '^[0-9a-f]{64}$'
-     OR p_transaction_kind IS NULL OR p_transaction_kind NOT IN ('payment','refund','reversal','chargeback')
+     OR p_transaction_kind IS NULL OR p_transaction_kind <> 'payment'
      OR p_transaction_status IS NULL OR p_transaction_status NOT IN ('pending','succeeded','failed')
      OR p_occurred_at IS NULL
      OR p_metadata IS NULL OR jsonb_typeof(p_metadata) <> 'object'
