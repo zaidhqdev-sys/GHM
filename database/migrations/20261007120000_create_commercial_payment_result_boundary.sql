@@ -123,33 +123,6 @@ BEGIN
 
     v_event_type := 'subscription_activated';
 
-    IF v_price.price_kind = 'founding' AND v_plan_version.founding_limit IS NOT NULL THEN
-      SELECT founding_sequence INTO v_founding_sequence
-      FROM ghm.commercial_founding_allocation
-      WHERE subscription_id = v_subscription.id;
-
-      IF v_founding_sequence IS NULL THEN
-        SELECT COALESCE(MAX(founding_sequence), 0) + 1
-        INTO v_founding_sequence
-        FROM ghm.commercial_founding_allocation
-        WHERE plan_version_id = v_plan_version.id;
-
-        IF v_founding_sequence <= v_plan_version.founding_limit THEN
-          INSERT INTO ghm.commercial_founding_allocation (
-            business_id, subscription_id, payment_transaction_id,
-            plan_version_id, founding_sequence, protected_until, allocated_at
-          )
-          VALUES (
-            v_subscription.business_id, v_subscription.id, 0,
-            v_plan_version.id, v_founding_sequence,
-            p_occurred_at + make_interval(months => COALESCE(v_plan_version.founding_protection_months, 12)),
-            p_occurred_at
-          );
-        ELSE
-          v_founding_sequence := NULL;
-        END IF;
-      END IF;
-    END IF;
   ELSE
     UPDATE ghm.commercial_payment_attempt
     SET attempt_status = CASE WHEN p_transaction_status = 'failed' THEN 'failed' ELSE 'pending_payment' END,
@@ -182,15 +155,43 @@ BEGIN
   )
   RETURNING * INTO v_transaction;
 
+  IF p_transaction_status = 'succeeded' AND p_transaction_kind = 'payment'
+     AND v_price.price_kind = 'founding'
+     AND v_plan_version.founding_limit IS NOT NULL THEN
+    SELECT founding_sequence INTO v_founding_sequence
+    FROM ghm.commercial_founding_allocation
+    WHERE subscription_id = v_subscription.id;
+
+    IF v_founding_sequence IS NULL THEN
+      SELECT COALESCE(MAX(founding_sequence), 0) + 1
+      INTO v_founding_sequence
+      FROM ghm.commercial_founding_allocation
+      WHERE plan_version_id = v_plan_version.id;
+
+      IF v_founding_sequence <= v_plan_version.founding_limit THEN
+        INSERT INTO ghm.commercial_founding_allocation (
+          business_id, subscription_id, payment_transaction_id,
+          plan_version_id, founding_sequence, protected_until, allocated_at
+        )
+        VALUES (
+          v_subscription.business_id, v_subscription.id, v_transaction.id,
+          v_plan_version.id, v_founding_sequence,
+          p_occurred_at + make_interval(months => COALESCE(v_plan_version.founding_protection_months, 12)),
+          p_occurred_at
+        );
+
+        UPDATE ghm.commercial_subscription
+        SET founding_sequence = v_founding_sequence,
+            founding_protected_until = p_occurred_at + make_interval(months => COALESCE(v_plan_version.founding_protection_months, 12))
+        WHERE id = v_subscription.id;
+      END IF;
+    END IF;
+  END IF;
+
   UPDATE ghm.commercial_provider_event
   SET processing_status = 'processed',
       processed_at = clock_timestamp()
   WHERE id = v_provider_event.id;
-
-  UPDATE ghm.commercial_founding_allocation
-  SET payment_transaction_id = v_transaction.id
-  WHERE subscription_id = v_subscription.id
-    AND payment_transaction_id = 0;
 
   INSERT INTO ghm.commercial_event (
     business_id, subscription_id, event_type, actor_account_id,
