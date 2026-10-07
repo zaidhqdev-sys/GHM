@@ -112,17 +112,26 @@ Required before construction:
 - authorize and qualify the smallest projection/search slice.
 
 ### GHM-05 — Commercial provider operations
-**Classification:** GHM commercial integration — open.
+**Classification:** GHM commercial integration — partially qualified / open.
 
 The internal commercial lifecycle and provider-event ledgers already exist and must remain distinct.
 
+Qualified foundations:
+- governed commercial payment preparation boundary (PR #116 construction-qualified; merge pending);
+- governed commercial payment-result boundary (PR #115 merged and runtime-qualified);
+- canonical Connect identity → GHM account resolution;
+- active-account and business-management authorization;
+- payment-preparation idempotency;
+- provider-event idempotent application at the GHM boundary.
+
 Remaining:
-- provider-specific prepare/checkout boundary;
-- provider result/callback/webhook contract;
-- idempotent provider-event application;
-- production credential/configuration boundary;
+- provider-specific checkout/redirect boundary;
+- provider callback/webhook contract and provider-specific signature verification;
+- approved-provider integration and production credential/configuration boundary;
 - runtime qualification against a non-production provider environment;
 - only then production provider enablement/cutover.
+
+**Approved provider direction:** PayFast is approved for the commercial payment path. Provider approval/configuration is not itself evidence that the provider-specific GHM integration is implemented or production-enabled.
 
 Do not create another generic event ledger.
 
@@ -158,7 +167,7 @@ Notification persistence is qualified. Live delivery is not. Decide whether Conn
 ### CONNECT-04 — Connect server/provider runtime equivalents
 **Classification:** product/provider integration.
 
-Paystack checkout/webhook, AI proxy and other server-runtime behaviours require explicit ownership and provider-boundary contracts before any GHM implementation.
+Commercial checkout/webhook, AI proxy and other server-runtime behaviours require explicit ownership and provider-boundary contracts before any GHM implementation. PayFast is the approved commercial provider direction; provider-specific checkout/webhook implementation remains open and must terminate in the governed GHM commercial boundaries rather than create a parallel commercial ledger.
 
 ### CONNECT-05 — Connect atomic workflow parity
 **Classification:** product workflow construction.
