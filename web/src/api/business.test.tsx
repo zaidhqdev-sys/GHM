@@ -6,7 +6,6 @@ import {
   userFacingBusinessError,
   type BusinessIdentity,
 } from './business';
-import { CONSTRUCTION_MANAGED_BUSINESS_ID } from '../config/construction-business';
 import { BusinessProfileView } from '../pages/BusinessProfilePage';
 import { REFRESH_TOKEN_STORAGE_KEY } from '../auth/session';
 
@@ -32,13 +31,13 @@ describe('business API client', () => {
       Response.json({ business: sampleBusiness() }, { status: 200 }),
     );
     const client = createBusinessClient(apiFetch);
-    const business = await client.getManagedBusiness();
+    const business = await client.getManagedBusinessContext();
 
     expect(apiFetch).toHaveBeenCalledTimes(1);
     const call = apiFetch.mock.calls[0];
     expect(call).toBeDefined();
     const [path, init] = call!;
-    expect(path).toBe(`/api/v1/businesses/${CONSTRUCTION_MANAGED_BUSINESS_ID}/managed`);
+    expect(path).toBe('/api/v1/businesses/managed');
     expect((init as RequestInit | undefined)?.method).toBe('GET');
     expect(business.id).toBe(265);
     expect(business.name).toBe('Zaid Technologies');
@@ -48,6 +47,7 @@ describe('business API client', () => {
     expect(REFRESH_TOKEN_STORAGE_KEY).toBe('ghm.refreshToken');
     expect(Object.keys(createBusinessClient(async () => new Response())).sort()).toEqual([
       'getManagedBusiness',
+      'getManagedBusinessContext',
     ]);
   });
 
