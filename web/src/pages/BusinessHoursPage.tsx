@@ -50,6 +50,7 @@ export const BusinessHoursPage = () => {
 
   useEffect(() => {
     let cancelled = false;
+    const businessClient = createBusinessClient((path, init) => client.apiFetch(path, init));
     const hoursClient = createBusinessHoursClient((path, init) => client.apiFetch(path, init));
 
     void (async () => {
