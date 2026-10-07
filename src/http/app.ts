@@ -95,6 +95,10 @@ import { BusinessOfferingServiceImpl } from '../resources/business-offering/serv
 import type { BusinessOfferingService } from '../resources/business-offering/contracts';
 import { registerBusinessOfferingRoutes } from './business-offering-router';
 import { registerConnectServiceRoutes, type ConnectServiceHttpDependencies } from './connect-service-router';
+import { registerCommercialRoutes } from './commercial-router';
+import { PostgresCommercialRepository } from '../resources/commercial/repository';
+import { DefaultCommercialService } from '../resources/commercial/service';
+import type { CommercialService } from '../resources/commercial/contracts';
 
 
 export interface AppDependencies {
@@ -127,6 +131,7 @@ export interface AppDependencies {
   readonly quoteFlowMigrationResetCompletionService?: QuoteFlowMigrationResetCompletionService;
   readonly resourceAuthMiddleware?: import('express').RequestHandler;
   readonly connectService?: Omit<ConnectServiceHttpDependencies, 'savedBusinesses'>;
+  readonly commercialService?: CommercialService;
 }
 
 const requireRegisteredAccess = (resource: Parameters<typeof canAccessResource>[1], operation: ResourceOperation) =>
@@ -366,6 +371,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const businessCategoryService = dependencies.businessCategoryService ?? new BusinessCategoryServiceImpl(new PostgresBusinessCategoryRepository());
   const directoryService = dependencies.directoryService ?? new DirectoryServiceImpl(new PostgresDirectoryRepository());
   const businessOfferingService = dependencies.businessOfferingService ?? new BusinessOfferingServiceImpl(new PostgresBusinessOfferingRepository());
+  const commercialService = dependencies.commercialService ?? new DefaultCommercialService(new PostgresCommercialRepository());
   app.disable('x-powered-by');
   app.disable('etag');
   app.use((_req: Request, res: Response, next: NextFunction) => {
@@ -671,6 +677,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerNotificationRoutes(app, notificationService, resourceAuthMiddleware);
   registerBusinessCategoryRoutes(app, businessCategoryService, resourceAuthMiddleware);
   registerBusinessOfferingRoutes(app, businessOfferingService, resourceAuthMiddleware);
+  registerCommercialRoutes(app, commercialService, resourceAuthMiddleware);
   const passwordResetService =
     dependencies.passwordResetService
     ?? createPasswordResetService(new PostgresAuthPersistence());
