@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from 'express';
 import { loadEs256Keys } from '../auth/foundation/es256-keys';
+import { PostgresAccountAuthStateStore } from '../auth/ghm-bearer';
 import { pool } from '../db/pool';
 import { PostgresConnectIntegrationLifecycleRepository, requireActiveConnectIntegration } from '../integrations/connect/integration-lifecycle';
 import { createConnectServiceAssertionService } from '../integrations/connect/service-assertion';
@@ -121,25 +122,15 @@ export const registerCommercialInternalRoutes = (
         return;
       }
 
-      const accountResult = await pool.query(
-        `SELECT role, account_status
-         FROM ghm.account_identity
-         WHERE id = $1`,
-        [identity.mapping.accountId],
-      );
-      if (accountResult.rowCount !== 1 || accountResult.rows[0].account_status !== 'active') {
+      const accountState = await new PostgresAccountAuthStateStore(pool).getAccountAuthState(identity.mapping.accountId);
+      if (!accountState || accountState.accountStatus !== 'active') {
         res.status(409).json({ error: 'commercial_conflict' });
-        return;
-      }
-      const role = accountResult.rows[0].role;
-      if (role !== 'admin' && role !== 'customer' && role !== 'business') {
-        res.status(500).json({ error: 'internal_error' });
         return;
       }
 
       const service = new DefaultCommercialService(new PostgresCommercialRepository());
       const paymentAttempt = await service.prepareCommercialPayment(
-        { userId: identity.mapping.accountId, role },
+        { userId: accountState.accountId, role: accountState.role },
         {
           businessId: input.businessId,
           countryId: input.countryId,
