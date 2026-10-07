@@ -4,7 +4,6 @@ import {
   userFacingBusinessError,
   type BusinessIdentity,
 } from '../api/business';
-import { CONSTRUCTION_MANAGED_BUSINESS_ID } from '../config/construction-business';
 import { useGhmSession } from '../auth/GhmSessionProvider';
 
 const displayText = (value: string | null | undefined): string => {
@@ -102,7 +101,7 @@ export const BusinessProfilePage = () => {
       setLoading(true);
       setError(null);
       try {
-        const result = await businessClient.getManagedBusiness(CONSTRUCTION_MANAGED_BUSINESS_ID);
+        const result = await businessClient.getManagedBusinessContext();
         if (!cancelled) {
           setBusiness(result);
         }
@@ -128,7 +127,7 @@ export const BusinessProfilePage = () => {
       loading={loading}
       error={error}
       business={business}
-      businessId={CONSTRUCTION_MANAGED_BUSINESS_ID}
+      businessId={business?.id ?? 0}
     />
   );
 };
