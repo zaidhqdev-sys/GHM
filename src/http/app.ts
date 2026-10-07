@@ -499,6 +499,27 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
+  app.get('/api/v1/businesses/managed', resourceAuthMiddleware, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const identity = await service.resolveIdentity({ context });
+      if (!identity.activeBusiness || !identity.activeMembership) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      res.status(200).json({
+        business: identity.activeBusiness,
+        membership: identity.activeMembership,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'business-selection-required') {
+        res.status(409).json({ error: 'business_selection_required' });
+        return;
+      }
+      handleError(error, res);
+    }
+  });
+
   app.get('/api/v1/businesses/:businessId/managed', resourceAuthMiddleware, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;

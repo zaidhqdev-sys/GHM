@@ -1,5 +1,3 @@
-import { CONSTRUCTION_MANAGED_BUSINESS_ID } from '../config/construction-business';
-
 /** Canonical Connect/GHM mapping: 0 = Sunday … 6 = Saturday. */
 export const BUSINESS_HOURS_DAY_LABELS = Object.freeze([
   'Sunday',
@@ -38,7 +36,7 @@ export class BusinessHoursApiError extends Error {
 }
 
 export interface BusinessHoursClient {
-  getBusinessHours(businessId?: number): Promise<readonly BusinessHoursRow[]>;
+  getBusinessHours(businessId: number): Promise<readonly BusinessHoursRow[]>;
 }
 
 export interface WeeklyHoursDay {
@@ -140,7 +138,7 @@ export const createBusinessHoursClient = (
   apiFetch: (path: string, init?: RequestInit) => Promise<Response>,
 ): BusinessHoursClient => ({
   async getBusinessHours(
-    businessId: number = CONSTRUCTION_MANAGED_BUSINESS_ID,
+    businessId: number,
   ): Promise<readonly BusinessHoursRow[]> {
     const response = await apiFetch(`/api/v1/businesses/${businessId}/hours`, {
       method: 'GET',

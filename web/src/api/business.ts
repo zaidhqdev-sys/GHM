@@ -1,5 +1,3 @@
-import { CONSTRUCTION_MANAGED_BUSINESS_ID } from '../config/construction-business';
-
 export interface BusinessIdentity {
   readonly id: number;
   readonly name: string;
@@ -27,7 +25,8 @@ export class BusinessApiError extends Error {
 }
 
 export interface BusinessClient {
-  getManagedBusiness(businessId?: number): Promise<BusinessIdentity>;
+  getManagedBusiness(businessId: number): Promise<BusinessIdentity>;
+  getManagedBusinessContext(): Promise<BusinessIdentity>;
 }
 
 const parseBusiness = (value: unknown): BusinessIdentity | null => {
@@ -89,7 +88,7 @@ export const createBusinessClient = (
   apiFetch: (path: string, init?: RequestInit) => Promise<Response>,
 ): BusinessClient => ({
   async getManagedBusiness(
-    businessId: number = CONSTRUCTION_MANAGED_BUSINESS_ID,
+    businessId: number,
   ): Promise<BusinessIdentity> {
     const response = await apiFetch(`/api/v1/businesses/${businessId}/managed`, {
       method: 'GET',
@@ -109,4 +108,25 @@ export const createBusinessClient = (
     }
     return business;
   },
+  async getManagedBusinessContext(): Promise<BusinessIdentity> {
+    const response = await apiFetch('/api/v1/businesses/managed', { method: 'GET' });
+    if (!response.ok) {
+      const code = await readErrorCode(response);
+      throw new BusinessApiError(
+        `Managed business context request failed (${response.status}): ${code}`,
+        response.status,
+        code,
+      );
+    }
+    const body = (await response.json()) as { business?: unknown };
+    const business = parseBusiness(body.business);
+    if (!business) {
+      throw new BusinessApiError(
+        'Managed business context response was invalid',
+        response.status,
+        'invalid_response',
+      );
+    }
+    return business;
+  }
 });

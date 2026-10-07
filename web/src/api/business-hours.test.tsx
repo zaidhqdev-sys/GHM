@@ -10,7 +10,6 @@ import {
   userFacingBusinessHoursError,
   type BusinessHoursRow,
 } from './business-hours';
-import { CONSTRUCTION_MANAGED_BUSINESS_ID } from '../config/construction-business';
 import { BusinessHoursView } from '../pages/BusinessHoursPage';
 import { REFRESH_TOKEN_STORAGE_KEY } from '../auth/session';
 
@@ -33,13 +32,13 @@ describe('business hours API client', () => {
       Response.json({ hours: [sampleRow()] }, { status: 200 }),
     );
     const client = createBusinessHoursClient(apiFetch);
-    const hours = await client.getBusinessHours();
+    const hours = await client.getBusinessHours(265);
 
     expect(apiFetch).toHaveBeenCalledTimes(1);
     const call = apiFetch.mock.calls[0];
     expect(call).toBeDefined();
     const [path, init] = call!;
-    expect(path).toBe(`/api/v1/businesses/${CONSTRUCTION_MANAGED_BUSINESS_ID}/hours`);
+    expect(path).toBe('/api/v1/businesses/265/hours');
     expect((init as RequestInit | undefined)?.method).toBe('GET');
     expect(hours).toHaveLength(1);
     expect(hours[0]?.dayOfWeek).toBe(1);
