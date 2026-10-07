@@ -35,6 +35,15 @@ export const config = Object.freeze({
   inviteCode: required('INVITE_CODE'),
   corsOrigins: parseOrigins(required('CORS_ORIGINS')),
   trustProxy: process.env.TRUST_PROXY === 'true',
+  payfast: Object.freeze({
+    environment: (process.env.PAYFAST_ENVIRONMENT ?? 'sandbox') as 'sandbox' | 'live',
+    merchantId: process.env.PAYFAST_MERCHANT_ID?.trim() ?? '',
+    merchantKey: process.env.PAYFAST_MERCHANT_KEY?.trim() ?? '',
+    passphrase: process.env.PAYFAST_PASSPHRASE?.trim() || null,
+    returnUrl: process.env.PAYFAST_RETURN_URL?.trim() ?? '',
+    cancelUrl: process.env.PAYFAST_CANCEL_URL?.trim() ?? '',
+    notifyUrl: process.env.PAYFAST_NOTIFY_URL?.trim() ?? '',
+  }),
 });
 
 if (!Number.isInteger(config.port) || config.port < 1 || config.port > 65535) {
@@ -43,6 +52,14 @@ if (!Number.isInteger(config.port) || config.port < 1 || config.port > 65535) {
 
 if (config.corsOrigins.length === 0) {
   throw new Error('CORS_ORIGINS must contain at least one origin');
+}
+
+if (!['sandbox', 'live'].includes(config.payfast.environment)) {
+  throw new Error('PAYFAST_ENVIRONMENT must be sandbox or live');
+}
+
+if (config.payfast.environment === 'live' && config.isProduction && (!config.payfast.merchantId || !config.payfast.merchantKey || !config.payfast.returnUrl || !config.payfast.cancelUrl || !config.payfast.notifyUrl)) {
+  throw new Error('Production live Payfast configuration requires merchant credentials and callback URLs');
 }
 
 if (config.isProduction && !config.databaseSsl) {
