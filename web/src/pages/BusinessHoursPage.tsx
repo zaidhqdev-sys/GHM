@@ -6,7 +6,7 @@ import {
   userFacingBusinessHoursError,
   type WeeklyHoursDay,
 } from '../api/business-hours';
-import { CONSTRUCTION_MANAGED_BUSINESS_ID } from '../config/construction-business';
+import { createBusinessClient } from '../api/business';
 import { useGhmSession } from '../auth/GhmSessionProvider';
 
 export const BusinessHoursView = ({
@@ -47,9 +47,11 @@ export const BusinessHoursPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState<readonly WeeklyHoursDay[] | null>(null);
+  const [businessId, setBusinessId] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    const businessClient = createBusinessClient((path, init) => client.apiFetch(path, init));
     const businessClient = createBusinessClient((path, init) => client.apiFetch(path, init));
     const hoursClient = createBusinessHoursClient((path, init) => client.apiFetch(path, init));
 
@@ -57,7 +59,9 @@ export const BusinessHoursPage = () => {
       setLoading(true);
       setError(null);
       try {
-        const hours = await hoursClient.getBusinessHours(CONSTRUCTION_MANAGED_BUSINESS_ID);
+        const business = await businessClient.getManagedBusinessContext();
+        if (!cancelled) setBusinessId(business.id);
+        const hours = await hoursClient.getBusinessHours(business.id);
         if (!cancelled) {
           setDays(buildWeeklyHoursDisplay(hours));
         }
@@ -83,7 +87,7 @@ export const BusinessHoursPage = () => {
       loading={loading}
       error={error}
       days={days}
-      businessId={CONSTRUCTION_MANAGED_BUSINESS_ID}
+      businessId={businessId ?? 0}
     />
   );
 };
