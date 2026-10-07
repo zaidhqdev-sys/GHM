@@ -7,7 +7,6 @@ import { PostgresConnectServiceAssertionReplayStore, requireFreshConnectServiceA
 import { PostgresCommercialProviderBoundary } from '../resources/commercial/provider-boundary';
 import type { ApplyCommercialPaymentResultInput } from '../resources/commercial/contracts';
 import type { CommercialProviderBoundary } from '../resources/commercial/contracts';
-import { isRegisteredOperation } from '../resources/registry';
 
 class CommercialInternalHttpError extends Error {
   constructor(message: string, readonly status = 401) { super(message); this.name = 'CommercialInternalHttpError'; }
@@ -64,7 +63,6 @@ export const registerCommercialInternalRoutes = (
       const verified = assertionService.verify(token);
       await requireFreshConnectServiceAssertion(replayStore, verified.requestId, verified.integrationId, new Date(verified.claims.exp * 1000));
       await requireActiveConnectIntegration(lifecycle, verified.integrationId);
-      if (!isRegisteredOperation('commercial', 'applyPaymentResult')) throw new CommercialInternalHttpError('Commercial payment-result operation is not registered', 503);
       const input = parseInput(req.body);
       if (!input) { res.status(400).json({ error: 'invalid_request' }); return; }
       const transaction = await providerBoundary.applyCommercialPaymentResult(input);
