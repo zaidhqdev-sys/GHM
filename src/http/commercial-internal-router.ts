@@ -109,9 +109,12 @@ const parsePrepareInput = (body: unknown): { businessId: number; externalIdentit
   };
 };
 
+export type PayfastHttpRouteBoundary = Pick<PayfastHttpBoundary, 'createCheckout' | 'handleItn'>;
+
 export const registerCommercialInternalRoutes = (
   app: Express,
   providerBoundary: CommercialProviderBoundary = new PostgresCommercialProviderBoundary(),
+  payfastHttpBoundary?: PayfastHttpRouteBoundary,
 ): void => {
   const replayStore = new PostgresConnectServiceAssertionReplayStore(pool);
   const lifecycle = new PostgresConnectIntegrationLifecycleRepository(pool);
@@ -157,7 +160,7 @@ export const registerCommercialInternalRoutes = (
     }
   });
 
-  const payfastBoundary = new PayfastHttpBoundary(pool, providerBoundary);
+  const payfastBoundary = payfastHttpBoundary ?? new PayfastHttpBoundary(pool, providerBoundary);
 
   app.get('/api/v1/internal/commercial/payfast/checkout/:paymentAttemptId', async (req: Request, res: Response) => {
     try {
