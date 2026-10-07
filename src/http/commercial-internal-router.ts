@@ -6,6 +6,7 @@ import { PostgresConnectIntegrationLifecycleRepository } from '../integrations/c
 import { createConnectServiceAssertionService } from '../integrations/connect/service-assertion';
 import { PostgresConnectServiceAssertionReplayStore, requireFreshConnectServiceAssertion } from '../integrations/connect/service-assertion-replay';
 import { requireActiveConnectIntegration } from '../integrations/connect/integration-lifecycle';
+import { PostgresCommercialProviderBoundary } from '../resources/commercial/provider-boundary';
 import type { ApplyCommercialPaymentResultInput } from '../resources/commercial/contracts';
 import type { CommercialProviderBoundary } from '../resources/commercial/contracts';
 
@@ -52,7 +53,7 @@ const parseInput = (body: unknown): ApplyCommercialPaymentResultInput | null => 
 
 export const registerCommercialInternalRoutes = (
   app: Express,
-  providerBoundary: CommercialProviderBoundary = new (require('../resources/commercial/provider-boundary').PostgresCommercialProviderBoundary)(),
+  providerBoundary: CommercialProviderBoundary = new PostgresCommercialProviderBoundary(),
 ): void => {
   const assertionService = createConnectServiceAssertionService(loadEs256Keys());
   const replayStore = new PostgresConnectServiceAssertionReplayStore(pool);
