@@ -18,8 +18,7 @@ export type ResourceOperation =
   | 'replyAsAdmin'
   | 'delete'
   | 'calculate'
-  | 'accept'
-  | 'applyPaymentResult';
+  | 'accept';
 
 export interface ResourceDefinition {
   readonly resource: Resource;
