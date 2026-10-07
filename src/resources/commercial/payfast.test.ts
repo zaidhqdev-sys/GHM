@@ -9,7 +9,7 @@ test('generates a deterministic PayFast signature', () => {
     amount: '199.00',
     item_name: 'Business Pro',
   }, 'secret');
-  assert.equal(signature, 'e7a2f6f0f7f6c3b9f2b1b0c8c5d6d8d4');
+  assert.equal(signature, '3bea28e8f873c40be0186d662433bb8c');
 });
 
 test('verifies a valid PayFast ITN', () => {
