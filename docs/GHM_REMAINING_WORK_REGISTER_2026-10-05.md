@@ -1,7 +1,7 @@
 # GHM Remaining Work Register — 2026-10-05
 
 **Status:** CURRENT GOVERNED REMAINING-WORK REGISTER  
-**Repository authority:** consolidated `main` at `4fd34bc620ab0612f8f643d7b4f7b8374ed6a2cf`; this register is reconciled on the active PayFast ITN construction branch  
+**Repository authority:** consolidated `main` at `70b791e76ca0a0a1ddd6eff0838fafd11b81501c`; this register is reconciled after the PayFast ITN server-confirmation merge  
 **Purpose:** establish the exact work that remains before GHM can become the backend for Zaid Connect and QuoteFlow. This register is the construction/cutover planning authority after the 2026-10-05 documentation reconciliation.
 
 ## 1. Authority rule
@@ -129,9 +129,9 @@ Remaining:
 - PayFast ITN callback HTTP boundary — merged to `main` and awaiting runtime qualification;
 - PayFast provider-specific signature/source-IP/merchant/amount/status verification — implemented on `main` and awaiting runtime qualification;
 - PayFast provider configuration boundary — code/config contract added with sandbox as the non-production default; production credentials and live enablement remain gated;
-- PayFast ITN server-to-server confirmation against the provider validation endpoint — current construction slice;
-- PayFast sandbox end-to-end qualification, including checkout, ITN server confirmation and governed payment-result application;
-- runtime qualification against a non-production provider environment;
+- PayFast ITN server-to-server confirmation against the provider validation endpoint — merged to `main` and post-merge verified; sandbox/runtime qualification remains;
+- PayFast sandbox end-to-end qualification, including checkout, ITN server confirmation and governed payment-result application — next qualification gate;
+- runtime qualification against a non-production provider environment — required before sandbox end-to-end completion and production enablement;
 - only then production provider enablement/cutover.
 
 **Approved provider direction:** PayFast is approved for the commercial payment path. Provider approval/configuration is not itself evidence that the provider-specific GHM integration is implemented or production-enabled.
