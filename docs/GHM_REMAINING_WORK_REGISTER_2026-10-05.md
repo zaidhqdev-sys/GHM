@@ -1,7 +1,7 @@
 # GHM Remaining Work Register — 2026-10-05
 
 **Status:** CURRENT GOVERNED REMAINING-WORK REGISTER  
-**Repository authority:** consolidated `main` at `4fd34bc620ab0612f8f643d7b4f7b8374ed6a2cf` before this construction slice  
+**Repository authority:** consolidated `main` at `4fd34bc620ab0612f8f643d7b4f7b8374ed6a2cf`; this register is reconciled on the active PayFast ITN construction branch  
 **Purpose:** establish the exact work that remains before GHM can become the backend for Zaid Connect and QuoteFlow. This register is the construction/cutover planning authority after the 2026-10-05 documentation reconciliation.
 
 ## 1. Authority rule
