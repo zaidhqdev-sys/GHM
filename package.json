@@ -42,6 +42,7 @@
     "qualify:commercial-payment-runtime": "node scripts/qualify-commercial-payment-runtime.mjs",
     "qualify:commercial-payment-result-runtime": "node scripts/qualify-commercial-payment-result-runtime.mjs",
     "qualify:commercial-payment-prepare-runtime": "npm run build && node scripts/qualify-commercial-payment-prepare-runtime.mjs",
+    "qualify:payfast-runtime": "npm run build && node scripts/qualify-payfast-runtime.mjs",
     "qualify:quoteflow-migration-snapshot": "npm run build && node scripts/qualify-quoteflow-migration-snapshot.mjs",
     "qualify:quoteflow-migration-reconciliation": "npm run build && node scripts/qualify-quoteflow-migration-reconciliation.mjs",
     "qualify:quoteflow-migration-account-provisioning": "npm run build && node scripts/qualify-quoteflow-migration-account-provisioning.mjs",
