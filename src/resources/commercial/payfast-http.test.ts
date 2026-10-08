@@ -113,7 +113,10 @@ test('Payfast ITN boundary applies the governed result only after provider confi
   const boundary = new PayfastHttpBoundary(
     {
       query: async () => ({
+        command: 'SELECT',
         rowCount: 1,
+        oid: 0,
+        fields: [],
         rows: [{ id: 42, amount_minor_units: 19900, attempt_status: 'pending_payment' }],
       }),
     },
@@ -142,7 +145,10 @@ test('Payfast ITN boundary fails closed when provider confirmation fails', async
   const boundary = new PayfastHttpBoundary(
     {
       query: async () => ({
+        command: 'SELECT',
         rowCount: 1,
+        oid: 0,
+        fields: [],
         rows: [{ id: 42, amount_minor_units: 19900, attempt_status: 'pending_payment' }],
       }),
     },
