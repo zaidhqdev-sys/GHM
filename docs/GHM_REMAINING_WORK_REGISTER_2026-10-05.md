@@ -125,10 +125,10 @@ Qualified foundations:
 - provider-event idempotent application at the GHM boundary.
 
 Remaining:
-- PayFast checkout/redirect boundary;
-- PayFast ITN callback contract and provider-specific signature verification;
-- PayFast provider integration and production credential/configuration boundary;
-- PayFast sandbox qualification, including checkout signature generation, ITN signature/source/amount validation, and governed payment-result application;
+- PayFast checkout/redirect HTTP boundary — construction in `construction/ghm-payfast-http-boundary`, not yet runtime-qualified;
+- PayFast ITN callback contract and provider-specific signature/source/amount verification — construction in progress, not yet runtime-qualified;
+- PayFast provider configuration boundary — code/config contract added with sandbox as the non-production default; production credentials and live enablement remain gated;
+- PayFast sandbox qualification, including checkout signature generation, ITN signature/source/amount validation, and governed payment-result application — remains open until this construction slice passes the canonical suite and sandbox qualification;
 - runtime qualification against a non-production provider environment;
 - only then production provider enablement/cutover.
 
