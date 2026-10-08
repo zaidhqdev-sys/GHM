@@ -2,7 +2,7 @@
 
 **Status:** CURRENT / AUTHORITATIVE DOCUMENTATION INDEX — 2026-10-05
 **Repository authority:** consolidated `main`
-**Current main:** `3e73f69549b9f55c383e83277b97172dea9f8b67`
+**Current main:** `4fd34bc620ab0612f8f643d7b4f7b8374ed6a2cf`
 
 ## Purpose
 
@@ -36,7 +36,7 @@ Each was qualified without broad resource refactoring or caller-controlled tenan
 
 The Commercial domain has a constructed/qualified trial boundary and qualified country/currency reference-data dependency. Internal commercial events and external commercial-provider events are distinct existing ledgers; no second generic event ledger is authorized merely for audit convenience.
 
-Payment-provider integration, production credentials, production cutover, and provider-specific side effects remain separately gated.
+Payment-provider integration, production credentials, production cutover, and provider-specific side effects remain separately gated. The PayFast HTTP checkout/ITN boundary is merged on `main`; PayFast ITN server-to-server confirmation is the active construction slice and remains unmerged until qualification and documentation reconciliation are complete.
 
 ## Storage
 
