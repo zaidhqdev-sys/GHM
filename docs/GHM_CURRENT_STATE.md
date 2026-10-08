@@ -2,7 +2,7 @@
 
 **Status:** CURRENT / AUTHORITATIVE DOCUMENTATION INDEX — 2026-10-05
 **Repository authority:** consolidated `main`
-**Current main:** `70b791e76ca0a0a1ddd6eff0838fafd11b81501c`
+**Current main at this slice's start:** `e9ad72d417585d0046f9bf95402931959255eb88`
 
 ## Purpose
 
@@ -36,7 +36,7 @@ Each was qualified without broad resource refactoring or caller-controlled tenan
 
 The Commercial domain has a constructed/qualified trial boundary and qualified country/currency reference-data dependency. Internal commercial events and external commercial-provider events are distinct existing ledgers; no second generic event ledger is authorized merely for audit convenience.
 
-Payment-provider integration, production credentials, production cutover, and provider-specific side effects remain separately gated. The PayFast HTTP checkout/ITN boundary and PayFast ITN server-to-server confirmation are merged on `main`. Post-merge local verification passed at 557/557 tests. The next gate is non-production/runtime qualification, followed by sandbox end-to-end qualification; production credentials and live enablement remain separately gated.
+Payment-provider integration, production credentials, production cutover, and provider-specific side effects remain separately gated. The PayFast HTTP checkout/ITN boundary and PayFast ITN server-to-server confirmation are merged on `main`. Post-merge local verification passed at 557/557 tests. A local sandbox-only qualification runner has now been added on the active construction branch (`npm run qualify:payfast-runtime`). It runs the deterministic PayFast signature, checkout, ITN confirmation-order/fail-closed, HTTP route, and configuration tests with provider HTTP stubbed; it does not call PayFast, access a database, or require live credentials. This runner has not yet been executed in the founder's local checkout. Real PayFast sandbox end-to-end qualification remains a separate gate; production credentials and live enablement remain separately gated.
 
 ## Storage
 
