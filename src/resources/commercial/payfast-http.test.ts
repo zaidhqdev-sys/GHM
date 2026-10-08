@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildPayfastCheckout, PayfastHttpBoundary, validatePayfastItnWithProvider } from './payfast-http';
+import { buildPayfastCheckout, generatePayfastSignature, PayfastHttpBoundary, validatePayfastItnWithProvider } from './payfast-http';
 
 const base = {
   merchantId: '10000100',
@@ -101,6 +101,14 @@ test('Payfast ITN provider validation rejects network failures', async () => {
 
 test('Payfast ITN boundary applies the governed result only after provider confirmation', async () => {
   const calls: string[] = [];
+  const unsigned = {
+    merchant_id: '10000100',
+    m_payment_id: '42',
+    pf_payment_id: 'pf-123',
+    amount_gross: '199.00',
+    payment_status: 'COMPLETE',
+  };
+  const fields = { ...unsigned, signature: generatePayfastSignature(unsigned, 'secret') };
   const boundary = new PayfastHttpBoundary(
     {
       query: async () => ({
@@ -116,19 +124,20 @@ test('Payfast ITN boundary applies the governed result only after provider confi
     },
     async () => { calls.push('validate'); },
   );
-  await boundary.handleItn({
+  await boundary.handleItn(fields, '197.97.145.150');
+  assert.deepEqual(calls, ['validate', 'apply']);
+});
+
+test('Payfast ITN boundary fails closed when provider confirmation fails', async () => {
+  let applied = false;
+  const unsigned = {
     merchant_id: '10000100',
     m_payment_id: '42',
     pf_payment_id: 'pf-123',
     amount_gross: '199.00',
     payment_status: 'COMPLETE',
-    signature: 'generated',
-  }, '197.97.145.150').catch(() => undefined);
-  assert.deepEqual(calls, []);
-});
-
-test('Payfast ITN boundary fails closed when provider confirmation fails', async () => {
-  let applied = false;
+  };
+  const fields = { ...unsigned, signature: generatePayfastSignature(unsigned, 'secret') };
   const boundary = new PayfastHttpBoundary(
     {
       query: async () => ({
@@ -144,14 +153,6 @@ test('Payfast ITN boundary fails closed when provider confirmation fails', async
     },
     async () => { throw new Error('server confirmation invalid'); },
   );
-  const fields = {
-    merchant_id: '10000100',
-    m_payment_id: '42',
-    pf_payment_id: 'pf-123',
-    amount_gross: '199.00',
-    payment_status: 'COMPLETE',
-    signature: '00000000000000000000000000000000',
-  };
-  await assert.rejects(boundary.handleItn(fields, '197.97.145.150'), /signature invalid/);
+  await assert.rejects(boundary.handleItn(fields, '197.97.145.150'), /server confirmation invalid/);
   assert.equal(applied, false);
 });
