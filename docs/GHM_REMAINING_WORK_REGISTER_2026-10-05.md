@@ -1,7 +1,7 @@
 # GHM Remaining Work Register — 2026-10-05
 
 **Status:** CURRENT GOVERNED REMAINING-WORK REGISTER  
-**Repository authority:** consolidated `main` at `70b791e76ca0a0a1ddd6eff0838fafd11b81501c`; this register is reconciled after the PayFast ITN server-confirmation merge  
+**Repository authority at this slice's start:** consolidated `main` at `e9ad72d417585d0046f9bf95402931959255eb88`; this register is updated on the PayFast runtime-qualification construction branch  
 **Purpose:** establish the exact work that remains before GHM can become the backend for Zaid Connect and QuoteFlow. This register is the construction/cutover planning authority after the 2026-10-05 documentation reconciliation.
 
 ## 1. Authority rule
@@ -130,8 +130,9 @@ Remaining:
 - PayFast provider-specific signature/source-IP/merchant/amount/status verification — implemented on `main` and awaiting runtime qualification;
 - PayFast provider configuration boundary — code/config contract added with sandbox as the non-production default; production credentials and live enablement remain gated;
 - PayFast ITN server-to-server confirmation against the provider validation endpoint — merged to `main` and post-merge verified; sandbox/runtime qualification remains;
-- PayFast sandbox end-to-end qualification, including checkout, ITN server confirmation and governed payment-result application — next qualification gate;
-- runtime qualification against a non-production provider environment — required before sandbox end-to-end completion and production enablement;
+- Local deterministic PayFast qualification runner — added on the active construction branch as `npm run qualify:payfast-runtime`; it exercises existing unit/config/HTTP tests with provider HTTP stubbed, with no provider network call, database access, or live credentials. Execution in the founder's local checkout is still required;
+- PayFast sandbox end-to-end qualification, including checkout, ITN server confirmation and governed payment-result application — remains a separate qualification gate after local runner verification;
+- runtime qualification against a non-production provider environment — not yet complete; must use explicit sandbox configuration and approved test merchant credentials only, never production/live credentials;
 - only then production provider enablement/cutover.
 
 **Approved provider direction:** PayFast is approved for the commercial payment path. Provider approval/configuration is not itself evidence that the provider-specific GHM integration is implemented or production-enabled.
