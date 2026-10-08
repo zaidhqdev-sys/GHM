@@ -24,7 +24,7 @@ const payloadHash = (fields: Readonly<Record<string, string>>): string =>
 
 const encodeItnFields = (fields: Readonly<Record<string, string>>): string =>
   Object.entries(fields)
-    .filter(([key, value]) => key !== 'signature' && value !== undefined && value !== '')
+    .filter(([, value]) => value !== undefined && value !== '')
     .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value).replace(/%20/g, '+')}`)
     .join('&');
 
