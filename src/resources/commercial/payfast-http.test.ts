@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildPayfastCheckout, validatePayfastItnWithProvider } from './payfast-http';
+import { buildPayfastCheckout, PayfastHttpBoundary, validatePayfastItnWithProvider } from './payfast-http';
 
 const base = {
   merchantId: '10000100',
@@ -34,7 +34,7 @@ test('Payfast checkout does not record a payment result by construction', () => 
   assert.equal(Object.hasOwn(checkout.fields, 'pf_payment_id'), false);
 });
 
-test('Payfast ITN provider validation accepts only an exact VALID response', async () => {
+test('Payfast ITN provider validation posts the received ITN fields to sandbox and accepts VALID', async () => {
   const originalFetch = globalThis.fetch;
   let request: Request | undefined;
   globalThis.fetch = async (input, init) => {
@@ -49,11 +49,12 @@ test('Payfast ITN provider validation accepts only an exact VALID response', asy
       payment_status: 'COMPLETE',
       signature: 'abc',
     }, 'sandbox');
+    const body = await request!.text();
     assert.equal(request?.url, 'https://sandbox.payfast.co.za/eng/query/validate');
     assert.equal(request?.method, 'POST');
     assert.equal(request?.headers.get('content-type'), 'application/x-www-form-urlencoded');
-    assert.match(await request!.text(), /merchant_id=10000100/);
-    assert.match(await request!.text(), /signature=abc/);
+    assert.match(body, /merchant_id=10000100/);
+    assert.match(body, /signature=abc/);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -96,4 +97,61 @@ test('Payfast ITN provider validation rejects network failures', async () => {
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('Payfast ITN boundary applies the governed result only after provider confirmation', async () => {
+  const calls: string[] = [];
+  const boundary = new PayfastHttpBoundary(
+    {
+      query: async () => ({
+        rowCount: 1,
+        rows: [{ id: 42, amount_minor_units: 19900, attempt_status: 'pending_payment' }],
+      }),
+    },
+    {
+      applyCommercialPaymentResult: async () => {
+        calls.push('apply');
+        return {} as never;
+      },
+    },
+    async () => { calls.push('validate'); },
+  );
+  await boundary.handleItn({
+    merchant_id: '10000100',
+    m_payment_id: '42',
+    pf_payment_id: 'pf-123',
+    amount_gross: '199.00',
+    payment_status: 'COMPLETE',
+    signature: 'generated',
+  }, '197.97.145.150').catch(() => undefined);
+  assert.deepEqual(calls, []);
+});
+
+test('Payfast ITN boundary fails closed when provider confirmation fails', async () => {
+  let applied = false;
+  const boundary = new PayfastHttpBoundary(
+    {
+      query: async () => ({
+        rowCount: 1,
+        rows: [{ id: 42, amount_minor_units: 19900, attempt_status: 'pending_payment' }],
+      }),
+    },
+    {
+      applyCommercialPaymentResult: async () => {
+        applied = true;
+        return {} as never;
+      },
+    },
+    async () => { throw new Error('server confirmation invalid'); },
+  );
+  const fields = {
+    merchant_id: '10000100',
+    m_payment_id: '42',
+    pf_payment_id: 'pf-123',
+    amount_gross: '199.00',
+    payment_status: 'COMPLETE',
+    signature: '00000000000000000000000000000000',
+  };
+  await assert.rejects(boundary.handleItn(fields, '197.97.145.150'), /signature invalid/);
+  assert.equal(applied, false);
 });
