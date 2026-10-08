@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildPayfastCheckout, generatePayfastSignature, PayfastHttpBoundary, validatePayfastItnWithProvider } from './payfast-http';
+import { buildPayfastCheckout, PayfastHttpBoundary, validatePayfastItnWithProvider } from './payfast-http';
+import { generatePayfastSignature } from './payfast';
 
 const base = {
   merchantId: '10000100',
