@@ -1,13 +1,18 @@
 import { createHash } from 'node:crypto';
 import type { Pool } from 'pg';
 import { config } from '../../config';
-import { generatePayfastSignature, PAYFAST_PAYMENT_URLS, verifyPayfastItn } from './payfast';
+import { generatePayfastSignature, PAYFAST_ITN_VALIDATION_URLS, PAYFAST_PAYMENT_URLS, verifyPayfastItn } from './payfast';
 import type { ApplyCommercialPaymentResultInput, CommercialPaymentTransaction, CommercialProviderBoundary } from './contracts';
 
 export interface PayfastCheckout {
   readonly actionUrl: string;
   readonly fields: Readonly<Record<string, string>>;
 }
+
+export type PayfastItnValidator = (
+  fields: Readonly<Record<string, string>>,
+  environment: 'sandbox' | 'live',
+) => Promise<void>;
 
 const amountMajor = (minor: number): string => (minor / 100).toFixed(2);
 const requireAttemptId = (value: unknown): number => {
@@ -16,6 +21,24 @@ const requireAttemptId = (value: unknown): number => {
 };
 const payloadHash = (fields: Readonly<Record<string, string>>): string =>
   createHash('sha256').update(JSON.stringify(fields), 'utf8').digest('hex');
+
+const encodeItnFields = (fields: Readonly<Record<string, string>>): string =>
+  Object.entries(fields)
+    .filter(([key, value]) => key !== 'signature' && value !== undefined && value !== '')
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value).replace(/%20/g, '+')}`)
+    .join('&');
+
+export const validatePayfastItnWithProvider: PayfastItnValidator = async (fields, environment) => {
+  const response = await fetch(PAYFAST_ITN_VALIDATION_URLS[environment], {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: encodeItnFields(fields),
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!response.ok) throw new Error(`Payfast ITN server confirmation HTTP ${response.status}`);
+  const result = (await response.text()).trim();
+  if (result !== 'VALID') throw new Error('Payfast ITN server confirmation invalid');
+};
 
 export const buildPayfastCheckout = (input: {
   merchantId: string; merchantKey: string; passphrase?: string | null; environment: 'sandbox' | 'live';
@@ -42,6 +65,7 @@ export class PayfastHttpBoundary {
   constructor(
     private readonly transactionPool: Pick<Pool, 'query'>,
     private readonly providerBoundary: CommercialProviderBoundary,
+    private readonly validateItn: PayfastItnValidator = validatePayfastItnWithProvider,
   ) {}
 
   async createCheckout(paymentAttemptIdValue: unknown): Promise<PayfastCheckout> {
@@ -84,6 +108,7 @@ export class PayfastHttpBoundary {
     });
     const providerPaymentId = verified.providerPaymentId;
     if (!providerPaymentId || !/^[!-~]{1,200}$/.test(providerPaymentId)) throw new Error('Payfast ITN provider payment identifier missing or invalid');
+    await this.validateItn(fields, config.payfast.environment);
     return this.providerBoundary.applyCommercialPaymentResult({
       paymentAttemptId, providerCode: 'payfast', externalProviderEventId: providerPaymentId,
       providerEventType: 'itn', providerPayloadHash: payloadHash(fields), transactionKind: 'payment',
