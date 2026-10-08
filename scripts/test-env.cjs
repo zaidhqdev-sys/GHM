@@ -10,3 +10,4 @@ process.env.INVITE_CODE ??= 'test-invite-code';
 process.env.CORS_ORIGINS ??= 'http://localhost:3000';
 
 process.env.PAYFAST_MERCHANT_ID ??= '10000100';
+process.env.PAYFAST_PASSPHRASE ??= 'secret';
