@@ -70,7 +70,7 @@ test('Connect Business mapping resolves to the canonical positive GHM business I
   });
   assert.equal(result, 57);
   assert.deepEqual(captured[1], ['supabase', externalBusinessId]);
-  assert.match(String(captured[0]), /ghm\.business_external_mapping/);
+  assert.match(String(captured[0]), /ghm\.auth_lookup_business_external_mapping/);
 });
 
 test('missing or invalid Connect Business mapping fails closed', async () => {
