@@ -64,13 +64,22 @@ const parseInput = (body: unknown): ApplyCommercialPaymentResultInput | null => 
   };
 };
 
-const parsePrepareInput = (body: unknown): { businessId: number; externalIdentity: { provider: 'supabase'; subject: string }; countryId: number | null; idempotencyKey: string; expiresAt: Date | null } | null => {
+const CONNECT_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export type CommercialPaymentPrepareInput = {
+  externalBusinessId: string;
+  externalIdentity: { provider: 'supabase'; subject: string };
+  countryId: number | null;
+  idempotencyKey: string;
+  expiresAt: Date | null;
+};
+
+export const parsePrepareInput = (body: unknown): CommercialPaymentPrepareInput | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   const b = body as Record<string, unknown>;
   const positive = (v: unknown): v is number => Number.isSafeInteger(v) && (v as number) > 0;
   const uuid = (v: unknown): v is string =>
-    typeof v === 'string' &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v.trim());
+    typeof v === 'string' && CONNECT_UUID_PATTERN.test(v.trim());
   const opaque = (v: unknown): v is string =>
     typeof v === 'string' &&
     v.trim().length >= 8 &&
@@ -78,7 +87,7 @@ const parsePrepareInput = (body: unknown): { businessId: number; externalIdentit
     /^[!-~]+$/.test(v.trim());
 
   if (
-    !positive(b.businessId) ||
+    !uuid(b.externalBusinessId) ||
     !b.externalIdentity ||
     typeof b.externalIdentity !== 'object' ||
     Array.isArray(b.externalIdentity) ||
@@ -98,7 +107,7 @@ const parsePrepareInput = (body: unknown): { businessId: number; externalIdentit
 
   const identity = b.externalIdentity as Record<string, unknown>;
   return {
-    businessId: b.businessId,
+    externalBusinessId: b.externalBusinessId.trim().toLowerCase(),
     externalIdentity: {
       provider: 'supabase',
       subject: (identity.subject as string).trim().toLowerCase(),
@@ -107,6 +116,30 @@ const parsePrepareInput = (body: unknown): { businessId: number; externalIdentit
     idempotencyKey: b.idempotencyKey.trim(),
     expiresAt,
   };
+};
+
+export const resolveConnectBusinessId = async (
+  externalBusinessId: string,
+  query: (sql: string, values: unknown[]) => Promise<{
+    rowCount: number | null;
+    rows: Array<{ business_id: unknown }>;
+  }>,
+): Promise<number | null> => {
+  if (typeof externalBusinessId !== 'string' || !CONNECT_UUID_PATTERN.test(externalBusinessId.trim())) {
+    return null;
+  }
+
+  const result = await query(
+    `SELECT business_id
+       FROM ghm.business_external_mapping
+      WHERE provider = $1
+        AND external_business_id = $2`,
+    ['supabase', externalBusinessId.trim().toLowerCase()],
+  );
+  if (result.rowCount !== 1) return null;
+
+  const businessId = Number(result.rows[0]?.business_id);
+  return Number.isSafeInteger(businessId) && businessId > 0 ? businessId : null;
 };
 
 export type PayfastHttpRouteBoundary = {
@@ -147,11 +180,22 @@ export const registerCommercialInternalRoutes = (
         return;
       }
 
+      // Resolve the caller's Supabase Business UUID through GHM's canonical mapping.
+      // Never accept a numeric GHM business ID from the caller.
+      const businessId = await resolveConnectBusinessId(
+        input.externalBusinessId,
+        (sql, values) => pool.query(sql, values),
+      );
+      if (businessId === null) {
+        res.status(409).json({ error: 'commercial_conflict' });
+        return;
+      }
+
       const service = new DefaultCommercialService(new PostgresCommercialRepository());
       const paymentAttempt = await service.prepareCommercialPayment(
         actor,
         {
-          businessId: input.businessId,
+          businessId,
           countryId: input.countryId,
           idempotencyKey: input.idempotencyKey,
           expiresAt: input.expiresAt,
