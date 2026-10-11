@@ -130,10 +130,7 @@ export const resolveConnectBusinessId = async (
   }
 
   const result = await query(
-    `SELECT business_id
-       FROM ghm.business_external_mapping
-      WHERE provider = $1
-        AND external_business_id = $2`,
+    'SELECT * FROM ghm.auth_lookup_business_external_mapping($1, $2)',
     ['supabase', externalBusinessId.trim().toLowerCase()],
   );
   if (result.rowCount !== 1) return null;
