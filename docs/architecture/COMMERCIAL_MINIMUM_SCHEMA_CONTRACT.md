@@ -1,7 +1,9 @@
 # GHM Commercial Capability — Minimum Schema Contract
 
-**Status:** CONSTRUCTION CONTRACT — SCHEMA DESIGN AUTHORIZED
-**Date:** 2026-09-15
+**Status:** HISTORICAL SCHEMA-DESIGN CONTRACT — COMMERCIAL SCHEMA CONSTRUCTED; PRODUCTION CUTOVER REMAINS GATED
+**Original design date:** 2026-09-15
+
+> **Current-status reconciliation — 2026-10-12:** The provider-neutral commercial schema/core has since been constructed and qualified in bounded slices. The trial operation is qualified, and the PayFast checkout/ITN adapter is separately implemented and merged with deterministic local qualification passing. This contract remains the source for minimum schema semantics; its original “schema design authorized” status is historical, not a current instruction that construction has yet to begin. QuoteFlow adapter/provisioning, real PayFast sandbox E2E, production provider enablement, product migration, and cutover remain separately gated.
 
 ## 1. Purpose
 
