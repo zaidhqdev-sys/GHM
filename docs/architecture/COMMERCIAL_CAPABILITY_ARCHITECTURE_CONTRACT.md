@@ -555,25 +555,22 @@ Schema mutation authority remains separate through the existing GHM migrator/sch
 
 ---
 
-## 22. Explicit non-goals
+## 22. Original schema-construction non-goals and current reconciliation
 
-This construction does not include:
+The list below records what the original provider-neutral commercial schema/core construction did not include. It is not the current status of all later adapter work:
 
-- Paystack integration;
-- PayFast integration;
-- provider credentials;
-- webhook deployment;
-- payment checkout UI;
-- product subscription UI;
+- **PayFast integration:** the provider-specific checkout/redirect, ITN callback, signature/source-IP/merchant/amount/status verification, and server-to-server ITN confirmation adapter has since been implemented and merged, with deterministic local qualification passing. Real PayFast sandbox end-to-end/runtime qualification remains open.
+- **Paystack integration:** no provider-specific implementation or approval should be inferred from the PayFast work; its status remains separate.
+- **Provider credentials and live enablement:** production credentials, live provider enablement, webhook deployment/configuration, and production payment-result qualification remain separately gated.
+- Payment checkout UI and product subscription UI;
 - migration of live Supabase data;
 - production DNS/routing changes;
 - production credential rotation;
-- production cutover;
-- Supabase removal;
+- production cutover and Supabase removal;
 - generic billing engine functionality;
 - invoice/accounting functionality beyond the commercial transaction evidence required by the source contracts.
 
-Those are separately governed concerns.
+These remain separately governed concerns. The PayFast adapter’s merged implementation does not authorize production enablement or product cutover.
 
 ---
 
