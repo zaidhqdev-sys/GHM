@@ -1,6 +1,6 @@
 # GHM Current State — Authoritative Documentation Reconciliation
 
-**Status:** CURRENT / AUTHORITATIVE DOCUMENTATION INDEX — reconciled 2026-10-12
+**Status:** CURRENT / AUTHORITATIVE DOCUMENTATION INDEX — reconciled 2026-10-13
 **Repository authority:** consolidated `main`
 **Documentation audit anchor:** `1f2b10d0850095311614c5b5f9531eb8b7cce860` (`Normalize migration checksums across line endings`). This identifies the code/evidence baseline checked for this reconciliation; it does not independently establish the currently deployed Render commit or live database state.
 
@@ -8,7 +8,7 @@
 
 This document is the current navigation point for GHM construction state. It reconciles the living architecture/evidence record against the consolidated mainline and explicitly separates qualified construction capability from remaining production-replacement work.
 
-## Reconciled implementation status — 2026-10-12
+## Reconciled implementation status — 2026-10-13
 
 - **Migration checksums:** the current runner canonicalizes SQL line endings and supports a legacy CRLF checksum only when it matches the same SQL content. This is a compatibility correction; it does not rewrite the live ledger or erase the historical provenance exceptions.
 - **PayFast:** checkout/redirect, ITN callback, provider-specific verification, and server-to-server ITN confirmation are implemented and merged. Deterministic local qualification is passing. Real PayFast sandbox end-to-end/runtime qualification remains open; production credentials and live enablement remain separately gated.
