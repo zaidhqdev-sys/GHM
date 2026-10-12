@@ -51,4 +51,6 @@ Result: `180/180` automated tests passed; `git diff --check` clean.
 - GHM Business first-slice lacks Connect profile input columns (`description`, `phone`, `email`, `insurance_verified`, `jobs_completed`); those dimensions score `0` until a separately authorized Business profile extension;
 - no public HTTP Trust routes in this slice;
 - no product adapter, shadow qualification, provider cleanup, production migration, or cutover is authorized;
+- The verification/evidence authority for protected inputs such as `insurance_verified` and `jobs_completed` remains a separate open governance gate; this Trust Score qualification does not certify those inputs or authorize callers to set them.
+- no product adapter, shadow qualification, provider cleanup, production migration, or cutover is authorized;
 - Connect readiness blockers outside Trust remain open.
