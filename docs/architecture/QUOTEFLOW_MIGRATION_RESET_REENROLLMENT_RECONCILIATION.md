@@ -84,7 +84,7 @@ The reset implementation and enrollment lookup construction are **DB-qualified**
 
 Qualification evidence: `c5244bf7-0542-4e60-86fc-9f8ce9f52f39` — PASS. Checks covered synthetic credentialless migration account, Argon2id password establishment, existing session revocation, legacy external identity preservation, recovery single-use, transaction rollback, expired recovery rejection, and runtime secret-table DML sealing.
 
-The remaining decision is final PR review/merge only. Production delivery, production migration, and QuoteFlow runtime cutover remain founder-gated.
+That statement described the earlier reset/enrollment construction slice and is superseded by the 2026-10-04 ceremony reconciliation below. The migration-specific request/completion path has since been constructed, but the complete non-production DB + HTTP ceremony qualification remains open for anti-enumeration, single-use recovery, rollback, session revocation, and post-reset-session invariants. Production delivery, production migration, and QuoteFlow runtime cutover remain founder-gated.
 
 
 ## 2026-10-04 ceremony construction reconciliation
