@@ -1,5 +1,8 @@
 # GHM Authentication Session Contract
 
+> **Historical-status clarification — 2026-10-12:** This Gate 2B contract is a historical decision record. The unresolved session parameters and implementation stop statements were superseded for the bounded session/refresh foundation by Gate 3B and its qualified construction. Use current contracts for any remaining specific open decisions; product migration and production cutover remain separately gated.
+
+
 **Canonical owner:** GHM platform governance
 **Status:** AUTHENTICATION GATE 2B CONTRACT — HISTORICAL DECISION RECORD; session/refresh parameters were subsequently frozen by Gate 3B and the resulting construction foundation is qualified on `main @ ffc4a2a`
 **Authority:** Local repository `C:\GHM`
