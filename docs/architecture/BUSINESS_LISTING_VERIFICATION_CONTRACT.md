@@ -39,14 +39,14 @@ The first canonical construction slice reconciles these fields:
 - `created_at`
 - `updated_at`
 
-The GHM verification status vocabulary remains the reduced construction vocabulary `pending`, `approved`, `rejected`; this is not presented as a complete copy of Connect's internal workflow vocabulary.
+The current canonical GHM verification status vocabulary is `unverified`, `under_review`, `information_requested`, `approved`, and `rejected`. Migration `20260911210000_reconcile_business_verification_state.sql` replaced the initial `pending`/`approved`/`rejected` constraint and translated legacy `pending` rows to `unverified`. These states describe workflow status; they are not authorization primitives.
 
 ## 4. Reconciliation decision
 
 The first canonical GHM Business/Review construction slice resolves the previously open questions as follows:
 
 1. **Separate `is_verified`: YES.** GHM retains a distinct `is_verified` capability field because Connect uses it independently and Review eligibility requires it explicitly.
-2. **Verification status vocabulary:** GHM retains its existing reduced construction vocabulary `pending`, `approved`, `rejected`. Connect-only workflow states such as `under_review` and `information_requested` are not silently invented in the GHM schema.
+2. **Verification status vocabulary:** the current canonical GHM schema uses `unverified`, `under_review`, `information_requested`, `approved`, and `rejected`, as established by the verification-state reconciliation migration. The initial `pending` state is migrated to `unverified`; workflow labels do not independently grant authorization.
 3. **`is_active`: independent.** Activation/publication remains separate from verification state.
 4. **Public/Review eligibility:** a Business is eligible only when `is_active = true`, `is_verified = true`, and `verification_status = 'approved'`.
 5. **Mutation authority:** ordinary Business profile management does not authorize verification or activation mutation. Governed state changes require the explicit GHM authorization boundary.
@@ -66,7 +66,7 @@ verification_status != 'approved' =>  is_verified = false
 
 The construction decision is now explicit:
 
-- `verification_status` represents the GHM Business verification state within the reduced construction vocabulary;
+- `verification_status` represents the GHM Business verification workflow state using the current five-state vocabulary;
 - `is_verified` is a distinct verified flag and is not authorization by itself;
 - `is_active` represents independent Business activation/publication state.
 

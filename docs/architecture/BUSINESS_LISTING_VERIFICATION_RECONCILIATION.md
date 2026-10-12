@@ -28,15 +28,17 @@ is_active
 
 `is_active` remains independently mutable from verification state.
 
-The initial GHM construction vocabulary remains the existing reduced set:
+The current canonical GHM verification vocabulary is:
 
 ```text
-pending
+unverified
+under_review
+information_requested
 approved
 rejected
 ```
 
-Connect-only workflow states such as `under_review` and `information_requested` are not copied into the first GHM slice without a separate capability decision. The first-slice invariant is:
+Migration `20260911210000_reconcile_business_verification_state.sql` replaced the initial `pending`/`approved`/`rejected` constraint and translated legacy `pending` rows to `unverified`. These workflow labels do not themselves grant authorization. The first-slice invariant is:
 
 ```text
 verification_status = 'approved'  =>  is_verified = true
@@ -84,7 +86,7 @@ The Review dependency is reconciled and qualified. It no longer blocks the first
 The construction implementation established the required first-slice state without authorizing production changes:
 
 1. `is_verified` is a distinct Business field with a safe false default;
-2. the first-slice verification state remains within the reconciled GHM vocabulary;
+2. the verification state remains within the current five-state GHM vocabulary;
 3. `is_active` values remain independent of verification;
 4. the approved/verified invariant is enforced;
 5. no production data or provider changes are authorized by this decision.
@@ -98,7 +100,7 @@ This decision does not authorize:
 - provider/bootstrap role cleanup;
 - automatic approval or self-verification;
 - a new verification-history/audit-log subsystem;
-- arbitrary expansion of Connect's internal workflow vocabulary.
+- arbitrary further expansion beyond the current five-state vocabulary.
 
 The GHM Review schema and aggregate boundary are already separately qualified; they are not pending dependencies of this reconciliation.
 
