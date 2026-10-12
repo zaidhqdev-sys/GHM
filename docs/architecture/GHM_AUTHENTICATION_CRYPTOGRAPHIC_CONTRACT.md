@@ -1,5 +1,8 @@
 # GHM Authentication Cryptographic Contract
 
+> **Historical-status clarification — 2026-10-12:** This Gate 2A decision record predates the Founder-approved Gate 3B parameters and qualified ES256 authentication foundation. Embedded “not authorized” and “not yet selected” statements are historical unless a current living contract independently keeps the specific item open. The current resource verifier is ES256; product migration and production cutover remain separately gated.
+
+
 **Canonical owner:** GHM platform governance
 **Status:** AUTHENTICATION GATE 2A — HISTORICAL CRYPTOGRAPHIC DECISION RECORD; ES256 implementation parameters and the authentication foundation were subsequently frozen/qualified under Gate 3B.
 **Authority:** Local repository `C:\GHM`
