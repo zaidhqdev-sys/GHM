@@ -1,6 +1,6 @@
 # GHM Production Replacement Foundation
 
-**Status:** Construction — foundation slices qualified; production replacement not yet authorized. Reconciled 2026-10-12.
+**Status:** Construction — foundation slices qualified; production replacement not yet authorized. Reconciled 2026-10-13.
 
 **Purpose:** Define the non-destructive path for the GHM Internal Runtime and governed platform capabilities to become ZAID Technologies' backend while Zaid Connect and QuoteFlow remain live on their existing Supabase backends. GHM Internal Runtime is the current target; legacy component naming in historical artifacts is not the target architecture.
 
@@ -91,7 +91,7 @@ Build explicit product-facing adapters rather than exposing an unrestricted gene
 
 Each capability must have an owner, contract, authorization model, and test coverage.
 
-Current construction resource slices have been qualified independently. Product-facing Connect and QuoteFlow adapters remain future work and are not authorized merely because underlying GHM resources exist.
+Current construction resource slices have been qualified independently. A bounded Connect Saved Business adapter/read boundary and selected capability adapters have construction qualification evidence; this does not establish broad Connect/QuoteFlow adapter coverage or workflow parity. Further product-facing adapters and any production routing remain separately authorized work.
 
 ### Phase 3 — Shadow qualification
 
@@ -117,28 +117,28 @@ Current blockers to **production replacement** are:
 
 - provider/bootstrap authority cleanup remains unresolved because the available provider path does not expose the independent bootstrap authority required to remove legacy `ghm_db_user` memberships safely;
 - future GHM resource slices still require their own schema, repository, transaction, authorization, Resource API, operational, and ACL qualification;
-- product-facing Connect and QuoteFlow adapters have not yet been implemented or qualified against their concrete GHM contracts;
+- broad Connect and QuoteFlow workflow parity has not been qualified. Bounded slices (including Connect Saved Business read and selected Project Quote capability adaptation) have separate evidence, but they do not constitute complete product adapters or authorize product routing;
 - end-to-end shadow qualification and cutover/rollback evidence do not yet exist.
 
 These are deliberate gates, not reasons to touch the live Connect or QuoteFlow deployments.
 
 ## Storage Provider Position
 
-GHM does not need to own physical storage on day one. A free or otherwise available provider may be used while GHM's own storage capability is being constructed.
+GHM's storage metadata/persistence foundation and a controlled Cloudflare R2 provider data path have since been construction-qualified. The R2 qualification establishes the bounded provider path, not full service-level tenant/resource authorization, recovery/backup, production provider enablement, or product exposure.
 
-The architectural requirement is that product code talks to a **GHM storage boundary**, not directly to a provider. The provider can therefore be replaced later without changing Zaid Connect or QuoteFlow contracts.
+The architectural requirement remains that product code talks to a **GHM storage boundary**, not directly to a provider. Cloudflare R2 is the currently qualified GHM provider path; it is not yet evidence of production-enabled Connect/QuoteFlow media workflows. Existing products remain on their current backend/storage paths until separately qualified and authorized.
 
 Current position:
 
 ```text
-Product → GHM storage boundary → Supabase Storage (temporary provider)
+Current qualified provider path (bounded qualification only):
 
-Future:
+Product/service → GHM storage boundary → Cloudflare R2 (private bucket; provider-path qualification)
 
-Product → GHM storage boundary → ZAID-owned storage
+Existing Connect/QuoteFlow production storage paths remain unchanged until product-specific migration and cutover are separately authorized.
 ```
 
-The temporary provider is not a production-replacement blocker by itself.
+The existence of the qualified R2 provider path does not close the remaining service authorization, recovery, operational, production-configuration, or product migration gates.
 
 ## Definition of Production-Ready Replacement
 
