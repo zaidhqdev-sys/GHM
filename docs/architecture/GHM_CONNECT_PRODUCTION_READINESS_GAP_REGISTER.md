@@ -34,15 +34,15 @@ The principal remaining blockers are the Connect/QuoteFlow product adapters and 
 
 | # | Blocker | Current state | Required evidence before construction | Authorization |
 |---|---|---|---|---|
-| 1 | Connect product adapter | Missing | Per-operation mapping from Connect services to GHM operations/providers/local behavior | Explicit adapter authorization |
+| 1 | Connect product adapter | **Partial — bounded identity adapter foundation and `saved_business.read` service boundary qualified; broader product adapter/workflow parity remains open** | Per-operation mapping from Connect services to GHM operations/providers/local behavior, with independent runtime and end-to-end qualification | Explicit per-capability adapter authorization |
 | 2 | Auth/session compatibility | **GHM authentication foundation QUALIFIED; Connect sessions remain Supabase-owned and non-interchangeable** | Product identity adapter + session migration/cutover evidence | Separate product adapter authorization |
 | 3 | UUID â†” bigint identity mapping | **GHM mapping foundation QUALIFIED: (provider, subject) → GHM account identity; product migration still open** | Concrete Connect adapter operation + migration ownership/evidence | Separate product adapter authorization |
 | 4 | Public Business + directory parity | Partial | Field-by-field public projection, search/geo/sort/featured contract | Explicit Business/directory authorization |
 | 5 | Trust backend | **QUALIFIED / CLOSED** (`ghm.trust_score` + calculate) | — | Closed; Business profile input parity remains a separate blocker |
-| 6 | Commercial payment operations | **Partial — governed GHM boundaries exist; PayFast checkout/ITN/server confirmation merged; sandbox/runtime E2E remains open** | Complete end-to-end product workflow and provider qualification, including governed payment-result application | Separate product/provider authorization and production gate |
+| 6 | Commercial payment operations | **Partial — governed GHM payment preparation/result boundaries are runtime-qualified; PayFast checkout/ITN/server confirmation merged; sandbox/runtime E2E remains open** | End-to-end product workflow and real provider qualification exercising the governed payment-result boundary | Separate product/provider authorization and production gate |
 | 7 | Storage/media | **GHM metadata/persistence foundation QUALIFIED; provider/service/product exposure remains open** | Live provider, service authorization, HTTP/product exposure, recovery/reconciliation | Separate storage/provider authorization |
 | 8 | Realtime delivery | External/absent in GHM | Ownership and delivery contract for notifications/leads | Explicit realtime authorization |
-| 9 | Edge/runtime equivalents | External/absent in GHM | Runtime placement for checkout/webhooks/AI proxy | Explicit runtime/provider authorization |
+| 9 | Edge/runtime equivalents | **Partial — PayFast checkout/ITN/server-confirmation HTTP path exists in GHM; broader runtime/provider equivalents remain absent or unqualified** | Real PayFast sandbox/runtime E2E; separately define runtime placement and contracts for any additional integrations such as AI proxy | Explicit per-provider/runtime authorization |
 | 10 | Missing product domains | Multiple absent | Separate source audits/contracts for each required domain | Per-domain authorization |
 | 11 | Atomic workflow parity | Partial | Exact workflow contracts and qualification for Connect atomic creates | Explicit workflow authorization |
 | 12 | Deferred participant / capability authorities | Deferred | Concrete transition/verification authority from source | Separate lifecycle authorization |
@@ -64,7 +64,7 @@ These are **not** migration-missing. They remain blocked for GHM construction un
 - `business_engagement_events` / `business_profile_view_visitors`
 - `business_directory_review_events`
 - relationship/outcome tables (`relationship_types`, `business_relationships`, `outcome_types`, `outcomes`)
-- commercial payment operation workflows: governed GHM boundaries exist and the PayFast checkout/ITN/server-confirmation adapter is merged; sandbox end-to-end qualification and complete product workflow parity remain open
+- commercial payment operation workflows: governed GHM preparation/result boundaries exist and the PayFast checkout/ITN/server-confirmation adapter is merged; sandbox end-to-end qualification and complete product workflow parity remain open
 - storage/media product integration (GHM storage foundation is now qualified; provider/product exposure remains separately gated)
 - realtime delivery ownership (notifications + leads subscriptions)
 
