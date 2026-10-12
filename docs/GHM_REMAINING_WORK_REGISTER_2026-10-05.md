@@ -299,7 +299,7 @@ If the need is already covered by a qualified capability, stop and build the ada
 
 If construction stopped at this register today, the exact blockers preventing GHM from becoming the backend for Connect + QuoteFlow are:
 
-**GHM core:** storage live-provider/service qualification, commercial provider operations, public/directory composition where selected, broader explicitly authorized HTTP surfaces, and bootstrap authority cleanup.
+**GHM core:** remaining storage application wiring, broader service/tenant authorization, recovery/backup and orphan reconciliation, production provider enablement; real PayFast sandbox end-to-end/runtime qualification; selected public/directory HTTP composition; and bootstrap authority resolution after independent authority/recovery evidence.
 
 **Connect:** product adapter, remaining source reconciliation, selected directory/storage/commercial/runtime/realtime workflows, atomic workflow parity, and end-to-end qualification.
 
