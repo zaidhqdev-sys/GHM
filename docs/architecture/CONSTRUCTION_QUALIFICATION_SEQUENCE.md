@@ -20,6 +20,10 @@ The sequence remains the architecture-level gate order. Individual gates may hav
 9. **Shadow qualification** — product workflows are exercised against GHM while Supabase remains authoritative. **Not started.**
 10. **Controlled cutover** — migrate one product at a time with an explicit rollback path. **Not started; production remains on Supabase.**
 
+## Current commercial payment status — 2026-10-12
+
+The GHM PayFast checkout/ITN implementation, provider-specific validation, and server-to-server ITN confirmation are merged, and the deterministic local qualification runner has passed. The real provider sandbox end-to-end/runtime qualification and production enablement remain open. PayFast approval is not Paystack approval; the separate Paystack communication/activation state must not be inferred from PayFast. See `GHM_REMAINING_WORK_REGISTER_2026-10-05.md` and the PayFast qualification evidence for the current gate.
+
 ## Current closed construction gates
 
 ### Business Capability Lifecycle / Verification Transition: CLOSED / PASS
