@@ -114,7 +114,7 @@ The reconciliation artifact must capture, at minimum:
 - grants/privileges;
 - row counts where safe to obtain.
 
-The required catalog categories are materially captured. The remaining database gate is **reconciliation of future target resources and the unresolved bootstrap authority boundary**, with the first canonical GHM slice already established and qualified.
+The required catalog categories were materially captured in the historical legacy snapshot. The remaining database gate is **reconciliation of future target resources and the unresolved bootstrap authority boundary**, with the first canonical GHM slice already established and qualified.
 
 ## Decision rule
 
