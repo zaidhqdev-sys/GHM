@@ -199,7 +199,7 @@ The issuer (`iss`) must:
 | CORS | `CORS_ORIGINS` = trusted **frontend** origins (e.g. example `http://localhost:3000`) — **not** an issuer identifier |
 | Host / deployment | No frozen canonical production hostname or public issuer URL established in repo config or architecture docs for JWT `iss` |
 | Current verifier | `src/auth/ghm-bearer.ts` → ES256 access-JWT foundation; `iss` is enforced by the access-JWT verifier |
-| Auth API | SELECTED target (Issuance ADR) but **not implemented** — no live auth-service hostname to promote |
+| Auth API | Historical Gate 2A status said “selected but not implemented.” The bounded GHM authentication foundation was subsequently constructed and qualified under Gate 3B; public/product-facing exposure, product session-client integration, deployment promotion, and cutover remain separately gated. |
 | Charter | Platform charter explicitly does **not** select a JWT issuer string |
 
 ```text
