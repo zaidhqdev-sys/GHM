@@ -8,6 +8,8 @@
 
 ## 1. Purpose
 
+> **Specific current-status clarification — 2026-10-12:** Unlike several resource slices that have since been constructed, GHM Realtime remains unimplemented and unauthorized. The current decision is still to defer GHM-owned event transport until an explicit ownership decision selects provider Realtime, a GHM event transport, or polling. This audit does not authorize construction; existing Connect/Supabase realtime remains outside GHM cutover authorization.
+
 Inventory Connect realtime subscriptions and assess whether each is a hard product requirement or a degradable convenience. No GHM realtime implementation is authorized.
 
 ## 2. Client subscriptions found
