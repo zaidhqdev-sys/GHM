@@ -4,6 +4,8 @@
 
 **SOURCE RECONCILIATION COMPLETE — CONSTRUCTION CONTRACT AUTHORIZED**
 
+> **Current-status reconciliation — 2026-10-12:** The construction-authorization status below records the original source-audit decision. GHM Trust construction is now qualified/closed in `TRUST_QUALIFICATION.md`. This source audit remains evidence of Connect’s product contract, not an open authorization request; it does not authorize product migration, production data movement, or cutover.
+
 This document records the verified Zaid Connect Trust capability before GHM schema/resource implementation. It does not authorize production migration, production data movement, provider cutover, or product configuration changes.
 
 Founder construction authorization for Trust is explicit for this slice.
