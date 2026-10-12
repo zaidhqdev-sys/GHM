@@ -35,16 +35,16 @@ The qualification creates one isolated probe object. The object is driven to the
 
 ## Scope
 
-This does not qualify:
+This qualification is intentionally provider-free and does not itself qualify provider credentials, object upload/download, signed URLs, tenant authorization, provider/object reconciliation, or backup/recovery.
 
-- provider credentials;
-- object upload/download;
-- signed URLs;
-- tenant authorization;
-- provider/object reconciliation;
-- backup/recovery.
+The later controlled live-provider data-path result is recorded separately in `docs/evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-05.md`; it qualifies real signed upload/download, provider metadata observation, payload integrity, and deletion for that bounded test. It does not close the following remaining gates:
 
-Those remain subsequent gates: provider credentials, live upload/download, full tenant/resource authorization, provider reconciliation, backup/recovery, HTTP/product exposure, and production provider enablement.
+- full service-level tenant/resource authorization;
+- failed-operation recovery and orphan/provider reconciliation;
+- backup/recovery;
+- HTTP/product exposure;
+- deployment-managed production configuration;
+- production provider enablement.
 
 ## Documentation reconciliation
 
