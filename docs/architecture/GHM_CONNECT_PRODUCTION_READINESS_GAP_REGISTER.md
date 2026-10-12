@@ -228,7 +228,7 @@ The verified audit now gives the concrete gap boundary required to authorize fut
 - Logo bucket name `business-logos` â€” **false**; actual bucket is `media`
 - Treating class A domain tables as migration-missing orphans â€” **false**; they are migration-proven
 - Business Hours exceptions/booking as Connect readiness requirement â€” **not evidenced** in Connect
-- PayFast / Meta WhatsApp API libraries as live payment/messaging paths â€” **no current importers** (deep links live; Paystack live)
+- PayFast / Meta WhatsApp API libraries as live payment/messaging paths â€” **no current importers at the 2026-09-18 source-audit checkpoint**. Connect source then contained Paystack checkout/webhook functions; that code-presence observation is not evidence of Paystack approval or activation. PayFast approval and implementation status are governed separately by the 2026-10-12 commercial reconciliation.
 - Email provider dependency â€” **not evidenced**
 - `createSignedUrl` usage â€” **not found**
 
