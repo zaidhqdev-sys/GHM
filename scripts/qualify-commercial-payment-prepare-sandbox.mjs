@@ -1,10 +1,5 @@
 import { Pool } from 'pg';
 import 'dotenv/config';
-import { ConnectIdentityAdapterImpl } from '../dist/integrations/connect/identity-adapter.js';
-import { PostgresAuthPersistence } from '../dist/auth/foundation/persistence.js';
-import { PostgresAccountAuthStateStore } from '../dist/auth/ghm-bearer.js';
-import { DefaultCommercialService } from '../dist/resources/commercial/service.js';
-import { PostgresCommercialRepository } from '../dist/resources/commercial/repository.js';
 
 const SANDBOX_DATABASE = 'ghm_payfast_sandbox_db';
 const FOUNDER_SUBJECT = 'd31a5c89-b74a-4966-b3e4-11b66be858ec';
@@ -14,6 +9,27 @@ const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 if (!runtimeUrl || !migratorUrl) throw new Error('Sandbox runtime and migrator database URLs are required');
 if (runtimeUrl === migratorUrl) throw new Error('Runtime and migrator connections must be distinct');
+
+// This qualification script does not start the HTTP server or issue invitations.
+// Provide harmless local-only config defaults before dynamically importing modules
+// that load the shared application config. Never overwrite supplied environment values.
+process.env.DATABASE_URL ??= runtimeUrl;
+process.env.INVITE_CODE ??= 'sandbox-qualification-not-used';
+process.env.CORS_ORIGINS ??= 'https://zaidtechnologies.co.za';
+
+const [
+  { ConnectIdentityAdapterImpl },
+  { PostgresAuthPersistence },
+  { PostgresAccountAuthStateStore },
+  { DefaultCommercialService },
+  { PostgresCommercialRepository },
+] = await Promise.all([
+  import('../dist/integrations/connect/identity-adapter.js'),
+  import('../dist/auth/foundation/persistence.js'),
+  import('../dist/auth/ghm-bearer.js'),
+  import('../dist/resources/commercial/service.js'),
+  import('../dist/resources/commercial/repository.js'),
+]);
 
 const ssl = { rejectUnauthorized: false };
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
