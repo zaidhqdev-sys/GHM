@@ -4,6 +4,8 @@
 
 **Source product:** QuoteFlow (`zaidhqdev-sys/QuoteFlow`, `main`)
 
+> **Historical-status reconciliation — 2026-10-12:** The “construction authorized” status records the original source-audit decision, not a request to begin the resource from scratch. Customer construction is now represented in the qualified mainline capability index. This audit remains the source-contract evidence; it does not authorize production migration, product routing changes, or cutover.
+
 ## 1. Purpose
 
 Establish the source-of-truth contract for QuoteFlow's Customer capability before constructing the dependent GHM Quote capability.
