@@ -171,7 +171,7 @@ Notification persistence is qualified. Live delivery is not. Decide whether Conn
 ### CONNECT-04 — Connect server/provider runtime equivalents
 **Classification:** product/provider integration.
 
-Commercial checkout/webhook, AI proxy and other server-runtime behaviours require explicit ownership and provider-boundary contracts before implementation. PayFast checkout and ITN boundaries, provider-specific verification, and server-to-server ITN confirmation are already implemented and merged to `main`; their deterministic local qualification has passed. The remaining PayFast gate is real sandbox end-to-end/runtime qualification, followed by separately authorized production credentials and live enablement. Any future commercial path must terminate in the governed GHM commercial boundaries rather than create a parallel commercial ledger.
+PayFast checkout/ITN and server-to-server confirmation are implemented and merged, with deterministic local qualification passing; the remaining PayFast gate is real sandbox end-to-end/runtime qualification, followed by separately authorized production credentials and live enablement. Any additional provider behaviour (including AI proxy or non-PayFast server-runtime integrations) still requires explicit ownership and provider-boundary contracts before implementation. Every commercial path must terminate in the governed GHM commercial boundaries rather than create a parallel commercial ledger.
 
 ### CONNECT-05 — Connect atomic workflow parity
 **Classification:** product workflow construction.
