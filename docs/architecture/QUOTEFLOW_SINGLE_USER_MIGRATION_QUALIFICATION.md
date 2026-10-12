@@ -1,12 +1,12 @@
-# QuoteFlow Single-User Migration Qualification Plan
+# QuoteFlow Founder-Account Migration Qualification Plan
 
-**Status:** QUALIFICATION PLAN — ONE KNOWN USER
+**Status:** QUALIFICATION PLAN — TWO FOUNDER-OWNED ACCOUNTS; QUALIFY ACCOUNT PATHS INDIVIDUALLY
 
-QuoteFlow currently has one known user. Therefore the migration qualification should be intentionally narrow: prove the complete migration path for one synthetic account that represents the real user, rather than inventing a bulk-migration framework.
+The two known QuoteFlow accounts are both founder-owned; one is the founder account, not an unrelated third-party user. Do not treat this as a general multi-customer migration or assume the accounts are interchangeable. Qualification should use synthetic data to prove the account migration/reset path and preserve each account's exact source identity and intended canonical mapping.
 
 ## Scope
 
-The qualification covers one synthetic existing-user account:
+The qualification covers synthetic representations of the two known founder-owned source accounts, with each account's identity and mapping tested independently:
 
 `RESET_REQUIRED` → recovery request → one-time recovery credential → password establishment → session revocation → fresh GHM login.
 
@@ -16,7 +16,7 @@ It does not require batch orchestration, bulk concurrency testing, or a multi-us
 
 The qualification must prove:
 
-1. exactly one source identity resolves to exactly one GHM account;
+1. each exact source identity resolves to exactly one intended GHM account, without cross-linking the two accounts;
 2. that account is provisioned without a legacy password;
 3. account state is `RESET_REQUIRED` until successful re-enrollment;
 4. recovery request is anti-enumerating;
