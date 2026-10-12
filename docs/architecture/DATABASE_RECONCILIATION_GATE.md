@@ -4,17 +4,23 @@
 
 Prevent GHM from acquiring an invented or accidentally incompatible production schema while it is being prepared to replace managed backend dependencies for ZAID Technologies products.
 
-## Evidence currently available
+## Legacy catalog snapshot and current authority status
 
-The live GHM PostgreSQL catalog has been captured successfully from the intended Render PostgreSQL instance.
+The catalog details in the next section are a historical snapshot of the legacy/infrastructure database state at the time of capture; they must not be read as a fresh live catalog or as the current role/schema state. The snapshot remains useful for preserving what was found before the dedicated GHM schema and authority boundary were established.
+
+Subsequent repository-owned migrations and construction qualification established the dedicated `ghm` schema and the `ghm_schema_owner`, `ghm_migrator`, and `ghm_runtime` role paths. Current role and schema claims must be taken from the latest catalog/qualification evidence, not inferred from the legacy snapshot below.
+
+## Historical legacy catalog snapshot
+
+The legacy GHM PostgreSQL catalog was captured from the intended Render PostgreSQL instance during the initial reconciliation.
 
 Verified evidence:
 
 - PostgreSQL 18.6;
 - database `ghm_db`;
-- current non-system schema: `public`;
-- live application authentication succeeds as `ghm_app_user`;
-- effective PostgreSQL role is `ghm_db_user` on the legacy construction path;
+- non-system schema at snapshot time: `public` (historical; the canonical GHM application schema was subsequently established as `ghm`);
+- legacy application authentication succeeded as `ghm_app_user` at snapshot time (historical path, not the current intended runtime identity);
+- effective PostgreSQL role was `ghm_db_user` on the legacy construction path at snapshot time (historical path, not the current intended runtime identity);
 - live catalog contains five legacy application tables: `files`, `password_reset_tokens`, `profiles`, `todos`, and `users`;
 - no application views;
 - no materialized views;
@@ -27,7 +33,7 @@ Verified evidence:
 - the legacy table grants held by `ghm_db_user` are broad and include `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `TRUNCATE`, `REFERENCES`, and `TRIGGER`, all grantable;
 - safe catalog capture contains metadata only and does not capture row contents, passwords, tokens, connection strings, or secrets.
 
-The captured catalog is evidence of the **legacy/infrastructure database state**, not the canonical GHM business schema.
+The captured catalog is evidence of the **legacy/infrastructure database state at capture time**, not a current full-catalog assertion and not the canonical GHM business schema.
 
 ## Connect schema authority reconciliation
 
