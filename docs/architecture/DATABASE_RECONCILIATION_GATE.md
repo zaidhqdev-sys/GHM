@@ -125,6 +125,6 @@ No legacy Connect consolidated schema is a substitute for migration-history reco
 ## Remaining gate dependencies
 
 1. Resolve bootstrap `ghm_db_user` memberships through the independent provider/bootstrap authority path.
-2. Continue product-resource schema reconciliation only as each governed capability is ready, with each resource's live catalog and runtime ACLs independently qualified.
+2. Treat resource qualification as per-capability, not as a blanket open task: several governed resource slices have since been constructed and qualified. Continue schema/ACL reconciliation only for resources still identified as open in the current remaining-work register, and require each new resource's live catalog and runtime ACLs to be independently qualified.
 3. Preserve the dedicated `ghm` application schema and least-privilege future-object defaults; do not introduce blanket runtime DML.
 4. Keep Zaid Connect and QuoteFlow on Supabase throughout construction and qualification.
