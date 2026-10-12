@@ -86,9 +86,9 @@ The live qualification verified:
 
 The migration was applied successfully through the normal GHM migration runner. No manual database mutation was used.
 
-## 6. Explicitly not qualified
+## 6. Exclusions of this lifecycle slice at qualification time
 
-This slice does not qualify:
+The list below records what this integration-lifecycle slice did not qualify on its own; it is not a current blanket status for every item. Later bounded qualification records are linked under **Subsequent qualified slices** below. The complete service boundary and production exposure/cutover still require their own evidence.
 
 - ES256 cryptographic verification beyond the separate assertion qualification;
 - replay/`jti` persistence;
