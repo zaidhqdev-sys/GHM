@@ -8,6 +8,8 @@
 **Purpose:** KBM AI Marketing backend root container
 **Date:** 2026-09-18
 
+> **Historical-status reconciliation — 2026-10-12:** This source audit records the original Campaign root construction scope and its then-current HTTP non-goal. Subsequent repository evidence records a bounded Campaign HTTP surface at the Founder-locked wire (`785df12`); the “HTTP absent/not authorized” statements below are historical for the earlier slice and must not be read as current Campaign HTTP status. This does not imply broad product-adapter authorization, blanket HTTP expansion, or production cutover. Consult the current transport-selection and product-integration contracts for present scope.
+
 This document records the approved source basis for constructing a typed GHM `campaign` resource for **KBM AI Marketing**.
 
 It authorizes **construction documentation and subsequent governed construction** of the campaign **root only**, subject to the frozen schema and operation contracts.
