@@ -1,10 +1,12 @@
 ﻿# GHM Commercial Capability Architecture Contract
 
-**Status:** CONSTRUCTION CONTRACT — AUTHORIZED FOR SCHEMA DESIGN
-**Date:** 2026-09-15
+**Status:** HISTORICAL SCHEMA-DESIGN CONTRACT — COMMERCIAL CORE CONSTRUCTION HAS ADVANCED; PRODUCTION CUTOVER REMAINS GATED
+**Original design authorization:** 2026-09-15
 **Scope:** GHM Commercial Capability
-**Production state:** Supabase remains production authority
-**Provider integrations:** Not part of GHM core construction
+**Production state:** Connect and QuoteFlow remain on their existing production paths until separately authorized migration/cutover
+**Provider integrations:** Provider-specific behavior belongs in external adapters, not the provider-neutral GHM commercial core
+
+> **Current-status reconciliation — 2026-10-12:** The commercial schema/core has since been constructed, and the PayFast checkout/ITN adapter plus server-to-server confirmation are merged with deterministic local qualification passing. This architecture contract remains authoritative for provider-neutral domain boundaries, but its original “authorized for schema design” status is historical, not a statement that implementation has not started. Real PayFast sandbox end-to-end qualification and production provider enablement remain open; PayFast approval must not be conflated with Paystack status. Production data movement, product backend switching, shadow qualification, rollback/recovery, and cutover remain separately gated.
 
 ---
 
