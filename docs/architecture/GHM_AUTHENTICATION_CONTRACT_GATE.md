@@ -1,5 +1,8 @@
 # GHM Authentication Contract Gate
 
+> **Historical-status clarification — 2026-10-12:** The “implementation is not authorized” statements and unresolved-option tables below record Gate 1 only. They are superseded for the bounded authentication foundation by the Founder-approved Gate 3B implementation parameter gate and current qualified mainline evidence. Preserve them as decision history; do not use them to reopen completed construction. Product migration, public product exposure, and production cutover remain separately gated.
+
+
 **Canonical owner:** GHM platform governance
 **Status:** HISTORICAL GATE 1 RECORD — SUPERSEDED FOR CURRENT AUTH IMPLEMENTATION STATUS; current Gate 3B construction foundation is qualified on `main @ ffc4a2a`
 **Authority:** Local repository `C:\GHM`
