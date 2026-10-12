@@ -48,9 +48,9 @@ The existing ES256 key loader is reused for signing and verification. No signing
 
 Active verification uses `GHM_JWT_ES256_KID` and `GHM_JWT_ES256_PUBLIC_KEY_PEM`. Existing previous-key configuration remains available for bounded key rotation.
 
-## Explicitly deferred
+## Explicitly deferred by the original assertion-only slice
 
-This parameter record does not implement or qualify:
+The list below records the exclusions of that original construction slice, not the current status of every item. Several have since received separate bounded qualification records, as summarized under **Qualification boundary** below. This parameter record itself does not implement or qualify:
 
 - integration persistence;
 - integration enable/disable or revocation state;
