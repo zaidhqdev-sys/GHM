@@ -1,5 +1,8 @@
 # GHM Authentication Schema & Migration Contract
 
+> **Historical-status clarification — 2026-10-12:** This Gate 3A schema/migration contract records the pre-implementation gate state. The authentication schema foundation was subsequently constructed and qualified under Gate 3B. Embedded statements that the runtime/API or product cutover were not authorized remain meaningful only for the scope they name: they do not reopen completed schema work, and they do not imply that public product exposure or production cutover is now authorized.
+
+
 **Canonical owner:** GHM platform governance
 **Status:** AUTHENTICATION GATE 3A — HISTORICAL SCHEMA & MIGRATION CONTRACT; DDL was subsequently constructed and the authentication foundation was qualified under Gate 3B on the consolidated mainline.
 **Current qualified baseline:** `main` — current repository HEAD (see current qualification records)
