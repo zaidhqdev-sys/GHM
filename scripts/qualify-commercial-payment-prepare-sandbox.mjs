@@ -13,7 +13,9 @@ if (runtimeUrl === migratorUrl) throw new Error('Runtime and migrator connection
 // This qualification script does not start the HTTP server or issue invitations.
 // Provide harmless local-only config defaults before dynamically importing modules
 // that load the shared application config. Never overwrite supplied environment values.
-process.env.DATABASE_URL ??= runtimeUrl;
+process.env.DATABASE_URL = runtimeUrl;
+process.env.DATABASE_SSL = 'true';
+process.env.PAYFAST_ENVIRONMENT = 'sandbox';
 process.env.INVITE_CODE ??= 'sandbox-qualification-not-used';
 process.env.CORS_ORIGINS ??= 'https://zaidtechnologies.co.za';
 
