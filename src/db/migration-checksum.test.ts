@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import test from 'node:test';
 import {
   migrationSqlChecksum,
@@ -15,7 +16,7 @@ test('normalizes CRLF and LF before calculating migration checksums', () => {
 });
 
 test('accepts legacy checksum recorded from CRLF migration bytes', () => {
-  const legacyCrlfChecksum = (awaitlessSha256(sqlCrlf));
+  const legacyCrlfChecksum = crypto.createHash('sha256').update(sqlCrlf, 'utf8').digest('hex');
   assert.equal(matchesMigrationSqlChecksum(legacyCrlfChecksum, sqlLf), true);
   assert.equal(matchesMigrationSqlChecksum(migrationSqlChecksum(sqlLf), sqlCrlf), true);
 });
@@ -24,8 +25,3 @@ test('rejects a checksum for genuinely different migration SQL', () => {
   const checksum = migrationSqlChecksum(sqlLf);
   assert.equal(matchesMigrationSqlChecksum(checksum, 'SELECT 2;\n'), false);
 });
-
-function awaitlessSha256(value: string): string {
-  const crypto = require('node:crypto') as typeof import('node:crypto');
-  return crypto.createHash('sha256').update(value, 'utf8').digest('hex');
-}
