@@ -5,7 +5,7 @@
 **Baseline:** `0394fe96`
 **Construction branch:** `construction/connect-service-trust-boundary`
 
-> **Status reconciliation — 2026-10-12:** The branch/baseline fields above record the original construction slice and are not current mainline references. The ES256 assertion primitive has a verified cryptographic sub-slice; this parameter record does not qualify the full service boundary, production credential issuance, HTTP exposure, routing, or cutover. See the parent contract `CONNECT_GHM_SERVICE_TRUST_BOUNDARY_CONTRACT.md` and `../evidence/CONNECT_SERVICE_ASSERTION_CONSTRUCTION_EVIDENCE.md` for current scope limits.
+> **Status reconciliation — 2026-10-13:** The branch/baseline fields above record the original construction slice and are not current mainline references. The ES256 assertion primitive has a verified cryptographic sub-slice; this parameter record does not qualify the full service boundary, production credential issuance, HTTP exposure, routing, or cutover. See the parent contract `CONNECT_GHM_SERVICE_TRUST_BOUNDARY_CONTRACT.md` and `../evidence/CONNECT_SERVICE_ASSERTION_CONSTRUCTION_EVIDENCE.md` for current scope limits.
 
 ## Purpose
 
