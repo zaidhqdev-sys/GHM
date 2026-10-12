@@ -1,3 +1,4 @@
+// Read-only prerequisite check only; this does not execute commercial payment preparation.
 import { Pool } from 'pg';
 import 'dotenv/config';
 import { ConnectIdentityAdapterImpl } from '../dist/integrations/connect/identity-adapter.js';
@@ -43,7 +44,7 @@ try {
   console.log('UNMAPPED CONNECT IDENTITY FAIL-CLOSED PASS');
 
   console.log('RUNTIME CANONICAL MAPPING LOOKUP PASSED WITHOUT DIRECT BUSINESS TABLE ACCESS');
-  console.log(JSON.stringify({ status: 'SANDBOX_CONNECT_MAPPING_QUALIFICATION_PASSED', database: identity.current_database, accountId: 1, businessId: 2, productionTouched: false, paymentsEnabled: false }, null, 2));
+  console.log(JSON.stringify({ status: 'SANDBOX_CONNECT_MAPPING_PREREQUISITE_PASSED', database: identity.current_database, accountId: 1, businessId: 2, productionTouched: false, paymentsEnabled: false }, null, 2));
 } finally {
   await pool.end();
 }
