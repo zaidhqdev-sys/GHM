@@ -17,7 +17,7 @@
 
 Define the **single construction boundary** required to connect Zaid Connect's existing Supabase-authenticated identity model to GHM's already-qualified canonical identity foundation.
 
-This contract defines the frozen semantic boundary for the already-qualified identity-adapter construction slice. It does not authorize expansion into product authentication migration, membership migration, business migration, public HTTP exposure, or production cutover.
+This contract defines the frozen semantic boundary for the already-qualified identity-adapter construction slice. The bounded `saved_business.read` service HTTP endpoint has since been separately construction-qualified in `CONNECT_SERVICE_HTTP_READ_BOUNDARY_QUALIFICATION.md`. Neither record authorizes expansion into product authentication/session migration, membership migration, business migration, public/browser or broader product HTTP exposure, production routing, or cutover.
 
 ## 2. Current authority
 
@@ -248,4 +248,4 @@ This document establishes the **next product-specific semantic boundary**.
 
 Neither document authorizes production migration.
 
-**Boundary:** the frozen identity-adapter slice is already construction-qualified. Do not expand beyond the qualified scope or interpret this record as authorization for product session migration, public HTTP/service exposure, production routing, shadow traffic, or cutover.
+**Boundary:** the frozen identity-adapter slice is already construction-qualified, and a single read-only service endpoint has separate bounded construction evidence. Do not expand beyond those scopes or interpret either record as authorization for product session migration, public/browser or broader product HTTP exposure, production routing, shadow traffic, or cutover.
