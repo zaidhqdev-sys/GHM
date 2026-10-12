@@ -1,7 +1,7 @@
 {
   "captured_at": "2026-09-11T21:09:06.108Z",
   "source": "GHM PostgreSQL catalog capture",
-  "note": "Metadata only. No row contents, passwords, tokens, DATABASE_URL, or secrets are captured.",
+  "note": "Historical catalog snapshot captured 2026-09-11; not a live or current production-state probe. Role/schema observations describe that capture time only and are superseded for current status by dated live qualification evidence and the current-state index. Metadata only. No row contents, passwords, tokens, DATABASE_URL, or secrets are captured.",
   "server": [
     {
       "database_name": "ghm_db",
