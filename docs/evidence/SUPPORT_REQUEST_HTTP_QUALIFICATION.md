@@ -32,7 +32,9 @@ The HTTP qualification suite covers:
 12. business-role denial for request reads, lists, and messages;
 13. reply input and request ID validation.
 
-## Local qualification command
+## Original local qualification command — historical
+
+The commands below were for the original construction branch and are retained as provenance only; they are not current instructions to switch to or recreate that branch.
 
 ```powershell
 cd C:\GHM
@@ -42,7 +44,7 @@ git pull --ff-only origin construction/support-request-http-api
 npm test
 ```
 
-The branch is not considered locally qualified until the complete configured test suite reports zero failures.
+At the time, that branch was not considered locally qualified until the complete configured test suite reported zero failures. Current bounded status and later mainline evidence are recorded above.
 
 ## Original construction gate — historical
 
