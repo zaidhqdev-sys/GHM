@@ -705,4 +705,4 @@ NO SECRETS IN REPOSITORY.
 
 > Existing table-level `GRANT UPDATE ON ghm.account_identity TO ghm_runtime` (from schema establishment) covers newly added lifecycle columns `account_status` and `is_system_admin`. That is a **temporary pre-auth boundary condition**. Auth runtime GRANT construction must remove broad runtime ability to mutate those auth lifecycle columns (e.g. column-level UPDATE grants preserving profile fields only, plus SECURITY DEFINER for account disable / admin flag). Unrelated profile updates (`full_name`, `phone`, `avatar_ref`, `updated_at`) must keep working.
 
-**Still pending until Auth runtime/HTTP gates:** Auth HTTP API, JWT HS→ES256 request-context cutover, product migration, email sending.
+**Gate 3A pending checklist — historical:** Auth HTTP API/runtime construction and the HS→ES256 foundation were subsequently advanced and qualified under Gate 3B. Product session-client/migration integration and email delivery remain separately gated; production readiness and cutover are governed by current living status/evidence, not this pre-implementation checklist.
