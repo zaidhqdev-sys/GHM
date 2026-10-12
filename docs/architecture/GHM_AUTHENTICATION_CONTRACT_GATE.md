@@ -133,13 +133,13 @@ ghm.business_membership
 
 ### 2.9 Explicit non-claims
 
-Do **not** read this section as implying that asymmetric signing, GHM issuance, mapping, refresh, or auth endpoints already exist. They do **not**.
+**Historical Gate 1 non-claim:** At the time this section was written, asymmetric signing, GHM issuance, mapping, refresh, and auth endpoints were not implemented. This statement is retained as decision history; it is superseded for the bounded authentication foundation by the later Gate 3B qualification noted at the top of this document. It does not establish product integration or production cutover.
 
 ---
 
 ## 3. Target Authentication Contract
 
-Target behavior under Founder-selected architecture. **Not implemented.**
+**Historical Gate 1 target snapshot.** The target behavior below records the architecture selected at that gate; the original “not implemented” status is historical and is not a current implementation assessment. Current bounded-foundation status is governed by Gate 3B and current mainline qualification evidence. Product migration, public exposure, and production cutover remain separately gated.
 
 ### 3.1 Canonical GHM identity
 
