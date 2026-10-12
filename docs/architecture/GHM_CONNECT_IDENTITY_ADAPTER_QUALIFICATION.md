@@ -70,7 +70,7 @@ Local evidence required before branch can be considered qualified:
 
 Do not add HTTP transport, product session migration, business mapping, membership migration, or production configuration in this branch.
 
-The identity adapter construction slice is **QUALIFIED** and integrated. Product session migration, HTTP/service exposure, and production cutover remain separately gated.
+The identity adapter construction slice is **QUALIFIED** and integrated. A separate bounded read-only service HTTP endpoint is also construction-qualified in `CONNECT_SERVICE_HTTP_READ_BOUNDARY_QUALIFICATION.md`; that does not qualify broader HTTP/product exposure. Product session migration, public/browser exposure, production routing, and cutover remain separately gated.
 
 
 ## 6. Local qualification evidence — 2026-09-30
@@ -82,4 +82,4 @@ Verified on `construction/connect-identity-adapter` at commit `4f36dca`:
 - `npm run build`: **TypeScript compilation passed**.
 - Database auth persistence qualification remained green, including external identity lookup/bootstrap idempotency and non-admin bootstrap, external identity linking, disabled-account linking, and runtime privilege boundaries.
 
-This qualifies the constructed adapter seam as a construction slice only. It does not authorize product session migration, Supabase JWT acceptance, HTTP/service exposure, membership/ownership/admin migration, business mapping migration, production routing, shadow traffic, or cutover.
+This qualifies the constructed adapter seam as a construction slice only. Together with the separate read-only HTTP qualification, it does not authorize product session migration, Supabase JWT acceptance by GHM, public/browser or broader product HTTP exposure, membership/ownership/admin migration, business mapping migration, production routing, shadow traffic, or cutover.
