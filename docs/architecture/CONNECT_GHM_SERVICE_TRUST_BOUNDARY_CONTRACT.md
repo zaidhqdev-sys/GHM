@@ -74,7 +74,7 @@ Required semantic claims:
 
 The current cryptographic construction uses the JWT `jti` claim as the request identifier. Durable replay detection and first-consumption persistence are now construction-qualified in `CONNECT_SERVICE_REPLAY_PROTECTION_QUALIFICATION.md`; the broader service-trust boundary remains separately gated.
 
-Exact wire header names, token serialization, signing-key storage, clock-skew allowance, and rotation procedure are transport implementation details and must be frozen before implementation is considered qualified.
+This was the design prerequisite before any transport slice could be called qualified. The bounded read-only HTTP slice has since frozen and qualified its specific wire behavior; see `CONNECT_SERVICE_HTTP_READ_BOUNDARY_QUALIFICATION.md`. Do not read that later slice as proof that every transport detail, mutation operation, deployment-managed key issuance/rotation, or the full service boundary is qualified.
 
 ## 5. End-user identity carriage
 
