@@ -73,7 +73,6 @@ QUALIFIED CONSTRUCTION
   Operational boundary
 
 OPEN / NOT YET AUTHORIZED
-  Trust score / Trust evidence (historical open item; bounded Trust construction is now qualified)
   PayFast real sandbox end-to-end/runtime qualification and production enablement (adapter implementation is merged)
   Opportunity participant transition workflows
     Opportunity outcome / matching workflows
