@@ -40,7 +40,7 @@ This classification does not assert that the current repository file bytes are t
 
 The historical ledger rows must remain unchanged. Existing migration files must not be rewritten merely to reproduce the ledger hashes, and already-applied migrations must not be rerun.
 
-The strict migration runner remains unchanged: an applied version whose repository checksum differs from the ledger continues to fail closed.
+The current migration runner normalizes SQL to LF before computing the canonical checksum and accepts a legacy CRLF checksum only when it matches the same SQL represented with CRLF. A genuinely different checksum continues to fail closed, except for the narrowly documented historical-provenance handling already represented by this record. This compatibility change does not rewrite ledger checksums, recover the missing historical byte streams, or authorize rerunning applied migrations.
 
 Future migrations must remain deterministically reproducible from canonical repository bytes and must be recorded in the migration ledger.
 
