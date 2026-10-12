@@ -50,10 +50,10 @@ The following are excluded from construction backlog unless a new product requir
 
 **Rule:** a future adapter or composed product response consumes these capabilities; it does not reopen their canonical contracts.
 
-## 3. Genuine GHM-core remaining construction
+## 3. Genuine GHM platform-foundation remaining construction
 
 ### GHM-01 — Storage live-provider/service qualification
-**Classification:** GHM core — partially qualified / open.
+**Classification:** GHM platform foundation — partially qualified / open.
 
 Already qualified:
 - metadata/persistence boundary;
@@ -301,7 +301,7 @@ If the need is already covered by a qualified capability, stop and build the ada
 
 If construction stopped at this register today, the exact blockers preventing GHM from becoming the backend for Connect + QuoteFlow are:
 
-**GHM core:** remaining storage application wiring, broader service/tenant authorization, recovery/backup and orphan reconciliation, production provider enablement; real PayFast sandbox end-to-end/runtime qualification; selected public/directory HTTP composition; and bootstrap authority resolution after independent authority/recovery evidence.
+**GHM platform foundation:** remaining storage application wiring, broader service/tenant authorization, recovery/backup and orphan reconciliation, production provider enablement; real PayFast sandbox end-to-end/runtime qualification; selected public/directory HTTP composition; and bootstrap authority resolution after independent authority/recovery evidence.
 
 **Connect:** product adapter and operation-by-operation mapping, remaining authoritative source reconciliation, selected directory/storage/commercial/runtime/realtime workflows, atomic workflow parity, and end-to-end qualification. Bounded identity/service/resource slices already qualified are foundations, not production migration.
 
