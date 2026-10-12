@@ -39,7 +39,7 @@ Therefore:
 → `qualified AuthPersistence`
 → `account_external_identity / account_identity`
 
-HTTP/service transport remains unqualified for product use until the full trust/credential boundary, resource authorization, deployment-managed issuance, and endpoint behavior are independently qualified.
+The bounded read-only service HTTP endpoint has since received its own construction qualification (`CONNECT_SERVICE_HTTP_READ_BOUNDARY_QUALIFICATION.md`), alongside separate request-context, operation-resolution, authorization-binding, dispatch and assertion-replay slices. This does not qualify the full HTTP/service transport for product use: the complete trust/credential boundary, deployment-managed issuance/rotation, additional handlers, broader resource authorization and production endpoint configuration remain separately gated.
 
 ## 3. Implemented invariants
 
