@@ -30,6 +30,10 @@ Map multi-write Connect workflows and compare them to current GHM equivalents. C
 | Saved Business toggle | `savedService.toggle` | select → delete or insert | **App composition**, not one RPC | Unique (user, business) | QUALIFIED create/delete | Intentional; no GHM toggle |
 | Create notification | `create_notification` RPC | notifications | PL/pgSQL | — | QUALIFIED Notification create | Covered |
 
+## Current GHM payment-slice reconciliation — 2026-10-13
+
+The payment rows above preserve the Connect source workflow comparison made on 2026-09-18. Their statements that payment preparation “throws” and payment-result application is “Not implemented” are historical snapshots and must not be used as current GHM implementation status. GHM governed payment preparation and payment-result boundaries are now merged and runtime-qualified; PayFast checkout, ITN verification, and server-to-server confirmation are implemented and merged with deterministic local qualification passing. Real PayFast sandbox end-to-end/runtime qualification, complete Connect product workflow parity, provider enablement, and production cutover remain open. See `GHM_CURRENT_STATE.md`, `GHM_REMAINING_WORK_REGISTER_2026-10-05.md`, and the commercial qualification evidence.
+
 ## 3. Authorization notes
 
 - Marketplace/project Opportunity RPCs enforce eligibility and creator binding inside DB functions.
