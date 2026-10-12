@@ -4,9 +4,9 @@
 **Status:** Architecture decision record — documentation-only; **transport selected**; historical selection-time implementation closed; **superseded for Campaign HTTP by HEAD `785df12`**
 **Authority:** Local repository `C:\GHM`
 **Baseline (selection record):** branch `construction/saved-business-resource`, HEAD `0a9a9f7`
-**Nature:** Decision-space record with Founder transport selection — **HTTP/API selected**; at selection time **no implementation authorized**
+**Nature:** Historical decision-space record with Founder transport selection — **HTTP/API selected**; at selection time **no implementation authorized**
 
-> **Current-status reconciliation — 2026-10-12:** This decision record preserves the selection-time options and authority history. Its statements that authentication issuance remains unselected and the KBM adapter remains unauthorized are not a current status report for the bounded GHM authentication foundation; use the Gate 3B contracts and `GHM_CURRENT_STATE.md` for current authentication qualification. Product-specific adapters, full workflow parity, production exposure, and cutover remain separately gated. Campaign’s historical HTTP qualification does not imply blanket authorization for other product surfaces.
+> **Current-status reconciliation — 2026-10-13:** This decision record preserves the selection-time options and authority history. Its statements that authentication issuance remains unselected and the KBM adapter remains unauthorized are not a current status report for the bounded GHM authentication foundation; use the Gate 3B contracts and `GHM_CURRENT_STATE.md` for current authentication qualification. Product-specific adapters, full workflow parity, production exposure, and cutover remain separately gated. Campaign’s historical HTTP qualification does not imply blanket authorization for other product surfaces.
 
 ```text
 TRANSPORT SELECTED: HTTP/API
@@ -90,7 +90,7 @@ semantic SUCCESS | governed failure taxonomy
 compatibility / versioning semantics (policy still OPEN)
 ```
 
-Authentication **issuance** remains a **separate** unresolved decision.
+**Historical selection-time statement:** authentication issuance was a separate unresolved decision at the time this transport record was authored. The later bounded Gate 3B issuance foundation is qualified; product-specific session migration and cutover remain separate gates.
 
 ---
 
