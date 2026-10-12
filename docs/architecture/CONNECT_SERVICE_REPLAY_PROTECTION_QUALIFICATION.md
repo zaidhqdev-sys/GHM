@@ -2,6 +2,8 @@
 
 **Status:** CONSTRUCTION QUALIFIED — SERVICE ASSERTION REPLAY SUB-SLICE
 
+> This record documents the qualified replay-protection slice and its test evidence at qualification time. It does not assert that the recorded test count is the current full-suite count, or that production credential issuance, deployment, routing, or Connect cutover has occurred. The broader service-trust boundary remains governed by `CONNECT_GHM_SERVICE_TRUST_BOUNDARY_CONTRACT.md`.
+
 ## Scope
 This qualification covers durable replay detection for the short-lived ES256 Connect service assertion request identifier (jti).
 
