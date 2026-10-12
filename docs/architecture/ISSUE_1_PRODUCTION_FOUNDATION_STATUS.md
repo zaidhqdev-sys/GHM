@@ -4,7 +4,7 @@
 **Status:** OPEN — foundation work is in progress  
 **Canonical source:** this document records the current repository state; individual construction contracts remain historical evidence for their bounded slices.
 
-**Documentation reconciliation:** 2026-10-02 — this status document was reconciled against current `main`. Superseded authentication gate records remain historical provenance; this document is the current Issue #1 roll-up.
+**Documentation reconciliation:** reviewed 2026-10-12 against the current-main audit anchor `1f2b10d0850095311614c5b5f9531eb8b7cce860`. The PR commit SHAs listed below identify individual merged slices, not the current repository HEAD. Superseded authentication gate records remain historical provenance; this document is the current Issue #1 roll-up. Issue #1 remains OPEN: later qualified resource, storage-provider, and commercial slices do not independently satisfy its remaining foundation acceptance criteria.
 
 ## Current baseline
 
