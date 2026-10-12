@@ -1,6 +1,6 @@
-# GHM Remaining Work Register — 2026-10-12
+# GHM Remaining Work Register — 2026-10-13
 
-**Status:** CURRENT GOVERNED REMAINING-WORK REGISTER — reconciled 2026-10-12  
+**Status:** CURRENT GOVERNED REMAINING-WORK REGISTER — reconciled 2026-10-13  
 **Repository authority:** mainline audit anchor recorded for this reconciliation: `1f2b10d0850095311614c5b5f9531eb8b7cce860` (`Normalize migration checksums across line endings`). This is a historical audit anchor, not a live pointer to current `main`; check the current branch head before using this register for a new construction decision. It is not proof of live deployment state.  
 **Purpose:** establish the exact work that remains before GHM can become the backend for Zaid Connect and QuoteFlow. This register is the construction/cutover planning authority after the 2026-10-05 documentation reconciliation.
 
