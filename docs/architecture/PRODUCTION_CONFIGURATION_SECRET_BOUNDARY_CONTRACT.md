@@ -21,7 +21,7 @@ When `NODE_ENV=production`:
 
 Outside production:
 
-- existing explicit `DATABASE_SSL=false` behavior remains accepted;
+- explicit `DATABASE_SSL=false` may be accepted only by the non-production configuration path where that mode is allowed; production configuration requires `DATABASE_SSL=true` and fails closed otherwise. This construction contract does not relax the production SSL requirement.
 - this slice does not impose a production-only requirement on development/test environments.
 
 ## Secret-boundary requirements
