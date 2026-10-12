@@ -611,7 +611,9 @@ NOT GRANTED.
 
 ---
 
-## 18. Final gate
+## 18. Final gate — historical Gate 2B stop (superseded for the bounded foundation)
+
+The following block is the original Gate 2B decision snapshot. Its “implementation not authorized” and pending persistence language is historical; Gate 3B subsequently froze and qualified the bounded session/refresh persistence foundation. Product session-client integration and production cutover remain separately gated.
 
 ```text
 AUTHENTICATION GATE 2B RECONCILED WITH CREDENTIAL SESSION POLICIES.
