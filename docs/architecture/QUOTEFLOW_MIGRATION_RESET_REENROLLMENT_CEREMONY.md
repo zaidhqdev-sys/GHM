@@ -1,6 +1,8 @@
 # QuoteFlow Existing-User Password Reset / Re-enrollment Ceremony
 
-**Status: CONSTRUCTION QUALIFIED — RESET, ENROLLMENT, AND SESSION-ISSUANCE CEREMONY IMPLEMENTED; NON-PRODUCTION QUALIFICATION PENDING**
+**Status: RESET / ENROLLMENT / SESSION-ISSUANCE BUILDING BLOCKS CONSTRUCTED; FULL USER-FACING CEREMONY NOT YET QUALIFIED**
+
+> **Current-status reconciliation — 2026-10-13:** The atomic reset operation, canonical enrollment lookup, and session-issuance building blocks have construction qualification evidence. The complete user-facing migration ceremony remains unqualified pending non-production DB+HTTP evidence for anti-enumeration, single-use recovery, rollback, session revocation, and post-reset session issuance for each of the two founder-owned accounts. Do not treat this document's ceremony design as proof of end-to-end qualification or authorization for production migration/cutover.
 
 ## Decision
 
