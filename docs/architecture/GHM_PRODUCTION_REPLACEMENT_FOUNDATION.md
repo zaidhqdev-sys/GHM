@@ -2,7 +2,7 @@
 
 **Status:** Construction — foundation slices qualified; production replacement not yet authorized.
 
-**Purpose:** Define the non-destructive path for GHM Core Engine to become ZAID Technologies' backend while Zaid Connect and QuoteFlow remain live on their existing Supabase backends.
+**Purpose:** Define the non-destructive path for GHM Internal Runtime to become ZAID Technologies' backend while Zaid Connect and QuoteFlow remain live on their existing Supabase backends.
 
 ## Mission
 
@@ -44,7 +44,7 @@ Zaid Connect's approved API specification explicitly describes its current inter
 Zaid Connect ──► GHM adapter ──► GHM
 QuoteFlow   ──► GHM adapter ──► GHM
 
-Storage adapter ──► current provider (e.g. Supabase Storage)
+Storage adapter ──► Cloudflare R2 (live data-path qualified; production enablement gated)
                  └─► future ZAID-owned storage without product rewrites
 ```
 
@@ -90,7 +90,7 @@ Build explicit product-facing adapters rather than exposing an unrestricted gene
 
 Each capability must have an owner, contract, authorization model, and test coverage.
 
-Current construction resource slices have been qualified independently. Product-facing Connect and QuoteFlow adapters remain future work and are not authorized merely because underlying GHM resources exist.
+Current construction resource slices and selected Connect adapter seams have been qualified independently. This does not mean every Connect workflow is covered, and it does not mean QuoteFlow has migrated. Product session/membership migration, QuoteFlow migration-specific qualification, shadow operation and production cutover remain separately gated.
 
 ### Phase 3 — Shadow qualification
 

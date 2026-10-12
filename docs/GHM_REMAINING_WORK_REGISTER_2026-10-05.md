@@ -1,7 +1,8 @@
-# GHM Remaining Work Register — 2026-10-05
+# GHM Remaining Work Register — established 2026-10-05, reconciled 2026-10-13
 
-**Status:** CURRENT GOVERNED REMAINING-WORK REGISTER  
-**Repository authority at this slice's start:** consolidated `main` at `e9ad72d417585d0046f9bf95402931959255eb88`; subsequent PayFast qualification evidence is recorded below  
+**Status:** CURRENT GOVERNED REMAINING-WORK REGISTER — reconciled 2026-10-13  
+**Current mainline checkpoint:** consolidated `main @ 1f2b10d0850095311614c5b5f9531eb8b7cce860` (2026-10-12)  
+**Original slice-start baseline:** `e9ad72d417585d0046f9bf95402931959255eb88` (historical)  
 **Purpose:** establish the exact work that remains before GHM can become the backend for Zaid Connect and QuoteFlow. This register is the construction/cutover planning authority after the 2026-10-05 documentation reconciliation.
 
 ## 1. Authority rule
@@ -52,7 +53,7 @@ The following are excluded from construction backlog unless a new product requir
 
 ## 3. Genuine GHM-core remaining construction
 
-### GHM-01 — Storage live-provider/service qualification
+### GHM-01 — Storage service and production enablement (live provider data path qualified)
 **Classification:** GHM core — partially qualified / open.
 
 Already qualified:
@@ -61,7 +62,8 @@ Already qualified:
 - runtime direct-DML denial;
 - provider-neutral service/repository;
 - S3-compatible provider implementation boundary;
-- configuration/key boundary.
+- configuration/key boundary;
+- live Cloudflare R2 signed PUT/HEAD/GET/DELETE data-path qualification and payload-integrity checks (2026-10-05).
 
 Still required before production storage enablement:
 1. wire the provider factory through the application composition root;
@@ -171,7 +173,7 @@ Notification persistence is qualified. Live delivery is not. Decide whether Conn
 ### CONNECT-04 — Connect server/provider runtime equivalents
 **Classification:** product/provider integration.
 
-Commercial checkout/webhook, AI proxy and other server-runtime behaviours require explicit ownership and provider-boundary contracts before any GHM implementation. PayFast is the approved commercial provider direction; provider-specific checkout/webhook implementation remains open until sandbox/runtime qualification completes and must terminate in the governed GHM commercial boundaries rather than create a parallel commercial ledger.
+Commercial checkout/webhook, AI proxy and other server-runtime behaviours remain subject to explicit ownership and provider-boundary contracts. PayFast checkout/ITN/provider-validation/server-confirmation implementation is merged and construction-tested; sandbox end-to-end/runtime qualification and production enablement remain open. Provider results must terminate in governed GHM commercial boundaries rather than create a parallel ledger.
 
 ### CONNECT-05 — Connect atomic workflow parity
 **Classification:** product workflow construction.
@@ -299,7 +301,7 @@ If the need is already covered by a qualified capability, stop and build the ada
 
 If construction stopped at this register today, the exact blockers preventing GHM from becoming the backend for Connect + QuoteFlow are:
 
-**GHM core:** storage live-provider/service qualification, commercial provider operations, public/directory composition where selected, broader explicitly authorized HTTP surfaces, and bootstrap authority cleanup.
+**GHM core:** storage service authorization and production enablement, PayFast sandbox/runtime qualification, public/directory composition where selected, broader explicitly authorized HTTP surfaces, and bootstrap authority cleanup.
 
 **Connect:** product adapter, remaining source reconciliation, selected directory/storage/commercial/runtime/realtime workflows, atomic workflow parity, and end-to-end qualification.
 

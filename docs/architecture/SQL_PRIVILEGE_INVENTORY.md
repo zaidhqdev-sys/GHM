@@ -20,7 +20,7 @@ It does not mutate application schema or create product tables. Health/readiness
 
 ### Resource repositories
 
-The current construction resource repositories now contain governed SQL for the qualified Business Identity, Project, Enquiry, Review, Opportunity Core, Project Quote, and Business Offering slices. Their exact table/column and authorization requirements are owned by their respective resource contracts and qualification evidence.
+The current construction resource repositories contain governed SQL across Business Identity/Profile, Business Category/Capability/Hours/Offering, Campaign, Customer, Enquiry, Quote, Project/Project Quote, Opportunity and requirements/participants, Review, Notification, Support Request, Trust, Saved Business, Commercial, storage and Connect integration boundaries. Their exact table/column and authorization requirements are owned by their respective resource contracts and qualification evidence. This inventory is a navigation summary, not a substitute for measured ACL evidence for each resource.
 
 Runtime privilege grants are therefore derived from measured repository SQL for each qualified slice rather than inferred from legacy database ownership.
 
@@ -78,7 +78,7 @@ At the current construction stage:
 
 The captured legacy database still contains the broad legacy `ghm_db_user` authority. That exceeds the intended measured runtime boundary.
 
-The dedicated `ghm_runtime` boundary has been independently qualified for the current construction slice, including positive ACL checks and negative probes for DDL, destructive operations, migration-ledger mutation, sequence mutation, and role escalation.
+The dedicated `ghm_runtime` boundary has been independently qualified for the current construction slice, including positive ACL checks and negative probes for DDL, destructive operations, migration-ledger mutation, sequence mutation, and role escalation. Migration `20261012120000_revoke_runtime_business_mapping_table_access.sql` additionally removes direct SELECT/INSERT/UPDATE/DELETE access for `ghm_runtime` on `ghm.business_external_mapping`; mapping operations must use the governed function boundary, and future ACL changes require fresh measured evidence.
 
 The unresolved bootstrap memberships remain provider/bootstrap-authority work and must not be represented as runtime authority.
 

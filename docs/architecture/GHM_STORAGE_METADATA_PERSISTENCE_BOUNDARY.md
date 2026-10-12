@@ -6,7 +6,7 @@
 
 The storage metadata foundation is constructed and qualified on the current mainline. `ghm.storage_object` is the authoritative PostgreSQL metadata record for GHM object storage.
 
-It does not provision an object-storage provider, expose an HTTP endpoint, migrate existing objects, or grant broad runtime DML.
+It does not itself provision an object-storage provider, expose an HTTP endpoint, migrate existing objects, or grant broad runtime DML. The separate Cloudflare R2 data-path qualification passed signed PUT/HEAD/GET/DELETE and payload-integrity checks on 2026-10-05; service/tenant authorization, product exposure, recovery/backup and production enablement remain gated.
 
 ## Canonical record
 

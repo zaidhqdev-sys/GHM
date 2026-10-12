@@ -1,6 +1,6 @@
 # Product Backend Capability Inventory
 
-**Status:** Construction capability inventory — reconciled through Business Capability lifecycle/verification transition qualification (2026-10-03)
+**Status:** Construction capability inventory — reconciled against `main @ 1f2b10d0850095311614c5b5f9531eb8b7cce860` on 2026-10-13
 
 This document records capabilities GHM may eventually support to replace current managed backend dependencies. It deliberately separates capability requirements from Supabase implementation details and does not authorize production migration.
 
@@ -101,7 +101,7 @@ Several are already present as qualified construction primitives; remaining cand
 
 ## Current documentation reconciliation
 
-The storage capability is no longer a missing GHM boundary. The current mainline has a qualified metadata/persistence foundation; remaining storage work is provider enablement, full service authorization qualification, HTTP/product exposure, recovery/backup, and reconciliation operations.
+The storage capability is no longer a missing GHM boundary. Metadata/persistence is qualified and the live Cloudflare R2 data path passed signed PUT/HEAD/GET/DELETE and payload-integrity qualification on 2026-10-05. Remaining storage work is service/tenant authorization, HTTP/product exposure, recovery/backup, orphan/reconciliation operations, deployment-managed credentials and production enablement.
 
 ## Governance Constraint
 
@@ -165,7 +165,7 @@ REQUIRES FUTURE GOVERNED WORK
   controlled cutover
 ```
 
-Trust Score itself is **QUALIFIED / CLOSED** for its current construction boundary. Commercial reference data and provider-neutral payment preparation are also qualified; provider checkout, callbacks/results, webhook application, production credentials, and cutover remain separately governed.
+Trust Score itself is **QUALIFIED / CLOSED** for its current construction boundary. Commercial reference data and provider-neutral payment preparation/result boundaries are qualified. PayFast checkout, ITN validation and server-to-server confirmation implementation are merged and construction-tested; sandbox end-to-end qualification, production credentials, provider enablement and cutover remain separately governed.
 
 The Opportunity Participant resource and Connect adapter are **CLOSED / PASS for construction qualification**. The full 515/515 repository suite and the dedicated live PostgreSQL runtime qualification both passed on 2026-10-03. Participant lifecycle transition workflows remain separately governed future work.
 

@@ -4,7 +4,7 @@
 **Source audit:** docs/architecture/GHM_CONNECT_BACKEND_READINESS_AUDIT.md
 **Audited GHM tree:** historical Connect audit checkpoint; current GHM construction state is the consolidated `main` line.
 **Connect source:** abcffa73f893602c25310a58946bebb91fd7eeb5
-**Current reconciliation checkpoint:** consolidated `main` — current repository authority; Connect service-trust construction evidence reconciled through the bounded HTTP read boundary and durable service-assertion replay protection (2026-10-02).
+**Current reconciliation checkpoint:** consolidated `main @ 1f2b10d0850095311614c5b5f9531eb8b7cce860` (2026-10-12). The bounded Connect service-trust chain is construction-qualified through replay protection and the first service-to-service read boundary; broad product migration/cutover remains gated.
 **Evidence sprint checkpoint:** see Â§8 (this document update)
 
 ## Purpose
@@ -34,13 +34,13 @@ The principal remaining blockers are the Connect/QuoteFlow product adapters and 
 
 | # | Blocker | Current state | Required evidence before construction | Authorization |
 |---|---|---|---|---|
-| 1 | Connect product adapter | Missing | Per-operation mapping from Connect services to GHM operations/providers/local behavior | Explicit adapter authorization |
+| 1 | Connect product adapter | Partial — selected adapter seams are implemented and construction-qualified; full workflow/product migration remains open | Per-operation mapping and qualification for each selected workflow | Separate per-adapter authorization |
 | 2 | Auth/session compatibility | **GHM authentication foundation QUALIFIED; Connect sessions remain Supabase-owned and non-interchangeable** | Product identity adapter + session migration/cutover evidence | Separate product adapter authorization |
 | 3 | UUID â†” bigint identity mapping | **GHM mapping foundation QUALIFIED: (provider, subject) → GHM account identity; product migration still open** | Concrete Connect adapter operation + migration ownership/evidence | Separate product adapter authorization |
 | 4 | Public Business + directory parity | Partial | Field-by-field public projection, search/geo/sort/featured contract | Explicit Business/directory authorization |
 | 5 | Trust backend | **QUALIFIED / CLOSED** (`ghm.trust_score` + calculate) | — | Closed; Business profile input parity remains a separate blocker |
-| 6 | Commercial payment operations | Partial/stubbed | Prepare/cancel/provider result/webhook contract and provider boundary | Explicit payment authorization |
-| 7 | Storage/media | **GHM metadata/persistence foundation QUALIFIED; provider/service/product exposure remains open** | Live provider, service authorization, HTTP/product exposure, recovery/reconciliation | Separate storage/provider authorization |
+| 6 | Commercial payment operations | Provider-neutral prepare/result boundaries qualified; PayFast checkout/ITN/provider confirmation implementation merged; sandbox E2E remains open | Sandbox/runtime qualification, production credentials and enablement gates | Separate payment/provider authorization |
+| 7 | Storage/media | **GHM metadata/persistence and live Cloudflare R2 data-path qualification PASS; service/product exposure remains open** | Service/tenant authorization, HTTP/product exposure, recovery/backup and reconciliation | Separate storage/provider authorization |
 | 8 | Realtime delivery | External/absent in GHM | Ownership and delivery contract for notifications/leads | Explicit realtime authorization |
 | 9 | Edge/runtime equivalents | External/absent in GHM | Runtime placement for checkout/webhooks/AI proxy | Explicit runtime/provider authorization |
 | 10 | Missing product domains | Multiple absent | Separate source audits/contracts for each required domain | Per-domain authorization |
@@ -170,11 +170,7 @@ Founder authorization was granted on 2026-09-30 for the frozen Connect identity 
 
 This qualification is limited to the adapter seam. It does **not** authorize HTTP/service exposure, Supabase JWT acceptance, Connect session migration, membership/ownership/admin migration, business mapping migration, production routing, shadow traffic, provider cleanup, or cutover.
 
-The Connect service-trust track now has bounded construction-qualified prerequisites covering the ES256 service-assertion cryptographic primitive, persistent Connect integration lifecycle authority, trusted request context, governed operation resolution, GHM authorization binding, resource capability dispatch, and the first service-to-service HTTP read boundary. Replay protection is now separately construction-qualified; mutation HTTP exposure, broader product adapters, and production cutover remain unqualified.
-
-The historical next-slice statement is superseded: trusted request context, governed operation resolution, authorization binding, capability dispatch, and the first HTTP read boundary are now qualified on main.
-
-Trusted request-context establishment, governed operation resolution, GHM authorization binding, resource capability dispatch, and the first saved_business.read service HTTP boundary are now construction-qualified bounded prerequisites. The service-trust boundary remains separately gated; the first bounded HTTP read boundary is now construction-qualified for saved_business.read. Mutation HTTP exposure, broader product adapters, and production cutover remain separately gated; replay protection is qualified by `CONNECT_SERVICE_REPLAY_PROTECTION_QUALIFICATION.md`.
+The bounded Connect service-trust chain is construction-qualified for the ES256 service assertion, persistent integration lifecycle, trusted request context, governed operation resolution, GHM authorization binding, resource capability dispatch, replay protection, and the first service-to-service read boundary. This does not qualify every product workflow or authorize production traffic. Mutation HTTP expansion, remaining workflow adapters, Connect session/membership/business migration, shadow qualification, deployment and cutover remain separately gated. See the individual qualification records and this register for remaining product gaps.
 
 A future construction capability requires:
 

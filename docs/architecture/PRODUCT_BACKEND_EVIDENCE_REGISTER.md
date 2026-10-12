@@ -2,7 +2,7 @@
 
 ## Status
 
-Construction evidence register. This document records what has been verified from the product repositories before GHM implementation and distinguishes qualified GHM construction capabilities from future product-adapter work.
+Construction evidence register, reconciled against `main @ 1f2b10d0850095311614c5b5f9531eb8b7cce860` on 2026-10-13. It records product-source evidence and distinguishes qualified GHM construction capabilities from future product-adapter and cutover work.
 
 ## Zaid Connect
 
@@ -10,7 +10,7 @@ Zaid Connect remains authoritative for its own application contracts and Supabas
 
 The Connect schema must not be copied into GHM by inference. GHM implements only capabilities required by verified product contracts and establishes its own canonical schema through GHM migrations.
 
-The current GHM construction line has independently reconciled and qualified Business Identity, Project, Customer, Quote, Enquiry, Review, Opportunity Core, Opportunity capability requirements, Opportunity Participation, Project Quote, Capability Catalogue, Business Capability, Business Hours, Commercial trial, Notification, Support Request, Saved Business, and Business Offering capabilities against verified product contracts. The Connect Business Offering capability adapter is now also construction-qualified as a bounded product/resource seam. The Connect Business Capability read adapter is constructed as a bounded assertion-read seam; its nested Capability/Evidence projection remains separately governed. These are GHM construction capabilities, not evidence that Zaid Connect has been migrated or that production product traffic has moved.
+The current GHM construction line has independently reconciled and qualified Business Identity, Project, Customer, Quote, Enquiry, Review, Opportunity Core, Opportunity capability requirements, Opportunity Participation, Project Quote, Capability Catalogue, Business Capability, Business Hours, Commercial trial, Notification, Support Request, Saved Business, and Business Offering capabilities against verified product contracts. The Connect Business Offering capability adapter is now also construction-qualified as a bounded product/resource seam. The Connect Business Capability read adapter is constructed as a bounded assertion-read seam; its nested Capability/Evidence projection remains separately governed. These are GHM construction capabilities, not evidence that Zaid Connect has been migrated or that production product traffic has moved. PayFast checkout/ITN/server-confirmation implementation is now present on `main`; non-production sandbox end-to-end qualification and production enablement remain open. Cloudflare R2 provider data-path qualification passed, while service authorization, product exposure and production enablement remain open.
 
 ## QuoteFlow
 

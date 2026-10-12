@@ -1,6 +1,10 @@
 # Historical Migration Checksum Provenance Record
 
-## Status
+## Current reconciliation — 2026-10-13
+
+The 2026-10-12 mainline checkpoint `1f2b10d0850095311614c5b5f9531eb8b7cce860` includes migration checksum normalization. Migration SQL is canonicalized to LF before hashing, and the runner accepts a legacy CRLF checksum only when it matches the exact SQL normalized to CRLF. This supersedes the historical statement below that the strict runner was unchanged. Genuinely different SQL still fails closed unless the exact stored checksum is explicitly covered by the documented historical-provenance exception list. No ledger rows were rewritten and no applied migration was rerun by this code change.
+
+## Historical status — 2026-09-30
 
 This record documents a historical migration-byte provenance exception identified during the GHM migration integrity reconciliation on 2026-09-30.
 
