@@ -44,11 +44,11 @@ npm test
 
 The branch is not considered locally qualified until the complete configured test suite reports zero failures.
 
-## Gate
+## Original construction gate — historical
 
-This branch is a construction slice only.
+The preceding instructions applied to the original `construction/support-request-http-api` branch before the router's subsequent mainline dependency-wiring fixes and integration. The Support Request router is integrated on `main`, and the repository's later full-suite checkpoint passed 557/557 tests. The branch-only “do not merge” instruction is historical and is not a current hold on mainline work.
 
-Do not merge it into the authoritative branch until founder approval is explicitly given after local verification.
+**Current bounded status: integrated construction slice; no production/cutover authorization.** The recorded role and input checks remain the intended HTTP boundary; broader production readiness is governed by the current production-foundation and deployment gates.
 
 
 ## Build correction reconciliation
