@@ -54,7 +54,7 @@ The construction branch contains:
 - [x] Reconcile the enrollment boundary architecture with the actual DB qualification result.
 - [ ] Complete migration-specific HTTP recovery request/delivery qualification.
 - [ ] Complete post-reset GHM session qualification.
-- [ ] Merge only after CI is green, the final PR diff is reviewed, and remaining founder gates are explicitly reviewed.
+The checklist above is retained as qualification history. Merge/CI requirements apply to the original construction PR; they are not evidence that the complete ceremony is qualified. The current gate is the integrated non-production DB + HTTP ceremony evidence described above.
 
 ## Important boundary
 
@@ -80,7 +80,7 @@ PR merge requires:
 
 ## Decision
 
-The reset implementation and enrollment lookup construction are **DB-qualified** and documentation-reconciled. The enrollment boundary is qualified, while the complete migration ceremony remains pending HTTP recovery integration and post-reset session proof.
+The reset operation and enrollment lookup boundary have separate DB-backed construction qualification. The migration-specific HTTP request/completion path has since been constructed, so HTTP integration is no longer the implementation gap. The complete non-production DB + HTTP ceremony qualification remains open for anti-enumeration, single-use recovery, rollback, session revocation, and post-reset-session invariants for each of the two founder-owned accounts.
 
 Qualification evidence: `c5244bf7-0542-4e60-86fc-9f8ce9f52f39` — PASS. Checks covered synthetic credentialless migration account, Argon2id password establishment, existing session revocation, legacy external identity preservation, recovery single-use, transaction rollback, expired recovery rejection, and runtime secret-table DML sealing.
 
