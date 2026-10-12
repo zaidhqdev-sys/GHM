@@ -1,5 +1,7 @@
 # GHM Construction Gate Reconciliation — 2026-09-11
 
+> **Historical construction-gate snapshot.** This record preserves the gate state as of 2026-09-11. Later qualified slices and current remaining-work status are governed by `GHM_CURRENT_STATE.md`, `GHM_REMAINING_WORK_REGISTER_2026-10-05.md`, and the current living contracts/evidence. Do not treat this dated snapshot as a fresh live role/catalog inspection.
+
 ## Purpose
 
 This record reconciles the governed construction state after the qualified Enquiry resource slice. It does not authorize production deployment, product cutover, provider mutation, DNS/routing changes, credential rotation, or migration of Zaid Connect or QuoteFlow.
