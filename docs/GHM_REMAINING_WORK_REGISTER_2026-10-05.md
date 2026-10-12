@@ -301,10 +301,10 @@ If construction stopped at this register today, the exact blockers preventing GH
 
 **GHM core:** remaining storage application wiring, broader service/tenant authorization, recovery/backup and orphan reconciliation, production provider enablement; real PayFast sandbox end-to-end/runtime qualification; selected public/directory HTTP composition; and bootstrap authority resolution after independent authority/recovery evidence.
 
-**Connect:** product adapter, remaining source reconciliation, selected directory/storage/commercial/runtime/realtime workflows, atomic workflow parity, and end-to-end qualification.
+**Connect:** product adapter and operation-by-operation mapping, remaining authoritative source reconciliation, selected directory/storage/commercial/runtime/realtime workflows, atomic workflow parity, and end-to-end qualification. Bounded identity/service/resource slices already qualified are foundations, not production migration.
 
-**QuoteFlow:** authoritative legacy provenance, reset/re-enrollment, GHM session client, Business migration provisioning qualification, then product workflow/cutover qualification.
+**QuoteFlow:** authoritative legacy provenance for both founder-owned accounts, full reset/re-enrollment DB+HTTP ceremony qualification, GHM session client, separate legacy-organization-to-GHM-Business provisioning qualification, then product workflow/cutover qualification.
 
 **Production:** deployment/secrets, recovery/rollback, observability, shadow qualification, and founder-authorized reversible cutover.
 
-Everything else is qualified, historical/provenance, product-owned, provider-owned, or deliberately gated.
+This is a summary of the major remaining gates, not a blanket claim that every unlisted capability is qualified. Use each capability contract and qualification record for exact scope; preserve separately documented product, provider, security, and production gates.
