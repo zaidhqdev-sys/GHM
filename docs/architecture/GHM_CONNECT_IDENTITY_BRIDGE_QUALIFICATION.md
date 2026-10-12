@@ -21,7 +21,7 @@ GHM now has a construction-qualified authentication and identity foundation:
 - refresh credentials are opaque, rotated, single-use, and session-family scoped;
 - account disable/session/recovery semantics are exercised by database tests;
 - authorization loads authoritative GHM account state, including system-admin state, rather than trusting a JWT role claim;
-- the legacy HS path remains isolated compatibility behavior and is not the target product authentication authority.
+- current governed resource authentication is ES256-only; the temporary HS/JWT_SECRET verifier was removed and Supabase JWTs remain rejected, as recorded in `GHM_LEGACY_AUTH_JWT_SECRET_RECONCILIATION_CONTRACT.md` and `ISSUE_1_PRODUCTION_FOUNDATION_STATUS.md`.
 
 ## Qualification evidence
 
