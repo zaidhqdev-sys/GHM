@@ -456,7 +456,9 @@ NOT GRANTED.
 
 ---
 
-## 18. Final gate
+## 18. Final gate — historical Gate 2C stop
+
+The block below preserves the original Gate 2C decision snapshot. Its implementation-stop language is historical for the bounded authentication foundation subsequently constructed and qualified under Gate 3B; product migration and production cutover remain separately gated.
 
 ```text
 AUTHENTICATION GATE 2C FOUNDER CREDENTIAL DECISIONS RECONCILED (2026-09-21).
