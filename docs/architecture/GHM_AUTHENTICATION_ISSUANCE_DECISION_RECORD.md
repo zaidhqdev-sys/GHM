@@ -51,7 +51,7 @@ Founder decisions 1–12 (§16) define the **target** architecture: GHM authenti
 
 GHM does **not** yet implement that issuance architecture.
 
-At the historical baseline recorded by this decision record, GHM only **verified** existing HS Bearer JWTs with `JWT_SECRET` and built `AuthContext` from numeric `userId` + `role`. The active resource-auth implementation has since been reconciled to the canonical ES256 bearer path. There is no product login/issuance path, no asymmetric signing, no identity-mapping table, and no refresh/revocation/logout product capability. Connect and QuoteFlow still use Supabase Auth UUID sessions in production product code.
+At the historical baseline recorded by this decision record, GHM only **verified** existing HS Bearer JWTs with `JWT_SECRET` and built `AuthContext` from numeric `userId` + `role`. The active resource-auth implementation has since moved to the canonical ES256 bearer path, and the bounded GHM login/issuance, refresh rotation, persistence, revocation, recovery, and logout foundation is now constructed and qualification-backed under Gate 3B. Do not reuse this paragraph as current implementation status. Connect and QuoteFlow still use Supabase Auth UUID sessions in their product code; product session-client integration, migration, public exposure, and production cutover remain separately gated.
 
 ---
 
