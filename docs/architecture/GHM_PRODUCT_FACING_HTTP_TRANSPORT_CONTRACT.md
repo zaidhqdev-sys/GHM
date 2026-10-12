@@ -14,7 +14,7 @@ BROADER PRODUCT-FACING HTTP BEYOND CAMPAIGN: NOT BLANKET-AUTHORIZED
 AUTHENTICATION ISSUANCE: UNSELECTED
 ```
 
-> **Current-status reconciliation — 2026-10-12:** This is a semantic transport contract with an older construction baseline, not a complete inventory of current implementation. The bounded ES256 authentication/session foundation is now constructed and qualification evidence is governed by the Gate 3B/current-state records; embedded older statements that authentication issuance is unselected or unimplemented are historical to the earlier gate. Product-specific adapter qualification, complete workflow parity, production route exposure, and cutover remain independently gated. The Campaign and other product-specific examples below must be interpreted against their named qualification records rather than generalized to every product.
+> **Current-status reconciliation — 2026-10-13:** This is a semantic transport contract with an older construction baseline, not a complete inventory of current implementation. The bounded ES256 authentication/session foundation is now constructed and qualification evidence is governed by the Gate 3B/current-state records; embedded older statements that authentication issuance is unselected or unimplemented are historical to the earlier gate. Product-specific adapter qualification, complete workflow parity, production route exposure, and cutover remain independently gated. The Campaign and other product-specific examples below must be interpreted against their named qualification records rather than generalized to every product.
 
 ## 1. Purpose
 
