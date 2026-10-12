@@ -1,7 +1,7 @@
 # GHM Storage Provider Adapter Reconciliation
 
 ## Status
-**CONSTRUCTION — PROVIDER FACTORY BOUNDARY / LIVE PROVIDER DATA-PATH QUALIFIED — 2026-10-05**
+**CONSTRUCTION — LIVE PROVIDER DATA-PATH QUALIFIED / APPLICATION ENABLEMENT STILL GATED — reconciled 2026-10-12**
 
 The provider-adapter implementation is reconciled onto the already-qualified PostgreSQL persistence boundary. The concrete S3-compatible adapter has additionally passed a controlled live Cloudflare R2 data-path qualification. Production application enablement remains separately gated.
 
@@ -89,9 +89,8 @@ Remaining separate gates are grant-expiry enforcement, broader provider-error ma
 
 ## Explicitly not authorized by this slice
 
-- production bucket provisioning;
-- production credentials;
-- live uploads or downloads;
+- production bucket provisioning or production credential enablement;
+- treating the controlled live qualification as production application enablement;
 - provider health/reconciliation jobs;
 - backup/recovery implementation;
 - HTTP storage routes;
@@ -99,8 +98,10 @@ Remaining separate gates are grant-expiry enforcement, broader provider-error ma
 - changing the canonical storage key contract;
 - automatic provider selection from business or request data.
 
+The live R2 upload/download/delete data-path check has already passed as recorded in `docs/evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-05.md`. This list no longer treats that completed controlled test as unperformed work.
+
 ## Next gate
 
-The provider composition boundary is repository construction only. It is not a live-provider qualification.
+The controlled live-provider data-path qualification is already **PASS**; it does not establish application composition-root wiring or production enablement.
 
-Before production enablement, the next gate must wire this factory into the application's composition root in a controlled manner and perform a controlled live-provider qualification using deployment-managed test credentials and a dedicated non-production bucket/container. That qualification must verify real PUT/HEAD/DELETE behavior, signed upload/download behavior, checksum/metadata integrity, expiry, provider error mapping, and cleanup after failure.
+The next gate is to wire this factory into the application's composition root in a controlled manner, then separately qualify grant expiry/enforcement, broader provider-error mapping, full service-level tenant/resource authorization, failed-operation recovery/orphan reconciliation, backup/recovery, and the intended HTTP/product exposure. Use a dedicated non-production bucket/container and deployment-managed test credentials for any additional live tests. Production credentials, production enablement, and founder-authorized cutover remain separate gates.
