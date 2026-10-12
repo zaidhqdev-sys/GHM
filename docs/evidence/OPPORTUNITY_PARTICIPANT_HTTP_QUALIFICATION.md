@@ -20,6 +20,8 @@ The HTTP qualification covers only the currently authorized read/list/create sur
 
 The existing Opportunity Participant runtime qualification remains the source of truth for domain authority, including visibility, management permission, principal XOR validation, duplicate protection, and the explicit deferred-update boundary.
 
-## Status
+## Status reconciliation — 2026-10-12
 
-HTTP construction is subject to the repository's full local build/test verification. It is not a merge authorization.
+The original note below was written before the router's later mainline authentication-middleware wiring fixes. The Opportunity Participant HTTP router is integrated on `main`; the later repository-wide checkpoint passed 557/557 tests. The old statement that this record “is not a merge authorization” is historical, not a current block on the merged construction slice.
+
+The qualified HTTP surface remains read/list/create only. PATCH/update remains absent because transition authority is not qualified. This record does not authorize production exposure, broader mutation, or cutover.
