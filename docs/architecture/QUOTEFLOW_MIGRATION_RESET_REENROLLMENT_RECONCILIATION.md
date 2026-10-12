@@ -1,10 +1,10 @@
 # QuoteFlow Migration Reset / Re-enrollment Documentation Reconciliation
 
-**Status: DOCUMENTATION RECONCILED — RESET, ENROLLMENT, AND SESSION-ISSUANCE CONSTRUCTION QUALIFIED; NON-PRODUCTION CEREMONY QUALIFICATION PENDING**
+**Status: DOCUMENTATION RECONCILED — RESET, ENROLLMENT, AND SESSION-ISSUANCE CONSTRUCTION QUALIFIED; NON-PRODUCTION CEREMONY QUALIFICATION PENDING FOR BOTH FOUNDER-OWNED ACCOUNTS**
 
 ## Scope
 
-This reconciliation records the implementation, qualification artifact, test evidence, and remaining gates for the single-user QuoteFlow migration reset/re-enrollment slice.
+This reconciliation records the implementation, qualification artifact, test evidence, and remaining gates for the QuoteFlow founder-account migration reset/re-enrollment slice. The two known QuoteFlow accounts are both founder-owned, and each source identity must be handled independently.
 
 The purpose is to keep the architecture record, implementation boundary, qualification script, and merge decision on the same state. It does not authorize production migration or QuoteFlow cutover.
 
