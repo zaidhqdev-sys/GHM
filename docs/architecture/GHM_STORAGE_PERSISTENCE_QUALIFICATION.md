@@ -56,4 +56,4 @@ The result must remain consistent with:
 - GHM database authority;
 - authorization/tenant-isolation contracts.
 
-No provider provisioning is authorized.
+This persistence-only qualification does not authorize provider provisioning by itself. Controlled non-production Cloudflare R2 provider data-path qualification was subsequently completed as recorded in `../evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-05.md`; production provider enablement and application wiring remain separately gated.
