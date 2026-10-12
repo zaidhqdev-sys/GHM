@@ -5,7 +5,7 @@
 **Construction branch:** `construction/connect-service-trust-boundary`
 **Baseline:** historical provenance reconciliation checkpoint `e954572`
 
-> **Current status reconciliation — 2026-10-12:** This remains the governing design contract, not evidence that the full Connect↔GHM service boundary is qualified. The ES256 assertion primitive and durable replay-protection sub-slice have construction qualification evidence; integration lifecycle/revocation, complete HTTP/resource dispatch, deployment-managed credential issuance, end-to-end service authorization, production routing, and product cutover remain separately gated. The branch and baseline above are historical provenance, not current mainline pointers. See `../evidence/CONNECT_SERVICE_ASSERTION_CONSTRUCTION_EVIDENCE.md` and the replay-protection qualification for the bounded evidence.
+> **Current status reconciliation — 2026-10-13:** This remains the governing design contract, not evidence that the full Connect↔GHM service boundary is qualified. The ES256 assertion primitive and durable replay-protection sub-slice have construction qualification evidence; integration lifecycle/revocation, complete HTTP/resource dispatch, deployment-managed credential issuance, end-to-end service authorization, production routing, and product cutover remain separately gated. The branch and baseline above are historical provenance, not current mainline pointers. See `../evidence/CONNECT_SERVICE_ASSERTION_CONSTRUCTION_EVIDENCE.md` and the replay-protection qualification for the bounded evidence.
 
 Define the minimum trusted service boundary through which Zaid Connect may call GHM without giving Connect database access, arbitrary SQL access, or authority to manufacture GHM authorization.
 
