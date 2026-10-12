@@ -47,7 +47,7 @@ The full `npm test` suite remains the construction gate and must pass before mer
 
 This slice does not authorize:
 
-- HTTP exposure of Connect operations;
+- HTTP exposure of arbitrary or registry-wide Connect operations. The separately qualified read-only `saved_business.read` endpoint is documented in `CONNECT_SERVICE_HTTP_READ_BOUNDARY_QUALIFICATION.md` and does not widen this dispatcher’s allowed resource/capability set;
 - arbitrary registry-wide Connect dispatch;
 - replay-state persistence;
 - production traffic changes;
