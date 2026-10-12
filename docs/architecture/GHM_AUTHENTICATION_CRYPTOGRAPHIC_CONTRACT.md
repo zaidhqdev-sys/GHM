@@ -681,7 +681,9 @@ NOT GRANTED.
 
 ---
 
-## 14. Validation / final gate
+## 14. Validation / final gate — historical Gate 2A stop
+
+The block below preserves the original Gate 2A decision snapshot. Its no-implementation/no-endpoint statements are historical for the bounded authentication foundation later constructed and qualified under Gate 3B. Current product-facing exposure, product session-client integration, and production cutover remain separately gated.
 
 ```text
 AUTHENTICATION GATE 2A DOCUMENTATION COMPLETE.
