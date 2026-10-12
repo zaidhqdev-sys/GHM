@@ -1,8 +1,8 @@
 # GHM Commercial Trial Construction Status — 2026-09-15
 
 **Status:** CONSTRUCTION IMPLEMENTATION COMPLETE — RUNTIME QUALIFIED / CLOSED
-**Branch:** `construction/review-aggregate-reconciliation`
-**Production state:** Supabase remains production authority
+**Historical construction branch pointer:** `construction/review-aggregate-reconciliation` (provenance only; not the current checkout target)
+**Production state:** Connect and QuoteFlow remain on their existing production paths; this qualified GHM trial operation does not authorize product backend switching or production cutover.
 
 ## Current decision
 
