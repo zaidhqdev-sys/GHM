@@ -107,4 +107,4 @@ This qualification does not authorize:
 
 Any additional Connect HTTP capability must be added as an explicit, typed operation with its own qualification evidence.
 
-Mutation operations require a separately qualified replay/idempotency boundary before they are exposed through the service transport.
+Mutation operations require a separately qualified replay/idempotency boundary before they are exposed through the service transport. The assertion replay-protection sub-slice has since been qualified and is recorded in `CONNECT_SERVICE_ASSERTION_REPLAY_QUALIFICATION.md`; that only establishes atomic assertion-`jti` consumption, not business-operation idempotency or qualification of additional mutation handlers. Those remain separate gates.
