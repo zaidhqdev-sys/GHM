@@ -1,5 +1,7 @@
 # GHM Authentication Identity & Authorization Provisioning Contract
 
+> **Historical-status clarification — 2026-10-12:** This Gate 2F document contains the original pre-implementation stop text in its final gate. That stop is superseded for the bounded GHM identity/authentication/authorization foundation, which was subsequently constructed and qualified under Gate 3B. The current scope boundary remains: product adapter/session migration, Business provisioning where separately gated, public product exposure, and production cutover are not authorized by this historical contract. Keep the original gate text as provenance, not as an instruction to undo or reopen qualified work.
+
 **Canonical owner:** GHM platform governance
 **Status:** AUTHENTICATION GATE 2F — IDENTITY & AUTHORIZATION PROVISIONING CONTRACT — **CONSTRUCTION FOUNDATION QUALIFIED**; product adapter / migration implementation remains separately authorized
 **Authority:** Local repository `C:\GHM`
