@@ -194,7 +194,7 @@ Required:
 ### QF-02 — QuoteFlow password reset/re-enrollment ceremony
 **Classification:** GHM/Auth + product integration — open.
 
-Credentialless account provisioning is qualified. The reset/re-enrollment execution remains a gate.
+Credentialless account-provisioning database capability is construction-qualified. The migration-specific reset/re-enrollment request/completion path has been constructed, but the full non-production DB + HTTP ceremony qualification remains open for anti-enumeration, single-use recovery, rollback, session revocation, and post-reset-session proof. Both known QuoteFlow accounts are founder-owned and must be reconciled independently; do not treat them as unrelated customer accounts or merge their identity provenance.
 
 Required:
 - deterministic reset state;
