@@ -1,8 +1,8 @@
 # GHM Production Replacement Foundation
 
-**Status:** Construction — foundation slices qualified; production replacement not yet authorized.
+**Status:** Construction — foundation slices qualified; production replacement not yet authorized. Reconciled 2026-10-12.
 
-**Purpose:** Define the non-destructive path for GHM Core Engine to become ZAID Technologies' backend while Zaid Connect and QuoteFlow remain live on their existing Supabase backends.
+**Purpose:** Define the non-destructive path for the GHM Internal Runtime and governed platform capabilities to become ZAID Technologies' backend while Zaid Connect and QuoteFlow remain live on their existing Supabase backends. GHM Internal Runtime is the current target; legacy component naming in historical artifacts is not the target architecture.
 
 ## Mission
 
@@ -30,7 +30,8 @@ Zaid Connect's approved API specification explicitly describes its current inter
 
 ```text
                          ┌───────────────┐
-                         │ GHM Core API  │
+                         │ GHM Internal  │
+                          │   Runtime    │
                          └───────┬───────┘
                                  │
                  ┌───────────────┼────────────────┐
