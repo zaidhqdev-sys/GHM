@@ -78,7 +78,7 @@ Authentication issuance must be separated from authentication verification and a
 | **Authentication verification** | bearer token verification; JWT validation; AuthContext construction; trusted identity propagation into GHM |
 | **Authorization** | business membership; ownership; role; resource operation ACL; GHM authorization authority over governed operations |
 
-**Shared product blocker (current implementation evidence):** neither Zaid Connect nor QuoteFlow can today present a Bearer token that the **current** GHM verifier accepts as a trustworthy path into `AuthContext` for a living `ghm.account_identity.id`. The selected target architecture (§16) is the Founder-approved direction to close that blocker; it is not yet implemented.
+**Current product-integration blocker (reconciled 2026-10-12):** the bounded GHM ES256 authentication/session foundation was subsequently implemented and construction-qualified under Gate 3B. The products still do not have a qualified end-to-end GHM session-client/migration path that proves a product login produces a trusted bearer credential resolving to a living `ghm.account_identity.id` and the required product authorization context. Therefore the product-integration blocker remains open, but the underlying GHM issuance/verification foundation is not “not yet implemented.” See `GHM_CURRENT_STATE.md` and the current production-foundation status for scope boundaries.
 
 ---
 
@@ -410,7 +410,7 @@ This ADR records the authentication **issuance architecture** decision. It does 
 
 ## 16. Founder Decision section
 
-**Status: RECORDED — architecture selections complete; implementation NOT GRANTED.**
+**Historical status at Gate 2 issuance decision: RECORDED — architecture selections complete; implementation NOT GRANTED.** Gate 3B subsequently granted and qualified construction of the bounded GHM authentication foundation; the product-client/migration and production gates remain separate.
 
 Founder selections dated `2026-09-21`. These define **SELECTED TARGET ARCHITECTURE** only. They do not authorize code, migrations, verification changes, or product changes.
 
