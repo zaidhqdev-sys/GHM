@@ -39,7 +39,7 @@ No production Supabase connection is permitted during qualification.
 
 ## Deliberate non-goals
 
-Because there is one known user, do not add:
+Because the two known accounts are both founder-owned and must be reconciled independently, do not add:
 
 - bulk migration queues;
 - batch worker infrastructure;
