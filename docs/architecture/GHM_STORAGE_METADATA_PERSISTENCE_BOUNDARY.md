@@ -52,9 +52,7 @@ The first planned object class is `business_logo`.
 
 No historical Supabase object is imported by this migration.
 
-## Qualification scope
-
-Before runtime enablement:
+## Qualification scope and current status
 
 **Qualified:** metadata schema, persistence boundary, lifecycle authority, provider-neutral storage service/provider contract foundations, configuration/key boundaries, and persistence qualification.
 
