@@ -13,7 +13,7 @@ Those functions use PostgreSQL `SECURITY DEFINER` deliberately because the persi
 - `ghm_runtime` has no direct `INSERT`, `UPDATE`, or `DELETE` privilege on `ghm.storage_object`.
 - Lifecycle functions use a fixed `search_path` of `pg_catalog, ghm`.
 - `PUBLIC` execution is revoked explicitly.
-- `ghm_runtime` receives `EXECUTE` only on the five canonical storage persistence functions.
+- `ghm_runtime` receives `EXECUTE` only on the explicitly granted canonical storage persistence functions; see `GHM_STORAGE_PERSISTENCE_BOUNDARY.md` for the named lifecycle functions.
 - The functions remain persistence-only; service-layer authorization is not delegated to PostgreSQL function privileges.
 
 ## Why SECURITY DEFINER is required here
@@ -32,7 +32,7 @@ The storage persistence qualification must prove both sides of the boundary:
 4. the terminal deleted state is recorded;
 5. no public function execution is available.
 
-This gate does not qualify provider credentials, object upload/download, tenant authorization, provider reconciliation, or backup/recovery.
+This persistence gate did not qualify provider credentials, object upload/download, tenant authorization, provider reconciliation, or backup/recovery. A later controlled live-provider data-path qualification passed signed upload/download, payload integrity, and deletion against Cloudflare R2; see `../evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-05.md`. Full service-level tenant/resource authorization, provider/orphan reconciliation, backup/recovery, HTTP/product exposure, and production provider enablement remain open.
 
 ## Documentation reconciliation
 
