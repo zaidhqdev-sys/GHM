@@ -1,5 +1,8 @@
 # GHM Authentication Credential Contract
 
+> **Historical-status clarification — 2026-10-12:** Embedded “IMPLEMENTATION NOT AUTHORIZED” statements record the historical Gate 2C decision point. The bounded authentication foundation was subsequently approved and qualified under Gate 3B. Retain unresolved implementation details as open only where current contracts still identify them; do not treat this historical stop as a current blanket prohibition. Product migration and production cutover remain separately gated.
+
+
 **Canonical owner:** GHM platform governance
 **Status:** AUTHENTICATION GATE 2C — HISTORICAL CREDENTIAL / LOGIN CONTRACT; Founder decisions remain binding and the credential/login foundation was subsequently constructed and qualified under Gate 3B.
 **Authority:** Local repository `C:\GHM`
