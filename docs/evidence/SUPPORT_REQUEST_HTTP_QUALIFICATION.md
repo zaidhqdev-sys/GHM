@@ -1,8 +1,8 @@
 # Support Request HTTP Qualification
 
-**Status:** CONSTRUCTION QUALIFICATION — build correction applied; local execution pending
-**Branch:** `construction/support-request-http-api`
-**Date:** 2026-09-30
+**Current status:** Integrated construction slice on `main`; later repository-wide checkpoint passed 557/557 tests. No production/cutover authorization.
+**Historical construction branch:** `construction/support-request-http-api`
+**Original qualification date:** 2026-09-30
 
 ## Construction evidence
 
