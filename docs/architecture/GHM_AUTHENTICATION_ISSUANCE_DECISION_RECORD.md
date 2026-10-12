@@ -189,7 +189,7 @@ Connect / QuoteFlow current issuer: Supabase Auth (product evidence)
 
 ## 3. Authentication boundary (conceptual)
 
-Target flow under the **selected architecture** (not yet implemented):
+Target flow under the **selected architecture** (not implemented at the 2026-09-21 Gate 2 decision point; bounded foundation subsequently constructed and qualified under Gate 3B):
 
 ```text
 Product → GHM authentication API
@@ -224,7 +224,7 @@ GHM must remain authoritative for:
 - operation authorization
 - transaction / security boundary
 - least-privilege database access
-- authentication issuance and credential lifecycle (**selected target**; not yet implemented)
+- authentication issuance and credential lifecycle (**selected target** at Gate 2; bounded GHM foundation subsequently constructed and qualified under Gate 3B; product session-client/migration integration remains open)
 
 GHM must **not** trust product-supplied role/ownership claims as a substitute for verification + authorization.
 
@@ -341,7 +341,7 @@ Founder architecture decisions 1–12 are recorded in §16. Implementation requi
 Related gates remain separate:
 
 - product callable Resource API transport is **HTTP/API (SELECTED)** generally
-- selected **authentication** transport target is GHM authentication API → GHM-issued bearer credentials (**SELECTED**; not implemented)
+- selected **authentication** transport target is GHM authentication API → GHM-issued bearer credentials (**SELECTED**; bounded GHM foundation subsequently constructed and qualified under Gate 3B; product session-client integration remains open)
 - product adapters / shadow / cutover remain **FUTURE / GATED**
 - Campaign / Brief / KBM remain **PARKED** relative to live-product priority and are unchanged by this gate
 - business/organization identity mapping is a **separate** governed migration contract (decision 8)
@@ -416,16 +416,16 @@ Founder selections dated `2026-09-21`. These define **SELECTED TARGET ARCHITECTU
 
 | # | Decision | Founder selection | Date | Notes |
 |---|---|---|---|---|
-| 1 | Issuer | **GHM is the authentication issuer.** | 2026-09-21 | Target architecture. Issuance not implemented. |
-| 2 | Identity provider / credential-store owner | **GHM owns authentication and credential lifecycle. Credentials are stored separately from `ghm.account_identity`.** | 2026-09-21 | Credential store design is follow-on contract; not implemented. |
-| 3 | Product → GHM authentication transport | **Products authenticate through the GHM authentication API and receive GHM-issued bearer credentials.** | 2026-09-21 | Auth API not implemented. |
+| 1 | Issuer | **GHM is the authentication issuer.** | 2026-09-21 | Gate 2 status: issuance not implemented then; bounded foundation subsequently constructed and qualified under Gate 3B. |
+| 2 | Identity provider / credential-store owner | **GHM owns authentication and credential lifecycle. Credentials are stored separately from `ghm.account_identity`.** | 2026-09-21 | Gate 2 status: credential-store implementation was follow-on work then; the bounded persistence/session foundation was subsequently constructed and qualified under Gate 3B. |
+| 3 | Product → GHM authentication transport | **Products authenticate through the GHM authentication API and receive GHM-issued bearer credentials.** | 2026-09-21 | Gate 2 status: Auth API not implemented then. Product session-client integration and end-to-end product login qualification remain open. |
 | 4 | Token claims contract | **Use stable GHM identity as `sub`; include `iss`, `aud`, `iat`, and `exp`. Authorization/membership roles are resolved by GHM and are not treated as JWT source of truth.** | 2026-09-21 | `sub` = canonical GHM identity reference. The prior HS `userId`+`role` shape is superseded. |
 | 5 | Issuer / audience / algorithm / key-material contract | **GHM uses asymmetric JWT signing. Private signing key remains inside the GHM issuer boundary. Products/APIs verify using trusted public keys. Verification must explicitly validate issuer, audience, algorithm, and expiration. Key rotation is supported.** | 2026-09-21 | **SELECTED:** ES256; `iss`=`ghm-auth`; `aud`=`ghm-api`; access TTL **15m**; **`kid` required**; secret-managed private key inside issuer boundary; prior public key trusted ≥ 15m + skew. Exact encoding/`kid` values/schedule UNSELECTED. Persistence concepts: Persistence Contract. Not implemented. |
 | 6 | External UUID/`sub` → `ghm.account_identity.id` mapping | **Create a provider-neutral mapping `(provider, subject) → ghm.account_identity.id`. Existing Supabase UUID identities are migrated into this mapping. `ghm.account_identity.id` becomes the canonical internal identity.** | 2026-09-21 | **IMPLEMENTED:** `ghm.account_external_identity`; provider vocabulary for Supabase Auth **SELECTED** as `supabase`; bootstrap + **link** DEFINER ops. No production backfill yet. |
-| 7 | Account bootstrap / lifecycle | **Use controlled just-in-time account bootstrap for authenticated identities. A missing mapping may create the minimum `account_identity` + mapping required for authentication, but authentication alone does not grant business/admin privileges. Membership and privileged roles require separate GHM provisioning. GHM controls account lifecycle.** | 2026-09-21 | Bootstrap not implemented. |
+| 7 | Account bootstrap / lifecycle | **Use controlled just-in-time account bootstrap for authenticated identities. A missing mapping may create the minimum `account_identity` + mapping required for authentication, but authentication alone does not grant business/admin privileges. Membership and privileged roles require separate GHM provisioning. GHM controls account lifecycle.** | 2026-09-21 | Gate 2 status: bootstrap not implemented then; bounded account-identity bootstrap was subsequently constructed and qualified under Gate 3B. |
 | 8 | Business / organization identity mapping scope | **Treat business/organization identity mapping as a separate governed migration contract. GHM `business.id` is canonical where an explicit mapping is established. Existing product-specific business/org IDs remain external references during migration. Authentication does not automatically map a person to a business.** | 2026-09-21 | Separate from this auth issuance implementation gate. |
 | 9 | Supabase Auth may remain temporarily during migration? | **YES.** Supabase Auth may remain temporarily during migration for controlled transition. **Supabase JWTs must NEVER be accepted directly by GHM.** A trusted migration/auth boundary establishes the GHM identity and obtains a GHM credential. Coexistence must have explicit scope, migration criteria, and a sunset/decommission gate. | 2026-09-21 | Coexistence contracts required; no direct Supabase JWT acceptance ever. |
-| 10 | Refresh / revocation / logout semantics | **GHM owns refresh, revocation, and logout.** Access tokens are short-lived GHM-issued JWTs. Refresh credentials are server-controlled, revocable, and rotated. Logout revokes the refresh session. Existing access tokens expire according to their short lifetime. Account/session revocation is authoritative in GHM. | 2026-09-21 | **SELECTED:** rotate every successful refresh; single-use; replay → session-family revoke; access **15m**; inactivity **30d**; absolute **90d**. Opaque refresh / persistence UNSELECTED. Not implemented. |
+| 10 | Refresh / revocation / logout semantics | **GHM owns refresh, revocation, and logout.** Access tokens are short-lived GHM-issued JWTs. Refresh credentials are server-controlled, revocable, and rotated. Logout revokes the refresh session. Existing access tokens expire according to their short lifetime. Account/session revocation is authoritative in GHM. | 2026-09-21 | **SELECTED:** rotate every successful refresh; single-use; replay → session-family revoke; access **15m**; inactivity **30d**; absolute **90d**. Opaque refresh / persistence were unselected at Gate 2; bounded refresh/session persistence was subsequently constructed and qualified under Gate 3B. |
 | 11 | Authentication error semantics | **Standardize authentication failures as HTTP 401 and authorization failures as HTTP 403.** Use stable machine-readable error codes and non-sensitive human-readable messages. Authentication endpoints must avoid account/credential enumeration. | 2026-09-21 | Follow-on error contract required. |
 | 12 | First-gate out-of-scope authentication features | **Explicitly defer:** social OAuth; enterprise SSO / SAML; passkeys / WebAuthn; MFA; external identity federation; advanced risk/adaptive authentication; public self-service tenant provisioning; public identity federation; complex multi-device/session administration; admin impersonation. This keeps the first authentication gate appropriate for GHM’s current role as a **private ZAID Technologies backend** and avoids premature enterprise/public IAM complexity. | 2026-09-21 | Deferred features remain out of first implementation gate. |
 
@@ -436,7 +436,7 @@ FOUNDER AUTHORIZATION FOR IMPLEMENTATION: NOT GRANTED
 
 ### 16.1 Credential / login Founder decisions (follow-on, `2026-09-21`)
 
-Recorded in [GHM_AUTHENTICATION_CREDENTIAL_CONTRACT.md](./GHM_AUTHENTICATION_CREDENTIAL_CONTRACT.md) and reconciled in the Session Contract for session-side effects. These are **SELECTED TARGET** decisions; **not implemented**.
+Recorded in [GHM_AUTHENTICATION_CREDENTIAL_CONTRACT.md](./GHM_AUTHENTICATION_CREDENTIAL_CONTRACT.md) and reconciled in the Session Contract for session-side effects. These were **SELECTED TARGET** decisions at the time. The bounded credential/session foundation was subsequently constructed and qualified under Gate 3B; product integration and production gates remain open.
 
 | # | Decision | Selection |
 |---|---|---|
