@@ -1,5 +1,8 @@
 # GHM Authentication Issuance Decision Record
 
+> **Historical-status clarification — 2026-10-12:** The “implementation NOT AUTHORIZED” statements below preserve the Gate 2 issuance decision state and were superseded for the bounded authentication foundation by Founder-approved Gate 3B and its qualified mainline implementation. They do not authorize broader product migration, public endpoint exposure, or production cutover. Use current living contracts and qualification evidence for present status.
+
+
 **Canonical owner:** GHM platform governance
 **Status:** HISTORICAL FOUNDER ARCHITECTURE DECISION RECORD — architecture remains binding; implementation authorization was subsequently granted through Gate 3B and qualified on `main @ ffc4a2a`
 **Authority:** Local repository `C:\GHM`
