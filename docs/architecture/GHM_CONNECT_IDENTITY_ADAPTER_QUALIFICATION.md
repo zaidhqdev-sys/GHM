@@ -30,7 +30,7 @@ It does not authorize:
 
 The implementation is intentionally a domain/integration seam rather than a public HTTP endpoint.
 
-Reason: the existing repository does not yet contain a separately qualified service-to-service trust contract for an external Connect caller. Adding a public endpoint here would create a new credential/trust boundary not covered by the approved slice.
+At the time this identity-adapter slice was qualified, its scope did not include a separately qualified service-to-service trust boundary. A service assertion/replay-protection construction sub-slice has since been recorded in `CONNECT_GHM_SERVICE_TRUST_BOUNDARY_CONTRACT.md` and `CONNECT_SERVICE_REPLAY_PROTECTION_QUALIFICATION.md`; that evidence does not qualify the full Connect↔GHM trust boundary or authorize a public endpoint. Any HTTP/service exposure remains separately gated.
 
 Therefore:
 
@@ -39,7 +39,7 @@ Therefore:
 → `qualified AuthPersistence`
 → `account_external_identity / account_identity`
 
-A future HTTP/service transport requires its own trust/credential contract before exposure.
+HTTP/service transport remains unqualified for product use until the full trust/credential boundary, resource authorization, deployment-managed issuance, and endpoint behavior are independently qualified.
 
 ## 3. Implemented invariants
 
