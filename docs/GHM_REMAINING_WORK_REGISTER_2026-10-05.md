@@ -1,7 +1,7 @@
-# GHM Remaining Work Register — 2026-10-05
+# GHM Remaining Work Register — 2026-10-12
 
-**Status:** CURRENT GOVERNED REMAINING-WORK REGISTER  
-**Repository authority at this slice's start:** consolidated `main` at `e9ad72d417585d0046f9bf95402931959255eb88`; subsequent PayFast qualification evidence is recorded below  
+**Status:** CURRENT GOVERNED REMAINING-WORK REGISTER — reconciled 2026-10-12  
+**Repository authority:** `main` at `1f2b10d0850095311614c5b5f9531eb8b7cce860` (`Normalize migration checksums across line endings`). This register is being reconciled against that code/evidence state; the commit is the documentation audit anchor, not proof of live deployment state.  
 **Purpose:** establish the exact work that remains before GHM can become the backend for Zaid Connect and QuoteFlow. This register is the construction/cutover planning authority after the 2026-10-05 documentation reconciliation.
 
 ## 1. Authority rule
@@ -125,17 +125,17 @@ Qualified foundations:
 - provider-event idempotent application at the GHM boundary.
 
 Remaining:
-- PayFast checkout/redirect HTTP boundary — merged to `main`; focused local qualification tests passed;
-- PayFast ITN callback HTTP boundary — merged to `main`; focused local qualification tests passed;
-- PayFast provider-specific signature/source-IP/merchant/amount/status verification — implemented on `main`; focused local qualification tests passed;
+- PayFast checkout/redirect HTTP boundary — implemented and merged to `main`; focused deterministic local qualification tests passed;
+- PayFast ITN callback HTTP boundary — implemented and merged to `main`; focused deterministic local qualification tests passed;
+- PayFast provider-specific signature/source-IP/merchant/amount/status verification — implemented and merged to `main`; focused deterministic local qualification tests passed;
 - PayFast provider configuration boundary — code/config contract added with sandbox as the non-production default; production credentials and live enablement remain gated;
-- PayFast ITN server-to-server confirmation against the provider validation endpoint — merged to `main` and post-merge verified; sandbox/runtime qualification remains;
+- PayFast ITN server-to-server confirmation against the provider validation endpoint — implemented and merged to `main` (PR #119); post-merge tests pass; real provider sandbox/runtime end-to-end qualification remains open;
 - Local deterministic PayFast qualification runner — merged through this slice as `npm run qualify:payfast-runtime`; founder-local build passed and 22 focused tests passed (0 failed, 0 skipped); the full suite passed 557/557 and `git diff --check` was clean. Provider HTTP is stubbed; no provider network call, database access, or live credentials are involved;
 - PayFast sandbox end-to-end qualification, including checkout, ITN server confirmation and governed payment-result application — remains a separate qualification gate;
 - real runtime qualification against a non-production provider environment — not yet complete; must use explicit sandbox configuration and approved test merchant credentials only, never production/live credentials;
 - only then production provider enablement/cutover.
 
-**Approved provider direction:** PayFast is approved for the commercial payment path. Provider approval/configuration is not itself evidence that the provider-specific GHM integration is implemented or production-enabled.
+**Approved provider direction:** PayFast is approved for the commercial payment path. The provider-specific checkout and ITN implementation is merged, with deterministic local qualification passing. This does **not** mean real PayFast sandbox end-to-end qualification, production credential configuration, or live enablement is complete.
 
 Do not create another generic event ledger.
 
@@ -171,7 +171,7 @@ Notification persistence is qualified. Live delivery is not. Decide whether Conn
 ### CONNECT-04 — Connect server/provider runtime equivalents
 **Classification:** product/provider integration.
 
-Commercial checkout/webhook, AI proxy and other server-runtime behaviours require explicit ownership and provider-boundary contracts before any GHM implementation. PayFast is the approved commercial provider direction; provider-specific checkout/webhook implementation remains open until sandbox/runtime qualification completes and must terminate in the governed GHM commercial boundaries rather than create a parallel commercial ledger.
+Commercial checkout/webhook, AI proxy and other server-runtime behaviours require explicit ownership and provider-boundary contracts before implementation. PayFast checkout and ITN boundaries, provider-specific verification, and server-to-server ITN confirmation are already implemented and merged to `main`; their deterministic local qualification has passed. The remaining PayFast gate is real sandbox end-to-end/runtime qualification, followed by separately authorized production credentials and live enablement. Any future commercial path must terminate in the governed GHM commercial boundaries rather than create a parallel commercial ledger.
 
 ### CONNECT-05 — Connect atomic workflow parity
 **Classification:** product workflow construction.
