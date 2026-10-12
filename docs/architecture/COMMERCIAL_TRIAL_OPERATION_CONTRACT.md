@@ -3,7 +3,7 @@
 **Status:** QUALIFIED / CLOSED — commercial trial operation runtime-qualified
 **Date:** 2026-09-15
 **Scope:** `commercial.activateTrial`
-**Production state:** Supabase remains production authority
+**Production state (reconciled 2026-10-12):** Connect and QuoteFlow remain on their existing production paths; this qualified GHM trial operation does not authorize product backend switching or production cutover.
 
 ---
 
