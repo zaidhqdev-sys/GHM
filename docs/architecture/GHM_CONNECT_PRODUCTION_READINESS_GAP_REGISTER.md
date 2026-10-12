@@ -4,7 +4,7 @@
 **Source audit:** docs/architecture/GHM_CONNECT_BACKEND_READINESS_AUDIT.md
 **Audited GHM tree:** historical Connect audit checkpoint; current GHM construction state is the consolidated `main` line.
 **Connect source:** abcffa73f893602c25310a58946bebb91fd7eeb5
-**Current reconciliation checkpoint:** consolidated `main` — current repository authority; Connect service-trust construction evidence reconciled through the bounded HTTP read boundary and durable service-assertion replay protection (2026-10-02).
+**Current reconciliation checkpoint (2026-10-12):** This register remains a governed product-readiness gap record, not a live deployment snapshot. The historical dependency counts and source commit below remain provenance from the earlier audit. Later bounded construction is reconciled in the living status index and per-capability evidence. PayFast checkout/ITN/server-to-server confirmation is implemented and merged with deterministic local qualification; real sandbox/runtime end-to-end qualification, broader Connect product workflows, provider enablement, and production cutover remain open.
 **Evidence sprint checkpoint:** see Â§8 (this document update)
 
 ## Purpose
@@ -39,7 +39,7 @@ The principal remaining blockers are the Connect/QuoteFlow product adapters and 
 | 3 | UUID â†” bigint identity mapping | **GHM mapping foundation QUALIFIED: (provider, subject) → GHM account identity; product migration still open** | Concrete Connect adapter operation + migration ownership/evidence | Separate product adapter authorization |
 | 4 | Public Business + directory parity | Partial | Field-by-field public projection, search/geo/sort/featured contract | Explicit Business/directory authorization |
 | 5 | Trust backend | **QUALIFIED / CLOSED** (`ghm.trust_score` + calculate) | — | Closed; Business profile input parity remains a separate blocker |
-| 6 | Commercial payment operations | Partial/stubbed | Prepare/cancel/provider result/webhook contract and provider boundary | Explicit payment authorization |
+| 6 | Commercial payment operations | **Partial — governed GHM boundaries exist; PayFast checkout/ITN/server confirmation merged; sandbox/runtime E2E remains open** | Complete end-to-end product workflow and provider qualification, including governed payment-result application | Separate product/provider authorization and production gate |
 | 7 | Storage/media | **GHM metadata/persistence foundation QUALIFIED; provider/service/product exposure remains open** | Live provider, service authorization, HTTP/product exposure, recovery/reconciliation | Separate storage/provider authorization |
 | 8 | Realtime delivery | External/absent in GHM | Ownership and delivery contract for notifications/leads | Explicit realtime authorization |
 | 9 | Edge/runtime equivalents | External/absent in GHM | Runtime placement for checkout/webhooks/AI proxy | Explicit runtime/provider authorization |
@@ -64,7 +64,7 @@ These are **not** migration-missing. They remain blocked for GHM construction un
 - `business_engagement_events` / `business_profile_view_visitors`
 - `business_directory_review_events`
 - relationship/outcome tables (`relationship_types`, `business_relationships`, `outcome_types`, `outcomes`)
-- commercial payment operation workflows (tables exist; GHM ops stubbed)
+- commercial payment operation workflows: governed GHM boundaries exist and the PayFast checkout/ITN/server-confirmation adapter is merged; sandbox end-to-end qualification and complete product workflow parity remain open
 - storage/media product integration (GHM storage foundation is now qualified; provider/product exposure remains separately gated)
 - realtime delivery ownership (notifications + leads subscriptions)
 
@@ -138,7 +138,7 @@ Evidence sprint documents now exist for items 2â€“9 below. Remaining work i
 1. Connect adapter operation map â€” **started:** `CONNECT_BACKEND_OPERATION_INVENTORY.md`
 2. Public Business/directory field reconciliation â€” **done:** `CONNECT_PUBLIC_BUSINESS_DIRECTORY_SOURCE_AUDIT.md`
 3. Trust source audit — **CLOSED:** Trust QUALIFIED / CLOSED; Business profile input parity for full Connect score dimensions remains a separate blocker
-4. Commercial payment operation contract â€” **partial:** server runtime + atomic workflow + provider audits; formal payment operation contract still required
+4. Commercial payment workflow â€” **partial:** governed GHM boundaries and the PayFast adapter slice exist; sandbox end-to-end qualification and complete product workflow parity remain open
 5. Storage boundary audit â€” **done:** `CONNECT_STORAGE_MEDIA_SOURCE_AUDIT.md`
 6. Realtime delivery ownership decision â€” **evidence done:** `CONNECT_REALTIME_SOURCE_AUDIT.md`; ownership decision pending
 7. Orphan/referenced-table reconciliation â€” **done:** `CONNECT_REFERENCED_OBJECT_RECONCILIATION.md`
