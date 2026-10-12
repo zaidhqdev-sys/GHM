@@ -1,9 +1,9 @@
 import 'dotenv/config';
 
-import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 import historicalProvenanceExceptions from '../../config/historical-migration-provenance-exceptions.json';
+import { migrationSqlChecksum, matchesMigrationSqlChecksum } from './migration-checksum';
 import { Pool, PoolClient } from 'pg';
 
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
@@ -34,7 +34,7 @@ const loadMigrations = async (): Promise<Migration[]> => {
     const sql = await fs.readFile(path.join(MIGRATIONS_DIR, entry.name), 'utf8');
     migrations.push({
       version: match[1], name: match[2], filename: entry.name, sql,
-      checksum: crypto.createHash('sha256').update(sql, 'utf8').digest('hex'),
+      checksum: migrationSqlChecksum(sql),
     });
   }
   migrations.sort((a, b) => a.version.localeCompare(b.version));
@@ -81,11 +81,13 @@ const migrate = async (): Promise<void> => {
       const existingChecksum = appliedByVersion.get(migration.version);
       if (existingChecksum) {
         if (existingChecksum !== migration.checksum) {
-          const historicalChecksum = HISTORICAL_PROVENANCE_EXCEPTIONS[migration.version];
-          if (!isDocumentedHistoricalProvenanceException(migration.version, existingChecksum)) {
+          if (matchesMigrationSqlChecksum(existingChecksum, migration.sql)) {
+            console.warn(`Accepted legacy line-ending checksum for ${migration.filename}: database=${existingChecksum}, canonical=${migration.checksum}`);
+          } else if (!isDocumentedHistoricalProvenanceException(migration.version, existingChecksum)) {
             throw new Error(`Migration checksum mismatch for ${migration.filename}: database=${existingChecksum}, repository=${migration.checksum}`);
+          } else {
+            console.warn(`Accepted documented historical migration provenance exception for ${migration.filename}: database=${existingChecksum}, repository=${migration.checksum}`);
           }
-          console.warn(`Accepted documented historical migration provenance exception for ${migration.filename}: database=${existingChecksum}, repository=${migration.checksum}`);
         }
         continue;
       }
