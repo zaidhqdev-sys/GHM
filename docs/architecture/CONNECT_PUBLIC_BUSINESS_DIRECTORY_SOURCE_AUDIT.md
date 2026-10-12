@@ -100,6 +100,6 @@ Required evidence before any GHM directory construction:
 
 1. Connect public Business surface is **much wider** than GHM first-slice public Business (35 vs 7 fields).
 2. GHM does **not** over-expose Connect’s excluded 4A private fields in the first-slice public projection.
-3. Directory search/featured/nearby are Connect product requirements evidenced in source; GHM does not yet provide them.
+3. Directory search/featured/nearby are Connect product requirements evidenced in source. Individual GHM Business/public-projection resource slices do not, by themselves, qualify the complete product-facing directory aggregation/search/featured/nearby workflows; those remain separate product-adapter and cutover gates.
 4. Construction of an extended public Business / directory contract requires explicit authorization after field-by-field product decisions.
 5. Closed Business Identity first slice remains closed; this audit does not reopen it.
