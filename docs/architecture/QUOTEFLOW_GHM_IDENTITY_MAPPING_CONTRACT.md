@@ -192,4 +192,4 @@ This contract does not authorize:
 
 This is the final prerequisite before an eventual QuoteFlow adapter can be designed safely.
 
-The authority model is now separately qualified by dual confirmation, and the persistence boundary is separately contracted. The next construction step is **GHM-owned QuoteFlow authentication and migration-boundary qualification**, not permanent identity-link persistence.
+The authority model is now separately qualified by dual confirmation, and the persistence boundary is separately contracted. The GHM-owned authentication, account identity, external-identity persistence, and migration account-provisioning construction slices are now qualified separately. Remaining work is non-production reset/re-enrollment ceremony qualification, authoritative reconciliation of the two founder-owned source accounts, Business provisioning qualification, and separately authorized product runtime migration/cutover. This does not authorize permanent identity-link persistence or production mutation.
