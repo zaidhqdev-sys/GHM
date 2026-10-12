@@ -169,6 +169,7 @@ try {
 
   const service = new DefaultCommercialService(new PostgresCommercialRepository(runtimePool));
   const idempotencyKey = `sandbox-payment-prepare-${crypto.randomUUID()}`;
+  fixture.idempotencyKey = idempotencyKey;
   const prepared = await service.prepareCommercialPayment(
     { userId: founderState.accountId, role: founderState.role },
     { businessId: EXPECTED_BUSINESS_ID, countryId: null, idempotencyKey, expiresAt: null },
@@ -226,7 +227,7 @@ try {
     try {
       await cleanup.query('BEGIN');
       await cleanup.query('SET LOCAL ROLE ghm_schema_owner');
-      await cleanup.query('DELETE FROM ghm.commercial_payment_attempt WHERE business_id = $1 AND initiated_by = 1 AND idempotency_key LIKE $2', [EXPECTED_BUSINESS_ID, 'sandbox-payment-prepare-%']);
+      await cleanup.query('DELETE FROM ghm.commercial_payment_attempt WHERE business_id = $1 AND initiated_by = 1 AND idempotency_key = $2', [EXPECTED_BUSINESS_ID, fixture.idempotencyKey]);
       await cleanup.query('DELETE FROM ghm.commercial_event WHERE subscription_id = $1', [fixture.subscriptionId]);
       await cleanup.query('DELETE FROM ghm.commercial_subscription WHERE id = $1', [fixture.subscriptionId]);
       await cleanup.query('DELETE FROM ghm.commercial_plan_price WHERE id = $1', [fixture.priceId]);
