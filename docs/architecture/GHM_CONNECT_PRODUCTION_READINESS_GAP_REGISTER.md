@@ -13,11 +13,13 @@ This register converts the verified Connect↔GHM readiness audit into an action
 
 It does not authorize implementation, adapters, production migration, shadow qualification, cutover, provider cleanup, or reopening of any closed GHM capability.
 
-## Current conclusion
+## Current readiness conclusion and historical audit counts
 
 GHM is not production-ready as the backend for Zaid Connect.
 
-The audit identified 48 concrete Connect backend dependencies and 54 coverage rows:
+**Historical count warning:** the totals below are the classification counts from the original Connect source-audit snapshot, not a current measurement of GHM capability coverage. Later bounded construction and qualification are recorded in the current-state index and capability-specific evidence; use the current blocker states below and those living records for present status.
+
+The original audit identified 48 concrete Connect backend dependencies and 54 coverage rows:
 
 | Classification | Count |
 |---|---:|
