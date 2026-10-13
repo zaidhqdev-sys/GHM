@@ -4,7 +4,7 @@
 
 **HISTORICAL SOURCE AUDIT — CONSTRUCTION COMPLETED AND QUALIFIED**
 
-The source reconciliation recorded here authorized the Business Profile Trust-input extension. The implementation and durable tenant adoption are now qualified on the consolidated mainline; this file is retained as provenance and is not an open construction gate.
+The source reconciliation recorded here authorized the Business Profile Trust-input schema/owner-update extension, which is now qualified on the consolidated mainline. It did **not** change the Trust calculation function: those dimensions remain deliberately scored as `0` until a separate Trust-scoring change is authorized and qualified. This file is retained as provenance and is not an open gate for the already-qualified profile extension.
 
 Founder-authorized construction slice for Business Profile input parity required by the already-qualified GHM Trust resource. This document does not authorize production migration, cutover, adapters, shadow traffic, or Supabase changes. Trust and Saved Business remain QUALIFIED / CLOSED.
 
@@ -90,14 +90,14 @@ jobs_completed       -- absent
 
 Canonical owner remains the Business Identity resource (`business.updateProfile`). No separate `business_profile` resource is required.
 
-## 5. Construction mandate
+## 5. Original construction mandate — reconciled against the qualified slice
 
 1. Add only the five missing Trust-input columns.
 2. Authorize owner/administrator mutation of `description`, `phone`, `email` (plus existing `name`/`slug`) through a governed update boundary.
 3. Persist `insurance_verified` and `jobs_completed` as protected defaults only — no owner mutation authority and no fake verification/evidence workflow.
-4. Wire Trust calculation to consume the new columns without changing Trust thresholds or operation vocabulary.
+4. **Deferred to a separate Trust-scoring gate:** the qualified profile extension did not wire the Trust calculation to consume these columns. The current `ghm.calculate_business_trust_score` intentionally keeps these dimensions at `0`; do not change Trust scoring without a separate reviewed authorization and qualification.
 5. Do not reopen Trust or Saved Business qualification.
 
 ## 6. Completeness verdict
 
-Connect source establishes a complete ownership boundary for this narrow Trust-input parity extension. Construction may proceed.
+Connect source establishes a complete ownership boundary for this narrow Trust-input parity extension. The schema and owner-update boundary are qualified; the Trust-scoring integration is explicitly outside that qualified slice and remains separately gated.
