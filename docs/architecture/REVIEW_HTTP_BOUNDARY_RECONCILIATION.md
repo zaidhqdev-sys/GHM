@@ -1,12 +1,17 @@
 # Review HTTP Boundary Reconciliation
 
 ## Status
-Construction artifact — not merged.
+
+**CONSTRUCTION INTEGRATED ON MAIN — BOUNDED REVIEW HTTP SURFACE QUALIFIED; PRODUCTION EXPOSURE AND CUTOVER REMAIN GATED.**
+
+> **Status reconciliation — 2026-10-13:** The phrase “Construction artifact — not merged” in the original version was stale. The Review router is integrated on consolidated `main`; `docs/evidence/REVIEW_HTTP_QUALIFICATION.md` records the merged-slice reconciliation and later repository-wide 557/557 test checkpoint. This document remains the bounded boundary reconciliation, not independent proof of a new test run or production readiness.
 
 ## Audit basis
-The Review HTTP surface was audited against the canonical Review contracts, service, repository boundary, resource registry, authorization model, and existing HTTP router patterns on `construction/support-request-http-api`.
+
+The Review HTTP surface was audited against the canonical Review contracts, service, repository boundary, resource registry, authorization model, and existing HTTP router patterns. The original construction branch is historical provenance, not a current checkout instruction.
 
 ## Canonical service boundary
+
 The Review service exposes exactly:
 - `createReview(context, input)`
 - `getOwnReview(context, reviewId)`
@@ -25,7 +30,8 @@ The service itself enforces:
 - limits bounded to 100.
 
 ## HTTP boundary
-Routes constructed:
+
+The bounded routes integrated on `main` are:
 - `GET /api/v1/public/reviews?businessId=&limit=`
 - `GET /api/v1/reviews?limit=` — admin pending reviews
 - `POST /api/v1/reviews` — customer creation
@@ -42,6 +48,7 @@ The HTTP layer deliberately does not expose:
 - provider/payment integration.
 
 ## Authorization
+
 Public reads require the registered `review.readPublic` operation but no bearer identity.
 
 Authenticated routes require both:
@@ -51,10 +58,13 @@ Authenticated routes require both:
 Moderation accepts only the canonical decision/rejection-reason shape. The route does not let callers choose `moderatedBy`, `moderatedAt`, or moderation status directly.
 
 ## Important boundary decision
+
 The registry contains separate `approve` and `reject` operations. The moderation HTTP surface is one endpoint because the canonical service has one `moderateReview` method. The router validates the decision and additionally confirms the corresponding registered operation before delegation.
 
 ## Scope
-This is an HTTP exposure of an already-qualified Review domain. It does not reopen or alter the Review domain model, repository, schema, or authorization design.
+
+This is an HTTP exposure of an already-qualified Review domain. It does not reopen or alter the Review domain model, repository, schema, or authorization design. Construction qualification does not establish production deployment, product routing, or cutover authorization.
 
 ## Deferred
+
 No changes are made here to commercial/provider verification, Contact Access, or Enquiry disclosure/redaction.
