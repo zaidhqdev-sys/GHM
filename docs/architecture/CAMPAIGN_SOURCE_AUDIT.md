@@ -88,11 +88,13 @@ At the time of this audit, Campaign exists at these levels only:
 |---|---|
 | Code (`src/resources/campaign`) | **Absent** |
 | Database (`ghm.campaign`) | **Absent** |
-| Service / repository | **Absent** |
-| Authorization wiring | **Absent** (pattern exists for other resources) |
-| Runtime qualification | **Absent** |
-| HTTP / API surface | **Absent** — **not authorized** this slice |
-| Production-usable | **No** |
+**Historical first-slice snapshot — before the separately qualified Campaign HTTP work at the Founder-locked wire (`785df12`):**
+
+| Service / repository | **Absent at this historical checkpoint** |
+| Authorization wiring | **Absent at this historical checkpoint** (pattern exists for other resources) |
+| Runtime qualification | **Absent at this historical checkpoint** |
+| HTTP / API surface | **Absent at this historical checkpoint** — not authorized for that slice |
+| Production-usable | **No; production use remains gated** |
 
 Existing GHM capabilities Campaign will **consume** (not redefine):
 
@@ -229,7 +231,7 @@ campaign.create
 campaign.update
 ```
 
-Not authorized:
+Historical scope exclusion — the following operation remains outside the qualified Campaign surface:
 
 ```text
 campaign.delete
