@@ -546,16 +546,16 @@ Do not design an oversized security platform in this gate.
 
 ---
 
-## 18. Current vs target gap
+## 18. Current vs target gap — reconciled after Gate 3B
 
-| Aspect | Current GHM | Target Auth API |
+| Aspect | Current bounded GHM foundation | Remaining product/production gap |
 |---|---|---|
-| Login | Absent | Email + password → session + JWT + refresh |
-| Refresh / logout / recovery | Absent | Present per §§8–12 |
-| Verify | GHM ES256; canonical `sub`/`iss`/`aud`/`iat`/`exp`/`kid` |
-| Identity | Numeric claim only | `ghm.account_identity.id` via `sub` |
-| Persistence | No auth session/credential tables | Persistence Contract concepts |
-| Products | Connect/QuoteFlow use Supabase Auth | Consume GHM Auth API; never send Supabase JWT to GHM |
+| Login | GHM email/password login endpoint is implemented in the qualified construction foundation | Product clients are not yet migrated to use it; public/product rollout remains separately gated |
+| Refresh / logout / recovery | GHM refresh/logout and password-recovery foundations exist; QuoteFlow migration-specific reset is separately scoped | Full product ceremony/workflow qualification and product-client integration remain open where recorded in their specific contracts |
+| Verify | GHM ES256 verifier enforces canonical `sub`/`iss`/`aud`/`iat`/`exp`/`kid` | External product integration and deployment promotion remain separately gated |
+| Identity | Canonical `ghm.account_identity.id` is represented by the GHM JWT `sub`; external identity mapping foundation is qualified | Product identity backfill, membership/business provisioning, and migration remain open |
+| Persistence | Credential, session, refresh, recovery, and external-identity persistence foundation is qualified | Product migration, operational recovery/backup, and production readiness remain separately gated |
+| Products | Connect/QuoteFlow still use Supabase Auth | Consume GHM Auth API only after product-specific adapter/session migration and cutover gates; never send Supabase JWT to GHM |
 
 ```text
 email + password
@@ -590,44 +590,40 @@ This document does **not** modify Connect or QuoteFlow.
 
 ---
 
-## 20. Remaining unselected decisions
+## 20. Remaining details and gates — reconciled with Gate 3B
 
-| Item | Status |
+The list below is not a claim that every item remains undecided. Where the implementation has frozen a bounded behavior, the implementation and its focused qualification are evidence; where a complete external/product contract is still open, it remains a separate gate.
+
+| Item | Current status |
 |---|---|
-| Exact auth URL prefix / paths | **UNSELECTED** |
-| Exact request/response JSON schemas | **UNSELECTED** |
-| Exact error-code catalogue / envelope | **UNSELECTED** (representatives in §15) |
-| Argon2id cost parameters | **UNSELECTED** |
-| Recovery TTL | **UNSELECTED** |
-| Email provider | **UNSELECTED** |
-| Rate-limit values / HTTP status for limits | **UNSELECTED** |
-| Refresh token wire representation | **UNSELECTED** (opaque recommended) |
-| Logout credential binding (refresh vs access) | **UNSELECTED** |
-| Public-key distribution mechanism | **UNSELECTED** |
-| Key encoding / `kid` string format | **UNSELECTED** |
-| `sub` encoding of bigint | **UNSELECTED** |
-| CORS specifics for Auth API | **UNSELECTED** (Resource API uses `CORS_ORIGINS`) |
-| Deployment TLS configuration | **UNSELECTED** |
-| Exact GRANT matrix for auth persistence | **UNSELECTED** (Persistence Contract §3) |
-| Trusted bootstrap invocation path | **UNSELECTED** (must not be public federation) |
+| Auth URL prefix / implemented paths | Bounded routes exist under `/api/v1/auth/` (including register, login, refresh, logout, password recovery, and QuoteFlow migration reset); this does not authorize broader public/product exposure |
+| Exact request/response JSON schemas | Concrete request/response shapes exist in route/service code; this conceptual contract is not by itself the exhaustive wire-schema authority |
+| Exact error-code catalogue / envelope | Partially represented by implemented routes; complete cross-endpoint taxonomy remains a contract/qualification concern |
+| Argon2id cost parameters | Use current credential implementation/configuration evidence; do not treat this Gate 2E table as current parameter authority |
+| Recovery TTL | Use the current credential/recovery implementation and qualification records; any still-open operational value must be explicitly documented there |
+| Email provider | Provider/delivery enablement remains separately gated; do not infer production delivery from the route foundation |
+| Rate-limit values / HTTP status for limits | Concrete route-level limits exist; complete operational tuning and deployment review remain separate if not covered by current config evidence |
+| Refresh token wire representation | Opaque refresh credential carried as `refreshToken`; rotation/replay semantics qualified within the bounded foundation |
+| Logout credential binding | Implemented logout accepts the refresh credential; broader product-session behavior remains separately gated |
+| Public-key distribution mechanism | Exact mechanism for external product consumers remains a deployment/product-integration gate |
+| Key encoding / `kid` string format | Current ES256 key loader and JWT implementation govern actual encoding; do not reuse this historical list as current status |
+| `sub` encoding of bigint | Current GHM access JWT uses canonical decimal GHM account id in `sub` |
+| CORS specifics for Auth API | Governed by current runtime/config; production origin allowlist remains deployment-managed |
+| Deployment TLS configuration | Runtime/deployment gate, not resolved by this conceptual API contract |
+| Exact GRANT matrix for auth persistence | Use current migrations, controlled functions, and role qualification evidence; this historical Gate 2E list is not the current grant record |
+| Trusted bootstrap invocation path | Controlled GHM authentication boundary is implemented; no public federation or product migration is implied |
 
 ---
 
-## 21. Founder decision checkpoint
+## 21. Historical Gate 2E decision checkpoint — superseded for the bounded foundation
 
 ```text
-AUTHENTICATION GATE 2E:
-AUTHENTICATION API CONTRACT — DOCUMENTATION COMPLETE
+GATE 2E SNAPSHOT:
+AUTHENTICATION API CONTRACT — DOCUMENTATION COMPLETE AT THAT GATE
+IMPLEMENTATION AUTHORIZATION: NOT GRANTED AT THAT GATE
+```
 
-FOUNDER ARCHITECTURE (canonical — not reopened):
-- Operations & security semantics in §§4–17
-- JWT / session / recovery / mapping rules as listed in this document header
-
-IMPLEMENTATION:
-NOT AUTHORIZED.
-
-CURRENT RESOURCE VERIFIER: GHM ES256 only, with DB-backed account-state loading and authorization role derivation.
-UNCHANGED.
+Gate 3B subsequently authorized and qualified the bounded GHM authentication foundation, including login/refresh/logout routes and ES256 resource verification with DB-backed account-state loading. This historical checkpoint does not authorize broader public/product exposure, product migration, deployment promotion, or cutover.
 ```
 
 ---
