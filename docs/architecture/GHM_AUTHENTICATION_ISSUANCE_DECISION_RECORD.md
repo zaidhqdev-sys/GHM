@@ -326,17 +326,20 @@ This document does **not** invent a specific asymmetric algorithm (e.g. RS256) a
 
 ---
 
-## 12. Implementation gate
+## 12. Historical Gate 2 implementation gate — superseded for the bounded foundation
+
+The block below preserves the original Gate 2 scope stop. It is not a current statement that authentication issuance remains unimplemented or unauthorized: Gate 3B subsequently authorized and qualified the bounded GHM authentication foundation. The decision record itself does not authorize additional work beyond that qualified scope.
 
 ```text
-NO AUTHENTICATION ISSUANCE IMPLEMENTATION IS AUTHORIZED BY THIS DOCUMENT.
-NO IDENTITY MAPPING MIGRATION IS AUTHORIZED BY THIS DOCUMENT.
-NO JWT VERIFICATION CHANGE IS AUTHORIZED BY THIS DOCUMENT.
-NO PRODUCT CODE CHANGE IS AUTHORIZED BY THIS DOCUMENT.
-FOLLOW-ON AUTHENTICATION CONTRACTS REQUIRED BEFORE IMPLEMENTATION.
+GATE 2 HISTORICAL DECISION:
+NO AUTHENTICATION ISSUANCE IMPLEMENTATION WAS AUTHORIZED BY THIS DOCUMENT.
+NO IDENTITY MAPPING MIGRATION WAS AUTHORIZED BY THIS DOCUMENT.
+NO JWT VERIFICATION CHANGE WAS AUTHORIZED BY THIS DOCUMENT.
+NO PRODUCT CODE CHANGE WAS AUTHORIZED BY THIS DOCUMENT.
+FOLLOW-ON AUTHENTICATION CONTRACTS WERE REQUIRED BEFORE IMPLEMENTATION.
 ```
 
-Founder architecture decisions 1–12 are recorded in §16. Implementation requires a separate Founder implementation authorization after follow-on contracts.
+Founder architecture decisions 1–12 are recorded in §16. The bounded foundation was subsequently authorized and qualified under Gate 3B. Further product adapters, public exposure, production configuration, product migration, and cutover still require their own authorization and qualification.
 
 Related gates remain separate:
 
