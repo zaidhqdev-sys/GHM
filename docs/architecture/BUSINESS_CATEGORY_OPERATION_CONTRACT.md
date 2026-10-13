@@ -259,9 +259,9 @@ Resource registration may be prepared only to support internal qualification. Pu
 
 The 2026-10-05 runtime qualification passed with runtime identity `ghm_runtime` and cleanup authority `ghm_migrator`. Evidence covered category reads and active filtering, management authorization, cross-Business read/assignment denial, server-derived provenance, duplicate assignment rejection, atomic/concurrent primary transitions, inactive/unassigned primary rejection, runtime privilege boundaries, runtime insert/delete denial, invalid UUID validation, and the existing 520-test suite.
 
-## 17. Qualification requirements
+## 17. Qualification evidence — CLOSED / PASS
 
-Before this slice is considered construction-qualified, evidence must demonstrate:
+The recorded 2026-10-05 runtime qualification satisfies the following criteria:
 
 1. category reads work through the governed repository;
 2. inactive categories cannot be selected;
@@ -282,6 +282,8 @@ Before this slice is considered construction-qualified, evidence must demonstrat
 17. build/tests/diff checks pass;
 18. existing qualified GHM capabilities remain green;
 19. architecture/readiness/handover documentation is reconciled to the resulting implementation.
+
+These criteria are recorded as satisfied for the bounded Business Category construction slice. Reopen qualification only if new evidence demonstrates regression or a separately authorized requirement changes this boundary.
 
 ## 18. Construction sequence
 
