@@ -1,7 +1,7 @@
 # GHM Error Semantics and Versioning Compatibility Contract
 
 **Canonical owner:** GHM platform governance
-**Status:** Architecture contract — documentation-only; transport-neutral; implementation not authorized
+**Status:** Transport-neutral architecture contract — platform-wide error-taxonomy/versioning runtime implementation not authorized by this document; bounded authentication foundation is separately qualified
 **Authority:** Local repository `C:\GHM`
 **Baseline:** branch `construction/saved-business-resource`, HEAD `0a9a9f7`
 
