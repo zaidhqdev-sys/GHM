@@ -95,9 +95,9 @@ Canonical owner remains the Business Identity resource (`business.updateProfile`
 1. Add only the five missing Trust-input columns.
 2. Authorize owner/administrator mutation of `description`, `phone`, `email` (plus existing `name`/`slug`) through a governed update boundary.
 3. Persist `insurance_verified` and `jobs_completed` as protected defaults only — no owner mutation authority and no fake verification/evidence workflow.
-4. **Deferred to a separate Trust-scoring gate:** the qualified profile extension did not wire the Trust calculation to consume these columns. The current `ghm.calculate_business_trust_score` intentionally keeps these dimensions at `0`; do not change Trust scoring without a separate reviewed authorization and qualification.
+4. **Trust-scoring reconciliation:** the qualified Business Profile extension is recorded as feeding owner-managed `description`, `phone`, and `email` values into the existing Trust calculation (`profile_complete`, `phone_verified`, and `email_verified`). Protected `insurance_verified` and `jobs_completed` remain default-only and are not owner-mutable. Any further Trust formula, threshold, or protected-input change requires a separate reviewed authorization and qualification.
 5. Do not reopen Trust or Saved Business qualification.
 
 ## 6. Completeness verdict
 
-Connect source establishes a complete ownership boundary for this narrow Trust-input parity extension. The schema and owner-update boundary are qualified; the Trust-scoring integration is explicitly outside that qualified slice and remains separately gated.
+Connect source establishes the ownership boundary for this narrow Trust-input parity extension. The five-column schema extension and owner-update boundary are qualified; the existing Trust calculation consumes the three owner-managed profile inputs as recorded by `BUSINESS_PROFILE_QUALIFICATION.md`. Protected verification/job-completion inputs remain default-only. This source audit does not authorize new Trust scoring formulas, threshold changes, evidence workflows, or production cutover.
