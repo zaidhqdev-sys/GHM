@@ -120,7 +120,7 @@ GHM owns routes, auth middleware, service invocation, authz, transactions.
 
 #### Authentication interaction
 
-Verification path exists; issuance still UNSELECTED.
+At the original selection point, the verification path existed while issuance was unselected; the bounded Gate 3B issuance foundation is now qualified. Product-specific session integration remains gated.
 
 #### Authorization interaction
 
@@ -491,7 +491,7 @@ Non-negotiables:
 - Product-supplied role/ownership cannot override GHM
 - Direct PostgreSQL access remains forbidden
 - AuthContext from trusted verification path only
-- Authentication issuance remains separately unresolved
+- The bounded GHM authentication issuance foundation is qualified under Gate 3B; product-specific session-client integration remains separately gated
 - Tokens/secrets must not leak into logs or errors
 - Transport must not expose raw DB objects or internal repository/service details
 - Business isolation enforced by GHM
@@ -634,11 +634,11 @@ TRANSPORT SELECTED: HTTP/API.
 
 FOUNDER AUTHORIZATION: GIVEN.
 
-At selection time: NO TRANSPORT IMPLEMENTATION AUTHORIZED BY THIS ADR.
+Historical selection-time status: NO TRANSPORT IMPLEMENTATION AUTHORIZED BY THIS ADR.
 
 Post-785df12: Campaign HTTP AUTHORIZED and implemented separately; this ADR still does not authorize issuance, KBM adapter, or unrelated resources.
 
-NO AUTHENTICATION ISSUANCE IMPLEMENTATION AUTHORIZED.
+Historical selection-time status: NO AUTHENTICATION ISSUANCE IMPLEMENTATION AUTHORIZED BY THIS ADR; the bounded Gate 3B foundation is now qualified.
 
 NO GHM API WAS CREATED BY THIS TRANSPORT-SELECTION ADR AT SELECTION TIME.
 
@@ -673,7 +673,7 @@ Alternatives above were evaluated neutrally; this section records the decision w
 | Events/webhooks/async | Asynchronous — does not automatically satisfy synchronous Campaign read/create/update |
 | MCP | Protocol/tooling mechanism — not assumed equivalent to an ordinary product backend API |
 | RPC | Family of transport/protocol approaches — no specific RPC framework chosen here |
-| Authentication issuance | Separate decision; remains **UNSELECTED** |
+| Authentication issuance | Historical selection-time decision; bounded Gate 3B issuance foundation is now qualified |
 | Transport selection | Does **not** select an authentication provider |
 | Transport selection | Does **not** authorize implementation |
 
@@ -696,7 +696,7 @@ HTTP/API as the selected transport is **not**: an authentication issuer; an auth
 - Product-supplied role/ownership claims cannot override GHM authorization.
 - Direct product → PostgreSQL remains forbidden.
 - AuthContext must originate from a trusted verification path.
-- Authentication issuance remains a separate unresolved decision.
+- Bounded GHM issuance is qualified under Gate 3B; product session-client integration/migration remains separately gated.
 - Business isolation remains enforced by GHM.
 - Raw database objects must not become the product contract.
 - Internal GHM repository/service implementation must not become the product contract.
