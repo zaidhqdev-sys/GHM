@@ -370,10 +370,10 @@ Do not select Datadog/New Relic/OTel vendor lock into domain contracts.
 | Capability | Current State | GHM Ownership Status | Product Ownership Status | Provider Selected | Implementation Authorized |
 |---|---|---|---|---|---|
 | Object storage | Storage metadata/persistence + controlled R2 provider data path qualified; broader product surface remains gated | Qualified bounded foundation; broader ownership/scope gated | KBM media Product-Owned | Cloudflare R2 (bounded provider path) | Bounded slice qualified; product-facing enablement/cutover gated |
-| Durable audit | commercial_event only | Existing/Internal (commercial); Future/Gated (platform-wide) | Analytics Product-Owned | None Selected | Closed |
-| Jobs / queues | Absent | Not Justified now; Future/Gated if multi-product evidence | KBM generation Product-Owned | None Selected | Closed |
-| Realtime | Unused socket.io; no GHM realtime | Not Justified now; Future/Gated for Connect UX | UX refresh Product-Owned | None Selected | Closed |
-| Observability | healthz/readyz + console logs | Existing/Internal; Future/Gated for richer platform | Product telemetry Product-Owned | None Selected | Closed |
+| Durable audit | `commercial_event` only; no platform-wide audit log | Existing/Internal (commercial); Future/Gated (platform-wide) | Analytics Product-Owned | None Selected for platform-wide audit | Platform-wide implementation not authorized |
+| Jobs / queues | No generic GHM queue/worker platform | Not Justified now; Future/Gated if multi-product evidence | KBM generation Product-Owned | None Selected | Generic platform implementation not authorized |
+| Realtime | Unused `socket.io`; no GHM realtime transport | Not Justified now; Future/Gated for Connect UX | UX refresh Product-Owned | None Selected | GHM-owned realtime implementation not authorized |
+| Observability | `healthz`/`readyz` + console logs; richer platform capability absent | Existing/Internal; Future/Gated for richer platform | Product telemetry Product-Owned | None Selected for richer platform | Existing thin boundary qualified; broader platform implementation gated |
 
 ---
 
