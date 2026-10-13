@@ -485,14 +485,14 @@ This historical snapshot does not authorize product migration or cutover.
 
 | Item | Status |
 |---|---|
-| Exact account lifecycle/status column/enum | **SELECTED architecture:** `active` / `disabled` (Issuance ADR §16.2 **R1**); exact column name **UNSELECTED** |
-| Exact system-admin representation | **SELECTED architecture:** governed account-level admin state, not JWT (Issuance ADR §16.2 **R2**); exact storage **UNSELECTED** |
-| Exact future AuthContext shape | **SELECTED architecture:** identity-centric; authz from GHM state (Issuance ADR §16.2 **R3**); exact fields **UNSELECTED** |
-| Exact authorization-policy API shape | **UNSELECTED** (existing helpers remain current) |
-| Identity bootstrap invocation path | **SELECTED:** dedicated controlled Auth boundary op; identity/mapping only (Issuance ADR §16.2 **R4**); exact path **UNSELECTED** |
-| Business/org migration mapping mechanism | **SELECTED:** `(provider, external_business_id) → business.id` via LINK-ONLY `ghm.auth_link_business_external_mapping` (Issuance ADR §16.2 **R5**); never creates business/membership |
-| Exact GRANT matrix for auth tables | **SELECTED model:** SECURITY DEFINER / controlled EXECUTE; no broad runtime DML (Issuance ADR §16.2 **R6**); exact matrix **UNSELECTED** |
-| Exact schema names for credential/session/mapping | **UNSELECTED** (Persistence Contract) |
+| Account lifecycle/status column | `account_status` (`active` / `disabled`) **implemented** by migration `20260921120000`; no longer an open column-name decision |
+| System-admin representation | `is_system_admin` account-level state **implemented**; not JWT authority |
+| Exact future AuthContext TypeScript shape | Identity-centric architecture selected; any remaining exact field/API naming must follow current code and consumer contracts |
+| Exact authorization-policy API shape | Existing helpers remain current; further policy API expansion is separately scoped |
+| Identity bootstrap invocation path | Controlled Auth boundary and `auth_bootstrap_external_identity` foundation implemented; not a public federation API |
+| Business/org migration mapping mechanism | LINK-ONLY `ghm.auth_link_business_external_mapping` implemented; it attaches to an existing Business and does not create Business/membership |
+| Auth persistence grants | Controlled SECURITY DEFINER / EXECUTE model implemented; consult migrations and role qualification for exact per-object grants, not this historical proposal alone |
+| Credential/session/mapping schema names | Implemented names include `ghm.account_password_credential`, `ghm.authentication_session`, `ghm.refresh_credential`, `ghm.password_recovery_credential`, `ghm.account_external_identity`, and `ghm.business_external_mapping` |
 | Evolution of `account_identity.role` (`customer`/`business`/`admin`) under target model | **SELECTED:** incremental; JWT role not authoritative (Issuance ADR §16.2 **R7**) |
 
 > Recommendations in this document are **not** Founder decisions unless marked SELECTED elsewhere.
