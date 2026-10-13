@@ -165,7 +165,7 @@ These gaps were factual observations at the historical Gate 2 baseline. They mus
 |---|---|---|
 | **Zaid Connect** | Supabase Auth email/password; session UUID `session.user.id`; profile PK = `auth.users.id`; RLS/RPCs/`auth.uid()`; client `authService` + `resolveApplicationIdentity` | `C:\zaid-connect-audit` `lib_supabase.js`; `CONNECT_IDENTITY_BACKEND_SOURCE_AUDIT.md` |
 | **QuoteFlow** | Supabase Auth; UUID `user.id`; session persisted via AsyncStorage-backed Supabase client; org/legal/subscription RPCs use `auth.uid()` | `C:\QuoteFlow` `AuthContext.tsx`, `supabase.ts`, org/legal migrations |
-| **Both** | No GHM `{ userId, role }` JWT shape; no GHM identity mapping table/adapter | Cross-product read-only audit |
+| **Both** | Product clients do not use GHM `{ userId, role }` tokens; GHM's canonical external-identity mapping foundation is qualified, but product migration/backfill is not | Cross-product read-only audit at the historical baseline; current mapping status is governed by Gate 3B evidence |
 | **Both** | Product Supabase JWTs are not accepted by the current GHM resource verifier; GHM now verifies its own ES256 bearer contract |
 
 Connect Edge checkout validates Bearer tokens with **Supabase** `auth.getUser()`; that product path is separate from GHM resource authentication.
@@ -183,12 +183,6 @@ Refresh/session rotation, revocation, recovery and logout foundation: PRESENT (G
 External identity mapping/bootstrap foundation: PRESENT (Gate 3B qualified)
 Connect / QuoteFlow product session-client migration: NOT YET QUALIFIED
 Production product cutover: NOT AUTHORIZED
-```
-JWT signing in application code: ABSENT (tests only)
-Auth HTTP issuance endpoints: ABSENT
-External UUID mapping: ABSENT
-Refresh / revocation / logout product capability: ABSENT
-Connect / QuoteFlow current issuer: Supabase Auth (product evidence)
 ```
 
 ---
