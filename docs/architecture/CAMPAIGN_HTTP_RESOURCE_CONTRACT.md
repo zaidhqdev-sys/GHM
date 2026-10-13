@@ -203,7 +203,7 @@ Error envelope: `{ error: "<token>" }`.
 
 Campaign HTTP uses a **Campaign-local** mapper (`handleCampaignError` in `campaign-router.ts`). Global `handleError` is not redesigned for Campaign.
 
-Platform-wide semantic taxonomy refactor (unauthenticated / validation_failed / invalid_state / â€¦) remains outside this Campaign HTTP lock.
+Platform-wide semantic taxonomy refactor (unauthenticated / validation_failed / invalid_state / …) remains outside this Campaign HTTP lock.
 
 ---
 
