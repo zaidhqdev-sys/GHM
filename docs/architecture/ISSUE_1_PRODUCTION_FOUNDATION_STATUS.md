@@ -6,11 +6,11 @@
 
 **Documentation reconciliation — 2026-10-13:** The earlier `1f2b10d0850095311614c5b5f9531eb8b7cce860` commit is a historical checksum-normalization/audit anchor, not the current `main` HEAD. This roll-up is reconciled against the consolidated mainline and the current state/evidence records; the PR commit SHAs below identify individual merged slices, not the current repository HEAD. Superseded authentication gate records remain historical provenance. Issue #1 remains OPEN: later qualified resource, storage-provider, and commercial slices do not independently satisfy its remaining foundation acceptance criteria.
 
-## Current baseline
+## Foundation baseline and merged construction evidence
 
 The production configuration/secret boundary was construction-qualified on PR #21 and is now merged into `main` at `5c71846cd96b05c45956254d912dfc0a609760e6`. Its canonical contract is `PRODUCTION_CONFIGURATION_SECRET_BOUNDARY_CONTRACT.md`. The qualified rule is that production configuration fails closed unless `DATABASE_SSL=true`; this is a construction gate only and does not authorize production environment changes.
 
-Current main includes these completed Issue #1 slices:
+The following PRs record completed construction slices merged into `main` at the time of their respective merges. Their listed SHAs are historical merge evidence, not a claim about current `main` HEAD or live deployment state:
 
 - PR #13 — legacy authentication reconciliation — merged as de8143ff99a0b7ca1711cebb47af7091715d8265. The temporary HS/JWT_SECRET bearer path was removed. GHM resource authentication is ES256-only.
 - PR #14 — runtime/HTTP hardening — merged as b18a407e0ad1184f2821b08736e0b638e835e1f1. CORS validation, HTTP timeouts, ETag/security headers, readiness/health and operational-boundary qualification were established.
@@ -58,7 +58,9 @@ The workflow uses non-production qualification environment values only.
 
 ## Issue #1 remaining work
 
-Issue #1 is NOT closed. Remaining acceptance work includes migration-owned and reproducible PostgreSQL schema reconciliation against the application allowlist, governed table access with validation/authorization/tenant isolation/audit logging, and any remaining production startup/readiness/error-contract evidence required by the Issue #1 acceptance criteria. The current evidence does not yet support closing Issue #1.
+> **Current-status reconciliation — 2026-10-13:** The older checklist previously described schema reconciliation and governed table access/tenant isolation as remaining work. Those broad statements are stale: the migration runner/schema authority, measured runtime grants, bounded resource authorization/tenant isolation, and runtime/HTTP qualification now have later construction qualification evidence. They must not be repeated as current missing foundations. This issue remains OPEN because its complete acceptance criteria have not been independently reconciled and closed against all current evidence; do not infer closure from any single qualified slice.
+
+Current evidenced follow-up items include the remaining Gate 3B authentication decisions/qualification (token-pepper approval, explicit Founder approval status for session-activity updates, previous-key retirement timing, and independent issued-at presence/future-time validation), production secret/configuration provisioning, and any still-unmet deployment/operational acceptance criteria. Production environment changes and product cutover remain separately gated. Reconcile every acceptance criterion against current evidence before changing the issue status.
 
 Do not infer Issue #1 completion from the merged slices above. Each remaining acceptance criterion must be independently evidenced before closure.
 

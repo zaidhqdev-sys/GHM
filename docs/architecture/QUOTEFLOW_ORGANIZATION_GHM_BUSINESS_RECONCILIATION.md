@@ -61,15 +61,13 @@ The GHM Business Identity contract explicitly permits an account with an existin
 
 ### 1. Account ↔ user
 
-**Compatible at the identity boundary, not yet directly mappable.**
+**Historical source finding — identity mapping was not yet qualified at the original reconciliation point.**
 
-QuoteFlow uses the Supabase Auth user UUID as its principal.
+QuoteFlow uses the Supabase Auth user UUID as its legacy source principal. GHM uses its provider-neutral `account_identity.id` as the canonical GHM principal.
 
-GHM uses its provider-neutral numeric `account_identity.id` as the authenticated principal.
+The later migration-specific identity boundary has advanced: GHM's canonical account identity and the exact `(provider=supabase, sourceSubject)` external-identity provenance mapping are construction-qualified, and credentialless account provisioning/reconciliation is qualified. See `QUOTEFLOW_GHM_IDENTITY_MAPPING_CONTRACT.md`, `QUOTEFLOW_MIGRATION_ACCOUNT_PROVISIONING_DB_CONTRACT.md`, and `QUOTEFLOW_MIGRATION_ACCOUNT_PROVISIONING_CONTRACT.md` for current migration authority.
 
-An eventual adapter may translate between these identities, but the current source does not authorize a cross-system identity mapping table, claim, or migration strategy.
-
-**Decision:** defer identity mapping implementation.
+That does **not** establish that QuoteFlow organization semantics map one-to-one to GHM Business, authorize a product adapter, or qualify the complete migration ceremony. Production migration, product integration, and cutover remain separately gated.
 
 ### 2. Organization ↔ Business
 

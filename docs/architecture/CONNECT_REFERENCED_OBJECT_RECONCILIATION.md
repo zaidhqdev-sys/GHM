@@ -4,6 +4,8 @@
 **Connect commit:** `abcffa73f893602c25310a58946bebb91fd7eeb5`  
 **Date:** 2026-09-18
 
+> **Current-status reconciliation — 2026-10-13:** This is a historical Connect source-object classification, not a current GHM schema/implementation status report. Its classifications and residual source-validation items describe the 2026-09-18 Connect evidence snapshot. They do not mean that GHM should create every referenced object or that the listed source checks are automatically current work. Current GHM capability status and remaining gates are governed by `../GHM_CURRENT_STATE.md`, `../GHM_REMAINING_WORK_REGISTER_2026-10-05.md`, and capability-specific qualification evidence. This record authorizes no construction, product migration, or cutover.
+
 ## 1. Purpose
 
 Classify every Connect-referenced object that was ambiguous in the readiness audit so GHM does not invent fake resources.

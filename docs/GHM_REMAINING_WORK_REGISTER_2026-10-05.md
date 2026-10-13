@@ -1,9 +1,22 @@
 # GHM Remaining Work Register — 2026-10-13
 
-**Status:** CURRENT GOVERNED REMAINING-WORK REGISTER — reconciled 2026-10-13  
+**Status:** CURRENT GOVERNED REMAINING-WORK REGISTER — maintenance checkpoint 2026-10-13 (updated during PR #130 reconciliation)  
 **Repository authority:** the register's original audit anchor was `1f2b10d0850095311614c5b5f9531eb8b7cce860` (`Normalize migration checksums across line endings`). That SHA is historical provenance, not a live pointer to `main`. The register was subsequently reconciled against the consolidated mainline, including documentation-only PR #127 (`6afb428d452012d9860ca50c2b0066f0768b184c`) and PR #128 (`671c41be0b2446dd5c56c709c4aa3cb2e15e7d81`), both merged 2026-10-13. These are repository reconciliation milestones only; neither proves live deployment or database state.
 
-**Latest documentation reconciliation:** the further whole-repository pass recorded in `GHM_CURRENT_STATE.md` corrected additional status wording/provenance references across the 209-file Markdown inventory. It did not close or authorize any remaining work; this register's gates remain governed by current code and capability-specific qualification evidence.
+**Latest documentation reconciliation:** the whole-repository pass and targeted follow-ups are recorded in `GHM_CURRENT_STATE.md`. Opportunity Participation and Business Profile source-audit authorization language was clarified as historical; the qualified slices are not reopened by those records.
+
+**PR #130 follow-up:** targeted review of the 30-file documentation diff found and corrected additional stale historical headings/instructions in dated handovers, the shared-platform boundary audit, the Issue #1 baseline heading, and the Connect production-readiness historical-count table. This is a pending-merge checkpoint, not a claim that the full 209-file inventory/link scan was rerun after these latest edits; see the PR and latest CI run for current branch verification.
+
+**Latest targeted verification:** all 30 changed Markdown files were re-read at the current PR head. The targeted stale-status phrase sweep found no remaining hits for the contradictions checked. All 14 inline local Markdown links across the changed files resolve to 9 existing target documents. This does not replace the outstanding full 209-file inventory/link scan.
+
+- Storage audit: qualified metadata/persistence and Cloudflare R2 provider path are distinct from open product authorization, recovery, production enablement, and cutover.
+- Identity: migration-only external identity mapping is qualified; QuoteFlow session migration and organization-to-Business provisioning remain gated. Historical dual confirmation is limited to exceptional legacy conflicts.
+- Connect/payment: readiness, object, and atomic-workflow source matrices are historical snapshots. PayFast checkout/ITN/server confirmation is merged and locally qualified; real sandbox/runtime qualification, production enablement, broader workflow parity, and additional providers remain open.
+- Contract status: error-semantics/versioning route observations are tied to their historical baseline; platform-wide taxonomy/versioning remains unauthorized. Campaign and Enquiry bounded construction is qualified/closed, while broader product work and Enquiry source/workflow parity remain open.
+
+Authentication gate reconciliation: bounded construction authorization does not imply approval of each implementation parameter. Explicit Founder approval for refresh-only `last_seen_at` behavior and the other rows marked open/approval-required remains outstanding; see `docs/architecture/GHM_AUTHENTICATION_IMPLEMENTATION_PARAMETER_GATE.md` §19–20.
+
+These documentation changes do not close or authorize any remaining work; this register's gates remain governed by current code and capability-specific qualification evidence. The qualification-sequence contract records gate order and summarized construction evidence, not live CI/deployment state; use current workflow runs and deployment evidence for those claims. Dated September handovers now explicitly scope their branch-specific merge prohibitions to the historical workflow rather than current merge policy. The QuoteFlow migration boundary now distinguishes defined migration contracts from still-open integrated ceremony qualification, live Business/membership provisioning, local-data transition, product session integration, and cutover; the superseded identity-link proposal's fail-closed list is historical only. The Issue #1 roll-up now removes stale blanket gaps for schema/migration authority and bounded runtime/tenant-authorization slices while keeping remaining authentication decisions, production configuration, and operational acceptance open.
 
 **Purpose:** establish the exact work that remains before GHM can become the backend for Zaid Connect and QuoteFlow. This register is the construction/cutover planning authority after the 2026-10-05 documentation reconciliation.
 
@@ -223,7 +236,7 @@ QuoteFlow currently remains Supabase-authenticated. A GHM session client and run
 ### QF-04 — QuoteFlow organization → Business provisioning
 **Classification:** migration capability — open.
 
-The reconciliation contract is construction-qualified, but the Business provisioning contract is explicitly **not yet qualified**.
+The organization-to-Business reconciliation contract and its synthetic manifest outcomes are defined/qualified; live legacy organization → GHM Business resolution/creation plus owner-membership provisioning is explicitly **not yet qualified**. This is separate from the already-qualified credentialless GHM account-provisioning capability.
 
 Before implementation:
 - authoritative organization/owner evidence;
@@ -292,7 +305,7 @@ The following require explicit Founder authorization before construction or prod
 6. legacy PostgreSQL role/object mutation;
 7. shadow qualification against representative product workflows;
 8. any production routing, DNS, environment, credential or traffic cutover;
-9. closure of the remaining authentication parameter approvals recorded in `GHM_AUTHENTICATION_IMPLEMENTATION_PARAMETER_GATE.md` (including token-pepper approval, exact `sub` encoding, clock-skew policy, and key lifecycle details) before production auth enablement.
+9. closure of the authentication decisions still marked open in `docs/architecture/GHM_AUTHENTICATION_IMPLEMENTATION_PARAMETER_GATE.md` §19 (token-pepper approval, explicit Founder approval for refresh-only `last_seen_at`, previous-key retirement timing, and independent `iat` presence/future-time validation qualification), plus production secret provisioning, before production auth enablement.
 
 ## 9. Stop condition for construction
 
@@ -312,12 +325,12 @@ If the need is already covered by a qualified capability, stop and build the ada
 
 If construction stopped at this register today, the exact blockers preventing GHM from becoming the backend for Connect + QuoteFlow are:
 
-**GHM platform foundation:** remaining storage application wiring, broader service/tenant authorization, recovery/backup and orphan reconciliation, production provider enablement; real PayFast sandbox end-to-end/runtime qualification; selected public/directory HTTP composition; and bootstrap authority resolution after independent authority/recovery evidence.
+**GHM platform foundation:** product-facing storage workflows and authorization/recovery/orphan handling where not individually qualified; recovery/backup and legacy-authority reconciliation; production provider enablement; real PayFast sandbox end-to-end/runtime qualification; selected public/directory HTTP composition; and bootstrap authority resolution after independent authority/recovery evidence. Foundational Business Identity tenant-isolation/runtime authorization is qualified for its evidenced slices; additional resource/product authorization remains per-capability gated.
 
 **Connect:** product adapter and operation-by-operation mapping, remaining authoritative source reconciliation, selected directory/storage/commercial/runtime/realtime workflows, atomic workflow parity, and end-to-end qualification. Bounded identity/service/resource slices already qualified are foundations, not production migration.
 
 **QuoteFlow:** authoritative legacy provenance for both founder-owned accounts, full reset/re-enrollment DB+HTTP ceremony qualification, GHM session client, separate legacy-organization-to-GHM-Business provisioning qualification, then product workflow/cutover qualification.
 
-**Production:** deployment/secrets (including closure of the remaining authentication parameter approvals and secret provisioning), recovery/rollback, observability, shadow qualification, and founder-authorized reversible cutover.
+**Production:** deployment/secrets (including closure of the specific authentication decisions still open in §19 of `docs/architecture/GHM_AUTHENTICATION_IMPLEMENTATION_PARAMETER_GATE.md` and secret provisioning), recovery/rollback, observability, shadow qualification, and founder-authorized reversible cutover.
 
 This is a summary of the major remaining gates, not a blanket claim that every unlisted capability is qualified. Use each capability contract and qualification record for exact scope; preserve separately documented product, provider, security, and production gates.

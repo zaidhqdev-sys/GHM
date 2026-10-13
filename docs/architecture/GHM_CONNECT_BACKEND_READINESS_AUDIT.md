@@ -4,7 +4,7 @@
 **Audit date:** 2026-09-18  
 **Authority:** Live repository inspection of GHM and Zaid Connect. This document does not authorize construction, adapters, shadow qualification, cutover, or production change.
 
-> **Later implementation reconciliation — 2026-10-12:** This audit's commercial rows below are a 2026-09-18 snapshot and must not be read as current GHM payment implementation status. Since this audit, the provider-neutral commercial core and trial boundary have been constructed/qualified, and PayFast checkout/redirect, ITN, provider verification, and server-to-server ITN confirmation have been implemented and merged with deterministic local qualification passing. Real PayFast sandbox/runtime end-to-end qualification and production enablement remain open. Paystack status remains separate; no approval or activation is inferred from PayFast. The current status is governed by `GHM_CURRENT_STATE.md`, `GHM_REMAINING_WORK_REGISTER_2026-10-05.md`, and the commercial capability contract.
+> **Historical snapshot reconciliation — 2026-10-13:** The coverage matrix and dependency counts below are a 2026-09-18 source-comparison snapshot, not a current implementation-status table. All rows must be read as findings at that audit checkpoint unless a row is explicitly updated by a later dated note. In particular, later qualified resource/adaptor slices, public Business/Directory v1, storage persistence and controlled R2 provider path, Connect service-trust prerequisites, and the PayFast checkout/ITN/server-confirmation implementation are reconciled in the current-state index, remaining-work register, and capability-specific qualification evidence. PayFast deterministic local qualification has passed; real sandbox/runtime end-to-end qualification and production enablement remain open. PayFast approval must not be conflated with PayStack, whose status remains separate and for which no approval or activation is inferred here. This historical audit does not authorize construction, production migration, or cutover.
 
 ## 1. Audit scope
 
@@ -235,7 +235,7 @@ Evidence: `src/auth/authorization.ts`, `src/auth/request-context.ts`, `src/db/au
 | support_requests / messages | support migrations | `ghm.support_request` (+ message) | COVERED | — |
 | projects / project_quotes | projects migration | `ghm.project` / `ghm.project_quote` | PARTIAL/COVERED | Project images/workspace missing |
 | opportunities / participants / requirements / types | opportunity migrations | `ghm.opportunity*` | PARTIAL | Outcome/matching deferred; participant update deferred |
-| commercial_* + business_commercial_trials + business_subscriptions | commercial migrations | `ghm.commercial_*` | PARTIAL | Trial qualified; payment ops not implemented |
+| commercial_* + business_commercial_trials + business_subscriptions | commercial migrations | `ghm.commercial_*` | PARTIAL at 2026-09-18 snapshot | Historical finding: trial qualified; payment operations then not implemented. Later provider-neutral payment preparation/result boundaries and PayFast checkout/ITN/server confirmation are qualified; real PayFast sandbox/runtime and production enablement remain open. |
 | regional_* / countries / currencies / locales | regional foundation | limited `country`/`currency` | PARTIAL | Regions/locales/admin areas/config/prices missing |
 | relationship_types / business_relationships / outcome_* | relationship foundation | none | MISSING | Entire subdomain |
 | account_onboarding_progress | onboarding migration | none | MISSING | Entire subdomain |

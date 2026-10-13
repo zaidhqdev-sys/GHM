@@ -1,6 +1,6 @@
 # Business Hours Source Audit
 
-**Status:** RECONCILED — construction branch `construction/business-hours-resource`
+**Status:** HISTORICAL SOURCE AUDIT — RECONCILED; `construction/business-hours-resource` IS HISTORICAL BRANCH PROVENANCE ONLY
 
 > **Historical-status reconciliation — 2026-10-13:** `construction/business-hours-resource` is historical branch provenance, not the current checkout target. The Business Hours resource and bounded construction qualification are recorded in the current operation/qualification contracts. This source audit preserves the original product evidence and does not authorize reopening completed resource construction, additional booking/exception/open-now behavior, or production cutover.
 
