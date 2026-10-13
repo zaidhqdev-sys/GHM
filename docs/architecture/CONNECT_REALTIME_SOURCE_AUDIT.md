@@ -4,11 +4,11 @@
 **Connect commit:** `abcffa73f893602c25310a58946bebb91fd7eeb5`  
 **Date:** 2026-09-18
 
-> **Status reconciliation — 2026-10-12:** This document is a source audit of Connect at the recorded 2026-09-18 commit, not a current GHM implementation or production-readiness verdict. Its Connect-side observations remain tied to that exact source snapshot. Current GHM construction and qualification status is governed by `GHM_CURRENT_STATE.md` and `GHM_REMAINING_WORK_REGISTER_2026-10-05.md`; qualified resource slices do not imply complete Connect workflow parity, production routing, or cutover. Any row describing a GHM capability as missing/not implemented records the state at this audit's comparison point unless explicitly reconciled by later evidence.
+> **Status reconciliation — 2026-10-13:** This document is a source audit of Connect at the recorded 2026-09-18 commit, not a current GHM implementation or production-readiness verdict. Its Connect-side observations remain tied to that exact source snapshot. Current GHM construction and qualification status is governed by `GHM_CURRENT_STATE.md` and `GHM_REMAINING_WORK_REGISTER_2026-10-05.md`; qualified resource slices do not imply complete Connect workflow parity, production routing, or cutover. Any row describing a GHM capability as missing/not implemented records the state at this audit's comparison point unless explicitly reconciled by later evidence.
 
 ## 1. Purpose
 
-> **Specific current-status clarification — 2026-10-12:** Unlike several resource slices that have since been constructed, GHM Realtime remains unimplemented and unauthorized. The current decision is still to defer GHM-owned event transport until an explicit ownership decision selects provider Realtime, a GHM event transport, or polling. This audit does not authorize construction; existing Connect/Supabase realtime remains outside GHM cutover authorization.
+> **Specific current-status clarification — 2026-10-13:** Unlike several resource slices that have since been constructed, GHM Realtime remains unimplemented and unauthorized. The current decision is still to defer GHM-owned event transport until an explicit ownership decision selects provider Realtime, a GHM event transport, or polling. This audit does not authorize construction; existing Connect/Supabase realtime remains outside GHM cutover authorization.
 
 Inventory Connect realtime subscriptions and assess whether each is a hard product requirement or a degradable convenience. No GHM realtime implementation is authorized.
 
