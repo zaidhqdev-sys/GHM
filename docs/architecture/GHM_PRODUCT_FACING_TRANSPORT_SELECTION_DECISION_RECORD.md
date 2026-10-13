@@ -19,7 +19,7 @@ Post-785df12: Campaign HTTP surface separately AUTHORIZED and implemented; this 
 
 At the historical selection point, GHM had internal resource/service mechanisms and **partial** HTTP Resource API exposure, but no governed **product-facing callable transport** covering the cross-product integration contract for all required KBM (and future product) operations—especially Campaign. Since then, a bounded Campaign HTTP surface has been separately authorized and implemented at the recorded `785df12` baseline. This does not establish blanket KBM adapter authorization or complete cross-product workflow coverage.
 
-This record identifies and compares viable transport mechanisms against already-approved **semantic** requirements. It does **not** choose a winner.
+This record preserves the historical comparison of viable transport mechanisms against already-approved **semantic** requirements and records the Founder’s subsequent HTTP/API selection. The selection is settled; this record does **not** authorize implementation beyond separately approved bounded capability slices.
 
 The eventual transport must carry:
 
