@@ -552,7 +552,7 @@ Do not design an oversized security platform in this gate.
 |---|---|---|
 | Login | GHM email/password login endpoint is implemented in the qualified construction foundation | Product clients are not yet migrated to use it; public/product rollout remains separately gated |
 | Refresh / logout / recovery | GHM refresh/logout and password-recovery foundations exist; QuoteFlow migration-specific reset is separately scoped | Full product ceremony/workflow qualification and product-client integration remain open where recorded in their specific contracts |
-| Verify | GHM ES256 verifier enforces canonical `sub`/`iss`/`aud`/`iat`/`exp`/`kid` | External product integration and deployment promotion remain separately gated |
+| Verify | GHM ES256 verifier enforces canonical `sub`, `iss`, `aud`, `exp`, algorithm, and `kid`; issued tokens include `iat`, but independent `iat` presence/future-time validation is not currently evidenced | Product integration, deployment promotion, and qualification of `iat` validation remain separately gated |
 | Identity | Canonical `ghm.account_identity.id` is represented by the GHM JWT `sub`; external identity mapping foundation is qualified | Product identity backfill, membership/business provisioning, and migration remain open |
 | Persistence | Credential, session, refresh, recovery, and external-identity persistence foundation is qualified | Product migration, operational recovery/backup, and production readiness remain separately gated |
 | Products | Connect/QuoteFlow still use Supabase Auth | Consume GHM Auth API only after product-specific adapter/session migration and cutover gates; never send Supabase JWT to GHM |
