@@ -11,7 +11,7 @@ This directory contains the canonical migration authority for the GHM Internal R
 3. `src/server.ts` must not create or alter product tables at application startup.
 4. `ghm.db` is a legacy SQLite artifact and is not a source for production migrations.
 5. No product migration may be generated from an unverified schema guess.
-6. The live GHM PostgreSQL schema must be reconciled before the first product/business migration is authored.
+6. The live GHM PostgreSQL schema was reconciled before the initial dependent product/business migrations. Every subsequent migration must still be reconciled against the current live construction catalog, migration ledger, and resource contract before it is authored or applied.
 7. Every migration must be deterministic, reviewable, and recorded in `ghm_schema_migrations`.
 8. Production migration execution must fail closed on migration errors.
 9. Product cutover remains blocked until database compatibility and rollback procedures are qualified.
