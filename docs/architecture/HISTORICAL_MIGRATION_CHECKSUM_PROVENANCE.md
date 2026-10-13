@@ -34,7 +34,7 @@ The following fifteen migrations had no exact-byte match recoverable from the re
 
 ## Subsequent exception added after the 2026-09-30 snapshot
 
-The current `config/historical-migration-provenance-exceptions.json` also contains a later, separately recorded exception for `20261005211000_correct_founder_system_admin_bootstrap_existing_account` with ledger checksum `f70b3a76ad959307ed780166ad2dba23eaa296a5f95117ff460c760722dfaad0`. This migration postdates the 2026-09-30 snapshot above and is not part of its fifteen-entry historical table. The live ledger/current exception mapping must be reconciled before treating the historical count as a current total.
+The current `config/historical-migration-provenance-exceptions.json` contains **16 repository-recorded exceptions**: the fifteen listed in the 2026-09-30 snapshot plus the separately recorded `20261005211000_correct_founder_system_admin_bootstrap_existing_account` exception with ledger checksum `f70b3a76ad959307ed780166ad2dba23eaa296a5f95117ff460c760722dfaad0`. The historical table and the 55-row qualification below remain dated evidence from 2026-09-30; they do not assert the current live ledger row count or independently prove that every configured exception still matches the live ledger.
 
 ## Canonical handling
 
