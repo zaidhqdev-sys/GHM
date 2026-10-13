@@ -182,3 +182,24 @@ No code or production changes were made. Continue the operation-by-operation aud
 
 No runtime or production change was made. Next batch: compare Connect's directory query/output and support/review/notification facade contracts to these exact HTTP shapes; then reconcile the remaining source-of-truth docs and produce the operation-level matrix.
 
+
+## 13. Contract audit batch — Connect directory and review parity
+
+### Directory mismatch now confirmed
+
+Connect `src/lib/lib_supabase.js:1529+` searches with `query`, `category`, `province`, `city`, `lat`, `lng`, `radius`, `tier`, `sort`, zero-based `page`, and `limit` up to 100. It filters approved + active businesses, searches name/description/city, optionally filters province/city/tier/category, applies sorting, and supports proximity filtering when coordinates are supplied. GHM `GET /api/v1/public/businesses` currently accepts only `q`, `category`, one-based `page`, and `pageSize` up to 50. These are concrete contract mismatches, not a generic “verify directory” note. Map zero-based vs one-based paging, filters, distance/radius semantics, sort allowlist, count/hasMore, and the 35-field Connect public projection versus GHM's narrower public projection before implementation.
+
+Connect directory screen also loads category data, saved businesses, and records `profile_view` engagement with visitor context. Business profile additionally records `save`, `whatsapp`, `call`, `website_visit`, `direction_request`, and `share`. These event types and privacy constraints must be included in engagement parity; don't assume a directory route supplies analytics.
+
+### Review mismatch now confirmed
+
+Connect review service creates a row with `business_id`, `reviewer_id`, and `reviewData`; public profile reads only approved reviews, admin queue lists pending reviews, and moderation RPC receives decision plus rejection reason. GHM routes expose public list, customer create, own read, admin pending list, and admin approve/reject. This is a **reuse candidate with contract/security adaptation**, not drop-in parity: derive reviewer identity from authenticated GHM context (never trust browser-supplied reviewer ID), map Connect `approved/rejected/pending` states and rejection reason, preserve pending-only queue semantics and business name presentation, and test ownership and admin authority.
+
+### Required classifications
+
+- Directory discovery = **Extend** (filter, sort, paging, output projection and engagement contracts differ).
+- Business engagement = **Build/extend** unless GHM has an already qualified event contract; current inspected route set does not provide the Connect event contract.
+- Review create/read/moderate = **Reuse candidate / adapt and qualify**.
+
+No code or production changes. Next batch: compare Connect notification/support request payloads and status enums against GHM route parsers, then verify all doc links and PR diffs before continuing the full repository reconciliation.
+
