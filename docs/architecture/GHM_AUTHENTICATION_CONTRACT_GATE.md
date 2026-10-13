@@ -41,7 +41,7 @@ Live-product priority (Zaid Connect, QuoteFlow) depends on this contract before 
 
 ## 2. Current-State Evidence
 
-Evidence inspected (read-only) at HEAD `239ef5d`:
+Historical evidence inspected read-only at Gate 1 baseline `239ef5d` (not current implementation status):
 
 | Area | Path |
 |---|---|
@@ -61,7 +61,7 @@ Evidence inspected (read-only) at HEAD `239ef5d`:
 - Does **not** validate `iss`, `aud`, or an explicit algorithm allow-list beyond library defaults for the secret path.
 - On failure, `requireAuth` returns HTTP `401` with `{ error: 'unauthorized' }`.
 
-### 2.2 Current `userId` + `role` claims
+### 2.2 Historical Gate 1 `userId` + `role` claim snapshot
 
 - Payload must include:
   - `userId`: positive safe-integer `number`
@@ -70,25 +70,25 @@ Evidence inspected (read-only) at HEAD `239ef5d`:
 - **`sub` is ignored** (not read).
 - Returns frozen `AuthContext { userId, role }`.
 
-### 2.3 Current lack of GHM-owned issuance
+### 2.3 Historical Gate 1 issuance gap
 
 - No product login / signup / refresh / logout routes under `src/http/`.
 - No `jwt.sign` in application modules; signing appears only in tests.
 - No credential verification path in `src/` (`bcrypt` listed in dependencies but not imported under `src/`).
 - `INVITE_CODE` is required in config but unused for product auth issuance in `src/`.
 
-### 2.4 Current lack of external identity mapping
+### 2.4 Historical Gate 1 external-identity mapping gap
 
 - `ghm.account_identity` has **no** external provider/subject columns.
 - No provider-neutral `(provider, subject) → account_identity.id` relation exists in migrations or `src/`.
 - Supabase UUID identities (Connect / QuoteFlow) have **no** GHM mapping.
 
-### 2.5 Current lack of refresh / revocation
+### 2.5 Historical Gate 1 refresh / revocation gap
 
 - No refresh credential store, rotation, or revocation service in `src/auth/`.
 - No logout/session invalidation beyond client discarding a Bearer token (and tests minting new HS tokens).
 
-### 2.6 Current authentication endpoints
+### 2.6 Historical Gate 1 authentication endpoint inventory
 
 | Kind | Present? |
 |---|---|
@@ -100,7 +100,7 @@ Evidence inspected (read-only) at HEAD `239ef5d`:
 
 No repository convention establishes `/api/v1/auth/*` (or equivalent) paths today. Resource API uses `/api/v1/<resource>` naming. **Authentication endpoint paths are therefore a follow-on implementation decision** (§12).
 
-### 2.7 Current `account_identity` structure
+### 2.7 Historical Gate 1 `account_identity` structure
 
 ```text
 ghm.account_identity
@@ -117,7 +117,7 @@ ghm.account_identity
 - No email column on `account_identity` in this founding migration.
 - Coarse `role` column exists on the account row; this is **not** business membership.
 
-### 2.8 Current membership model
+### 2.8 Historical Gate 1 membership model
 
 ```text
 ghm.business_membership
@@ -446,14 +446,14 @@ Many items below were open at Gate 1 authoring and are now recorded in follow-on
 | 4 | Refresh/session durations | **SELECTED:** 30d inactivity / 90d absolute |
 | 5 | Refresh rotation / replay | **SELECTED:** every success; single-use; session-family revoke |
 | 6 | Exact `iss` / `aud` | **SELECTED:** `ghm-auth` / `ghm-api` |
-| 7 | Authentication endpoint HTTP paths | **UNSELECTED** |
+| 7 | Authentication endpoint HTTP paths | Gate 1: unselected; bounded routes now implemented under `/api/v1/auth/`; broader public/product exposure remains gated |
 | 8 | Argon2id cost parameters | KDF SELECTED; parameters **UNSELECTED** |
 | 9 | Rate-limit thresholds | Required; numbers **UNSELECTED** |
-| 10 | Credential / session / refresh / recovery / mapping **relation names** | Concepts in Persistence Contract; names **UNSELECTED** |
+| 10 | Credential / session / refresh / recovery / mapping relation names | Gate 1: unselected; canonical table names are implemented in the qualified migrations and listed in the schema migration contract |
 | 11 | Mapping FK delete behavior / lifecycle | **UNSELECTED** |
 | 12 | Supabase identity migration mechanics | Architecture SELECTED; batch vs JIT details **UNSELECTED** |
-| 13 | Exact `sub` encoding of bigint | **UNSELECTED** |
-| 14 | HS → asymmetric verifier cutover plan | **UNSELECTED** |
+| 13 | Exact `sub` encoding of bigint | Gate 1: unselected; current GHM JWT uses the decimal GHM account id in `sub` |
+| 14 | HS → asymmetric verifier replacement | Active governed resource authentication now uses ES256; any product/deployment migration plan remains a separate gate |
 | 15 | Evolution of `account_identity.role` / `AuthContext.role` | **SELECTED:** incremental; JWT not authoritative — Issuance ADR §16.2 **R7** |
 | 16 | Logout idempotency semantics | **UNSELECTED** |
 | 17 | Coexistence sunset criteria | **UNSELECTED** |
