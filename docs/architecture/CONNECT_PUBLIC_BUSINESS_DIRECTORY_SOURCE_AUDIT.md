@@ -5,6 +5,8 @@
 **GHM reference:** Business Identity first-slice contracts + public projection  
 **Date:** 2026-09-18
 
+> **Status reconciliation — 2026-10-13:** This document is a source audit of Connect at the recorded 2026-09-18 commit, not a current GHM implementation or production-readiness verdict. Its Connect-side observations remain tied to that exact source snapshot. Current GHM construction and qualification status is governed by `GHM_CURRENT_STATE.md` and `GHM_REMAINING_WORK_REGISTER_2026-10-05.md`; qualified resource slices do not imply complete Connect workflow parity, production routing, or cutover. Any row describing a GHM capability as missing/not implemented records the state at this audit's comparison point unless explicitly reconciled by later evidence.
+
 ## 1. Purpose
 
 Reconcile Connect’s authoritative public Business allowlist and directory behavior with GHM’s first-slice public Business projection. No schema or resource implementation is authorized by this document.
@@ -98,6 +100,6 @@ Required evidence before any GHM directory construction:
 
 1. Connect public Business surface is **much wider** than GHM first-slice public Business (35 vs 7 fields).
 2. GHM does **not** over-expose Connect’s excluded 4A private fields in the first-slice public projection.
-3. Directory search/featured/nearby are Connect product requirements evidenced in source; GHM does not yet provide them.
+3. Directory search/featured/nearby are Connect product requirements evidenced in source. Individual GHM Business/public-projection resource slices do not, by themselves, qualify the complete product-facing directory aggregation/search/featured/nearby workflows; those remain separate product-adapter and cutover gates.
 4. Construction of an extended public Business / directory contract requires explicit authorization after field-by-field product decisions.
 5. Closed Business Identity first slice remains closed; this audit does not reopen it.

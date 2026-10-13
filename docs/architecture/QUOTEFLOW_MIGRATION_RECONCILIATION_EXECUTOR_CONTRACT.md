@@ -74,6 +74,4 @@ included.
 
 ## Next gate
 
-The next construction gate is GHM migration account provisioning plus
-reset/re-enrollment semantics. It must be designed against the current Auth
-credential model rather than reusing public registration.
+The migration account-provisioning database capability is now separately construction-qualified in `QUOTEFLOW_MIGRATION_ACCOUNT_PROVISIONING_DB_CONTRACT.md`. The remaining account-level gates are the non-production reset/re-enrollment ceremony qualification, independent handling of both founder-owned source accounts, and end-to-end migration/cutover qualification. Do not infer that these later gates are closed by the existing-account reconciliation executor.

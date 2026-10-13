@@ -1,6 +1,8 @@
 # QuoteFlow Migration Business Provisioning Contract
 
-**Status:** CONSTRUCTION CONTRACT — IMPLEMENTATION NOT YET QUALIFIED
+> **Current-status reconciliation — 2026-10-13:** The legacy-organization reconciliation contract is qualified for its four synthetic outcomes only; it does not perform live PostgreSQL transactions or create a Business. The separate migration-only Business-provisioning implementation remains unqualified. This status is current, not a stale historical Gate statement. Both known QuoteFlow accounts are founder-owned; source-account reconciliation and full reset/re-enrollment ceremony qualification remain independent gates. No production mutation or QuoteFlow cutover is authorized.
+
+**Status:** CONSTRUCTION CONTRACT — IMPLEMENTATION NOT YET QUALIFIED (reconciled 2026-10-13)
 
 This slice defines the migration-only capability required when an approved QuoteFlow organization has outcome `CREATE_REQUIRED`. It creates a canonical GHM Business only from an explicitly reviewed migration target. It is not a public Business-registration mechanism.
 

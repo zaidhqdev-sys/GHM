@@ -1,5 +1,7 @@
 # GHM Authentication Identity & Authorization Provisioning Contract
 
+> **Historical-status clarification — 2026-10-13:** This Gate 2F document contains the original pre-implementation stop text in its final gate. That stop is superseded for the bounded GHM identity/authentication/authorization foundation, which was subsequently constructed and qualified under Gate 3B. The current scope boundary remains: product adapter/session migration, Business provisioning where separately gated, public product exposure, and production cutover are not authorized by this historical contract. Keep the original gate text as provenance, not as an instruction to undo or reopen qualified work.
+
 **Canonical owner:** GHM platform governance
 **Status:** AUTHENTICATION GATE 2F — IDENTITY & AUTHORIZATION PROVISIONING CONTRACT — **CONSTRUCTION FOUNDATION QUALIFIED**; product adapter / migration implementation remains separately authorized
 **Authority:** Local repository `C:\GHM`
@@ -101,14 +103,14 @@ Do not invent additional person-identity tables unless later evidence requires t
 
 ## 4. Account lifecycle
 
-### 4.1 Current schema gap
+### 4.1 Historical Gate 2F schema gap — subsequently implemented
 
-`ghm.account_identity` has **no** dedicated lifecycle/status column today (only coarse `role` plus profile fields).
+At the Gate 2F baseline, `ghm.account_identity` had no dedicated lifecycle/status column. The later Gate 3B foundation added `account_status` (`active` / `disabled`) and `is_system_admin`; the implemented migrations and current bearer-auth code are authoritative for current schema/runtime behavior.
 
 ```text
-FOUNDER DECISION (Issuance ADR §16.2 R1):
-Account status model = SELECTED — active | disabled
-Exact column name = UNSELECTED (not present in schema yet)
+FOUNDER DECISION (Issuance ADR §16.2 R1/R2):
+Account status model = active | disabled — implemented
+System-admin authority = governed account-level state, not a JWT claim — implemented
 ```
 
 ### 4.2 Conceptual states (lean)
@@ -357,7 +359,7 @@ Business/org ID mapping remains a **separate** governed migration (Issuance Deci
 - Revoke **all** refresh sessions
 - Access JWTs expire naturally (≤15m)
 - Membership rows: retain or mark per later policy; **authorization must fail** for disabled accounts even if membership rows linger
-- Exact disable field = UNSELECTED
+- Exact disable field was UNSELECTED at Gate 2F; the qualified schema now implements `ghm.account_identity.account_status` (`active` / `disabled`) as recorded in `GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md`.
 
 ### Membership revocation
 
@@ -463,19 +465,19 @@ Do **not** assume current Supabase UUID business/org IDs equal GHM `business.id`
 
 ---
 
-## 16. Historical Gate 2F current-vs-target snapshot
+## 16. Historical Gate 2F current-vs-target snapshot — superseded for the bounded foundation
 
-| Layer | Current | Target |
+| Layer | Gate 2F snapshot (historical) | Current bounded status |
 |---|---|---|
-| Login | Absent / products use Supabase | GHM Auth API email+password |
-| Identity claim | JWT `userId` | `sub` = `account_identity.id` |
-| AuthContext | `{ userId, role }` from JWT | Authenticated identity; authz from GHM state |
-| Verify | GHM ES256 bearer path | ES256 + iss/aud/kid/exp + canonical `sub` + DB-backed account state |
-| Membership | SQL checks when implemented | Still SQL/state; never JWT-only |
-| Admin | JWT/`account_identity.role` trusted | Authoritative admin representation **UNSELECTED** |
-| Account disable | No status column | Lifecycle representation **UNSELECTED** |
+| Login | Absent / products use Supabase | GHM email/password login foundation qualified; products still use Supabase |
+| Identity claim | JWT `userId` | Canonical GHM `sub` = `account_identity.id` |
+| AuthContext | `{ userId, role }` from JWT | GHM identity context; account/admin state loaded from GHM |
+| Verify | Pre-ES256 verifier | ES256 + issuer/audience/`kid`/expiry + canonical `sub` + DB-backed account state |
+| Membership | Historical SQL/resource checks | Current authorization remains governed by GHM state and resource-specific membership checks |
+| Admin | JWT/`account_identity.role` baseline | Authoritative account-level system-admin state; JWT role is not source of truth |
+| Account disable | No status column | `account_status` active/disabled is implemented; revocation semantics are governed by qualified auth contracts |
 
-Do not modify the current implementation in this gate.
+This historical snapshot does not authorize product migration or cutover.
 
 ---
 
@@ -483,21 +485,21 @@ Do not modify the current implementation in this gate.
 
 | Item | Status |
 |---|---|
-| Exact account lifecycle/status column/enum | **SELECTED architecture:** `active` / `disabled` (Issuance ADR §16.2 **R1**); exact column name **UNSELECTED** |
-| Exact system-admin representation | **SELECTED architecture:** governed account-level admin state, not JWT (Issuance ADR §16.2 **R2**); exact storage **UNSELECTED** |
-| Exact future AuthContext shape | **SELECTED architecture:** identity-centric; authz from GHM state (Issuance ADR §16.2 **R3**); exact fields **UNSELECTED** |
-| Exact authorization-policy API shape | **UNSELECTED** (existing helpers remain current) |
-| Identity bootstrap invocation path | **SELECTED:** dedicated controlled Auth boundary op; identity/mapping only (Issuance ADR §16.2 **R4**); exact path **UNSELECTED** |
-| Business/org migration mapping mechanism | **SELECTED:** `(provider, external_business_id) → business.id` via LINK-ONLY `ghm.auth_link_business_external_mapping` (Issuance ADR §16.2 **R5**); never creates business/membership |
-| Exact GRANT matrix for auth tables | **SELECTED model:** SECURITY DEFINER / controlled EXECUTE; no broad runtime DML (Issuance ADR §16.2 **R6**); exact matrix **UNSELECTED** |
-| Exact schema names for credential/session/mapping | **UNSELECTED** (Persistence Contract) |
+| Account lifecycle/status column | `account_status` (`active` / `disabled`) **implemented** by migration `20260921120000`; no longer an open column-name decision |
+| System-admin representation | `is_system_admin` account-level state **implemented**; not JWT authority |
+| AuthContext TypeScript shape | Implemented `GhmAuthContext { accountId }` with a bounded compatibility adapter to legacy `AuthContext { userId, role }`; broader product-client integration remains gated |
+| Exact authorization-policy API shape | Existing helpers remain current; further policy API expansion is separately scoped |
+| Identity bootstrap invocation path | Controlled Auth boundary and `auth_bootstrap_external_identity` foundation implemented; not a public federation API |
+| Business/org migration mapping mechanism | LINK-ONLY `ghm.auth_link_business_external_mapping` implemented; it attaches to an existing Business and does not create Business/membership |
+| Auth persistence grants | Controlled SECURITY DEFINER / EXECUTE model implemented; consult migrations and role qualification for exact per-object grants, not this historical proposal alone |
+| Credential/session/mapping schema names | Implemented names include `ghm.account_password_credential`, `ghm.authentication_session`, `ghm.refresh_credential`, `ghm.password_recovery_credential`, `ghm.account_external_identity`, and `ghm.business_external_mapping` |
 | Evolution of `account_identity.role` (`customer`/`business`/`admin`) under target model | **SELECTED:** incremental; JWT role not authoritative (Issuance ADR §16.2 **R7**) |
 
 > Recommendations in this document are **not** Founder decisions unless marked SELECTED elsewhere.
 
 ---
 
-## 18. Founder decision checkpoint
+## 18. Historical Gate 2F decision checkpoint — reconciled after Gate 3B
 
 ```text
 AUTHENTICATION GATE 2F:
@@ -511,23 +513,22 @@ FOUNDER ARCHITECTURE (not reopened):
 - Recovery / session / crypto rules per prior gates
 - R1–R7 SELECTED (Issuance ADR §16.2)
 
-IMPLEMENTATION DETAILS STILL OPEN:
-- exact column/table/function names
-- exact AuthContext TypeScript fields
-- exact GRANT matrix rows
-- exact bootstrap HTTP/internal path
+GATE 2F DECISION-TIME OPEN ITEMS — CURRENT STATUS:
+- Account lifecycle, system-admin, credential/session/mapping relation names and controlled functions are implemented in qualified migrations.
+- `GhmAuthContext { accountId }` and the legacy `AuthContext { userId, role }` compatibility adapter are implemented; product-client integration remains separately gated.
+- The controlled SECURITY DEFINER / EXECUTE grant model is implemented; use migrations and role qualification for exact per-object grants.
+- Controlled bootstrap/link operations are implemented; no public federation API or product migration is implied.
 
-IMPLEMENTATION AUTHORIZATION:
-NOT GRANTED.
+IMPLEMENTATION AUTHORIZATION WAS NOT GRANTED AT GATE 2F; GATE 3B LATER AUTHORIZED AND QUALIFIED THE BOUNDED FOUNDATION.
 ```
 
 ---
 
-## 19. Final gate
+## 19. Historical Gate 2F final gate — superseded for the bounded foundation
 
 ```text
-IDENTITY & AUTHORIZATION PROVISIONING CONTRACT DOCUMENTED.
-NO src/ / MIGRATIONS / TESTS / CONFIG / SECRETS / PACKAGES CHANGED.
-NO COMMIT / PUSH.
-STOP — DO NOT IMPLEMENT SCHEMA OR AUTHCONTEXT.
+GATE 2F DOCUMENTATION-ONLY CHECKPOINT:
+NO src/ / MIGRATIONS / TESTS / CONFIG / SECRETS / PACKAGES CHANGED BY THAT HISTORICAL TASK.
 ```
+
+The original stop instruction applied to Gate 2F. The bounded identity/authentication foundation was subsequently constructed and qualified under Gate 3B; product migration and production cutover remain separately gated.

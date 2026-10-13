@@ -4,6 +4,8 @@
 **Status:** Architecture contract — documentation-only; transport-neutral; implementation not authorized
 **Authority:** Local repository `C:\GHM`
 **Baseline:** branch `construction/saved-business-resource`, HEAD `0a9a9f7`
+
+> **Historical-status reconciliation — 2026-10-13:** This contract preserves the Gate 1 documentation-only decision. Its `Authentication issuance selection: NOT AUTHORIZED` row is historical: the bounded GHM ES256 issuance/session foundation was subsequently selected, implemented, and qualified under Gate 3B. This document still does not authorize a platform-wide semantic error taxonomy refactor, compatibility/versioning implementation, or product cutover; those remain separately gated.
 **Depends on:**
 - [GHM_APPLICATION_BACKEND_PLATFORM_CHARTER.md](./GHM_APPLICATION_BACKEND_PLATFORM_CHARTER.md)
 - [PRODUCT_INTEGRATION_BOUNDARY_CONTRACT.md](./PRODUCT_INTEGRATION_BOUNDARY_CONTRACT.md)
@@ -19,7 +21,7 @@
 | Runtime refactor | **NOT AUTHORIZED** |
 | Versioning implementation | **NOT AUTHORIZED** |
 | Callable transport selection | DONE — HTTP/API; this document still does **not** authorize platform error/version runtime refactor |
-| Authentication issuance selection | **NOT AUTHORIZED** |
+| Authentication issuance selection | Gate 1 historical status: **NOT AUTHORIZED THEN**; bounded GHM ES256 issuance/session foundation subsequently qualified under Gate 3B. This contract does not authorize additional auth scope or product migration. |
 
 This contract does **not** choose HTTP, RPC, SDK, MCP, events, webhooks, generated clients, endpoint paths, HTTP status codes, or wire-format schemas.
 

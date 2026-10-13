@@ -1,5 +1,7 @@
 # GHM Documentation Reconciliation — 2026-10-05
 
+> **Historical reconciliation record.** This document preserves the decisions and inventory from the 2026-10-05 pass; its `Baseline` is not the current mainline pointer. The active follow-on reconciliation is tracked in `GHM_CURRENT_STATE.md` and the current living architecture/evidence contracts. Use those records for present implementation status and remaining gates.
+
 ## Status
 
 **MISSION 0 — DOCUMENTATION RECONCILIATION IN PROGRESS / CURRENT INDEX ESTABLISHED**

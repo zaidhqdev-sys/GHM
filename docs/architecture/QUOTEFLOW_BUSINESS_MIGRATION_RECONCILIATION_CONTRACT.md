@@ -2,7 +2,7 @@
 
 **Status:** CONSTRUCTION QUALIFIED — NON-PRODUCTION RECONCILIATION ONLY
 
-Qualification evidence: `e225ba4` — synthetic qualification PASS for all four outcomes; no mutation and no name/email matching.
+Qualification evidence: `e225ba4` — synthetic harness PASS for the four reconciliation outcomes; no mutation and no name/email matching. This is static/predefined-outcome reconciliation evidence, not a live PostgreSQL transaction qualification or Business-provisioning qualification.
 
 This contract defines the deterministic migration boundary for reconciling a legacy QuoteFlow organization to canonical GHM Business identity. It does not create Businesses, mutate production data, create memberships, or change QuoteFlow runtime behavior.
 
@@ -125,7 +125,7 @@ Membership status is recorded separately and cannot be implied by `MAPPED`.
 
 ## Qualification boundary
 
-The construction qualification must prove, using synthetic non-production data only:
+The synthetic reconciliation harness proves the bounded decision outcomes only. It does not qualify database transactions or provisioning. Any future full reconciliation qualification must prove, using synthetic non-production data only:
 
 1. exact mapping → `MAPPED`;
 2. no target → `CREATE_REQUIRED`;

@@ -54,9 +54,7 @@ The HTTP boundary does not create a second authorization system.
 
 ## Replay boundary
 
-This slice exposes only a read operation. It does not claim replay protection.
-
-The service assertion jti remains request-identifier carriage only. Replay persistence/detection for non-idempotent mutations remains separately gated.
+This slice exposes only a read operation and does not itself qualify mutation idempotency. Durable, atomic consumption of the service assertion `jti` was subsequently qualified as a separate middleware/security slice; see `CONNECT_SERVICE_ASSERTION_REPLAY_QUALIFICATION.md` and `CONNECT_SERVICE_REPLAY_PROTECTION_QUALIFICATION.md`. That assertion-replay control does not by itself provide business-operation idempotency for future non-idempotent mutation handlers, which remain separately gated.
 
 No mutation capability is exposed by this HTTP boundary.
 
@@ -107,4 +105,4 @@ This qualification does not authorize:
 
 Any additional Connect HTTP capability must be added as an explicit, typed operation with its own qualification evidence.
 
-Mutation operations require a separately qualified replay/idempotency boundary before they are exposed through the service transport.
+Mutation operations require a separately qualified replay/idempotency boundary before they are exposed through the service transport. The assertion replay-protection sub-slice has since been qualified and is recorded in `CONNECT_SERVICE_ASSERTION_REPLAY_QUALIFICATION.md`; that only establishes atomic assertion-`jti` consumption, not business-operation idempotency or qualification of additional mutation handlers. Those remain separate gates.

@@ -378,9 +378,9 @@ This contract does not authorize a standalone public Business Offering HTTP API.
 
 Resource registration may support internal qualification only. Any public HTTP exposure requires a separate authorization decision and an explicit HTTP contract.
 
-## 18. Qualification requirements
+## 18. Historical qualification acceptance criteria — satisfied
 
-Before this slice is construction-qualified, evidence must demonstrate:
+The following criteria governed the original construction gate. The Business Offering slice is now **QUALIFIED / PASS / CLOSED**; the qualification evidence records the live PostgreSQL and runtime checks that satisfied this list:
 
 1. authenticated managed read is enforced;
 2. public read returns only active offerings of active, approved Businesses;

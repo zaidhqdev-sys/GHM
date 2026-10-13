@@ -30,7 +30,7 @@ It does not authorize:
 
 The implementation is intentionally a domain/integration seam rather than a public HTTP endpoint.
 
-Reason: the existing repository does not yet contain a separately qualified service-to-service trust contract for an external Connect caller. Adding a public endpoint here would create a new credential/trust boundary not covered by the approved slice.
+At the time this identity-adapter slice was qualified, its scope did not include a separately qualified service-to-service trust boundary. A service assertion/replay-protection construction sub-slice has since been recorded in `CONNECT_GHM_SERVICE_TRUST_BOUNDARY_CONTRACT.md` and `CONNECT_SERVICE_REPLAY_PROTECTION_QUALIFICATION.md`; that evidence does not qualify the full Connect↔GHM trust boundary or authorize a public endpoint. Any HTTP/service exposure remains separately gated.
 
 Therefore:
 
@@ -39,7 +39,7 @@ Therefore:
 → `qualified AuthPersistence`
 → `account_external_identity / account_identity`
 
-A future HTTP/service transport requires its own trust/credential contract before exposure.
+The bounded read-only service HTTP endpoint has since received its own construction qualification (`CONNECT_SERVICE_HTTP_READ_BOUNDARY_QUALIFICATION.md`), alongside separate request-context, operation-resolution, authorization-binding, dispatch and assertion-replay slices. This does not qualify the full HTTP/service transport for product use: the complete trust/credential boundary, deployment-managed issuance/rotation, additional handlers, broader resource authorization and production endpoint configuration remain separately gated.
 
 ## 3. Implemented invariants
 
@@ -70,7 +70,7 @@ Local evidence required before branch can be considered qualified:
 
 Do not add HTTP transport, product session migration, business mapping, membership migration, or production configuration in this branch.
 
-The identity adapter construction slice is **QUALIFIED** and integrated. Product session migration, HTTP/service exposure, and production cutover remain separately gated.
+The identity adapter construction slice is **QUALIFIED** and integrated. A separate bounded read-only service HTTP endpoint is also construction-qualified in `CONNECT_SERVICE_HTTP_READ_BOUNDARY_QUALIFICATION.md`; that does not qualify broader HTTP/product exposure. Product session migration, public/browser exposure, production routing, and cutover remain separately gated.
 
 
 ## 6. Local qualification evidence — 2026-09-30
@@ -82,4 +82,4 @@ Verified on `construction/connect-identity-adapter` at commit `4f36dca`:
 - `npm run build`: **TypeScript compilation passed**.
 - Database auth persistence qualification remained green, including external identity lookup/bootstrap idempotency and non-admin bootstrap, external identity linking, disabled-account linking, and runtime privilege boundaries.
 
-This qualifies the constructed adapter seam as a construction slice only. It does not authorize product session migration, Supabase JWT acceptance, HTTP/service exposure, membership/ownership/admin migration, business mapping migration, production routing, shadow traffic, or cutover.
+This qualifies the constructed adapter seam as a construction slice only. Together with the separate read-only HTTP qualification, it does not authorize product session migration, Supabase JWT acceptance by GHM, public/browser or broader product HTTP exposure, membership/ownership/admin migration, business mapping migration, production routing, shadow traffic, or cutover.

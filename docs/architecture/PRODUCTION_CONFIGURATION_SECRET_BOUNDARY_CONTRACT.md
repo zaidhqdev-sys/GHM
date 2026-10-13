@@ -2,10 +2,8 @@
 
 **Canonical owner:** GHM platform governance  
 **Status:** CONSTRUCTION QUALIFIED — PR #21 MERGED  
-**Reconciliation date:** 2026-10-02  
-**Candidate branch:** `construction/production-config-boundary`  
-**Candidate HEAD:** `becd5cfc5a1136e94bb37bf3d83e9e724ce3afc6`  
-**Base:** `main @ 74554bc6607d8c24c248d6cc516e726540a0af18`
+**Reconciliation date:** 2026-10-12  
+**Historical construction evidence:** candidate branch `construction/production-config-boundary`; candidate HEAD `becd5cfc5a1136e94bb37bf3d83e9e724ce3afc6`; original base `main @ 74554bc6607d8c24c248d6cc516e726540a0af18`. These are provenance for PR #21, not the current mainline baseline.
 
 ## Purpose
 
@@ -23,7 +21,7 @@ When `NODE_ENV=production`:
 
 Outside production:
 
-- existing explicit `DATABASE_SSL=false` behavior remains accepted;
+- explicit `DATABASE_SSL=false` may be accepted only by the non-production configuration path where that mode is allowed; production configuration requires `DATABASE_SSL=true` and fails closed otherwise. This construction contract does not relax the production SSL requirement.
 - this slice does not impose a production-only requirement on development/test environments.
 
 ## Secret-boundary requirements
@@ -35,13 +33,13 @@ Outside production:
 
 ## Qualification evidence
 
-The candidate branch adds focused configuration coverage for:
+The merged implementation retains focused configuration coverage for:
 
 1. production fails closed when `DATABASE_SSL` is not enabled;
 2. production accepts explicitly enabled database TLS;
 3. non-production preserves explicit database TLS settings.
 
-The canonical test suite on the candidate branch passed:
+The construction qualification suite on the candidate branch passed before merge:
 
 ```text
 tests: 416

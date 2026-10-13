@@ -188,8 +188,6 @@ This contract does not authorize:
 
 ## Construction decision
 
-**The identity/business mapping boundary is now explicitly identified, but its persistence and lifecycle are not yet authorized.**
+**Historical decision note — superseded in part by later construction:** the original statement below recorded that the identity/business mapping boundary had been identified but its persistence and lifecycle were not yet authorized. Since then, the GHM-owned authentication, account identity, external-identity persistence, and credentialless migration account-provisioning construction slices have been separately qualified, and the mapping/persistence boundary has been contracted. This still does **not** authorize permanent QuoteFlow identity-link persistence, production mutation, or product cutover.
 
-This is the final prerequisite before an eventual QuoteFlow adapter can be designed safely.
-
-The authority model is now separately qualified by dual confirmation, and the persistence boundary is separately contracted. The next construction step is **GHM-owned QuoteFlow authentication and migration-boundary qualification**, not permanent identity-link persistence.
+The current remaining QuoteFlow gates are: authoritative reconciliation of both founder-owned source accounts; full non-production reset/re-enrollment DB + HTTP ceremony qualification; migration-only legacy-organization-to-GHM-Business provisioning qualification; and separately authorized product session/runtime migration and cutover. The original prerequisite language is retained as decision history, not as a claim that GHM identity/persistence foundations are unimplemented.

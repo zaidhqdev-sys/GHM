@@ -6,7 +6,7 @@
 
 Define the provider-neutral PostgreSQL schema for the Opportunity Participation relationship reconciled from the current Zaid Connect production Opportunity foundation.
 
-This contract authorizes construction on the GHM construction branch only. It does not authorize production migration, Supabase changes, product adapters, shadow traffic, credential changes, or cutover.
+Historical construction-scope note: the original authorization applied to construction on the GHM construction branch, and the schema plus durable tenant adoption are now qualified / closed. That qualification does not authorize production migration, Supabase changes, product adapters, shadow traffic, credential changes, or cutover.
 
 ## 2. Canonical relation
 
@@ -387,9 +387,9 @@ This schema does not authorize:
 - shadow traffic;
 - production cutover.
 
-## 25. Qualification gate
+## 25. Historical schema qualification acceptance criteria — satisfied
 
-The schema cannot be considered qualified until evidence demonstrates:
+The following criteria governed the original schema qualification gate. The schema and bounded runtime/tenant boundary are now **QUALIFIED / CLOSED**; the qualification record documents the evidence. Participant role/status mutation remains separately constrained and unsupported updates must continue to fail closed:
 
 1. migration applies cleanly to the GHM construction database;
 2. `ghm.opportunity_participant` exists with the exact contract columns;
@@ -420,19 +420,19 @@ The schema cannot be considered qualified until evidence demonstrates:
 27. no existing qualified GHM capability regresses;
 28. final handover evidence records the closure result.
 
-## 26. Construction sequence
+## 26. Historical construction sequence — completed
 
-1. Freeze this schema contract.
-2. Construct `ghm.opportunity_participant` migration.
-3. Apply migration only to the construction database.
-4. Reconcile catalog and constraints.
-5. Define the participant operation contract.
-6. Implement repository/service boundaries.
-7. Register the resource and authorized operations.
-8. Add positive/negative, duplicate, concurrency, and rollback tests.
-9. Qualify runtime and privilege boundaries.
-10. Reconcile cross-resource creator/owner behavior.
-11. Update the handover only after all evidence passes.
+1. Freeze this schema contract. — completed
+2. Construct `ghm.opportunity_participant` migration. — completed
+3. Apply migration to the construction database. — completed
+4. Reconcile catalog and constraints. — qualified
+5. Define the participant operation contract. — completed
+6. Implement repository/service boundaries. — qualified
+7. Register the resource and authorized operations. — completed
+8. Add positive/negative, duplicate, concurrency, and rollback tests. — completed
+9. Qualify runtime and privilege boundaries. — qualified
+10. Reconcile cross-resource creator/owner behavior. — qualified
+11. Update the handover after evidence passed. — completed
 
 ## 27. Production safety
 

@@ -1,8 +1,10 @@
 # Product Backend Capability Inventory
 
-**Status:** Construction capability inventory — reconciled through Business Capability lifecycle/verification transition qualification (2026-10-03)
+**Status:** Construction capability inventory — reconciled 2026-10-13
 
 This document records capabilities GHM may eventually support to replace current managed backend dependencies. It deliberately separates capability requirements from Supabase implementation details and does not authorize production migration.
+
+**Current-status reconciliation — 2026-10-13:** Since the earlier 2026-10-03 checkpoint, the migration checksum runner compatibility, bounded Connect service-trust prerequisites, live R2 data-path qualification, and PayFast checkout/ITN/server-confirmation implementation have advanced. PayFast’s deterministic local qualification passes; real provider sandbox end-to-end/runtime qualification, production enablement, and product cutover remain open. QuoteFlow’s identity/account foundation is separately qualified, but legacy organization-to-GHM-Business provisioning, full reset/re-enrollment ceremony qualification, and product runtime migration remain open. See `GHM_CURRENT_STATE.md` and the remaining-work register for the current state; this inventory does not authorize production migration.
 
 ## Zaid Connect
 

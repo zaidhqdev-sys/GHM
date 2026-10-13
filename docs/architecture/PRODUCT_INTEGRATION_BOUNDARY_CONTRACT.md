@@ -3,7 +3,9 @@
 **Canonical owner:** GHM platform governance
 **Status:** Semantic platform contract — current authentication foundation qualified; Connect Saved Business adapter constructed and unit-qualified; broader product adapters remain separately gated
 **Authority:** Local repository `C:\GHM`
-**Current baseline:** consolidated `main` — current repository authority (2026-10-02)
+**Historical baseline:** consolidated `main` as recorded on 2026-10-02; not a current HEAD pointer
+
+> **Status reconciliation — 2026-10-13:** This semantic platform contract remains relevant, but its baseline date is historical. Use the living current-state index and individual capability qualification records for present implementation status. Qualification of a specific product adapter does not imply blanket HTTP exposure, production routing, or cutover; the broader open decisions below remain scoped to the transport semantics they name.
 **Historical Campaign reference:** `0a9a9f7` remains a historical qualified Campaign root baseline; it is not the current repository HEAD.
 **Depends on:** [GHM_APPLICATION_BACKEND_PLATFORM_CHARTER.md](./GHM_APPLICATION_BACKEND_PLATFORM_CHARTER.md)
 **Related:** [RESOURCE_API_BOUNDARY_CONTRACT.md](./RESOURCE_API_BOUNDARY_CONTRACT.md)
@@ -497,7 +499,7 @@ Callable mechanism status:
 3. Authentication foundation — **QUALIFIED under Gate 3B**; product authentication/session migration remains separately gated.
 4. Error / version / retry transport semantics — Campaign tokens locked; platform taxonomy + version lifecycle + retry/idempotency remain **OPEN**.
 5. Broader resource HTTP expansion — gated.
-6. Product adapter — separately authorized per product/resource. Connect Saved Business adapter is **CONSTRUCTED / UNIT-QUALIFIED** under its dedicated contract; no HTTP exposure or production cutover is implied.
+6. Product adapter — separately authorized per product/resource. Connect Saved Business and other explicitly recorded resource adapters have bounded construction qualifications; the read-only Connect service HTTP endpoint also has a separate bounded qualification. These do not imply blanket HTTP/product exposure, production routing, or cutover.
 7. Shadow / cutover — separately authorized; **NOT AUTHORIZED**.
 
 ## 24. Relationship to the Platform Charter
@@ -533,7 +535,7 @@ Registry membership and internal service existence do **not** imply a supported 
 | Error transport encoding | OPEN |
 | Versioning / compatibility | OPEN |
 | Retry / idempotency | OPEN |
-| Connect Saved Business adapter | CONSTRUCTED / UNIT-QUALIFIED; no production cutover |
+| Connect Saved Business adapter | Bounded adapter construction qualified; read-only HTTP boundary separately qualified; no blanket product exposure or production cutover |
 | Other product adapters | FUTURE / GATED |
 | Shared storage | FUTURE / GATED |
 | Durable audit | FUTURE / GATED |

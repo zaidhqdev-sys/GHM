@@ -3,6 +3,8 @@
 **Status:** HISTORICAL SOURCE AUDIT — REFERENCE-DATA GAP CLOSED / QUALIFIED 2026-10-03  
 **Date:** 2026-10-03
 
+> **Current-status reconciliation — 2026-10-12:** The `OPEN — NOT AUTHORIZED FOR MUTATION` status below is the historical decision at the 2026-10-03 audit point. The commercial reference-data dependency (`ghm.country` and `ghm.currency`) has since been constructed and runtime-qualified; see `COMMERCIAL_REFERENCE_DATA_CONSTRUCTION_GATE.md`. This source audit remains provenance, not a current authorization request. It does not authorize payment-provider activation or production cutover.
+
 ## Purpose
 
 Reconcile the reference data required by the already-constructed GHM Commercial schema before payment preparation is implemented.
@@ -33,8 +35,8 @@ It must not own payment-provider configuration, locale presentation, administrat
 
 No production reference rows are authorized by this audit alone. Required canonical rows must be introduced by an explicitly governed migration/seed decision. The presence of South Africa/ZAR in Connect is source evidence, not permission to silently copy Connect data into GHM.
 
-## Gate
+## Historical gate snapshot — 2026-10-03
 
-**OPEN — NOT AUTHORIZED FOR MUTATION.**
+**At the time of this audit: OPEN — NOT AUTHORIZED FOR MUTATION.**
 
-Payment preparation remains blocked until this reference-data contract receives explicit construction authorization and its migration ordering, live schema state, privileges, and canonical seed authority are qualified.
+At the time, payment preparation was blocked pending explicit construction authorization and qualification of migration ordering, live schema state, privileges, and canonical seed authority. That dependency was subsequently constructed and runtime-qualified, as stated in the current-status reconciliation at the top of this historical source audit. This section records the old gate state and is not a current blocker.

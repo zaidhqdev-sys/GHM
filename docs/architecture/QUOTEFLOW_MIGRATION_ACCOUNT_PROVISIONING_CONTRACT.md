@@ -69,4 +69,4 @@ No production migration, Supabase source access, credential extraction, QuoteFlo
 
 ## Next gate
 
-The next construction gate is the explicit password reset/re-enrollment ceremony. Database provisioning is qualified; credential migration remains separately gated.
+The reset/re-enrollment ceremony has since been constructed in `QUOTEFLOW_MIGRATION_RESET_REENROLLMENT_CEREMONY.md`. The next gate is its complete non-production DB + HTTP qualification, including anti-enumeration, single-use recovery, rollback, session revocation, and post-reset-session proof. Database account provisioning is qualified; credential migration and production cutover remain separately gated.

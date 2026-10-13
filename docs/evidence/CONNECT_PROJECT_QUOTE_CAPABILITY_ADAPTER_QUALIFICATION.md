@@ -43,9 +43,9 @@ The Connect service router now:
 4. dispatches to the Project Quote adapter;
 5. preserves the existing fail-closed behavior for unsupported Connect resources.
 
-## Qualification gate
+## Original qualification gate — historical
 
-Required local evidence before merge:
+The following checklist records the original branch's pre-merge requirements, not a current hold on the merged mainline slice:
 
 - TypeScript build passes.
 - Full `npm test` suite passes.
@@ -54,6 +54,8 @@ Required local evidence before merge:
 - No migration/provider/Supabase/privilege changes.
 - Founder merge gate remains explicit.
 
-## Status
+## Current bounded status — 2026-10-12
 
-**CONSTRUCTION — awaiting local qualification and founder merge gate.**
+The adapter is integrated on `main`. The later repository-wide checkpoint passed 557/557 tests, after this evidence record was originally written. The old “awaiting local qualification and founder merge gate” status is historical and does not mean the merged construction slice should be reopened.
+
+**Status: integrated construction adapter; production exposure, end-to-end workflow parity, and cutover remain separately gated.**

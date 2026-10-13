@@ -1,9 +1,9 @@
 # GHM ↔ Zaid Connect Identity Bridge Qualification
 
 **Status:** CONSTRUCTION QUALIFIED — PRODUCT ADAPTER / CUTOVER NOT AUTHORIZED
-**Qualified baseline:** current consolidated `main` (the qualification evidence below predates the documentation-only reconciliation commits and must be read as evidence for the same qualified foundation, not as the current HEAD)
+**Historical qualification baseline:** the consolidated `main` state recorded at qualification time; not a current HEAD pointer
 **Founder approval:** Authentication Gate 3B approved 2026-09-30
-**Current authority:** This qualification establishes the GHM identity foundation only; the Connect adapter requires a separate construction authorization.
+**Current authority — 2026-10-12:** This record establishes the GHM identity foundation. The separately authorized Connect identity adapter is also construction-qualified as recorded in `GHM_CONNECT_IDENTITY_ADAPTER_QUALIFICATION.md`; the full Connect↔GHM service trust boundary, product authentication/session migration, public product exposure, production routing, and cutover remain separately gated.
 
 ## Purpose
 
@@ -21,7 +21,7 @@ GHM now has a construction-qualified authentication and identity foundation:
 - refresh credentials are opaque, rotated, single-use, and session-family scoped;
 - account disable/session/recovery semantics are exercised by database tests;
 - authorization loads authoritative GHM account state, including system-admin state, rather than trusting a JWT role claim;
-- the legacy HS path remains isolated compatibility behavior and is not the target product authentication authority.
+- current governed resource authentication is ES256-only; the temporary HS/JWT_SECRET verifier was removed and Supabase JWTs remain rejected, as recorded in `GHM_LEGACY_AUTH_JWT_SECRET_RECONCILIATION_CONTRACT.md` and `ISSUE_1_PRODUCTION_FOUNDATION_STATUS.md`.
 
 ## Qualification evidence
 
@@ -48,13 +48,12 @@ The Connect source audit established:
 
 with `provider=supabase` for existing Supabase Auth identities.
 
-Therefore previous readiness statements that treated UUID↔bigint identity mapping as wholly absent are stale with respect to the GHM construction foundation. Current readiness must distinguish the qualified GHM mapping foundation from the still-unimplemented Connect product adapter.
+Therefore previous readiness statements that treated UUID↔bigint identity mapping as wholly absent are stale with respect to the GHM construction foundation. Current readiness must distinguish the qualified GHM mapping foundation and the separately qualified frozen Connect identity-adapter slice from broader product migration and cutover, which remain unqualified.
 
 ## What remains open
 
 This qualification does **not** establish:
 
-- Connect product adapter behavior;
 - automatic product migration;
 - Supabase JWT acceptance by GHM;
 - business UUID → GHM business-id migration;
@@ -72,11 +71,9 @@ Connect remains on its current Supabase-backed production path.
 
 No production database, DNS, credentials, traffic routing, provider cleanup, or product deployment is changed by this qualification.
 
-## Next construction target
+## Superseded next-step note
 
-The next evidence-led construction target is the **Connect product identity adapter boundary**: define and qualify the concrete operation that resolves a Connect Supabase identity to a GHM canonical account without granting membership, ownership, system-admin privilege, or accepting a Supabase JWT as a GHM credential.
-
-That adapter must be separately authorized before implementation.
+The next-target instruction above was superseded when the identity adapter was separately authorized and qualified on 2026-09-30. Retain it as historical decision provenance only; use `GHM_CONNECT_IDENTITY_ADAPTER_QUALIFICATION.md` for the bounded implementation evidence and current restrictions.
 
 
 ## Current adapter reconciliation — 2026-09-30

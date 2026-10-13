@@ -2,7 +2,7 @@
 
 **Status:** CONSTRUCTION QUALIFIED — INTEGRATION LIFECYCLE SUB-SLICE ONLY  
 **Branch:** `construction/connect-integration-lifecycle`  
-**Baseline:** `main` at `ab69ef1`  
+**Historical baseline:** `main` at `ab69ef1` when this slice was qualified; not a current HEAD pointer  
 **Scope:** Persistent GHM-authoritative Connect integration identity and lifecycle gating
 
 ## 1. Qualification boundary
@@ -86,9 +86,9 @@ The live qualification verified:
 
 The migration was applied successfully through the normal GHM migration runner. No manual database mutation was used.
 
-## 6. Explicitly not qualified
+## 6. Exclusions of this lifecycle slice at qualification time
 
-This slice does not qualify:
+The list below records what this integration-lifecycle slice did not qualify on its own; it is not a current blanket status for every item. Later bounded qualification records are linked under **Subsequent qualified slices** below. The complete service boundary and production exposure/cutover still require their own evidence.
 
 - ES256 cryptographic verification beyond the separate assertion qualification;
 - replay/`jti` persistence;
@@ -105,8 +105,8 @@ This slice does not qualify:
 
 ## 7. Stop boundary
 
-The next bounded service-trust slice is trusted request-envelope and integration-context establishment.
+## Subsequent qualified slices
 
-That next slice must not be treated as implemented merely because the lifecycle authority now exists.
+The trusted request-envelope and integration-context work named as the next step at the time of this qualification has since been recorded in `CONNECT_TRUSTED_REQUEST_CONTEXT_QUALIFICATION.md`, `CONNECT_GOVERNED_OPERATION_RESOLUTION_QUALIFICATION.md`, and `CONNECT_GHM_AUTHORIZATION_BINDING_QUALIFICATION.md`. Assertion replay protection is recorded separately in `CONNECT_SERVICE_ASSERTION_REPLAY_QUALIFICATION.md`. Each remains bounded to its stated scope; this lifecycle record does not imply that the full service boundary, all resource handlers, public product exposure, or production cutover is qualified.
 
 **Result:** GHM has a construction-qualified persistent Connect integration lifecycle authority with runtime fail-closed semantics and verified least-privilege database access, while the broader service boundary remains separately gated.

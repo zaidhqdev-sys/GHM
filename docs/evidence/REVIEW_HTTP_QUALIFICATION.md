@@ -44,7 +44,8 @@ The qualification test suite covers:
 - arbitrary moderation field rejection;
 - not-found mapping.
 
-Final local build/test results must be recorded after the repository branch is pulled and verified locally. This document intentionally does not claim those results before that independent local run.
+## Status reconciliation — 2026-10-12
 
-## Construction state
-Qualified construction artifact pending founder decision on merge.
+The preceding verification note and merge-gate sentence describe the original construction branch, before the Review router's later mainline dependency-wiring fixes. The router is integrated on `main`, and the repository's later full-suite checkpoint passed 557/557 tests. Treat the earlier “pending founder decision on merge” wording as historical, not as a current instruction to hold or reopen the merged slice.
+
+**Current bounded status: integrated construction slice; no production/cutover authorization.** The documented route/input/error boundaries remain the scope of this evidence; the full production foundation and deployment gates are separate.

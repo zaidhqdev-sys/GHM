@@ -1,7 +1,7 @@
-# GHM Remaining Work Register — 2026-10-05
+# GHM Remaining Work Register — 2026-10-13
 
-**Status:** CURRENT GOVERNED REMAINING-WORK REGISTER  
-**Repository authority at this slice's start:** consolidated `main` at `e9ad72d417585d0046f9bf95402931959255eb88`; subsequent PayFast qualification evidence is recorded below  
+**Status:** CURRENT GOVERNED REMAINING-WORK REGISTER — reconciled 2026-10-13  
+**Repository authority:** mainline audit anchor recorded for this reconciliation: `1f2b10d0850095311614c5b5f9531eb8b7cce860` (`Normalize migration checksums across line endings`). This is a historical audit anchor, not a live pointer to current `main`; check the current branch head before using this register for a new construction decision. It is not proof of live deployment state.  
 **Purpose:** establish the exact work that remains before GHM can become the backend for Zaid Connect and QuoteFlow. This register is the construction/cutover planning authority after the 2026-10-05 documentation reconciliation.
 
 ## 1. Authority rule
@@ -19,7 +19,7 @@ A historical document cannot reopen a qualified capability. A provider capabilit
 
 The following are excluded from construction backlog unless a new product requirement creates a separately scoped adapter/composition need:
 
-- Authentication construction foundation
+- Bounded authentication construction foundation (qualified); unresolved Gate 3B parameter approvals and production secret provisioning remain explicit production gates
 - Authorization and transaction boundaries
 - Durable tenant isolation and qualified tenant adoption sequence
 - Business Identity/Profile
@@ -50,10 +50,10 @@ The following are excluded from construction backlog unless a new product requir
 
 **Rule:** a future adapter or composed product response consumes these capabilities; it does not reopen their canonical contracts.
 
-## 3. Genuine GHM-core remaining construction
+## 3. Genuine GHM platform-foundation remaining construction
 
 ### GHM-01 — Storage live-provider/service qualification
-**Classification:** GHM core — partially qualified / open.
+**Classification:** GHM platform foundation — partially qualified / open.
 
 Already qualified:
 - metadata/persistence boundary;
@@ -124,18 +124,20 @@ Qualified foundations:
 - payment-preparation idempotency;
 - provider-event idempotent application at the GHM boundary.
 
-Remaining:
-- PayFast checkout/redirect HTTP boundary — merged to `main`; focused local qualification tests passed;
-- PayFast ITN callback HTTP boundary — merged to `main`; focused local qualification tests passed;
-- PayFast provider-specific signature/source-IP/merchant/amount/status verification — implemented on `main`; focused local qualification tests passed;
+Implemented and merged — not remaining construction:
+- PayFast checkout/redirect HTTP boundary — implemented and merged to `main`; focused deterministic local qualification tests passed;
+- PayFast ITN callback HTTP boundary — implemented and merged to `main`; focused deterministic local qualification tests passed;
+- PayFast provider-specific signature/source-IP/merchant/amount/status verification — implemented and merged to `main`; focused deterministic local qualification tests passed;
 - PayFast provider configuration boundary — code/config contract added with sandbox as the non-production default; production credentials and live enablement remain gated;
-- PayFast ITN server-to-server confirmation against the provider validation endpoint — merged to `main` and post-merge verified; sandbox/runtime qualification remains;
+- PayFast ITN server-to-server confirmation against the provider validation endpoint — implemented and merged to `main` (PR #119); post-merge tests pass; real provider sandbox/runtime end-to-end qualification remains open;
 - Local deterministic PayFast qualification runner — merged through this slice as `npm run qualify:payfast-runtime`; founder-local build passed and 22 focused tests passed (0 failed, 0 skipped); the full suite passed 557/557 and `git diff --check` was clean. Provider HTTP is stubbed; no provider network call, database access, or live credentials are involved;
+
+Still remaining qualification / enablement gates:
 - PayFast sandbox end-to-end qualification, including checkout, ITN server confirmation and governed payment-result application — remains a separate qualification gate;
 - real runtime qualification against a non-production provider environment — not yet complete; must use explicit sandbox configuration and approved test merchant credentials only, never production/live credentials;
 - only then production provider enablement/cutover.
 
-**Approved provider direction:** PayFast is approved for the commercial payment path. Provider approval/configuration is not itself evidence that the provider-specific GHM integration is implemented or production-enabled.
+**Approved provider direction:** PayFast is approved for the commercial payment path. The provider-specific checkout and ITN implementation is merged, with deterministic local qualification passing. This does **not** mean real PayFast sandbox end-to-end qualification, production credential configuration, or live enablement is complete.
 
 Do not create another generic event ledger.
 
@@ -171,7 +173,7 @@ Notification persistence is qualified. Live delivery is not. Decide whether Conn
 ### CONNECT-04 — Connect server/provider runtime equivalents
 **Classification:** product/provider integration.
 
-Commercial checkout/webhook, AI proxy and other server-runtime behaviours require explicit ownership and provider-boundary contracts before any GHM implementation. PayFast is the approved commercial provider direction; provider-specific checkout/webhook implementation remains open until sandbox/runtime qualification completes and must terminate in the governed GHM commercial boundaries rather than create a parallel commercial ledger.
+PayFast checkout/ITN and server-to-server confirmation are implemented and merged, with deterministic local qualification passing; the remaining PayFast gate is real sandbox end-to-end/runtime qualification, followed by separately authorized production credentials and live enablement. Any additional provider behaviour (including AI proxy or non-PayFast server-runtime integrations) still requires explicit ownership and provider-boundary contracts before implementation. Every commercial path must terminate in the governed GHM commercial boundaries rather than create a parallel commercial ledger.
 
 ### CONNECT-05 — Connect atomic workflow parity
 **Classification:** product workflow construction.
@@ -194,7 +196,7 @@ Required:
 ### QF-02 — QuoteFlow password reset/re-enrollment ceremony
 **Classification:** GHM/Auth + product integration — open.
 
-Credentialless account provisioning is qualified. The reset/re-enrollment execution remains a gate.
+Credentialless account-provisioning database capability is construction-qualified. The migration-specific reset/re-enrollment request/completion path has been constructed, but the full non-production DB + HTTP ceremony qualification remains open for anti-enumeration, single-use recovery, rollback, session revocation, and post-reset-session proof. Both known QuoteFlow accounts are founder-owned and must be reconciled independently; do not treat them as unrelated customer accounts or merge their identity provenance.
 
 Required:
 - deterministic reset state;
@@ -279,7 +281,8 @@ The following require explicit Founder authorization before construction or prod
 5. QuoteFlow production migration/mutation;
 6. legacy PostgreSQL role/object mutation;
 7. shadow qualification against representative product workflows;
-8. any production routing, DNS, environment, credential or traffic cutover.
+8. any production routing, DNS, environment, credential or traffic cutover;
+9. closure of the remaining authentication parameter approvals recorded in `GHM_AUTHENTICATION_IMPLEMENTATION_PARAMETER_GATE.md` (including token-pepper approval, exact `sub` encoding, clock-skew policy, and key lifecycle details) before production auth enablement.
 
 ## 9. Stop condition for construction
 
@@ -299,12 +302,12 @@ If the need is already covered by a qualified capability, stop and build the ada
 
 If construction stopped at this register today, the exact blockers preventing GHM from becoming the backend for Connect + QuoteFlow are:
 
-**GHM core:** storage live-provider/service qualification, commercial provider operations, public/directory composition where selected, broader explicitly authorized HTTP surfaces, and bootstrap authority cleanup.
+**GHM platform foundation:** remaining storage application wiring, broader service/tenant authorization, recovery/backup and orphan reconciliation, production provider enablement; real PayFast sandbox end-to-end/runtime qualification; selected public/directory HTTP composition; and bootstrap authority resolution after independent authority/recovery evidence.
 
-**Connect:** product adapter, remaining source reconciliation, selected directory/storage/commercial/runtime/realtime workflows, atomic workflow parity, and end-to-end qualification.
+**Connect:** product adapter and operation-by-operation mapping, remaining authoritative source reconciliation, selected directory/storage/commercial/runtime/realtime workflows, atomic workflow parity, and end-to-end qualification. Bounded identity/service/resource slices already qualified are foundations, not production migration.
 
-**QuoteFlow:** authoritative legacy provenance, reset/re-enrollment, GHM session client, Business migration provisioning qualification, then product workflow/cutover qualification.
+**QuoteFlow:** authoritative legacy provenance for both founder-owned accounts, full reset/re-enrollment DB+HTTP ceremony qualification, GHM session client, separate legacy-organization-to-GHM-Business provisioning qualification, then product workflow/cutover qualification.
 
-**Production:** deployment/secrets, recovery/rollback, observability, shadow qualification, and founder-authorized reversible cutover.
+**Production:** deployment/secrets (including closure of the remaining authentication parameter approvals and secret provisioning), recovery/rollback, observability, shadow qualification, and founder-authorized reversible cutover.
 
-Everything else is qualified, historical/provenance, product-owned, provider-owned, or deliberately gated.
+This is a summary of the major remaining gates, not a blanket claim that every unlisted capability is qualified. Use each capability contract and qualification record for exact scope; preserve separately documented product, provider, security, and production gates.

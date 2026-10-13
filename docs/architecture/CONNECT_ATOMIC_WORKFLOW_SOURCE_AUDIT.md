@@ -4,6 +4,8 @@
 **Connect commit:** `abcffa73f893602c25310a58946bebb91fd7eeb5`  
 **Date:** 2026-09-18
 
+> **Status reconciliation — 2026-10-12:** This document is a source audit of Connect at the recorded 2026-09-18 commit, not a current GHM implementation or production-readiness verdict. Its Connect-side observations remain tied to that exact source snapshot. Current GHM construction and qualification status is governed by `GHM_CURRENT_STATE.md` and `GHM_REMAINING_WORK_REGISTER_2026-10-05.md`; qualified resource slices do not imply complete Connect workflow parity, production routing, or cutover. Any row describing a GHM capability as missing/not implemented records the state at this audit's comparison point unless explicitly reconciled by later evidence.
+
 ## 1. Purpose
 
 Map multi-write Connect workflows and compare them to current GHM equivalents. Closed GHM capabilities are not reopened.
@@ -27,6 +29,10 @@ Map multi-write Connect workflows and compare them to current GHM equivalents. C
 | Support create/reply/status | support RPCs | support_requests + messages | PL/pgSQL | — | QUALIFIED Support Request | Covered |
 | Saved Business toggle | `savedService.toggle` | select → delete or insert | **App composition**, not one RPC | Unique (user, business) | QUALIFIED create/delete | Intentional; no GHM toggle |
 | Create notification | `create_notification` RPC | notifications | PL/pgSQL | — | QUALIFIED Notification create | Covered |
+
+## Current GHM payment-slice reconciliation — 2026-10-13
+
+The payment rows above preserve the Connect source workflow comparison made on 2026-09-18. Their statements that payment preparation “throws” and payment-result application is “Not implemented” are historical snapshots and must not be used as current GHM implementation status. GHM governed payment preparation and payment-result boundaries are now merged and runtime-qualified; PayFast checkout, ITN verification, and server-to-server confirmation are implemented and merged with deterministic local qualification passing. Real PayFast sandbox end-to-end/runtime qualification, complete Connect product workflow parity, provider enablement, and production cutover remain open. See `GHM_CURRENT_STATE.md`, `GHM_REMAINING_WORK_REGISTER_2026-10-05.md`, and the commercial qualification evidence.
 
 ## 3. Authorization notes
 

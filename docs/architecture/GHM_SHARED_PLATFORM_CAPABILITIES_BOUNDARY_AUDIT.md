@@ -4,6 +4,8 @@
 **Status:** HISTORICAL PLATFORM CAPABILITY AUDIT — SUPERSEDED FOR CURRENT STORAGE STATE
 **Authority:** Local repository `C:\GHM`
 **Baseline:** historical audit checkpoint; current mainline storage authority is `GHM_STORAGE_PERSISTENCE_QUALIFICATION.md` and `GHM_STORAGE_PROVIDER_ADAPTER_RECONCILIATION.md`
+
+> **Current-status reconciliation — 2026-10-13:** This document is intentionally retained as a historical decision record. Its broad “not authorized” statements below describe the original baseline and must not override later capability-specific construction evidence. Storage persistence and the live R2 provider path are qualified; bounded product resource slices and the PayFast adapter have advanced separately. GHM-owned Realtime remains explicitly unimplemented and unauthorized; Campaign generation jobs and Campaign-specific storage children remain outside the qualified scope. Current open work is governed by `GHM_CURRENT_STATE.md`, `GHM_REMAINING_WORK_REGISTER_2026-10-05.md`, and the relevant qualification contracts. No statement here authorizes production migration or cutover.
 **Depends on:**
 - [GHM_APPLICATION_BACKEND_PLATFORM_CHARTER.md](./GHM_APPLICATION_BACKEND_PLATFORM_CHARTER.md)
 - [PRODUCT_INTEGRATION_BOUNDARY_CONTRACT.md](./PRODUCT_INTEGRATION_BOUNDARY_CONTRACT.md)

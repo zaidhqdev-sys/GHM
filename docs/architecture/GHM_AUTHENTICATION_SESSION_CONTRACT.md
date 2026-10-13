@@ -1,7 +1,10 @@
 # GHM Authentication Session Contract
 
+> **Historical-status clarification — 2026-10-13:** This Gate 2B contract is a historical decision record. The unresolved session parameters and implementation stop statements were superseded for the bounded session/refresh foundation by Gate 3B and its qualified construction. Use current contracts for any remaining specific open decisions; product migration and production cutover remain separately gated.
+
+
 **Canonical owner:** GHM platform governance
-**Status:** AUTHENTICATION GATE 2B CONTRACT — HISTORICAL DECISION RECORD; session/refresh parameters were subsequently frozen by Gate 3B and the resulting construction foundation is qualified on `main @ ffc4a2a`
+**Status:** AUTHENTICATION GATE 2B CONTRACT — HISTORICAL DECISION RECORD; session/refresh parameters were subsequently frozen by Gate 3B and the resulting construction foundation was qualified on `main @ ffc4a2a` at the time of reconciliation. This is a historical evidence pointer, not a current HEAD pointer.
 **Authority:** Local repository `C:\GHM`
 **Baseline:** branch `construction/saved-business-resource`, HEAD `239ef5d5065826ddbaae03a2b05c175bee9bce1d`
 **Depends on:**
@@ -43,37 +46,35 @@ Live products (Connect, QuoteFlow) will eventually consume this model via the GH
 
 ## 2. Existing-state audit
 
-Inspected (read-only) at HEAD `239ef5d`:
+The source paths below were inspected at the historical Gate 2B baseline `239ef5d`; rows have been reconciled against the later Gate 3B-qualified foundation and must not be read as a snapshot of that old tree.
 
-| Area | Evidence |
+| Area | Current bounded evidence |
 |---|---|
 | JWT verification | `src/auth/ghm-bearer.ts` → ES256 access JWT verification; claims use canonical `sub` plus issuer/audience/expiry contract |
 | Auth middleware | `src/auth/http.ts` — `requireAuth` → `401` `{ error: 'unauthorized' }` |
 | Authorization | `src/auth/authorization.ts` — `AuthContext`; membership/role helpers |
 | Config | `src/config.ts` / `.env.example` — no legacy `JWT_SECRET`; ES256 signing material is supplied through dedicated `GHM_JWT_ES256_*` environment variables |
-| Account identity | `ghm.account_identity` (bigint id; coarse `role`; no credential columns for refresh) |
+| Account identity | `ghm.account_identity` (bigint id; coarse `role`; credential/session data persisted separately) |
 | Membership | `ghm.business_membership` (`active` / `inactive` / `revoked`) — **business** membership, not auth sessions |
-| JWT tests | Sign HS tokens in tests only; no refresh/logout suite |
-| Auth session tables | **None** found (`refresh_token` / `auth_session` / logout APIs absent under `src/` and migrations search) |
-| DB “session” mentions | Migrator `session_user` identity checks only — not product auth sessions |
+| Authentication tests | Gate 3B qualification covers bounded issuance, session/refresh rotation, revocation, recovery, and logout behavior |
+| Auth session persistence | Present in the qualified GHM authentication foundation; the historical “none found” result applied only at Gate 2B |
+| DB “session” mentions | The historical migrator `session_user` observation was not evidence about product auth sessions |
 
-### Accurate current findings
+### Historical Gate 2B implementation snapshot — superseded for the bounded foundation
 
-| Concern | Current state |
-|---|---|
-| Access-token behavior | Short-lived **by product convention in tests** (`expiresIn` in some tests); production verifier checks signature + claims but does **not** implement GHM-owned issuance or target asymmetric/`exp`-policy contract |
-| Refresh tokens | **Absent** |
-| Server-side auth sessions | **Absent** |
-| Revocation (auth session) | **Absent** (membership `revoked` is unrelated business membership status) |
-| Logout | **Absent** as a GHM API (products may discard client tokens only) |
-| Credential storage | No GHM password/refresh credential store in `src/`; `bcrypt` dependency unused under `src/` |
-| Account lifecycle (auth) | Account rows must pre-exist for FK-bound ops; no JIT auth bootstrap implemented |
+The following table records the earlier source audit at the Gate 2B baseline; it is not a current implementation assessment. Gate 3B subsequently qualified the bounded GHM ES256 issuance, refresh/session persistence, rotation, revocation, recovery, and logout foundation. Product clients remain on their existing Supabase sessions; their migration is separately gated.
 
-Do not infer refresh, logout, or session persistence that does not exist.
+| Concern | Gate 2B snapshot (historical) | Current bounded status |
+|---|---|---|
+| Access-token behavior | Product-test convention; no GHM-owned issuance or target asymmetric/`exp` policy | GHM ES256 access issuance and verification foundation qualified; product session-client integration remains open |
+| Refresh tokens | Absent at Gate 2B | Opaque rotating refresh credentials and replay-family revocation foundation qualified |
+| Server-side auth sessions | Absent at Gate 2B | GHM session persistence foundation qualified |
+| Revocation (auth session) | Absent at Gate 2B | Session/account revocation foundation qualified; business membership `revoked` remains a separate concept |
+| Logout | Absent as a GHM API at Gate 2B | Bounded GHM logout foundation qualified; product migration remains open |
+| Credential storage | No GHM password/refresh credential store at Gate 2B | Bounded credential/session persistence foundation qualified |
+| Account lifecycle (auth) | No JIT bootstrap at Gate 2B | Controlled account-identity bootstrap foundation qualified; product/business provisioning remains separately scoped |
 
-```text
-CURRENT IMPLEMENTATION ≠ TARGET SESSION CONTRACT.
-```
+Do not use the historical Gate 2B rows as current implementation status. The qualified GHM foundation does not imply Connect/QuoteFlow production migration or cutover.
 
 ---
 
@@ -105,13 +106,13 @@ Already selected (Issuance ADR / Contract Gate):
 | **Password change** | Revoke **all other** refresh sessions; **preserve** the current authenticated session; **issue a fresh refresh credential** |
 | **Password recovery** | Revoke **all** existing refresh sessions; user must **authenticate again** |
 
-**Still not Founder-selected:**
+**Historical Gate 2B unresolved items — current bounded status reconciled:**
 
-- session persistence schema
-- revocation representation
-- whether refresh credentials are opaque (recommended below; not Founder-recorded)
-- JWT signing-key storage class / `kid` required (Cryptographic Contract — **SELECTED**; exact encoding/values UNSELECTED)
-- Conceptual durable persistence for credential/session/refresh/recovery/mapping: [GHM_AUTHENTICATION_PERSISTENCE_CONTRACT.md](./GHM_AUTHENTICATION_PERSISTENCE_CONTRACT.md)
+- Session persistence schema: implemented in `ghm.authentication_session` and the qualified auth migrations.
+- Revocation representation: implemented through session status/revocation metadata and controlled auth functions.
+- Opaque refresh credentials: used by the qualified implementation; the original contract's recommendation is historical implementation rationale, not a claim of a separate Founder decision.
+- JWT signing-key storage class / required `kid`: selected; current loader uses PKCS#8 PEM and `GHM_JWT_ES256_*` variables. Deployment-specific key/`kid` values remain secret-managed.
+- Conceptual durable persistence record: retained for architecture rationale; current physical schema is governed by [GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md](./GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md).
 
 High-level Issuance ADR language that refresh credentials are **rotated** is refined by Founder-selected policy below. Do **not** invent multi-device session-management UI.
 
@@ -143,7 +144,7 @@ Candidate evaluation history remains in [GHM_AUTHENTICATION_CRYPTOGRAPHIC_CONTRA
 | Concept | Owner gate | Status |
 |---|---|---|
 | Access-token lifetime | Cryptographic / this § | **SELECTED: 15 minutes** |
-| Refresh credential (opaque/rotated) | §5 / §7 | Server-controlled + revocable + every-success rotate + single-use + session-family replay **SELECTED**; opacity RECOMMENDED / UNSELECTED |
+| Refresh credential (opaque/rotated) | §5 / §7 | Server-controlled + revocable + every-success rotate + single-use + session-family replay **SELECTED**; opaque 32-byte base64url format **Founder-approved and implemented under Gate 3B** |
 | Inactivity timeout | §6 | **SELECTED: 30 days** |
 | Absolute session maximum | §6 | **SELECTED: 90 days** |
 
@@ -157,7 +158,7 @@ Refresh credentials should be:
 
 - server-controlled
 - high entropy
-- **opaque** unless a later Founder decision establishes otherwise
+- **opaque** in the qualified implementation; Gate 3B later Founder-approved the opaque 32-byte base64url refresh-token format (the earlier Gate 2 recommendation is retained as rationale)
 - stored securely (prefer hash/reference at rest when feasible)
 - revocable
 - rotated on successful use
@@ -176,10 +177,10 @@ Repository evidence shows GHM already centralizes authorization in services/SQL 
 - enables immediate server-side revoke/rotate without waiting for access JWT expiry;
 - fits hybrid Supabase coexistence (GHM session is authoritative for GHM APIs).
 
-No repository evidence requires a JWT refresh token. Preference for opaque refresh is therefore **architectural recommendation**, not a Founder selection.
+No repository evidence required a JWT refresh token. This was the original Gate 2 architectural rationale, not a Founder selection at that gate; Gate 3B later Founder-approved the opaque 32-byte base64url refresh-token format, which the qualified implementation uses.
 
 ```text
-Opaque refresh credential = RECOMMENDED / FOUNDER UNSELECTED
+HISTORICAL GATE 2 STATUS: opaque refresh was recommended, not yet Founder-selected. GATE 3B: opaque 32-byte base64url refresh format later Founder-approved and implemented.
 ```
 
 ---
@@ -222,7 +223,7 @@ Do **not** invent a third fixed “refresh TTL” that replaces this model. Do *
 |---|---|
 | **Zaid Connect** (web) | Operators expect multi-day continuity without weekly password prompts; still private ZAID backend |
 | **QuoteFlow** (mobile-capable) | Stronger “stay signed in” expectation across days/weeks; backgrounding must not force constant reauth if refresh works |
-| **Both** | No GHM refresh sessions in production product code yet; this is **target** architecture only |
+| **Both** | Product code has not migrated to GHM refresh sessions; the GHM session foundation is separately construction-qualified, and product migration remains gated |
 
 ### 6.3 Inactivity window candidates
 
@@ -424,7 +425,7 @@ A session should be able to represent:
 - expiration timestamp
 - revocation timestamp / reason
 
-No production auth-session table name exists in the repository. **Do not invent a frozen table name here.** Persistence invariants are in §14.
+Historical Gate 2B note: a production auth-session table name had not been established at that baseline. The bounded Gate 3B implementation subsequently qualified persistence in `ghm.authentication_session` and the associated refresh/session schema. Use the schema-migration contract and current migrations as authority for physical names; do not infer additional tables from this conceptual model.
 
 ---
 
@@ -508,7 +509,7 @@ This distinction must remain clear in all follow-on contracts and implementation
 
 ## 14. Storage contract
 
-**No migrations in this gate.**
+**Historical Gate 2B scope note:** no migrations were authorized by that gate. Gate 3B subsequently authorized and qualified the bounded authentication persistence foundation; this historical contract section is not a current statement that the schema is absent or that the qualified migrations are unauthorized.
 
 A future session/refresh persistence model must be able to represent:
 
@@ -524,7 +525,7 @@ A future session/refresh persistence model must be able to represent:
 - active / replaced state where required
 - sufficient information for replay detection
 
-Exact schema / table names for credential/session/refresh/recovery/mapping are proposed in [GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md](./GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md). That contract does **not** authorize DDL.
+At the historical Gate 2B baseline, exact schema / table names for credential/session/refresh/recovery/mapping were proposals. The bounded Gate 3B migrations have since been constructed and qualified; the schema-migration contract and current migrations govern the implemented physical schema. This historical contract does not authorize scope beyond that qualified foundation.
 
 Storage must remain separate from `ghm.account_identity` profile fields. Least-privilege / security-definer patterns used elsewhere in GHM should apply when a persistence model is later authorized.
 
@@ -537,7 +538,7 @@ Storage must remain separate from `ghm.account_identity` profile fields. Least-p
 | short-lived access JWT | **SELECTED** |
 | access-token lifetime | **SELECTED: 15 minutes** |
 | server-controlled refresh | **SELECTED** |
-| opaque refresh credential | **RECOMMENDED / FOUNDER UNSELECTED** |
+| opaque refresh credential | **FOUNDER-APPROVED / IMPLEMENTED** in Gate 3B (32-byte base64url); the Gate 2 recommendation is historical rationale |
 | refresh credentials rotated (architecture intent) | **SELECTED** (Issuance ADR — high level) |
 | rotate on every successful refresh | **SELECTED** |
 | refresh credential single-use | **SELECTED** |
@@ -546,8 +547,8 @@ Storage must remain separate from `ghm.account_identity` profile fields. Least-p
 | absolute session maximum duration | **SELECTED: 90 days** |
 | fixed refresh-only TTL (replacing sliding+absolute) | **NOT USED** (model SELECTED above) |
 | reuse/replay response | **SELECTED: revoke affected session family** (account-wide reserved for recovery/compromise) |
-| session persistence schema | **UNSELECTED** |
-| revocation representation | **UNSELECTED** |
+| session persistence schema | **IMPLEMENTED / QUALIFIED** in the bounded Gate 3B foundation; physical schema is governed by the qualified migration contract |
+| revocation representation | **IMPLEMENTED / QUALIFIED** through session status/revocation metadata and controlled auth functions |
 | password-change session policy | **SELECTED** (`2026-09-21`): revoke other refresh sessions; keep current; issue fresh refresh |
 | password-recovery session policy | **SELECTED** (`2026-09-21`): revoke all refresh sessions; re-authenticate |
 
@@ -561,19 +562,19 @@ Recommendations favoring a private ZAID/GHM backend (opaque refresh / persistenc
 
 1. Access-token lifetime is **Founder-selected at 15 minutes**.
 2. Inactivity **30 days** and absolute **90 days** are **Founder-selected**.
-3. Prefer **opaque**, server-controlled refresh credentials (recommendation only until Founder selects).
+3. Opaque, server-controlled refresh credentials are Founder-approved in Gate 3B and used by the qualified implementation; the earlier technical recommendation is retained as rationale.
 4. Rotate on every successful refresh; single-use; session-family replay revoke are **Founder-selected** (§7.6).
 5. Rely on access JWT natural expiry after logout; revoke refresh immediately.
 
 Password-change / recovery policies, sliding+absolute model, 30d/90d durations, 15-minute access TTL, and refresh rotation/replay policy are **Founder-selected**.
 
 ```text
-TTL / opaque-refresh / replay recommendations remain recommendations only until Founder selects them.
+Historical Gate 2B note: TTL and replay parameters were recommendations until the later Gate 3B selection; current bounded status is 15-minute access JWT, 30-day inactivity / 90-day absolute session, opaque rotating single-use refresh credentials, and replay-family revocation, qualified under Gate 3B.
 ```
 
 ---
 
-## 17. Founder decision checkpoint
+## 17. Historical Gate 2B Founder decision checkpoint — reconciled after Gate 3B
 
 ```text
 AUTHENTICATION GATE 2B:
@@ -591,29 +592,26 @@ FOUNDER-SELECTED:
 - Password change: revoke all other refresh sessions; preserve current session; issue fresh refresh
 - Password recovery: revoke all existing refresh sessions; user must authenticate again
 
-STILL REQUIRED (UNSELECTED):
+GATE 2B DECISION-TIME OPEN ITEMS — CURRENT STATUS:
 
-1. Opaque refresh credential:
-   UNSELECTED
+1. Opaque refresh credential: opaque refresh is used by the qualified implementation; the original recommendation is retained as history.
+2. Session persistence model: implemented in `ghm.authentication_session` and the qualified auth migrations.
+3. Revocation representation: implemented through session status/revocation metadata and controlled auth functions.
 
-2. Exact session persistence model:
-   UNSELECTED
-
-3. Exact revocation representation:
-   UNSELECTED
-
-IMPLEMENTATION AUTHORIZATION:
-NOT GRANTED.
+IMPLEMENTATION AUTHORIZATION WAS NOT GRANTED AT GATE 2B; GATE 3B LATER AUTHORIZED AND QUALIFIED THE BOUNDED FOUNDATION.
 ```
 
 ---
 
-## 18. Final gate
+## 18. Final gate — historical Gate 2B stop (superseded for the bounded foundation)
+
+The following block is the original Gate 2B decision snapshot. Its “implementation not authorized” and pending persistence language is historical; Gate 3B subsequently froze and qualified the bounded session/refresh persistence foundation. Product session-client integration and production cutover remain separately gated.
 
 ```text
-AUTHENTICATION GATE 2B RECONCILED WITH CREDENTIAL SESSION POLICIES.
-CURRENT IMPLEMENTATION UNCHANGED (NO REFRESH / LOGOUT / SESSION STORE).
-DURATIONS + REFRESH ROTATION/REPLAY SELECTED; OPAQUE/PERSISTENCE REMAIN PENDING FOUNDER DECISION.
-NO KEYS / CREDENTIALS / TABLES / ENDPOINTS CREATED.
-IMPLEMENTATION NOT AUTHORIZED.
+GATE 2B HISTORICAL DECISION SNAPSHOT:
+AT THAT GATE, NO REFRESH / LOGOUT / SESSION STORE WAS IMPLEMENTED.
+DURATIONS / REFRESH ROTATION / REPLAY / OPAQUE PERSISTENCE WERE NOT YET QUALIFIED AT THAT GATE.
+IMPLEMENTATION AUTHORIZATION WAS NOT GRANTED AT GATE 2B.
+
+CURRENT BOUNDED SESSION / REFRESH FOUNDATION: QUALIFIED UNDER GATE 3B.
 ```

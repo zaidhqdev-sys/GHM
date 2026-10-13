@@ -1,6 +1,8 @@
 # GHM Customer Schema Contract
 
-**Status:** CONSTRUCTION CONTRACT — SCHEMA DESIGN FROZEN
+**Status:** SCHEMA DESIGN FROZEN — Customer construction and qualification subsequently CLOSED / PASS
+
+> **Current-status reconciliation — 2026-10-13:** The schema and acceptance criteria below are the original Customer construction contract. The Customer resource is now represented in the qualified mainline capability index and `CUSTOMER_OPERATION_CONTRACT.md`; the criteria in §13 are historical acceptance criteria, not an open qualification gate. Production migration/cutover and broader product-adapter scope remain separately gated.
 
 ## 1. Purpose
 
@@ -149,9 +151,9 @@ This resource is a prerequisite for the foreign-keyed Quote capability.
 
 Once Customer is implemented and qualified, `ghm.quote.customer_id` may reference `ghm.customer(id)` with durable historical behavior.
 
-## 13. Qualification gate
+## 13. Historical qualification acceptance criteria — satisfied
 
-Customer cannot be marked qualified until evidence demonstrates:
+The following criteria governed the original Customer qualification gate. The Customer resource is now construction-qualified; this list is retained as acceptance evidence, not a statement that qualification is still pending:
 
 1. account ownership enforcement;
 2. create produces active Customer;

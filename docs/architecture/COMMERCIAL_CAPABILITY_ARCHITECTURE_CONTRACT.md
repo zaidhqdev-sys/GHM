@@ -1,10 +1,12 @@
 ﻿# GHM Commercial Capability Architecture Contract
 
-**Status:** CONSTRUCTION CONTRACT — AUTHORIZED FOR SCHEMA DESIGN
-**Date:** 2026-09-15
+**Status:** HISTORICAL SCHEMA-DESIGN CONTRACT — COMMERCIAL CORE CONSTRUCTION HAS ADVANCED; PRODUCTION CUTOVER REMAINS GATED
+**Original design authorization:** 2026-09-15
 **Scope:** GHM Commercial Capability
-**Production state:** Supabase remains production authority
-**Provider integrations:** Not part of GHM core construction
+**Production state:** Connect and QuoteFlow remain on their existing production paths until separately authorized migration/cutover
+**Provider integrations:** Provider-specific behavior belongs in external adapters, not the provider-neutral GHM commercial core
+
+> **Current-status reconciliation — 2026-10-13:** The commercial schema/core has since been constructed, and the PayFast checkout/ITN adapter plus server-to-server confirmation are merged with deterministic local qualification passing. This architecture contract remains authoritative for provider-neutral domain boundaries, but its original “authorized for schema design” status is historical, not a statement that implementation has not started. Real PayFast sandbox end-to-end qualification and production provider enablement remain open; PayFast approval must not be conflated with Paystack status. Production data movement, product backend switching, shadow qualification, rollback/recovery, and cutover remain separately gated.
 
 ---
 
@@ -553,25 +555,22 @@ Schema mutation authority remains separate through the existing GHM migrator/sch
 
 ---
 
-## 22. Explicit non-goals
+## 22. Original schema-construction non-goals and current reconciliation
 
-This construction does not include:
+The list below records what the original provider-neutral commercial schema/core construction did not include. It is not the current status of all later adapter work:
 
-- Paystack integration;
-- PayFast integration;
-- provider credentials;
-- webhook deployment;
-- payment checkout UI;
-- product subscription UI;
+- **PayFast integration:** the provider-specific checkout/redirect, ITN callback, signature/source-IP/merchant/amount/status verification, and server-to-server ITN confirmation adapter has since been implemented and merged, with deterministic local qualification passing. Real PayFast sandbox end-to-end/runtime qualification remains open.
+- **Paystack integration:** no provider-specific implementation or approval should be inferred from the PayFast work; its status remains separate.
+- **Provider credentials and live enablement:** production credentials, live provider enablement, webhook deployment/configuration, and production payment-result qualification remain separately gated.
+- Payment checkout UI and product subscription UI;
 - migration of live Supabase data;
 - production DNS/routing changes;
 - production credential rotation;
-- production cutover;
-- Supabase removal;
+- production cutover and Supabase removal;
 - generic billing engine functionality;
 - invoice/accounting functionality beyond the commercial transaction evidence required by the source contracts.
 
-Those are separately governed concerns.
+These remain separately governed concerns. The PayFast adapter’s merged implementation does not authorize production enablement or product cutover.
 
 ---
 

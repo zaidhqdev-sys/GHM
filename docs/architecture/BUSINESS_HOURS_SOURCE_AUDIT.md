@@ -2,6 +2,8 @@
 
 **Status:** RECONCILED — construction branch `construction/business-hours-resource`
 
+> **Historical-status reconciliation — 2026-10-13:** `construction/business-hours-resource` is historical branch provenance, not the current checkout target. The Business Hours resource and bounded construction qualification are recorded in the current operation/qualification contracts. This source audit preserves the original product evidence and does not authorize reopening completed resource construction, additional booking/exception/open-now behavior, or production cutover.
+
 ## Production source
 
 Repository: `zaidhqdev-sys/zaid-connect`
@@ -62,4 +64,4 @@ The source audit does not establish contracts for booking availability, appointm
 
 ## Safety boundary
 
-This audit authorizes construction of the provider-neutral GHM Business Hours resource only. It does not authorize production schema changes, Supabase migration, credential changes, DNS/routing changes, traffic changes, or product cutover.
+The original audit authorized construction of the provider-neutral GHM Business Hours resource only; that bounded construction/qualification is now recorded in the current operation and qualification contracts. This source audit does not authorize production schema changes, Supabase migration, credential changes, DNS/routing changes, traffic changes, additional booking/exception/open-now behavior, or product cutover.

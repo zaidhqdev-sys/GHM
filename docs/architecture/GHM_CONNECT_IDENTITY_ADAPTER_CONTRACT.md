@@ -2,7 +2,9 @@
 
 **Status:** CONSTRUCTION QUALIFIED — INTEGRATION FOUNDATION; PRODUCT CUTOVER NOT AUTHORIZED
 **Canonical owner:** GHM platform governance
-**Current baseline:** consolidated `main` — current repository authority (2026-09-30)
+**Historical baseline:** consolidated `main` as recorded on 2026-09-30; not a current HEAD pointer
+
+> **Current status reconciliation — 2026-10-13:** The frozen identity-adapter construction slice was authorized and qualified, as recorded in `GHM_CONNECT_IDENTITY_ADAPTER_QUALIFICATION.md`. The historical pre-authorization wording below is superseded for that exact slice only. The ES256 service assertion and replay-protection sub-slices have separate bounded construction evidence; the full Connect↔GHM service trust boundary and any public HTTP exposure, production credential issuance, product migration, routing, or cutover remain gated.
 **Depends on:**
 - `GHM_CONNECT_IDENTITY_BRIDGE_QUALIFICATION.md`
 - `GHM_AUTHENTICATION_IDENTITY_AUTHORIZATION_CONTRACT.md`
@@ -15,7 +17,7 @@
 
 Define the **single construction boundary** required to connect Zaid Connect's existing Supabase-authenticated identity model to GHM's already-qualified canonical identity foundation.
 
-This contract does **not** authorize implementation. It freezes the semantic boundary so that, if construction is later authorized, implementation cannot silently expand into product authentication migration, membership migration, business migration, or production cutover.
+This contract defines the frozen semantic boundary for the already-qualified identity-adapter construction slice. The bounded `saved_business.read` service HTTP endpoint has since been separately construction-qualified in `CONNECT_SERVICE_HTTP_READ_BOUNDARY_QUALIFICATION.md`. Neither record authorizes expansion into product authentication/session migration, membership migration, business migration, public/browser or broader product HTTP exposure, production routing, or cutover.
 
 ## 2. Current authority
 
@@ -232,10 +234,11 @@ This slice does not include:
 **Current state:**
 
 `CONTRACT DEFINED`
-→ `FOUNDER CONSTRUCTION AUTHORIZATION REQUIRED`
-→ `IMPLEMENTATION NOT AUTHORIZED`
+→ `FOUNDER CONSTRUCTION AUTHORIZATION GRANTED — 2026-09-30`
+→ `IDENTITY-ADAPTER CONSTRUCTION QUALIFIED`
+→ `PRODUCT SESSION MIGRATION / HTTP EXPOSURE / PRODUCTION CUTOVER SEPARATELY GATED`
 
-If Founder authorization is granted, implementation must remain limited to this contract. Any expansion requires a new authorization gate.
+The qualified implementation must remain limited to this contract. Any expansion requires a new authorization gate.
 
 ## 15. Final boundary
 
@@ -245,4 +248,4 @@ This document establishes the **next product-specific semantic boundary**.
 
 Neither document authorizes production migration.
 
-**STOP — do not implement this adapter until the Founder construction gate explicitly authorizes it.**
+**Boundary:** the frozen identity-adapter slice is already construction-qualified, and a single read-only service endpoint has separate bounded construction evidence. Do not expand beyond those scopes or interpret either record as authorization for product session migration, public/browser or broader product HTTP exposure, production routing, shadow traffic, or cutover.

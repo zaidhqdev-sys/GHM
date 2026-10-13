@@ -2,6 +2,8 @@
 
 **Status:** CONSTRUCTION AUTHORIZED — operation contract frozen 2026-09-16
 
+> **Current-status reconciliation — 2026-10-13:** The canonical Notification persistence boundary is qualified, but this operation contract's full resource workflow/HTTP/event-delivery qualification is not closed by persistence qualification alone. The qualification requirements below remain open until the specific Notification operation slice is independently evidenced; no public HTTP route or event transport is authorized by persistence qualification alone.
+
 ## 1. Purpose
 
 Define the narrow provider-neutral operation boundary for the production-backed Zaid Connect Notification capability.

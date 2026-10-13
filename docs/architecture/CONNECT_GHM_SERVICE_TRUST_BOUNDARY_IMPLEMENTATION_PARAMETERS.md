@@ -5,6 +5,8 @@
 **Baseline:** `0394fe96`
 **Construction branch:** `construction/connect-service-trust-boundary`
 
+> **Status reconciliation — 2026-10-13:** The branch/baseline fields above record the original construction slice and are not current mainline references. The ES256 assertion primitive has a verified cryptographic sub-slice; this parameter record does not qualify the full service boundary, production credential issuance, HTTP exposure, routing, or cutover. See the parent contract `CONNECT_GHM_SERVICE_TRUST_BOUNDARY_CONTRACT.md` and `../evidence/CONNECT_SERVICE_ASSERTION_CONSTRUCTION_EVIDENCE.md` for current scope limits.
+
 ## Purpose
 
 Freeze the transport-independent cryptographic parameters required for the first service-assertion construction slice. This record does not authorize production credentials, deployment, routing, or Connect migration.
@@ -46,9 +48,9 @@ The existing ES256 key loader is reused for signing and verification. No signing
 
 Active verification uses `GHM_JWT_ES256_KID` and `GHM_JWT_ES256_PUBLIC_KEY_PEM`. Existing previous-key configuration remains available for bounded key rotation.
 
-## Explicitly deferred
+## Explicitly deferred by the original assertion-only slice
 
-This parameter record does not implement or qualify:
+The list below records the exclusions of that original construction slice, not the current status of every item. Several have since received separate bounded qualification records, as summarized under **Qualification boundary** below. This parameter record itself does not implement or qualify:
 
 - integration persistence;
 - integration enable/disable or revocation state;
@@ -64,4 +66,4 @@ Those concerns require their own bounded implementation/qualification evidence.
 
 ## Qualification boundary
 
-The frozen implementation in this branch is limited to signing/verifying the ES256 service assertion. It must not be described as a qualified HTTP/service boundary. Integration persistence, enable/disable/revocation, replay-state enforcement, HTTP exposure, end-user identity carriage, resource dispatch, production issuance, deployment, routing, and cutover remain deferred and separately gated.
+The original construction branch froze only the ES256 assertion signing/verification primitive; that branch-local scope must not be mistaken for the scope of later work. Since then, integration lifecycle persistence, durable assertion-jti replay protection, trusted request context, governed operation resolution, authorization binding, resource dispatch, and a bounded read-only HTTP endpoint have each received separate construction qualification records. Those records qualify only their stated slices. Full end-to-end service-boundary qualification, additional mutation handlers and business-operation idempotency, deployment-managed credential issuance/rotation, production deployment/routing, broad product exposure, and cutover remain separately gated.

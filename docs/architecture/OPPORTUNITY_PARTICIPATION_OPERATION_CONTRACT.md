@@ -323,9 +323,9 @@ An authenticated Opportunity Participant HTTP boundary already exists and is reg
 
 The tenant-boundary work applies beneath that existing route: HTTP authorization remains the resource-registry gate, while repository authorization remains authoritative for the parent Opportunity and participant Business/Account relationships. Unsupported participant updates continue to fail closed.
 
-## 19. Qualification requirements
+## 19. Historical qualification acceptance criteria — satisfied for the bounded operation contract
 
-Before this operation contract can be marked qualified, evidence must demonstrate:
+The following criteria governed the original qualification gate. The bounded Opportunity Participant operation contract is now **QUALIFIED / CLOSED**; its qualification evidence records the checks that passed. Unsupported participant status/role mutations still fail closed because a separate transition authority remains unqualified:
 
 1. authenticated context is required;
 2. registry operation is explicit;
@@ -352,16 +352,16 @@ Before this operation contract can be marked qualified, evidence must demonstrat
 23. Business participant authorization and Opportunity management authorization use canonical tenant resolution on the same transaction client;
 24. Account participant self-access is preserved without requiring membership in an unrelated owner Business.
 
-## 20. Construction boundary
+## 20. Historical construction sequence — completed
 
-The operation contract authorizes the following next implementation sequence:
+The following sequence records the original construction plan; the bounded operation contract is now qualified and this sequence is complete:
 
 ```text
 existing schema
   -> canonical tenant-boundary repository authorization
   -> qualification harness
   -> runtime privilege qualification
-  -> merge only after full suite + runtime qualification
+  -> full suite + runtime qualification — passed; merged to mainline
 ```
 
 It does not authorize production migration or product backend changes.

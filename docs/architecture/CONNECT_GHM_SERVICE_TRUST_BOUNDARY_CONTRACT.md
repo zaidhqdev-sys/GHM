@@ -5,7 +5,7 @@
 **Construction branch:** `construction/connect-service-trust-boundary`
 **Baseline:** historical provenance reconciliation checkpoint `e954572`
 
-## 1. Purpose
+> **Current status reconciliation — 2026-10-13:** This remains the governing design contract, not evidence that the full Connect↔GHM service boundary is qualified. The ES256 assertion primitive and durable replay-protection sub-slice have construction qualification evidence; integration lifecycle/revocation, complete HTTP/resource dispatch, deployment-managed credential issuance, end-to-end service authorization, production routing, and product cutover remain separately gated. The branch and baseline above are historical provenance, not current mainline pointers. See `../evidence/CONNECT_SERVICE_ASSERTION_CONSTRUCTION_EVIDENCE.md` and the replay-protection qualification for the bounded evidence.
 
 Define the minimum trusted service boundary through which Zaid Connect may call GHM without giving Connect database access, arbitrary SQL access, or authority to manufacture GHM authorization.
 
@@ -74,7 +74,7 @@ Required semantic claims:
 
 The current cryptographic construction uses the JWT `jti` claim as the request identifier. Durable replay detection and first-consumption persistence are now construction-qualified in `CONNECT_SERVICE_REPLAY_PROTECTION_QUALIFICATION.md`; the broader service-trust boundary remains separately gated.
 
-Exact wire header names, token serialization, signing-key storage, clock-skew allowance, and rotation procedure are transport implementation details and must be frozen before implementation is considered qualified.
+This was the design prerequisite before any transport slice could be called qualified. The bounded read-only HTTP slice has since frozen and qualified its specific wire behavior; see `CONNECT_SERVICE_HTTP_READ_BOUNDARY_QUALIFICATION.md`. Do not read that later slice as proof that every transport detail, mutation operation, deployment-managed key issuance/rotation, or the full service boundary is qualified.
 
 ## 5. End-user identity carriage
 

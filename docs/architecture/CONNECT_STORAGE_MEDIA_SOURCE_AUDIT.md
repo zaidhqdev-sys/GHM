@@ -4,9 +4,11 @@
 **Connect commit:** `abcffa73f893602c25310a58946bebb91fd7eeb5`  
 **Date:** 2026-09-18
 
+> **Status reconciliation — 2026-10-13:** This document is a source audit of Connect at the recorded 2026-09-18 commit, not a current GHM implementation or production-readiness verdict. Its Connect-side observations remain tied to that exact source snapshot. Current GHM construction and qualification status is governed by `GHM_CURRENT_STATE.md` and `GHM_REMAINING_WORK_REGISTER_2026-10-05.md`; qualified resource slices do not imply complete Connect workflow parity, production routing, or cutover. Any row describing a GHM capability as missing/not implemented records the state at this audit's comparison point unless explicitly reconciled by later evidence.
+
 ## 1. Purpose
 
-Inventory every evidenced Connect storage usage. No GHM storage implementation is authorized.
+Inventory every evidenced Connect storage usage. The “no GHM storage implementation is authorized” statement records the audit-time decision only; GHM storage persistence and the live R2 provider data path have since been qualified in the current storage qualification records. Product-facing media workflows, production enablement, and cutover remain separately gated.
 
 **Known correction:** Business logos use bucket `media` with object prefix `logos/`. Do **not** invent a `business-logos` bucket.
 

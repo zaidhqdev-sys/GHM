@@ -80,4 +80,4 @@ This does not close the broader authority reconciliation. Still open:
 
 ## Safety boundary
 
-Do not merge this construction branch into `main`, do not cut over Zaid Connect or QuoteFlow, and do not alter their production Supabase configuration or traffic as part of this qualification.
+This instruction governed the isolated construction branch and qualification activity on 2026-09-10; it is a historical scope restriction, not a current instruction to prevent subsequently reviewed and merged mainline work. It remains true that this qualification itself did not authorize Connect or QuoteFlow cutover or changes to their production Supabase configuration or traffic. Current merge and cutover status is governed by `GHM_CURRENT_STATE.md` and the current remaining-work register.

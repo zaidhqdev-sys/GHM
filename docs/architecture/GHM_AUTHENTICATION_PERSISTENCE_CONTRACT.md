@@ -1,7 +1,10 @@
 # GHM Authentication Persistence Contract
 
+> **Historical-status clarification — 2026-10-13:** This Gate 2D record describes the persistence design before Gate 3B construction. Its embedded “pending” or “not authorized” statements are historical for the foundation subsequently constructed and qualified; retain any open details only where a current living contract still identifies them. Product migration and production cutover remain separately gated.
+
+
 **Canonical owner:** GHM platform governance
-**Status:** AUTHENTICATION GATE 2D CONTRACT — HISTORICAL CONCEPT RECORD; the persistence foundation described here was subsequently constructed and qualified under Gate 3B. Current implementation status: `main @ ffc4a2a`
+**Status:** AUTHENTICATION GATE 2D CONTRACT — HISTORICAL CONCEPT RECORD; the persistence foundation described here was subsequently constructed and qualified under Gate 3B. Historical Gate 3B evidence pointer: `main @ ffc4a2a` at the time this contract was reconciled; this is not a current HEAD pointer.
 **Authority:** Local repository `C:\GHM`
 **Baseline:** branch `construction/saved-business-resource`, HEAD `239ef5d` (docs may advance ahead of HEAD)
 **Depends on:**
@@ -24,7 +27,7 @@ AT THAT GATE: NO MIGRATIONS / TABLES / RUNTIME GRANTS
 
 Gate 2D is a historical conceptual persistence record. The original “absent” statements in its repository-evidence sections describe the Gate 2D snapshot and must not be interpreted as the current schema state. Gate 3A constructed the authentication persistence schema and Gate 3B subsequently authorized the runtime foundation; the resulting credential, session, recovery, external-identity, and business-mapping persistence is now construction-qualified on the consolidated `main` line. Product migration and production cutover remain separately gated.
 
-This document defines the **conceptual durable persistence model** required to support the Founder-selected GHM authentication architecture. It does **not** authorize schema, code, endpoints, or grants. Exact relation/column names remain **UNSELECTED** unless repository evidence already freezes them.
+This document preserves the conceptual durable persistence model that informed the Founder-selected GHM authentication architecture. It does not independently authorize scope beyond the foundation already qualified under Gate 3B. Physical relation/column names are implemented in migrations and recorded in `GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md`; use those migrations as current schema authority.
 
 ---
 
@@ -54,7 +57,7 @@ GHM protected Resource API
 | Topic | Evidence |
 |---|---|
 | Canonical identity | `ghm.account_identity` — `bigint` identity PK; profile fields (`full_name`, `phone`, `avatar_ref`); coarse `role` check (`admin`/`customer`/`business`); `created_at` / `updated_at` timestamptz — `database/migrations/20260909150000_create_business_identity.sql` |
-| Email / password | **Absent** on `account_identity` and in auth tables |
+| Email / password | Absent on `ghm.account_identity`; credential/login email and password hash are stored in separate qualified auth tables |
 | Membership | `ghm.business_membership` — `(business_id, account_id)` unique; status `active`/`inactive`/`revoked`; **authorization**, not auth session |
 | External IdP mapping | **Historical Gate 2D snapshot: absent** — current qualified mapping is defined by Gate 3A/3B and the identity-bridge qualification record |
 | Auth session / refresh / recovery stores | **Historical Gate 2D snapshot: absent** — current qualified persistence exists on the consolidated mainline |
@@ -71,7 +74,7 @@ The persistence foundation described by this contract was subsequently construct
 
 ---
 
-## 3. Role boundary for future auth persistence
+## 3. Role boundary implemented for authentication persistence
 
 Preserve:
 
@@ -81,14 +84,14 @@ ghm_migrator      — applies migrations / DDL
 ghm_runtime       — least-privilege application path
 ```
 
-**Contract rules for a later implementation gate:**
+**Current qualified role boundary (originally specified as a future implementation rule):**
 
 1. Introducing auth persistence must **not** grant `ghm_runtime` arbitrary durable `INSERT`/`UPDATE`/`DELETE` on credential/session tables merely because tables exist.
 2. Durable mutations should follow the established **controlled function / schema-owner** model (`SECURITY DEFINER`, narrow `EXECUTE` grants) where applicable — same pattern as Campaign and similar slices.
 3. Runtime may receive only the minimal `SELECT` / function `EXECUTE` / sequence usage required by authorized Auth API operations.
 4. Password hashes, refresh material, and recovery secrets must never appear in product-facing responses or ordinary logs.
 
-Exact grant matrices remain an **implementation / migration gate** (UNSELECTED here).
+At the historical Gate 2D checkpoint, exact per-object grant matrices remained an implementation/migration gate. The bounded authentication grants were subsequently implemented in the qualified migrations; use `GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md` and current role-qualification evidence for the actual grants rather than treating this historical UNSELECTED note as current.
 
 ---
 
@@ -143,7 +146,7 @@ Associate **one** GHM identity with its password credential **without** storing 
 
 - Put plaintext or reversibly encrypted passwords in the database.
 - Treat coarse `account_identity.role` as password or membership truth for authz.
-- Invent exact table/column names in this gate.
+- At the original Gate 2D stage, do not invent physical names before implementation approval. The physical names are now implemented and listed in `GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md`; use that migration record for current schema authority.
 
 ### Login email ownership
 
@@ -152,12 +155,12 @@ Email is the primary login identifier. Persistence of the normalized login email
 - with the credential record; or
 - in a dedicated login-identifier record bound 1:1 (or controlled 1:N later) to `account_identity`
 
-Exact placement is an **implementation decision** (UNSELECTED). Repository evidence: **no email column** on `account_identity` today.
+The implemented login email is held by the separate credential relation, not on `ghm.account_identity`. The earlier placement question is resolved by the qualified schema migration; see `GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md`.
 
 ```text
 FOUNDER DECISION (architecture): password credential separate from account_identity = SELECTED
-Exact relation/column names = UNSELECTED
-Argon2id cost parameters = UNSELECTED
+Physical credential relation: implemented as `ghm.account_password_credential` (see schema migration contract)
+Argon2id cost parameters: use current credential implementation/configuration evidence; any operational tuning remains separately governed.
 ```
 
 ---
@@ -198,7 +201,7 @@ session usable iff
 
 ```text
 FOUNDER DECISION (architecture): sliding + absolute session model = SELECTED (30d / 90d)
-Exact session relation/column names = UNSELECTED
+Physical session relation: implemented as `ghm.authentication_session` (see schema migration contract)
 ```
 
 ---
@@ -224,7 +227,7 @@ Support Founder-selected refresh behavior:
 | Lineage | Parent→child (or equivalent succession) so the family can be revoked as a unit |
 | Revocation | Mark credential and/or entire family revoked |
 | Replay detection | Presenting a **superseded** or **revoked** credential is detectable via lookup of its hash/reference |
-| Concurrency | Concurrent refresh races must be defined so double-submit does not silently mint two live lineages without policy (exact idempotency strategy UNSELECTED; clients should single-flight) |
+| Concurrency | The qualified refresh-rotation implementation serializes the live-tip transition and enforces single-use/replay-family revocation; clients should still single-flight refresh to avoid unnecessary races |
 
 ### How replay is recognized without storing the raw credential
 
@@ -246,12 +249,12 @@ The durable store retains **H(R)** (and lineage metadata), never `R` in plaintex
 
 > **Technical recommendation — not a Founder decision.**
 
-Prefer an **opaque** refresh secret (random high-entropy) with at-rest **hash/reference**, not a JWT refresh token. (Session Contract also recommends opaque; Founder selection of opacity may still be outstanding.)
+The original Gate 2D recommendation favored an opaque refresh secret with an at-rest hash/reference. The qualified implementation uses opaque refresh credentials and stores hashed credential material; this is implementation evidence, not a claim that the original recommendation itself was a Founder decision.
 
 ```text
 FOUNDER DECISION: rotate / single-use / session-family replay = SELECTED
-Exact refresh relation names = UNSELECTED
-Opaque vs JWT-shaped refresh token type = RECOMMENDED opaque / may remain UNSELECTED
+Physical refresh relation: implemented as `ghm.refresh_credential`
+Refresh credential type: opaque in the qualified implementation; historical recommendation status does not override implementation evidence.
 ```
 
 ---
@@ -268,7 +271,7 @@ Email-based password recovery (Founder-selected): short-lived, single-use, serve
 |---|---|
 | Binding | Associated with target `account_identity` (resolved server-side; responses remain enumeration-resistant) |
 | Storage | Hash/reference of recovery secret — not plaintext |
-| Lifetime | Short-lived (exact TTL UNSELECTED) |
+| Lifetime | Bounded password-recovery service uses a 30-minute credential; production email delivery remains separately gated |
 | Single-use | Invalidate on successful use; reject replay |
 | Outcome | Password reset updates password credential; **account-wide** refresh-session revocation |
 | Transport | Email delivery — **provider UNSELECTED** (not invented) |
@@ -281,7 +284,7 @@ Email-based password recovery (Founder-selected): short-lived, single-use, serve
 
 ```text
 FOUNDER DECISION: email recovery architecture = SELECTED
-Exact recovery TTL / relation names / email provider = UNSELECTED
+Recovery TTL: bounded implementation uses 30 minutes; relation names are implemented in the schema migration contract; production email provider/delivery remains separately gated
 ```
 
 ---
@@ -396,22 +399,22 @@ Do **not** design persistence for:
 | Item | Status |
 |---|---|
 | Conceptual records in §§5–10 | **Required by architecture** (this contract) |
-| Exact table/column names | **UNSELECTED** |
-| Argon2id cost parameters | **UNSELECTED** |
-| Recovery TTL | **UNSELECTED** |
-| Email provider | **UNSELECTED** |
-| Opaque refresh credential type | **RECOMMENDED** / Founder may still record explicitly |
-| Exact runtime grant matrix for auth tables | **UNSELECTED** (must follow §3) |
+| Exact table/column names | Implemented in migrations; see `GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md` |
+| Argon2id cost parameters | Governed by current credential implementation/configuration; not reselected by this historical concept contract |
+| Recovery TTL | The bounded password-recovery service issues a 30-minute credential; production email delivery remains separately gated |
+| Email provider | Provider/delivery enablement remains separately gated |
+| Opaque refresh credential type | Opaque refresh credential is used by the qualified implementation; this originated as a technical recommendation in this historical contract |
+| Runtime grants for auth tables | Controlled SECURITY DEFINER / EXECUTE model implemented; use `GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md` and live role qualification for exact per-object grants |
 | Rate-limit thresholds | **UNSELECTED** |
 | ES256 key storage class | **SELECTED:** secret-managed inside issuer boundary |
 | `kid` required | **SELECTED** |
-| Exact key encoding / `kid` string values / rotation calendar | **UNSELECTED** |
+| Key encoding / `kid` / rotation | PKCS#8 PEM and environment-variable names implemented; deployment-specific active/previous `kid` values and rotation calendar remain operationally governed |
 
 > Where recommendations appear, they are **not** Founder decisions unless marked SELECTED.
 
 ---
 
-## 15. Founder decision checkpoint
+## 15. Historical Gate 2D decision checkpoint — reconciled after Gate 3B
 
 ```text
 AUTHENTICATION GATE 2D:
@@ -424,27 +427,25 @@ FOUNDER ARCHITECTURE (already selected — not reopened):
 - Refresh rotate / single-use / session-family replay
 - Session 30d inactivity / 90d absolute
 
-STILL UNSELECTED (implementation / follow-on):
-1. Exact relation and column names for credential, session, refresh, recovery, mapping
-2. Argon2id memory/time/parallelism
-3. Recovery credential numeric TTL
-4. Email transport provider
-5. Exact auth runtime GRANT/REVOKE matrix
-6. Exact key representation / kid value strings / signing-key rotation calendar
-7. Opaque refresh as explicit Founder token-type selection (recommended)
+GATE 2D DECISION-TIME OPEN ITEMS — CURRENT STATUS:
+1. Credential/session/refresh/recovery/mapping relation names: implemented in the qualified migrations.
+2. Argon2id memory/time/parallelism: use current credential implementation/configuration evidence; operational tuning remains governed.
+3. Recovery credential TTL: bounded password-recovery service uses 30 minutes.
+4. Email transport provider: production delivery remains separately gated.
+5. Auth runtime GRANT/REVOKE matrix: controlled SECURITY DEFINER / EXECUTE model implemented; exact per-object grants are governed by migrations and role qualification.
+6. Key representation: PKCS#8 PEM and `GHM_JWT_ES256_*` environment names implemented; deployment-specific key values and rotation calendar remain operationally governed.
+7. Opaque refresh token: used by the qualified implementation; the original recommendation is not represented as a separate Founder decision.
 
-IMPLEMENTATION AUTHORIZATION:
-NOT GRANTED.
+IMPLEMENTATION AUTHORIZATION WAS NOT GRANTED AT GATE 2D; GATE 3B LATER AUTHORIZED AND QUALIFIED THE BOUNDED FOUNDATION.
 ```
 
 ---
 
-## 16. Final gate
+## 16. Historical Gate 2D final gate — superseded for the bounded foundation
 
 ```text
-AUTHENTICATION PERSISTENCE CONCEPT DOCUMENTATION COMPLETE.
-NO MIGRATIONS / TABLES / GRANTS / CODE / SECRETS CHANGED.
-PRODUCTS STILL MUST NOT CONNECT TO GHM POSTGRES.
-ghm_runtime MUST NOT GAIN ARBITRARY DML ON FUTURE AUTH TABLES BY THIS DOC.
-STOP — DO NOT IMPLEMENT.
-```
+GATE 2D DOCUMENTATION-ONLY CHECKPOINT:
+NO MIGRATIONS / TABLES / GRANTS / CODE / SECRETS CHANGED BY THAT HISTORICAL TASK.
+``` 
+
+The original “STOP — DO NOT IMPLEMENT” instruction applied to Gate 2D. The later Gate 3A/3B migrations and qualification established the bounded authentication persistence foundation. Products still must not connect directly to GHM Postgres, and `ghm_runtime` must not receive arbitrary DML on credential/session tables.

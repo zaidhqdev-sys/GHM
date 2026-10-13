@@ -1,5 +1,8 @@
 # GHM Authentication Cryptographic Contract
 
+> **Historical-status clarification — 2026-10-13:** This Gate 2A decision record predates the Founder-approved Gate 3B parameters and qualified ES256 authentication foundation. Embedded “not authorized” and “not yet selected” statements are historical unless a current living contract independently keeps the specific item open. The current resource verifier is ES256; product migration and production cutover remain separately gated.
+
+
 **Canonical owner:** GHM platform governance
 **Status:** AUTHENTICATION GATE 2A — HISTORICAL CRYPTOGRAPHIC DECISION RECORD; ES256 implementation parameters and the authentication foundation were subsequently frozen/qualified under Gate 3B.
 **Authority:** Local repository `C:\GHM`
@@ -18,7 +21,7 @@ AT THAT GATE: NO KEYS GENERATED / NO JWT BEHAVIOR CHANGED
 
 Gate 2A is a historical cryptographic decision record. The statements above describe the repository at that gate and are not current implementation status. Gate 3B subsequently approved the implementation parameters and the ES256 authentication foundation is now construction-qualified on the consolidated `main` line. Legacy HS verification has been removed from the active governed resource-authentication path; historical HS/`JWT_SECRET` references below are retained only as Gate 2A provenance. Product migration and production cutover remain separately gated.
 
-This document resolves the **cryptographic / access-token contract space** left open by Authentication Contract Gate 1. It evaluates options and records Founder decision checkpoints. It does **not** select unresolved cryptographic parameters on behalf of the Founder and does **not** authorize implementation.
+This historical Gate 2A document resolves the **cryptographic / access-token contract space** left open by Authentication Contract Gate 1 and preserves the Founder decision checkpoints. It does not select unresolved parameters on behalf of the Founder. Gate 3B later authorized and qualified the bounded ES256 foundation; this record does not authorize further production key changes, product exposure, or cutover.
 
 ---
 
@@ -74,13 +77,13 @@ Already selected (Issuance Decision Record + Contract Gate 1):
 
 **Credential architecture (separate Founder selections; see Credential Contract):** email login identifier; password + Argon2id; password policy; email recovery.
 
-**Not yet Founder-selected** (remain open in this cryptographic gate):
+**Still open after Gate 3B (do not infer values not evidenced by implementation):**
 
-- exact key representation / encoding
-- exact env/secret **names** or storage paths (not invented)
-- public-key distribution mechanism details
-- rotation interval / calendar
-- exact `kid` string values (not invented)
+- production public-key distribution mechanism for external product consumers
+- signing-key rotation interval / calendar
+- deployment-specific active/previous `kid` values (the loader enforces printable ASCII values up to 64 characters and requires distinct active/previous IDs)
+
+**Already frozen by implementation:** PKCS#8 PEM private key and public key inputs, the `GHM_JWT_ES256_*` environment-variable names, and optional paired previous-public-key/previous-`kid` inputs. These are no longer unselected design questions.
 
 Durable credential/session/refresh/recovery/mapping persistence concepts: see [GHM_AUTHENTICATION_PERSISTENCE_CONTRACT.md](./GHM_AUTHENTICATION_PERSISTENCE_CONTRACT.md).
 
@@ -196,7 +199,7 @@ The issuer (`iss`) must:
 | CORS | `CORS_ORIGINS` = trusted **frontend** origins (e.g. example `http://localhost:3000`) — **not** an issuer identifier |
 | Host / deployment | No frozen canonical production hostname or public issuer URL established in repo config or architecture docs for JWT `iss` |
 | Current verifier | `src/auth/ghm-bearer.ts` → ES256 access-JWT foundation; `iss` is enforced by the access-JWT verifier |
-| Auth API | SELECTED target (Issuance ADR) but **not implemented** — no live auth-service hostname to promote |
+| Auth API | Historical Gate 2A status said “selected but not implemented.” The bounded GHM authentication foundation was subsequently constructed and qualified under Gate 3B; public/product-facing exposure, product session-client integration, deployment promotion, and cutover remain separately gated. |
 | Charter | Platform charter explicitly does **not** select a JWT issuer string |
 
 ```text
@@ -479,10 +482,10 @@ Do **not** require **Option 3 (KMS/HSM)** for the first authentication implement
 FOUNDER DECISION:
 Key storage approach = SELECTED — secret-managed private key inside GHM issuer boundary
   (env/host secret injection class; no mandatory KMS/HSM for first gate)
-Key representation / exact secret names / paths = UNSELECTED (not invented)
+Gate 2A decision-time status: representation / exact secret names / paths were UNSELECTED. The qualified implementation now uses PKCS#8 PEM and the frozen `GHM_JWT_ES256_*` environment-variable names; deployment-specific key values remain secret-managed.
 ```
 
-**Do not generate keys in this gate.**
+The original “do not generate keys in this gate” instruction applied to the Gate 2A decision task. Key generation/rotation and deployment promotion remain operationally governed; this historical contract does not authorize production key changes.
 
 ### 8.4 Invariants (apply regardless of storage selection)
 
@@ -627,7 +630,7 @@ Private signing keys never leave the issuer boundary. Public keys are verificati
 | access-token lifetime | **SELECTED: 15 minutes** |
 | refresh-token / session durations | Session Gate: inactivity **30d** + absolute **90d** **SELECTED** |
 | refresh rotation / replay policy | Session Gate: rotate every success + single-use + session-family replay revoke **SELECTED** (see Session Contract) |
-| key representation | **UNSELECTED** (encoding/names not invented) |
+| key representation | PKCS#8 PEM and `GHM_JWT_ES256_*` env names implemented; exact deployment key values remain secret-managed |
 | key storage | **SELECTED:** secret-managed inside issuer boundary (no mandatory KMS/HSM) |
 | `kid` requirement | **SELECTED: required** |
 | rotation interval | **UNSELECTED** (overlap ≥ 15m + skew SELECTED) |
@@ -638,7 +641,7 @@ Do not resolve deferred Session Gate items here.
 
 ---
 
-## 13. Founder decision checkpoint
+## 13. Historical Gate 2A Founder decision checkpoint — reconciled after Gate 3B
 
 ```text
 AUTHENTICATION GATE 2A:
@@ -662,30 +665,31 @@ FOUNDER DECISIONS:
 
 5. Key storage class:
    SELECTED = secret-managed private key inside GHM issuer boundary
-   (exact representation/names/paths UNSELECTED; no mandatory KMS/HSM)
+   Current implementation: PKCS#8 PEM and frozen `GHM_JWT_ES256_*` environment-variable names; deployment key values remain secret-managed; no mandatory KMS/HSM.
 
 6. kid:
    SELECTED = required in JWT header
-   (exact kid string values UNSELECTED)
+   Current loader validates printable ASCII `kid` values up to 64 characters and requires active/previous IDs to differ; actual deployment values remain secret-managed.
 
 7. Rotation schedule:
    UNSELECTED
    (overlap: prior public key trusted ≥ 15m + skew — SELECTED)
 
-IMPLEMENTATION AUTHORIZATION:
-NOT GRANTED.
+IMPLEMENTATION AUTHORIZATION WAS NOT GRANTED AT GATE 2A; GATE 3B LATER AUTHORIZED AND QUALIFIED THE BOUNDED ES256 FOUNDATION.
 ```
 
 ---
 
-## 14. Validation / final gate
+## 14. Validation / final gate — historical Gate 2A stop
+
+The block below preserves the original Gate 2A decision snapshot. Its no-implementation/no-endpoint statements are historical for the bounded authentication foundation later constructed and qualified under Gate 3B. Current product-facing exposure, product session-client integration, and production cutover remain separately gated.
 
 ```text
 AUTHENTICATION GATE 2A DOCUMENTATION COMPLETE.
 The HS / JWT_SECRET implementation described in this historical gate has since been reconciled to the selected ES256 implementation. The cryptographic selections and key-management invariants below remain the governing contract.
 CREDENTIAL SELECTIONS (EMAIL / PASSWORD / ARGON2ID) ARE DOCUMENTED IN THE CREDENTIAL CONTRACT AND DO NOT SELECT JWT ALGORITHM / ISS / AUD / KEY STORAGE.
-NO KEYS GENERATED.
-NO ENDPOINTS ADDED.
-NO SRC / MIGRATION / TEST / CONFIG CHANGES AUTHORIZED BY THIS GATE.
-FOLLOW-ON: FOUNDER CRYPTO SELECTIONS → THEN LATER IMPLEMENTATION GATE.
+AT GATE 2A: NO KEYS GENERATED OR ENDPOINTS ADDED BY THAT DECISION TASK.
+THAT GATE DID NOT AUTHORIZE SRC / MIGRATION / TEST / CONFIG CHANGES.
+FOLLOW-ON FOUNDER SELECTIONS AND A LATER IMPLEMENTATION GATE WERE REQUIRED AT THAT TIME.
+CURRENT BOUNDED ES256 FOUNDATION: QUALIFIED UNDER GATE 3B.
 ```

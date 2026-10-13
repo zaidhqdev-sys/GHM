@@ -1,8 +1,8 @@
 # Support Request HTTP Qualification
 
-**Status:** CONSTRUCTION QUALIFICATION — build correction applied; local execution pending
-**Branch:** `construction/support-request-http-api`
-**Date:** 2026-09-30
+**Current status:** Integrated construction slice on `main`; later repository-wide checkpoint passed 557/557 tests. No production/cutover authorization.
+**Historical construction branch:** `construction/support-request-http-api`
+**Original qualification date:** 2026-09-30
 
 ## Construction evidence
 
@@ -32,7 +32,9 @@ The HTTP qualification suite covers:
 12. business-role denial for request reads, lists, and messages;
 13. reply input and request ID validation.
 
-## Local qualification command
+## Original local qualification command — historical
+
+The commands below were for the original construction branch and are retained as provenance only; they are not current instructions to switch to or recreate that branch.
 
 ```powershell
 cd C:\GHM
@@ -42,13 +44,13 @@ git pull --ff-only origin construction/support-request-http-api
 npm test
 ```
 
-The branch is not considered locally qualified until the complete configured test suite reports zero failures.
+At the time, that branch was not considered locally qualified until the complete configured test suite reported zero failures. Current bounded status and later mainline evidence are recorded above.
 
-## Gate
+## Original construction gate — historical
 
-This branch is a construction slice only.
+The preceding instructions applied to the original `construction/support-request-http-api` branch before the router's subsequent mainline dependency-wiring fixes and integration. The Support Request router is integrated on `main`, and the repository's later full-suite checkpoint passed 557/557 tests. The branch-only “do not merge” instruction is historical and is not a current hold on mainline work.
 
-Do not merge it into the authoritative branch until founder approval is explicitly given after local verification.
+**Current bounded status: integrated construction slice; no production/cutover authorization.** The recorded role and input checks remain the intended HTTP boundary; broader production readiness is governed by the current production-foundation and deployment gates.
 
 
 ## Build correction reconciliation

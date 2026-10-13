@@ -1,6 +1,8 @@
 # QuoteFlow Existing-User Password Reset / Re-enrollment Ceremony
 
-**Status: CONSTRUCTION QUALIFIED — RESET, ENROLLMENT, AND SESSION-ISSUANCE CEREMONY IMPLEMENTED; NON-PRODUCTION QUALIFICATION PENDING**
+**Status: RESET / ENROLLMENT / SESSION-ISSUANCE BUILDING BLOCKS CONSTRUCTED; FULL USER-FACING CEREMONY NOT YET QUALIFIED**
+
+> **Current-status reconciliation — 2026-10-13:** The atomic reset operation, canonical enrollment lookup, and session-issuance building blocks have construction qualification evidence. The complete user-facing migration ceremony remains unqualified pending non-production DB+HTTP evidence for anti-enumeration, single-use recovery, rollback, session revocation, and post-reset session issuance for each of the two founder-owned accounts. Do not treat this document's ceremony design as proof of end-to-end qualification or authorization for production migration/cutover.
 
 ## Decision
 
@@ -161,7 +163,7 @@ It uses the existing runtime/migrator separation and synthetic Supabase external
 - an expired recovery credential is rejected without creating a password;
 - the underlying recovery redemption/password write rolls back together when the surrounding transaction fails.
 
-The reset qualification proves the atomic reset operation and its database invariants. The enrollment qualification now separately proves the canonical migration-approved email lookup boundary and exact migration provenance binding. The complete user-facing ceremony remains pending because the enrollment lookup is not yet integrated into a migration-specific HTTP recovery request/delivery path and post-reset session qualification.
+The reset qualification proves the atomic reset operation and its database invariants. The enrollment qualification separately proves the canonical migration-approved email lookup boundary and exact migration provenance binding. The migration-specific request/completion path has since been constructed. The complete user-facing ceremony is still not qualified: the remaining evidence must exercise the integrated HTTP path against the governed non-production database and prove anti-enumeration, single-use recovery, rollback, session revocation, and post-reset session issuance. Construction of the path must not be mistaken for qualification of the whole ceremony.
 
 This distinction is intentional: the new lookup capability is qualified construction, not authorization for production delivery, production migration, or runtime cutover.
 

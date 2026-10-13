@@ -1,5 +1,7 @@
 # Documentation Reconciliation — Second Pass — 2026-10-05
 
+> **Historical second-pass record.** “Complete” below means the identified conflict set was reconciled at that pass; it is not a claim that all repository documentation remains current today. The listed baseline and document inventory are historical snapshots. Current status is governed by `GHM_CURRENT_STATE.md`, the remaining-work register, and the current living architecture/evidence contracts.
+
 ## Status
 
 **SECOND-PASS LIVING-DOCUMENT RECONCILIATION — COMPLETE FOR THE IDENTIFIED STALE STATUS CONFLICTS**

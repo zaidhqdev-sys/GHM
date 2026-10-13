@@ -7,6 +7,8 @@
 **Authoritative wire decisions:** [CAMPAIGN_HTTP_FOUNDER_DECISION_RECORD.md](./CAMPAIGN_HTTP_FOUNDER_DECISION_RECORD.md)
 **Runtime surface:** `src/http/campaign-router.ts` (registered from `src/http/app.ts`)
 
+> **Current-status reconciliation — 2026-10-13:** The Gate 9G wire/baseline below is historical for authentication status. The bounded GHM ES256 issuance/session foundation was subsequently selected, implemented, and qualified under Gate 3B. Campaign HTTP consumes the existing GHM bearer boundary; this contract does not authorize a new issuer/IdP, KBM adapter, product session migration, broader public exposure, or cutover.
+
 **Depends on (committed domain contracts):**
 - [CAMPAIGN_SOURCE_AUDIT.md](./CAMPAIGN_SOURCE_AUDIT.md)
 - [CAMPAIGN_SCHEMA_CONTRACT.md](./CAMPAIGN_SCHEMA_CONTRACT.md)
@@ -17,7 +19,7 @@
 TRANSPORT: HTTP/API
 CAMPAIGN HTTP WIRE: FOUNDER-LOCKED
 CAMPAIGN HTTP IMPLEMENTATION: AUTHORIZED (this surface only)
-AUTH ISSUANCE: UNSELECTED
+AUTH ISSUANCE AT GATE 9G: UNSELECTED THEN; BOUNDED GHM AUTH FOUNDATION LATER QUALIFIED UNDER GATE 3B
 KBM ADAPTER: NOT AUTHORIZED
 VERSION LIFECYCLE: OPEN
 RETRY: NO SPECIAL CONTRACT
@@ -36,7 +38,7 @@ This contract records:
 - alignment with the qualified Campaign domain;
 - items that remain intentionally **OPEN** / **UNSELECTED**.
 
-It does **not** authorize auth issuance, a KBM adapter, Campaign children, or unrelated Resource API changes.
+It does **not** authorize a new Campaign-specific issuer/IdP or auth implementation beyond the qualified GHM bearer foundation, a KBM adapter, Campaign children, or unrelated Resource API changes.
 
 ---
 
@@ -160,9 +162,9 @@ Campaign HTTP wire dates are **ISO 8601** JSON strings (via standard JSON `Date`
 | Mechanism | Existing Bearer verification (`requireAuth` / `authenticateRequest`) |
 | AuthContext | `{ userId, role }` |
 | Creator | `created_by_account_id = AuthContext.userId` |
-| Token issuer | **UNSELECTED** |
-| Identity provider | **UNSELECTED** |
-| Login / signup / refresh | **UNSELECTED** |
+| Token issuer | GHM ES256 bearer foundation is qualified under Gate 3B; Campaign does not select or implement a separate issuer |
+| Identity provider | Campaign routes consume GHM-issued bearer credentials; product identity/session migration remains separately gated |
+| Login / signup / refresh | Bounded GHM Auth API foundation exists; Campaign contract does not authorize product-client migration or a separate auth flow |
 | New JWT claims | **Not introduced** |
 
 All Campaign HTTP operations require authentication. No anonymous / public Campaign surface.

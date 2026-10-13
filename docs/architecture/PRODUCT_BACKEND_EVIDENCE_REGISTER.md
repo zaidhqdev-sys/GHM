@@ -4,6 +4,8 @@
 
 Construction evidence register. This document records what has been verified from the product repositories before GHM implementation and distinguishes qualified GHM construction capabilities from future product-adapter work.
 
+**Current-status reconciliation — 2026-10-13:** This register’s older “OPEN / NOT YET AUTHORIZED” table below is a historical checkpoint, not an up-to-date list of every GHM construction gap. Trust and Business Capability lifecycle/verification transition construction have since been qualified. The PayFast checkout/ITN/server-confirmation adapter is implemented and merged with deterministic local qualification passing; real sandbox end-to-end/runtime qualification and production enablement remain open. Use `GHM_CURRENT_STATE.md`, the remaining-work register, and capability-specific evidence for current status. Product adapters, full workflow parity, and production cutover remain independently gated.
+
 ## Zaid Connect
 
 Zaid Connect remains authoritative for its own application contracts and Supabase schema. Its backend boundary includes authentication, database table/view access, PostgreSQL RPCs, Edge Functions, and provider integrations.
@@ -71,11 +73,9 @@ QUALIFIED CONSTRUCTION
   Operational boundary
 
 OPEN / NOT YET AUTHORIZED
-  Trust score / Trust evidence
-  Commercial payment beyond trial
+  PayFast real sandbox end-to-end/runtime qualification and production enablement (adapter implementation is merged)
   Opportunity participant transition workflows
-  Business Capability lifecycle/verification update
-  Opportunity outcome / matching workflows
+    Opportunity outcome / matching workflows
   Business Hours exceptions / booking / open-now
   provider/bootstrap authority cleanup
   broader Connect adapters

@@ -52,20 +52,23 @@ The first planned object class is `business_logo`.
 
 No historical Supabase object is imported by this migration.
 
-## Qualification scope
-
-Before runtime enablement:
+## Qualification scope and current status
 
 **Qualified:** metadata schema, persistence boundary, lifecycle authority, provider-neutral storage service/provider contract foundations, configuration/key boundaries, and persistence qualification.
 
-**Not yet qualified:** concrete production provider credentials, live upload/download side effects, full service-level tenant/resource authorization, HTTP/product exposure, recovery/backup, orphan/reconciliation jobs, and production provider enablement.
+**Qualified separately after this metadata slice:** controlled live signed upload/download, provider-side metadata observation, payload integrity, and deletion against Cloudflare R2 (see `../evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-05.md`). This does not qualify production credential enablement.
+
+**Still open:** full service-level tenant/resource authorization, HTTP/product exposure, recovery/backup, orphan/reconciliation jobs, deployment-managed production configuration, and production provider enablement.
 
 ## Documentation reconciliation
 
 This schema must remain reconciled with:
 
-- `GHM_STORAGE_CAPABILITY_BOUNDARY.md`;
-- `GHM_STORAGE_SERVICE_CONTRACT.md`;
+- `GHM_STORAGE_PROVIDER_ADAPTER_RECONCILIATION.md`;
+- `GHM_STORAGE_PERSISTENCE_BOUNDARY.md`;
+- `GHM_STORAGE_PERSISTENCE_FUNCTION_AUTHORITY.md`;
+- `GHM_STORAGE_PERSISTENCE_QUALIFICATION.md`;
+- `../evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-05.md`;
 - GHM database authority;
 - authorization/tenant-isolation contracts;
 - storage recovery contract.

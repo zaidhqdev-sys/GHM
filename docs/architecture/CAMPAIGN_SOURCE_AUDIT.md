@@ -8,6 +8,8 @@
 **Purpose:** KBM AI Marketing backend root container
 **Date:** 2026-09-18
 
+> **Historical-status reconciliation — 2026-10-12:** This source audit records the original Campaign root construction scope and its then-current HTTP non-goal. Subsequent repository evidence records a bounded Campaign HTTP surface at the Founder-locked wire (`785df12`); the “HTTP absent/not authorized” statements below are historical for the earlier slice and must not be read as current Campaign HTTP status. This does not imply broad product-adapter authorization, blanket HTTP expansion, or production cutover. Consult the current transport-selection and product-integration contracts for present scope.
+
 This document records the approved source basis for constructing a typed GHM `campaign` resource for **KBM AI Marketing**.
 
 It authorizes **construction documentation and subsequent governed construction** of the campaign **root only**, subject to the frozen schema and operation contracts.
@@ -16,7 +18,7 @@ It does **not** authorize:
 
 - production migration or cutover;
 - product adapters for Connect/QuoteFlow;
-- HTTP Resource API routes for campaign;
+- blanket Campaign HTTP/API expansion beyond the separately Founder-authorized bounded surface at `785df12`; this source audit itself does not authorize HTTP routes;
 - child resources (brief, concept, script, presenter, consent, media, generation jobs);
 - object storage;
 - AI provider integrations;
@@ -86,11 +88,13 @@ At the time of this audit, Campaign exists at these levels only:
 |---|---|
 | Code (`src/resources/campaign`) | **Absent** |
 | Database (`ghm.campaign`) | **Absent** |
-| Service / repository | **Absent** |
-| Authorization wiring | **Absent** (pattern exists for other resources) |
-| Runtime qualification | **Absent** |
-| HTTP / API surface | **Absent** — **not authorized** this slice |
-| Production-usable | **No** |
+**Historical first-slice snapshot — before the separately qualified Campaign HTTP work at the Founder-locked wire (`785df12`):**
+
+| Service / repository | **Absent at this historical checkpoint** |
+| Authorization wiring | **Absent at this historical checkpoint** (pattern exists for other resources) |
+| Runtime qualification | **Absent at this historical checkpoint** |
+| HTTP / API surface | **Absent at this historical checkpoint** — not authorized for that slice |
+| Production-usable | **No; production use remains gated** |
 
 Existing GHM capabilities Campaign will **consume** (not redefine):
 
@@ -227,14 +231,14 @@ campaign.create
 campaign.update
 ```
 
-Not authorized:
+Historical scope exclusion — the following operation remains outside the qualified Campaign surface:
 
 ```text
 campaign.delete
 campaign.readPublic
 ```
 
-HTTP Resource API for campaign: **not authorized** in this slice.
+HTTP Resource API: this original source-audit slice did not authorize it; a later separate Founder decision qualified the bounded Campaign HTTP surface at `785df12`. Broader HTTP expansion remains unauthorized by this audit.
 
 ## 8. Persistence stance
 

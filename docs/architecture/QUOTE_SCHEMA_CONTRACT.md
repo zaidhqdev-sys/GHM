@@ -1,6 +1,8 @@
 # GHM Quote Schema Contract
 
-**Status:** CONSTRUCTION CONTRACT — SCHEMA DESIGN FROZEN
+**Status:** QUALIFIED / CLOSED — bounded GHM Quote schema construction recorded in the current capability index
+
+> **Current-status reconciliation — 2026-10-13:** This schema contract preserves the original Quote construction design. The bounded Quote schema/runtime capability is recorded as qualified in the current-state index and Quote source audit; §§17–18 are historical construction/acceptance gates, not a statement that Quote construction remains pending. QuoteFlow product migration and cutover remain separately gated.
 
 ## 1. Purpose
 
@@ -213,19 +215,19 @@ This schema does not include:
 
 ## 17. Construction dependency gate
 
-The Quote schema contract was dependency-gated on the Customer capability. That dependency is now satisfied:
+The original Quote schema dependency gate on Customer is satisfied and closed:
 
 1. canonical Customer resource constructed;
 2. Customer account ownership boundary qualified;
 3. Customer active/archived lifecycle qualified;
 4. Customer durable historical references established;
-5. final Quote foreign-keyed relations may now be constructed;
-6. Quote repository/service operations may be implemented;
-7. Quote runtime privileges and lifecycle behavior must then be qualified.
+5. final Quote foreign-keyed relations were constructed;
+6. Quote repository/service operations were implemented;
+7. Quote runtime privileges and lifecycle behavior were recorded as qualified in the current capability index.
 
-## 18. Qualification requirements
+## 18. Historical Quote qualification acceptance criteria — satisfied for the bounded construction slice
 
-Before Quote is marked qualified, evidence must demonstrate:
+The following criteria governed the original Quote qualification gate; the current capability index records the bounded Quote capability as qualified:
 
 1. account/organization ownership is enforced;
 2. active Customer is required at creation;

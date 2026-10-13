@@ -10,11 +10,9 @@ The live migration ledger is authoritative historical execution evidence. The re
 
 The live ledger contains 55 applied migrations. Its version cardinality and application chronology are intact, and every ledger entry has a corresponding repository migration file.
 
-Nineteen applied migrations currently have a repository SHA-256 different from the live ledger checksum.
+The 2026-09-30 reconciliation classified **22** ledger/repository checksum mismatches: seven line-ending-only cases with exact historical Git/index provenance, plus fifteen historical-provenance exceptions whose original byte streams were not recoverable from the available repository evidence. The seven line-ending-only cases are not exceptions and must not be rewritten.
 
-Seven of those fifteen are fully explained by Windows checkout normalization: the ledger checksum matches the historical Git/index bytes exactly, while the current worktree representation uses CRLF under `core.autocrlf=true`. Those seven are not exceptions and must not be rewritten.
-
-The following fifteen migrations have no exact-byte match recoverable from the repository's visible Git history or repository text/artifact evidence as of 2026-09-30:
+The following fifteen migrations had no exact-byte match recoverable from the repository's visible Git history or repository text/artifact evidence as of 2026-09-30:
 
 | Version | Migration | Live ledger checksum |
 |---|---|---|
@@ -31,6 +29,12 @@ The following fifteen migrations have no exact-byte match recoverable from the r
 | 20260915203000 | reconcile_commercial_runtime_sequence_acl | b2d883f1efa15c47d54fb948b1ce2e00d2aa7c959d91689e5637bae1b9c3a80c |
 | 20260915210000 | reconcile_commercial_subscription_access_path | 92e1142c0fd77dd17c54d95e4fa2d6368f95cbc08f183db586e56f9c03263aeb |
 | 20260915220000 | reconcile_commercial_payment_transaction_provider_event_idempotency | 7ba13a02205cf31be27008fad69f1fa2480b74e422b50567cc0ddf8792532cf4 |
+| 20260916003000 | reconcile_commercial_event_runtime_read_acl | dd66d4330497a177e1e2cbd8ccb50baaaa15617b438a56f7b6c5d0652d3ac97c |
+| 20260916004500 | reconcile_commercial_event_runtime_read_acl | f5b76db1d8f2ec437835d97093ab7085ba51e47faf9cf243f2267f2f920f1b42 |
+
+## Subsequent exception added after the 2026-09-30 snapshot
+
+The current `config/historical-migration-provenance-exceptions.json` also contains a later, separately recorded exception for `20261005211000_correct_founder_system_admin_bootstrap_existing_account` with ledger checksum `f70b3a76ad959307ed780166ad2dba23eaa296a5f95117ff460c760722dfaad0`. This migration postdates the 2026-09-30 snapshot above and is not part of its fifteen-entry historical table. The live ledger/current exception mapping must be reconciled before treating the historical count as a current total.
 
 ## Canonical handling
 
@@ -40,7 +44,7 @@ This classification does not assert that the current repository file bytes are t
 
 The historical ledger rows must remain unchanged. Existing migration files must not be rewritten merely to reproduce the ledger hashes, and already-applied migrations must not be rerun.
 
-The strict migration runner remains unchanged: an applied version whose repository checksum differs from the ledger continues to fail closed.
+The current migration runner normalizes SQL to LF before computing the canonical checksum and accepts a legacy CRLF checksum only when it matches the same SQL represented with CRLF. A genuinely different checksum continues to fail closed, except for the narrowly documented historical-provenance handling already represented by this record. This compatibility change does not rewrite ledger checksums, recover the missing historical byte streams, or authorize rerunning applied migrations.
 
 Future migrations must remain deterministically reproducible from canonical repository bytes and must be recorded in the migration ledger.
 

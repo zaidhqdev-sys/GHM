@@ -4,6 +4,8 @@
 **Audit date:** 2026-09-18  
 **Authority:** Live repository inspection of GHM and Zaid Connect. This document does not authorize construction, adapters, shadow qualification, cutover, or production change.
 
+> **Later implementation reconciliation — 2026-10-12:** This audit's commercial rows below are a 2026-09-18 snapshot and must not be read as current GHM payment implementation status. Since this audit, the provider-neutral commercial core and trial boundary have been constructed/qualified, and PayFast checkout/redirect, ITN, provider verification, and server-to-server ITN confirmation have been implemented and merged with deterministic local qualification passing. Real PayFast sandbox/runtime end-to-end qualification and production enablement remain open. Paystack status remains separate; no approval or activation is inferred from PayFast. The current status is governed by `GHM_CURRENT_STATE.md`, `GHM_REMAINING_WORK_REGISTER_2026-10-05.md`, and the commercial capability contract.
+
 ## 1. Audit scope
 
 Determine what Zaid Connect actually requires from a backend to operate fully, then classify each dependency against current GHM construction evidence.

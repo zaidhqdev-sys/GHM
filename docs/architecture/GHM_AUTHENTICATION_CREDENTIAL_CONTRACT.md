@@ -1,5 +1,8 @@
 # GHM Authentication Credential Contract
 
+> **Historical-status clarification — 2026-10-13:** Embedded “IMPLEMENTATION NOT AUTHORIZED” statements record the historical Gate 2C decision point. The bounded authentication foundation was subsequently approved and qualified under Gate 3B. Retain unresolved implementation details as open only where current contracts still identify them; do not treat this historical stop as a current blanket prohibition. Product migration and production cutover remain separately gated.
+
+
 **Canonical owner:** GHM platform governance
 **Status:** AUTHENTICATION GATE 2C — HISTORICAL CREDENTIAL / LOGIN CONTRACT; Founder decisions remain binding and the credential/login foundation was subsequently constructed and qualified under Gate 3B.
 **Authority:** Local repository `C:\GHM`
@@ -46,31 +49,30 @@ Credentials (including password material) must remain **separate** from `account
 
 Historical Gate 2C snapshot was inspected at HEAD `239ef5d`. Current implementation status is governed by the Gate 3B foundation and current auth qualification records.
 
-| Area | Evidence |
+| Area | Current bounded evidence |
 |---|---|
-| Account schema | `database/migrations/20260909150000_create_business_identity.sql` → `ghm.account_identity` |
+| Account schema | `ghm.account_identity` plus the qualified credential/session/external-identity migrations; email/password credential data remains separate from profile identity |
 | JWT verify | `src/auth/ghm-bearer.ts` — ES256 Bearer; canonical `sub` + issuer/audience/expiry contract |
 | Auth middleware | `src/auth/http.ts` |
-| Config | `src/config.ts` — runtime/database/CORS settings plus `INVITE_CODE`; ES256 signing material is loaded separately by `src/auth/foundation/es256-keys.ts` from `GHM_JWT_ES256_*` environment variables. |
-| Dependencies | `package.json` lists `bcrypt` / `@types/bcrypt`; **no** `argon2` / `scrypt` packages |
-| `bcrypt` usage under `src/` | **None found** (dependency present; not imported for auth) |
-| Login / signup endpoints | **Absent** under `src/http/` |
-| Password / credential tables | **Absent** |
-| Recovery / credential-change APIs | **Absent** |
-| Biometric / WebAuthn / passkey code | **Absent** |
+| Config | `src/config.ts` — runtime/database/CORS settings plus `INVITE_CODE`; ES256 signing material is loaded by `src/auth/foundation/es256-keys.ts` from `GHM_JWT_ES256_*` environment variables |
+| Credential KDF | The bounded login/credential foundation uses the selected Argon2id path; the historical Gate 2C dependency inventory below is not current package evidence |
+| Login / registration endpoints | Bounded GHM routes exist under `/api/v1/auth/`; product integration and public rollout remain gated |
+| Password / credential tables | Present in the qualified authentication persistence foundation |
+| Recovery / credential-change APIs | Bounded recovery/reset foundation exists; production email delivery and product migration remain separately gated |
+| Biometric / WebAuthn / passkey code | Deferred future capability; not part of the qualified foundation |
 | Membership | `ghm.business_membership` — authorization, not login credentials |
-| Email on `account_identity` | **Absent** today (phone exists; business/customer emails are other resources) |
+| Email on `account_identity` | Email is stored in the separate credential/login relation, not on `account_identity` |
 
 ### Explicit historical findings
 
-| Capability | Present? |
-|---|---|
-| GHM stores passwords | **No** |
-| GHM credential records | **No** |
-| GHM login endpoints | **No** |
-| GHM account recovery | **No** |
-| GHM credential-change operations | **No** |
-| GHM biometric / passkey / WebAuthn support | **No** |
+| Capability | Gate 2C baseline | Current bounded status |
+|---|---|---|
+| GHM stores passwords | No | Argon2id credential foundation qualified |
+| GHM credential records | No | Separate credential persistence qualified |
+| GHM login endpoints | No | Bounded GHM login foundation qualified |
+| GHM account recovery | No | Bounded recovery foundation constructed/qualified within the documented scope; delivery/product gates remain open |
+| GHM credential-change operations | No | Current password/recovery/reset scope is governed by the Gate 3B and migration-specific qualification records |
+| GHM biometric / passkey / WebAuthn support | No | Still deferred future capability |
 
 ```text
 The target credential architecture is now implemented for the GHM authentication foundation and construction-qualified. This contract remains the governing design; Connect/QuoteFlow product authentication migration and production cutover remain separately gated.
@@ -105,7 +107,7 @@ Already selected (Issuance ADR / prior gates):
 | C9 | Password recovery sessions | **Revoke all existing refresh sessions**; user must **authenticate again** |
 | C10 | Future authenticators | **Mobile OTP**, **passkeys/WebAuthn**, and **device-local biometrics** remain **deferred / future options** — not designed or implemented now |
 
-Exact numeric recovery lifetime, email transport vendor, credential table names, Argon2id parameters (memory/time/parallelism), and login-email persistence schema remain **implementation / follow-on** unless separately selected. No email provider is invented here.
+The bounded password-recovery implementation uses a 30-minute credential TTL. Production email transport/provider and delivery enablement remain separately gated; Argon2id cost parameters and any additional operational tuning must follow current implementation/configuration evidence.
 
 ---
 
@@ -159,7 +161,7 @@ Password credentials must:
 
 | Algorithm | Status |
 |---|---|
-| **Argon2id** | **SELECTED** (Founder). Not currently a GHM runtime dependency — adding it is an implementation gate. |
+| **Argon2id** | **SELECTED** (Founder). The bounded GHM credential foundation implements this choice; use current package/runtime evidence rather than the historical Gate 2C note. |
 | scrypt | Not selected |
 | bcrypt | Present unused in `package.json`; **not** selected |
 
@@ -279,7 +281,7 @@ Recovery must support:
 
 **Do not invent** an email provider, SMS/OTP provider, or recovery table name in this document.
 
-Still open: exact numeric recovery lifetime; email transport/provider; recovery message templates.
+Still open: production email transport/provider and delivery enablement; recovery message templates and product-specific delivery qualification.
 
 ---
 
@@ -386,7 +388,7 @@ ghm.account_identity.id
 | exact rate-limit thresholds | **UNSELECTED** |
 | recovery channel | **SELECTED: email** (`2026-09-21`) |
 | recovery credential properties | **SELECTED: short-lived, single-use, server-controlled; invalidate after use; enumeration-resistant** |
-| exact numeric recovery lifetime | **UNSELECTED** |
+| exact numeric recovery lifetime | The bounded password-recovery implementation issues a 30-minute recovery credential (`src/auth/password-recovery.ts`); production email delivery remains gated |
 | email transport / provider | **UNSELECTED** (not invented) |
 | post-recovery session handling | **SELECTED: revoke all refresh sessions; re-authenticate** (`2026-09-21`) |
 | credential-change session handling | **SELECTED: revoke other refresh sessions; keep current; issue fresh refresh** (`2026-09-21`) |
@@ -395,7 +397,7 @@ ghm.account_identity.id
 | WebAuthn / passkeys | **DEFERRED** |
 | raw biometric storage | **PROHIBITED** |
 | external identity mapping | **SELECTED:** `provider='supabase'`; `(provider,subject)→account_id`; bootstrap + link DEFINER ops |
-| credential table / schema names | **UNSELECTED** (not invented) |
+| credential table / schema names | Implemented in the qualified migrations; canonical credential table is `ghm.account_password_credential`, with separate session/refresh/recovery/mapping relations |
 
 ---
 
@@ -409,7 +411,7 @@ Do not convert remaining open items into Founder decisions without an explicit s
 
 ---
 
-## 17. Founder decision checkpoint
+## 17. Historical Gate 2C Founder decision checkpoint — reconciled after Gate 3B
 
 ```text
 AUTHENTICATION GATE 2C:
@@ -433,7 +435,7 @@ CREDENTIAL / LOGIN CONTRACT — FOUNDER DECISIONS RECORDED (2026-09-21)
     enumeration-resistant; invalidate after successful use)
 
 6. Exact numeric recovery lifetime:
-   UNSELECTED (must remain short-lived)
+   Gate 2C decision-time status: UNSELECTED. The bounded password-recovery implementation now issues a 30-minute credential; production email delivery remains separately gated.
 
 7. Post-recovery session policy:
    SELECTED — revoke all existing refresh sessions; re-authenticate
@@ -447,18 +449,21 @@ CREDENTIAL / LOGIN CONTRACT — FOUNDER DECISIONS RECORDED (2026-09-21)
 10. Raw biometric storage:
     PROHIBITED
 
-IMPLEMENTATION AUTHORIZATION:
-NOT GRANTED.
+IMPLEMENTATION AUTHORIZATION WAS NOT GRANTED AT GATE 2C; GATE 3B LATER AUTHORIZED AND QUALIFIED THE BOUNDED CREDENTIAL / LOGIN FOUNDATION.
 ```
 
 ---
 
-## 18. Final gate
+## 18. Final gate — historical Gate 2C stop
+
+The block below preserves the original Gate 2C decision snapshot. Its implementation-stop language is historical for the bounded authentication foundation subsequently constructed and qualified under Gate 3B; product migration and production cutover remain separately gated.
 
 ```text
-AUTHENTICATION GATE 2C FOUNDER CREDENTIAL DECISIONS RECONCILED (2026-09-21).
-CURRENT IMPLEMENTATION UNCHANGED (NO LOGIN / PASSWORD / RECOVERY / BIOMETRICS).
-SELECTED CREDENTIAL ARCHITECTURE DOCUMENTED.
-NO CREDENTIAL TABLES / KEYS / ENDPOINTS / EMAIL PROVIDERS CREATED.
-IMPLEMENTATION NOT AUTHORIZED.
+GATE 2C HISTORICAL DECISION SNAPSHOT (2026-09-21):
+FOUNDER CREDENTIAL DECISIONS RECORDED.
+AT THAT GATE, NO LOGIN / PASSWORD / RECOVERY / BIOMETRIC IMPLEMENTATION WAS INCLUDED.
+NO CREDENTIAL TABLES / KEYS / ENDPOINTS / EMAIL PROVIDERS WERE CREATED BY THAT GATE 2C TASK.
+IMPLEMENTATION AUTHORIZATION WAS NOT GRANTED AT GATE 2C.
+
+CURRENT BOUNDED CREDENTIAL / LOGIN / RECOVERY FOUNDATION: QUALIFIED UNDER GATE 3B; PRODUCTION EMAIL DELIVERY AND PRODUCT MIGRATION REMAIN GATED.
 ```

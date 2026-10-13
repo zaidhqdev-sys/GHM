@@ -1,8 +1,11 @@
 # GHM Authentication Schema & Migration Contract
 
+> **Historical-status clarification — 2026-10-13:** This Gate 3A schema/migration contract records the pre-implementation gate state. The authentication schema foundation was subsequently constructed and qualified under Gate 3B. Embedded statements that the runtime/API or product cutover were not authorized remain meaningful only for the scope they name: they do not reopen completed schema work, and they do not imply that public product exposure or production cutover is now authorized.
+
+
 **Canonical owner:** GHM platform governance
 **Status:** AUTHENTICATION GATE 3A — HISTORICAL SCHEMA & MIGRATION CONTRACT; DDL was subsequently constructed and the authentication foundation was qualified under Gate 3B on the consolidated mainline.
-**Current qualified baseline:** `main` — current repository HEAD (see current qualification records)
+**Qualification provenance:** the authentication foundation was qualified on the consolidated `main` line at the time of qualification; this is not a current HEAD pointer.
 **Current boundary:** GHM authentication runtime foundation is qualified; Connect/QuoteFlow product migration and production cutover remain separately gated.
 **Depends on:** Founder decisions 1–12, C1–C10, R1–R7 and:
 - [GHM_AUTHENTICATION_ISSUANCE_DECISION_RECORD.md](./GHM_AUTHENTICATION_ISSUANCE_DECISION_RECORD.md) (§16.2 R1–R7 SELECTED)
@@ -49,7 +52,7 @@ This document defines the **concrete relational model**. Construction DDL matchi
 
 **ON DELETE defaults for this contract:**
 
-| Relationship | Proposed | Rationale |
+| Relationship | Implemented / governed behavior | Rationale |
 |---|---|---|
 | Auth rows → `account_identity` | `ON DELETE CASCADE` | Credential/session/recovery/mapping owned by identity; identity is not casually deleted |
 | Business mapping → `business` | `ON DELETE RESTRICT` | Preserve mapping integrity; do not silently drop product linkages |
@@ -114,13 +117,13 @@ ghm.business
 
 ## 3. Account identity — lifecycle extension (R1)
 
-### Proposed change (ALTER; not applied in this gate)
+### Implemented change (originally proposed at Gate 2F; applied in migration `20260921120000_extend_account_identity_auth_lifecycle.sql`)
 
 | Column | Type | Null | Default | Check |
 |---|---|---|---|---|
 | `account_status` | `text` | NOT NULL | `'active'` | `IN ('active', 'disabled')` |
 
-**Constraint name (proposed):** `account_identity_account_status_check`
+**Constraint name (implemented):** `account_identity_account_status_check`
 
 **Existing rows:** backfill / default to `'active'`.
 
@@ -146,7 +149,7 @@ Do not invent additional lifecycle states.
 
 ## 4. System administrator state (R2)
 
-### Proposed representation (smallest account-level)
+### Implemented representation (originally proposed at Gate 2F; `is_system_admin` is present in the qualified schema)
 
 | Column | Type | Null | Default |
 |---|---|---|---|
@@ -158,7 +161,7 @@ Do not invent additional lifecycle states.
 
 **Who may change it:** only governed/admin-provisioning operations (exact actor model UNSELECTED; not product self-service).
 
-### Migration of existing admins (data plan — not executed)
+### Existing-admin backfill (implemented in migration `20260921120000_extend_account_identity_auth_lifecycle.sql`)
 
 ```text
 UPDATE ghm.account_identity
@@ -197,7 +200,7 @@ Coarse `role` remains (R7) temporarily.
 - Avoids a third table when only password login exists.
 - Future alternate login factors can add relations later without forcing email onto the person row now.
 
-### Proposed table: `ghm.account_password_credential`
+### Implemented table: `ghm.account_password_credential` (original design proposal retained as provenance)
 
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|
@@ -237,7 +240,7 @@ trim → deterministic NFKC → case normalization → login_email_normalized
 
 ## 7. Authentication session
 
-### Proposed table: `ghm.authentication_session`
+### Implemented table: `ghm.authentication_session` (original design proposal retained as provenance)
 
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|
@@ -268,13 +271,13 @@ trim → deterministic NFKC → case normalization → login_email_normalized
 
 ## 8. Refresh credential / lineage
 
-### Proposed table: `ghm.refresh_credential`
+### Implemented table: `ghm.refresh_credential` (original design proposal retained as provenance)
 
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|
 | `id` | `bigint` identity | NOT NULL | generated | PK |
 | `session_id` | `bigint` | NOT NULL | — | FK → `authentication_session` ON DELETE CASCADE |
-| `token_hash` | `bytea` or `text` | NOT NULL | — | Hash/reference of opaque secret; **UNIQUE** |
+| `token_hash` | `bytea` | NOT NULL | — | HMAC-SHA256 protected token hash; **UNIQUE** (implemented) |
 | `issued_at` | `timestamptz` | NOT NULL | `now()` | |
 | `used_at` | `timestamptz` | NULL | — | Set when rotated successfully |
 | `revoked_at` | `timestamptz` | NULL | — | Family/account revoke |
@@ -288,7 +291,7 @@ UNIQUE INDEX refresh_credential_session_live_uidx
   WHERE used_at IS NULL AND revoked_at IS NULL
 ```
 
-**Proposed:** include this partial unique index — prevents two live tips per session.
+**Implemented:** the qualified migration set includes the partial unique live-tip index; transaction/row-lock handling also serializes refresh rotation.
 
 **Opaque secret (approved storage):** 32-byte CSPRNG token; wire = URL-safe base64 (no padding).
 
@@ -341,15 +344,15 @@ Two concurrent refreshes of the same live credential: exactly one `UPDATE … us
 
 ## 9. Recovery credential
 
-### Proposed table: `ghm.password_recovery_credential`
+### Implemented table: `ghm.password_recovery_credential` (original design proposal retained as provenance)
 
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|
 | `id` | `bigint` identity | NOT NULL | generated | PK |
 | `account_id` | `bigint` | NOT NULL | — | FK → `account_identity` ON DELETE CASCADE |
-| `token_hash` | `bytea` or `text` | NOT NULL | — | UNIQUE |
+| `token_hash` | `bytea` | NOT NULL | — | HMAC-SHA256 protected token hash; UNIQUE (implemented) |
 | `created_at` | `timestamptz` | NOT NULL | `now()` | |
-| `expires_at` | `timestamptz` | NOT NULL | — | created + TTL (TTL UNSELECTED) |
+| `expires_at` | `timestamptz` | NOT NULL | — | created + 30-minute recovery TTL (Founder-approved under Gate 3B) |
 | `used_at` | `timestamptz` | NULL | — | |
 | `revoked_at` | `timestamptz` | NULL | — | |
 
@@ -365,7 +368,7 @@ On success: replace password hash; revoke **all** sessions for `account_id`; do 
 
 ## 10. External person identity mapping
 
-### Proposed table: `ghm.account_external_identity`
+### Implemented table: `ghm.account_external_identity` (original design proposal retained as provenance)
 
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|
@@ -477,7 +480,7 @@ Bearer JWT (ES256)
   ↓ verify iss/aud/kid/exp/sub
 canonical account_identity.id
   ↓ load account_status, is_system_admin
-AuthContext { identityId, … }   -- R3; exact fields implementation gate
+GhmAuthContext { accountId } → compatibility adapter to legacy AuthContext { userId, role }; broader product-client integration remains separately gated
   ↓
 authorization: membership / ownership / is_system_admin from GHM state
 ```
@@ -526,7 +529,7 @@ SECURITY DEFINER (OWNER ghm_schema_owner)
 SET search_path = pg_catalog, ghm
 ```
 
-### Tables (proposed grants after creation)
+### Original Gate 3A grant proposal — current grants are implemented in migrations
 
 | Privilege | `ghm_runtime` |
 |---|---|
@@ -609,9 +612,11 @@ GHM-side schema only. Product cutover is a later governed gate after GHM Auth is
 
 ---
 
-## 19. Remaining implementation parameters (not Founder decisions)
+## 19. Historical Gate 3A parameter snapshot — superseded where Gate 3B later approved or implemented the parameter
 
-| Parameter | Status |
+The table below preserves the Gate 3A-era parameter record; its status labels are historical snapshots, not a current open-work list. Later Founder decisions and implementation evidence supersede applicable rows, including parameters that were subsequently approved or implemented. For current approvals and remaining gates, use `GHM_AUTHENTICATION_IMPLEMENTATION_PARAMETER_GATE.md` and the qualified migrations. In particular, the later Gate 3B record approves the Argon2id parameters, 30-minute recovery TTL, token formats/hash protection, decimal-string `sub`, clock skew, ES256 key configuration, and required rate-limit values; physical migrations and function names are implemented. Production secret provisioning, previous-key retirement timing, email delivery, product migration, and cutover remain separately gated.
+
+| Parameter | Gate 3A snapshot status |
 |---|---|
 | Exact migration filenames / timestamps | UNSELECTED |
 | Argon2id memory/time/parallelism | UNSELECTED |
@@ -646,7 +651,7 @@ No Founder-selected decision is contradicted.
 
 ## 21. Founder vs proposed schema checklist
 
-| Topic | Founder | This contract proposes |
+| Topic | Founder decision | Implemented schema / contract detail |
 |---|---|---|
 | Account status | R1 active/disabled | Column `account_status` |
 | System admin | R2 account-level state | Column `is_system_admin` |
@@ -659,13 +664,17 @@ No Founder-selected decision is contradicted.
 
 ---
 
-## 22. Final gate
+## 22. Historical Gate 3A final gate — superseded for the bounded foundation
 
 ```text
+GATE 3A SNAPSHOT:
 GHM AUTHENTICATION SCHEMA DDL CONSTRUCTED.
-AUTH RUNTIME FOUNDATION (DEFINER + crypto primitives) AUTHORIZED SEPARATELY — HTTP Auth API / AuthContext cutover / product migration NOT AUTHORIZED.
+AUTH RUNTIME FOUNDATION AUTHORIZATION WAS A SEPARATE GATE.
+PRODUCT MIGRATION / CUTOVER NOT AUTHORIZED.
 NO SECRETS IN REPOSITORY.
 ```
+
+Gate 3B subsequently authorized and qualified the bounded authentication runtime foundation. Product session-client integration, production exposure/promotion, and product cutover remain separately gated.
 
 ---
 
@@ -698,8 +707,8 @@ NO SECRETS IN REPOSITORY.
 
 **Runtime grants (DDL construction):** secret hash tables have **no** `ghm_runtime` SELECT/DML; mapping/session tables allow `SELECT` only.
 
-**Temporary pre-auth privilege condition (must be tightened in Auth runtime/GRANT construction):**
+**Historical pre-auth privilege condition — remediated by the auth runtime migration:**
 
-> Existing table-level `GRANT UPDATE ON ghm.account_identity TO ghm_runtime` (from schema establishment) covers newly added lifecycle columns `account_status` and `is_system_admin`. That is a **temporary pre-auth boundary condition**. Auth runtime GRANT construction must remove broad runtime ability to mutate those auth lifecycle columns (e.g. column-level UPDATE grants preserving profile fields only, plus SECURITY DEFINER for account disable / admin flag). Unrelated profile updates (`full_name`, `phone`, `avatar_ref`, `updated_at`) must keep working.
+The earlier schema-establishment grant initially covered the new lifecycle columns. Migration `20260921130000_create_auth_runtime_functions.sql` subsequently revokes table-level `UPDATE` on `ghm.account_identity` from `ghm_runtime` and restores only column-level updates for `full_name`, `phone`, `avatar_ref`, `role`, and `updated_at`. The `account_status` and `is_system_admin` lifecycle columns are governed by controlled `auth_*` SECURITY DEFINER functions. Do not treat the original temporary condition as a current open defect; use the migration and live role qualification evidence for current grant status.
 
-**Still pending until Auth runtime/HTTP gates:** Auth HTTP API, JWT HS→ES256 request-context cutover, product migration, email sending.
+**Gate 3A pending checklist — historical:** Auth HTTP API/runtime construction and the HS→ES256 foundation were subsequently advanced and qualified under Gate 3B. Product session-client/migration integration and email delivery remain separately gated; production readiness and cutover are governed by current living status/evidence, not this pre-implementation checklist.

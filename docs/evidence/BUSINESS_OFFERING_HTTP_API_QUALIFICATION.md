@@ -54,9 +54,11 @@ The HTTP layer does not duplicate domain ownership rules.
 
 ## Evidence
 
-Construction branch: `construction/business-offering-http-api`
+**Current status reconciliation — 2026-10-13:** this qualification is integrated on `main`. The branch and base below identify the historical construction evidence, not a current checkout instruction. The repository's later full-suite checkpoint passed 557/557 tests; the focused results below remain the evidence recorded at the time of the original slice.
 
-Base: `d07deb019cea2dd18316f36040d9626ca78f9754`
+Historical construction branch: `construction/business-offering-http-api`
+
+Historical base: `d07deb019cea2dd18316f36040d9626ca78f9754`
 
 Tests added in `src/http/business-offering-router.test.ts` cover public access, invalid identifiers, private role gating, context/input binding, not-found handling, create/update allowlists, and customer denial.
 

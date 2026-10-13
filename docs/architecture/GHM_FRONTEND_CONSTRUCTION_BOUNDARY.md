@@ -3,6 +3,8 @@
 **Status:** First frontend slice constructed
 **Authority:** Local repository `C:\GHM`
 **Baseline:** branch `construction/saved-business-resource`, HEAD `ff63a2d`
+
+> **Current-status reconciliation — 2026-10-13:** The branch/HEAD above is historical provenance, not a current checkout pointer. This document records the first frontend slice and its browser-to-HTTP boundary; it does not establish that the frontend is production-ready or that all product workflows are integrated. Current runtime readiness and product integration/cutover status remain governed by the living current-state index and capability-specific evidence. No production routing or cutover is authorized by this construction record.
 **Application root:** `web/`
 
 ## 1. Frontend / API boundary

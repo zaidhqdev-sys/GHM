@@ -1,12 +1,12 @@
 # Connect Provider Boundary Source Audit
 
-**Status:** SOURCE EVIDENCE ONLY — NO CONSTRUCTION AUTHORIZATION  
+**Status:** HISTORICAL CONNECT SOURCE AUDIT — 2026-09-18; NO CONSTRUCTION AUTHORIZATION BY THIS RECORD  
 **Connect commit:** `abcffa73f893602c25310a58946bebb91fd7eeb5`  
 **Date:** 2026-09-18
 
 ## 1. Purpose
 
-Separate provider-owned responsibilities from Connect-persisted state for payments, messaging, and AI. Trust score calculation is database-owned in Connect (not an external Trust provider). No payment/Trust implementation is authorized.
+This 2026-09-18 source audit classified provider-owned responsibilities and Connect-persisted state before subsequent GHM commercial/Trust construction. Its statements about implementation authorization and provider use are historical to that audit and must not be used as current GHM implementation status. At that time, Trust score calculation was Connect database logic rather than an external provider. Later GHM Trust construction qualification is recorded in `TRUST_QUALIFICATION.md`; PayFast checkout/ITN implementation and local qualification are recorded in the current commercial contracts/evidence. Neither later construction qualifies Connect production provider cutover, and PayFast approval must not be conflated with Paystack status.
 
 ## 2. Provider matrix
 
@@ -37,5 +37,5 @@ GHM must **not** absorb Paystack/PayFast/Meta/Anthropic SDKs as core resources m
 2. PayFast and Meta WhatsApp API libraries appear unused by current importers.
 3. WhatsApp deep links are Connect-local.
 4. AI inference is external; no email provider evidenced.
-5. Trust is an internal Connect DB domain, still requiring explicit GHM construction authorization (handover forbids opening without it).
+5. At this audit date, Trust was an internal Connect DB domain and GHM construction had not yet been authorized. This historical statement is superseded for GHM implementation status by `TRUST_QUALIFICATION.md`; Connect production routing/cutover remains separately gated.
 6. No provider cleanup or production credential change is authorized by this audit.

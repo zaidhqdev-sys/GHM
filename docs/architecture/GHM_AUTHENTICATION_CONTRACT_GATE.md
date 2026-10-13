@@ -1,5 +1,8 @@
 # GHM Authentication Contract Gate
 
+> **Historical-status clarification — 2026-10-13:** The “implementation is not authorized” statements and unresolved-option tables below record Gate 1 only. They are superseded for the bounded authentication foundation by the Founder-approved Gate 3B implementation parameter gate and current qualified mainline evidence. Preserve them as decision history; do not use them to reopen completed construction. Product migration, public product exposure, and production cutover remain separately gated.
+
+
 **Canonical owner:** GHM platform governance
 **Status:** HISTORICAL GATE 1 RECORD — SUPERSEDED FOR CURRENT AUTH IMPLEMENTATION STATUS; current Gate 3B construction foundation is qualified on `main @ ffc4a2a`
 **Authority:** Local repository `C:\GHM`
@@ -32,13 +35,13 @@ This gate exists so implementation cannot begin from ambiguous architecture. It:
 - lists **open decisions** that remain unresolved;
 - states explicitly that **implementation is not authorized**.
 
-Live-product priority (Zaid Connect, QuoteFlow) depends on this contract before any trusted product → GHM authenticated HTTP path can be built. Campaign / Brief / KBM remain parked and are out of scope.
+Historical Gate 1 framing: live-product priority depended on this contract before a trusted product → GHM path could be built. The bounded GHM authentication foundation is now qualified; Connect/QuoteFlow session-client integration, product adapters, public exposure, and cutover remain separately gated. Campaign / Brief / KBM expansion remains out of scope without separate authorization.
 
 ---
 
 ## 2. Current-State Evidence
 
-Evidence inspected (read-only) at HEAD `239ef5d`:
+Historical evidence inspected read-only at Gate 1 baseline `239ef5d` (not current implementation status):
 
 | Area | Path |
 |---|---|
@@ -58,7 +61,7 @@ Evidence inspected (read-only) at HEAD `239ef5d`:
 - Does **not** validate `iss`, `aud`, or an explicit algorithm allow-list beyond library defaults for the secret path.
 - On failure, `requireAuth` returns HTTP `401` with `{ error: 'unauthorized' }`.
 
-### 2.2 Current `userId` + `role` claims
+### 2.2 Historical Gate 1 `userId` + `role` claim snapshot
 
 - Payload must include:
   - `userId`: positive safe-integer `number`
@@ -67,25 +70,25 @@ Evidence inspected (read-only) at HEAD `239ef5d`:
 - **`sub` is ignored** (not read).
 - Returns frozen `AuthContext { userId, role }`.
 
-### 2.3 Current lack of GHM-owned issuance
+### 2.3 Historical Gate 1 issuance gap
 
 - No product login / signup / refresh / logout routes under `src/http/`.
 - No `jwt.sign` in application modules; signing appears only in tests.
 - No credential verification path in `src/` (`bcrypt` listed in dependencies but not imported under `src/`).
 - `INVITE_CODE` is required in config but unused for product auth issuance in `src/`.
 
-### 2.4 Current lack of external identity mapping
+### 2.4 Historical Gate 1 external-identity mapping gap
 
 - `ghm.account_identity` has **no** external provider/subject columns.
 - No provider-neutral `(provider, subject) → account_identity.id` relation exists in migrations or `src/`.
 - Supabase UUID identities (Connect / QuoteFlow) have **no** GHM mapping.
 
-### 2.5 Current lack of refresh / revocation
+### 2.5 Historical Gate 1 refresh / revocation gap
 
 - No refresh credential store, rotation, or revocation service in `src/auth/`.
 - No logout/session invalidation beyond client discarding a Bearer token (and tests minting new HS tokens).
 
-### 2.6 Current authentication endpoints
+### 2.6 Historical Gate 1 authentication endpoint inventory
 
 | Kind | Present? |
 |---|---|
@@ -97,7 +100,7 @@ Evidence inspected (read-only) at HEAD `239ef5d`:
 
 No repository convention establishes `/api/v1/auth/*` (or equivalent) paths today. Resource API uses `/api/v1/<resource>` naming. **Authentication endpoint paths are therefore a follow-on implementation decision** (§12).
 
-### 2.7 Current `account_identity` structure
+### 2.7 Historical Gate 1 `account_identity` structure
 
 ```text
 ghm.account_identity
@@ -114,7 +117,7 @@ ghm.account_identity
 - No email column on `account_identity` in this founding migration.
 - Coarse `role` column exists on the account row; this is **not** business membership.
 
-### 2.8 Current membership model
+### 2.8 Historical Gate 1 membership model
 
 ```text
 ghm.business_membership
@@ -130,13 +133,13 @@ ghm.business_membership
 
 ### 2.9 Explicit non-claims
 
-Do **not** read this section as implying that asymmetric signing, GHM issuance, mapping, refresh, or auth endpoints already exist. They do **not**.
+**Historical Gate 1 non-claim:** At the time this section was written, asymmetric signing, GHM issuance, mapping, refresh, and auth endpoints were not implemented. This statement is retained as decision history; it is superseded for the bounded authentication foundation by the later Gate 3B qualification noted at the top of this document. It does not establish product integration or production cutover.
 
 ---
 
 ## 3. Target Authentication Contract
 
-Target behavior under Founder-selected architecture. **Not implemented.**
+**Historical Gate 1 target snapshot.** The target behavior below records the architecture selected at that gate; the original “not implemented” status is historical and is not a current implementation assessment. Current bounded-foundation status is governed by Gate 3B and current mainline qualification evidence. Product migration, public exposure, and production cutover remain separately gated.
 
 ### 3.1 Canonical GHM identity
 
@@ -360,7 +363,7 @@ The HS tokens using `userId` + `role` and `JWT_SECRET` were the historical imple
 | Account / session revocation | Authoritative in GHM; revoked refresh cannot mint new access tokens |
 | Storage | Separate from `account_identity` profile fields; least-privilege access |
 
-**Not implemented.** Exact lifetimes and replay policy are open (§12).
+**Historical Gate 1 status:** not implemented at that time. Gate 3B later qualified the 15-minute access token, 30-day inactivity / 90-day absolute session model, single-use refresh rotation, and replay-family revocation foundation.
 
 ---
 
@@ -438,19 +441,19 @@ Many items below were open at Gate 1 authoring and are now recorded in follow-on
 | # | Open decision | Current status |
 |---|---|---|
 | 1 | Signing algorithm | **SELECTED: ES256** |
-| 2 | Key storage class / `kid` | Storage **secret-managed inside issuer** SELECTED; `kid` **required**; exact encoding/names/paths/`kid` values **UNSELECTED** |
+| 2 | Key storage class / `kid` | Secret-managed key material and required `kid` are selected; current implementation uses PKCS#8 PEM and `GHM_JWT_ES256_*` environment variables. Deployment-specific active/previous key values remain secret-managed. |
 | 3 | Access-token lifetime | **SELECTED: 15 minutes** |
 | 4 | Refresh/session durations | **SELECTED:** 30d inactivity / 90d absolute |
 | 5 | Refresh rotation / replay | **SELECTED:** every success; single-use; session-family revoke |
 | 6 | Exact `iss` / `aud` | **SELECTED:** `ghm-auth` / `ghm-api` |
-| 7 | Authentication endpoint HTTP paths | **UNSELECTED** |
+| 7 | Authentication endpoint HTTP paths | Gate 1: unselected; bounded routes now implemented under `/api/v1/auth/`; broader public/product exposure remains gated |
 | 8 | Argon2id cost parameters | KDF SELECTED; parameters **UNSELECTED** |
 | 9 | Rate-limit thresholds | Required; numbers **UNSELECTED** |
-| 10 | Credential / session / refresh / recovery / mapping **relation names** | Concepts in Persistence Contract; names **UNSELECTED** |
+| 10 | Credential / session / refresh / recovery / mapping relation names | Gate 1: unselected; canonical table names are implemented in the qualified migrations and listed in the schema migration contract |
 | 11 | Mapping FK delete behavior / lifecycle | **UNSELECTED** |
 | 12 | Supabase identity migration mechanics | Architecture SELECTED; batch vs JIT details **UNSELECTED** |
-| 13 | Exact `sub` encoding of bigint | **UNSELECTED** |
-| 14 | HS → asymmetric verifier cutover plan | **UNSELECTED** |
+| 13 | Exact `sub` encoding of bigint | Gate 1: unselected; current GHM JWT uses the decimal GHM account id in `sub` |
+| 14 | HS → asymmetric verifier replacement | Active governed resource authentication now uses ES256; any product/deployment migration plan remains a separate gate |
 | 15 | Evolution of `account_identity.role` / `AuthContext.role` | **SELECTED:** incremental; JWT not authoritative — Issuance ADR §16.2 **R7** |
 | 16 | Logout idempotency semantics | **UNSELECTED** |
 | 17 | Coexistence sunset criteria | **UNSELECTED** |
@@ -462,7 +465,7 @@ Many items below were open at Gate 1 authoring and are now recorded in follow-on
 | 23 | Signing-key rotation calendar | Overlap rule SELECTED; calendar **UNSELECTED** |
 | 24 | Account lifecycle/status representation | **SELECTED:** `active`/`disabled` — Issuance ADR §16.2 **R1** (column name UNSELECTED) |
 | 25 | System-admin representation | **SELECTED:** governed account-level state, not JWT — Issuance ADR §16.2 **R2** |
-| 26 | Target AuthContext shape | **SELECTED:** identity-centric — Issuance ADR §16.2 **R3** (exact fields UNSELECTED) |
+| 26 | AuthContext shape | Identity-centric architecture selected; implementation provides `GhmAuthContext { accountId }` and a compatibility adapter to legacy `AuthContext { userId, role }`. Broader product-client integration remains gated. |
 | 27 | Bootstrap invocation path | **SELECTED:** dedicated controlled Auth boundary op — Issuance ADR §16.2 **R4** |
 | 28 | Business/org mapping mechanism | **SELECTED:** `(provider, external_business_id) → business.id` — Issuance ADR §16.2 **R5** |
 | 29 | Auth persistence runtime GRANT model | **SELECTED:** SECURITY DEFINER / controlled EXECUTE — Issuance ADR §16.2 **R6** |
@@ -479,7 +482,7 @@ Deferred by Founder issuance decision 12 (out of first gate): social OAuth, ente
 
 ---
 
-## 13. Implementation Gate
+## 13. Historical Gate 1 implementation stop — superseded for the bounded foundation
 
 ```text
 AUTHENTICATION CONTRACT GATE 1
@@ -488,16 +491,11 @@ DOCUMENTATION-ONLY
 IMPLEMENTATION AUTHORIZATION: NOT GRANTED
 ```
 
-### Required before production implementation
+### Historical Gate 1 prerequisites — later bounded foundation qualified
 
-1. Founder confirmation / selection of remaining open decisions (§12) as needed for a first implementation slice
-2. Contract review of this document against the Founder ADR
-3. Implementation plan (issuer, verification cutover, credential store)
-4. Migration plan (Supabase coexistence boundary + mapping)
-5. Test / qualification plan (positive/negative; no silent bypass)
-6. Security review
+The items below were prerequisites at Gate 1. Gate 3B later approved and qualified the bounded authentication foundation. Any remaining product integration, public exposure, production configuration, and cutover work still requires its own scoped plan and qualification.
 
-### Explicitly not authorized by this gate
+### Historical Gate 1 non-authorizations — do not use to reopen qualified work
 
 - `src/` changes
 - migrations / new tables
@@ -507,13 +505,13 @@ IMPLEMENTATION AUTHORIZATION: NOT GRANTED
 - credential stores / keys
 - commits or pushes performed under this task
 
-### Final status
+### Current reconciled status
 
 ```text
-AUTHENTICATION CONTRACT GATE 1 COMPLETE (DOCUMENTATION).
+GATE 1 DOCUMENTATION COMPLETE (HISTORICAL).
 FOUNDER TARGET ARCHITECTURE REMAINS BINDING.
-CURRENT RESOURCE AUTH IMPLEMENTATION: GHM ES256 bearer verification with DB-backed account state.
-FOLLOW-ON CONTRACTS + OPEN DECISIONS REQUIRED BEFORE IMPLEMENTATION.
+BOUNDED GHM ES256 ISSUANCE / SESSION / IDENTITY FOUNDATION: QUALIFIED UNDER GATE 3B.
+PRODUCT SESSION MIGRATION / PUBLIC EXPOSURE / PRODUCTION CUTOVER: SEPARATELY GATED.
 GHM AUTHORIZATION REMAINS AUTHORITATIVE.
 DIRECT PRODUCT DATABASE ACCESS REMAINS NOT APPROVED.
 SUPABASE JWTS MUST NEVER BE ACCEPTED DIRECTLY BY GHM.
