@@ -17,7 +17,7 @@ Define the least-privilege database mutation boundary for governed Business Capa
 
 The transition implementation shall use a **dedicated, narrowly scoped PostgreSQL function** owned by `ghm_schema_owner` and exposed to `ghm_runtime` through `EXECUTE` only.
 
-The function shall:
+The qualified function:
 
 1. accept only the Business Capability row identity, expected current verification status, target verification status, authenticated verifier identity, and transition reason where applicable;
 2. validate the requested transition against the frozen transition matrix;
@@ -108,9 +108,9 @@ This contract does not authorize:
 - public HTTP exposure;
 - shadow qualification.
 
-## Qualification gate
+## Qualification evidence — CLOSED / PASS
 
-Implementation is not considered closed until runtime qualification proves:
+The runtime qualification recorded for the consolidated mainline proves:
 
 - admin authorization;
 - non-admin denial;
@@ -127,4 +127,4 @@ Implementation is not considered closed until runtime qualification proves:
 - rollback behavior;
 - full regression.
 
-No production routing or cutover follows from this contract alone.
+The gate is closed for this construction boundary. Reopen it only if new evidence demonstrates regression or a separately authorized requirement changes the contract. No production routing or cutover follows from this contract alone.
