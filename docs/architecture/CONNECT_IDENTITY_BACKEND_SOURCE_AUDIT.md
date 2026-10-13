@@ -128,9 +128,17 @@ Sources: `src/auth/authorization.ts`, `src/auth/request-context.ts`, `database/m
 4. Before GHM can back Connect, explicit evidence and authorization are required for: identity issuance ownership, UUID↔bigint mapping, role vocabulary mapping, session validation, and account bootstrap.
 5. This audit does **not** authorize identity construction or adapter work.
 
-## 6. Required future evidence (no implementation)
+## 6. Remaining product-migration evidence (historical construction gap reconciled)
 
-- Decision: retain Supabase Auth, replace it, or front GHM with a compatible issuer
-- Mapping ownership and lifecycle for account/business IDs
-- Role and permission vocabulary reconciliation
-- Bootstrap path for first login / profile creation without `auth.users` trigger assumptions
+The original audit-time gap in GHM external-identity mapping is closed for the bounded construction foundation: the canonical `(provider, subject) → ghm.account_identity.id` mapping and the separately qualified Connect identity-adapter seam now exist. Do not reopen that foundation as unimplemented work.
+
+The following product migration and integration evidence remains separate and open:
+
+- Product decision and qualification for replacing or coexisting with Supabase Auth; GHM must not accept Supabase JWTs directly.
+- Product session-client migration and complete service-to-service trust/deployment credential boundary.
+- Business UUID → GHM Business ID mapping and migration ownership/lifecycle; account identity mapping does not establish Business mapping.
+- Role and permission vocabulary reconciliation, membership/ownership/admin migration, and profile/business provisioning parity.
+- Bootstrap behavior within the separately qualified GHM account-identity boundary, without relying on Supabase `auth.users` trigger assumptions.
+- Product-specific end-to-end, rollback, and cutover qualification.
+
+These remaining gates do not authorize new construction by this historical source audit.
