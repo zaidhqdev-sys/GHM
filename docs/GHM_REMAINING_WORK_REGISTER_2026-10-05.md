@@ -19,7 +19,7 @@ A historical document cannot reopen a qualified capability. A provider capabilit
 
 The following are excluded from construction backlog unless a new product requirement creates a separately scoped adapter/composition need:
 
-- Authentication construction foundation
+- Bounded authentication construction foundation (qualified); unresolved Gate 3B parameter approvals and production secret provisioning remain explicit production gates
 - Authorization and transaction boundaries
 - Durable tenant isolation and qualified tenant adoption sequence
 - Business Identity/Profile
@@ -281,7 +281,8 @@ The following require explicit Founder authorization before construction or prod
 5. QuoteFlow production migration/mutation;
 6. legacy PostgreSQL role/object mutation;
 7. shadow qualification against representative product workflows;
-8. any production routing, DNS, environment, credential or traffic cutover.
+8. any production routing, DNS, environment, credential or traffic cutover;
+9. closure of the remaining authentication parameter approvals recorded in `GHM_AUTHENTICATION_IMPLEMENTATION_PARAMETER_GATE.md` (including token-pepper approval, exact `sub` encoding, clock-skew policy, and key lifecycle details) before production auth enablement.
 
 ## 9. Stop condition for construction
 
@@ -307,6 +308,6 @@ If construction stopped at this register today, the exact blockers preventing GH
 
 **QuoteFlow:** authoritative legacy provenance for both founder-owned accounts, full reset/re-enrollment DB+HTTP ceremony qualification, GHM session client, separate legacy-organization-to-GHM-Business provisioning qualification, then product workflow/cutover qualification.
 
-**Production:** deployment/secrets, recovery/rollback, observability, shadow qualification, and founder-authorized reversible cutover.
+**Production:** deployment/secrets (including closure of the remaining authentication parameter approvals and secret provisioning), recovery/rollback, observability, shadow qualification, and founder-authorized reversible cutover.
 
 This is a summary of the major remaining gates, not a blanket claim that every unlisted capability is qualified. Use each capability contract and qualification record for exact scope; preserve separately documented product, provider, security, and production gates.
