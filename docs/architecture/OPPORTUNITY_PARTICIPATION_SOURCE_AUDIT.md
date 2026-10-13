@@ -253,9 +253,9 @@ The following remain outside this construction contract unless separately eviden
 - production adapters;
 - production cutover.
 
-## Construction sequence
+## Historical construction sequence — completed and superseded
 
-The reconciled next sequence is:
+The following sequence records the original plan before implementation. It is retained as provenance, not a current backlog or open authorization gate. Opportunity Participation schema, repository/service behavior, authorization boundary, focused tests, and runtime qualification are complete and merged; the current status is recorded in `OPPORTUNITY_PARTICIPATION_OPERATION_CONTRACT.md` and `GHM_CURRENT_STATE.md`.
 
 1. Freeze this source contract.
 2. Design `ghm.opportunity_participant` against the existing GHM Opportunity Core and identity/business model.
