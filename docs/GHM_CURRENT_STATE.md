@@ -148,3 +148,14 @@ A further targeted cross-document audit reconciled three additional areas on thi
 - The Connect backend readiness audit now identifies its entire coverage matrix and dependency counts as the 2026-09-18 historical snapshot, rather than limiting that qualification to its commercial rows.
 
 The targeted cross-check also revisited the current-state index, remaining-work register, storage qualification/evidence, authentication and transport decisions, PostgreSQL authority/legacy-role gates, and selected resource and QuoteFlow migration contracts. No additional clear status contradiction was identified in that reviewed subset. This is a documentation-only follow-up; no code, migrations, credentials, deployments, database state, local checkout, product routing, or production cutover was changed. The existing documentation PR remains unmerged pending final diff and check review.
+
+
+## Supplemental source-audit reconciliation — 2026-10-13 (continued)
+
+A further documentation-only batch reconciled the Connect source-object and atomic-workflow audits:
+
+- `CONNECT_REFERENCED_OBJECT_RECONCILIATION.md` now explicitly identifies its classifications and residual remote-source checks as a dated Connect source snapshot, not a current GHM implementation inventory or an instruction to create tables.
+- `CONNECT_ATOMIC_WORKFLOW_SOURCE_AUDIT.md` now labels the payment-preparation and payment-result gaps in its 2026-09-18 workflow matrix as historical. Its current-status note continues to govern: the GHM payment boundaries and PayFast checkout/ITN/server-confirmation construction are qualified, while real PayFast sandbox/runtime qualification, product workflow parity, provider enablement, and production cutover remain open.
+- Rechecked the adjacent Connect identity, service-trust, realtime, storage, resource, commercial, and domain source audits. Historical Connect source snapshots remain useful evidence; they must not be interpreted as current GHM implementation status. Realtime and broader product-workflow gaps remain open where their current contracts say so.
+
+This batch changed documentation only. It does not authorize new resource construction, provider activation, production configuration changes, product migration, or cutover.
