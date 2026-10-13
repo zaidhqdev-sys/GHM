@@ -331,8 +331,8 @@ No code, migration, provider activation or production change was made.
 **Build missing domains / APIs**
 - Onboarding progress (flag currently true).
 - Business analytics dashboard.
-- Relationships/outcomes only if current route is reachable and retained.
-- Quote-analysis history/data operations if the current analyzer remains part of launch scope.
+- Relationships/outcomes: the authenticated Relationships route is registered and requires `BUSINESS_READ` plus active-business context; GHM has no matching domain, so this is an active **Build** gap.
+- Quote-analysis history/data operations for the active analyzer are in migration scope. Keep history/data migration separate from provider AI invocation; `milestone38Approved=false` remains fail-closed and does not authorize paid-provider activation.
 - Storage HTTP API and private-object classes needed by confirmed upload journeys.
 - Business engagement event contract where not already qualified.
 
