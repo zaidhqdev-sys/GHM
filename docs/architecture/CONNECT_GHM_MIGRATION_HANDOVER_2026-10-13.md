@@ -409,3 +409,16 @@ No runtime or production changes. This section supersedes any earlier uncertaint
 Section 19's earlier statements that Relationships/Outcomes route reachability is unverified are superseded by the source-confirmed correction in §22. `ROUTE_IDS.RELATIONSHIPS` is registered as an authenticated route requiring `BUSINESS_READ` and active-business context; the screen is lazy-loaded by the app shell. Relationships/Outcomes is therefore in scope and its missing GHM domain is a **Build** gap. Future summaries must not repeat the stale “only if current route is reachable” condition.
 
 This correction applies only to Relationships/Outcomes. Supplier, referral, dispute and offerings remain legacy/unconfirmed unless a separate current mounted caller is proven.
+
+
+
+## Documentation reconciliation batch — 2026-10-13
+
+The following contradictions were corrected **in place** across both repository handovers and their current migration overlays:
+
+- Relationships/Outcomes route reachability is confirmed by `src/app/routes.js`; the missing GHM domain is consistently **Build**. The stale conditional reachability wording was removed from both handovers.
+- `src/features/directory/useDirectoryFilters.js` actively loads regional configuration and administrative areas. The regional/directory work is consistently **Extend**; do not rebuild legacy regional tables wholesale.
+- The same regional **Extend** row and Relationships/Outcomes **Build** row now appear in the GHM readiness gap register, GHM operation inventory, Connect integration architecture and Connect integration specification.
+- Connect `CURRENT_STATE_AUDIT.md` now labels its 2026-09-02 catalogue/product statements as historical implementation and production-verification evidence. It no longer implies those statements prove current hosted availability after the 2026-10-13 Supabase Auth resolution failure.
+
+**Review state:** GHM PR #133 and Connect PR #34 remain open draft documentation PRs. Do not merge until the full changed-file set, cross-references and current-status claims pass final review. No code, runtime, production, provider or cutover changes were made.
