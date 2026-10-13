@@ -624,15 +624,15 @@ IMPLEMENTATION AUTHORIZATION: NOT GRANTED AT THAT GATE
 ```
 
 Gate 3B subsequently authorized and qualified the bounded GHM authentication foundation, including login/refresh/logout routes and ES256 resource verification with DB-backed account-state loading. This historical checkpoint does not authorize broader public/product exposure, product migration, deployment promotion, or cutover.
-```
 
 ---
 
-## 22. Final gate
+## 22. Historical Gate 2E final gate — superseded for the bounded foundation
 
 ```text
-GHM AUTHENTICATION API CONTRACT DOCUMENTED.
-NO src/ / MIGRATIONS / TESTS / CONFIG / SECRETS / PACKAGES CHANGED.
-NO COMMIT / PUSH.
-STOP — DO NOT IMPLEMENT.
+GATE 2E DOCUMENTATION CHECKPOINT:
+NO src/ / MIGRATIONS / TESTS / CONFIG / SECRETS / PACKAGES CHANGED BY THAT HISTORICAL DOCUMENTATION TASK.
+NO COMMIT / PUSH WITHIN THAT ORIGINAL TASK.
 ```
+
+The original “STOP — DO NOT IMPLEMENT” instruction applied to the Gate 2E documentation-only task. It is historical, not a current repository instruction; Gate 3B later authorized and qualified the bounded authentication foundation.
