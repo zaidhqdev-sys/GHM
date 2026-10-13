@@ -402,13 +402,7 @@ Connect route definitions and signup flow support account roles `customer`, `con
 
 Connect app shell imports `supabase` and `authService`, restores session on startup, subscribes to `supabase.auth.onAuthStateChange`, and signs out through the Supabase client. `AuthScreen.jsx` calls `supabase.auth.signUp` directly and uses `authService.signIn` for login. This confirms the cutover must replace **startup session restore, auth-change subscription, signup, login, logout, refresh/expiry and password recovery**, not merely swap the sign-in form. GHM has native register/login/refresh/logout/password-recovery routes, but their response/user shape, confirmation policy and role/business-identity lifecycle need an adapter contract.
 
-No runtime or production changes. This section supersedes any earlier uncertainty about relationship route reachability.
-
-## Section 19 status correction — 2026-10-13
-
-Section 19's earlier statements that Relationships/Outcomes route reachability is unverified are superseded by the source-confirmed correction in §22. `ROUTE_IDS.RELATIONSHIPS` is registered as an authenticated route requiring `BUSINESS_READ` and active-business context; the screen is lazy-loaded by the app shell. Relationships/Outcomes is therefore in scope and its missing GHM domain is a **Build** gap. Future summaries must not repeat the stale “only if current route is reachable” condition.
-
-This correction applies only to Relationships/Outcomes. Supplier, referral, dispute and offerings remain legacy/unconfirmed unless a separate current mounted caller is proven.
+No runtime or production changes were made in this audit.
 
 
 
