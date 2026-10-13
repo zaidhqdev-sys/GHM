@@ -11,7 +11,7 @@ TRANSPORT SELECTED: HTTP/API
 FOUNDER AUTHORIZATION: GIVEN
 CAMPAIGN HTTP IMPLEMENTATION AUTHORIZED: YES (HEAD `785df12`, Founder-locked wire)
 BROADER PRODUCT-FACING HTTP BEYOND CAMPAIGN: NOT BLANKET-AUTHORIZED
-AUTHENTICATION ISSUANCE: UNSELECTED
+HISTORICAL GATE STATUS: authentication issuance was unselected at this earlier gate; the bounded Gate 3B issuance foundation is now qualified
 ```
 
 > **Current-status reconciliation — 2026-10-13:** This is a semantic transport contract with an older construction baseline, not a complete inventory of current implementation. The bounded ES256 authentication/session foundation is now constructed and qualification evidence is governed by the Gate 3B/current-state records; embedded older statements that authentication issuance is unselected or unimplemented are historical to the earlier gate. Product-specific adapter qualification, complete workflow parity, production route exposure, and cutover remain independently gated. The Campaign and other product-specific examples below must be interpreted against their named qualification records rather than generalized to every product.
@@ -73,7 +73,7 @@ GHM remains authoritative for authorization.
 | Campaign product-facing HTTP present | `src/http/campaign-router.ts` (GET/LIST/POST/PATCH under `/api/v1/campaigns`); HEAD `785df12` |
 | Existing HTTP routes ≠ automatic KBM contract | Transport selection ADR; Product Integration Boundary |
 | Authentication verification exists | `src/auth/http.ts` `requireAuth`; `src/auth/request-context.ts` JWT verify → AuthContext |
-| Authentication issuance unresolved | `GHM_AUTHENTICATION_ISSUANCE_DECISION_RECORD.md` |
+| Bounded GHM authentication issuance | Qualified under Gate 3B; product session-client integration/migration remains separately gated |
 | Error/version semantics documented; runtime mapping incomplete | `GHM_ERROR_SEMANTICS_AND_VERSIONING_CONTRACT.md`; partial `handleError` / `handleEnquiryError`; Campaign-local mapper in `campaign-router.ts` |
 | Transport selected HTTP/API | Transport selection ADR |
 | Campaign HTTP runtime OPEN at locked wire | This contract does not authorize KBM adapter, issuance, or unrelated resource HTTP expansion |
@@ -133,13 +133,13 @@ role
 ```
 
 ```text
-AUTHENTICATION ISSUANCE: UNSELECTED
+HISTORICAL GATE STATUS: authentication issuance was unselected at this earlier gate; the bounded Gate 3B issuance foundation is now qualified
 ```
 
 This contract does **not** select:
 
-- IdP
-- token issuer
+- product-specific IdP/session-client integration and migration (separately gated)
+- any new token issuer beyond the qualified GHM foundation
 - credential store
 - OAuth provider
 - session provider
@@ -420,7 +420,7 @@ Campaign HTTP implementation is AUTHORIZED and present at `785df12`.
 
 This contract does **not** authorize:
 
-1. Authentication issuance
+1. Product-specific session-client integration/migration to the qualified GHM authentication foundation
 2. Platform-wide error/version taxonomy runtime refactor
 3. KBM GHM HTTP adapter
 4. Broader HTTP expansion beyond the locked Campaign surface
@@ -434,7 +434,7 @@ Next remaining gates: broad KBM/product adapter authorization and qualification 
 |---|---|
 | `GHM_APPLICATION_BACKEND_PLATFORM_CHARTER.md` | Platform ownership |
 | `PRODUCT_INTEGRATION_BOUNDARY_CONTRACT.md` | Supported consumer / boundary semantics |
-| `GHM_AUTHENTICATION_ISSUANCE_DECISION_RECORD.md` | Issuance separate / UNSELECTED |
+| `GHM_AUTHENTICATION_ISSUANCE_DECISION_RECORD.md` | Historical issuance decision; current bounded foundation qualified under Gate 3B |
 | `GHM_ERROR_SEMANTICS_AND_VERSIONING_CONTRACT.md` | Error taxonomy / versioning meanings |
 | `GHM_SHARED_PLATFORM_CAPABILITIES_BOUNDARY_AUDIT.md` | Jobs/realtime/storage not forced by transport |
 | `GHM_PRODUCT_FACING_TRANSPORT_SELECTION_DECISION_RECORD.md` | Founder selected HTTP/API |
