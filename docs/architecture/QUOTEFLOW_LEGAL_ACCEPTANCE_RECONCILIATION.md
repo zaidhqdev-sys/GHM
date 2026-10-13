@@ -104,4 +104,4 @@ Do not create:
 
 GHM should not duplicate or absorb the domain until a separate ownership contract establishes why it must become part of the GHM system of record.
 
-The next reconciliation target is QuoteFlow subscription/entitlement semantics, not implementation.
+**Historical sequencing note — superseded:** QuoteFlow subscription/entitlement source reconciliation is now recorded in `QUOTEFLOW_SUBSCRIPTION_ENTITLEMENT_RECONCILIATION.md`. That work did not authorize a commercial adapter or settle status/entitlement mapping; those decisions remain open pending evidence of source authority and Business scope. This legal-acceptance reconciliation remains documentation-only and does not authorize a legal-acceptance resource or product migration.
