@@ -249,11 +249,9 @@ Primary transitions must execute inside one authorized transaction.
 
 Qualification must demonstrate concurrent primary transitions cannot leave multiple primary assignments.
 
-## 15. No HTTP exposure
+## 15. Registered HTTP boundary and product parity
 
-This construction contract does not authorize a public GHM category API.
-
-Resource registration may be prepared only to support internal qualification. Public HTTP exposure requires a separate authorization decision.
+The current GHM runtime registers category and Business-category-assignment HTTP routes. This contract governs the bounded category domain and does not authorize additional public route exposure or broader management operations beyond those separately registered and qualified. Existing route registration does not itself establish Connect UI parity, response-envelope compatibility, or no-Supabase cutover readiness. Keep product-facing parity and any route-scope expansion separately reviewed and qualified.
 
 ## 16. Qualification evidence
 
