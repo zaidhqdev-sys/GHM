@@ -33,6 +33,6 @@ The exact `(provider=supabase, sourceSubject)` remains the provenance key. No em
 
 The qualification proves snapshot validation and manifest semantics only. It does not prove production source extraction, account provisioning, credential migration, Business creation, membership creation, or QuoteFlow cutover.
 
-## Next gate
+## Historical next-gate note — superseded
 
-The next construction slice is migration provisioning/reconciliation execution, separately gated and requiring an approved non-production source snapshot plus an explicit target-resolution capability.
+The original next slice was migration provisioning/reconciliation execution. That sequence has since advanced: credentialless migration account provisioning and existing-account reconciliation execution are construction-qualified. The migration-only legacy-organization-to-GHM-Business provisioning implementation remains unqualified, and the complete non-production reset/re-enrollment DB + HTTP ceremony remains unqualified. Use `QUOTEFLOW_MIGRATION_BUSINESS_PROVISIONING_CONTRACT.md`, `QUOTEFLOW_MIGRATION_RESET_REENROLLMENT_CEREMONY.md`, and `GHM_REMAINING_WORK_REGISTER_2026-10-05.md` for current remaining gates. This validator remains qualified for synthetic, non-production dry-run only; it does not authorize production source extraction or migration execution.
