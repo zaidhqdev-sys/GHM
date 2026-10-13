@@ -284,7 +284,7 @@ Email-based password recovery (Founder-selected): short-lived, single-use, serve
 
 ```text
 FOUNDER DECISION: email recovery architecture = SELECTED
-Exact recovery TTL / relation names / email provider = UNSELECTED
+Recovery TTL: bounded implementation uses 30 minutes; relation names are implemented in the schema migration contract; production email provider/delivery remains separately gated
 ```
 
 ---
@@ -401,7 +401,7 @@ Do **not** design persistence for:
 | Conceptual records in §§5–10 | **Required by architecture** (this contract) |
 | Exact table/column names | Implemented in migrations; see `GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md` |
 | Argon2id cost parameters | Governed by current credential implementation/configuration; not reselected by this historical concept contract |
-| Recovery TTL | Current implementation uses the configured/qualified recovery boundary; production delivery remains separately gated |
+| Recovery TTL | The bounded password-recovery service issues a 30-minute credential; production email delivery remains separately gated |
 | Email provider | Provider/delivery enablement remains separately gated |
 | Opaque refresh credential type | Opaque refresh credential is used by the qualified implementation; this originated as a technical recommendation in this historical contract |
 | Exact runtime grant matrix for auth tables | **UNSELECTED** (must follow §3) |
