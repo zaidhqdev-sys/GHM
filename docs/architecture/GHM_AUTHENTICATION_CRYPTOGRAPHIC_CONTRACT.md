@@ -641,7 +641,7 @@ Do not resolve deferred Session Gate items here.
 
 ---
 
-## 13. Founder decision checkpoint
+## 13. Historical Gate 2A Founder decision checkpoint — reconciled after Gate 3B
 
 ```text
 AUTHENTICATION GATE 2A:
@@ -665,18 +665,17 @@ FOUNDER DECISIONS:
 
 5. Key storage class:
    SELECTED = secret-managed private key inside GHM issuer boundary
-   (exact representation/names/paths UNSELECTED; no mandatory KMS/HSM)
+   Current implementation: PKCS#8 PEM and frozen `GHM_JWT_ES256_*` environment-variable names; deployment key values remain secret-managed; no mandatory KMS/HSM.
 
 6. kid:
    SELECTED = required in JWT header
-   (exact kid string values UNSELECTED)
+   Current loader validates printable ASCII `kid` values up to 64 characters and requires active/previous IDs to differ; actual deployment values remain secret-managed.
 
 7. Rotation schedule:
    UNSELECTED
    (overlap: prior public key trusted ≥ 15m + skew — SELECTED)
 
-IMPLEMENTATION AUTHORIZATION:
-NOT GRANTED.
+IMPLEMENTATION AUTHORIZATION WAS NOT GRANTED AT GATE 2A; GATE 3B LATER AUTHORIZED AND QUALIFIED THE BOUNDED ES256 FOUNDATION.
 ```
 
 ---
