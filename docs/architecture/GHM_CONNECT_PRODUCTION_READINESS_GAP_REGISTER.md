@@ -287,7 +287,7 @@ This overlay supersedes any implication that the historical operation rows above
 | Reviews | GHM public/customer/admin routes exist | **Reuse + adapt** | pending-only queue, rejection reason/status mapping, reviewer identity from token |
 | Onboarding | Connect flag is true; progress RPC callers exist; no GHM onboarding API identified | **Build** | per-user progress, complete/dismiss, idempotence and route gating |
 | Analytics | active dashboard uses Connect RPC; no equivalent GHM contract identified | **Build** | business-scoped metrics, period semantics and permission enforcement |
-| Relationships/outcomes | registered authenticated Relationships route; GHM domain absent | **Build** | business scoping, lifecycle/verification semantics |
+| Relationships/outcomes | registered authenticated Relationships route requiring `BUSINESS_READ` and active-business context; GHM domain absent | **Build** | business scoping, lifecycle/verification semantics |
 | Storage/logo | GHM service handles public logo policy but no HTTP router is registered; only business_logo object class | **Extend** | authorized API, metadata lifecycle, R2 grants and private/public policy separation |
 | Engagement analytics | Connect records profile_view/save/WhatsApp/call/website/directions/share; equivalent GHM HTTP contract not established | **Build/extend** | event allowlist, rate/abuse controls, privacy and attribution |
 | Quote analysis / AI | analyzer history uses Connect DB; AI transport targets Supabase Edge Function, provider gate false | **Split** | migrate history/data operations; remove Supabase transport but preserve fail-closed provider gate |
@@ -303,6 +303,3 @@ The previously qualified `(provider, subject) → GHM account identity` foundati
 
 For target Connect runtime, GHM-native access/session credentials must establish the caller; GHM then resolves the canonical account, active state, business membership and resource authorization server-side. A source-provider/subject pair may remain as migration provenance for legacy data only, isolated from runtime authentication and not accepted as authority for new requests. Do not remove historical evidence or silently change the existing qualification's scope. Do not allow identity bootstrap or account linking as a side effect of routine requests.
 
-## Relationship/outcome route-status correction — 2026-10-13
-
-Connect's current route inventory establishes Relationships/Outcomes as a registered authenticated route requiring `BUSINESS_READ` and active-business context. Any earlier statement that the domain is in scope only “if route reachability is verified” is superseded. GHM has no matching relationship/outcome resource in the inspected inventory; classify it as an active **Build** gap. This does not authorize implementation or production cutover.
