@@ -17,7 +17,7 @@ GHM authorization is resource-oriented. Authentication establishes identity; aut
 7. Admin authority must come from governed account state; there is no fixed-ID or startup promotion mechanism.
 8. Authorization failures must not disclose whether unrelated resources exist.
 9. Product adapters must map their application contracts into these GHM primitives rather than bypassing them.
-10. No production product may depend on this contract until automated qualification tests cover allow, deny, ownership, role, and transaction-context cases.
+10. No production product may depend on this contract until automated qualification tests cover allow, deny, ownership, role, and transaction-context cases. Those construction checks are satisfied for the first canonical Business Identity slice only; passing them does not authorize product traffic, which remains gated by product-adapter, shadow, production-readiness, and cutover evidence.
 
 ## Boundary model
 
