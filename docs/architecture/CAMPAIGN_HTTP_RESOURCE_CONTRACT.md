@@ -1,7 +1,7 @@
 # GHM Campaign HTTP Resource Contract
 
 **Canonical owner:** GHM platform governance
-**Status:** Campaign HTTP resource contract â€” wire **FOUNDER-LOCKED**; surface **IMPLEMENTATION AUTHORIZED** (Gate 9G)
+**Status:** Campaign HTTP resource contract — wire **FOUNDER-LOCKED**; bounded surface **IMPLEMENTED / INTEGRATED ON MAIN** (Gate 9G). Authentication foundation subsequently qualified under Gate 3B.
 **Authority:** Local repository `C:\GHM`
 **Baseline domain:** branch `construction/saved-business-resource`, Campaign domain qualified at `0a9a9f7`
 **Authoritative wire decisions:** [CAMPAIGN_HTTP_FOUNDER_DECISION_RECORD.md](./CAMPAIGN_HTTP_FOUNDER_DECISION_RECORD.md)
@@ -100,7 +100,7 @@ Request bodies are **bare** Campaign input objects (not wrapped).
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | `businessId` | positive safe integer | Yes | GHM validates eligibility + membership |
-| `title` | string | Yes | Trimmed length 1â€“200 |
+| `title` | string | Yes | Trimmed length 1–200 |
 
 **Forbidden in create body:** `createdByAccountId`, `id`, `status`, `createdAt`, `updatedAt`, and any other fields.
 
@@ -112,7 +112,7 @@ At least one of:
 
 | Field | Type | Notes |
 |---|---|---|
-| `title` | string | Trimmed 1â€“200; rejected when status is `archived` |
+| `title` | string | Trimmed 1–200; rejected when status is `archived` |
 | `status` | `'draft' \| 'active' \| 'archived'` | Must obey transition graph |
 
 **Forbidden on update:** `id`, `businessId`, `createdByAccountId`, `createdAt`.
@@ -137,8 +137,8 @@ At least one of:
 | `createdByAccountId` | positive integer | GHM (from AuthContext) |
 | `title` | string | GHM |
 | `status` | `'draft' \| 'active' \| 'archived'` | GHM |
-| `createdAt` | timestamptz â†’ ISO 8601 JSON string | GHM |
-| `updatedAt` | timestamptz â†’ ISO 8601 JSON string | GHM |
+| `createdAt` | timestamptz → ISO 8601 JSON string | GHM |
+| `updatedAt` | timestamptz → ISO 8601 JSON string | GHM |
 
 ### 6.2 Success envelopes and statuses
 
@@ -162,9 +162,9 @@ Campaign HTTP wire dates are **ISO 8601** JSON strings (via standard JSON `Date`
 | Mechanism | Existing Bearer verification (`requireAuth` / `authenticateRequest`) |
 | AuthContext | `{ userId, role }` |
 | Creator | `created_by_account_id = AuthContext.userId` |
-| Token issuer | GHM ES256 bearer foundation is qualified under Gate 3B; Campaign does not select or implement a separate issuer |
+| Token issuer | Existing GHM ES256 bearer foundation, qualified under Gate 3B; Campaign does not select or implement a separate issuer |
 | Identity provider | Campaign routes consume GHM-issued bearer credentials; product identity/session migration remains separately gated |
-| Login / signup / refresh | Bounded GHM Auth API foundation exists; Campaign contract does not authorize product-client migration or a separate auth flow |
+| Login / signup / refresh | Bounded GHM Auth API foundation exists; this contract does not authorize product-client migration or a separate Campaign auth flow |
 | New JWT claims | **Not introduced** |
 
 All Campaign HTTP operations require authentication. No anonymous / public Campaign surface.
@@ -176,7 +176,7 @@ All Campaign HTTP operations require authentication. No anonymous / public Campa
 | Concern | Rule |
 |---|---|
 | Coarse ACL | `canAccessResource(context, 'campaign')` + registered operation |
-| Fine-grained authz | Campaign service â†’ repository / SQL membership (unchanged domain) |
+| Fine-grained authz | Campaign service → repository / SQL membership (unchanged domain) |
 | READ one / LIST membership | active `owner` \| `administrator` \| `member` |
 | CREATE / UPDATE membership | active `owner` \| `administrator` (+ create eligibility) |
 | Caller-supplied creator | **Forbidden** |
@@ -184,7 +184,7 @@ All Campaign HTTP operations require authentication. No anonymous / public Campa
 
 Product-selected `businessId` is context, not proof of authorization. GHM validates authority.
 
-Unauthorized GET returns `404` / `not_found` when the authorized resource is absent (including non-disclosure of inaccessible rows). LIST returns the authorized set for the business (empty array when membership is absent). CREATE permission denials map to `403` / `forbidden` where applicable. UPDATE uses domain messages; conflated â€œnot found or management permissionâ€ maps to `404` / `not_found`.
+Unauthorized GET returns `404` / `not_found` when the authorized resource is absent (including non-disclosure of inaccessible rows). LIST returns the authorized set for the business (empty array when membership is absent). CREATE permission denials map to `403` / `forbidden` where applicable. UPDATE uses domain messages; conflated “not found or management permission” maps to `404` / `not_found`.
 
 ---
 
@@ -213,7 +213,7 @@ Platform-wide semantic taxonomy refactor (unauthenticated / validation_failed / 
 |---|---|
 | Campaign routes under `/api/v1` | **LOCKED** |
 | Version lifecycle / deprecation / compatibility policy | **OPEN** |
-| Package / `GET /` version `2.0.0` | Implementation evidence only â€” not the Campaign compatibility policy |
+| Package / `GET /` version `2.0.0` | Implementation evidence only — not the Campaign compatibility policy |
 
 ```text
 VERSION LIFECYCLE: OPEN
@@ -253,16 +253,16 @@ draft | active | archived
 Transitions:
 
 ```text
-draft    â†’ active | archived
-active   â†’ archived
-archived â†’ (none)
+draft    → active | archived
+active   → archived
+archived → (none)
 ```
 
 | Constraint | Rule |
 |---|---|
 | Create status | Always `draft` |
-| Title on archived | Rejected â†’ lifecycle `409` |
-| Status from archived | Rejected â†’ lifecycle `409` |
+| Title on archived | Rejected → lifecycle `409` |
+| Status from archived | Rejected → lifecycle `409` |
 | Immutable fields | `id`, `businessId`, `createdByAccountId`, `createdAt` |
 | Delete | Not supported |
 
@@ -280,7 +280,7 @@ Non-negotiable:
 - No secrets/tokens in error bodies
 - No Campaign public/anonymous surface
 - Bearer verification required for all Campaign HTTP ops
-- Auth issuance remains a separate **UNSELECTED** decision
+- The historical Gate 9G auth-issuance selection is superseded for the bounded GHM ES256 issuance/session foundation by Gate 3B; broader product migration and cutover remain gated
 - KBM adapter remains **NOT AUTHORIZED** by this contract
 
 ---
@@ -289,13 +289,13 @@ Non-negotiable:
 
 ```text
 HTTP route
-  â†’ requireAuth (Bearer verify â†’ AuthContext)
-  â†’ registered resource+operation (campaign + read|create|update)
-  â†’ canAccessResource
-  â†’ input validation
-  â†’ CampaignService
-  â†’ repository / authorized transaction
-  â†’ ghm.campaign
+  → requireAuth (Bearer verify → AuthContext)
+  → registered resource+operation (campaign + read|create|update)
+  → canAccessResource
+  → input validation
+  → CampaignService
+  → repository / authorized transaction
+  → ghm.campaign
 ```
 
 ---
@@ -304,7 +304,7 @@ HTTP route
 
 This contract does **not**:
 
-- authorize auth issuance / issuer / IdP / login / signup / refresh
+- authorize a new Campaign-specific issuer/IdP or separate auth flow; the bounded GHM auth foundation is qualified, while product session migration remains separately gated
 - authorize a KBM HTTP adapter
 - authorize Campaign DELETE
 - authorize pagination, retry, or idempotency machinery
@@ -321,7 +321,7 @@ This contract does **not**:
 CAMPAIGN HTTP IMPLEMENTATION: AUTHORIZED
 RUNTIME: src/http/campaign-router.ts
 KBM ADAPTER: NOT AUTHORIZED
-AUTH ISSUANCE IMPLEMENTATION: NOT AUTHORIZED
+AUTH FOUNDATION: QUALIFIED UNDER GATE 3B; PRODUCT MIGRATION / CUTOVER SEPARATELY GATED
 ```
 
 Wire selection and implementation authorization for this surface were Founder-approved (Gates 9F / 9G). Selecting this wire does **not** authorize KBM adapter work or auth issuance.
@@ -341,7 +341,7 @@ Wire selection and implementation authorization for this surface were Founder-ap
 | Retry / idempotency | **OPEN** (no special contract) |
 | Pagination | **Not supported** |
 | Auth verification | PRESENT |
-| Auth issuance | **UNSELECTED** |
+| Bounded GHM auth foundation | **QUALIFIED under Gate 3B**; product session migration / cutover separately gated |
 | Campaign HTTP implementation | **AUTHORIZED** |
 | KBM adapter | **NOT AUTHORIZED** |
 
@@ -355,7 +355,7 @@ WIRE FOUNDER-LOCKED.
 
 IMPLEMENTATION AUTHORIZED FOR CAMPAIGN HTTP SURFACE ONLY.
 
-AUTH ISSUANCE UNSELECTED.
+BOUNDED GHM AUTH FOUNDATION QUALIFIED UNDER GATE 3B; PRODUCT MIGRATION / CUTOVER REMAIN SEPARATELY GATED.
 
 KBM ADAPTER NOT AUTHORIZED.
 
