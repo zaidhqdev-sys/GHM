@@ -1,6 +1,6 @@
 # Project Quote Schema Contract
 
-**Status:** QUALIFIED / CLOSED / PASS — schema constructed, migrated, and runtime-qualified 2026-09-14
+**Status:** QUALIFIED / CLOSED / PASS â€” schema constructed, migrated, and runtime-qualified 2026-09-14
 
 ## 1. Purpose
 
@@ -419,9 +419,9 @@ This schema does not authorize:
 - production cutover;
 - provider credential changes.
 
-## 23. Qualification Requirements
+## 23. Historical schema qualification acceptance criteria â€” satisfied
 
-The schema cannot be considered qualified until evidence demonstrates:
+The following criteria governed the original Project Quote schema qualification. The schema is now **QUALIFIED / CLOSED / PASS**; the runtime qualification and catalog/privilege evidence record the checks that passed:
 
 1. migration applies cleanly;
 2. canonical relation exists;
@@ -464,7 +464,7 @@ The schema cannot be considered qualified until evidence demonstrates:
 7. Perform live runtime qualification.
 8. Reconcile migration, catalog, privilege, and runtime evidence.
 9. Update the authoritative handover.
-10. Close the Project Quote capability gate — COMPLETED.
+10. Close the Project Quote capability gate â€” COMPLETED.
 
 ## 25. Qualification Closure Evidence
 
@@ -475,8 +475,8 @@ The completed construction/runtime evidence includes:
 - runtime least-privilege probes passed.
 - Project lifecycle transition privilege reconciled and qualified.
 - 
-pm run qualify:project-quote-runtime — PASS.
-- repository test suite — 98/98 PASS.
+pm run qualify:project-quote-runtime â€” PASS.
+- repository test suite â€” 98/98 PASS.
 - no existing qualified capability regressed.
 
 ## 26. Production Safety
