@@ -301,7 +301,7 @@ The following require explicit Founder authorization before construction or prod
 6. legacy PostgreSQL role/object mutation;
 7. shadow qualification against representative product workflows;
 8. any production routing, DNS, environment, credential or traffic cutover;
-9. closure of the remaining authentication parameter approvals recorded in `GHM_AUTHENTICATION_IMPLEMENTATION_PARAMETER_GATE.md` (including token-pepper approval, exact `sub` encoding, clock-skew policy, and key lifecycle details) before production auth enablement.
+9. closure of the authentication decisions still marked open in `docs/architecture/GHM_AUTHENTICATION_IMPLEMENTATION_PARAMETER_GATE.md` §19 (token-pepper approval, explicit Founder approval for refresh-only `last_seen_at`, previous-key retirement timing, and independent `iat` presence/future-time validation qualification), plus production secret provisioning, before production auth enablement.
 
 ## 9. Stop condition for construction
 
@@ -321,12 +321,12 @@ If the need is already covered by a qualified capability, stop and build the ada
 
 If construction stopped at this register today, the exact blockers preventing GHM from becoming the backend for Connect + QuoteFlow are:
 
-**GHM platform foundation:** remaining storage application wiring, broader service/tenant authorization, recovery/backup and orphan reconciliation, production provider enablement; real PayFast sandbox end-to-end/runtime qualification; selected public/directory HTTP composition; and bootstrap authority resolution after independent authority/recovery evidence.
+**GHM platform foundation:** product-facing storage workflows and authorization/recovery/orphan handling where not individually qualified; recovery/backup and legacy-authority reconciliation; production provider enablement; real PayFast sandbox end-to-end/runtime qualification; selected public/directory HTTP composition; and bootstrap authority resolution after independent authority/recovery evidence. Foundational Business Identity tenant-isolation/runtime authorization is qualified for its evidenced slices; additional resource/product authorization remains per-capability gated.
 
 **Connect:** product adapter and operation-by-operation mapping, remaining authoritative source reconciliation, selected directory/storage/commercial/runtime/realtime workflows, atomic workflow parity, and end-to-end qualification. Bounded identity/service/resource slices already qualified are foundations, not production migration.
 
 **QuoteFlow:** authoritative legacy provenance for both founder-owned accounts, full reset/re-enrollment DB+HTTP ceremony qualification, GHM session client, separate legacy-organization-to-GHM-Business provisioning qualification, then product workflow/cutover qualification.
 
-**Production:** deployment/secrets (including closure of the remaining authentication parameter approvals and secret provisioning), recovery/rollback, observability, shadow qualification, and founder-authorized reversible cutover.
+**Production:** deployment/secrets (including closure of the specific authentication decisions still open in §19 of `docs/architecture/GHM_AUTHENTICATION_IMPLEMENTATION_PARAMETER_GATE.md` and secret provisioning), recovery/rollback, observability, shadow qualification, and founder-authorized reversible cutover.
 
 This is a summary of the major remaining gates, not a blanket claim that every unlisted capability is qualified. Use each capability contract and qualification record for exact scope; preserve separately documented product, provider, security, and production gates.
