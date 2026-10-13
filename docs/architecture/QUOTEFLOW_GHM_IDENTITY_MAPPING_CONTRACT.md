@@ -58,7 +58,7 @@ The current implementations have different principal and tenant identifiers. Thi
 | Active state | active | active |
 | Other states | invited/suspended | inactive/revoked |
 
-No current source evidence provides a canonical cross-system identifier connecting these records.
+The account-principal mapping is now qualified for the migration-only external identity boundary: `(provider=supabase, sourceSubject) → ghm.account_identity.id`. This does **not** establish the separate legacy QuoteFlow organization → GHM Business mapping or prove role/membership equivalence. The organization-to-Business mapping is migration provenance only and must be created through the separately governed provisioning/reconciliation contracts; its provisioning implementation and complete migration ceremony remain unqualified.
 
 ## Mapping rule
 
