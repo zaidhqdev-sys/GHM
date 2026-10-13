@@ -612,9 +612,11 @@ GHM-side schema only. Product cutover is a later governed gate after GHM Auth is
 
 ---
 
-## 19. Remaining implementation parameters (not Founder decisions)
+## 19. Historical Gate 3A parameter snapshot — superseded where Gate 3B later approved or implemented the parameter
 
-| Parameter | Status |
+The table below records unresolved items at the original Gate 3A schema-design checkpoint; it is not a current open-work list. Later Founder decisions and implementation evidence supersede the applicable rows. For current approvals and remaining gates, use `GHM_AUTHENTICATION_IMPLEMENTATION_PARAMETER_GATE.md` and the qualified migrations. In particular, the later Gate 3B record approves the Argon2id parameters, 30-minute recovery TTL, token formats/hash protection, decimal-string `sub`, clock skew, ES256 key configuration, and required rate-limit values; physical migrations and function names are implemented. Production secret provisioning, previous-key retirement timing, email delivery, product migration, and cutover remain separately gated.
+
+| Parameter | Gate 3A snapshot status |
 |---|---|
 | Exact migration filenames / timestamps | UNSELECTED |
 | Argon2id memory/time/parallelism | UNSELECTED |
