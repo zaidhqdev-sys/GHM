@@ -425,7 +425,7 @@ A session should be able to represent:
 - expiration timestamp
 - revocation timestamp / reason
 
-No production auth-session table name exists in the repository. **Do not invent a frozen table name here.** Persistence invariants are in §14.
+Historical Gate 2B note: a production auth-session table name had not been established at that baseline. The bounded Gate 3B implementation subsequently qualified persistence in `ghm.authentication_session` and the associated refresh/session schema. Use the schema-migration contract and current migrations as authority for physical names; do not infer additional tables from this conceptual model.
 
 ---
 
@@ -509,7 +509,7 @@ This distinction must remain clear in all follow-on contracts and implementation
 
 ## 14. Storage contract
 
-**No migrations in this gate.**
+**Historical Gate 2B scope note:** no migrations were authorized by that gate. Gate 3B subsequently authorized and qualified the bounded authentication persistence foundation; this historical contract section is not a current statement that the schema is absent or that the qualified migrations are unauthorized.
 
 A future session/refresh persistence model must be able to represent:
 
@@ -525,7 +525,7 @@ A future session/refresh persistence model must be able to represent:
 - active / replaced state where required
 - sufficient information for replay detection
 
-Exact schema / table names for credential/session/refresh/recovery/mapping are proposed in [GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md](./GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md). That contract does **not** authorize DDL.
+At the historical Gate 2B baseline, exact schema / table names for credential/session/refresh/recovery/mapping were proposals. The bounded Gate 3B migrations have since been constructed and qualified; the schema-migration contract and current migrations govern the implemented physical schema. This historical contract does not authorize scope beyond that qualified foundation.
 
 Storage must remain separate from `ghm.account_identity` profile fields. Least-privilege / security-definer patterns used elsewhere in GHM should apply when a persistence model is later authorized.
 
@@ -547,8 +547,8 @@ Storage must remain separate from `ghm.account_identity` profile fields. Least-p
 | absolute session maximum duration | **SELECTED: 90 days** |
 | fixed refresh-only TTL (replacing sliding+absolute) | **NOT USED** (model SELECTED above) |
 | reuse/replay response | **SELECTED: revoke affected session family** (account-wide reserved for recovery/compromise) |
-| session persistence schema | **UNSELECTED** |
-| revocation representation | **UNSELECTED** |
+| session persistence schema | **IMPLEMENTED / QUALIFIED** in the bounded Gate 3B foundation; physical schema is governed by the qualified migration contract |
+| revocation representation | **IMPLEMENTED / QUALIFIED** through session status/revocation metadata and controlled auth functions |
 | password-change session policy | **SELECTED** (`2026-09-21`): revoke other refresh sessions; keep current; issue fresh refresh |
 | password-recovery session policy | **SELECTED** (`2026-09-21`): revoke all refresh sessions; re-authenticate |
 
