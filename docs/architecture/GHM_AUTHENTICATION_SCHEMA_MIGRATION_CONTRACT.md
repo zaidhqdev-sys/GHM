@@ -480,7 +480,7 @@ Bearer JWT (ES256)
   ↓ verify iss/aud/kid/exp/sub
 canonical account_identity.id
   ↓ load account_status, is_system_admin
-AuthContext { identityId, … }   -- R3; exact fields implementation gate
+GhmAuthContext { accountId } → compatibility adapter to legacy AuthContext { userId, role }; broader product-client integration remains separately gated
   ↓
 authorization: membership / ownership / is_system_admin from GHM state
 ```
