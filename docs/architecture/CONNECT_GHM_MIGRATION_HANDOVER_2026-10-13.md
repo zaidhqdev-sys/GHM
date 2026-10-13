@@ -388,3 +388,19 @@ Connect's business profile actively combines public directory lookup by slug/ID,
 
 No code or production changes. Identity and storage exposure remain prerequisites for a complete no-Supabase cutover.
 
+## 22. Route-reachability and role-mapping correction
+
+### Correction: relationships is a registered current route
+
+The route-reachability uncertainty recorded in section 19 is resolved by Connect `src/app/routes.js`: `ROUTE_IDS.RELATIONSHIPS` is registered as a navigable route requiring authentication, `BUSINESS_READ` permission and active-business context. `ZaidConnectApp.jsx` lazy-loads `RelationshipOutcomeScreen.jsx`. Therefore relationship/outcome is **in-scope active functionality**, not a dormant import. GHM lacks matching relationship/outcome resources; classify it as a **Build** gap with lifecycle, verification and business-scope authorization acceptance tests. The earlier “route reachability to verify” statement is superseded by this finding.
+
+### Authentication and role model mismatch
+
+Connect route definitions and signup flow support account roles `customer`, `contractor`, `supplier`, `admin`, plus `business_operator_intent`. GHM's native auth role model is `customer | business | admin`. A role conversion cannot be a blind string map: contractor/supplier users may act as business operators while still needing distinct customer-facing capabilities; Connect also has business memberships and active-business selection. Define a canonical mapping table for each existing account role and intent, plus permission/route tests for customer-only project creation, business-only quoting, admin review, analytics/trust access, and multi-business selection. Preserve the user's account identity and do not infer elevated role from signup metadata alone.
+
+### Auth runtime replacement — explicit active operations
+
+Connect app shell imports `supabase` and `authService`, restores session on startup, subscribes to `supabase.auth.onAuthStateChange`, and signs out through the Supabase client. `AuthScreen.jsx` calls `supabase.auth.signUp` directly and uses `authService.signIn` for login. This confirms the cutover must replace **startup session restore, auth-change subscription, signup, login, logout, refresh/expiry and password recovery**, not merely swap the sign-in form. GHM has native register/login/refresh/logout/password-recovery routes, but their response/user shape, confirmation policy and role/business-identity lifecycle need an adapter contract.
+
+No runtime or production changes. This section supersedes any earlier uncertainty about relationship route reachability.
+
