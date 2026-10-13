@@ -4,9 +4,9 @@
 
 ## Status
 
-**RECONCILED — GHM CANONICAL IDENTITY SELECTED; LEGACY SUPABASE CROSSWALK ONLY; NO DATABASE OBJECT OR ADAPTER AUTHORIZED**
+**RECONCILED — GHM CANONICAL IDENTITY SELECTED; MIGRATION-ONLY EXTERNAL-IDENTITY MAPPING QUALIFIED; NO PERMANENT QUOTEFLOW IDENTITY-LINK TABLE OR PRODUCT ADAPTER AUTHORIZED**
 
-This document closes the source-reconciliation investigation for the cross-system identity boundary. It does not authorize an identity-link table, account migration, adapter, Supabase mutation, production routing, shadow qualification, or cutover.
+This document closes the source-reconciliation investigation for the cross-system identity boundary. The GHM-owned external-identity persistence and credentialless migration-account-provisioning foundations are separately construction-qualified. This document does not authorize a permanent QuoteFlow identity-link table, production account migration, product adapter, Supabase mutation, production routing, shadow qualification, or cutover.
 
 ## Evidence
 
