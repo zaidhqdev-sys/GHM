@@ -5,7 +5,7 @@
 **Audited GHM tree:** historical Connect audit checkpoint; current GHM construction state is the consolidated `main` line.
 **Connect source:** abcffa73f893602c25310a58946bebb91fd7eeb5
 **Current reconciliation checkpoint (2026-10-13):** This register remains a governed product-readiness gap record, not a live deployment snapshot. The historical dependency counts and source commit below remain provenance from the earlier audit. Later bounded construction is reconciled in the living status index and per-capability evidence. PayFast checkout/ITN/server-to-server confirmation is implemented and merged with deterministic local qualification; real sandbox/runtime end-to-end qualification, broader Connect product workflows, provider enablement, and production cutover remain open.
-**Evidence sprint checkpoint:** see Â§8 (this document update)
+**Evidence sprint checkpoint:** see §8 (this document update)
 
 ## Purpose
 
@@ -133,18 +133,18 @@ GHM should not absorb a provider dependency merely because Connect currently use
 
 ## 5. Required evidence sequence
 
-Evidence sprint documents now exist for items 2â€“9 below. Remaining work is decision/authorization quality, not blank discovery:
+Evidence sprint documents now exist for items 2–9 below. Remaining work is decision/authorization quality, not blank discovery:
 
-1. Connect adapter operation map â€” **started:** `CONNECT_BACKEND_OPERATION_INVENTORY.md`
-2. Public Business/directory field reconciliation â€” **done:** `CONNECT_PUBLIC_BUSINESS_DIRECTORY_SOURCE_AUDIT.md`
+1. Connect adapter operation map — **started:** `CONNECT_BACKEND_OPERATION_INVENTORY.md`
+2. Public Business/directory field reconciliation — **done:** `CONNECT_PUBLIC_BUSINESS_DIRECTORY_SOURCE_AUDIT.md`
 3. Trust source audit — **CLOSED:** Trust QUALIFIED / CLOSED; Business profile input parity for full Connect score dimensions remains a separate blocker
-4. Commercial payment workflow â€” **partial:** governed GHM boundaries and the PayFast adapter slice exist; sandbox end-to-end qualification and complete product workflow parity remain open
-5. Storage boundary audit â€” **done:** `CONNECT_STORAGE_MEDIA_SOURCE_AUDIT.md`
-6. Realtime delivery ownership decision â€” **evidence done:** `CONNECT_REALTIME_SOURCE_AUDIT.md`; ownership decision pending
-7. Orphan/referenced-table reconciliation â€” **done:** `CONNECT_REFERENCED_OBJECT_RECONCILIATION.md`
-8. Atomic workflow matrix â€” **done:** `CONNECT_ATOMIC_WORKFLOW_SOURCE_AUDIT.md`
-9. Identity mapping design â€” **GHM foundation qualified:** `GHM_CONNECT_IDENTITY_BRIDGE_QUALIFICATION.md`; product adapter mapping operation still requires authorization
-10. HTTP-vs-adapter decision â€” pending product/architecture authorization
+4. Commercial payment workflow — **partial:** governed GHM boundaries and the PayFast adapter slice exist; sandbox end-to-end qualification and complete product workflow parity remain open
+5. Storage boundary audit — **done:** `CONNECT_STORAGE_MEDIA_SOURCE_AUDIT.md`
+6. Realtime delivery ownership decision — **evidence done:** `CONNECT_REALTIME_SOURCE_AUDIT.md`; ownership decision pending
+7. Orphan/referenced-table reconciliation — **done:** `CONNECT_REFERENCED_OBJECT_RECONCILIATION.md`
+8. Atomic workflow matrix — **done:** `CONNECT_ATOMIC_WORKFLOW_SOURCE_AUDIT.md`
+9. Identity mapping design — **GHM foundation qualified:** `GHM_CONNECT_IDENTITY_BRIDGE_QUALIFICATION.md`; product adapter mapping operation still requires authorization
+10. HTTP-vs-adapter decision — pending product/architecture authorization
 
 These remain evidence/authorization gates, not implementation tasks.
 
@@ -227,10 +227,10 @@ The verified audit now gives the concrete gap boundary required to authorize fut
 
 - Logo bucket name `business-logos` — **false**; actual bucket is `media`
 - Treating class A domain tables as migration-missing orphans — **false**; they are migration-proven
-- Business Hours exceptions/booking as Connect readiness requirement â€” **not evidenced** in Connect
-- PayFast / Meta WhatsApp API libraries as live payment/messaging paths â€” **no current importers at the 2026-09-18 source-audit checkpoint**. Connect source then contained Paystack checkout/webhook functions; that code-presence observation is not evidence of Paystack approval or activation. PayFast approval and implementation status are governed separately by the 2026-10-13 commercial reconciliation.
-- Email provider dependency â€” **not evidenced**
-- `createSignedUrl` usage â€” **not found**
+- Business Hours exceptions/booking as Connect readiness requirement — **not evidenced** in Connect
+- PayFast / Meta WhatsApp API libraries as live payment/messaging paths — **no current importers at the 2026-09-18 source-audit checkpoint**. Connect source then contained Paystack checkout/webhook functions; that code-presence observation is not evidence of Paystack approval or activation. PayFast approval and implementation status are governed separately by the 2026-10-13 commercial reconciliation.
+- Email provider dependency — **not evidenced**
+- `createSignedUrl` usage — **not found**
 
 ### Still ambiguous / unresolved
 
@@ -246,7 +246,7 @@ The verified audit now gives the concrete gap boundary required to authorize fut
 
 - No closed capability reopened
 - Business Offering migration/resource slice is now qualified and closed; no product adapter or cutover is authorized
-- Blockers 1â€“13, 15â€“16 remain production-readiness blockers
+- Blockers 1–13, 15–16 remain production-readiness blockers
 - Blocker 14 narrowed: orphans vs proven-missing-contracts now separated
 
 ### Construction authorization
