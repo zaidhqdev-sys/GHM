@@ -6,7 +6,7 @@
 
 > **Current-status reconciliation — 2026-10-13:** The original authorization-candidate label below is superseded. The GHM Saved Business resource and bounded Connect Saved Business adapter have since been constructed and unit-qualified; current scope is recorded in the capability qualification and `GHM_CURRENT_STATE.md`. This source audit remains product-contract evidence and does not authorize production migration, production routing, or cutover.
 
-This document records the verified Zaid Connect Saved Business capability before GHM schema/resource implementation. It does not authorize production migration, production data movement, provider cutover, or product configuration changes.
+This document preserves the Zaid Connect Saved Business source contract as recorded before GHM schema/resource implementation. The GHM Saved Business resource and bounded Connect adapter have since been constructed and qualified; this audit remains source-contract provenance and does not authorize production migration, production data movement, provider cutover, or product configuration changes.
 
 ## 1. Canonical product source
 
