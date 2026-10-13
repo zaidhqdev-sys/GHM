@@ -183,3 +183,9 @@ At this historical pre-merge checkpoint, the PR diff was documentation-only (Mar
 ## Connect migration handover (2026-10-13)
 
 The durable session handover and current Connect → GHM Internal Runtime migration gap register are maintained in [`docs/architecture/CONNECT_GHM_MIGRATION_HANDOVER_2026-10-13.md`](architecture/CONNECT_GHM_MIGRATION_HANDOVER_2026-10-13.md). Read it before continuing Connect migration work. It records the founder decision, confirmed blockers, per-journey gaps, security/cutover gates, and exact resume steps. This handover supplements—not supersedes—the existing readiness gap register, historical source audit, operation inventory, and per-capability qualification evidence. No implementation or cutover is authorized by the handover.
+
+## Current Connect backend migration authority — 2026-10-13
+
+The Connect migration handover is the durable product-specific resume point: `docs/architecture/CONNECT_GHM_MIGRATION_HANDOVER_2026-10-13.md`. Read it together with `docs/architecture/GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md`, `docs/architecture/CONNECT_BACKEND_OPERATION_INVENTORY.md`, and the per-capability contracts. The operation-level migration overlay records Connect caller evidence, provisional reuse/extend/build/legacy classification, and acceptance gates.
+
+Do not infer Connect readiness from the existence of a GHM resource or from the previously qualified narrow identity, directory, storage or payment slices. Current blockers include the Supabase-only Connect identity provider binding, browser-safe authenticated transport, broader active Connect contract parity, missing HTTP exposure for storage/business-hours mutation, and active product journeys not yet represented by GHM APIs. Keep all payment and AI activation gates unchanged. This audit is documentation-only; no implementation, merge or cutover is authorized by it.
