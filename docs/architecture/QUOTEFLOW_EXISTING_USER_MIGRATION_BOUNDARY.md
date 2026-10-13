@@ -87,8 +87,8 @@ No permanent UUID bridge, Supabase JWT import, unsupported password-hash import,
 - [x] Existing-user manifest contract defined.
 - [x] authoritative Supabase export/data access boundary defined.
 - [ ] deterministic account conflict evidence source finalized.
-- [ ] password reset/re-enrollment ceremony defined.
-- [ ] organization → Business reconciliation manifest defined.
+- [x] password reset/re-enrollment ceremony contract defined; full non-production DB + HTTP ceremony qualification remains open.
+- [x] organization → Business reconciliation contract/manifest outcomes defined; live Business provisioning and membership reconciliation remain unqualified.
 - [ ] local AsyncStorage scope transition defined.
 - [x] snapshot validator and dry-run manifest capability qualified.
 - [x] existing-account external-identity reconciliation executor qualified.
