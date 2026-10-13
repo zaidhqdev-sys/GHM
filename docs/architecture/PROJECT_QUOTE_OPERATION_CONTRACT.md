@@ -347,12 +347,9 @@ Existing qualified capabilities remain CLOSED/PASS.
 
 Project Quote qualification evidence:
 
-- 
-pm run qualify:project-quote-runtime — PASS.
-- 
-pm run build — PASS.
-- 
-pm test — PASS — 98/98.
+- `npm run qualify:project-quote-runtime` — PASS.
+- `npm run build` — PASS.
+- `npm test` — PASS — 98/98.
 - git diff --check — PASS.
 - migration, catalog, privilege, authorization, transaction, rollback, and concurrency boundaries — PASS.
 - no production migration, cutover, DNS, routing, credential, or traffic change performed.
