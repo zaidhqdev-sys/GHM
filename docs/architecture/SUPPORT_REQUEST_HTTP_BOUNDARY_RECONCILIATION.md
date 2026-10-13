@@ -1,8 +1,8 @@
 # Support Request HTTP Boundary Reconciliation
 
 **Status:** CONSTRUCTION RECONCILED — 2026-09-30
-**Branch:** `construction/support-request-http-api`
-**Base:** `construction/trust-score-http-api`
+**Historical construction branch:** `construction/support-request-http-api`
+**Historical construction base:** `construction/trust-score-http-api`
 
 ## Authority checked
 
