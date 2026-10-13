@@ -468,13 +468,13 @@ A future shared storage capability must be separately authorized.
 
 ---
 
-## 12. Implementation gate
+## 12. Historical implementation gate — superseded only by later capability-specific qualifications
 
 ```text
-NO SHARED PLATFORM CAPABILITY IMPLEMENTATION IS AUTHORIZED BY THIS AUDIT.
+THIS HISTORICAL AUDIT DID NOT AUTHORIZE SHARED CAPABILITY IMPLEMENTATION.
 ```
 
-Not authorized: storage implementation, audit schema (platform-wide), queue, worker, realtime transport, observability framework, provider integration, cloud infrastructure.
+The original gate remains authoritative for capabilities without a later, separately authorized decision. It is not a blanket current prohibition on independently qualified slices: GHM storage metadata/persistence and the controlled Cloudflare R2 provider data path are qualified; product exposure, full service-level tenant/resource authorization, recovery, production configuration, and cutover remain open. GHM-owned Realtime, platform-wide durable audit, and queues/workers remain undecided or unauthorized unless a later capability-specific decision says otherwise.
 
 Any future implementation requires:
 
@@ -495,8 +495,9 @@ This audit refines platform capability boundaries relative to the Platform Chart
 It:
 
 - does not override qualified resources (including Campaign at `0a9a9f7`)
-- does not select callable transport (product-facing transport is HTTP/API per separate ADR; this audit still selects no storage/queue/realtime provider)
-- does not select authentication issuance
+- does not itself select callable transport; HTTP/API was selected separately, and Campaign HTTP was subsequently authorized as a bounded slice
+- does not itself select authentication issuance; the bounded ES256 issuance/session foundation was subsequently qualified under Gate 3B
+- does not select a queue provider or realtime transport; those decisions remain open
 - does not authorize implementation
 - does not require cloud hosting
 - does not change KBM local-first architecture
@@ -507,23 +508,15 @@ It:
 
 GHM SHARED PLATFORM CAPABILITIES BOUNDARY AUDIT COMPLETE AS A HISTORICAL DECISION RECORD. Current remaining work is governed by `docs/GHM_REMAINING_WORK_REGISTER_2026-10-05.md`.
 
-DOCUMENTATION-ONLY GATE.
+HISTORICAL DOCUMENTATION-ONLY GATE — DO NOT READ AS A CURRENT GLOBAL STATUS SNAPSHOT.
 
-NO SHARED PLATFORM CAPABILITY IMPLEMENTATION AUTHORIZED.
+This audit itself authorizes no implementation. Subsequent bounded decisions/qualifications establish the following current distinctions:
 
-NO STORAGE PROVIDER SELECTED.
-
-NO QUEUE PROVIDER SELECTED.
-
-NO REALTIME TRANSPORT SELECTED.
-
-NO OBSERVABILITY PROVIDER SELECTED.
-
-NO CLOUD INFRASTRUCTURE SELECTED.
-
-NO PRODUCT CALLABLE TRANSPORT SELECTED BY THIS AUDIT (HTTP/API selected separately).
-
-NO AUTHENTICATION ISSUANCE SELECTED.
+- Storage metadata/persistence and the controlled Cloudflare R2 provider data path are qualified; production provider enablement and product integration remain gated.
+- HTTP/API is the selected product-facing transport; Campaign HTTP is a separately authorized and implemented bounded surface. Broader product HTTP remains gated.
+- The bounded ES256 authentication issuance/session foundation is qualified; product session-client migration remains gated.
+- Queue/worker provider selection, GHM-owned Realtime, platform-wide durable audit, and broader observability ownership remain open unless separately decided.
+- No production product cutover is authorized by this historical audit.
 
 GHM AUTHORIZATION REMAINS AUTHORITATIVE.
 
