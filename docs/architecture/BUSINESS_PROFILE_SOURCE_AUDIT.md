@@ -6,7 +6,7 @@
 
 The source reconciliation recorded here authorized the Business Profile Trust-input schema/owner-update extension, which is now qualified on the consolidated mainline. It did **not** change the Trust calculation function: those dimensions remain deliberately scored as `0` until a separate Trust-scoring change is authorized and qualified. This file is retained as provenance and is not an open gate for the already-qualified profile extension.
 
-Founder-authorized construction slice for Business Profile input parity required by the already-qualified GHM Trust resource. This document does not authorize production migration, cutover, adapters, shadow traffic, or Supabase changes. Trust and Saved Business remain QUALIFIED / CLOSED.
+Historical record of the Founder-authorized construction slice for Business Profile input parity required by the already-qualified GHM Trust resource. The bounded profile extension is now qualified; this source audit is not a current construction authorization or an open gate. It does not authorize production migration, cutover, adapters, shadow traffic, or Supabase changes. Trust and Saved Business remain QUALIFIED / CLOSED.
 
 ## 1. Canonical product sources
 
