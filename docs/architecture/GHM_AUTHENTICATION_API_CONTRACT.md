@@ -600,7 +600,7 @@ The list below is not a claim that every item remains undecided. Where the imple
 | Exact request/response JSON schemas | Concrete request/response shapes exist in route/service code; this conceptual contract is not by itself the exhaustive wire-schema authority |
 | Exact error-code catalogue / envelope | Partially represented by implemented routes; complete cross-endpoint taxonomy remains a contract/qualification concern |
 | Argon2id cost parameters | Use current credential implementation/configuration evidence; do not treat this Gate 2E table as current parameter authority |
-| Recovery TTL | Use the current credential/recovery implementation and qualification records; any still-open operational value must be explicitly documented there |
+| Recovery TTL | Bounded password-recovery service issues a 30-minute credential; production email delivery remains separately gated |
 | Email provider | Provider/delivery enablement remains separately gated; do not infer production delivery from the route foundation |
 | Rate-limit values / HTTP status for limits | Concrete route-level limits exist; complete operational tuning and deployment review remain separate if not covered by current config evidence |
 | Refresh token wire representation | Opaque refresh credential carried as `refreshToken`; rotation/replay semantics qualified within the bounded foundation |
