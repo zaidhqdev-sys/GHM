@@ -1,10 +1,10 @@
 # GHM Project Resource Contract
 
-Status: **qualified private Project resource contract; public disclosure implementation not authorized**
+Status: **qualified private Project resource contract; dedicated public disclosure projection separately qualified**
 
 ## Purpose
 
-Define the provider-neutral Project capability implemented in the dedicated GHM schema and qualified through the private owner-bound Resource API slice. This contract does not authorize product adapters, production cutover, public Project disclosure, or reproduction of the Connect `projects`/`project_quotes` schema as-is.
+Define the provider-neutral Project capability implemented in the dedicated GHM schema and qualified through the private owner-bound Resource API slice. Public disclosure is governed separately by `PROJECT_PUBLIC_DISCLOSURE_CONTRACT.md`, whose dedicated projection/read boundary is qualified. This contract does not authorize product adapters, production cutover, or reproduction of the Connect `projects`/`project_quotes` schema as-is.
 
 ## Source boundary
 
@@ -182,7 +182,7 @@ The Project implementation qualification gate is closed for the current private 
 4. create success and rollback behavior;
 5. owner read success;
 6. unauthorized/non-owner read denial where applicable;
-7. public disclosure boundary, if public Project reads are implemented; public eligibility is now reconciled as status = 'open'.
+7. public disclosure is a separate projection/read capability; its dedicated construction qualification is recorded in `PROJECT_PUBLIC_DISCLOSURE_CONTRACT.md`, with eligible public Projects restricted to status = 'open'.
 8. owner update success for eligible Projects;
 9. non-owner update denial;
 10. immutable owner/status enforcement;
@@ -195,7 +195,7 @@ The Project implementation qualification gate is closed for the current private 
 
 The current private Project slice is qualified. The remaining reconciliation boundary is deliberately limited to capabilities not included in that slice:
 
-- implementation and qualification of the dedicated public Project disclosure projection;
+- product-adapter integration, product-facing exposure, and production deployment/cutover of the separately qualified public Project disclosure projection;
 - lifecycle transition authority beyond creation/open-owner editing;
 - whether any future GHM workflow requires Project deletion;
 - any additional query/index requirements introduced by a separately authorized public projection or future Project operation;
