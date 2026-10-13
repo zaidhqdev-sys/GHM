@@ -302,3 +302,45 @@ No runtime or production changes. This is an audit/documentation checkpoint only
 
 No code, migration, provider activation or production change was made.
 
+## 19. Caller-reachability correction and remaining domain inventory
+
+### Reachability and active-caller corrections
+
+- `RelationshipOutcomeScreen.jsx` is lazy-loaded by the app shell, but this audit has not yet established a matching current route dispatch path. Its relationship/outcome service calls exist; classify the domain as **route reachability to verify before launch priority**, not automatically a launch-critical screen solely because it is imported.
+- `businessOfferingService` / `catalogueService` appear as facade exports, but current repository search did not identify a production UI caller. Do not include the full offerings CRUD domain in the launch migration until an active caller is confirmed. This does not remove the separately confirmed active business-category/capability/directory needs.
+- `supplierService`, `referralTrackingService`, and `disputeService` are present in the central facade and/or test-only integration harness, but no current production screen caller was found in the searched references. Classify **legacy/unconfirmed; exclude from first migration scope unless reachability audit finds a mounted caller**. Tests that import a service are not proof of production use.
+- `businessRelationshipService` and `outcomeService` have a screen caller, but the screen's route reachability must be verified before final launch prioritization.
+
+### Consolidated provisional migration classification
+
+**Replace foundational runtime first**
+1. Supabase auth/session lifecycle and direct signup.
+2. Central database/RPC facade dependencies used by confirmed mounted screens.
+3. GHM Connect identity binding currently requiring provider `supabase`.
+4. A browser-safe authenticated API/BFF; the existing signed Connect service route is server-to-server only.
+5. AI proxy URL/auth transport to remove Supabase dependency while retaining `milestone38Approved=false` fail-closed behavior.
+
+**Extend GHM contracts**
+- Directory query/output/pagination, regional filters, profile engagement events.
+- Business profile identity and owner-edit contracts; business-hours write route.
+- Capability evidence submission/review; founder directory listing review.
+- Opportunity marketplace list/types/requirements contract.
+- Support and review adapters/authorization/response-shape parity.
+- Project/quote lifecycle parity and in-app notification producers, only for confirmed active producers.
+
+**Build missing domains / APIs**
+- Onboarding progress (flag currently true).
+- Business analytics dashboard.
+- Relationships/outcomes only if current route is reachable and retained.
+- Quote-analysis history/data operations if the current analyzer remains part of launch scope.
+- Storage HTTP API and private-object classes needed by confirmed upload journeys.
+- Business engagement event contract where not already qualified.
+
+**Keep frozen / do not silently expand**
+- Commercial offer/trial parity can be migrated, but payment checkout/provider callbacks remain separately gated. Preserve `launchAuthorized=false`, `milestone38Approved=false`, `milestone52Approved=true`, `onlineSubscriptionActivation=false`; do not activate a payment provider.
+- AI provider activation remains unauthorized.
+- Do not rebuild dormant notification inbox/realtime/push, old verification screen, supplier marketplace, referrals, disputes, offerings catalogue or other facade-only features without active-caller evidence.
+- Buildlink-era strings and old Supabase migration files are not a reason to restore legacy runtime integrations.
+
+This matrix is **provisional, not an implementation authorization**. Final matrix must list every confirmed active operation with caller, current Supabase operation, target GHM route, exact input/output mapping, identity/role boundary, transaction/lifecycle behavior, and acceptance test. No runtime code, database, production or cutover changes were made.
+
