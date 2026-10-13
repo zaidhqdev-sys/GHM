@@ -27,7 +27,7 @@ AT THAT GATE: NO MIGRATIONS / TABLES / RUNTIME GRANTS
 
 Gate 2D is a historical conceptual persistence record. The original “absent” statements in its repository-evidence sections describe the Gate 2D snapshot and must not be interpreted as the current schema state. Gate 3A constructed the authentication persistence schema and Gate 3B subsequently authorized the runtime foundation; the resulting credential, session, recovery, external-identity, and business-mapping persistence is now construction-qualified on the consolidated `main` line. Product migration and production cutover remain separately gated.
 
-This document defines the **conceptual durable persistence model** required to support the Founder-selected GHM authentication architecture. It does **not** authorize schema, code, endpoints, or grants. Exact relation/column names remain **UNSELECTED** unless repository evidence already freezes them.
+This document preserves the conceptual durable persistence model that informed the Founder-selected GHM authentication architecture. It does not independently authorize scope beyond the foundation already qualified under Gate 3B. Physical relation/column names are implemented in migrations and recorded in `GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md`; use those migrations as current schema authority.
 
 ---
 
@@ -57,7 +57,7 @@ GHM protected Resource API
 | Topic | Evidence |
 |---|---|
 | Canonical identity | `ghm.account_identity` — `bigint` identity PK; profile fields (`full_name`, `phone`, `avatar_ref`); coarse `role` check (`admin`/`customer`/`business`); `created_at` / `updated_at` timestamptz — `database/migrations/20260909150000_create_business_identity.sql` |
-| Email / password | **Absent** on `account_identity` and in auth tables |
+| Email / password | Absent on `ghm.account_identity`; credential/login email and password hash are stored in separate qualified auth tables |
 | Membership | `ghm.business_membership` — `(business_id, account_id)` unique; status `active`/`inactive`/`revoked`; **authorization**, not auth session |
 | External IdP mapping | **Historical Gate 2D snapshot: absent** — current qualified mapping is defined by Gate 3A/3B and the identity-bridge qualification record |
 | Auth session / refresh / recovery stores | **Historical Gate 2D snapshot: absent** — current qualified persistence exists on the consolidated mainline |
@@ -74,7 +74,7 @@ The persistence foundation described by this contract was subsequently construct
 
 ---
 
-## 3. Role boundary for future auth persistence
+## 3. Role boundary implemented for authentication persistence
 
 Preserve:
 
@@ -84,7 +84,7 @@ ghm_migrator      — applies migrations / DDL
 ghm_runtime       — least-privilege application path
 ```
 
-**Contract rules for a later implementation gate:**
+**Current qualified role boundary (originally specified as a future implementation rule):**
 
 1. Introducing auth persistence must **not** grant `ghm_runtime` arbitrary durable `INSERT`/`UPDATE`/`DELETE` on credential/session tables merely because tables exist.
 2. Durable mutations should follow the established **controlled function / schema-owner** model (`SECURITY DEFINER`, narrow `EXECUTE` grants) where applicable — same pattern as Campaign and similar slices.
