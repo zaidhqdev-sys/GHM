@@ -256,3 +256,15 @@ The verified audit now gives the concrete gap boundary required to authorize fut
 **Current reconciled state:** Connect identity adapter boundary, trusted request context, governed operation resolution, and GHM authorization binding are Founder-authorized construction slices with their qualification evidence recorded in dedicated architecture documents. Business Offering is also **QUALIFIED / CLOSED** at the GHM construction boundary. Its qualification is recorded in `BUSINESS_OFFERING_OPERATION_CONTRACT.md` and the dedicated runtime evidence below.
 
 The Business Offering qualification does not authorize a public HTTP API, product session migration, production cutover, or any other Connect product adapter. The next product construction capability still requires a separate evidence-backed contract and explicit authorization.
+
+
+---
+
+## Supabase removal migration overlay — 2026-10-13
+
+This dated overlay adds a current product-level requirement to the earlier readiness record: **current ZAID Connect must have no active Supabase runtime dependency; GHM Internal Runtime is the target backend.** It does not rewrite historical coverage counts or claim that a previously qualified GHM construction slice establishes complete Connect readiness.
+
+Confirmed cross-cutting blockers include Connect's central Supabase client and app session lifecycle, direct signup and AI Edge Function calls, the Supabase-provider assumption in the GHM Connect identity binding, and the need for a browser-safe user transport distinct from the signed server-to-server Connect service boundary. Product gaps include directory governance, capability evidence, opportunity discovery, leads, analytics, relationships/outcomes, onboarding, storage API exposure, and contract qualification for existing project/quote/support/notification/review surfaces.
+
+Use `docs/architecture/CONNECT_GHM_MIGRATION_HANDOVER_2026-10-13.md` as the durable session-resume and gap-classification record. This overlay and handover are documentation only: no new construction, production migration, provider enablement, or cutover is authorized. The existing per-capability qualification records remain authoritative for their narrow qualified slices.
+
