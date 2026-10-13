@@ -4,6 +4,8 @@
 **Status:** Founder wire decisions **LOCKED** (Gate 9G); Campaign HTTP **IMPLEMENTATION AUTHORIZED** for this surface only
 **Authority:** Local repository `C:\GHM`
 **Baseline:** branch `construction/saved-business-resource`, HEAD prior to Gate 9G implementation on `0a9a9f7`
+
+> **Current-status reconciliation — 2026-10-13:** Gate 9G froze the Campaign HTTP wire and authorized this bounded surface. Its `AUTH ISSUANCE AT GATE 9G: UNSELECTED THEN; BOUNDED GHM AUTH FOUNDATION LATER QUALIFIED UNDER GATE 3B` statements describe that historical decision point: the bounded GHM ES256 issuance/session foundation was subsequently selected, implemented, and qualified under Gate 3B. Campaign routes consume the existing GHM bearer boundary; this record does not authorize a new issuer/IdP, a KBM adapter, product session migration, broader public exposure, or production cutover.
 **Depends on:**
 - [CAMPAIGN_HTTP_RESOURCE_CONTRACT.md](./CAMPAIGN_HTTP_RESOURCE_CONTRACT.md)
 - [CAMPAIGN_OPERATION_CONTRACT.md](./CAMPAIGN_OPERATION_CONTRACT.md)
@@ -55,7 +57,7 @@ Creator derives from `AuthContext.userId`. Caller must not supply `createdByAcco
 
 - Bearer verification via existing GHM auth boundary
 - AuthContext `{ userId, role }`
-- Issuer / IdP / login / signup / refresh: **UNSELECTED** (not implemented)
+- Campaign-specific issuer / IdP / login / signup / refresh: **not implemented or authorized by this Campaign decision**; routes consume the separately qualified GHM bearer boundary. Product session migration remains gated.
 
 ### Errors
 
@@ -84,14 +86,14 @@ Creator derives from `AuthContext.userId`. Caller must not supply `createdByAcco
 ```text
 CAMPAIGN HTTP IMPLEMENTATION: AUTHORIZED
 KBM ADAPTER: NOT AUTHORIZED
-AUTH ISSUANCE IMPLEMENTATION: NOT AUTHORIZED
+ADDITIONAL CAMPAIGN-SPECIFIC AUTH ISSUANCE: NOT AUTHORIZED BY GATE 9G; USE THE QUALIFIED GHM AUTH FOUNDATION
 ```
 
 Runtime surface: `src/http/campaign-router.ts` registered from `src/http/app.ts`.
 
 ## Non-goals (unchanged)
 
-- Auth issuance / issuer / IdP
+- A new Campaign-specific issuer / IdP or auth implementation (the existing GHM authentication foundation is separately qualified)
 - KBM adapter
 - Campaign DELETE
 - Pagination / retry / idempotency
