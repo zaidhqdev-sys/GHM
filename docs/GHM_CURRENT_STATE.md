@@ -19,7 +19,7 @@ This document is the current navigation point for GHM construction state. It rec
 
 ## Core platform foundation
 
-- Authentication foundation: constructed and qualified; production cutover remains separately gated.
+- Authentication foundation: bounded GHM ES256 issuance/session/identity construction is qualified. This does not imply all Gate 3B parameter approvals or production secrets are closed: the implementation-parameter gate still records explicit open approval items (including token-pepper approval, exact `sub` encoding, clock-skew policy, and key lifecycle details). Product session migration and production cutover remain separately gated.
 - Durable tenant isolation: **qualified 2026-10-05**. Tenant authority derives from authenticated account identity plus active membership in an active Business; caller-supplied Business identifiers cannot establish authority.
 - Authorization/transaction boundary: qualified construction primitives.
 - Database authority: canonical GHM schema/runtime/migrator separation remains the governing model; legacy role/object retirement remains evidence-gated.
