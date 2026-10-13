@@ -499,7 +499,7 @@ This historical snapshot does not authorize product migration or cutover.
 
 ---
 
-## 18. Founder decision checkpoint
+## 18. Historical Gate 2F decision checkpoint — reconciled after Gate 3B
 
 ```text
 AUTHENTICATION GATE 2F:
@@ -513,23 +513,22 @@ FOUNDER ARCHITECTURE (not reopened):
 - Recovery / session / crypto rules per prior gates
 - R1–R7 SELECTED (Issuance ADR §16.2)
 
-IMPLEMENTATION DETAILS STILL OPEN:
-- exact column/table/function names
-- exact AuthContext TypeScript fields
-- exact GRANT matrix rows
-- exact bootstrap HTTP/internal path
+GATE 2F DECISION-TIME OPEN ITEMS — CURRENT STATUS:
+- Account lifecycle, system-admin, credential/session/mapping relation names and controlled functions are implemented in qualified migrations.
+- `GhmAuthContext { accountId }` and the legacy `AuthContext { userId, role }` compatibility adapter are implemented; product-client integration remains separately gated.
+- The controlled SECURITY DEFINER / EXECUTE grant model is implemented; use migrations and role qualification for exact per-object grants.
+- Controlled bootstrap/link operations are implemented; no public federation API or product migration is implied.
 
-IMPLEMENTATION AUTHORIZATION:
-NOT GRANTED.
+IMPLEMENTATION AUTHORIZATION WAS NOT GRANTED AT GATE 2F; GATE 3B LATER AUTHORIZED AND QUALIFIED THE BOUNDED FOUNDATION.
 ```
 
 ---
 
-## 19. Final gate
+## 19. Historical Gate 2F final gate — superseded for the bounded foundation
 
 ```text
-IDENTITY & AUTHORIZATION PROVISIONING CONTRACT DOCUMENTED.
-NO src/ / MIGRATIONS / TESTS / CONFIG / SECRETS / PACKAGES CHANGED.
-NO COMMIT / PUSH.
-STOP — DO NOT IMPLEMENT SCHEMA OR AUTHCONTEXT.
+GATE 2F DOCUMENTATION-ONLY CHECKPOINT:
+NO src/ / MIGRATIONS / TESTS / CONFIG / SECRETS / PACKAGES CHANGED BY THAT HISTORICAL TASK.
 ```
+
+The original stop instruction applied to Gate 2F. The bounded identity/authentication foundation was subsequently constructed and qualified under Gate 3B; product migration and production cutover remain separately gated.
