@@ -395,7 +395,7 @@ Material claims in this charter are grounded in inspected repository evidence:
 | Claim area | Evidence path |
 |---|---|
 | Mission / production safety / adapters gated | `docs/HANDOVER_2026-09-16.md` |
-| Qualification gate order; adapters / shadow / cutover not started | `docs/architecture/CONSTRUCTION_QUALIFICATION_SEQUENCE.md` |
+| Governed qualification sequence; multiple bounded adapters/resources now qualified, while shadow/cutover remain not started | `docs/architecture/CONSTRUCTION_QUALIFICATION_SEQUENCE.md` and `docs/GHM_CURRENT_STATE.md` |
 | Resource API rules; no generic tables; adapters consume contracts | `docs/architecture/RESOURCE_API_BOUNDARY_CONTRACT.md` |
 | Runtime / migrator / least privilege | `docs/architecture/POSTGRES_AUTHORITY_MODEL.md` |
 | JWT verification → AuthContext | `src/auth/request-context.ts` |
