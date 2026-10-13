@@ -177,12 +177,9 @@ This section records the current documentation-only reconciliation branch; it is
 - Connect readiness totals are labeled historical audit counts. PayFast local checkout/ITN/server-confirmation qualification is distinct from real sandbox/runtime qualification and production enablement; PayFast is not conflated with PayStack.
 - Issue #1 remains open until all acceptance criteria are reconciled and independently closed. Product workflow parity, recovery/rollback, operational acceptance, shadow qualification, and production cutover remain gated.
 
-At this historical pre-merge checkpoint, the PR diff was documentation-only (Markdown under `docs/`). The PR subsequently merged into `main` as `14c805cfd749ed50493523972fdd0a7c359bbfce`. This checkpoint does not claim that every tracked document had been re-enumerated again after those edits, and it authorized no code, migration, credential, deployment, database, routing, or cutover changes.
+This paragraph records the historical documentation PR that merged into `main` as `14c805cfd749ed50493523972fdd0a7c359bbfce`; it is not a status statement about current migration PR #133. That earlier PR changed Markdown under `docs/` only and did not authorize code, migration, credential, deployment, database, routing, or cutover changes. The current Connect migration documentation is tracked separately in draft PR #133 and must not be treated as merged.
 
 
-## Connect migration handover (2026-10-13)
-
-The durable session handover and current Connect → GHM Internal Runtime migration gap register are maintained in [`docs/architecture/CONNECT_GHM_MIGRATION_HANDOVER_2026-10-13.md`](architecture/CONNECT_GHM_MIGRATION_HANDOVER_2026-10-13.md). Read it before continuing Connect migration work. It records the founder decision, confirmed blockers, per-journey gaps, security/cutover gates, and exact resume steps. This handover supplements—not supersedes—the existing readiness gap register, historical source audit, operation inventory, and per-capability qualification evidence. No implementation or cutover is authorized by the handover.
 
 ## Current Connect backend migration authority — 2026-10-13
 
