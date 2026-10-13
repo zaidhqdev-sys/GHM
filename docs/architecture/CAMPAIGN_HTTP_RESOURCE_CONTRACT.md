@@ -342,7 +342,7 @@ Wire selection and implementation authorization for this surface were Founder-ap
 | Pagination | **Not supported** |
 | Auth verification | PRESENT |
 | Bounded GHM auth foundation | **QUALIFIED under Gate 3B**; product session migration / cutover separately gated |
-| Campaign HTTP implementation | **AUTHORIZED** |
+| Campaign HTTP implementation | **IMPLEMENTED / INTEGRATED ON MAIN** |
 | KBM adapter | **NOT AUTHORIZED** |
 
 ---
