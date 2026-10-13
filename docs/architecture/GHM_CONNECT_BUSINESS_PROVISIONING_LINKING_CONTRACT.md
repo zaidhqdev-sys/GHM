@@ -5,6 +5,8 @@
 **Source:** Connect source audited at `abcffa73f893602c25310a58946bebb91fd7eeb5`
 **Boundary:** Construction only. No production Connect cutover, shadow traffic, provider cleanup, or production data movement.
 
+> **Qualification reconciliation — 2026-10-13:** The requirements in §14 were satisfied for the bounded Connect Business UUID → canonical GHM Business provisioning/linking slice in `GHM_CONNECT_BUSINESS_PROVISIONING_LINKING_QUALIFICATION.md` (2026-10-01). The contract remains the governing behavior, but its pre-qualification wording is historical; this does not authorize production adapter rollout, shadow traffic, provider cleanup, or cutover.
+
 ## 1. Purpose
 
 Define the narrow adapter boundary required to reconcile a Connect Business identity with the canonical GHM Business identity.
@@ -186,9 +188,9 @@ This contract does not authorize:
 
 Construction qualification may use isolated fixtures and explicitly governed non-production evidence only.
 
-## 14. Qualification requirements
+## 14. Qualification requirements — satisfied for the bounded construction slice
 
-Before this adapter is construction-qualified, evidence must demonstrate:
+The following were the required acceptance criteria. The separate qualification record documents that they passed for the bounded construction slice:
 
 1. invalid external UUIDs are rejected;
 2. unauthenticated requests are rejected;
@@ -210,7 +212,7 @@ Before this adapter is construction-qualified, evidence must demonstrate:
 18. build, tests, diff, and migration-integrity checks remain green;
 19. architecture/readiness/handover documentation is reconciled.
 
-## 15. Construction sequence
+## 15. Historical construction sequence
 
 ```text
 contract
