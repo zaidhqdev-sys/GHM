@@ -120,6 +120,6 @@ Not authorized by this operation contract:
 
 ## 12. Qualification record
 
-The original qualification criteria below are satisfied for the bounded Customer construction slice on the consolidated mainline. The schema/acceptance record is preserved in `CUSTOMER_SCHEMA_CONTRACT.md`; broader product-adapter integration and production migration/cutover remain separately gated.
+The original qualification criteria are satisfied for the bounded Customer construction slice on the consolidated mainline. The schema/acceptance record is preserved in `CUSTOMER_SCHEMA_CONTRACT.md`; broader product-adapter integration and production migration/cutover remain separately gated.
 
 Qualified boundary covers repository/service behavior and runtime qualification for schema ownership, lifecycle, least-privilege access, no-delete behavior, and Quote-compatible historical retention. The criteria in the original gate are historical acceptance evidence, not a current pending qualification.
