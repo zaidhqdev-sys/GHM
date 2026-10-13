@@ -271,9 +271,9 @@ Founder-directed authorization (2026-09-18):
 |---|---|
 | Resource | `campaign` |
 | Purpose | KBM AI Marketing backend |
-| Construction status | **Authorized** (docs frozen; implementation not started) |
+| Construction status | **Historical snapshot at this audit point:** authorized (docs frozen; implementation not started then); Campaign root and bounded HTTP surface have since been implemented and integrated on mainline |
 | Scope | Campaign root only |
-| HTTP | Not authorized |
+| HTTP | **Historical snapshot:** not authorized for the original root-only slice; bounded Campaign HTTP later authorized and integrated (see `CAMPAIGN_HTTP_RESOURCE_CONTRACT.md`) |
 | Child resources | Not authorized |
 | Storage | Not authorized |
 | AI providers | Not authorized |
