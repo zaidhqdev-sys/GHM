@@ -220,15 +220,15 @@ The verified audit now gives the concrete gap boundary required to authorize fut
 - Storage logos on bucket `media` / prefix `logos/` (not `business-logos`)
 - Realtime subscriptions only for notifications INSERT and leads INSERT
 - Live Edge functions: Paystack checkout, Paystack webhook, AI proxy
-- Atomic gaps: Projectâ†”Opportunity create; payment prepare/apply; capability replace/evidence; directory founder review
+- Atomic gaps: Project ↔ Opportunity create; payment prepare/apply; capability replace/evidence; directory founder review
 - Class A missing GHM domains include Trust, offerings, categories, evidence, onboarding, engagement, relationships/outcomes
 
 ### Requirements / assumptions disproven or corrected
 
-- Logo bucket name `business-logos` â€” **false**; actual bucket is `media`
+- Logo bucket name `business-logos` — **false**; actual bucket is `media`
 - Treating class A domain tables as migration-missing orphans â€” **false**; they are migration-proven
 - Business Hours exceptions/booking as Connect readiness requirement â€” **not evidenced** in Connect
-- PayFast / Meta WhatsApp API libraries as live payment/messaging paths â€” **no current importers at the 2026-09-18 source-audit checkpoint**. Connect source then contained Paystack checkout/webhook functions; that code-presence observation is not evidence of Paystack approval or activation. PayFast approval and implementation status are governed separately by the 2026-10-12 commercial reconciliation.
+- PayFast / Meta WhatsApp API libraries as live payment/messaging paths â€” **no current importers at the 2026-09-18 source-audit checkpoint**. Connect source then contained Paystack checkout/webhook functions; that code-presence observation is not evidence of Paystack approval or activation. PayFast approval and implementation status are governed separately by the 2026-10-13 commercial reconciliation.
 - Email provider dependency â€” **not evidenced**
 - `createSignedUrl` usage â€” **not found**
 
