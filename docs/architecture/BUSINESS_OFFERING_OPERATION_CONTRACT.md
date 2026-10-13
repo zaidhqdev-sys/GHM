@@ -458,3 +458,7 @@ No Connect schema mutation, production migration, product cutover, shadow traffi
 This contract records the founder authorization expressed on 2026-09-30 by proceeding after the evidence-backed Business Offering source audit.
 
 The original construction authorization was limited to the Business Offering boundary defined here. The resulting qualification closes this construction slice; it does not authorize Business Capability lifecycle/evidence, public Business directory expansion, commercial payment operations, Project↔Opportunity atomic workflows, directory founder-review workflows, or production cutover.
+
+## Connect offering HTTP/product parity boundary — 2026-10-13
+
+The CLOSED/PASS status above applies to the bounded Business Offering domain/service/runtime slice; the contract itself explicitly does not authorize a public HTTP API. Connect profile screens may use offerings as part of a broader business editor, so before migration verify active caller reachability and map list/create/update/deactivate operations, field normalization, ordering, active-business context and permissions to an explicitly authorized product-facing route. Do not infer that the existence of the resource or service makes it browser-accessible, and do not widen the public directory projection to expose private/inactive offerings. This is an **Extend** candidate only after the active caller and required operations are confirmed; no cutover is authorized.
