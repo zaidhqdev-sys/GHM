@@ -97,7 +97,7 @@ Required properties:
 - stale or revoked mappings must fail closed;
 - the adapter must not accept a caller-supplied arbitrary GHM account ID as proof of identity.
 
-No mapping persistence mechanism is authorized by this document.
+This architecture contract does not itself authorize new persistence implementation. The qualified GHM external-identity mapping is governed by the account-onboarding/migration contracts; the separate organization-to-Business mapping/provisioning path remains governed by its own contract and qualification gate.
 
 ## Canonical tenant identity
 
