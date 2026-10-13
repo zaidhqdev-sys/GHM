@@ -158,7 +158,7 @@ Refresh credentials should be:
 
 - server-controlled
 - high entropy
-- **opaque** unless a later Founder decision establishes otherwise
+- **opaque** in the qualified implementation; Gate 3B later Founder-approved the opaque 32-byte base64url refresh-token format (the earlier Gate 2 recommendation is retained as rationale)
 - stored securely (prefer hash/reference at rest when feasible)
 - revocable
 - rotated on successful use
@@ -177,10 +177,10 @@ Repository evidence shows GHM already centralizes authorization in services/SQL 
 - enables immediate server-side revoke/rotate without waiting for access JWT expiry;
 - fits hybrid Supabase coexistence (GHM session is authoritative for GHM APIs).
 
-No repository evidence requires a JWT refresh token. Preference for opaque refresh is therefore **architectural recommendation**, not a Founder selection.
+No repository evidence required a JWT refresh token. This was the original Gate 2 architectural rationale, not a Founder selection at that gate; Gate 3B later Founder-approved the opaque 32-byte base64url refresh-token format, which the qualified implementation uses.
 
 ```text
-Opaque refresh credential = RECOMMENDED / FOUNDER UNSELECTED
+HISTORICAL GATE 2 STATUS: opaque refresh was recommended, not yet Founder-selected. GATE 3B: opaque 32-byte base64url refresh format later Founder-approved and implemented.
 ```
 
 ---
@@ -538,7 +538,7 @@ Storage must remain separate from `ghm.account_identity` profile fields. Least-p
 | short-lived access JWT | **SELECTED** |
 | access-token lifetime | **SELECTED: 15 minutes** |
 | server-controlled refresh | **SELECTED** |
-| opaque refresh credential | **RECOMMENDED / FOUNDER UNSELECTED** |
+| opaque refresh credential | **FOUNDER-APPROVED / IMPLEMENTED** in Gate 3B (32-byte base64url); the Gate 2 recommendation is historical rationale |
 | refresh credentials rotated (architecture intent) | **SELECTED** (Issuance ADR — high level) |
 | rotate on every successful refresh | **SELECTED** |
 | refresh credential single-use | **SELECTED** |
@@ -562,7 +562,7 @@ Recommendations favoring a private ZAID/GHM backend (opaque refresh / persistenc
 
 1. Access-token lifetime is **Founder-selected at 15 minutes**.
 2. Inactivity **30 days** and absolute **90 days** are **Founder-selected**.
-3. Prefer **opaque**, server-controlled refresh credentials (recommendation only until Founder selects).
+3. Opaque, server-controlled refresh credentials are Founder-approved in Gate 3B and used by the qualified implementation; the earlier technical recommendation is retained as rationale.
 4. Rotate on every successful refresh; single-use; session-family replay revoke are **Founder-selected** (§7.6).
 5. Rely on access JWT natural expiry after logout; revoke refresh immediately.
 
