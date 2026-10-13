@@ -42,7 +42,7 @@ The canonical Business Offering service and repository remain owners of domain m
 
 ## Evidence
 
-Construction branch: `construction/connect-business-offering-capability-adapter`
+Historical construction branch: `construction/connect-business-offering-capability-adapter` (adapter qualification was merged to `main`; see PR #41).
 
 Base: `2571b81e2f3a70068160270e3beb621dc0085b33`
 
