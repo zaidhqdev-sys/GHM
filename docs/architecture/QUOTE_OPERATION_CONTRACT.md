@@ -1,6 +1,8 @@
 # GHM Quote Operation Contract
 
-**Status:** CONSTRUCTION CONTRACT — OPERATION SURFACE FROZEN
+**Status:** QUALIFIED / CLOSED — bounded GHM Quote construction recorded in the current capability index
+
+> **Current-status reconciliation — 2026-10-13:** The operation and qualification checklist below preserve the original Quote construction contract. The bounded GHM Quote capability is recorded as qualified in `GHM_CURRENT_STATE.md`, `PRODUCT_BACKEND_CAPABILITY_INVENTORY.md`, and `QUOTE_SOURCE_AUDIT.md`; the original checklist is not an open construction gate. This does not authorize a QuoteFlow product adapter, production migration, or cutover.
 
 ## 1. Purpose
 
@@ -328,7 +330,7 @@ Only a separately reconciled Invoice capability may consume that state.
 
 ## 20. Qualification requirements
 
-Quote operation qualification must prove:
+Historical Quote operation acceptance criteria (satisfied for the bounded construction slice):
 
 1. authenticated context is required;
 2. owner scope is enforced;
@@ -355,9 +357,9 @@ Quote operation qualification must prove:
 23. no existing qualified capability regresses;
 24. production safety remains intact.
 
-## 21. Dependency gate
+## 21. Historical dependency gate — satisfied
 
-The GHM Customer resource required by the schema contract is now constructed and runtime-qualified. The Quote implementation may proceed against this frozen operation boundary.
+The GHM Customer resource is constructed and runtime-qualified, and the bounded Quote implementation is recorded as qualified in the current capability index. This original dependency gate is closed; product migration and cutover remain separate.
 
 ## 22. Production safety
 
