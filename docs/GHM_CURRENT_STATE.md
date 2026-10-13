@@ -27,7 +27,7 @@ This document is the current navigation point for GHM construction state. It rec
 
 ## Qualified Business-domain capabilities
 
-Current mainline contains qualified construction boundaries for Business Identity/Profile, Business Category, Business Capability, Business Hours, Business Offering, Opportunity Core, Opportunity Capability Requirements, Opportunity Participant, Project, Project Quote, Enquiry, Customer, Quote, Review/aggregate, Trust, Saved Business, Notification, Support Request, and related bounded capability seams.
+Current mainline contains qualified construction boundaries for Business Identity/Profile, Business Category, Business Capability, Business Hours, Business Offering, Opportunity Core, Opportunity Capability Requirements, Opportunity Participant, Project, Project Quote, Enquiry, Customer, Quote, Review/aggregate, Trust, Saved Business, Notification persistence, Support Request, and related bounded capability seams. Notification persistence qualification does not imply full notification delivery/event transport or public HTTP workflow qualification.
 
 The recent tenant-adoption sequence is complete for:
 
