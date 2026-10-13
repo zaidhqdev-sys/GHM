@@ -36,7 +36,7 @@ This contract records:
 
 - Founder-locked Campaign HTTP wire (Gates 9F / 9G);
 - alignment with the qualified Campaign domain;
-- items that remain intentionally **OPEN** / **UNSELECTED**.
+- remaining decisions that stay intentionally **OPEN** or separately gated.
 
 It does **not** authorize a new Campaign-specific issuer/IdP or auth implementation beyond the qualified GHM bearer foundation, a KBM adapter, Campaign children, or unrelated Resource API changes.
 
@@ -324,7 +324,7 @@ KBM ADAPTER: NOT AUTHORIZED
 AUTH FOUNDATION: QUALIFIED UNDER GATE 3B; PRODUCT MIGRATION / CUTOVER SEPARATELY GATED
 ```
 
-Wire selection and implementation authorization for this surface were Founder-approved (Gates 9F / 9G). Selecting this wire does **not** authorize KBM adapter work or auth issuance.
+Wire selection and implementation authorization for this surface were Founder-approved (Gates 9F / 9G). Selecting this wire does **not** authorize KBM adapter work, a separate Campaign issuer/IdP, product session migration, or production cutover.
 
 ---
 
