@@ -584,8 +584,8 @@ No option was ranked, scored, or described as best/preferred/ideal/superior/winn
 
 1. Transport Decision Record update / selection confirmation — **DONE**
 2. Concrete transport contract — Campaign HTTP resource contract **DONE** at `785df12`
-3. Authentication issuance decision — **OPEN / UNSELECTED**
-4. Token/claims/AuthContext contract where applicable — issuance-side still OPEN
+3. Historical authentication issuance decision — **superseded for the bounded Gate 3B foundation; product session-client integration/migration remains separately gated**
+4. Token/claims/AuthContext contract — bounded GHM issuance/verification foundation qualified under Gate 3B; product-specific integration remains gated
 5. Error wire representation — Campaign HTTP tokens Founder-locked; platform taxonomy mapping OPEN
 6. Version/compatibility implementation contract — lifecycle **OPEN**
 7. KBM product adapter contract — **NOT AUTHORIZED**
@@ -746,7 +746,7 @@ Campaign HTTP resource contract + implementation gates are **DONE** at `785df12`
 
 Remaining separate gates (not performed by this ADR):
 
-- authentication issuance decision (UNSELECTED)
+- product-specific session-client integration/migration (separately gated; the bounded GHM issuance foundation is qualified)
 - Broad KBM product adapter (not authorized by this decision record alone; separate per-capability authorization required)
 - version lifecycle / platform taxonomy mapping (OPEN)
 - broader HTTP expansion beyond Campaign (gated)
