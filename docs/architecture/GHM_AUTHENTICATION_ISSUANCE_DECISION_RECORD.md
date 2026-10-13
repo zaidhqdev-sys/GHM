@@ -107,21 +107,23 @@ The evidence sources below describe the repository state observed at the recorde
 | Account PK is `ghm.account_identity.id` bigint identity | `database/migrations/20260909150000_create_business_identity.sql` |
 | Business membership is bigint-scoped (`ghm.business_membership`) | same migration |
 
-### 2.2 What GHM currently does **not** do
+### 2.2 Historical Gate 2 capability gaps — not current status
 
-| Capability | Evidence of absence |
-|---|---|
-| Product-facing login / signup / sign-out / refresh HTTP endpoints | No matching issuance routes under `src/http/` |
-| Application JWT **issuance** in `src/` | No `jwt.sign` in application modules; `jwt.sign` appears only in tests |
-| Refresh-token issuance or rotation | No refresh routes or refresh logic in `src/` |
-| Token revocation list / logout invalidation service | Not present in `src/auth/` |
-| Password / credential verification for users | No credential verify path in `src/`; `bcrypt` listed in `package.json` but **not imported** under `src/` |
-| Session-cookie authentication for product identity | `express-session` listed; **not imported** under `src/` |
-| Documented product issuer contract (`iss` / `aud` / algorithm policy) in runtime verification | Verification does not pass issuer/audience options to `jwt.verify` |
-| Asymmetric JWT signing / public-key verification | Absent in runtime |
-| Identity-provider SDK integration in GHM runtime | No OIDC/OAuth/Clerk/Auth0/Supabase Auth SDK usage under `src/` |
-| External UUID / `sub` → `account_identity` mapping column or table | Absent from `ghm.account_identity` and migrations/src search |
-| Account bootstrap/provisioning on first product login | Account row must already exist; no `auth.users`-style trigger path in GHM |
+The table below records the gaps observed at the Gate 2 baseline. It must not be used as a current inventory: the bounded GHM authentication foundation was subsequently constructed and qualified under Gate 3B. Product-specific session-client integration, signup/product onboarding parity, and production migration remain separate gates.
+
+| Capability | Gate 2 baseline (historical) | Current bounded status |
+|---|---|---|
+| Product-facing login / signup / sign-out / refresh HTTP endpoints | Not present at the baseline | Bounded GHM login/refresh/logout HTTP foundation qualified; product-client integration and signup/onboarding parity remain separately gated |
+| Application JWT issuance | No application issuance at the baseline | GHM ES256 issuance foundation qualified |
+| Refresh-token issuance or rotation | Absent at the baseline | Opaque refresh rotation/replay handling foundation qualified |
+| Token revocation / logout invalidation | Absent at the baseline | Bounded revocation/logout foundation qualified |
+| Password / credential verification | No credential path at the baseline | Bounded GHM credential/login foundation qualified |
+| Session-cookie authentication | `express-session` listed but not used at the baseline | No product session-cookie migration is implied; current product clients remain Supabase-session based |
+| Issuer / audience / algorithm policy | Not implemented at the baseline | GHM ES256 resource verification and bounded issuance contract qualified |
+| Asymmetric JWT signing / public-key verification | Absent at the baseline | ES256 foundation qualified |
+| Identity-provider SDK integration | No provider SDK at the baseline | Provider-neutral external-identity mapping/bootstrap foundation qualified; no Supabase JWT acceptance |
+| External UUID → GHM identity mapping | Absent at the baseline | `provider + subject → ghm.account_identity.id` mapping foundation qualified; production backfill remains open |
+| Account bootstrap | Absent at the baseline | Controlled minimum account-identity bootstrap foundation qualified; business/membership provisioning remains separately gated |
 
 ### 2.3 JWT signing locations (tests / qualification only)
 
@@ -173,11 +175,15 @@ Connect Edge checkout validates Bearer tokens with **Supabase** `auth.getUser()`
 ### 2.7 Summary of current implemented issuance state
 
 ```text
-GHM authentication verification: PRESENT (GHM-shaped HS Bearer JWT only)
+GHM authentication verification: PRESENT (canonical ES256 bearer; DB-backed account state)
 GHM AuthContext construction: PRESENT
 GHM authorization: PRESENT (construction-qualified slices)
-GHM authentication issuance (login/signup/refresh): ABSENT
-Asymmetric signing / public-key verify: ABSENT
+GHM bounded authentication issuance/login: PRESENT (Gate 3B qualified)
+Refresh/session rotation, revocation, recovery and logout foundation: PRESENT (Gate 3B qualified)
+External identity mapping/bootstrap foundation: PRESENT (Gate 3B qualified)
+Connect / QuoteFlow product session-client migration: NOT YET QUALIFIED
+Production product cutover: NOT AUTHORIZED
+```
 JWT signing in application code: ABSENT (tests only)
 Auth HTTP issuance endpoints: ABSENT
 External UUID mapping: ABSENT
@@ -373,38 +379,37 @@ This ADR records the authentication **issuance architecture** decision. It does 
 
 ## 14. Disaggregated blocker map (do not conflate)
 
-| Layer | Architecture status | Current implementation status | Blocks trustworthy product → GHM HTTP auth today? |
+| Layer | Architecture status | Current implementation status | Blocks product migration today? |
 |---|---|---|---|
-| Issuer decision | **SELECTED: GHM** | Issuance absent | Yes (implementation gap) |
-| Token verification | GHM target/current: asymmetric ES256 + iss/aud/alg/exp/sub/kid | Historical HS/`JWT_SECRET` + `userId`/`role` was the superseded resource shape |
-| Identity mapping | **SELECTED** `(provider, subject)` map | Absent | Yes |
-| Auth transport | **SELECTED:** GHM auth API → GHM bearer | Product login still Supabase | Yes |
-| HTTP Resource API transport | Present (thin) | Present | Not the first shared auth blocker once GHM credentials exist |
-| Authorization | Present given AuthContext | Present | Not the first shared auth blocker |
-| Product adapter | Absent | Absent | Blocks broad domain consumption; distinct from auth handshake |
+| Issuer decision | **SELECTED: GHM** | Bounded GHM issuance foundation qualified; product login still Supabase | Yes — product client/migration path remains unqualified |
+| Token verification | GHM ES256 + issuer/audience/algorithm/expiry/subject contract | ES256 verifier foundation qualified; old HS/`JWT_SECRET` + `userId`/`role` path superseded | Product integration still requires qualification |
+| Identity mapping | **SELECTED** `(provider, subject)` map | Mapping/bootstrap foundation qualified | Production backfill and product migration remain open |
+| Auth transport | **SELECTED:** GHM auth API → GHM bearer | Bounded GHM login/refresh/logout foundation qualified; product login still Supabase | Yes — product client/migration path remains unqualified |
+| HTTP Resource API transport | Present (thin) | Present | Not the first shared auth blocker once product clients obtain GHM credentials |
+| Authorization | Present given AuthContext | Present in qualified slices | Product-specific authorization parity still requires qualification |
+| Product adapter | Per-product scope and approval required | Broad adapter/migration remains unqualified | Blocks broad domain consumption; distinct from auth handshake |
 
 ---
 
-## 15. Status table
+## 15. Historical Gate 2 status table — current state reconciled above
 
-| Item | Status |
-|---|---|
-| GHM JWT verification (current) | PRESENT — GHM-shaped ES256 Bearer with DB-backed account state |
-| AuthContext (current) | PRESENT |
-| GHM authorization | PRESENT (construction) |
-| Authentication issuance product capability (current) | ABSENT |
-| Asymmetric signing / public-key verify (current) | ABSENT |
-| External UUID → bigint mapping (current) | ABSENT |
-| Refresh / revocation / logout (current) | ABSENT |
-| Token issuer (target architecture) | **SELECTED: GHM** |
-| Identity provider / credential-store owner (target) | **SELECTED: GHM** (credentials separate from `account_identity`) |
-| Authentication transport (target) | **SELECTED: GHM authentication API → GHM-issued bearer credentials** |
-| Founder decisions 1–12 | **RECORDED 2026-09-21** |
-| Founder credential / login decisions C1–C10 | **RECORDED 2026-09-21** (see Credential Contract) |
-| Issuance implementation | **NOT AUTHORIZED** |
-| Follow-on authentication contracts | **REQUIRED BEFORE IMPLEMENTATION** |
-| Callable Resource API transport | HTTP/API (SELECTED) |
-| Direct product DB access | **NOT APPROVED** |
+| Item | Gate 2 status (historical) | Current bounded status |
+|---|---|---|
+| GHM JWT verification | HS bearer path with `userId`/`role` | ES256 bearer with DB-backed account state qualified |
+| AuthContext | Present | Present |
+| GHM authorization | Existing resource slices | Qualified in bounded resource slices; product parity remains scoped separately |
+| Authentication issuance | Absent | Bounded GHM issuance/login foundation qualified; product session-client integration remains open |
+| Asymmetric signing / public-key verification | Absent | ES256 foundation qualified |
+| External UUID → bigint mapping | Absent | Mapping/bootstrap foundation qualified; production backfill remains open |
+| Refresh / revocation / logout | Absent | Bounded GHM session foundation qualified; product migration remains open |
+| Token issuer (target architecture) | GHM selected | GHM issuer foundation qualified |
+| Identity provider / credential-store owner | GHM selected | Bounded GHM credential/persistence foundation qualified |
+| Authentication transport | GHM auth API → GHM bearer selected | Bounded GHM login/refresh/logout HTTP foundation qualified; product integration remains open |
+| Founder decisions 1–12 | Recorded 2026-09-21 | Historical decision remains binding within its approved scope |
+| Founder credential / login decisions C1–C10 | Recorded 2026-09-21 | Historical decisions remain binding within their approved scope |
+| Product migration / cutover | Not authorized by Gate 2 record | Still separately gated; no production cutover authorized |
+| Callable Resource API transport | HTTP/API selected | Present within bounded qualified routes |
+| Direct product DB access | Not approved | Not approved |
 
 ---
 
