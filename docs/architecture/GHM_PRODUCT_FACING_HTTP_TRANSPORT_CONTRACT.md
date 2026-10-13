@@ -356,7 +356,7 @@ The adapter will eventually own:
 - retry behavior where authorized
 
 ```text
-KBM HTTP ADAPTER: NOT IMPLEMENTED
+Historical selection-time snapshot: KBM HTTP adapter was not implemented
 ```
 
 Do not create the adapter in this gate.
@@ -382,7 +382,7 @@ Campaign status at HEAD `785df12`:
 
 Authoritative wire: `CAMPAIGN_HTTP_FOUNDER_DECISION_RECORD.md` / `CAMPAIGN_HTTP_RESOURCE_CONTRACT.md` / `src/http/campaign-router.ts`.
 
-KBM adapter remains NOT AUTHORIZED. Auth issuance remains UNSELECTED.
+Historical decision snapshot: the broad KBM adapter was not authorized at that gate and auth issuance was unselected. The bounded Gate 3B auth foundation is now qualified; broader product adapter scope remains gated.
 
 ## 21. Qualification requirements
 
@@ -398,7 +398,7 @@ Campaign HTTP unit tests are present at `785df12`. Broader supported-consumer qu
 - transaction behavior
 - no direct DB path / no secret leakage
 - API version behavior
-- KBM adapter integration — **NOT AUTHORIZED**
+- Broad KBM adapter integration — **NOT AUTHORIZED by this contract alone; per-capability authorization and qualification remain required**
 
 ## 22. Open questions
 
@@ -454,6 +454,6 @@ CAMPAIGN HTTP SURFACE: IMPLEMENTED.
 
 CAMPAIGN HTTP IMPLEMENTATION: AUTHORIZED AT `785df12`.
 
-KBM HTTP ADAPTER: NOT IMPLEMENTED.
+Historical selection-time snapshot: KBM HTTP adapter was not implemented.
 
 BROADER HTTP EXPANSION: NOT AUTHORIZED BY THIS DOCUMENT.
