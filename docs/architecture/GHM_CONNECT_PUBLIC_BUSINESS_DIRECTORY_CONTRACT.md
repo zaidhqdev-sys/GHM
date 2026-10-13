@@ -159,7 +159,7 @@ At minimum, the future directory contract must explicitly define:
 - maximum page size
 - authorization/public access boundary.
 
-No geo/search implementation is authorized by this document.
+This contract defines the current bounded directory slice and does not itself authorize geo/radius search or expanded discovery filters. The separate Connect migration reconciliation classifies the confirmed product-parity work as **Extend**, subject to an explicit implementation decision, canonical field ownership, and updated contract/acceptance evidence.
 
 ## 8. No schema invention
 
