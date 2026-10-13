@@ -3,9 +3,9 @@
 **Canonical owner:** GHM platform governance
 **Status:** Transport-neutral architecture contract — platform-wide error-taxonomy/versioning runtime implementation not authorized by this document; bounded authentication foundation is separately qualified
 **Authority:** Local repository `C:\GHM`
-**Baseline:** branch `construction/saved-business-resource`, HEAD `0a9a9f7`
+**Historical evidence baseline:** branch `construction/saved-business-resource`, HEAD `0a9a9f7` (not the current repository HEAD)
 
-> **Historical-status reconciliation — 2026-10-13:** This contract preserves the Gate 1 documentation-only decision. Its `Authentication issuance selection: NOT AUTHORIZED` row is historical: the bounded GHM ES256 issuance/session foundation was subsequently selected, implemented, and qualified under Gate 3B. This document still does not authorize a platform-wide semantic error taxonomy refactor, compatibility/versioning implementation, or product cutover; those remain separately gated.
+ > **Historical-status reconciliation — 2026-10-13:** This contract preserves the Gate 1 documentation-only decision. Its `Authentication issuance selection: NOT AUTHORIZED` row is historical: the bounded GHM ES256 issuance/session foundation was subsequently selected, implemented, and qualified under Gate 3B. The source/path observations in §3 were captured against the stated historical baseline and are not an exhaustive current HTTP-route inventory. This document still does not authorize a platform-wide semantic error taxonomy refactor, compatibility/versioning implementation, or product cutover; those remain separately gated.
 **Depends on:**
 - [GHM_APPLICATION_BACKEND_PLATFORM_CHARTER.md](./GHM_APPLICATION_BACKEND_PLATFORM_CHARTER.md)
 - [PRODUCT_INTEGRATION_BOUNDARY_CONTRACT.md](./PRODUCT_INTEGRATION_BOUNDARY_CONTRACT.md)
@@ -40,9 +40,11 @@ KBM or another ZAID product must be able to understand the meaning of a GHM resu
 
 Current HTTP Resource API slices may map some outcomes to HTTP responses. That mapping is **implementation evidence**, not the platform semantic contract.
 
-## 3. Current repository evidence
+## 3. Historical repository evidence snapshot — baseline `0a9a9f7`
 
-### 3.1 EXISTING IMPLEMENTATION
+The tables in this section preserve implementation observations from the historical baseline above. They are not a fresh or exhaustive inventory of the current HTTP routes and must not be used to claim that later-qualified resources have no HTTP response mapping. The durable current conclusion is narrower: GHM still has no platform-wide semantic error taxonomy/versioning contract implemented by this document, and existing HTTP error mapping is not automatically a uniform cross-product compatibility contract.
+
+### 3.1 EXISTING IMPLEMENTATION AT THE HISTORICAL BASELINE
 
 | Finding | Evidence |
 |---|---|
@@ -78,7 +80,7 @@ Inconsistencies observed (evidence, not rewrite authorization):
 - some ownership/eligibility denials are collapsed into `not_found` via message matching (e.g. Project / Enquiry / Campaign “not found or … permission” style messages)
 - lifecycle/validation failures sometimes map to `conflict` (enquiry invalid transition; project “Only open Projects may be updated”) and sometimes to `invalid_request`
 - two HTTP mappers (`handleError` vs `handleEnquiryError`) with different matching rules
-- most qualified resources have **no** HTTP error mapping at all
+- at this historical baseline, many resource services lacked resource-specific error mapping; this does **not** establish that current routes have no HTTP response mapping, since later routes may use shared or route-specific mappers
 
 ### 3.2 Versioning evidence (EXISTING IMPLEMENTATION)
 
