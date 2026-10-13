@@ -432,8 +432,9 @@ Founder selections dated `2026-09-21`. These define **SELECTED TARGET ARCHITECTU
 | 12 | First-gate out-of-scope authentication features | **Explicitly defer:** social OAuth; enterprise SSO / SAML; passkeys / WebAuthn; MFA; external identity federation; advanced risk/adaptive authentication; public self-service tenant provisioning; public identity federation; complex multi-device/session administration; admin impersonation. This keeps the first authentication gate appropriate for GHM’s current role as a **private ZAID Technologies backend** and avoids premature enterprise/public IAM complexity. | 2026-09-21 | Deferred features remain out of first implementation gate. |
 
 ```text
-FOUNDER AUTHORIZATION FOR IMPLEMENTATION: NOT GRANTED
-(requires follow-on authentication contracts + separate implementation authorization)
+HISTORICAL GATE 2 STATUS — FOUNDER AUTHORIZATION FOR IMPLEMENTATION: NOT GRANTED AT THAT GATE.
+Gate 3B later authorized and qualified the bounded GHM authentication foundation.
+Product integration, broader exposure, production secrets, and cutover remain separately gated.
 ```
 
 ### 16.1 Credential / login Founder decisions (follow-on, `2026-09-21`)
@@ -790,10 +791,9 @@ Column removal timing = UNSELECTED (after consumers migrate)
 | R7 | Coarse `role` evolution | **SELECTED** — incremental; JWT role not authoritative; field may remain temporarily | 2026-09-21 |
 
 ```text
-FOUNDER AUTHORIZATION FOR IMPLEMENTATION: NOT GRANTED
-Architecture decisions R1–R7 SELECTED.
-Exact column/table/function/GRANT names and AuthContext TypeScript shape
-remain implementation-gate details unless already frozen elsewhere.
+HISTORICAL GATE 2G STATUS — FOUNDER AUTHORIZATION FOR IMPLEMENTATION WAS NOT GRANTED AT THAT GATE.
+Architecture decisions R1–R7 were selected; Gate 3B later authorized and qualified the bounded authentication foundation.
+Physical schema/function names are governed by the qualified migrations and schema-migration contract; further scope, product migration, and cutover remain separately gated.
 ```
 
 ---
