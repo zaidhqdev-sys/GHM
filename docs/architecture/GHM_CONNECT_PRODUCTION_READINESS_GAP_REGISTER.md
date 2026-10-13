@@ -296,3 +296,8 @@ This overlay supersedes any implication that the historical operation rows above
 
 The numeric Connect IDs and GHM numeric IDs/UUID assumptions must never be presumed equivalent. Define explicit identity/resource mappings. The signed `POST /api/v1/connect/service` remains server-to-server only; browser code needs a secure BFF or GHM-native user-token API. This overlay is documentation only and grants no implementation, merge, production or cutover authorization.
 
+## Identity-provider authority reconciliation — 2026-10-13
+
+The previously qualified `(provider, subject) → GHM account identity` foundation is a generic mapping capability and its current Connect adapter qualification specifically uses `provider=supabase`. That bounded qualification remains valid for its historical scope; it does **not** qualify the no-Supabase target runtime. The active Connect authorization-binding implementation still rejects any provider other than `supabase`, so it is a cutover blocker under the current founder decision.
+
+For target Connect runtime, GHM-native access/session credentials must establish the caller; GHM then resolves the canonical account, active state, business membership and resource authorization server-side. A source-provider/subject pair may remain as migration provenance for legacy data only, isolated from runtime authentication and not accepted as authority for new requests. Do not remove historical evidence or silently change the existing qualification's scope. Do not allow identity bootstrap or account linking as a side effect of routine requests.
