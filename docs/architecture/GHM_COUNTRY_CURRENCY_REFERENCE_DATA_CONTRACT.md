@@ -3,6 +3,8 @@
 **Status:** QUALIFIED / CLOSED — reference-data dependency constructed and runtime-qualified 2026-10-03
 **Date:** 2026-10-03
 
+> **Current-status reconciliation — 2026-10-13:** The `NOT AUTHORIZED FOR MUTATION` gate in §8 records the original pre-construction decision. `ghm.country` / `ghm.currency` and their runtime read-only boundary were subsequently constructed and qualified; see `COMMERCIAL_REFERENCE_DATA_CONSTRUCTION_GATE.md`. This contract remains the source for reference-data semantics, not an open instruction to begin construction. It does not authorize new seed/mutation work, provider activation, or production cutover.
+
 ## 1. Purpose
 
 Define the smallest provider-neutral GHM reference-data boundary required to satisfy the already-authorized Commercial schema dependency on `ghm.country` and `ghm.currency`.
@@ -90,14 +92,12 @@ This slice does not create:
 - public HTTP endpoints;
 - product adapters.
 
-## 8. Construction gate
+## 8. Historical construction gate — closed / qualified
 
-**NOT AUTHORIZED FOR MUTATION.**
-
-Before migration construction, the founder must authorize:
+The original pre-construction gate required explicit authorization for:
 1. this bounded country/currency ownership model;
-2. the initial reference-data seed authority and approved rows;
+2. initial reference-data seed authority and approved rows;
 3. migration ordering before Commercial qualification;
 4. the runtime read-only privilege boundary.
 
-Until those decisions are authorized, Commercial payment preparation remains blocked at the reference-data dependency gate.
+Those requirements were subsequently satisfied for the bounded reference-data dependency, as recorded in `COMMERCIAL_REFERENCE_DATA_CONSTRUCTION_GATE.md`. The reference-data dependency no longer blocks the qualified Commercial payment-preparation slice. Further data mutation or new reference-data scope still requires separate governance.
