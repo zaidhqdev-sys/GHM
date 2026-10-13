@@ -359,7 +359,7 @@ Business/org ID mapping remains a **separate** governed migration (Issuance Deci
 - Revoke **all** refresh sessions
 - Access JWTs expire naturally (≤15m)
 - Membership rows: retain or mark per later policy; **authorization must fail** for disabled accounts even if membership rows linger
-- Exact disable field = UNSELECTED
+- Exact disable field was UNSELECTED at Gate 2F; the qualified schema now implements `ghm.account_identity.account_status` (`active` / `disabled`) as recorded in `GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md`.
 
 ### Membership revocation
 
