@@ -201,7 +201,7 @@ Connect review service creates a row with `business_id`, `reviewer_id`, and `rev
 - Business engagement = **Build/extend** unless GHM has an already qualified event contract; current inspected route set does not provide the Connect event contract.
 - Review create/read/moderate = **Reuse candidate / adapt and qualify**.
 
-No code or production changes. Next batch: compare Connect notification/support request payloads and status enums against GHM route parsers, then verify all doc links and PR diffs before continuing the full repository reconciliation.
+No code or production changes. The following audit sections record the notification/support payload and status comparisons. The remaining gate is full cross-document reconciliation, link validation and changed-file review.
 
 ## 14. Contract audit batch — support and notification caller status
 
