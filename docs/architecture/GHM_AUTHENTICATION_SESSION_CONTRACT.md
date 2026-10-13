@@ -4,7 +4,7 @@
 
 
 **Canonical owner:** GHM platform governance
-**Status:** AUTHENTICATION GATE 2B CONTRACT — HISTORICAL DECISION RECORD; session/refresh parameters were subsequently frozen by Gate 3B and the resulting construction foundation is qualified on `main @ ffc4a2a`
+**Status:** AUTHENTICATION GATE 2B CONTRACT — HISTORICAL DECISION RECORD; session/refresh parameters were subsequently frozen by Gate 3B and the resulting construction foundation was qualified on `main @ ffc4a2a` at the time of reconciliation. This is a historical evidence pointer, not a current HEAD pointer.
 **Authority:** Local repository `C:\GHM`
 **Baseline:** branch `construction/saved-business-resource`, HEAD `239ef5d5065826ddbaae03a2b05c175bee9bce1d`
 **Depends on:**
