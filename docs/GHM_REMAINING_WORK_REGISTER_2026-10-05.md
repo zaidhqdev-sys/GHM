@@ -5,7 +5,7 @@
 
 **Latest documentation reconciliation:** the whole-repository pass and targeted follow-ups are recorded in `GHM_CURRENT_STATE.md`. Opportunity Participation and Business Profile source-audit authorization language was clarified as historical; the qualified slices are not reopened by those records.
 
-**PR #130 follow-up:** targeted review of the 30-file documentation diff found and corrected additional stale historical headings/instructions in dated handovers, the shared-platform boundary audit, the Issue #1 baseline heading, and the Connect production-readiness historical-count table. This is a pending-merge checkpoint, not a claim that the full 209-file inventory/link scan was rerun after these latest edits; see the PR and latest CI run for current branch verification.
+**PR #130 follow-up:** targeted review of the 30-file documentation diff found and corrected additional stale historical headings/instructions in dated handovers, the shared-platform boundary audit, the Issue #1 baseline heading, and the Connect production-readiness historical-count table. This sentence records the pre-merge checkpoint only. PR #130 subsequently merged into `main` as `14c805cfd749ed50493523972fdd0a7c359bbfce`. It does not claim that the full 209-file inventory/link scan was rerun after those latest edits; the current reconciliation pass must complete that check before another merge.
 
 **Latest targeted verification:** all 30 changed Markdown files were re-read at the current PR head. The targeted stale-status phrase sweep found no remaining hits for the contradictions checked. All 14 inline local Markdown links across the changed files resolve to 9 existing target documents. This does not replace the outstanding full 209-file inventory/link scan.
 
