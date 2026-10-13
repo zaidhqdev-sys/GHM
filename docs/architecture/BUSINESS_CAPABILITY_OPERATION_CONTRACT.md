@@ -245,17 +245,11 @@ It must not:
 - expose generic SQL operations;
 - perform matching, ranking, recommendations, or AI inference.
 
-## 17. Registry contract
+## 17. Registered resource and HTTP boundary
 
-A dedicated resource registration is required before any HTTP exposure.
+The current GHM runtime registers the bounded `business_capability` resource and exposes a limited set of list/get/create operations plus the separately qualified verification-state transition. This contract does not authorize generic update, unrestricted public HTTP exposure, or expansion beyond those registered operations.
 
-Initial intended resource:
-
-```text
-business_capability
-```
-
-Current bounded service operations:
+The bounded service operations are:
 
 ```text
 read
@@ -263,15 +257,11 @@ create
 transition
 ```
 
-`transition` is the separately qualified verification-state operation; generic update and public HTTP exposure remain unauthorized.
+`transition` is the separately qualified verification-state operation. Authorization remains resource- and operation-specific.
 
-Authorization remains resource- and operation-specific.
+## 18. Connect evidence-workflow HTTP gap
 
-## 18. No HTTP exposure yet
-
-This contract deliberately does not authorize a new standalone Business Capability API route.
-
-GHM construction begins with the domain/resource boundary and qualification rather than speculative public API exposure.
+Current route registration does not provide the full Connect capability-evidence workflow. Connect business/admin panels call evidence submission, verifier authorization, evidence queue/list, and evidence-review operations, while the inspected GHM routes do not expose matching submission/review workflows. Preserve the qualified assertion CRUD/verification slice; track evidence submission/review separately as an **Extend/Build** contract with explicit evidence metadata/privacy, business-member submission authorization, founder/verifier review authority, lifecycle mapping, audit trail and HTTP acceptance tests.
 
 ## 19. Qualification evidence — CLOSED / PASS
 
