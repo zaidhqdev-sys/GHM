@@ -115,12 +115,12 @@ Classification: **Reuse** = likely existing GHM surface, still requires contract
 
 ## 8. Exact resume point — do not restart from zero
 
-**Next action:** finish the bounded cross-document reconciliation and independent review of the 36 changed Markdown files; do not begin code work.
+**Current checkpoint:** targeted cross-document reconciliation is complete for the recorded classifications; the 207-file GHM Markdown relative-link scan and all 37 changed-file link checks found no broken local targets. The specific directory-contract scope conflict was corrected in place. Before merge, refresh both PR heads, inspect the final 30-file GHM and 7-file Connect diffs, confirm reviews/status, and perform one final changed-file contradiction/scope check. Do not begin code work.
 
 1. Reconcile the operation-level classifications in this handover against `GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md`, `CONNECT_BACKEND_OPERATION_INVENTORY.md`, `GHM_CONNECT_BACKEND_READINESS_AUDIT.md`, `docs/GHM_CURRENT_STATE.md`, and the living operation contracts. Keep explicit **Build / Extend / Reuse candidate / Legacy-exclude / Evidence-insufficient** distinctions.
-2. Verify every relative Markdown link in both PRs against the branch trees, and inspect changed-file diffs for appended corrections, obsolete “next batch” instructions, contradictory status, duplicate source-of-truth claims, and accidental code/production scope.
+2. **Completed link audit:** 207 tracked GHM Markdown files plus all changed-file links in both PRs (30 GHM / 7 Connect) had no broken relative/local targets. The newly clarified directory-contract sentence introduced no links. Final pre-merge work is review of the final diffs and current PR status, not rerunning the completed broad link scan unless files/links change.
 3. Reconcile the matching Connect integration architecture/specification, current-state audit, master index, ownership matrix and companion handover against the same classifications.
-4. Re-fetch PR #133 and Connect PR #34 metadata after final edits; record exact head SHAs and review status. Keep both drafts unmerged until the full review passes and the founder explicitly authorizes merge.
+4. Refresh PR #133 and Connect PR #34 metadata after the last documentation commit; record exact head SHAs and review status in the final audit response. Keep both drafts unmerged until the final diff review passes and the founder explicitly authorizes merge.
 5. No implementation, data migration, provider activation, production changes or cutover during this documentation pass.
 
 **Do not merge either documentation branch until all affected docs are reconciled and reviewed as a set, and the founder has been told what remains.** No implementation, migration, production changes or cutover before then.
@@ -180,7 +180,7 @@ No code or production changes were made. The operation-by-operation findings bel
 - Support = **Reuse candidate / contract verification required**.
 - Relationships/outcomes = **Build**, with lifecycle and verification semantics preserved.
 
-No runtime or production change was made. The following audit sections record the directory, support, review and notification comparisons; the remaining gate is cross-document reconciliation and full changed-file review, not restarting these source comparisons.
+No runtime or production change was made. Historical checkpoint superseded by the later operation-level matrix and cross-document review. Do not use this paragraph as the current resume point.
 
 
 ## 13. Contract audit batch — Connect directory and review parity
@@ -201,7 +201,7 @@ Connect review service creates a row with `business_id`, `reviewer_id`, and `rev
 - Business engagement = **Build/extend** unless GHM has an already qualified event contract; current inspected route set does not provide the Connect event contract.
 - Review create/read/moderate = **Reuse candidate / adapt and qualify**.
 
-No code or production changes. The following audit sections record the notification/support payload and status comparisons. The remaining gate is full cross-document reconciliation, link validation and changed-file review.
+No code or production changes. Historical checkpoint superseded by the later operation-level matrix and cross-document review. Do not use this paragraph as the current resume point.
 
 ## 14. Contract audit batch — support and notification caller status
 
