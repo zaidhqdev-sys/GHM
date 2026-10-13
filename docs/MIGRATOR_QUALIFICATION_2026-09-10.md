@@ -69,14 +69,14 @@ GHM DEDICATED MIGRATION RUNNER QUALIFICATION: PASS
 
 This qualification establishes the dedicated `ghm_migrator` login, its SET ROLE path to `ghm_schema_owner`, PostgreSQL connectivity, migration-ledger reconciliation, and repeat/no-op transaction path for the current construction slice.
 
-## Remaining work
+## Remaining authority work — reconciled against later mainline
 
-This does not close the broader authority reconciliation. Still open:
+The list below records the status of this 2026-09-10 qualification after later mainline work:
 
-1. Bootstrap `ghm_db_user` memberships granted by bootstrap `postgres`, requiring an independent provider/bootstrap authority path for cleanup.
-2. Future-object default privileges, deferred until a dedicated GHM schema is reconciled.
-3. Separate decision on database TEMP privilege if required by a future runtime contract.
-4. Final removal of the old `ghm_app_user -> ghm_db_user` authority path only after replacement and recovery paths are independently qualified.
+1. **OPEN:** Bootstrap `ghm_db_user` memberships granted by bootstrap `postgres` still require an independent provider/bootstrap authority path for cleanup.
+2. **CLOSED for the current `ghm` schema slice:** Dedicated-schema default privileges have since been reconciled; any new object still requires its own migration and least-privilege review.
+3. **CLOSED for the current runtime boundary:** TEMP privilege is recorded as **NO GRANT REQUIRED**; revisit only if a future runtime contract proves it necessary.
+4. **OPEN / gated:** Final removal of the old `ghm_app_user -> ghm_db_user` authority path remains deferred until replacement and recovery paths are independently qualified and the required bootstrap authority is available.
 
 ## Safety boundary
 
