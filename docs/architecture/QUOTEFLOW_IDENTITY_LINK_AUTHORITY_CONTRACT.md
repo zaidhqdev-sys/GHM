@@ -94,9 +94,11 @@ A future contract must define at minimum:
 - shadow-read behavior;
 - cutover ownership.
 
-## Fail-closed rules
+## Historical fail-closed rules from the former proposal
 
-Until the authority contract is qualified:
+The rules below preserve the original dual-confirmation proposal and are not a current qualification checklist for this superseded contract. Current migration mapping and provisioning status is governed by the living migration contracts named above; the old proposal cannot reopen completed external-identity construction or authorize a permanent runtime identity-link resource.
+
+At the historical proposal stage, the fail-closed rules were:
 
 - no implicit mapping;
 - no fallback matching;
