@@ -4,11 +4,11 @@
 
 **HISTORICAL AUTHORITY CONTRACT — DUAL CONFIRMATION RETAINED FOR MIGRATION CEREMONIES ONLY**
 
-This contract resolves the Founder/Product authority gate for establishing a cross-system identity link.
+This contract preserves the Founder/Product authority decision for a dual-confirmation ceremony used to resolve a specific legacy migration conflict. It is not the active protocol for routine GHM external-identity resolution.
 
-The selected model is **dual-sided confirmation**: neither system may unilaterally establish a trust link to an arbitrary principal or tenant in the other system.
+The selected model is **dual-sided confirmation** for that narrowly scoped ceremony: neither system may unilaterally establish a trust link to an arbitrary principal or tenant in the other system. Routine migration-only external-identity resolution uses the separately qualified `(provider=supabase, sourceSubject) → ghm.account_identity.id` mapping. The separate legacy organization-to-GHM-Business crosswalk and live Business provisioning remain independently gated.
 
-This contract defines authority and lifecycle semantics only. It does not authorize persistence, HTTP routes, adapter implementation, production configuration, Supabase mutation, shadow qualification, or cutover.
+This contract defines authority and lifecycle semantics only. It does not authorize permanent runtime identity-link persistence, HTTP routes, adapter implementation, production configuration, Supabase mutation, shadow qualification, or cutover.
 
 ## Selected authority model
 
