@@ -6,11 +6,11 @@
 
 **Documentation reconciliation — 2026-10-13:** The earlier `1f2b10d0850095311614c5b5f9531eb8b7cce860` commit is a historical checksum-normalization/audit anchor, not the current `main` HEAD. This roll-up is reconciled against the consolidated mainline and the current state/evidence records; the PR commit SHAs below identify individual merged slices, not the current repository HEAD. Superseded authentication gate records remain historical provenance. Issue #1 remains OPEN: later qualified resource, storage-provider, and commercial slices do not independently satisfy its remaining foundation acceptance criteria.
 
-## Current baseline
+## Foundation baseline and merged construction evidence
 
 The production configuration/secret boundary was construction-qualified on PR #21 and is now merged into `main` at `5c71846cd96b05c45956254d912dfc0a609760e6`. Its canonical contract is `PRODUCTION_CONFIGURATION_SECRET_BOUNDARY_CONTRACT.md`. The qualified rule is that production configuration fails closed unless `DATABASE_SSL=true`; this is a construction gate only and does not authorize production environment changes.
 
-Current main includes these completed Issue #1 slices:
+The following PRs record completed construction slices merged into `main` at the time of their respective merges. Their listed SHAs are historical merge evidence, not a claim about current `main` HEAD or live deployment state:
 
 - PR #13 — legacy authentication reconciliation — merged as de8143ff99a0b7ca1711cebb47af7091715d8265. The temporary HS/JWT_SECRET bearer path was removed. GHM resource authentication is ES256-only.
 - PR #14 — runtime/HTTP hardening — merged as b18a407e0ad1184f2821b08736e0b638e835e1f1. CORS validation, HTTP timeouts, ETag/security headers, readiness/health and operational-boundary qualification were established.
