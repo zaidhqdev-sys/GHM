@@ -2,7 +2,7 @@
 
 **Status:** CURRENT / AUTHORITATIVE DOCUMENTATION INDEX — reconciled 2026-10-13
 **Repository authority:** consolidated `main`
-**Documentation audit anchor:** `1f2b10d0850095311614c5b5f9531eb8b7cce860` (`Normalize migration checksums across line endings`). This identifies the code/evidence baseline checked for this reconciliation; it does not independently establish the currently deployed Render commit or live database state.
+**Repository-wide documentation audit base:** `01bd40dabe0b0f02bb30d2f78267a0414d3d8356` (PR #125 merge commit). The earlier `1f2b10d0850095311614c5b5f9531eb8b7cce860` checksum-normalization commit remains a historical reconciliation anchor, not the current documentation audit base. Neither SHA independently establishes the currently deployed Render commit or live database state.
 
 ## Purpose
 
@@ -27,7 +27,7 @@ This document is the current navigation point for GHM construction state. It rec
 
 ## Qualified Business-domain capabilities
 
-Current mainline contains qualified construction boundaries for Business Identity/Profile, Business Category, Business Capability, Business Hours, Business Offering, Opportunity Core, Opportunity Capability Requirements, Opportunity Participant, Project, Project Quote, Enquiry, Customer, Quote, Review/aggregate, Trust, Saved Business, Notification persistence, Support Request, and related bounded capability seams. Notification persistence qualification does not imply full notification delivery/event transport or public HTTP workflow qualification.
+Current mainline contains qualified construction boundaries for Business Identity/Profile, Business Category, Business Capability, Business Hours, Business Offering, Opportunity Core, Opportunity Capability Requirements, Opportunity Participant, Project (private owner-bound resource and separately qualified public disclosure projection), Project Quote, Enquiry, Customer, Quote, Review/aggregate, Trust, Saved Business, Notification persistence, Support Request, public Business read, Directory v1, and related bounded capability seams. The Campaign root and Founder-locked bounded HTTP resource are implemented on mainline; this does not authorize a KBM adapter, child resources, broader HTTP expansion, or production cutover. Public Business read and Directory v1 construction/runtime qualification was merged in PR #10; this does not authorize production product cutover. Notification persistence qualification does not imply full notification delivery/event transport or public HTTP workflow qualification.
 
 The recent tenant-adoption sequence is complete for:
 
@@ -69,7 +69,7 @@ Bounded construction-qualified seams include Connect service trust/request conte
 
 ## QuoteFlow
 
-GHM contains historical/provenance and migration-boundary work for QuoteFlow. Existing legacy identity/data migration remains evidence-gated. GHM construction must not infer remote storage or data ownership solely from the presence of Supabase client code.
+GHM contains historical/provenance and migration-boundary work for QuoteFlow. Existing legacy identity/data migration remains evidence-gated. The earlier attestation verifier and persistence-free identity-link flow are historical/superseded. The dual-confirmation authority note is migration-ceremony provenance only, not permanent runtime identity authority. The current migration authority is the GHM account-onboarding/migration boundary and its exact `(provider=supabase, sourceSubject)` provenance mapping, not a separate permanent identity-link table. GHM construction must not infer remote storage or data ownership solely from the presence of Supabase client code.
 
 ## Legacy PostgreSQL authority
 
@@ -93,3 +93,13 @@ The existence of qualified construction slices does **not** mean GHM has replace
 ## Historical documentation reconciliation record — second pass, 2026-10-05
 
 This paragraph records the outcome of the 2026-10-05 pass and is retained as provenance; the current reconciliation status and audit anchor are stated at the top of this document. The first reconciliation merge was followed by a document-by-document living-status cleanup. Current qualified resources are no longer described as open construction gaps in their living contracts. Historical source audits and gate snapshots remain historical and are explicitly treated as provenance. The remaining production gap register is `docs/GHM_REMAINING_WORK_REGISTER_2026-10-05.md`. It is the current planning authority for open work; it explicitly separates GHM-core construction, product integration, provider/configuration, migration/provenance, and production cutover.
+
+## Repository-wide documentation reconciliation follow-up — 2026-10-13
+
+**Audit base:** `main` at `01bd40dabe0b0f02bb30d2f78267a0414d3d8356` (the PR #125 merge commit).
+
+- The repository tree contained 664 tracked files, including 209 documentation-like files under the repository-wide documentation inventory.
+- PR #125 changed 102 of those documentation-like files; the remaining 107 were reviewed against current mainline code, qualification evidence, and the authoritative state/remaining-work records.
+- Local Markdown link targets were checked across the 209-file documentation inventory; no broken local file targets were found.
+- This follow-up corrects stale current-status or branch-provenance statements in the Project resource, public Business/Directory, Customer/Quote adapters, Campaign/Project/Saved Business frozen contracts, database/storage README guidance, schema decision, and qualification/evidence records.
+- The follow-up is documentation-only. It does not change application code, migrations, credentials, deployed services, or production product routing. Production cutover remains separately gated.

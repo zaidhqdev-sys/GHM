@@ -2,9 +2,9 @@
 
 ## Status
 
-**CONSTRUCTION SLICE — PERSISTENCE-FREE DECISION BOUNDARY**
+**HISTORICAL / SUPERSEDED — PERSISTENCE-FREE IDENTITY-LINK DECISION DESIGN**
 
-This slice composes the qualified QuoteFlow attestation verifier contract with authenticated GHM-side confirmation and deterministic exact-pair decisions.
+This document records an earlier identity-link proposal. The canonical QuoteFlow migration boundary is now documented in `QUOTEFLOW_GHM_ACCOUNT_ONBOARDING_MIGRATION_CONTRACT.md` and related migration qualification records. This persistence-free decision design is historical and does not authorize a new attestation flow, permanent identity-link tables, product adapter, or production cutover.
 
 It does not persist links.
 

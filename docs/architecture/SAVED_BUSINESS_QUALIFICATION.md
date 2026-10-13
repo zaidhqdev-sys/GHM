@@ -4,7 +4,7 @@
 
 **QUALIFIED / CLOSED — PASS**
 
-Branch: `construction/saved-business-resource`
+Historical qualification branch: `construction/saved-business-resource` (the qualified construction result is consolidated on `main`).
 
 Final construction commit:
 

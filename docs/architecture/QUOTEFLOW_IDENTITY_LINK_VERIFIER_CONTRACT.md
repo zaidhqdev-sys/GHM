@@ -1,6 +1,10 @@
 # QuoteFlow ↔ GHM Identity Link — Attestation Verifier Contract
 
-**Status:** HISTORICAL CONSTRUCTION SLICE — MIGRATION BOUNDARY REQUIRES RECONCILIATION
+**Status:** HISTORICAL / SUPERSEDED IDENTITY-LINK DESIGN — NOT THE CURRENT QUOTEFLOW MIGRATION BOUNDARY
+
+## Current-authority clarification — 2026-10-13
+
+This verifier belongs to the earlier cross-system identity-link proposal. It is not the canonical QuoteFlow migration identity protocol and must not be treated as a current migration blocker or authorization. The current migration authority is the GHM-owned account-onboarding/migration boundary and its exact `(provider=supabase, sourceSubject)` provenance mapping; permanent runtime identity is GHM `account_identity.id`. No separate permanent identity-link table or new attestation flow is authorized by this historical contract.
 
 ## Purpose
 

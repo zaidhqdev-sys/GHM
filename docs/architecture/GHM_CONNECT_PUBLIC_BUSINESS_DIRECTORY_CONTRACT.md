@@ -1,8 +1,8 @@
 # GHM Connect Public Business / Directory Contract
 
-**Status:** CONTRACT RECONCILIATION — FOUNDER CONSTRUCTION GATE REQUIRED  
+**Status:** PUBLIC BUSINESS READ + DIRECTORY V1 CONSTRUCTION QUALIFIED / PASS — MERGED VIA PR #10; PRODUCT CUTOVER REMAINS SEPARATELY GATED  
 **Source:** Connect audited at `abcffa73f893602c25310a58946bebb91fd7eeb5`  
-**GHM baseline:** `0e589d57e2d7da991bfc4420ff23fe9db454248a`
+**Historical GHM contract-drafting baseline:** `0e589d57e2d7da991bfc4420ff23fe9db454248a` (qualification and implementation were subsequently merged to `main` in PR #10).
 
 ## 1. Purpose
 
@@ -179,21 +179,11 @@ GHM public responses must use canonical GHM identifiers internally. Any Connect-
 
 The public projection itself must not make Supabase the GHM identity authority.
 
-## 10. Construction gate
+## 10. Construction qualification and current boundary
 
-Construction requires explicit founder approval after review of this contract.
+The public `business.readPublic` projection and Directory v1 construction were founder-authorized, qualified, and merged to `main` in PR #10 (`09bdef2039b80d73244b7f3026f3c4413e2227c5`). The recorded evidence included a passing build, 409/409 full-suite tests, migration/provenance checks, and live PostgreSQL directory qualification covering public visibility, rating order, category UUID/slug, text search, wildcard escaping, pagination/stable ordering, projection allowlist, and runtime dependency privileges.
 
-If approved, construction must proceed in this order:
-
-1. Freeze/reconcile the `business.readPublic` contract.
-2. Add the distinct public operation to the canonical registry.
-3. Implement the smallest qualified projection from existing canonical resources.
-4. Add focused repository/service tests.
-5. Add live PostgreSQL qualification where visibility and composition require database evidence.
-6. Separately freeze the Directory/Search contract before implementing discovery.
-7. Run the complete GHM suite and diff-check.
-8. Reconcile the exact construction delta against `main`.
-9. Founder verifies before mainline promotion.
+The numbered construction sequence below is retained as historical implementation provenance, not as an outstanding pre-merge checklist. The qualification does not authorize production product cutover, provider migration, shadow routing, backfill, or schema mutation beyond the qualified construction slice.
 
 ## 11. Explicit non-authorizations
 

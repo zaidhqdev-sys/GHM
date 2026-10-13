@@ -1,12 +1,12 @@
 # Dedicated GHM Application Schema Decision
 
 **Status:** Construction decision established; first-slice relocation and qualification CLOSED / PASS
-**Branch:** `construction/review-aggregate-reconciliation` carries the current qualified state.
+**Historical branch reference:** `construction/review-aggregate-reconciliation` was used during construction. The qualified schema decision and first-slice relocation are consolidated on `main`; this document does not designate an active working branch.
 **Original decision date:** 2026-09-10
 
 ## Decision
 
-The canonical dedicated application schema for GHM Core Engine is **`ghm`**.
+The canonical dedicated application schema for the GHM Internal Runtime application resources is **`ghm`**.
 
 This decision establishes the namespace boundary for GHM-owned application resources. It does **not** authorize a production cutover and does not by itself authorize mutation of production.
 

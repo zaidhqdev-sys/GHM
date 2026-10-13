@@ -1,6 +1,6 @@
 # GHM Campaign Schema Contract
 
-**Status:** CONSTRUCTION CONTRACT — SCHEMA DESIGN FROZEN
+**Status:** SCHEMA CONTRACT — FROZEN; CAMPAIGN ROOT CONSTRUCTION IMPLEMENTED; PRODUCTION CUTOVER SEPARATELY GATED
 **Resource:** `campaign`
 **Purpose:** KBM AI Marketing backend root container
 **Depends on:** [CAMPAIGN_SOURCE_AUDIT.md](./CAMPAIGN_SOURCE_AUDIT.md), [CAMPAIGN_OPERATION_CONTRACT.md](./CAMPAIGN_OPERATION_CONTRACT.md)
@@ -9,7 +9,7 @@
 
 Define the provider-neutral PostgreSQL schema for the GHM Campaign resource used as the durable root container for KBM AI Marketing.
 
-This contract authorizes construction on the GHM construction branch only. It does not authorize production migration, product adapters, HTTP routes, child resources, storage, AI providers, or cutover.
+The branch-only construction authorization above is historical. The Campaign root schema and bounded HTTP resource were subsequently implemented on mainline; the HTTP wire is separately governed by `CAMPAIGN_HTTP_FOUNDER_DECISION_RECORD.md` and was introduced in commit `785df12345e9dff95127573224266075dcc7c888`. This contract does not authorize production migration/cutover, a product adapter, child resources, storage, AI providers, or broader HTTP expansion.
 
 ## 2. Canonical relation
 

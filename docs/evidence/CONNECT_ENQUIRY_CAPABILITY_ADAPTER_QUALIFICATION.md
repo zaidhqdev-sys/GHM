@@ -44,7 +44,7 @@ Enquiry persistence, ownership, marketplace-target eligibility, status semantics
 
 ## Qualification state
 
-Implementation and focused tests are present on branch `construction/connect-enquiry-capability-adapter`.
+Implementation and focused tests were introduced on `construction/connect-enquiry-capability-adapter` and merged to `main` by PR #34; the branch name is historical provenance.
 
 **PASS — branch build/test evidence executed on 2026-10-03: `npm test` = 469 tests, 469 passed, 0 failed, 0 cancelled, 0 skipped, 0 todo.**
 

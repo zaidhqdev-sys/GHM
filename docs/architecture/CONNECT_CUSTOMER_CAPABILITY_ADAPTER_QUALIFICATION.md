@@ -2,7 +2,7 @@
 
 ## Status
 
-**CONSTRUCTION QUALIFIED — CUSTOMER CAPABILITY ADAPTER SUB-SLICE PENDING LOCAL VALIDATION**
+**CONSTRUCTION QUALIFIED — CUSTOMER CAPABILITY ADAPTER MERGED TO MAIN; PR #32 RECORDED LOCAL VALIDATION PASS**
 
 ## Scope
 
@@ -61,7 +61,7 @@ Focused automated coverage includes:
 - HTTP Customer read dispatch through the full governed chain;
 - HTTP Customer create reaching the typed service boundary.
 
-The full test suite and TypeScript build remain merge gates.
+PR #32 recorded 459 passing tests and a passing TypeScript build before merge. The adapter is merged to `main`; these historical branch-local results are evidence for that merge, not a claim that a new post-merge test run was performed.
 
 ## Explicit stop boundary
 

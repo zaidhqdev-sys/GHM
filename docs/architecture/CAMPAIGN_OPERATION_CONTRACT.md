@@ -1,6 +1,6 @@
 # GHM Campaign Operation Contract
 
-**Status:** CONSTRUCTION CONTRACT — OPERATION SURFACE FROZEN
+**Status:** RESOURCE OPERATION CONTRACT — FROZEN; BOUNDED HTTP SURFACE IMPLEMENTED AT FOUNDER-LOCKED GATE 9G
 **Resource:** `campaign`
 **Purpose:** KBM AI Marketing backend root container
 **Depends on:** [CAMPAIGN_SOURCE_AUDIT.md](./CAMPAIGN_SOURCE_AUDIT.md), [CAMPAIGN_SCHEMA_CONTRACT.md](./CAMPAIGN_SCHEMA_CONTRACT.md)
@@ -9,7 +9,7 @@
 
 Define the narrow GHM resource operation boundary for Campaign — the durable business-owned root for KBM AI Marketing.
 
-This contract authorizes construction and future runtime qualification of this isolated resource only. It does not authorize HTTP routes, child resources, storage, AI providers, product adapters, or production cutover.
+This contract freezes the Campaign resource-operation semantics. The earlier statement that HTTP routes were not authorized is historical: a bounded HTTP surface was separately authorized by `CAMPAIGN_HTTP_FOUNDER_DECISION_RECORD.md` and implemented in commit `785df12345e9dff95127573224266075dcc7c888`. That does not authorize additional routes, child resources, storage, AI providers, a KBM product adapter, or production cutover.
 
 ## 2. Resource identity
 

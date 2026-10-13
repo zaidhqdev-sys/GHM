@@ -2,7 +2,7 @@
 
 **Status:** QUALIFIED / PASS / CLOSED  
 **Qualification date:** 2026-10-01  
-**Construction branch:** `construction/business-offering-mainline-reconciled`  
+**Historical qualification branch:** `construction/business-offering-mainline-reconciled` (merged to `main` by PR #11; later tenant-adoption work was merged by PR #100).  
 **Base:** consolidated GHM `main` at `09bdef2039b80d73244b7f3026f3c4413e2227c5`
 
 ## Scope

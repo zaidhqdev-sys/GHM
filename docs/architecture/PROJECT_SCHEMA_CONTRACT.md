@@ -1,12 +1,12 @@
 # GHM Project Schema Contract
 
-Status: **qualified Project schema contract; construction-only, no production cutover authority**
+Status: **qualified Project schema contract; construction merged to main; no production cutover authority**
 
 ## Purpose
 
 Define the physical PostgreSQL contract for the first governed GHM `project` resource. This document follows the provider-neutral Project resource contract and the already-qualified dedicated `ghm` Business Identity schema.
 
-This contract authorizes construction of the Project migration on the dedicated construction branch. It does not authorize production migration, product adapter work, data migration, cutover, provider/bootstrap mutation, or changes to Zaid Connect or QuoteFlow production.
+The dedicated-branch construction wording is historical: the Project schema construction is qualified and consolidated on `main`. This contract does not authorize production migration, product adapter work, data migration, cutover, provider/bootstrap mutation, or changes to Zaid Connect or QuoteFlow production.
 
 ## Canonical relation
 
