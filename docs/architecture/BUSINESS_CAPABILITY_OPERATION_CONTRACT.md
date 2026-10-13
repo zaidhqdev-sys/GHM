@@ -273,9 +273,9 @@ This contract deliberately does not authorize a new standalone Business Capabili
 
 GHM construction begins with the domain/resource boundary and qualification rather than speculative public API exposure.
 
-## 19. Qualification requirements
+## 19. Qualification evidence — CLOSED / PASS
 
-Before this contract is qualified, evidence must demonstrate:
+The recorded qualification evidence for this contract demonstrates:
 
 1. authenticated context is required;
 2. Business management authorization is enforced;
@@ -295,6 +295,8 @@ Before this contract is qualified, evidence must demonstrate:
 16. least-privilege runtime grants match the operation surface;
 17. build, tests, and diff checks pass;
 18. no previously qualified GHM capability regresses.
+
+These criteria are recorded as satisfied for the bounded construction slice. Reopen qualification only if new evidence demonstrates regression or a separately authorized capability changes this boundary.
 
 ## 20. Construction boundary
 
