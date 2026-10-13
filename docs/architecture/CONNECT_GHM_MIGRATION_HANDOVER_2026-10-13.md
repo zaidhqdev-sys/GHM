@@ -256,3 +256,23 @@ Notifications: recipient cannot read/mark another user's notification; non-privi
 
 No runtime or production changes. These are contract findings to carry into the single operation-level gap register.
 
+## 17. Active feature flags, analytics, regional config and AI gate
+
+### Active callers / gating verified
+
+- `featureFlags.guidedOnboarding` is `true` in Connect's current `src/config/featureFlags.js`; the onboarding panel returns null only if this flag is false. Treat onboarding as current in-scope functionality unless route/mount evidence contradicts it. The four progress actions still lack a GHM onboarding resource/HTTP contract.
+- `src/features/analytics/AnalyticsScreen.jsx` is an active caller of `businessAnalyticsService.getDashboard(businessId, days)`, default 30 days and selectable periods. It is backed by Connect's `get_business_analytics_dashboard` RPC. No equivalent GHM analytics dashboard contract has been established; classify **Build** (or extend an explicit existing analytics contract only if source audit finds one), with tenant/business authorization and aggregation parity.
+- `src/features/directory/useDirectoryFilters.js` actively loads the default regional configuration and administrative areas. Regional configuration is not just a dormant facade export. GHM directory endpoint does not accept region/province/city filters today; classify **Extend** directory configuration/filter contract. Identify the minimal supported launch geography and configuration ownership rather than rebuilding every legacy regional table.
+- AI is present in active UI callers (`AISupportScreen.jsx` and quote analyzer). However `src/config/featureFlags.js` has `milestone38Approved: false`; the provider gate requires approval before proxy invocation. Preserve the fail-closed gate. AI migration scope is **replace the Supabase Edge Function transport only if/when the feature gate authorizes it**; do not enable paid providers or weaken the gate during this backend migration.
+- `aiProxyClient.js` directly constructs `VITE_SUPABASE_URL/functions/v1/ai-proxy` and sends the Supabase anon key. That is a confirmed runtime coupling, even while provider access is gated. A no-Supabase build must remove this coupling and preserve the current denial behavior until explicit provider approval. Existing Buildlink-era strings in the AI support content are stale UI copy, not a reason to revive Buildlink or its backend.
+
+### Classification update
+
+- Onboarding = **Build** (active flag, no GHM contract identified).
+- Analytics dashboard = **Build**, preserving Connect's metrics and authorization.
+- Regional configuration + directory filters = **Extend**, limited to active filter needs.
+- AI proxy = **Replace transport behind existing fail-closed gate**; provider activation remains unauthorized.
+- Do not treat old provider integrations as launch approval.
+
+No runtime or production changes. This is an audit/documentation checkpoint only.
+
