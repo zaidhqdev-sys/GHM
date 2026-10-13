@@ -93,3 +93,13 @@ The existence of qualified construction slices does **not** mean GHM has replace
 ## Historical documentation reconciliation record — second pass, 2026-10-05
 
 This paragraph records the outcome of the 2026-10-05 pass and is retained as provenance; the current reconciliation status and audit anchor are stated at the top of this document. The first reconciliation merge was followed by a document-by-document living-status cleanup. Current qualified resources are no longer described as open construction gaps in their living contracts. Historical source audits and gate snapshots remain historical and are explicitly treated as provenance. The remaining production gap register is `docs/GHM_REMAINING_WORK_REGISTER_2026-10-05.md`. It is the current planning authority for open work; it explicitly separates GHM-core construction, product integration, provider/configuration, migration/provenance, and production cutover.
+
+## Repository-wide documentation reconciliation follow-up — 2026-10-13
+
+**Audit base:** `main` at `01bd40dabe0b0f02bb30d2f78267a0414d3d8356` (the PR #125 merge commit).
+
+- The repository tree contained 664 tracked files, including 209 documentation-like files under the repository-wide documentation inventory.
+- PR #125 changed 102 of those documentation-like files; the remaining 107 were reviewed against current mainline code, qualification evidence, and the authoritative state/remaining-work records.
+- Local Markdown link targets were checked across the 209-file documentation inventory; no broken local file targets were found.
+- This follow-up corrects stale current-status or branch-provenance statements in the Project resource, public Business/Directory, Customer/Quote adapter, schema decision, and qualification/evidence records.
+- The follow-up is documentation-only. It does not change application code, migrations, credentials, deployed services, or production product routing. Production cutover remains separately gated.
