@@ -89,3 +89,13 @@ Counts are operation-family rows, not line-level API methods.
 ## 4. Adapter implication (non-authorizing)
 
 A future Connect adapter must map each row to GHM operation, external provider, Connect-local behavior, or explicit unsupported. That mapping is **not** authorized by this inventory.
+
+
+---
+
+## 2026-10-13 migration handover pointer
+
+This file remains a **historical operation-family inventory**, not the final operation-by-operation migration contract. The current requirement is that ZAID Connect removes all active Supabase runtime dependencies and uses GHM Internal Runtime for required backend journeys. The 2026-09-18 classifications and counts above must not be presented as a fresh measurement of current GHM coverage.
+
+Continue by verifying active Connect callers against current GHM HTTP route methods, schemas, response contracts, authorization and transaction semantics. Explicitly separate reuse candidates from incomplete contracts, missing domains and legacy/orphan references. The durable current gap register and resume instructions are in `docs/architecture/CONNECT_GHM_MIGRATION_HANDOVER_2026-10-13.md`. No implementation or cutover is authorized by this inventory update.
+
