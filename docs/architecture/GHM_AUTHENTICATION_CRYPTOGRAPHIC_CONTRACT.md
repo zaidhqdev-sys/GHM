@@ -77,13 +77,13 @@ Already selected (Issuance Decision Record + Contract Gate 1):
 
 **Credential architecture (separate Founder selections; see Credential Contract):** email login identifier; password + Argon2id; password policy; email recovery.
 
-**Not yet Founder-selected** (remain open in this cryptographic gate):
+**Still open after Gate 3B (do not infer values not evidenced by implementation):**
 
-- exact key representation / encoding
-- exact env/secret **names** or storage paths (not invented)
-- public-key distribution mechanism details
-- rotation interval / calendar
-- exact `kid` string values (not invented)
+- production public-key distribution mechanism for external product consumers
+- signing-key rotation interval / calendar
+- deployment-specific active/previous `kid` values (the loader enforces printable ASCII values up to 64 characters and requires distinct active/previous IDs)
+
+**Already frozen by implementation:** PKCS#8 PEM private key and public key inputs, the `GHM_JWT_ES256_*` environment-variable names, and optional paired previous-public-key/previous-`kid` inputs. These are no longer unselected design questions.
 
 Durable credential/session/refresh/recovery/mapping persistence concepts: see [GHM_AUTHENTICATION_PERSISTENCE_CONTRACT.md](./GHM_AUTHENTICATION_PERSISTENCE_CONTRACT.md).
 
@@ -630,7 +630,7 @@ Private signing keys never leave the issuer boundary. Public keys are verificati
 | access-token lifetime | **SELECTED: 15 minutes** |
 | refresh-token / session durations | Session Gate: inactivity **30d** + absolute **90d** **SELECTED** |
 | refresh rotation / replay policy | Session Gate: rotate every success + single-use + session-family replay revoke **SELECTED** (see Session Contract) |
-| key representation | **UNSELECTED** (encoding/names not invented) |
+| key representation | PKCS#8 PEM and `GHM_JWT_ES256_*` env names implemented; exact deployment key values remain secret-managed |
 | key storage | **SELECTED:** secret-managed inside issuer boundary (no mandatory KMS/HSM) |
 | `kid` requirement | **SELECTED: required** |
 | rotation interval | **UNSELECTED** (overlap ≥ 15m + skew SELECTED) |
