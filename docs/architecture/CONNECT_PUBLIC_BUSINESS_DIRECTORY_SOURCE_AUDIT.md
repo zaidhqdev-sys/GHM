@@ -86,7 +86,7 @@ Service eligibility also requires `verificationStatus === 'approved'`.
 
 ## 5. Search / filter / sort / geo
 
-Connect implements directory query behavior in application SQL filters + client distance math. GHM has no dedicated directory search resource.
+At the 2026-09-18 audit snapshot, Connect implemented directory query behavior through application SQL filters and client-side distance math, while GHM had no dedicated directory search resource. Current GHM mainline now registers public business directory/search HTTP endpoints, but these do not yet qualify full Connect parity: filter/sort/nearby/featured behavior, the public field allowlist, pagination/count semantics, owner preview, and engagement events still require explicit mapping and qualification. The first-slice GHM public projection remains narrower by design; no field expansion is authorized.
 
 Required evidence before any GHM directory construction:
 
@@ -104,6 +104,3 @@ Required evidence before any GHM directory construction:
 4. Construction of an extended public Business / directory contract requires explicit authorization after field-by-field product decisions.
 5. Closed Business Identity first slice remains closed; this audit does not reopen it.
 
-## Current endpoint-status reconciliation — 2026-10-13
-
-The older sentence in §6 that “GHM has no dedicated directory search resource” is a historical comparison statement and is superseded by current repository evidence: GHM now registers public business directory/search HTTP endpoints. Do not remove that historical source finding; read it as the state at the audit baseline. The current gap is **product-contract parity**, not total absence of a search route: Connect's filter/sort/nearby/featured behavior, public field allowlist, pagination/count semantics, owner-preview behavior and engagement events still require explicit mapping and qualification. The first-slice GHM public projection remains narrower by design; no field expansion is authorized by this note.
