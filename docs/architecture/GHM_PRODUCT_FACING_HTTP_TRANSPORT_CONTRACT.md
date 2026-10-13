@@ -404,7 +404,7 @@ Campaign HTTP unit tests are present at `785df12`. Broader supported-consumer qu
 
 Unresolved (not decided by assumption):
 
-- authentication issuance
+- product-specific session-client integration and migration to the qualified GHM authentication foundation (separately gated)
 - API version lifecycle policy (prefix `/api/v1` locked for Campaign; lifecycle OPEN)
 - retry/idempotency policy (no special Campaign contract)
 - correlation/request IDs
@@ -426,7 +426,7 @@ This contract does **not** authorize:
 4. Broader HTTP expansion beyond the locked Campaign surface
 5. Production cutover / hosting changes
 
-Next remaining gates: authentication issuance decision; KBM adapter authorization (separate).
+Next remaining gates: broad KBM/product adapter authorization and qualification (separate); product-specific session-client integration/migration; platform version/retry/error semantics where still open.
 
 ## 24. Relationships
 
@@ -448,7 +448,7 @@ TRANSPORT SELECTED: HTTP/API.
 
 HTTP TRANSPORT CONTRACT: DEFINED AT SEMANTIC LEVEL.
 
-AUTHENTICATION ISSUANCE: UNSELECTED.
+HISTORICAL SELECTION-TIME STATUS: authentication issuance was unselected at this gate; the bounded Gate 3B authentication foundation is now qualified. Product session-client integration and migration remain separately gated.
 
 CAMPAIGN HTTP SURFACE: IMPLEMENTED.
 
