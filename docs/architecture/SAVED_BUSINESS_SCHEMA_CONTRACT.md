@@ -1,12 +1,12 @@
 # GHM Saved Business Schema Contract
 
-**Status:** CONSTRUCTION CONTRACT — SCHEMA DESIGN FROZEN
+**Status:** SCHEMA CONTRACT — FROZEN; SAVED BUSINESS CONSTRUCTION QUALIFIED; PRODUCTION CUTOVER SEPARATELY GATED
 
 ## 1. Purpose
 
 Define the provider-neutral PostgreSQL schema for the Saved Business account-owned relationship reconciled from the live Zaid Connect source audit.
 
-This contract authorizes construction on the GHM construction branch only. It does not authorize production migration, Supabase changes, product adapters, shadow traffic, credential changes, or cutover.
+The branch-only construction authorization is historical; the Saved Business construction slice is qualified and consolidated on `main`. This contract does not authorize production migration, Supabase changes, product adapters, shadow traffic, credential changes, or cutover.
 
 ## 2. Canonical relation
 
