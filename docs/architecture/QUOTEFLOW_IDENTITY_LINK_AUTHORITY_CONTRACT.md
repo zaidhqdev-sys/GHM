@@ -4,7 +4,7 @@
 
 **HISTORICAL / SUPERSEDED — DUAL CONFIRMATION IS NOT A PERMANENT RUNTIME IDENTITY AUTHORITY**
 
-This contract records an earlier cross-system identity-link proposal and is not the current QuoteFlow migration authority. Current migration provenance is governed by `QUOTEFLOW_GHM_ACCOUNT_ONBOARDING_MIGRATION_CONTRACT.md` and its related migration qualification records. No separate permanent identity-link table or attestation-based runtime identity authority is authorized by this historical contract.
+This contract records an earlier cross-system identity-link proposal and is not the current QuoteFlow migration authority. Current migration provenance is governed by `QUOTEFLOW_GHM_ACCOUNT_ONBOARDING_MIGRATION_CONTRACT.md` and its related migration qualification records. No separate permanent identity-link table or attestation-based runtime identity authority is authorized by this historical contract. All subsequent sections preserve the former proposal; any claims that identity mapping/persistence is not yet implemented are historical and must not override the qualified GHM external-identity/migration boundary.
 
 ## Existing evidence
 
