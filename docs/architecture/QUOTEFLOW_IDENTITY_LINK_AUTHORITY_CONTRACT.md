@@ -122,12 +122,10 @@ This contract does not authorize:
 - shadow qualification;
 - cutover.
 
-## Construction decision
+## Historical construction decision — superseded
 
-The cross-system mapping boundary and link authority are now explicitly resolved.
+The preceding construction sequence records the earlier dual-confirmation identity-link proposal. Its statement that GHM-owned QuoteFlow authentication/migration provenance was the next gate is stale: the bounded GHM authentication and account-onboarding/migration foundation is now construction-qualified.
 
-The dual-confirmation authority model and persistence design are separately documented. Database objects and mutation remain implementation gates and require independent qualification for schema ownership, uniqueness, transactionality, concurrency, audit provenance, and runtime least privilege.
+The current migration authority is `QUOTEFLOW_GHM_ACCOUNT_ONBOARDING_MIGRATION_CONTRACT.md` and the exact `(provider=supabase, sourceSubject)` migration-provenance mapping. The old identity-link persistence design is not an implementation gate and does not authorize permanent runtime identity-link tables, attestation-based runtime identity, or new identity-link routes.
 
-The next construction gate is qualification of GHM-owned QuoteFlow authentication and migration provenance. Permanent identity-link persistence is not the next slice.
-
-Until then, QuoteFlow remains Supabase-authoritative and GHM remains authoritative only for its already-qualified domains.
+Still separately gated are authoritative reconciliation of both founder-owned QuoteFlow source accounts, full non-production reset/re-enrollment DB + HTTP ceremony qualification, migration-only legacy-organization-to-GHM-Business provisioning qualification, product session/runtime migration, and production cutover. QuoteFlow remains on its existing production path until those gates and founder authorization are satisfied.
