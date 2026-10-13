@@ -1,8 +1,8 @@
 # QuoteFlow Quote Source Audit — QuoteFlow → GHM
 
-**Status:** SOURCE AUDIT — RECONCILED / CONSTRUCTION AUTHORIZED
+**Status:** HISTORICAL SOURCE AUDIT — CONSTRUCTION COMPLETED / QUALIFIED
 
-> **Historical-status reconciliation — 2026-10-12:** The “construction authorized” status records the original QuoteFlow source-audit decision, not an outstanding authorization request. GHM Quote construction is represented in the qualified mainline capability index and resource contracts. This audit remains source-contract evidence; it does not authorize a QuoteFlow product adapter, production migration, or cutover.
+> **Historical-status reconciliation — 2026-10-13:** The “construction authorized” status records the original QuoteFlow source-audit decision, not an outstanding authorization request. GHM Quote construction is represented in the qualified mainline capability index and resource contracts. This audit remains source-contract evidence; it does not authorize a QuoteFlow product adapter, production migration, or cutover.
 
 ## Scope
 
