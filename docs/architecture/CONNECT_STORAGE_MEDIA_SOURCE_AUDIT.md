@@ -60,3 +60,7 @@ Referenced by application code only. **No** `insert into storage.buckets` for `p
 3. `private-docs` and several media metadata tables are **not migration-proven**; do not invent GHM tables from app references alone.
 4. At the 2026-09-18 audit snapshot, GHM had no qualified storage resource. Subsequent GHM storage persistence and the live R2 provider data path have been qualified, as stated in this document's current-status notice. Product-facing media workflows, authorization coverage for every Connect media prefix, production enablement, and cutover remain separately gated.
 5. Storage abstraction / bucket authorization requires explicit construction authorization after resolving orphan metadata and bucket policy evidence.
+
+## Target Connect storage exposure reconciliation — 2026-10-13
+
+The storage service/R2 qualification recorded in this source audit proves only the bounded provider/service behavior it names. The current Connect no-Supabase audit found no storage router registered in `src/http/app.ts`, and the current storage object policy supports `business_logo` only. Thus the existing evidence is not proof of a browser-usable Connect storage API. Keep authenticated upload/complete/access/delete HTTP exposure and contract tests open as **Extend** for the confirmed logo journey; do not treat workspace files, project images, or verification documents as covered until separate active callers, object classes, privacy and retention rules are evidenced. No production route exposure or cutover is authorized by this note.
