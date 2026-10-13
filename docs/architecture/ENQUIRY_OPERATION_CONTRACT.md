@@ -201,9 +201,9 @@ The first Enquiry qualification does not implement or authorize:
 - production data migration;
 - Supabase RLS replication.
 
-## 13. Qualification gate
+## 13. Historical construction qualification criteria — CLOSED / PASS
 
-Before a GHM Enquiry schema or runtime implementation is considered qualified, construction must demonstrate:
+The following criteria record the bounded Enquiry schema/runtime qualification already completed; they are not a request to rebuild or reopen that qualified slice:
 
 1. exact customer identity binding to `account_identity`;
 2. exact Business recipient binding to `business`;
@@ -223,7 +223,7 @@ Before a GHM Enquiry schema or runtime implementation is considered qualified, c
 16. cleanup using the dedicated `ghm_migrator` authority;
 17. automated repository/service/API tests covering the authorization boundary.
 
-A schema existing in PostgreSQL is not sufficient evidence of qualification.
+A schema existing in PostgreSQL is not sufficient evidence of qualification. The bounded resource qualification is closed; the separate source-parity and atomic Opportunity workflow gaps stated in the current-status notice and `ENQUIRY_SOURCE_AUDIT.md` remain open. In particular, the current GHM transition graph must not be treated as canonical production source truth until reconciled against the evidenced Connect contract.
 
 ## 14. Founder boundary
 
