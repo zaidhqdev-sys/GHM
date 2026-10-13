@@ -2,7 +2,7 @@
 
 **Status:** CURRENT / AUTHORITATIVE DOCUMENTATION INDEX — reconciled 2026-10-13
 **Repository authority:** consolidated `main`
-**Reconciliation history:** the PR #125 baseline (`01bd40dabe0b0f02bb30d2f78267a0414d3d8356`) was supplemented by PR #127, merged as `6afb428d452012d9860ca50c2b0066f0768b184c` on 2026-10-13. These are provenance anchors, not live pointers to current `main`, deployed Render code, or database state. The earlier `1f2b10d0850095311614c5b5f9531eb8b7cce860` checksum-normalization commit is historical provenance.
+**Reconciliation history:** the PR #125 baseline (`01bd40dabe0b0f02bb30d2f78267a0414d3d8356`) was followed by PR #127 (`6afb428d452012d9860ca50c2b0066f0768b184c`) and PR #128 (`671c41be0b2446dd5c56c709c4aa3cb2e15e7d81`), merged on 2026-10-13. These SHAs identify historical reconciliation milestones, not live pointers to deployed Render code or database state. The earlier `1f2b10d0850095311614c5b5f9531eb8b7cce860` checksum-normalization commit is historical provenance.
 
 ## Purpose
 
@@ -101,7 +101,7 @@ Following the PR #126 documentation follow-up, the tracked Markdown inventory wa
 - The historical Connect readiness audit and operation inventory had baseline wording that could be mistaken for a current repository pointer; both now label those comparisons as historical snapshots.
 - The QuoteFlow dual-confirmation record still presented its old identity-link proposal as the next construction gate. That sequence is explicitly superseded by the GHM-owned account-onboarding/migration boundary; no permanent runtime identity-link table or attestation-based bridge is authorized by that historical record.
 
-PR #127 was documentation-only and merged as `6afb428d452012d9860ca50c2b0066f0768b184c` after the supplemental status reconciliation, final diff review, and required CI passed. It did not change code, migrations, local checkout state, deployed services, credentials, production routing, or cutover authorization. Historical source audits and decision records remain preserved as provenance.
+PR #127 was documentation-only and merged as `6afb428d452012d9860ca50c2b0066f0768b184c` after its supplemental status reconciliation, final diff review, and required CI passed. It did not change code, migrations, local checkout state, deployed services, credentials, production routing, or cutover authorization. Historical source audits and decision records remain preserved as provenance.
 
 ## Supplemental whole-repository status reconciliation — follow-up, 2026-10-13
 
@@ -116,7 +116,7 @@ A further status/authorization sweep re-enumerated the 209 tracked Markdown file
 - Reconciled the 2026-09-10 migrator record's old “remaining work” list against later dedicated-schema/default-privilege and TEMP-privilege decisions, while preserving bootstrap cleanup and legacy authority retirement as open.
 - Clarified that the error-semantics contract does not authorize a platform-wide taxonomy/versioning runtime refactor, without implying that the separately qualified authentication foundation is unimplemented.
 
-This is documentation-only reconciliation. It does not modify application code, migrations, credentials, deployed services, production routing, live database state, or product cutover authorization. Dated source audits and gate decisions remain preserved as historical evidence; unresolved production and product-migration gates remain governed by this index, the remaining-work register, and the current capability-specific qualification records.
+This follow-up was documentation-only. It did not modify application code, migrations, credentials, deployed services, production routing, live database state, or product cutover authorization. Dated source audits and gate decisions remain preserved as historical evidence; unresolved production and product-migration gates remain governed by this index, the remaining-work register, and the current capability-specific qualification records.
 
 ## Historical documentation reconciliation record — second pass, 2026-10-05
 
