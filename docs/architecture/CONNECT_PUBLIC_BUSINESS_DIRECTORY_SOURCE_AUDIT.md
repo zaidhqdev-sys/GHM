@@ -103,3 +103,7 @@ Required evidence before any GHM directory construction:
 3. Directory search/featured/nearby are Connect product requirements evidenced in source. Individual GHM Business/public-projection resource slices do not, by themselves, qualify the complete product-facing directory aggregation/search/featured/nearby workflows; those remain separate product-adapter and cutover gates.
 4. Construction of an extended public Business / directory contract requires explicit authorization after field-by-field product decisions.
 5. Closed Business Identity first slice remains closed; this audit does not reopen it.
+
+## Current endpoint-status reconciliation — 2026-10-13
+
+The older sentence in §6 that “GHM has no dedicated directory search resource” is a historical comparison statement and is superseded by current repository evidence: GHM now registers public business directory/search HTTP endpoints. Do not remove that historical source finding; read it as the state at the audit baseline. The current gap is **product-contract parity**, not total absence of a search route: Connect's filter/sort/nearby/featured behavior, public field allowlist, pagination/count semantics, owner-preview behavior and engagement events still require explicit mapping and qualification. The first-slice GHM public projection remains narrower by design; no field expansion is authorized by this note.
