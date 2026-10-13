@@ -46,4 +46,4 @@ This slice does not authorize auth/session migration, production cutover, QuoteF
 
 Focused tests cover list/read, item read, create, status/notes updates, capability mismatch, invalid identifiers and empty updates. The HTTP route also has a governed-chain Quote read test.
 
-Local qualification evidence: `npm test` passed **460/460** with zero failures and `npm run build` passed. The adapter and HTTP governed-chain test are therefore locally qualified for merge.
+Pre-merge qualification evidence: `npm test` passed **460/460** with zero failures and `npm run build` passed. The adapter was merged to `main` in PR #33 (merge commit `cf8268ea42a49e377258c87ee72df0824cfa7b5d`). These are recorded pre-merge results, not a claim of a new post-merge test run.
