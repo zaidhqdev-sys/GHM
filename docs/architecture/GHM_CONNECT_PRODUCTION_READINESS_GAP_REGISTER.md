@@ -188,7 +188,7 @@ A future construction capability requires:
 
 **Bottom line:**
 
-GHM construction progress â‰  Connect backend readiness.
+GHM construction progress ≠ Connect backend readiness.
 
 The verified audit now gives the concrete gap boundary required to authorize future work without guessing or blindly copying the Connect Supabase architecture.
 
