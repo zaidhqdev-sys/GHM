@@ -4,9 +4,9 @@
 
 ## Status
 
-**RECONCILED — GHM CANONICAL IDENTITY SELECTED; LEGACY SUPABASE CROSSWALK ONLY; NO DATABASE OBJECT OR ADAPTER AUTHORIZED**
+**RECONCILED — GHM CANONICAL IDENTITY SELECTED; MIGRATION-ONLY EXTERNAL-IDENTITY MAPPING QUALIFIED; NO PERMANENT QUOTEFLOW IDENTITY-LINK TABLE OR PRODUCT ADAPTER AUTHORIZED**
 
-This document closes the source-reconciliation investigation for the cross-system identity boundary. It does not authorize an identity-link table, account migration, adapter, Supabase mutation, production routing, shadow qualification, or cutover.
+This document closes the source-reconciliation investigation for the cross-system identity boundary. The GHM-owned external-identity persistence and credentialless migration-account-provisioning foundations are separately construction-qualified. This document does not authorize a permanent QuoteFlow identity-link table, production account migration, product adapter, Supabase mutation, production routing, shadow qualification, or cutover.
 
 ## Evidence
 
@@ -77,7 +77,7 @@ A future adapter must never infer identity from:
 
 Those fields are mutable, non-unique, product-scoped, or otherwise insufficient to establish identity.
 
-The mapping must be an explicit, authenticated association established by a separately governed identity-link contract.
+For runtime authorization, the product session must resolve to the canonical GHM `account_identity.id` through the GHM-owned authentication/session boundary; do not add a separate permanent QuoteFlow identity-link table or attestation protocol. A legacy Supabase UUID may be associated with the GHM account only as migration provenance through the existing external-identity mapping, under `QUOTEFLOW_GHM_ACCOUNT_ONBOARDING_MIGRATION_CONTRACT.md`. That migration crosswalk does not itself authorize product session integration or production cutover.
 
 ## Canonical account identity
 

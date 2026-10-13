@@ -552,7 +552,7 @@ Registry membership and internal service existence do **not** imply a supported 
 |---|---|
 | Platform charter | `docs/architecture/GHM_APPLICATION_BACKEND_PLATFORM_CHARTER.md` |
 | Resource API HTTP slices / non-goals | `docs/architecture/RESOURCE_API_BOUNDARY_CONTRACT.md` |
-| Construction gates; adapters not started | `docs/architecture/CONSTRUCTION_QUALIFICATION_SEQUENCE.md` |
+| Construction gate sequence and per-capability adapter status | `docs/architecture/CONSTRUCTION_QUALIFICATION_SEQUENCE.md` and `docs/GHM_CURRENT_STATE.md` |
 | Handover / Campaign status | `docs/HANDOVER_2026-09-16.md` |
 | AuthContext verification | `src/auth/request-context.ts` |
 | Authorization | `src/auth/authorization.ts` |
