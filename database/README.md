@@ -2,7 +2,7 @@
 
 ## Status
 
-This directory is the future canonical schema authority for GHM Core Engine.
+This directory contains the canonical migration authority for the GHM Internal Runtime. `ghm` is the current application schema; GHM Core Engine references in older records are legacy naming unless explicitly marked otherwise.
 
 ## Rules
 
@@ -18,8 +18,8 @@ This directory is the future canonical schema authority for GHM Core Engine.
 
 ## Current foundation
 
-`00000000000000_create_migration_ledger.sql` establishes the migration ledger only. It intentionally does not recreate the legacy runtime tables.
+The initial migration-ledger migration established the ledger foundation. Subsequent qualified migrations construct the dedicated `ghm` schema and bounded resource/authentication capabilities. Do not infer the current database state from the initial migration alone; reconcile the full ordered migration history and the current-state/evidence records.
 
 ## Reconciliation gate
 
-Before adding `users`, `profiles`, product domains, indexes, policies, functions, or compatibility views, capture and review the actual GHM PostgreSQL catalog. The current repository does not contain sufficient evidence to safely infer that schema.
+The dedicated `ghm` schema, migration ledger, and least-privilege role separation are implemented and qualified. Legacy `public.*` objects and legacy roles remain a separate preservation/remediation boundary: inspect live catalog/data/dependencies and the current authority runbooks before any ownership transfer, role retirement, data disposition, or destructive mutation. Product cutover and unqualified product migrations remain gated.
