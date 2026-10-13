@@ -58,7 +58,9 @@ The workflow uses non-production qualification environment values only.
 
 ## Issue #1 remaining work
 
-Issue #1 is NOT closed. Remaining acceptance work includes migration-owned and reproducible PostgreSQL schema reconciliation against the application allowlist, governed table access with validation/authorization/tenant isolation/audit logging, and any remaining production startup/readiness/error-contract evidence required by the Issue #1 acceptance criteria. The current evidence does not yet support closing Issue #1.
+> **Current-status reconciliation — 2026-10-13:** The older checklist previously described schema reconciliation and governed table access/tenant isolation as remaining work. Those broad statements are stale: the migration runner/schema authority, measured runtime grants, bounded resource authorization/tenant isolation, and runtime/HTTP qualification now have later construction qualification evidence. They must not be repeated as current missing foundations. This issue remains OPEN because its complete acceptance criteria have not been independently reconciled and closed against all current evidence; do not infer closure from any single qualified slice.
+
+Current evidenced follow-up items include the remaining Gate 3B authentication decisions/qualification (token-pepper approval, explicit Founder approval status for session-activity updates, previous-key retirement timing, and independent issued-at presence/future-time validation), production secret/configuration provisioning, and any still-unmet deployment/operational acceptance criteria. Production environment changes and product cutover remain separately gated. Reconcile every acceptance criterion against current evidence before changing the issue status.
 
 Do not infer Issue #1 completion from the merged slices above. Each remaining acceptance criterion must be independently evidenced before closure.
 
