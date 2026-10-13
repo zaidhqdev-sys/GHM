@@ -636,3 +636,7 @@ NO COMMIT / PUSH WITHIN THAT ORIGINAL TASK.
 ```
 
 The original “STOP — DO NOT IMPLEMENT” instruction applied to the Gate 2E documentation-only task. It is historical, not a current repository instruction; Gate 3B later authorized and qualified the bounded authentication foundation.
+
+## Connect target session integration boundary — 2026-10-13
+
+The bounded GHM authentication API qualification establishes GHM-issued access/refresh credentials and resource verification; it does not establish that Connect's frontend has been migrated to those credentials. Connect currently initializes and subscribes to Supabase Auth session state and includes a direct Supabase signup path. A target adapter must be explicitly designed and qualified for GHM register/login/refresh/logout/password recovery, startup restoration, expiry/refresh race handling, account/role mapping, logout cleanup and authorization failures. Do not reuse a historical Supabase UUID as the GHM account ID or enable automatic linking/bootstrap. No frontend migration, deployment promotion or cutover is authorized by this contract note.
