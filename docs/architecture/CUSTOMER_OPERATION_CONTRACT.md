@@ -123,3 +123,7 @@ Not authorized by this operation contract:
 The original qualification criteria are satisfied for the bounded Customer construction slice on the consolidated mainline. The schema/acceptance record is preserved in `CUSTOMER_SCHEMA_CONTRACT.md`; broader product-adapter integration and production migration/cutover remain separately gated.
 
 Qualified boundary covers repository/service behavior and runtime qualification for schema ownership, lifecycle, least-privilege access, no-delete behavior, and Quote-compatible historical retention. The criteria in the original gate are historical acceptance evidence, not a current pending qualification.
+
+## Connect customer-workflow parity boundary — 2026-10-13
+
+The qualification above covers the bounded canonical GHM Customer service/runtime behavior. It does not establish parity with every Connect customer profile or project journey. Before reuse, map Connect's customer identity/profile fields and project ownership references to the canonical GHM account/Customer model; numeric GHM IDs must not be treated as equivalent to Connect UUIDs. Verify which Connect caller operations are mounted and define explicit response/validation mapping. Preserve archival/no-delete and historical Quote retention invariants; do not recreate a parallel profile or customer table merely to mimic the old Supabase schema. Product-facing API parity and cutover remain separately gated.

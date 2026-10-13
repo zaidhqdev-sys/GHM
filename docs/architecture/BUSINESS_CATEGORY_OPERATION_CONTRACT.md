@@ -249,11 +249,9 @@ Primary transitions must execute inside one authorized transaction.
 
 Qualification must demonstrate concurrent primary transitions cannot leave multiple primary assignments.
 
-## 15. No HTTP exposure
+## 15. Registered HTTP boundary and product parity
 
-This construction contract does not authorize a public GHM category API.
-
-Resource registration may be prepared only to support internal qualification. Public HTTP exposure requires a separate authorization decision.
+The current GHM runtime registers category and Business-category-assignment HTTP routes. This contract governs the bounded category domain and does not authorize additional public route exposure or broader management operations beyond those separately registered and qualified. Existing route registration does not itself establish Connect UI parity, response-envelope compatibility, or no-Supabase cutover readiness. Keep product-facing parity and any route-scope expansion separately reviewed and qualified.
 
 ## 16. Qualification evidence
 
@@ -305,3 +303,7 @@ No Connect schema mutation, production migration, product cutover, shadow traffi
 This contract records the construction authorization expressed on 2026-09-30 by proceeding after the evidence-backed source audit.
 
 The authorization is limited to the Business Category boundary defined here. It does not authorize Business Offerings, category administration, public directory exposure, product authentication migration, or production cutover.
+
+## Connect category HTTP/product parity boundary — 2026-10-13
+
+The CLOSED/PASS qualification above covers the bounded Business Category domain and runtime invariants; it does not by itself prove all Connect category screens and directory filters are integrated. Map Connect's primary-category selection, multi-category assignments, active taxonomy, filter behavior and response envelopes to the currently registered GHM category/assignment routes. Keep taxonomy reads distinct from management writes, preserve active-business permission checks and atomic primary-category invariants, and do not expose inactive categories publicly. Product-facing route parity and no-Supabase cutover remain separate gates.

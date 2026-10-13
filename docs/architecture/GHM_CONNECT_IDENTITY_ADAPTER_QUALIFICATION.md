@@ -83,3 +83,7 @@ Verified on `construction/connect-identity-adapter` at commit `4f36dca`:
 - Database auth persistence qualification remained green, including external identity lookup/bootstrap idempotency and non-admin bootstrap, external identity linking, disabled-account linking, and runtime privilege boundaries.
 
 This qualifies the constructed adapter seam as a construction slice only. Together with the separate read-only HTTP qualification, it does not authorize product session migration, Supabase JWT acceptance by GHM, public/browser or broader product HTTP exposure, membership/ownership/admin migration, business mapping migration, production routing, shadow traffic, or cutover.
+
+## Scope reconciliation for the no-Supabase target — 2026-10-13
+
+This qualification remains valid only for the original source-identity adapter slice, which explicitly resolved `(provider=supabase, subject=Connect Supabase UUID)`. That is historical migration/input provenance and current-runtime compatibility evidence—not qualification of the target no-Supabase Connect authentication path. The target must use GHM-native credentials and must not require Supabase for ongoing identity resolution. A new target-runtime qualification is required after the identity contract and implementation are revised; no scope expansion or cutover is implied here.

@@ -313,3 +313,7 @@ The dependency gate no longer blocks the qualified first-slice Review implementa
 **REVIEW SCHEMA AND RESOURCE IMPLEMENTATION: QUALIFIED / PASS**
 
 This closure remains construction-only. Production deployment and product cutover remain separately gated.
+
+## Connect moderation parity boundary — 2026-10-13
+
+The CLOSED/PASS status above applies only to the first canonical GHM Review slice. It does not prove Connect review moderation parity. Connect calls `moderate_business_review`; the current migration audit has not yet established exact parity for founder/admin authority, moderation reason, hidden/public state, audit records, list projections or HTTP operation mapping. Keep the qualified base resource closed; record any missing moderation operation as a separate **Extend** contract with explicit reviewer authorization and negative tests. This is also distinct from the founder-governed business directory listing review and from capability-evidence review. No production cutover is authorized.

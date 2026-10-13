@@ -457,3 +457,7 @@ CAMPAIGN HTTP IMPLEMENTATION: AUTHORIZED AT `785df12`.
 Historical selection-time snapshot: KBM HTTP adapter was not implemented.
 
 BROADER HTTP EXPANSION: NOT AUTHORIZED BY THIS DOCUMENT.
+
+## Connect migration transport boundary — 2026-10-13
+
+The existing product-facing transport contract is a governed, capability-by-capability HTTP boundary, not blanket authorization to expose every GHM resource. The current Connect audit confirms that `POST /api/v1/connect/service` is signed server-to-server only and rejects browser Origin; it is not a browser session API. Target Connect therefore requires a separately reviewed GHM-native user-token route or secure Connect BFF, with canonical account resolution, active account checks, active-business membership, per-operation authorization, input/output schemas, CORS/CSRF/rate controls and acceptance tests. The qualified authentication foundation does not automatically authorize product-session-client migration. Preserve the contract's prohibition on broad adapter integration without per-capability authorization; no blanket route exposure or cutover is authorized.

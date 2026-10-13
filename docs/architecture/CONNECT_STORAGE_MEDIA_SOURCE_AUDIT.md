@@ -55,8 +55,12 @@ Referenced by application code only. **No** `insert into storage.buckets` for `p
 
 ## 5. Conclusions
 
-1. The only migration-governed storage contract is **`media` + `logos/`** with logo RPCs.
+1. In the 2026-09-18 Connect storage-source snapshot, the only migration-governed **Connect-side Supabase Storage** contract was **`media` + `logos/`** with logo RPCs. This does not describe the later GHM/R2 provider qualification or establish a browser-usable GHM media API.
 2. Other `media` prefixes are used by the app but lack matching Storage policy migrations in the audited set.
 3. `private-docs` and several media metadata tables are **not migration-proven**; do not invent GHM tables from app references alone.
 4. At the 2026-09-18 audit snapshot, GHM had no qualified storage resource. Subsequent GHM storage persistence and the live R2 provider data path have been qualified, as stated in this document's current-status notice. Product-facing media workflows, authorization coverage for every Connect media prefix, production enablement, and cutover remain separately gated.
-5. Storage abstraction / bucket authorization requires explicit construction authorization after resolving orphan metadata and bucket policy evidence.
+5. Any expansion beyond the qualified `business_logo` storage object class requires separate authorization after active callers, orphan metadata, bucket policy, privacy and retention requirements are resolved.
+
+## Target Connect storage exposure reconciliation — 2026-10-13
+
+The storage service/R2 qualification recorded in this source audit proves only the bounded provider/service behavior it names. The current Connect no-Supabase audit found no storage router registered in `src/http/app.ts`, and the current storage object policy supports `business_logo` only. Thus the existing evidence is not proof of a browser-usable Connect storage API. Keep authenticated upload/complete/access/delete HTTP exposure and contract tests open as **Extend** for the confirmed logo journey; do not treat workspace files, project images, or verification documents as covered until separate active callers, object classes, privacy and retention rules are evidenced. No production route exposure or cutover is authorized by this note.

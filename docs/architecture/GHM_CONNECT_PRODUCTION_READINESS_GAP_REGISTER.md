@@ -256,3 +256,50 @@ The verified audit now gives the concrete gap boundary required to authorize fut
 **Current reconciled state:** Connect identity adapter boundary, trusted request context, governed operation resolution, and GHM authorization binding are Founder-authorized construction slices with their qualification evidence recorded in dedicated architecture documents. Business Offering is also **QUALIFIED / CLOSED** at the GHM construction boundary. Its qualification is recorded in `BUSINESS_OFFERING_OPERATION_CONTRACT.md` and the dedicated runtime evidence below.
 
 The Business Offering qualification does not authorize a public HTTP API, product session migration, production cutover, or any other Connect product adapter. The next product construction capability still requires a separate evidence-backed contract and explicit authorization.
+
+
+---
+
+## Supabase removal migration overlay — 2026-10-13
+
+This dated overlay adds a current product-level requirement to the earlier readiness record: **current ZAID Connect must have no active Supabase runtime dependency; GHM Internal Runtime is the target backend.** It does not rewrite historical coverage counts or claim that a previously qualified GHM construction slice establishes complete Connect readiness.
+
+Confirmed cross-cutting blockers include Connect's central Supabase client and app session lifecycle, direct signup and AI Edge Function calls, the Supabase-provider assumption in the GHM Connect identity binding, and the need for a browser-safe user transport distinct from the signed server-to-server Connect service boundary. Product gaps include directory governance, capability evidence, opportunity discovery, leads, analytics, relationships/outcomes, onboarding, storage API exposure, and contract qualification for existing project/quote/support/notification/review surfaces.
+
+Use `docs/architecture/CONNECT_GHM_MIGRATION_HANDOVER_2026-10-13.md` as the durable session-resume and gap-classification record. This overlay and handover are documentation only: no new construction, production migration, provider enablement, or cutover is authorized. The existing per-capability qualification records remain authoritative for their narrow qualified slices.
+
+
+## 2026-10-13 current caller-to-contract reconciliation overlay
+
+This overlay supersedes any implication that the historical operation rows above are a current parity measurement. The durable per-batch evidence and resume instructions are in the dated GHM/Connect migration handovers. Current confirmed classifications from source-to-source comparison:
+
+| Current journey / operation | Current GHM contract evidence | Classification | Mandatory gate |
+|---|---|---|---|
+| Auth/session/signup/logout/recovery | Native auth routes exist; Connect shell and signup still directly depend on Supabase; GHM Connect binding still requires provider `supabase` | **Replace / blocker** | GHM-native user token/session, role mapping, active-account check, refresh/recovery and no Supabase identity/runtime |
+| Directory search | GHM public endpoint accepts q/category/page/pageSize only; Connect uses province/city/tier/radius/sort, zero-based page and up to 100 rows | **Extend** | exact filters, output allowlist, count/paging semantics and engagement events |
+| Regional configuration + directory filters | Connect actively loads default regional configuration and administrative areas; GHM directory endpoint does not accept region/province/city filters | **Extend** | Define minimal launch geography, configuration ownership, supported region/province/city filters and tests; do not rebuild legacy regional tables wholesale |
+| Business profile/owner preview | GHM public + managed reads/update/create exist; Connect combines slug/ID, owner fallback, hours, reviews, capabilities and saved state | **Extend** | identity and ID mapping, owner authorization, unpublished-field privacy |
+| Business-hours write | GHM service method exists, but inspected app registers GET only | **Extend** | authenticated HTTP mutation and integration tests |
+| Capability evidence / directory review | Current Connect business/admin panels call submit/review/queue flows; matching GHM routes not found in inspected routers | **Extend/build** | founder/verifier authority, pending/verified/rejected/revoked transitions and audit |
+| Projects/quotes | GHM project and quote routes exist | **Reuse + extend** | field/ID mapping, atomic project/opportunity creation, search filters, delete rules, quote lifecycle and ownership |
+| Opportunity marketplace | GHM has detail + requirement read/replace; list/type discovery absent in inspected router | **Build/extend** | active/open time windows, type/search filter, nested requirements, count/paging |
+| Support | GHM customer/admin route families match core fields/status set | **Reuse candidate** | envelope mapping, ownership, admin-only operations, message and resolution semantics |
+| Reviews | GHM public/customer/admin routes exist | **Reuse + adapt** | pending-only queue, rejection reason/status mapping, reviewer identity from token |
+| Onboarding | Connect flag is true; progress RPC callers exist; no GHM onboarding API identified | **Build** | per-user progress, complete/dismiss, idempotence and route gating |
+| Analytics | active dashboard uses Connect RPC; no equivalent GHM contract identified | **Build** | business-scoped metrics, period semantics and permission enforcement |
+| Relationships/outcomes | registered authenticated Relationships route requiring `BUSINESS_READ` and active-business context; GHM domain absent | **Build** | business scoping, lifecycle/verification semantics |
+| Storage/logo | GHM service handles public logo policy but no HTTP router is registered; only business_logo object class | **Extend** | authorized API, metadata lifecycle, R2 grants and private/public policy separation |
+| Engagement analytics | Connect records profile_view/save/WhatsApp/call/website/directions/share; equivalent GHM HTTP contract not established | **Build/extend** | event allowlist, rate/abuse controls, privacy and attribution |
+| Quote analysis / AI | analyzer history uses Connect DB; AI transport targets Supabase Edge Function, provider gate false | **Split** | migrate history/data operations; remove Supabase transport but preserve fail-closed provider gate |
+| Commercial | Connect offer/trial panel active; GHM internal commercial routes exist; payment activation remains disabled | **Reuse/extend, separately gated** | preserve all launch/payment flags; no provider activation |
+| Notifications inbox/realtime/push | GHM routes exist; current UI inbox/push active caller not established | **Evidence insufficient** | only migrate producer operations proven active; don't rebuild dormant UI |
+| Supplier/referral/dispute/offerings legacy services | no confirmed current mounted caller in searches | **Legacy/unconfirmed** | exclude unless reachability audit finds active caller |
+
+The numeric Connect IDs and GHM numeric IDs/UUID assumptions must never be presumed equivalent. Define explicit identity/resource mappings. The signed `POST /api/v1/connect/service` remains server-to-server only; browser code needs a secure BFF or GHM-native user-token API. This overlay is documentation only and grants no implementation, merge, production or cutover authorization.
+
+## Identity-provider authority reconciliation — 2026-10-13
+
+The previously qualified `(provider, subject) → GHM account identity` foundation is a generic mapping capability and its current Connect adapter qualification specifically uses `provider=supabase`. That bounded qualification remains valid for its historical scope; it does **not** qualify the no-Supabase target runtime. The active Connect authorization-binding implementation still rejects any provider other than `supabase`, so it is a cutover blocker under the current founder decision.
+
+For target Connect runtime, GHM-native access/session credentials must establish the caller; GHM then resolves the canonical account, active state, business membership and resource authorization server-side. A source-provider/subject pair may remain as migration provenance for legacy data only, isolated from runtime authentication and not accepted as authority for new requests. Do not remove historical evidence or silently change the existing qualification's scope. Do not allow identity bootstrap or account linking as a side effect of routine requests.
+

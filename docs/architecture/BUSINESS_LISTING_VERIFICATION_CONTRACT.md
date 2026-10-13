@@ -137,3 +137,7 @@ Future verification workflow expansion or mutation endpoints require separate qu
 **Not authorized:** production changes, provider migration, production data migration, product adapters, or cutover.
 
 The first-slice reconciliation is closed. Future workflow states, verification history, and governance mutation surfaces remain separately governed.
+
+## Connect founder directory-review workflow boundary — 2026-10-13
+
+The canonical GHM Business eligibility/verification boundary described here is not equivalent to Connect's separate founder-governed directory-listing review workflow. The current Connect source calls submit-for-review, queue/list, presentation, reviewer-authority and review-decision operations. No matching full workflow was identified in the inspected GHM HTTP routes. Keep the canonical eligibility contract unchanged; track the Connect queue/review lifecycle as a separate **Extend/Build** gap with founder authorization, pending/approved/rejected state, public-visibility rules, private-field allowlist, reason/audit records and negative authorization tests. A generic admin role or the existing business-eligibility predicate must not silently grant founder reviewer authority.

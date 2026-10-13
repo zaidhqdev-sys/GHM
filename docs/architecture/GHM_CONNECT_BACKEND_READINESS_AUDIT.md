@@ -421,3 +421,7 @@ Dependency inventory rows in §3.3: **48** concrete Connect backend dependencies
 ## Appendix B — Closed capability preservation statement
 
 This audit inspected closed capabilities only to measure Connect coverage gaps. No closed capability was modified, re-qualified, or recommended for reopening.
+
+## Current migration resume point — 2026-10-13
+
+For the current Connect no-Supabase migration, this historical 2026-09-18 comparison audit is not the operation-level source of truth. Resume from `docs/architecture/CONNECT_GHM_MIGRATION_HANDOVER_2026-10-13.md`; reconcile its caller-to-contract matrix with `GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md`, `CONNECT_BACKEND_OPERATION_INVENTORY.md`, `GHM_CURRENT_STATE.md`, and the relevant capability contracts. Older classifications and counts above remain historical snapshot data and must not be copied into current status summaries without fresh source evidence. The current migration target is GHM Internal Runtime with no Supabase runtime dependency; current qualified resource slices do not imply end-to-end Connect readiness. This note grants no implementation, merge or cutover authorization.

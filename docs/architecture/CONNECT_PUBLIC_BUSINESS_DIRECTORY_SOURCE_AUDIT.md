@@ -86,9 +86,9 @@ Service eligibility also requires `verificationStatus === 'approved'`.
 
 ## 5. Search / filter / sort / geo
 
-Connect implements directory query behavior in application SQL filters + client distance math. GHM has no dedicated directory search resource.
+At the 2026-09-18 audit snapshot, Connect implemented directory query behavior through application SQL filters and client-side distance math, while GHM had no dedicated directory search resource. Current GHM mainline now registers public business directory/search HTTP endpoints, but these do not yet qualify full Connect parity: filter/sort/nearby/featured behavior, the public field allowlist, pagination/count semantics, owner preview, and engagement events still require explicit mapping and qualification. The first-slice GHM public projection remains narrower by design; no field expansion is authorized.
 
-Required evidence before any GHM directory construction:
+Required evidence before extending GHM directory/product parity:
 
 - Which allowlist fields become GHM public columns vs derived projections
 - Whether `owner_id` should remain public
@@ -101,5 +101,6 @@ Required evidence before any GHM directory construction:
 1. Connect public Business surface is **much wider** than GHM first-slice public Business (35 vs 7 fields).
 2. GHM does **not** over-expose Connect’s excluded 4A private fields in the first-slice public projection.
 3. Directory search/featured/nearby are Connect product requirements evidenced in source. Individual GHM Business/public-projection resource slices do not, by themselves, qualify the complete product-facing directory aggregation/search/featured/nearby workflows; those remain separate product-adapter and cutover gates.
-4. Construction of an extended public Business / directory contract requires explicit authorization after field-by-field product decisions.
+4. Any extension of the public Business/directory contract still requires explicit authorization after field-by-field product decisions.
 5. Closed Business Identity first slice remains closed; this audit does not reopen it.
+

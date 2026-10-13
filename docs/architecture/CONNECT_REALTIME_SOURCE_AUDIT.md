@@ -50,7 +50,11 @@ Realtime filters are client-supplied (`user_id` / `business_id`). Production saf
 
 ## 7. Conclusions
 
-1. Only two live client realtime subscriptions are evidenced: notifications and leads.
+1. The 2026-09-18 Connect source snapshot contained two realtime subscription call sites: notifications and leads. The 2026-10-13 reachability review has **not** established that either consumer is mounted in a launch-active route.
 2. Notifications publication is migration-backed; leads publication is not proven in migrations.
 3. Realtime is not required to preserve GHM’s closed Notification persistence contract.
 4. Any GHM realtime work requires explicit authorization and an ownership decision; this audit does not provide one.
+
+## Active-caller reachability reconciliation — 2026-10-13
+
+The subscription inventory above is a source-code snapshot, not proof that both consumers are mounted in the current Connect runtime. The current migration caller audit has not established a mounted active inbox/push consumer; the lead hook cited above is in the older `hooks_index.js` path, whose production route reachability has not been demonstrated. Keep the source evidence, but classify realtime/push as **not proven launch-active** until current route/component reachability is evidenced. This does not change the no-Supabase target: any Supabase realtime dependency that is confirmed active must be removed or replaced, but no GHM event transport should be built without a separate product ownership decision. Notification persistence and producer operations must be audited separately from realtime transport.

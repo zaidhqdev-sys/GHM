@@ -100,3 +100,7 @@ Those concerns require separately reconciled contracts.
 ## 10. Production boundary
 
 This construction slice is provider-neutral and does not authorize production Zaid Connect cutover, Supabase migration, DNS changes, credential changes, or production traffic changes.
+
+## Product-facing HTTP exposure reconciliation — 2026-10-13
+
+The qualified Business Hours domain/service replacement contract does **not** mean Connect can currently call it over HTTP. The current Connect migration audit found the registered app route exposes the hours read path, while no authenticated write route was found for replacement. Treat this contract's service/database qualification as intact, but mark product-facing write exposure and HTTP integration tests as an open **Extend** item. Do not widen runtime database grants or add a generic mutation path; expose only the contract-governed replacement operation with active-business membership/permission checks and test invalid schedules, unauthorized business IDs, atomic replacement and error mapping. This does not authorize production cutover.

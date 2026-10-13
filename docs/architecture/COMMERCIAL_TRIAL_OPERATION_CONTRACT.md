@@ -162,3 +162,7 @@ Implementation qualification must prove:
 15. duplicate/concurrent activation cannot create duplicate canonical state.
 
 Production qualification and product cutover remain separately governed.
+
+## Current Connect launch-gate boundary — 2026-10-13
+
+This provider-neutral trial operation contract is not authorization to activate Connect commercial launch or payment. Connect's current offer/trial panel is active, but the no-Supabase migration must separately reconcile offer lookup, trial activation, consent/launch authorization and exact return behavior. Preserve the current flags `launchAuthorized=false`, `milestone38Approved=false`, `milestone52Approved=true`, and `onlineSubscriptionActivation=false`. Do not infer Paystack approval from PayFast approval, and do not activate any payment callback/provider during this migration. The bounded GHM trial operation remains separate from Connect's launch gate and payment orchestration.

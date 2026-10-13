@@ -234,3 +234,7 @@ A schema existing in PostgreSQL is not sufficient evidence of qualification. The
 **ENQUIRY SCHEMA + RUNTIME: QUALIFIED / CLOSED / PASS**
 
 This authorization remains construction-only. Production deployment and product cutover remain separately gated.
+
+## Connect migration parity boundary — 2026-10-13
+
+The CLOSED/PASS status above applies only to the bounded GHM Enquiry schema/runtime slice. It does not establish parity with Connect's separate `leads` workflow or authorize Supabase removal. Connect currently lists leads for the active business and updates lead status through its own status RPC; GHM Enquiry has its own recipient/customer authorization and lifecycle. Before reuse, document an explicit lead-to-enquiry mapping, status-transition compatibility, list ordering/pagination, customer/business visibility, response envelopes, idempotency and audit behavior. If the lifecycle concepts differ, preserve Enquiry as a canonical resource and build a separately named compatibility operation rather than silently aliasing them. No production cutover is authorized.

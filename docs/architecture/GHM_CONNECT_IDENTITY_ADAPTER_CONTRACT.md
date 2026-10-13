@@ -249,3 +249,9 @@ This document establishes the **next product-specific semantic boundary**.
 Neither document authorizes production migration.
 
 **Boundary:** the frozen identity-adapter slice is already construction-qualified, and a single read-only service endpoint has separate bounded construction evidence. Do not expand beyond those scopes or interpret either record as authorization for product session migration, public/browser or broader product HTTP exposure, production routing, shadow traffic, or cutover.
+
+## Target-runtime reconciliation — no-Supabase Connect migration, 2026-10-13
+
+This contract's original `provider=supabase` source-identity input describes the **existing Connect identity model and the narrow, historically qualified adapter slice**. It is not the final target identity contract for the current no-Supabase migration. The old adapter may remain useful for reconciling imported source identities during a controlled migration, but its provider assumption cannot remain on the target Connect runtime request path.
+
+Target runtime must authenticate with GHM-native session/access credentials and derive the canonical active GHM account from the validated credential. Current provider-specific adapter and authorization-binding code is therefore not cutover-ready until a separately reviewed contract and tests remove the Supabase runtime identity dependency while preserving active-account, membership, resource authorization and no-bootstrap guarantees. This clarification does not retroactively expand the existing construction qualification or authorize implementation, merge, production traffic or cutover.
