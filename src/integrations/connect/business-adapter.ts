@@ -61,6 +61,27 @@ const findMapping = async (
   };
 };
 
+const requireBusinessMembership = async (
+  client: PoolClient,
+  context: AuthContext,
+  businessId: number,
+): Promise<void> => {
+  // System administrators have explicit cross-business authority. Ordinary
+  // business accounts must prove an active membership in this exact business.
+  if (context.role === 'admin') return;
+  const result = await client.query(
+    `SELECT membership_role
+       FROM ghm.business_membership
+      WHERE account_id = $1
+        AND business_id = $2
+        AND membership_status = 'active'`,
+    [context.userId, businessId],
+  );
+  if (result.rowCount !== 1) {
+    throw new Error('Active Business membership required');
+  }
+};
+
 const linkMappingInTransaction = async (
   client: PoolClient,
   provider: string,
@@ -130,6 +151,8 @@ export class ConnectBusinessAdapter {
         if (businessResult.rowCount !== 1) {
           throw new Error('Mapped canonical Business not found');
         }
+
+        await requireBusinessMembership(client, context, existing.businessId);
 
         const row = businessResult.rows[0];
         const business: BusinessIdentity = {
