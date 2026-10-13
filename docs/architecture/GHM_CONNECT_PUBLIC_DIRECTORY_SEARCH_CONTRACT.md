@@ -1,8 +1,8 @@
 # GHM Connect Public Directory / Search Contract
 
-**Status:** CONTRACT FROZEN — DIRECTORY/SEARCH CONSTRUCTION GATE REQUIRED  
+**Status:** DIRECTORY V1 CONSTRUCTION QUALIFIED / PASS — MERGED VIA PR #10; PRODUCT CUTOVER REMAINS SEPARATELY GATED  
 **Connect source:** `abcffa73f893602c25310a58946bebb91fd7eeb5`  
-**GHM baseline:** `0e589d57e2d7da991bfc4420ff23fe9db454248a`  
+**Historical GHM contract-drafting baseline:** `0e589d57e2d7da991bfc4420ff23fe9db454248a` (Directory v1 was subsequently qualified and merged to `main` in PR #10).  
 **Predecessor contract:** `GHM_CONNECT_PUBLIC_BUSINESS_DIRECTORY_CONTRACT.md`
 
 ## 1. Purpose
@@ -323,23 +323,11 @@ Implementation must first prove that the existing canonical schema can satisfy t
 
 If it cannot, stop and open a separate architecture gap rather than silently changing schema.
 
-## 17. Construction and qualification sequence
+## 17. Construction qualification record
 
-If construction proceeds:
+Directory v1 construction was qualified and merged to `main` in PR #10 (`09bdef2039b80d73244b7f3026f3c4413e2227c5`). The recorded qualification included a passing build, 409/409 full-suite tests, migration/provenance checks, and live PostgreSQL qualification for public visibility, rating ordering, category UUID/slug behavior, text search and wildcard escaping, pagination/stable ordering, projection allowlist, and runtime dependency privileges.
 
-1. Add `directory.read` to the canonical operation registry.
-2. Add a dedicated directory contract/type boundary.
-3. Implement a read-only repository over canonical GHM ownership.
-4. Implement service-level validation for `q`, `category`, `page`, and `pageSize`.
-5. Implement the public HTTP route.
-6. Add focused tests for visibility, filters, pagination, ordering, projection, and malformed parameters.
-7. Run live PostgreSQL qualification with temporary fixtures.
-8. Verify category filtering against canonical category assignments.
-9. Verify deterministic ordering and pagination across tied rows.
-10. Verify no fixtures remain after rollback.
-11. Run the complete GHM suite and diff-check.
-12. Reconcile the exact construction delta against `main`.
-13. Stop for founder verification before mainline promotion.
+The former step-by-step construction sequence is superseded by that completed qualification record. The contract continues to prohibit unqualified fields, provider-specific identity, new schema without separate review, and production product cutover.
 
 ## 18. Explicit non-authorizations
 
@@ -360,4 +348,4 @@ This contract does not authorize:
 - modification of qualified Business Identity semantics
 - modification of existing migration history
 
-The next implementation slice is strictly **Directory v1** as defined here.
+Directory v1 is the qualified construction boundary. Any extension beyond v1 requires its own explicit contract and qualification; product cutover remains separately gated.
