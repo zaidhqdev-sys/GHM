@@ -2,7 +2,7 @@
 
 **Status:** QUALIFIED — 2026-10-05
 
-Branch: `construction/opportunity-requirements-tenant-adoption`
+Historical qualification branch: `construction/opportunity-requirements-tenant-adoption` (the qualified result is consolidated on `main`).
 
 Required evidence:
 - TypeScript build passes.
