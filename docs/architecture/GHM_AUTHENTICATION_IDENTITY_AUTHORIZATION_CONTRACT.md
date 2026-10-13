@@ -103,14 +103,14 @@ Do not invent additional person-identity tables unless later evidence requires t
 
 ## 4. Account lifecycle
 
-### 4.1 Current schema gap
+### 4.1 Historical Gate 2F schema gap — subsequently implemented
 
-`ghm.account_identity` has **no** dedicated lifecycle/status column today (only coarse `role` plus profile fields).
+At the Gate 2F baseline, `ghm.account_identity` had no dedicated lifecycle/status column. The later Gate 3B foundation added `account_status` (`active` / `disabled`) and `is_system_admin`; the implemented migrations and current bearer-auth code are authoritative for current schema/runtime behavior.
 
 ```text
-FOUNDER DECISION (Issuance ADR §16.2 R1):
-Account status model = SELECTED — active | disabled
-Exact column name = UNSELECTED (not present in schema yet)
+FOUNDER DECISION (Issuance ADR §16.2 R1/R2):
+Account status model = active | disabled — implemented
+System-admin authority = governed account-level state, not a JWT claim — implemented
 ```
 
 ### 4.2 Conceptual states (lean)
@@ -465,19 +465,19 @@ Do **not** assume current Supabase UUID business/org IDs equal GHM `business.id`
 
 ---
 
-## 16. Historical Gate 2F current-vs-target snapshot
+## 16. Historical Gate 2F current-vs-target snapshot — superseded for the bounded foundation
 
-| Layer | Current | Target |
+| Layer | Gate 2F snapshot (historical) | Current bounded status |
 |---|---|---|
-| Login | Absent / products use Supabase | GHM Auth API email+password |
-| Identity claim | JWT `userId` | `sub` = `account_identity.id` |
-| AuthContext | `{ userId, role }` from JWT | Authenticated identity; authz from GHM state |
-| Verify | GHM ES256 bearer path | ES256 + iss/aud/kid/exp + canonical `sub` + DB-backed account state |
-| Membership | SQL checks when implemented | Still SQL/state; never JWT-only |
-| Admin | JWT/`account_identity.role` trusted | Authoritative admin representation **UNSELECTED** |
-| Account disable | No status column | Lifecycle representation **UNSELECTED** |
+| Login | Absent / products use Supabase | GHM email/password login foundation qualified; products still use Supabase |
+| Identity claim | JWT `userId` | Canonical GHM `sub` = `account_identity.id` |
+| AuthContext | `{ userId, role }` from JWT | GHM identity context; account/admin state loaded from GHM |
+| Verify | Pre-ES256 verifier | ES256 + issuer/audience/`kid`/expiry + canonical `sub` + DB-backed account state |
+| Membership | Historical SQL/resource checks | Current authorization remains governed by GHM state and resource-specific membership checks |
+| Admin | JWT/`account_identity.role` baseline | Authoritative account-level system-admin state; JWT role is not source of truth |
+| Account disable | No status column | `account_status` active/disabled is implemented; revocation semantics are governed by qualified auth contracts |
 
-Do not modify the current implementation in this gate.
+This historical snapshot does not authorize product migration or cutover.
 
 ---
 
