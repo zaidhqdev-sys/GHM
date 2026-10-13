@@ -414,7 +414,7 @@ Do **not** design persistence for:
 
 ---
 
-## 15. Founder decision checkpoint
+## 15. Historical Gate 2D decision checkpoint — reconciled after Gate 3B
 
 ```text
 AUTHENTICATION GATE 2D:
@@ -427,27 +427,25 @@ FOUNDER ARCHITECTURE (already selected — not reopened):
 - Refresh rotate / single-use / session-family replay
 - Session 30d inactivity / 90d absolute
 
-STILL UNSELECTED (implementation / follow-on):
-1. Exact relation and column names for credential, session, refresh, recovery, mapping
-2. Argon2id memory/time/parallelism
-3. Recovery credential numeric TTL
-4. Email transport provider
-5. Exact auth runtime GRANT/REVOKE matrix
-6. Exact key representation / kid value strings / signing-key rotation calendar
-7. Opaque refresh as explicit Founder token-type selection (recommended)
+GATE 2D DECISION-TIME OPEN ITEMS — CURRENT STATUS:
+1. Credential/session/refresh/recovery/mapping relation names: implemented in the qualified migrations.
+2. Argon2id memory/time/parallelism: use current credential implementation/configuration evidence; operational tuning remains governed.
+3. Recovery credential TTL: bounded password-recovery service uses 30 minutes.
+4. Email transport provider: production delivery remains separately gated.
+5. Auth runtime GRANT/REVOKE matrix: controlled SECURITY DEFINER / EXECUTE model implemented; exact per-object grants are governed by migrations and role qualification.
+6. Key representation: PKCS#8 PEM and `GHM_JWT_ES256_*` environment names implemented; deployment-specific key values and rotation calendar remain operationally governed.
+7. Opaque refresh token: used by the qualified implementation; the original recommendation is not represented as a separate Founder decision.
 
-IMPLEMENTATION AUTHORIZATION:
-NOT GRANTED.
+IMPLEMENTATION AUTHORIZATION WAS NOT GRANTED AT GATE 2D; GATE 3B LATER AUTHORIZED AND QUALIFIED THE BOUNDED FOUNDATION.
 ```
 
 ---
 
-## 16. Final gate
+## 16. Historical Gate 2D final gate — superseded for the bounded foundation
 
 ```text
-AUTHENTICATION PERSISTENCE CONCEPT DOCUMENTATION COMPLETE.
-NO MIGRATIONS / TABLES / GRANTS / CODE / SECRETS CHANGED.
-PRODUCTS STILL MUST NOT CONNECT TO GHM POSTGRES.
-ghm_runtime MUST NOT GAIN ARBITRARY DML ON FUTURE AUTH TABLES BY THIS DOC.
-STOP — DO NOT IMPLEMENT.
-```
+GATE 2D DOCUMENTATION-ONLY CHECKPOINT:
+NO MIGRATIONS / TABLES / GRANTS / CODE / SECRETS CHANGED BY THAT HISTORICAL TASK.
+``` 
+
+The original “STOP — DO NOT IMPLEMENT” instruction applied to Gate 2D. The later Gate 3A/3B migrations and qualification established the bounded authentication persistence foundation. Products still must not connect directly to GHM Postgres, and `ghm_runtime` must not receive arbitrary DML on credential/session tables.
