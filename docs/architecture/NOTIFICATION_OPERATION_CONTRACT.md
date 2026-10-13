@@ -347,3 +347,7 @@ The following remain outside this capability until independently sourced and con
 - anti-spam policy;
 - event bus / event store;
 - generic cross-resource notification workflow orchestration.
+
+## Connect persistence versus delivery boundary — 2026-10-13
+
+This contract intentionally covers notification records, not realtime transport, browser push subscriptions or a generic event bus. The current Connect audit has not yet proven that the legacy Supabase realtime/push consumers are mounted in the active product journey; keep those transports **unproven/conditional**, not automatically a GHM build requirement. Separately map every active notification read/create/mark-read operation to GHM routes, including ownership, unread counts, ordering and response envelopes. Remove any confirmed active Supabase persistence or transport dependency before cutover, but do not build push/realtime/event infrastructure without proven active caller reachability and a separately approved product contract.
