@@ -1,6 +1,8 @@
 # GHM Trust Schema Contract
 
-**Status:** CONSTRUCTION CONTRACT — SCHEMA DESIGN FROZEN
+**Status:** SCHEMA DESIGN FROZEN — Trust construction qualified / closed
+
+> **Current-status reconciliation — 2026-10-13:** The Trust schema and calculation below preserve the original first-slice boundary. Business Profile columns (`description`, `phone`, `email`, `insurance_verified`, `jobs_completed`) were later added by the separate qualified Business Profile extension, but the current `ghm.calculate_business_trust_score` function still intentionally scores these dimensions as zero. Consuming those fields in Trust calculation requires a separately authorized and qualified scoring change; column presence alone does not activate scoring or verify protected inputs.
 
 ## 1. Purpose
 
@@ -104,11 +106,11 @@ No blanket runtime DML. Sequence USAGE may be granted for identity catalog consi
 
 Formulas preserve Connect source exactly.
 
-Available GHM Business input today:
+Inputs consumed by the current qualified Trust calculation:
 
 - `ghm.business.rating` → `reviews_score`
 
-Absent GHM Business columns (score as 0 until separately authorized Business profile extension):
+Business Profile columns now present but **not yet consumed by the Trust calculation function** (their Trust dimensions intentionally remain 0 until a separate scoring change is authorized and qualified):
 
 - `description` → `profile_complete`
 - `phone` → `phone_verified`
