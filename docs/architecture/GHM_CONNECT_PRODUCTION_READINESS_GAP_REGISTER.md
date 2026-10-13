@@ -1,6 +1,6 @@
-﻿# GHM â†” Zaid Connect Production Readiness Gap Register
+﻿# GHM ↔ Zaid Connect Production Readiness Gap Register
 
-**Status:** GOVERNED GAP REGISTER â€” NO CONSTRUCTION AUTHORIZATION
+**Status:** GOVERNED GAP REGISTER — NO CONSTRUCTION AUTHORIZATION
 **Source audit:** docs/architecture/GHM_CONNECT_BACKEND_READINESS_AUDIT.md
 **Audited GHM tree:** historical Connect audit checkpoint; current GHM construction state is the consolidated `main` line.
 **Connect source:** abcffa73f893602c25310a58946bebb91fd7eeb5
@@ -9,7 +9,7 @@
 
 ## Purpose
 
-This register converts the verified Connectâ†”GHM readiness audit into an actionable evidence boundary.
+This register converts the verified Connect↔GHM readiness audit into an actionable evidence boundary.
 
 It does not authorize implementation, adapters, production migration, shadow qualification, cutover, provider cleanup, or reopening of any closed GHM capability.
 
