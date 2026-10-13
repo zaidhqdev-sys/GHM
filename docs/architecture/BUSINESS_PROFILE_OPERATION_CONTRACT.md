@@ -103,3 +103,7 @@ After profile mutation, Trust calculate (already QUALIFIED / CLOSED) may consume
 - Directory/category/geo/logo commercial fields
 - HTTP routes beyond any already-qualified Resource API surface
 - Production cutover
+
+## Connect product-parity boundary — 2026-10-13
+
+This contract defines a bounded GHM Business profile domain and does not by itself qualify the complete Connect business profile journey. The current Connect migration audit confirms the product also depends on directory projection/filtering, registration identity, owner preview for unpublished listings, categories, business hours, capabilities, saved-business state and engagement events. Map these as separate authorized contracts; do not widen this profile operation or public field projection to absorb them implicitly. The target remains GHM Internal Runtime with no Supabase runtime dependency. Product-facing route and end-to-end Connect parity remain separate gates.
