@@ -78,7 +78,7 @@ Classification: **Reuse** = likely existing GHM surface, still requires contract
 | Reviews + trust | Reuse/extend | GHM routes exist. Verify creation/read/moderation and aggregate behaviour. Founder directory review is a different workflow. |
 | Media/storage | Extend | GHM has R2 provider path and storage service currently limited to `business_logo`; no storage HTTP router identified in app registration. Expose policy-enforcing API; separate public logo from private evidence/workspace files. |
 | AI proxy / quote analysis | Extend/build | AI client calls Supabase Edge Function. Trace active UI callers and quote-analysis persistence; replace with GHM-owned endpoint, server-only keys, authorization, limits and safe errors. No paid provider without approval. |
-| Regional configuration | Verify; build only if active | Facade references exist. Prove active screen/service caller and requirements before building. |
+| Regional configuration + directory filters | **Extend** | `src/features/directory/useDirectoryFilters.js` actively loads default regional configuration and administrative areas. Extend the existing directory/filter contract for confirmed active needs; define minimal launch geography and configuration ownership. Do not rebuild the legacy regional system wholesale. |
 | Browser push | Verify then extend/build if active | Helper writes subscription to Supabase. Prove invocation and delivery path before making it core scope. |
 | Commercial/payment | Reuse/extend, gated | GHM has payment prepare and PayFast checkout/ITN/server confirmation. Keep activation/launch auth disabled. Preserve idempotency and provider separation; sandbox E2E and live enablement are separate gates. |
 
@@ -306,7 +306,7 @@ No code, migration, provider activation or production change was made.
 
 ### Reachability and active-caller corrections
 
-- `RelationshipOutcomeScreen.jsx` is lazy-loaded by the app shell, but this audit has not yet established a matching current route dispatch path. Its relationship/outcome service calls exist; classify the domain as **route reachability to verify before launch priority**, not automatically a launch-critical screen solely because it is imported.
+- **Relationships/outcomes**: current route dispatch/reachability is confirmed, and `RelationshipOutcomeScreen.jsx` actively calls relationship and outcome services. GHM has no equivalent domain in the current resource inventory; classify this as a **Build** gap. Preserve lifecycle, verification, visibility, provenance and evidence semantics. Route reachability is not an open question.
 - `businessOfferingService` / `catalogueService` appear as facade exports, but current repository search did not identify a production UI caller. Do not include the full offerings CRUD domain in the launch migration until an active caller is confirmed. This does not remove the separately confirmed active business-category/capability/directory needs.
 - `supplierService`, `referralTrackingService`, and `disputeService` are present in the central facade and/or test-only integration harness, but no current production screen caller was found in the searched references. Classify **legacy/unconfirmed; exclude from first migration scope unless reachability audit finds a mounted caller**. Tests that import a service are not proof of production use.
 - `businessRelationshipService` and `outcomeService` have a screen caller, but the screen's route reachability must be verified before final launch prioritization.
