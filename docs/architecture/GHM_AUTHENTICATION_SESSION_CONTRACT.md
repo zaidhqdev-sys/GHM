@@ -106,13 +106,13 @@ Already selected (Issuance ADR / Contract Gate):
 | **Password change** | Revoke **all other** refresh sessions; **preserve** the current authenticated session; **issue a fresh refresh credential** |
 | **Password recovery** | Revoke **all** existing refresh sessions; user must **authenticate again** |
 
-**Still not Founder-selected:**
+**Historical Gate 2B unresolved items — current bounded status reconciled:**
 
-- session persistence schema
-- revocation representation
-- whether refresh credentials are opaque (recommended below; not Founder-recorded)
-- JWT signing-key storage class / `kid` required (Cryptographic Contract — **SELECTED**; exact encoding/values UNSELECTED)
-- Conceptual durable persistence for credential/session/refresh/recovery/mapping: [GHM_AUTHENTICATION_PERSISTENCE_CONTRACT.md](./GHM_AUTHENTICATION_PERSISTENCE_CONTRACT.md)
+- Session persistence schema: implemented in `ghm.authentication_session` and the qualified auth migrations.
+- Revocation representation: implemented through session status/revocation metadata and controlled auth functions.
+- Opaque refresh credentials: used by the qualified implementation; the original contract's recommendation is historical implementation rationale, not a claim of a separate Founder decision.
+- JWT signing-key storage class / required `kid`: selected; current loader uses PKCS#8 PEM and `GHM_JWT_ES256_*` variables. Deployment-specific key/`kid` values remain secret-managed.
+- Conceptual durable persistence record: retained for architecture rationale; current physical schema is governed by [GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md](./GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md).
 
 High-level Issuance ADR language that refresh credentials are **rotated** is refined by Founder-selected policy below. Do **not** invent multi-device session-management UI.
 
