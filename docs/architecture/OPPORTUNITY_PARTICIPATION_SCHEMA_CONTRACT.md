@@ -6,7 +6,7 @@
 
 Define the provider-neutral PostgreSQL schema for the Opportunity Participation relationship reconciled from the current Zaid Connect production Opportunity foundation.
 
-This contract authorizes construction on the GHM construction branch only. It does not authorize production migration, Supabase changes, product adapters, shadow traffic, credential changes, or cutover.
+Historical construction-scope note: the original authorization applied to construction on the GHM construction branch, and the schema plus durable tenant adoption are now qualified / closed. That qualification does not authorize production migration, Supabase changes, product adapters, shadow traffic, credential changes, or cutover.
 
 ## 2. Canonical relation
 
