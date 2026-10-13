@@ -21,7 +21,7 @@ AT THAT GATE: NO KEYS GENERATED / NO JWT BEHAVIOR CHANGED
 
 Gate 2A is a historical cryptographic decision record. The statements above describe the repository at that gate and are not current implementation status. Gate 3B subsequently approved the implementation parameters and the ES256 authentication foundation is now construction-qualified on the consolidated `main` line. Legacy HS verification has been removed from the active governed resource-authentication path; historical HS/`JWT_SECRET` references below are retained only as Gate 2A provenance. Product migration and production cutover remain separately gated.
 
-This document resolves the **cryptographic / access-token contract space** left open by Authentication Contract Gate 1. It evaluates options and records Founder decision checkpoints. It does **not** select unresolved cryptographic parameters on behalf of the Founder and does **not** authorize implementation.
+This historical Gate 2A document resolves the **cryptographic / access-token contract space** left open by Authentication Contract Gate 1 and preserves the Founder decision checkpoints. It does not select unresolved parameters on behalf of the Founder. Gate 3B later authorized and qualified the bounded ES256 foundation; this record does not authorize further production key changes, product exposure, or cutover.
 
 ---
 
