@@ -403,16 +403,3 @@ Connect route definitions and signup flow support account roles `customer`, `con
 Connect app shell imports `supabase` and `authService`, restores session on startup, subscribes to `supabase.auth.onAuthStateChange`, and signs out through the Supabase client. `AuthScreen.jsx` calls `supabase.auth.signUp` directly and uses `authService.signIn` for login. This confirms the cutover must replace **startup session restore, auth-change subscription, signup, login, logout, refresh/expiry and password recovery**, not merely swap the sign-in form. GHM has native register/login/refresh/logout/password-recovery routes, but their response/user shape, confirmation policy and role/business-identity lifecycle need an adapter contract.
 
 No runtime or production changes were made in this audit.
-
-
-
-## Documentation reconciliation batch — 2026-10-13
-
-The following contradictions were corrected **in place** across both repository handovers and their current migration overlays:
-
-- Relationships/Outcomes route reachability is confirmed by `src/app/routes.js`; the missing GHM domain is consistently **Build**. The stale conditional reachability wording was removed from both handovers.
-- `src/features/directory/useDirectoryFilters.js` actively loads regional configuration and administrative areas. The regional/directory work is consistently **Extend**; do not rebuild legacy regional tables wholesale.
-- The same regional **Extend** row and Relationships/Outcomes **Build** row now appear in the GHM readiness gap register, GHM operation inventory, Connect integration architecture and Connect integration specification.
-- Connect `CURRENT_STATE_AUDIT.md` now labels its 2026-09-02 catalogue/product statements as historical implementation and production-verification evidence. It no longer implies those statements prove current hosted availability after the 2026-10-13 Supabase Auth resolution failure.
-
-**Review state:** GHM PR #133 and Connect PR #34 remain open draft documentation PRs. Do not merge until the full changed-file set, cross-references and current-status claims pass final review. No code, runtime, production, provider or cutover changes were made.
