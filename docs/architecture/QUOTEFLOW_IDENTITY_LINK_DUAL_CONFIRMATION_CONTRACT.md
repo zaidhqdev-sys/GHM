@@ -202,19 +202,13 @@ This contract does not authorize:
 - shadow qualification;
 - cutover.
 
-## Next construction gate
+## Historical next-construction gate — superseded
 
-The authority decision is now closed at the architecture level.
+The following sequence records the earlier identity-link proposal and is retained as decision provenance only. It is **not** the current QuoteFlow migration plan.
 
-The next construction slice is **GHM-owned QuoteFlow authentication and migration-boundary qualification**.
+The former proposal called for a GHM-owned QuoteFlow attestation verifier, authenticated GHM-side confirmation, exact-pair matching, cardinality/conflict checks, and deterministic handling of missing, mismatched, expired, duplicate, and conflicting confirmations. That sequence was superseded by the GHM-owned account-onboarding/migration boundary and its exact `(provider=supabase, sourceSubject)` provenance mapping, recorded in `QUOTEFLOW_GHM_ACCOUNT_ONBOARDING_MIGRATION_CONTRACT.md` and related qualification records.
 
-1. the qualified QuoteFlow attestation verifier;
-2. authenticated GHM-side confirmation;
-3. exact-pair matching;
-4. cardinality/conflict checks expressed as contract rules;
-5. deterministic outcomes for missing, mismatched, expired, duplicate, and conflicting confirmations.
-
-Only after that boundary is qualified may the persistence implementation proceed. The persistence design is now separately documented in `QUOTEFLOW_IDENTITY_LINK_PERSISTENCE_CONTRACT.md`; database objects and mutation remain independently gated.
+No permanent runtime identity-link table or attestation-based identity bridge is authorized by this historical dual-confirmation contract. Do not treat the persistence design below or its former “next gate” as current work. QuoteFlow production migration and cutover remain separately gated.
 
 ## Qualification requirements
 
