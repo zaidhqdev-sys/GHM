@@ -18,7 +18,7 @@ It does **not** authorize:
 
 - production migration or cutover;
 - product adapters for Connect/QuoteFlow;
-- HTTP Resource API routes for campaign;
+- blanket Campaign HTTP/API expansion beyond the separately Founder-authorized bounded surface at `785df12`; this source audit itself does not authorize HTTP routes;
 - child resources (brief, concept, script, presenter, consent, media, generation jobs);
 - object storage;
 - AI provider integrations;
@@ -238,7 +238,7 @@ campaign.delete
 campaign.readPublic
 ```
 
-HTTP Resource API for campaign: **not authorized** in this slice.
+HTTP Resource API: this original source-audit slice did not authorize it; a later separate Founder decision qualified the bounded Campaign HTTP surface at `785df12`. Broader HTTP expansion remains unauthorized by this audit.
 
 ## 8. Persistence stance
 
