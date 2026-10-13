@@ -35,8 +35,8 @@ It must not own payment-provider configuration, locale presentation, administrat
 
 No production reference rows are authorized by this audit alone. Required canonical rows must be introduced by an explicitly governed migration/seed decision. The presence of South Africa/ZAR in Connect is source evidence, not permission to silently copy Connect data into GHM.
 
-## Gate
+## Historical gate snapshot — 2026-10-03
 
-**OPEN — NOT AUTHORIZED FOR MUTATION.**
+**At the time of this audit: OPEN — NOT AUTHORIZED FOR MUTATION.**
 
-Payment preparation remains blocked until this reference-data contract receives explicit construction authorization and its migration ordering, live schema state, privileges, and canonical seed authority are qualified.
+At the time, payment preparation was blocked pending explicit construction authorization and qualification of migration ordering, live schema state, privileges, and canonical seed authority. That dependency was subsequently constructed and runtime-qualified, as stated in the current-status reconciliation at the top of this historical source audit. This section records the old gate state and is not a current blocker.
