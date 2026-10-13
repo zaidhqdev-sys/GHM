@@ -569,12 +569,12 @@ Recommendations favoring a private ZAID/GHM backend (opaque refresh / persistenc
 Password-change / recovery policies, sliding+absolute model, 30d/90d durations, 15-minute access TTL, and refresh rotation/replay policy are **Founder-selected**.
 
 ```text
-TTL / opaque-refresh / replay recommendations remain recommendations only until Founder selects them.
+Historical Gate 2B note: TTL and replay parameters were recommendations until the later Gate 3B selection; current bounded status is 15-minute access JWT, 30-day inactivity / 90-day absolute session, opaque rotating single-use refresh credentials, and replay-family revocation, qualified under Gate 3B.
 ```
 
 ---
 
-## 17. Founder decision checkpoint
+## 17. Historical Gate 2B Founder decision checkpoint — reconciled after Gate 3B
 
 ```text
 AUTHENTICATION GATE 2B:
@@ -592,19 +592,13 @@ FOUNDER-SELECTED:
 - Password change: revoke all other refresh sessions; preserve current session; issue fresh refresh
 - Password recovery: revoke all existing refresh sessions; user must authenticate again
 
-STILL REQUIRED (UNSELECTED):
+GATE 2B DECISION-TIME OPEN ITEMS — CURRENT STATUS:
 
-1. Opaque refresh credential:
-   UNSELECTED
+1. Opaque refresh credential: opaque refresh is used by the qualified implementation; the original recommendation is retained as history.
+2. Session persistence model: implemented in `ghm.authentication_session` and the qualified auth migrations.
+3. Revocation representation: implemented through session status/revocation metadata and controlled auth functions.
 
-2. Exact session persistence model:
-   UNSELECTED
-
-3. Exact revocation representation:
-   UNSELECTED
-
-IMPLEMENTATION AUTHORIZATION:
-NOT GRANTED.
+IMPLEMENTATION AUTHORIZATION WAS NOT GRANTED AT GATE 2B; GATE 3B LATER AUTHORIZED AND QUALIFIED THE BOUNDED FOUNDATION.
 ```
 
 ---
@@ -614,9 +608,10 @@ NOT GRANTED.
 The following block is the original Gate 2B decision snapshot. Its “implementation not authorized” and pending persistence language is historical; Gate 3B subsequently froze and qualified the bounded session/refresh persistence foundation. Product session-client integration and production cutover remain separately gated.
 
 ```text
-AUTHENTICATION GATE 2B RECONCILED WITH CREDENTIAL SESSION POLICIES.
-CURRENT IMPLEMENTATION UNCHANGED (NO REFRESH / LOGOUT / SESSION STORE).
-DURATIONS + REFRESH ROTATION/REPLAY SELECTED; OPAQUE/PERSISTENCE REMAIN PENDING FOUNDER DECISION.
-NO KEYS / CREDENTIALS / TABLES / ENDPOINTS CREATED.
-IMPLEMENTATION NOT AUTHORIZED.
+GATE 2B HISTORICAL DECISION SNAPSHOT:
+AT THAT GATE, NO REFRESH / LOGOUT / SESSION STORE WAS IMPLEMENTED.
+DURATIONS / REFRESH ROTATION / REPLAY / OPAQUE PERSISTENCE WERE NOT YET QUALIFIED AT THAT GATE.
+IMPLEMENTATION AUTHORIZATION WAS NOT GRANTED AT GATE 2B.
+
+CURRENT BOUNDED SESSION / REFRESH FOUNDATION: QUALIFIED UNDER GATE 3B.
 ```
