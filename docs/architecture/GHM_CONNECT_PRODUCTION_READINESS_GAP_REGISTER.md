@@ -268,3 +268,31 @@ Confirmed cross-cutting blockers include Connect's central Supabase client and a
 
 Use `docs/architecture/CONNECT_GHM_MIGRATION_HANDOVER_2026-10-13.md` as the durable session-resume and gap-classification record. This overlay and handover are documentation only: no new construction, production migration, provider enablement, or cutover is authorized. The existing per-capability qualification records remain authoritative for their narrow qualified slices.
 
+
+## 2026-10-13 current caller-to-contract reconciliation overlay
+
+This overlay supersedes any implication that the historical operation rows above are a current parity measurement. The durable per-batch evidence and resume instructions are in the dated GHM/Connect migration handovers. Current confirmed classifications from source-to-source comparison:
+
+| Current journey / operation | Current GHM contract evidence | Classification | Mandatory gate |
+|---|---|---|---|
+| Auth/session/signup/logout/recovery | Native auth routes exist; Connect shell and signup still directly depend on Supabase; GHM Connect binding still requires provider `supabase` | **Replace / blocker** | GHM-native user token/session, role mapping, active-account check, refresh/recovery and no Supabase identity/runtime |
+| Directory search | GHM public endpoint accepts q/category/page/pageSize only; Connect uses province/city/tier/radius/sort, zero-based page and up to 100 rows | **Extend** | exact filters, output allowlist, count/paging semantics and engagement events |
+| Business profile/owner preview | GHM public + managed reads/update/create exist; Connect combines slug/ID, owner fallback, hours, reviews, capabilities and saved state | **Extend** | identity and ID mapping, owner authorization, unpublished-field privacy |
+| Business-hours write | GHM service method exists, but inspected app registers GET only | **Extend** | authenticated HTTP mutation and integration tests |
+| Capability evidence / directory review | Current Connect business/admin panels call submit/review/queue flows; matching GHM routes not found in inspected routers | **Extend/build** | founder/verifier authority, pending/verified/rejected/revoked transitions and audit |
+| Projects/quotes | GHM project and quote routes exist | **Reuse + extend** | field/ID mapping, atomic project/opportunity creation, search filters, delete rules, quote lifecycle and ownership |
+| Opportunity marketplace | GHM has detail + requirement read/replace; list/type discovery absent in inspected router | **Build/extend** | active/open time windows, type/search filter, nested requirements, count/paging |
+| Support | GHM customer/admin route families match core fields/status set | **Reuse candidate** | envelope mapping, ownership, admin-only operations, message and resolution semantics |
+| Reviews | GHM public/customer/admin routes exist | **Reuse + adapt** | pending-only queue, rejection reason/status mapping, reviewer identity from token |
+| Onboarding | Connect flag is true; progress RPC callers exist; no GHM onboarding API identified | **Build** | per-user progress, complete/dismiss, idempotence and route gating |
+| Analytics | active dashboard uses Connect RPC; no equivalent GHM contract identified | **Build** | business-scoped metrics, period semantics and permission enforcement |
+| Relationships/outcomes | registered authenticated Relationships route; GHM domain absent | **Build** | business scoping, lifecycle/verification semantics |
+| Storage/logo | GHM service handles public logo policy but no HTTP router is registered; only business_logo object class | **Extend** | authorized API, metadata lifecycle, R2 grants and private/public policy separation |
+| Engagement analytics | Connect records profile_view/save/WhatsApp/call/website/directions/share; equivalent GHM HTTP contract not established | **Build/extend** | event allowlist, rate/abuse controls, privacy and attribution |
+| Quote analysis / AI | analyzer history uses Connect DB; AI transport targets Supabase Edge Function, provider gate false | **Split** | migrate history/data operations; remove Supabase transport but preserve fail-closed provider gate |
+| Commercial | Connect offer/trial panel active; GHM internal commercial routes exist; payment activation remains disabled | **Reuse/extend, separately gated** | preserve all launch/payment flags; no provider activation |
+| Notifications inbox/realtime/push | GHM routes exist; current UI inbox/push active caller not established | **Evidence insufficient** | only migrate producer operations proven active; don't rebuild dormant UI |
+| Supplier/referral/dispute/offerings legacy services | no confirmed current mounted caller in searches | **Legacy/unconfirmed** | exclude unless reachability audit finds active caller |
+
+The numeric Connect IDs and GHM numeric IDs/UUID assumptions must never be presumed equivalent. Define explicit identity/resource mappings. The signed `POST /api/v1/connect/service` remains server-to-server only; browser code needs a secure BFF or GHM-native user-token API. This overlay is documentation only and grants no implementation, merge, production or cutover authorization.
+
