@@ -91,7 +91,7 @@ ghm_runtime       — least-privilege application path
 3. Runtime may receive only the minimal `SELECT` / function `EXECUTE` / sequence usage required by authorized Auth API operations.
 4. Password hashes, refresh material, and recovery secrets must never appear in product-facing responses or ordinary logs.
 
-Exact grant matrices remain an **implementation / migration gate** (UNSELECTED here).
+At the historical Gate 2D checkpoint, exact per-object grant matrices remained an implementation/migration gate. The bounded authentication grants were subsequently implemented in the qualified migrations; use `GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md` and current role-qualification evidence for the actual grants rather than treating this historical UNSELECTED note as current.
 
 ---
 
