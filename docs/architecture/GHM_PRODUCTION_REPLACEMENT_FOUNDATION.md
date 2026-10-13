@@ -45,7 +45,7 @@ Zaid Connect's approved API specification explicitly describes its current inter
 Zaid Connect ──► GHM adapter ──► GHM
 QuoteFlow   ──► GHM adapter ──► GHM
 
-Storage adapter ──► current provider (e.g. Supabase Storage)
+Storage adapter ──► qualified GHM provider path (Cloudflare R2; product enablement separately gated)
                  └─► future ZAID-owned storage without product rewrites
 ```
 
