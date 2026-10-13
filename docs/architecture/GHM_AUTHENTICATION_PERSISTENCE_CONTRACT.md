@@ -227,7 +227,7 @@ Support Founder-selected refresh behavior:
 | Lineage | Parent→child (or equivalent succession) so the family can be revoked as a unit |
 | Revocation | Mark credential and/or entire family revoked |
 | Replay detection | Presenting a **superseded** or **revoked** credential is detectable via lookup of its hash/reference |
-| Concurrency | Concurrent refresh races must be defined so double-submit does not silently mint two live lineages without policy (exact idempotency strategy UNSELECTED; clients should single-flight) |
+| Concurrency | The qualified refresh-rotation implementation serializes the live-tip transition and enforces single-use/replay-family revocation; clients should still single-flight refresh to avoid unnecessary races |
 
 ### How replay is recognized without storing the raw credential
 
@@ -271,7 +271,7 @@ Email-based password recovery (Founder-selected): short-lived, single-use, serve
 |---|---|
 | Binding | Associated with target `account_identity` (resolved server-side; responses remain enumeration-resistant) |
 | Storage | Hash/reference of recovery secret — not plaintext |
-| Lifetime | Short-lived (exact TTL UNSELECTED) |
+| Lifetime | Bounded password-recovery service uses a 30-minute credential; production email delivery remains separately gated |
 | Single-use | Invalidate on successful use; reject replay |
 | Outcome | Password reset updates password credential; **account-wide** refresh-session revocation |
 | Transport | Email delivery — **provider UNSELECTED** (not invented) |
@@ -404,11 +404,11 @@ Do **not** design persistence for:
 | Recovery TTL | The bounded password-recovery service issues a 30-minute credential; production email delivery remains separately gated |
 | Email provider | Provider/delivery enablement remains separately gated |
 | Opaque refresh credential type | Opaque refresh credential is used by the qualified implementation; this originated as a technical recommendation in this historical contract |
-| Exact runtime grant matrix for auth tables | **UNSELECTED** (must follow §3) |
+| Runtime grants for auth tables | Controlled SECURITY DEFINER / EXECUTE model implemented; use `GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md` and live role qualification for exact per-object grants |
 | Rate-limit thresholds | **UNSELECTED** |
 | ES256 key storage class | **SELECTED:** secret-managed inside issuer boundary |
 | `kid` required | **SELECTED** |
-| Exact key encoding / `kid` string values / rotation calendar | **UNSELECTED** |
+| Key encoding / `kid` / rotation | PKCS#8 PEM and environment-variable names implemented; deployment-specific active/previous `kid` values and rotation calendar remain operationally governed |
 
 > Where recommendations appear, they are **not** Founder decisions unless marked SELECTED.
 
