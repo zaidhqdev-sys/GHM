@@ -96,15 +96,17 @@ The authorization contract must not depend on caller-supplied ownership claims.
 
 ## 6. Lifecycle
 
-The authoritative Connect lifecycle is:
+The authoritative Connect **status vocabulary** is:
+
+`new`, `contacted`, `qualified`, `quoted`, `won`, `lost`, `archived`.
+
+The sequence below is a historical construction-time illustration, **not** a source-proven production transition graph:
 
 `new → contacted → qualified → quoted → won | lost | archived`
 
-The GHM first slice shall preserve these values as the canonical Enquiry status vocabulary unless a later reconciliation contract explicitly changes them.
+The production source establishes the allowed status values and recipient-owner authority, but it does not establish a database transition graph for these values. GHM's application-level transition restrictions are therefore GHM-local construction behavior, not proven Connect workflow parity. The stricter transition graph remains an explicit product-parity reconciliation item in `ENQUIRY_SOURCE_AUDIT.md`; it must not be treated as canonical Connect lifecycle authority before that reconciliation closes.
 
-Status is recipient-business workflow state. It is not customer-editable data.
-
-The first slice must not silently introduce arbitrary lifecycle transitions. The service contract must define which requested status values are accepted and reject invalid values.
+Status is recipient-business workflow state. It is not customer-editable data. The GHM service must continue to reject invalid status values and enforce its currently qualified mutation boundary; any change to transition semantics requires a separate reviewed qualification.
 
 ## 7. Source
 
