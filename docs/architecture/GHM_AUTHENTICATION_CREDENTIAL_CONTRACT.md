@@ -435,7 +435,7 @@ CREDENTIAL / LOGIN CONTRACT — FOUNDER DECISIONS RECORDED (2026-09-21)
     enumeration-resistant; invalidate after successful use)
 
 6. Exact numeric recovery lifetime:
-   UNSELECTED (must remain short-lived)
+   Gate 2C decision-time status: UNSELECTED. The bounded password-recovery implementation now issues a 30-minute credential; production email delivery remains separately gated.
 
 7. Post-recovery session policy:
    SELECTED — revoke all existing refresh sessions; re-authenticate
