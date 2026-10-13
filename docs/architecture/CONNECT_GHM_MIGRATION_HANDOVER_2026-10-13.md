@@ -63,8 +63,8 @@ Classification: **Reuse** = likely existing GHM surface, still requires contract
 |---|---|---|
 | Profile + managed business + editor | Extend | GHM has profile/business reads, managed-business listing, create/update and hours. Connect also expects registration identity, logo/media, membership permissions and directory-review status. Compare IDs, fields, ownership and errors. |
 | Public directory/profile | Extend | GHM public directory/search and profile routes exist. Compare category/region filters, pagination, public-field allowlist, slug/detail response and engagement/view events. |
-| Business hours | Reuse candidate | GHM read/replacement service and tests exist. Verify HTTP method/path, schema, membership authorization and Connect payload semantics. |
-| Categories / offerings / capability catalogue | Reuse/extend | Existing GHM routes/services. Qualify each actual Connect operation/lifecycle; registry entries do not prove parity. |
+| Business hours | **Extend** | Authenticated GET is registered; replacement service exists but no HTTP write route was found. Expose only the contract-governed replacement operation with membership authorization and HTTP acceptance tests. |
+| Categories / offerings / capability catalogue | **Extend / Legacy-exclude by caller evidence** | Category routes exist but UI/filter parity remains open; capability evidence submission/review is missing; offering catalogue has no confirmed mounted production caller and remains legacy/unconfirmed unless new source evidence proves otherwise. |
 | Capability evidence + admin review | Extend/build | Connect has business submission and admin review screens. Inspected GHM capability router exposed list/get/create, not matching evidence submission/review endpoints. Specify private evidence access, verifier authority, review transitions and audit. |
 | Founder directory governance | Build | Connect calls reviewer check, submission, queue/list, owner presentation and decision operations. No equivalent complete GHM founder-review workflow identified. |
 | Opportunities | Extend | GHM opportunity detail and requirements routes exist. Connect needs marketplace list/filter, types and capability-requirement operations; full discovery contract not evidenced. |
@@ -72,14 +72,14 @@ Classification: **Reuse** = likely existing GHM surface, still requires contract
 | Leads | Extend/build | Active workspace calls `leadService.getForBusiness` and status update on a separate `leads` model/RPC. Enquiries are not automatically equivalent; define list scope, lifecycle and status mapping. |
 | Analytics | Build/extend | Active screen calls `businessAnalyticsService.getDashboard(businessId, days)`; expects leads, quotes, wins, conversion, engagement and recent activity. No equivalent GHM dashboard contract found in inspected HTTP surface. |
 | Relationships + outcomes | Build | Active `RelationshipOutcomeScreen.jsx` calls both business relationship and outcome services; GHM inventory has no corresponding resources. Preserve lifecycle, verification, visibility, provenance and evidence. |
-| Onboarding | Build/verify | Onboarding feature exports screens/journeys; facade RPCs cover progress, record, complete, dismiss. Verify active route/caller and exact behaviour; no GHM onboarding resource found. |
-| Notifications | Reuse/extend | GHM routes exist. Compare list/read/all-read/create/ownership/delivery. Treat push and realtime as separate features; confirm active callers. |
-| Support | Reuse/verify | GHM support routes exist. Compare customer/admin lists, messages, replies, status and permissions. |
-| Reviews + trust | Reuse/extend | GHM routes exist. Verify creation/read/moderation and aggregate behaviour. Founder directory review is a different workflow. |
+| Onboarding | **Build** | `featureFlags.guidedOnboarding=true` and the active onboarding panel calls progress/action methods; no equivalent GHM onboarding resource/HTTP contract was found. Preserve progress, record, complete and dismiss semantics with business-scoped authorization. |
+| Notifications | **Reuse candidate / qualify active producers** | GHM list/detail/read/all-read routes exist; qualify payload and recipient authorization for confirmed active producers. Inbox/realtime/push remain excluded unless mounted caller and delivery evidence are established. |
+| Support | **Reuse candidate / adapt** | Active customer and admin panels use list, messages, create/reply and status operations. Match response envelopes, limits, validation, ownership, membership and admin-only status transitions with integration tests. |
+| Reviews + trust | **Reuse candidate / adapt** | GHM public/customer/admin routes exist; map review fields, pending-only queue, moderation states/rejection reason, reviewer identity and aggregates. Founder directory review is a separate missing workflow. |
 | Media/storage | Extend | GHM has R2 provider path and storage service currently limited to `business_logo`; no storage HTTP router identified in app registration. Expose policy-enforcing API; separate public logo from private evidence/workspace files. |
 | AI proxy / quote analysis | Extend/build | AI client calls Supabase Edge Function. Trace active UI callers and quote-analysis persistence; replace with GHM-owned endpoint, server-only keys, authorization, limits and safe errors. No paid provider without approval. |
 | Regional configuration + directory filters | **Extend** | `src/features/directory/useDirectoryFilters.js` actively loads default regional configuration and administrative areas. Extend the existing directory/filter contract for confirmed active needs; define minimal launch geography and configuration ownership. Do not rebuild the legacy regional system wholesale. |
-| Browser push | Verify then extend/build if active | Helper writes subscription to Supabase. Prove invocation and delivery path before making it core scope. |
+| Browser push | **Evidence-insufficient / legacy-exclude pending proof** | A helper writes subscriptions, but active invocation and delivery are not established. Do not include push in launch scope without mounted-caller and end-to-end delivery evidence. |
 | Commercial/payment | Reuse/extend, gated | GHM has payment prepare and PayFast checkout/ITN/server confirmation. Keep activation/launch auth disabled. Preserve idempotency and provider separation; sandbox E2E and live enablement are separate gates. |
 
 ### C. Legacy/exclude unless active-call evidence proves otherwise
@@ -115,13 +115,13 @@ Classification: **Reuse** = likely existing GHM surface, still requires contract
 
 ## 8. Exact resume point — do not restart from zero
 
-**Next action:** continue bounded source inspection and documentation reconciliation; do not begin code work.
+**Next action:** finish the bounded cross-document reconciliation and independent review of the 36 changed Markdown files; do not begin code work.
 
-1. Verify active Connect callers and exact payloads for profile editor, directory, onboarding, founder directory review, capability evidence, project/quote, regional config, AI/quote analysis, push, relationships/outcomes, support and reviews.
-2. Inspect GHM route methods, input/output schemas and authorization for directory/business profile/hours/support/review/notification/project/quote/opportunity. Distinguish actual HTTP routes from resource registry/service methods.
-3. Produce one operation-level matrix: **Reuse / Extend / Build / Legacy-exclude / Evidence-insufficient**, source paths, endpoint contract, authorization, acceptance test, dependencies and evidence state.
-4. Reconcile these existing GHM docs rather than create competing truth: `docs/architecture/GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md`, `GHM_CONNECT_BACKEND_READINESS_AUDIT.md`, `CONNECT_BACKEND_OPERATION_INVENTORY.md`, `docs/GHM_CURRENT_STATE.md`; and Connect's `INTEGRATION_ARCHITECTURE.md`, `INTEGRATION_SPECIFICATION.md`, `MASTER_INDEX.md`.
-5. Update this handover after each batch with inspected files, exact branch/commit/PR status and the next one or two tasks.
+1. Reconcile the operation-level classifications in this handover against `GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md`, `CONNECT_BACKEND_OPERATION_INVENTORY.md`, `GHM_CONNECT_BACKEND_READINESS_AUDIT.md`, `docs/GHM_CURRENT_STATE.md`, and the living operation contracts. Keep explicit **Build / Extend / Reuse candidate / Legacy-exclude / Evidence-insufficient** distinctions.
+2. Verify every relative Markdown link in both PRs against the branch trees, and inspect changed-file diffs for appended corrections, obsolete “next batch” instructions, contradictory status, duplicate source-of-truth claims, and accidental code/production scope.
+3. Reconcile the matching Connect integration architecture/specification, current-state audit, master index, ownership matrix and companion handover against the same classifications.
+4. Re-fetch PR #133 and Connect PR #34 metadata after final edits; record exact head SHAs and review status. Keep both drafts unmerged until the full review passes and the founder explicitly authorizes merge.
+5. No implementation, data migration, provider activation, production changes or cutover during this documentation pass.
 
 **Do not merge either documentation branch until all affected docs are reconciled and reviewed as a set, and the founder has been told what remains.** No implementation, migration, production changes or cutover before then.
 
@@ -150,16 +150,16 @@ Read this file first and the Connect companion. Check latest main/branch/PR stat
 - `src/http/business-hours-http.test.ts` qualifies GET authentication, invalid ID, response envelope and access denial. The inspected tests do not establish a write endpoint.
 - `src/features/business-profile/BusinessProfileScreen.jsx` imports the Supabase facade directly and actively calls directory slug/ID reads, owner-authorized business fallback, profile-view engagement, review list, business hours, capability list, saved-business state and engagement events for save/WhatsApp/call/website/directions/share. These are live screen contracts, not just facade exports.
 - `src/features/administration/AdminDirectoryReviewPanel.jsx` actively invokes founder-reviewer check, review queue listing and review decision. `src/features/administration/AdminCapabilityEvidencePanel.jsx` actively invokes verifier check, evidence queue and review decisions (verified/rejected/revoked).
-- `src/features/onboarding/OnboardingPanel.jsx` invokes onboarding progress read and action methods, but is gated by `featureFlags.guidedOnboarding`; record the feature flag and actual route reachability as an explicit activation check, not automatically as always-visible launch scope.
+- `src/features/onboarding/OnboardingPanel.jsx` invokes onboarding progress read and action methods. The inspected Connect flag is `featureFlags.guidedOnboarding=true`, so treat onboarding as active in-scope functionality; preserve progress/action semantics and qualify route authorization rather than leaving activity unresolved.
 
 ### Required matrix mappings
 
 1. Business hours: GET is a reuse candidate; replacement is an HTTP-surface gap until a mutation route with authorization, schema and integration tests is present.
 2. Business profile/directory: engagement tracking is an active dependency. GHM directory/profile reads must be compared with Connect's field allowlist, slug/ID semantics, owner preview fallback and the event kinds above.
 3. Directory review and capability evidence are confirmed active administrative workflows, not speculative facade exports. The replacement contracts must preserve founder/verifier authority and review decisions.
-4. Onboarding remains a verified feature-flagged caller; confirm flag configuration and screen mounting before assigning launch-critical priority.
+4. Onboarding is active under `featureFlags.guidedOnboarding=true`; GHM still needs a matching onboarding resource/HTTP contract and authorization tests.
 
-No code or production changes were made. Continue the operation-by-operation audit and documentation reconciliation; no merge/cutover authorization is implied.
+No code or production changes were made. The operation-by-operation findings below supersede this historical checkpoint as the resume point; final cross-document review remains open and no merge/cutover is authorized.
 
 
 ## 12. Contract audit batch — directory, reviews, notifications and support
@@ -180,7 +180,7 @@ No code or production changes were made. Continue the operation-by-operation aud
 - Support = **Reuse candidate / contract verification required**.
 - Relationships/outcomes = **Build**, with lifecycle and verification semantics preserved.
 
-No runtime or production change was made. Next batch: compare Connect's directory query/output and support/review/notification facade contracts to these exact HTTP shapes; then reconcile the remaining source-of-truth docs and produce the operation-level matrix.
+No runtime or production change was made. The following audit sections record the directory, support, review and notification comparisons; the remaining gate is cross-document reconciliation and full changed-file review, not restarting these source comparisons.
 
 
 ## 13. Contract audit batch — Connect directory and review parity
@@ -223,7 +223,7 @@ No code or production changes. Next batch: compare Connect notification/support 
 - Notification producer API = **reuse candidate with recipient/payload qualification**.
 - Notification inbox/realtime/push = **evidence insufficient**, not automatically in migration build scope.
 
-No code or production changes were made. Next task: inspect exact Connect support request/reply/status fields and GHM parser enums; then finalize the operation-level matrix and finish source-of-truth document reconciliation.
+No code or production changes were made. The following sections record the support field/status comparison; the remaining task is to reconcile the resulting classification consistently across all affected documents.
 
 ## 15. Support contract comparison — exact fields and status values
 
@@ -233,7 +233,7 @@ GHM `src/http/support-request-router.ts` currently validates the same status set
 
 **Updated classification:** support is a strong **Reuse candidate**, with adapter work needed for Connect's `getMine/getAdmin/getMyMessages/getAdminMessages/replyAsCustomer/replyAsAdmin/setStatusAsAdmin` facade shape and GHM's `supportRequests/messages/message` response envelopes. Verify customer ownership, admin list defaults (Connect requests 100 records while GHM defaults/limits are parser-defined), resolution-summary rules, and request/message ID compatibility. Do not mark full parity until those tests pass.
 
-No implementation or production changes. Resume with the operation-level contract matrix and documentation reconciliation.
+No implementation or production changes. The operation-level findings are recorded in the later matrix sections; final reconciliation and cross-reference review remain open.
 
 ## 16. Exact support and notification security qualification
 
