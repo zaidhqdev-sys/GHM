@@ -66,7 +66,7 @@ without changing their meaning.
 | **A. HTTP routes** | `/`, `/healthz`, `/readyz`; `/api/v1/profile`; businesses; projects; enquiries; **Campaign** GET/LIST/POST/PATCH under `/api/v1/campaigns` | Construction Resource API slices + Campaign HTTP at `785df12` — **not** a complete KBM supported-consumer contract (adapter + issuance still gated) |
 | **B. Resource registry** | Many resources including `campaign` | Registry ≠ product API |
 | **C. In-process services/repos** | Campaign and others callable inside GHM process | Internal implementation — **not** governed cross-product contract |
-| **D. Supported product-facing callable contract** | Campaign HTTP callable surface **PRESENT** at locked wire; KBM adapter + auth issuance still NOT AUTHORIZED / UNSELECTED | Required for full KBM Campaign consumption |
+| **D. Supported product-facing callable contract** | Campaign HTTP callable surface **PRESENT** at locked wire; bounded Gate 3B authentication foundation qualified; broad KBM/product adapter and product session migration remain separately gated | Required for full KBM Campaign consumption |
 
 ### Campaign status (confirmed)
 
@@ -76,7 +76,7 @@ without changing their meaning.
 | Implemented | Yes |
 | Qualified | Yes (`0a9a9f7`) |
 | Callable internally | Yes (service/repository) |
-| Exposed via supported product-facing transport | **Yes** — Campaign HTTP at Founder-locked wire (HEAD `785df12`); KBM adapter still NOT AUTHORIZED |
+| Exposed via supported product-facing transport | **Yes** — Campaign HTTP at Founder-locked wire (`785df12` historical evidence); broad KBM/product adapter remains separately gated |
 
 ## 4. Semantic payload the transport must carry
 
@@ -683,7 +683,7 @@ HTTP/API as the selected transport is **not**: an authentication issuer; an auth
 
 | Option | What it would mean here | Existing evidence | Main architectural consequence | Main unresolved issue |
 |---|---|---|---|---|
-| HTTP/API | Synchronous product calls to governed Resource API routes carrying AuthContext, business context, resource ops, semantic results | Express Resource API exists for profile/business/project/enquiry; `/api/v1`; JWT verify middleware; Campaign HTTP routes present at Founder-locked wire (`785df12`) | Extends existing HTTP boundary pattern; clear process/network separation | KBM adapter + auth issuance still UNSELECTED / NOT AUTHORIZED; platform error/version lifecycle OPEN |
+| HTTP/API | Synchronous product calls to governed Resource API routes carrying AuthContext, business context, resource ops, semantic results | Express Resource API exists for profile/business/project/enquiry; `/api/v1`; JWT verify middleware; Campaign HTTP routes present at Founder-locked wire (`785df12`) | Extends existing HTTP boundary pattern; clear process/network separation | Bounded authentication foundation is qualified under Gate 3B; broad KBM/product adapter remains separately gated; platform error/version lifecycle remains OPEN |
 | In-process package/library | KBM (or host) imports GHM and invokes services in one process | `main: dist/server.js`; no `exports`/`types`; no library entrypoint; services are internal | Couples product process to GHM runtime/DB credentials; weak product isolation | AuthContext trust bootstrap and credential co-location vs direct-DB prohibition |
 | RPC | Synchronous remote procedures mapping to resource operations | **No** RPC framework/protocol in GHM `src/` or deps | New protocol server in front of existing services; process/network boundary | Which RPC family (unselected); overlap with existing HTTP Resource API |
 | Generated typed client over another transport | Consumption artifact layered on a selected transport | No OpenAPI/client generation pipeline; no KBM client package | Improves typed consumption **after** transport exists; does not answer transport alone | Underlying transport must be selected first |
@@ -738,7 +738,7 @@ The transport contract was defined; Campaign HTTP resource contract + implementa
 
 The existing Express `/api/v1` implementation is evidence and foundation; existing non-Campaign routes do not automatically become the approved KBM contract.
 
-Campaign HTTP is product-facing at the Founder-locked wire (`785df12`). KBM adapter remains NOT AUTHORIZED. Auth issuance remains UNSELECTED.
+Campaign HTTP is product-facing at the Founder-locked wire (`785df12`). The bounded Gate 3B authentication foundation is qualified; broad KBM/product adapter construction and product session migration remain separately gated.
 
 ### Required Next Gate
 
@@ -747,7 +747,7 @@ Campaign HTTP resource contract + implementation gates are **DONE** at `785df12`
 Remaining separate gates (not performed by this ADR):
 
 - authentication issuance decision (UNSELECTED)
-- KBM product adapter (NOT AUTHORIZED)
+- Broad KBM product adapter (not authorized by this decision record alone; separate per-capability authorization required)
 - version lifecycle / platform taxonomy mapping (OPEN)
 - broader HTTP expansion beyond Campaign (gated)
 
