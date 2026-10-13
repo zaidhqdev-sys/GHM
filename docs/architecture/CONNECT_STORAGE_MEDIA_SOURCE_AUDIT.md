@@ -58,5 +58,5 @@ Referenced by application code only. **No** `insert into storage.buckets` for `p
 1. The only migration-governed storage contract is **`media` + `logos/`** with logo RPCs.
 2. Other `media` prefixes are used by the app but lack matching Storage policy migrations in the audited set.
 3. `private-docs` and several media metadata tables are **not migration-proven**; do not invent GHM tables from app references alone.
-4. GHM currently has no storage resource; Connect requires object storage for logos/avatars/docs/images if those workflows remain live.
+4. At the 2026-09-18 audit snapshot, GHM had no qualified storage resource. Subsequent GHM storage persistence and the live R2 provider data path have been qualified, as stated in this document's current-status notice. Product-facing media workflows, authorization coverage for every Connect media prefix, production enablement, and cutover remain separately gated.
 5. Storage abstraction / bucket authorization requires explicit construction authorization after resolving orphan metadata and bucket policy evidence.
