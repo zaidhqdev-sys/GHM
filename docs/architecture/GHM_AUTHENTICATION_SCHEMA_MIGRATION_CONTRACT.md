@@ -529,7 +529,7 @@ SECURITY DEFINER (OWNER ghm_schema_owner)
 SET search_path = pg_catalog, ghm
 ```
 
-### Tables (proposed grants after creation)
+### Original Gate 3A grant proposal — current grants are implemented in migrations
 
 | Privilege | `ghm_runtime` |
 |---|---|
@@ -705,8 +705,8 @@ Gate 3B subsequently authorized and qualified the bounded authentication runtime
 
 **Runtime grants (DDL construction):** secret hash tables have **no** `ghm_runtime` SELECT/DML; mapping/session tables allow `SELECT` only.
 
-**Temporary pre-auth privilege condition (must be tightened in Auth runtime/GRANT construction):**
+**Historical pre-auth privilege condition — remediated by the auth runtime migration:**
 
-> Existing table-level `GRANT UPDATE ON ghm.account_identity TO ghm_runtime` (from schema establishment) covers newly added lifecycle columns `account_status` and `is_system_admin`. That is a **temporary pre-auth boundary condition**. Auth runtime GRANT construction must remove broad runtime ability to mutate those auth lifecycle columns (e.g. column-level UPDATE grants preserving profile fields only, plus SECURITY DEFINER for account disable / admin flag). Unrelated profile updates (`full_name`, `phone`, `avatar_ref`, `updated_at`) must keep working.
+The earlier schema-establishment grant initially covered the new lifecycle columns. Migration `20260921130000_create_auth_runtime_functions.sql` subsequently revokes table-level `UPDATE` on `ghm.account_identity` from `ghm_runtime` and restores only column-level updates for `full_name`, `phone`, `avatar_ref`, `role`, and `updated_at`. The `account_status` and `is_system_admin` lifecycle columns are governed by controlled `auth_*` SECURITY DEFINER functions. Do not treat the original temporary condition as a current open defect; use the migration and live role qualification evidence for current grant status.
 
 **Gate 3A pending checklist — historical:** Auth HTTP API/runtime construction and the HS→ES256 foundation were subsequently advanced and qualified under Gate 3B. Product session-client/migration integration and email delivery remain separately gated; production readiness and cutover are governed by current living status/evidence, not this pre-implementation checklist.
