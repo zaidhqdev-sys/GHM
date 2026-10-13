@@ -3,7 +3,7 @@
 **Canonical owner:** GHM platform governance
 **Status:** Charter defined (documentation only)
 **Authority:** Local repository `C:\GHM`
-**Current baseline:** consolidated `main` — current repository authority
+**Qualification authority:** consolidated `main` at the time of the relevant qualification; this is not a current HEAD pointer
 **Historical baseline:** branch `construction/saved-business-resource`, HEAD `0a9a9f7`
 
 > **Current-status reconciliation — 2026-10-13:** This charter remains a boundary/decision record, and its authorization table and baseline below preserve the original decision scope. Subsequent construction is governed by the current capability qualification records: the bounded authentication/session foundation, Saved Business adapter, Campaign HTTP slice, storage provider path, and PayFast adapter have advanced. Those qualifications do not blanket-authorize new packages/RPCs, realtime transport, provider activation, product routing, or cutover. Use `GHM_CURRENT_STATE.md` and the remaining-work register for current status; treat the baseline commit as historical provenance only.
