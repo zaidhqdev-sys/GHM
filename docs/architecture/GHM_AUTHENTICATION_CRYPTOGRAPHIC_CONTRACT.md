@@ -482,10 +482,10 @@ Do **not** require **Option 3 (KMS/HSM)** for the first authentication implement
 FOUNDER DECISION:
 Key storage approach = SELECTED — secret-managed private key inside GHM issuer boundary
   (env/host secret injection class; no mandatory KMS/HSM for first gate)
-Key representation / exact secret names / paths = UNSELECTED (not invented)
+Gate 2A decision-time status: representation / exact secret names / paths were UNSELECTED. The qualified implementation now uses PKCS#8 PEM and the frozen `GHM_JWT_ES256_*` environment-variable names; deployment-specific key values remain secret-managed.
 ```
 
-**Do not generate keys in this gate.**
+The original “do not generate keys in this gate” instruction applied to the Gate 2A decision task. Key generation/rotation and deployment promotion remain operationally governed; this historical contract does not authorize production key changes.
 
 ### 8.4 Invariants (apply regardless of storage selection)
 
