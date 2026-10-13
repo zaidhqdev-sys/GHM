@@ -323,9 +323,9 @@ An authenticated Opportunity Participant HTTP boundary already exists and is reg
 
 The tenant-boundary work applies beneath that existing route: HTTP authorization remains the resource-registry gate, while repository authorization remains authoritative for the parent Opportunity and participant Business/Account relationships. Unsupported participant updates continue to fail closed.
 
-## 19. Qualification requirements
+## 19. Historical qualification acceptance criteria — satisfied for the bounded operation contract
 
-Before this operation contract can be marked qualified, evidence must demonstrate:
+The following criteria governed the original qualification gate. The bounded Opportunity Participant operation contract is now **QUALIFIED / CLOSED**; its qualification evidence records the checks that passed. Unsupported participant status/role mutations still fail closed because a separate transition authority remains unqualified:
 
 1. authenticated context is required;
 2. registry operation is explicit;
