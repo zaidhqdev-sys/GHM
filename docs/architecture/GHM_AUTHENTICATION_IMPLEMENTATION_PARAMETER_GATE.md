@@ -267,7 +267,7 @@ authentication_session.id
 | Account disable | Revoke **all** families |
 
 ```text
-FOUNDER APPROVED 2026-09-30: last_seen_at update rule + session-id-as-family invariant (§8)
+FOUNDER APPROVED 2026-09-30: session-id-as-family invariant (§8). The refresh-only last_seen_at update behavior is implemented/evidenced, but explicit Founder approval remains open as recorded in §19.
 ```
 
 ---
