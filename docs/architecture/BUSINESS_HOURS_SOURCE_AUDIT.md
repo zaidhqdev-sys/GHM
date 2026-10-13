@@ -64,4 +64,4 @@ The source audit does not establish contracts for booking availability, appointm
 
 ## Safety boundary
 
-This audit authorizes construction of the provider-neutral GHM Business Hours resource only. It does not authorize production schema changes, Supabase migration, credential changes, DNS/routing changes, traffic changes, or product cutover.
+The original audit authorized construction of the provider-neutral GHM Business Hours resource only; that bounded construction/qualification is now recorded in the current operation and qualification contracts. This source audit does not authorize production schema changes, Supabase migration, credential changes, DNS/routing changes, traffic changes, additional booking/exception/open-now behavior, or product cutover.
