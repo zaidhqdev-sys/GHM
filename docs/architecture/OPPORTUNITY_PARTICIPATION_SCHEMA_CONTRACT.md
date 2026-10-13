@@ -428,11 +428,11 @@ The following criteria governed the original schema qualification gate. The sche
 4. Reconcile catalog and constraints. — qualified
 5. Define the participant operation contract. — completed
 6. Implement repository/service boundaries. — qualified
-7. Register the resource and authorized operations.
-8. Add positive/negative, duplicate, concurrency, and rollback tests.
-9. Qualify runtime and privilege boundaries.
-10. Reconcile cross-resource creator/owner behavior.
-11. Update the handover only after all evidence passes.
+7. Register the resource and authorized operations. — completed
+8. Add positive/negative, duplicate, concurrency, and rollback tests. — completed
+9. Qualify runtime and privilege boundaries. — qualified
+10. Reconcile cross-resource creator/owner behavior. — qualified
+11. Update the handover after evidence passed. — completed
 
 ## 27. Production safety
 
