@@ -288,3 +288,7 @@ The following are outside this initial capability:
 - ticket deletion;
 - message deletion/editing;
 - generic event bus integration.
+
+## Connect support workflow parity boundary — 2026-10-13
+
+This domain contract describes GHM Support Request operations, but does not alone prove end-to-end parity with Connect's RPC-backed support journey. Before migration, map Connect customer create/list/detail/messages, admin queue/detail/messages/reply/status, role gates, message ordering, resolution fields, and response/error envelopes to the mounted GHM routes. Verify the Connect support screen and admin route are active, then add contract-level acceptance and negative-authorization tests. Reuse the existing GHM service where semantics match; classify missing HTTP operations as **Extend** rather than widening database privileges. The no-Supabase requirement includes every active support RPC caller. No cutover is authorized.
