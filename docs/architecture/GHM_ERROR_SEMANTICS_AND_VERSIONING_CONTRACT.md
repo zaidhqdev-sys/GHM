@@ -5,7 +5,8 @@
 **Authority:** Local repository `C:\GHM`
 **Historical evidence baseline:** branch `construction/saved-business-resource`, HEAD `0a9a9f7` (not the current repository HEAD)
 
- > **Historical-status reconciliation — 2026-10-13:** This contract preserves the Gate 1 documentation-only decision. Its `Authentication issuance selection: NOT AUTHORIZED` row is historical: the bounded GHM ES256 issuance/session foundation was subsequently selected, implemented, and qualified under Gate 3B. The source/path observations in §3 were captured against the stated historical baseline and are not an exhaustive current HTTP-route inventory. This document still does not authorize a platform-wide semantic error taxonomy refactor, compatibility/versioning implementation, or product cutover; those remain separately gated.
+> **Historical-status reconciliation — 2026-10-13:** This contract preserves the Gate 1 documentation-only decision. Its `Authentication issuance selection: NOT AUTHORIZED` row is historical: the bounded GHM ES256 issuance/session foundation was subsequently selected, implemented, and qualified under Gate 3B. The source/path observations in §3 were captured against the stated historical baseline and are not an exhaustive current HTTP-route inventory. This document still does not authorize a platform-wide semantic error taxonomy refactor, compatibility/versioning implementation, or product cutover; those remain separately gated.
+
 **Depends on:**
 - [GHM_APPLICATION_BACKEND_PLATFORM_CHARTER.md](./GHM_APPLICATION_BACKEND_PLATFORM_CHARTER.md)
 - [PRODUCT_INTEGRATION_BOUNDARY_CONTRACT.md](./PRODUCT_INTEGRATION_BOUNDARY_CONTRACT.md)
