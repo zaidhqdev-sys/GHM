@@ -243,3 +243,7 @@ The following remain blocked and are not implied by this contract:
 - QuoteFlow adapter;
 - shadow qualification;
 - controlled cutover.
+
+## Connect discovery and requirements parity boundary — 2026-10-13
+
+The Opportunity Core CLOSED/PASS statement applies to the qualified canonical resource foundation; it does not mean the Connect marketplace discovery workflow is complete. Current Connect callers read opportunity types and list/filter opportunities and capability requirements, while the inspected GHM Opportunity router exposes only the opportunity detail read and the requirements router covers a separate requirements surface. Track list/discovery/type operations, filters, pagination, visibility, requirements projection and creation transaction semantics as explicit **Extend** gaps. Keep the canonical Opportunity resource closed and avoid duplicate resource models; qualify each additional HTTP contract and its authorization separately. No production cutover is authorized.
