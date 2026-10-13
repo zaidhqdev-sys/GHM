@@ -117,7 +117,7 @@ ghm.business
 
 ## 3. Account identity — lifecycle extension (R1)
 
-### Proposed change (ALTER; not applied in this gate)
+### Implemented change (originally proposed at Gate 2F; applied in migration `20260921120000_extend_account_identity_auth_lifecycle.sql`)
 
 | Column | Type | Null | Default | Check |
 |---|---|---|---|---|
@@ -149,7 +149,7 @@ Do not invent additional lifecycle states.
 
 ## 4. System administrator state (R2)
 
-### Proposed representation (smallest account-level)
+### Implemented representation (originally proposed at Gate 2F; `is_system_admin` is present in the qualified schema)
 
 | Column | Type | Null | Default |
 |---|---|---|---|
@@ -200,7 +200,7 @@ Coarse `role` remains (R7) temporarily.
 - Avoids a third table when only password login exists.
 - Future alternate login factors can add relations later without forcing email onto the person row now.
 
-### Proposed table: `ghm.account_password_credential`
+### Implemented table: `ghm.account_password_credential` (original design proposal retained as provenance)
 
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|
@@ -240,7 +240,7 @@ trim → deterministic NFKC → case normalization → login_email_normalized
 
 ## 7. Authentication session
 
-### Proposed table: `ghm.authentication_session`
+### Implemented table: `ghm.authentication_session` (original design proposal retained as provenance)
 
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|
@@ -271,7 +271,7 @@ trim → deterministic NFKC → case normalization → login_email_normalized
 
 ## 8. Refresh credential / lineage
 
-### Proposed table: `ghm.refresh_credential`
+### Implemented table: `ghm.refresh_credential` (original design proposal retained as provenance)
 
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|
@@ -344,7 +344,7 @@ Two concurrent refreshes of the same live credential: exactly one `UPDATE … us
 
 ## 9. Recovery credential
 
-### Proposed table: `ghm.password_recovery_credential`
+### Implemented table: `ghm.password_recovery_credential` (original design proposal retained as provenance)
 
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|
@@ -368,7 +368,7 @@ On success: replace password hash; revoke **all** sessions for `account_id`; do 
 
 ## 10. External person identity mapping
 
-### Proposed table: `ghm.account_external_identity`
+### Implemented table: `ghm.account_external_identity` (original design proposal retained as provenance)
 
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|
@@ -662,13 +662,17 @@ No Founder-selected decision is contradicted.
 
 ---
 
-## 22. Final gate
+## 22. Historical Gate 3A final gate — superseded for the bounded foundation
 
 ```text
+GATE 3A SNAPSHOT:
 GHM AUTHENTICATION SCHEMA DDL CONSTRUCTED.
-AUTH RUNTIME FOUNDATION (DEFINER + crypto primitives) AUTHORIZED SEPARATELY — HTTP Auth API / AuthContext cutover / product migration NOT AUTHORIZED.
+AUTH RUNTIME FOUNDATION AUTHORIZATION WAS A SEPARATE GATE.
+PRODUCT MIGRATION / CUTOVER NOT AUTHORIZED.
 NO SECRETS IN REPOSITORY.
 ```
+
+Gate 3B subsequently authorized and qualified the bounded authentication runtime foundation. Product session-client integration, production exposure/promotion, and product cutover remain separately gated.
 
 ---
 
