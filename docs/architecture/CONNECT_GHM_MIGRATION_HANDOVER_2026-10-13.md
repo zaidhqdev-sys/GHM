@@ -161,3 +161,24 @@ Read this file first and the Connect companion. Check latest main/branch/PR stat
 
 No code or production changes were made. Continue the operation-by-operation audit and documentation reconciliation; no merge/cutover authorization is implied.
 
+
+## 12. Contract audit batch — directory, reviews, notifications and support
+
+### Verified GHM HTTP contracts
+
+- Directory `GET /api/v1/public/businesses` (`src/http/app.ts:400-465`) allows only `q`, `category`, `page`, `pageSize`; default page is 1, default page size 20, maximum 50. Unknown query keys return 400. This is narrower than a broad “directory parity” assumption: Connect filters, output fields and pagination semantics must be compared explicitly. Do not assume regional filters are supported.
+- Public review routes include `GET /api/v1/public/reviews?businessId=&limit=`; authenticated customer `POST /api/v1/reviews`; own-review GET; and admin `PATCH /api/v1/reviews/:reviewId/moderation`. GHM moderation decision is approve/reject. Connect's active profile submits review fields `rating,title,body` plus reviewer name and expects moderation pending. Compare request schema, ownership and moderation statuses before classifying as reuse.
+- Notifications expose authenticated list/detail/create, `PATCH /api/v1/notifications/:notificationId` with exactly `{isRead:true}`, and `POST /api/v1/notifications/read-all`. This is a concrete reuse candidate for in-app read state; Connect's notification payloads, create permissions and any realtime expectation still need matching.
+- Support routes expose list/detail/create, admin status update, message list and role-specific reply. Compare Connect's RPC result shape, admin filters, status enum and message permissions; route presence alone does not establish parity.
+- Active Connect relationship/outcome screen calls `businessRelationshipService.getForBusiness(businessId)` and `outcomeService.getForBusiness(businessId)`, then derives active and verified relationship counts from `lifecycle_status` and `verification_status`. GHM's current resource inventory still lacks matching relationship/outcome domains; this remains a real domain gap.
+
+### Classification updates
+
+- Directory = **Extend** until query/filter/field and engagement parity is qualified.
+- Reviews = **Reuse candidate / contract verification required**, not “complete”.
+- Notifications in-app read state = **Reuse candidate / contract verification required**; push and realtime remain separate, caller-verified scope.
+- Support = **Reuse candidate / contract verification required**.
+- Relationships/outcomes = **Build**, with lifecycle and verification semantics preserved.
+
+No runtime or production change was made. Next batch: compare Connect's directory query/output and support/review/notification facade contracts to these exact HTTP shapes; then reconcile the remaining source-of-truth docs and produce the operation-level matrix.
+
