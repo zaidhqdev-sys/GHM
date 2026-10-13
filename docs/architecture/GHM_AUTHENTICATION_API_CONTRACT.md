@@ -1,6 +1,6 @@
 # GHM Authentication API Contract
 
-> **Historical-status clarification — 2026-10-12:** This Gate 2E contract is a historical API design record. Embedded “NOT AUTHORIZED” and “not implemented” statements describe that gate’s state, not current status of the qualified authentication foundation. Use Gate 3B and current qualification evidence for current construction status. This notice does not qualify a public auth API, product migration, or production cutover beyond the evidence recorded elsewhere.
+> **Historical-status clarification — 2026-10-13:** This Gate 2E contract is a historical API design record. Embedded “NOT AUTHORIZED” and “not implemented” statements describe that gate’s state, not current status of the qualified authentication foundation. Use Gate 3B and current qualification evidence for current construction status. This notice does not qualify a public auth API, product migration, or production cutover beyond the evidence recorded elsewhere.
 
 
 **Canonical owner:** GHM platform governance
