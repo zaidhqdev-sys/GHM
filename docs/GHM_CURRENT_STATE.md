@@ -2,7 +2,7 @@
 
 **Status:** CURRENT / AUTHORITATIVE DOCUMENTATION INDEX — reconciled 2026-10-13
 **Repository authority:** consolidated `main`
-**Repository-wide documentation audit base:** `01bd40dabe0b0f02bb30d2f78267a0414d3d8356` (PR #125 merge commit). The earlier `1f2b10d0850095311614c5b5f9531eb8b7cce860` checksum-normalization commit remains a historical reconciliation anchor, not the current documentation audit base. Neither SHA independently establishes the currently deployed Render commit or live database state.
+**Last completed whole-repository documentation reconciliation:** the PR #125 baseline (`01bd40dabe0b0f02bb30d2f78267a0414d3d8356`) was supplemented by PR #127, merged as `6afb428d452012d9860ca50c2b0066f0768b184c` on 2026-10-13. These are reconciliation provenance anchors, not live pointers to current `main`, deployed Render code, or database state. The earlier `1f2b10d0850095311614c5b5f9531eb8b7cce860` checksum-normalization commit is historical provenance.
 
 ## Purpose
 
@@ -101,7 +101,7 @@ Following the PR #126 documentation follow-up, the tracked Markdown inventory wa
 - The historical Connect readiness audit and operation inventory had baseline wording that could be mistaken for a current repository pointer; both now label those comparisons as historical snapshots.
 - The QuoteFlow dual-confirmation record still presented its old identity-link proposal as the next construction gate. That sequence is explicitly superseded by the GHM-owned account-onboarding/migration boundary; no permanent runtime identity-link table or attestation-based bridge is authorized by that historical record.
 
-PR #127 is documentation-only and remains unmerged until the final repository-wide reconciliation, final diff review, and required CI checks are complete. The review does not change code, migrations, local checkout state, deployed services, credentials, production routing, or cutover authorization. Historical source audits and decision records remain preserved as provenance.
+PR #127 was documentation-only and merged as `6afb428d452012d9860ca50c2b0066f0768b184c` after the supplemental status reconciliation, final diff review, and required CI passed. It did not change code, migrations, local checkout state, deployed services, credentials, production routing, or cutover authorization. Historical source audits and decision records remain preserved as provenance.
 
 ## Historical documentation reconciliation record — second pass, 2026-10-05
 
