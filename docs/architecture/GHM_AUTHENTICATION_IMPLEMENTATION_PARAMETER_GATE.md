@@ -1,7 +1,9 @@
 # GHM Authentication Implementation Parameter Gate
 
 **Canonical owner:** GHM platform governance
-**Status:** AUTHENTICATION GATE 3B — IMPLEMENTATION PARAMETER GATE — **FOUNDER APPROVED 2026-09-30**; construction implementation authorized on the approved parameter set; **production cutover remains separately gated**
+**Status:** AUTHENTICATION GATE 3B — IMPLEMENTATION PARAMETER GATE — bounded construction foundation qualified; **some parameter approvals and all product/production gates remain separately tracked**
+
+> **Current-status reconciliation — 2026-10-13:** This gate authorized the bounded construction foundation and explicitly records which parameters were Founder-approved versus still requiring approval. Its original repository-evidence table is a pre-implementation snapshot, not current status. The qualified implementation now includes ES256 issuance/verification, Argon2id credentials, opaque refresh/recovery tokens, HMAC-SHA256 token protection, and rate-limited auth routes. Do not infer Founder approval for rows still marked “approval required” merely because code implements a bounded value; those rows remain decision gates unless a later explicit Founder decision closes them. Product-client migration, production secret provisioning, email delivery, and cutover remain separately gated.
 **Authority:** Local repository `C:\GHM`
 **Depends on:** Founder-selected architecture (Issuance ADR 1–12, C1–C10, R1–R7) and:
 - [GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md](./GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md)
@@ -12,10 +14,10 @@
 - [GHM_AUTHENTICATION_IDENTITY_AUTHORIZATION_CONTRACT.md](./GHM_AUTHENTICATION_IDENTITY_AUTHORIZATION_CONTRACT.md)
 
 ```text
-IMPLEMENTATION AUTHORIZATION: GRANTED FOR CONSTRUCTION
-DDL / src / PACKAGES / TESTS MAY CHANGE WITHIN THIS APPROVED PARAMETER SET
-NO PRODUCTION SECRETS / CUTOVER / PRODUCT MIGRATION
-PARAMETERS BELOW = FOUNDER-APPROVED FOR CONSTRUCTION
+IMPLEMENTATION AUTHORIZATION: GRANTED FOR THE BOUNDED CONSTRUCTION SCOPE
+PARAMETERS MARKED FOUNDER-APPROVED MAY BE USED WITHIN THEIR RECORDED SCOPE
+ROWS MARKED APPROVAL REQUIRED / DEFERRED REMAIN OPEN — IMPLEMENTATION DOES NOT IMPLY FOUNDER APPROVAL
+NO PRODUCTION SECRET PROVISIONING / PRODUCT MIGRATION / CUTOVER
 ```
 
 ---
@@ -69,7 +71,7 @@ Confirmed against repository decision records (not reopened):
 | IDs | `bigint` identity; AuthContext `userId: number` |
 | Schema contract | Tables/columns proposed; parameters left open — this gate freezes them |
 
-**No contradiction** with Class A Founder decisions discovered. Note: `bcrypt` must not be used for GHM password hashing under selected Argon2id.
+These findings describe the pre-implementation snapshot at Gate 3B and are not current implementation status. Current code uses ES256 for the bounded GHM auth foundation, Argon2id with the approved 64 MiB / time 3 / parallelism 1 / hash 32 / salt 16 parameters, HMAC-SHA256 token protection via required `GHM_AUTH_TOKEN_PEPPER`, and `express-rate-limit` on the implemented auth routes. The current wire/API details are governed by the authentication contracts and source; `bcrypt` remains unsuitable for GHM password hashing under the selected Argon2id choice.
 
 ---
 
@@ -458,17 +460,17 @@ No code fixes in this gate.
 | Recovery token format | 32-byte CSPRNG; base64url wire | **Founder approved 2026-09-30** |
 | Recovery/refresh hash | HMAC-SHA256 with pepper → `bytea` | **Founder approved 2026-09-30** |
 | Refresh token format/entropy | Opaque 32-byte; base64url | **Founder approved 2026-09-30** |
-| Token pepper | `GHM_AUTH_TOKEN_PEPPER` required | **Founder approval required** |
-| JWT `sub` representation | Decimal string of bigint id | **Founder approval required** |
-| Clock skew | ±60 seconds | **Founder approval required** |
-| ES256 key env names | `GHM_JWT_ES256_*` set in §7 | **Founder approval required** |
-| `kid` format | `ghm-es256-YYYYMMDD-N` style | **Founder approval required** |
-| Key overlap/retirement | 15m + 60s then drop previous | **Founder approval required** |
-| `last_seen_at` updates | Successful refresh only | **Founder approval required** |
-| Rate limits | Defaults in §13 | **Founder approval required** |
-| Retention/cleanup | §15 windows; deferred job | **Founder approval required** |
-| Exact API paths | Existing `/api/v1/auth/login`, `/refresh`, `/logout` construction surface | **Implemented construction surface; recovery/change endpoints remain deferred** |
-| Exact SQL function names | Schema contract proposals | **Deferred** to implementation |
+| Token pepper | `GHM_AUTH_TOKEN_PEPPER` required; code fails closed if absent or shorter than 32 bytes | **Approval status remains open in this gate; production secret provisioning also gated** |
+| JWT `sub` representation | Implementation uses decimal string of canonical GHM account id | **Implementation behavior is evidenced; explicit Founder approval of exact encoding remains open unless separately recorded** |
+| Clock skew | Implementation allows ±60 seconds | **Implementation behavior is evidenced; explicit Founder approval remains open in this gate** |
+| ES256 key env names | `GHM_JWT_ES256_*` names are implemented and deployment-managed | **Implementation names are frozen in code; this gate's Founder-approval flag remains open unless separately recorded** |
+| `kid` format | Loader accepts printable ASCII `kid` values up to 64 characters; `ghm-es256-YYYYMMDD-N` is not enforced | **Specific format remains unselected; do not present the proposed style as a requirement** |
+| Key overlap/retirement | Loader supports active and optional previous public key; retirement schedule is not implemented by the loader | **Previous-key verification is implemented; exact retirement schedule remains open** |
+| `last_seen_at` updates | Current refresh persistence updates session activity | **Implementation behavior is evidenced; explicit Founder approval status remains open in this gate** |
+| Rate limits | Defaults in §13; login 10/15m, refresh 60/15m, recovery/reset 5/15m | **Founder approved 2026-09-30 in §13; only wired route classes should be described as active** |
+| Retention/cleanup | §15 windows; deferred cleanup job | **Deferred — not part of the qualified foundation** |
+| Exact API paths | `/register`, `/login`, `/refresh`, `/logout`, password recovery/reset, and QuoteFlow migration reset request/complete routes exist in `src/http/auth-router.ts` | **Bounded construction surface exists; product exposure, production email delivery, and migration ceremony qualification remain separately gated** |
+| Exact SQL function names | Auth persistence/runtime functions are defined in the qualified migration set | **Implemented in migrations; use `GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md` for exact names and grants** |
 | Email provider | — | **Deferred** |
 | Product migration/cutover | — | **Deferred** |
 | Distributed rate limiting | — | **Deferred** |
