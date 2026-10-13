@@ -1,6 +1,8 @@
 # GHM Support Request Operation Contract
 
-**Status:** CONSTRUCTION AUTHORIZED — operation contract frozen 2026-09-16
+**Status:** QUALIFIED / CLOSED — bounded Support Request resource construction recorded in current capability inventory
+
+> **Current-status reconciliation — 2026-10-13:** The bounded Support Request resource and HTTP slice are recorded as qualified in the current capability index and `SUPPORT_REQUEST_HTTP_QUALIFICATION.md`; the construction criteria below are retained as acceptance evidence, not an open authorization request. This does not authorize attachments, external delivery, event transport, broader workflow expansion, or production cutover.
 
 ## 1. Purpose
 
@@ -229,7 +231,7 @@ The GHM resource must not depend on:
 
 Authentication is supplied by GHM `AuthContext`; authorization is enforced by the repository/service boundary and runtime database privileges.
 
-## 14. Qualification requirements
+## 14. Historical qualification acceptance criteria — satisfied for the bounded Support Request slice
 
 Qualification must independently demonstrate:
 
