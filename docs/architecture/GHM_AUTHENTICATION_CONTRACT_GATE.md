@@ -35,7 +35,7 @@ This gate exists so implementation cannot begin from ambiguous architecture. It:
 - lists **open decisions** that remain unresolved;
 - states explicitly that **implementation is not authorized**.
 
-Live-product priority (Zaid Connect, QuoteFlow) depends on this contract before any trusted product → GHM authenticated HTTP path can be built. Campaign / Brief / KBM remain parked and are out of scope.
+Historical Gate 1 framing: live-product priority depended on this contract before a trusted product → GHM path could be built. The bounded GHM authentication foundation is now qualified; Connect/QuoteFlow session-client integration, product adapters, public exposure, and cutover remain separately gated. Campaign / Brief / KBM expansion remains out of scope without separate authorization.
 
 ---
 
@@ -482,7 +482,7 @@ Deferred by Founder issuance decision 12 (out of first gate): social OAuth, ente
 
 ---
 
-## 13. Implementation Gate
+## 13. Historical Gate 1 implementation stop — superseded for the bounded foundation
 
 ```text
 AUTHENTICATION CONTRACT GATE 1
@@ -491,16 +491,11 @@ DOCUMENTATION-ONLY
 IMPLEMENTATION AUTHORIZATION: NOT GRANTED
 ```
 
-### Required before production implementation
+### Historical Gate 1 prerequisites — later bounded foundation qualified
 
-1. Founder confirmation / selection of remaining open decisions (§12) as needed for a first implementation slice
-2. Contract review of this document against the Founder ADR
-3. Implementation plan (issuer, verification cutover, credential store)
-4. Migration plan (Supabase coexistence boundary + mapping)
-5. Test / qualification plan (positive/negative; no silent bypass)
-6. Security review
+The items below were prerequisites at Gate 1. Gate 3B later approved and qualified the bounded authentication foundation. Any remaining product integration, public exposure, production configuration, and cutover work still requires its own scoped plan and qualification.
 
-### Explicitly not authorized by this gate
+### Historical Gate 1 non-authorizations — do not use to reopen qualified work
 
 - `src/` changes
 - migrations / new tables
@@ -510,13 +505,13 @@ IMPLEMENTATION AUTHORIZATION: NOT GRANTED
 - credential stores / keys
 - commits or pushes performed under this task
 
-### Final status
+### Current reconciled status
 
 ```text
-AUTHENTICATION CONTRACT GATE 1 COMPLETE (DOCUMENTATION).
+GATE 1 DOCUMENTATION COMPLETE (HISTORICAL).
 FOUNDER TARGET ARCHITECTURE REMAINS BINDING.
-CURRENT RESOURCE AUTH IMPLEMENTATION: GHM ES256 bearer verification with DB-backed account state.
-FOLLOW-ON CONTRACTS + OPEN DECISIONS REQUIRED BEFORE IMPLEMENTATION.
+BOUNDED GHM ES256 ISSUANCE / SESSION / IDENTITY FOUNDATION: QUALIFIED UNDER GATE 3B.
+PRODUCT SESSION MIGRATION / PUBLIC EXPOSURE / PRODUCTION CUTOVER: SEPARATELY GATED.
 GHM AUTHORIZATION REMAINS AUTHORITATIVE.
 DIRECT PRODUCT DATABASE ACCESS REMAINS NOT APPROVED.
 SUPABASE JWTS MUST NEVER BE ACCEPTED DIRECTLY BY GHM.
