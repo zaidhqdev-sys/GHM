@@ -210,9 +210,9 @@ The former proposal called for a GHM-owned QuoteFlow attestation verifier, authe
 
 No permanent runtime identity-link table or attestation-based identity bridge is authorized by this historical dual-confirmation contract. Do not treat the persistence design below or its former “next gate” as current work. QuoteFlow production migration and cutover remain separately gated.
 
-## Qualification requirements
+## Historical qualification requirements — superseded for runtime identity-link construction
 
-Before persistence is authorized, qualification must prove:
+The following checklist belonged to the former permanent identity-link persistence proposal. It is retained as historical evidence of that proposal's intended safeguards; it is **not** a current authorization gate or instruction to build identity-link persistence:
 
 - QuoteFlow-side attestation verification;
 - GHM-side authenticated confirmation;
