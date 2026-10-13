@@ -1,5 +1,7 @@
 # GHM Enquiry Operation Contract
 
+> **Current-status reconciliation — 2026-10-13:** The bounded GHM Enquiry resource is already constructed and qualification-backed on mainline. The original statement that the marketplace create path was “the first source eligible for implementation qualification” is historical planning language, not a current construction step. Open work is product-parity reconciliation of the stricter GHM status-transition graph, owner-only recipient authority, and the atomic Marketplace Enquiry → Opportunity → recipient → Lead workflow. No production cutover or Connect production change is authorized by this contract.
+
 ## Status
 
 **CONSTRUCTION QUALIFICATION CONTRACT — AUTHORIZED**
@@ -117,7 +119,7 @@ The authoritative Connect contract recognises these source values:
 - `ai_quote`
 - `direct`
 
-GHM shall retain this vocabulary for reconciliation, but construction implementation must only expose a source through a separately authorized product workflow. The marketplace create path is the first source eligible for implementation qualification.
+GHM retains this vocabulary for reconciliation. The existing bounded Enquiry implementation is qualified, but accepting a source still requires an authorized product workflow. The marketplace create path was the first source selected for construction; remaining work is end-to-end product-parity reconciliation and qualification, not initial Enquiry resource construction.
 
 No source may be accepted merely because it is syntactically valid if the calling operation is not authorized to create that source.
 
