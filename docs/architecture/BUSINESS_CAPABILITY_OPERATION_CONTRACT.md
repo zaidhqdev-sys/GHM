@@ -313,3 +313,7 @@ migration
 ```
 
 Production migration, Zaid Connect schema changes, product cutover, and public HTTP exposure are outside this contract.
+
+## Connect evidence workflow gap — 2026-10-13
+
+The qualified Business Capability assertion CRUD/verification boundary does not cover the complete active Connect capability-evidence workflow. The current source audit found Connect business/admin panels calling evidence submission, verifier authorization, evidence queue/list, and evidence review operations, while the inspected GHM capability HTTP router exposes list/get/create and a separately qualified verification transition—not matching evidence submission/review routes. Preserve this contract's closed slice. Record evidence submission/review as a separate **Extend/Build** contract with explicit evidence metadata/privacy, business-member submission authorization, founder/verifier review authority, lifecycle mapping, audit trail and HTTP acceptance tests. No public exposure or cutover is authorized by this note.
