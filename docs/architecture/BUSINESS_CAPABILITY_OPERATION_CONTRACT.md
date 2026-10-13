@@ -32,7 +32,7 @@ Initial operation vocabulary:
 |---|---|
 | `read` | Read capability assertions visible to the authorized context. |
 | `create` | Establish a Business Capability assertion through a governed service operation. |
-| `update` | Reserved for a separately qualified transition authority; not runtime-authorized in this slice. |
+| `transition` | Change verification state only through the separately qualified, admin-authorized verification-transition boundary. |
 
 There is no `delete` operation.
 
@@ -159,7 +159,7 @@ Creation does not imply verification.
 
 No runtime UPDATE privilege is authorized in this construction slice.
 
-Although the persisted model contains lifecycle and verification fields, mutation of those fields requires a concrete transition/verification authority and separate qualification.
+Although the persisted model contains lifecycle and verification fields, generic update is not authorized. Verification-state changes are supported only through `transitionBusinessCapabilityVerification`, the dedicated admin-authorized and separately qualified transition boundary. Assertion content and `assertion_status` remain outside that transition.
 
 The initial resource therefore must not expose generic update behavior merely because the table contains mutable columns.
 
@@ -218,15 +218,16 @@ Concurrent attempts to establish the same Business Capability must resolve throu
 
 ## 15. Repository contract
 
-The intended typed repository surface is equivalent to:
+The current typed service/repository surface is:
 
 ```text
 createBusinessCapability(context, input)
 getBusinessCapability(context, businessCapabilityId)
 listBusinessCapabilities(context, businessId)
+transitionBusinessCapabilityVerification(context, input)
 ```
 
-An update method may exist only if the service contract is separately extended and qualified.
+The transition method changes only governed verification state; it is not a generic update operation. No public HTTP route is authorized by this contract.
 
 Repository implementations must use explicit `ghm.*` identifiers, parameterized values, and the authorized transaction context.
 
@@ -254,12 +255,15 @@ Initial intended resource:
 business_capability
 ```
 
-Initial intended operations:
+Current bounded service operations:
 
 ```text
 read
 create
+transition
 ```
+
+`transition` is the separately qualified verification-state operation; generic update and public HTTP exposure remain unauthorized.
 
 Authorization remains resource- and operation-specific.
 
