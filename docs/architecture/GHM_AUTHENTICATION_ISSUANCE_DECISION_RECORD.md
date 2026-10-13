@@ -125,11 +125,11 @@ The table below records the gaps observed at the Gate 2 baseline. It must not be
 | External UUID → GHM identity mapping | Absent at the baseline | `provider + subject → ghm.account_identity.id` mapping foundation qualified; production backfill remains open |
 | Account bootstrap | Absent at the baseline | Controlled minimum account-identity bootstrap foundation qualified; business/membership provisioning remains separately gated |
 
-### 2.3 JWT signing locations (tests / qualification only)
+### 2.3 JWT issuance locations — historical Gate 2 evidence reconciled
 
-`jwt.sign(...)` appears only in test modules (including `src/auth/request-context.test.ts`, `src/http/app.test.ts`, `src/http/enquiry-router.test.ts`, and related HTTP tests). These construct tokens using `config.jwtSecret`. They are **not** a product-facing issuance capability.
+At the Gate 2 baseline, `jwt.sign(...)` appeared only in test modules using the legacy shared-secret verifier. The current bounded GHM issuance implementation lives in `src/auth/foundation/access-jwt.ts` and `src/auth/ghm-auth-service.ts`; it issues ES256 access JWTs with decimal GHM account identity in `sub` and opaque refresh credentials through the qualified persistence foundation. Product clients remain on Supabase sessions until their separate adapter/session-migration gates are qualified.
 
-### 2.4 JWT verification parameters currently enforced
+### 2.4 JWT verification parameters — historical Gate 2 evidence
 
 Historical implementation evidence from `src/auth/request-context.ts` (removed from the active tree):
 
@@ -140,7 +140,7 @@ Historical implementation evidence from `src/auth/request-context.ts` (removed f
 - **`sub` is ignored** (not read)
 - **`iss` / `aud` are not checked**
 
-**Not currently enforced in verification code:**
+**Gate 2 gaps at the time (historical; not current verifier status):**
 
 - explicit `issuer` claim check
 - explicit `audience` claim check
@@ -148,7 +148,7 @@ Historical implementation evidence from `src/auth/request-context.ts` (removed f
 - mapping from external UUID identities to GHM bigint account ids
 - asymmetric public-key verification
 
-These gaps were factual observations at the historical Gate 2 baseline. They must not be read as current implementation status: the bounded GHM authentication foundation was subsequently constructed and qualified under Gate 3B. Product session-client integration/migration and production cutover remain open.
+The active ES256 verifier now enforces issuer, audience, algorithm, expiry, `kid`, and canonical decimal `sub`; the provider/subject mapping foundation is qualified. Product session-client integration/migration and production cutover remain open.
 
 ### 2.5 Runtime / package evidence
 
