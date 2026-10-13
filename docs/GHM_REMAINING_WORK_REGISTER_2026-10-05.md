@@ -7,6 +7,8 @@
 
 **PR #130 follow-up:** targeted review of the 30-file documentation diff found and corrected additional stale historical headings/instructions in dated handovers, the shared-platform boundary audit, the Issue #1 baseline heading, and the Connect production-readiness historical-count table. This is a pending-merge checkpoint, not a claim that the full 209-file inventory/link scan was rerun after these latest edits; see the PR and latest CI run for current branch verification.
 
+**Latest targeted verification:** all 30 changed Markdown files were re-read at the current PR head. The targeted stale-status phrase sweep found no remaining hits for the contradictions checked. All 14 inline local Markdown links across the changed files resolve to 9 existing target documents. This does not replace the outstanding full 209-file inventory/link scan.
+
 - Storage audit: qualified metadata/persistence and Cloudflare R2 provider path are distinct from open product authorization, recovery, production enablement, and cutover.
 - Identity: migration-only external identity mapping is qualified; QuoteFlow session migration and organization-to-Business provisioning remain gated. Historical dual confirmation is limited to exceptional legacy conflicts.
 - Connect/payment: readiness, object, and atomic-workflow source matrices are historical snapshots. PayFast checkout/ITN/server confirmation is merged and locally qualified; real sandbox/runtime qualification, production enablement, broader workflow parity, and additional providers remain open.
