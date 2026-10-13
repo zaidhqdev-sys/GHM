@@ -273,7 +273,7 @@ archived → (none)
 Non-negotiable:
 
 - GHM remains authorization authority
-- No direct product â†’ PostgreSQL
+- No direct product → PostgreSQL
 - No product-manufactured privileged AuthContext
 - No caller-chosen creator identity
 - No raw SQL / arbitrary SECURITY DEFINER exposure
