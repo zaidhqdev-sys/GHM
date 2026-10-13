@@ -49,31 +49,30 @@ Credentials (including password material) must remain **separate** from `account
 
 Historical Gate 2C snapshot was inspected at HEAD `239ef5d`. Current implementation status is governed by the Gate 3B foundation and current auth qualification records.
 
-| Area | Evidence |
+| Area | Current bounded evidence |
 |---|---|
-| Account schema | `database/migrations/20260909150000_create_business_identity.sql` → `ghm.account_identity` |
+| Account schema | `ghm.account_identity` plus the qualified credential/session/external-identity migrations; email/password credential data remains separate from profile identity |
 | JWT verify | `src/auth/ghm-bearer.ts` — ES256 Bearer; canonical `sub` + issuer/audience/expiry contract |
 | Auth middleware | `src/auth/http.ts` |
-| Config | `src/config.ts` — runtime/database/CORS settings plus `INVITE_CODE`; ES256 signing material is loaded separately by `src/auth/foundation/es256-keys.ts` from `GHM_JWT_ES256_*` environment variables. |
-| Dependencies | `package.json` lists `bcrypt` / `@types/bcrypt`; **no** `argon2` / `scrypt` packages |
-| `bcrypt` usage under `src/` | **None found** (dependency present; not imported for auth) |
-| Login / signup endpoints | **Absent** under `src/http/` |
-| Password / credential tables | **Absent** |
-| Recovery / credential-change APIs | **Absent** |
-| Biometric / WebAuthn / passkey code | **Absent** |
+| Config | `src/config.ts` — runtime/database/CORS settings plus `INVITE_CODE`; ES256 signing material is loaded by `src/auth/foundation/es256-keys.ts` from `GHM_JWT_ES256_*` environment variables |
+| Credential KDF | The bounded login/credential foundation uses the selected Argon2id path; the historical Gate 2C dependency inventory below is not current package evidence |
+| Login / registration endpoints | Bounded GHM routes exist under `/api/v1/auth/`; product integration and public rollout remain gated |
+| Password / credential tables | Present in the qualified authentication persistence foundation |
+| Recovery / credential-change APIs | Bounded recovery/reset foundation exists; production email delivery and product migration remain separately gated |
+| Biometric / WebAuthn / passkey code | Deferred future capability; not part of the qualified foundation |
 | Membership | `ghm.business_membership` — authorization, not login credentials |
-| Email on `account_identity` | **Absent** today (phone exists; business/customer emails are other resources) |
+| Email on `account_identity` | Email is stored in the separate credential/login relation, not on `account_identity` |
 
 ### Explicit historical findings
 
-| Capability | Present? |
-|---|---|
-| GHM stores passwords | **No** |
-| GHM credential records | **No** |
-| GHM login endpoints | **No** |
-| GHM account recovery | **No** |
-| GHM credential-change operations | **No** |
-| GHM biometric / passkey / WebAuthn support | **No** |
+| Capability | Gate 2C baseline | Current bounded status |
+|---|---|---|
+| GHM stores passwords | No | Argon2id credential foundation qualified |
+| GHM credential records | No | Separate credential persistence qualified |
+| GHM login endpoints | No | Bounded GHM login foundation qualified |
+| GHM account recovery | No | Bounded recovery foundation constructed/qualified within the documented scope; delivery/product gates remain open |
+| GHM credential-change operations | No | Current password/recovery/reset scope is governed by the Gate 3B and migration-specific qualification records |
+| GHM biometric / passkey / WebAuthn support | No | Still deferred future capability |
 
 ```text
 The target credential architecture is now implemented for the GHM authentication foundation and construction-qualified. This contract remains the governing design; Connect/QuoteFlow product authentication migration and production cutover remain separately gated.
@@ -162,7 +161,7 @@ Password credentials must:
 
 | Algorithm | Status |
 |---|---|
-| **Argon2id** | **SELECTED** (Founder). Not currently a GHM runtime dependency — adding it is an implementation gate. |
+| **Argon2id** | **SELECTED** (Founder). The bounded GHM credential foundation implements this choice; use current package/runtime evidence rather than the historical Gate 2C note. |
 | scrypt | Not selected |
 | bcrypt | Present unused in `package.json`; **not** selected |
 
