@@ -461,13 +461,14 @@ No code fixes in this gate.
 | Recovery/refresh hash | HMAC-SHA256 with pepper → `bytea` | **Founder approved 2026-09-30** |
 | Refresh token format/entropy | Opaque 32-byte; base64url | **Founder approved 2026-09-30** |
 | Token pepper | `GHM_AUTH_TOKEN_PEPPER` required; code fails closed if absent or shorter than 32 bytes | **Approval status remains open in this gate; production secret provisioning also gated** |
-| JWT `sub` representation | Implementation uses decimal string of canonical GHM account id | **Implementation behavior is evidenced; explicit Founder approval of exact encoding remains open unless separately recorded** |
-| Clock skew | Implementation allows ±60 seconds | **Implementation behavior is evidenced; explicit Founder approval remains open in this gate** |
-| ES256 key env names | `GHM_JWT_ES256_*` names are implemented and deployment-managed | **Implementation names are frozen in code; this gate's Founder-approval flag remains open unless separately recorded** |
-| `kid` format | Loader accepts printable ASCII `kid` values up to 64 characters; `ghm-es256-YYYYMMDD-N` is not enforced | **Specific format remains unselected; do not present the proposed style as a requirement** |
-| Key overlap/retirement | Loader supports active and optional previous public key; retirement schedule is not implemented by the loader | **Previous-key verification is implemented; exact retirement schedule remains open** |
+| JWT `sub` representation | Decimal string of canonical GHM account id | **Founder approved 2026-09-30 in §6** |
+| Clock skew | ±60 seconds | **Founder approved 2026-09-30 in §6** |
+| ES256 key env names | `GHM_JWT_ES256_*` names are implemented and deployment-managed | **Founder approved 2026-09-30 in §7; production values remain secret-managed** |
+| `kid` format | Non-empty printable ASCII up to 64 characters; `ghm-es256-YYYYMMDD-N` is an example/recommendation, not a stricter enforced format | **Founder approved 2026-09-30 in §7** |
+| Key overlap minimum | Previous public key trusted for at least 15 minutes + 60 seconds of skew | **Founder approved 2026-09-30 in §7** |
+| Previous-key retirement schedule | Loader supports active and optional previous public key; it does not itself schedule key retirement | **Operational retirement timing remains open / deployment-managed** |
 | `last_seen_at` updates | Current refresh persistence updates session activity | **Implementation behavior is evidenced; explicit Founder approval status remains open in this gate** |
-| Rate limits | Defaults in §13; login 10/15m, refresh 60/15m, recovery/reset 5/15m | **Founder approved 2026-09-30 in §13; only wired route classes should be described as active** |
+| Rate limits | Defaults in §13; login 10/15m, refresh 60/15m, recovery/reset 5/15m | **Founder approved 2026-09-30 in §13; only wired route classes are active** |
 | Retention/cleanup | §15 windows; deferred cleanup job | **Deferred — not part of the qualified foundation** |
 | Exact API paths | `/register`, `/login`, `/refresh`, `/logout`, password recovery/reset, and QuoteFlow migration reset request/complete routes exist in `src/http/auth-router.ts` | **Bounded construction surface exists; product exposure, production email delivery, and migration ceremony qualification remain separately gated** |
 | Exact SQL function names | Auth persistence/runtime functions are defined in the qualified migration set | **Implemented in migrations; use `GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md` for exact names and grants** |
