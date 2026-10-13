@@ -4,7 +4,7 @@
 
 HISTORICAL SOURCE AUDIT — CONSTRUCTION COMPLETED AND QUALIFIED 2026-10-05
 
-This document records the canonical Opportunity Participation contract evidenced from the current Zaid Connect production source and reconciled against the current GHM Opportunity foundation. It authorizes GHM construction of the persisted participation relationship without authorizing any production migration or cutover.
+This document preserves the canonical Opportunity Participation contract evidenced from the Zaid Connect production source and reconciled against the GHM Opportunity foundation at the recorded audit checkpoint. The persisted participation relationship was subsequently implemented and qualified on 2026-10-05; the historical authorization sentence is not an active construction gate. This audit does not authorize new construction, production migration, product integration, or cutover.
 
 ## GHM state at the historical source-audit snapshot
 
