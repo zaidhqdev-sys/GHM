@@ -352,16 +352,16 @@ The following criteria governed the original qualification gate. The bounded Opp
 23. Business participant authorization and Opportunity management authorization use canonical tenant resolution on the same transaction client;
 24. Account participant self-access is preserved without requiring membership in an unrelated owner Business.
 
-## 20. Construction boundary
+## 20. Historical construction sequence — completed
 
-The operation contract authorizes the following next implementation sequence:
+The following sequence records the original construction plan; the bounded operation contract is now qualified and this sequence is complete:
 
 ```text
 existing schema
   -> canonical tenant-boundary repository authorization
   -> qualification harness
   -> runtime privilege qualification
-  -> merge only after full suite + runtime qualification
+  -> full suite + runtime qualification — passed; merged to mainline
 ```
 
 It does not authorize production migration or product backend changes.
