@@ -1,7 +1,7 @@
 # GHM ↔ Zaid Connect Business Provisioning and External Linking Qualification
 
 **Status:** CONSTRUCTION QUALIFIED — PRODUCT ADAPTER / CUTOVER NOT AUTHORIZED
-**Qualified branch:** `construction/connect-business-provisioning-linking-contract`
+**Historical qualification branch:** `construction/connect-business-provisioning-linking-contract` (qualification merged to `main` in PR #9, commit `0e589d57e2d7da991bfc4420ff23fe9db454248a`).
 **Qualification date:** 2026-10-01
 **Connect source:** `abcffa73f893602c25310a58946bebb91fd7eeb5`
 **Boundary:** Connect Business UUID → canonical GHM Business provisioning/linking only
