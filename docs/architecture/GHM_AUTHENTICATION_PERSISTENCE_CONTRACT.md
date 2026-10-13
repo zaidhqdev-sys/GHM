@@ -1,6 +1,6 @@
 # GHM Authentication Persistence Contract
 
-> **Historical-status clarification — 2026-10-12:** This Gate 2D record describes the persistence design before Gate 3B construction. Its embedded “pending” or “not authorized” statements are historical for the foundation subsequently constructed and qualified; retain any open details only where a current living contract still identifies them. Product migration and production cutover remain separately gated.
+> **Historical-status clarification — 2026-10-13:** This Gate 2D record describes the persistence design before Gate 3B construction. Its embedded “pending” or “not authorized” statements are historical for the foundation subsequently constructed and qualified; retain any open details only where a current living contract still identifies them. Product migration and production cutover remain separately gated.
 
 
 **Canonical owner:** GHM platform governance
