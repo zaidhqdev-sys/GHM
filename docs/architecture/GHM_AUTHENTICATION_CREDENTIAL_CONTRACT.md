@@ -411,7 +411,7 @@ Do not convert remaining open items into Founder decisions without an explicit s
 
 ---
 
-## 17. Founder decision checkpoint
+## 17. Historical Gate 2C Founder decision checkpoint — reconciled after Gate 3B
 
 ```text
 AUTHENTICATION GATE 2C:
@@ -449,8 +449,7 @@ CREDENTIAL / LOGIN CONTRACT — FOUNDER DECISIONS RECORDED (2026-09-21)
 10. Raw biometric storage:
     PROHIBITED
 
-IMPLEMENTATION AUTHORIZATION:
-NOT GRANTED.
+IMPLEMENTATION AUTHORIZATION WAS NOT GRANTED AT GATE 2C; GATE 3B LATER AUTHORIZED AND QUALIFIED THE BOUNDED CREDENTIAL / LOGIN FOUNDATION.
 ```
 
 ---
