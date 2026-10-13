@@ -474,7 +474,7 @@ Prior gates (crypto, session, credential, persistence, Auth API, identity/authz)
 
 ### Decision R1 — Account lifecycle / status representation
 
-**Current evidence**
+**Historical evidence at Gate 2 — not current implementation status**
 
 - `ghm.account_identity` has `id`, profile fields, coarse `role`, timestamps — **no** dedicated account-status / disabled column (`20260909150000_create_business_identity.sql`).
 - Membership lifecycle already uses `business_membership.membership_status` (`active`/`inactive`/`revoked`) — must remain distinct.
@@ -510,19 +510,19 @@ Prefer **Option A** (`active` / `disabled` only).
 FOUNDER DECISION (2026-09-21):
 Account lifecycle/status representation = SELECTED — Option A
   explicit account status: active | disabled
-Exact column name = UNSELECTED (implementation gate)
+Exact column name was UNSELECTED at Gate 2; the qualified schema implements `account_status` (`active` / `disabled`) — see the Schema Migration Contract.
 ```
 
 **Consequences**
 
-- Implies a later migration adding a status field (exact column name UNSELECTED until implementation gate).
+- At Gate 2 this implied a later migration; that migration is now qualified and adds `account_status`. Further account-lifecycle scope remains separately gated.
 - Membership status remains a separate vocabulary.
 
 ---
 
 ### Decision R2 — System administrator representation
 
-**Current evidence**
+**Historical evidence at Gate 2 — not current implementation status**
 
 - `account_identity.role` ∈ `admin`/`customer`/`business`; mirrored in JWT/`AuthContext.role`.
 - Current verifier **trusts** JWT `role`; `assertOwnership` bypasses for `admin`; several repos skip filters when `role === 'admin'`.
@@ -552,7 +552,7 @@ FOUNDER DECISION (2026-09-21):
 System administrator representation = SELECTED — Option A
   governed account-level system-admin state
   authoritative GHM state — NOT a JWT role claim
-Exact storage representation = UNSELECTED (implementation gate)
+Exact storage representation was UNSELECTED at Gate 2; the qualified schema implements `is_system_admin` as governed account-level state — see the Schema Migration Contract.
 ```
 
 **Consequences**
@@ -564,7 +564,7 @@ Exact storage representation = UNSELECTED (implementation gate)
 
 ### Decision R3 — Target AuthContext shape
 
-**Current evidence**
+**Historical evidence at Gate 2 — not current implementation status**
 
 - The historical compatibility path used `AuthContext = { userId, role }`; the current GHM bearer path supplies canonical account identity context and derives authorization role from DB state.
 - Historical services used `userId`/`role` from the compatibility AuthContext; current resource authorization derives the effective role from GHM account state.
@@ -656,7 +656,7 @@ Exact operation path / trusted-caller binding = UNSELECTED (implementation gate)
 
 ### Decision R5 — Business / organization identity mapping
 
-**Current evidence**
+**Historical evidence at Gate 2 — not current implementation status**
 
 - Founder Decision 8: business/org mapping is a **separate** governed migration; GHM `business.id` canonical where mapped; auth does not auto-map person→business.
 - Connect/QuoteFlow use product-local business/org IDs (Supabase UUIDs etc.) — must not assume equality with `ghm.business.id`.
@@ -683,10 +683,10 @@ FOUNDER DECISION (2026-09-21):
 Business/organization identity mapping model = SELECTED — Option A
   (provider, external_business_id) → ghm.business.id
 Person identity mapping and business identity mapping remain SEPARATE contracts
-Exact relation/column names = UNSELECTED (implementation gate)
+Exact relation/column names were UNSELECTED at Gate 2; `ghm.business_external_mapping` is now implemented and qualified. Product-specific mapping population/migration remains separately gated.
 ```
 
-**Note:** Decision 8 already selected *scope* (separate contract, no auto-map). R5 selects the *mapping mechanism shape*. Exact relation names remain UNSELECTED.
+**Note:** Decision 8 selected *scope* (separate contract, no auto-map); R5 selected the *mapping mechanism shape*. The canonical relation is now `ghm.business_external_mapping`; production product mapping/backfill remains gated.
 
 **Consequences**
 
@@ -696,7 +696,7 @@ Exact relation/column names = UNSELECTED (implementation gate)
 
 ### Decision R6 — Runtime authorization GRANT model (auth persistence)
 
-**Current evidence**
+**Historical evidence at Gate 2 — not current implementation status**
 
 - Roles: `ghm_schema_owner` owns tables/functions; `ghm_migrator` applies DDL; `ghm_runtime` is least-privilege app role.
 - Modern slices (e.g. Campaign): `REVOKE INSERT/UPDATE/DELETE` from runtime; `GRANT EXECUTE` on `SECURITY DEFINER` functions.
@@ -725,19 +725,19 @@ Auth persistence runtime GRANT model = SELECTED — Option A
   controlled SECURITY DEFINER / schema-owner-owned operations
   runtime receives only required EXECUTE capability
   NO broad runtime DML on auth secrets / session tables
-Exact GRANT matrix / function names = UNSELECTED (implementation gate)
+Exact GRANT matrix / function names were UNSELECTED at Gate 2; the bounded schema/function grants are now implemented in qualified migrations. Use the Schema Migration Contract and current role-qualification evidence for exact per-object details.
 ```
 
 **Consequences**
 
-- Auth API durable mutations must be designed as governed functions (names UNSELECTED).
+- Auth API durable mutations use governed functions in the qualified migration set; additional operations require separate scope and qualification.
 - Aligns with Campaign-style runtime boundary.
 
 ---
 
 ### Decision R7 — Evolution of existing coarse `role`
 
-**Current evidence**
+**Historical evidence at Gate 2 — not current implementation status**
 
 - `account_identity.role` + JWT `role` drive current coarse ACL and admin bypass.
 - `canAccessResource` currently lists the **same** resources for all three roles — fine authz is mostly membership/ownership SQL.
