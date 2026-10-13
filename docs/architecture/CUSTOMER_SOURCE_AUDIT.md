@@ -10,7 +10,7 @@
 
 Establish the source-of-truth contract for QuoteFlow's Customer capability before constructing the dependent GHM Quote capability.
 
-This audit authorizes construction of a canonical GHM Customer resource. It does not authorize production migration or cutover.
+The original audit authorized construction of a canonical GHM Customer resource, which is now represented in the qualified mainline capability index. This source audit remains provenance and does not authorize production migration or cutover.
 
 ## 2. Production source model
 
