@@ -148,9 +148,9 @@ Current GHM additionally contains an application-level status transition graph i
 
 Current GHM recipient authorization is based on an active `owner` Business membership. The production source identifies the Business owner as the recipient authority. Administrator access is not evidenced by the production enquiry source and is therefore not authorized by this audit.
 
-## Construction boundary
+## Current reconciliation boundary
 
-Construction is authorized for reconciliation and qualification of the existing GHM Enquiry capability, with these constraints:
+The bounded GHM Enquiry resource is already constructed and qualification-backed. The following are remaining source-parity and workflow-reconciliation requirements, not authorization to rebuild the resource:
 
 - preserve the production field and vocabulary contract;
 - preserve the customer-only creation boundary;
@@ -162,11 +162,11 @@ Construction is authorized for reconciliation and qualification of the existing 
 - do not migrate or backfill production data;
 - do not add notifications, realtime messaging, lead scoring, administration access, retention/anonymisation, anti-spam/rate-limiting, or presentation behavior without separate source evidence.
 
-## Next work
+## Remaining product-parity work
 
-1. Reconcile the current GHM Enquiry status-transition implementation against this audit.
+1. Reconcile the current GHM Enquiry status-transition implementation against the evidenced Connect contract.
 2. Reconcile the GHM schema with the Opportunity compatibility link required by the production workflow.
 3. Reconcile the atomic Marketplace Enquiry → Opportunity → recipient → Lead workflow in GHM.
-4. Qualify runtime authorization, validation, duplicate/concurrency behavior where applicable, transaction rollback, and runtime privilege boundaries.
+4. Close any additional workflow-specific authorization, validation, duplicate/concurrency, transaction rollback, and runtime-privilege gaps identified by that reconciliation. Existing bounded resource qualification remains closed; do not treat this list as a request to reopen it.
 
 This audit does not authorize production cutover or any change to Zaid Connect's Supabase backend.
