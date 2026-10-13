@@ -1,8 +1,8 @@
 # Connect Service Assertion Construction Evidence
 
 **Status:** CONSTRUCTION EVIDENCE — CRYPTOGRAPHIC SUB-SLICE VERIFIED
-**Construction branch:** `construction/connect-service-trust-boundary-reconciled`
-**Mainline baseline:** `3407a903d9937f76823cafa6b026a60661d06048`
+**Historical construction branch:** `construction/connect-service-trust-boundary-reconciled`
+**Historical mainline baseline at qualification:** `3407a903d9937f76823cafa6b026a60661d06048`
 **Reconciliation commit:** `e0c761a77c0965b061d5909027bbab006c5c7ef7`
 **Evidence date:** 2026-10-01
 
