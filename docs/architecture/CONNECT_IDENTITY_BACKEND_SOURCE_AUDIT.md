@@ -1,6 +1,6 @@
 # Connect Identity Backend Source Audit
 
-**Status:** HISTORICAL SOURCE EVIDENCE — NO CONSTRUCTION AUTHORIZATION; this audit correctly records that no mapping existed at its audit time. Current GHM mapping foundation is qualified on the consolidated `main` line; this audit predates that implementation and is historical evidence only.; product adapter construction remains separately gated.  
+**Status:** HISTORICAL SOURCE EVIDENCE — NO CONSTRUCTION AUTHORIZATION; this audit correctly records that no mapping existed at its audit time. Current GHM mapping foundation is qualified on the consolidated `main` line; this audit predates that implementation and is historical evidence only; product adapter construction remains separately gated.  
 **Connect commit:** `abcffa73f893602c25310a58946bebb91fd7eeb5`  
 **GHM tree compared:** `cf4fc08a8331bb8ecbf43e033b71431a8d7913b3` (resources) / branch tip includes docs through gap register  
 **Date:** 2026-09-18
