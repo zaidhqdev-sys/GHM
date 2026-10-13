@@ -1,8 +1,8 @@
 # Enquiry Source Audit — Zaid Connect → GHM
 
-**Status:** SOURCE AUDIT — RECONCILED / CONSTRUCTION AUTHORIZED
+**Status:** HISTORICAL SOURCE AUDIT — CONSTRUCTION COMPLETED / QUALIFIED
 
-> **Historical-status reconciliation — 2026-10-12:** The “construction authorized” status records the original source-audit decision, not an outstanding authorization request. GHM Enquiry construction is represented in the qualified mainline capability index and its resource contracts. This audit remains source evidence for the Connect contract; it does not authorize production migration, broader workflow parity, or cutover.
+> **Historical-status reconciliation — 2026-10-13:** The “construction authorized” status records the original source-audit decision, not an outstanding authorization request. GHM Enquiry construction is represented in the qualified mainline capability index and its resource contracts. This audit remains source evidence for the Connect contract; it does not authorize production migration, broader workflow parity, or cutover.
 
 ## Scope
 
