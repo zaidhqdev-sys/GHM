@@ -397,7 +397,7 @@ ghm.account_identity.id
 | WebAuthn / passkeys | **DEFERRED** |
 | raw biometric storage | **PROHIBITED** |
 | external identity mapping | **SELECTED:** `provider='supabase'`; `(provider,subject)→account_id`; bootstrap + link DEFINER ops |
-| credential table / schema names | **UNSELECTED** (not invented) |
+| credential table / schema names | Implemented in the qualified migrations; canonical credential table is `ghm.account_password_credential`, with separate session/refresh/recovery/mapping relations |
 
 ---
 
