@@ -232,7 +232,7 @@ QuoteFlow currently remains Supabase-authenticated. A GHM session client and run
 ### QF-04 — QuoteFlow organization → Business provisioning
 **Classification:** migration capability — open.
 
-The reconciliation contract is construction-qualified, but the Business provisioning contract is explicitly **not yet qualified**.
+The organization-to-Business reconciliation contract and its synthetic manifest outcomes are defined/qualified; live legacy organization → GHM Business resolution/creation plus owner-membership provisioning is explicitly **not yet qualified**. This is separate from the already-qualified credentialless GHM account-provisioning capability.
 
 Before implementation:
 - authoritative organization/owner evidence;
