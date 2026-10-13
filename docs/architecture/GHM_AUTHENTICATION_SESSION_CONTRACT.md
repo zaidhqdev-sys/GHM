@@ -60,23 +60,21 @@ Inspected (read-only) at HEAD `239ef5d`:
 | Auth session tables | **None** found (`refresh_token` / `auth_session` / logout APIs absent under `src/` and migrations search) |
 | DB “session” mentions | Migrator `session_user` identity checks only — not product auth sessions |
 
-### Accurate current findings
+### Historical Gate 2B implementation snapshot — superseded for the bounded foundation
 
-| Concern | Current state |
-|---|---|
-| Access-token behavior | Short-lived **by product convention in tests** (`expiresIn` in some tests); production verifier checks signature + claims but does **not** implement GHM-owned issuance or target asymmetric/`exp`-policy contract |
-| Refresh tokens | **Absent** |
-| Server-side auth sessions | **Absent** |
-| Revocation (auth session) | **Absent** (membership `revoked` is unrelated business membership status) |
-| Logout | **Absent** as a GHM API (products may discard client tokens only) |
-| Credential storage | No GHM password/refresh credential store in `src/`; `bcrypt` dependency unused under `src/` |
-| Account lifecycle (auth) | Account rows must pre-exist for FK-bound ops; no JIT auth bootstrap implemented |
+The following table records the earlier source audit at the Gate 2B baseline; it is not a current implementation assessment. Gate 3B subsequently qualified the bounded GHM ES256 issuance, refresh/session persistence, rotation, revocation, recovery, and logout foundation. Product clients remain on their existing Supabase sessions; their migration is separately gated.
 
-Do not infer refresh, logout, or session persistence that does not exist.
+| Concern | Gate 2B snapshot (historical) | Current bounded status |
+|---|---|---|
+| Access-token behavior | Product-test convention; no GHM-owned issuance or target asymmetric/`exp` policy | GHM ES256 access issuance and verification foundation qualified; product session-client integration remains open |
+| Refresh tokens | Absent at Gate 2B | Opaque rotating refresh credentials and replay-family revocation foundation qualified |
+| Server-side auth sessions | Absent at Gate 2B | GHM session persistence foundation qualified |
+| Revocation (auth session) | Absent at Gate 2B | Session/account revocation foundation qualified; business membership `revoked` remains a separate concept |
+| Logout | Absent as a GHM API at Gate 2B | Bounded GHM logout foundation qualified; product migration remains open |
+| Credential storage | No GHM password/refresh credential store at Gate 2B | Bounded credential/session persistence foundation qualified |
+| Account lifecycle (auth) | No JIT bootstrap at Gate 2B | Controlled account-identity bootstrap foundation qualified; product/business provisioning remains separately scoped |
 
-```text
-CURRENT IMPLEMENTATION ≠ TARGET SESSION CONTRACT.
-```
+Do not use the historical Gate 2B rows as current implementation status. The qualified GHM foundation does not imply Connect/QuoteFlow production migration or cutover.
 
 ---
 
@@ -225,7 +223,7 @@ Do **not** invent a third fixed “refresh TTL” that replaces this model. Do *
 |---|---|
 | **Zaid Connect** (web) | Operators expect multi-day continuity without weekly password prompts; still private ZAID backend |
 | **QuoteFlow** (mobile-capable) | Stronger “stay signed in” expectation across days/weeks; backgrounding must not force constant reauth if refresh works |
-| **Both** | No GHM refresh sessions in production product code yet; this is **target** architecture only |
+| **Both** | Product code has not migrated to GHM refresh sessions; the GHM session foundation is separately construction-qualified, and product migration remains gated |
 
 ### 6.3 Inactivity window candidates
 
