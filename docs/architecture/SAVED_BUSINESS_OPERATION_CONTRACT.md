@@ -242,3 +242,7 @@ The dedicated construction slice must provide:
 11. handover reconciliation.
 
 No production deployment or provider cutover is part of this work.
+
+## Connect saved-business parity boundary — 2026-10-13
+
+The bounded Saved Business resource contract does not by itself establish parity with Connect's directory save/unsave journey. Connect must map its saved-business identity, duplicate behavior, list ordering and response envelope to the GHM contract. In particular, this GHM contract requires the target Business to be active and verified/approved; verify that Connect's current directory listing policy and user expectations align before reusing this rule. Public-directory visibility and saved-business eligibility are separate predicates. Any product adapter must enforce the caller's own saved rows and must not infer GHM numeric IDs from Connect IDs. No public route expansion or cutover is authorized.
