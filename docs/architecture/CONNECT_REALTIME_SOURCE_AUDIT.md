@@ -50,7 +50,7 @@ Realtime filters are client-supplied (`user_id` / `business_id`). Production saf
 
 ## 7. Conclusions
 
-1. Only two live client realtime subscriptions are evidenced: notifications and leads.
+1. The 2026-09-18 Connect source snapshot contained two realtime subscription call sites: notifications and leads. The 2026-10-13 reachability review has **not** established that either consumer is mounted in a launch-active route.
 2. Notifications publication is migration-backed; leads publication is not proven in migrations.
 3. Realtime is not required to preserve GHM’s closed Notification persistence contract.
 4. Any GHM realtime work requires explicit authorization and an ownership decision; this audit does not provide one.
