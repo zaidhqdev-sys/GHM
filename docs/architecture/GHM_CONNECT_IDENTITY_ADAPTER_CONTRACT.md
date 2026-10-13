@@ -4,7 +4,7 @@
 **Canonical owner:** GHM platform governance
 **Historical baseline:** consolidated `main` as recorded on 2026-09-30; not a current HEAD pointer
 
-> **Current status reconciliation — 2026-10-12:** The frozen identity-adapter construction slice was authorized and qualified, as recorded in `GHM_CONNECT_IDENTITY_ADAPTER_QUALIFICATION.md`. The historical pre-authorization wording below is superseded for that exact slice only. The ES256 service assertion and replay-protection sub-slices have separate bounded construction evidence; the full Connect↔GHM service trust boundary and any public HTTP exposure, production credential issuance, product migration, routing, or cutover remain gated.
+> **Current status reconciliation — 2026-10-13:** The frozen identity-adapter construction slice was authorized and qualified, as recorded in `GHM_CONNECT_IDENTITY_ADAPTER_QUALIFICATION.md`. The historical pre-authorization wording below is superseded for that exact slice only. The ES256 service assertion and replay-protection sub-slices have separate bounded construction evidence; the full Connect↔GHM service trust boundary and any public HTTP exposure, production credential issuance, product migration, routing, or cutover remain gated.
 **Depends on:**
 - `GHM_CONNECT_IDENTITY_BRIDGE_QUALIFICATION.md`
 - `GHM_AUTHENTICATION_IDENTITY_AUTHORIZATION_CONTRACT.md`
