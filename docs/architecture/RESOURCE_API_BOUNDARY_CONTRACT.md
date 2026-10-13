@@ -8,6 +8,8 @@ Define the governed Resource API boundary that exposes domain capabilities witho
 
 This document is an architecture contract. It does not authorize product adapters, production traffic, or production cutover.
 
+> **Current-status reconciliation — 2026-10-13:** Sections 53–81 preserve the original first-slice Resource API inventory (Business Identity and Project routes) and are not an exhaustive list of current qualified resources or HTTP routes. Many additional resource-specific slices have since been qualified; see `GHM_CURRENT_STATE.md` and `PRODUCT_BACKEND_CAPABILITY_INVENTORY.md`. The shared boundary rules remain in force, while each route remains individually scoped/qualified; this contract does not authorize product adapters, production traffic, or cutover.
+
 ## Non-negotiable rules
 
 1. Every protected endpoint maps to one explicit governed resource and operation.
@@ -50,23 +52,23 @@ Explicit resource repository
 Reconciled GHM schema
 ```
 
-## Current qualified foundation
+## Historical initial qualified foundation — not an exhaustive current inventory
 
-The authorization foundation is qualified for the canonical Business Identity slice and the private Project Resource API slice. The registry contains explicit resource/operation vocabulary, and the protected HTTP routes demonstrate the HTTP-to-AuthContext-to-service boundary against the canonical GHM PostgreSQL path.
+At the original baseline, the authorization foundation had been qualified for the canonical Business Identity slice and the private Project Resource API slice. Additional resource authorization/HTTP slices have since been separately qualified. The registry contains explicit resource/operation vocabulary, and the protected HTTP routes demonstrate the HTTP-to-AuthContext-to-service boundary against the canonical GHM PostgreSQL path.
 
 The Business Identity capability has explicit contracts for account identity, Business identity, Business participation, public Business reads, Business creation, and managed Business identity updates. Its physical first-slice schema is `ghm.account_identity`, `ghm.business`, and `ghm.business_membership`.
 
-The current protected HTTP surface is intentionally narrower than the full service surface. `GET /api/v1/profile` remains the qualified profile example, while the qualified private Project surface is limited to explicit create, owner-read, and owner-update operations. Service/repository operations must not become HTTP endpoints merely because they exist internally.
+At the original baseline, the protected HTTP surface was intentionally narrower than the full service surface. `GET /api/v1/profile` remains the qualified profile example, while the qualified private Project surface is limited to explicit create, owner-read, and owner-update operations. Service/repository operations must not become HTTP endpoints merely because they exist internally.
 
-## Qualified Resource API slices
+## First-slice Resource API qualification baseline (not exhaustive current inventory)
 
-The Resource API currently has three qualified construction slices:
+At this contract's original baseline, three construction slices had been qualified:
 
 1. **Business Identity** — the governed profile/Business surface and its qualified authorization boundary.
 2. **Project private** — the owner-bound Project surface using the qualified Project schema, repository, service, authorization, and transaction contracts.
 3. **Project public disclosure** — the separately governed public projection/read boundary using explicit disclosure fields and the qualified public-read contract.
 
-The qualified HTTP surface remains small and explicit:
+The original first-slice HTTP surface was explicit and limited to:
 
 - `GET /api/v1/profile` — authenticated principal's own account profile.
 - `GET /api/v1/businesses/:businessId` — public-safe Business identity, subject to the existing eligibility rule.
