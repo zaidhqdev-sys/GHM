@@ -462,7 +462,7 @@ No code fixes in this gate.
 | Refresh token format/entropy | Opaque 32-byte; base64url | **Founder approved 2026-09-30** |
 | Token pepper | `GHM_AUTH_TOKEN_PEPPER` required; code fails closed if absent or shorter than 32 bytes | **Approval status remains open in this gate; production secret provisioning also gated** |
 | JWT `sub` representation | Decimal string of canonical GHM account id | **Founder approved 2026-09-30 in §6** |
-| Clock skew | ±60 seconds | **Founder approved 2026-09-30 in §6** |
+| Clock skew | ±60 seconds | **Founder approved 2026-09-30 in §6**; current JWT verification uses this tolerance for library time checks, but separate `iat` presence/future-time validation remains an open qualification item |
 | ES256 key env names | `GHM_JWT_ES256_*` names are implemented and deployment-managed | **Founder approved 2026-09-30 in §7; production values remain secret-managed** |
 | `kid` format | Non-empty printable ASCII up to 64 characters; `ghm-es256-YYYYMMDD-N` is an example/recommendation, not a stricter enforced format | **Founder approved 2026-09-30 in §7** |
 | Key overlap minimum | Previous public key trusted for at least 15 minutes + 60 seconds of skew | **Founder approved 2026-09-30 in §7** |
