@@ -17,9 +17,9 @@ The target architecture is GHM-owned:
 
 Legacy Supabase identifiers may participate in a migration-only crosswalk, but do not establish ongoing GHM trust.
 
-Neither mapping currently has an authorized persistence mechanism in GHM.
+Historical proposal status: at the time this dual-confirmation proposal was written, neither crosswalk had been implemented under this proposal. Current status differs by mapping type: the GHM `(provider, subject) → account_identity.id` external-identity mapping is qualified for migration provenance; the legacy organization → GHM Business reconciliation contract is qualified only for its synthetic outcomes, while live Business-provisioning implementation remains unqualified. Neither result creates a permanent runtime identity-link resource or proves organization/Business ownership equivalence.
 
-GHM's existing application authorization is Business-scoped and derives permissions from the authenticated GHM context and Business membership. It does not currently contain a cross-system identity-link resource.
+GHM's application authorization is Business-scoped and derives permissions from authenticated GHM context and Business membership. It does not authorize a permanent cross-system identity-link resource through this historical contract.
 
 ## Authority distinction
 
