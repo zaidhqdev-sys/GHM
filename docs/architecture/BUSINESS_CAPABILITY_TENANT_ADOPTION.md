@@ -1,6 +1,6 @@
 # Business Capability Tenant Adoption
 
-**Status:** QUALIFIED / CLOSED — durable tenant adoption qualified 2026-10-05**
+**Status:** QUALIFIED / CLOSED — durable tenant adoption qualified 2026-10-05
 
 ## Scope
 
