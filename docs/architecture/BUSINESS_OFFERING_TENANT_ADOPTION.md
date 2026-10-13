@@ -24,17 +24,19 @@ The canonical protected path is:
 
 The durable tenant adoption was runtime-qualified on 2026-10-05. The qualification proved runtime identity/cleanup authority, owner/member access, cross-business and unauthorized denials, management-only mutation, canonical update ownership, public inactive filtering, concurrent slug protection, and the existing runtime privilege boundary. The repository regression suite was green at 520/520 tests.
 
-Historical qualification target:
+Qualification evidence — CLOSED / PASS:
 
-The runtime qualification must prove:
+The 2026-10-05 runtime qualification recorded above satisfies the following criteria:
 
 - runtime identity is `ghm_runtime`;
 - cleanup authority is `ghm_migrator`;
-- owner/member access still works;
+- authorized owner/member access works;
 - non-members and cross-business access are denied;
 - management mutations remain owner/administrator only;
 - update tenant resolution uses the target offering's canonical business;
 - public inactive filtering remains intact;
 - database privilege boundaries remain unchanged.
+
+These criteria are closed for this bounded tenant-adoption slice. Reopen only if new evidence demonstrates regression or a separately authorized requirement changes the boundary.
 
 No broad resource refactor is included in this slice. No production cutover or provider migration is authorized by this document.
