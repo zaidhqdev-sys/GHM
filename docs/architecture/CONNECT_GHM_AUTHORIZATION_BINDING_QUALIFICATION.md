@@ -58,3 +58,7 @@ The existing canAccessResource authorization function is the only resource-level
 ## Stop boundary
 
 Construction stops after GHM authorization binding. The next separately gated slice may connect the authorized capability to resource dispatch/execution. No HTTP or production cutover is implied.
+
+## No-Supabase target qualification boundary — 2026-10-13
+
+This qualification is valid for the frozen authorization-binding sub-slice as implemented and tested at its original scope. That implementation explicitly requires an external `provider=supabase` identity and is therefore **not qualified for the target no-Supabase Connect runtime**. Retain the evidence as historical bounded qualification; do not reinterpret it as a passed target-authentication gate. The target requires a separately contracted and qualified GHM-native user-token/session path that derives the canonical account, active state, membership and resource permission from trusted server-side context without Supabase provider input or implicit identity bootstrap. No browser exposure or production cutover is authorized here.
