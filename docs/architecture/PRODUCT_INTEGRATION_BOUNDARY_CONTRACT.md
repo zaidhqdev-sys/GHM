@@ -5,7 +5,7 @@
 **Authority:** Local repository `C:\GHM`
 **Historical baseline:** consolidated `main` as recorded on 2026-10-02; not a current HEAD pointer
 
-> **Status reconciliation — 2026-10-12:** This semantic platform contract remains relevant, but its baseline date is historical. Use the living current-state index and individual capability qualification records for present implementation status. Qualification of a specific product adapter does not imply blanket HTTP exposure, production routing, or cutover; the broader open decisions below remain scoped to the transport semantics they name.
+> **Status reconciliation — 2026-10-13:** This semantic platform contract remains relevant, but its baseline date is historical. Use the living current-state index and individual capability qualification records for present implementation status. Qualification of a specific product adapter does not imply blanket HTTP exposure, production routing, or cutover; the broader open decisions below remain scoped to the transport semantics they name.
 **Historical Campaign reference:** `0a9a9f7` remains a historical qualified Campaign root baseline; it is not the current repository HEAD.
 **Depends on:** [GHM_APPLICATION_BACKEND_PLATFORM_CHARTER.md](./GHM_APPLICATION_BACKEND_PLATFORM_CHARTER.md)
 **Related:** [RESOURCE_API_BOUNDARY_CONTRACT.md](./RESOURCE_API_BOUNDARY_CONTRACT.md)
