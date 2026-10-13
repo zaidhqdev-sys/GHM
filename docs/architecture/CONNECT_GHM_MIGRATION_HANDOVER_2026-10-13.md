@@ -388,11 +388,11 @@ Connect's business profile actively combines public directory lookup by slug/ID,
 
 No code or production changes. Identity and storage exposure remain prerequisites for a complete no-Supabase cutover.
 
-## 22. Route-reachability and role-mapping correction
+## 22. Relationships route and role-mapping findings
 
 ### Correction: relationships is a registered current route
 
-Connect `src/app/routes.js` confirms `ROUTE_IDS.RELATIONSHIPS` is a navigable route requiring authentication, `BUSINESS_READ` permission and active-business context. `ZaidConnectApp.jsx` lazy-loads `RelationshipOutcomeScreen.jsx`, which calls relationship and outcome services. This is **in-scope active functionality**, not a dormant import. GHM lacks matching relationship/outcome resources; classify it as a **Build** gap with lifecycle, verification and business-scope authorization acceptance tests. The earlier uncertainty is resolved.
+Connect `src/app/routes.js` registers `ROUTE_IDS.RELATIONSHIPS` as a navigable route requiring authentication, `BUSINESS_READ` permission and active-business context. `ZaidConnectApp.jsx` lazy-loads `RelationshipOutcomeScreen.jsx`, which calls relationship and outcome services. This is **in-scope active functionality**, not a dormant import. GHM lacks matching relationship/outcome resources; classify it as a **Build** gap with lifecycle, verification and business-scope authorization acceptance tests.
 
 ### Authentication and role model mismatch
 
