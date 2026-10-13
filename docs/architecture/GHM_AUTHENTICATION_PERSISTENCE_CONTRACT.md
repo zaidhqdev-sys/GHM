@@ -4,7 +4,7 @@
 
 
 **Canonical owner:** GHM platform governance
-**Status:** AUTHENTICATION GATE 2D CONTRACT — HISTORICAL CONCEPT RECORD; the persistence foundation described here was subsequently constructed and qualified under Gate 3B. Current implementation status: `main @ ffc4a2a`
+**Status:** AUTHENTICATION GATE 2D CONTRACT — HISTORICAL CONCEPT RECORD; the persistence foundation described here was subsequently constructed and qualified under Gate 3B. Historical Gate 3B evidence pointer: `main @ ffc4a2a` at the time this contract was reconciled; this is not a current HEAD pointer.
 **Authority:** Local repository `C:\GHM`
 **Baseline:** branch `construction/saved-business-resource`, HEAD `239ef5d` (docs may advance ahead of HEAD)
 **Depends on:**
