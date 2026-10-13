@@ -52,7 +52,7 @@ Those are unnecessary until the product has more users.
 
 ## Current implementation gap
 
-**Status reconciliation — 2026-10-12:** this sentence describes the earlier plan baseline and is superseded by the constructed request/completion path in `QUOTEFLOW_MIGRATION_RESET_REENROLLMENT_CEREMONY.md` and the detailed reconciliation in `QUOTEFLOW_MIGRATION_RESET_REENROLLMENT_RECONCILIATION.md`. The ceremony is implemented, but its complete non-production DB + HTTP qualification remains open; production delivery, migration, and QuoteFlow cutover remain separately gated.
+**Status reconciliation — 2026-10-12:** this sentence describes the earlier plan baseline and is superseded by the constructed request/completion path in `QUOTEFLOW_MIGRATION_RESET_REENROLLMENT_CEREMONY.md` and the detailed reconciliation in `QUOTEFLOW_MIGRATION_RESET_REENROLLMENT_RECONCILIATION.md`. The migration-specific request/completion path is constructed, but the complete user-facing ceremony remains unqualified pending non-production DB + HTTP evidence; production delivery, migration, and QuoteFlow cutover remain separately gated.
 
 Therefore this qualification plan is a gate, not a claim that the ceremony is already executable.
 
