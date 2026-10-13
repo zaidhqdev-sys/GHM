@@ -144,7 +144,7 @@ Candidate evaluation history remains in [GHM_AUTHENTICATION_CRYPTOGRAPHIC_CONTRA
 | Concept | Owner gate | Status |
 |---|---|---|
 | Access-token lifetime | Cryptographic / this § | **SELECTED: 15 minutes** |
-| Refresh credential (opaque/rotated) | §5 / §7 | Server-controlled + revocable + every-success rotate + single-use + session-family replay **SELECTED**; opacity RECOMMENDED / UNSELECTED |
+| Refresh credential (opaque/rotated) | §5 / §7 | Server-controlled + revocable + every-success rotate + single-use + session-family replay **SELECTED**; opaque 32-byte base64url format **Founder-approved and implemented under Gate 3B** |
 | Inactivity timeout | §6 | **SELECTED: 30 days** |
 | Absolute session maximum | §6 | **SELECTED: 90 days** |
 
