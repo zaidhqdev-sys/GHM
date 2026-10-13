@@ -58,7 +58,7 @@ Storage adapter ──► current provider (e.g. Supabase Storage)
 5. No GHM migration is generated from guesswork or by copying Zaid Connect's schema wholesale.
 6. GHM implements the capabilities actually required by the products and their approved workflows.
 7. Infrastructure providers may implement a GHM capability temporarily, but provider choice must remain behind an explicit GHM boundary.
-8. Supabase Storage is currently treated as a replaceable storage provider, not as GHM backend authority.
+8. Cloudflare R2 is the currently qualified GHM storage-provider path, behind the GHM storage boundary; existing Connect/QuoteFlow storage remains on current production paths until separately qualified and authorized.
 
 ## Migration Strategy
 
