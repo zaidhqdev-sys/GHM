@@ -156,18 +156,19 @@ QUALIFIED CONSTRUCTION
 REQUIRES FUTURE GOVERNED WORK
 
   Trust evidence hardening / additional authoritative evidence domains
-  Commercial payment provider result / webhook application
+  PayFast real sandbox end-to-end/runtime qualification and production enablement
+  any additional payment-provider checkout/callback/webhook adapters beyond the qualified PayFast construction slice
   Opportunity participant lifecycle transition workflows
   Opportunity outcome / matching workflows
   Business Hours exceptions / booking / open-now
-  remaining platform candidates (storage, realtime, provider webhooks, telemetry)
+  remaining platform candidates (broader product-facing storage, realtime, telemetry)
   broader Connect product adapters
   QuoteFlow product adapter
   shadow qualification
   controlled cutover
 ```
 
-Trust Score itself is **QUALIFIED / CLOSED** for its current construction boundary. Commercial reference data and provider-neutral payment preparation are also qualified; provider checkout, callbacks/results, webhook application, production credentials, and cutover remain separately governed.
+Trust Score itself is **QUALIFIED / CLOSED** for its current construction boundary. Commercial reference data and provider-neutral payment preparation/result boundaries are qualified. The bounded PayFast checkout/redirect, ITN verification, and server-to-server confirmation implementation is merged and deterministic local qualification passes. Real PayFast sandbox end-to-end/runtime qualification, production credentials/enablement, and cutover remain separately governed. This does not qualify additional payment-provider adapters or broader product workflow parity.
 
 The Opportunity Participant resource and Connect adapter are **CLOSED / PASS for construction qualification**. The full 515/515 repository suite and the dedicated live PostgreSQL runtime qualification both passed on 2026-10-03. Participant lifecycle transition workflows remain separately governed future work.
 
