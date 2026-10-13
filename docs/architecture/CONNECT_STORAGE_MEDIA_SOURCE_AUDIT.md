@@ -59,7 +59,7 @@ Referenced by application code only. **No** `insert into storage.buckets` for `p
 2. Other `media` prefixes are used by the app but lack matching Storage policy migrations in the audited set.
 3. `private-docs` and several media metadata tables are **not migration-proven**; do not invent GHM tables from app references alone.
 4. At the 2026-09-18 audit snapshot, GHM had no qualified storage resource. Subsequent GHM storage persistence and the live R2 provider data path have been qualified, as stated in this document's current-status notice. Product-facing media workflows, authorization coverage for every Connect media prefix, production enablement, and cutover remain separately gated.
-5. Storage abstraction / bucket authorization requires explicit construction authorization after resolving orphan metadata and bucket policy evidence.
+5. Any expansion beyond the qualified `business_logo` storage object class requires separate authorization after active callers, orphan metadata, bucket policy, privacy and retention requirements are resolved.
 
 ## Target Connect storage exposure reconciliation — 2026-10-13
 
