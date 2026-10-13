@@ -1,6 +1,6 @@
 # Project Quote Operation Contract
 
-**Status:** QUALIFIED / CLOSED / PASS — runtime qualification completed 2026-09-14
+**Status:** QUALIFIED / CLOSED / PASS â€” runtime qualification completed 2026-09-14
 
 ## 1. Purpose
 
@@ -341,20 +341,20 @@ The qualification gate is CLOSED / PASS. The completed runtime qualification dem
 7. Add automated tests.
 8. Perform live runtime qualification.
 9. Reconcile migration, catalog, privilege, and runtime evidence.
-10. Close the capability gate — COMPLETED.
+10. Close the capability gate â€” COMPLETED.
 
 Existing qualified capabilities remain CLOSED/PASS.
 
 Project Quote qualification evidence:
 
 - 
-pm run qualify:project-quote-runtime — PASS.
+pm run qualify:project-quote-runtime â€” PASS.
 - 
-pm run build — PASS.
+pm run build â€” PASS.
 - 
-pm test — PASS — 98/98.
-- git diff --check — PASS.
-- migration, catalog, privilege, authorization, transaction, rollback, and concurrency boundaries — PASS.
+pm test â€” PASS â€” 98/98.
+- git diff --check â€” PASS.
+- migration, catalog, privilege, authorization, transaction, rollback, and concurrency boundaries â€” PASS.
 - no production migration, cutover, DNS, routing, credential, or traffic change performed.
 
 Project Quote depends on those qualified boundaries and must not reopen them without new evidence of regression or contract change.
@@ -373,5 +373,6 @@ This construction work does not authorize:
 
 Connect and QuoteFlow remain on their current Supabase backends until the later shadow-qualification and cutover gates are explicitly authorized.
 
+## Current Connect migration parity boundary â€” 2026-10-13
 
-
+The CLOSED/PASS status above applies to the bounded provider-neutral GHM Project Quote resource/runtime qualification; it does not mean the complete Connect Projects/Quotes journey is migrated or that Supabase may be removed today. The current caller-to-contract audit still requires explicit parity for Connect's open-project marketplace filters/pagination, customer project list/detail, atomic project-plus-opportunity creation, open-project update/delete guards, quote response envelopes/field normalization and cross-resource ID mapping. The source product still uses Supabase until the separately authorized shadow-qualification and cutover gates are met. Preserve this resource's closed qualification; track adapter/HTTP/product parity separately. No production migration, provider removal or cutover is authorized by this note.
