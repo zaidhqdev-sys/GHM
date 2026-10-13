@@ -46,19 +46,19 @@ Live products (Connect, QuoteFlow) will eventually consume this model via the GH
 
 ## 2. Existing-state audit
 
-Inspected (read-only) at HEAD `239ef5d`:
+The source paths below were inspected at the historical Gate 2B baseline `239ef5d`; rows have been reconciled against the later Gate 3B-qualified foundation and must not be read as a snapshot of that old tree.
 
-| Area | Evidence |
+| Area | Current bounded evidence |
 |---|---|
 | JWT verification | `src/auth/ghm-bearer.ts` → ES256 access JWT verification; claims use canonical `sub` plus issuer/audience/expiry contract |
 | Auth middleware | `src/auth/http.ts` — `requireAuth` → `401` `{ error: 'unauthorized' }` |
 | Authorization | `src/auth/authorization.ts` — `AuthContext`; membership/role helpers |
 | Config | `src/config.ts` / `.env.example` — no legacy `JWT_SECRET`; ES256 signing material is supplied through dedicated `GHM_JWT_ES256_*` environment variables |
-| Account identity | `ghm.account_identity` (bigint id; coarse `role`; no credential columns for refresh) |
+| Account identity | `ghm.account_identity` (bigint id; coarse `role`; credential/session data persisted separately) |
 | Membership | `ghm.business_membership` (`active` / `inactive` / `revoked`) — **business** membership, not auth sessions |
-| JWT tests | Sign HS tokens in tests only; no refresh/logout suite |
-| Auth session tables | **None** found (`refresh_token` / `auth_session` / logout APIs absent under `src/` and migrations search) |
-| DB “session” mentions | Migrator `session_user` identity checks only — not product auth sessions |
+| Authentication tests | Gate 3B qualification covers bounded issuance, session/refresh rotation, revocation, recovery, and logout behavior |
+| Auth session persistence | Present in the qualified GHM authentication foundation; the historical “none found” result applied only at Gate 2B |
+| DB “session” mentions | The historical migrator `session_user` observation was not evidence about product auth sessions |
 
 ### Historical Gate 2B implementation snapshot — superseded for the bounded foundation
 
