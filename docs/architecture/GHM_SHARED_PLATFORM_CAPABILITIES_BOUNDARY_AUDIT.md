@@ -105,7 +105,7 @@ Do not lock contracts to AWS S3, R2, Supabase Storage, Azure Blob, GCS, MinIO, o
 
 ## 2. Durable audit
 
-### Current repository state
+### Repository evidence at the historical audit checkpoint
 
 | Evidence | Path / finding |
 |---|---|
@@ -185,7 +185,7 @@ Audit semantics must not depend on a vendor log product.
 | Queue/job libraries in `package.json` | **None** (no Bull/BullMQ/Redis/Rabbit/SQS/pg-boss) |
 | Workers / cron / schedulers under `src/` | **None found** |
 | Campaign generation jobs | Explicitly **not authorized** (Campaign contracts; handover) |
-| Handover | Media/Storage/Realtime/adapters open; Campaign children/jobs not authorized |
+| Handover | At the original audit checkpoint, Media/Storage/Realtime/adapters were open and Campaign children/jobs were not authorized; see later capability-specific records for current bounded qualifications |
 | `socket.io` listed | Unused in `src/` (not a job platform) |
 | Connect admin verification queue | Product evidence only; GHM table not constructed |
 
@@ -250,7 +250,7 @@ Do not select Redis, BullMQ, RabbitMQ, SQS, pg-boss, Vercel Cron, etc. in this a
 | WebSocket/SSE/LISTEN/NOTIFY usage in GHM `src/` | **None found** (false-positive `listen` is HTTP server bind) |
 | GHM Notification resource | Persistence qualified; **no** realtime transport in GHM (`src/resources/notification/*`) |
 | Connect realtime audit | `CONNECT_REALTIME_SOURCE_AUDIT.md` — notifications/leads subscriptions; **no GHM realtime authorized**; degradeable to polling |
-| Handover | Realtime **OPEN / NOT YET AUTHORIZED** |
+| Handover | Realtime was **OPEN / NOT YET AUTHORIZED** at the original audit checkpoint |
 
 ### Existing implementation
 
