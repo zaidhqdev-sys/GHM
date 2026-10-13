@@ -5,7 +5,7 @@
 
 **Canonical owner:** GHM platform governance
 **Status:** AUTHENTICATION GATE 3A — HISTORICAL SCHEMA & MIGRATION CONTRACT; DDL was subsequently constructed and the authentication foundation was qualified under Gate 3B on the consolidated mainline.
-**Current qualified baseline:** `main` — current repository HEAD (see current qualification records)
+**Qualification provenance:** the authentication foundation was qualified on the consolidated `main` line at the time of qualification; this is not a current HEAD pointer.
 **Current boundary:** GHM authentication runtime foundation is qualified; Connect/QuoteFlow product migration and production cutover remain separately gated.
 **Depends on:** Founder decisions 1–12, C1–C10, R1–R7 and:
 - [GHM_AUTHENTICATION_ISSUANCE_DECISION_RECORD.md](./GHM_AUTHENTICATION_ISSUANCE_DECISION_RECORD.md) (§16.2 R1–R7 SELECTED)
@@ -52,7 +52,7 @@ This document defines the **concrete relational model**. Construction DDL matchi
 
 **ON DELETE defaults for this contract:**
 
-| Relationship | Proposed | Rationale |
+| Relationship | Implemented / governed behavior | Rationale |
 |---|---|---|
 | Auth rows → `account_identity` | `ON DELETE CASCADE` | Credential/session/recovery/mapping owned by identity; identity is not casually deleted |
 | Business mapping → `business` | `ON DELETE RESTRICT` | Preserve mapping integrity; do not silently drop product linkages |
@@ -123,7 +123,7 @@ ghm.business
 |---|---|---|---|---|
 | `account_status` | `text` | NOT NULL | `'active'` | `IN ('active', 'disabled')` |
 
-**Constraint name (proposed):** `account_identity_account_status_check`
+**Constraint name (implemented):** `account_identity_account_status_check`
 
 **Existing rows:** backfill / default to `'active'`.
 
