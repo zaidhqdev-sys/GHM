@@ -235,7 +235,7 @@ Evidence: `src/auth/authorization.ts`, `src/auth/request-context.ts`, `src/db/au
 | support_requests / messages | support migrations | `ghm.support_request` (+ message) | COVERED | — |
 | projects / project_quotes | projects migration | `ghm.project` / `ghm.project_quote` | PARTIAL/COVERED | Project images/workspace missing |
 | opportunities / participants / requirements / types | opportunity migrations | `ghm.opportunity*` | PARTIAL | Outcome/matching deferred; participant update deferred |
-| commercial_* + business_commercial_trials + business_subscriptions | commercial migrations | `ghm.commercial_*` | PARTIAL | Trial qualified; payment ops not implemented |
+| commercial_* + business_commercial_trials + business_subscriptions | commercial migrations | `ghm.commercial_*` | PARTIAL at 2026-09-18 snapshot | Historical finding: trial qualified; payment operations then not implemented. Later provider-neutral payment preparation/result boundaries and PayFast checkout/ITN/server confirmation are qualified; real PayFast sandbox/runtime and production enablement remain open. |
 | regional_* / countries / currencies / locales | regional foundation | limited `country`/`currency` | PARTIAL | Regions/locales/admin areas/config/prices missing |
 | relationship_types / business_relationships / outcome_* | relationship foundation | none | MISSING | Entire subdomain |
 | account_onboarding_progress | onboarding migration | none | MISSING | Entire subdomain |
