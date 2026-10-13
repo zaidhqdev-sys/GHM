@@ -4,7 +4,7 @@
 
 ## Status
 
-**CONSTRUCTION QUALIFICATION CONTRACT — AUTHORIZED**
+**HISTORICAL CONSTRUCTION AUTHORIZATION — BOUNDED ENQUIRY RESOURCE QUALIFIED / CLOSED; PRODUCT-PARITY GAPS REMAIN OPEN**
 
 This contract reconciles the authoritative Zaid Connect enquiry concept into the GHM identity and Business model. It authorizes construction qualification only.
 
