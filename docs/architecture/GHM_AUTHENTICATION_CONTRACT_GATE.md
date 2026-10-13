@@ -363,7 +363,7 @@ The HS tokens using `userId` + `role` and `JWT_SECRET` were the historical imple
 | Account / session revocation | Authoritative in GHM; revoked refresh cannot mint new access tokens |
 | Storage | Separate from `account_identity` profile fields; least-privilege access |
 
-**Not implemented.** Exact lifetimes and replay policy are open (§12).
+**Historical Gate 1 status:** not implemented at that time. Gate 3B later qualified the 15-minute access token, 30-day inactivity / 90-day absolute session model, single-use refresh rotation, and replay-family revocation foundation.
 
 ---
 
@@ -441,7 +441,7 @@ Many items below were open at Gate 1 authoring and are now recorded in follow-on
 | # | Open decision | Current status |
 |---|---|---|
 | 1 | Signing algorithm | **SELECTED: ES256** |
-| 2 | Key storage class / `kid` | Storage **secret-managed inside issuer** SELECTED; `kid` **required**; exact encoding/names/paths/`kid` values **UNSELECTED** |
+| 2 | Key storage class / `kid` | Secret-managed key material and required `kid` are selected; current implementation uses PKCS#8 PEM and `GHM_JWT_ES256_*` environment variables. Deployment-specific active/previous key values remain secret-managed. |
 | 3 | Access-token lifetime | **SELECTED: 15 minutes** |
 | 4 | Refresh/session durations | **SELECTED:** 30d inactivity / 90d absolute |
 | 5 | Refresh rotation / replay | **SELECTED:** every success; single-use; session-family revoke |
@@ -465,7 +465,7 @@ Many items below were open at Gate 1 authoring and are now recorded in follow-on
 | 23 | Signing-key rotation calendar | Overlap rule SELECTED; calendar **UNSELECTED** |
 | 24 | Account lifecycle/status representation | **SELECTED:** `active`/`disabled` — Issuance ADR §16.2 **R1** (column name UNSELECTED) |
 | 25 | System-admin representation | **SELECTED:** governed account-level state, not JWT — Issuance ADR §16.2 **R2** |
-| 26 | Target AuthContext shape | **SELECTED:** identity-centric — Issuance ADR §16.2 **R3** (exact fields UNSELECTED) |
+| 26 | AuthContext shape | Identity-centric architecture selected; implementation provides `GhmAuthContext { accountId }` and a compatibility adapter to legacy `AuthContext { userId, role }`. Broader product-client integration remains gated. |
 | 27 | Bootstrap invocation path | **SELECTED:** dedicated controlled Auth boundary op — Issuance ADR §16.2 **R4** |
 | 28 | Business/org mapping mechanism | **SELECTED:** `(provider, external_business_id) → business.id` — Issuance ADR §16.2 **R5** |
 | 29 | Auth persistence runtime GRANT model | **SELECTED:** SECURITY DEFINER / controlled EXECUTE — Issuance ADR §16.2 **R6** |
