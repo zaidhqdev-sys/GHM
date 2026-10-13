@@ -387,9 +387,9 @@ This schema does not authorize:
 - shadow traffic;
 - production cutover.
 
-## 25. Qualification gate
+## 25. Historical schema qualification acceptance criteria — satisfied
 
-The schema cannot be considered qualified until evidence demonstrates:
+The following criteria governed the original schema qualification gate. The schema and bounded runtime/tenant boundary are now **QUALIFIED / CLOSED**; the qualification record documents the evidence. Participant role/status mutation remains separately constrained and unsupported updates must continue to fail closed:
 
 1. migration applies cleanly to the GHM construction database;
 2. `ghm.opportunity_participant` exists with the exact contract columns;
@@ -420,14 +420,14 @@ The schema cannot be considered qualified until evidence demonstrates:
 27. no existing qualified GHM capability regresses;
 28. final handover evidence records the closure result.
 
-## 26. Construction sequence
+## 26. Historical construction sequence — completed
 
-1. Freeze this schema contract.
-2. Construct `ghm.opportunity_participant` migration.
-3. Apply migration only to the construction database.
-4. Reconcile catalog and constraints.
-5. Define the participant operation contract.
-6. Implement repository/service boundaries.
+1. Freeze this schema contract. — completed
+2. Construct `ghm.opportunity_participant` migration. — completed
+3. Apply migration to the construction database. — completed
+4. Reconcile catalog and constraints. — qualified
+5. Define the participant operation contract. — completed
+6. Implement repository/service boundaries. — qualified
 7. Register the resource and authorized operations.
 8. Add positive/negative, duplicate, concurrency, and rollback tests.
 9. Qualify runtime and privilege boundaries.
