@@ -245,7 +245,7 @@ Under the selected architecture, the GHM issuer is responsible for:
 - account lifecycle
 - appropriate security controls
 
-Implementation of these responsibilities is **not authorized** by this document alone.
+This decision record alone does not authorize additional scope beyond the bounded foundation qualified under Gate 3B. Product adapters, broader public exposure, production configuration, and product cutover still require their own authorization and qualification.
 
 ---
 
@@ -360,8 +360,8 @@ Related gates remain separate:
 | `GHM_AUTHENTICATION_PERSISTENCE_CONTRACT.md` | Conceptual durable persistence for credential/session/refresh/recovery/mapping |
 | `GHM_AUTHENTICATION_API_CONTRACT.md` | Logical Auth API operations, errors, verification semantics |
 | `GHM_AUTHENTICATION_IDENTITY_AUTHORIZATION_CONTRACT.md` | Identity lifecycle, AuthContext vs membership/authz, admin/bootstrap/revocation |
-| `GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md` | Proposed concrete auth schema, constraints, migration order (DDL not authorized) |
-| `GHM_AUTHENTICATION_IMPLEMENTATION_PARAMETER_GATE.md` | Proposed security/impl parameters awaiting Founder approval (DDL not authorized) |
+| `GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md` | Historical proposal; bounded authentication schema/migration foundation subsequently constructed and qualified under Gate 3B |
+| `GHM_AUTHENTICATION_IMPLEMENTATION_PARAMETER_GATE.md` | Historical parameter gate; Gate 3B subsequently approved the bounded implementation parameters and the foundation is qualified |
 | `RESOURCE_API_BOUNDARY_CONTRACT.md` | Current HTTP Resource API assumes verified AuthContext; does not define issuance implementation |
 | `CONNECT_IDENTITY_BACKEND_SOURCE_AUDIT.md` | Connect UUID Supabase Auth ≠ GHM bigint AuthContext (current evidence) |
 | Live-product readiness audits / gap register | Connect backend readiness; issuance was shared blocker |
@@ -454,7 +454,7 @@ Does **not** select: email provider, credential table names, or Argon2id cost pa
 
 ## 16.2 Final remaining architecture decisions (Gate 2G — Founder decision record)
 
-**Status:** Gate 2G — **FOUNDER DECISIONS R1–R7 SELECTED** (`2026-09-21`); **implementation NOT AUTHORIZED**.
+**Historical status at Gate 2G (2026-09-21):** Founder decisions R1–R7 were selected; implementation was not authorized at that gate. Gate 3B later authorized and qualified the bounded authentication foundation; product migration and cutover remain separately gated.
 **Purpose:** Record Founder selections for the seven remaining authentication architecture decisions.
 **Does not:** authorize implementation, migrations, grants, AuthContext code, or product changes.
 
@@ -608,13 +608,13 @@ Exact TypeScript field names / optional session binding = UNSELECTED (implementa
 
 ### Decision R4 — Controlled bootstrap invocation path
 
-**Current evidence**
+**Gate 2G evidence snapshot (historical; current mapping/bootstrap status is governed by Gate 3B qualification):**
 
-- Person mapping `(provider, subject) → account_identity.id` SELECTED; table absent.
-- JIT bootstrap SELECTED; must not grant membership/admin.
+- Person mapping `(provider, subject) → account_identity.id` SELECTED; the mapping table was absent at that gate and is now part of the qualified foundation.
+- JIT bootstrap SELECTED; must not grant membership/admin. The bounded account-identity bootstrap foundation is now qualified; business/membership provisioning remains separately gated.
 - Temporary Supabase coexistence SELECTED; never accept Supabase JWTs on Resource API.
-- Auth API Contract: bootstrap is **not** public federation; path UNSELECTED.
-- Future direct GHM email/password login also SELECTED.
+- Auth API Contract: bootstrap is **not** public federation; product-facing bootstrap remains governed by its bounded current contract and must not be inferred as a public federation API.
+- Future direct GHM email/password login also SELECTED; product-client integration remains open.
 
 **Options considered**
 
