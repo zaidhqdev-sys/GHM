@@ -178,7 +178,7 @@ Audit semantics must not depend on a vendor log product.
 
 ## 3. Jobs / queues / asynchronous execution
 
-### Current repository state
+### Repository evidence at the historical audit checkpoint
 
 | Evidence | Path / finding |
 |---|---|
@@ -242,7 +242,7 @@ Do not select Redis, BullMQ, RabbitMQ, SQS, pg-boss, Vercel Cron, etc. in this a
 
 ## 4. Realtime / subscriptions
 
-### Current repository state
+### Repository evidence at the historical audit checkpoint
 
 | Evidence | Path / finding |
 |---|---|
@@ -301,7 +301,7 @@ Do not select socket.io, Supabase Realtime, Ably, etc. here. Installed `socket.i
 
 ## 5. Observability / diagnostics
 
-### Current repository state
+### Repository evidence at the historical audit checkpoint
 
 | Evidence | Path / finding |
 |---|---|
