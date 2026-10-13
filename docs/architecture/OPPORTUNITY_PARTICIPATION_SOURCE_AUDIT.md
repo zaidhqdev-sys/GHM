@@ -6,9 +6,9 @@ HISTORICAL SOURCE AUDIT — CONSTRUCTION COMPLETED AND QUALIFIED 2026-10-05
 
 This document records the canonical Opportunity Participation contract evidenced from the current Zaid Connect production source and reconciled against the current GHM Opportunity foundation. It authorizes GHM construction of the persisted participation relationship without authorizing any production migration or cutover.
 
-## GHM current state
+## GHM state at the historical source-audit snapshot
 
-The qualified Opportunity Core contract currently models:
+At the time of this source audit, the qualified Opportunity Core contract modeled:
 
 - Opportunity creator Account;
 - optional owning Business;
@@ -17,9 +17,9 @@ The qualified Opportunity Core contract currently models:
 - full and safe read projections;
 - Opportunity management authorization.
 
-The GHM repository currently has no `opportunity_participant` resource, migration, repository, service, or registry operation.
+At that historical snapshot, GHM had not yet constructed the `opportunity_participant` resource, migration, repository, service, or registry operation. That statement is not the current repository state: Opportunity Participation was subsequently implemented and qualified on 2026-10-05, as recorded in `OPPORTUNITY_PARTICIPATION_OPERATION_CONTRACT.md`, `OPPORTUNITY_PARTICIPATION_SCHEMA_CONTRACT.md`, and `OPPORTUNITY_PARTICIPANT_HTTP_BOUNDARY_RECONCILIATION.md`.
 
-The completed Opportunity Capability Requirements slice is separate and CLOSED.
+The Opportunity Capability Requirements slice is separate and CLOSED. These completed GHM construction qualifications do not authorize production migration or cutover.
 
 ## Canonical production source
 
