@@ -288,4 +288,4 @@ Before migration or code is authored, the following must be independently qualif
 
 **No database object is authorized by this historical document.**
 
-The next implementation gate is GHM-owned authentication and migration-boundary qualification.
+Historical note: when this superseded design was written, the next gate was GHM-owned authentication and migration-boundary qualification. That gate has since advanced; this document remains historical design evidence and must not be used as the current implementation plan.
