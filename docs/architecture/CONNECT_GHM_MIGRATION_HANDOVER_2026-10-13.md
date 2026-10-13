@@ -276,3 +276,29 @@ No runtime or production changes. These are contract findings to carry into the 
 
 No runtime or production changes. This is an audit/documentation checkpoint only.
 
+## 18. Active relationship, quote-analysis and commercial journeys
+
+### Relationships/outcomes — active route, missing GHM domain
+
+- `ZaidConnectApp.jsx` lazy-loads `RelationshipOutcomeScreen.jsx`; the screen actively calls relationship and outcome services. GHM's current resource inventory has no equivalent relationship/outcome domain. Classify **Build** only after recording the Connect data fields, create/update transitions, verification state, and authorization rules. Do not treat a lazy import by itself as proof of route exposure; the current app's route dispatch and access rules must be included in acceptance coverage.
+
+### Quote analysis — distinguish deterministic analysis from provider AI
+
+- `AIQuoteAnalyzerScreen.jsx` actively calls `quoteAnalyzerService.getUserAnalyses(user.id)` and local/DB quote analysis methods. Connect's milestone documentation explicitly distinguishes this deterministic/local/DB heuristic path from the Milestone 38 Anthropic provider path. The data/history path is a **backend replacement requirement** (ownership-scoped analysis history and quote lookup); it does not authorize AI-provider calls.
+- AI support and quote-provider transport still targets Supabase Edge Function via `aiProxyClient.js`, but `milestone38Approved=false`. Remove Supabase transport from the eventual runtime while preserving provider fail-closed behavior and deterministic/local fallback. No provider activation is approved.
+
+### Commercial — preserve the frozen gate
+
+- `BusinessWorkspaceScreen.jsx` imports and renders `BusinessCommercialPanel.jsx`; it calls offer lookup and trial activation and contains guarded checkout actions. This is active functionality even though online subscription activation is disabled.
+- GHM has internal commercial payment-prepare, PayFast checkout and payment-result/ITN routes. Existing Connect commercial code is still Supabase-backed and includes Paystack function paths; the operation contract and provider decision must be reconciled without conflating PayFast approval with Paystack status.
+- Preserve current release flags: `launchAuthorized=false`, `milestone38Approved=false`, `milestone52Approved=true`, `onlineSubscriptionActivation=false`. Backend migration must not change trial terms, prices, provider, launch authorization or activate payment. Separate offer/trial read/write parity from payment checkout and provider callbacks.
+
+### Classification
+
+- Relationships/outcomes = **Build** (domain absent).
+- Quote analysis history/deterministic analysis = **Build/extend after schema and ownership audit**; keep distinct from provider AI.
+- Commercial offer/trial = **Extend/reuse candidate pending contract parity**.
+- Payment checkout/webhooks = **preserve frozen state; contract migration separately gated**.
+
+No code, migration, provider activation or production change was made.
+
