@@ -280,7 +280,7 @@ No runtime or production changes. This is an audit/documentation checkpoint only
 
 ### Relationships/outcomes — active route, missing GHM domain
 
-- `ZaidConnectApp.jsx` lazy-loads `RelationshipOutcomeScreen.jsx`; the screen actively calls relationship and outcome services. GHM's current resource inventory has no equivalent relationship/outcome domain. Classify **Build** only after recording the Connect data fields, create/update transitions, verification state, and authorization rules. Do not treat a lazy import by itself as proof of route exposure; the current app's route dispatch and access rules must be included in acceptance coverage.
+- `ZaidConnectApp.jsx` lazy-loads `RelationshipOutcomeScreen.jsx`, and `src/app/routes.js` registers `ROUTE_IDS.RELATIONSHIPS` as a navigable authenticated route requiring `BUSINESS_READ` and active-business context. The screen actively calls relationship and outcome services. GHM's current resource inventory has no equivalent domain: classify **Build**. Acceptance must capture the Connect data fields, create/update transitions, verification state, business scope and authorization rules; route reachability is already confirmed.
 
 ### Quote analysis — distinguish deterministic analysis from provider AI
 
@@ -309,7 +309,7 @@ No code, migration, provider activation or production change was made.
 - **Relationships/outcomes**: current route dispatch/reachability is confirmed, and `RelationshipOutcomeScreen.jsx` actively calls relationship and outcome services. GHM has no equivalent domain in the current resource inventory; classify this as a **Build** gap. Preserve lifecycle, verification, visibility, provenance and evidence semantics. Route reachability is not an open question.
 - `businessOfferingService` / `catalogueService` appear as facade exports, but current repository search did not identify a production UI caller. Do not include the full offerings CRUD domain in the launch migration until an active caller is confirmed. This does not remove the separately confirmed active business-category/capability/directory needs.
 - `supplierService`, `referralTrackingService`, and `disputeService` are present in the central facade and/or test-only integration harness, but no current production screen caller was found in the searched references. Classify **legacy/unconfirmed; exclude from first migration scope unless reachability audit finds a mounted caller**. Tests that import a service are not proof of production use.
-- `businessRelationshipService` and `outcomeService` have a screen caller, but the screen's route reachability must be verified before final launch prioritization.
+- `businessRelationshipService` and `outcomeService` have an active screen caller on a confirmed authenticated Relationships route. Prioritize the missing GHM relationship/outcome domain as a **Build** gap; acceptance must cover lifecycle, verification, business scope and authorization.
 
 ### Consolidated provisional migration classification
 
@@ -392,7 +392,7 @@ No code or production changes. Identity and storage exposure remain prerequisite
 
 ### Correction: relationships is a registered current route
 
-The route-reachability uncertainty recorded in section 19 is resolved by Connect `src/app/routes.js`: `ROUTE_IDS.RELATIONSHIPS` is registered as a navigable route requiring authentication, `BUSINESS_READ` permission and active-business context. `ZaidConnectApp.jsx` lazy-loads `RelationshipOutcomeScreen.jsx`. Therefore relationship/outcome is **in-scope active functionality**, not a dormant import. GHM lacks matching relationship/outcome resources; classify it as a **Build** gap with lifecycle, verification and business-scope authorization acceptance tests. The earlier “route reachability to verify” statement is superseded by this finding.
+Connect `src/app/routes.js` confirms `ROUTE_IDS.RELATIONSHIPS` is a navigable route requiring authentication, `BUSINESS_READ` permission and active-business context. `ZaidConnectApp.jsx` lazy-loads `RelationshipOutcomeScreen.jsx`, which calls relationship and outcome services. This is **in-scope active functionality**, not a dormant import. GHM lacks matching relationship/outcome resources; classify it as a **Build** gap with lifecycle, verification and business-scope authorization acceptance tests. The earlier uncertainty is resolved.
 
 ### Authentication and role model mismatch
 
