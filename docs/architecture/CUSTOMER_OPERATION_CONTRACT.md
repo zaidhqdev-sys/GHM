@@ -1,6 +1,6 @@
 # GHM Customer Operation Contract
 
-**Status:** CONSTRUCTION CONTRACT — OPERATIONS FROZEN
+**Status:** CONSTRUCTION QUALIFIED / CLOSED — Customer operations frozen; qualification criteria satisfied on the consolidated mainline
 
 ## 1. Initial operation surface
 
@@ -118,6 +118,8 @@ Not authorized by this operation contract:
 - invoice/accounting mutations;
 - production migration or cutover.
 
-## 12. Qualification gate
+## 12. Qualification record
 
-Customer is not qualified until repository/service tests and runtime qualification prove the schema, ownership, lifecycle, privilege boundary, no-delete boundary, and Quote-compatible historical behavior.
+The original qualification criteria below are satisfied for the bounded Customer construction slice on the consolidated mainline. The schema/acceptance record is preserved in `CUSTOMER_SCHEMA_CONTRACT.md`; broader product-adapter integration and production migration/cutover remain separately gated.
+
+Qualified boundary covers repository/service behavior and runtime qualification for schema ownership, lifecycle, least-privilege access, no-delete behavior, and Quote-compatible historical retention. The criteria in the original gate are historical acceptance evidence, not a current pending qualification.
