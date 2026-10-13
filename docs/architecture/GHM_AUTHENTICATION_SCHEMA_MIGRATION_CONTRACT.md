@@ -277,7 +277,7 @@ trim → deterministic NFKC → case normalization → login_email_normalized
 |---|---|---|---|---|
 | `id` | `bigint` identity | NOT NULL | generated | PK |
 | `session_id` | `bigint` | NOT NULL | — | FK → `authentication_session` ON DELETE CASCADE |
-| `token_hash` | `bytea` or `text` | NOT NULL | — | Hash/reference of opaque secret; **UNIQUE** |
+| `token_hash` | `bytea` | NOT NULL | — | HMAC-SHA256 protected token hash; **UNIQUE** (implemented) |
 | `issued_at` | `timestamptz` | NOT NULL | `now()` | |
 | `used_at` | `timestamptz` | NULL | — | Set when rotated successfully |
 | `revoked_at` | `timestamptz` | NULL | — | Family/account revoke |
@@ -291,7 +291,7 @@ UNIQUE INDEX refresh_credential_session_live_uidx
   WHERE used_at IS NULL AND revoked_at IS NULL
 ```
 
-**Proposed:** include this partial unique index — prevents two live tips per session.
+**Implemented:** the qualified migration set includes the partial unique live-tip index; transaction/row-lock handling also serializes refresh rotation.
 
 **Opaque secret (approved storage):** 32-byte CSPRNG token; wire = URL-safe base64 (no padding).
 
@@ -350,9 +350,9 @@ Two concurrent refreshes of the same live credential: exactly one `UPDATE … us
 |---|---|---|---|---|
 | `id` | `bigint` identity | NOT NULL | generated | PK |
 | `account_id` | `bigint` | NOT NULL | — | FK → `account_identity` ON DELETE CASCADE |
-| `token_hash` | `bytea` or `text` | NOT NULL | — | UNIQUE |
+| `token_hash` | `bytea` | NOT NULL | — | HMAC-SHA256 protected token hash; UNIQUE (implemented) |
 | `created_at` | `timestamptz` | NOT NULL | `now()` | |
-| `expires_at` | `timestamptz` | NOT NULL | — | created + TTL (TTL UNSELECTED) |
+| `expires_at` | `timestamptz` | NOT NULL | — | created + 30-minute recovery TTL (Founder-approved under Gate 3B) |
 | `used_at` | `timestamptz` | NULL | — | |
 | `revoked_at` | `timestamptz` | NULL | — | |
 
