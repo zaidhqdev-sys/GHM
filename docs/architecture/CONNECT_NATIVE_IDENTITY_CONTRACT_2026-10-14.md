@@ -3,6 +3,12 @@
 Status: implementation gate, source-audited 2026-10-14  
 Scope: GHM Internal Runtime and ZAID Connect identity/session migration. This document is a contract, not authorization to cut over production.
 
+## Critical operational blocker: Supabase organization billing/access
+
+On 2026-10-14, the connected Supabase account listed the ZAID HQ organization on the Free plan, with both the Zaid Connect project (`wxabopuyqblbpxkoudxy`) and QuoteFlow project (`wetsblzwhxxgqpttwqht`) reporting `INACTIVE`. A supported restore attempt for Zaid Connect was rejected because the organization has unpaid invoices. Read-only table inspection timed out. Treat Supabase as unavailable until account access is restored or data access is independently verified. This observation does not establish whether the organization has a formal account suspension beyond the returned billing restriction.
+
+**Recovery rules:** do not repeatedly retry restore; do not create replacement Supabase projects or incur costs without an explicit cost decision; do not assume the inactive database is deleted or recoverable; preserve existing repo migrations, types, backups and any previously exported data. Contact Supabase billing/support through the dashboard to confirm the exact invoice, any available dispute/payment arrangement, and data-retention/export window. In parallel, proceed with GHM migration readiness and an inventory of dependencies. No live provider switch is authorized until identity linking, data recovery, business authorization, and operational parity are tested.
+
 ## Verified current behavior
 
 - Connect currently creates Supabase Auth users with `full_name`, `role`, and `phone` in user metadata. Its React auth hook restores a Supabase session, subscribes to auth-state changes, and loads the profile by the Supabase user UUID.
@@ -27,11 +33,11 @@ Scope: GHM Internal Runtime and ZAID Connect identity/session migration. This do
 ## Implementation status and remaining slices
 
 1. **Draft only:** an isolated Connect GHM auth client now covers register/login/refresh/logout, validates the documented token response, normalizes errors, and forces registration to the least-privileged `customer` role. Contract tests and a dedicated npm script were added. These tests have not yet been confirmed passing in CI.
-2. Add an isolated session adapter and auth-hook tests without switching the production app's provider.
+2. Build an evidence-based recovery inventory for Supabase data: schema/migrations, backups, exported user list if available, profile/business/membership data, storage objects, and Edge Functions. Do not infer database contents from local TypeScript types.
 3. Inventory every direct Supabase Auth and user-scoped data dependency. The auth adapter alone cannot migrate profile, memberships, realtime, storage, directory, business operations, or RLS behavior.
 4. Establish an explicit existing-account linking/migration path, including both founder accounts, before enabling native sign-in for existing users.
 5. Continue the server-side authorization audit across every governed business operation and complete role/membership/resource parity tests. The mapped-business guard is one narrow fix, not a global authorization guarantee.
-6. Only after parity tests and a reviewed migration plan, prepare a separately gated cutover.
+6. Only after recovery status, parity tests, and a reviewed migration plan, prepare a separately gated cutover.
 
 ## Acceptance criteria
 
@@ -41,6 +47,7 @@ Scope: GHM Internal Runtime and ZAID Connect identity/session migration. This do
 - Business selection never substitutes for membership authorization.
 - All remaining Supabase dependencies are listed and explicitly classified before cutover.
 - Production remains unchanged until a separately approved cutover.
+- Supabase data recovery/export status is documented before any account or data migration.
 
 ## Source references
 
