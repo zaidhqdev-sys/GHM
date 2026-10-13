@@ -159,3 +159,5 @@ A further documentation-only batch reconciled the Connect source-object and atom
 - Rechecked the adjacent Connect identity, service-trust, realtime, storage, resource, commercial, and domain source audits. Historical Connect source snapshots remain useful evidence; they must not be interpreted as current GHM implementation status. Realtime and broader product-workflow gaps remain open where their current contracts say so.
 
 This batch changed documentation only. It does not authorize new resource construction, provider activation, production configuration changes, product migration, or cutover.
+
+A further cross-check of the living product-backend inventory found one remaining ambiguous commercial status sentence: it grouped PayFast checkout/ITN/server confirmation with generic provider checkout/webhook work as though all remained outstanding. The inventory now distinguishes the merged, locally qualified PayFast implementation from open real-sandbox/runtime qualification, production enablement, broader product workflow parity, and any additional provider adapters.
