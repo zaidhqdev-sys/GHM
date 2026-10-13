@@ -487,7 +487,7 @@ This historical snapshot does not authorize product migration or cutover.
 |---|---|
 | Account lifecycle/status column | `account_status` (`active` / `disabled`) **implemented** by migration `20260921120000`; no longer an open column-name decision |
 | System-admin representation | `is_system_admin` account-level state **implemented**; not JWT authority |
-| Exact future AuthContext TypeScript shape | Identity-centric architecture selected; any remaining exact field/API naming must follow current code and consumer contracts |
+| AuthContext TypeScript shape | Implemented `GhmAuthContext { accountId }` with a bounded compatibility adapter to legacy `AuthContext { userId, role }`; broader product-client integration remains gated |
 | Exact authorization-policy API shape | Existing helpers remain current; further policy API expansion is separately scoped |
 | Identity bootstrap invocation path | Controlled Auth boundary and `auth_bootstrap_external_identity` foundation implemented; not a public federation API |
 | Business/org migration mapping mechanism | LINK-ONLY `ghm.auth_link_business_external_mapping` implemented; it attaches to an existing Business and does not create Business/membership |
