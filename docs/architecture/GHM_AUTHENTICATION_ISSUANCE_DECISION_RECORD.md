@@ -63,7 +63,7 @@ These remain binding under the selected target architecture and during implement
 2. Products must **not** manufacture privileged `AuthContext` values.
 3. Products must **not** connect directly to GHM Postgres.
 4. GHM **authorization** remains authoritative over governed resource operations (membership/privileged roles are not JWT source of truth).
-5. Founder architecture decisions 1–12 are **SELECTED** (§16); **implementation remains NOT AUTHORIZED** until follow-on contracts and an explicit implementation gate.
+5. **Historical Gate 2 decision snapshot:** Founder architecture decisions 1–12 were selected (§16), while implementation was not authorized at that time. Gate 3B later authorized and qualified the bounded GHM authentication foundation; product session-client integration, migration, public exposure, and cutover remain separately gated.
 6. This decision record preserves the historical implementation baseline. The active GHM HTTP resource-auth path is now the canonical ES256 verifier; no HS/`JWT_SECRET` cutover remains outstanding for resource authentication.
 
 ---
@@ -259,7 +259,7 @@ Prior to Founder selection, the ADR recorded neutral options A–D (GHM issuer, 
 
 ## 7. Founder decisions 1–12 — recorded
 
-Architecture decisions are **SELECTED** in §16 (date `2026-09-21`). Implementation remains **NOT AUTHORIZED**.
+Architecture decisions were **SELECTED** in §16 (date `2026-09-21`). The accompanying implementation stop is the **historical Gate 2 decision** and was superseded for the bounded GHM authentication foundation by Gate 3B. Product session-client integration, migration, public exposure, and cutover remain separately gated.
 
 Additional open evidence questions (not architecture blockers): intended use of unused `INVITE_CODE`; packaging consistency for `jsonwebtoken`; whether unused `bcrypt` / `express-session` deps are historical placeholders.
 
