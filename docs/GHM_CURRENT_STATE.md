@@ -137,3 +137,14 @@ This paragraph records the outcome of the 2026-10-05 pass and is retained as pro
 - Local Markdown link targets were checked across the 209-file documentation inventory; no broken local file targets were found.
 - This follow-up corrects stale current-status or branch-provenance statements in the Project resource, public Business/Directory, Customer/Quote adapters, Campaign/Project/Saved Business frozen contracts, database/storage README guidance, schema decision, and qualification/evidence records.
 - The follow-up is documentation-only. It does not change application code, migrations, credentials, deployed services, or production product routing. Production cutover remains separately gated.
+
+
+## Supplemental contradiction audit — 2026-10-13
+
+A further targeted cross-document audit reconciled three additional areas on this documentation branch:
+
+- The shared-platform capability audit now labels its original global prohibition as historical and distinguishes the qualified storage metadata/persistence and controlled Cloudflare R2 data path from still-gated product exposure, authorization, recovery, and production enablement. Its capability matrix no longer uses ambiguous “Closed” values for platform-wide audit, queues, realtime, and richer observability authorization.
+- Connect identity source evidence and QuoteFlow identity-mapping records now distinguish the qualified migration-only external-identity mapping from still-open product session migration, role/membership reconciliation, and the separate legacy organization-to-GHM-Business provisioning gate. The superseded dual-confirmation authority contract no longer describes both mappings as currently unimplemented.
+- The Connect backend readiness audit now identifies its entire coverage matrix and dependency counts as the 2026-09-18 historical snapshot, rather than limiting that qualification to its commercial rows.
+
+The targeted cross-check also revisited the current-state index, remaining-work register, storage qualification/evidence, authentication and transport decisions, PostgreSQL authority/legacy-role gates, and selected resource and QuoteFlow migration contracts. No additional clear status contradiction was identified in that reviewed subset. This is a documentation-only follow-up; no code, migrations, credentials, deployments, database state, local checkout, product routing, or production cutover was changed. The existing documentation PR remains unmerged pending final diff and check review.
