@@ -161,7 +161,7 @@ Do not invent additional lifecycle states.
 
 **Who may change it:** only governed/admin-provisioning operations (exact actor model UNSELECTED; not product self-service).
 
-### Migration of existing admins (data plan — not executed)
+### Existing-admin backfill (implemented in migration `20260921120000_extend_account_identity_auth_lifecycle.sql`)
 
 ```text
 UPDATE ghm.account_identity
@@ -649,7 +649,7 @@ No Founder-selected decision is contradicted.
 
 ## 21. Founder vs proposed schema checklist
 
-| Topic | Founder | This contract proposes |
+| Topic | Founder decision | Implemented schema / contract detail |
 |---|---|---|
 | Account status | R1 active/disabled | Column `account_status` |
 | System admin | R2 account-level state | Column `is_system_admin` |
