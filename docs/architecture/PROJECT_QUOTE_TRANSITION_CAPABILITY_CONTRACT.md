@@ -2,7 +2,7 @@
 
 ## Status
 
-QUALIFIED / CLOSED / PASS � implementation and runtime qualification completed 2026-09-14.
+QUALIFIED / CLOSED / PASS — implementation and runtime qualification completed 2026-09-14.
 
 ## Purpose
 
@@ -189,16 +189,21 @@ No:
 
 is authorized by this contract.
 
-## Construction Gate
+## Historical Construction Gate — CLOSED / SUPERSEDED
 
-Implementation is blocked until the database mechanism for this capability
-has been explicitly selected and independently reviewed against:
+The following was the original pre-implementation gate. It is closed by the
+implementation and runtime qualification recorded above; it must not be read as
+a current block on this already-qualified bounded capability:
 
 - least privilege;
 - transaction integrity;
 - provider neutrality;
 - Project boundary preservation;
 - completed runtime qualification evidence.
+
+The closed gate applies only to this dedicated `open -> in_progress` capability.
+It does not authorize production migration, generic Project lifecycle mutation,
+product cutover, or any broader Project Quote integration.
 
 
 
