@@ -36,7 +36,7 @@ The principal remaining blockers are the Connect/QuoteFlow product adapters and 
 |---|---|---|---|---|
 | 1 | Connect product adapter | **Partial — bounded identity adapter foundation and `saved_business.read` service boundary qualified; broader product adapter/workflow parity remains open** | Per-operation mapping from Connect services to GHM operations/providers/local behavior, with independent runtime and end-to-end qualification | Explicit per-capability adapter authorization |
 | 2 | Auth/session compatibility | **GHM authentication foundation QUALIFIED; Connect sessions remain Supabase-owned and non-interchangeable** | Product identity adapter + session migration/cutover evidence | Separate product adapter authorization |
-| 3 | UUID â†” bigint identity mapping | **GHM mapping foundation QUALIFIED: (provider, subject) → GHM account identity; product migration still open** | Concrete Connect adapter operation + migration ownership/evidence | Separate product adapter authorization |
+| 3 | UUID ↔ bigint identity mapping | **GHM mapping foundation QUALIFIED: (provider, subject) → GHM account identity; product migration still open** | Concrete Connect adapter operation + migration ownership/evidence | Separate product adapter authorization |
 | 4 | Public Business + directory parity | Partial | Field-by-field public projection, search/geo/sort/featured contract | Explicit Business/directory authorization |
 | 5 | Trust backend | **QUALIFIED / CLOSED** (`ghm.trust_score` + calculate) | — | Closed; Business profile input parity remains a separate blocker |
 | 6 | Commercial payment operations | **Partial — governed GHM payment preparation/result boundaries are runtime-qualified; PayFast checkout/ITN/server confirmation merged; sandbox/runtime E2E remains open** | End-to-end product workflow and real provider qualification exercising the governed payment-result boundary | Separate product/provider authorization and production gate |
@@ -47,7 +47,7 @@ The principal remaining blockers are the Connect/QuoteFlow product adapters and 
 | 11 | Atomic workflow parity | Partial | Exact workflow contracts and qualification for Connect atomic creates | Explicit workflow authorization |
 | 12 | Deferred participant / capability authorities | Deferred | Concrete transition/verification authority from source | Separate lifecycle authorization |
 | 13 | Thin HTTP surface | Partial | First bounded service-to-service `saved_business.read` transport is qualified; broader per-resource HTTP exposure remains separately gated | Explicit API/adapter authorization |
-| 14 | Referenced tables without migration evidence | **Partially reconciled** â€” see Â§8 / `CONNECT_REFERENCED_OBJECT_RECONCILIATION.md` | Prove or retire remaining E/F objects in production; do not build GHM tables from client fiction | Source reconciliation before construction |
+| 14 | Referenced tables without migration evidence | **Partially reconciled** — see §8 / `CONNECT_REFERENCED_OBJECT_RECONCILIATION.md` | Prove or retire remaining E/F objects in production; do not build GHM tables from client fiction | Source reconciliation before construction |
 | 15 | Shadow qualification/cutover | Not authorized | Shadow plan, rollback evidence, operational gates | Separate production authorization |
 | 16 | Provider/bootstrap authority cleanup | Open infra gate | Independent bootstrap authority evidence | Separate infrastructure authorization |
 
@@ -226,7 +226,7 @@ The verified audit now gives the concrete gap boundary required to authorize fut
 ### Requirements / assumptions disproven or corrected
 
 - Logo bucket name `business-logos` — **false**; actual bucket is `media`
-- Treating class A domain tables as migration-missing orphans â€” **false**; they are migration-proven
+- Treating class A domain tables as migration-missing orphans — **false**; they are migration-proven
 - Business Hours exceptions/booking as Connect readiness requirement â€” **not evidenced** in Connect
 - PayFast / Meta WhatsApp API libraries as live payment/messaging paths â€” **no current importers at the 2026-09-18 source-audit checkpoint**. Connect source then contained Paystack checkout/webhook functions; that code-presence observation is not evidence of Paystack approval or activation. PayFast approval and implementation status are governed separately by the 2026-10-13 commercial reconciliation.
 - Email provider dependency â€” **not evidenced**
