@@ -30,6 +30,8 @@ Project Quote HTTP API was added without reopening the Project Quote domain/runt
 - Domain repository remains authoritative for ownership, eligibility, state, and side effects.
 - No payment-provider or commercial construction is included.
 
-## Local qualification command
+## Original local qualification command — historical
 
-Run the full configured suite with `npm test` after pulling the branch. This document must only be marked fully qualified after the local result is independently verified.
+The following instruction applied to the original construction branch before the router's dependency-wiring fixes and mainline integration. It is retained as provenance, not a current instruction to pull a branch or reopen qualification.
+
+Run the full configured suite with `npm test` after pulling the branch. At that time, this document was not to be marked fully qualified until the local result was independently verified. The current bounded status is stated at the top of this document.
