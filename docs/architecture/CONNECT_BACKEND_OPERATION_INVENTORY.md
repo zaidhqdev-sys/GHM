@@ -2,7 +2,7 @@
 
 **Status:** HISTORICAL EVIDENCE INVENTORY — BRIDGE TO FUTURE ADAPTER WORK (NOT AUTHORIZED)  
 **Connect commit:** `abcffa73f893602c25310a58946bebb91fd7eeb5`  
-**GHM comparison tip:** docs/resources as of evidence sprint  
+**GHM comparison tip:** historical docs/resources snapshot from the 2026-09-18 evidence sprint; not the current mainline  
 **Date:** 2026-09-18
 
 ## 1. Purpose

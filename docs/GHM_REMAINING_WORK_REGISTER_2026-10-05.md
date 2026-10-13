@@ -102,14 +102,21 @@ Remaining work is only where a product capability is explicitly selected:
 Do not build a generic table API.
 
 ### GHM-04 — Public Business/directory composition/search
-**Classification:** candidate GHM product-facing capability; source evidence exists, implementation not yet authorized.
+**Classification:** partially qualified — the narrow public Business read and Directory v1 construction slices are closed; broader composition and Connect-parity search remain gated.
 
-Required before construction:
-- reconcile the remaining canonical public fields;
-- define composed public Business projection ownership;
-- define directory filter/search/sort/pagination/geo semantics;
-- prove category/review/trust/hours composition does not duplicate ownership;
-- authorize and qualify the smallest projection/search slice.
+Already qualified and merged to `main` via PR #10:
+- `business.readPublic`: one known, active, approved/verified Business returned through the narrow public projection;
+- `directory.read` v1: public eligibility, optional text query over canonical public fields, canonical category filtering, deterministic ordering/pagination, and the narrow public Business list projection.
+
+These capabilities must not be reopened as unbuilt work. Their qualification does **not** authorize production product cutover, provider migration, shadow routing, backfill, or expansion beyond the qualified contracts.
+
+Remaining only if a separately selected product requirement needs broader behavior:
+- define the exact composed public Business response and canonical ownership of every additional field;
+- define and qualify any additional filters, sorting, geo/location behavior, or Connect parity not included in Directory v1;
+- prove composition of categories, reviews, Trust, hours, and capabilities consumes their existing ownership boundaries without duplicating data or weakening public-visibility/authorization rules;
+- authorize and qualify each smallest additional slice before implementation.
+
+The current contracts are `docs/architecture/GHM_CONNECT_PUBLIC_BUSINESS_DIRECTORY_CONTRACT.md` and `docs/architecture/GHM_CONNECT_PUBLIC_DIRECTORY_SEARCH_CONTRACT.md`. Their qualified narrow scope is construction evidence, not production cutover authorization.
 
 ### GHM-05 — Commercial provider operations
 **Classification:** GHM commercial integration — partially qualified / open.
