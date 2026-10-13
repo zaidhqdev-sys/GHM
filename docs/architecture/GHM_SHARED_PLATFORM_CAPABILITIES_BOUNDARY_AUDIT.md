@@ -26,9 +26,10 @@ It does **not** decide that GHM must own all five.
 It does **not** authorize implementation, provider selection, transport selection, or cloud infrastructure.
 
 ```text
-NO SHARED PLATFORM CAPABILITY IMPLEMENTATION AUTHORIZED
-NO STORAGE / QUEUE / REALTIME / OBSERVABILITY PROVIDER SELECTED
-NO CLOUD INFRASTRUCTURE SELECTED
+HISTORICAL BASELINE AT ORIGINAL AUDIT CHECKPOINT — NOT CURRENT GLOBAL STATUS
+NO SHARED PLATFORM CAPABILITY IMPLEMENTATION WAS AUTHORIZED BY THIS AUDIT
+PROVIDER SELECTIONS AND QUALIFICATIONS MUST BE READ FROM LATER CAPABILITY-SPECIFIC RECORDS
+NO CLOUD INFRASTRUCTURE SELECTION WAS AUTHORIZED BY THIS AUDIT
 ```
 
 ## Audit method
@@ -39,7 +40,7 @@ Evidence inspected includes: `package.json`, `src/**`, `database/migrations/**`,
 
 ## 1. Object storage
 
-### Current repository state
+### Historical repository state at the original audit checkpoint (superseded where later evidence is cited)
 
 | Evidence | Path / finding |
 |---|---|
@@ -48,17 +49,17 @@ Evidence inspected includes: `package.json`, `src/**`, `database/migrations/**`,
 | Runtime imports of S3 / multer under `src/` | **None found** |
 | GHM storage resource / HTTP upload API | **Absent** |
 | Account media reference field only | `avatar_ref` on `ghm.account_identity` (`src/resources/business-identity/*`) — opaque reference string; not object storage |
-| Connect storage needs audited | `docs/architecture/CONNECT_STORAGE_MEDIA_SOURCE_AUDIT.md` — Connect uses Supabase Storage; GHM has no storage resource |
+| Connect storage needs audited | `docs/architecture/CONNECT_STORAGE_MEDIA_SOURCE_AUDIT.md` — records the original Connect/Supabase baseline; see the later GHM storage qualification records for current bounded capability status |
 | Campaign / charter forbid storage in current slices | Campaign contracts; Platform Charter; handover Media/Storage **OPEN / NOT YET AUTHORIZED** |
 | Shared candidate listed | `docs/architecture/PRODUCT_BACKEND_CAPABILITY_INVENTORY.md` item 6 |
 
-### Existing implementation
+### Original audit finding and current reconciliation
 
-**None as a GHM object-storage capability.** Dependencies appear installed but unused. Opaque `avatar_ref` is identity metadata, not a storage platform.
+At the original audit checkpoint, no GHM object-storage capability was found in runtime imports or an HTTP upload API. That finding is historical, not current global status: storage metadata/persistence and the controlled Cloudflare R2 provider data path were subsequently construction-qualified. Product-facing authorization, provider enablement, recovery, and cutover remain separately gated. Dependencies and opaque `avatar_ref` alone are not evidence of the storage capability.
 
-### Missing capability
+### Remaining capability boundaries
 
-Governed object storage: buckets/prefixes, upload/download, signed access, retention, ACL, product-facing storage contract.
+The qualified storage foundation does not by itself prove complete product-facing upload/download workflows, tenant/resource authorization, signed access policy, retention/deletion authority, recovery, production enablement, or product cutover. Treat each as gated unless its own current contract and qualification evidence says otherwise.
 
 ### Current product requirements
 
@@ -98,7 +99,7 @@ Do not lock contracts to AWS S3, R2, Supabase Storage, Azure Blob, GCS, MinIO, o
 
 ### Decision status
 
-**FUTURE / GATED** (platform candidate) · KBM media **PRODUCT-OWNED** · Provider **None Selected**
+**QUALIFIED BOUNDED FOUNDATION** (storage metadata/persistence and controlled Cloudflare R2 data path) · product-facing enablement/integration **FUTURE / GATED** · Cloudflare R2 selected for the qualified provider path
 
 ---
 
@@ -368,7 +369,7 @@ Do not select Datadog/New Relic/OTel vendor lock into domain contracts.
 
 | Capability | Current State | GHM Ownership Status | Product Ownership Status | Provider Selected | Implementation Authorized |
 |---|---|---|---|---|---|
-| Object storage | Unused S3 deps; no GHM storage API | Future/Gated | KBM media Product-Owned | None Selected | Closed |
+| Object storage | Storage metadata/persistence + controlled R2 provider data path qualified; broader product surface remains gated | Qualified bounded foundation; broader ownership/scope gated | KBM media Product-Owned | Cloudflare R2 (bounded provider path) | Bounded slice qualified; product-facing enablement/cutover gated |
 | Durable audit | commercial_event only | Existing/Internal (commercial); Future/Gated (platform-wide) | Analytics Product-Owned | None Selected | Closed |
 | Jobs / queues | Absent | Not Justified now; Future/Gated if multi-product evidence | KBM generation Product-Owned | None Selected | Closed |
 | Realtime | Unused socket.io; no GHM realtime | Not Justified now; Future/Gated for Connect UX | UX refresh Product-Owned | None Selected | Closed |
@@ -456,7 +457,7 @@ A future shared storage capability must be separately authorized.
 | Decision | Status |
 |---|---|
 | Whether platform-wide durable audit becomes GHM-owned | UNDECIDED |
-| Whether object storage becomes GHM-owned (beyond opaque refs) | UNDECIDED |
+| Whether GHM owns a broader, fully product-facing storage platform beyond the qualified bounded foundation | UNDECIDED |
 | Whether jobs/queues become GHM-owned | UNDECIDED (not justified by current GHM evidence) |
 | Whether realtime has a hard cross-product GHM requirement | UNDECIDED (Connect convenience ≠ GHM mandate) |
 | Observability platform contract beyond construction operational boundary | UNDECIDED |
