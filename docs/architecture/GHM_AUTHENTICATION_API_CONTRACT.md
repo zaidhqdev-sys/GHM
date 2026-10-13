@@ -453,7 +453,7 @@ Trusted GHM API verifiers (GHM Resource API; later product adapters that verify 
 | `iss` | Must equal `ghm-auth` |
 | `aud` | Must equal `ghm-api` |
 | `exp` | Present and not expired |
-| `iat` | Present; reject absurd skew per implementation policy (exact skew UNSELECTED) |
+| `iat` | Issued access tokens include `iat`. The ±60-second clock-skew parameter is Founder-approved, but the current verifier does not independently require `iat` or reject future `iat` values; this remains an open qualification item before product/production exposure. |
 | `nbf` | Not required by Founder contract; if present, honor if implementation chooses (**UNSELECTED**) |
 | `sub` | Present; maps to valid GHM identity for AuthContext |
 
