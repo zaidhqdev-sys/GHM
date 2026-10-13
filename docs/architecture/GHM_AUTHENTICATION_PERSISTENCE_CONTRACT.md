@@ -146,7 +146,7 @@ Associate **one** GHM identity with its password credential **without** storing 
 
 - Put plaintext or reversibly encrypted passwords in the database.
 - Treat coarse `account_identity.role` as password or membership truth for authz.
-- Invent exact table/column names in this gate.
+- At the original Gate 2D stage, do not invent physical names before implementation approval. The physical names are now implemented and listed in `GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md`; use that migration record for current schema authority.
 
 ### Login email ownership
 
@@ -155,12 +155,12 @@ Email is the primary login identifier. Persistence of the normalized login email
 - with the credential record; or
 - in a dedicated login-identifier record bound 1:1 (or controlled 1:N later) to `account_identity`
 
-Exact placement is an **implementation decision** (UNSELECTED). Repository evidence: **no email column** on `account_identity` today.
+The implemented login email is held by the separate credential relation, not on `ghm.account_identity`. The earlier placement question is resolved by the qualified schema migration; see `GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md`.
 
 ```text
 FOUNDER DECISION (architecture): password credential separate from account_identity = SELECTED
-Exact relation/column names = UNSELECTED
-Argon2id cost parameters = UNSELECTED
+Physical credential relation: implemented as `ghm.account_password_credential` (see schema migration contract)
+Argon2id cost parameters: use current credential implementation/configuration evidence; any operational tuning remains separately governed.
 ```
 
 ---
@@ -201,7 +201,7 @@ session usable iff
 
 ```text
 FOUNDER DECISION (architecture): sliding + absolute session model = SELECTED (30d / 90d)
-Exact session relation/column names = UNSELECTED
+Physical session relation: implemented as `ghm.authentication_session` (see schema migration contract)
 ```
 
 ---
@@ -249,12 +249,12 @@ The durable store retains **H(R)** (and lineage metadata), never `R` in plaintex
 
 > **Technical recommendation — not a Founder decision.**
 
-Prefer an **opaque** refresh secret (random high-entropy) with at-rest **hash/reference**, not a JWT refresh token. (Session Contract also recommends opaque; Founder selection of opacity may still be outstanding.)
+The original Gate 2D recommendation favored an opaque refresh secret with an at-rest hash/reference. The qualified implementation uses opaque refresh credentials and stores hashed credential material; this is implementation evidence, not a claim that the original recommendation itself was a Founder decision.
 
 ```text
 FOUNDER DECISION: rotate / single-use / session-family replay = SELECTED
-Exact refresh relation names = UNSELECTED
-Opaque vs JWT-shaped refresh token type = RECOMMENDED opaque / may remain UNSELECTED
+Physical refresh relation: implemented as `ghm.refresh_credential`
+Refresh credential type: opaque in the qualified implementation; historical recommendation status does not override implementation evidence.
 ```
 
 ---
@@ -399,11 +399,11 @@ Do **not** design persistence for:
 | Item | Status |
 |---|---|
 | Conceptual records in §§5–10 | **Required by architecture** (this contract) |
-| Exact table/column names | **UNSELECTED** |
-| Argon2id cost parameters | **UNSELECTED** |
-| Recovery TTL | **UNSELECTED** |
-| Email provider | **UNSELECTED** |
-| Opaque refresh credential type | **RECOMMENDED** / Founder may still record explicitly |
+| Exact table/column names | Implemented in migrations; see `GHM_AUTHENTICATION_SCHEMA_MIGRATION_CONTRACT.md` |
+| Argon2id cost parameters | Governed by current credential implementation/configuration; not reselected by this historical concept contract |
+| Recovery TTL | Current implementation uses the configured/qualified recovery boundary; production delivery remains separately gated |
+| Email provider | Provider/delivery enablement remains separately gated |
+| Opaque refresh credential type | Opaque refresh credential is used by the qualified implementation; this originated as a technical recommendation in this historical contract |
 | Exact runtime grant matrix for auth tables | **UNSELECTED** (must follow §3) |
 | Rate-limit thresholds | **UNSELECTED** |
 | ES256 key storage class | **SELECTED:** secret-managed inside issuer boundary |
