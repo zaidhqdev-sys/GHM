@@ -152,7 +152,7 @@ Read this file first and the Connect companion. Check latest main/branch/PR stat
 - `src/features/administration/AdminDirectoryReviewPanel.jsx` actively invokes founder-reviewer check, review queue listing and review decision. `src/features/administration/AdminCapabilityEvidencePanel.jsx` actively invokes verifier check, evidence queue and review decisions (verified/rejected/revoked).
 - `src/features/onboarding/OnboardingPanel.jsx` invokes onboarding progress read and action methods, but is gated by `featureFlags.guidedOnboarding`; record the feature flag and actual route reachability as an explicit activation check, not automatically as always-visible launch scope.
 
-### Required matrix corrections
+### Required matrix mappings
 
 1. Business hours: GET is a reuse candidate; replacement is an HTTP-surface gap until a mutation route with authorization, schema and integration tests is present.
 2. Business profile/directory: engagement tracking is an active dependency. GHM directory/profile reads must be compared with Connect's field allowlist, slug/ID semantics, owner preview fallback and the event kinds above.
@@ -302,9 +302,9 @@ No runtime or production changes. This is an audit/documentation checkpoint only
 
 No code, migration, provider activation or production change was made.
 
-## 19. Caller-reachability correction and remaining domain inventory
+## 19. Caller reachability and remaining domain inventory
 
-### Reachability and active-caller corrections
+### Reachability and active-caller findings
 
 - **Relationships/outcomes**: current route dispatch/reachability is confirmed, and `RelationshipOutcomeScreen.jsx` actively calls relationship and outcome services. GHM has no equivalent domain in the current resource inventory; classify this as a **Build** gap. Preserve lifecycle, verification, visibility, provenance and evidence semantics. Route reachability is not an open question.
 - `businessOfferingService` / `catalogueService` appear as facade exports, but current repository search did not identify a production UI caller. Do not include the full offerings CRUD domain in the launch migration until an active caller is confirmed. This does not remove the separately confirmed active business-category/capability/directory needs.
@@ -390,7 +390,7 @@ No code or production changes. Identity and storage exposure remain prerequisite
 
 ## 22. Relationships route and role-mapping findings
 
-### Correction: relationships is a registered current route
+### Relationships route registration
 
 Connect `src/app/routes.js` registers `ROUTE_IDS.RELATIONSHIPS` as a navigable route requiring authentication, `BUSINESS_READ` permission and active-business context. `ZaidConnectApp.jsx` lazy-loads `RelationshipOutcomeScreen.jsx`, which calls relationship and outcome services. This is **in-scope active functionality**, not a dormant import. GHM lacks matching relationship/outcome resources; classify it as a **Build** gap with lifecycle, verification and business-scope authorization acceptance tests.
 
