@@ -124,7 +124,7 @@ Sources: `src/auth/authorization.ts`, `src/auth/request-context.ts`, `database/m
 
 1. Connect production identity is **UUID + Supabase Auth**.
 2. GHM construction identity is **bigint + JWT AuthContext**.
-3. **No stable cross-system identity mapping table or adapter exists** in either repository under audited paths.
+3. **At the audited 2026-09-18 source snapshots, no stable cross-system identity mapping table or adapter existed** in either repository under the audited paths. This is historical evidence only; the later qualified GHM mapping foundation and Connect identity adapter are recorded in `GHM_CONNECT_IDENTITY_BRIDGE_QUALIFICATION.md` and `GHM_CONNECT_IDENTITY_ADAPTER_QUALIFICATION.md`.
 4. Before GHM can back Connect, explicit evidence and authorization are required for: identity issuance ownership, UUID↔bigint mapping, role vocabulary mapping, session validation, and account bootstrap.
 5. This audit does **not** authorize identity construction or adapter work.
 
