@@ -414,7 +414,7 @@ This ADR records the authentication **issuance architecture** decision. It does 
 
 **Historical status at Gate 2 issuance decision: RECORDED — architecture selections complete; implementation NOT GRANTED.** Gate 3B subsequently granted and qualified construction of the bounded GHM authentication foundation; the product-client/migration and production gates remain separate.
 
-Founder selections dated `2026-09-21`. These define **SELECTED TARGET ARCHITECTURE** only. They do not authorize code, migrations, verification changes, or product changes.
+Founder selections dated `2026-09-21` define the **selected target architecture**; by themselves, they do not authorize code, migrations, verification changes, or product changes. The bounded authentication foundation was subsequently authorized and qualified through Gate 3B; broader product and production changes remain separately gated.
 
 | # | Decision | Founder selection | Date | Notes |
 |---|---|---|---|---|
