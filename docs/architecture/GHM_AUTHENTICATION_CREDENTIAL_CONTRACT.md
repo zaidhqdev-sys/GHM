@@ -107,7 +107,7 @@ Already selected (Issuance ADR / prior gates):
 | C9 | Password recovery sessions | **Revoke all existing refresh sessions**; user must **authenticate again** |
 | C10 | Future authenticators | **Mobile OTP**, **passkeys/WebAuthn**, and **device-local biometrics** remain **deferred / future options** — not designed or implemented now |
 
-Exact numeric recovery lifetime, email transport vendor, credential table names, Argon2id parameters (memory/time/parallelism), and login-email persistence schema remain **implementation / follow-on** unless separately selected. No email provider is invented here.
+The bounded password-recovery implementation uses a 30-minute credential TTL. Production email transport/provider and delivery enablement remain separately gated; Argon2id cost parameters and any additional operational tuning must follow current implementation/configuration evidence.
 
 ---
 
@@ -281,7 +281,7 @@ Recovery must support:
 
 **Do not invent** an email provider, SMS/OTP provider, or recovery table name in this document.
 
-Still open: exact numeric recovery lifetime; email transport/provider; recovery message templates.
+Still open: production email transport/provider and delivery enablement; recovery message templates and product-specific delivery qualification.
 
 ---
 
@@ -388,7 +388,7 @@ ghm.account_identity.id
 | exact rate-limit thresholds | **UNSELECTED** |
 | recovery channel | **SELECTED: email** (`2026-09-21`) |
 | recovery credential properties | **SELECTED: short-lived, single-use, server-controlled; invalidate after use; enumeration-resistant** |
-| exact numeric recovery lifetime | **UNSELECTED** |
+| exact numeric recovery lifetime | The bounded password-recovery implementation issues a 30-minute recovery credential (`src/auth/password-recovery.ts`); production email delivery remains gated |
 | email transport / provider | **UNSELECTED** (not invented) |
 | post-recovery session handling | **SELECTED: revoke all refresh sessions; re-authenticate** (`2026-09-21`) |
 | credential-change session handling | **SELECTED: revoke other refresh sessions; keep current; issue fresh refresh** (`2026-09-21`) |
