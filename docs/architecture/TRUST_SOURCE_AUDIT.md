@@ -180,9 +180,9 @@ No public HTTP API is defined in Connect for Trust; the client uses the data API
 
 Connect calculation reads `businesses.description`, `phone`, `email`, `insurance_verified`, `jobs_completed`, and `rating`.
 
-GHM first-slice `ghm.business` currently exposes `rating` (and review aggregates) but does **not** yet expose `description`, `phone`, `email`, `insurance_verified`, or `jobs_completed`.
+The historical first-slice `ghm.business` baseline exposed `rating` (and review aggregates) but lacked `description`, `phone`, `email`, `insurance_verified`, and `jobs_completed`. The separate Business Profile extension later added those columns and qualified the owner-update/protected-input boundary.
 
-Those dimensions therefore score as **0** under Connect's own formulas until a separately authorized Business profile field extension establishes the columns. This matches Connect's own deferred-zero pattern for `id_verified` / `cipc_verified` / `vat_verified`. It does **not** reopen Business Identity construction and does **not** invent those columns in this Trust slice.
+**Current Trust calculation status:** `ghm.calculate_business_trust_score` still intentionally sets `profile_complete`, `phone_verified`, `email_verified`, `insurance_verified`, and `completed_projects` to `0`; the extension did not authorize changing Trust calculation semantics or treating protected fields as verified evidence. A separate reviewed/authorized Trust scoring update is required before those inputs are consumed. The `id_verified` / `cipc_verified` / `vat_verified` dimensions also remain zero pending authoritative evidence contracts.
 
 `rating`-driven `reviews_score` remains live against GHM Business aggregates.
 
