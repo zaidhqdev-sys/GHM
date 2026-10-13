@@ -203,3 +203,24 @@ Connect review service creates a row with `business_id`, `reviewer_id`, and `rev
 
 No code or production changes. Next batch: compare Connect notification/support request payloads and status enums against GHM route parsers, then verify all doc links and PR diffs before continuing the full repository reconciliation.
 
+## 14. Contract audit batch — support and notification caller status
+
+### Support — active caller verified
+
+- Connect `src/features/help/SupportRequestsPanel.jsx` is imported by `HelpScreen.jsx`; it calls support list, message, create and reply methods.
+- `src/features/administration/AdminSupportRequestsPanel.jsx` is imported by `AdministrationScreen.jsx`; it calls admin list/messages/reply/status methods. Support is an active user journey.
+- GHM has customer/admin support route families, but compare Connect's admin filter default (status null, limit 100), status enum, create category/subject/description/businessId, message shape and reply/status semantics against GHM parsers. Enforce customer ownership and admin-only status updates.
+
+### Notifications — separate creation from inbox UI
+
+- Connect has notification create/read/mark-read/all-read facade methods, and creation is used by other service paths. GHM notification list/detail/create/read/all-read routes exist; qualify payloads and recipient authority against active notification-producing workflows.
+- The `useNotifications` hook appears only in `src/hooks/hooks_index.js`; no active caller was found. `NotificationCenter` has no confirmed active mount. The legacy `AdminVerificationScreen` is explicitly not mounted by the founder directory-review contract test. Do not rebuild the old notification/realtime UI or that legacy screen by assumption.
+- `subscribeToPush` remains helper-only in current search evidence; no active invocation was found. Push subscription/delivery is not confirmed as launch-critical.
+
+### Classification update
+
+- Support = **active, reuse candidate with contract adaptation and authorization tests**.
+- Notification producer API = **reuse candidate with recipient/payload qualification**.
+- Notification inbox/realtime/push = **evidence insufficient**, not automatically in migration build scope.
+
+No code or production changes were made. Next task: inspect exact Connect support request/reply/status fields and GHM parser enums; then finalize the operation-level matrix and finish source-of-truth document reconciliation.
