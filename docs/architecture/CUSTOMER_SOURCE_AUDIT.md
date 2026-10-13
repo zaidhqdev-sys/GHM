@@ -1,10 +1,10 @@
 # Customer Source Audit
 
-**Status:** SOURCE AUDIT — RECONCILED / CONSTRUCTION AUTHORIZED
+**Status:** HISTORICAL SOURCE AUDIT — CONSTRUCTION COMPLETED / QUALIFIED
 
 **Source product:** QuoteFlow (`zaidhqdev-sys/QuoteFlow`, `main`)
 
-> **Historical-status reconciliation — 2026-10-12:** The “construction authorized” status records the original source-audit decision, not a request to begin the resource from scratch. Customer construction is now represented in the qualified mainline capability index. This audit remains the source-contract evidence; it does not authorize production migration, product routing changes, or cutover.
+> **Historical-status reconciliation — 2026-10-13:** The “construction authorized” status records the original source-audit decision, not a request to begin the resource from scratch. Customer construction is now represented in the qualified mainline capability index. This audit remains the source-contract evidence; it does not authorize production migration, product routing changes, or cutover.
 
 ## 1. Purpose
 
