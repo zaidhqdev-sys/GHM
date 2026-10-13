@@ -146,7 +146,7 @@ The Core read surface has two explicit projections:
 
 Private Opportunities remain isolated from unrelated callers.
 
-Participant visibility remains fail-closed until the Participant slice provides an explicit participant authorization operation. The Core implementation must not invent participant authorization before that slice exists. Until that slice is qualified, participant-specific access is a documented dependency rather than an implicit bypass.
+The Opportunity Participant slice is now separately qualified with an explicit authorization operation. Opportunity Core must nevertheless remain fail-closed unless that participant authorization path is explicitly invoked for the requested read; qualification of the Participant resource alone does not silently add participant visibility to Core projections or authorize broader workflow parity.
 
 ## Validation Invariants
 
