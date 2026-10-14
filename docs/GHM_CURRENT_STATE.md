@@ -1,6 +1,6 @@
 # GHM Current State — Authoritative Documentation Reconciliation
 
-**Status:** CURRENT / AUTHORITATIVE DOCUMENTATION INDEX — reconciled 2026-10-13
+**Status:** CURRENT CONSTRUCTION-STATE INDEX — targeted status corrections in review as of 2026-10-14; repository-wide semantic reconciliation is not yet certified
 **Repository authority:** consolidated `main`
 **Reconciliation history:** the PR #125 baseline (`01bd40dabe0b0f02bb30d2f78267a0414d3d8356`) was followed by PR #126 (`aef8ecdeee241d31827f6fc42730f9a61f1ddea4`), PR #127 (`6afb428d452012d9860ca50c2b0066f0768b184c`), PR #128 (`671c41be0b2446dd5c56c709c4aa3cb2e15e7d81`), PR #129 (`9af7901b0baecbdc4b307f3a0a93e1643f006ca6`), and PR #130 (`14c805cfd749ed50493523972fdd0a7c359bbfce`), all merged on 2026-10-13. These SHAs identify historical reconciliation milestones, not live pointers to deployed Render code or database state. The earlier `1f2b10d0850095311614c5b5f9531eb8b7cce860` checksum-normalization commit is historical provenance. PR #130 subsequently merged into `main` as `14c805cfd749ed50493523972fdd0a7c359bbfce`; pre-merge checkpoint language retained below is historical only.
 
@@ -169,7 +169,7 @@ The QuoteFlow migration pass also reconciled stale checklist framing: the existi
 
 ## Historical pre-merge documentation checkpoint — PR #130, 2026-10-13 (superseded by merge)
 
-This section records the current documentation-only reconciliation branch; it is not evidence that the branch has merged or that deployed/runtime state changed. The review revisited the current-state index, governed remaining-work register, qualification sequence, Issue #1 roll-up, authentication parameter gate, Connect readiness records, QuoteFlow migration/identity contracts, shared-platform boundary audit, and dated September handovers.
+This is a historical pre-merge checkpoint for PR #130. It is not evidence that the branch had merged at the time or that deployed/runtime state changed. PR #130 subsequently merged as recorded above. The review covered the current-state index, governed remaining-work register, qualification sequence, Issue #1 roll-up, authentication parameter gate, Connect readiness records, QuoteFlow migration/identity contracts, shared-platform boundary audit, and dated September handovers.
 
 - Dated handover instructions and old “current state” headings are explicitly scoped to their historical checkpoints; they do not override the living status index or current founder-agreed merge gates.
 - Authentication roll-ups now list the actual unresolved parameter decisions and distinguish bounded implementation authorization from explicit Founder approval.
