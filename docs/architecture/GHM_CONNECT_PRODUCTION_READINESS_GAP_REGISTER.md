@@ -152,9 +152,8 @@ These remain evidence/authorization gates, not implementation tasks.
 
 ## 6. Production boundary
 
-Until separately authorized and qualified:
+Until separately authorized and qualified, the existing Connect source/runtime configuration remains unchanged and still contains Supabase coupling; this is a no-cutover control, **not** a claim that the hosted Supabase project is currently reachable or that Supabase remains the approved target:
 
-- Connect remains on Supabase.
 - No production database changes.
 - No DNS/routing changes.
 - No credential changes.
