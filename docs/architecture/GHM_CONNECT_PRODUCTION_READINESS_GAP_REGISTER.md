@@ -220,7 +220,7 @@ The verified audit now gives the concrete gap boundary required to authorize fut
 - Directory search/featured/nearby as Connect product behavior
 - Storage logos on bucket `media` / prefix `logos/` (not `business-logos`)
 - Realtime subscriptions only for notifications INSERT and leads INSERT
-- Live Edge functions: Paystack checkout, Paystack webhook, AI proxy
+- Historical Connect source-audit observation (2026-09-18): Edge functions existed for Paystack checkout, Paystack webhook, and AI proxy. This records source-code presence at that checkpoint only; it does not establish hosted availability or provider approval.
 - Atomic gaps: Project ↔ Opportunity create; payment prepare/apply; capability replace/evidence; directory founder review
 **Historical 2026-09-18 Class A snapshot (not current GHM coverage):** the original audit listed Trust, offerings, categories, evidence, onboarding, engagement, and relationships/outcomes as missing at that checkpoint. Subsequent GHM construction qualified the bounded Trust, Business Category, and Business Offering resource slices; those GHM resource qualifications do not establish Connect adapter parity or cutover readiness. Capability-evidence submission/review, onboarding, engagement, and relationships/outcomes remain separate product-contract gaps to verify against the current operation inventory and migration handover.
 
