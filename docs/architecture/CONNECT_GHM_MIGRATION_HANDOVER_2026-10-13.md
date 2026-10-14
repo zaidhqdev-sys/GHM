@@ -532,3 +532,11 @@ The Connect operational evidence review confirmed that `CURRENT_STATE_AUDIT.md`,
 A material authority risk was corrected in `DIRECTORY_LAUNCH_1_BOUNDED_FOUNDER_AUTHORIZATION_INSTRUMENT.md`: the Supabase production project and Table/SQL Editor had been presented as the approved control plane without a current GHM migration boundary. The instrument now explicitly labels these as historical source-system provenance, not a current execution target, and still records `EVENT_AUTHORIZED=FALSE` / `EVENT_EXECUTED=FALSE`. Verified SHA `77fe483288a651e61c5e6fd4d9cd7ded8f92e8e0`.
 
 Full-corpus link validation, remaining semantic/history/ownership checks, and cross-repository readiness/operation evidence comparison remain open. No local sync, listing publication, production mutation, provider activation, migration, cutover, or merge occurred.
+
+## 40. Connect security/integration architecture checkpoint — 2026-10-15 00:56 SAST
+
+Reviewed Connect `SECURITY_ARCHITECTURE.md` (SHA `7481d20644db34fbb8a0523707dffb4960029e8c`) and `INTEGRATION_ARCHITECTURE.md` (SHA `be85fec89c2d74873ac3c176797282a76342a39f`). Both clearly distinguish inspected Supabase source controls from GHM target security, require target operation contracts and verification, prohibit treating documentation as implementation, and preserve the no-Supabase target and payment/AI fail-closed gates. The integration overlay explicitly lists operation parity blockers and notes the signed GHM Connect endpoint is server-to-server only.
+
+Likely security/privacy/incident/risk filenames under Engineering/Implementation were probed but returned 404; branch-tree matching found no alternate named files beyond the two architecture docs and the directory authorization instrument. No missing path was replaced by guesswork.
+
+Full link validation, full semantic/metadata/ownership review, and cross-repository evidence comparison remain open. No local sync, production mutation, provider activation, migration, cutover, or merge occurred.
