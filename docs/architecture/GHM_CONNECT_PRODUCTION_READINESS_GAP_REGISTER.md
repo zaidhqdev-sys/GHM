@@ -60,7 +60,7 @@ The principal remaining blockers are the Connect/QuoteFlow product adapters and 
 These are **not** migration-missing. They remain blocked for GHM construction until separately authorized:
 
 - `business_capability_evidence`
-- `business_categories` / `business_category_assignments`
+- `business_categories` / `business_category_assignments` — GHM Business Category resource QUALIFIED / CLOSED; Connect assignment, HTTP/adapter, UI and filter parity remains open
 - ~~`trust_scores`~~ → GHM `trust_score` QUALIFIED / CLOSED (Business profile input parity still open)
 - `account_onboarding_progress`
 - `business_engagement_events` / `business_profile_view_visitors`
