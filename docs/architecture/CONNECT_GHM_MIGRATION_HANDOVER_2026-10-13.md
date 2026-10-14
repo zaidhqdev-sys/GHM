@@ -24,14 +24,14 @@ Target: remove **all Supabase runtime dependencies from current ZAID Connect** a
 - Do not instruct the founder to sync/pull local repositories unless asked. Keep work in small batches and updates concise.
 - Do not create more branches without need. These handover branches are documentation-only.
 
-## 2. Repository checkpoints (verified 2026-10-13)
+## 2. Repository checkpoints — historical source baseline and current review baseline
 
-| Repository | Main checkpoint | Documentation branch |
-|---|---|---|
-| GHM `zaidhqdev-sys/GHM` | `9718890d65cd5e63a63aca4503ec41d36d8f7eca` | `construction/connect-ghm-migration-handover-20261013` |
-| ZAID Connect `zaidhqdev-sys/zaid-connect` | `abcffa73f893602c25310a58946bebb91fd7eeb5` | `construction/ghm-backend-migration-handover-20261013` |
+| Repository | Historical source checkpoint (2026-10-13) | Verified `main` at status-correction review (2026-10-14) | Original handover branch |
+|---|---|---|---|
+| GHM `zaidhqdev-sys/GHM` | `9718890d65cd5e63a63aca4503ec41d36d8f7eca` | `20b120c7d6ecf7a86f9dc4f7a8dc61f9dee4d8dc` | `construction/connect-ghm-migration-handover-20261013` |
+| ZAID Connect `zaidhqdev-sys/zaid-connect` | `abcffa73f893602c25310a58946bebb91fd7eeb5` | `e87ec1595f8ba412d37bccaa32120aa38d3d78d0` | `construction/ghm-backend-migration-handover-20261013` |
 
-These are source checkpoints, not proof of the live Render deployment or production data. No runtime changes were made in this audit.
+The 2026-10-13 SHAs are historical source checkpoints, not current `main` pointers and not proof of live Render deployment or production data. The 2026-10-14 SHAs identify the verified mainline bases used for this status-correction review; recheck current `main` before later work. No runtime changes were made in this audit.
 
 ## 3. Why this is urgent
 
