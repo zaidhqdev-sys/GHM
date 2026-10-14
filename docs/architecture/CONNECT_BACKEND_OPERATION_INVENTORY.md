@@ -44,7 +44,7 @@ The GHM authentication foundation is now construction-qualified, including the c
 | `useLeads` channel | realtime | leads | R | Realtime | filter | — | none | EXTERNAL |
 | `savedService.toggle/getAll` | save | saved_businesses | R/W | table | owner | app | saved_business C/D/R | GHM_PROVIDES |
 | `businessHourService.get/replace` | hours | business_hours | R/W | table/RPC | manage/public | fn | business_hours | GHM_PROVIDES |
-| `businessOfferingService.*` | offerings | business_offerings | R/W | table | manage | row | none | GHM_ABSENT |
+| `businessOfferingService.*` | offerings | business_offerings | R/W | table | manage | row | none | GHM_ABSENT in 2026-09-18 historical inventory; current GHM resource contract QUALIFIED / CLOSED; Connect adapter need unproven |
 | `categoryService` / `businessClassificationService` | categories | category tables | R/W | table/RPC | mixed | mixed | none | GHM_ABSENT |
 | `capabilityService` list/get | catalogue read | capabilities | R | table | public/auth | query | capability catalogue | GHM_PROVIDES |
 | `capabilityService` draft/transition | catalogue write | capabilities | W | RPC | admin/gov | fn | SELECT-only catalogue | GHM_ABSENT |
