@@ -454,3 +454,11 @@ Two further source/target ambiguities were corrected and verified:
 - Connect `SOUTH_AFRICA_LAUNCH_RUNBOOK.md`, SHA `082f1c36ccf983a6782edfcde0ef3c075f91246d`: Supabase CLI/database/RLS instructions are conditional historical source procedures, not authorization for production mutation during the active migration audit; commercial launch remains unauthorized.
 
 The founder authorization instrument was also checked: `EVENT_AUTHORIZED=FALSE` and `EVENT_EXECUTED=FALSE`; the narrow directory-listing event authorization is separate from commercial launch and GHM cutover. Current-state audit already identifies the September 2 snapshot as historical. Full link, metadata/history/authority, and cross-repository claim checks remain open. No local sync, production mutation, provider activation, migration, cutover, or merge occurred.
+
+## 30. Connect engineering verification/workflow checkpoint — 2026-10-14 22:35 UTC
+
+Connect's current review branch added and verified migration-state boundaries in:
+- `docs/03_Engineering/TESTING_STRATEGY.md`, SHA `9540a5ae896da6e65eae3855b928b6fed2cd318c`, version 2.1, dated 2026-10-14.
+- `docs/03_Engineering/DEVELOPMENT_WORKFLOW.md`, SHA `0200248be14b8c617abc6cd6662ac98d3cdbdc49`, version 2.1, dated 2026-10-14.
+
+The first explicitly distinguishes source Supabase tests from GHM operation-level qualification and full product parity. The second distinguishes generic/source Supabase workflow from the governed migration execution plan. Product Glossary, Deployment Standard and Coding Standards were also checked and already distinguish source implementation from target qualification. The 47-file Connect Markdown corpus remains only partially audited: full semantic/owner/history checks, full link validation and claim-by-claim cross-repo comparison are outstanding. No local sync, production mutation, provider activation, migration, cutover or merge occurred.
