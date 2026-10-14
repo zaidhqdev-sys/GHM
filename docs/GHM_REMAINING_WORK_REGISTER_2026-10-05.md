@@ -231,7 +231,7 @@ Required:
 ### QF-03 — QuoteFlow GHM session client
 **Classification:** product integration — open.
 
-QuoteFlow currently remains Supabase-authenticated. A GHM session client and runtime coexistence/cutover path must be separately qualified before product authentication moves.
+**QuoteFlow-specific source state:** QuoteFlow remains Supabase-authenticated in the inspected implementation. A GHM session client and runtime coexistence/cutover path must be separately qualified before QuoteFlow authentication moves. This is distinct from ZAID Connect's approved no-Supabase target; the sentence does not assert that the hosted Supabase project is currently reachable or authorize retaining Supabase as Connect's target.
 
 ### QF-04 — QuoteFlow organization → Business provisioning
 **Classification:** migration capability — open.
@@ -270,7 +270,7 @@ Construction health/readiness is qualified. Production replacement still require
 
 ### OPS-05 — Shadow qualification
 **Open / not started.**  
-Exercise representative Connect and QuoteFlow workflows against non-production GHM while production remains on Supabase. Establish reconciliation, failure handling, monitoring and rollback evidence.
+Exercise representative Connect and QuoteFlow workflows against non-production GHM with isolated test identities/data and no production cutover. Keep existing source configurations unchanged until each product's migration is separately qualified and explicitly authorized; do not assume hosted Supabase availability or treat Supabase as the approved Connect target. Establish reconciliation, failure handling, monitoring and rollback evidence before any product-specific cutover.
 
 ### OPS-06 — Controlled cutover
 **Open / not authorized.**  
