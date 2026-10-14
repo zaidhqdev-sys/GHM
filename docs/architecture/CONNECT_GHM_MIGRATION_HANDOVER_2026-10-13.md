@@ -540,3 +540,9 @@ Reviewed Connect `SECURITY_ARCHITECTURE.md` (SHA `7481d20644db34fbb8a0523707dffb
 Likely security/privacy/incident/risk filenames under Engineering/Implementation were probed but returned 404; branch-tree matching found no alternate named files beyond the two architecture docs and the directory authorization instrument. No missing path was replaced by guesswork.
 
 Full link validation, full semantic/metadata/ownership review, and cross-repository evidence comparison remain open. No local sync, production mutation, provider activation, migration, cutover, or merge occurred.
+
+## 41. Connect interface/domain contract checkpoint — 2026-10-15 00:58 SAST
+
+Reviewed Connect's API Specification (SHA `7e36a38b235028144496e54c48fdcc6214d7dc1c`), Integration Specification (SHA `24c3a49e618c9b118b0abc3ba5d6d409cad0d0b7`), and Domain Model (SHA `f29f21fe8a29ea3adde96d440367ca037fbfe312`). These documents distinguish source Supabase evidence from the GHM target, enumerate caller/resource parity gaps, require explicit identity mapping, and preserve provider/launch gates. Event Specification was stale at version 2.0 / 2026-07-20; it is now version 2.1 / 2026-10-15 with a clear GHM migration boundary and no claim of a canonical event platform. Verified SHA `6bcb2a7d28440982f52a8b9a6a4177e52689be69`.
+
+Full-corpus link validation, remaining semantic/metadata/ownership checks, and cross-repository readiness/operation evidence comparison remain open. No local sync, production mutation, provider activation, migration, cutover, or merge occurred.
