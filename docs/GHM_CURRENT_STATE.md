@@ -181,6 +181,14 @@ This paragraph records the historical documentation PR that merged into `main` a
 
 
 
+## Current documentation reconciliation gate — 2026-10-14
+
+GHM PR #135 is the open documentation-only correction for stale status and resume instructions found after PR #133. Its current changed-file set and head must be rechecked from GitHub; historical SHA/checkpoint statements elsewhere in this file are not live pointers. The Connect migration gap register now carries an explicit review checkpoint, but that does not certify the entire documentation corpus.
+
+Current product-readiness blockers remain unchanged: Connect's identity adapter is still Supabase-provider-bound; a browser-safe GHM user-token API or secure BFF is not qualified; active journey/API parity is incomplete; and real PayFast sandbox/runtime end-to-end qualification, production credentials/enablement, rollback/recovery, and founder-authorized cutover remain open. PayFast approval and PayStack status are separate.
+
+Treat `GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md` as the governed product gap record, `CONNECT_BACKEND_OPERATION_INVENTORY.md` and `GHM_CONNECT_BACKEND_READINESS_AUDIT.md` as historical source-evidence snapshots, this file as the GHM construction-state index, and the dated migration handover as the durable resume record. No implementation, merge, provider activation, production migration, shadow qualification, or cutover is authorized by this note.
+
 ## Current Connect backend migration authority — 2026-10-13
 
 The Connect migration handover is the durable product-specific resume point: `docs/architecture/CONNECT_GHM_MIGRATION_HANDOVER_2026-10-13.md`. Read it together with `docs/architecture/GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md`, `docs/architecture/CONNECT_BACKEND_OPERATION_INVENTORY.md`, and the per-capability contracts. The operation-level migration overlay records Connect caller evidence, provisional reuse/extend/build/legacy classification, and acceptance gates.
