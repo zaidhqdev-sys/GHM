@@ -223,7 +223,7 @@ The verified audit now gives the concrete gap boundary required to authorize fut
 - Realtime subscriptions only for notifications INSERT and leads INSERT
 - Live Edge functions: Paystack checkout, Paystack webhook, AI proxy
 - Atomic gaps: Project ↔ Opportunity create; payment prepare/apply; capability replace/evidence; directory founder review
-- Class A missing GHM domains include Trust, offerings, categories, evidence, onboarding, engagement, relationships/outcomes
+**Historical 2026-09-18 Class A snapshot (not current GHM coverage):** the original audit listed Trust, offerings, categories, evidence, onboarding, engagement, and relationships/outcomes as missing at that checkpoint. Subsequent GHM construction qualified the bounded Trust, Business Category, and Business Offering resource slices; those GHM resource qualifications do not establish Connect adapter parity or cutover readiness. Capability-evidence submission/review, onboarding, engagement, and relationships/outcomes remain separate product-contract gaps to verify against the current operation inventory and migration handover.
 
 ### Requirements / assumptions disproven or corrected
 
