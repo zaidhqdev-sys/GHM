@@ -19,6 +19,8 @@ Status values: `GHM_PROVIDES` | `GHM_PARTIAL` | `GHM_ABSENT` | `EXTERNAL` | `CON
 
 The GHM authentication foundation is now construction-qualified, including the canonical identity mapping foundation. That changes the auth/identity evidence boundary only. It does **not** establish Connect product adapter behavior, business/profile provisioning parity, membership migration, storage/realtime/provider equivalence, or production cutover.
 
+**Current qualification overlay (2026-10-14; read alongside, not by rewriting, the historical rows below):** GHM Trust and Business Category resource slices are QUALIFIED / CLOSED, but Connect score-input parity, category assignment, HTTP/adapter, UI and filter parity remain OPEN. GHM Business Offering is also QUALIFIED / CLOSED; the Connect offering adapter remains unconfirmed because no mounted caller has been proven. GHM PayFast checkout and ITN/server-confirmation implementation is merged, while sandbox/runtime end-to-end qualification and provider authorization remain open. Historical Connect Paystack rows below describe source code only and do not establish target-provider selection or PayStack approval. The summary counts below remain counts of the historical inventory classifications, not current GHM qualification counts.
+
 ## 2B. Historical inventory
 
 | Source | Operation | Entity | R/W | Provider | Auth | Txn | GHM equivalent | Status |
@@ -44,8 +46,8 @@ The GHM authentication foundation is now construction-qualified, including the c
 | `useLeads` channel | realtime | leads | R | Realtime | filter | — | none | EXTERNAL |
 | `savedService.toggle/getAll` | save | saved_businesses | R/W | table | owner | app | saved_business C/D/R | GHM_PROVIDES |
 | `businessHourService.get/replace` | hours | business_hours | R/W | table/RPC | manage/public | fn | business_hours | GHM_PROVIDES |
-| `businessOfferingService.*` | offerings | business_offerings | R/W | table | manage | row | none | GHM_ABSENT in 2026-09-18 historical inventory; current GHM resource contract QUALIFIED / CLOSED; Connect adapter need unproven |
-| `categoryService` / `businessClassificationService` | categories | category tables | R/W | table/RPC | mixed | mixed | none | GHM resource QUALIFIED / CLOSED; Connect category assignment, HTTP/adapter, UI and filter parity OPEN |
+| `businessOfferingService.*` | offerings | business_offerings | R/W | table | manage | row | none | GHM_ABSENT |
+| `categoryService` / `businessClassificationService` | categories | category tables | R/W | table/RPC | mixed | mixed | none | GHM_ABSENT |
 | `capabilityService` list/get | catalogue read | capabilities | R | table | public/auth | query | capability catalogue | GHM_PROVIDES |
 | `capabilityService` draft/transition | catalogue write | capabilities | W | RPC | admin/gov | fn | SELECT-only catalogue | GHM_ABSENT |
 | `businessCapabilityService.get/replace` | assertions | business_capabilities | R/W | table/RPC | manage | fn | create/read only | GHM_PARTIAL |
@@ -53,13 +55,13 @@ The GHM authentication foundation is now construction-qualified, including the c
 | `businessKnowledgeGraphService.get` | projection | RPC | R | RPC | auth | fn | none | GHM_ABSENT |
 | `businessEngagementService.track` / analytics dashboard | analytics | engagement | R/W | RPC | manage/public | fn | none | GHM_ABSENT |
 | `commercialService.getOffer/activateTrial` | trial | commercial | R/W | RPC | manage | fn | commercial trial | GHM_PROVIDES |
-| `commercialService.prepare/startCheckout` | payment | payment+edge | W | historical Connect RPC/Paystack source path | manage | fn+edge | stubs | GHM PayFast checkout + ITN/server confirmation implemented; sandbox/runtime E2E and provider authorization remain open; no PayStack approval implied |
+| `commercialService.prepare/startCheckout` | payment | payment+edge | W | RPC+Paystack | manage | fn+edge | stubs | GHM_PARTIAL |
 | `onboardingService.*` | onboarding | onboarding progress | R/W | RPC | self | fn | none | GHM_ABSENT |
 | `supportRequestService.*` | support | support_* | R/W | RPC | customer/admin | fn | support_request | GHM_PROVIDES |
 | `projectService` / `projectsService` CRUD | projects | projects | R/W | table | customer | row | project | GHM_PARTIAL |
 | `projectsService.createProject` RPC | project+opp | projects+opportunities | W | RPC | customer | fn | project only | GHM_ABSENT (atomic) |
 | `projectQuoteService` + `decide_project_quote` | project quotes | project_quotes | R/W | table/RPC | parties | fn | project_quote | GHM_PROVIDES |
-| `trustScoreService.*` | trust | trust_scores | R/W | table/RPC | mixed | fn | none | GHM Trust resource QUALIFIED / CLOSED; Connect score-input parity and HTTP/adapter exposure OPEN |
+| `trustScoreService.*` | trust | trust_scores | R/W | table/RPC | mixed | fn | none | GHM_ABSENT |
 | `opportunityService` list/get/replace requirements | opportunities | opportunities+requirements | R/W | table/RPC | public/manage | mixed | opportunity + requirements | GHM_PARTIAL |
 | regional services (region/currency/locale/country/area/config/pricing) | regional | regional tables | R/W | table | mixed | row | country/currency subset | GHM_PARTIAL |
 | relationship/outcome services | relationships | relationship/outcome tables | R/W | table | mixed | row | none | GHM_ABSENT |
@@ -71,7 +73,7 @@ The GHM authentication foundation is now construction-qualified, including the c
 | `commercialLaunchAdminService` | launch admin | RPC | R | RPC | admin | fn | none | GHM_ABSENT |
 | WhatsApp deep links | open URL | — | — | client | n/a | — | n/a | CONNECT_LOCAL |
 | `aiProxyClient` / `ai-proxy` | AI invoke | — | R | Edge+Anthropic | flagged | — | none | EXTERNAL |
-| Paystack webhook | apply payment | commercial_* | W | historical Connect Edge source path | signature | fn | stubs | Historical source-path evidence only; do not infer target-provider selection or PayStack approval; GHM PayFast server-confirmation path is separate |
+| Paystack webhook | apply payment | commercial_* | W | Edge | signature | fn | stubs | EXTERNAL + GHM_PARTIAL |
 
 ## 3. Summary counts (inventory rows above)
 
