@@ -444,3 +444,13 @@ The Connect review branch continued bounded documentation-only reconciliation. C
 Other sampled canonical architecture/interface documents already distinguish source evidence from GHM Internal Runtime target intent and keep the browser-safe API, operation parity, target authorization and cutover gates open. This is a bounded check only; it does not certify the full Connect corpus or the GHM implementation.
 
 Full same-branch Markdown link validation, full metadata/history/authority review, and cross-repository claim-by-claim reconciliation remain outstanding. Keep PR #36 and PR #135 unmerged; no local sync, production/runtime mutation, provider activation, migration, or cutover occurred.
+
+## 29. Connect engineering/launch boundary checkpoint — 2026-10-14 22:33 UTC
+
+Current Connect review-branch tree inspection confirms 47 tracked Markdown files (all under `docs/`) and canonical glossary path `docs/00_Foundation/PRODUCT_GLOSSARY.md`. A bounded link sample was run on six Foundation/Engineering/Implementation index-standard files; this is not full-corpus link certification.
+
+Two further source/target ambiguities were corrected and verified:
+- Connect `EXTRACTION_MAP.md`, SHA `a7859e518d88a9bfeac53c0eda8bc0936b438d20`: historical extraction record; Supabase authorization statements are now explicitly scoped to the source implementation, with GHM target controls separately unqualified.
+- Connect `SOUTH_AFRICA_LAUNCH_RUNBOOK.md`, SHA `082f1c36ccf983a6782edfcde0ef3c075f91246d`: Supabase CLI/database/RLS instructions are conditional historical source procedures, not authorization for production mutation during the active migration audit; commercial launch remains unauthorized.
+
+The founder authorization instrument was also checked: `EVENT_AUTHORIZED=FALSE` and `EVENT_EXECUTED=FALSE`; the narrow directory-listing event authorization is separate from commercial launch and GHM cutover. Current-state audit already identifies the September 2 snapshot as historical. Full link, metadata/history/authority, and cross-repository claim checks remain open. No local sync, production mutation, provider activation, migration, cutover, or merge occurred.
