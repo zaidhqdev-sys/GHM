@@ -462,3 +462,11 @@ Connect's current review branch added and verified migration-state boundaries in
 - `docs/03_Engineering/DEVELOPMENT_WORKFLOW.md`, SHA `0200248be14b8c617abc6cd6662ac98d3cdbdc49`, version 2.1, dated 2026-10-14.
 
 The first explicitly distinguishes source Supabase tests from GHM operation-level qualification and full product parity. The second distinguishes generic/source Supabase workflow from the governed migration execution plan. Product Glossary, Deployment Standard and Coding Standards were also checked and already distinguish source implementation from target qualification. The 47-file Connect Markdown corpus remains only partially audited: full semantic/owner/history checks, full link validation and claim-by-claim cross-repo comparison are outstanding. No local sync, production mutation, provider activation, migration, cutover or merge occurred.
+
+## 31. Connect release/planning audit checkpoint — 2026-10-14 22:37 UTC
+
+Connect's planning review found `docs/05_Planning/RELEASE_PLAN.md` was still version 1.0 dated 2026-07-15. Its “Approved” status could be mistaken for a specific release authorization. It is now version 1.1 dated 2026-10-14, with an explicit statement that approval applies to the release-process standard only and that provider activation, release, and cutover require separate current evidence and gates. Verified SHA `e8b4b31ac9a8e4b3610f4a0e2e0f7f870ead23d2`.
+
+`MVP_SCOPE.md` and `PRODUCT_ROADMAP.md` already distinguish intended scope/roadmap from current implementation. `IMPLEMENTATION_BACKLOG.md` remains explicitly reconciliation-in-progress and identifies its September checkpoint as historical; M52 TEST technical approval remains distinct from production LIVE verification and commercial launch authorization. `MILESTONE_52_PAYMENT_PROVIDER_INTEGRATION.md` already scopes Paystack TEST evidence to the Supabase-backed source implementation, not GHM parity. PayFast and Paystack remain distinct tracks.
+
+This is a bounded five-document pass, not full corpus reconciliation. Full link, semantic/history/ownership, and cross-repository claim checks remain open. No local sync, production mutation, provider activation, migration, cutover, or merge occurred.
