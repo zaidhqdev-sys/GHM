@@ -4,7 +4,7 @@
 **Source audit:** docs/architecture/GHM_CONNECT_BACKEND_READINESS_AUDIT.md
 **Audited GHM tree:** historical Connect audit checkpoint; current GHM construction state is the consolidated `main` line.
 **Connect source:** abcffa73f893602c25310a58946bebb91fd7eeb5
-**Current reconciliation checkpoint (2026-10-13):** This register remains a governed product-readiness gap record, not a live deployment snapshot. The historical dependency counts and source commit below remain provenance from the earlier audit. Later bounded construction is reconciled in the living status index and per-capability evidence. PayFast checkout/ITN/server-to-server confirmation is implemented and merged with deterministic local qualification; real sandbox/runtime end-to-end qualification, broader Connect product workflows, provider enablement, and production cutover remain open.
+**Historical readiness checkpoint (2026-10-13; follow-up correction in review 2026-10-14):** This register remains a governed product-readiness gap record, not a live deployment snapshot. The historical dependency counts and source commit below remain provenance from the earlier audit. Later bounded construction is reconciled in the living status index and per-capability evidence. PayFast checkout/ITN/server-to-server confirmation is implemented and merged with deterministic local qualification; real sandbox/runtime end-to-end qualification, broader Connect product workflows, provider enablement, and production cutover remain open. The 2026-10-14 status/resume audit found stale PR-status statements after the earlier checkpoint; do not treat the date on this paragraph as proof of a complete current repository-wide reconciliation.
 **Evidence sprint checkpoint:** see §8 (this document update)
 
 ## Purpose
