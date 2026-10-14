@@ -502,3 +502,11 @@ The Connect review branch's `PRODUCT_REQUIREMENTS.md` revision history had 2.9 b
 `USER_JOURNEYS.md` revision rows 2.2/2.3 are now chronological and current version 2.4 / 2026-10-14 is recorded. Verified SHA `a8ced0adc3b2b60a5280557675d563104beb651b`. Product Vision and Product Principles are current-dated and already distinguish product intent/principles from implementation state.
 
 Full corpus link validation, remaining semantic/history/owner checks, and cross-repository evidence reconciliation remain open. No local sync, production mutation, provider activation, migration, cutover, or merge occurred.
+
+## 36. Connect personas/business-rule checkpoint — 2026-10-14 22:48 UTC
+
+The Connect branch review found `USER_PERSONAS.md` stale at version 2.1 / 2026-07-27. It is now version 2.2 / 2026-10-14, with an explicit statement that personas and role distinctions do not prove current availability or GHM target enforcement. Verified SHA `4c5cd3fd8327cfc11282cc4434b1b2159b4964b7`.
+
+`BUSINESS_RULES.md` metadata was already version 2.3 / 2026-10-14 but its revision table stopped at 2.2; the missing 2.3 history entry has been added and verified at SHA `99eabca443559d8f350e84ce823f569788894bfd`. Engineering Standards and Documentation Standard already distinguish source state from target state and preserve migration/readiness authority. `PRODUCT_STRATEGY.md` was not found at the expected path (404), and no replacement was inferred.
+
+Full link validation, complete metadata/history/owner checks, and cross-repository evidence comparison remain open. No local sync, production mutation, provider activation, migration, cutover, or merge occurred.
