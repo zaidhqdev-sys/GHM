@@ -524,3 +524,11 @@ Connect's generic `BACKLOG.md` and `MILESTONES.md` were stale at version 1.0 / 2
 The current Release Plan correctly limits its Approved label to the process standard. M52 is source-system Paystack TEST evidence and technical approval only; LIVE verification and commercial launch remain unauthorized. M38 remains provider-blocked/not approved, with runtime provider verification unexecuted. These are not GHM target qualification.
 
 Full link validation, remaining semantic/metadata/history/ownership checks, and cross-repository evidence reconciliation remain open. No local sync, production mutation, provider activation, migration, cutover, or merge occurred.
+
+## 39. Connect launch authority checkpoint — 2026-10-15 00:54 SAST
+
+The Connect operational evidence review confirmed that `CURRENT_STATE_AUDIT.md`, `IMPLEMENTATION_BACKLOG.md`, and `VERIFICATION_LOG.md` preserve dated Supabase-source evidence without certifying current hosted availability or GHM target parity; the South Africa launch runbook remains prelaunch/NO-GO and scopes source-system operations.
+
+A material authority risk was corrected in `DIRECTORY_LAUNCH_1_BOUNDED_FOUNDER_AUTHORIZATION_INSTRUMENT.md`: the Supabase production project and Table/SQL Editor had been presented as the approved control plane without a current GHM migration boundary. The instrument now explicitly labels these as historical source-system provenance, not a current execution target, and still records `EVENT_AUTHORIZED=FALSE` / `EVENT_EXECUTED=FALSE`. Verified SHA `77fe483288a651e61c5e6fd4d9cd7ded8f92e8e0`.
+
+Full-corpus link validation, remaining semantic/history/ownership checks, and cross-repository readiness/operation evidence comparison remain open. No local sync, listing publication, production mutation, provider activation, migration, cutover, or merge occurred.
