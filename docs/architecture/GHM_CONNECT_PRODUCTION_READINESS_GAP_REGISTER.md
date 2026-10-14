@@ -306,3 +306,14 @@ The previously qualified `(provider, subject) → GHM account identity` foundati
 
 For target Connect runtime, GHM-native access/session credentials must establish the caller; GHM then resolves the canonical account, active state, business membership and resource authorization server-side. A source-provider/subject pair may remain as migration provenance for legacy data only, isolated from runtime authentication and not accepted as authority for new requests. Do not remove historical evidence or silently change the existing qualification's scope. Do not allow identity bootstrap or account linking as a side effect of routine requests.
 
+## Documentation review checkpoint — 2026-10-14 (PR #135; unmerged)
+
+The GHM status-correction review in PR #135 updates the durable migration handover and this governed gap register alongside the historical operation inventory, historical readiness audit, current-state index, and remaining-work register. The review is documentation-only and remains open/unmerged at this checkpoint; verify live PR metadata and the changed-file list before relying on this statement in a later session.
+
+This review does **not** change capability qualification or production readiness. In particular:
+
+- PayFast checkout/ITN/server-to-server confirmation is merged into GHM main and deterministic local qualification is passing; real sandbox/runtime end-to-end qualification, production credentials/enablement, and Connect-wide commercial workflow parity remain open.
+- PayFast approval is distinct from PayStack approval/activation; no PayStack approval is inferred.
+- GHM Internal Runtime remains the target backend, with no active Supabase runtime dependency in the intended Connect target. The existing Supabase-bound Connect identity adapter, lack of a qualified browser-safe GHM user API/BFF, and broader active-workflow parity remain blockers.
+- The operation inventory and readiness audit are dated historical evidence snapshots. Their counts are not current capability measurements; this governed register, `docs/GHM_CURRENT_STATE.md`, and per-capability qualification evidence govern current GHM status.
+- PR #135 being open or these documentation edits being complete is not evidence that the full repository documentation set is reconciled. No merge, implementation, provider activation, migration, shadow qualification, or cutover is authorized by this note.
