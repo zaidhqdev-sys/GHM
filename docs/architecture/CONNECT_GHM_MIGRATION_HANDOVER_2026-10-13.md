@@ -494,3 +494,11 @@ The Connect branch's `SYSTEM_ARCHITECTURE.md`, `DOMAIN_MODEL.md`, `API_SPECIFICA
 - `BUSINESS_RULES.md`, SHA `da959e5ec644717186afb3f38537b8838923d0de`: protected-data authorization now scopes RLS to source implementation and requires separate qualification of equivalent GHM target enforcement.
 
 The Domain Model and API/Integration Specifications already separate source evidence from target contracts, require explicit identity/resource mappings, and keep browser-safe transport and operation-level parity as gates. Full-corpus link, metadata/history/owner and cross-repository claim checks remain open. No local sync, production mutation, provider activation, migration, cutover, or merge occurred.
+
+## 35. Connect business requirements/journey-history checkpoint — 2026-10-14 22:46 UTC
+
+The Connect review branch's `PRODUCT_REQUIREMENTS.md` revision history had 2.9 before 2.8; it is now ordered, current version 2.13 is recorded, and the missing 2.10/2.11 history entries are noted as a gap without inventing their content. Verified SHA `a30d895053d2318e8851cfc44ea84e8415fd821d`.
+
+`USER_JOURNEYS.md` revision rows 2.2/2.3 are now chronological and current version 2.4 / 2026-10-14 is recorded. Verified SHA `a8ced0adc3b2b60a5280557675d563104beb651b`. Product Vision and Product Principles are current-dated and already distinguish product intent/principles from implementation state.
+
+Full corpus link validation, remaining semantic/history/owner checks, and cross-repository evidence reconciliation remain open. No local sync, production mutation, provider activation, migration, cutover, or merge occurred.
