@@ -516,3 +516,11 @@ Full link validation, complete metadata/history/owner checks, and cross-reposito
 Reviewed Connect's `DEPLOYMENT_STANDARD.md`, `TESTING_STRATEGY.md`, `DEVELOPMENT_WORKFLOW.md`, `CODING_STANDARDS.md`, and canonical `docs/00_Foundation/REPOSITORY_STRUCTURE.md`. All are version 2.1 / 2026-10-14 and consistently distinguish legacy Supabase source procedures from GHM target qualification, require task-specific/founder gates, and prohibit interpreting generic standards or component tests as parity/cutover proof. Deployment documentation acknowledges CI/CD/staging/hosting workflow gaps. The repository-structure file exists under Foundation; the Engineering path queried during discovery was simply incorrect.
 
 Full-corpus link validation, remaining semantic/metadata/history/ownership checks, and cross-repository evidence comparison remain open. No local sync, production mutation, provider activation, migration, cutover, or merge occurred.
+
+## 38. Connect planning and provider milestone checkpoint — 2026-10-14 22:52 UTC
+
+Connect's generic `BACKLOG.md` and `MILESTONES.md` were stale at version 1.0 / 2026-07-15. Both now carry version 1.1 / 2026-10-14 and an explicit statement that their generic planning examples do not establish current implementation status, capability absence/completion, production readiness, or cutover authority. Verified SHAs: `BACKLOG.md` `0a9557d3c25d91cf575b74ed753573cacab43ba4`; `MILESTONES.md` `31424c71d09b9bfceab8471b5c953c70f1153e4c`.
+
+The current Release Plan correctly limits its Approved label to the process standard. M52 is source-system Paystack TEST evidence and technical approval only; LIVE verification and commercial launch remain unauthorized. M38 remains provider-blocked/not approved, with runtime provider verification unexecuted. These are not GHM target qualification.
+
+Full link validation, remaining semantic/metadata/history/ownership checks, and cross-repository evidence reconciliation remain open. No local sync, production mutation, provider activation, migration, cutover, or merge occurred.
