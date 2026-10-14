@@ -293,7 +293,8 @@ This overlay supersedes any implication that the historical operation rows above
 | Quote analysis / AI | analyzer history uses Connect DB; AI transport targets Supabase Edge Function, provider gate false | **Split** | migrate history/data operations; remove Supabase transport but preserve fail-closed provider gate |
 | Commercial | Connect offer/trial panel active; GHM internal commercial routes exist; payment activation remains disabled | **Reuse/extend, separately gated** | preserve all launch/payment flags; no provider activation |
 | Notifications inbox/realtime/push | GHM routes exist; current UI inbox/push active caller not established | **Evidence insufficient** | only migrate producer operations proven active; don't rebuild dormant UI |
-| Supplier/referral/dispute/offerings legacy services | no confirmed current mounted caller in searches | **Legacy/unconfirmed** | exclude unless reachability audit finds active caller |
+| Supplier/referral/dispute legacy services | no confirmed current mounted caller in searches | **Legacy/unconfirmed** | exclude unless reachability audit finds active caller |
+| Connect `businessOfferingService` UI path | no confirmed current mounted caller; GHM `business_offering` construction contract is independently QUALIFIED / CLOSED | **Legacy/unconfirmed at Connect caller boundary; GHM resource remains closed** | do not reopen GHM construction; only assess an adapter if a mounted Connect caller is proven and separately authorized |
 
 The numeric Connect IDs and GHM numeric IDs/UUID assumptions must never be presumed equivalent. Define explicit identity/resource mappings. The signed `POST /api/v1/connect/service` remains server-to-server only; browser code needs a secure BFF or GHM-native user-token API. This overlay is documentation only and grants no implementation, merge, production or cutover authorization.
 
