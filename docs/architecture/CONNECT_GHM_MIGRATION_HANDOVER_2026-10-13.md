@@ -434,3 +434,13 @@ The active ZAID Connect review branch `construction/reconcile-handover-status-20
 Latest targeted Connect checks resolved Product Vision to `docs/00_Foundation/PRODUCT_VISION.md` (SHA `f916f90ff3d17c2cb951dd2dbbfc26a2955d58fc`), reviewed Product Principles and Documentation Ownership Matrix, and refetched this GHM handover plus `GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md`. They confirm the intended source-versus-target distinction and that full Connect product parity remains unqualified. This is a bounded comparison only: full same-branch link validation, complete semantic/status/owner/history review, and claim-by-claim cross-repository reconciliation remain open.
 
 Do not treat any historical targeted checks, branch inventory counts, or current bounded review as a complete documentation reconciliation certificate. Both PRs remain unmerged; no local repository sync, runtime/production mutation, provider activation, migration, or cutover occurred.
+
+## 28. Connect architecture/interface audit checkpoint — 2026-10-14 22:30 UTC
+
+The Connect review branch continued bounded documentation-only reconciliation. Current Connect architecture/interface checks reviewed the canonical architecture set and made two verified clarifications:
+- `docs/04_Interfaces/INTEGRATION_SPECIFICATION.md`, blob SHA `24c3a49e618c9b118b0abc3ba5d6d409cad0d0b7`: Supabase Authentication verification is explicitly scoped to the inspected source baseline and disclaimed as GHM qualification.
+- `docs/01_Architecture/SYSTEM_ARCHITECTURE.md`, blob SHA `5455f4100c16ce8b67fa6de18d7afee2f2a233e5`: the Supabase topology is explicitly titled and described as existing source implementation.
+
+Other sampled canonical architecture/interface documents already distinguish source evidence from GHM Internal Runtime target intent and keep the browser-safe API, operation parity, target authorization and cutover gates open. This is a bounded check only; it does not certify the full Connect corpus or the GHM implementation.
+
+Full same-branch Markdown link validation, full metadata/history/authority review, and cross-repository claim-by-claim reconciliation remain outstanding. Keep PR #36 and PR #135 unmerged; no local sync, production/runtime mutation, provider activation, migration, or cutover occurred.
