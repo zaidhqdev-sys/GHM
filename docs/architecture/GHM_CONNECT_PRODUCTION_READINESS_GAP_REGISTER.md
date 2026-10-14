@@ -116,22 +116,25 @@ A closed capability may require a separately authorized adapter/projection layer
 
 ## 4. Provider / ownership boundary
 
-The following remain external or separately governed unless new evidence says otherwise:
+**Target-runtime rule:** ZAID Connect must remove all active Supabase runtime dependencies. The Supabase items below describe the legacy/source architecture and migration evidence, not providers to retain in the GHM-backed target runtime.
 
+Legacy Connect source dependencies to replace or retire from active runtime paths:
 - Supabase Auth
-- Supabase Postgres/RLS production authority
+- Supabase Postgres/RLS
 - Supabase Realtime
 - Supabase Storage
 - Supabase Edge Functions
-- Paystack
-- PayFast
+
+Separately governed providers/capabilities (not activated or selected merely by this migration):
+- Paystack — approval/activation remains unconfirmed; do not infer it from PayFast approval or historical source code.
+- PayFast — approval exists, but GHM sandbox/runtime end-to-end qualification and any production activation remain separately gated.
 - Meta WhatsApp Cloud API
-- AI model/provider runtime
+- AI model/provider runtime — preserve the fail-closed AI gate.
 - client-local WhatsApp deep links
 - client-local PDF generation
 - local AI heuristics
 
-GHM should not absorb a provider dependency merely because Connect currently uses it.
+GHM should not absorb a provider dependency merely because Connect currently uses it. For Supabase, the target decision is already to remove active runtime coupling; for other providers, require explicit product/provider selection and qualification.
 
 ## 5. Required evidence sequence
 
