@@ -510,3 +510,9 @@ The Connect branch review found `USER_PERSONAS.md` stale at version 2.1 / 2026-0
 `BUSINESS_RULES.md` metadata was already version 2.3 / 2026-10-14 but its revision table stopped at 2.2; the missing 2.3 history entry has been added and verified at SHA `99eabca443559d8f350e84ce823f569788894bfd`. Engineering Standards and Documentation Standard already distinguish source state from target state and preserve migration/readiness authority. `PRODUCT_STRATEGY.md` was not found at the expected path (404), and no replacement was inferred.
 
 Full link validation, complete metadata/history/owner checks, and cross-repository evidence comparison remain open. No local sync, production mutation, provider activation, migration, cutover, or merge occurred.
+
+## 37. Connect engineering standards checkpoint — 2026-10-14 22:50 UTC
+
+Reviewed Connect's `DEPLOYMENT_STANDARD.md`, `TESTING_STRATEGY.md`, `DEVELOPMENT_WORKFLOW.md`, `CODING_STANDARDS.md`, and canonical `docs/00_Foundation/REPOSITORY_STRUCTURE.md`. All are version 2.1 / 2026-10-14 and consistently distinguish legacy Supabase source procedures from GHM target qualification, require task-specific/founder gates, and prohibit interpreting generic standards or component tests as parity/cutover proof. Deployment documentation acknowledges CI/CD/staging/hosting workflow gaps. The repository-structure file exists under Foundation; the Engineering path queried during discovery was simply incorrect.
+
+Full-corpus link validation, remaining semantic/metadata/history/ownership checks, and cross-repository evidence comparison remain open. No local sync, production mutation, provider activation, migration, cutover, or merge occurred.
