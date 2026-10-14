@@ -478,3 +478,11 @@ Connect's implementation-document review confirmed that `IMPLEMENTATION_BACKLOG.
 A misleading continuity criterion in `docs/06_Implementation/README.md` was corrected: service continuity is now explicitly an acceptance objective, not proof of present hosted availability. Its current migration-state boundary and handover reference were refetched and verified at SHA `0e112c0a835cc461849217ff29ae0b6b43c22666`.
 
 This is a bounded implementation-section pass only. Complete Connect link validation, remaining semantic/metadata/history/owner checks, and claim-by-claim comparison against GHM readiness/operation evidence remain outstanding. No local sync, production mutation, provider activation, migration, cutover, or merge occurred.
+
+## 33. Connect security/data/integration checkpoint — 2026-10-14 22:42 UTC
+
+The Connect review branch's `SECURITY_ARCHITECTURE.md`, `DATA_ARCHITECTURE.md`, `INTEGRATION_ARCHITECTURE.md`, `API_SPECIFICATION.md`, and `INTEGRATION_SPECIFICATION.md` were reviewed. The documents distinguish GHM Internal Runtime target intent from historical Supabase source evidence, keep the signed service interface server-to-server only, leave browser-safe transport and operation parity as open gates, and enumerate current caller-to-contract gaps without presuming Connect and GHM IDs are equivalent.
+
+The Security Architecture's Directory Business Public Read Model heading/status was corrected to explicitly scope Workstream 4A and its grant/RLS description to the inspected Supabase source production baseline, rather than imply current GHM qualification. Verified SHA `7481d20644db34fbb8a0523707dffb4960029e8c`.
+
+This is a bounded five-document review, not complete corpus reconciliation. Full link validation, remaining metadata/history/ownership checks, and cross-repository claim-by-claim comparison remain open. No local sync, production mutation, provider activation, migration, cutover, or merge occurred.
