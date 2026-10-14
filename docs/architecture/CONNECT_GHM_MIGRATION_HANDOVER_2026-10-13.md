@@ -125,6 +125,17 @@ Classification: **Reuse** = likely existing GHM surface, still requires contract
 
 The documentation branches for GHM PR #133 and ZAID Connect PR #34 are already merged. Any new documentation PR must be reviewed as a complete affected-document set and must not be merged without the founder's explicit authorization. No implementation, migration, production changes or cutover is authorized by this handover.
 
+## 8A. Durable continuation state — 2026-10-14
+
+This is the current resume point for documentation reconciliation; the older audit batches below are evidence/history, not proof that repository-wide reconciliation is complete.
+
+- **GitHub review branches:** GHM PR #135 is open/unmerged at head `bea69d686a4d2afb8c272e0ca6b6b13f3c60d95d`; ZAID Connect PR #36 is open/unmerged at head `b80e5d808601c79d547b7500249d6081f423ef5e`. Recheck both heads and their changed-file lists before relying on these checkpoint values.
+- **Current review scope:** reconcile the complete affected-document set, not only the files already changed in either PR. The durable handover, operation inventory, production-readiness gap register, backend readiness audit, current-state/register documents, Connect integration/data/security architecture, API/interface specifications, glossary, master index, ownership matrix, coding/engineering standards, deployment standard and product vision must agree on target architecture, source-vs-target authority, operation classifications, identity mapping, provider gates and status claims.
+- **Known Connect documentation follow-up:** `docs/00_Foundation/PRODUCT_VISION.md` still describes “Supabase-backed data contracts” in its current-foundation list, and `docs/03_Engineering/ENGINEERING_STANDARDS.md` still presents Supabase as the current data/auth platform and its client/migrations as canonical. These statements need an explicit legacy-source versus GHM Internal Runtime target distinction; do not misrepresent historical source evidence as target authorization.
+- **Local-repository comparison is not done:** GitHub-side file counts and link checks do not inspect the founder's local `C:\GHM` or Connect checkout. The local checkout is known to be unsynced. Do not fetch, pull, reset, switch branches or otherwise synchronize it as part of this audit. Inspect local documents read-only in a separate batch and compare them against GitHub before declaring the overall documentation set reconciled.
+- **Next batch:** resolve the two named Connect standards above, then continue the semantic pass through all affected documents and cross-references in small batches. Record every remaining unresolved file/contradiction in the handover itself so a new session resumes from this exact state.
+- **Merge gate:** neither PR may be merged until GitHub-side affected documentation and the separate local-vs-GitHub comparison have been reviewed and reconciled, verification is recorded, and the founder explicitly authorizes merging. This is documentation-only; it authorizes no code, runtime, database, deployment, provider, migration or cutover changes.
+
 ## 9. Findings from the latest batch
 
 - `RelationshipOutcomeScreen.jsx` calls both relationship and outcome services.
