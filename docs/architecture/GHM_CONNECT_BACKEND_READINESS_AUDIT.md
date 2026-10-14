@@ -385,9 +385,13 @@ GHM construction progress ≠ Connect backend readiness.
 Connect still requires Supabase/provider behaviors that GHM has not reproduced as complete, authorized, qualified backend contracts plus a product adapter.
 ```
 
-## 13. Recommended next evidence
+## 13. Recommended next evidence — historical checklist, superseded for resume order
 
-Only evidence needed to make future construction decisions. No speculative implementation.
+The ten-item list below records the recommendations made by this 2026-09-18 comparison audit. It is historical evidence, not a current queue to restart or execute wholesale. Subsequent source-to-source caller reconciliation and identity-provider review narrowed and ordered the remaining work.
+
+For the current task and exact resume point, use `docs/architecture/CONNECT_GHM_MIGRATION_HANDOVER_2026-10-13.md` and its operation-level matrix. Cross-check classifications against `GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md` and `CONNECT_BACKEND_OPERATION_INVENTORY.md`; use this audit for historical baseline counts and bounded qualification context only. Do not treat a historical recommendation as new construction authorization.
+
+The original recommendations are retained below as audit history:
 
 1. **Connect adapter evidence pack** — map each `lib_supabase.js` / feature service method to either an existing GHM operation, an external provider, Connect-local behavior, or a missing contract.
 2. **Public Business / directory field reconciliation** — exact Connect public allowlist vs GHM Business schema; decide which fields are first GHM public projection extensions.
