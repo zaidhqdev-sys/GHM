@@ -486,3 +486,11 @@ The Connect review branch's `SECURITY_ARCHITECTURE.md`, `DATA_ARCHITECTURE.md`, 
 The Security Architecture's Directory Business Public Read Model heading/status was corrected to explicitly scope Workstream 4A and its grant/RLS description to the inspected Supabase source production baseline, rather than imply current GHM qualification. Verified SHA `7481d20644db34fbb8a0523707dffb4960029e8c`.
 
 This is a bounded five-document review, not complete corpus reconciliation. Full link validation, remaining metadata/history/ownership checks, and cross-repository claim-by-claim comparison remain open. No local sync, production mutation, provider activation, migration, cutover, or merge occurred.
+
+## 34. Connect architecture/business-rule checkpoint — 2026-10-14 22:44 UTC
+
+The Connect branch's `SYSTEM_ARCHITECTURE.md`, `DOMAIN_MODEL.md`, `API_SPECIFICATION.md`, `INTEGRATION_SPECIFICATION.md`, and `BUSINESS_RULES.md` were reviewed. Two wording risks were corrected and verified:
+- `SYSTEM_ARCHITECTURE.md`, SHA `4ea91b1e16bf364c8072c01e204e5f1238af217c`: opening now distinguishes inspected Supabase source architecture from approved GHM Internal Runtime target architecture, without implying current hosted availability.
+- `BUSINESS_RULES.md`, SHA `da959e5ec644717186afb3f38537b8838923d0de`: protected-data authorization now scopes RLS to source implementation and requires separate qualification of equivalent GHM target enforcement.
+
+The Domain Model and API/Integration Specifications already separate source evidence from target contracts, require explicit identity/resource mappings, and keep browser-safe transport and operation-level parity as gates. Full-corpus link, metadata/history/owner and cross-repository claim checks remain open. No local sync, production mutation, provider activation, migration, cutover, or merge occurred.
