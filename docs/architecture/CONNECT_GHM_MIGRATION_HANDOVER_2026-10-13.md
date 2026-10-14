@@ -35,7 +35,7 @@ The 2026-10-13 SHAs are historical source checkpoints, not current `main` pointe
 
 ## 3. Why this is urgent
 
-Connect's Supabase project (`wxabopuyqblbpxkoudxy`) became inactive/unresolvable; browser requests to its Auth endpoint failed with `ERR_NAME_NOT_RESOLVED`. The app uses a central Supabase client for session lifecycle and many data operations. Changing sign-in alone cannot restore the app.
+At the 2026-10-13 source audit, Connect's Supabase project (`wxabopuyqblbpxkoudxy`) was observed as inactive/unresolvable: browser requests to its Auth endpoint failed with `ERR_NAME_NOT_RESOLVED`. This is dated availability evidence, not a fresh live probe of the project. The app uses a central Supabase client for session lifecycle and many data operations. Changing sign-in alone cannot restore the app.
 
 ## 4. Confirmed cross-cutting blockers
 
