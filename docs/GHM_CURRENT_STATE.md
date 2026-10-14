@@ -177,7 +177,7 @@ This section records the current documentation-only reconciliation branch; it is
 - Connect readiness totals are labeled historical audit counts. PayFast local checkout/ITN/server-confirmation qualification is distinct from real sandbox/runtime qualification and production enablement; PayFast is not conflated with PayStack.
 - Issue #1 remains open until all acceptance criteria are reconciled and independently closed. Product workflow parity, recovery/rollback, operational acceptance, shadow qualification, and production cutover remain gated.
 
-This paragraph records the historical documentation PR that merged into `main` as `14c805cfd749ed50493523972fdd0a7c359bbfce`; it is not a status statement about current migration PR #133. That earlier PR changed Markdown under `docs/` only and did not authorize code, migration, credential, deployment, database, routing, or cutover changes. The current Connect migration documentation is tracked separately in draft PR #133 and must not be treated as merged.
+This paragraph records the historical documentation PR that merged into `main` as `14c805cfd749ed50493523972fdd0a7c359bbfce`; it is not a status statement about current migration PR #133. That earlier PR changed Markdown under `docs/` only and did not authorize code, migration, credential, deployment, database, routing, or cutover changes. The Connect migration handover documentation was merged into `main` in GHM PR #133 as `20b120c7d6ecf7a86f9dc4f7a8dc61f9dee4d8dc`. This documentation merge records the migration audit and does not authorize implementation, production changes, or cutover.
 
 
 
