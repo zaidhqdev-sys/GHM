@@ -658,3 +658,29 @@ No further content edit was needed in this batch: the inspected documents alread
 ### Remaining gates
 
 Continue a caller-by-caller matrix from the Connect migration handover against the GHM current-state index, readiness gaps and per-operation evidence; audit the remaining document history/metadata/ownership; review external URLs; revalidate final PR heads and status. No local sync, runtime implementation, production mutation, provider activation, migration, cutover or merge occurred.
+
+
+## 54. Active caller-to-contract mapping — first direct-source batch — 2026-10-15 22:25 SAST
+
+### Direct Connect caller evidence
+
+Re-fetched the current ZAID Connect `main` source files and verified these mounted UI/runtime call paths:
+
+| Active caller | Direct source evidence | GHM target classification |
+|---|---|---|
+| App session lifecycle | `src/app/ZaidConnectApp.jsx` imports `supabase` and `authService`; calls `getSession`, `supabase.auth.onAuthStateChange`, and `signOut`. `src/features/authentication/AuthScreen.jsx` directly calls `supabase.auth.signUp`. | **Blocking Replace/Extend** — the no-Supabase GHM-native session, signup, restore/refresh, logout and recovery contract is not qualified. |
+| Relationship/outcome workspace | `src/features/relationships/RelationshipOutcomeScreen.jsx` calls `outcomeService.getForBusiness(businessId)`; its relationship tab is also part of the active screen and service surface. | **Build** — GHM relationship/outcome domain and matching HTTP contract remain absent in the current inventory. Preserve business scoping, lifecycle, verification, visibility, authority and provenance. |
+| Guided onboarding | `src/features/onboarding/OnboardingPanel.jsx` imports `onboardingService`, calls `getProgress(journey.id)`, and dispatches per-step actions. | **Build** — no equivalent GHM onboarding resource/HTTP contract is evidenced. Preserve progress, complete/dismiss and business/account scope. |
+| Business analytics | `src/features/analytics/AnalyticsScreen.jsx` imports `businessAnalyticsService` and calls `getDashboard(businessId, days)`. | **Build/Extend** — no equivalent dashboard contract is evidenced in the inspected GHM HTTP surface; do not treat generic engagement or read endpoints as dashboard parity. |
+| AI support | `src/features/ai/AISupportScreen.jsx` calls `invokeAIProxy`; the existing client transport calls the Supabase Edge Function. | **Replace/Extend, gated** — define a GHM-owned server-side equivalent only after active caller/contract and authorization review; provider stays fail-closed and no paid provider is implied. |
+| Quote analysis | `src/features/ai/AIQuoteAnalyzerScreen.jsx` imports the legacy `quoteAnalyzerService`; the screen exists, but this source check did not establish its service method invocation or persisted-object authority. | **Evidence-insufficient pending focused trace** — inspect event handlers and actual runtime reachability before classifying the persistence path or inventing a GHM table. |
+
+### Boundary and result
+
+This batch directly verifies several previously documented gaps from current source, rather than inferring them from the historical operation inventory. It does not establish that every export in `lib_supabase.js` is actively mounted, nor does it prove that a GHM endpoint is absent solely from a resource/service file; route registration, schema, authorization and transaction behavior still require operation-level evidence.
+
+Repository snapshots at this checkpoint: GHM has 210 tracked Markdown files (207 under `docs/`); ZAID Connect has 47 tracked Markdown files. GHM PR #135 is open/unmerged at `686fceeda2f0f2a0c81c745775ed864dbf51412a`; ZAID Connect PR #36 is open/unmerged at `eb1efc946ba5a3bfc6f33bdcd38766e7addb0b60`. Counts and SHAs are checkpoint metadata, not reconciliation proof.
+
+### Next batch
+
+Continue active caller mapping for profile/business editor and provisioning, directory/filtering, capability evidence and founder review, leads/enquiries, opportunity/project/quote atomic workflows, media/storage, notifications/realtime, support/reviews, and commercial payment. For each operation, capture source caller, current GHM route/method/schema, identity and tenant authorization, response/error mapping, persistence/transaction semantics, evidence status and explicit Reuse/Extend/Build/Legacy-exclude/Evidence-insufficient classification. Then complete external URL review, metadata/history/ownership checks and final same-branch link validation. No runtime implementation, local sync, production mutation, provider activation, migration, cutover or merge occurred.
