@@ -1088,13 +1088,13 @@ No local checkout, implementation, database, runtime, migration, provider activa
 
 ## 68. Latest review-branch changed-file link/anchor verification — 2026-10-16
 
-Freshly fetched the current review tree at GHM commit `4f60e93528e1d93f2f6e2a009902a566c4bb65d7` (210 Markdown files) and checked every one of the 14 current PR #135 changed files against that tree. All relative Markdown file targets found in the changed files resolve. The inline Markdown link anchors whose target documents were among the changed files were also checked; no missing anchors were found. This does not yet validate reference-style uses, HTML/autolinks, every anchor into unchanged documents, external URL liveness, or the remaining 196 documents' links.
+Freshly fetched the latest review tree at GHM commit `aa999dfdb88eae3698812a0fd4978d2c08c35050` and checked relative Markdown file targets across all 210 tracked Markdown documents against the complete repository tree. **No missing relative file targets were found in the 210-file corpus.** The 14 current PR #135 changed files were additionally checked for heading anchors where target documents were in the changed set; no missing anchors were found. Reference-style uses, HTML/autolinks, anchors into unchanged documents, external URL liveness, and complete semantic consistency are still not certified.
 
 The same pass confirms the PR #135 current-state paragraph's old “13 files” wording is now explicitly dated as a historical checkpoint and the live count is 14. This was corrected on the review branch only; PR #135 remains open/unmerged.
 
 ### Exact remaining closeout scope
 
-- Extend path/anchor/reference-style/autolink validation across all 210 GHM Markdown documents and all 47 Connect Markdown documents on the exact latest heads, not just the changed-file subset.
+- Finish full-corpus anchor/reference-style/autolink validation across all 210 GHM Markdown documents and the 47 Connect Markdown documents. The GHM relative file-target pass is complete with zero missing targets; Connect relative file-target checks also passed across all 47 changed files at the current PR #36 head.
 - Finish semantic/status/authority/owner/history review of the complete GHM corpus and cross-check relevant Connect claims against the GHM contracts.
 - Re-fetch head SHAs and checks after any further edits; current review branch head is a moving pointer.
 - Keep the merge gate closed until the full GHM documentation corpus is reconciled and the founder explicitly authorizes merge.
