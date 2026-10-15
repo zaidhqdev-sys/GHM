@@ -1024,3 +1024,10 @@ A second pass over all 210 tracked Markdown files at the PR #135 head scanned or
 ## 79. PR #135 changed-file count contradiction corrected — 2026-10-16
 
 A cross-check of the current GitHub PR metadata against `docs/GHM_REMAINING_WORK_REGISTER_2026-10-05.md` found a stale statement that “the current review” confirmed 13 changed files. PR #135 now contains 14 changed files after the follow-up audit/handover checkpoint additions. Reworded the 2026-10-14 paragraph as an explicitly historical 13-file checkpoint and recorded that the current metadata reports 14. The register was re-fetched and verified after the write. This preserves the historical count without presenting it as the current PR scope. PR #135 remains open/unmerged; the full semantic reconciliation gate remains open. No code, runtime, database, provider, production, migration or cutover change occurred.
+
+
+## 80. Connect verification-log historical availability correction — 2026-10-16
+
+The paired Connect review branch corrected a remaining present-tense statement in `docs/06_Implementation/VERIFICATION_LOG.md`: the Capability Catalogue v1 expansion is now explicitly recorded as applied/verified at the 2026-09-02 Supabase source-production checkpoint, not as current hosted availability or GHM parity. The same section no longer implies that public directory functionality is presently reachable merely because directory and commercial checkout were historically separate; it states that current hosted availability remains unverified following the dated 2026-10-13 Auth endpoint failure. The verification log was re-fetched after the change and version metadata advanced to 35.4 / 2026-10-16. Connect's handover records this as section 80.
+
+This is a documentation-only correction; it does not modify or probe the Supabase project, production database, provider, runtime or traffic. PR #36 remains open/unmerged, and repository-wide semantic reconciliation remains open.
