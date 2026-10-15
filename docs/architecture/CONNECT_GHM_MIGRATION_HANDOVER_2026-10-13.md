@@ -636,3 +636,25 @@ The next comparison batch found three more places where provider-bound source-er
 Added explicit target-boundary notes to all three. They preserve source-era mapping and inventory evidence, separate business mapping and integration authentication from end-user session authority, and state that the current provider-bound adapter does not satisfy the approved no-Supabase target. Refetch verification follows this update.
 
 The separate Connect identity adapter qualification already contains a clear 2026-10-13 no-Supabase target reconciliation. The historical identity/source audits, realtime audit, storage audit and readiness register were also checked: their date/scope banners correctly retain source-era evidence while leaving active caller, product exposure, realtime ownership and cutover gates open. Continue auditing remaining product adapter contracts and operation rows; no claim is made that target parity is complete. No local sync, runtime change, production mutation, provider activation, migration, cutover or merge occurred.
+
+## 53. Product capability, storage, realtime and atomic-workflow evidence pass — 2026-10-15 22:18 SAST
+
+### Scope reviewed
+
+Re-fetched and reviewed Connect Customer and Quote capability adapter qualification, resource capability dispatch qualification, public Business/Directory contracts, Enquiry/Opportunity/Opportunity Participant/Project/Project Quote capability adapter evidence, server-runtime and provider-boundary source audits, atomic-workflow source audit, storage/media and realtime source audits, backend operation inventory, backend readiness audit, and production-readiness gap register.
+
+### Findings
+
+- Customer, Quote, Enquiry, Opportunity, Opportunity Participant, Project and Project Quote records describe bounded resource adapters and explicitly exclude auth/session migration, provider migration, production routing or cutover as applicable. These are resource/capability construction proofs, not end-to-end Connect workflow parity.
+- Directory v1 contracts preserve the source UUID only as an external identifier, disallow making Supabase the GHM identity authority, and keep search extensions and production cutover separately gated.
+- The storage audit correctly reconciles the qualified persistence/R2 provider path while explicitly stating there is no registered Connect storage router and only the `business_logo` object class is qualified. Authenticated product-facing media lifecycle and other media classes remain open.
+- The realtime audit says GHM realtime remains unimplemented/unauthorized, and that source subscription evidence does not prove active mounted callers. Ownership decision and active-caller reachability remain open.
+- The atomic workflow audit explicitly supersedes old 2026-09-18 payment gap descriptions with later qualified preparation/result and PayFast implementation evidence, while retaining sandbox/runtime end-to-end, complete product parity, provider authorization and cutover gates.
+- The provider and server-runtime audits are clearly marked historical/source-only. The gap register warns that its dependency counts are historical and current readiness remains not production-ready.
+- The operation inventory separates source-era counts from current overlays; it identifies unresolved caller/contract mapping and does not present its historical rows as current parity measurements.
+
+No further content edit was needed in this batch: the inspected documents already carry the required source/target, qualification-scope, and no-cutover caveats. This was a bounded semantic pass, not proof that every operation has a matching target contract or that all 47 Connect documents are fully reconciled.
+
+### Remaining gates
+
+Continue a caller-by-caller matrix from the Connect migration handover against the GHM current-state index, readiness gaps and per-operation evidence; audit the remaining document history/metadata/ownership; review external URLs; revalidate final PR heads and status. No local sync, runtime implementation, production mutation, provider activation, migration, cutover or merge occurred.
