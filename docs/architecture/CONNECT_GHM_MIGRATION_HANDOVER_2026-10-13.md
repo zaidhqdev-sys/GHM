@@ -734,3 +734,27 @@ This pass reconciles the latest router/service inventory with the storage/realti
 ### Next
 
 Inspect the actual `src/http/app.ts` registrations and route-level tests for storage, notifications, support/reviews, payment, business/directory/governance and resource workflows. Finish remaining metadata/history/ownership and external URL checks, then rerun full-corpus internal-link validation on the final branch heads. The overall reconciliation is still open.
+
+
+## 58. HTTP registration and route-test evidence — 2026-10-15 22:42 SAST
+
+### Direct registration findings from `src/http/app.ts`
+
+The current review-branch app factory directly registers these route families: profile read; public directory search; public and authenticated business read; managed-business list/read; business create/update; business-hours read; project create; and explicit enquiry, opportunity, saved-business, business-capability, support-request, review, project-quote, opportunity-requirements, opportunity-participant, customer, quote, notification, business-category, business-offering, auth, commercial-internal and Connect-service routers.
+
+The same app file contains **no storage/media router registration**. No directory-listing founder review router appears among the explicit registered families; `review-router` is the customer review/moderation domain and must not be conflated with directory listing review. Thus the logo journey's GHM storage service remains inaccessible through an evidenced registered product HTTP router, and directory listing submit/queue/review remains a separate gap unless another registration is found by complete repository search.
+
+### Route-test evidence reviewed
+
+- `review-router.test.ts` checks public list, authenticated customer create/own-read, admin-only pending list/moderation, rejection of server-owned/arbitrary fields, and 401/403/404 behavior.
+- `support-request-router.test.ts` checks authentication, customer create scope, admin-only status updates, canonical fields, message operations and invalid IDs/filters.
+- `opportunity-router.test.ts` checks authentication, ID validation, visibility projections and error mapping; it does not prove project+opportunity atomic creation.
+- `project-quote-router.test.ts` checks customer/business role boundaries, canonical create/update fields and explicit accept/reject operations.
+- `notification-router.test.ts` covers notification read routes, including read-all count; it does not prove mounted realtime delivery or full producer semantics.
+- `payfast-http-router.test.ts` covers assertion/boundary checks, browser-originated checkout rejection, normalized ITN fields, rejection and unexpected failures; this is route-boundary evidence, not full provider lifecycle qualification.
+
+These are route-level tests using service fixtures; they are evidence for the contracts they exercise, not proof of production deployment, complete caller parity, end-to-end database behavior or cross-resource atomicity. The route inventory is an implementation snapshot of the current PR branch.
+
+### Next
+
+Finish complete-repository search for any indirect storage or directory-review registration, map Connect's exact caller request/response shape against these concrete routes/tests, then complete document metadata/history/ownership, external URL and final internal-link checks. Full documentation reconciliation is not yet certified; no merge or runtime/production mutation occurred.
