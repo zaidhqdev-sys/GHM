@@ -1,6 +1,6 @@
 # GHM Remaining Work Register — 2026-10-13
 
-**Status:** CURRENT GOVERNED REMAINING-WORK REGISTER — reconciled against GHM `main` through PR #133; status-correction PR #135 remains under review (2026-10-14)  
+**Status:** CURRENT GOVERNED REMAINING-WORK REGISTER — reconciled against GHM `main` through PR #133; status-correction PR #135 remains under review (last verified 2026-10-16)  
 **Repository authority:** the register's original audit anchor was `1f2b10d0850095311614c5b5f9531eb8b7cce860` (`Normalize migration checksums across line endings`). That SHA is historical provenance, not a live pointer to `main`. The register was subsequently reconciled against the consolidated mainline through documentation-only PR #126 (`aef8ecdeee241d31827f6fc42730f9a61f1ddea4`), PR #127 (`6afb428d452012d9860ca50c2b0066f0768b184c`), PR #128 (`671c41be0b2446dd5c56c709c4aa3cb2e15e7d81`), PR #129 (`9af7901b0baecbdc4b307f3a0a93e1643f006ca6`), and PR #130 (`14c805cfd749ed50493523972fdd0a7c359bbfce`), all merged on 2026-10-13. These are repository reconciliation milestones only; neither proves live deployment or database state.
 
 **Latest documentation reconciliation:** the whole-repository pass and targeted follow-ups are recorded in `GHM_CURRENT_STATE.md`. Opportunity Participation and Business Profile source-audit authorization language was clarified as historical; the qualified slices are not reopened by those records.
