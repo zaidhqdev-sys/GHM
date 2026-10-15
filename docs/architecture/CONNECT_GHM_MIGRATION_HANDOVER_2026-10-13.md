@@ -926,3 +926,19 @@ A further 30 documents in the GHM `docs/` tree were inspected in small batches, 
 - Authentication qualification items must refer to **GHM-issued** access tokens only where appropriate; legacy Supabase JWTs remain rejected directly by GHM. Product migration is still distinct from GHM auth-foundation qualification.
 
 The reviewed documents mostly preserve the intended historical-versus-current distinctions; no new contradiction was confirmed in this batch that justified changing the governed contracts. Keep every gap tied to a source caller, target contract, dependency, acceptance tests, and qualification evidence before implementation is marked closed. No runtime/source changes or merges were performed; PR #135 and PR #36 remain subject to the all-documents reconciliation gate.
+
+
+## 70. Storage, opportunity, project and QuoteFlow boundary batch — 2026-10-15
+
+A further 30 GHM architecture documents were checked in small batches, covering storage qualification/provider reconciliation, historical migration-checksum provenance, Issue #1 production foundation, notification operations, opportunity core/requirements/participation, Postgres authority/role separation, product backend inventory/evidence, project/quote contracts, and QuoteFlow migration boundaries. Detected Markdown relative links in these batches resolved to tracked paths; no missing relative targets were found. Most documents have no inline relative Markdown links. This does not yet validate heading anchors, reference-style links, external URLs, or non-Markdown link forms.
+
+**Current-state reconciliation:** many reviewed contracts correctly scope statements such as “Connect and QuoteFlow remain on Supabase” to their original construction authorization and explicitly say no production migration/cutover was authorized by that contract. These are not permission to keep Supabase as the target. The current no-Supabase target and readiness authority remain `GHM_CURRENT_STATE.md`, the current governed readiness/remaining-work registers, and the product-specific migration handovers. QuoteFlow's existing Supabase Auth, organization RPC and environment configuration are migration input only; Supabase UUIDs/JWTs/organization UUIDs must not become permanent GHM runtime identity or authorization keys. Keep `provider=supabase` source mappings only as historical provenance where the approved migration contract requires them.
+
+**Additional backlog checks:**
+- Opportunity Core/requirements/participation and Project Quote resource foundations are individually qualified; they do not close Connect's list/discovery filters, response normalization, project/quote marketplace flows, atomic project-plus-opportunity creation, or adapter/product HTTP parity.
+- Notification persistence does not prove notification HTTP workflows, active realtime/push consumers, or delivery transport; confirm mounted caller reachability before building those features.
+- QuoteFlow still needs the full GHM-native auth/recovery/re-enrollment ceremony, organization-to-Business plus owner-membership provisioning, deterministic local AsyncStorage scope transition, and recoverable rollback before cutover.
+- Production storage/provider qualification and deployment/operational acceptance remain separate from metadata persistence or an isolated resource qualification.
+- Migration checksum provenance exceptions remain historical integrity evidence; do not rewrite applied migration files or ledger rows to make hashes look uniform.
+
+No implementation/runtime changes or merges were performed. The full corpus and external/anchor checks remain open, and all product gaps must stay attached to source-caller evidence, the authoritative target contract, acceptance tests, qualification evidence, and the required Founder decision.
