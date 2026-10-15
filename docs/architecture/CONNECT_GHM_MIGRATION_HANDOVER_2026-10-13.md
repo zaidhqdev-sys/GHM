@@ -820,3 +820,22 @@ Connect `opportunityService.listMarketplaceOpportunities` queries open/respondin
 ### Next
 
 Compare Connect `directoryService.search`, `directoryListingReviewService`, `projectsService` and `opportunityService` directly against GHM route/service schemas and tests. Then do document metadata/history/ownership, external URL and internal-link checks against final PR heads. No code, runtime, migration, provider, production or merge change occurred.
+
+
+## 62. Directory and founder-review contract recheck — 2026-10-15 22:58 SAST
+
+### Active directory route contract
+
+Connect `useDirectorySearch` passes `query`, `category`, `province`, `city`, optional latitude/longitude/radius, `sort`, zero-based page and limit to `directoryService.search`. GHM `GET /api/v1/public/businesses` validates a strict query-key allowlist and currently accepts `q`, `category`, `page`, `pageSize` only. It rejects the active caller's `province`, `city`, coordinates, `radius`, and `sort` parameters; this is a direct incompatibility on the active path, in addition to page-base/limit naming differences. Directory adaptation remains required and must define geo/ranking behavior instead of silently dropping inputs.
+
+### Founder listing-review operation contract
+
+Connect's `directoryListingReviewService` is implemented in `src/lib/lib_supabase.js` and is called by `AdminDirectoryReviewPanel.jsx`. It checks founder reviewer status, calls an RPC for listing by status/limit/offset, and submits approve/reject/request-information decisions with a reason. The UI requires a rejection reason and exposes decisions while a listing is under review. This is active source-level workflow evidence, not proof that every user can reach the panel at runtime. GHM's inspected `src/http/app.ts` still shows no clearly matching listing-review registration. A complete route/repository search and exact decision/status transition contract comparison remain necessary before calling the gap confirmed repository-wide.
+
+### Corrections and next checks
+
+- The earlier `businessService.list` comparison is legacy service-surface evidence, not the active directory screen contract.
+- The founder review UI exists; do not describe it as absent from Connect.
+- The current evidence establishes active caller inputs and GHM's strict rejection behavior, but not all deployed navigation/reachability or indirect router wiring.
+
+Next inspect the full `directoryService.search` implementation and tests, all GHM registrations/routes matching directory-listing decisions, and status/authorization tests. Then finish metadata/history/ownership, external URL and full-corpus internal-link validation on final PR heads. Reconciliation remains open; no code/runtime/production change or merge occurred.
