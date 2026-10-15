@@ -602,3 +602,20 @@ Re-fetched and checked Connect `PRODUCT_REQUIREMENTS.md` (SHA `a30d895053d2318e8
 Current PR snapshots: Connect #36 open/unmerged at head `2d8476e518ec5deefe3f3ba8f383eb3103354712` (41 changed files); GHM #135 open/unmerged at head `7316e80fb00c188df50db0e493dea0fa1b4e5621` (6 changed files). Branch-to-main comparison shows 126 commits ahead for Connect and 65 for GHM, zero behind; this measures branch history, not documentation completeness. No merge was performed.
 
 Claim-by-claim comparison against GHM operation-level qualification evidence, remaining metadata/history/ownership checks, and external URL review remain incomplete. No local sync, implementation, production mutation, provider activation, migration, cutover, or merge occurred.
+
+## 50. Legacy Connect identity-contract boundary correction — 2026-10-15 22:02 SAST
+
+### Concrete inconsistency found and corrected
+
+A targeted read of `GHM_CURRENT_STATE.md`, `GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md`, `PRODUCT_CONSUMER_HTTP_CONTRACT_QUALIFICATION.md`, `CONNECT_SERVICE_HTTP_READ_BOUNDARY_QUALIFICATION.md`, and `CONNECT_GHM_AUTHORIZATION_BINDING_QUALIFICATION.md` found that the current-state/readiness records correctly require the no-Supabase Connect target, while three bounded qualification records still described a Supabase external-identity/provider input in present-tense current-Connect language. The authorization-binding qualification already stated in a later section that its provider-bound slice was not qualified for the target, but that caveat needed to be made prominent at the top-level boundary.
+
+Added explicit migration-state boundary notes to the three qualification records:
+- `PRODUCT_CONSUMER_HTTP_CONTRACT_QUALIFICATION.md`
+- `CONNECT_SERVICE_HTTP_READ_BOUNDARY_QUALIFICATION.md`
+- `CONNECT_GHM_AUTHORIZATION_BINDING_QUALIFICATION.md`
+
+The notes preserve each historical construction qualification and its original evidence while expressly preventing those results from being interpreted as qualification of the GHM-native target. They point to current-state/readiness/handover authority and do not claim target implementation, browser-safe access, session migration, product parity, deployment readiness, or cutover. The three updated files were re-fetched and the new boundary headings verified.
+
+### Remaining gate
+
+Continue the same comparison across all Connect-relevant qualification records, contracts, operation inventory rows and source-to-target mappings. A top-level note reduces ambiguity but does not replace a line-by-line contract matrix or prove the target exists. Full semantic/metadata/history/ownership and external-link review remain open. No local sync, runtime implementation, production mutation, provider activation, migration, cutover or merge occurred.
