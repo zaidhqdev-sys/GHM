@@ -893,3 +893,12 @@ Known open workstreams recorded in the register include:
 These are existing evidence-backed gaps and required qualification outcomes, not blanket authorization to construct every row. The post-audit execution plan must turn still-open rows into sequenced work items with source caller, authoritative contract, dependencies, acceptance tests, evidence, and founder decision. Preserve already-qualified foundations as closed; distinguish "not evidenced" from "does not exist"; exclude dormant/legacy paths unless mounted-call evidence justifies them.
 
 **Verification:** the new backlog section and the historical-source-state correction were refetched successfully from this branch. Full-corpus documentation reconciliation remains open; no implementation, migration, deployment, provider activation, production change, local checkout, cutover, or merge was performed.
+
+
+## 67. Authentication contract stale-verifier claim corrected — 2026-10-15
+
+During the Gate 2A–3B authentication document batch, `GHM_AUTHENTICATION_CRYPTOGRAPHIC_CONTRACT.md` contained a current-sounding table saying the verifier did not check `aud`, although active `main` source defines `ACCESS_JWT_AUD`, `ghm-bearer.ts` verifies access tokens, and `ghm-bearer.test.ts` explicitly rejects a wrong audience. The table is now labeled as Gate 2A historical baseline evidence; a current-source note points to implemented audience enforcement. Documentation only; no verifier/config/runtime code changed.
+
+The broader authentication-contract batch is being checked against current mainline evidence, not old Gate 2A–2F or Gate 3A snapshots. Historical decision text is retained, but present-implementation claims must be scoped as historical or traced to current evidence. Preserve the real open gates: product-facing auth transport/client integration, Connect/QuoteFlow identity/session migration, recovery delivery enablement, public product exposure, and cutover are not proven by GHM auth-foundation qualification.
+
+**Verification:** the stale current-sounding `Does not check aud` row was removed from the active handover branch document and replaced with explicit historical-baseline language. Full authentication-family semantic review remains in progress.
