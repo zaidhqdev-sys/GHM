@@ -902,3 +902,12 @@ During the Gate 2A–3B authentication document batch, `GHM_AUTHENTICATION_CRYPT
 The broader authentication-contract batch is being checked against current mainline evidence, not old Gate 2A–2F or Gate 3A snapshots. Historical decision text is retained, but present-implementation claims must be scoped as historical or traced to current evidence. Preserve the real open gates: product-facing auth transport/client integration, Connect/QuoteFlow identity/session migration, recovery delivery enablement, public product exposure, and cutover are not proven by GHM auth-foundation qualification.
 
 **Verification:** the stale current-sounding `Does not check aud` row was removed from the active handover branch document and replaced with explicit historical-baseline language. Full authentication-family semantic review remains in progress.
+
+
+## 68. Authentication-family link and current-claim batch — 2026-10-15
+
+The 10-document `GHM_AUTHENTICATION_*` family was checked in small batches against current `main` source and same-branch path inventory. Markdown relative-link validation covered 62 relative links across these 10 documents; all resolved to tracked paths in the inspected tree, with no missing relative targets in this family. This result does not yet cover reference anchors, external URLs, non-Markdown link syntax, or the full GHM corpus.
+
+Current-state checks confirmed the old Gate 1/2A–2F/3A statements are marked as historical or superseded and point readers to later qualification evidence. The Gate 2E API contract also correctly keeps product-client migration, public/product exposure, production email delivery, operational recovery/backup, and production cutover separately gated. Current source verification in `src/auth/foundation/access-jwt.ts` confirms ES256, issuer `ghm-auth`, audience `ghm-api`, 60-second clock tolerance and expiration validation; `src/auth/ghm-bearer.ts` checks account state and rejects disabled/missing identities. The contract's `iat` note is a real open item: verifier code does not explicitly require `iat` or reject future `iat`; `nbf` remains unselected. Do not silently mark either claim closed without a separate decision and tests.
+
+This batch found no reason to reopen the already-qualified bounded auth foundation. The remaining implementation plan must keep product integration/session migration and the explicitly open verifier/operational gates distinct. No runtime/source code was changed. The broader docs audit remains open.
