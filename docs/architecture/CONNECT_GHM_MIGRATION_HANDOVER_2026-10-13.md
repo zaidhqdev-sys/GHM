@@ -942,3 +942,18 @@ A further 30 GHM architecture documents were checked in small batches, covering 
 - Migration checksum provenance exceptions remain historical integrity evidence; do not rewrite applied migration files or ledger rows to make hashes look uniform.
 
 No implementation/runtime changes or merges were performed. The full corpus and external/anchor checks remain open, and all product gaps must stay attached to source-caller evidence, the authoritative target contract, acceptance tests, qualification evidence, and the required Founder decision.
+
+
+## 71. QuoteFlow migration ceremony and identity backlog batch — 2026-10-15
+
+Ten additional QuoteFlow migration/identity documents were reviewed, including existing-user manifests, canonical identity mapping, onboarding, account provisioning, Business provisioning, reset/re-enrollment, organization-to-Business reconciliation, snapshot validation, and single-user qualification. Their current-status notes generally distinguish historical proposals from the selected GHM-owned target. Detected Markdown relative links in this batch resolved to tracked paths; these documents contained no inline relative links, so the result is a path inventory check rather than substantive link coverage.
+
+**Confirmed open implementation/qualification backlog (keep separate, do not mark closed from lower-level qualifications):**
+- The GHM account identity and exact `(provider=supabase, sourceSubject) → account_identity.id` migration-provenance mapping are qualified; they do not make the Supabase UUID/JWT a GHM runtime principal or credential.
+- The migration-only account-provisioning DB primitive is qualified, but the separate live legacy-organization → GHM Business creation/provisioning path remains unqualified. Its contract currently documents synthetic outcomes only; no live Business creation or owner-membership equivalence is proven.
+- The request/completion building blocks for reset/re-enrollment are constructed, but the complete user-facing ceremony still needs non-production DB+HTTP qualification for anti-enumeration, single-use recovery, rollback, existing-session revocation, and post-reset GHM session issuance **for both founder-owned source accounts**.
+- Approved-source snapshot validation and dry-run manifest generation do not prove production source extraction, live account/Business/membership migration, credential re-enrollment, or runtime cutover.
+- QuoteFlow still needs deterministic, atomic and recoverable local AsyncStorage scope transition; the existing local data is not migrated automatically by authentication changes.
+- Production recovery email delivery/provider enablement, migration execution, Supabase package/config removal, shadow qualification, rollback evidence, and founder-authorized cutover remain separate gates.
+
+The former dual-confirmation/permanent identity-link proposal is clearly marked historical/superseded and must not be revived as a runtime bridge. Preserve only the approved migration-provenance crosswalk. No production source access, implementation, runtime change, or merge occurred in this batch.
