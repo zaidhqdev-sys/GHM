@@ -619,3 +619,9 @@ The notes preserve each historical construction qualification and its original e
 ### Remaining gate
 
 Continue the same comparison across all Connect-relevant qualification records, contracts, operation inventory rows and source-to-target mappings. A top-level note reduces ambiguity but does not replace a line-by-line contract matrix or prove the target exists. Full semantic/metadata/history/ownership and external-link review remain open. No local sync, runtime implementation, production mutation, provider activation, migration, cutover or merge occurred.
+
+## 51. Second identity-boundary audit batch — 2026-10-15 22:06 SAST
+
+The next bounded review found two more source-era identity descriptions that could be mistaken for target contract: `CONNECT_TRUSTED_REQUEST_CONTEXT_QUALIFICATION.md` (its user-scoped external identity is explicitly `provider="supabase"`) and `GHM_CONNECT_IDENTITY_BRIDGE_QUALIFICATION.md` (provider-plus-subject mapping examples). Added prominent migration-state boundary notes to both. They retain original bounded qualification evidence and explicitly say it is not target identity/session qualification. Both files were updated successfully; refetch verification is the next checkpoint.
+
+The Connect Business provisioning/linking record remains a distinct external Business UUID → canonical GHM Business mapping slice and explicitly does not authorize product cutover; do not conflate Business external mapping with runtime end-user identity authority. Continue auditing the remaining Connect trust, identity, business provisioning, product adapters, payment, storage and realtime records against the target no-Supabase contract. No runtime changes, local sync, production mutation, provider activation, migration, cutover, or merge occurred.
