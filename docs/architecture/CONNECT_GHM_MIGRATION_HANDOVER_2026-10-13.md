@@ -1038,3 +1038,10 @@ This is a documentation-only correction; it does not modify or probe the Supabas
 The paired Connect review branch now defines the “Implemented” requirement classification as evidence in the inspected source implementation/contracts, not proof of present hosted availability or GHM parity. The legacy `businesses.is_supplier` flag statement is also scoped to the inspected Supabase-backed source, with current hosted/database status unverified. Connect's handover records this as section 81; the changes were re-fetched and verified.
 
 The GHM migration target remains unchanged. No implementation or production change occurred, and PR #36 remains open/unmerged while the full cross-repository semantic reconciliation gate is open.
+
+
+## 82. Connect document revision metadata consistency — 2026-10-16
+
+The paired Connect review branch aligned version, `Last Updated`, and revision-history metadata for seven materially revised documents under the repository's documentation standard: Integration Architecture 3.3, Domain Model 3.9, Security Architecture 3.5, Data Architecture 3.7, System Architecture 3.4, Product Glossary 3.3, and Product Requirements 2.14. All seven were re-fetched and the 2026-10-16 metadata/revision rows verified. Connect's handover records this as section 82.
+
+This resolves metadata drift introduced by the source-versus-target terminology corrections; it does not certify all documents' owner/status/history metadata or complete semantic reconciliation. No implementation or production state changed. PR #36 remains open/unmerged pending the full documentation gate.
