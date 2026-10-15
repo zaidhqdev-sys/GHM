@@ -1,5 +1,10 @@
 # Product Consumer HTTP Contract Qualification
 
+## Migration-state boundary — GHM-native Connect target (2026-10-15)
+
+**Target qualification warning:** This document preserves the shared semantic HTTP envelope and its original Connect construction integration. Its current-Connect notes below still describe the legacy Supabase external-identity reference and are evidence of that bounded source-era contract only. They do not qualify the approved target runtime, which must remove active Supabase runtime dependencies and use GHM-native identity/session semantics. Do not copy the legacy provider field into the target contract or treat this document's construction qualification as proof of target identity, session migration, browser-safe access, end-to-end product parity, deployment readiness, or cutover authorization. The current target boundary and execution state are governed by `GHM_CURRENT_STATE.md`, `GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md`, the dated Connect migration handover, and the separately qualified target contract when one exists. No implementation or cutover is authorized by this clarification.
+
+
 ## Status
 
 **CONSTRUCTION QUALIFIED — SHARED PRODUCT CONSUMER HTTP SEMANTIC CONTRACT ONLY**
