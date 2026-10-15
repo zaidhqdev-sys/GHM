@@ -797,3 +797,26 @@ The Connect service source confirms lead creation takes `(businessId, customerId
 2. Trace the lead/enquiry create UI, legacy RPC payload, status mutations, and project/opportunity/quote UI actions to their exact service methods.
 3. Compare each reachable operation against GHM's strict allowlists, identity and business scope, error envelope and transaction behavior.
 4. Only then classify as Reuse, Adapt, Extend or Build; keep historical table names out of the target schema unless authoritative evidence requires them.
+
+
+## 61. Mounted caller-path evidence: directory, founder review, project and opportunity — 2026-10-15 22:54 SAST
+
+### Directory caller is launch-wired in source
+
+Connect `src/features/directory/DirectoryScreen.jsx` uses `useDirectoryFilters` and `useDirectorySearch`; the search hook calls `directoryService.search` with query, category, province, city, optional lat/lng/radius, sort, zero-based page and limit=20. Filters default to rating sort; city/province and geographic radius are real caller inputs, not merely old service parameters. The older `businessService.list` filter signature is not the active screen's direct call. Therefore the earlier category/city/supplier/tier comparison remains valid as a legacy service-contract note, but the active screen's immediate target is `directoryService.search`, whose exact mapping must be compared separately. Do not present the older list contract as the sole live caller contract.
+
+### Founder directory review is also wired in source
+
+`src/features/administration/AdminDirectoryReviewPanel.jsx` calls `directoryListingReviewService.isFounderReviewer()`, lists by status/limit/offset and submits approve/reject/request-information decisions with reasons. This disproves any blanket statement that Connect lacks a founder review UI. It does not prove a matching GHM HTTP router: the inspected GHM app registration list still lacks a clearly matching directory-listing-review router. The mismatch is now specifically **active Connect review UI/service versus no evidenced matching GHM registered route**, pending a full search for indirect registration.
+
+### Project creation has a named atomic legacy contract
+
+`src/features/projects/ProjectRequestScreen.jsx` calls `createProject(user.id, form)`; `projectsService.createProject` calls Supabase RPC `create_project_with_opportunity` with customer ID, title, description, category, province, city, budget range and urgency. The RPC name and call shape establish the intended atomic project+opportunity contract on the legacy side. GHM's separate project create route and opportunity read route do not alone replace that transaction. A GHM atomicity contract or explicit product decision is required before parity can be claimed.
+
+### Opportunity marketplace and requirements
+
+Connect `opportunityService.listMarketplaceOpportunities` queries open/responding opportunities with opens/closes window checks, optional text and type filters, exact count and bounded limit; requirements replacement calls `replace_opportunity_capability_requirements` with version=1. The current GHM opportunity router inspection established a scoped single-opportunity read, while separate requirement/participant routers exist. Exact marketplace discovery semantics and atomic/versioned requirements replacement must be mapped before the routes can be called equivalent.
+
+### Next
+
+Compare Connect `directoryService.search`, `directoryListingReviewService`, `projectsService` and `opportunityService` directly against GHM route/service schemas and tests. Then do document metadata/history/ownership, external URL and internal-link checks against final PR heads. No code, runtime, migration, provider, production or merge change occurred.
