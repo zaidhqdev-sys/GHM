@@ -1083,3 +1083,20 @@ The GHM tree currently contains 210 tracked Markdown/text documentation files an
 5. Keep both PRs unmerged until the full GHM documentation corpus is reconciled, the remaining validation results are recorded, and the founder explicitly authorizes merge.
 
 No local checkout, implementation, database, runtime, migration, provider activation, production state, or cutover was changed by this checkpoint. Legacy Supabase JWTs remain rejected as GHM runtime credentials; Supabase is source/migration provenance only, not the approved target runtime.
+
+
+
+## 68. Latest review-branch changed-file link/anchor verification — 2026-10-16
+
+Freshly fetched the current review tree at GHM commit `4f60e93528e1d93f2f6e2a009902a566c4bb65d7` (210 Markdown files) and checked every one of the 14 current PR #135 changed files against that tree. All relative Markdown file targets found in the changed files resolve. The inline Markdown link anchors whose target documents were among the changed files were also checked; no missing anchors were found. This does not yet validate reference-style uses, HTML/autolinks, every anchor into unchanged documents, external URL liveness, or the remaining 196 documents' links.
+
+The same pass confirms the PR #135 current-state paragraph's old “13 files” wording is now explicitly dated as a historical checkpoint and the live count is 14. This was corrected on the review branch only; PR #135 remains open/unmerged.
+
+### Exact remaining closeout scope
+
+- Extend path/anchor/reference-style/autolink validation across all 210 GHM Markdown documents and all 47 Connect Markdown documents on the exact latest heads, not just the changed-file subset.
+- Finish semantic/status/authority/owner/history review of the complete GHM corpus and cross-check relevant Connect claims against the GHM contracts.
+- Re-fetch head SHAs and checks after any further edits; current review branch head is a moving pointer.
+- Keep the merge gate closed until the full GHM documentation corpus is reconciled and the founder explicitly authorizes merge.
+
+No runtime, implementation, database, provider, production or cutover changes occurred.
