@@ -1,5 +1,10 @@
 # Connect Backend Operation Inventory
 
+## Current-target interpretation correction — identity/session row (2026-10-15)
+
+The historical inventory row and overlay statement that GHM Connect binding “still requires provider `supabase`” describe the source-era external-identity adapter contract and its current limitation, not an approved target dependency. Read that statement as: **the existing bounded adapter is provider-bound and therefore does not yet satisfy the no-Supabase target identity/session contract**. The target remains a blocker until GHM-native credentials/session, role mapping, active-account checks, refresh/recovery, and no-Supabase identity binding are separately specified, implemented, and qualified. Preserve the original historical inventory counts and source evidence; do not treat them as current parity measurements or infer readiness. No implementation or cutover is authorized by this clarification.
+
+
 **Status:** HISTORICAL EVIDENCE INVENTORY — BRIDGE TO FUTURE ADAPTER WORK (NOT AUTHORIZED)  
 **Connect commit:** `abcffa73f893602c25310a58946bebb91fd7eeb5`  
 **GHM comparison tip:** historical docs/resources snapshot from the 2026-09-18 evidence sprint; not the current mainline  
