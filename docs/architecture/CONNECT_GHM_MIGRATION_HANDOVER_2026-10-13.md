@@ -839,3 +839,14 @@ Connect's `directoryListingReviewService` is implemented in `src/lib/lib_supabas
 - The current evidence establishes active caller inputs and GHM's strict rejection behavior, but not all deployed navigation/reachability or indirect router wiring.
 
 Next inspect the full `directoryService.search` implementation and tests, all GHM registrations/routes matching directory-listing decisions, and status/authorization tests. Then finish metadata/history/ownership, external URL and full-corpus internal-link validation on final PR heads. Reconciliation remains open; no code/runtime/production change or merge occurred.
+
+
+## 63. Full directory-search and listing-review RPC boundary check — 2026-10-15 23:02 SAST
+
+Connect's complete `directoryService.search` filters approved and active businesses; searches name/description/city; filters category, province, substring city and tier; uses selected sort and zero-based page/limit; requests exact count; omits public registration numbers; and optionally filters/calculates distance after querying when coordinates are supplied. The active hook passes province/city/coordinates/radius/sort. GHM's public route rejects unsupported keys before invoking search, so this is a directly evidenced active-path mismatch. Matching query names alone is insufficient: compare target sort/default order, radius semantics, count and public projection.
+
+Connect's founder listing-review service calls legacy RPCs `is_directory_listing_founder_reviewer`, `submit_business_for_directory_review`, `review_business_directory_listing`, `list_businesses_for_directory_review`, and `get_business_directory_review_presentation`. Review passes business ID, decision, reason and version (default 1); queue listing passes status/limit/offset. These are database RPC contracts, not HTTP routes.
+
+The inspected GHM app registration area registers a generic customer `review-router`, but no clearly matching directory-listing-review route. Repository code searches also did not surface one. Because code search can be incomplete, classify this as **no matching registration evidenced after app-registration and search review**, not proof no dynamic route can exist. Customer review/moderation is not equivalent to founder directory listing review.
+
+Directory adapter work must preserve sort/geospatial/count/projection behavior. Listing review needs an explicit target HTTP contract for founder authorization, queue status/pagination, decision allowlist, required reasons, version/concurrency behavior and audit trail. No runtime/application code or production state changed; no merge. Reconciliation remains open.
