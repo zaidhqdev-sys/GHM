@@ -715,3 +715,22 @@ These findings were cross-checked against Connect's source service exports and i
 ### Next batch
 
 Inspect the exact route registry and contract/test evidence for profile/business, directory, founder review, capability evidence, leads/enquiries, project/opportunity/quote operations; then cover storage/media, notifications/realtime, support/reviews and payment. Finish metadata/history/ownership, external URL and final link checks only after source-level mapping has stabilized. No merge until the complete documentation set is reconciled.
+
+
+## 57. Storage, realtime, notifications, support/reviews and payment boundary check — 2026-10-15 22:38 SAST
+
+### Direct source and qualification findings
+
+- **Storage/media:** Connect source still calls Supabase Storage for profile avatars, business logos, and verification documents. GHM `src/storage/service.ts` explicitly limits the qualified object class to `business_logo`; the current storage audit says no storage router is registered in `src/http/app.ts`. Provider/R2 qualification is not a browser-usable media API. Authenticated upload/complete/access/delete routes and contract tests for the logo path remain open; avatars, verification docs, workspace files and project images are not covered by the logo qualification.
+- **Realtime:** The source audit explicitly says the old notification and leads subscription call sites are not proven mounted in a launch-active route. Do not claim they are active or build a replacement transport on assumption. Prove current component/hook reachability first; any GHM realtime transport still requires a separate ownership decision.
+- **Notification persistence/API:** GHM has a registered notification HTTP router and notification service. This is not proof of realtime delivery parity or that Connect's active inbox consumer is mounted. Compare list/read/mark-read and producer/tenant authorization semantics separately from subscription transport.
+- **Support and reviews:** GHM has registered support-request and review routers, so blanket claims that those domains are wholly absent would be stale. Remaining work is caller-by-caller response/schema, identity/business scope, lifecycle, moderation, and test parity—not automatic rebuild of the domain.
+- **Commercial payments:** GHM has bounded PayFast HTTP/resource implementation and prior deterministic local qualification, but that does not certify live/sandbox end-to-end production readiness, provider enablement, subscription parity, or cutover. Connect's payment freeze and provider authorization gates remain authoritative.
+
+### Result
+
+This pass reconciles the latest router/service inventory with the storage/realtime source audits and the payment readiness boundary. No contradiction requiring a new product/architecture decision was resolved by assuming broader parity. No code/runtime implementation, production mutation, provider activation, migration, cutover or merge occurred.
+
+### Next
+
+Inspect the actual `src/http/app.ts` registrations and route-level tests for storage, notifications, support/reviews, payment, business/directory/governance and resource workflows. Finish remaining metadata/history/ownership and external URL checks, then rerun full-corpus internal-link validation on the final branch heads. The overall reconciliation is still open.
