@@ -174,7 +174,7 @@ The provider identifier is metadata describing the external identity source. It 
 
 GHM must not accept a Supabase JWT as a GHM bearer token.
 
-Supabase Auth remains the Connect production session authority until a separately authorized product-auth migration exists.
+**Historical source-state statement (not the approved target):** at the inspected source checkpoint, Supabase Auth remained Connect's production session authority. The approved target removes active Supabase runtime dependencies and requires separately specified and qualified GHM-native product authentication/session authority before cutover.
 
 ## 13. No product cutover
 
