@@ -629,7 +629,7 @@ The Connect Business provisioning/linking record remains a distinct external Bus
 ## 52. Trust, business mapping and operation-inventory target boundary — 2026-10-15 22:12 SAST
 
 The next comparison batch found three more places where provider-bound source-era identity could be misread as target design:
-- `GHM_CONNECT_BUSINESS_PROVISIONING_LINKING_CONTRACT.md` contains the legacy Business UUID mapping provider key and a historical sentence that Supabase Auth remains the Connect production session authority.
+- `GHM_CONNECT_BUSINESS_PROVISIONING_LINKING_CONTRACT.md` contains the legacy Business UUID mapping provider key. Its former sentence that Supabase Auth remains the Connect production session authority was corrected on 2026-10-15 to label it explicitly as historical source-state evidence, not the approved no-Supabase target. This handover bullet is retained as an audit trail of the stale claim and must not be read as saying the sentence remains uncorrected.
 - `CONNECT_GHM_SERVICE_TRUST_BOUNDARY_CONTRACT.md` includes a legacy external identity example alongside the separate ES256 service assertion contract.
 - `CONNECT_BACKEND_OPERATION_INVENTORY.md` says the existing GHM Connect binding still requires provider `supabase`, which is accurate as a limitation of the bounded adapter but can be read as target direction without its qualifier.
 
