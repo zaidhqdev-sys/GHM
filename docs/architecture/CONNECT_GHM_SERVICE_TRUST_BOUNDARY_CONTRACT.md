@@ -1,5 +1,10 @@
 # Zaid Connect ↔ GHM Service Trust Boundary Contract
 
+## Migration-state boundary — service trust vs legacy end-user identity (2026-10-15)
+
+This contract defines the GHM-authoritative service-to-service trust boundary. Its `provider = "supabase"` / external subject fields and the step stating that an external Supabase identity resolves through the identity adapter describe the bounded legacy Connect identity-bridge input, not the approved no-Supabase target login/session contract. Keep the cryptographic service assertion separate from any end-user identity: a verified integration principal does not prove the end user's identity, membership, or permissions. The target must remove active Supabase runtime dependencies and establish GHM-native identity/session semantics with separate target-specific qualification. The contract does not by itself qualify browser-safe access, complete product authorization, production deployment, or cutover.
+
+
 **Status:** FOUNDER-AUTHORIZED CONSTRUCTION CONTRACT — CRYPTOGRAPHIC SUB-SLICE FROZEN
 **Canonical owner:** GHM platform governance
 **Construction branch:** `construction/connect-service-trust-boundary`
