@@ -777,3 +777,23 @@ These routes are useful reuse candidates, but Connect's lead create/status servi
 ### Next
 
 Trace the Connect directory caller's actual page conversion and filter UI, then map lead creation and project/quote caller payloads one operation at a time. After caller mapping, perform the metadata/history/ownership and external URL checks, followed by final internal-link validation on the actual PR head trees. This is a verified gap record, not reconciliation completion. No implementation, migration, provider activation, cutover or merge occurred.
+
+
+## 60. Directory and enquiry/quote caller mapping — 2026-10-15 22:50 SAST
+
+### Directory semantics confirmed from Connect source
+
+The `businessService.list({ category, city, isSupplier, tier, page = 0, limit = 20 })` method selects only the public directory allowlist, filters to approved businesses, orders featured then rating, and applies zero-based inclusive ranges. GHM's public directory route has the narrower `q/category/page/pageSize` contract and rejects unknown keys. This confirms a compatibility adapter must explicitly map zero-based `page` to one-based target `page`, `limit` to `pageSize`, and must implement or explicitly defer city/supplier/tier filtering and featured/rating ordering. Before adapting, inspect the UI's actual use of these filters so required versus dormant options are accurately classified. Never forward `isSupplier`/tier/city and silently ignore the resulting 400.
+
+### Enquiry and quote caller boundaries
+
+GHM enquiry creation validates a positive `businessId` and a strict allowed-field set; received enquiry read/status routes are authenticated and require registered access. Project quote creation validates positive `projectId` and `businessId`, strict quote amount/range fields, and has explicit customer/business read scopes plus empty-body accept/reject actions. GHM opportunity router exposes only `GET /api/v1/opportunities/:opportunityId` in the inspected file. This makes the current target boundary concrete, but does not yet prove Connect caller payload compatibility or a replacement for the legacy combined lead/opportunity RPC.
+
+The Connect service source confirms lead creation takes `(businessId, customerId, leadData)`, while directory list uses the filters above. A caller-specific trace still must establish where each ID is sourced and authenticated, which UI actions are launch-reachable, and the exact lead/quote field mappings. Treat absent path evidence as unresolved rather than inventing a route. No code or data changed.
+
+### Remaining caller mapping
+
+1. Trace directory screen/component path and determine which category/city/supplier/tier/paging controls are actually mounted.
+2. Trace the lead/enquiry create UI, legacy RPC payload, status mutations, and project/opportunity/quote UI actions to their exact service methods.
+3. Compare each reachable operation against GHM's strict allowlists, identity and business scope, error envelope and transaction behavior.
+4. Only then classify as Reuse, Adapt, Extend or Build; keep historical table names out of the target schema unless authoritative evidence requires them.
