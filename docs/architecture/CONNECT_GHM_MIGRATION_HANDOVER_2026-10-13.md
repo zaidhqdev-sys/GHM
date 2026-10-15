@@ -691,3 +691,27 @@ Continue active caller mapping for profile/business editor and provisioning, dir
 A focused source trace resolved the prior evidence-insufficient item. In Connect `main`, `src/features/ai/AIQuoteAnalyzerScreen.jsx` runs `quoteAnalyzerService.getUserAnalyses(user.id)` during its effect and calls `quoteAnalyzerService.analyzeQuote(sampleQuoteId, user.id)` from the analysis action. The corresponding service is exported from `src/lib/lib_supabase.js`; the screen is therefore not merely an unused import. The UI's analysis history and quote lookup are active backend-replacement scope.
 
 This does **not** establish that the orphan `quote_analyses` table reference is an authoritative production schema or that the path requires paid/provider AI. Connect's milestone evidence separates this deterministic/local/DB heuristic path from the Milestone 38 provider-AI path, which remains fail-closed/unapproved. Next, trace the exact service implementation and persisted source objects, identify mounted route reachability, and compare each read/write with authoritative GHM HTTP and ownership contracts. Do not invent a table or equate the path with Anthropic/provider activation. No runtime, data, provider, deployment, migration, cutover or merge change occurred.
+
+
+## 56. Business, directory, capability and enquiry caller map — 2026-10-15 22:32 SAST
+
+### Direct-source confirmations
+
+The current Connect `src/lib/lib_supabase.js` export surface includes active profile/business services, `directoryService.search`, capability listing/draft/evidence operations, `leadService.create/updateStatus`, project/quote services and founder review operations. The Connect integration specification (lines 494–507) explicitly records the remaining target gaps below; GHM's operation inventory and readiness register independently carry these same open boundaries.
+
+| Caller family | Current target finding | Next qualification needed |
+|---|---|---|
+| Profile/business registration and management | **Extend/Replace** — GHM public/managed Business reads, create/update and identity mapping do not alone prove full Connect profile parity. | GHM-native account/session authority; owner/business mapping; owner-only updates; unpublished-field privacy; avatar/media storage router. |
+| Directory search and geography | **Extend** — Connect accepts category, city, supplier and tier filters; target regional/province/city filtering is not evidenced. | Exact filter semantics, paging/sort/count, regional-config authority, deterministic tests and public-field privacy. |
+| Founder directory review | **Extend/Build** — Connect submit/queue/review paths are active; the inspected GHM router inventory does not evidence matching review HTTP operations. | Founder authority, idempotency, pending/approved/rejected transitions, audit record and authorization denial tests. |
+| Capability catalogue/evidence | **Extend/Build** — Connect has governed capability draft and evidence submit/review calls; matching target HTTP contracts are not established. | Separate catalogue administration from business evidence; verifier permissions, evidence lifecycle (pending/verified/rejected/revoked), versioning and audit. |
+| Leads/enquiries | **Extend** — Connect lead create and status update have non-atomic and RPC paths; the inventory classifies the existing GHM enquiry slice as partial. | Caller identity, business/customer access, field mapping, notification ownership, atomic create+opportunity semantics and retry/idempotency tests. |
+| Projects/opportunities/quotes | **Reuse + Extend** — GHM project and project-quote routes exist; inventory marks project↔opportunity atomic creation and opportunity discovery as incomplete/partial. | Exact request/response mapping, listing/search/time-window semantics, requirements replacement, quote lifecycle, deletion policy, authorization and transactional guarantees. |
+
+### Evidence boundary
+
+These findings were cross-checked against Connect's source service exports and its integration specification, and against the GHM operation inventory/readiness register on the current review branch. A source service export does not by itself prove every method is mounted in the UI; this pass establishes the legacy contract surface and existing documented GHM gaps, not a completed endpoint-by-endpoint route/test qualification. Historical source table names are not authorization to recreate the schema wholesale. No application code, database, provider, production deployment, migration, cutover or merge changed.
+
+### Next batch
+
+Inspect the exact route registry and contract/test evidence for profile/business, directory, founder review, capability evidence, leads/enquiries, project/opportunity/quote operations; then cover storage/media, notifications/realtime, support/reviews and payment. Finish metadata/history/ownership, external URL and final link checks only after source-level mapping has stabilized. No merge until the complete documentation set is reconciled.
