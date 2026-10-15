@@ -580,3 +580,9 @@ Reviewed Connect's current-state audit, bounded directory-launch authorization i
 The five-file inline Markdown-link check found no inline Markdown link targets and therefore no missing inline local targets in this batch. Inline-code repository paths were excluded from link parsing. Reference-style links, anchors, external URLs and the full corpus remain unchecked.
 
 No local sync, implementation, production mutation, provider activation, migration, cutover, or merge occurred. Full-corpus validation and claim-by-claim cross-repository reconciliation remain open.
+
+## 47. Connect full-corpus local Markdown target sweep — 2026-10-15 21:10 SAST
+
+Enumerated the current Connect review-branch tree and confirmed 47 tracked Markdown files. All 47 were fetched and checked in bounded batches against that same tree. The checker normalized relative `.` / `..` segments and checked inline local Markdown destinations, explicit `[label][reference]` forms for missing definitions, and explicit inline heading fragments. No missing local Markdown targets, unresolved explicit second-bracket reference labels, or missing heading anchors were reported within this scope.
+
+This is not complete link or documentation certification: external URL reachability, reference-definition destinations and shortcut references, every GitHub slug edge case, all semantic/metadata/history/ownership checks, and claim-by-claim cross-repository reconciliation remain separate gates. It does not establish GHM runtime behavior or authorize production actions. No local sync, implementation, production mutation, provider activation, migration, cutover, or merge occurred.
