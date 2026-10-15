@@ -1031,3 +1031,10 @@ A cross-check of the current GitHub PR metadata against `docs/GHM_REMAINING_WORK
 The paired Connect review branch corrected a remaining present-tense statement in `docs/06_Implementation/VERIFICATION_LOG.md`: the Capability Catalogue v1 expansion is now explicitly recorded as applied/verified at the 2026-09-02 Supabase source-production checkpoint, not as current hosted availability or GHM parity. The same section no longer implies that public directory functionality is presently reachable merely because directory and commercial checkout were historically separate; it states that current hosted availability remains unverified following the dated 2026-10-13 Auth endpoint failure. The verification log was re-fetched after the change and version metadata advanced to 35.4 / 2026-10-16. Connect's handover records this as section 80.
 
 This is a documentation-only correction; it does not modify or probe the Supabase project, production database, provider, runtime or traffic. PR #36 remains open/unmerged, and repository-wide semantic reconciliation remains open.
+
+
+## 81. Connect product requirements source-state clarification — 2026-10-16
+
+The paired Connect review branch now defines the “Implemented” requirement classification as evidence in the inspected source implementation/contracts, not proof of present hosted availability or GHM parity. The legacy `businesses.is_supplier` flag statement is also scoped to the inspected Supabase-backed source, with current hosted/database status unverified. Connect's handover records this as section 81; the changes were re-fetched and verified.
+
+The GHM migration target remains unchanged. No implementation or production change occurred, and PR #36 remains open/unmerged while the full cross-repository semantic reconciliation gate is open.
