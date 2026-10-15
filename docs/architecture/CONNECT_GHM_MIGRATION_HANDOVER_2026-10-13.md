@@ -957,3 +957,21 @@ Ten additional QuoteFlow migration/identity documents were reviewed, including e
 - Production recovery email delivery/provider enablement, migration execution, Supabase package/config removal, shadow qualification, rollback evidence, and founder-authorized cutover remain separate gates.
 
 The former dual-confirmation/permanent identity-link proposal is clearly marked historical/superseded and must not be revived as a runtime bridge. Preserve only the approved migration-provenance crosswalk. No production source access, implementation, runtime change, or merge occurred in this batch.
+
+
+## 72. Quote, Review, Saved Business, Support, Trust and adapter evidence batch — 2026-10-15
+
+A further 20 documents across the GHM architecture and evidence trees were inspected: Quote and subscription/entitlement reconciliation, resource boundary, Review HTTP/operation, Saved Business, SQL privilege inventory, Support Request, transaction/runtime gates, Trust contracts and qualifications, Business Offering and Connect capability-adapter evidence. The Markdown-link scanner found no missing tracked-file targets among detected inline relative links in this batch; the inspected documents predominantly contain no inline relative Markdown links. This is not anchor/reference-style/external URL validation.
+
+**Status distinctions confirmed:** the bounded GHM Quote, Review HTTP, Saved Business, Trust, Support Request, and selected Connect capability-adapter slices are recorded as construction-qualified in current capability/evidence indexes. Their old branch-only authorization/acceptance checklists are historical evidence, not open construction requests. They do not establish full Connect feature parity, subscription/entitlement migration, product-wide integration, production deployment, or cutover.
+
+**Gaps retained for execution after reconciliation:**
+- QuoteFlow subscription/entitlement still has no evidence-backed GHM adapter; organization-to-Business equivalence and entitlement source/ownership must be explicitly decided and qualified before product integration.
+- Connect moderation parity remains open beyond the canonical Review resource, including founder/admin authority, moderation reason, hidden/public state, audit records, list projections and HTTP mapping; keep business directory listing review distinct from customer review moderation.
+- Saved Business adapter qualification does not close the complete directory save/unsave journey; verify duplicate behavior, ordering, envelopes, active/approved eligibility, and exact GHM ID mapping.
+- Qualified Business Offering/Enquiry/Opportunity/Project adapter seams do not close full product journeys or production traffic; atomic project-plus-opportunity semantics and exact filter/pagination/count parity remain independently evidenced.
+- Trust score foundation does not close provenance/version persistence or additional authoritative evidence dimensions; do not expand scoring without explicit contract and qualification.
+- Legacy SQL inventory findings do not justify copying the legacy broad `ghm_db_user` privileges; preserve capability-derived least privilege and defer destructive authority cleanup until recovery/replacement gates permit it.
+- Production replacement remains gated on product-specific integration, migration/data reconciliation, shadow evidence, operational recovery, controlled rollback and Founder-authorized cutover.
+
+No source/runtime changes, production mutations, or merges were made. Historical source references to Supabase remain provenance; construction contracts' statements that Supabase is the current live provider describe the pre-cutover operating state and must not be misread as the desired target architecture.
