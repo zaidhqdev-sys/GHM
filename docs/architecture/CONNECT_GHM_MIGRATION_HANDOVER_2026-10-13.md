@@ -684,3 +684,10 @@ Repository snapshots at this checkpoint: GHM has 210 tracked Markdown files (207
 ### Next batch
 
 Continue active caller mapping for profile/business editor and provisioning, directory/filtering, capability evidence and founder review, leads/enquiries, opportunity/project/quote atomic workflows, media/storage, notifications/realtime, support/reviews, and commercial payment. For each operation, capture source caller, current GHM route/method/schema, identity and tenant authorization, response/error mapping, persistence/transaction semantics, evidence status and explicit Reuse/Extend/Build/Legacy-exclude/Evidence-insufficient classification. Then complete external URL review, metadata/history/ownership checks and final same-branch link validation. No runtime implementation, local sync, production mutation, provider activation, migration, cutover or merge occurred.
+
+
+## 55. Quote-analysis active caller trace — 2026-10-15 22:28 SAST
+
+A focused source trace resolved the prior evidence-insufficient item. In Connect `main`, `src/features/ai/AIQuoteAnalyzerScreen.jsx` runs `quoteAnalyzerService.getUserAnalyses(user.id)` during its effect and calls `quoteAnalyzerService.analyzeQuote(sampleQuoteId, user.id)` from the analysis action. The corresponding service is exported from `src/lib/lib_supabase.js`; the screen is therefore not merely an unused import. The UI's analysis history and quote lookup are active backend-replacement scope.
+
+This does **not** establish that the orphan `quote_analyses` table reference is an authoritative production schema or that the path requires paid/provider AI. Connect's milestone evidence separates this deterministic/local/DB heuristic path from the Milestone 38 provider-AI path, which remains fail-closed/unapproved. Next, trace the exact service implementation and persisted source objects, identify mounted route reachability, and compare each read/write with authoritative GHM HTTP and ownership contracts. Do not invent a table or equate the path with Anthropic/provider activation. No runtime, data, provider, deployment, migration, cutover or merge change occurred.
