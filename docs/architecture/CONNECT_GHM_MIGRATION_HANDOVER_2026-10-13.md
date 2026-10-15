@@ -1059,3 +1059,27 @@ This is metadata compliance evidence only, not semantic certification of every h
 The paired Connect review branch rechecked all 47 tracked Markdown files at exact head `447300aacc0c7f3cdc9963af53d70fa4972937b8` against the required title/Document Owner/Status/Version/Last Updated fields. All files were readable and no missing metadata was found in any batch. The Connect handover records this as section 85.
 
 This is a metadata compliance result only. The semantic all-documents gate, remaining link syntax/external URL checks, and final mainline comparison remain open. PR #36 remains open/unmerged; no product/runtime changes or cutover occurred.
+
+
+
+## 67. Audit closeout push — current review snapshot 2026-10-16
+
+Founder direction: finish this audit promptly, avoid repeating completed checks, and leave an actionable GHM capability backlog. This entry is a durable checkpoint, not a reconciliation certificate.
+
+### Current GitHub review state
+
+- GHM PR #135 remains open/unmerged: https://github.com/zaidhqdev-sys/GHM/pull/135. Live metadata at this check reports 14 changed files. It corrects PR #133 status and migration handover wording; the GHM branch is still a review branch, not mainline.
+- ZAID Connect PR #36 remains open/unmerged: https://github.com/zaidhqdev-sys/zaid-connect/pull/36. Live metadata at this check reports 47 changed files across the documentation corpus.
+- Prior handover section 65's counts (13 GHM files / 41 Connect files) are historical checkpoint counts, not current scope. PR descriptions now avoid duplicated fixed counts.
+- The Connect review branch received two additional documentation edits: the glossary's legacy “Current Production” state labels are explicitly scoped as historical source-state evidence, and the implementation index no longer implies current hosted availability. These edits do not certify the no-Supabase target.
+
+### Remaining audit gate — do not repeat completed checks
+
+The GHM tree currently contains 210 tracked Markdown/text documentation files and Connect contains 47 Markdown files. Existing bounded audits, link-target sweeps, metadata checks and semantic batches are evidence for their recorded scopes only. Still required before declaring the audit complete:
+1. Run a fresh same-head full-corpus local Markdown path/anchor/reference-link validation for both review branches, with an explicit result artifact and no reliance on old sweep counts.
+2. Finish semantic/status/authority/owner/history review across all GHM documents, using the Connect corpus for cross-repository claims where relevant; explicitly distinguish historical source state from current GHM target state.
+3. Reconcile every remaining claim against GHM operation-level contracts and the actionable capability-gap register. Preserve known open gaps: GHM-native browser/session transport and identity binding; directory/filter/geography/profile parity; founder review/capability-evidence APIs; Business provisioning; storage/media exposure and recovery; Relationships/Outcomes domain and APIs; onboarding, analytics and workflow/atomicity parity; PayFast sandbox end-to-end qualification; separate Paystack live/commercial gates; data reconciliation, rollback/recovery, shadow qualification and founder-authorized cutover.
+4. Re-fetch both PR heads and rerun checks after the final documentation edits; compare GitHub branches with local checkouts separately because local sync has not been established.
+5. Keep both PRs unmerged until the full GHM documentation corpus is reconciled, the remaining validation results are recorded, and the founder explicitly authorizes merge.
+
+No local checkout, implementation, database, runtime, migration, provider activation, production state, or cutover was changed by this checkpoint. Legacy Supabase JWTs remain rejected as GHM runtime credentials; Supabase is source/migration provenance only, not the approved target runtime.
