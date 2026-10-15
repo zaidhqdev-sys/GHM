@@ -850,3 +850,18 @@ Connect's founder listing-review service calls legacy RPCs `is_directory_listing
 The inspected GHM app registration area registers a generic customer `review-router`, but no clearly matching directory-listing-review route. Repository code searches also did not surface one. Because code search can be incomplete, classify this as **no matching registration evidenced after app-registration and search review**, not proof no dynamic route can exist. Customer review/moderation is not equivalent to founder directory listing review.
 
 Directory adapter work must preserve sort/geospatial/count/projection behavior. Listing review needs an explicit target HTTP contract for founder authorization, queue status/pagination, decision allowlist, required reasons, version/concurrency behavior and audit trail. No runtime/application code or production state changed; no merge. Reconciliation remains open.
+
+
+## 64. Documentation inventory, ownership metadata and hierarchy check — 2026-10-15 23:08 SAST
+
+### Inventory evidence
+
+The current inspected GHM construction branch tree contains 665 tracked paths, 210 Markdown files total, of which 207 are under `docs/`. No root or nested `CODEOWNERS` file was present in that tree, and no conventional `docs/README.md` or `docs/index.md` was found. The repository does, however, define a documentation hierarchy in `docs/DOCUMENTATION_RECONCILIATION_2026-10-05.md`: `docs/GHM_CURRENT_STATE.md` is the current-state index; `docs/architecture/` is living architecture; `docs/evidence/` is qualification evidence; dated handovers/source audits/decision records are historical provenance.
+
+### Interpretation
+
+Absence of CODEOWNERS is an ownership-policy gap only if repository policy requires GitHub CODEOWNERS; it does not establish that no named owners exist inside individual governance/contract records. Absence of a conventional docs index is not itself a broken-link finding because the reconciliation record already names the hierarchy. Historical handovers should remain historical, while living records must be checked against mainline implementation/test/evidence and not rewritten into current-state fiction.
+
+### Scope still open
+
+This was a tree-level metadata/hierarchy check, not a complete per-document owner/date/status audit, URL liveness crawl, or internal-link validation. The GitHub code-search queries for generic ownership/history/link terms returned no results and are not considered proof of absence. Continue with actual changed-file inventories, explicit link-target resolution across the complete docs corpus, and external URL checks where a live request is possible. Reconciliation remains open; no implementation, migration, production change or merge occurred.
