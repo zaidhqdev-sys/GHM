@@ -758,3 +758,22 @@ These are route-level tests using service fixtures; they are evidence for the co
 ### Next
 
 Finish complete-repository search for any indirect storage or directory-review registration, map Connect's exact caller request/response shape against these concrete routes/tests, then complete document metadata/history/ownership, external URL and final internal-link checks. Full documentation reconciliation is not yet certified; no merge or runtime/production mutation occurred.
+
+
+## 59. Exact directory and enquiry/quote route comparison — 2026-10-15 22:46 SAST
+
+### Confirmed contract mismatch
+
+Connect `src/lib/lib_supabase.js` directory listing filters approved businesses and supports category, substring city, supplier boolean, tier, page/limit, with featured/rating ordering. GHM's `src/http/app.ts` `GET /api/v1/public/businesses` accepts only `q`, `category`, `page`, and `pageSize`; unknown query keys are rejected with `400 invalid_request`. It defaults to page 1/pageSize 20 and caps pageSize at 50. Therefore Connect's legacy `city`, `isSupplier`, and `tier` filter semantics and zero-based page convention cannot be forwarded unchanged; this is a concrete adapter/contract gap, not merely a general concern. Do not silently drop filters or change ordering without product parity tests.
+
+### Existing GHM workflow routes verified
+
+- Enquiry: `POST /api/v1/enquiries`, `GET /api/v1/enquiries/received`, `GET /api/v1/enquiries/received/:enquiryId`, `GET /api/v1/enquiries/:enquiryId`, and `PATCH /api/v1/enquiries/received/:enquiryId/status`. Status transitions can return conflict; access is explicitly guarded.
+- Opportunity: `src/http/opportunity-router.ts` currently exposes a scoped `GET` read route, not proof of full create/list/filter parity.
+- Project quotes: `GET /api/v1/projects/:projectId/quotes`, `GET /api/v1/businesses/:businessId/project-quotes`, `POST /api/v1/project-quotes`, `PATCH /api/v1/project-quotes/:quoteId`, and explicit accept/reject actions are registered in the router.
+
+These routes are useful reuse candidates, but Connect's lead create/status service and project/quote flows still need exact field, identity, scope, error-envelope, pagination and transaction mapping. The route test suites do not establish atomic creation across enquiry/opportunity/project, nor should a legacy Supabase RPC be treated as proof of the GHM transaction contract.
+
+### Next
+
+Trace the Connect directory caller's actual page conversion and filter UI, then map lead creation and project/quote caller payloads one operation at a time. After caller mapping, perform the metadata/history/ownership and external URL checks, followed by final internal-link validation on the actual PR head trees. This is a verified gap record, not reconciliation completion. No implementation, migration, provider activation, cutover or merge occurred.
