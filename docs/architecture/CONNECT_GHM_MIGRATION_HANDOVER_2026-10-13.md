@@ -874,3 +874,22 @@ This was a tree-level metadata/hierarchy check, not a complete per-document owne
 - The same review reconfirmed the provider-bound GHM identity adapter is a blocker, not qualification of the no-Supabase target. Existing source implementation and historical qualification must not be interpreted as active target authorization.
 - **Scope limit:** this was a targeted canonical-document review, not a complete internal-link/anchor crawl, external URL liveness check, per-document owner/date/history audit, or full semantic scan of all 210 GHM and 47 Connect Markdown files. Path-like strings in code formatting were not counted as links. Repository-wide reconciliation remains open until those complete same-branch checks and cross-repository claim reconciliation are finished.
 - No application code, runtime, database, migration, provider, production state, local checkout, cutover, or merge changed. Do not merge either PR until all GHM docs are reconciled and the founder explicitly authorizes merge.
+
+
+## 66. Actionable missing-capability backlog preserved — 2026-10-15
+
+Founder reminder acknowledged: documentation reconciliation must leave a usable implementation plan for what GHM lacks, not just corrected prose. The governed gap register now includes an action-oriented cross-check table covering each gap, closure evidence, and qualified work that must not be reopened. The same batch corrected the old Business-provisioning contract sentence that incorrectly appeared to designate Supabase Auth as the future Connect session authority; it now explicitly labels that statement as historical source-state evidence.
+
+Known open workstreams recorded in the register include:
+- GHM-native Connect authentication/session lifecycle and a browser-safe user transport (the signed Connect service endpoint remains server-to-server).
+- Directory/filter/geography/profile parity beyond the qualified narrow Directory v1; founder review and capability-evidence workflows.
+- Membership/ownership migration; project-plus-opportunity and other source-proven atomic workflows; opportunity marketplace discovery.
+- Onboarding, analytics and relationships/outcomes only where active callers are evidenced.
+- Storage/R2 object authorization and product/HTTP exposure, private-document policy and recovery; realtime delivery ownership where live subscribers are proven.
+- Quote analysis/history migration and removal of Supabase Edge transport while provider gating stays fail-closed.
+- PayFast real sandbox/runtime end-to-end qualification and broader commercial parity; QuoteFlow's separate integrated recovery/session/provisioning/data-transition and rollback gates.
+- Product-specific end-to-end acceptance, operational visibility, failure recovery, reconciliation and rollback before any cutover.
+
+These are existing evidence-backed gaps and required qualification outcomes, not blanket authorization to construct every row. The post-audit execution plan must turn still-open rows into sequenced work items with source caller, authoritative contract, dependencies, acceptance tests, evidence, and founder decision. Preserve already-qualified foundations as closed; distinguish "not evidenced" from "does not exist"; exclude dormant/legacy paths unless mounted-call evidence justifies them.
+
+**Verification:** the new backlog section and the historical-source-state correction were refetched successfully from this branch. Full-corpus documentation reconciliation remains open; no implementation, migration, deployment, provider activation, production change, local checkout, cutover, or merge was performed.
