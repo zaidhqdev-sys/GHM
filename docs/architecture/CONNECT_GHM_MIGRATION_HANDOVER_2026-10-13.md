@@ -1045,3 +1045,10 @@ The GHM migration target remains unchanged. No implementation or production chan
 The paired Connect review branch aligned version, `Last Updated`, and revision-history metadata for seven materially revised documents under the repository's documentation standard: Integration Architecture 3.3, Domain Model 3.9, Security Architecture 3.5, Data Architecture 3.7, System Architecture 3.4, Product Glossary 3.3, and Product Requirements 2.14. All seven were re-fetched and the 2026-10-16 metadata/revision rows verified. Connect's handover records this as section 82.
 
 This resolves metadata drift introduced by the source-versus-target terminology corrections; it does not certify all documents' owner/status/history metadata or complete semantic reconciliation. No implementation or production state changed. PR #36 remains open/unmerged pending the full documentation gate.
+
+
+## 84. Connect documentation metadata compliance — 2026-10-16
+
+The paired Connect review branch scanned all 47 tracked Markdown files against its Documentation Standard for title, Document Owner, Status, Version and Last Updated. Sixteen files initially lacked one or more canonical fields. Those fields were normalized and re-fetched successfully; the other 31 files passed the initial scan. This included correction of the Current State Audit owner/date metadata, the Implementation Backlog source-production wording and version/revision record, the two provider milestone records, launch runbook/governance instrument, verification log, extraction map, implementation README, durable handover, and ADR-000 through ADR-005. The detailed affected-file record is in Connect handover section 84.
+
+This is metadata compliance evidence only, not semantic certification of every historical statement or external/reference-style link. PR #36 remains open/unmerged and the full cross-repository documentation gate remains open.
