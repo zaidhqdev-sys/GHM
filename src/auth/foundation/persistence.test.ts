@@ -625,6 +625,13 @@ test('auth foundation persistence (database)', async (t) => {
         [accountId],
       );
       assert.equal(email.rows[0]?.email, `user+${marker}@Example.COM`);
+      await assert.rejects(
+        () => runtimeClient.query('SELECT login_email FROM ghm.account_password_credential WHERE account_id = $1', [accountId]),
+        (error: unknown) => {
+          const err = error as { code?: string; message?: string };
+          return err.code === '42501' || Boolean(err.message?.match(/permission denied/i));
+        },
+      );
     } finally {
       runtimeClient.release();
     }
