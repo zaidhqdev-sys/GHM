@@ -221,3 +221,7 @@ This is a dated overlay on consolidated mainline, not a claim that open construc
 - **Documentation reconciliation:** GHM #135 and Connect #36 remain open/unmerged. The previous 210 GHM / 47 Connect Markdown enumeration and relative file-target pass are useful partial evidence only; reference-style links, cross-batch anchors, external link liveness and complete semantic/status/authority/history/owner/cross-repository reconciliation are still open.
 
 No listed PR is thereby approved to merge or deploy. Production database mutation, production deployment, payment activation and product cutover remain frozen pending exact runtime/mapping evidence, full documentation reconciliation and explicit founder authorization.
+
+## Exact-head CI result for documentation branch — 2026-10-16 20:55Z
+
+CI run [38963881139](https://github.com/zaidhqdev-sys/GHM/actions/runs/38963881139) completed successfully on the then-current head `3bd284e2591c2cff3bf40b97e0bb392fc4be00d0`: build/migrations and runtime-boundary verification passed, **543 passed / 0 failed / 2 skipped / 0 TODO**. The skips are not waived: auth foundation persistence skipped because auth schema/functions or separate migrator/runtime URLs were unavailable; Connect service assertion replay skipped because distinct runtime/migrator database URLs were not supplied. CI success therefore does not satisfy the no-skips release standard. This entry itself creates a new head and requires exact-head revalidation. Full semantic/link reconciliation remains open.
