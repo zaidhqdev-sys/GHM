@@ -831,3 +831,88 @@ test('project update route maps closed-project denial to conflict', async () => 
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });
+
+
+test('canonical identity route rejects missing authentication', async () => {
+  const service = {
+    resolveIdentity: async () => { throw new Error('must not be called'); },
+  } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/identity`);
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: 'unauthorized' });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('canonical identity route derives account context from GHM auth and validates selected membership through service', async () => {
+  let received: { context: AuthContext; selectedBusinessId?: number } | undefined;
+  const identity = {
+    account: profile({ userId: 42, role: 'business' }),
+    memberships: [{ id: 501, accountId: 42, businessId: 201, role: 'owner', status: 'active' }],
+    activeMembership: { id: 501, accountId: 42, businessId: 201, role: 'owner', status: 'active' },
+    activeBusiness: { id: 201, name: 'Canonical Business', isActive: true },
+  };
+  const service = {
+    resolveIdentity: async (input: { context: AuthContext; selectedBusinessId?: number }) => {
+      received = input;
+      return identity;
+    },
+  } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const token = tokenFor({ userId: 42, role: 'business' });
+    const response = await fetch(`${baseUrl}/api/v1/identity?businessId=201`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(received, { context: { userId: 42, role: 'business' }, selectedBusinessId: 201 });
+    const body = await response.json() as typeof identity;
+    assert.equal(body.account.id, 42);
+    assert.equal(body.memberships[0].businessId, 201);
+    assert.equal(body.activeMembership.businessId, 201);
+    assert.equal(body.activeBusiness.id, 201);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('canonical identity route rejects malformed business selection before service execution', async () => {
+  let called = false;
+  const service = {
+    resolveIdentity: async () => { called = true; throw new Error('must not be called'); },
+  } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const token = tokenFor({ userId: 42, role: 'business' });
+    for (const value of ['0', '-1', '1.5', 'abc', '9007199254740992']) {
+      const response = await fetch(`${baseUrl}/api/v1/identity?businessId=${encodeURIComponent(value)}`, {
+        headers: { authorization: `Bearer ${token}` },
+      });
+      assert.equal(response.status, 400, `expected invalid businessId ${value} to be rejected`);
+      assert.deepEqual(await response.json(), { error: 'invalid_request' });
+    }
+    assert.equal(called, false);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('canonical identity route maps an unauthorized business selection to 403', async () => {
+  const service = {
+    resolveIdentity: async () => { throw new Error('Selected business context is not authorized'); },
+  } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const token = tokenFor({ userId: 42, role: 'business' });
+    const response = await fetch(`${baseUrl}/api/v1/identity?businessId=999`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { error: 'business_context_forbidden' });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
