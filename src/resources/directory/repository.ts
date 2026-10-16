@@ -134,11 +134,21 @@ export class PostgresDirectoryRepository implements DirectoryRepository {
     try {
       const text = textPredicate(query);
       const category = categoryPredicate(query, text.values.length + 1);
-      const values = [...text.values, ...category.values];
+      const provinceIndex = text.values.length + category.values.length + 1;
+      const province = query.province
+        ? { sql: `AND lower(b.province) = lower(${provinceIndex})`, values: [query.province] }
+        : { sql: '', values: [] };
+      const businessTypeIndex = provinceIndex + province.values.length;
+      const businessType = query.businessType
+        ? { sql: `AND b.is_supplier = ${businessTypeIndex}`, values: [query.businessType === 'suppliers'] }
+        : { sql: '', values: [] };
+      const values = [...text.values, ...category.values, ...province.values, ...businessType.values];
 
       const where = `WHERE ${PUBLIC_VISIBILITY}
         ${text.sql}
-        ${category.sql}`;
+        ${category.sql}
+        ${province.sql}
+        ${businessType.sql}`;
 
       const countResult = await client.query<{ count: string }>(
         `SELECT COUNT(*)::text AS count
