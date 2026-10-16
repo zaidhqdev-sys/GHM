@@ -416,3 +416,13 @@ No runtime or production changes were made in this audit.
 - **Next:** Keep the Connect migration gap register aligned; wire the business-hours editor to the GHM endpoint only as part of the GHM-native identity/API integration, then test owner/admin authorization, invalid payloads, persisted read-after-write, and unauthorized cross-business access. Keep legacy Supabase JWTs rejected by GHM.
 
 **Ledger rule:** Every subsequent implementation PR must add its verified change, exact PR/commit, test evidence, remaining integration work, and deployment/cutover boundary here and update any corresponding Connect handover in the same coordinated work. Never mark a capability complete merely because a service method, route, or CI check exists.
+
+
+## 13. Cross-repository implementation ledger — 2026-10-16 Connect GHM auth transport
+
+- **Connect implementation branch:** `construction/ghm-auth-transport-20261016`; PR creation and CI verification pending at time of entry.
+- **Scope:** Connect adds an isolated GHM-native auth transport client for register/login/refresh/logout and bearer API requests. This is a frontend transport foundation, not an identity bridge and not proof of GHM product API parity.
+- **Critical remaining GHM contract:** Confirm and, if absent, implement a browser-authorized canonical self-profile and active-membership resolution path. Client-supplied account/business IDs must not grant access. Founder-reviewer authorization must be resolved from GHM-owned authority, not browser claims.
+- **Compatibility rule:** GHM must continue to reject legacy Supabase JWTs. Do not repurpose the server-to-server Connect service assertion endpoint as a browser user API and never expose assertion secrets.
+- **Cutover boundary:** Connect's existing app auth and broad Supabase-backed services remain unchanged until identity/session restoration, account/profile role, membership/active-business selection, permissions, reviewer status, and dependent service callers are migrated and tested end-to-end.
+- **Docs rule:** Update this ledger and Connect's migration handover on each subsequent implementation PR. Passing client unit tests alone is not a migration milestone.
