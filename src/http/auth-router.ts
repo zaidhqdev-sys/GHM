@@ -52,6 +52,90 @@ const tokenPayload = (tokens: AuthTokenResponse) => ({
   accountId: tokens.accountId,
 });
 
+const WEB_REFRESH_COOKIE = 'ghm_web_refresh';
+const WEB_REFRESH_COOKIE_PATH = '/api/ghm';
+
+interface WebAuthConfig {
+  readonly allowedOrigins: ReadonlySet<string>;
+  readonly cookieName: string;
+  readonly cookiePath: string;
+  readonly secureCookie: boolean;
+}
+
+const getWebAuthConfig = (): WebAuthConfig => {
+  const allowedOrigins = (process.env.GHM_WEB_AUTH_ALLOWED_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  const cookieName = process.env.GHM_WEB_AUTH_COOKIE_NAME?.trim() || WEB_REFRESH_COOKIE;
+  const cookiePath = process.env.GHM_WEB_AUTH_COOKIE_PATH?.trim() || WEB_REFRESH_COOKIE_PATH;
+  return {
+    allowedOrigins: new Set(allowedOrigins),
+    cookieName,
+    cookiePath: cookiePath.startsWith('/') && !cookiePath.includes(';') ? cookiePath : WEB_REFRESH_COOKIE_PATH,
+    secureCookie: process.env.GHM_WEB_AUTH_COOKIE_SECURE === 'true'
+      || (process.env.NODE_ENV === 'production' && process.env.GHM_WEB_AUTH_COOKIE_SECURE !== 'false'),
+  };
+};
+
+const requireWebAuthOrigin = (req: Request, res: Response, config: WebAuthConfig): boolean => {
+  const origin = req.header('origin');
+  if (config.allowedOrigins.size === 0) {
+    res.status(503).json({ error: 'web_auth_not_configured' });
+    return false;
+  }
+  if (!origin || !config.allowedOrigins.has(origin)) {
+    res.status(403).json({ error: 'origin_not_allowed' });
+    return false;
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Vary', 'Origin');
+  return true;
+};
+
+const readCookie = (req: Request, name: string): string | null => {
+  const header = req.header('cookie');
+  if (!header) return null;
+  for (const item of header.split(';')) {
+    const separator = item.indexOf('=');
+    if (separator < 0 || item.slice(0, separator).trim() !== name) continue;
+    const value = item.slice(separator + 1).trim();
+    return value.length > 0 ? value : null;
+  }
+  return null;
+};
+
+const setWebRefreshCookie = (res: Response, config: WebAuthConfig, token: string): void => {
+  const attributes = [
+    `${config.cookieName}=${encodeURIComponent(token)}`,
+    `Path=${config.cookiePath}`,
+    'HttpOnly',
+    'SameSite=Lax',
+  ];
+  if (config.secureCookie) attributes.push('Secure');
+  res.setHeader('Set-Cookie', attributes.join('; '));
+};
+
+const clearWebRefreshCookie = (res: Response, config: WebAuthConfig): void => {
+  const attributes = [
+    `${config.cookieName}=`,
+    `Path=${config.cookiePath}`,
+    'HttpOnly',
+    'SameSite=Lax',
+    'Max-Age=0',
+  ];
+  if (config.secureCookie) attributes.push('Secure');
+  res.setHeader('Set-Cookie', attributes.join('; '));
+};
+
+const webAccessPayload = (tokens: AuthTokenResponse) => ({
+  accessToken: tokens.accessToken,
+  tokenType: tokens.tokenType,
+  expiresIn: tokens.expiresIn,
+  sessionId: tokens.sessionId,
+  accountId: tokens.accountId,
+});
+
 const handleAuthError = (error: unknown, res: Response): void => {
   // Lazy import keeps HS product test suites from loading Auth secret config at import time.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -283,6 +367,84 @@ export const registerAuthRoutes = (
       await getAuthService().logout(input.refreshToken);
       res.status(200).json({ ok: true });
     } catch (error) {
+      handleAuthError(error, res);
+    }
+  });
+
+  // Browser session contract: refresh credentials are only held in HttpOnly cookies.
+  // Access JWTs remain short-lived and are returned for in-memory use by the SPA.
+  // The frontend must call these routes through its same-origin /api/ghm proxy.
+  const webConfig = getWebAuthConfig();
+  app.post('/api/v1/auth/web/register', loginRateLimit, async (req: Request, res: Response) => {
+    if (!requireWebAuthOrigin(req, res, getWebAuthConfig())) return;
+    try {
+      const input = parseRegistrationBody(req.body);
+      if (!input) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const service = getAuthService();
+      if (!service.register) {
+        res.status(503).json({ error: 'service_unavailable' });
+        return;
+      }
+      const tokens = await service.register(input);
+      setWebRefreshCookie(res, webConfig, tokens.refreshToken);
+      res.status(201).json(webAccessPayload(tokens));
+    } catch (error) {
+      handleAuthError(error, res);
+    }
+  });
+
+  app.post('/api/v1/auth/web/login', loginRateLimit, async (req: Request, res: Response) => {
+    if (!requireWebAuthOrigin(req, res, getWebAuthConfig())) return;
+    try {
+      const input = parseLoginBody(req.body);
+      if (!input) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const tokens = await getAuthService().login(input.email, input.password);
+      setWebRefreshCookie(res, webConfig, tokens.refreshToken);
+      res.status(200).json(webAccessPayload(tokens));
+    } catch (error) {
+      handleAuthError(error, res);
+    }
+  });
+
+  app.post('/api/v1/auth/web/refresh', refreshRateLimit, async (req: Request, res: Response) => {
+    if (!requireWebAuthOrigin(req, res, getWebAuthConfig())) return;
+    const refreshToken = readCookie(req, getWebAuthConfig().cookieName);
+    if (!refreshToken) {
+      clearWebRefreshCookie(res, getWebAuthConfig());
+      res.status(401).json({ error: 'unauthorized', code: 'INVALID_REFRESH_CREDENTIAL' });
+      return;
+    }
+    try {
+      const tokens = await getAuthService().refresh(refreshToken);
+      setWebRefreshCookie(res, getWebAuthConfig(), tokens.refreshToken);
+      res.status(200).json(webAccessPayload(tokens));
+    } catch (error) {
+      clearWebRefreshCookie(res, getWebAuthConfig());
+      handleAuthError(error, res);
+    }
+  });
+
+  app.post('/api/v1/auth/web/logout', async (req: Request, res: Response) => {
+    const config = getWebAuthConfig();
+    if (!requireWebAuthOrigin(req, res, config)) return;
+    const refreshToken = readCookie(req, config.cookieName);
+    if (!refreshToken) {
+      clearWebRefreshCookie(res, config);
+      res.status(200).json({ ok: true });
+      return;
+    }
+    try {
+      await getAuthService().logout(refreshToken);
+      clearWebRefreshCookie(res, config);
+      res.status(200).json({ ok: true });
+    } catch (error) {
+      clearWebRefreshCookie(res, config);
       handleAuthError(error, res);
     }
   });
