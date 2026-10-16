@@ -14,6 +14,10 @@ export interface AccountIdentity {
   readonly phone: string | null;
   readonly avatarRef: string | null;
   readonly role: GhmRole;
+  readonly connectRole: 'customer' | 'contractor' | 'supplier' | null;
+  readonly businessOperatorIntent: boolean;
+  readonly isSystemAdmin: boolean;
+  readonly isDirectoryListingFounderReviewer: boolean;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
