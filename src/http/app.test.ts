@@ -12,6 +12,7 @@ import { DirectoryResult, DirectoryService } from '../resources/directory/contra
 
 const profile = (context: AuthContext): AccountIdentity => ({
   id: context.userId,
+  email: 'http-user@example.com',
   fullName: 'HTTP Qualification User',
   phone: null,
   avatarRef: null,
@@ -904,6 +905,7 @@ test('canonical identity route derives account context from GHM auth and validat
     assert.deepEqual(received, { context: { userId: 42, role: 'business' }, selectedBusinessId: 201 });
     const body = await response.json() as typeof identity;
     assert.equal(body.account.id, 42);
+    assert.equal(body.account.email, 'http-user@example.com');
     assert.equal(body.memberships[0].businessId, 201);
     assert.equal(body.activeMembership.businessId, 201);
     assert.equal(body.activeBusiness.id, 201);
