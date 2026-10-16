@@ -1,6 +1,6 @@
 # Connect → GHM Internal Runtime Migration — Durable Handover
 
-**Status:** ACTIVE READ-ONLY AUDIT / DOCUMENTATION FIRST — NO IMPLEMENTATION OR CUTOVER AUTHORIZED  
+**Status:** ACTIVE GHM/CONNECT IMPLEMENTATION AND QUALIFICATION — DOCUMENT RECONCILIATION AND PRODUCTION CUTOVER GATES REMAIN OPEN  
 **Created:** 2026-10-13  
 **Purpose:** A new session must resume without reconstructing the conversation.  
 **Companion:** ZAID Connect copy: `docs/06_Implementation/GHM_BACKEND_MIGRATION_HANDOVER_2026-10-13.md`.
@@ -24,7 +24,7 @@ Target: remove **all Supabase runtime dependencies from current ZAID Connect** a
 - Do not instruct the founder to sync/pull local repositories unless asked. Keep work in small batches and updates concise.
 - Do not create more branches without need. These handover branches are documentation-only.
 
-## 2. Repository checkpoints (verified 2026-10-13)
+## 2. Historical repository checkpoints (verified 2026-10-13)
 
 | Repository | Main checkpoint | Documentation branch |
 |---|---|---|
@@ -115,7 +115,7 @@ Classification: **Reuse** = likely existing GHM surface, still requires contract
 
 ## 8. Exact resume point — do not restart from zero
 
-**Current checkpoint:** the targeted cross-document reconciliation and final changed-file stale-claim/scope scan are complete for the recorded classifications. The 207-file GHM Markdown relative-link scan and all changed-file link checks (30 GHM / 7 Connect) found no broken local targets. The Relationships/Outcomes route-reachability statement and regional-filter classification are consistent; the separate directory contract now distinguishes bounded current scope from the approved-to-plan **Extend** parity gap. No stale next-batch/resume instruction was found in the changed files. PR #133 and Connect PR #34 remain open drafts; their final heads and review state are recorded in the session checkpoint. No code, runtime, database, production, provider, or cutover changes were made. Do not merge without the founder's explicit authorization.
+**Historical checkpoint (2026-10-13):** the targeted cross-document reconciliation and final changed-file stale-claim/scope scan were complete for the classifications recorded at that checkpoint. The 207-file GHM Markdown relative-link scan and all changed-file link checks (30 GHM / 7 Connect) found no broken local targets. The Relationships/Outcomes route-reachability statement and regional-filter classification are consistent; the separate directory contract now distinguishes bounded current scope from the approved-to-plan **Extend** parity gap. No stale next-batch/resume instruction was found in the changed files. PR #133 and Connect PR #34 remain open drafts; their final heads and review state are recorded in the session checkpoint. No code, runtime, database, production, provider, or cutover changes were made. Do not merge without the founder's explicit authorization.
 
 1. Reconcile the operation-level classifications in this handover against `GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md`, `CONNECT_BACKEND_OPERATION_INVENTORY.md`, `GHM_CONNECT_BACKEND_READINESS_AUDIT.md`, `docs/GHM_CURRENT_STATE.md`, and the living operation contracts. Keep explicit **Build / Extend / Reuse candidate / Legacy-exclude / Evidence-insufficient** distinctions.
 2. **Completed link audit:** 207 tracked GHM Markdown files plus all changed-file links in both PRs (30 GHM / 7 Connect) had no broken relative/local targets. The newly clarified directory-contract sentence introduced no links. The final targeted changed-file scan found no remaining flagged stale route/regional classifications or obsolete resume instructions. If files or links change after this checkpoint, repeat the relevant checks.
@@ -646,3 +646,13 @@ Added `src/db/connect-business-migration-reconciliation.ts` and `src/db/connect-
 The tests cover valid exact mapping, missing source evidence, absent business mapping, absent owner mapping, reviewed-business conflict, owner-evidence conflict, unproven membership, invalid IDs/missing mapping evidence, and deterministic behavior. This is the reconciliation **decision contract**, not evidence that the real Connect backup rows have been reconciled. Actual row-level reconciliation remains blocked until the approved non-production source snapshot and explicit reviewed business/account mapping files are available, then every target business/account and active membership must be checked against the canonical GHM database. No production data was read or mutated for this implementation, no mappings were inserted, and no cutover is authorized.
 
 Latest CI for this implementation is running on head `69bf8e4442f1ca3d415dcf6ca82e920bab2ed152`; do not mark this contract qualified until the run completes with build, migration checks, all tests passed, zero skipped, and zero TODO.
+
+## 34. Current implementation and CI checkpoint — 2026-10-16 18:12Z
+
+GHM PR #137 remains **open, draft, and unmerged**. The latest checked full CI run for head `5aa335d95e25ba5b5dcbbe5b4da4cd0b2e9d189c` is [run 38945405032](https://github.com/zaidhqdev-sys/GHM/actions/runs/38945405032): build passed, all migrations applied to disposable PostgreSQL, **591 tests passed, zero failed, zero skipped, zero TODO**, and runtime boundary verification passed.
+
+The preceding merge-queue/test run [38945382173](https://github.com/zaidhqdev-sys/GHM/actions/runs/38945382173) failed one reconciliation test because its fixture removed `businessMapping` but retained a valid `reviewedBusinessMapping`; the implementation correctly returned `MAPPED`. The fixture now removes both mappings for the `CREATE_REQUIRED` case and separately tests acceptance of a reviewed mapping. The latest checked run above is green; the earlier failure is historical and must not be described as the current result.
+
+The business reconciliation function remains a **read-only decision contract**, not completed row-level data reconciliation. No production mapping rows were imported or mutated. The actual source snapshot, reviewed account/business mapping artifacts, canonical GHM records, active memberships, deployed API behavior, Connect consumer integration, and production readiness remain separate gates. This checkpoint does not authorize merge, production migration, deployment, payment activation, or cutover.
+
+Documentation reconciliation remains a live gate: older historical sections and PR status references must be distinguished from current state, and the GHM and Connect documentation sets must be reviewed together before any merge. Do not use the 2026-10-13 historical audit checkpoint as proof that current implementation documentation is fully reconciled.
