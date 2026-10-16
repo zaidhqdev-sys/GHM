@@ -21,7 +21,9 @@ export class BusinessIdentityServiceImpl {
     const memberships = await this.repository.getMembershipsForAccount(input.context);
     const selectedBusinessId = input.selectedBusinessId ?? (memberships.length === 1 ? memberships[0].businessId : undefined);
     if (selectedBusinessId === undefined) {
-      if (memberships.length > 1) throw new Error('business-selection-required');
+      // Return the full authorized membership list without selecting a tenant.
+      // Clients need this data to render an explicit business-context chooser.
+      // No membership is active until the client submits a selectedBusinessId.
       return { account, memberships, activeMembership: null, activeBusiness: null };
     }
     const membership = memberships.find(c => c.businessId === selectedBusinessId && c.status === 'active');
