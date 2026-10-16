@@ -160,6 +160,34 @@ const positiveIntegerId = (value: string): number | null => {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 };
 
+const parseOwnProfileUpdateInput = (body: unknown): import('../resources/business-identity/contracts').UpdateProfileInput | null => {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  const input = body as Record<string, unknown>;
+  const allowed = new Set(['fullName', 'phone', 'avatarRef', 'connectRole', 'businessOperatorIntent']);
+  const keys = Object.keys(input);
+  if (keys.length === 0 || keys.some(key => !allowed.has(key))) return null;
+  const result: Record<string, unknown> = {};
+  for (const key of ['fullName', 'phone', 'avatarRef'] as const) {
+    if (!Object.hasOwn(input, key)) continue;
+    const value = input[key];
+    if (value !== null && typeof value !== 'string') return null;
+    if (key === 'fullName' && typeof value === 'string' && value.length > 200) return null;
+    if (key === 'phone' && typeof value === 'string' && value.length > 32) return null;
+    if (key === 'avatarRef' && typeof value === 'string' && value.length > 1024) return null;
+    result[key] = value;
+  }
+  if (Object.hasOwn(input, 'connectRole')) {
+    const value = input.connectRole;
+    if (value !== null && value !== 'customer' && value !== 'contractor' && value !== 'supplier') return null;
+    result.connectRole = value;
+  }
+  if (Object.hasOwn(input, 'businessOperatorIntent')) {
+    if (typeof input.businessOperatorIntent !== 'boolean') return null;
+    result.businessOperatorIntent = input.businessOperatorIntent;
+  }
+  return result as import('../resources/business-identity/contracts').UpdateProfileInput;
+};
+
 const parseCreateBusinessInput = (body: unknown): { name: string } | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   const input = body as Record<string, unknown>;
@@ -438,6 +466,21 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     try {
       const context = req.authContext as AuthContext;
       const profile = await service.getOwnProfile(context);
+      res.status(200).json({ profile });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.patch('/api/v1/profile', resourceAuthMiddleware, requireRegisteredAccess('profile', 'update'), async (req: Request, res: Response) => {
+    try {
+      const input = parseOwnProfileUpdateInput(req.body);
+      if (!input) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const context = req.authContext as AuthContext;
+      const profile = await service.updateOwnProfile(context, input);
       res.status(200).json({ profile });
     } catch (error) {
       handleError(error, res);
