@@ -64,6 +64,10 @@ export interface UpdateProfileInput {
   readonly fullName?: string | null;
   readonly phone?: string | null;
   readonly avatarRef?: string | null;
+  /** User-declared Connect product role; never an authorization grant. */
+  readonly connectRole?: 'customer' | 'contractor' | 'supplier' | null;
+  /** User-declared intent only; business membership remains separately authorized. */
+  readonly businessOperatorIntent?: boolean;
 }
 
 export interface CreateBusinessInput {
