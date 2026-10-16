@@ -46,6 +46,8 @@ export interface BusinessMembership {
   readonly createdBy: AccountId | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
+  /** Included in the authenticated identity response only for the caller's own memberships. */
+  readonly business?: BusinessIdentity | null;
 }
 
 export interface ApplicationIdentity {
