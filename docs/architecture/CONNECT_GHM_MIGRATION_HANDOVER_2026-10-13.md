@@ -407,7 +407,7 @@ No runtime or production changes were made in this audit.
 
 ## 14. Implementation ledger — 2026-10-16 canonical identity resolution API
 
-- **GHM implementation branch:** `construction/identity-resolution-api-20261016`; review PR not yet created when this entry was added.
+- **GHM PR:** [#137 — authenticated canonical identity resolution](https://github.com/zaidhqdev-sys/GHM/pull/137), draft/unmerged; branch `construction/identity-resolution-api-20261016`; head `72da83ae301d2d8441c3f8b8f57e4fe5dc5688e3` at initial PR creation. CI was still running when last checked.
 - **API:** Authenticated `GET /api/v1/identity`, with optional `businessId` query for active-business selection. The route derives account identity from the GHM authentication context, uses registered `profile:read` authorization, validates the selection as a positive safe integer, and delegates selection to `BusinessIdentityService.resolveIdentity`. The service must confirm that the selected business is an active membership for this authenticated account. The response returns canonical account, membership list, active membership, and active business.
 - **HTTP behavior:** `401` without a valid GHM session; `400` malformed selection; `409 business_selection_required` when the account has multiple memberships and none selected; `403 business_context_forbidden` for a business not authorized to the account; `404` if the selected business cannot be found.
 - **Tests added:** Missing authentication; auth-context binding and authorized selection; malformed IDs rejected before service invocation; unauthorized selection maps to 403. CI has not yet verified this branch.
