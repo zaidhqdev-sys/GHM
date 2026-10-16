@@ -22,7 +22,7 @@ Target: remove **all Supabase runtime dependencies from current ZAID Connect** a
 - GHM Internal Runtime is the current target; GHM Core is legacy.
 - Avoid unnecessary paid spend. No paid AI provider is assumed or authorized.
 - Do not instruct the founder to sync/pull local repositories unless asked. Keep work in small batches and updates concise.
-- Do not create more branches without need. These handover branches are documentation-only.
+- Keep branches scoped to a single implementation PR; update the companion handover/register in a coordinated change. The original handover branches were documentation-only; implementation branches may include synchronized implementation-ledger updates.
 
 ## 2. Repository checkpoints (verified 2026-10-13)
 
