@@ -114,13 +114,16 @@ const textPredicate = (query: DirectoryQuery): { sql: string; values: unknown[] 
 const categoryPredicate = (query: DirectoryQuery, parameterIndex: number): { sql: string; values: unknown[] } => {
   if (!query.category) return { sql: '', values: [] };
   return {
-    sql: `AND EXISTS (
-      SELECT 1
-      FROM ghm.business_category_assignment bca
-      JOIN ghm.business_category bc ON bc.id = bca.category_id
-      WHERE bca.business_id = b.id
-        AND bc.is_active = true
-        AND (bc.id::text = $${parameterIndex} OR bc.slug = $${parameterIndex})
+    sql: `AND (
+      b.category = ${parameterIndex}
+      OR EXISTS (
+        SELECT 1
+        FROM ghm.business_category_assignment bca
+        JOIN ghm.business_category bc ON bc.id = bca.category_id
+        WHERE bca.business_id = b.id
+          AND bc.is_active = true
+          AND (bc.id::text = ${parameterIndex} OR bc.slug = ${parameterIndex})
+      )
     )`,
     values: [query.category],
   };
