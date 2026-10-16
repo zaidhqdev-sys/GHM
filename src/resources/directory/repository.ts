@@ -170,7 +170,7 @@ export class PostgresDirectoryRepository implements DirectoryRepository {
         `SELECT ${DIRECTORY_COLUMNS}
          FROM ghm.business b
          ${where}
-         ORDER BY b.rating DESC, b.review_count DESC, b.id ASC
+         ORDER BY b.is_featured DESC, b.rating DESC, b.created_at DESC, b.id ASC
          LIMIT $${limitIndex}
          OFFSET $${offsetIndex}`,
         itemValues,
