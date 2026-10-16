@@ -546,3 +546,10 @@ The first zero-skip CI attempt correctly exposed a migration-bootstrap issue rat
 - Cause: the historical first migration creates the migration ledger in `public` before a later migration relocates it into `ghm`. On modern PostgreSQL the non-owner schema role cannot create there by default.
 - Correction in workflow commit `b226283`: grant `USAGE, CREATE` on `public` to `ghm_schema_owner` **only in the disposable CI database**. This does not change production grants or any deployed database.
 - Current rerun: [38906355546](https://github.com/zaidhqdev-sys/GHM/actions/runs/38906355546) is testing the corrected bootstrap. It must finish with migrations successful, both persistence suites executed, and `# skipped 0`; otherwise fix the next failure rather than weakening the acceptance gate.
+
+
+## 24. Second disposable-DB bootstrap correction — 2026-10-16
+
+The next CI run progressed past the `public` schema grant but failed at migration application with `permission denied for database ghm` ([run 38906355546](https://github.com/zaidhqdev-sys/GHM/actions/runs/38906355546)). The migration chain creates the `ghm` schema while operating as `ghm_schema_owner`, which requires database-level CREATE on an empty disposable database.
+
+Workflow commit `83b39d2` now grants `CREATE ON DATABASE ghm` to `ghm_schema_owner` only inside the disposable CI service, in addition to the legacy `public` bootstrap grant. Neither grant is made in production. Next run must establish whether the complete chain and all DB tests pass; until then, zero-skip qualification remains open.
