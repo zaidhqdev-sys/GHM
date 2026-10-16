@@ -951,6 +951,50 @@ test('canonical identity route maps an unauthorized business selection to 403', 
 });
 
 
+test('business profile PATCH accepts owner-managed directory fields but excludes protected fields', async () => {
+  let received: unknown;
+  const service = {
+    updateBusiness: async (context: AuthContext, businessId: number, input: unknown) => {
+      received = { context, businessId, input };
+      return {
+        id: businessId, name: 'Business', slug: 'business', description: null, phone: null, email: null,
+        category: 'construction', province: 'KwaZulu-Natal', city: 'Durban', physicalAddress: null,
+        whatsapp: null, website: 'https://example.com', isSupplier: null, yearsInBusiness: 4,
+        insuranceVerified: false, jobsCompleted: 0, verificationStatus: 'unverified', isActive: true,
+        createdAt: new Date(0), updatedAt: new Date(0),
+      };
+    },
+  } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const token = tokenFor({ userId: 42, role: 'business' });
+    const response = await fetch(`${baseUrl}/api/v1/businesses/201`, {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ category: 'construction', province: 'KwaZulu-Natal', city: 'Durban', website: 'https://example.com', isSupplier: null, yearsInBusiness: 4 }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(received, {
+      context: { userId: 42, role: 'business' },
+      businessId: 201,
+      input: { category: 'construction', province: 'KwaZulu-Natal', city: 'Durban', website: 'https://example.com', isSupplier: null, yearsInBusiness: 4 },
+    });
+    for (const body of [
+      { isFeatured: true }, { tier: 'premium' }, { logoUrl: 'https://example.com/logo.png' },
+      { isVerified: true }, { rating: 5 }, { isSupplier: 'yes' }, { yearsInBusiness: 501 },
+    ]) {
+      const invalid = await fetch(`${baseUrl}/api/v1/businesses/201`, {
+        method: 'PATCH',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      assert.equal(invalid.status, 400, JSON.stringify(body));
+    }
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
 test('own-profile PATCH stores declared Connect role and operator intent through authenticated context', async () => {
   let receivedContext: AuthContext | undefined;
   let receivedInput: unknown;
