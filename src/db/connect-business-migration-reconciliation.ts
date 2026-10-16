@@ -44,15 +44,24 @@ export function reconcileConnectBusiness(input: ConnectBusinessReconciliationInp
   if (!sourceBusinessId || !sourceOwnerSubject || !evidenceReference) {
     return result('BLOCKED', 'SOURCE_BUSINESS_OWNER_AND_EVIDENCE_REQUIRED');
   }
-  const business = input.businessMapping;
-  if (!business) return result('CREATE_REQUIRED', 'NO_EXACT_CANONICAL_BUSINESS_MAPPING');
-  if (!validPositiveId(business.businessId) || !business.evidenceReference?.trim()) {
+  const exactBusiness = input.businessMapping;
+  const reviewed = input.reviewedBusinessMapping;
+  if (exactBusiness && (!validPositiveId(exactBusiness.businessId) || !exactBusiness.evidenceReference?.trim())) {
     return result('BLOCKED', 'CANONICAL_BUSINESS_MAPPING_EVIDENCE_REQUIRED');
   }
-  const reviewed = input.reviewedBusinessMapping;
-  if (reviewed && (reviewed.businessId !== business.businessId || reviewed.evidenceReference !== evidenceReference)) {
-    return result('CONFLICT', 'BUSINESS_MAPPING_REVIEW_CONFLICT', business.businessId);
+  if (reviewed && (!validPositiveId(reviewed.businessId) || !reviewed.evidenceReference?.trim())) {
+    return result('BLOCKED', 'REVIEWED_BUSINESS_MAPPING_EVIDENCE_REQUIRED');
   }
+  if (exactBusiness && reviewed && (reviewed.businessId !== exactBusiness.businessId || reviewed.evidenceReference !== evidenceReference)) {
+    return result('CONFLICT', 'BUSINESS_MAPPING_REVIEW_CONFLICT', exactBusiness.businessId);
+  }
+  if (!exactBusiness && !reviewed) {
+    return result('CREATE_REQUIRED', 'NO_EXACT_CANONICAL_BUSINESS_MAPPING');
+  }
+  if (!exactBusiness && reviewed && reviewed.evidenceReference !== evidenceReference) {
+    return result('CONFLICT', 'BUSINESS_MAPPING_REVIEW_CONFLICT', reviewed.businessId);
+  }
+  const business = exactBusiness ?? reviewed!;
   const owner = input.ownerMapping;
   if (!owner) return result('BLOCKED', 'EXPLICIT_CANONICAL_OWNER_MAPPING_REQUIRED', business.businessId);
   if (!validPositiveId(owner.accountId) || !owner.evidenceReference?.trim()) {
