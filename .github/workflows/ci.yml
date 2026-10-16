@@ -14,10 +14,27 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres-test-password
+          POSTGRES_DB: ghm
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ghm"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     env:
       NODE_ENV: test
-      DATABASE_URL: postgres://qualification:test@localhost:5432/ghm
+      DATABASE_URL: postgres://ghm_runtime:runtime-test-password@127.0.0.1:5432/ghm
+      GHM_RUNTIME_DATABASE_URL: postgres://ghm_runtime:runtime-test-password@127.0.0.1:5432/ghm
+      GHM_MIGRATOR_DATABASE_URL: postgres://ghm_migrator:migrator-test-password@127.0.0.1:5432/ghm
+      PGADMIN_URL: postgres://postgres:postgres-test-password@127.0.0.1:5432/ghm
       INVITE_CODE: test-invite-code
       CORS_ORIGINS: http://localhost:3000
       GHM_AUTH_TOKEN_PEPPER: ci-test-token-pepper-32-bytes-minimum-length-000
@@ -36,6 +53,20 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Prepare isolated PostgreSQL roles
+        run: |
+          psql "$PGADMIN_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE ghm_schema_owner NOLOGIN;
+          CREATE ROLE ghm_migrator LOGIN NOINHERIT PASSWORD 'migrator-test-password';
+          CREATE ROLE ghm_runtime LOGIN NOINHERIT PASSWORD 'runtime-test-password';
+          GRANT ghm_schema_owner TO ghm_migrator;
+          ALTER DATABASE ghm OWNER TO ghm_schema_owner;
+          GRANT CONNECT ON DATABASE ghm TO ghm_schema_owner, ghm_migrator, ghm_runtime;
+          SQL
+
+      - name: Apply migrations with the migrator role
+        run: npm run migrate
 
       - name: Test suite
         run: npm test
