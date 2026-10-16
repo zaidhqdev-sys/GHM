@@ -372,3 +372,12 @@ Keep these gates separate; a green unit/contract workflow is not a deployed end-
 5. **Documentation closeout:** PR #135 and Connect #36 remain unmerged. Finish full semantic/status/authority/owner/history/SHA and link-form validation across both review branches. No merge until all GHM docs are reconciled and founder explicitly authorizes it.
 
 No production deployment, database migration/import, provider activation or cutover is authorized by these test results.
+
+
+## Consolidation closeout — 2026-10-16 21:58Z
+
+The active implementation review surface is now GHM #136 (business-hours replacement), #137 (identity plus active-membership guard), and #138 (trusted-proxy bound plus database-backed CI); #135 is the documentation gate. #134 and #139 are closed unmerged because their changes were consolidated into #137 and #138. Treat only the exact tested heads and workflow runs already recorded above as CI evidence.
+
+Cross-repo duplicate/non-target cleanup: Connect #35/#37 closed unmerged as duplicates of #39; Connect #15/#28 closed unmerged because their Supabase Edge Function paths are not the GHM target. Their branches remain historical/reference material. Connect #39 is not deployed; #33 remains disabled sandbox work, not live-payment authorization.
+
+The docs gate remains OPEN. Latest recorded GHM docs-branch test result includes two skipped tests; neither skip is waived. Required closeout is limited to: (1) current-head full Markdown local-target/reference-link/anchor validation on GHM #135 and Connect #36; (2) final semantic reconciliation of source-vs-target, status, authority, ownership, dates/SHAs and cross-repository contracts against operation-level readiness; (3) recheck live PR metadata and record the exact final validation results. Do not restart general capability discovery. No merge or production change without founder authorization.
