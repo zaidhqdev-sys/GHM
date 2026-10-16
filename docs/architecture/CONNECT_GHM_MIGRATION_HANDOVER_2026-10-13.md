@@ -403,3 +403,15 @@ Connect route definitions and signup flow support account roles `customer`, `con
 Connect app shell imports `supabase` and `authService`, restores session on startup, subscribes to `supabase.auth.onAuthStateChange`, and signs out through the Supabase client. `AuthScreen.jsx` calls `supabase.auth.signUp` directly and uses `authService.signIn` for login. This confirms the cutover must replace **startup session restore, auth-change subscription, signup, login, logout, refresh/expiry and password recovery**, not merely swap the sign-in form. GHM has native register/login/refresh/logout/password-recovery routes, but their response/user shape, confirmation policy and role/business-identity lifecycle need an adapter contract.
 
 No runtime or production changes were made in this audit.
+
+## Runtime log finding and code-only mitigation — 2026-10-16 19:05Z
+
+A read-only review of the latest available Render application logs for GHM-Internal-Runtime found a production startup/runtime error on 2026-10-15:
+
+`ValidationError: The Express 'trust proxy' setting is true, which allows anyone to trivially bypass IP-based rate limiting` (`ERR_ERL_PERMISSIVE_TRUST_PROXY`).
+
+The deployed service had previously logged its process listening on port 10000. The trust-proxy validation error is a concrete security/availability issue to resolve; it is not proof by itself that the whole service is down. No matching recent request-log entries were returned by the connected Render log query, so this inspection does not establish current live endpoint health.
+
+A separate code-only branch `fix/rate-limit-trust-proxy-hop-count` now changes `TRUST_PROXY=true` into a single trusted proxy hop (numeric `1`) instead of passing unsafe boolean `true` to Express. Explicit hop counts are bounded to 1–5; `false`/zero disables trust; invalid values fail configuration. Regression tests cover legacy true, numeric count, disabled trust, malformed values and excessive counts. This preserves the existing environment toggle without trusting an arbitrary client-controlled proxy chain. Confirm actual Render ingress hop topology before selecting any value other than the single-hop compatibility mapping.
+
+This fix is not yet deployed. It must pass the full GHM CI suite and runtime boundary qualification, then be reviewed in a separate PR. Do not mutate Render environment variables or deploy directly as a shortcut. After merge authorization, deploy through the normal reviewed path and verify startup logs, `/readyz`, auth rate limiting and trusted client-IP behavior. Keep the identity PR #137 and Connect PR #39 unmerged pending their own deployment/data/documentation gates.
