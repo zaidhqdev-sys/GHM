@@ -529,6 +529,14 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         return;
       }
 
+      if (
+        (province !== undefined && (province.trim().length === 0 || province.trim().length > 100)) ||
+        (businessType !== undefined && businessType !== 'contractors' && businessType !== 'suppliers')
+      ) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
       if (pageSizeValue !== undefined && pageSizeValue > 50) {
         res.status(400).json({ error: 'invalid_request' });
         return;
@@ -537,7 +545,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       const result = await directoryService.search({
         q,
         category,
-        province,
+        province: province?.trim(),
         businessType: businessType as 'contractors' | 'suppliers' | undefined,
         page: pageValue ?? 1,
         pageSize: pageSizeValue ?? 20,
