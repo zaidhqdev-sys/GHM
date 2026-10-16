@@ -57,7 +57,7 @@ const publicBusinessFixture = (overrides: Partial<PublicBusiness> = {}): PublicB
   createdAt: new Date('2026-09-10T00:00:00.000Z'),
   updatedAt: new Date('2026-09-10T00:00:00.000Z'),
   ...overrides,
-});
+} as PublicBusiness);
 
 const startPublicBusinessTestServer = async (publicBusinessService: PublicBusinessService) => {
   const businessService = {} as BusinessIdentityService;
