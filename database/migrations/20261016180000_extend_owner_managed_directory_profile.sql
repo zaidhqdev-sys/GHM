@@ -1,7 +1,7 @@
 -- Extend the existing membership-checked Business profile mutation contract.
--- This is a new forward migration; historical migration files remain immutable.
--- Owner-editable: descriptive category/location/contact fields and self-declared supplier type.
--- Protected: logo/media, avatar presentation, tier, promotion, analytics, verification and Trust.
+-- Forward migration; historical migration files remain immutable.
+-- Descriptive category/location/contact and self-declared contractor/supplier status only.
+-- Protected media, avatar, tier, promotion, analytics, verification and Trust are excluded.
 
 CREATE OR REPLACE FUNCTION ghm.update_business_profile(
   p_account_id bigint,
@@ -139,38 +139,13 @@ BEGIN
     END IF;
   END IF;
 
+
   IF p_patch ? 'category' THEN
     IF p_patch->'category' = 'null'::jsonb THEN next_category := NULL;
     ELSIF jsonb_typeof(p_patch->'category') <> 'string' THEN RAISE EXCEPTION 'Category must be a lowercase slug or null';
     ELSE
       next_category := btrim(p_patch->>'category');
-      IF length(next_category) < 1 OR length(next_category) > 100 OR next_category !~ '^[a-z0-9]+(-[a-z0-9]+)* WHEN p_patch ? 'name' THEN next_name ELSE name END,
-    slug = CASE WHEN p_patch ? 'slug' THEN next_slug ELSE slug END,
-    description = CASE WHEN p_patch ? 'description' THEN next_description ELSE description END,
-    phone = CASE WHEN p_patch ? 'phone' THEN next_phone ELSE phone END,
-    email = CASE WHEN p_patch ? 'email' THEN next_email ELSE email END,
-    category = CASE WHEN p_patch ? 'category' THEN next_category ELSE category END,
-    province = CASE WHEN p_patch ? 'province' THEN next_province ELSE province END,
-    city = CASE WHEN p_patch ? 'city' THEN next_city ELSE city END,
-    physical_address = CASE WHEN p_patch ? 'physicalAddress' THEN next_physical_address ELSE physical_address END,
-    whatsapp = CASE WHEN p_patch ? 'whatsapp' THEN next_whatsapp ELSE whatsapp END,
-    website = CASE WHEN p_patch ? 'website' THEN next_website ELSE website END,
-    is_supplier = CASE WHEN p_patch ? 'isSupplier' THEN next_is_supplier ELSE is_supplier END,
-    years_in_business = CASE WHEN p_patch ? 'yearsInBusiness' THEN next_years_in_business ELSE years_in_business END,
-    updated_at = now()
-  WHERE id = p_business_id
-  RETURNING * INTO updated_row;
-
-  RETURN updated_row;
-END;
-$$;
-
-ALTER FUNCTION ghm.update_business_profile(bigint, bigint, jsonb)
-  OWNER TO ghm_schema_owner;
-REVOKE ALL ON FUNCTION ghm.update_business_profile(bigint, bigint, jsonb) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION ghm.update_business_profile(bigint, bigint, jsonb) TO ghm_runtime;
-
- THEN RAISE EXCEPTION 'Category must be a lowercase slug'; END IF;
+      IF length(next_category) < 1 OR length(next_category) > 100 OR next_category !~ '^[a-z0-9]+(-[a-z0-9]+)*$' THEN RAISE EXCEPTION 'Category must be a lowercase slug'; END IF;
     END IF;
   END IF;
   IF p_patch ? 'province' THEN
@@ -204,25 +179,7 @@ GRANT EXECUTE ON FUNCTION ghm.update_business_profile(bigint, bigint, jsonb) TO 
     ELSE next_is_supplier := (p_patch->>'isSupplier')::boolean; END IF;
   END IF;
   IF p_patch ? 'yearsInBusiness' THEN
-    IF jsonb_typeof(p_patch->'yearsInBusiness') <> 'number' OR (p_patch->>'yearsInBusiness') !~ '^[0-9]{1,3} WHEN p_patch ? 'name' THEN next_name ELSE name END,
-    slug = CASE WHEN p_patch ? 'slug' THEN next_slug ELSE slug END,
-    description = CASE WHEN p_patch ? 'description' THEN next_description ELSE description END,
-    phone = CASE WHEN p_patch ? 'phone' THEN next_phone ELSE phone END,
-    email = CASE WHEN p_patch ? 'email' THEN next_email ELSE email END,
-    updated_at = now()
-  WHERE id = p_business_id
-  RETURNING * INTO updated_row;
-
-  RETURN updated_row;
-END;
-$$;
-
-ALTER FUNCTION ghm.update_business_profile(bigint, bigint, jsonb)
-  OWNER TO ghm_schema_owner;
-REVOKE ALL ON FUNCTION ghm.update_business_profile(bigint, bigint, jsonb) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION ghm.update_business_profile(bigint, bigint, jsonb) TO ghm_runtime;
-
- OR (p_patch->>'yearsInBusiness')::integer > 500 THEN RAISE EXCEPTION 'Years in business must be an integer from 0 to 500';
+    IF jsonb_typeof(p_patch->'yearsInBusiness') <> 'number' OR (p_patch->>'yearsInBusiness') !~ '^[0-9]{1,3}$' OR (p_patch->>'yearsInBusiness')::integer > 500 THEN RAISE EXCEPTION 'Years in business must be an integer from 0 to 500';
     ELSE next_years_in_business := (p_patch->>'yearsInBusiness')::integer; END IF;
   END IF;
 
@@ -233,6 +190,14 @@ GRANT EXECUTE ON FUNCTION ghm.update_business_profile(bigint, bigint, jsonb) TO 
     description = CASE WHEN p_patch ? 'description' THEN next_description ELSE description END,
     phone = CASE WHEN p_patch ? 'phone' THEN next_phone ELSE phone END,
     email = CASE WHEN p_patch ? 'email' THEN next_email ELSE email END,
+    category = CASE WHEN p_patch ? 'category' THEN next_category ELSE category END,
+    province = CASE WHEN p_patch ? 'province' THEN next_province ELSE province END,
+    city = CASE WHEN p_patch ? 'city' THEN next_city ELSE city END,
+    physical_address = CASE WHEN p_patch ? 'physicalAddress' THEN next_physical_address ELSE physical_address END,
+    whatsapp = CASE WHEN p_patch ? 'whatsapp' THEN next_whatsapp ELSE whatsapp END,
+    website = CASE WHEN p_patch ? 'website' THEN next_website ELSE website END,
+    is_supplier = CASE WHEN p_patch ? 'isSupplier' THEN next_is_supplier ELSE is_supplier END,
+    years_in_business = CASE WHEN p_patch ? 'yearsInBusiness' THEN next_years_in_business ELSE years_in_business END,
     updated_at = now()
   WHERE id = p_business_id
   RETURNING * INTO updated_row;
