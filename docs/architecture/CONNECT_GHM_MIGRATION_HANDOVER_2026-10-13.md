@@ -553,3 +553,10 @@ The first zero-skip CI attempt correctly exposed a migration-bootstrap issue rat
 The next CI run progressed past the `public` schema grant but failed at migration application with `permission denied for database ghm` ([run 38906355546](https://github.com/zaidhqdev-sys/GHM/actions/runs/38906355546)). The migration chain creates the `ghm` schema while operating as `ghm_schema_owner`, which requires database-level CREATE on an empty disposable database.
 
 Workflow commit `83b39d2` now grants `CREATE ON DATABASE ghm` to `ghm_schema_owner` only inside the disposable CI service, in addition to the legacy `public` bootstrap grant. Neither grant is made in production. Next run must establish whether the complete chain and all DB tests pass; until then, zero-skip qualification remains open.
+
+
+## 25. Historical UTF-8 BOM discovered in clean migration run — 2026-10-16
+
+The latest disposable PostgreSQL run progressed past role/database bootstrap and then failed on a historical SQL file whose first character is a UTF-8 BOM: `20260921120400_create_authentication_session.sql` was not the source; inspection identified `20261005211000_correct_founder_system_admin_bootstrap_existing_account.sql` as the BOM-bearing migration. PostgreSQL rejected the leading BOM as a token (`syntax error at or near "﻿"`).
+
+Correction in `src/db/migrate.ts` commit `2b488b1`: strip a leading U+FEFF only from the SQL text immediately before execution. The original file bytes remain unchanged for checksums and historical provenance. This avoids silently rewriting a migration already applied in existing environments. The next CI run must confirm the complete migration chain proceeds and both DB integration suites execute; zero-skip qualification remains open.
