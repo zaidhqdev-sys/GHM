@@ -1,6 +1,6 @@
 # Connect → GHM Internal Runtime Migration — Durable Handover
 
-**Status:** ACTIVE READ-ONLY AUDIT / DOCUMENTATION FIRST — NO IMPLEMENTATION OR CUTOVER AUTHORIZED  
+**Status:** ACTIVE GHM IMPLEMENTATION + DOCS TRACKING — IMPLEMENTATION IS PR-SCOPED; NO MERGE, DEPLOYMENT OR CUTOVER IMPLIED  
 **Created:** 2026-10-13  
 **Purpose:** A new session must resume without reconstructing the conversation.  
 **Companion:** ZAID Connect copy: `docs/06_Implementation/GHM_BACKEND_MIGRATION_HANDOVER_2026-10-13.md`.
@@ -9,7 +9,7 @@
 
 Target: remove **all Supabase runtime dependencies from current ZAID Connect** and make GHM Internal Runtime provide the required backend capabilities. This is not merely an auth-screen replacement: no active runtime journey may require Supabase Auth, Postgres/RPC, Edge Functions, Storage or Realtime.
 
-- Documentation/source audit first. No code construction, data migration, shadow traffic, production change, provider activation, cutover or merge is authorized by this handover.
+- Implementation is now proceeding in small, reviewable PRs. Every implementation change must update this handover and the corresponding product-facing handover/register in the same PR or coordinated change. A PR or passing CI does not mean merged, deployed, production-qualified or cut over. No data migration, shadow traffic, production change, provider activation, cutover or merge without its separate approval.
 - Reconcile affected documentation as a set before merging. GHM documentation is source of truth for GHM; Connect documentation owns Connect-facing integration contracts. Keep one agreed status/gap register, not competing versions.
 - A resource registry entry or service method is not proof of an HTTP endpoint, permission contract or product parity.
 - Confirm active callers before rebuilding facade exports or old hooks.
@@ -63,7 +63,7 @@ Classification: **Reuse** = likely existing GHM surface, still requires contract
 |---|---|---|
 | Profile + managed business + editor | Extend | GHM has profile/business reads, managed-business listing, create/update and hours. Connect also expects registration identity, logo/media, membership permissions and directory-review status. Compare IDs, fields, ownership and errors. |
 | Public directory/profile | Extend | GHM public directory/search and profile routes exist. Compare category/region filters, pagination, public-field allowlist, slug/detail response and engagement/view events. |
-| Business hours | **Extend** | Authenticated GET is registered; replacement service exists but no HTTP write route was found. Expose only the contract-governed replacement operation with membership authorization and HTTP acceptance tests. |
+| Business hours | **Implemented in draft PR #136; not yet merged/deployed** | Authenticated GET was already registered. PR #136 adds `PUT /api/v1/businesses/:businessId/hours`, guarded by `business_hours:replace`, strict request validation, and delegation to the existing membership-authorized transactional service. Four HTTP tests cover unauthenticated access, malformed/duplicate days, authorized service/context binding, and denied authority. GitHub CI passed for head `8666fad5d59c3f98ee8f985aca09abe717324b10`. This is not proof of deployment or live product integration; Connect caller wiring and end-to-end qualification remain open. |
 | Categories / offerings / capability catalogue | **Extend / Legacy-exclude by caller evidence** | Category routes exist but UI/filter parity remains open; capability evidence submission/review is missing; offering catalogue has no confirmed mounted production caller and remains legacy/unconfirmed unless new source evidence proves otherwise. |
 | Capability evidence + admin review | Extend/build | Connect has business submission and admin review screens. Inspected GHM capability router exposed list/get/create, not matching evidence submission/review endpoints. Specify private evidence access, verifier authority, review transitions and audit. |
 | Founder directory governance | Build | Connect calls reviewer check, submission, queue/list, owner presentation and decision operations. No equivalent complete GHM founder-review workflow identified. |
@@ -403,3 +403,16 @@ Connect route definitions and signup flow support account roles `customer`, `con
 Connect app shell imports `supabase` and `authService`, restores session on startup, subscribes to `supabase.auth.onAuthStateChange`, and signs out through the Supabase client. `AuthScreen.jsx` calls `supabase.auth.signUp` directly and uses `authService.signIn` for login. This confirms the cutover must replace **startup session restore, auth-change subscription, signup, login, logout, refresh/expiry and password recovery**, not merely swap the sign-in form. GHM has native register/login/refresh/logout/password-recovery routes, but their response/user shape, confirmation policy and role/business-identity lifecycle need an adapter contract.
 
 No runtime or production changes were made in this audit.
+
+
+## 12. Implementation ledger — update on every implementation PR
+
+### 2026-10-16 — Business-hours replacement HTTP boundary
+
+- **Change:** Draft PR [#136](https://github.com/zaidhqdev-sys/GHM/pull/136), branch `construction/business-hours-replace-http-20261016`, head `8666fad5d59c3f98ee8f985aca09abe717324b10`.
+- **API:** Authenticated `PUT /api/v1/businesses/:businessId/hours`; requires registered access `business_hours:replace`; business ID is sourced from the route; accepted body is strictly `{ hours: [...] }`; validates unique day values, day range, closure/time consistency, and HH:MM / HH:MM:SS ordering; delegates to the existing service for resource/membership authorization and transactional replacement.
+- **Tests/verification:** Four HTTP tests added for 401 unauthenticated requests, 400 malformed/duplicate-day payloads, successful authorized delegation/context binding, and 403 when management authority is denied. GitHub Actions CI passed on the PR head.
+- **Status boundary:** PR is draft and unmerged. No deployment, production DB change, Connect UI wiring, or end-to-end production qualification is claimed.
+- **Next:** Keep the Connect migration gap register aligned; wire the business-hours editor to the GHM endpoint only as part of the GHM-native identity/API integration, then test owner/admin authorization, invalid payloads, persisted read-after-write, and unauthorized cross-business access. Keep legacy Supabase JWTs rejected by GHM.
+
+**Ledger rule:** Every subsequent implementation PR must add its verified change, exact PR/commit, test evidence, remaining integration work, and deployment/cutover boundary here and update any corresponding Connect handover in the same coordinated work. Never mark a capability complete merely because a service method, route, or CI check exists.
