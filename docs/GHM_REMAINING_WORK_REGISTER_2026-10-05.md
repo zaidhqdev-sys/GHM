@@ -360,3 +360,15 @@ At the 2026-10-14 checkpoint, GHM PR #135 changed **13 documentation files**, no
 ## 2026-10-16 audit checkpoint — link pass scope clarified
 
 Fresh review-tree enumeration covered 210 tracked GHM Markdown documents and 47 Connect Markdown documents. Relative Markdown file-target validation found zero missing targets across both trees. Batched heading/explicit-anchor checks found no missing anchors within the checked batches (14 GHM batches; 3 Connect batches). This is not full link certification: cross-batch anchors, reference-style links, HTML/autolinks and external URL liveness remain open. Repository-wide semantic/status/authority/owner/history reconciliation and cross-repository caller-to-contract comparison also remain open. PR #135 and PR #36 remain open/unmerged; do not merge without completion of the GHM audit and explicit founder authorization.
+
+## 2026-10-16 executable and deployment gates — current overlay
+
+Keep these gates separate; a green unit/contract workflow is not a deployed end-to-end result.
+
+1. **GHM #138 proxy safety:** exact-head run 38962824267 passed 563/563 with zero failures/skips/TODO. Confirm actual Render ingress proxy hops and test client-IP/rate-limit enforcement before any separately approved deployment. Render remains on main commit 20b120c7d6ecf7a86f9dc4f7a8dc61f9dee4d8dc.
+2. **GHM #137 identity:** exact tested checkpoint run 38958982654 passed 591/591 with zero failures/skips/TODO. The new endpoint/schema are not confirmed deployed. Require browser login/restore/refresh rotation/logout/revocation/expiry and unauthorized-business-selection E2E, plus explicit source-to-canonical account/business mapping and active membership evidence.
+3. **GHM #136 business hours:** run 38958345980 passed 564/564 with zero failures/skips/TODO. Require non-production Connect caller and canonical-business mapping E2E.
+4. **Connect #39 adapter:** run 38958913312 passed 50/50 configured contract tests with zero failures/skips/TODO and web build success. Remaining Supabase table/RPC/storage dependencies mean target parity is not complete.
+5. **Documentation closeout:** PR #135 and Connect #36 remain unmerged. Finish full semantic/status/authority/owner/history/SHA and link-form validation across both review branches. No merge until all GHM docs are reconciled and founder explicitly authorizes it.
+
+No production deployment, database migration/import, provider activation or cutover is authorized by these test results.
