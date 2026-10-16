@@ -403,3 +403,44 @@ Connect route definitions and signup flow support account roles `customer`, `con
 Connect app shell imports `supabase` and `authService`, restores session on startup, subscribes to `supabase.auth.onAuthStateChange`, and signs out through the Supabase client. `AuthScreen.jsx` calls `supabase.auth.signUp` directly and uses `authService.signIn` for login. This confirms the cutover must replace **startup session restore, auth-change subscription, signup, login, logout, refresh/expiry and password recovery**, not merely swap the sign-in form. GHM has native register/login/refresh/logout/password-recovery routes, but their response/user shape, confirmation policy and role/business-identity lifecycle need an adapter contract.
 
 No runtime or production changes were made in this audit.
+
+## Runtime log finding and code-only mitigation — 2026-10-16 19:05Z
+
+A read-only review of the latest available Render application logs for GHM-Internal-Runtime found a production startup/runtime error on 2026-10-15:
+
+`ValidationError: The Express 'trust proxy' setting is true, which allows anyone to trivially bypass IP-based rate limiting` (`ERR_ERL_PERMISSIVE_TRUST_PROXY`).
+
+The deployed service had previously logged its process listening on port 10000. The trust-proxy validation error is a concrete security/availability issue to resolve; it is not proof by itself that the whole service is down. No matching recent request-log entries were returned by the connected Render log query, so this inspection does not establish current live endpoint health.
+
+A separate code-only branch `fix/rate-limit-trust-proxy-hop-count` now changes `TRUST_PROXY=true` into a single trusted proxy hop (numeric `1`) instead of passing unsafe boolean `true` to Express. Explicit hop counts are bounded to 1–5; `false`/zero disables trust; invalid values fail configuration. Regression tests cover legacy true, numeric count, disabled trust, malformed values and excessive counts. This preserves the existing environment toggle without trusting an arbitrary client-controlled proxy chain. Confirm actual Render ingress hop topology before selecting any value other than the single-hop compatibility mapping.
+
+This fix is not yet deployed. It must pass the full GHM CI suite and runtime boundary qualification, then be reviewed in a separate PR. Do not mutate Render environment variables or deploy directly as a shortcut. After merge authorization, deploy through the normal reviewed path and verify startup logs, `/readyz`, auth rate limiting and trusted client-IP behavior. Keep the identity PR #137 and Connect PR #39 unmerged pending their own deployment/data/documentation gates.
+
+## CI database qualification follow-up — 2026-10-16 19:11Z
+
+Enabling database-backed CI exposed an existing migration-runner defect: `src/db/migrate.ts` hard-coded PostgreSQL SSL on even when `DATABASE_SSL=false`, so disposable local PostgreSQL rejected the connection (`The server does not support SSL connections`). The migration runner now follows the explicit `DATABASE_SSL` setting and fails closed if `NODE_ENV=production` without TLS. This is required to run the full migration and auth/replay integration suite in CI without weakening production TLS.
+
+The first PostgreSQL-enabled run therefore failed at migrations before tests could run. A fresh run on the current branch head must qualify the fix; do not treat the earlier no-database green test run as the final result. Required acceptance remains full build, all migrations, all tests with zero failures/zero skipped/zero TODO, and runtime boundary verification.
+
+## Latest CI qualification — 2026-10-16 19:14Z (supersedes pending CI statements above)
+
+GitHub Actions run [38953314245](https://github.com/zaidhqdev-sys/GHM/actions/runs/38953314245) passed on the current code checkpoint after the proxy-hop parser correction, explicit migration TLS handling, BOM-safe migration execution, and PostgreSQL-backed CI were in place:
+
+- Build: passed.
+- Full migrations on disposable PostgreSQL 18: passed.
+- Test suite: **563 passed, 0 failed, 0 skipped, 0 TODO**.
+- Runtime boundary verification: passed.
+
+The source/test checkpoint `73c50f03aa914defc745aee5265e030ac1a654` was qualified by run [38953314245](https://github.com/zaidhqdev-sys/GHM/actions/runs/38953314245). After recording this handover, run [38953480280](https://github.com/zaidhqdev-sys/GHM/actions/runs/38953480280) also passed on commit `54a3f98708d9a72cde97c0e4201beb7f3110e404`, including this documentation checkpoint: build and migrations passed, **563 passed / 0 failed / 0 skipped / 0 TODO**, and runtime boundary verification passed. Documentation-only follow-up commits do not change the qualified source/test result; rerun CI after any source, test, migration, or workflow change. This does not authorize deployment or merge; verify actual Render proxy-hop topology and test trusted client-IP/rate-limit behavior after an approved deployment. The broader GHM/Connect documentation, identity mapping, deployed runtime and cutover gates remain open.
+
+## Exact-head confirmation — 2026-10-16 19:17Z
+
+After the previous handover note, GitHub Actions run [38953662217](https://github.com/zaidhqdev-sys/GHM/actions/runs/38953662217) completed successfully on the exact PR head `bef0c632f5c775a7ac601fbba077a56872021ef8`. Build and all migrations passed on disposable PostgreSQL 18; the suite reported **563 tests, 563 passed, 0 failed, 0 skipped, 0 TODO**; runtime boundary verification passed. This supersedes any wording above that says the latest run was still pending. The PR body and workflow run are current evidence; this entry is documentation-only. If code, tests, migrations or CI workflow change, qualify the resulting new head again.
+
+## Read-only Render deployment confirmation — 2026-10-16 20:12Z
+
+Render service metadata and deployment history were checked read-only. `GHM-Internal-Runtime` (`srv-damupsek1f9s73eq8kkg`) remains configured for `main`; its latest live deployment is commit `20b120c7d6ecf7a86f9dc4f7a8dc61f9dee4d8dc` from 2026-10-13. The sandbox runtime also remains on that same commit. The open PR #138 head `1965367080ac402d76f6ccbcac2846a0f9cfa1bd` is not deployed.
+
+The latest available Render app-log query returned `ERR_ERL_PERMISSIVE_TRUST_PROXY` entries timestamped 2026-10-15 17:48Z (and an earlier 2026-10-13 entry). These logs prove the warning occurred, not that the whole service is down now; no newer matching log was returned by this query. Service event history shows the current live deployment completed successfully on Oct 13, but that does not validate application-level rate limiting. The corrective PR head has passing exact-head CI run [38955399480](https://github.com/zaidhqdev-sys/GHM/actions/runs/38955399480): build and migrations passed, **563/563 tests passed, 0 failed, 0 skipped, 0 TODO**, runtime-boundary verification passed.
+
+Next release gate is review of actual Render ingress proxy-hop topology and a separately approved deployment/test plan. Do not update Render environment variables or deploy this branch as a shortcut. Validate `/healthz`/`/readyz` as applicable, client-IP derivation and rate-limit enforcement after explicit approval. Identity/API, Connect browser E2E, canonical mapping, Supabase parity and full documentation reconciliation remain separate open gates.

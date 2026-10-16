@@ -11,6 +11,22 @@ const required = (name: string): string => {
   return value;
 };
 
+const parseTrustProxy = (value: string | undefined): false | number => {
+  const normalized = value?.trim().toLowerCase() ?? '';
+  if (!normalized || normalized === 'false') return false;
+  // Preserve the existing deployment toggle without enabling Express's unsafe boolean trust.
+  // Render exposes one trusted edge hop; callers can specify an explicit numeric hop count.
+  if (normalized === 'true') return 1;
+  if (!/^(0|[1-9]\d*)$/.test(normalized)) {
+    throw new Error('TRUST_PROXY must be false, true, or a non-negative integer hop count');
+  }
+  const hops = Number(normalized);
+  if (!Number.isSafeInteger(hops) || hops > 5) {
+    throw new Error('TRUST_PROXY hop count must be between 0 and 5');
+  }
+  return hops === 0 ? false : hops;
+};
+
 const parseOrigins = (value: string): string[] => {
   const origins = value.split(',').map((origin) => origin.trim()).filter(Boolean);
   if (origins.some((origin) => origin === '*')) {
@@ -34,7 +50,7 @@ export const config = Object.freeze({
   databaseSsl,
   inviteCode: required('INVITE_CODE'),
   corsOrigins: parseOrigins(required('CORS_ORIGINS')),
-  trustProxy: process.env.TRUST_PROXY === 'true',
+  trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
   payfast: Object.freeze({
     environment: (process.env.PAYFAST_ENVIRONMENT ?? 'sandbox') as 'sandbox' | 'live',
     merchantId: process.env.PAYFAST_MERCHANT_ID?.trim() ?? '',
