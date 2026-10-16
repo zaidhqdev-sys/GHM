@@ -209,6 +209,15 @@ const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | n
   for (const key of ['category', 'province', 'city', 'physicalAddress', 'whatsapp', 'website']) {
     if (Object.hasOwn(input, key) && input[key] !== null && typeof input[key] !== 'string') return null;
   }
+  if (typeof input.category === 'string' && (input.category.length > 100 || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(input.category))) return null;
+  if (typeof input.province === 'string' && (input.province.trim().length < 1 || input.province.trim().length > 100)) return null;
+  if (typeof input.city === 'string' && (input.city.trim().length < 1 || input.city.trim().length > 120)) return null;
+  if (typeof input.physicalAddress === 'string' && (input.physicalAddress.trim().length < 1 || input.physicalAddress.trim().length > 500)) return null;
+  if (typeof input.whatsapp === 'string' && (input.whatsapp.trim().length < 7 || input.whatsapp.trim().length > 32)) return null;
+  if (typeof input.website === 'string') {
+    if (input.website.trim().length < 1 || input.website.trim().length > 2048) return null;
+    try { const url = new URL(input.website); if (url.protocol !== 'https:' && url.protocol !== 'http:') return null; } catch { return null; }
+  }
   if (Object.hasOwn(input, 'isSupplier') && input.isSupplier !== null && typeof input.isSupplier !== 'boolean') return null;
   if (Object.hasOwn(input, 'yearsInBusiness') && (!Number.isInteger(input.yearsInBusiness) || Number(input.yearsInBusiness) < 0 || Number(input.yearsInBusiness) > 500)) return null;
   return {
