@@ -198,7 +198,7 @@ const parseCreateBusinessInput = (body: unknown): { name: string } | null => {
 const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   const input = body as Record<string, unknown>;
-  const allowed = new Set(['name', 'slug', 'description', 'phone', 'email']);
+  const allowed = new Set(['name', 'slug', 'description', 'phone', 'email', 'category', 'province', 'city', 'physicalAddress', 'whatsapp', 'website', 'isSupplier', 'yearsInBusiness']);
   const keys = Object.keys(input);
   if (keys.length === 0 || keys.some((key) => !allowed.has(key))) return null;
   if (Object.hasOwn(input, 'name') && (typeof input.name !== 'string' || !input.name.trim())) return null;
@@ -206,12 +206,25 @@ const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | n
   if (Object.hasOwn(input, 'description') && input.description !== null && typeof input.description !== 'string') return null;
   if (Object.hasOwn(input, 'phone') && input.phone !== null && typeof input.phone !== 'string') return null;
   if (Object.hasOwn(input, 'email') && input.email !== null && typeof input.email !== 'string') return null;
+  for (const key of ['category', 'province', 'city', 'physicalAddress', 'whatsapp', 'website']) {
+    if (Object.hasOwn(input, key) && input[key] !== null && typeof input[key] !== 'string') return null;
+  }
+  if (Object.hasOwn(input, 'isSupplier') && input.isSupplier !== null && typeof input.isSupplier !== 'boolean') return null;
+  if (Object.hasOwn(input, 'yearsInBusiness') && (!Number.isInteger(input.yearsInBusiness) || Number(input.yearsInBusiness) < 0 || Number(input.yearsInBusiness) > 500)) return null;
   return {
     ...(Object.hasOwn(input, 'name') ? { name: input.name as string } : {}),
     ...(Object.hasOwn(input, 'slug') ? { slug: input.slug as string } : {}),
     ...(Object.hasOwn(input, 'description') ? { description: input.description as string | null } : {}),
     ...(Object.hasOwn(input, 'phone') ? { phone: input.phone as string | null } : {}),
     ...(Object.hasOwn(input, 'email') ? { email: input.email as string | null } : {}),
+    ...(Object.hasOwn(input, 'category') ? { category: input.category as string | null } : {}),
+    ...(Object.hasOwn(input, 'province') ? { province: input.province as string | null } : {}),
+    ...(Object.hasOwn(input, 'city') ? { city: input.city as string | null } : {}),
+    ...(Object.hasOwn(input, 'physicalAddress') ? { physicalAddress: input.physicalAddress as string | null } : {}),
+    ...(Object.hasOwn(input, 'whatsapp') ? { whatsapp: input.whatsapp as string | null } : {}),
+    ...(Object.hasOwn(input, 'website') ? { website: input.website as string | null } : {}),
+    ...(Object.hasOwn(input, 'isSupplier') ? { isSupplier: input.isSupplier as boolean | null } : {}),
+    ...(Object.hasOwn(input, 'yearsInBusiness') ? { yearsInBusiness: input.yearsInBusiness as number } : {}),
   };
 };
 
