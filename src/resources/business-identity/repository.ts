@@ -9,12 +9,12 @@ import { resolveTenantContext } from '../../auth/tenant-resolver';
 import type { TransactionPool } from '../../db/transaction';
 
 const ACCOUNT_SELECT = `SELECT id, full_name, phone, avatar_ref, role, created_at, updated_at, ghm.auth_read_connect_identity_authority(id) AS connect_authority FROM ghm.account_identity WHERE id = $1`;
-const BUSINESS_COLUMNS = `id, name, slug, description, phone, email, insurance_verified, jobs_completed, verification_status, is_active, created_at, updated_at`;
+const BUSINESS_COLUMNS = `id, name, slug, description, phone, email, category, province, city, physical_address, whatsapp, website, is_supplier, years_in_business, insurance_verified, jobs_completed, verification_status, is_active, created_at, updated_at`;
 const BUSINESS_SELECT = `SELECT ${BUSINESS_COLUMNS} FROM ghm.business WHERE id = $1`;
 const BUSINESS_BY_SLUG_SELECT = `SELECT ${BUSINESS_COLUMNS} FROM ghm.business WHERE slug = $1`;
 const MEMBERSHIPS_SELECT = `SELECT id, business_id, account_id, membership_role, membership_status, created_by, created_at, updated_at FROM ghm.business_membership WHERE account_id = $1 AND membership_status = 'active' ORDER BY created_at, id`;
 
-const ALLOWED_PROFILE_FIELDS = new Set(['name', 'slug', 'description', 'phone', 'email']);
+const ALLOWED_PROFILE_FIELDS = new Set(['name', 'slug', 'description', 'phone', 'email', 'category', 'province', 'city', 'physicalAddress', 'whatsapp', 'website', 'isSupplier', 'yearsInBusiness']);
 
 const mapAccount = (row: any): AccountIdentity => { const authority = row.connect_authority ?? {}; return { id: Number(row.id), fullName: row.full_name, phone: row.phone, avatarRef: row.avatar_ref, role: row.role, connectRole: authority.connectRole ?? null, businessOperatorIntent: authority.businessOperatorIntent === true, isSystemAdmin: authority.isSystemAdmin === true, isDirectoryListingFounderReviewer: authority.isDirectoryListingFounderReviewer === true, createdAt: row.created_at, updatedAt: row.updated_at }; };
 const mapBusiness = (row: any): BusinessIdentity => ({
@@ -24,6 +24,14 @@ const mapBusiness = (row: any): BusinessIdentity => ({
   description: row.description ?? null,
   phone: row.phone ?? null,
   email: row.email ?? null,
+  category: row.category ?? null,
+  province: row.province ?? null,
+  city: row.city ?? null,
+  physicalAddress: row.physical_address ?? null,
+  whatsapp: row.whatsapp ?? null,
+  website: row.website ?? null,
+  isSupplier: typeof row.is_supplier === 'boolean' ? row.is_supplier : null,
+  yearsInBusiness: Number(row.years_in_business ?? 0),
   insuranceVerified: row.insurance_verified === true,
   jobsCompleted: Number(row.jobs_completed ?? 0),
   verificationStatus: row.verification_status,
@@ -74,6 +82,38 @@ const buildProfilePatch = (input: UpdateBusinessProfileInput): Record<string, un
       if (phone === '') { patch.phone = null; continue; }
       if (phone.length < 7 || phone.length > 32) throw new Error('Phone must be between 7 and 32 characters');
       patch.phone = phone;
+      continue;
+    }
+    if (key === 'category') {
+      if (value === null) { patch.category = null; continue; }
+      const category = String(value).trim().toLowerCase();
+      if (category === '' || category.length > 100 || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(category)) throw new Error('Category must be a valid lowercase slug');
+      patch.category = category;
+      continue;
+    }
+    if (key === 'province' || key === 'city' || key === 'physicalAddress' || key === 'whatsapp' || key === 'website') {
+      if (value === null) { patch[key] = null; continue; }
+      const text = String(value).trim();
+      const limits: Record<string, number> = { province: 100, city: 120, physicalAddress: 500, whatsapp: 32, website: 2048 };
+      if (text === '' || text.length > limits[key]) throw new Error(`${key} must contain 1-${limits[key]} characters`);
+      if (key === 'whatsapp' && text.length < 7) throw new Error('WhatsApp must be between 7 and 32 characters');
+      if (key === 'website') {
+        let url: URL;
+        try { url = new URL(text); } catch { throw new Error('Website must be a valid HTTP(S) URL'); }
+        if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error('Website must be a valid HTTP(S) URL');
+      }
+      patch[key] = text;
+      continue;
+    }
+    if (key === 'isSupplier') {
+      if (value !== null && typeof value !== 'boolean') throw new Error('Supplier classification must be boolean or null');
+      patch.isSupplier = value;
+      continue;
+    }
+    if (key === 'yearsInBusiness') {
+      const years = Number(value);
+      if (!Number.isInteger(years) || years < 0 || years > 500) throw new Error('Years in business must be an integer from 0 to 500');
+      patch.yearsInBusiness = years;
       continue;
     }
     if (key === 'email') {
