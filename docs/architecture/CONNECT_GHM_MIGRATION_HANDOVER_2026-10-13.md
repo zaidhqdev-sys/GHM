@@ -449,3 +449,22 @@ No runtime or production changes were made in this audit.
 - `connectRole` is a declared Connect product role, not proof of qualification, membership, or resource permission. `businessOperatorIntent` is descriptive intent only. Business membership, verification and capabilities remain separately enforced by their GHM services.
 - Added HTTP tests for authorized role/intent update and rejection of admin/reviewer spoofing, invalid role values, non-boolean intent, unknown fields and empty payload. Latest CI must qualify this change before merge.
 - Founder reviewer grant/revoke remains a separate protected workflow with no public mutation route in this slice.
+
+
+## 17. Next implementation gate — founder-reviewer governance and privilege separation (2026-10-16)
+
+A read-only review of the latest PR #137 branch found a security prerequisite that must be resolved before adding reviewer grant/revoke mutations:
+
+- The canonical authority projection exposes `isSystemAdmin` from `ghm.account_identity.is_system_admin`, while the existing request `AuthContext` contains only `userId` and the broad GHM role (`customer | business | admin`). The current resource authorization helper grants access based on that broad role; it does not prove the separate `is_system_admin` authority.
+- Therefore, **do not authorize reviewer grant/revoke solely with `context.role === 'admin'`**, and do not let the target account, browser metadata, Connect role, or operator intent authorize the grant.
+- Required implementation: a GHM-owned privileged service that derives the actor from the authenticated session, verifies the actor's persisted `is_system_admin = true` status inside the backend, rejects self-grant and malformed target/reason input, and writes a durable audit record for every grant/revoke. The service must fail closed if the actor authority cannot be read. Revoke must preserve history rather than delete the authority record.
+- The existing reviewer table has a single row per target and stores the original grant actor/reason/time plus active/revoked state. Before implementing mutation, decide how repeat grants and re-grants are represented without losing the prior grant/revoke history; an append-only event/audit table is preferred over overwriting the sole grant record.
+- Add HTTP/service/database contract tests for non-admin denial, ordinary GHM admin without system-admin flag denial, system-admin grant, revoke, repeated grant/revoke, missing reason, nonexistent target, self-grant, and database failure. No runtime role should receive direct table write grants; mutations must go through the narrow backend-owned path.
+- **Status:** design gate identified; no reviewer mutation endpoint has been added and no authority has been granted. This is an implementation requirement, not a production incident or a claim of completed qualification.
+
+### Ordered next work (avoid reopening the broad audit)
+
+1. Reconcile the schema to preserve reviewer grant/revoke history and define the narrow mutation service/SQL authority boundary.
+2. Implement and test GHM grant/revoke using persisted system-admin authority, then update this handover with exact migration, routes, test results and CI head.
+3. Wire the Connect adapter into session restoration only after GHM identity and reviewer contracts are qualified; then migrate signup/login/logout/recovery and identity/product callers in small, tested slices.
+4. Keep both PRs draft/unmerged until the full cross-repository contract is reconciled and end-to-end qualification is recorded. Do not apply migrations to production or activate live payments as part of this work.
