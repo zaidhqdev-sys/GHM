@@ -35,7 +35,7 @@ const loadMigrations = async (): Promise<Migration[]> => {
     const sourceSql = await fs.readFile(path.join(MIGRATIONS_DIR, entry.name), 'utf8');
     // Preserve the byte-decoded source for checksum compatibility while removing a UTF-8 BOM
     // from the SQL sent to PostgreSQL, where it is not valid SQL syntax.
-    const sql = sourceSql.replace(/^\\uFEFF/, '');
+    const sql = sourceSql.replace(/^\uFEFF/, '');
     migrations.push({
       version: match[1], name: match[2], filename: entry.name, sql,
       checksum: migrationSqlChecksum(sourceSql),
