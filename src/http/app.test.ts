@@ -916,3 +916,63 @@ test('canonical identity route maps an unauthorized business selection to 403', 
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });
+
+
+test('own-profile PATCH stores declared Connect role and operator intent through authenticated context', async () => {
+  let receivedContext: AuthContext | undefined;
+  let receivedInput: unknown;
+  const service = {
+    updateOwnProfile: async (context: AuthContext, input: unknown) => {
+      receivedContext = context;
+      receivedInput = input;
+      return { ...profile(context), connectRole: 'contractor', businessOperatorIntent: true };
+    },
+  } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const token = tokenFor({ userId: 42, role: 'customer' });
+    const response = await fetch(`${baseUrl}/api/v1/profile`, {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ connectRole: 'contractor', businessOperatorIntent: true }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(receivedContext, { userId: 42, role: 'customer' });
+    assert.deepEqual(receivedInput, { connectRole: 'contractor', businessOperatorIntent: true });
+    const body = await response.json() as { profile: AccountIdentity };
+    assert.equal(body.profile.connectRole, 'contractor');
+    assert.equal(body.profile.businessOperatorIntent, true);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('own-profile PATCH rejects unknown Connect role and protected fields before service call', async () => {
+  let called = false;
+  const service = {
+    updateOwnProfile: async () => { called = true; throw new Error('must not be called'); },
+  } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const token = tokenFor({ userId: 42, role: 'customer' });
+    for (const body of [
+      { connectRole: 'admin' },
+      { connectRole: 'business' },
+      { isSystemAdmin: true },
+      { isDirectoryListingFounderReviewer: true },
+      { businessOperatorIntent: 'yes' },
+      {},
+    ]) {
+      const response = await fetch(`${baseUrl}/api/v1/profile`, {
+        method: 'PATCH',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      assert.equal(response.status, 400);
+      assert.deepEqual(await response.json(), { error: 'invalid_request' });
+    }
+    assert.equal(called, false);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
