@@ -381,3 +381,8 @@ The active implementation review surface is now GHM #136 (business-hours replace
 Cross-repo duplicate/non-target cleanup: Connect #35/#37 closed unmerged as duplicates of #39; Connect #15/#28 closed unmerged because their Supabase Edge Function paths are not the GHM target. Their branches remain historical/reference material. Connect #39 is not deployed; #33 remains disabled sandbox work, not live-payment authorization.
 
 The docs gate remains OPEN. Latest recorded GHM docs-branch test result includes two skipped tests; neither skip is waived. Required closeout is limited to: (1) current-head full Markdown local-target/reference-link/anchor validation on GHM #135 and Connect #36; (2) final semantic reconciliation of source-vs-target, status, authority, ownership, dates/SHAs and cross-repository contracts against operation-level readiness; (3) recheck live PR metadata and record the exact final validation results. Do not restart general capability discovery. No merge or production change without founder authorization.
+
+
+### Documentation CI dependency — 2026-10-16 22:00Z
+
+The latest recorded exact-head CI run on GHM #135 (`10cb2af53cd9a69ff8f4c4f71825449e84c22faa`, [38973019692](https://github.com/zaidhqdev-sys/GHM/actions/runs/38973019692)) passed build/runtime verification but had **543 passed / 2 skipped / 0 failed / 0 TODO**. No skip is waived. The two skips require the disposable PostgreSQL 18 auth persistence/service-assertion fixture that is qualified on #138. The docs PR remains open; do not merge with skipped tests or duplicate #138 implementation into #135 without an explicit, reviewed consolidation plan.
