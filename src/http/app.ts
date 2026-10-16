@@ -160,6 +160,34 @@ const positiveIntegerId = (value: string): number | null => {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 };
 
+const parseOwnProfileUpdateInput = (body: unknown): import('../resources/business-identity/contracts').UpdateProfileInput | null => {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  const input = body as Record<string, unknown>;
+  const allowed = new Set(['fullName', 'phone', 'avatarRef', 'connectRole', 'businessOperatorIntent']);
+  const keys = Object.keys(input);
+  if (keys.length === 0 || keys.some(key => !allowed.has(key))) return null;
+  const result: Record<string, unknown> = {};
+  for (const key of ['fullName', 'phone', 'avatarRef'] as const) {
+    if (!Object.hasOwn(input, key)) continue;
+    const value = input[key];
+    if (value !== null && typeof value !== 'string') return null;
+    if (key === 'fullName' && typeof value === 'string' && value.length > 200) return null;
+    if (key === 'phone' && typeof value === 'string' && value.length > 32) return null;
+    if (key === 'avatarRef' && typeof value === 'string' && value.length > 1024) return null;
+    result[key] = value;
+  }
+  if (Object.hasOwn(input, 'connectRole')) {
+    const value = input.connectRole;
+    if (value !== null && value !== 'customer' && value !== 'contractor' && value !== 'supplier') return null;
+    result.connectRole = value;
+  }
+  if (Object.hasOwn(input, 'businessOperatorIntent')) {
+    if (typeof input.businessOperatorIntent !== 'boolean') return null;
+    result.businessOperatorIntent = input.businessOperatorIntent;
+  }
+  return result as import('../resources/business-identity/contracts').UpdateProfileInput;
+};
+
 const parseCreateBusinessInput = (body: unknown): { name: string } | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   const input = body as Record<string, unknown>;
@@ -170,7 +198,7 @@ const parseCreateBusinessInput = (body: unknown): { name: string } | null => {
 const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   const input = body as Record<string, unknown>;
-  const allowed = new Set(['name', 'slug', 'description', 'phone', 'email']);
+  const allowed = new Set(['name', 'slug', 'description', 'phone', 'email', 'category', 'province', 'city', 'physicalAddress', 'whatsapp', 'website', 'isSupplier', 'yearsInBusiness']);
   const keys = Object.keys(input);
   if (keys.length === 0 || keys.some((key) => !allowed.has(key))) return null;
   if (Object.hasOwn(input, 'name') && (typeof input.name !== 'string' || !input.name.trim())) return null;
@@ -178,12 +206,34 @@ const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | n
   if (Object.hasOwn(input, 'description') && input.description !== null && typeof input.description !== 'string') return null;
   if (Object.hasOwn(input, 'phone') && input.phone !== null && typeof input.phone !== 'string') return null;
   if (Object.hasOwn(input, 'email') && input.email !== null && typeof input.email !== 'string') return null;
+  for (const key of ['category', 'province', 'city', 'physicalAddress', 'whatsapp', 'website']) {
+    if (Object.hasOwn(input, key) && input[key] !== null && typeof input[key] !== 'string') return null;
+  }
+  if (typeof input.category === 'string' && (input.category.length > 100 || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(input.category))) return null;
+  if (typeof input.province === 'string' && (input.province.trim().length < 1 || input.province.trim().length > 100)) return null;
+  if (typeof input.city === 'string' && (input.city.trim().length < 1 || input.city.trim().length > 120)) return null;
+  if (typeof input.physicalAddress === 'string' && (input.physicalAddress.trim().length < 1 || input.physicalAddress.trim().length > 500)) return null;
+  if (typeof input.whatsapp === 'string' && (input.whatsapp.trim().length < 7 || input.whatsapp.trim().length > 32)) return null;
+  if (typeof input.website === 'string') {
+    if (input.website.trim().length < 1 || input.website.trim().length > 2048) return null;
+    try { const url = new URL(input.website); if (url.protocol !== 'https:' && url.protocol !== 'http:') return null; } catch { return null; }
+  }
+  if (Object.hasOwn(input, 'isSupplier') && input.isSupplier !== null && typeof input.isSupplier !== 'boolean') return null;
+  if (Object.hasOwn(input, 'yearsInBusiness') && (!Number.isInteger(input.yearsInBusiness) || Number(input.yearsInBusiness) < 0 || Number(input.yearsInBusiness) > 500)) return null;
   return {
     ...(Object.hasOwn(input, 'name') ? { name: input.name as string } : {}),
     ...(Object.hasOwn(input, 'slug') ? { slug: input.slug as string } : {}),
     ...(Object.hasOwn(input, 'description') ? { description: input.description as string | null } : {}),
     ...(Object.hasOwn(input, 'phone') ? { phone: input.phone as string | null } : {}),
     ...(Object.hasOwn(input, 'email') ? { email: input.email as string | null } : {}),
+    ...(Object.hasOwn(input, 'category') ? { category: input.category as string | null } : {}),
+    ...(Object.hasOwn(input, 'province') ? { province: input.province as string | null } : {}),
+    ...(Object.hasOwn(input, 'city') ? { city: input.city as string | null } : {}),
+    ...(Object.hasOwn(input, 'physicalAddress') ? { physicalAddress: input.physicalAddress as string | null } : {}),
+    ...(Object.hasOwn(input, 'whatsapp') ? { whatsapp: input.whatsapp as string | null } : {}),
+    ...(Object.hasOwn(input, 'website') ? { website: input.website as string | null } : {}),
+    ...(Object.hasOwn(input, 'isSupplier') ? { isSupplier: input.isSupplier as boolean | null } : {}),
+    ...(Object.hasOwn(input, 'yearsInBusiness') ? { yearsInBusiness: input.yearsInBusiness as number } : {}),
   };
 };
 
@@ -387,6 +437,53 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     res.status(200).json({ status: 'ok' });
   });
 
+  // Canonical browser identity contract: all account and business context is derived
+  // from the authenticated GHM context. A requested business ID is only a selection,
+  // never an authority claim; resolveIdentity verifies active membership server-side.
+  app.get('/api/v1/identity', resourceAuthMiddleware, requireRegisteredAccess('profile', 'read'), async (req: Request, res: Response) => {
+    const context = req.authContext as AuthContext;
+    const rawBusinessId = req.query.businessId;
+    let selectedBusinessId: number | undefined;
+    if (rawBusinessId !== undefined) {
+      if (typeof rawBusinessId !== 'string' || !/^[1-9][0-9]*$/.test(rawBusinessId)) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      selectedBusinessId = Number(rawBusinessId);
+      if (!Number.isSafeInteger(selectedBusinessId) || selectedBusinessId <= 0) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+    }
+    try {
+      const identity = await service.resolveIdentity({ context, selectedBusinessId });
+      res.status(200).json({
+        account: identity.account,
+        memberships: identity.memberships,
+        activeMembership: identity.activeMembership,
+        activeBusiness: identity.activeBusiness,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'business-selection-required') {
+        res.status(409).json({ error: 'business_selection_required' });
+        return;
+      }
+      if (error instanceof Error && error.message === 'Selected business context is not authorized') {
+        res.status(403).json({ error: 'business_context_forbidden' });
+        return;
+      }
+      if (error instanceof Error && error.message === 'Selected business not found') {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      if (error instanceof Error && error.message === 'Selected business is inactive') {
+        res.status(403).json({ error: 'business_inactive' });
+        return;
+      }
+      handleError(error, res);
+    }
+  });
+
   app.get('/api/v1/profile', resourceAuthMiddleware, requireRegisteredAccess('profile', 'read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
@@ -397,9 +494,24 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
+  app.patch('/api/v1/profile', resourceAuthMiddleware, requireRegisteredAccess('profile', 'update'), async (req: Request, res: Response) => {
+    try {
+      const input = parseOwnProfileUpdateInput(req.body);
+      if (!input) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const context = req.authContext as AuthContext;
+      const profile = await service.updateOwnProfile(context, input);
+      res.status(200).json({ profile });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
   app.get('/api/v1/public/businesses', requireRegisteredPublicAccess('directory', 'read'), async (req: Request, res: Response) => {
     try {
-      const allowed = new Set(['q', 'category', 'page', 'pageSize']);
+      const allowed = new Set(['q', 'category', 'province', 'businessType', 'page', 'pageSize']);
       const keys = Object.keys(req.query);
       if (keys.some((key) => !allowed.has(key))) {
         res.status(400).json({ error: 'invalid_request' });
@@ -422,14 +534,26 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
 
       const q = readStringQuery('q');
       const category = readStringQuery('category');
+      const province = readStringQuery('province');
+      const businessType = readStringQuery('businessType');
       const pageValue = parsePositiveQueryInteger('page');
       const pageSizeValue = parsePositiveQueryInteger('pageSize');
 
       if (
         (req.query.q !== undefined && q === undefined) ||
         (req.query.category !== undefined && category === undefined) ||
+        (req.query.province !== undefined && province === undefined) ||
+        (req.query.businessType !== undefined && businessType === undefined) ||
         (req.query.page !== undefined && pageValue === undefined) ||
         (req.query.pageSize !== undefined && pageSizeValue === undefined)
+      ) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      if (
+        (province !== undefined && (province.trim().length === 0 || province.trim().length > 100)) ||
+        (businessType !== undefined && businessType !== 'contractors' && businessType !== 'suppliers')
       ) {
         res.status(400).json({ error: 'invalid_request' });
         return;
@@ -443,6 +567,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       const result = await directoryService.search({
         q,
         category,
+        province: province?.trim(),
+        businessType: businessType as 'contractors' | 'suppliers' | undefined,
         page: pageValue ?? 1,
         pageSize: pageSizeValue ?? 20,
       });
@@ -455,6 +581,10 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
           error.message === 'category must be a string' ||
           error.message === 'category must not be blank' ||
           error.message === 'category must be a valid category id or slug' ||
+          error.message === 'province must be a string' ||
+          error.message === 'province must not be blank' ||
+          error.message === 'province must be at most 100 characters' ||
+          error.message === 'businessType must be contractors or suppliers' ||
           error.message === 'page must be a positive integer' ||
           error.message === 'pageSize must be a positive integer' ||
           error.message === 'pageSize must be at most 50')

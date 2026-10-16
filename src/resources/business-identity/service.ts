@@ -18,15 +18,23 @@ export class BusinessIdentityServiceImpl {
 
   async resolveIdentity(input: ResolveIdentityInput): Promise<ApplicationIdentity> {
     const account = await this.repository.getAccount(input.context);
-    const memberships = await this.repository.getMembershipsForAccount(input.context);
+    const rawMemberships = await this.repository.getMembershipsForAccount(input.context);
+    // Return business summaries only for memberships belonging to the authenticated account.
+    // This enables an explicit context chooser without granting broad business enumeration.
+    const memberships = await Promise.all(rawMemberships.map(async (membership) => ({
+      ...membership,
+      business: await this.repository.getBusinessById(input.context, membership.businessId),
+    })));
     const selectedBusinessId = input.selectedBusinessId ?? (memberships.length === 1 ? memberships[0].businessId : undefined);
     if (selectedBusinessId === undefined) {
-      if (memberships.length > 1) throw new Error('business-selection-required');
+      // Return the full authorized membership list without selecting a tenant.
+      // Clients need this data to render an explicit business-context chooser.
+      // No membership is active until the client submits a selectedBusinessId.
       return { account, memberships, activeMembership: null, activeBusiness: null };
     }
     const membership = memberships.find(c => c.businessId === selectedBusinessId && c.status === 'active');
     if (!membership) throw new Error('Selected business context is not authorized');
-    const business = await this.repository.getBusinessById(input.context, selectedBusinessId);
+    const business = membership.business ?? await this.repository.getBusinessById(input.context, selectedBusinessId);
     if (!business) throw new Error('Selected business not found');
     if (!business.isActive) throw new Error('Selected business is inactive');
     return { account, memberships, activeMembership: membership, activeBusiness: business };
