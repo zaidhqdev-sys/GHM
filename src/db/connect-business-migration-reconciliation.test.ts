@@ -18,10 +18,16 @@ test('blocks missing source ID, owner subject, or evidence', () => {
   assert.equal(reconcileConnectBusiness({ ...base, source: { ...base.source, sourceOwnerSubject: '' } }).outcome, 'BLOCKED');
 });
 test('requires explicit canonical business mapping and does not auto-create', () => {
-  const result = reconcileConnectBusiness({ ...base, businessMapping: null });
+  const result = reconcileConnectBusiness({ ...base, businessMapping: null, reviewedBusinessMapping: null });
   assert.equal(result.outcome, 'CREATE_REQUIRED');
   assert.equal(result.targetBusinessId, null);
 });
+test('accepts a reviewed business mapping when no pre-existing exact mapping exists', () => {
+  const result = reconcileConnectBusiness({ ...base, businessMapping: null });
+  assert.equal(result.outcome, 'MAPPED');
+  assert.equal(result.targetBusinessId, 101);
+});
+
 test('blocks missing canonical owner mapping', () => {
   assert.equal(reconcileConnectBusiness({ ...base, ownerMapping: null }).reasonCode, 'EXPLICIT_CANONICAL_OWNER_MAPPING_REQUIRED');
 });
