@@ -9,9 +9,14 @@ import { Pool, PoolClient } from 'pg';
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
 if (!databaseUrl) throw new Error('Missing required environment variable: GHM_MIGRATOR_DATABASE_URL');
 
+const databaseSsl = process.env.DATABASE_SSL === 'true';
+if (process.env.NODE_ENV === 'production' && !databaseSsl) {
+  throw new Error('DATABASE_SSL must be true in production');
+}
+
 const pool = new Pool({
   connectionString: databaseUrl,
-  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
+  ssl: databaseSsl ? { rejectUnauthorized: false } : false,
 });
 const MIGRATION_PATTERN = /^(\d{14})_([a-z0-9][a-z0-9_-]*)\.sql$/;
 const MIGRATIONS_DIR = path.resolve(process.cwd(), 'database', 'migrations');
@@ -34,10 +39,13 @@ const loadMigrations = async (): Promise<Migration[]> => {
     if (!entry.isFile()) continue;
     const match = MIGRATION_PATTERN.exec(entry.name);
     if (!match) continue;
-    const sql = await fs.readFile(path.join(MIGRATIONS_DIR, entry.name), 'utf8');
+    const sourceSql = await fs.readFile(path.join(MIGRATIONS_DIR, entry.name), 'utf8');
+    // Preserve the original SQL for checksum compatibility; remove a leading UTF-8 BOM only
+    // from the SQL passed to PostgreSQL, where it is not valid SQL syntax.
+    const sql = sourceSql.replace(/^\uFEFF/, '');
     migrations.push({
       version: match[1], name: match[2], filename: entry.name, sql,
-      checksum: migrationSqlChecksum(sql),
+      checksum: migrationSqlChecksum(sourceSql),
     });
   }
   migrations.sort((a, b) => a.version.localeCompare(b.version));
@@ -94,7 +102,7 @@ const migrate = async (): Promise<void> => {
         }
         continue;
       }
-      // Preserve the historical source bytes for checksum/provenance, but strip a UTF-8 BOM before SQL execution.
+      // Preserve historical source bytes for checksums; strip a leading UTF-8 BOM only for SQL execution.
       // PostgreSQL treats a leading BOM as a token and rejects otherwise valid historical migrations.
       await client.query(migration.sql.replace(/^\uFEFF/, ''));
       ledgerTable = await resolveLedgerTable(client);
