@@ -1213,3 +1213,11 @@ These findings refine the existing caller register: saved-business functionality
 - GHM #135 and Connect #36 documentation PRs remain open/unmerged. Prior link scans are partial, not a full semantic/status/authority/owner/history/link closeout. Finish the finite closeout checklist above on the exact review branches before merge consideration.
 
 These are checkpoint-specific test results, not blanket repository readiness. No production deployment, production database mutation/import, payment activation or cutover is authorized. Founder merge authorization remains required after complete documentation reconciliation.
+
+## CI/database qualification correction — 2026-10-16 21:04Z
+
+A closer inspection of `.github/workflows/ci.yml` shows this workflow has no PostgreSQL service container and runs only `npm run build`, `npm test`, and `npm run verify:runtime`. Its job defines a placeholder `DATABASE_URL` but no `GHM_RUNTIME_DATABASE_URL` or `GHM_MIGRATOR_DATABASE_URL`; therefore it cannot prove live PostgreSQL migration application or runtime/migrator role separation. Exact-head run 38965921128 passed build, test suite and runtime-boundary verification, but the summary is **543 passed / 0 failed / 2 skipped / 0 TODO**. Earlier statements describing that run as applying all migrations to disposable PostgreSQL were inaccurate; do not rely on them.
+
+Read-only catalog inspection of the separate Render `ghm_payfast_sandbox_db` found the auth/session/mapping/replay objects and SECURITY DEFINER functions `auth_create_account`, `auth_link_business_external_mapping`, `auth_link_external_identity`, and `auth_rotate_refresh`. This is object-existence evidence only, not proof of migration-ledger completeness, grants, E2E behavior, or production state. No privileges were changed and no data was mutated.
+
+Corrective next step: design a CI-only PostgreSQL 18 service fixture with separate non-superuser runtime and migrator connections, apply migrations using the repository's documented migration-owner path, and run both persistence qualifications without skip fallbacks. Do not use production credentials or point CI at Render. Keep the no-skips gate closed until an exact-head run reports zero skips and proves migration/runtime boundary checks.
