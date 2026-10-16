@@ -609,3 +609,16 @@ Before the Connect Marketplace can use GHM end-to-end, the current public direct
 5. Update this handover and the Connect migration inventory for every completed slice.
 
 The Connect enquiry client unit tests prove the payload and error handling, not runtime target parity. No production traffic, production schema, or provider configuration was changed. This is now the concrete next implementation gap, not a reason to resume a broad audit.
+
+
+
+
+## 31. Connect Marketplace directory contract implementation — 2026-10-16 (CI qualification pending)
+
+A construction-only migration `20261016170000_add_connect_directory_contract.sql` now adds the descriptive directory fields absent from the original GHM business schema: category, province, city, physical address, WhatsApp, website, logo/avatar presentation, commercial tier, featured flag, profile-view aggregate, and years in business. It adds public-listing indexes and value constraints. Trust, verification, promotion, analytics, and classification values remain server-governed; the migration explicitly revokes runtime column UPDATE rights for these fields.
+
+The classification column `is_supplier` is deliberately nullable. `NULL` means unresolved and must not be interpreted as contractor; directory filters match only explicit `true` suppliers or explicit `false` contractors. This preserves the rule that GHM does not infer Connect roles or classifications from legacy account roles.
+
+The canonical public business projection and directory repository now expose these fields, and `GET /api/v1/public/businesses` accepts validated `province` and `businessType=contractors|suppliers` filters in addition to q/category/page/pageSize. Filter values are parameter-bound in SQL, and ordering remains deterministic. Added HTTP/service/repository tests; the directory service and repository suites are now part of the full GHM test command.
+
+**Current status:** current-head CI is running after early test feedback caught and corrected two issues (HTTP validation had relied on service validation, and dynamic SQL placeholders initially omitted the dollar prefix). Do not mark the slice passed until the latest head has a green build, disposable PostgreSQL migration run, all tests passing, zero skipped, zero TODO. This migration is not applied to production. No legacy Connect business records have been imported, and no source-ID-to-GHM-ID map is asserted. The production Marketplace remains blocked until data parity/owner-membership reconciliation and Connect consumer integration are separately qualified.
