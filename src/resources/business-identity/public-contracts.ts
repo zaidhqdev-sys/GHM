@@ -16,7 +16,7 @@ export interface PublicBusiness {
   readonly logoUrl: string | null;
   readonly avatarLetter: string | null;
   readonly avatarColor: string | null;
-  readonly isSupplier: boolean;
+  readonly isSupplier: boolean | null;
   readonly tier: 'free' | 'verified' | 'featured' | 'premium';
   readonly isFeatured: boolean;
   readonly profileViews: number;
