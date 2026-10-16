@@ -591,3 +591,21 @@ The session cookie is host-only on the Connect origin because the Vercel same-or
 Connect's current focused auth workflow now runs five suites (original GHM auth client + identity adapter, browser auth client, same-origin proxy, isolated GHM identity resolver). Run [38928689930](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/38928689930) passed 35 tests, 0 failed, 0 skipped, 0 TODO. The implementation keeps refresh credentials in an HttpOnly host-only cookie on the Connect origin, access tokens in memory, and routes authenticated API calls through a fixed-upstream same-origin proxy. GHM CI run [38927909441](https://github.com/zaidhqdev-sys/GHM/actions/runs/38927909441) passed 571/571, 0 failures, 0 skipped, 0 TODO.
 
 No deployment values have been configured or verified. Connect must set `GHM_INTERNAL_RUNTIME_URL` and exact `CONNECT_WEB_ORIGIN`; GHM must set exact `GHM_WEB_AUTH_ALLOWED_ORIGINS`, `GHM_WEB_AUTH_COOKIE_PATH=/api/ghm`, and secure cookies. Deploy and test login/register/reload/refresh/logout/Origin rejection before rollout. Connect's non-auth product services remain coupled to Supabase. No production cutover or merge authorization is implied by unit/contract CI.
+
+
+
+
+## 30. Marketplace enquiry write contract passed; directory parity is the next backend gap — 2026-10-16
+
+Connect's current browser-auth + marketplace enquiry contract workflow is green on latest documented Connect head: [run 38931521657](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/38931521657), 42 passed, 0 failed, 0 skipped, 0 TODO, production Vite build passed. The write path now calls GHM `POST /api/v1/enquiries`; GHM derives the customer account from the bearer token.
+
+Before the Connect Marketplace can use GHM end-to-end, the current public directory contract needs product-parity work. `GET /api/v1/public/businesses` currently supports only `q`, `category`, `page`, and `pageSize`, returning canonical numeric GHM business IDs plus a limited public business shape. Connect's existing Marketplace UI also filters by province and contractor/supplier classification and displays additional fields such as city, category, featured/tier, WhatsApp, avatar/logo, and response/engagement statistics. Those fields are not all available from the current GHM public directory contract. Do not fake values or silently drop filters.
+
+### Required backend/product sequence
+1. Reconcile GHM business data against the Connect source-of-truth/backup and prove canonical business IDs, active/approved state, and owner memberships. Do not infer ID mapping from names or numeric coercion.
+2. Decide and document canonical GHM storage/ownership for province/city, supplier/contractor classification, and any additional directory fields required by the existing UI. Preserve protected fields (verification, featured status, ratings, jobs completed) as server-governed only.
+3. Extend directory query contract/SQL/API with validated filters and stable pagination only for fields backed by canonical GHM data. Add authorization/privacy tests and zero-skip qualification.
+4. Map the response into the Connect Marketplace view model; migrate listing reads and saved-business/enquiry callers as separate slices. Enquiry creation must remain fail-closed until selected listings provide a canonical numeric GHM business ID and a valid eligible target.
+5. Update this handover and the Connect migration inventory for every completed slice.
+
+The Connect enquiry client unit tests prove the payload and error handling, not runtime target parity. No production traffic, production schema, or provider configuration was changed. This is now the concrete next implementation gap, not a reason to resume a broad audit.
