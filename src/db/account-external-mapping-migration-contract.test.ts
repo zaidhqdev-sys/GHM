@@ -24,6 +24,6 @@ test('lookup is fail-closed for blank input and never links by email', () => {
   assert.match(migration, /btrim\(p_external_account_id\) <> ''/i);
   assert.match(migration, /mapping\.provider = btrim\(p_provider\)/i);
   assert.match(migration, /mapping\.external_account_id = btrim\(p_external_account_id\)/i);
-  assert.doesNotMatch(migration, /(?:WHERE|AND)\\s+[^;]*email\\s*(?:=|ILIKE)/is);
+  assert.doesNotMatch(migration, /email\\s*(?:=|ILIKE)/i);
   assert.match(migration, /Not an auth endpoint/i);
 });
