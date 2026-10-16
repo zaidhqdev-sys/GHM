@@ -183,6 +183,7 @@ test('Business Hours PUT rejects malformed or duplicate day entries before servi
     const token = tokenFor({ userId: 468, role: 'business' });
     for (const hours of [
       [{ dayOfWeek: 1, isClosed: false, openTime: '17:00', closeTime: '08:00' }],
+      [{ dayOfWeek: 1, isClosed: false, openTime: '08:00', closeTime: '08:00:00' }],
       [{ dayOfWeek: 1, isClosed: true, openTime: '08:00', closeTime: null }],
       [
         { dayOfWeek: 1, isClosed: true },
