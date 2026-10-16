@@ -229,3 +229,12 @@ CI run [38963881139](https://github.com/zaidhqdev-sys/GHM/actions/runs/389638811
 ## Updated database-backed CI qualification — 2026-10-16 21:29Z
 
 The earlier 2-skip result is superseded by the consolidated GHM PR #138 head `3d08b0667775c2f589b90f02bbae8ea7ced9f8e9`, run [38970659762](https://github.com/zaidhqdev-sys/GHM/actions/runs/38970659762): **563 passed / 0 failed / 0 skipped / 0 TODO**. Build, PostgreSQL 18 migrations via the migrator role, auth foundation persistence, live PostgreSQL Connect service-assertion replay and runtime-boundary verification all passed. PR #138 also includes leading-BOM handling while retaining production fail-closed TLS enforcement; PR #139 is closed as superseded, not merged. This is CI-only qualification; it does not prove production DB state, deployed browser E2E, real account/business mapping, full Connect/QuoteFlow parity, or payment readiness. No production data/settings changed. The broad GHM/Connect documentation reconciliation remains open; no merge or deployment is authorized by this result.
+
+
+## Consolidated PR and migration checkpoint — 2026-10-16 21:58Z
+
+Current open GHM work is #135 documentation, #136 business-hours replacement, #137 authenticated identity/membership guard, and #138 trusted-proxy/qualified PostgreSQL CI. Exact tested implementation heads are recorded in the remaining-work register and Connect/GHM durable handover. #134 and #139 are closed unmerged as superseded by #137 and #138. Do not use their older standalone test summaries as the current implementation source.
+
+Cross-repository, Connect #39 is the integrated identity/session branch, Connect #36 is the documentation reconciliation branch, and Connect #33 is a disabled PayFast sandbox bridge; Paystack source integration and the Anthropic proxy are separate Supabase Edge Function paths and are not GHM-qualified. Connect #15 and #28 are closed unmerged as non-target implementation branches; #35/#37 are closed unmerged as duplicates of #39. These closures do not mean product parity, provider readiness, or cutover has passed.
+
+The last recorded test run on the GHM docs branch reported 543 passed / 2 skipped / 0 failed / 0 TODO. Skips remain unwaived. The zero-skip CI foundation exists on #138, but the docs branch itself is not yet independently zero-skip certified. Full semantic reconciliation and Markdown target/anchor checks remain open. No merge, production deployment, provider activation or cutover is authorized.
