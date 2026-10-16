@@ -418,7 +418,7 @@ No runtime or production changes were made in this audit.
 
 ## 15. Cross-repository ledger — Connect identity role adapter
 
-- **Connect branch:** `construction/ghm-identity-contract-adapter-20261016`; draft PR pending creation.
+- **Connect adapter PR:** [#39 — fail-closed GHM identity compatibility adapter](https://github.com/zaidhqdev-sys/zaid-connect/pull/39), draft/unmerged; branch `construction/ghm-identity-adapter-only-20261016`.
 - Connect has added a fail-closed adapter that only trusts explicit fields in the authenticated GHM identity response. GHM `customer` maps to Connect `customer`; GHM `business` cannot distinguish `contractor` from `supplier` and therefore remains unresolved until a canonical Connect role is persisted and returned.
 - Connect admin is not inferred from the broad GHM `admin` role: adapter requires explicit `isSystemAdmin: true`. Founder-reviewer status is also fail-closed unless explicitly returned by a GHM-authoritative source. The current endpoint does not yet return either field, so these privileges are not enabled through this adapter.
 - Membership response shape is validated; mismatched active membership/business context is discarded. Permissions are not invented by a frontend mapping table.
