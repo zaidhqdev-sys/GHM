@@ -505,3 +505,16 @@ Review of Connect PR #39 and the current app shell found that a direct identity-
 
 ### Next implementation slice
 Implement the account mapping schema/API contract and its uniqueness, non-disclosure, conflict and authorization tests as a GHM PR. Do not backfill production records or switch Connect product callers in that slice. Reconcile the matching Connect handover in the same change set. This is a targeted migration blocker, not a reason to resume the broad audit loop.
+
+
+## 20. External account mapping schema slice added — 2026-10-16 13:12Z
+
+On the existing GHM identity construction branch, added migration `20261016120000_create_account_external_mapping.sql` (commit `5fe7eef`) and static migration contract tests `src/db/account-external-mapping-migration-contract.test.ts` (commit `cba2dfe`), included in the repository's `npm test` command by commit `98b3595`.
+
+- New table `ghm.account_external_mapping` is separate from `ghm.business_external_mapping`, has a provider/external-account unique key, references canonical `ghm.account_identity(id)` with `ON DELETE RESTRICT`, and rejects blank keys.
+- Added `ghm.auth_lookup_account_external_mapping(text,text)` as a narrow SECURITY DEFINER lookup. Blank input returns no mapping; lookup matches only the exact provider + external identifier.
+- Function EXECUTE is granted only to `ghm_migrator`; PUBLIC and `ghm_runtime` are explicitly revoked. The table has no direct grants to PUBLIC, runtime, or migrator. This is migration-only lookup, not an auth endpoint, credential validator, or account-linking workflow.
+- This is schema/test construction only: migration has not been applied to production and the tests have not yet run in CI. Latest GHM PR head and checksum/migration CI must be verified before considering the slice qualified.
+- No external UUID has been backfilled; no account auto-linking, email matching, product-row migration, or Connect cutover has occurred.
+
+Next gate: run full GHM build/test/migration checksum validation on the latest PR head; inspect and resolve any contract failure before proceeding to a controlled read-only legacy foreign-key inventory. Do not merge or apply migration until GHM docs are reconciled and the PR gates pass.
