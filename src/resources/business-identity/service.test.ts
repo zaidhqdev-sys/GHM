@@ -4,7 +4,7 @@ import { BusinessIdentityServiceImpl } from './service';
 import type { AccountIdentity, BusinessIdentity, BusinessIdentityRepository, BusinessMembership, UpdateBusinessProfileInput, UpdateProfileInput } from './contracts';
 import type { AuthContext } from '../../auth/authorization';
 
-const account = (id: number, role: 'admin' | 'customer' | 'business'): AccountIdentity => ({ id, fullName: 'Test User', phone: null, avatarRef: null, role, createdAt: new Date(0), updatedAt: new Date(0) });
+const account = (id: number, role: 'admin' | 'customer' | 'business'): AccountIdentity => ({ id, email: 'test@example.com', fullName: 'Test User', phone: null, avatarRef: null, role, createdAt: new Date(0), updatedAt: new Date(0) });
 const business = (id: number, approved = true): BusinessIdentity => ({
   id,
   name: `Business ${id}`,
