@@ -68,13 +68,21 @@ SET search_path = pg_catalog, ghm
 AS $$
 DECLARE
   patch_keys text[];
-  allowed_keys text[] := ARRAY['name', 'slug', 'description', 'phone', 'email'];
+  allowed_keys text[] := ARRAY['name', 'slug', 'description', 'phone', 'email', 'category', 'province', 'city', 'physicalAddress', 'whatsapp', 'website', 'isSupplier', 'yearsInBusiness'];
   forbidden text;
   next_name text;
   next_slug text;
   next_description text;
   next_phone text;
   next_email text;
+  next_category text;
+  next_province text;
+  next_city text;
+  next_physical_address text;
+  next_whatsapp text;
+  next_website text;
+  next_is_supplier boolean;
+  next_years_in_business integer;
   updated_row ghm.business%ROWTYPE;
 BEGIN
   IF p_account_id IS NULL OR p_account_id <= 0 THEN
@@ -182,6 +190,456 @@ BEGIN
         RAISE EXCEPTION 'Email must be between 3 and 320 characters';
       END IF;
     END IF;
+  END IF;
+
+  IF p_patch ? 'category' THEN
+    IF p_patch->'category' = 'null'::jsonb THEN
+      next_category := NULL;
+    ELSIF jsonb_typeof(p_patch->'category') <> 'string' THEN
+      RAISE EXCEPTION 'Category must be a lowercase slug or null';
+    ELSE
+      next_category := btrim(p_patch->>'category');
+      IF length(next_category) < 1 OR length(next_category) > 100 OR next_category !~ '^[a-z0-9]+(-[a-z0-9]+)* WHEN p_patch ? 'name' THEN next_name ELSE name END,
+    slug = CASE WHEN p_patch ? 'slug' THEN next_slug ELSE slug END,
+    description = CASE WHEN p_patch ? 'description' THEN next_description ELSE description END,
+    phone = CASE WHEN p_patch ? 'phone' THEN next_phone ELSE phone END,
+    email = CASE WHEN p_patch ? 'email' THEN next_email ELSE email END,
+    category = CASE WHEN p_patch ? 'category' THEN next_category ELSE category END,
+    province = CASE WHEN p_patch ? 'province' THEN next_province ELSE province END,
+    city = CASE WHEN p_patch ? 'city' THEN next_city ELSE city END,
+    physical_address = CASE WHEN p_patch ? 'physicalAddress' THEN next_physical_address ELSE physical_address END,
+    whatsapp = CASE WHEN p_patch ? 'whatsapp' THEN next_whatsapp ELSE whatsapp END,
+    website = CASE WHEN p_patch ? 'website' THEN next_website ELSE website END,
+    is_supplier = CASE WHEN p_patch ? 'isSupplier' THEN next_is_supplier ELSE is_supplier END,
+    years_in_business = CASE WHEN p_patch ? 'yearsInBusiness' THEN next_years_in_business ELSE years_in_business END,
+    updated_at = now()
+  WHERE id = p_business_id
+  RETURNING * INTO updated_row;
+
+  RETURN updated_row;
+END;
+$$;
+
+ALTER FUNCTION ghm.update_business_profile(bigint, bigint, jsonb)
+  OWNER TO ghm_schema_owner;
+REVOKE ALL ON FUNCTION ghm.update_business_profile(bigint, bigint, jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ghm.update_business_profile(bigint, bigint, jsonb) TO ghm_runtime;
+
+-- Wire Trust calculation to consume Business profile Trust inputs.
+-- Thresholds and Trust operation vocabulary are unchanged.
+CREATE OR REPLACE FUNCTION ghm.calculate_business_trust_score(
+  p_account_id bigint,
+  p_business_id bigint
+)
+RETURNS ghm.trust_score
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, ghm
+AS $$
+DECLARE
+  target_business ghm.business%ROWTYPE;
+  calculated_profile_complete smallint;
+  calculated_phone_verified smallint;
+  calculated_email_verified smallint;
+  calculated_id_verified smallint;
+  calculated_cipc_verified smallint;
+  calculated_vat_verified smallint;
+  calculated_insurance_verified smallint;
+  calculated_reviews_score smallint;
+  calculated_completed_projects smallint;
+  calculated_total_score smallint;
+  calculated_trust_level text;
+  calculated_score ghm.trust_score%ROWTYPE;
+BEGIN
+  IF p_account_id IS NULL OR p_account_id <= 0 THEN
+    RAISE EXCEPTION 'Authentication is required to calculate a Trust score.';
+  END IF;
+
+  IF p_business_id IS NULL OR p_business_id <= 0 THEN
+    RAISE EXCEPTION 'Business ID must be a positive integer';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM ghm.business_membership
+    WHERE business_id = p_business_id
+      AND account_id = p_account_id
+      AND membership_status = 'active'
+      AND membership_role IN ('owner', 'administrator')
+  ) THEN
+    RAISE EXCEPTION 'You do not have permission to calculate this business Trust score.';
+  END IF;
+
+  SELECT *
+    INTO target_business
+    FROM ghm.business
+   WHERE id = p_business_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Business was not found.';
+  END IF;
+
+  calculated_profile_complete :=
+    CASE
+      WHEN nullif(btrim(coalesce(target_business.description, '')), '') IS NOT NULL
+        THEN 15
+      ELSE 0
+    END;
+
+  calculated_phone_verified :=
+    CASE
+      WHEN nullif(btrim(coalesce(target_business.phone, '')), '') IS NOT NULL
+        THEN 10
+      ELSE 0
+    END;
+
+  calculated_email_verified :=
+    CASE
+      WHEN nullif(btrim(coalesce(target_business.email, '')), '') IS NOT NULL
+        THEN 10
+      ELSE 0
+    END;
+
+  calculated_id_verified := 0;
+  calculated_cipc_verified := 0;
+  calculated_vat_verified := 0;
+
+  calculated_insurance_verified :=
+    CASE
+      WHEN target_business.insurance_verified IS TRUE THEN 15
+      ELSE 0
+    END;
+
+  calculated_reviews_score :=
+    least(
+      greatest(
+        round(coalesce(target_business.rating, 0) * 3)::integer,
+        0
+      ),
+      15
+    )::smallint;
+
+  calculated_completed_projects :=
+    least(
+      greatest(
+        floor(coalesce(target_business.jobs_completed, 0)::numeric / 5)::integer,
+        0
+      ),
+      10
+    )::smallint;
+
+  calculated_total_score := (
+    calculated_profile_complete
+    + calculated_phone_verified
+    + calculated_email_verified
+    + calculated_id_verified
+    + calculated_cipc_verified
+    + calculated_vat_verified
+    + calculated_insurance_verified
+    + calculated_reviews_score
+    + calculated_completed_projects
+  )::smallint;
+
+  calculated_trust_level :=
+    CASE
+      WHEN calculated_total_score >= 80 THEN 'platinum'
+      WHEN calculated_total_score >= 60 THEN 'gold'
+      WHEN calculated_total_score >= 40 THEN 'silver'
+      ELSE 'bronze'
+    END;
+
+  INSERT INTO ghm.trust_score (
+    business_id,
+    profile_complete,
+    phone_verified,
+    email_verified,
+    id_verified,
+    cipc_verified,
+    vat_verified,
+    insurance_verified,
+    reviews_score,
+    completed_projects,
+    total_score,
+    trust_level,
+    last_updated
+  )
+  VALUES (
+    p_business_id,
+    calculated_profile_complete,
+    calculated_phone_verified,
+    calculated_email_verified,
+    calculated_id_verified,
+    calculated_cipc_verified,
+    calculated_vat_verified,
+    calculated_insurance_verified,
+    calculated_reviews_score,
+    calculated_completed_projects,
+    calculated_total_score,
+    calculated_trust_level,
+    now()
+  )
+  ON CONFLICT (business_id)
+  DO UPDATE
+  SET
+    profile_complete = EXCLUDED.profile_complete,
+    phone_verified = EXCLUDED.phone_verified,
+    email_verified = EXCLUDED.email_verified,
+    id_verified = EXCLUDED.id_verified,
+    cipc_verified = EXCLUDED.cipc_verified,
+    vat_verified = EXCLUDED.vat_verified,
+    insurance_verified = EXCLUDED.insurance_verified,
+    reviews_score = EXCLUDED.reviews_score,
+    completed_projects = EXCLUDED.completed_projects,
+    total_score = EXCLUDED.total_score,
+    trust_level = EXCLUDED.trust_level,
+    last_updated = EXCLUDED.last_updated
+  RETURNING *
+  INTO calculated_score;
+
+  RETURN calculated_score;
+END;
+$$;
+
+ALTER FUNCTION ghm.calculate_business_trust_score(bigint, bigint)
+  OWNER TO ghm_schema_owner;
+REVOKE ALL ON FUNCTION ghm.calculate_business_trust_score(bigint, bigint) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ghm.calculate_business_trust_score(bigint, bigint) TO ghm_runtime;
+ THEN
+        RAISE EXCEPTION 'Category must be a lowercase slug';
+      END IF;
+    END IF;
+  END IF;
+
+  IF p_patch ? 'province' THEN
+    IF p_patch->'province' = 'null'::jsonb THEN next_province := NULL;
+    ELSIF jsonb_typeof(p_patch->'province') <> 'string' OR length(btrim(p_patch->>'province')) NOT BETWEEN 1 AND 100 THEN RAISE EXCEPTION 'Province must contain 1 to 100 characters';
+    ELSE next_province := btrim(p_patch->>'province'); END IF;
+  END IF;
+  IF p_patch ? 'city' THEN
+    IF p_patch->'city' = 'null'::jsonb THEN next_city := NULL;
+    ELSIF jsonb_typeof(p_patch->'city') <> 'string' OR length(btrim(p_patch->>'city')) NOT BETWEEN 1 AND 120 THEN RAISE EXCEPTION 'City must contain 1 to 120 characters';
+    ELSE next_city := btrim(p_patch->>'city'); END IF;
+  END IF;
+  IF p_patch ? 'physicalAddress' THEN
+    IF p_patch->'physicalAddress' = 'null'::jsonb THEN next_physical_address := NULL;
+    ELSIF jsonb_typeof(p_patch->'physicalAddress') <> 'string' OR length(btrim(p_patch->>'physicalAddress')) NOT BETWEEN 1 AND 500 THEN RAISE EXCEPTION 'Physical address must contain 1 to 500 characters';
+    ELSE next_physical_address := btrim(p_patch->>'physicalAddress'); END IF;
+  END IF;
+  IF p_patch ? 'whatsapp' THEN
+    IF p_patch->'whatsapp' = 'null'::jsonb THEN next_whatsapp := NULL;
+    ELSIF jsonb_typeof(p_patch->'whatsapp') <> 'string' OR length(btrim(p_patch->>'whatsapp')) NOT BETWEEN 7 AND 32 THEN RAISE EXCEPTION 'WhatsApp must contain 7 to 32 characters';
+    ELSE next_whatsapp := btrim(p_patch->>'whatsapp'); END IF;
+  END IF;
+  IF p_patch ? 'website' THEN
+    IF p_patch->'website' = 'null'::jsonb THEN next_website := NULL;
+    ELSIF jsonb_typeof(p_patch->'website') <> 'string' OR length(btrim(p_patch->>'website')) NOT BETWEEN 1 AND 2048 OR p_patch->>'website' !~* '^https?://' THEN RAISE EXCEPTION 'Website must be a valid HTTP(S) URL';
+    ELSE next_website := btrim(p_patch->>'website'); END IF;
+  END IF;
+  IF p_patch ? 'isSupplier' THEN
+    IF p_patch->'isSupplier' = 'null'::jsonb THEN next_is_supplier := NULL;
+    ELSIF jsonb_typeof(p_patch->'isSupplier') <> 'boolean' THEN RAISE EXCEPTION 'Supplier classification must be boolean or null';
+    ELSE next_is_supplier := (p_patch->>'isSupplier')::boolean; END IF;
+  END IF;
+  IF p_patch ? 'yearsInBusiness' THEN
+    IF jsonb_typeof(p_patch->'yearsInBusiness') <> 'number' OR (p_patch->>'yearsInBusiness') !~ '^[0-9]{1,3} WHEN p_patch ? 'name' THEN next_name ELSE name END,
+    slug = CASE WHEN p_patch ? 'slug' THEN next_slug ELSE slug END,
+    description = CASE WHEN p_patch ? 'description' THEN next_description ELSE description END,
+    phone = CASE WHEN p_patch ? 'phone' THEN next_phone ELSE phone END,
+    email = CASE WHEN p_patch ? 'email' THEN next_email ELSE email END,
+    updated_at = now()
+  WHERE id = p_business_id
+  RETURNING * INTO updated_row;
+
+  RETURN updated_row;
+END;
+$$;
+
+ALTER FUNCTION ghm.update_business_profile(bigint, bigint, jsonb)
+  OWNER TO ghm_schema_owner;
+REVOKE ALL ON FUNCTION ghm.update_business_profile(bigint, bigint, jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ghm.update_business_profile(bigint, bigint, jsonb) TO ghm_runtime;
+
+-- Wire Trust calculation to consume Business profile Trust inputs.
+-- Thresholds and Trust operation vocabulary are unchanged.
+CREATE OR REPLACE FUNCTION ghm.calculate_business_trust_score(
+  p_account_id bigint,
+  p_business_id bigint
+)
+RETURNS ghm.trust_score
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, ghm
+AS $$
+DECLARE
+  target_business ghm.business%ROWTYPE;
+  calculated_profile_complete smallint;
+  calculated_phone_verified smallint;
+  calculated_email_verified smallint;
+  calculated_id_verified smallint;
+  calculated_cipc_verified smallint;
+  calculated_vat_verified smallint;
+  calculated_insurance_verified smallint;
+  calculated_reviews_score smallint;
+  calculated_completed_projects smallint;
+  calculated_total_score smallint;
+  calculated_trust_level text;
+  calculated_score ghm.trust_score%ROWTYPE;
+BEGIN
+  IF p_account_id IS NULL OR p_account_id <= 0 THEN
+    RAISE EXCEPTION 'Authentication is required to calculate a Trust score.';
+  END IF;
+
+  IF p_business_id IS NULL OR p_business_id <= 0 THEN
+    RAISE EXCEPTION 'Business ID must be a positive integer';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM ghm.business_membership
+    WHERE business_id = p_business_id
+      AND account_id = p_account_id
+      AND membership_status = 'active'
+      AND membership_role IN ('owner', 'administrator')
+  ) THEN
+    RAISE EXCEPTION 'You do not have permission to calculate this business Trust score.';
+  END IF;
+
+  SELECT *
+    INTO target_business
+    FROM ghm.business
+   WHERE id = p_business_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Business was not found.';
+  END IF;
+
+  calculated_profile_complete :=
+    CASE
+      WHEN nullif(btrim(coalesce(target_business.description, '')), '') IS NOT NULL
+        THEN 15
+      ELSE 0
+    END;
+
+  calculated_phone_verified :=
+    CASE
+      WHEN nullif(btrim(coalesce(target_business.phone, '')), '') IS NOT NULL
+        THEN 10
+      ELSE 0
+    END;
+
+  calculated_email_verified :=
+    CASE
+      WHEN nullif(btrim(coalesce(target_business.email, '')), '') IS NOT NULL
+        THEN 10
+      ELSE 0
+    END;
+
+  calculated_id_verified := 0;
+  calculated_cipc_verified := 0;
+  calculated_vat_verified := 0;
+
+  calculated_insurance_verified :=
+    CASE
+      WHEN target_business.insurance_verified IS TRUE THEN 15
+      ELSE 0
+    END;
+
+  calculated_reviews_score :=
+    least(
+      greatest(
+        round(coalesce(target_business.rating, 0) * 3)::integer,
+        0
+      ),
+      15
+    )::smallint;
+
+  calculated_completed_projects :=
+    least(
+      greatest(
+        floor(coalesce(target_business.jobs_completed, 0)::numeric / 5)::integer,
+        0
+      ),
+      10
+    )::smallint;
+
+  calculated_total_score := (
+    calculated_profile_complete
+    + calculated_phone_verified
+    + calculated_email_verified
+    + calculated_id_verified
+    + calculated_cipc_verified
+    + calculated_vat_verified
+    + calculated_insurance_verified
+    + calculated_reviews_score
+    + calculated_completed_projects
+  )::smallint;
+
+  calculated_trust_level :=
+    CASE
+      WHEN calculated_total_score >= 80 THEN 'platinum'
+      WHEN calculated_total_score >= 60 THEN 'gold'
+      WHEN calculated_total_score >= 40 THEN 'silver'
+      ELSE 'bronze'
+    END;
+
+  INSERT INTO ghm.trust_score (
+    business_id,
+    profile_complete,
+    phone_verified,
+    email_verified,
+    id_verified,
+    cipc_verified,
+    vat_verified,
+    insurance_verified,
+    reviews_score,
+    completed_projects,
+    total_score,
+    trust_level,
+    last_updated
+  )
+  VALUES (
+    p_business_id,
+    calculated_profile_complete,
+    calculated_phone_verified,
+    calculated_email_verified,
+    calculated_id_verified,
+    calculated_cipc_verified,
+    calculated_vat_verified,
+    calculated_insurance_verified,
+    calculated_reviews_score,
+    calculated_completed_projects,
+    calculated_total_score,
+    calculated_trust_level,
+    now()
+  )
+  ON CONFLICT (business_id)
+  DO UPDATE
+  SET
+    profile_complete = EXCLUDED.profile_complete,
+    phone_verified = EXCLUDED.phone_verified,
+    email_verified = EXCLUDED.email_verified,
+    id_verified = EXCLUDED.id_verified,
+    cipc_verified = EXCLUDED.cipc_verified,
+    vat_verified = EXCLUDED.vat_verified,
+    insurance_verified = EXCLUDED.insurance_verified,
+    reviews_score = EXCLUDED.reviews_score,
+    completed_projects = EXCLUDED.completed_projects,
+    total_score = EXCLUDED.total_score,
+    trust_level = EXCLUDED.trust_level,
+    last_updated = EXCLUDED.last_updated
+  RETURNING *
+  INTO calculated_score;
+
+  RETURN calculated_score;
+END;
+$$;
+
+ALTER FUNCTION ghm.calculate_business_trust_score(bigint, bigint)
+  OWNER TO ghm_schema_owner;
+REVOKE ALL ON FUNCTION ghm.calculate_business_trust_score(bigint, bigint) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ghm.calculate_business_trust_score(bigint, bigint) TO ghm_runtime;
+ OR (p_patch->>'yearsInBusiness')::integer > 500 THEN RAISE EXCEPTION 'Years in business must be an integer from 0 to 500';
+    ELSE next_years_in_business := (p_patch->>'yearsInBusiness')::integer; END IF;
   END IF;
 
   UPDATE ghm.business
