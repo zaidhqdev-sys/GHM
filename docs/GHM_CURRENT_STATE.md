@@ -243,3 +243,8 @@ The last recorded test run on the GHM docs branch reported 543 passed / 2 skippe
 ## Latest documentation-branch CI checkpoint — 2026-10-16 22:00Z
 
 On exact head `10cb2af53cd9a69ff8f4c4f71825449e84c22faa`, workflow [38973019692](https://github.com/zaidhqdev-sys/GHM/actions/runs/38973019692) completed successfully: **543 passed / 0 failed / 2 skipped / 0 TODO**; runtime-boundary verification passed. The two skips remain the auth persistence and live Connect assertion-replay tests that require the disposable PostgreSQL 18 fixture now present on PR #138. They are not waived. This run does not satisfy the no-skip gate; keep #135 open until the documentation branch can be validated against that fixture without introducing duplicate or conflicting implementation scope. Relative local link targets in the 14 changed Markdown files passed; anchors, external URLs and full semantic reconciliation remain open.
+
+
+## Cross-repository identity gap — account email — 2026-10-16
+
+Source inspection of GHM #137 and Connect #39 confirms the current GHM-native identity response does not include the authenticated account's email. Connect's wired resolver receives only `{ id: session.accountId }`, so it sets `user.email` to null. Connect currently consumes that field for the header/title and enquiry customer email (and as a reviewer-name fallback). This is a concrete parity gap, not a test failure: current identity CI does not cover email propagation. The target fix must source the caller's own email from GHM's canonical auth store under least-privilege authorization, survive login/refresh/restore, reject client-supplied authority, and include cross-account isolation tests. No Supabase fallback is approved.
