@@ -50,7 +50,9 @@ const probeAuthSchemaReady = async (): Promise<boolean> => {
 test('auth foundation persistence (database)', async (t) => {
   const dbAvailable = await probeAuthSchemaReady();
   if (!dbAvailable) {
-    t.skip('Auth schema/functions not migrated or GHM_MIGRATOR_DATABASE_URL / runtime URL unavailable');
+    const reason = 'Auth schema/functions not migrated or distinct GHM_MIGRATOR_DATABASE_URL / runtime URL unavailable';
+    if (process.env.CI === 'true') throw new Error(reason);
+    t.skip(reason);
     return;
   }
 
