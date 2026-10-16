@@ -299,7 +299,7 @@ const parseBusinessHoursReplaceBody = (body: unknown): readonly BusinessHoursEnt
   if (Object.keys(input).length !== 1 || !Object.hasOwn(input, 'hours') || !Array.isArray(input.hours) || input.hours.length > 7) return null;
 
   const seen = new Set<number>();
-  const timePattern = /^(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d)?$/;
+  const timePattern = /^(?:[01][0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$/;
   const entries: BusinessHoursEntryInput[] = [];
   for (const candidate of input.hours) {
     if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return null;
