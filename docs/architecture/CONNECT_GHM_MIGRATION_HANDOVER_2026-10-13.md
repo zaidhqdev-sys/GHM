@@ -440,3 +440,12 @@ No runtime or production changes were made in this audit.
 - Latest GHM PR #137 head `57062649a51b9321fca22831ab51c26278b7dcb2` completed GitHub CI successfully: [run 38842109717](https://github.com/zaidhqdev-sys/GHM/actions/runs/38842109717). This qualifies compilation and the repository's configured quality/test workflow for that commit, not production migration or deployment.
 - Earlier intermediate build failures were caused by newly required AccountIdentity fields in fixtures; the contract was made backward-compatible/optional while the repository projection supplies explicit values. The latest head passes.
 - Outstanding qualification: no production database migration has been run; reviewer grant/revoke workflow and trusted role/intent update workflow remain unimplemented. Keep PR draft and do not merge or deploy.
+
+
+## Implementation ledger — 2026-10-16 self-service Connect role/intent
+
+- GHM PR #137 now adds authenticated `PATCH /api/v1/profile` for allowlisted own-profile fields, including `connectRole` (`customer | contractor | supplier | null`) and `businessOperatorIntent` (boolean). Unknown fields and attempts to set `isSystemAdmin` or reviewer authority are rejected before the service call.
+- The repository updates only the account identified by authenticated GHM context and projects authority fields back through `ghm.auth_read_connect_identity_authority`. No account ID is accepted from the body.
+- `connectRole` is a declared Connect product role, not proof of qualification, membership, or resource permission. `businessOperatorIntent` is descriptive intent only. Business membership, verification and capabilities remain separately enforced by their GHM services.
+- Added HTTP tests for authorized role/intent update and rejection of admin/reviewer spoofing, invalid role values, non-boolean intent, unknown fields and empty payload. Latest CI must qualify this change before merge.
+- Founder reviewer grant/revoke remains a separate protected workflow with no public mutation route in this slice.
