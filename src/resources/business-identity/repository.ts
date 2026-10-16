@@ -8,7 +8,7 @@ import { withAuthorizedTransaction, withTenantTransaction } from '../../db/autho
 import { resolveTenantContext } from '../../auth/tenant-resolver';
 import type { TransactionPool } from '../../db/transaction';
 
-const ACCOUNT_SELECT = `SELECT id, full_name, phone, avatar_ref, role, created_at, updated_at, ghm.auth_read_connect_identity_authority(id) AS connect_authority FROM ghm.account_identity WHERE id = $1`;
+const ACCOUNT_SELECT = `SELECT id, full_name, phone, avatar_ref, role, created_at, updated_at, ghm.auth_read_connect_identity_authority(id) AS connect_authority, ghm.auth_read_account_email(id) AS email FROM ghm.account_identity WHERE id = $1`;
 const BUSINESS_COLUMNS = `id, name, slug, description, phone, email, category, province, city, physical_address, whatsapp, website, is_supplier, years_in_business, insurance_verified, jobs_completed, verification_status, is_active, created_at, updated_at`;
 const BUSINESS_SELECT = `SELECT ${BUSINESS_COLUMNS} FROM ghm.business WHERE id = $1`;
 const BUSINESS_BY_SLUG_SELECT = `SELECT ${BUSINESS_COLUMNS} FROM ghm.business WHERE slug = $1`;
@@ -16,7 +16,7 @@ const MEMBERSHIPS_SELECT = `SELECT id, business_id, account_id, membership_role,
 
 const ALLOWED_PROFILE_FIELDS = new Set(['name', 'slug', 'description', 'phone', 'email', 'category', 'province', 'city', 'physicalAddress', 'whatsapp', 'website', 'isSupplier', 'yearsInBusiness']);
 
-const mapAccount = (row: any): AccountIdentity => { const authority = row.connect_authority ?? {}; return { id: Number(row.id), fullName: row.full_name, phone: row.phone, avatarRef: row.avatar_ref, role: row.role, connectRole: authority.connectRole ?? null, businessOperatorIntent: authority.businessOperatorIntent === true, isSystemAdmin: authority.isSystemAdmin === true, isDirectoryListingFounderReviewer: authority.isDirectoryListingFounderReviewer === true, createdAt: row.created_at, updatedAt: row.updated_at }; };
+const mapAccount = (row: any): AccountIdentity => { const authority = row.connect_authority ?? {}; return { id: Number(row.id), email: row.email ?? null, fullName: row.full_name, phone: row.phone, avatarRef: row.avatar_ref, role: row.role, connectRole: authority.connectRole ?? null, businessOperatorIntent: authority.businessOperatorIntent === true, isSystemAdmin: authority.isSystemAdmin === true, isDirectoryListingFounderReviewer: authority.isDirectoryListingFounderReviewer === true, createdAt: row.created_at, updatedAt: row.updated_at }; };
 const mapBusiness = (row: any): BusinessIdentity => ({
   id: Number(row.id),
   name: row.name,
