@@ -121,7 +121,7 @@ export class ConnectBusinessAdapter {
 
       if (existing) {
         const businessResult = await client.query(
-          `SELECT id, name, slug, description, phone, email, insurance_verified,
+          `SELECT id, name, slug, description, phone, email, category, province, city, physical_address, whatsapp, website, is_supplier, years_in_business, insurance_verified,
                   jobs_completed, verification_status, is_active, created_at, updated_at
              FROM ghm.business
             WHERE id = $1`,
@@ -139,6 +139,14 @@ export class ConnectBusinessAdapter {
           description: row.description ?? null,
           phone: row.phone ?? null,
           email: row.email ?? null,
+          category: row.category ?? null,
+          province: row.province ?? null,
+          city: row.city ?? null,
+          physicalAddress: row.physical_address ?? null,
+          whatsapp: row.whatsapp ?? null,
+          website: row.website ?? null,
+          isSupplier: typeof row.is_supplier === 'boolean' ? row.is_supplier : null,
+          yearsInBusiness: Number(row.years_in_business ?? 0),
           insuranceVerified: row.insurance_verified === true,
           jobsCompleted: Number(row.jobs_completed ?? 0),
           verificationStatus: row.verification_status,
