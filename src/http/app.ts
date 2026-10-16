@@ -489,7 +489,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
 
   app.get('/api/v1/public/businesses', requireRegisteredPublicAccess('directory', 'read'), async (req: Request, res: Response) => {
     try {
-      const allowed = new Set(['q', 'category', 'page', 'pageSize']);
+      const allowed = new Set(['q', 'category', 'province', 'businessType', 'page', 'pageSize']);
       const keys = Object.keys(req.query);
       if (keys.some((key) => !allowed.has(key))) {
         res.status(400).json({ error: 'invalid_request' });
@@ -512,12 +512,16 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
 
       const q = readStringQuery('q');
       const category = readStringQuery('category');
+      const province = readStringQuery('province');
+      const businessType = readStringQuery('businessType');
       const pageValue = parsePositiveQueryInteger('page');
       const pageSizeValue = parsePositiveQueryInteger('pageSize');
 
       if (
         (req.query.q !== undefined && q === undefined) ||
         (req.query.category !== undefined && category === undefined) ||
+        (req.query.province !== undefined && province === undefined) ||
+        (req.query.businessType !== undefined && businessType === undefined) ||
         (req.query.page !== undefined && pageValue === undefined) ||
         (req.query.pageSize !== undefined && pageSizeValue === undefined)
       ) {
@@ -533,6 +537,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       const result = await directoryService.search({
         q,
         category,
+        province,
+        businessType: businessType as 'contractors' | 'suppliers' | undefined,
         page: pageValue ?? 1,
         pageSize: pageSizeValue ?? 20,
       });
@@ -545,6 +551,10 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
           error.message === 'category must be a string' ||
           error.message === 'category must not be blank' ||
           error.message === 'category must be a valid category id or slug' ||
+          error.message === 'province must be a string' ||
+          error.message === 'province must not be blank' ||
+          error.message === 'province must be at most 100 characters' ||
+          error.message === 'businessType must be contractors or suppliers' ||
           error.message === 'page must be a positive integer' ||
           error.message === 'pageSize must be a positive integer' ||
           error.message === 'pageSize must be at most 50')
