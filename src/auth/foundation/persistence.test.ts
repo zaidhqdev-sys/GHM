@@ -36,6 +36,7 @@ const probeAuthSchemaReady = async (): Promise<boolean> => {
         AND to_regprocedure('ghm.auth_create_account(text,text,text,text,text,integer,integer,integer)') IS NOT NULL
         AND to_regprocedure('ghm.auth_link_external_identity(text,text,bigint)') IS NOT NULL
         AND to_regprocedure('ghm.auth_link_business_external_mapping(text,text,bigint)') IS NOT NULL
+        AND to_regprocedure('ghm.auth_read_account_email(bigint)') IS NOT NULL
         AS ready
     `);
     return Boolean(result.rows[0]?.ready);
@@ -616,5 +617,16 @@ test('auth foundation persistence (database)', async (t) => {
     assert.ok(looked);
     assert.equal(looked!.accountId, accountId);
     assert.match(looked!.passwordHash, /^\$argon2id\$/);
+
+    const runtimeClient = await runtimePool.connect();
+    try {
+      const email = await runtimeClient.query<{ email: string | null }>(
+        'SELECT ghm.auth_read_account_email($1) AS email',
+        [accountId],
+      );
+      assert.equal(email.rows[0]?.email, `user+${marker}@Example.COM`);
+    } finally {
+      runtimeClient.release();
+    }
   });
 });
