@@ -10,7 +10,7 @@ import { PublicBusinessServiceImpl } from '../resources/business-identity/public
 import type { PublicBusinessService } from '../resources/business-identity/public-contracts';
 import { PostgresBusinessHoursRepository } from '../resources/business-hours/repository';
 import { BusinessHoursServiceImpl } from '../resources/business-hours/service';
-import { BusinessHoursService } from '../resources/business-hours/contracts';
+import { BusinessHoursEntryInput, BusinessHoursService } from '../resources/business-hours/contracts';
 import { PostgresProjectRepository } from '../resources/project/repository';
 import { ProjectServiceImpl } from '../resources/project/service';
 import { CreateProjectInput, ProjectService, UpdateProjectInput } from '../resources/project/contracts';
@@ -293,6 +293,39 @@ const parseProjectUpdateInput = (body: unknown): UpdateProjectInput | null => {
   return input as UpdateProjectInput;
 };
 
+const parseBusinessHoursReplaceBody = (body: unknown): readonly BusinessHoursEntryInput[] | null => {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  const input = body as Record<string, unknown>;
+  if (Object.keys(input).length !== 1 || !Object.hasOwn(input, 'hours') || !Array.isArray(input.hours) || input.hours.length > 7) return null;
+
+  const seen = new Set<number>();
+  const timePattern = /^(?:[01][0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$/;
+  const timeToSeconds = (value: string): number => {
+    const [hours, minutes, seconds = 0] = value.split(':').map(Number);
+    return hours * 3600 + minutes * 60 + seconds;
+  };
+  const entries: BusinessHoursEntryInput[] = [];
+  for (const candidate of input.hours) {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return null;
+    const entry = candidate as Record<string, unknown>;
+    if (Object.keys(entry).some(key => !['dayOfWeek', 'isClosed', 'openTime', 'closeTime'].includes(key))) return null;
+    if (!Number.isInteger(entry.dayOfWeek) || (entry.dayOfWeek as number) < 0 || (entry.dayOfWeek as number) > 6 || typeof entry.isClosed !== 'boolean') return null;
+    const day = entry.dayOfWeek as number;
+    if (seen.has(day)) return null;
+    seen.add(day);
+    if (entry.isClosed) {
+      if (entry.openTime != null || entry.closeTime != null) return null;
+      entries.push({ dayOfWeek: day, isClosed: true });
+      continue;
+    }
+    if (typeof entry.openTime !== 'string' || typeof entry.closeTime !== 'string' ||
+        !timePattern.test(entry.openTime) || !timePattern.test(entry.closeTime) ||
+        timeToSeconds(entry.openTime) >= timeToSeconds(entry.closeTime)) return null;
+    entries.push({ dayOfWeek: day, isClosed: false, openTime: entry.openTime, closeTime: entry.closeTime });
+  }
+  return entries;
+};
+
 const handleError = (error: unknown, res: Response): void => {
   if (error instanceof Error) {
     if (
@@ -556,6 +589,28 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         }
         const hours = await businessHoursService.getBusinessHours(context, businessId);
         res.status(200).json({ hours });
+      } catch (error) {
+        handleError(error, res);
+      }
+    },
+  );
+
+  app.put(
+    '/api/v1/businesses/:businessId/hours',
+    resourceAuthMiddleware,
+    requireRegisteredAccess('business_hours', 'replace'),
+    async (req: Request, res: Response) => {
+      try {
+        const context = req.authContext as AuthContext;
+        const businessIdValue = routeParam(req.params.businessId);
+        const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
+        const hours = parseBusinessHoursReplaceBody(req.body);
+        if (businessId === null || hours === null) {
+          res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+        const updated = await businessHoursService.replaceBusinessHours(context, { businessId, hours });
+        res.status(200).json({ hours: updated });
       } catch (error) {
         handleError(error, res);
       }
