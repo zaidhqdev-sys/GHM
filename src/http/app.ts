@@ -300,6 +300,10 @@ const parseBusinessHoursReplaceBody = (body: unknown): readonly BusinessHoursEnt
 
   const seen = new Set<number>();
   const timePattern = /^(?:[01][0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$/;
+  const timeToSeconds = (value: string): number => {
+    const [hours, minutes, seconds = 0] = value.split(':').map(Number);
+    return hours * 3600 + minutes * 60 + seconds;
+  };
   const entries: BusinessHoursEntryInput[] = [];
   for (const candidate of input.hours) {
     if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return null;
@@ -316,7 +320,7 @@ const parseBusinessHoursReplaceBody = (body: unknown): readonly BusinessHoursEnt
     }
     if (typeof entry.openTime !== 'string' || typeof entry.closeTime !== 'string' ||
         !timePattern.test(entry.openTime) || !timePattern.test(entry.closeTime) ||
-        entry.openTime >= entry.closeTime) return null;
+        timeToSeconds(entry.openTime) >= timeToSeconds(entry.closeTime)) return null;
     entries.push({ dayOfWeek: day, isClosed: false, openTime: entry.openTime, closeTime: entry.closeTime });
   }
   return entries;
