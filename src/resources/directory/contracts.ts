@@ -3,6 +3,8 @@ import type { PublicBusiness } from '../business-identity/public-contracts.js';
 export interface DirectoryQuery {
   readonly q?: string;
   readonly category?: string;
+  readonly province?: string;
+  readonly businessType?: 'contractors' | 'suppliers';
   readonly page: number;
   readonly pageSize: number;
 }
