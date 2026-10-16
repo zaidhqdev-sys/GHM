@@ -94,7 +94,9 @@ const migrate = async (): Promise<void> => {
         }
         continue;
       }
-      await client.query(migration.sql);
+      // Preserve the historical source bytes for checksum/provenance, but strip a UTF-8 BOM before SQL execution.
+      // PostgreSQL treats a leading BOM as a token and rejects otherwise valid historical migrations.
+      await client.query(migration.sql.replace(/^\uFEFF/, ''));
       ledgerTable = await resolveLedgerTable(client);
       if (!ledgerTable) throw new Error(`Migration ${migration.filename} completed but the migration ledger cannot be resolved`);
       await client.query(`INSERT INTO ${ledgerTable} (version, name, checksum) VALUES ($1, $2, $3)`, [migration.version, migration.name, migration.checksum]);
