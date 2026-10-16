@@ -258,6 +258,7 @@ test('integration: ES256 access JWT reaches governed profile route with DB-backe
       receivedContext = context;
       return {
         id: context.userId,
+        email: null,
         fullName: 'ES256 User',
         phone: null,
         avatarRef: null,
