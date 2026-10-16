@@ -1116,3 +1116,11 @@ The PR #135 branch moved during this audit as documentation evidence was recorde
 Current recorded review state: PR #135 and PR #36 remain open/unmerged. Relative Markdown file targets were checked across 210 GHM and 47 Connect Markdown documents with zero missing targets. Batch-local heading/explicit-anchor checks found zero missing anchors within 14 GHM batches and 3 Connect batches. These checks do not establish cross-batch anchor correctness, reference-style or HTML/autolink correctness, external URL liveness, or semantic consistency. The latest GHM current-state index and governed remaining-work register now state this bounded result explicitly.
 
 Next closeout pass: finish full link-form/anchor verification where practical, then complete semantic status/authority/owner/history review and cross-repository caller-to-contract reconciliation. Preserve the missing-capability backlog and no-merge gate. No runtime, database, provider, production or cutover change is authorized.
+
+
+
+## 71. Superseding link-audit scope clarification — 2026-10-16
+
+Earlier checkpoints in this handover (including section 66/related historical checklist language and section 68) correctly recorded that a full-corpus link pass was still outstanding at those times. They are historical checkpoints, not the current result. The later checks documented in sections 69–70 supersede only the relative-file-target and batch-local-anchor portions: 210/210 GHM and 47/47 Connect Markdown files had zero missing relative file targets; 14 GHM batches and 3 Connect batches had zero missing heading/explicit-anchor failures within each batch.
+
+Still open: cross-batch anchor resolution, reference-style links, HTML/autolinks and external URL liveness; semantic status/authority/owner/history reconciliation; and claim-by-claim cross-repository caller-to-contract verification. Do not read historical “full-corpus link validation outstanding” wording as evidence that the relative-path pass has not happened, and do not read the completed bounded checks as full link or semantic certification.
