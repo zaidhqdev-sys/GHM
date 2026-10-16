@@ -414,3 +414,13 @@ No runtime or production changes were made in this audit.
 - **Security boundary:** No caller-supplied account ID is accepted. The optional business ID selects context only and does not grant access. GHM continues to reject legacy Supabase JWTs; do not expose server assertion secrets to browser callers.
 - **Known contract gap:** This endpoint currently returns GHM account fields and GHM role vocabulary (`customer | business | admin`), not a completed Connect compatibility profile. Connect roles (`contractor`, `supplier`, business-operator intent), founder-reviewer status, and capability/route permissions still require an explicit server-authoritative mapping contract. Do not wire the app shell over until that is addressed.
 - **Next:** Run GHM CI; add Connect client contract coverage; define canonical Connect role/intent mapping and founder-reviewer endpoint/policy; then migrate session restoration and callers as a separately tested change. Update both handovers for each implementation PR.
+
+
+## 15. Cross-repository ledger — Connect identity role adapter
+
+- **Connect branch:** `construction/ghm-identity-contract-adapter-20261016`; draft PR pending creation.
+- Connect has added a fail-closed adapter that only trusts explicit fields in the authenticated GHM identity response. GHM `customer` maps to Connect `customer`; GHM `business` cannot distinguish `contractor` from `supplier` and therefore remains unresolved until a canonical Connect role is persisted and returned.
+- Connect admin is not inferred from the broad GHM `admin` role: adapter requires explicit `isSystemAdmin: true`. Founder-reviewer status is also fail-closed unless explicitly returned by a GHM-authoritative source. The current endpoint does not yet return either field, so these privileges are not enabled through this adapter.
+- Membership response shape is validated; mismatched active membership/business context is discarded. Permissions are not invented by a frontend mapping table.
+- Tests are added for the mapping and fail-closed boundaries; CI pending.
+- This adapter is not wired into Connect's app shell. The legacy Supabase identity resolver and product service callers remain in use until the GHM role/intent and reviewer-authority contracts are complete.
