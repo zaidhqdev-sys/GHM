@@ -17,7 +17,7 @@ const parseTrustProxy = (value: string | undefined): false | number => {
   // Preserve the existing deployment toggle without enabling Express's unsafe boolean trust.
   // Render exposes one trusted edge hop; callers can specify an explicit numeric hop count.
   if (normalized === 'true') return 1;
-  if (!/^(0|[1-9]\\d*)$/.test(normalized)) {
+  if (!/^(0|[1-9]\d*)$/.test(normalized)) {
     throw new Error('TRUST_PROXY must be false, true, or a non-negative integer hop count');
   }
   const hops = Number(normalized);
