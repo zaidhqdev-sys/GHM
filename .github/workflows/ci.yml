@@ -61,6 +61,9 @@ jobs:
           GRANT ghm_schema_owner TO ghm_migrator;
           CREATE ROLE ghm_runtime LOGIN NOINHERIT PASSWORD 'runtime-test-password';
           GRANT CONNECT ON DATABASE ghm TO ghm_migrator, ghm_runtime;
+          -- The migration chain creates the ghm schema while acting as its owner.
+          -- CREATE on this disposable database is scoped to the schema owner only.
+          GRANT CREATE ON DATABASE ghm TO ghm_schema_owner;
           -- Historical bootstrap migrations create objects in public before moving them into ghm.
           -- This grant exists only on this disposable CI database, never production.
           GRANT USAGE, CREATE ON SCHEMA public TO ghm_schema_owner;
