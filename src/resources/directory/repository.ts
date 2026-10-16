@@ -136,11 +136,11 @@ export class PostgresDirectoryRepository implements DirectoryRepository {
       const category = categoryPredicate(query, text.values.length + 1);
       const provinceIndex = text.values.length + category.values.length + 1;
       const province = query.province
-        ? { sql: `AND lower(b.province) = lower(${'`, values: [query.province] }
+        ? { sql: `AND lower(b.province) = lower($${provinceIndex})`, values: [query.province] }
         : { sql: '', values: [] };
       const businessTypeIndex = provinceIndex + province.values.length;
       const businessType = query.businessType
-        ? { sql: `AND b.is_supplier = ${'`, values: [query.businessType === 'suppliers'] }
+        ? { sql: `AND b.is_supplier = $${businessTypeIndex}`, values: [query.businessType === 'suppliers'] }
         : { sql: '', values: [] };
       const values = [...text.values, ...category.values, ...province.values, ...businessType.values];
 
