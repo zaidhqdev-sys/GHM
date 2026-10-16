@@ -420,7 +420,7 @@ No runtime or production changes were made in this audit.
 
 ## 13. Cross-repository implementation ledger — 2026-10-16 Connect GHM auth transport
 
-- **Connect implementation branch:** `construction/ghm-auth-transport-20261016`; PR creation and CI verification pending at time of entry.
+- **Connect PR:** [#37 — isolated GHM authentication transport](https://github.com/zaidhqdev-sys/zaid-connect/pull/37), draft/unmerged; branch `construction/ghm-auth-transport-20261016`; head `8803068e98f2d26776fd3de9f4e166c9711f4e2a`. Workflow status was not yet available when checked.
 - **Scope:** Connect adds an isolated GHM-native auth transport client for register/login/refresh/logout and bearer API requests. This is a frontend transport foundation, not an identity bridge and not proof of GHM product API parity.
 - **Critical remaining GHM contract:** Confirm and, if absent, implement a browser-authorized canonical self-profile and active-membership resolution path. Client-supplied account/business IDs must not grant access. Founder-reviewer authorization must be resolved from GHM-owned authority, not browser claims.
 - **Compatibility rule:** GHM must continue to reject legacy Supabase JWTs. Do not repurpose the server-to-server Connect service assertion endpoint as a browser user API and never expose assertion secrets.
