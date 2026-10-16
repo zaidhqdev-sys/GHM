@@ -12,7 +12,7 @@ ALTER TABLE ghm.business
   ADD COLUMN logo_url text,
   ADD COLUMN avatar_letter text,
   ADD COLUMN avatar_color text,
-  ADD COLUMN is_supplier boolean NOT NULL DEFAULT false,
+  ADD COLUMN is_supplier boolean,
   ADD COLUMN tier text NOT NULL DEFAULT 'free',
   ADD COLUMN is_featured boolean NOT NULL DEFAULT false,
   ADD COLUMN profile_views bigint NOT NULL DEFAULT 0,
@@ -55,7 +55,7 @@ COMMENT ON COLUMN ghm.business.province IS
 COMMENT ON COLUMN ghm.business.city IS
   'Business discovery city; populated only from verified/mapped source data.';
 COMMENT ON COLUMN ghm.business.is_supplier IS
-  'Compatibility filter for Connect supplier/contractor discovery; not an account-role grant.';
+  'Nullable compatibility filter for Connect supplier/contractor discovery. NULL means unresolved; do not infer contractor status.';
 COMMENT ON COLUMN ghm.business.tier IS
   'Protected commercial directory tier. Never owner-mutable through public profile APIs.';
 COMMENT ON COLUMN ghm.business.is_featured IS
