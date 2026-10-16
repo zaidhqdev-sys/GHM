@@ -981,7 +981,7 @@ test('business profile PATCH accepts owner-managed directory fields but excludes
     });
     for (const body of [
       { isFeatured: true }, { tier: 'premium' }, { logoUrl: 'https://example.com/logo.png' },
-      { isVerified: true }, { rating: 5 }, { isSupplier: 'yes' }, { yearsInBusiness: 501 },
+      { isVerified: true }, { rating: 5 }, { isSupplier: 'yes' }, { yearsInBusiness: 501 }, { category: 'Not A Slug' }, { website: 'javascript:alert(1)' },
     ]) {
       const invalid = await fetch(`${baseUrl}/api/v1/businesses/201`, {
         method: 'PATCH',
