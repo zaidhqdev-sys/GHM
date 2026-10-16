@@ -35,6 +35,20 @@ const publicBusinessFixture = (overrides: Partial<PublicBusiness> = {}): PublicB
   description: 'Public description',
   phone: '0111234567',
   email: 'business@example.com',
+  category: 'construction',
+  province: 'KwaZulu-Natal',
+  city: 'Durban',
+  physicalAddress: null,
+  whatsapp: null,
+  website: null,
+  logoUrl: null,
+  avatarLetter: 'P',
+  avatarColor: '#123456',
+  isSupplier: false,
+  tier: 'free',
+  isFeatured: false,
+  profileViews: 0,
+  yearsInBusiness: 0,
   rating: 4.5,
   reviewCount: 12,
   jobsCompleted: 8,
@@ -81,9 +95,9 @@ test('public directory route allows anonymous access and returns the directory r
   };
   const { server, baseUrl } = await startDirectoryTestServer(directoryService);
   try {
-    const response = await fetch(`${baseUrl}/api/v1/public/businesses?q=build&category=construction&page=1&pageSize=20`);
+    const response = await fetch(`${baseUrl}/api/v1/public/businesses?q=build&category=construction&province=KwaZulu-Natal&businessType=contractors&page=1&pageSize=20`);
     assert.equal(response.status, 200);
-    assert.deepEqual(received, { q: 'build', category: 'construction', page: 1, pageSize: 20 });
+    assert.deepEqual(received, { q: 'build', category: 'construction', province: 'KwaZulu-Natal', businessType: 'contractors', page: 1, pageSize: 20 });
     const body = await response.json() as DirectoryResult & { items: Array<PublicBusiness & { createdAt: string; updatedAt: string }> };
     assert.equal(body.items[0].id, 301);
     assert.equal(body.page, 1);
@@ -106,7 +120,7 @@ test('public directory route applies pagination defaults and ignores authenticat
       headers: { authorization: 'Bearer invalid-token' },
     });
     assert.equal(response.status, 200);
-    assert.deepEqual(received, { q: undefined, category: undefined, page: 1, pageSize: 20 });
+    assert.deepEqual(received, { q: undefined, category: undefined, province: undefined, businessType: undefined, page: 1, pageSize: 20 });
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
@@ -129,6 +143,25 @@ test('public directory route rejects unsupported and malformed query parameters 
     const oversized = await fetch(`${baseUrl}/api/v1/public/businesses?pageSize=51`);
     assert.equal(oversized.status, 400);
 
+    assert.equal(called, false);
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+
+test('public directory route rejects invalid province and business type filters', async () => {
+  let called = false;
+  const directoryService: DirectoryService = {
+    search: async () => {
+      called = true;
+      return { items: [], page: 1, pageSize: 20, total: 0 };
+    },
+  };
+  const { server, baseUrl } = await startDirectoryTestServer(directoryService);
+  try {
+    const invalidType = await fetch(`${baseUrl}/api/v1/public/businesses?businessType=everyone`);
+    assert.equal(invalidType.status, 400);
+    const blankProvince = await fetch(`${baseUrl}/api/v1/public/businesses?province=%20%20`);
+    assert.equal(blankProvince.status, 400);
     assert.equal(called, false);
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
