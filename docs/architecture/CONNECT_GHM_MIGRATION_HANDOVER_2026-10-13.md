@@ -684,3 +684,11 @@ Render's service metadata lists GHM-Internal-Runtime on the Free web-service pla
 4. Only then run browser-to-runtime signup/login/session/refresh/logout and identity-selection E2E tests.
 
 The branch CI results above remain valid for their exact checked code checkpoints. They do not imply the new route or migrations are deployed. No production deployment, database mutation, provider activation, merge or cutover is authorized.
+
+## Identity/API review checkpoint — 2026-10-16 20:02Z
+
+GHM PR #137 exact source/test checkpoint `efb56ddece10379d05958850eccaa07cf1851d1c` passed CI run [38951484770](https://github.com/zaidhqdev-sys/GHM/actions/runs/38951484770): build, disposable PostgreSQL migrations, 591/591 tests, zero failures/skips/TODO, and runtime boundary verification. The endpoint uses authenticated context and delegates selected business resolution to `BusinessIdentityServiceImpl`, which verifies an active membership for the selected business; no caller-supplied account ID is accepted. The account-external mapping is explicitly a controlled migration lookup, not authentication. This is code/contract evidence only: current Render metadata still points at old `main` commit `20b120c...`, so the new endpoint and schema are not confirmed deployed.
+
+Security/schema review also confirms the directory-profile migration revokes direct runtime column updates for protected profile/media/tier/promotion/analytics fields and routes owner-managed descriptive updates through a SECURITY DEFINER function that checks active owner/administrator membership. That is the intended least-privilege shape, but actual production grants and current DB migration state have not been inspected or mutated. Do not infer production readiness from disposable CI.
+
+Outstanding: exact-head CI for any subsequent handover-only commit; non-production deployed session + selected-business E2E; canonical source/target account and business mapping evidence; remaining Supabase caller/data/RPC/storage migration; and full cross-repository document reconciliation. Keep merge/deploy/cutover gates closed.
