@@ -106,6 +106,7 @@ const textPredicate = (query: DirectoryQuery): { sql: string; values: unknown[] 
       b.name ILIKE '%' || $1 || '%' ESCAPE '\\'
       OR b.slug ILIKE '%' || $1 || '%' ESCAPE '\\'
       OR COALESCE(b.description, '') ILIKE '%' || $1 || '%' ESCAPE '\\'
+      OR COALESCE(b.city, '') ILIKE '%' || $1 || '%' ESCAPE '\\'
     )`,
     values: [escaped],
   };
