@@ -667,3 +667,20 @@ Connect PR #39 ([fail-closed GHM identity compatibility adapter](https://github.
 - GHM PR #137's earlier full CI run [38945405032](https://github.com/zaidhqdev-sys/GHM/actions/runs/38945405032) passed build, disposable PostgreSQL migrations, 591/591 tests, zero failures, zero skipped, zero TODO, and runtime boundary verification. Its later handover-only edit has no separate CI run confirmed here.
 
 **Remaining gates are not waived:** Connect's same-origin proxy/auth flow has not been verified end-to-end against a deployed non-production GHM runtime; the current app still has legacy Supabase product-data callers; account/business UUID-to-numeric mappings and row-level active-owner membership reconciliation remain open; and full GHM + Connect documentation reconciliation is incomplete. No deployment, production mutation, payment activation, merge, or cutover is authorized by these test results.
+
+## 36. Deployed-runtime gate — 2026-10-16 18:57Z
+
+A read-only check of the connected Render workspace confirms that the service named GHM-Internal-Runtime is still configured to deploy **main**, with latest listed live deploy dep-db7b1cavcj2c73dt88hg at commit 20b120c7d6ecf7a86f9dc4f7a8dc61f9dee4d8dc (build finished 2026-10-13 22:29Z). GHM PR #137's implementation is on construction/identity-resolution-api-20261016 and is not merged or deployed. Therefore PR #137's new GET /api/v1/identity, authority contract and account external mapping migration must **not** be assumed present on the currently listed runtime deployment.
+
+The separate ghm-payfast-sandbox-runtime service is also listed on main with the same latest listed deploy commit 20b120c7d6ecf7a86f9dc4f7a8dc61f9dee4d8dc. This is not evidence that its running database schema or runtime includes PR #137's branch migrations.
+
+Render's service metadata lists GHM-Internal-Runtime on the Free web-service plan, while ghm-db remains a separate paid database resource per the operational record. No environment-variable values were read or changed in this check. Direct health endpoint retrieval could not be established through the available browser retrieval path, so this check does not claim the service is down or up.
+
+### Required before non-production end-to-end Connect auth
+
+1. Qualify the exact runtime service and database target without exposing secrets; verify /healthz, /readyz, and the deployed API route behavior through an appropriate direct runtime test.
+2. Prepare a controlled non-production deployment path for the reviewed GHM identity/auth implementation. Do not push or deploy the draft branch to production or repoint the sandbox without a deliberate deployment decision and a passing CI run on the exact candidate commit.
+3. Verify that required migrations are applied to the intended non-production database, roles/grants remain least-privilege, and origin/cookie settings are correct.
+4. Only then run browser-to-runtime signup/login/session/refresh/logout and identity-selection E2E tests.
+
+The branch CI results above remain valid for their exact checked code checkpoints. They do not imply the new route or migrations are deployed. No production deployment, database mutation, provider activation, merge or cutover is authorized.
