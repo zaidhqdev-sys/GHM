@@ -424,3 +424,12 @@ No runtime or production changes were made in this audit.
 - Membership response shape is validated; mismatched active membership/business context is discarded. Permissions are not invented by a frontend mapping table.
 - Tests are added for the mapping and fail-closed boundaries; CI pending.
 - This adapter is not wired into Connect's app shell. The legacy Supabase identity resolver and product service callers remain in use until the GHM role/intent and reviewer-authority contracts are complete.
+
+
+## 16. Implementation ledger — 2026-10-16 persisted Connect identity authority
+
+- GHM PR #137 now includes migration `20261016100000_add_connect_identity_authority_contract.sql`: nullable `account_identity.connect_role` (`customer | contractor | supplier`), explicit `business_operator_intent`, and separate `connect_founder_directory_reviewer` authority state.
+- Existing accounts remain unresolved (`connect_role = NULL`) rather than guessed into contractor/supplier. Business-operator intent does not grant membership or permissions.
+- `ghm.auth_read_connect_identity_authority(account_id)` is a SECURITY DEFINER read projection owned by `ghm_schema_owner`; `ghm_runtime` receives EXECUTE but no direct reviewer-table access. Account identity mapping uses the function so the authenticated identity endpoint projects these GHM-owned fields.
+- This is a read contract only. No public/runtime reviewer grant/revoke endpoint exists yet, so reviewer status remains false until a separately governed path is qualified. Role/intent updates also need a trusted audited workflow.
+- Verification gate: run CI on the latest PR head and qualify migration/function grants and account repository mapping. No merge/deploy/production migration implied.
