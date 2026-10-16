@@ -433,3 +433,10 @@ No runtime or production changes were made in this audit.
 - `ghm.auth_read_connect_identity_authority(account_id)` is a SECURITY DEFINER read projection owned by `ghm_schema_owner`; `ghm_runtime` receives EXECUTE but no direct reviewer-table access. Account identity mapping uses the function so the authenticated identity endpoint projects these GHM-owned fields.
 - This is a read contract only. No public/runtime reviewer grant/revoke endpoint exists yet, so reviewer status remains false until a separately governed path is qualified. Role/intent updates also need a trusted audited workflow.
 - Verification gate: run CI on the latest PR head and qualify migration/function grants and account repository mapping. No merge/deploy/production migration implied.
+
+
+## Verification update — 2026-10-16 02:46Z
+
+- Latest GHM PR #137 head `57062649a51b9321fca22831ab51c26278b7dcb2` completed GitHub CI successfully: [run 38842109717](https://github.com/zaidhqdev-sys/GHM/actions/runs/38842109717). This qualifies compilation and the repository's configured quality/test workflow for that commit, not production migration or deployment.
+- Earlier intermediate build failures were caused by newly required AccountIdentity fields in fixtures; the contract was made backward-compatible/optional while the repository projection supplies explicit values. The latest head passes.
+- Outstanding qualification: no production database migration has been run; reviewer grant/revoke workflow and trusted role/intent update workflow remain unimplemented. Keep PR draft and do not merge or deploy.
