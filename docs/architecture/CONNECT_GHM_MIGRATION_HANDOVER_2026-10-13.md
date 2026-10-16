@@ -486,3 +486,22 @@ Review of Connect PR #39 and the current app shell found that a direct identity-
 3. Only after 1–2 are qualified, wire session restoration/auth state to the GHM client in an isolated PR. Keep product data calls on their current IDs until each data domain is migrated and tested.
 4. Separately implement/qualify signup, recovery/reset, logout, and protected route behavior; keep reviewer capabilities disabled until the GHM governance workflow exists.
 5. Verify latest CI and deployment after the Vercel rate-limit window. No production cutover or Supabase dependency removal is implied by the current identity PRs.
+
+
+## 19. Account/business identifier migration gate — 2026-10-16 13:10Z
+
+### Evidence checked
+- Connect's checked-in legacy schema defines `profiles.id` as UUID referencing Supabase Auth users; `businesses.id`, `businesses.owner_id`, and `business_memberships.id/business_id/account_id` are also UUIDs. Product tables such as projects/quotes/lead/conversation/message reference those legacy UUIDs. This is a data ownership boundary, not a cosmetic type mismatch.
+- GHM's canonical `account_identity.id`, `business.id`, and `business_membership.id/account_id/business_id` are generated numeric bigint IDs.
+- GHM has `ghm.business_external_mapping` and the restricted `ghm.auth_lookup_business_external_mapping(provider, external_business_id)` function. This maps an external business ID to a GHM business ID; it does not establish a canonical account mapping and must not be repurposed as one.
+- Connect's isolated GHM identity adapter tests now pass on latest observed PR head: workflow [38905198137](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/38905198137), auth client 12/12 and identity adapter 8/8. This qualifies the pure mapping logic only, not the legacy data migration.
+
+### Co-founder decision: build explicit mapping, not heuristic linking
+1. Add a separate GHM-owned account external-identity mapping contract keyed by provider/source and external UUID, resolving to one canonical GHM account ID. Do not use email equality as an automatic linking key, and do not accept Supabase JWTs as GHM credentials.
+2. Keep business mapping separate and require uniqueness for each provider/external business ID. Account and business links must be explicit, auditable, and conflict-detecting; a collision must stop migration rather than pick a row.
+3. Before backfill, produce a read-only inventory of existing Connect account, business, membership, and product-row foreign-key counts. Determine whether legacy rows are to be imported into GHM or temporarily served through an explicitly isolated compatibility mapping. Do not migrate only identities while leaving foreign-keyed product records orphaned.
+4. Define cutover/rollback criteria and prove read-after-write plus tenant ownership across projects, quotes, enquiries/leads, messages, reviews, subscriptions and media references before retiring each Supabase dependency.
+5. Keep mapping mutation server-side under least privilege; runtime can resolve only through a narrowly scoped function. No browser-supplied external ID proves authority.
+
+### Next implementation slice
+Implement the account mapping schema/API contract and its uniqueness, non-disclosure, conflict and authorization tests as a GHM PR. Do not backfill production records or switch Connect product callers in that slice. Reconcile the matching Connect handover in the same change set. This is a targeted migration blocker, not a reason to resume the broad audit loop.
