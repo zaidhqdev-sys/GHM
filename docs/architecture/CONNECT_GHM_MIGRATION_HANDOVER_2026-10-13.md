@@ -1241,3 +1241,8 @@ This section is the current PR-disposition checkpoint; earlier numbered audit se
 - Connect #39 remains unmerged/un-deployed; #33 is a disabled PayFast sandbox bridge and is distinct from Paystack. Neither status enables live payments. Website #3 is a separate website-content contract.
 
 **Closeout is finite, not another broad audit:** reconcile current-state/register/inventory/readiness/handovers; run full Markdown target/anchor checks on both review branches; perform one final claim-by-claim authority/status/owner/history/cross-repo pass; record live PR heads/counts and results; stop and present remaining concrete blockers. No merge/deploy/cutover until the documented gate is satisfied and the founder authorizes it.
+
+
+### Documentation-branch validation checkpoint — 2026-10-16 22:00Z
+
+GHM PR #135 exact head `10cb2af53cd9a69ff8f4c4f71825449e84c22faa` passed build and runtime-boundary verification in [run 38973019692](https://github.com/zaidhqdev-sys/GHM/actions/runs/38973019692), but tests reported 543 passed / 0 failed / 2 skipped / 0 TODO. These are the known auth persistence and live Connect service-assertion replay skips from the pre-PostgreSQL-service workflow; they remain unwaived. The qualified PostgreSQL 18 fixture is currently in #138, not the docs branch. Do not mix duplicate implementation changes into #135 merely to make its check green; resolve the branch/CI dependency deliberately. Changed Markdown local-target checks found zero missing targets across 14 GHM docs and 47 Connect docs; fragment anchors and external URL liveness remain unchecked.
