@@ -34,7 +34,7 @@ interface PublicBusinessRow {
   logo_url: string | null;
   avatar_letter: string | null;
   avatar_color: string | null;
-  is_supplier: boolean;
+  is_supplier: boolean | null;
   tier: 'free' | 'verified' | 'featured' | 'premium';
   is_featured: boolean;
   profile_views: string | number;
@@ -64,7 +64,7 @@ const mapPublicBusiness = (row: PublicBusinessRow): PublicBusiness => ({
   logoUrl: row.logo_url ?? null,
   avatarLetter: row.avatar_letter ?? null,
   avatarColor: row.avatar_color ?? null,
-  isSupplier: row.is_supplier === true,
+  isSupplier: typeof row.is_supplier === 'boolean' ? row.is_supplier : null,
   tier: row.tier,
   isFeatured: row.is_featured === true,
   profileViews: Number(row.profile_views),
