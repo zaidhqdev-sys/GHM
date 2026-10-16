@@ -537,3 +537,12 @@ Implemented on the identity construction branch:
 - `src/auth/foundation/persistence.test.ts` and `src/integrations/connect/service-assertion-replay.persistence.test.ts` now fail in CI if their required DB URLs/schema are missing, rather than silently skip. Outside CI, local development may still skip when integration DB setup is absent.
 
 This is implemented but not yet qualified. The next CI run must prove all migrations apply from an empty disposable database, both integration suites execute, and test output shows `# skipped 0`. If migrations or privileges fail, fix the underlying schema/role setup; do not loosen the tests. No production database was used or changed.
+
+
+## 23. Zero-skip CI migration bootstrap failure and correction — 2026-10-16
+
+The first zero-skip CI attempt correctly exposed a migration-bootstrap issue rather than silently passing:
+- Run [38906209302](https://github.com/zaidhqdev-sys/GHM/actions/runs/38906209302) failed while applying the migration chain with `permission denied for schema public`. Tests did not run on that attempt, so it is not a test result.
+- Cause: the historical first migration creates the migration ledger in `public` before a later migration relocates it into `ghm`. On modern PostgreSQL the non-owner schema role cannot create there by default.
+- Correction in workflow commit `b226283`: grant `USAGE, CREATE` on `public` to `ghm_schema_owner` **only in the disposable CI database**. This does not change production grants or any deployed database.
+- Current rerun: [38906355546](https://github.com/zaidhqdev-sys/GHM/actions/runs/38906355546) is testing the corrected bootstrap. It must finish with migrations successful, both persistence suites executed, and `# skipped 0`; otherwise fix the next failure rather than weakening the acceptance gate.
