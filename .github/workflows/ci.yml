@@ -31,6 +31,7 @@ jobs:
           --health-retries 20
     env:
       NODE_ENV: test
+      DATABASE_SSL: 'false'
       DATABASE_URL: postgres://ghm_runtime:runtime-test-password@127.0.0.1:5432/ghm
       GHM_RUNTIME_DATABASE_URL: postgres://ghm_runtime:runtime-test-password@127.0.0.1:5432/ghm
       GHM_MIGRATOR_DATABASE_URL: postgres://ghm_migrator:migrator-test-password@127.0.0.1:5432/ghm
