@@ -656,3 +656,14 @@ The preceding merge-queue/test run [38945382173](https://github.com/zaidhqdev-sy
 The business reconciliation function remains a **read-only decision contract**, not completed row-level data reconciliation. No production mapping rows were imported or mutated. The actual source snapshot, reviewed account/business mapping artifacts, canonical GHM records, active memberships, deployed API behavior, Connect consumer integration, and production readiness remain separate gates. This checkpoint does not authorize merge, production migration, deployment, payment activation, or cutover.
 
 Documentation reconciliation remains a live gate: older historical sections and PR status references must be distinguished from current state, and the GHM and Connect documentation sets must be reviewed together before any merge. Do not use the 2026-10-13 historical audit checkpoint as proof that current implementation documentation is fully reconciled.
+
+## 35. Cross-repository Connect auth verification checkpoint — 2026-10-16 18:56Z
+
+Connect PR #39 ([fail-closed GHM identity compatibility adapter](https://github.com/zaidhqdev-sys/zaid-connect/pull/39)) remains open, draft, and unmerged. Its latest branch head is `a8cf05a8a119db075f6cf07a30475e58b922b5bc`; runtime source/test changes were qualified at the preceding code checkpoint and the latest commit updates only the durable handover.
+
+- Connect Actions run [38950915317](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/38950915317) completed all configured auth client, identity adapter, browser auth, same-origin proxy, identity resolver, marketplace enquiry/directory tests, signup least-privilege regression, and web build steps successfully.
+- Connect signup now always registers with GHM role `customer`. Business-operator intent and Connect role are descriptive fields only; neither creates membership.
+- Connect's app-shell identity resolver now requires explicit `isSystemAdmin: true` for admin authority; a broad account `role: admin` or `connectRole: admin` alone does not grant it. Regression tests passed in the above run.
+- GHM PR #137's earlier full CI run [38945405032](https://github.com/zaidhqdev-sys/GHM/actions/runs/38945405032) passed build, disposable PostgreSQL migrations, 591/591 tests, zero failures, zero skipped, zero TODO, and runtime boundary verification. Its later handover-only edit has no separate CI run confirmed here.
+
+**Remaining gates are not waived:** Connect's same-origin proxy/auth flow has not been verified end-to-end against a deployed non-production GHM runtime; the current app still has legacy Supabase product-data callers; account/business UUID-to-numeric mappings and row-level active-owner membership reconciliation remain open; and full GHM + Connect documentation reconciliation is incomplete. No deployment, production mutation, payment activation, merge, or cutover is authorized by these test results.
