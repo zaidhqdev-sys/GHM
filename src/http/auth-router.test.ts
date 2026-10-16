@@ -547,3 +547,86 @@ test('POST /api/v1/auth/login enforces the approved 10-per-15-minute IP limit', 
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });
+
+
+test('web auth keeps refresh credentials in HttpOnly cookies and rotates/revokes them', async () => {
+  process.env.GHM_WEB_AUTH_ALLOWED_ORIGINS = 'http://localhost:3000';
+  process.env.GHM_WEB_AUTH_COOKIE_SECURE = 'false';
+  const logoutTokens: string[] = [];
+  const authService: GhmAuthService = {
+    register: async () => sampleTokens({ refreshToken: 'register-refresh' }),
+    login: async () => sampleTokens({ refreshToken: 'login-refresh' }),
+    refresh: async (token) => {
+      assert.equal(token, 'login-refresh');
+      return sampleTokens({ accessToken: 'rotated-access', refreshToken: 'rotated-refresh', sessionId: 12 });
+    },
+    logout: async (token) => { logoutTokens.push(token); },
+  };
+  const { server, baseUrl } = await startApp(authService);
+  const originHeaders = { origin: 'http://localhost:3000', 'content-type': 'application/json' };
+  try {
+    const login = await fetch(`${baseUrl}/api/v1/auth/web/login`, {
+      method: 'POST',
+      headers: originHeaders,
+      body: JSON.stringify({ email: 'user@example.com', password: 'CorrectHorseBattery1' }),
+    });
+    assert.equal(login.status, 200);
+    const loginBody = await login.json() as Record<string, unknown>;
+    assert.equal(loginBody.accessToken, 'access.jwt');
+    assert.equal(Object.hasOwn(loginBody, 'refreshToken'), false);
+    const loginCookie = login.headers.get('set-cookie');
+    assert.ok(loginCookie);
+    assert.match(loginCookie, /^ghm_web_refresh=login-refresh;/);
+    assert.match(loginCookie, /HttpOnly/);
+    assert.match(loginCookie, /SameSite=Lax/);
+    assert.match(loginCookie, /Path=\/api\/ghm/);
+
+    const refresh = await fetch(`${baseUrl}/api/v1/auth/web/refresh`, {
+      method: 'POST',
+      headers: { origin: 'http://localhost:3000', cookie: 'ghm_web_refresh=login-refresh' },
+    });
+    assert.equal(refresh.status, 200);
+    const refreshBody = await refresh.json() as Record<string, unknown>;
+    assert.equal(refreshBody.accessToken, 'rotated-access');
+    assert.equal(Object.hasOwn(refreshBody, 'refreshToken'), false);
+    assert.match(refresh.headers.get('set-cookie') ?? '', /^ghm_web_refresh=rotated-refresh;/);
+    assert.match(refresh.headers.get('set-cookie') ?? '', /HttpOnly/);
+
+    const logout = await fetch(`${baseUrl}/api/v1/auth/web/logout`, {
+      method: 'POST',
+      headers: { origin: 'http://localhost:3000', cookie: 'ghm_web_refresh=rotated-refresh' },
+    });
+    assert.equal(logout.status, 200);
+    assert.deepEqual(await logout.json(), { ok: true });
+    assert.deepEqual(logoutTokens, ['rotated-refresh']);
+    assert.match(logout.headers.get('set-cookie') ?? '', /Max-Age=0/);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('web auth fails closed for missing or unapproved browser Origin', async () => {
+  process.env.GHM_WEB_AUTH_ALLOWED_ORIGINS = 'https://connect.example.test';
+  process.env.GHM_WEB_AUTH_COOKIE_SECURE = 'false';
+  const authService: GhmAuthService = {
+    login: async () => sampleTokens(),
+    refresh: async () => sampleTokens(),
+    logout: async () => undefined,
+  };
+  const { server, baseUrl } = await startApp(authService);
+  try {
+    for (const origin of [undefined, 'https://attacker.example.test']) {
+      const headers: Record<string, string> = { 'content-type': 'application/json' };
+      if (origin) headers.origin = origin;
+      const response = await fetch(`${baseUrl}/api/v1/auth/web/login`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ email: 'user@example.com', password: 'CorrectHorseBattery1' }),
+      });
+      assert.equal(response.status, 403);
+      assert.deepEqual(await response.json(), { error: 'origin_not_allowed' });
+    }
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
