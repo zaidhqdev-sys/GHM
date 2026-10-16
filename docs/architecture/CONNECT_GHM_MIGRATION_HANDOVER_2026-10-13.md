@@ -525,3 +525,15 @@ Next gate: run full GHM build/test/migration checksum validation on the latest P
 The corrected latest GHM CI run is green on commit `9f4b2e81058b08ede497f17b0962774f9071094b`: [run 38905728637](https://github.com/zaidhqdev-sys/GHM/actions/runs/38905728637). Build passed, the full test suite passed (**552 passed, 0 failed, 2 skipped**), and runtime boundary verification passed. This supersedes the earlier note that the new migration contract tests were awaiting CI. An earlier run failed only because the static test incorrectly banned the word `email` even in documentation; the assertion was narrowed to reject email-based equality/matching logic, and the latest run passed.
 
 Scope remains limited: CI validates build/static migration contract and repository tests, but does not apply the migration to production or exercise it against a live Postgres catalog. Do not run production migrations or merge until the full GHM docs set is reconciled and the PR's remaining review/security gates are closed. Next: inspect migration runner/checksum handling and add a controlled local/sandbox database qualification if supported without touching production.
+
+
+## 22. CI policy: no skipped database integration tests — 2026-10-16
+
+Founder requirement: GHM CI must report every test as passed, with zero skipped tests. Do not satisfy this by deleting integration assertions, marking them TODO, or pointing test runs at production.
+
+Implemented on the identity construction branch:
+- `.github/workflows/ci.yml` provisions a disposable PostgreSQL 18 service for each CI job, creates distinct `ghm_migrator`, `ghm_runtime`, and `ghm_schema_owner` roles, runs `npm run migrate` against that disposable database, then runs the full test suite and runtime boundary verification.
+- `src/db/migrate.ts` now honors `DATABASE_SSL=true` instead of unconditionally forcing TLS, allowing local CI PostgreSQL while retaining TLS when explicitly configured.
+- `src/auth/foundation/persistence.test.ts` and `src/integrations/connect/service-assertion-replay.persistence.test.ts` now fail in CI if their required DB URLs/schema are missing, rather than silently skip. Outside CI, local development may still skip when integration DB setup is absent.
+
+This is implemented but not yet qualified. The next CI run must prove all migrations apply from an empty disposable database, both integration suites execute, and test output shows `# skipped 0`. If migrations or privileges fail, fix the underlying schema/role setup; do not loosen the tests. No production database was used or changed.
