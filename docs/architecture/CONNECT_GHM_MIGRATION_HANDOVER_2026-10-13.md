@@ -468,3 +468,21 @@ A read-only review of the latest PR #137 branch found a security prerequisite th
 2. Implement and test GHM grant/revoke using persisted system-admin authority, then update this handover with exact migration, routes, test results and CI head.
 3. Wire the Connect adapter into session restoration only after GHM identity and reviewer contracts are qualified; then migrate signup/login/logout/recovery and identity/product callers in small, tested slices.
 4. Keep both PRs draft/unmerged until the full cross-repository contract is reconciled and end-to-end qualification is recorded. Do not apply migrations to production or activate live payments as part of this work.
+
+
+## Connect cutover dependency gate — 2026-10-16 03:00Z
+
+Review of Connect PR #39 and the current app shell found that a direct identity-object swap would be unsafe and incomplete:
+
+- `src/app/ZaidConnectApp.jsx` still restores sessions with Supabase `authService.getSession()` and subscribes to `supabase.auth.onAuthStateChange`.
+- `src/features/authentication/AuthScreen.jsx` still uses Supabase signup and sign-in; `src/features/authentication/identity.js` still resolves profiles and memberships from Supabase services.
+- Connect currently uses Supabase UUID user/business identifiers in product-service calls, while the proposed GHM account identity uses numeric account IDs. Do not pass GHM numeric IDs into legacy Supabase product-data calls or silently treat those identifiers as interchangeable.
+- GHM already has login/refresh/logout primitives in `src/http/auth-router.ts`, but Connect needs a tested HTTP client/session contract, verified route paths, refresh-token persistence/rotation and failure behavior before app-shell session restoration is changed. Recovery/signup parity and account ownership/data mapping must be explicitly planned.
+- PR #39 has been commented with this integration gate. No app-shell auth changes were made in this batch. Current Connect Vercel status is rate-limited; do not mistake the deployment status for test results.
+
+### Ordered implementation
+1. Inspect and test the exact GHM auth route paths and response/error shapes, then implement a small Connect GHM auth client with unit/contract tests for login, refresh, logout, expired/invalid tokens and network failure.
+2. Decide and document stable mapping/ownership for existing Connect accounts and business records before any product service starts consuming GHM numeric IDs.
+3. Only after 1–2 are qualified, wire session restoration/auth state to the GHM client in an isolated PR. Keep product data calls on their current IDs until each data domain is migrated and tested.
+4. Separately implement/qualify signup, recovery/reset, logout, and protected route behavior; keep reviewer capabilities disabled until the GHM governance workflow exists.
+5. Verify latest CI and deployment after the Vercel rate-limit window. No production cutover or Supabase dependency removal is implied by the current identity PRs.
