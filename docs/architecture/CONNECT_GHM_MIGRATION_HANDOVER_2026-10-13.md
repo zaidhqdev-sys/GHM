@@ -518,3 +518,10 @@ On the existing GHM identity construction branch, added migration `2026101612000
 - No external UUID has been backfilled; no account auto-linking, email matching, product-row migration, or Connect cutover has occurred.
 
 Next gate: run full GHM build/test/migration checksum validation on the latest PR head; inspect and resolve any contract failure before proceeding to a controlled read-only legacy foreign-key inventory. Do not merge or apply migration until GHM docs are reconciled and the PR gates pass.
+
+
+## 21. External account mapping verification result — 2026-10-16 13:10Z
+
+The corrected latest GHM CI run is green on commit `9f4b2e81058b08ede497f17b0962774f9071094b`: [run 38905728637](https://github.com/zaidhqdev-sys/GHM/actions/runs/38905728637). Build passed, the full test suite passed (**552 passed, 0 failed, 2 skipped**), and runtime boundary verification passed. This supersedes the earlier note that the new migration contract tests were awaiting CI. An earlier run failed only because the static test incorrectly banned the word `email` even in documentation; the assertion was narrowed to reject email-based equality/matching logic, and the latest run passed.
+
+Scope remains limited: CI validates build/static migration contract and repository tests, but does not apply the migration to production or exercise it against a live Postgres catalog. Do not run production migrations or merge until the full GHM docs set is reconciled and the PR's remaining review/security gates are closed. Next: inspect migration runner/checksum handling and add a controlled local/sandbox database qualification if supported without touching production.
