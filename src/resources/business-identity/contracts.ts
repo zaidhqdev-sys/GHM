@@ -10,6 +10,8 @@ export type MembershipStatus = 'active' | 'inactive' | 'revoked';
 
 export interface AccountIdentity {
   readonly id: AccountId;
+  /** Canonical login email for this authenticated account, or null if unavailable. */
+  readonly email: string | null;
   readonly fullName: string | null;
   readonly phone: string | null;
   readonly avatarRef: string | null;
