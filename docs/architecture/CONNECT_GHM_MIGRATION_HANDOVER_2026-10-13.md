@@ -583,3 +583,11 @@ Implemented on this branch:
 Before enabling Connect production traffic, configure the Render GHM Internal Runtime with `GHM_WEB_AUTH_ALLOWED_ORIGINS` set to the exact approved Connect origin(s), `GHM_WEB_AUTH_COOKIE_PATH=/api/ghm`, and secure cookies enabled. Configure Vercel Connect with `GHM_INTERNAL_RUNTIME_URL` pointing at the actual GHM Internal Runtime URL and `CONNECT_WEB_ORIGIN` equal to the exact Connect web origin. Do not guess the runtime URL or add broad wildcard origins. Confirm the actual Render and Vercel environment values, deploy, and run an end-to-end browser session qualification before rollout. No production environment variables were changed by these code commits.
 
 The session cookie is host-only on the Connect origin because the Vercel same-origin BFF proxies the response; the refresh cookie is not forwarded to ordinary GHM API endpoints. Browser access tokens remain in memory only. A full page reload re-establishes access using the HttpOnly cookie. Existing non-auth Connect data services still contain Supabase callers and are not considered migrated by this auth work.
+
+
+
+## 29. Connect browser auth consumer qualified by zero-skip contract CI — 2026-10-16
+
+Connect's current focused auth workflow now runs five suites (original GHM auth client + identity adapter, browser auth client, same-origin proxy, isolated GHM identity resolver). Run [38928689930](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/38928689930) passed 35 tests, 0 failed, 0 skipped, 0 TODO. The implementation keeps refresh credentials in an HttpOnly host-only cookie on the Connect origin, access tokens in memory, and routes authenticated API calls through a fixed-upstream same-origin proxy. GHM CI run [38927909441](https://github.com/zaidhqdev-sys/GHM/actions/runs/38927909441) passed 571/571, 0 failures, 0 skipped, 0 TODO.
+
+No deployment values have been configured or verified. Connect must set `GHM_INTERNAL_RUNTIME_URL` and exact `CONNECT_WEB_ORIGIN`; GHM must set exact `GHM_WEB_AUTH_ALLOWED_ORIGINS`, `GHM_WEB_AUTH_COOKIE_PATH=/api/ghm`, and secure cookies. Deploy and test login/register/reload/refresh/logout/Origin rejection before rollout. Connect's non-auth product services remain coupled to Supabase. No production cutover or merge authorization is implied by unit/contract CI.
