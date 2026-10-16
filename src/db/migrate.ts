@@ -9,7 +9,15 @@ import { Pool, PoolClient } from 'pg';
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
 if (!databaseUrl) throw new Error('Missing required environment variable: GHM_MIGRATOR_DATABASE_URL');
 
-const pool = new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } });
+const databaseSsl = process.env.DATABASE_SSL === 'true';
+if (process.env.NODE_ENV === 'production' && !databaseSsl) {
+  throw new Error('DATABASE_SSL must be true in production');
+}
+
+const pool = new Pool({
+  connectionString: databaseUrl,
+  ssl: databaseSsl ? { rejectUnauthorized: false } : false,
+});
 const MIGRATION_PATTERN = /^(\d{14})_([a-z0-9][a-z0-9_-]*)\.sql$/;
 const MIGRATIONS_DIR = path.resolve(process.cwd(), 'database', 'migrations');
 const PUBLIC_LEDGER_TABLE = 'public.ghm_schema_migrations';
@@ -91,7 +99,9 @@ const migrate = async (): Promise<void> => {
         }
         continue;
       }
-      await client.query(migration.sql);
+      // Preserve historical source bytes for checksums; strip a leading UTF-8 BOM only for SQL execution.
+      // PostgreSQL treats a leading BOM as a token and rejects otherwise valid historical migrations.
+      await client.query(migration.sql.replace(/^\uFEFF/, ''));
       ledgerTable = await resolveLedgerTable(client);
       if (!ledgerTable) throw new Error(`Migration ${migration.filename} completed but the migration ledger cannot be resolved`);
       await client.query(`INSERT INTO ${ledgerTable} (version, name, checksum) VALUES ($1, $2, $3)`, [migration.version, migration.name, migration.checksum]);
