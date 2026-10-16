@@ -421,3 +421,14 @@ This fix is not yet deployed. It must pass the full GHM CI suite and runtime bou
 Enabling database-backed CI exposed an existing migration-runner defect: `src/db/migrate.ts` hard-coded PostgreSQL SSL on even when `DATABASE_SSL=false`, so disposable local PostgreSQL rejected the connection (`The server does not support SSL connections`). The migration runner now follows the explicit `DATABASE_SSL` setting and fails closed if `NODE_ENV=production` without TLS. This is required to run the full migration and auth/replay integration suite in CI without weakening production TLS.
 
 The first PostgreSQL-enabled run therefore failed at migrations before tests could run. A fresh run on the current branch head must qualify the fix; do not treat the earlier no-database green test run as the final result. Required acceptance remains full build, all migrations, all tests with zero failures/zero skipped/zero TODO, and runtime boundary verification.
+
+## Latest CI qualification — 2026-10-16 19:14Z (supersedes pending CI statements above)
+
+GitHub Actions run [38953314245](https://github.com/zaidhqdev-sys/GHM/actions/runs/38953314245) passed on the current code checkpoint after the proxy-hop parser correction, explicit migration TLS handling, BOM-safe migration execution, and PostgreSQL-backed CI were in place:
+
+- Build: passed.
+- Full migrations on disposable PostgreSQL 18: passed.
+- Test suite: **563 passed, 0 failed, 0 skipped, 0 TODO**.
+- Runtime boundary verification: passed.
+
+The run was on commit `73c50f03aa914defc745aee5265e030ac1a654`, before this follow-up documentation-only entry. A CI run on the final documentation commit is still required for exact-head qualification. This does not authorize deployment or merge; verify actual Render proxy-hop topology and test trusted client-IP/rate-limit behavior after an approved deployment. The broader GHM/Connect documentation, identity mapping, deployed runtime and cutover gates remain open.
