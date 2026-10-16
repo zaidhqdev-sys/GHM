@@ -898,7 +898,7 @@ test('canonical identity route derives account context from GHM auth and validat
   const { server, baseUrl } = await startTestServer(service);
   try {
     const token = tokenFor({ userId: 42, role: 'business' });
-    const response = await fetch(`${baseUrl}/api/v1/identity?businessId=201`, {
+    const response = await fetch(`${baseUrl}/api/v1/identity?businessId=201&accountId=999`, {
       headers: { authorization: `Bearer ${token}` },
     });
     assert.equal(response.status, 200);
