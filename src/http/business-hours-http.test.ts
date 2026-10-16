@@ -161,3 +161,106 @@ test('Business Hours GET for business 265 reaches service without verification g
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });
+
+test('Business Hours PUT requires authentication', async () => {
+  const { server, baseUrl } = await startServer(stubHoursService());
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/businesses/265/hours`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ hours: [] }),
+    });
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: 'unauthorized' });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('Business Hours PUT rejects malformed or duplicate day entries before service call', async () => {
+  const { server, baseUrl } = await startServer(stubHoursService());
+  try {
+    const token = tokenFor({ userId: 468, role: 'business' });
+    for (const hours of [
+      [{ dayOfWeek: 1, isClosed: false, openTime: '17:00', closeTime: '08:00' }],
+      [{ dayOfWeek: 1, isClosed: true, openTime: '08:00', closeTime: null }],
+      [
+        { dayOfWeek: 1, isClosed: true },
+        { dayOfWeek: 1, isClosed: true },
+      ],
+    ]) {
+      const response = await fetch(`${baseUrl}/api/v1/businesses/265/hours`, {
+        method: 'PUT',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ hours }),
+      });
+      assert.equal(response.status, 400);
+      assert.deepEqual(await response.json(), { error: 'invalid_request' });
+    }
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('Business Hours PUT binds authenticated context and path businessId to atomic replacement service', async () => {
+  let received: { context: AuthContext; input: { businessId: number; hours: readonly { dayOfWeek: number; isClosed: boolean; openTime?: string | null; closeTime?: string | null }[] } } | undefined;
+  const row = hoursFixture();
+  const service = stubHoursService({
+    replaceBusinessHours: async (context, input) => {
+      received = { context, input };
+      return [row];
+    },
+  });
+  const { server, baseUrl } = await startServer(service);
+  try {
+    const token = tokenFor({ userId: 468, role: 'business' });
+    const response = await fetch(`${baseUrl}/api/v1/businesses/265/hours`, {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        hours: [
+          { dayOfWeek: 1, isClosed: false, openTime: '08:00', closeTime: '17:00' },
+          { dayOfWeek: 2, isClosed: true },
+        ],
+      }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(received, {
+      context: { userId: 468, role: 'business' },
+      input: {
+        businessId: 265,
+        hours: [
+          { dayOfWeek: 1, isClosed: false, openTime: '08:00', closeTime: '17:00' },
+          { dayOfWeek: 2, isClosed: true },
+        ],
+      },
+    });
+    const body = await response.json() as { hours: Array<{ businessId: number; dayOfWeek: number }> };
+    assert.equal(body.hours.length, 1);
+    assert.equal(body.hours[0].businessId, 265);
+    assert.equal(body.hours[0].dayOfWeek, 1);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('Business Hours PUT maps missing owner/administrator authority to forbidden', async () => {
+  const service = stubHoursService({
+    replaceBusinessHours: async () => {
+      throw new Error('Business management permission required');
+    },
+  });
+  const { server, baseUrl } = await startServer(service);
+  try {
+    const token = tokenFor({ userId: 99, role: 'business' });
+    const response = await fetch(`${baseUrl}/api/v1/businesses/265/hours`, {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ hours: [{ dayOfWeek: 1, isClosed: true }] }),
+    });
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { error: 'forbidden' });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
