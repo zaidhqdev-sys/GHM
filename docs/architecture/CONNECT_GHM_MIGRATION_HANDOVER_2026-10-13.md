@@ -1319,21 +1319,28 @@ The verifier:
 
 ### Fresh read-only comparison — 2026-10-17
 
-The founder ran the recovered verifier pattern from local checkout `5bb8619f55a068d3a8b43cb4fe7625757f105cde` on branch `construction/ghm-connect-payfast-business-mapping`. The output confirms the target identity (`ghm_payfast_sandbox_db`, session login `ghm_migrator`, effective role `ghm_schema_owner`) and a read-only transaction.
+The founder ran the recovered verifier pattern from local checkout `5bb8619f55a068d3a8b43cb4fe7625757f105cde` on branch `construction/ghm-connect-payfast-business-mapping`. The output confirms the target identity (`ghm_payfast_sandbox_db`, session login `ghm_migrator`, effective role `ghm_schema_owner`) and read-only execution.
 
-Observed result:
+Initial comparison:
 - Local checkout migration files: **77**
 - Sandbox ledger entries: **78**
 - Local files missing from ledger: **0**
 - Checksum mismatches among the 77 local files: **0**
-- Unexpected ledger version relative to this local checkout: **`20261012120000`**
+- Additional ledger version relative to this local checkout: `20261012120000`
 - Duplicate ledger versions: **0**
 - Migration name mismatches: **0**
-- Overall result: **`ledgerComplete: false`**
 
-This is a **local-checkout-to-sandbox comparison**, not proof that GitHub `main` is inconsistent. A fresh GitHub `main` tree inspection confirms it contains **78 migration files**, including `database/migrations/20261012120000_revoke_runtime_business_mapping_table_access.sql` (blob SHA `28cd19b21f8ef8f4c61f822d904002678eeadde9`). The founder's local branch has 77 files, so the apparent extra ledger version is consistent with a stale local checkout. Do not modify the ledger or run a migration to force counts to match.
+Follow-up read-only check of version `20261012120000` confirmed:
+- Ledger name: `revoke_runtime_business_mapping_table_access`
+- Stored checksum: `ff68151174f28cb47f82e99a575d8ae58b9ac5198a1a200779b55cf735a545ad`
+- Current GitHub `main` migration file: `database/migrations/20261012120000_revoke_runtime_business_mapping_table_access.sql`, blob SHA `28cd19b21f8ef8f4c61f822d904002678eeadde9`
+- Checksum is the repository-supported **legacy CRLF** form; the canonical LF checksum is `60e25faaa45ee99677ddd0da66dfe72be849639de3afdc59c6f5afb2b02b5dde`. Both hashes were independently recomputed from the exact GitHub `main` migration content.
+- The row is expected and matches the migration in GitHub `main`; it is **not evidence of an unexpected or corrupt ledger entry**.
 
-The next verification is narrowly scoped: read the existing ledger row for version `20261012120000` under the same guarded, read-only sandbox identity and compare its stored checksum to the current GitHub `main` migration content using the repository's canonical and legacy-CRLF checksum rules. Only then may we conclude whether the sandbox ledger matches GitHub `main`.
+GitHub `main` contains **78 migration files**, including this migration. The local construction checkout contains only 77 files, explaining the count delta. Do not alter the ledger or run a migration to force the local and ledger counts to match.
+
+**Remaining qualification boundary:** this proves the extra ledger row is correct and checksum-compatible with GitHub `main`; it does not yet prove every other migration file in the stale local construction checkout is byte/content-equivalent to GitHub `main`. A complete GitHub-main qualification requires comparing all 78 main-branch migration files against all 78 sandbox ledger entries using the repository checksum compatibility rules, with no database writes.
+
 
 ### Current status
 
