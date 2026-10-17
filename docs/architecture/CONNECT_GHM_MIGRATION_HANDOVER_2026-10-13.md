@@ -403,3 +403,53 @@ Connect route definitions and signup flow support account roles `customer`, `con
 Connect app shell imports `supabase` and `authService`, restores session on startup, subscribes to `supabase.auth.onAuthStateChange`, and signs out through the Supabase client. `AuthScreen.jsx` calls `supabase.auth.signUp` directly and uses `authService.signIn` for login. This confirms the cutover must replace **startup session restore, auth-change subscription, signup, login, logout, refresh/expiry and password recovery**, not merely swap the sign-in form. GHM has native register/login/refresh/logout/password-recovery routes, but their response/user shape, confirmation policy and role/business-identity lifecycle need an adapter contract.
 
 No runtime or production changes were made in this audit.
+
+
+---
+
+## Session continuity checkpoint — 2026-10-17: sandbox forensic audit
+
+### Why this checkpoint exists
+This checkpoint preserves the exact evidence from the 2026-10-17 troubleshooting session so a new chat does not repeat the credential investigation. It supersedes guesses made before the sandbox target and role switch were verified.
+
+### Confirmed connection and credential facts
+- The active local `.env` targets main database `ghm_db` at the main Render Postgres host. It is not the sandbox audit URL.
+- The sandbox is `ghm_payfast_sandbox_db`, using the external host `dpg-db4416vlk1mc73eocug0-a.frankfurt-postgres.render.com` for local-machine connections.
+- Both `.env.sandbox-used-20261011` and `.env.sandbox-used-20261011.before-runtime-password-fix-20261012-215200` authenticated successfully as `ghm_migrator` to the sandbox. The tests printed only PASS/FAIL and did not print credentials.
+- `.env.sandbox-used-20261011.before-role-reset-20261012111115` has a malformed duplicated hostname suffix; do not use it as-is.
+- Passwords in both valid-looking sandbox backups differ from the active main `.env` password. Do not reset credentials again merely to repeat this investigation.
+- The sandbox connection check used a read-only transaction and verified `current_database() = ghm_payfast_sandbox_db`, `current_user = ghm_migrator` before `SET ROLE`, and `current_user = ghm_schema_owner` / `session_user = ghm_migrator` after `SET ROLE`.
+
+### Local checkout and audit run
+- User's local branch at the time of the run: `construction/ghm-connect-payfast-business-mapping`.
+- Local `scripts/forensic-migration-reconciliation.mjs` on that branch hard-coded `ghm_db` in both authority checks and therefore rejected the sandbox before reconciliation.
+- A local-only patch changed both comparisons to use `process.env.GHM_MIGRATION_AUDIT_DATABASE || 'ghm_db'`. A backup was created as `scripts/forensic-migration-reconciliation.mjs.before-expected-db-fix`. This local patch is not a production change and should not be blindly copied over the reviewed PR implementation.
+- With `GHM_MIGRATION_AUDIT_DATABASE=ghm_payfast_sandbox_db` and `DATABASE_SSL=true`, the local audit completed its read-only reconciliation and authority passed.
+
+### Local audit output (pre-PR-baseline reconciliation)
+- Repository migrations: 77; sandbox ledger rows: 78.
+- Exact matches: 77.
+- Missing: 0.
+- Unexplained checksum mismatches: 0.
+- Name mismatches: 0.
+- Extra ledger row: version `20261012120000`, name `revoke_runtime_business_mapping_table_access`, checksum `ff68151174f28cb47f82e99a575d8ae58b9ac5198a1a200779b55cf735a545ad`, applied at `2026-10-12T17:39:04.169Z`.
+- The local version reported 16 orphaned provenance exceptions and verdict `INVESTIGATE`. This is the pre-policy-fix implementation; do not assume those 16 are truly orphaned without using the reviewed policy from PR #140.
+- The observed migration SQL in Git history revokes `SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER` on `ghm.business_external_mapping` from `ghm_runtime`, with comments saying payment preparation uses a SECURITY DEFINER lookup function.
+
+### Branch provenance / unresolved baseline issue
+- The current local branch HEAD does not contain `database/migrations/20261012120000_revoke_runtime_business_mapping_table_access.sql`.
+- Git history shows it on `origin/construction/ghm-mapping-runtime-table-revoke`, commit `2c3a837` (“Revoke direct runtime access to external business mappings”).
+- The command trying `origin/fix/migration-audit-checksum-policy` failed locally because that remote-tracking ref was unavailable. This does not mean the GitHub PR/branch is absent.
+- GitHub confirms PR #140, [Fix forensic migration checksum reconciliation policy](https://github.com/zaidhqdev-sys/GHM/pull/140), is open and unmerged; head branch `fix/migration-audit-checksum-policy`, head SHA `e3a864f3aa90910ee91d782299f856f7570f4da5`, base `main`. The reviewed PR already makes the expected database configurable, wraps the audit in `BEGIN READ ONLY`, supports canonical/CRLF checksums, and distinguishes historical provenance from orphaned exceptions.
+- The sandbox's one extra row is therefore a migration-baseline/branch discrepancy until proven otherwise. Do not delete the live ledger row, rewrite the migration ledger, or add an exception merely to force PASS.
+
+### Required continuation — start here next session
+1. Inspect PR #140's exact migration inventory and compare it with branch `construction/ghm-mapping-runtime-table-revoke` and the local branch. Establish the intended release migration baseline and whether the revocation migration should be included.
+2. Do not cherry-pick or merge branches automatically; review migration dependencies and intended runtime privilege model first.
+3. Once the intended migration baseline is known, run the reviewed PR #140 audit implementation against the sandbox using the known-good sandbox connection candidate, explicitly setting `GHM_MIGRATION_AUDIT_DATABASE=ghm_payfast_sandbox_db`.
+4. Reassess historical exception classifications using the PR #140 implementation. Preserve exception records unless evidence and an approved review justify a change.
+5. Keep all local `.env*` files untracked and out of commits. Local status showed multiple untracked environment backups and `tmp-list-sandbox-accounts.mjs`; inspect before staging anything.
+6. No migration was run; no database writes, credential/role changes, production settings changes, deployments, merges, or cutover approvals were made in this session.
+
+### Continuity and safety rule
+Start from this checkpoint and the open PR #140, not from another password reset. Sandbox forensic verdict is still unresolved/INVESTIGATE until the migration baseline discrepancy is reconciled. No production launch or cutover is authorized.
