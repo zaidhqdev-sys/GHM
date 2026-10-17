@@ -40,5 +40,8 @@ jobs:
       - name: Test suite
         run: npm test
 
+      - name: Migration audit policy tests
+        run: npm run test:migration-audit-policy
+
       - name: Runtime boundary verification
         run: npm run verify:runtime
