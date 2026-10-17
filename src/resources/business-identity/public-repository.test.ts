@@ -59,6 +59,17 @@ const assertCompleteProjection = (sql: string) => {
 
 const assertMappedDetails = (business: Awaited<ReturnType<PostgresPublicBusinessRepository['getPublicBusiness']>>) => {
   assert.ok(business);
+  assert.equal(business.id, 42);
+  assert.equal(business.name, 'Durban Builder');
+  assert.equal(business.slug, 'durban-builder');
+  assert.equal(business.description, 'Renovation');
+  assert.equal(business.phone, '0311234567');
+  assert.equal(business.email, 'builder@example.com');
+  assert.equal(business.rating, 4.5);
+  assert.equal(business.reviewCount, 12);
+  assert.equal(business.jobsCompleted, 9);
+  assert.equal(business.createdAt.toISOString(), '2026-01-01T00:00:00.000Z');
+  assert.equal(business.updatedAt.toISOString(), '2026-02-01T00:00:00.000Z');
   assert.equal(business.category, 'construction');
   assert.equal(business.province, 'KwaZulu-Natal');
   assert.equal(business.city, 'Durban');
