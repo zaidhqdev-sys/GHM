@@ -29,6 +29,23 @@ const normalizeCategory = (value: unknown): string | undefined => {
   return normalized;
 };
 
+const normalizeProvince = (value: unknown): string | undefined => {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string') throw new Error('province must be a string');
+  const normalized = value.trim();
+  if (!normalized) throw new Error('province must not be blank');
+  if (normalized.length > 100) throw new Error('province must be at most 100 characters');
+  return normalized;
+};
+
+const normalizeBusinessType = (value: unknown): 'contractors' | 'suppliers' | undefined => {
+  if (value === undefined) return undefined;
+  if (value !== 'contractors' && value !== 'suppliers') {
+    throw new Error('businessType must be contractors or suppliers');
+  }
+  return value;
+};
+
 const normalizePage = (value: unknown): number => {
   if (value === undefined) return DEFAULT_PAGE;
   return requirePositiveInteger(value, 'page');
@@ -50,6 +67,8 @@ export class DirectoryServiceImpl implements DirectoryService {
     const normalized: DirectoryQuery = {
       q: normalizeQuery(query.q),
       category: normalizeCategory(query.category),
+      province: normalizeProvince(query.province),
+      businessType: normalizeBusinessType(query.businessType),
       page: normalizePage(query.page),
       pageSize: normalizePageSize(query.pageSize),
     };

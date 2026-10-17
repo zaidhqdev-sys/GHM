@@ -1,15 +1,23 @@
 # Connect → GHM Internal Runtime Migration — Durable Handover
 
-**Status:** ACTIVE READ-ONLY AUDIT / DOCUMENTATION FIRST — NO IMPLEMENTATION OR CUTOVER AUTHORIZED  
+**Status:** INTEGRATION CANDIDATE UNDER QUALIFICATION — DOCUMENTATION RECONCILIATION AND PRODUCTION CUTOVER GATES REMAIN OPEN  
 **Created:** 2026-10-13  
 **Purpose:** A new session must resume without reconstructing the conversation.  
 **Companion:** ZAID Connect copy: `docs/06_Implementation/GHM_BACKEND_MIGRATION_HANDOVER_2026-10-13.md`.
+
+## Integration checkpoint — 2026-10-18
+
+- Current deployed `main` is based on PR #140 and does not yet include the identity API from PR #137.
+- This branch is a review candidate that combines the identity changes with the migration-audit policy protections already on `main`.
+- The public business detail projection fix and repository regression tests are included; exact-head CI must pass before merge review.
+- All migration execution in CI is confined to a disposable PostgreSQL service. No production migration, production configuration change, provider activation, or cutover is authorized here.
+- Zaid Connect and QuoteFlow still require their own non-production end-to-end and cutover qualification.
 
 ## 1. Founder decision and non-negotiable rules
 
 Target: remove **all Supabase runtime dependencies from current ZAID Connect** and make GHM Internal Runtime provide the required backend capabilities. This is not merely an auth-screen replacement: no active runtime journey may require Supabase Auth, Postgres/RPC, Edge Functions, Storage or Realtime.
 
-- Documentation/source audit first. No code construction, data migration, shadow traffic, production change, provider activation, cutover or merge is authorized by this handover.
+- Code-level integration and disposable CI qualification may proceed on isolated branches. No production data migration, production configuration change, shadow traffic, provider activation or cutover is authorized. Do not merge the integration or enable a provider until the combined exact-head checks pass and the Founder explicitly authorizes merge/cutover.
 - Reconcile affected documentation as a set before merging. GHM documentation is source of truth for GHM; Connect documentation owns Connect-facing integration contracts. Keep one agreed status/gap register, not competing versions.
 - A resource registry entry or service method is not proof of an HTTP endpoint, permission contract or product parity.
 - Confirm active callers before rebuilding facade exports or old hooks.
@@ -24,7 +32,7 @@ Target: remove **all Supabase runtime dependencies from current ZAID Connect** a
 - Do not instruct the founder to sync/pull local repositories unless asked. Keep work in small batches and updates concise.
 - Do not create more branches without need. These handover branches are documentation-only.
 
-## 2. Repository checkpoints (verified 2026-10-13)
+## 2. Historical repository checkpoints (verified 2026-10-13)
 
 | Repository | Main checkpoint | Documentation branch |
 |---|---|---|
@@ -115,7 +123,7 @@ Classification: **Reuse** = likely existing GHM surface, still requires contract
 
 ## 8. Exact resume point — do not restart from zero
 
-**Current checkpoint:** the targeted cross-document reconciliation and final changed-file stale-claim/scope scan are complete for the recorded classifications. The 207-file GHM Markdown relative-link scan and all changed-file link checks (30 GHM / 7 Connect) found no broken local targets. The Relationships/Outcomes route-reachability statement and regional-filter classification are consistent; the separate directory contract now distinguishes bounded current scope from the approved-to-plan **Extend** parity gap. No stale next-batch/resume instruction was found in the changed files. PR #133 and Connect PR #34 remain open drafts; their final heads and review state are recorded in the session checkpoint. No code, runtime, database, production, provider, or cutover changes were made. Do not merge without the founder's explicit authorization.
+**Historical checkpoint (2026-10-13):** the targeted cross-document reconciliation and final changed-file stale-claim/scope scan were complete for the classifications recorded at that checkpoint. The 207-file GHM Markdown relative-link scan and all changed-file link checks (30 GHM / 7 Connect) found no broken local targets. The Relationships/Outcomes route-reachability statement and regional-filter classification are consistent; the separate directory contract now distinguishes bounded current scope from the approved-to-plan **Extend** parity gap. No stale next-batch/resume instruction was found in the changed files. PR #133 and Connect PR #34 remain open drafts; their final heads and review state are recorded in the session checkpoint. No code, runtime, database, production, provider, or cutover changes were made. Do not merge without the founder's explicit authorization.
 
 1. Reconcile the operation-level classifications in this handover against `GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md`, `CONNECT_BACKEND_OPERATION_INVENTORY.md`, `GHM_CONNECT_BACKEND_READINESS_AUDIT.md`, `docs/GHM_CURRENT_STATE.md`, and the living operation contracts. Keep explicit **Build / Extend / Reuse candidate / Legacy-exclude / Evidence-insufficient** distinctions.
 2. **Completed link audit:** 207 tracked GHM Markdown files plus all changed-file links in both PRs (30 GHM / 7 Connect) had no broken relative/local targets. The newly clarified directory-contract sentence introduced no links. The final targeted changed-file scan found no remaining flagged stale route/regional classifications or obsolete resume instructions. If files or links change after this checkpoint, repeat the relevant checks.
@@ -405,51 +413,290 @@ Connect app shell imports `supabase` and `authService`, restores session on star
 No runtime or production changes were made in this audit.
 
 
----
+## 14. Implementation ledger — 2026-10-16 canonical identity resolution API
 
-## Session continuity checkpoint — 2026-10-17: sandbox forensic audit
+- **GHM PR:** [#137 — authenticated canonical identity resolution](https://github.com/zaidhqdev-sys/GHM/pull/137), draft/unmerged; branch `construction/identity-resolution-api-20261016`; head `72da83ae301d2d8441c3f8b8f57e4fe5dc5688e3` at initial PR creation. CI was still running when last checked.
+- **API:** Authenticated `GET /api/v1/identity`, with optional `businessId` query for active-business selection. The route derives account identity from the GHM authentication context, uses registered `profile:read` authorization, validates the selection as a positive safe integer, and delegates selection to `BusinessIdentityService.resolveIdentity`. The service must confirm that the selected business is an active membership for this authenticated account. The response returns canonical account, membership list, active membership, and active business.
+- **HTTP behavior:** `401` without a valid GHM session; `400` malformed selection; `409 business_selection_required` when the account has multiple memberships and none selected; `403 business_context_forbidden` for a business not authorized to the account; `404` if the selected business cannot be found.
+- **Tests added:** Missing authentication; auth-context binding and authorized selection; malformed IDs rejected before service invocation; unauthorized selection maps to 403. CI has not yet verified this branch.
+- **Security boundary:** No caller-supplied account ID is accepted. The optional business ID selects context only and does not grant access. GHM continues to reject legacy Supabase JWTs; do not expose server assertion secrets to browser callers.
+- **Known contract gap:** This endpoint currently returns GHM account fields and GHM role vocabulary (`customer | business | admin`), not a completed Connect compatibility profile. Connect roles (`contractor`, `supplier`, business-operator intent), founder-reviewer status, and capability/route permissions still require an explicit server-authoritative mapping contract. Do not wire the app shell over until that is addressed.
+- **Next:** Run GHM CI; add Connect client contract coverage; define canonical Connect role/intent mapping and founder-reviewer endpoint/policy; then migrate session restoration and callers as a separately tested change. Update both handovers for each implementation PR.
 
-### Why this checkpoint exists
-This checkpoint preserves the exact evidence from the 2026-10-17 troubleshooting session so a new chat does not repeat the credential investigation. It supersedes guesses made before the sandbox target and role switch were verified.
 
-### Confirmed connection and credential facts
-- The active local `.env` targets main database `ghm_db` at the main Render Postgres host. It is not the sandbox audit URL.
-- The sandbox is `ghm_payfast_sandbox_db`, using the external host `dpg-db4416vlk1mc73eocug0-a.frankfurt-postgres.render.com` for local-machine connections.
-- Both `.env.sandbox-used-20261011` and `.env.sandbox-used-20261011.before-runtime-password-fix-20261012-215200` authenticated successfully as `ghm_migrator` to the sandbox. The tests printed only PASS/FAIL and did not print credentials.
-- `.env.sandbox-used-20261011.before-role-reset-20261012111115` has a malformed duplicated hostname suffix; do not use it as-is.
-- Passwords in both valid-looking sandbox backups differ from the active main `.env` password. Do not reset credentials again merely to repeat this investigation.
-- The sandbox connection check used a read-only transaction and verified `current_database() = ghm_payfast_sandbox_db`, `current_user = ghm_migrator` before `SET ROLE`, and `current_user = ghm_schema_owner` / `session_user = ghm_migrator` after `SET ROLE`.
+## 15. Cross-repository ledger — Connect identity role adapter
 
-### Local checkout and audit run
-- User's local branch at the time of the run: `construction/ghm-connect-payfast-business-mapping`.
-- Local `scripts/forensic-migration-reconciliation.mjs` on that branch hard-coded `ghm_db` in both authority checks and therefore rejected the sandbox before reconciliation.
-- A local-only patch changed both comparisons to use `process.env.GHM_MIGRATION_AUDIT_DATABASE || 'ghm_db'`. A backup was created as `scripts/forensic-migration-reconciliation.mjs.before-expected-db-fix`. This local patch is not a production change and should not be blindly copied over the reviewed PR implementation.
-- With `GHM_MIGRATION_AUDIT_DATABASE=ghm_payfast_sandbox_db` and `DATABASE_SSL=true`, the local audit completed its read-only reconciliation and authority passed.
+- **Connect adapter PR:** [#39 — fail-closed GHM identity compatibility adapter](https://github.com/zaidhqdev-sys/zaid-connect/pull/39), draft/unmerged; branch `construction/ghm-identity-adapter-only-20261016`.
+- Connect has added a fail-closed adapter that only trusts explicit fields in the authenticated GHM identity response. GHM `customer` maps to Connect `customer`; GHM `business` cannot distinguish `contractor` from `supplier` and therefore remains unresolved until a canonical Connect role is persisted and returned.
+- Connect admin is not inferred from the broad GHM `admin` role: adapter requires explicit `isSystemAdmin: true`. Founder-reviewer status is also fail-closed unless explicitly returned by a GHM-authoritative source. The current endpoint does not yet return either field, so these privileges are not enabled through this adapter.
+- Membership response shape is validated; mismatched active membership/business context is discarded. Permissions are not invented by a frontend mapping table.
+- Tests are added for the mapping and fail-closed boundaries; CI pending.
+- This adapter is not wired into Connect's app shell. The legacy Supabase identity resolver and product service callers remain in use until the GHM role/intent and reviewer-authority contracts are complete.
 
-### Local audit output (pre-PR-baseline reconciliation)
-- Repository migrations: 77; sandbox ledger rows: 78.
-- Exact matches: 77.
-- Missing: 0.
-- Unexplained checksum mismatches: 0.
-- Name mismatches: 0.
-- Extra ledger row: version `20261012120000`, name `revoke_runtime_business_mapping_table_access`, checksum `ff68151174f28cb47f82e99a575d8ae58b9ac5198a1a200779b55cf735a545ad`, applied at `2026-10-12T17:39:04.169Z`.
-- The local version reported 16 orphaned provenance exceptions and verdict `INVESTIGATE`. This is the pre-policy-fix implementation; do not assume those 16 are truly orphaned without using the reviewed policy from PR #140.
-- The observed migration SQL in Git history revokes `SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER` on `ghm.business_external_mapping` from `ghm_runtime`, with comments saying payment preparation uses a SECURITY DEFINER lookup function.
 
-### Branch provenance / unresolved baseline issue
-- The current local branch HEAD does not contain `database/migrations/20261012120000_revoke_runtime_business_mapping_table_access.sql`.
-- Git history shows it on `origin/construction/ghm-mapping-runtime-table-revoke`, commit `2c3a837` (“Revoke direct runtime access to external business mappings”).
-- The command trying `origin/fix/migration-audit-checksum-policy` failed locally because that remote-tracking ref was unavailable. This does not mean the GitHub PR/branch is absent.
-- GitHub confirms PR #140, [Fix forensic migration checksum reconciliation policy](https://github.com/zaidhqdev-sys/GHM/pull/140), is open and unmerged; head branch `fix/migration-audit-checksum-policy`, head SHA `e3a864f3aa90910ee91d782299f856f7570f4da5`, base `main`. The reviewed PR already makes the expected database configurable, wraps the audit in `BEGIN READ ONLY`, supports canonical/CRLF checksums, and distinguishes historical provenance from orphaned exceptions.
-- The sandbox's one extra row is therefore a migration-baseline/branch discrepancy until proven otherwise. Do not delete the live ledger row, rewrite the migration ledger, or add an exception merely to force PASS.
+## 16. Implementation ledger — 2026-10-16 persisted Connect identity authority
 
-### Required continuation — start here next session
-1. Inspect PR #140's exact migration inventory and compare it with branch `construction/ghm-mapping-runtime-table-revoke` and the local branch. Establish the intended release migration baseline and whether the revocation migration should be included.
-2. Do not cherry-pick or merge branches automatically; review migration dependencies and intended runtime privilege model first.
-3. Once the intended migration baseline is known, run the reviewed PR #140 audit implementation against the sandbox using the known-good sandbox connection candidate, explicitly setting `GHM_MIGRATION_AUDIT_DATABASE=ghm_payfast_sandbox_db`.
-4. Reassess historical exception classifications using the PR #140 implementation. Preserve exception records unless evidence and an approved review justify a change.
-5. Keep all local `.env*` files untracked and out of commits. Local status showed multiple untracked environment backups and `tmp-list-sandbox-accounts.mjs`; inspect before staging anything.
-6. No migration was run; no database writes, credential/role changes, production settings changes, deployments, merges, or cutover approvals were made in this session.
+- GHM PR #137 now includes migration `20261016100000_add_connect_identity_authority_contract.sql`: nullable `account_identity.connect_role` (`customer | contractor | supplier`), explicit `business_operator_intent`, and separate `connect_founder_directory_reviewer` authority state.
+- Existing accounts remain unresolved (`connect_role = NULL`) rather than guessed into contractor/supplier. Business-operator intent does not grant membership or permissions.
+- `ghm.auth_read_connect_identity_authority(account_id)` is a SECURITY DEFINER read projection owned by `ghm_schema_owner`; `ghm_runtime` receives EXECUTE but no direct reviewer-table access. Account identity mapping uses the function so the authenticated identity endpoint projects these GHM-owned fields.
+- This is a read contract only. No public/runtime reviewer grant/revoke endpoint exists yet, so reviewer status remains false until a separately governed path is qualified. Role/intent updates also need a trusted audited workflow.
+- Verification gate: run CI on the latest PR head and qualify migration/function grants and account repository mapping. No merge/deploy/production migration implied.
 
-### Continuity and safety rule
-Start from this checkpoint and the open PR #140, not from another password reset. Sandbox forensic verdict is still unresolved/INVESTIGATE until the migration baseline discrepancy is reconciled. No production launch or cutover is authorized.
+
+## Verification update — 2026-10-16 02:46Z
+
+- Latest GHM PR #137 head `57062649a51b9321fca22831ab51c26278b7dcb2` completed GitHub CI successfully: [run 38842109717](https://github.com/zaidhqdev-sys/GHM/actions/runs/38842109717). This qualifies compilation and the repository's configured quality/test workflow for that commit, not production migration or deployment.
+- Earlier intermediate build failures were caused by newly required AccountIdentity fields in fixtures; the contract was made backward-compatible/optional while the repository projection supplies explicit values. The latest head passes.
+- Outstanding qualification: no production database migration has been run; reviewer grant/revoke workflow and trusted role/intent update workflow remain unimplemented. Keep PR draft and do not merge or deploy.
+
+
+## Implementation ledger — 2026-10-16 self-service Connect role/intent
+
+- GHM PR #137 now adds authenticated `PATCH /api/v1/profile` for allowlisted own-profile fields, including `connectRole` (`customer | contractor | supplier | null`) and `businessOperatorIntent` (boolean). Unknown fields and attempts to set `isSystemAdmin` or reviewer authority are rejected before the service call.
+- The repository updates only the account identified by authenticated GHM context and projects authority fields back through `ghm.auth_read_connect_identity_authority`. No account ID is accepted from the body.
+- `connectRole` is a declared Connect product role, not proof of qualification, membership, or resource permission. `businessOperatorIntent` is descriptive intent only. Business membership, verification and capabilities remain separately enforced by their GHM services.
+- Added HTTP tests for authorized role/intent update and rejection of admin/reviewer spoofing, invalid role values, non-boolean intent, unknown fields and empty payload. Latest CI must qualify this change before merge.
+- Founder reviewer grant/revoke remains a separate protected workflow with no public mutation route in this slice.
+
+
+## 17. Next implementation gate — founder-reviewer governance and privilege separation (2026-10-16)
+
+A read-only review of the latest PR #137 branch found a security prerequisite that must be resolved before adding reviewer grant/revoke mutations:
+
+- The canonical authority projection exposes `isSystemAdmin` from `ghm.account_identity.is_system_admin`, while the existing request `AuthContext` contains only `userId` and the broad GHM role (`customer | business | admin`). The current resource authorization helper grants access based on that broad role; it does not prove the separate `is_system_admin` authority.
+- Therefore, **do not authorize reviewer grant/revoke solely with `context.role === 'admin'`**, and do not let the target account, browser metadata, Connect role, or operator intent authorize the grant.
+- Required implementation: a GHM-owned privileged service that derives the actor from the authenticated session, verifies the actor's persisted `is_system_admin = true` status inside the backend, rejects self-grant and malformed target/reason input, and writes a durable audit record for every grant/revoke. The service must fail closed if the actor authority cannot be read. Revoke must preserve history rather than delete the authority record.
+- The existing reviewer table has a single row per target and stores the original grant actor/reason/time plus active/revoked state. Before implementing mutation, decide how repeat grants and re-grants are represented without losing the prior grant/revoke history; an append-only event/audit table is preferred over overwriting the sole grant record.
+- Add HTTP/service/database contract tests for non-admin denial, ordinary GHM admin without system-admin flag denial, system-admin grant, revoke, repeated grant/revoke, missing reason, nonexistent target, self-grant, and database failure. No runtime role should receive direct table write grants; mutations must go through the narrow backend-owned path.
+- **Status:** design gate identified; no reviewer mutation endpoint has been added and no authority has been granted. This is an implementation requirement, not a production incident or a claim of completed qualification.
+
+### Ordered next work (avoid reopening the broad audit)
+
+1. Reconcile the schema to preserve reviewer grant/revoke history and define the narrow mutation service/SQL authority boundary.
+2. Implement and test GHM grant/revoke using persisted system-admin authority, then update this handover with exact migration, routes, test results and CI head.
+3. Wire the Connect adapter into session restoration only after GHM identity and reviewer contracts are qualified; then migrate signup/login/logout/recovery and identity/product callers in small, tested slices.
+4. Keep both PRs draft/unmerged until the full cross-repository contract is reconciled and end-to-end qualification is recorded. Do not apply migrations to production or activate live payments as part of this work.
+
+
+## Connect cutover dependency gate — 2026-10-16 03:00Z
+
+Review of Connect PR #39 and the current app shell found that a direct identity-object swap would be unsafe and incomplete:
+
+- `src/app/ZaidConnectApp.jsx` still restores sessions with Supabase `authService.getSession()` and subscribes to `supabase.auth.onAuthStateChange`.
+- `src/features/authentication/AuthScreen.jsx` still uses Supabase signup and sign-in; `src/features/authentication/identity.js` still resolves profiles and memberships from Supabase services.
+- Connect currently uses Supabase UUID user/business identifiers in product-service calls, while the proposed GHM account identity uses numeric account IDs. Do not pass GHM numeric IDs into legacy Supabase product-data calls or silently treat those identifiers as interchangeable.
+- GHM already has login/refresh/logout primitives in `src/http/auth-router.ts`, but Connect needs a tested HTTP client/session contract, verified route paths, refresh-token persistence/rotation and failure behavior before app-shell session restoration is changed. Recovery/signup parity and account ownership/data mapping must be explicitly planned.
+- PR #39 has been commented with this integration gate. No app-shell auth changes were made in this batch. Current Connect Vercel status is rate-limited; do not mistake the deployment status for test results.
+
+### Ordered implementation
+1. Inspect and test the exact GHM auth route paths and response/error shapes, then implement a small Connect GHM auth client with unit/contract tests for login, refresh, logout, expired/invalid tokens and network failure.
+2. Decide and document stable mapping/ownership for existing Connect accounts and business records before any product service starts consuming GHM numeric IDs.
+3. Only after 1–2 are qualified, wire session restoration/auth state to the GHM client in an isolated PR. Keep product data calls on their current IDs until each data domain is migrated and tested.
+4. Separately implement/qualify signup, recovery/reset, logout, and protected route behavior; keep reviewer capabilities disabled until the GHM governance workflow exists.
+5. Verify latest CI and deployment after the Vercel rate-limit window. No production cutover or Supabase dependency removal is implied by the current identity PRs.
+
+
+## 19. Account/business identifier migration gate — 2026-10-16 13:10Z
+
+### Evidence checked
+- Connect's checked-in legacy schema defines `profiles.id` as UUID referencing Supabase Auth users; `businesses.id`, `businesses.owner_id`, and `business_memberships.id/business_id/account_id` are also UUIDs. Product tables such as projects/quotes/lead/conversation/message reference those legacy UUIDs. This is a data ownership boundary, not a cosmetic type mismatch.
+- GHM's canonical `account_identity.id`, `business.id`, and `business_membership.id/account_id/business_id` are generated numeric bigint IDs.
+- GHM has `ghm.business_external_mapping` and the restricted `ghm.auth_lookup_business_external_mapping(provider, external_business_id)` function. This maps an external business ID to a GHM business ID; it does not establish a canonical account mapping and must not be repurposed as one.
+- Connect's isolated GHM identity adapter tests now pass on latest observed PR head: workflow [38905198137](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/38905198137), auth client 12/12 and identity adapter 8/8. This qualifies the pure mapping logic only, not the legacy data migration.
+
+### Co-founder decision: build explicit mapping, not heuristic linking
+1. Add a separate GHM-owned account external-identity mapping contract keyed by provider/source and external UUID, resolving to one canonical GHM account ID. Do not use email equality as an automatic linking key, and do not accept Supabase JWTs as GHM credentials.
+2. Keep business mapping separate and require uniqueness for each provider/external business ID. Account and business links must be explicit, auditable, and conflict-detecting; a collision must stop migration rather than pick a row.
+3. Before backfill, produce a read-only inventory of existing Connect account, business, membership, and product-row foreign-key counts. Determine whether legacy rows are to be imported into GHM or temporarily served through an explicitly isolated compatibility mapping. Do not migrate only identities while leaving foreign-keyed product records orphaned.
+4. Define cutover/rollback criteria and prove read-after-write plus tenant ownership across projects, quotes, enquiries/leads, messages, reviews, subscriptions and media references before retiring each Supabase dependency.
+5. Keep mapping mutation server-side under least privilege; runtime can resolve only through a narrowly scoped function. No browser-supplied external ID proves authority.
+
+### Next implementation slice
+Implement the account mapping schema/API contract and its uniqueness, non-disclosure, conflict and authorization tests as a GHM PR. Do not backfill production records or switch Connect product callers in that slice. Reconcile the matching Connect handover in the same change set. This is a targeted migration blocker, not a reason to resume the broad audit loop.
+
+
+## 20. External account mapping schema slice added — 2026-10-16 13:12Z
+
+On the existing GHM identity construction branch, added migration `20261016120000_create_account_external_mapping.sql` (commit `5fe7eef`) and static migration contract tests `src/db/account-external-mapping-migration-contract.test.ts` (commit `cba2dfe`), included in the repository's `npm test` command by commit `98b3595`.
+
+- New table `ghm.account_external_mapping` is separate from `ghm.business_external_mapping`, has a provider/external-account unique key, references canonical `ghm.account_identity(id)` with `ON DELETE RESTRICT`, and rejects blank keys.
+- Added `ghm.auth_lookup_account_external_mapping(text,text)` as a narrow SECURITY DEFINER lookup. Blank input returns no mapping; lookup matches only the exact provider + external identifier.
+- Function EXECUTE is granted only to `ghm_migrator`; PUBLIC and `ghm_runtime` are explicitly revoked. The table has no direct grants to PUBLIC, runtime, or migrator. This is migration-only lookup, not an auth endpoint, credential validator, or account-linking workflow.
+- This is schema/test construction only: migration has not been applied to production and the tests have not yet run in CI. Latest GHM PR head and checksum/migration CI must be verified before considering the slice qualified.
+- No external UUID has been backfilled; no account auto-linking, email matching, product-row migration, or Connect cutover has occurred.
+
+Next gate: run full GHM build/test/migration checksum validation on the latest PR head; inspect and resolve any contract failure before proceeding to a controlled read-only legacy foreign-key inventory. Do not merge or apply migration until GHM docs are reconciled and the PR gates pass.
+
+
+## 21. External account mapping verification result — 2026-10-16 13:10Z
+
+The corrected latest GHM CI run is green on commit `9f4b2e81058b08ede497f17b0962774f9071094b`: [run 38905728637](https://github.com/zaidhqdev-sys/GHM/actions/runs/38905728637). Build passed, the full test suite passed (**552 passed, 0 failed, 2 skipped**), and runtime boundary verification passed. This supersedes the earlier note that the new migration contract tests were awaiting CI. An earlier run failed only because the static test incorrectly banned the word `email` even in documentation; the assertion was narrowed to reject email-based equality/matching logic, and the latest run passed.
+
+Scope remains limited: CI validates build/static migration contract and repository tests, but does not apply the migration to production or exercise it against a live Postgres catalog. Do not run production migrations or merge until the full GHM docs set is reconciled and the PR's remaining review/security gates are closed. Next: inspect migration runner/checksum handling and add a controlled local/sandbox database qualification if supported without touching production.
+
+
+## 22. CI policy: no skipped database integration tests — 2026-10-16
+
+Founder requirement: GHM CI must report every test as passed, with zero skipped tests. Do not satisfy this by deleting integration assertions, marking them TODO, or pointing test runs at production.
+
+Implemented on the identity construction branch:
+- `.github/workflows/ci.yml` provisions a disposable PostgreSQL 18 service for each CI job, creates distinct `ghm_migrator`, `ghm_runtime`, and `ghm_schema_owner` roles, runs `npm run migrate` against that disposable database, then runs the full test suite and runtime boundary verification.
+- `src/db/migrate.ts` now honors `DATABASE_SSL=true` instead of unconditionally forcing TLS, allowing local CI PostgreSQL while retaining TLS when explicitly configured.
+- `src/auth/foundation/persistence.test.ts` and `src/integrations/connect/service-assertion-replay.persistence.test.ts` now fail in CI if their required DB URLs/schema are missing, rather than silently skip. Outside CI, local development may still skip when integration DB setup is absent.
+
+This is implemented but not yet qualified. The next CI run must prove all migrations apply from an empty disposable database, both integration suites execute, and test output shows `# skipped 0`. If migrations or privileges fail, fix the underlying schema/role setup; do not loosen the tests. No production database was used or changed.
+
+
+## 23. Zero-skip CI migration bootstrap failure and correction — 2026-10-16
+
+The first zero-skip CI attempt correctly exposed a migration-bootstrap issue rather than silently passing:
+- Run [38906209302](https://github.com/zaidhqdev-sys/GHM/actions/runs/38906209302) failed while applying the migration chain with `permission denied for schema public`. Tests did not run on that attempt, so it is not a test result.
+- Cause: the historical first migration creates the migration ledger in `public` before a later migration relocates it into `ghm`. On modern PostgreSQL the non-owner schema role cannot create there by default.
+- Correction in workflow commit `b226283`: grant `USAGE, CREATE` on `public` to `ghm_schema_owner` **only in the disposable CI database**. This does not change production grants or any deployed database.
+- Current rerun: [38906355546](https://github.com/zaidhqdev-sys/GHM/actions/runs/38906355546) is testing the corrected bootstrap. It must finish with migrations successful, both persistence suites executed, and `# skipped 0`; otherwise fix the next failure rather than weakening the acceptance gate.
+
+
+## 24. Second disposable-DB bootstrap correction — 2026-10-16
+
+The next CI run progressed past the `public` schema grant but failed at migration application with `permission denied for database ghm` ([run 38906355546](https://github.com/zaidhqdev-sys/GHM/actions/runs/38906355546)). The migration chain creates the `ghm` schema while operating as `ghm_schema_owner`, which requires database-level CREATE on an empty disposable database.
+
+Workflow commit `83b39d2` now grants `CREATE ON DATABASE ghm` to `ghm_schema_owner` only inside the disposable CI service, in addition to the legacy `public` bootstrap grant. Neither grant is made in production. Next run must establish whether the complete chain and all DB tests pass; until then, zero-skip qualification remains open.
+
+
+## 25. Historical UTF-8 BOM discovered in clean migration run — 2026-10-16
+
+The latest disposable PostgreSQL run progressed past role/database bootstrap and then failed on a historical SQL file whose first character is a UTF-8 BOM: `20260921120400_create_authentication_session.sql` was not the source; inspection identified `20261005211000_correct_founder_system_admin_bootstrap_existing_account.sql` as the BOM-bearing migration. PostgreSQL rejected the leading BOM as a token (`syntax error at or near "﻿"`).
+
+Correction in `src/db/migrate.ts` commit `2b488b1`: strip a leading U+FEFF only from the SQL text immediately before execution. The original file bytes remain unchanged for checksums and historical provenance. This avoids silently rewriting a migration already applied in existing environments. The next CI run must confirm the complete migration chain proceeds and both DB integration suites execute; zero-skip qualification remains open.
+
+
+## 27. Founder zero-skip acceptance gate verified — 2026-10-16 13:30Z
+
+CI run [38907968657](https://github.com/zaidhqdev-sys/GHM/actions/runs/38907968657) completed successfully on `2b488b168e9a9fffadd538eb14280408762108a3`. Exact TAP summary: `# tests 569`, `# pass 569`, `# fail 0`, `# skipped 0`, `# todo 0`. Build, full migration application to disposable PostgreSQL 18, auth foundation persistence, Connect service-assertion replay persistence, and runtime-boundary verification all passed. This closes the zero-skip CI infrastructure blocker; it does not authorize production migration or merge.
+
+Next implementation batch: read-only inventory of Connect's UUID identity/domain relationships and current active Supabase callers. Initial confirmed edges from checked-in migrations: `profiles.id -> auth.users.id`; `businesses.owner_id -> profiles.id`; `leads.business_id -> businesses.id`; `leads.customer_id -> profiles.id`; `projects.customer_id -> profiles.id`; `notifications.user_id -> profiles.id`; reviews reference both business and profile identities; project quotes link projects and businesses. These are UUID-based domain edges, not all of the schema. The complete inventory must be generated from all migrations/generated types before planning any backfill. Keep all current callers fail-closed; no email linking, no legacy Supabase JWT acceptance, no production backfill/cutover.
+
+
+
+## 28. Browser-safe GHM web-session contract implemented — 2026-10-16
+
+Implemented on this branch:
+- `src/http/auth-router.ts`: `POST /api/v1/auth/web/register`, `/login`, `/refresh`, and `/logout`. Refresh credentials are issued only in an HttpOnly cookie, never in the JSON response. Access JWT remains short-lived and memory-only on the web client. Refresh rotation calls the existing persisted refresh-token service; logout revokes the refresh session and clears the cookie.
+- Cookie defaults: name `ghm_web_refresh`, path `/api/ghm`, `HttpOnly; SameSite=Lax`; Secure is enabled by default in production. Cookie path/name/secure behavior can be configured through `GHM_WEB_AUTH_COOKIE_PATH`, `GHM_WEB_AUTH_COOKIE_NAME`, and `GHM_WEB_AUTH_COOKIE_SECURE`.
+- Exact browser Origin allowlist is required via `GHM_WEB_AUTH_ALLOWED_ORIGINS`. An empty allowlist returns 503; absent or unapproved Origin returns 403. All web-auth responses set `Cache-Control: no-store`.
+- Identity resolution now returns the caller's own active membership choices with scoped business summaries and leaves active context null until an explicit selection is made. This avoids the prior 409 response hiding the membership choices the Connect UI needs. The service only enriches business records for memberships already belonging to the authenticated account.
+- Tests: [CI run 38926736620](https://github.com/zaidhqdev-sys/GHM/actions/runs/38926736620) passed **571/571, zero failures, zero skipped, zero TODO**. The earlier initial service change briefly failed its test because the expected selection contract was updated after the first commit; the corrected service and test commits passed. Do not treat the historical failed run as current status.
+
+### Deployment gates (not yet configured or qualified)
+Before enabling Connect production traffic, configure the Render GHM Internal Runtime with `GHM_WEB_AUTH_ALLOWED_ORIGINS` set to the exact approved Connect origin(s), `GHM_WEB_AUTH_COOKIE_PATH=/api/ghm`, and secure cookies enabled. Configure Vercel Connect with `GHM_INTERNAL_RUNTIME_URL` pointing at the actual GHM Internal Runtime URL and `CONNECT_WEB_ORIGIN` equal to the exact Connect web origin. Do not guess the runtime URL or add broad wildcard origins. Confirm the actual Render and Vercel environment values, deploy, and run an end-to-end browser session qualification before rollout. No production environment variables were changed by these code commits.
+
+The session cookie is host-only on the Connect origin because the Vercel same-origin BFF proxies the response; the refresh cookie is not forwarded to ordinary GHM API endpoints. Browser access tokens remain in memory only. A full page reload re-establishes access using the HttpOnly cookie. Existing non-auth Connect data services still contain Supabase callers and are not considered migrated by this auth work.
+
+
+
+## 29. Connect browser auth consumer qualified by zero-skip contract CI — 2026-10-16
+
+Connect's current focused auth workflow now runs five suites (original GHM auth client + identity adapter, browser auth client, same-origin proxy, isolated GHM identity resolver). Run [38928689930](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/38928689930) passed 35 tests, 0 failed, 0 skipped, 0 TODO. The implementation keeps refresh credentials in an HttpOnly host-only cookie on the Connect origin, access tokens in memory, and routes authenticated API calls through a fixed-upstream same-origin proxy. GHM CI run [38927909441](https://github.com/zaidhqdev-sys/GHM/actions/runs/38927909441) passed 571/571, 0 failures, 0 skipped, 0 TODO.
+
+No deployment values have been configured or verified. Connect must set `GHM_INTERNAL_RUNTIME_URL` and exact `CONNECT_WEB_ORIGIN`; GHM must set exact `GHM_WEB_AUTH_ALLOWED_ORIGINS`, `GHM_WEB_AUTH_COOKIE_PATH=/api/ghm`, and secure cookies. Deploy and test login/register/reload/refresh/logout/Origin rejection before rollout. Connect's non-auth product services remain coupled to Supabase. No production cutover or merge authorization is implied by unit/contract CI.
+
+
+
+
+## 30. Marketplace enquiry write contract passed; directory parity is the next backend gap — 2026-10-16
+
+Connect's current browser-auth + marketplace enquiry contract workflow is green on latest documented Connect head: [run 38931521657](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/38931521657), 42 passed, 0 failed, 0 skipped, 0 TODO, production Vite build passed. The write path now calls GHM `POST /api/v1/enquiries`; GHM derives the customer account from the bearer token.
+
+Before the Connect Marketplace can use GHM end-to-end, the current public directory contract needs product-parity work. `GET /api/v1/public/businesses` currently supports only `q`, `category`, `page`, and `pageSize`, returning canonical numeric GHM business IDs plus a limited public business shape. Connect's existing Marketplace UI also filters by province and contractor/supplier classification and displays additional fields such as city, category, featured/tier, WhatsApp, avatar/logo, and response/engagement statistics. Those fields are not all available from the current GHM public directory contract. Do not fake values or silently drop filters.
+
+### Required backend/product sequence
+1. Reconcile GHM business data against the Connect source-of-truth/backup and prove canonical business IDs, active/approved state, and owner memberships. Do not infer ID mapping from names or numeric coercion.
+2. Decide and document canonical GHM storage/ownership for province/city, supplier/contractor classification, and any additional directory fields required by the existing UI. Preserve protected fields (verification, featured status, ratings, jobs completed) as server-governed only.
+3. Extend directory query contract/SQL/API with validated filters and stable pagination only for fields backed by canonical GHM data. Add authorization/privacy tests and zero-skip qualification.
+4. Map the response into the Connect Marketplace view model; migrate listing reads and saved-business/enquiry callers as separate slices. Enquiry creation must remain fail-closed until selected listings provide a canonical numeric GHM business ID and a valid eligible target.
+5. Update this handover and the Connect migration inventory for every completed slice.
+
+The Connect enquiry client unit tests prove the payload and error handling, not runtime target parity. No production traffic, production schema, or provider configuration was changed. This is now the concrete next implementation gap, not a reason to resume a broad audit.
+
+
+
+
+## 31. Connect Marketplace directory contract implementation — 2026-10-16 (CI qualification pending)
+
+A construction-only migration `20261016170000_add_connect_directory_contract.sql` now adds the descriptive directory fields absent from the original GHM business schema: category, province, city, physical address, WhatsApp, website, logo/avatar presentation, commercial tier, featured flag, profile-view aggregate, and years in business. It adds public-listing indexes and value constraints. Trust, verification, promotion, analytics, and classification values remain server-governed; the migration explicitly revokes runtime column UPDATE rights for these fields.
+
+The classification column `is_supplier` is deliberately nullable. `NULL` means unresolved and must not be interpreted as contractor; directory filters match only explicit `true` suppliers or explicit `false` contractors. This preserves the rule that GHM does not infer Connect roles or classifications from legacy account roles.
+
+The canonical public business projection and directory repository now expose these fields, and `GET /api/v1/public/businesses` accepts validated `province` and `businessType=contractors|suppliers` filters in addition to q/category/page/pageSize. Filter values are parameter-bound in SQL, and ordering remains deterministic. Added HTTP/service/repository tests; the directory service and repository suites are now part of the full GHM test command.
+
+**Code-level qualification passed:** latest GHM head `a4c2ba0eb8c2961689cda9b827029a2c5c309568` passed [CI run 38936406967](https://github.com/zaidhqdev-sys/GHM/actions/runs/38936406967): build and disposable PostgreSQL migration checks passed; **580 tests passed, zero failed, zero skipped, zero TODO**. Coverage includes HTTP validation, service filter normalization, SQL parameter binding, canonical public projection mapping, and the full existing regression suite. The directory query also searches city and supports the legacy category slug while retaining managed category assignments. This migration is not applied to production. No legacy Connect business records have been imported, and no source-ID-to-GHM-ID map is asserted. The production Marketplace remains blocked until data parity/owner-membership reconciliation, owner editing of directory fields, deployed runtime qualification, and Connect consumer integration are separately qualified.
+
+
+
+
+## 32. Owner-managed Connect directory profile — implementation in progress (2026-10-16)
+
+This section supersedes the original handover's early audit-only status for the current construction branch. Implementation is authorized on the construction branch; production migration, data import, live traffic/cutover and merge remain separately gated.
+
+The owner-managed business profile contract is being extended through the existing `PATCH /api/v1/businesses/:businessId` path and the existing membership-checked `ghm.update_business_profile(bigint,bigint,jsonb)` SECURITY DEFINER function. New owner-editable fields: category slug, province, city, physical address, WhatsApp contact, website URL, nullable self-declared contractor/supplier classification, and years in business. Application and database validation enforce bounded values; URL must be HTTP(S). The database function continues to require an active owner/administrator membership and the application uses tenant transaction context.
+
+Protected values remain excluded: logo/media reference, avatar presentation, tier, featured status, profile-view analytics, ratings/review counts, jobs-completed aggregates, insurance/verification/trust fields, active state and identity keys. Runtime direct UPDATE privileges on new directory fields remain revoked; owner changes run only through the constrained function. The historical migration `20260916250000_extend_business_profile_trust_inputs.sql` was restored byte-for-byte to match main; the extension is a new forward migration `20261016180000_extend_owner_managed_directory_profile.sql`.
+
+**Qualification passed:** latest GHM head `b9450d2e896a5a5c5b704861f59b4de57f6af2c5` passed [CI run 38938503046](https://github.com/zaidhqdev-sys/GHM/actions/runs/38938503046): build, all migrations applied to disposable PostgreSQL, runtime boundary verification; **581 tests passed, zero failed, zero skipped, zero TODO**. Coverage includes owner-profile HTTP allowlist and invalid/protected-field rejection. Historical migration `20260916250000_extend_business_profile_trust_inputs.sql` is byte-for-byte identical to main; the added fields are implemented in forward migration `20261016180000_extend_owner_managed_directory_profile.sql`. Next after CI: inspect SQL grants/function qualification; then reconcile source business IDs and owner memberships before any production rollout. No production migration was applied.
+
+
+
+
+## 33. Connect business/owner reconciliation gate — executable contract added (2026-10-16)
+
+Added `src/db/connect-business-migration-reconciliation.ts` and `src/db/connect-business-migration-reconciliation.test.ts`, included in the full `npm test` suite. The pure reconciliation decision is read-only and fail-closed: it accepts a canonical business mapping only with a positive canonical ID and evidence, requires an explicit canonical owner account mapping with evidence, requires proof of active owner membership, and returns explicit `MAPPED`, `CREATE_REQUIRED`, `CONFLICT`, or `BLOCKED` outcomes. It deliberately has no business-name or email matching inputs and performs no create/link/write action.
+
+The tests cover valid exact mapping, missing source evidence, absent business mapping, absent owner mapping, reviewed-business conflict, owner-evidence conflict, unproven membership, invalid IDs/missing mapping evidence, and deterministic behavior. This is the reconciliation **decision contract**, not evidence that the real Connect backup rows have been reconciled. Actual row-level reconciliation remains blocked until the approved non-production source snapshot and explicit reviewed business/account mapping files are available, then every target business/account and active membership must be checked against the canonical GHM database. No production data was read or mutated for this implementation, no mappings were inserted, and no cutover is authorized.
+
+Latest CI for this implementation is running on head `69bf8e4442f1ca3d415dcf6ca82e920bab2ed152`; do not mark this contract qualified until the run completes with build, migration checks, all tests passed, zero skipped, and zero TODO.
+
+## 34. Current implementation and CI checkpoint — 2026-10-16 18:12Z
+
+GHM PR #137 remains **open, draft, and unmerged**. The latest checked full CI run for head `5aa335d95e25ba5b5dcbbe5b4da4cd0b2e9d189c` is [run 38945405032](https://github.com/zaidhqdev-sys/GHM/actions/runs/38945405032): build passed, all migrations applied to disposable PostgreSQL, **591 tests passed, zero failed, zero skipped, zero TODO**, and runtime boundary verification passed.
+
+The preceding merge-queue/test run [38945382173](https://github.com/zaidhqdev-sys/GHM/actions/runs/38945382173) failed one reconciliation test because its fixture removed `businessMapping` but retained a valid `reviewedBusinessMapping`; the implementation correctly returned `MAPPED`. The fixture now removes both mappings for the `CREATE_REQUIRED` case and separately tests acceptance of a reviewed mapping. The latest checked run above is green; the earlier failure is historical and must not be described as the current result.
+
+The business reconciliation function remains a **read-only decision contract**, not completed row-level data reconciliation. No production mapping rows were imported or mutated. The actual source snapshot, reviewed account/business mapping artifacts, canonical GHM records, active memberships, deployed API behavior, Connect consumer integration, and production readiness remain separate gates. This checkpoint does not authorize merge, production migration, deployment, payment activation, or cutover.
+
+Documentation reconciliation remains a live gate: older historical sections and PR status references must be distinguished from current state, and the GHM and Connect documentation sets must be reviewed together before any merge. Do not use the 2026-10-13 historical audit checkpoint as proof that current implementation documentation is fully reconciled.
+
+## 35. Cross-repository Connect auth verification checkpoint — 2026-10-16 18:56Z
+
+Connect PR #39 ([fail-closed GHM identity compatibility adapter](https://github.com/zaidhqdev-sys/zaid-connect/pull/39)) remains open, draft, and unmerged. Its latest branch head is `a8cf05a8a119db075f6cf07a30475e58b922b5bc`; runtime source/test changes were qualified at the preceding code checkpoint and the latest commit updates only the durable handover.
+
+- Connect Actions run [38950915317](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/38950915317) completed all configured auth client, identity adapter, browser auth, same-origin proxy, identity resolver, marketplace enquiry/directory tests, signup least-privilege regression, and web build steps successfully.
+- Connect signup now always registers with GHM role `customer`. Business-operator intent and Connect role are descriptive fields only; neither creates membership.
+- Connect's app-shell identity resolver now requires explicit `isSystemAdmin: true` for admin authority; a broad account `role: admin` or `connectRole: admin` alone does not grant it. Regression tests passed in the above run.
+- GHM PR #137's earlier full CI run [38945405032](https://github.com/zaidhqdev-sys/GHM/actions/runs/38945405032) passed build, disposable PostgreSQL migrations, 591/591 tests, zero failures, zero skipped, zero TODO, and runtime boundary verification. Its later handover-only edit has no separate CI run confirmed here.
+
+**Remaining gates are not waived:** Connect's same-origin proxy/auth flow has not been verified end-to-end against a deployed non-production GHM runtime; the current app still has legacy Supabase product-data callers; account/business UUID-to-numeric mappings and row-level active-owner membership reconciliation remain open; and full GHM + Connect documentation reconciliation is incomplete. No deployment, production mutation, payment activation, merge, or cutover is authorized by these test results.
+
+## 36. Deployed-runtime gate — 2026-10-16 18:57Z
+
+A read-only check of the connected Render workspace confirms that the service named GHM-Internal-Runtime is still configured to deploy **main**, with latest listed live deploy dep-db7b1cavcj2c73dt88hg at commit 20b120c7d6ecf7a86f9dc4f7a8dc61f9dee4d8dc (build finished 2026-10-13 22:29Z). GHM PR #137's implementation is on construction/identity-resolution-api-20261016 and is not merged or deployed. Therefore PR #137's new GET /api/v1/identity, authority contract and account external mapping migration must **not** be assumed present on the currently listed runtime deployment.
+
+The separate ghm-payfast-sandbox-runtime service is also listed on main with the same latest listed deploy commit 20b120c7d6ecf7a86f9dc4f7a8dc61f9dee4d8dc. This is not evidence that its running database schema or runtime includes PR #137's branch migrations.
+
+Render's service metadata lists GHM-Internal-Runtime on the Free web-service plan, while ghm-db remains a separate paid database resource per the operational record. No environment-variable values were read or changed in this check. Direct health endpoint retrieval could not be established through the available browser retrieval path, so this check does not claim the service is down or up.
+
+### Required before non-production end-to-end Connect auth
+
+1. Qualify the exact runtime service and database target without exposing secrets; verify /healthz, /readyz, and the deployed API route behavior through an appropriate direct runtime test.
+2. Prepare a controlled non-production deployment path for the reviewed GHM identity/auth implementation. Do not push or deploy the draft branch to production or repoint the sandbox without a deliberate deployment decision and a passing CI run on the exact candidate commit.
+3. Verify that required migrations are applied to the intended non-production database, roles/grants remain least-privilege, and origin/cookie settings are correct.
+4. Only then run browser-to-runtime signup/login/session/refresh/logout and identity-selection E2E tests.
+
+The branch CI results above remain valid for their exact checked code checkpoints. They do not imply the new route or migrations are deployed. No production deployment, database mutation, provider activation, merge or cutover is authorized.
+
+## Identity/API review checkpoint — 2026-10-16 20:02Z
+
+GHM PR #137 exact source/test checkpoint `efb56ddece10379d05958850eccaa07cf1851d1c` passed CI run [38951484770](https://github.com/zaidhqdev-sys/GHM/actions/runs/38951484770): build, disposable PostgreSQL migrations, 591/591 tests, zero failures/skips/TODO, and runtime boundary verification. The endpoint uses authenticated context and delegates selected business resolution to `BusinessIdentityServiceImpl`, which verifies an active membership for the selected business; no caller-supplied account ID is accepted. The account-external mapping is explicitly a controlled migration lookup, not authentication. This is code/contract evidence only: current Render metadata still points at old `main` commit `20b120c...`, so the new endpoint and schema are not confirmed deployed.
+
+Security/schema review also confirms the directory-profile migration revokes direct runtime column updates for protected profile/media/tier/promotion/analytics fields and routes owner-managed descriptive updates through a SECURITY DEFINER function that checks active owner/administrator membership. That is the intended least-privilege shape, but actual production grants and current DB migration state have not been inspected or mutated. Do not infer production readiness from disposable CI.
+
+Outstanding: exact-head CI for any subsequent handover-only commit; non-production deployed session + selected-business E2E; canonical source/target account and business mapping evidence; remaining Supabase caller/data/RPC/storage migration; and full cross-repository document reconciliation. Keep merge/deploy/cutover gates closed.

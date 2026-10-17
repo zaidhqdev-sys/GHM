@@ -43,7 +43,10 @@ const mappingRow = {
 
 class FakeClient {
   calls: string[] = [];
-  constructor(private readonly provisioning: boolean) {}
+  constructor(
+    private readonly provisioning: boolean,
+    private readonly hasActiveMembership = true,
+  ) {}
 
   async query(sql: string): Promise<any> {
     this.calls.push(sql);
@@ -51,6 +54,11 @@ class FakeClient {
     if (sql.includes('pg_advisory_xact_lock')) return { rowCount: 1, rows: [{ pg_advisory_xact_lock: null }] };
     if (sql.includes('FROM ghm.business_external_mapping')) {
       return this.provisioning ? { rowCount: 0, rows: [] } : { rowCount: 1, rows: [mappingRow] };
+    }
+    if (sql.includes('FROM ghm.business_membership') && sql.includes('SELECT membership_role')) {
+      return this.hasActiveMembership
+        ? { rowCount: 1, rows: [{ membership_role: 'member' }] }
+        : { rowCount: 0, rows: [] };
     }
     if (sql.includes('FROM ghm.business') && sql.includes('WHERE id = $1')) return { rowCount: 1, rows: [businessRow] };
     if (sql.includes('FROM ghm.account_identity')) return { rowCount: 1, rows: [accountRow] };
@@ -75,7 +83,7 @@ const poolFor = (client: FakeClient): TransactionPool => ({
   connect: async () => client as unknown as PoolClient,
 });
 
-test('existing Connect Business mapping resolves without provisioning', async () => {
+test('existing Connect Business mapping resolves only after active membership check', async () => {
   const client = new FakeClient(false);
   const adapter = new ConnectBusinessAdapter(poolFor(client));
 
@@ -87,7 +95,22 @@ test('existing Connect Business mapping resolves without provisioning', async ()
   assert.equal(result.outcome, 'resolved');
   assert.equal(result.business.id, 42);
   assert.equal(result.mapping.businessId, 42);
+  assert.ok(client.calls.some(call => call.includes('FROM ghm.business_membership') && call.includes('membership_status = \'active\'')));
   assert.equal(client.calls.filter(call => call.includes('INSERT INTO ghm.business (')).length, 0);
+});
+
+test('business role without active membership cannot resolve another mapped Business', async () => {
+  const client = new FakeClient(false, false);
+  const adapter = new ConnectBusinessAdapter(poolFor(client));
+
+  await assert.rejects(
+    () => adapter.provisionOrResolve(context, {
+      externalBusinessId: '11111111-1111-4111-8111-111111111111',
+      name: 'Ignored For Existing Mapping',
+    }),
+    /Active Business membership required/,
+  );
+  assert.equal(client.calls.filter(call => call.includes('FROM ghm.business_membership') && call.includes('membership_status = \'active\'')).length, 1);
 });
 
 test('unmapped Connect Business provisions and links inside one transaction', async () => {

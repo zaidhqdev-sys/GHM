@@ -4,7 +4,7 @@ import { BusinessIdentityServiceImpl } from './service';
 import type { AccountIdentity, BusinessIdentity, BusinessIdentityRepository, BusinessMembership, UpdateBusinessProfileInput, UpdateProfileInput } from './contracts';
 import type { AuthContext } from '../../auth/authorization';
 
-const account = (id: number, role: 'admin' | 'customer' | 'business'): AccountIdentity => ({ id, fullName: 'Test User', phone: null, avatarRef: null, role, createdAt: new Date(0), updatedAt: new Date(0) });
+const account = (id: number, role: 'admin' | 'customer' | 'business'): AccountIdentity => ({ id, email: 'test@example.com', fullName: 'Test User', phone: null, avatarRef: null, role, createdAt: new Date(0), updatedAt: new Date(0) });
 const business = (id: number, approved = true): BusinessIdentity => ({
   id,
   name: `Business ${id}`,
@@ -12,6 +12,14 @@ const business = (id: number, approved = true): BusinessIdentity => ({
   description: null,
   phone: null,
   email: null,
+  category: null,
+  province: null,
+  city: null,
+  physicalAddress: null,
+  whatsapp: null,
+  website: null,
+  isSupplier: null,
+  yearsInBusiness: 0,
   insuranceVerified: false,
   jobsCompleted: 0,
   verificationStatus: approved ? 'approved' : 'unverified',
@@ -55,10 +63,13 @@ test('identity resolution auto-selects the only active membership', async () => 
   assert.equal(result.activeBusiness?.id, 1); assert.equal(result.activeMembership?.businessId, 1);
 });
 
-test('identity resolution requires explicit selection for multiple active memberships', async () => {
+test('identity resolution returns membership choices without activating a business, then honors explicit selection', async () => {
   const context: AuthContext = { userId: 1, role: 'business' }; const { service, repository } = serviceFor(context);
   repository.businesses.set(1, business(1)); repository.businesses.set(2, business(2)); repository.memberships.push(membership(1, 1, 'owner'), membership(2, 1, 'administrator'));
-  await assert.rejects(() => service.resolveIdentity({ context }), /business-selection-required/);
+  const choices = await service.resolveIdentity({ context });
+  assert.equal(choices.memberships.length, 2);
+  assert.equal(choices.activeBusiness, null);
+  assert.equal(choices.activeMembership, null);
   const result = await service.resolveIdentity({ context, selectedBusinessId: 2 });
   assert.equal(result.activeBusiness?.id, 2); assert.equal(result.activeMembership?.role, 'administrator');
 });
