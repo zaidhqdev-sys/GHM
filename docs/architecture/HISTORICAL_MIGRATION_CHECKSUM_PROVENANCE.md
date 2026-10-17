@@ -71,3 +71,17 @@ Any schema correction or behavioral change required in the future must be introd
 ## Scope
 
 This record concerns historical migration-byte provenance only. It does not authorize production cutover, production data movement, credential changes, provider cleanup, or reopening of closed resource contracts.
+
+## Forensic reconciliation policy clarification — 2026-10-17
+
+The forensic audit distinguishes **current migration reconciliation** from **historical byte provenance**:
+
+- Current repository SQL is hashed after CRLF/CR-to-LF normalization. A ledger checksum matching that canonical checksum is an exact canonical match.
+- A ledger checksum matching the same SQL represented with CRLF is accepted as a supported legacy line-ending match. This compatibility does not modify the ledger or migration file.
+- A registered checksum in this file's companion exception registry records historical applied-byte provenance. It is not required to equal the current live ledger checksum and must not be labelled orphaned solely because the live checksum differs.
+- An exception is orphaned only when its migration version no longer has a corresponding live ledger row or repository migration file. An exception that now duplicates a supported current repository checksum is reported as redundant, separately from an orphan.
+- Any ledger checksum that matches neither the canonical bytes, supported legacy CRLF bytes, nor a specifically registered historical checksum remains an unexplained mismatch and fails the audit. Missing/extra versions, duplicate versions, name mismatches, and failed authority checks remain blocking.
+- The forensic audit must run inside an explicitly read-only database transaction and validate the expected database identity. The target database is selected using `GHM_MIGRATION_AUDIT_DATABASE`; absent that setting, the historical default remains `ghm_db`. A sandbox audit must set the intended sandbox database explicitly.
+
+This clarification changes audit classification only. It does not rewrite or remove historical exception records, update migration ledger rows, rerun migrations, or authorize any database mutation, deployment, cutover, or production action.
+
