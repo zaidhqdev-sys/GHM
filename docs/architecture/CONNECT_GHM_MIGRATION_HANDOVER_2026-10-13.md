@@ -1285,3 +1285,28 @@ Write-Host "`n=== END: read-only check ==="
 ```
 
 This format requirement does not authorize a repository sync, file cleanup, credential change, migration, deployment, merge or production mutation. Those remain subject to the existing project gates and explicit authorization.
+
+## Sandbox migration-ledger qualification recovery — 2026-10-17
+
+### What is established
+
+- The founder reports a successful sandbox migration-ledger qualification on 2026-10-11: target database `ghm_payfast_sandbox_db`, login role `ghm_migrator`, **76 local migration files / 76 recorded ledger entries / 0 missing / 0 mismatched / 0 unexpected**, with `ledgerComplete: true`.
+- This is a historical result supplied by the prior session record; it is **not evidence that the current sandbox ledger or credentials still match**.
+- The qualification must be a read-only comparison of local migration files with the sandbox migration ledger. It must not apply migrations.
+- `npm run migrate` is mutating and must not be used to discover or re-check the ledger.
+- `npm run audit:migrations` / `scripts/forensic-migration-reconciliation.mjs` is not the historical sandbox verifier: its documented target expects `ghm_db`. Do not point it at the sandbox.
+- `scripts/audit-commercial-migration-ledger.mjs` is also not the full verifier: it queries only commercial entries from `ghm.schema_migration_ledger`.
+- `docs/MIGRATOR_QUALIFICATION_2026-09-10.md` documents the generic `GHM_MIGRATOR_DATABASE_URL` pattern, but does not record the 2026-10-11 sandbox command or its connection setup. The full sandbox-specific command has not yet been recovered from the tracked docs inspected on 2026-10-17.
+
+### Recovery procedure — do not guess
+
+1. Inspect the six existing local `.env*` backups by filename and **variable-presence only**. Never print or copy connection strings, passwords, tokens, or private keys into chat, logs, Git, or documentation.
+2. Identify the backup that contains the sandbox migrator connection by checking masked host/database/user metadata locally; confirm the target database is exactly `ghm_payfast_sandbox_db` and the login role is exactly `ghm_migrator`. Do not use the production `ghm_db` connection.
+3. Recover the exact verifier command from the local project history or shell history, then inspect its source before execution. It must open a read-only transaction, compare all local migration filenames/checksums to the sandbox ledger, and report missing, mismatched, and unexpected rows without executing migration SQL.
+4. If the exact verifier cannot be recovered, stop and create a reviewed read-only verifier; do not substitute `npm run migrate` or a similarly named partial commercial audit.
+5. Record the actual date, repository commit, target database identity, role, migration-file count, ledger count, mismatch counts, verifier path/commit, and final exit status here after the check. Never record credentials.
+
+### Current status
+
+**Historical qualification recorded; current requalification pending.** No database command, migration, credential change, deployment, or production action is authorized by this recovery note. The existing founder PowerShell command-format standard in this handover remains mandatory for any local command sent to the founder.
+
