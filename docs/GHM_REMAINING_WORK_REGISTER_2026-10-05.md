@@ -1,13 +1,13 @@
 # GHM Remaining Work Register — 2026-10-13
 
-**Status:** CURRENT GOVERNED REMAINING-WORK REGISTER — reconciled against `main` through PR #131 on 2026-10-13  
+**Status:** CURRENT GOVERNED REMAINING-WORK REGISTER — reconciled against GHM `main` through PR #133; status-correction PR #135 remains under review (last verified 2026-10-16)  
 **Repository authority:** the register's original audit anchor was `1f2b10d0850095311614c5b5f9531eb8b7cce860` (`Normalize migration checksums across line endings`). That SHA is historical provenance, not a live pointer to `main`. The register was subsequently reconciled against the consolidated mainline through documentation-only PR #126 (`aef8ecdeee241d31827f6fc42730f9a61f1ddea4`), PR #127 (`6afb428d452012d9860ca50c2b0066f0768b184c`), PR #128 (`671c41be0b2446dd5c56c709c4aa3cb2e15e7d81`), PR #129 (`9af7901b0baecbdc4b307f3a0a93e1643f006ca6`), and PR #130 (`14c805cfd749ed50493523972fdd0a7c359bbfce`), all merged on 2026-10-13. These are repository reconciliation milestones only; neither proves live deployment or database state.
 
 **Latest documentation reconciliation:** the whole-repository pass and targeted follow-ups are recorded in `GHM_CURRENT_STATE.md`. Opportunity Participation and Business Profile source-audit authorization language was clarified as historical; the qualified slices are not reopened by those records.
 
-**PR #130 follow-up (historical):** targeted review of the 30-file documentation diff corrected stale historical headings/instructions in dated handovers, the shared-platform boundary audit, the Issue #1 baseline heading, and the Connect production-readiness historical-count table. PR #130 merged into `main` as `14c805cfd749ed50493523972fdd0a7c359bbfce`. The subsequent PR #131 reconciliation re-enumerated all 209 Markdown/text documentation files, checked stale pending-merge/current-HEAD phrasing, superseded capability claims and reconciliation-history pointers, and found no additional actionable live-status contradiction outside the two living status documents corrected by PR #131. This records the completed repository-wide status audit; it does not claim that a fresh full-repository Markdown-link scan was run after PR #130's latest edits. The earlier full-repository link scan found no broken targets, and the two PR #131 files contain no Markdown links.
+**PR #130/131 audit record (historical; superseded by findings after PR #133):** targeted review of the 30-file PR #130 documentation diff corrected stale historical headings/instructions in dated handovers, the shared-platform boundary audit, the Issue #1 baseline heading, and the Connect production-readiness historical-count table. PR #130 merged as `14c805cfd749ed50493523972fdd0a7c359bbfce`; PR #131 merged as `eb94a2aa7b3500d48b3e05d677d6fc385928ef4d`. PR #131 recorded a 209-file Markdown/text scan, but the later PR #133 handover introduced or retained stale live-status and resume claims that were found on 2026-10-14. Therefore, the earlier conclusion that no additional actionable live-status contradiction remained is historical only and is not proof of current repository-wide reconciliation. The prior link-scan result remains historical; a fresh full-repository link scan after subsequent changes has not yet been certified.
 
-**Latest verification:** PR #131 re-enumerated all 209 tracked Markdown/text documentation files and completed repository-wide stale-status and stale-SHA checks. The prior full-repository Markdown-link scan found no broken targets; PR #131's two changed files contain no Markdown links. Do not treat the prior checkpoint's targeted 30-file/14-link counts as the current complete audit result.
+**Verification boundary:** PR #131's 209-file status/SHA scan and the earlier full-repository Markdown-link scan are historical checks only. PR #133 and later documentation changes require fresh status, consistency, and link validation before repository-wide reconciliation can be certified. Do not treat earlier 30-file/14-link counts as the current complete audit result.
 
 - Storage audit: qualified metadata/persistence and Cloudflare R2 provider path are distinct from open product authorization, recovery, production enablement, and cutover.
 - Identity: migration-only external identity mapping is qualified; QuoteFlow session migration and organization-to-Business provisioning remain gated. Historical dual confirmation is limited to exceptional legacy conflicts.
@@ -231,7 +231,7 @@ Required:
 ### QF-03 — QuoteFlow GHM session client
 **Classification:** product integration — open.
 
-QuoteFlow currently remains Supabase-authenticated. A GHM session client and runtime coexistence/cutover path must be separately qualified before product authentication moves.
+**QuoteFlow-specific source state:** QuoteFlow remains Supabase-authenticated in the inspected implementation. A GHM session client and runtime coexistence/cutover path must be separately qualified before QuoteFlow authentication moves. This is distinct from ZAID Connect's approved no-Supabase target; the sentence does not assert that the hosted Supabase project is currently reachable or authorize retaining Supabase as Connect's target.
 
 ### QF-04 — QuoteFlow organization → Business provisioning
 **Classification:** migration capability — open.
@@ -270,7 +270,7 @@ Construction health/readiness is qualified. Production replacement still require
 
 ### OPS-05 — Shadow qualification
 **Open / not started.**  
-Exercise representative Connect and QuoteFlow workflows against non-production GHM while production remains on Supabase. Establish reconciliation, failure handling, monitoring and rollback evidence.
+Exercise representative Connect and QuoteFlow workflows against non-production GHM with isolated test identities/data and no production cutover. Keep existing source configurations unchanged until each product's migration is separately qualified and explicitly authorized; do not assume hosted Supabase availability or treat Supabase as the approved Connect target. Establish reconciliation, failure handling, monitoring and rollback evidence before any product-specific cutover.
 
 ### OPS-06 — Controlled cutover
 **Open / not authorized.**  
@@ -343,8 +343,49 @@ Newly confirmed blocking scope includes: Supabase-native Connect startup/session
 
 Preserve no-Supabase target, explicit ID/identity mapping, GHM-native user-token API or secure BFF decision, and existing authorization/transaction/tenant boundaries. Keep `launchAuthorized=false`, `milestone38Approved=false`, `milestone52Approved=true`, and `onlineSubscriptionActivation=false`. PayFast and Paystack status remain separate. No construction, provider activation, production migration, or cutover is authorized by this reconciliation.
 
-## Draft Connect migration reconciliation overlay — 2026-10-13
+## Connect migration reconciliation — merged to GHM main on 2026-10-13; status corrected 2026-10-14
 
-The Connect-specific caller-to-contract findings are currently on draft PR #133 and are **not yet on main**; do not describe them as merged or qualified. Until that documentation PR is reviewed and merged, the durable resume point on the draft branch is `docs/architecture/CONNECT_GHM_MIGRATION_HANDOVER_2026-10-13.md`, read with `GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md` and `CONNECT_BACKEND_OPERATION_INVENTORY.md`.
+The Connect-specific caller-to-contract findings and durable handover were merged into GHM `main` in PR #133 (`20b120c7d6ecf7a86f9dc4f7a8dc61f9dee4d8dc`). Their presence on `main` records audit findings; it does not mean the required product capabilities are implemented, qualified, or cutover-ready. Resume from `docs/architecture/CONNECT_GHM_MIGRATION_HANDOVER_2026-10-13.md`, read with `GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md` and `CONNECT_BACKEND_OPERATION_INVENTORY.md`, and verify current mainline evidence before implementation.
 
-The current draft findings resolve an earlier handover contradiction: Relationships/Outcomes is a registered authenticated Connect route requiring `BUSINESS_READ` and active-business context, so its missing GHM domain is an active **Build** gap, not conditional on reachability. Existing identity-adapter, storage/R2, Business Hours, Project Quote and commercial-trial qualifications remain bounded evidence; none proves complete Connect parity or no-Supabase cutover readiness. This is documentation-only and does not authorize construction, production mutation, provider activation or cutover.
+The merged caller-to-contract findings resolve an earlier handover contradiction: Relationships/Outcomes is a registered authenticated Connect route requiring `BUSINESS_READ` and active-business context, so its missing GHM domain is an active **Build** gap, not conditional on reachability. Existing identity-adapter, storage/R2, Business Hours, Project Quote and commercial-trial qualifications remain bounded evidence; none proves complete Connect parity or no-Supabase cutover readiness. This is documentation-only and does not authorize construction, production mutation, provider activation or cutover.
+
+## Historical PR #135 consistency checkpoint — 2026-10-14 (superseded by follow-up audit)
+
+At the 2026-10-14 checkpoint, GHM PR #135 changed **13 documentation files**, not six. This is a historical count and is not the current changed-file count. Follow-up documentation work on 2026-10-16 added the inline-link scan record and audit checkpoint updates; the current GitHub PR metadata reports **14 changed files**. The PR remains open/unmerged. The handover and gap register preserve the actionable missing-capability backlog; the inventory and historical audit retain historical-snapshot labels and bounded current overlays. GHM component qualification is not end-to-end Connect readiness, and PayFast local qualification is not real sandbox/runtime or production enablement. PayStack status remains separate.
+
+**Audit limitation at the historical checkpoint:** the prior repository-wide Markdown/status and local-link scans predated PR #133 and subsequent edits. That targeted pass did not replace a fresh enumeration of all tracked Markdown on the review branch, a same-branch link-target check, or a complete semantic scan of status, SHA, authority, and next-step claims. Those limitations were carried forward and are being addressed by the later dated handover checkpoints; repository-wide semantic reconciliation remains open until the complete checks and cross-repository comparison are complete. No implementation, provider activation, migration, or cutover is authorized.
+
+
+
+## 2026-10-16 audit checkpoint — link pass scope clarified
+
+Fresh review-tree enumeration covered 210 tracked GHM Markdown documents and 47 Connect Markdown documents. Relative Markdown file-target validation found zero missing targets across both trees. Batched heading/explicit-anchor checks found no missing anchors within the checked batches (14 GHM batches; 3 Connect batches). This is not full link certification: cross-batch anchors, reference-style links, HTML/autolinks and external URL liveness remain open. Repository-wide semantic/status/authority/owner/history reconciliation and cross-repository caller-to-contract comparison also remain open. PR #135 and PR #36 remain open/unmerged; do not merge without completion of the GHM audit and explicit founder authorization.
+
+## 2026-10-16 executable and deployment gates — current overlay
+
+Keep these gates separate; a green unit/contract workflow is not a deployed end-to-end result.
+
+1. **GHM #138 proxy safety:** consolidated exact head `3d08b0667775c2f589b90f02bbae8ea7ced9f8e9` passed [run 38970659762](https://github.com/zaidhqdev-sys/GHM/actions/runs/38970659762), 563/563 with zero failures/skips/TODO, including disposable PostgreSQL migrations and runtime-boundary verification. Confirm actual Render ingress proxy hops and test client-IP/rate-limit enforcement before any separately approved deployment. Render remains on main commit `20b120c7d6ecf7a86f9dc4f7a8dc61f9dee4d8dc`.
+2. **GHM #137 identity and mapped-business guard:** latest head `6ed28a2cd9ffc0a49eefb281793bb4382a427a76` passed [run 38971853527](https://github.com/zaidhqdev-sys/GHM/actions/runs/38971853527), 592 passed, 0 failed, 0 skipped, 0 TODO; migrations and runtime-boundary verification passed. It contains the membership guard consolidated from closed PR #134 and shares #138's production fail-closed migration runner. The new endpoint/schema are not confirmed deployed. Require browser login/restore/refresh rotation/logout/revocation/expiry and unauthorized-business-selection E2E, plus explicit source-to-canonical account/business mapping and active membership evidence.
+3. **GHM #136 business hours:** latest head `8f11cb32271c88f54f0bc2011e7dcd74685eedcc` passed [run 38971913370](https://github.com/zaidhqdev-sys/GHM/actions/runs/38971913370), 564 passed, 0 failed, 0 skipped, 0 TODO; migrations and runtime-boundary verification passed. Its migration runner matches #138. Require non-production Connect caller and canonical-business mapping E2E.
+4. **Connect #39 adapter:** run 38958913312 passed 50/50 configured contract tests with zero failures/skips/TODO and web build success. Remaining Supabase table/RPC/storage dependencies mean target parity is not complete.
+5. **Documentation closeout:** PR #135 and Connect #36 remain unmerged. Finish full semantic/status/authority/owner/history/SHA and link-form validation across both review branches. No merge until all GHM docs are reconciled and founder explicitly authorizes it.
+
+No production deployment, database migration/import, provider activation or cutover is authorized by these test results.
+
+
+## Consolidation closeout — 2026-10-16 21:58Z
+
+The active implementation review surface is now GHM #136 (business-hours replacement), #137 (identity plus active-membership guard), and #138 (trusted-proxy bound plus database-backed CI); #135 is the documentation gate. #134 and #139 are closed unmerged because their changes were consolidated into #137 and #138. Treat only the exact tested heads and workflow runs already recorded above as CI evidence.
+
+Cross-repo duplicate/non-target cleanup: Connect #35/#37 closed unmerged as duplicates of #39; Connect #15/#28 closed unmerged because their Supabase Edge Function paths are not the GHM target. Their branches remain historical/reference material. Connect #39 is not deployed; #33 remains disabled sandbox work, not live-payment authorization.
+
+The docs gate remains OPEN. Latest recorded GHM docs-branch test result includes two skipped tests; neither skip is waived. Required closeout is limited to: (1) current-head full Markdown local-target/reference-link/anchor validation on GHM #135 and Connect #36; (2) final semantic reconciliation of source-vs-target, status, authority, ownership, dates/SHAs and cross-repository contracts against operation-level readiness; (3) recheck live PR metadata and record the exact final validation results. Do not restart general capability discovery. No merge or production change without founder authorization.
+
+
+### Documentation CI dependency — 2026-10-16 22:00Z
+
+The latest recorded exact-head CI run on GHM #135 (`10cb2af53cd9a69ff8f4c4f71825449e84c22faa`, [38973019692](https://github.com/zaidhqdev-sys/GHM/actions/runs/38973019692)) passed build/runtime verification but had **543 passed / 2 skipped / 0 failed / 0 TODO**. No skip is waived. The two skips require the disposable PostgreSQL 18 auth persistence/service-assertion fixture that is qualified on #138. The docs PR remains open; do not merge with skipped tests or duplicate #138 implementation into #135 without an explicit, reviewed consolidation plan.
+
+
+6. **GHM-native account email identity — implementation in review, parity not closed (2026-10-16):** GHM #137 latest head `340719c7d9a61d2f0c600edb21c89003aa3e2551` adds the restricted email function/API field, DB-backed runtime assertion, caller-ID isolation, and direct-table-denial coverage; exact run [38975655478](https://github.com/zaidhqdev-sys/GHM/actions/runs/38975655478) passed 592 / 592, 0 skipped/TODO. Connect #39 maps only the GHM-returned email and removes legacy caller-email fallback; exact-head run [38974932731](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/38974932731) passed 51 tests with 0 failures/skips/TODO and the production web build passed. Remaining: prove login/refresh/restore propagation and cross-account denial end-to-end; determine canonical email handling for accounts without an active password credential (current function returns null for these); test affected enquiry/header/reviewer callers. No client-submitted email or Supabase fallback.

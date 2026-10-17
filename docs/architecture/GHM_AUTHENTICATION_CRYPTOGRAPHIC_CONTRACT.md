@@ -246,20 +246,23 @@ It must be:
 - distinct from arbitrary product-supplied claims
 - configurable through controlled runtime configuration
 
-### 5.2 Repository evidence (no production value invented)
+### 5.2 Historical repository evidence — Gate 2A snapshot only
 
-| Evidence | Finding |
+> **Historical baseline clarification — 2026-10-15:** The evidence table below describes the recorded Gate 2A repository snapshot, not the current `main` implementation. Current source evidence in `src/auth/foundation/access-jwt.ts`, `src/auth/ghm-bearer.ts`, and `src/auth/ghm-bearer.test.ts` defines and enforces the configured GHM JWT audience; tests reject a token with a wrong audience. Do not use the historical table below to claim the current verifier omits audience validation.
+
+| Evidence at Gate 2A baseline | Historical finding (not current status) |
 |---|---|
-| Resource API path | Product HTTP surface uses `/api/v1/...` — **versioned path prefix**, not a JWT audience claim |
-| Config | No `JWT_AUD` / audience string in `src/config.ts` or `.env.example` |
-| Current verifier | Does **not** check `aud` |
+| Resource API path | Product HTTP surface used `/api/v1/...` — **versioned path prefix**, not a JWT audience claim |
+| Config | No `JWT_AUD` / audience string was found in the baseline `src/config.ts` or `.env.example` |
+| Verifier | The verifier inspected at that historical baseline did **not** check `aud` |
 | Product verifiers | Target: Connect / QuoteFlow obtain GHM credentials and call GHM Resource API; products must **not** invent AuthContext; GHM Resource API is the primary bearer-token verifier today |
-| Auth vs Resource | Issuance ADR selects a future **GHM authentication API** separate from today’s Resource API routes — multi-`aud` remains optional |
+| Auth vs Resource | Issuance ADR selected a future **GHM authentication API** separate from the Resource API routes — multi-`aud` remained optional at that snapshot |
 | Unrelated “audience” | `ghm` commercial plan `audience` field / Campaign Brief “audience” are **domain marketing concepts**, not JWT `aud` |
 
 ```text
-NO EXISTING JWT aud VALUE IN REPOSITORY.
+GATE 2A BASELINE ONLY: NO EXISTING JWT aud VALUE WAS FOUND.
 /api/v1 IS NOT AUTOMATICALLY aud.
+CURRENT MAINLINE: aud IS DEFINED AND ENFORCED BY THE GHM JWT FOUNDATION.
 ```
 
 ### 5.3 Approach comparison

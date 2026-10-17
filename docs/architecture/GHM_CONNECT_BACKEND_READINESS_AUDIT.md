@@ -142,8 +142,8 @@ Additional domain services:
 | Business capability assert create/read | assertions | `business_capability` | `PARTIALLY PROVIDES` | QUALIFIED create/read | Connect `replace` bulk assertions; evidence submit/review; verification update reserved in GHM |
 | Capability evidence | evidence table + review RPC | none | `DOES NOT YET PROVIDE` | Connect evidence service + migration | Evidence schema/ops/auth |
 | Knowledge graph projection | RPC | none | `DOES NOT YET PROVIDE` | Connect knowledge graph service | Projection contract |
-| Categories/classification | category tables | none | `DOES NOT YET PROVIDE` | Connect category services + migrations | Classification schema/ops |
-| Business offerings | `business_offerings` | none | `DOES NOT YET PROVIDE` | Connect offering service + migration | Offering resource |
+| Categories/classification | category tables | GHM Business Category resource (qualified/closed after this audit snapshot) | `HISTORICAL SNAPSHOT GAP — later GHM resource qualification recorded` | Connect category services + migrations; later GHM category qualification recorded in current state | Connect category HTTP/UI/filter parity and any missing assignment operations still require operation-level proof |
+| Business offerings | `business_offerings` | GHM Business Offering resource (qualified/closed after this audit snapshot) | `HISTORICAL SNAPSHOT GAP — later GHM resource qualification recorded` | Connect offering service + migration; later GHM resource qualification recorded in current state | Do not reopen GHM resource; Connect adapter need remains unproven until an active mounted caller is evidenced |
 | Enquiry/Lead core | create/read/status | `enquiry` | `PARTIALLY PROVIDES` | QUALIFIED / CLOSED Enquiry | Atomic marketplace Enquiry→Opportunity RPC parity; realtime lead feed |
 | Marketplace Enquiry+Opportunity atomic create | `create_marketplace_enquiry_with_opportunity` | Enquiry + Opportunity exist separately | `PARTIALLY PROVIDES` | Connect marketplace service; GHM has Enquiry Opportunity link reconciliation | Exact atomic workflow qualification as Connect uses it |
 | Opportunity core | create/read/update/transition | `opportunity` | `PARTIALLY PROVIDES` | Opportunity Core qualified | Marketplace discovery filters; complete outcome/matching graph not authorized |
@@ -225,8 +225,8 @@ Evidence: `src/auth/authorization.ts`, `src/auth/request-context.ts`, `src/db/au
 | capabilities | catalogue migrations | `ghm.capability` | PARTIAL | Governance write path not exposed |
 | business_capabilities | assertion migration | `ghm.business_capability` | PARTIAL | Evidence relation absent; replace semantics differ |
 | business_capability_evidence | evidence migration | none | MISSING | Entire evidence subdomain |
-| business_categories / assignments | classification migration | none | MISSING | Entire classification subdomain |
-| business_offerings | classification migration | none | MISSING | Entire offerings subdomain |
+| business_categories / assignments | classification migration | GHM Business Category resource (qualified/closed after this audit snapshot) | HISTORICAL SNAPSHOT GAP — later GHM resource qualification recorded | GHM resource qualification is closed; Connect category assignment, HTTP, and UI/filter parity still need operation-level proof |
+| business_offerings | classification migration | GHM Business Offering resource (qualified/closed after this audit snapshot) | HISTORICAL SNAPSHOT GAP — later GHM resource qualification recorded | GHM resource qualification is closed; Connect offering adapter need remains unproven until an active mounted caller is evidenced; do not reopen the resource |
 | leads | enquiry migration | `ghm.enquiry` | PARTIAL | Connect field/RPC naming; atomic Opportunity workflow |
 | reviews | reviews migration | `ghm.review` | COVERED for qualified slice | — |
 | saved_businesses | trust/saved migration | `ghm.saved_business` | COVERED for relationship | No Business embed |
@@ -385,9 +385,13 @@ GHM construction progress ≠ Connect backend readiness.
 Connect still requires Supabase/provider behaviors that GHM has not reproduced as complete, authorized, qualified backend contracts plus a product adapter.
 ```
 
-## 13. Recommended next evidence
+## 13. Recommended next evidence — historical checklist, superseded for resume order
 
-Only evidence needed to make future construction decisions. No speculative implementation.
+The ten-item list below records the recommendations made by this 2026-09-18 comparison audit. It is historical evidence, not a current queue to restart or execute wholesale. Subsequent source-to-source caller reconciliation and identity-provider review narrowed and ordered the remaining work.
+
+For the current task and exact resume point, use `docs/architecture/CONNECT_GHM_MIGRATION_HANDOVER_2026-10-13.md` and its operation-level matrix. Cross-check classifications against `GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md` and `CONNECT_BACKEND_OPERATION_INVENTORY.md`; use this audit for historical baseline counts and bounded qualification context only. Do not treat a historical recommendation as new construction authorization.
+
+The original recommendations are retained below as audit history:
 
 1. **Connect adapter evidence pack** — map each `lib_supabase.js` / feature service method to either an existing GHM operation, an external provider, Connect-local behavior, or a missing contract.
 2. **Public Business / directory field reconciliation** — exact Connect public allowlist vs GHM Business schema; decide which fields are first GHM public projection extensions.
@@ -422,6 +426,6 @@ Dependency inventory rows in §3.3: **48** concrete Connect backend dependencies
 
 This audit inspected closed capabilities only to measure Connect coverage gaps. No closed capability was modified, re-qualified, or recommended for reopening.
 
-## Current migration resume point — 2026-10-13
+## Current migration resume pointer — reviewed 2026-10-14 (historical audit snapshot)
 
-For the current Connect no-Supabase migration, this historical 2026-09-18 comparison audit is not the operation-level source of truth. Resume from `docs/architecture/CONNECT_GHM_MIGRATION_HANDOVER_2026-10-13.md`; reconcile its caller-to-contract matrix with `GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md`, `CONNECT_BACKEND_OPERATION_INVENTORY.md`, `GHM_CURRENT_STATE.md`, and the relevant capability contracts. Older classifications and counts above remain historical snapshot data and must not be copied into current status summaries without fresh source evidence. The current migration target is GHM Internal Runtime with no Supabase runtime dependency; current qualified resource slices do not imply end-to-end Connect readiness. This note grants no implementation, merge or cutover authorization.
+This document remains a historical 2026-09-18 source-comparison audit and is not the operation-level source of truth. The current durable resume record is `docs/architecture/CONNECT_GHM_MIGRATION_HANDOVER_2026-10-13.md`; at the 2026-10-14 review, its documentation corrections are under PR #135 and must be checked against current `main` after review/merge. Reconcile its caller-to-contract matrix with `GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md`, `CONNECT_BACKEND_OPERATION_INVENTORY.md`, `GHM_CURRENT_STATE.md`, and the relevant capability contracts. Older classifications and counts above remain historical snapshot data and must not be copied into current status summaries without fresh source evidence. The current migration target is GHM Internal Runtime with no Supabase runtime dependency; current qualified resource slices do not imply end-to-end Connect readiness. This note grants no implementation, merge or cutover authorization.
