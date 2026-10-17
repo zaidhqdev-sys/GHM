@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - main
+      - construction/identity-resolution-api-20261016
 
 permissions:
   contents: read
