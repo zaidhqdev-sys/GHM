@@ -1251,3 +1251,37 @@ GHM PR #135 exact head `10cb2af53cd9a69ff8f4c4f71825449e84c22faa` passed build a
 ### Confirmed Connect identity parity gap — account email
 
 The first implementation now exists in the review branches. GHM #137 latest head `dc3e39ee0d9fea71eed8b8e64d860008ac81a8c3` includes a SECURITY DEFINER reader over the canonical password-credential store, the account.email response field, an HTTP response assertion, a database-backed runtime-role test, and caller-ID isolation; run [38975265619](https://github.com/zaidhqdev-sys/GHM/actions/runs/38975265619) passed 592 / 592 with zero skips/TODO. Connect #39 now maps only GHM's account.email and refuses legacy caller-email fallback; exact-head run [38974932731](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/38974932731) passed 51 tests with 0 failures/skips/TODO, and the production web build passed. This remains unmerged/un-deployed. Accounts without an active password credential still receive null email, so canonical email provenance for migrated/external-only accounts, cross-account browser E2E, and affected caller verification remain open. Do not use Supabase or client-submitted email as fallback.
+
+
+## Mandatory founder PowerShell command format — 2026-10-17
+
+This is a durable working-format requirement, not an optional style preference. All local PowerShell instructions for the founder must follow the established copy-paste format used throughout the project:
+
+- Introduce the batch briefly in prose, stating its purpose and whether it is read-only or mutating.
+- Provide one complete, directly runnable PowerShell batch in a `powershell` fenced code block. The user copies the commands inside the block, not the fence.
+- Start from the correct working directory, normally `Set-Location C:\GHM` for GHM work, followed by `$ErrorActionPreference = "Stop"`.
+- Group related operations under numbered section headers using `Write-Host "`n=== 1. Section name ==="`.
+- Keep commands grouped into one bounded batch, and finish with an explicit `Write-Host "`n=== END: ... ==="` marker.
+- Use actual PowerShell syntax, with no pasted `PS C:\GHM>` prompts or `>>` continuation prompts inside the code block.
+- Ask for only the output needed to make the next decision. Give one bounded batch at a time.
+- Do not invent or vary the layout, send exploratory command alternatives, repeat completed checks, or ask the founder to reconstruct a known workflow. Verify the intended command against the current repository, handover, scripts and available evidence first.
+- Never print, request or paste secret values from `.env` files. Prefer presence-only checks or masked identifiers where necessary.
+- State explicitly what the batch changes and what it does not change. Do not perform a mutation when the stated batch is read-only.
+- Use the same layout for every subsequent local-command batch and preserve this requirement in future handovers.
+
+Canonical layout example:
+
+```powershell
+Set-Location C:\GHM
+$ErrorActionPreference = "Stop"
+
+Write-Host "`n=== 1. First bounded check ==="
+# Verified command(s) for the stated purpose
+
+Write-Host "`n=== 2. Second bounded check ==="
+# Verified command(s) for the stated purpose
+
+Write-Host "`n=== END: read-only check ==="
+```
+
+This format requirement does not authorize a repository sync, file cleanup, credential change, migration, deployment, merge or production mutation. Those remain subject to the existing project gates and explicit authorization.
