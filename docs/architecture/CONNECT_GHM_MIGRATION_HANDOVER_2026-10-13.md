@@ -1317,7 +1317,24 @@ The verifier:
 4. Compare all ledger versions, names, and checksums; report missing, mismatched, unexpected rows, duplicate local versions, and duplicate ledger versions. A complete ledger requires all checks to pass.
 5. Record the actual run timestamp, repository commit, target database identity, session role, local file count, ledger count, all discrepancy counts, verifier source, and exit status here. Do not record credentials.
 
+### Fresh read-only comparison — 2026-10-17
+
+The founder ran the recovered verifier pattern from local checkout `5bb8619f55a068d3a8b43cb4fe7625757f105cde` on branch `construction/ghm-connect-payfast-business-mapping`. The output confirms the target identity (`ghm_payfast_sandbox_db`, session login `ghm_migrator`, effective role `ghm_schema_owner`) and a read-only transaction.
+
+Observed result:
+- Local checkout migration files: **77**
+- Sandbox ledger entries: **78**
+- Local files missing from ledger: **0**
+- Checksum mismatches among the 77 local files: **0**
+- Unexpected ledger version relative to this local checkout: **`20261012120000`**
+- Duplicate ledger versions: **0**
+- Migration name mismatches: **0**
+- Overall result: **`ledgerComplete: false`**
+
+This is a **local-checkout-to-sandbox comparison**, not proof that GitHub `main` is inconsistent. A fresh GitHub `main` tree inspection confirms it contains **78 migration files**, including `database/migrations/20261012120000_revoke_runtime_business_mapping_table_access.sql` (blob SHA `28cd19b21f8ef8f4c61f822d904002678eeadde9`). The founder's local branch has 77 files, so the apparent extra ledger version is consistent with a stale local checkout. Do not modify the ledger or run a migration to force counts to match.
+
+The next verification is narrowly scoped: read the existing ledger row for version `20261012120000` under the same guarded, read-only sandbox identity and compare its stored checksum to the current GitHub `main` migration content using the repository's canonical and legacy-CRLF checksum rules. Only then may we conclude whether the sandbox ledger matches GitHub `main`.
+
 ### Current status
 
-**Historical qualification recovered; fresh requalification pending.** The original command and sandbox environment filename are known, but no fresh database comparison has been run in this recovery step. No migration, credential change, deployment, or production action is authorized by this note. The founder's established PowerShell command-format preference remains mandatory for any local command supplied.
-
+**Historical result recovered; local-to-sandbox comparison completed but not a GitHub-main qualification.** The fresh check is safe and read-only, but it is not complete because the local checkout is missing one migration present on GitHub `main`. No migration, credential change, deployment, or production action is authorized by this note. The founder's established PowerShell command-format preference remains mandatory for any local command supplied.
