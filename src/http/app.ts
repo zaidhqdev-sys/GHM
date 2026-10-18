@@ -408,10 +408,6 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
           return;
         }
       }
-      if (!service.getIdentityContext) {
-        res.status(501).json({ error: 'not_implemented' });
-        return;
-      }
       const context = req.authContext as AuthContext;
       const identity = await service.getIdentityContext({ context, selectedBusinessId });
       res.status(200).json(identity);
