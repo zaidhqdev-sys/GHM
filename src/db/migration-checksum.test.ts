@@ -28,10 +28,10 @@ test('rejects a checksum for genuinely different migration SQL', () => {
 
 
 test('accepts the historical checksum of BOM-prefixed CRLF source bytes', () => {
-  const sourceSql = '\uFEFFSELECT 1;\\r\\nREVOKE SELECT ON TABLE ghm.example FROM ghm_runtime;\\r\\n';
+  const sourceSql = '\uFEFFSELECT 1;\r\nREVOKE SELECT ON TABLE ghm.example FROM ghm_runtime;\r\n';
   const legacySourceChecksum = crypto.createHash('sha256').update(sourceSql, 'utf8').digest('hex');
 
-  assert.notEqual(migrationSqlChecksum(sourceSql), migrationSqlChecksum(sourceSql.replace(/^\\uFEFF/, '')));
+  assert.notEqual(migrationSqlChecksum(sourceSql), migrationSqlChecksum(sourceSql.replace(/^\uFEFF/, '')));
   assert.equal(matchesMigrationSqlChecksum(legacySourceChecksum, sourceSql), true);
-  assert.equal(matchesMigrationSqlChecksum(legacySourceChecksum, sourceSql.replace(/^\\uFEFF/, '')), false);
+  assert.equal(matchesMigrationSqlChecksum(legacySourceChecksum, sourceSql.replace(/^\uFEFF/, '')), false);
 });
