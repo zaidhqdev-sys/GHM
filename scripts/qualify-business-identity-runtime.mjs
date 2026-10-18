@@ -153,6 +153,7 @@ try {
   }
   console.log(`MULTI-BUSINESS CREATION + MEMBERSHIP PRESERVATION PASS: businesses=${createdBusiness.id},${secondBusiness.id}`);
 
+  console.log('GHM IDENTITY HTTP QUALIFICATION BLOCK ENTERED');
   // Exercise the actual authenticated HTTP route using this same sandbox-backed
   // runtime pool. All accounts/businesses are disposable and removed in finally.
   const emptyAccountId = await createFixtureAccount(`${fixture.marker} empty-memberships`);
