@@ -387,6 +387,43 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     res.status(200).json({ status: 'ok' });
   });
 
+  app.get('/api/v1/identity', resourceAuthMiddleware, requireRegisteredAccess('profile', 'read'), requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
+    try {
+      const allowed = new Set(['businessId']);
+      const keys = Object.keys(req.query);
+      if (keys.some((key) => !allowed.has(key))) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const rawBusinessId = req.query.businessId;
+      let selectedBusinessId: number | undefined;
+      if (rawBusinessId !== undefined) {
+        if (typeof rawBusinessId !== 'string') {
+          res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+        selectedBusinessId = positiveIntegerId(rawBusinessId) ?? undefined;
+        if (selectedBusinessId === undefined) {
+          res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+      }
+      if (!service.getIdentityContext) {
+        res.status(501).json({ error: 'not_implemented' });
+        return;
+      }
+      const context = req.authContext as AuthContext;
+      const identity = await service.getIdentityContext({ context, selectedBusinessId });
+      res.status(200).json(identity);
+    } catch (error) {
+      if (error instanceof Error && /Selected business context is not authorized|Selected business not found|Selected business is inactive/.test(error.message)) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      handleError(error, res);
+    }
+  });
+
   app.get('/api/v1/profile', resourceAuthMiddleware, requireRegisteredAccess('profile', 'read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
