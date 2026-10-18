@@ -4,6 +4,7 @@ import 'dotenv/config';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
+const expectedDatabaseName = process.env.GHM_QUALIFICATION_DATABASE_NAME ?? 'ghm_db';
 
 if (!runtimeUrl) throw new Error('Missing GHM_RUNTIME_DATABASE_URL or DATABASE_URL for the dedicated runtime qualification connection');
 if (!migratorUrl) throw new Error('Missing GHM_MIGRATOR_DATABASE_URL for construction cleanup authority');
@@ -26,12 +27,12 @@ const runtimeIdentity = async () => {
   `);
   const identity = rows[0];
   if (
-    identity.database_name !== 'ghm_db' ||
+    identity.database_name !== expectedDatabaseName ||
     identity.session_user !== 'ghm_runtime' ||
     identity.current_user !== 'ghm_runtime' ||
     identity.current_role !== 'ghm_runtime'
   ) {
-    throw new Error(`Runtime qualification refused: expected ghm_db / ghm_runtime identity, received ${JSON.stringify(identity)}`);
+    throw new Error(`Runtime qualification refused: expected ${expectedDatabaseName} / ghm_runtime identity, received ${JSON.stringify(identity)}`);
   }
   return identity;
 };
@@ -45,12 +46,12 @@ const cleanupIdentity = async () => {
   `);
   const identity = rows[0];
   if (
-    identity.database_name !== 'ghm_db' ||
+    identity.database_name !== expectedDatabaseName ||
     identity.session_user !== 'ghm_migrator' ||
     identity.current_user !== 'ghm_migrator' ||
     identity.current_role !== 'ghm_migrator'
   ) {
-    throw new Error(`Cleanup authority refused: expected ghm_db / ghm_migrator identity, received ${JSON.stringify(identity)}`);
+    throw new Error(`Cleanup authority refused: expected ${expectedDatabaseName} / ghm_migrator identity, received ${JSON.stringify(identity)}`);
   }
   return identity;
 };
