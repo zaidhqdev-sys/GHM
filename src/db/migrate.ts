@@ -25,7 +25,7 @@ const GHM_LEDGER_TABLE = 'ghm.ghm_schema_migrations';
 const MIGRATION_LOCK = 731824;
 const MIGRATION_OWNER_ROLE = 'ghm_schema_owner';
 
-type Migration = { version: string; name: string; filename: string; sql: string; checksum: string };
+type Migration = { version: string; name: string; filename: string; sql: string; checksumSource: string; checksum: string };
 
 const HISTORICAL_PROVENANCE_EXCEPTIONS = historicalProvenanceExceptions as Record<string, string>;
 
@@ -44,7 +44,7 @@ const loadMigrations = async (): Promise<Migration[]> => {
     // from the SQL passed to PostgreSQL, where it is not valid SQL syntax.
     const sql = sourceSql.replace(/^\uFEFF/, '');
     migrations.push({
-      version: match[1], name: match[2], filename: entry.name, sql,
+      version: match[1], name: match[2], filename: entry.name, sql, checksumSource: sourceSql,
       checksum: migrationSqlChecksum(sourceSql),
     });
   }
@@ -92,7 +92,7 @@ const migrate = async (): Promise<void> => {
       const existingChecksum = appliedByVersion.get(migration.version);
       if (existingChecksum) {
         if (existingChecksum !== migration.checksum) {
-          if (matchesMigrationSqlChecksum(existingChecksum, migration.sql)) {
+          if (matchesMigrationSqlChecksum(existingChecksum, migration.checksumSource)) {
             console.warn(`Accepted legacy line-ending checksum for ${migration.filename}: database=${existingChecksum}, canonical=${migration.checksum}`);
           } else if (!isDocumentedHistoricalProvenanceException(migration.version, existingChecksum)) {
             throw new Error(`Migration checksum mismatch for ${migration.filename}: database=${existingChecksum}, repository=${migration.checksum}`);
