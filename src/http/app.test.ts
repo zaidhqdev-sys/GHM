@@ -234,6 +234,65 @@ test('protected profile route authenticates and binds the JWT context to the ser
   }
 });
 
+test('identity context route rejects missing authentication', async () => {
+  const service = { getIdentityContext: async () => { throw new Error('must not be called'); } } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/identity`);
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: 'unauthorized' });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('identity context route binds caller context and allows no selection with multiple memberships', async () => {
+  let received: { context: AuthContext; selectedBusinessId?: number } | undefined;
+  const identity = {
+    account: profile({ userId: 42, role: 'business' }),
+    memberships: [
+      { id: 5, businessId: 10, accountId: 42, role: 'owner', status: 'active' },
+      { id: 6, businessId: 11, accountId: 42, role: 'member', status: 'active' },
+    ],
+    activeMembership: null,
+    activeBusiness: null,
+  };
+  const service = {
+    getIdentityContext: async (input: { context: AuthContext; selectedBusinessId?: number }) => {
+      received = input;
+      return identity;
+    },
+  } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const token = tokenFor({ userId: 42, role: 'business' });
+    const response = await fetch(`${baseUrl}/api/v1/identity`, { headers: { authorization: `Bearer ${token}` } });
+    assert.equal(response.status, 200);
+    assert.deepEqual(received, { context: { userId: 42, role: 'business' }, selectedBusinessId: undefined });
+    const body = await response.json() as typeof identity;
+    assert.equal(body.memberships.length, 2);
+    assert.equal(body.activeBusiness, null);
+    assert.equal(body.activeMembership, null);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('identity context route validates selected business query strictly', async () => {
+  const service = { getIdentityContext: async () => { throw new Error('must not be called'); } } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const token = tokenFor({ userId: 42, role: 'business' });
+    for (const query of ['?businessId=0', '?businessId=01', '?businessId=1.2', '?businessId=1&businessId=2', '?other=x']) {
+      const response = await fetch(`${baseUrl}/api/v1/identity${query}`, { headers: { authorization: `Bearer ${token}` } });
+      assert.equal(response.status, 400, query);
+      assert.deepEqual(await response.json(), { error: 'invalid_request' });
+    }
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
 test('protected profile route rejects an invalid JWT', async () => {
   const service = { getOwnProfile: async () => { throw new Error('must not be called'); } } as unknown as BusinessIdentityService;
   const { server, baseUrl } = await startTestServer(service);
