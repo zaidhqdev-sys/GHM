@@ -278,6 +278,49 @@ test('identity context route binds caller context and allows no selection with m
   }
 });
 
+test('identity context route forwards explicit business selection to GHM service', async () => {
+  let received: { context: AuthContext; selectedBusinessId?: number } | undefined;
+  const identity = {
+    account: profile({ userId: 42, role: 'business' }),
+    memberships: [{ id: 5, businessId: 10, accountId: 42, role: 'owner', status: 'active' }],
+    activeMembership: { id: 5, businessId: 10, accountId: 42, role: 'owner', status: 'active' },
+    activeBusiness: { id: 10, name: 'Example', slug: 'example', isActive: true },
+  };
+  const service = {
+    getIdentityContext: async (input: { context: AuthContext; selectedBusinessId?: number }) => {
+      received = input;
+      return identity;
+    },
+  } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const token = tokenFor({ userId: 42, role: 'business' });
+    const response = await fetch(`${baseUrl}/api/v1/identity?businessId=10`, { headers: { authorization: `Bearer ${token}` } });
+    assert.equal(response.status, 200);
+    assert.deepEqual(received, { context: { userId: 42, role: 'business' }, selectedBusinessId: 10 });
+    const body = await response.json() as typeof identity;
+    assert.equal(body.activeBusiness?.id, 10);
+    assert.equal(body.activeMembership?.businessId, 10);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('identity context route hides unauthorized business selection as not found', async () => {
+  const service = {
+    getIdentityContext: async () => { throw new Error('Selected business context is not authorized'); },
+  } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const token = tokenFor({ userId: 42, role: 'business' });
+    const response = await fetch(`${baseUrl}/api/v1/identity?businessId=99`, { headers: { authorization: `Bearer ${token}` } });
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), { error: 'not_found' });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
 test('identity context route validates selected business query strictly', async () => {
   const service = { getIdentityContext: async () => { throw new Error('must not be called'); } } as unknown as BusinessIdentityService;
   const { server, baseUrl } = await startTestServer(service);
