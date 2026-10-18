@@ -63,6 +63,42 @@ test('identity resolution requires explicit selection for multiple active member
   assert.equal(result.activeBusiness?.id, 2); assert.equal(result.activeMembership?.role, 'administrator');
 });
 
+test('identity context lists multiple memberships without implicit selection', async () => {
+  const context: AuthContext = { userId: 1, role: 'business' };
+  const { service, repository } = serviceFor(context);
+  repository.businesses.set(1, business(1));
+  repository.businesses.set(2, business(2));
+  repository.memberships.push(membership(1, 1, 'owner'), membership(2, 1, 'administrator'));
+
+  const result = await service.getIdentityContext({ context });
+  assert.equal(result.memberships.length, 2);
+  assert.equal(result.activeBusiness, null);
+  assert.equal(result.activeMembership, null);
+});
+
+test('identity context permits zero memberships without active business', async () => {
+  const context: AuthContext = { userId: 1, role: 'business' };
+  const { service } = serviceFor(context);
+  const result = await service.getIdentityContext({ context });
+  assert.deepEqual(result.memberships, []);
+  assert.equal(result.activeBusiness, null);
+  assert.equal(result.activeMembership, null);
+});
+
+test('identity context validates explicit selection against caller membership and active Business', async () => {
+  const context: AuthContext = { userId: 1, role: 'business' };
+  const { service, repository } = serviceFor(context);
+  repository.businesses.set(1, business(1));
+  repository.businesses.set(2, business(2));
+  repository.businesses.set(3, { ...business(3), isActive: false });
+  repository.memberships.push(membership(1, 1, 'owner'), membership(3, 1, 'owner'));
+
+  const selected = await service.getIdentityContext({ context, selectedBusinessId: 1 });
+  assert.equal(selected.activeBusiness?.id, 1);
+  await assert.rejects(() => service.getIdentityContext({ context, selectedBusinessId: 2 }), /not authorized/);
+  await assert.rejects(() => service.getIdentityContext({ context, selectedBusinessId: 3 }), /not authorized/);
+});
+
 test('managed Business read requires active owner or administrator membership', async () => {
   const context: AuthContext = { userId: 1, role: 'business' }; const { service, repository } = serviceFor(context); repository.businesses.set(1, business(1)); repository.memberships.push(membership(1, 1, 'member'));
   await assert.rejects(() => service.getManagedBusiness(context, 1), /Business management permission required/);
