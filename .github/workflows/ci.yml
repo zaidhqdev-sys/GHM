@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - main
+      - integration/ghm-identity-merge-candidate-20261018
 
 permissions:
   contents: read
