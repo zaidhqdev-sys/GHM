@@ -16,6 +16,32 @@ const BUSINESS_OPERATOR_ROLES = new Set(['admin', 'business']);
 export class BusinessIdentityServiceImpl {
   constructor(private readonly repository: BusinessIdentityRepository) {}
 
+  /**
+   * Lists the authenticated account's memberships without requiring or inferring
+   * an active business when the account has multiple memberships. Explicit
+   * selections are still authorized against the caller's active membership and
+   * active Business in GHM.
+   */
+  async getIdentityContext(input: ResolveIdentityInput): Promise<ApplicationIdentity> {
+    const account = await this.repository.getAccount(input.context);
+    const memberships = await this.repository.getMembershipsForAccount(input.context);
+    if (input.selectedBusinessId === undefined) {
+      if (memberships.length === 1) {
+        const membership = memberships[0];
+        const business = await this.repository.getBusinessById(input.context, membership.businessId);
+        if (membership.status === 'active' && business?.isActive) {
+          return { account, memberships, activeMembership: membership, activeBusiness: business };
+        }
+      }
+      return { account, memberships, activeMembership: null, activeBusiness: null };
+    }
+    const membership = memberships.find(c => c.businessId === input.selectedBusinessId && c.status === 'active');
+    if (!membership) throw new Error('Selected business context is not authorized');
+    const business = await this.repository.getBusinessById(input.context, input.selectedBusinessId);
+    if (!business || !business.isActive) throw new Error('Selected business context is not authorized');
+    return { account, memberships, activeMembership: membership, activeBusiness: business };
+  }
+
   async resolveIdentity(input: ResolveIdentityInput): Promise<ApplicationIdentity> {
     const account = await this.repository.getAccount(input.context);
     const memberships = await this.repository.getMembershipsForAccount(input.context);
