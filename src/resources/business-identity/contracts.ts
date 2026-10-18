@@ -87,7 +87,7 @@ export interface BusinessIdentityRepository {
 
 export interface BusinessIdentityService {
   resolveIdentity(input: ResolveIdentityInput): Promise<ApplicationIdentity>;
-  getIdentityContext?(input: ResolveIdentityInput): Promise<ApplicationIdentity>;
+  getIdentityContext(input: ResolveIdentityInput): Promise<ApplicationIdentity>;
   getOwnProfile(context: AuthContext): Promise<AccountIdentity>;
   updateOwnProfile(context: AuthContext, input: UpdateProfileInput): Promise<AccountIdentity>;
   createBusiness(context: AuthContext, input: CreateBusinessInput): Promise<ApplicationIdentity>;
