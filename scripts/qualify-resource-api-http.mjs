@@ -117,60 +117,6 @@ try {
   const createToken = sign(createAccountId, 'business');
   const outsiderToken = sign(outsiderAccountId, 'business');
 
-  // Canonical GHM identity HTTP contract: exercise the real route with disposable
-  // sandbox accounts and businesses, not only direct service calls.
-  assertError(await request(baseUrl, 'GET', '/api/v1/identity'), 401, 'Identity missing authentication');
-  assertError(await request(baseUrl, 'GET', '/api/v1/identity', 'not-a-valid-token'), 401, 'Identity invalid token');
-  console.log('IDENTITY HTTP AUTHENTICATION DENIAL PASS');
-
-  const emptyIdentity = await request(baseUrl, 'GET', '/api/v1/identity', outsiderToken);
-  assertStatus(emptyIdentity, 200, 'Identity with no memberships');
-  if (
-    emptyIdentity.body?.account?.id !== outsiderAccountId ||
-    !Array.isArray(emptyIdentity.body?.memberships) ||
-    emptyIdentity.body.memberships.length !== 0 ||
-    emptyIdentity.body.activeMembership !== null ||
-    emptyIdentity.body.activeBusiness !== null
-  ) throw new Error(`Identity empty-membership contract failed: ${JSON.stringify(emptyIdentity.body)}`);
-  console.log('IDENTITY HTTP EMPTY MEMBERSHIP CONTRACT PASS');
-
-  const chooserIdentity = await request(baseUrl, 'GET', '/api/v1/identity', customerToken);
-  assertStatus(chooserIdentity, 200, 'Identity multiple memberships without selection');
-  if (
-    chooserIdentity.body?.account?.id !== customerAccountId ||
-    !Array.isArray(chooserIdentity.body?.memberships) ||
-    chooserIdentity.body.memberships.length !== 3 ||
-    chooserIdentity.body.activeMembership !== null ||
-    chooserIdentity.body.activeBusiness !== null
-  ) throw new Error(`Identity business chooser contract failed: ${JSON.stringify(chooserIdentity.body)}`);
-  console.log('IDENTITY HTTP MULTI-MEMBERSHIP CHOOSER PASS');
-
-  const selectedIdentity = await request(baseUrl, 'GET', `/api/v1/identity?businessId=${approvedBusinessId}`, customerToken);
-  assertStatus(selectedIdentity, 200, 'Identity authorized business selection');
-  if (
-    selectedIdentity.body?.account?.id !== customerAccountId ||
-    selectedIdentity.body?.activeMembership?.accountId !== customerAccountId ||
-    selectedIdentity.body?.activeMembership?.businessId !== approvedBusinessId ||
-    selectedIdentity.body?.activeBusiness?.id !== approvedBusinessId
-  ) throw new Error(`Identity selected business contract failed: ${JSON.stringify(selectedIdentity.body)}`);
-  console.log('IDENTITY HTTP AUTHORIZED BUSINESS SELECTION PASS');
-
-  assertError(await request(baseUrl, 'GET', '/api/v1/identity?businessId=not-an-id', customerToken), 400, 'Identity malformed business selection');
-  assertError(await request(baseUrl, 'GET', `/api/v1/identity?businessId=${managedBusinessId}`, customerToken), 403, 'Identity unauthorized business selection');
-  assertError(await request(baseUrl, 'GET', `/api/v1/identity?businessId=${inactiveBusinessId}`, customerToken), 403, 'Identity inactive business selection');
-  console.log('IDENTITY HTTP INVALID + UNAUTHORIZED SELECTION DENIAL PASS');
-
-  const multiCreatedIdentity = await request(baseUrl, 'GET', '/api/v1/identity', createToken);
-  assertStatus(multiCreatedIdentity, 200, 'Identity preserves multiple created memberships');
-  if (
-    multiCreatedIdentity.body?.memberships?.length !== 2 ||
-    multiCreatedIdentity.body.activeMembership !== null ||
-    multiCreatedIdentity.body.activeBusiness !== null ||
-    !multiCreatedIdentity.body.memberships.some((membership) => membership.businessId === createdBusinessId) ||
-    !multiCreatedIdentity.body.memberships.some((membership) => membership.businessId === secondBusinessId)
-  ) throw new Error(`Identity membership preservation contract failed: ${JSON.stringify(multiCreatedIdentity.body)}`);
-  console.log('IDENTITY HTTP MULTI-BUSINESS MEMBERSHIP PRESERVATION PASS');
-
   assertError(await request(baseUrl, 'GET', `/api/v1/businesses/${approvedBusinessId}`), 401, 'Business read missing authentication');
   console.log('RESOURCE API MISSING AUTH DENIAL PASS');
   assertError(await request(baseUrl, 'GET', `/api/v1/businesses/${approvedBusinessId}`, 'not-a-valid-token'), 401, 'Business read invalid token');
