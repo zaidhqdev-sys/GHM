@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import http from 'node:http';
-import jwt from 'jsonwebtoken';
 import { Pool } from 'pg';
 import 'dotenv/config';
 
@@ -17,6 +16,8 @@ const { BusinessIdentityServiceImpl } = await import('../dist/resources/business
 const { PostgresBusinessIdentityRepository } = await import('../dist/resources/business-identity/repository.js');
 const { config } = await import('../dist/config.js');
 const { createApp } = await import('../dist/http/app.js');
+const { createAccessJwtService } = await import('../dist/auth/foundation/access-jwt.js');
+const { loadEs256Keys } = await import('../dist/auth/foundation/es256-keys.js');
 
 const ssl = { rejectUnauthorized: false };
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
@@ -173,7 +174,8 @@ try {
   const address = qualificationServer.address();
   if (!address || typeof address === 'string') throw new Error('Identity HTTP qualification server did not expose an address');
   const baseUrl = `http://127.0.0.1:${address.port}`;
-  const identityToken = (userId) => jwt.sign({ userId, role: 'business' }, config.jwtSecret);
+  const identityJwt = createAccessJwtService(loadEs256Keys());
+  const identityToken = (userId) => identityJwt.sign(Number(userId));
   const identityRequest = async (path, token) => {
     const response = await fetch(`${baseUrl}${path}`, {
       headers: token ? { authorization: `Bearer ${token}` } : {},
