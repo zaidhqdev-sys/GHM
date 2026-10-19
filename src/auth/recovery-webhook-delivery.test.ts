@@ -24,6 +24,10 @@ test('delivery requires HTTPS and a strong bearer token', () => {
     () => createRecoveryWebhookDelivery({ url: 'https://delivery.example.test/hook', bearerToken: 'short' }),
     /not strong enough/,
   );
+  assert.throws(
+    () => createRecoveryWebhookDelivery({ url: 'https://user:pass@delivery.example.test/hook', bearerToken: token }),
+    /URL credentials or fragments/,
+  );
 });
 
 test('delivery sends the one-time credential only to the configured HTTPS boundary', async () => {
@@ -39,11 +43,11 @@ test('delivery sends the one-time credential only to the configured HTTPS bounda
   await delivery.deliver({ accountId: 42, email: 'owner@example.test', recoveryToken: 'opaque-one-time-token', expiresAt });
   assert.equal(request?.url, 'https://delivery.example.test/hook');
   assert.equal(request?.init.method, 'POST');
+  assert.equal(request?.init.redirect, 'error');
   assert.equal(request?.init.headers.authorization, `Bearer ${token}`);
   assert.equal(request?.init.headers['content-type'], 'application/json');
   assert.deepEqual(JSON.parse(request!.init.body), {
     event: 'quoteflow_migration_password_reset',
-    accountId: 42,
     email: 'owner@example.test',
     recoveryToken: 'opaque-one-time-token',
     expiresAt: expiresAt.toISOString(),
