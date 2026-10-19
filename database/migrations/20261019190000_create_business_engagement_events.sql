@@ -19,5 +19,7 @@ CREATE INDEX business_engagement_event_account_created_idx
 
 ALTER TABLE ghm.business_engagement_event OWNER TO ghm_schema_owner;
 REVOKE ALL ON TABLE ghm.business_engagement_event FROM PUBLIC, ghm_migrator;
-GRANT INSERT, SELECT ON TABLE ghm.business_engagement_event TO ghm_runtime;
+GRANT INSERT (business_id, account_id, event_type, event_context, source),
+  SELECT (id, business_id, account_id, event_type, event_context, source, created_at)
+  ON TABLE ghm.business_engagement_event TO ghm_runtime;
 GRANT USAGE, SELECT ON SEQUENCE ghm.business_engagement_event_id_seq TO ghm_runtime;
