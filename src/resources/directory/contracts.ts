@@ -4,6 +4,8 @@ export interface DirectoryQuery {
   readonly q?: string;
   readonly category?: string;
   readonly province?: string;
+  readonly city?: string;
+  readonly sort?: 'rating' | 'reviews' | 'views' | 'newest';
   readonly businessType?: 'contractors' | 'suppliers';
   readonly page: number;
   readonly pageSize: number;
