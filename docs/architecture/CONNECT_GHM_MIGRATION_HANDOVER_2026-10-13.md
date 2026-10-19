@@ -665,3 +665,12 @@ This is a **contract gap**, not a safe client-only adapter task. Before replacin
 2. Specify the Connect leads contract against the current schema/RPC and product callers, then implement the GHM API and authorization tests before creating a Connect adapter.
 3. Continue the remaining Connect caller inventory (registration/review workflows, logo/media storage, AI proxy, notifications/realtime, and other Postgres/RPC callers) only after each backend contract and compatibility boundary is explicit.
 4. Keep merge, production cutover, data migration, commercial activation, and provider activation separate approval gates.
+
+
+### Lead-contract source findings — 2026-10-19 20:28 UTC
+
+The current Connect migration SQL defines legacy lead statuses as `new`, `contacted`, `qualified`, `quoted`, `won`, `lost`, and `archived`; urgency as `standard`, `urgent`, or `emergency`; and source as `marketplace`, `directory`, `ai_quote`, or `direct`. The table stores a UUID lead ID, UUID business/customer IDs, customer name plus optional phone/email snapshots, project, description, optional city/budget bounds, status and timestamps. It validates text lengths and non-negative ordered budget bounds.
+
+The legacy mutation RPC is stricter/different from the table constraint: `update_business_lead_status` accepts only `new`, `contacted`, `quoted`, `won`, `lost`, and `archived` (not `qualified`), requires command version `1`, verifies `business.manage` and the `business.leads.manage` entitlement, and locks the row before updating. The RPC does not encode a transition graph; it accepts any listed status from any current status. A replacement contract must explicitly decide whether to preserve this behavior, support `qualified`, or introduce governed transition rules rather than accidentally changing it.
+
+The migration also establishes separate read policies for the customer and recipient business owner, permits marketplace creation only for an approved, verified, active business not owned by the submitting customer, and defers notifications, realtime, anti-spam/rate limiting, retention/anonymisation and administration access. These are compatibility and security requirements to resolve in the GHM contract, not evidence that GHM already implements them.
