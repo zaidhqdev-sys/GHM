@@ -15,7 +15,7 @@ const contexts: Record<'admin' | 'customer' | 'business', AuthContext> = {
 };
 
 test('all declared resources are accessible by the current construction primitive', () => {
-  for (const resource of ['profile', 'business', 'project', 'project_quote', 'quote', 'notification', 'support_request', 'saved_business', 'trust_score', 'campaign'] as const) {
+  for (const resource of ['profile', 'business', 'business_registration_identity', 'project', 'project_quote', 'quote', 'notification', 'support_request', 'saved_business', 'trust_score', 'campaign'] as const) {
     assert.equal(canAccessResource(contexts.customer, resource), true);
   }
 });
@@ -69,4 +69,13 @@ test('resource operations remain a fixed vocabulary', () => {
       assert.equal(operations.includes(operation), true);
     }
   }
+});
+
+test('private registration identity is only a coarse resource gate; tenant membership is checked by the service', () => {
+  assert.equal(canAccessResource(contexts.admin, 'business_registration_identity'), true);
+  assert.equal(canAccessResource(contexts.business, 'business_registration_identity'), true);
+  assert.equal(canAccessResource(contexts.customer, 'business_registration_identity'), true);
+  assert.equal(isRegisteredOperation('business_registration_identity', 'read'), true);
+  assert.equal(isRegisteredOperation('business_registration_identity', 'update'), true);
+  assert.equal(isRegisteredOperation('business_registration_identity', 'delete'), false);
 });
