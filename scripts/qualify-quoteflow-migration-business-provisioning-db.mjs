@@ -18,7 +18,8 @@ assert.equal(runtimeHost, expectedNonProductionHost,
 assert.equal(migratorHost, expectedNonProductionHost,
   'Migration database host does not match the explicitly approved non-production host');
 
-const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined;
+// If TLS is enabled, verify the database certificate; never silently accept an untrusted server.
+const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: true } : undefined;
 const runtime = new Client({ connectionString: runtimeUrl, ...(ssl ? { ssl } : {}) });
 const migrator = new Client({ connectionString: migratorUrl, ...(ssl ? { ssl } : {}) });
 const runId = randomUUID();
