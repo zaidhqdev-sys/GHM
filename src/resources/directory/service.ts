@@ -1,4 +1,4 @@
-import type { DirectoryQuery, DirectoryRepository, DirectoryResult, DirectoryService } from './contracts.js';
+import type { DirectoryQuery, DirectoryRepository, DirectoryResult, DirectoryService, PublicDirectoryCategory } from './contracts.js';
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 20;
@@ -77,6 +77,10 @@ const normalizePageSize = (value: unknown): number => {
 
 export class DirectoryServiceImpl implements DirectoryService {
   constructor(private readonly repository: DirectoryRepository) {}
+
+  async listPublicCategories(): Promise<PublicDirectoryCategory[]> {
+    return this.repository.listPublicCategories();
+  }
 
   async search(query: DirectoryQuery): Promise<DirectoryResult> {
     if (!query || typeof query !== 'object') throw new Error('Directory query is required');
