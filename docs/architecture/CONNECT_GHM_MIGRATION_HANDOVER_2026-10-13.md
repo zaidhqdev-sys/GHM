@@ -821,3 +821,8 @@ Connect PR #47's GHM-backed business profile editor still had legacy Supabase ca
 ### Profile-editor boundary CI confirmation — 2026-10-19 21:36 UTC
 
 Connect PR #47's profile-editor boundary fix passed exact-head CI at `77777e530258a7d3558b895bd9ff1878f58fa847` ([run 39328769029](https://github.com/zaidhqdev-sys/zaid-connect)). The run includes GHM auth/identity contracts, marketplace contracts, the newly added profile-editor legacy-boundary tests, and the web build. This qualifies source-level behavior only; review submission and logo storage remain intentionally unavailable until GHM equivalents exist.
+
+
+### GHM profile editor capability flags verified — 2026-10-19 21:38 UTC
+
+The editor now explicitly receives the disabled `reviewWorkflowAvailable` and `logoStorageAvailable` flags from the hook, so save labels, review messages, and logo controls match the actual fail-closed behavior. Exact-head profile-editor boundary contracts and web build passed at `fe62fb99b1386e31e228eb1070843adf24285a6d` ([run 39328986283](https://github.com/zaidhqdev-sys/zaid-connect)). The legacy RPCs are no longer called from this GHM numeric-ID editor; review submission and logo storage remain unavailable until their GHM contracts are implemented.
