@@ -76,7 +76,7 @@ Legacy organization members, legacy roles, administrators, and secondary members
 ## Security boundary
 
 - migration-only SECURITY DEFINER capability;
-- executable only by `ghm_runtime`;
+- executable only by `ghm_schema_owner`; `ghm_runtime` execution is explicitly revoked;
 - underlying Business/membership/mapping DML remains unavailable directly to `ghm_runtime`;
 - no public HTTP exposure;
 - no QuoteFlow runtime dependency;
