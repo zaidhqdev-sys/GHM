@@ -142,16 +142,21 @@ export class PostgresDirectoryRepository implements DirectoryRepository {
       const province = query.province
         ? { sql: `AND lower(b.province) = lower($${provinceIndex})`, values: [query.province] }
         : { sql: '', values: [] };
-      const businessTypeIndex = provinceIndex + province.values.length;
-      const businessType = query.businessType
-        ? { sql: `AND b.is_supplier = $${businessTypeIndex}`, values: [query.businessType === 'suppliers'] }
+      const cityIndex = provinceIndex + province.values.length;
+      const city = query.city
+        ? { sql: `AND lower(b.city) = lower(${cityIndex})`, values: [query.city] }
         : { sql: '', values: [] };
-      const values = [...text.values, ...category.values, ...province.values, ...businessType.values];
+      const businessTypeIndex = cityIndex + city.values.length;
+      const businessType = query.businessType
+        ? { sql: `AND b.is_supplier = ${businessTypeIndex}`, values: [query.businessType === 'suppliers'] }
+        : { sql: '', values: [] };
+      const values = [...text.values, ...category.values, ...province.values, ...city.values, ...businessType.values];
 
       const where = `WHERE ${PUBLIC_VISIBILITY}
         ${text.sql}
         ${category.sql}
         ${province.sql}
+        ${city.sql}
         ${businessType.sql}`;
 
       const countResult = await client.query<{ count: string }>(
@@ -171,7 +176,8 @@ export class PostgresDirectoryRepository implements DirectoryRepository {
         `SELECT ${DIRECTORY_COLUMNS}
          FROM ghm.business b
          ${where}
-         ORDER BY b.is_featured DESC, b.rating DESC, b.created_at DESC, b.id ASC
+         ORDER BY ${query.sort === 'reviews' ? 'b.review_count' : query.sort === 'views' ? 'b.profile_views' : query.sort === 'newest' ? 'b.created_at' : 'b.rating'} DESC,
+                  b.is_featured DESC, b.id ASC
          LIMIT $${limitIndex}
          OFFSET $${offsetIndex}`,
         itemValues,
