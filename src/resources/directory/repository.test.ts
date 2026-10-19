@@ -59,7 +59,8 @@ test('directory repository binds query, category, province, city, and supplier f
 
   assert.equal(fake.calls.length, 2);
   assert.match(fake.calls[0].sql, /lower\(b\.province\) = lower\(\$3\)/);
-  assert.match(fake.calls[0].sql, /b\.is_supplier = \$4/);
+  assert.match(fake.calls[0].sql, /lower\(b\.city\) = lower\(\$4\)/);
+  assert.match(fake.calls[0].sql, /b\.is_supplier = \$5/);
   assert.deepEqual(fake.calls[0].values, ['builder', 'construction', 'KwaZulu-Natal', 'Durban', false]);
   assert.deepEqual(fake.calls[1].values, ['builder', 'construction', 'KwaZulu-Natal', 'Durban', false, 10, 10]);
   assert.equal(result.total, 1);
