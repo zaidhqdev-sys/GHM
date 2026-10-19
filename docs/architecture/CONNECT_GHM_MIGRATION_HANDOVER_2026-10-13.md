@@ -674,3 +674,16 @@ The current Connect migration SQL defines legacy lead statuses as `new`, `contac
 The legacy mutation RPC is stricter/different from the table constraint: `update_business_lead_status` accepts only `new`, `contacted`, `quoted`, `won`, `lost`, and `archived` (not `qualified`), requires command version `1`, verifies `business.manage` and the `business.leads.manage` entitlement, and locks the row before updating. The RPC does not encode a transition graph; it accepts any listed status from any current status. A replacement contract must explicitly decide whether to preserve this behavior, support `qualified`, or introduce governed transition rules rather than accidentally changing it.
 
 The migration also establishes separate read policies for the customer and recipient business owner, permits marketplace creation only for an approved, verified, active business not owned by the submitting customer, and defers notifications, realtime, anti-spam/rate limiting, retention/anonymisation and administration access. These are compatibility and security requirements to resolve in the GHM contract, not evidence that GHM already implements them.
+
+
+### Proposed lead API boundary for review — not an approved contract
+
+A minimal compatibility candidate for cross-repository design review is:
+
+- `POST /api/v1/leads`: create a marketplace enquiry. Derive customer account from verified GHM auth; accept canonical numeric `businessId` plus validated enquiry fields only. Never accept customer/account/owner identity from the browser.
+- `GET /api/v1/businesses/:businessId/leads?status=&page=&pageSize=`: list enquiries only after GHM verifies active membership and `business.manage` (or the explicitly selected equivalent permission) plus `business.leads.manage` entitlement. Bound page size and use stable newest-first pagination.
+- `PATCH /api/v1/leads/:leadId/status`: update only the status field after resolving the lead's business, re-checking membership/permission and entitlement, validating a versioned command, and writing an audit record. Return a non-disclosing not-found result for unauthorized resource selections where consistent with GHM conventions.
+
+The DTO should preserve the legacy user-visible enquiry fields only where necessary: canonical lead/business IDs, customer name and explicitly permitted contact snapshots, project, description, city, budget range, urgency, source, status, and created/updated timestamps. Contact snapshots are personal data; restrict them to the submitting customer and authorized recipient members, avoid returning them from public business routes, and define retention/deletion before launch.
+
+**Open decisions before implementation:** whether `qualified` remains a supported status (the table constraint permits it but the legacy status RPC rejects it); whether status changes need a transition graph and optimistic concurrency beyond command versioning; which role/permission allows creation; how approved/verified/active directory eligibility is checked; whether non-marketplace sources are in scope; notification delivery and retry semantics; audit event shape; privacy retention; and whether a customer-owned enquiry-list API is required by an active caller. Do not build this proposal as code until GHM and Connect docs agree on the contract and authorization matrix.
