@@ -754,3 +754,8 @@ Follow-up to the pending note above: GHM PR #155 exact-head CI passed for `8fac8
 ### Enquiry boundary validation hardening — 2026-10-19 21:04 UTC
 
 Connect PR #47 now rejects too-short/overlong optional contact fields and overlong required enquiry text before sending the marketplace request, rather than silently truncating values that GHM would reject. Exact-head auth-contract tests and web build passed at `5b7439cb9e28a37c1367df4a5133b8caf3ee122f` ([run 39324275466](https://github.com/zaidhqdev-sys/zaid-connect)). Connect PR #48 now validates received GHM enquiry DTO required strings, contact field types, timestamps and budget ranges before mapping; exact-head auth-contract tests and web build passed at `f093da9d488fdbbef144179b23d4da0ec674a760` ([run 39324387095](https://github.com/zaidhqdev-sys/zaid-connect)). Preview and deployed non-production API/session qualification remain outstanding.
+
+
+### Stacked review branch refresh — 2026-10-19 21:06 UTC
+
+Connect PR #49's moderation branch had diverged from its moving PR #48 base after the lead adapter pagination/DTO hardening commits. It has been refreshed with merge commit `f9ad9018e28d114359c315a6a321c173eeaf7e66`, preserving the four review-moderation file changes and combining the workflow path triggers. The comparison is now ahead by 5 and behind by 0, and GitHub reports the PR mergeable. Exact-head CI is pending at [run 39324737383](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39324737383); the earlier successful review CI does not qualify this merge head. Vercel remains rate-limited.
