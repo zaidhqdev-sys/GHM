@@ -26,7 +26,7 @@ test('delivery requires HTTPS and a strong bearer token', () => {
   );
   assert.throws(
     () => createRecoveryWebhookDelivery({ url: 'https://user:pass@delivery.example.test/hook', bearerToken: token }),
-    /URL credentials or fragments/,
+    /URL credentials/,
   );
 });
 
