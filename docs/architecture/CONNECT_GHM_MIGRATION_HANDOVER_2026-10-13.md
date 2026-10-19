@@ -482,3 +482,28 @@ Read-only comparison of GHM main source with the client contract found a release
 - QuoteFlow's client is merged to QuoteFlow main and the dedicated ghm-identity-qualification sandbox service has reported successful route qualification, but this does not prove that the route exists in GHM main or the main production runtime.
 
 Treat GET /api/v1/identity as a sandbox-qualified integration contract, not an available production-main API, until the exact GHM implementation is reviewed, merged through the required documentation/security gates, deployed to a verified non-production target, and route-backed E2E is repeated. Do not switch QuoteFlow's normal provider or enable production configuration based on sandbox availability alone. Resolve this branch/deployment parity gate before production cutover.
+
+
+## Branch-aware reconciliation correction — 2026-10-19
+
+This section supersedes any earlier wording in this checkpoint that could be read as saying the identity endpoint or all related gap analysis does not exist. Re-check branch/PR state before restarting work.
+
+### Existing integration candidate and qualification evidence
+- GHM PR #142, branch integration/ghm-identity-merge-candidate-20261018, head d74d340587615939ba46b08d9b1612d3f1184ef8, is an integration candidate containing GET /api/v1/identity in src/http/app.ts, backed by canonical account/membership resolution and selected-business authorization. Its PR-triggered CI run completed successfully.
+- GHM PR #148, branch feat/quoteflow-identity-context-contract-20261019, head 807a41d4de9dbfaa326ab6b66b69307fb7de9416, also contains the QuoteFlow identity-context endpoint; its PR-triggered CI run completed successfully.
+- GHM PR #137, branch construction/identity-resolution-api-20261016, head 3d394112c973a027a0e1a271f80c172b8d7385b8, contains the broader canonical identity work; remains draft/unmerged.
+- Connect PR #39, head feeb3d781b2ed9583b62ef84dcaf6bec8aecbb9c, contains the integrated GHM browser auth/session path, same-origin proxy, identity resolver, and first marketplace clients. Its configured auth contract workflow passed.
+- Connect PR #40, head 00342050ebda4decc07d7fced25724075c6baa18, adds fail-closed role mapping and regression coverage. Its configured auth contract workflow passed.
+- These branches are not merged/deployed by this evidence. GHM main still lacks the route at the inspected main SHA. Treat candidate CI as construction evidence, not hosted E2E or production readiness.
+
+### QuoteFlow reconciliation PR dispositions
+- GHM PRs #51–55 were merged: organization-to-GHM business semantics, legal-acceptance ownership analysis, subscription/entitlement analysis, identity-mapping boundary, and identity-link authority boundary.
+- GHM PRs #56–62 were closed unmerged. Do not count their branch-only content as accepted/mainline decisions without recovering the relevant contracts from the branch/PR history and confirming the latest authority decisions. This set includes customer, business-profile, quote, item, invoice, notification and dual-sided identity-link work.
+- The mainline capability inventory still states QuoteFlow product adapter and controlled cutover are open; production Connect and QuoteFlow remain on Supabase. Construction qualification of individual GHM resources does not establish product-level parity.
+
+### Next execution step — continue existing work, do not restart
+1. Reconcile GHM #142 with #148/#137 and the latest GHM mainline/docs. Select one integration candidate; avoid duplicating or independently rebuilding identity endpoints.
+2. Compare QuoteFlow's src/lib/ghmAuthTypes.ts parser and GET /api/v1/identity request/response against the selected GHM route and exact HTTP tests. Preserve canonical numeric GHM account/business/membership IDs and fail-closed selected-business authorization; do not map to legacy UUIDs implicitly.
+3. Recover and reconcile the decisions in closed-unmerged QuoteFlow ownership PRs #56–62. Keep local-only product data local unless an explicitly approved GHM resource and mapping are qualified; QuoteFlow Quote depends on Customer and Item semantics, so do not migrate Quote in isolation.
+4. Continue the existing implementation branches only after exact-head contract tests; then verify deployed non-production login/restore/refresh/logout/revocation, selected-business authorization, and product journeys.
+5. No merge, production deployment, data migration, provider activation, shadow traffic or cutover is authorized by this documentation update. Explicit authority gates in the original handovers remain in force.
