@@ -630,3 +630,9 @@ This is a source comparison and construction recommendation, not a merge approva
 - QuoteFlow PR #21 now includes `dryRun: true` on `migrateAccountStorageScope`. It performs scope validation, reads the explicit source/target keys, preflights conflicts, and reports which keys would be copied/skipped without writing the journal or target values. Added a no-side-effects test.
 - Latest PR head `1578bba6263fb57b319110192f11850c808e71c3` CI run [39257859045](https://github.com/zaidhqdev-sys/QuoteFlow/actions/runs/39257859045) is in progress. The previous head passed CI, but the latest dry-run change remains unqualified until this exact-head run passes.
 - No runtime caller invokes this helper; no migration was run and the current Supabase auth/session flow remains unchanged.
+
+
+### Read-only dry-run exact-head CI passed — 2026-10-19 13:13 UTC
+
+- QuoteFlow PR #21 current head `1578bba6263fb57b319110192f11850c808e71c3` passed CI run [39257859045](https://github.com/zaidhqdev-sys/QuoteFlow/actions/runs/39257859045). This verifies the scope helper and its tests in CI, including dry-run no-side-effects. PR #21 remains draft/open and not merged.
+- No device or production data migration occurred. The storage-scope helper remains unwired; no identity mapping is inferred, no GHM target scope is activated, and Supabase auth/session and legal/subscription callers remain unchanged.
