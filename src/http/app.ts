@@ -29,6 +29,9 @@ import { PostgresOpportunityRepository } from '../resources/opportunity/reposito
 import { OpportunityServiceImpl } from '../resources/opportunity/service';
 import { OpportunityService } from '../resources/opportunity/contracts';
 import { PostgresSavedBusinessRepository } from '../resources/saved-business/repository';
+import { PostgresBusinessEngagementRepository } from '../resources/business-engagement/repository';
+import { BusinessEngagementServiceImpl } from '../resources/business-engagement/service';
+import type { BusinessEngagementService } from '../resources/business-engagement/contracts';
 import { SavedBusinessServiceImpl } from '../resources/saved-business/service';
 import { SavedBusinessService } from '../resources/saved-business/contracts';
 import { PostgresBusinessCapabilityRepository } from '../resources/business-capability/repository';
@@ -48,6 +51,7 @@ import { registerCampaignRoutes } from './campaign-router';
 import { registerOpportunityRoutes } from './opportunity-router';
 import { registerAuthRoutes, type AuthRouterDependencies } from './auth-router';
 import { registerSavedBusinessRoutes } from './saved-business-router';
+import { registerBusinessEngagementRoutes } from './business-engagement-router';
 import { registerBusinessCapabilityRoutes } from './business-capability-router';
 import { registerTrustScoreRoutes } from './trust-score-router';
 import { registerSupportRequestRoutes } from './support-request-router';
@@ -108,6 +112,7 @@ export interface AppDependencies {
   readonly campaignService?: CampaignService;
   readonly opportunityService?: OpportunityService;
   readonly savedBusinessService?: SavedBusinessService;
+  readonly businessEngagementService?: BusinessEngagementService;
   readonly businessCapabilityService?: BusinessCapabilityService;
   readonly trustScoreService?: TrustScoreService;
   readonly supportRequestService?: SupportRequestService;
@@ -390,6 +395,9 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const savedBusinessService =
     dependencies.savedBusinessService ??
     new SavedBusinessServiceImpl(new PostgresSavedBusinessRepository());
+  const businessEngagementService =
+    dependencies.businessEngagementService ??
+    new BusinessEngagementServiceImpl(new PostgresBusinessEngagementRepository());
   const businessCapabilityService =
     dependencies.businessCapabilityService ??
     new BusinessCapabilityServiceImpl(new PostgresBusinessCapabilityRepository());
@@ -782,6 +790,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerCampaignRoutes(app, campaignService, resourceAuthMiddleware);
   registerOpportunityRoutes(app, opportunityService, resourceAuthMiddleware);
   registerSavedBusinessRoutes(app, savedBusinessService, resourceAuthMiddleware);
+  registerBusinessEngagementRoutes(app, businessEngagementService, resourceAuthMiddleware);
   registerBusinessCapabilityRoutes(app, businessCapabilityService, resourceAuthMiddleware);
   registerTrustScoreRoutes(app, trustScoreService, resourceAuthMiddleware);
   registerSupportRequestRoutes(app, supportRequestService, resourceAuthMiddleware);
