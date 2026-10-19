@@ -792,3 +792,8 @@ This still does not integrate GHM identity into QuoteFlow's normal Supabase-back
 Connect PR #48's follow-up loader-closure fix passed exact-head tests and web build at `e670fad3dea54d9a5369a31e3b511f7eee621ba4` ([run 39326711860](https://github.com/zaidhqdev-sys/zaid-connect)). The lead pagination callback no longer retains an obsolete page offset in its default argument.
 
 PR #49 was refreshed from that latest lead head with merge commit `0041ad9df4a0c73dbd224e0764d69903cde3b5d7`; comparison is ahead by 7 and behind by 0, and GitHub reports the PR mergeable. Exact-head CI is running at [run 39326779840](https://github.com/zaidhqdev-sys/zaid-connect). The previous review-branch head passed, but it does not qualify this latest merge commit.
+
+
+### Strict GHM enquiry DTO identifier validation — 2026-10-19 21:23 UTC
+
+Connect PR #48 now requires the GHM received-enquiry DTO's `id`, `businessId`, and `customerId` to be positive safe integers as transmitted, rather than coercing numeric-looking strings. Focused contract tests and web build passed at `0b51e248a2c2dd6bd4186c0b493931a3f72ed2a3` ([run 39326973033](https://github.com/zaidhqdev-sys/zaid-connect)). PR #49 was refreshed from that head with merge commit `5fc05404e7b12382fccaf31edfa540c16639769c`; comparison is ahead by 8 and behind by 0, and exact-head CI is running ([run 39327035864](https://github.com/zaidhqdev-sys/zaid-connect)).
