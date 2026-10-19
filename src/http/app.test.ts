@@ -877,13 +877,24 @@ test('canonical identity route rejects missing authentication', async () => {
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
-test('canonical identity route derives identity from auth and forwards explicit business selection', async () => {
+test('canonical identity route returns a QuoteFlow-compatible selected identity DTO', async () => {
   let received: { context: AuthContext; selectedBusinessId?: number } | undefined;
+  const createdAt = new Date('2026-01-01T00:00:00.000Z');
+  const business = {
+    id: 201, name: 'Canonical Business', slug: 'canonical-business', description: null, phone: null, email: null,
+    category: null, province: null, city: null, physicalAddress: null, whatsapp: null, website: null,
+    isSupplier: null, yearsInBusiness: 0, insuranceVerified: false, jobsCompleted: 0,
+    verificationStatus: 'unverified', isActive: true, createdAt, updatedAt: createdAt,
+  };
+  const membership = {
+    id: 501, accountId: 42, businessId: 201, role: 'owner', status: 'active', createdBy: 42,
+    createdAt, updatedAt: createdAt, business,
+  };
   const identity = {
     account: profile({ userId: 42, role: 'business' }),
-    memberships: [{ id: 501, accountId: 42, businessId: 201, role: 'owner', status: 'active' }],
-    activeMembership: { id: 501, accountId: 42, businessId: 201, role: 'owner', status: 'active' },
-    activeBusiness: { id: 201, name: 'Canonical Business', isActive: true },
+    memberships: [membership],
+    activeMembership: membership,
+    activeBusiness: business,
   };
   const service = { getIdentityContext: async (input: { context: AuthContext; selectedBusinessId?: number }) => { received = input; return identity; } } as unknown as BusinessIdentityService;
   const { server, baseUrl } = await startTestServer(service);
@@ -896,8 +907,46 @@ test('canonical identity route derives identity from auth and forwards explicit 
     assert.equal(body.account.id, 42);
     assert.equal(body.account.email, 'http-user@example.com');
     assert.equal(body.memberships[0].businessId, 201);
+    assert.equal(body.memberships[0].createdBy, 42);
+    assert.equal(typeof body.memberships[0].createdAt, 'string');
     assert.equal(body.activeMembership.businessId, 201);
     assert.equal(body.activeBusiness.id, 201);
+    assert.equal(body.activeBusiness.slug, 'canonical-business');
+    assert.equal(typeof body.activeBusiness.updatedAt, 'string');
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+test('canonical identity route returns multiple membership choices without selecting a business', async () => {
+  const createdAt = new Date('2026-01-01T00:00:00.000Z');
+  const membership = (id: number, businessId: number, role: 'owner' | 'member') => ({
+    id, accountId: 42, businessId, role, status: 'active', createdBy: 42,
+    createdAt, updatedAt: createdAt,
+    business: {
+      id: businessId, name: `Business ${businessId}`, slug: `business-${businessId}`,
+      description: null, phone: null, email: null, category: null, province: null, city: null,
+      physicalAddress: null, whatsapp: null, website: null, isSupplier: null, yearsInBusiness: 0,
+      insuranceVerified: false, jobsCompleted: 0, verificationStatus: 'unverified', isActive: true,
+      createdAt, updatedAt: createdAt,
+    },
+  });
+  const identity = {
+    account: profile({ userId: 42, role: 'business' }),
+    memberships: [membership(501, 201, 'owner'), membership(502, 202, 'member')],
+    activeMembership: null,
+    activeBusiness: null,
+  };
+  const service = { getIdentityContext: async () => identity } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const token = tokenFor({ userId: 42, role: 'business' });
+    const response = await fetch(`${baseUrl}/api/v1/identity`, { headers: { authorization: `Bearer ${token}` } });
+    assert.equal(response.status, 200);
+    const body = await response.json() as typeof identity;
+    assert.equal(body.memberships.length, 2);
+    assert.equal(body.activeMembership, null);
+    assert.equal(body.activeBusiness, null);
+    assert.equal(typeof body.memberships[0].createdAt, 'string');
+    assert.equal(typeof body.memberships[0].business?.createdAt, 'string');
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
