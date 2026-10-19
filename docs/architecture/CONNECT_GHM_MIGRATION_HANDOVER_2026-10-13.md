@@ -636,3 +636,32 @@ This is a source comparison and construction recommendation, not a merge approva
 
 - QuoteFlow PR #21 current head `1578bba6263fb57b319110192f11850c808e71c3` passed CI run [39257859045](https://github.com/zaidhqdev-sys/QuoteFlow/actions/runs/39257859045). This verifies the scope helper and its tests in CI, including dry-run no-side-effects. PR #21 remains draft/open and not merged.
 - No device or production data migration occurred. The storage-scope helper remains unwired; no identity mapping is inferred, no GHM target scope is activated, and Supabase auth/session and legal/subscription callers remain unchanged.
+
+
+## Cross-repository continuation checkpoint — 2026-10-19 20:25 UTC
+
+This section supersedes older "next action" notes where the referenced PRs have since advanced. It records source/CI state only; it does not authorize merge, production deployment, data migration, provider activation, or cutover.
+
+### Current migration slices
+
+- **Connect PR #47** is open/draft, head `migration/ghm-engagement-events-client-20261019` at `9b2e34bdc0c98957dcebe93c6ab56b6fa22c27b2`, based on `migration/ghm-business-capabilities-read-20261019`. Its configured GitHub Actions workflow passed for the exact head. A Vercel bot comment subsequently reported a Ready preview deployment for the branch at 20:09 UTC; verify the deployment's source SHA before treating it as exact-head preview evidence. The PR is not merged and production cutover is not claimed.
+- **GHM PR #154** (`migration/business-engagement-events-20261019`) is open/draft and targets `integration/ghm-identity-merge-candidate-20261018`, not `main`. Its exact-head CI run passed. It provides the public category and authenticated engagement-event contracts consumed by Connect #47, but does not replace legacy analytics aggregation.
+- **QuoteFlow identity work** remains staged: QuoteFlow PR #11 (canonical identity client) and PR #20 (identity-context response/authorization contract tests) are open/draft; their recorded exact-head CI runs passed. GHM identity-context consolidation PR #142 remains open/draft. QuoteFlow PR #21's recoverable local storage-scope helper has passed CI at its latest recorded head, but remains unwired and must not be activated until authoritative identity/business mapping and non-production validation are complete. QuoteFlow PR #23's identity-mapping contract remains proposed, not approved.
+- These are separate prerequisite branches. Do not merge a child branch into production simply because its focused contract tests pass; reconcile branch ancestry, GHM API availability, deployed runtime configuration, and product/data parity first.
+
+### Newly confirmed next contract gap: Connect leads
+
+A repository search of GHM's current indexed source did not identify a canonical leads/enquiries API. Connect's active legacy `leadService` in `src/lib/lib_supabase.js` currently:
+- creates rows in `public.leads` with business/customer IDs, contact details, project/description, city, budget range, urgency and source;
+- lists leads for a business, optionally filtered by status and ordered newest-first;
+- changes status through the `update_business_lead_status` RPC with version `1`;
+- attempts a notification to the business owner after lead creation through the legacy notification service.
+
+This is a **contract gap**, not a safe client-only adapter task. Before replacing these calls, define and qualify a GHM-owned contract for lead creation, owner-authorized listing, allowed status transitions/concurrency, canonical business and account identity, contact-data access, notification delivery/failure semantics, pagination/limits, and auditability. GHM must derive the caller from verified authentication and active business membership; it must not trust browser-supplied owner/account identity or guess legacy UUID-to-numeric ID mappings. No Supabase fallback should be added.
+
+### Execution order
+
+1. Finish review of the existing identity/storage and Connect migration candidates; confirm exact-head CI and deployed non-production API/session behavior before wiring a normal AuthProvider or activating a new storage scope.
+2. Specify the Connect leads contract against the current schema/RPC and product callers, then implement the GHM API and authorization tests before creating a Connect adapter.
+3. Continue the remaining Connect caller inventory (registration/review workflows, logo/media storage, AI proxy, notifications/realtime, and other Postgres/RPC callers) only after each backend contract and compatibility boundary is explicit.
+4. Keep merge, production cutover, data migration, commercial activation, and provider activation separate approval gates.
