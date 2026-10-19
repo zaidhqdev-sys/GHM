@@ -102,6 +102,37 @@ test('POST /api/v1/auth/quoteflow-migration-reset/request is anti-enumerating an
   }
 });
 
+test('migration reset request remains anti-enumerating when persistence or delivery fails', async () => {
+  const { createApp } = await loadApp();
+  const server = http.createServer(createApp({
+    businessIdentityService: {} as never,
+    projectService: {} as never,
+    publicProjectService: {} as never,
+    enquiryService: {} as never,
+    campaignService: {} as never,
+    quoteFlowMigrationResetRecoveryService: {
+      request: async () => { throw new Error('synthetic delivery failure'); },
+    },
+  }));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const originalError = console.error;
+  console.error = () => undefined;
+  try {
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/v1/auth/quoteflow-migration-reset/request`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'legacy@example.com' }),
+    });
+    assert.equal(response.status, 202);
+    assert.deepEqual(await response.json(), { ok: true });
+  } finally {
+    console.error = originalError;
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
 test('migration reset request is unavailable when delivery is not configured', async () => {
   const priorUrl = process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_URL;
   const priorToken = process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_TOKEN;
