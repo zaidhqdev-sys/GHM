@@ -759,3 +759,8 @@ Connect PR #47 now rejects too-short/overlong optional contact fields and overlo
 ### Stacked review branch refresh — 2026-10-19 21:06 UTC
 
 Connect PR #49's moderation branch had diverged from its moving PR #48 base after the lead adapter pagination/DTO hardening commits. It has been refreshed with merge commit `f9ad9018e28d114359c315a6a321c173eeaf7e66`, preserving the four review-moderation file changes and combining the workflow path triggers. The comparison is now ahead by 5 and behind by 0, and GitHub reports the PR mergeable. Exact-head CI is pending at [run 39324737383](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39324737383); the earlier successful review CI does not qualify this merge head. Vercel remains rate-limited.
+
+
+### Review branch refresh CI confirmation — 2026-10-19 21:06 UTC
+
+The refreshed Connect PR #49 merge head `f9ad9018e28d114359c315a6a321c173eeaf7e66` passed exact-head GHM auth-contract tests and web build: [run 39324737383](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39324737383). This is still branch CI only; preview and deployed non-production authorization/queue qualification remain open.
