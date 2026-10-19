@@ -744,3 +744,8 @@ QuoteFlow PR #11 was closed as superseded after comparing it with `src/lib/ghmAu
 GHM PR #155 now supports bounded `limit`/`offset` on `GET /api/v1/enquiries/received`; defaults remain the newest-first 50 rows, max page size is 100, and offset is capped at 1,000,000. The SQL binds pagination values rather than interpolating them. Contract tests cover bounds, bound parameters, HTTP parsing, and forwarding. Exact-head CI passed at `8fac895956636bea3d6faad2b45fac65e6cf95bc`: [run 39323437443](https://github.com/zaidhqdev-sys/GHM/actions/runs/39323437443).
 
 Connect PR #48's `ghmLeadService.getForBusiness(businessId, { limit, offset })` now exposes that pagination contract with client-side bounds validation; its existing default remains 50 so the current workspace UI is unchanged. Exact-head Connect CI for `e4c09c41e4e9cff7646522c9dc00b787c5046096` is still running at [run 39323513081](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39323513081). The workspace UI does not yet expose page controls; do not describe the UI itself as fully paginated. No production cutover or deployed API qualification is claimed.
+
+
+### Pagination CI confirmation — 2026-10-19 21:00 UTC
+
+Follow-up to the pending note above: GHM PR #155 exact-head CI passed for `8fac895956636bea3d6faad2b45fac65e6cf95bc` ([run 39323437443](https://github.com/zaidhqdev-sys/GHM)); Connect PR #48 exact-head auth-contract tests and web build passed for `e4c09c41e4e9cff7646522c9dc00b787c5046096` ([run 39323513081](https://github.com/zaidhqdev-sys/zaid-connect)). The UI's first-page limitation and the need for deployed non-production API/session qualification remain open.
