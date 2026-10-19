@@ -238,12 +238,13 @@ QuoteFlow currently remains Supabase-authenticated. A GHM session client and run
 
 The organization-to-Business reconciliation contract and its synthetic manifest outcomes are defined/qualified; live legacy organization → GHM Business resolution/creation plus owner-membership provisioning is explicitly **not yet qualified**. This is separate from the already-qualified credentialless GHM account-provisioning capability.
 
-Before implementation:
-- authoritative organization/owner evidence;
+Qualification and merge gates for the implementation on `feat/quoteflow-business-provisioning-20261020`:
+- authoritative organization/owner evidence for each approved target;
 - deterministic create-vs-map outcome;
-- idempotency/concurrency proof;
+- non-production idempotency/concurrency and rollback proof;
 - owner membership establishment under GHM authority;
-- no silent legacy-role translation.
+- no silent legacy-role translation;
+- confirm the migration-only function is executable only by `ghm_schema_owner`, with runtime execution and direct runtime DML denied.
 
 ### QF-05 — QuoteFlow production cutover
 **Classification:** production migration — not started.
