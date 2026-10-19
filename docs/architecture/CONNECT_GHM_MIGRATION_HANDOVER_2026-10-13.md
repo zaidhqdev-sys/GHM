@@ -599,3 +599,14 @@ This is a source comparison and construction recommendation, not a merge approva
 ### Latest exact-head CI result — 2026-10-19 04:34 UTC
 
 - GHM PR #142 current code/test head `5d8ec87a5a4abc610d968ef32960b551927cd3d9` completed CI successfully (run [39200012152](https://github.com/zaidhqdev-sys/GHM/actions/runs/39200012152)). This head includes the identity-context service/route reconciliation and the expanded QuoteFlow-compatible DTO shape tests. It is still a draft PR and has not been deployed; runtime/session and end-to-end product qualification remain separate gates.
+
+
+## Recoverable local storage-scope migration primitive — 2026-10-19 13:07 UTC
+
+- Opened QuoteFlow PR #21: https://github.com/zaidhqdev-sys/QuoteFlow/pull/21, branch `feat/recoverable-ghm-storage-scope-migration-20261019`, current head `0cb9463895d1d9d69891345954bfe394f1791b88`.
+- Added explicit storage scope types for legacy organization/user scopes and canonical numeric GHM account/business scopes. Legacy UUIDs are retained only in the legacy source key; no UUID-to-GHM ID coercion is introduced.
+- Added `migrateAccountStorageScope`: explicit source/target and key allowlist; conflict preflight before target writes; durable in-progress/completed journal; raw value copy; read-after-write verification; retry after interrupted writes; idempotent completed result; reject source=target, invalid IDs, changed keysets, and malformed journals. It never deletes or overwrites the source data. A conflicting existing target returns `conflict` without writing any target keys.
+- Added tests for copy/preserve, conflict preflight, idempotency, keyset mismatch, interrupted-copy retry, and invalid scopes. Strengthened journal validation so changing the keyset while resuming an in-progress operation is rejected.
+- Added opt-in GHM active scope support to `accountStorage.ts`, but the existing AuthProvider does not activate it and no automatic migration is wired. This is a construction primitive only; no device data was migrated, no account/business mapping was inferred, and no Supabase caller was removed.
+- Exact-head CI for `0cb9463895d1d9d69891345954bfe394f1791b88` was queued as run [39257238140](https://github.com/zaidhqdev-sys/QuoteFlow/actions/runs/39257238140) at last check. Do not call this qualified until the exact-head run passes.
+- Next: verify exact-head CI and review the storage migration helper; then wire it only after authoritative legacy organization → GHM Business mapping and the session/business selection contract are qualified. Continue to leave Supabase AuthProvider, legal acceptance, subscription entitlements, and production cutover unchanged.
