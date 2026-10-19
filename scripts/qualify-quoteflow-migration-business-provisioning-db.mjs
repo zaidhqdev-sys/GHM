@@ -29,6 +29,7 @@ const slugBase = `qualify-quoteflow-${runId}`;
 let ownerId;
 let disabledOwnerId;
 let alternateOwnerId;
+let secondBusinessOwnerId;
 const evidenceReference = () => `synthetic:quoteflow-business-${runId}`;
 const reviewedAt = new Date('2026-10-20T00:00:00.000Z');
 const businessIds = new Set();
@@ -88,9 +89,14 @@ try {
   disabledOwnerId = Number(disabledOwner.rows[0].id);
   const alternateOwner = await migrator.query(
     `insert into ghm.account_identity (full_name, role, account_status, is_system_admin)
-     values ('Synthetic Alternate Migration Owner', 'customer', 'active', false) returning id`,
+     values ('Synthetic Non-Business Migration Owner', 'customer', 'active', false) returning id`,
   );
   alternateOwnerId = Number(alternateOwner.rows[0].id);
+  const secondBusinessOwner = await migrator.query(
+    `insert into ghm.account_identity (full_name, role, account_status, is_system_admin)
+     values ('Synthetic Alternate Business Migration Owner', 'business', 'active', false) returning id`,
+  );
+  secondBusinessOwnerId = Number(secondBusinessOwner.rows[0].id);
 
   const created = await provision(sourceIds[0], 'Synthetic QuoteFlow Business', `${slugBase}-fresh`);
   assert.equal(created.rows[0].outcome, 'created');
@@ -126,7 +132,7 @@ try {
   assert.equal(Number(retry.rows[0].business_id), businessId);
   assert.equal(Number(retry.rows[0].owner_membership_id), membershipId);
 
-  const ownerConflict = await provision(sourceIds[0], 'Synthetic QuoteFlow Business', `${slugBase}-fresh`, alternateOwnerId);
+  const ownerConflict = await provision(sourceIds[0], 'Synthetic QuoteFlow Business', `${slugBase}-fresh`, secondBusinessOwnerId);
   assert.equal(ownerConflict.rows[0].outcome, 'conflict');
   assert.equal(ownerConflict.rows[0].reason_code, 'EXISTING_MAPPING_NOT_AUDITED_FOR_OWNER');
 
@@ -184,9 +190,9 @@ try {
     await migrator.query('delete from ghm.quoteflow_migration_business_provisioning_audit where provider=$1 and external_business_id like $2', [provider, `qualify-quoteflow-org-rollback-%${runId}`]).catch(() => {});
     await migrator.query('delete from ghm.business_external_mapping where provider=$1 and external_business_id like $2', [provider, `qualify-quoteflow-org-%${runId}%`]).catch(() => {});
     await migrator.query('delete from ghm.business_external_mapping where provider=$1 and external_business_id like $2', [provider, `qualify-quoteflow-org-rollback-%${runId}`]).catch(() => {});
-    await migrator.query('delete from ghm.business_membership where account_id = any($1::bigint[]) or business_id in (select id from ghm.business where slug like $2)', [[ownerId, disabledOwnerId].filter(Boolean), `${slugBase}%`]).catch(() => {});
+    await migrator.query('delete from ghm.business_membership where account_id = any($1::bigint[]) or business_id in (select id from ghm.business where slug like $2)', [[ownerId, disabledOwnerId, alternateOwnerId, secondBusinessOwnerId].filter(Boolean), `${slugBase}%`]).catch(() => {});
     await migrator.query('delete from ghm.business where slug like $1', [`${slugBase}%`]).catch(() => {});
-    await migrator.query('delete from ghm.account_identity where id = any($1::bigint[])', [[ownerId, disabledOwnerId, alternateOwnerId].filter(Boolean)]).catch(() => {});
+    await migrator.query('delete from ghm.account_identity where id = any($1::bigint[])', [[ownerId, disabledOwnerId, alternateOwnerId, secondBusinessOwnerId].filter(Boolean)]).catch(() => {});
     await migrator.query('commit').catch(() => {});
   }
   await runtime.end().catch(() => {});
