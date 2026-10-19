@@ -415,5 +415,5 @@ test('received enquiry list rejects invalid pagination before service execution'
       assert.equal(response.status, 400, query);
     }
     assert.equal(called, false);
-  } finally { await closeServer(server); }
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
