@@ -137,6 +137,10 @@ try {
   assert.equal(disabled.rows[0].outcome, 'blocked');
   assert.equal(disabled.rows[0].reason_code, 'OWNER_ACCOUNT_NOT_ELIGIBLE');
 
+  const nonBusinessRole = await provision(sourceIds[2], 'Customer Role Owner Business', `${slugBase}-customer-role`, alternateOwnerId);
+  assert.equal(nonBusinessRole.rows[0].outcome, 'blocked');
+  assert.equal(nonBusinessRole.rows[0].reason_code, 'OWNER_ACCOUNT_NOT_ELIGIBLE');
+
   const invalidProvider = await provision(sourceIds[2], 'Invalid Provider Business', `${slugBase}-provider`, ownerId, 'not-supabase');
   assert.equal(invalidProvider.rows[0].outcome, 'blocked');
   assert.equal(invalidProvider.rows[0].reason_code, 'SOURCE_PROVIDER_NOT_ALLOWED');
@@ -166,7 +170,7 @@ try {
   console.log(JSON.stringify({
     checks: ['fresh atomic provision', 'inactive/pending Business', 'active owner membership', 'exact provenance mapping',
       'durable review evidence', 'idempotent retry', 'alternate-owner conflict', 'slug collision fail-closed',
-      'disabled owner blocked', 'invalid provider blocked', 'four-way concurrency', 'transaction rollback',
+      'disabled owner blocked', 'non-business owner role blocked', 'invalid provider blocked', 'four-way concurrency', 'transaction rollback',
       'runtime cannot execute provisioning or write mapping/audit; migration role can execute'],
     created_businesses: businessIds.size,
     mutation_scope: 'synthetic qualification records only',
