@@ -48,7 +48,7 @@ const validateSource = (value: unknown): CreateEnquiryInput['source'] => {
 };
 
 const validateStatus = (value: unknown): EnquiryStatus => {
-  if (value !== 'new' && value !== 'contacted' && value !== 'qualified' && value !== 'quoted' && value !== 'won' && value !== 'lost' && value !== 'archived') {
+  if (value !== 'new' && value !== 'contacted' && value !== 'quoted' && value !== 'won' && value !== 'lost' && value !== 'archived') {
     throw new Error('Invalid Enquiry status');
   }
   return value;
