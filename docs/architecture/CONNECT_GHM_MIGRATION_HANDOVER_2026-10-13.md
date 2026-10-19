@@ -565,3 +565,8 @@ This is a source comparison and construction recommendation, not a merge approva
 - Read the #148 service and HTTP tests directly. The service supports zero memberships, a sole membership, multiple memberships without implicit selection, and explicit selected-business validation. The HTTP route rejects unrecognized/repeated/malformed query values and maps unauthorized selection to 404.
 - Added regression coverage on #148 branch `feat/quoteflow-identity-context-contract-20261019`, commit `18aa29c1347c498f8fddd16d0c57b4a14581447c`: invalid bearer token to `GET /api/v1/identity` returns 401 without calling the identity service. Exact-head CI was in progress at last check.
 - Next: confirm exact-head CI, then reconcile #142's migration-audit protections with #148's dedicated identity-context service and stricter HTTP contract into one candidate. Avoid duplicate route registration and run the final merged candidate's complete test suite. Production deployment, live database changes, data import, runtime switches and cutover remain unauthorized/not performed.
+
+
+### CI result update — 2026-10-19 04:22 UTC
+
+- GHM #148 exact head `18aa29c1347c498f8fddd16d0c57b4a14581447c`: CI completed successfully after adding the invalid-bearer HTTP regression test (workflow run 39199110141). The test change is now CI-qualified at this exact SHA; broader runtime/deployment and cross-client contract qualification remain open.
