@@ -23,7 +23,7 @@ const reviewedAt = new Date('2026-10-20T00:00:00.000Z');
 const businessIds = new Set();
 
 const provision = (sourceId, name, slug, accountId = ownerId, sourceProvider = provider) =>
-  runtime.query(
+  migrator.query(
     'select * from ghm.auth_provision_quoteflow_migration_business($1,$2,$3,$4,$5,$6,$7,$8)',
     [sourceProvider, sourceId, name, slug, accountId, evidenceReference(), 'synthetic-qualification-reviewer', reviewedAt],
   );
@@ -49,9 +49,15 @@ try {
       has_table_privilege(current_user, 'ghm.quoteflow_migration_business_provisioning_audit', 'DELETE') as can_delete_audit
   `);
   assert.deepEqual(privileges.rows[0], {
-    can_execute: true, can_insert_mapping: false, can_update_mapping: false, can_delete_mapping: false,
+    can_execute: false, can_insert_mapping: false, can_update_mapping: false, can_delete_mapping: false,
     can_insert_audit: false, can_update_audit: false, can_delete_audit: false,
   });
+
+  const migrationPrivilege = await migrator.query(`
+    select has_function_privilege(current_user,
+      'ghm.auth_provision_quoteflow_migration_business(text,text,text,text,bigint,text,text,timestamptz)', 'EXECUTE') as can_execute
+  `);
+  assert.equal(migrationPrivilege.rows[0].can_execute, true);
 
   const owner = await migrator.query(`
     insert into ghm.account_identity (full_name, role, account_status, is_system_admin)
@@ -128,11 +134,11 @@ try {
   assert.equal(new Set(concurrent.map(x => String(x.rows[0].business_id))).size, 1);
   businessIds.add(Number(concurrent[0].rows[0].business_id));
 
-  await runtime.query('begin');
+  await migrator.query('begin');
   const rolled = await provision(`qualify-quoteflow-org-rollback-${runId}`, 'Rollback Synthetic Business', `${slugBase}-rollback`);
   assert.equal(rolled.rows[0].outcome, 'created');
   const rollbackBusinessId = Number(rolled.rows[0].business_id);
-  await runtime.query('rollback');
+  await migrator.query('rollback');
   const rollbackCheck = await migrator.query(`
     select
       (select count(*)::int from ghm.business where id=$1) as business_count,
@@ -146,7 +152,7 @@ try {
     checks: ['fresh atomic provision', 'inactive/pending Business', 'active owner membership', 'exact provenance mapping',
       'durable review evidence', 'idempotent retry', 'alternate-owner conflict', 'slug collision fail-closed',
       'disabled owner blocked', 'invalid provider blocked', 'four-way concurrency', 'transaction rollback',
-      'runtime mapping and audit DML denied'],
+      'runtime cannot execute provisioning or write mapping/audit; migration role can execute'],
     created_businesses: businessIds.size,
     mutation_scope: 'synthetic qualification records only',
   }, null, 2));
