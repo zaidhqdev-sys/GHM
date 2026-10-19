@@ -933,3 +933,18 @@ test('project update route maps closed-project denial to conflict', async () => 
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });
+
+
+test('identity context route rejects an invalid bearer token before calling the identity service', async () => {
+  const service = { getIdentityContext: async () => { throw new Error('must not be called'); } } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/identity`, {
+      headers: { authorization: 'Bearer not-a-valid-token' },
+    });
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: 'unauthorized' });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
