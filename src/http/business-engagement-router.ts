@@ -33,7 +33,7 @@ export const registerBusinessEngagementRoutes = (
       return;
     }
     next();
-  }, async (req: Request, res: Response) => {
+  }, async (req: Request, res: Response, next) => {
     const context = req.authContext as AuthContext;
     const input = parseInput(req.body);
     if (!input) {
