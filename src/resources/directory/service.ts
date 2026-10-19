@@ -38,6 +38,23 @@ const normalizeProvince = (value: unknown): string | undefined => {
   return normalized;
 };
 
+const normalizeCity = (value: unknown): string | undefined => {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string') throw new Error('city must be a string');
+  const normalized = value.trim();
+  if (!normalized) throw new Error('city must not be blank');
+  if (normalized.length > 100) throw new Error('city must be at most 100 characters');
+  return normalized;
+};
+
+const normalizeSort = (value: unknown): 'rating' | 'reviews' | 'views' | 'newest' => {
+  if (value === undefined) return 'rating';
+  if (value !== 'rating' && value !== 'reviews' && value !== 'views' && value !== 'newest') {
+    throw new Error('sort must be rating, reviews, views, or newest');
+  }
+  return value;
+};
+
 const normalizeBusinessType = (value: unknown): 'contractors' | 'suppliers' | undefined => {
   if (value === undefined) return undefined;
   if (value !== 'contractors' && value !== 'suppliers') {
@@ -68,6 +85,8 @@ export class DirectoryServiceImpl implements DirectoryService {
       q: normalizeQuery(query.q),
       category: normalizeCategory(query.category),
       province: normalizeProvince(query.province),
+      city: normalizeCity(query.city),
+      sort: normalizeSort(query.sort),
       businessType: normalizeBusinessType(query.businessType),
       page: normalizePage(query.page),
       pageSize: normalizePageSize(query.pageSize),
