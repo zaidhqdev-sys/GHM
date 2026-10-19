@@ -69,7 +69,7 @@ test('registration identity read binds authenticated context and returns the pri
     assert.equal(response.status, 200);
     assert.deepEqual(receivedContext, { userId: 42, role: 'business' });
     assert.equal(receivedBusinessId, 55);
-    assert.deepEqual(await response.json(), { registrationIdentity: identity });
+    assert.deepEqual(await response.json(), { registrationIdentity: { ...identity, updatedAt: identity.updatedAt?.toISOString() } });
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 });
 
