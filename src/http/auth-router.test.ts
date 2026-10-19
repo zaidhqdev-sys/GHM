@@ -182,6 +182,48 @@ test('POST /api/v1/auth/quoteflow-migration-reset/complete issues GHM session on
   }
 });
 
+test('migration reset returns a sanitized error if session issuance fails after reset completion', async () => {
+  const order: string[] = [];
+  const authService: GhmAuthService = {
+    login: async () => {
+      order.push('login');
+      throw new Error('synthetic session issuer failure');
+    },
+    refresh: async () => sampleTokens(),
+    logout: async () => undefined,
+  };
+  const { createApp } = await loadApp();
+  const server = http.createServer(createApp({
+    businessIdentityService: {} as never,
+    projectService: {} as never,
+    publicProjectService: {} as never,
+    enquiryService: {} as never,
+    campaignService: {} as never,
+    authService,
+    quoteFlowMigrationResetCompletionService: {
+      complete: async () => {
+        order.push('complete');
+        return { accountId: 42, loginEmail: 'legacy@example.com' };
+      },
+    },
+  }));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  try {
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/v1/auth/quoteflow-migration-reset/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: 'opaque-token', password: 'CorrectHorseBattery1' }),
+    });
+    assert.equal(response.status, 500);
+    assert.deepEqual(await response.json(), { error: 'internal_error' });
+    assert.deepEqual(order, ['complete', 'login']);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
 test('POST /api/v1/auth/register returns GHM-issued tokens', async () => {
   const authService: GhmAuthService = {
     register: async (input) => {
