@@ -709,3 +709,8 @@ The DTO should preserve the legacy user-visible enquiry fields only where necess
 Connect PR #48 now also migrates `src/hooks/hooks_index.js`'s shared `useLeads` hook. Both React lead read/status consumers route through `ghmLeadService`; the old Supabase lead query, RPC status mutation and Supabase realtime channel were removed from those hooks. Since GHM has no lead realtime stream, the shared hook polls GHM every 30 seconds rather than keeping a second Supabase-backed data path.
 
 Latest Connect head `670183a91a5270be8b8c14a131917f2b028b9069` passed GHM auth-contract tests and web build in [run 39320594968](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39320594968); the Vercel preview status is green for that exact SHA. PR #48 remains draft/open. The legacy service definition remains in `src/lib/lib_supabase.js` for later cleanup; do not infer all Supabase lead use is gone until a full repository search and customer-create/notification parity review are complete.
+
+
+### Final shared-leads hook CI checkpoint — 2026-10-19 20:38 UTC
+
+The latest Connect PR #48 head is `0ecd704dba5d77ccb180c1776fb0958f7f6f3e90`. Exact-head GHM auth-contract tests (including `ghm-lead-service`) and the web build passed in [run 39320788159](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39320788159); the Vercel preview status is green for the same SHA. PR #48 remains draft/open. The shared hook now prevents overlapping polling requests and clears stale leads when the active business context changes. Deployed non-production GHM API/session qualification and notification/client parity remain outstanding.
