@@ -13,6 +13,12 @@ export interface DirectoryQuery {
 
 export interface PublicDirectoryBusiness extends PublicBusiness {}
 
+export interface PublicDirectoryCategory {
+  readonly id: string;
+  readonly slug: string;
+  readonly name: string;
+}
+
 export interface DirectoryResult {
   readonly items: PublicDirectoryBusiness[];
   readonly page: number;
@@ -22,10 +28,12 @@ export interface DirectoryResult {
 
 export interface DirectoryRepository {
   search(query: DirectoryQuery): Promise<DirectoryResult>;
+  listPublicCategories(): Promise<PublicDirectoryCategory[]>;
 }
 
 export interface DirectoryService {
   search(query: DirectoryQuery): Promise<DirectoryResult>;
+  listPublicCategories(): Promise<PublicDirectoryCategory[]>;
 }
 
 export const DIRECTORY_OPERATIONS = Object.freeze({
