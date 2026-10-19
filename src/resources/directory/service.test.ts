@@ -9,6 +9,7 @@ const repository = (result = {
   pageSize: 20,
   total: 0,
 }): DirectoryRepository => ({
+  listPublicCategories: async () => [],
   search: async query => {
     assert.equal(query.page, 1);
     assert.equal(query.pageSize, 20);
@@ -19,6 +20,7 @@ const repository = (result = {
 test('directory service applies default pagination and normalizes blank query', async () => {
   let received: unknown;
   const service = new DirectoryServiceImpl({
+    listPublicCategories: async () => [],
     search: async query => {
       received = query;
       return { items: [], page: query.page, pageSize: query.pageSize, total: 0 };
@@ -47,6 +49,7 @@ test('directory service accepts category UUID or slug', async () => {
 test('directory service rejects invalid pagination and category values before repository execution', async () => {
   let called = false;
   const service = new DirectoryServiceImpl({
+    listPublicCategories: async () => [],
     search: async () => {
       called = true;
       return { items: [], page: 1, pageSize: 20, total: 0 };
@@ -114,4 +117,11 @@ test('directory service normalizes city and accepts only supported sort modes', 
   });
   await assert.rejects(() => service.search({ sort: 'distance' as 'rating', page: 1, pageSize: 20 }), /sort must be rating, reviews, views, or newest/);
   await assert.rejects(() => service.search({ city: ' ', page: 1, pageSize: 20 }), /city must not be blank/);
+});
+
+
+test('directory service exposes only categories returned by the public repository contract', async () => {
+  const categories = [{ id: 'cat-1', slug: 'construction', name: 'Construction' }];
+  const service = new DirectoryServiceImpl({ search: async query => ({ items: [], page: query.page, pageSize: query.pageSize, total: 0 }), listPublicCategories: async () => categories });
+  assert.deepEqual(await service.listPublicCategories(), categories);
 });
