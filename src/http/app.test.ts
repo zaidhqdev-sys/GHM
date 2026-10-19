@@ -111,6 +111,7 @@ test('public directory route allows anonymous access and returns the directory r
 test('public directory route applies pagination defaults and ignores authentication', async () => {
   let received: unknown;
   const directoryService: DirectoryService = {
+    listPublicCategories: async () => [],
     search: async query => {
       received = query;
       return { items: [], page: query.page, pageSize: query.pageSize, total: 0 };
@@ -129,6 +130,7 @@ test('public directory route applies pagination defaults and ignores authenticat
 test('public directory route rejects unsupported and malformed query parameters before service execution', async () => {
   let called = false;
   const directoryService: DirectoryService = {
+    listPublicCategories: async () => [],
     search: async () => {
       called = true;
       throw new Error('must not be called');
@@ -156,6 +158,7 @@ test('public directory route rejects unsupported and malformed query parameters 
 test('public directory route rejects invalid province and business type filters', async () => {
   let called = false;
   const directoryService: DirectoryService = {
+    listPublicCategories: async () => [],
     search: async () => {
       called = true;
       return { items: [], page: 1, pageSize: 20, total: 0 };
