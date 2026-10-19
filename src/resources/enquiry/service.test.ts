@@ -16,12 +16,12 @@ const enquiry = (): Enquiry => ({
 
 class FakeRepository implements EnquiryRepository {
   lastCreate: any = null;
-  lastReceivedList: { context: AuthContext; businessId: number } | null = null;
+  lastReceivedList: { context: AuthContext; businessId: number; options?: unknown } | null = null;
   async createEnquiry(_context: AuthContext, input: any) { this.lastCreate = input; return enquiry(); }
   async getOwnEnquiry() { return enquiry(); }
   async getReceivedEnquiry() { return enquiry(); }
-  async getReceivedEnquiries(context: AuthContext, businessId: number) {
-    this.lastReceivedList = { context, businessId };
+  async getReceivedEnquiries(context: AuthContext, businessId: number, options?: unknown) {
+    this.lastReceivedList = { context, businessId, options };
     return [enquiry()];
   }
   async updateReceivedEnquiryStatus(_context: AuthContext, _id: number, input: any) { return { ...enquiry(), status: input.status }; }
@@ -77,7 +77,7 @@ test('Enquiry received collection requires business role and delegates exact con
   const service = new EnquiryServiceImpl(repository);
   const result = await service.getReceivedEnquiries(businessContext, 265);
   assert.equal(result.length, 1);
-  assert.deepEqual(repository.lastReceivedList, { context: businessContext, businessId: 265 });
+  assert.deepEqual(repository.lastReceivedList, { context: businessContext, businessId: 265, options: { limit: 50, offset: 0 } });
 });
 
 test('Enquiry received collection rejects invalid businessId', async () => {
@@ -107,4 +107,14 @@ test('Enquiry status update rejects qualified to preserve the legacy mutation co
     () => service.updateReceivedEnquiryStatus(businessContext, 1, { status: 'qualified' }),
     /Invalid Enquiry status/,
   );
+});
+
+
+test('Enquiry received collection validates and forwards bounded pagination', async () => {
+  const repository = new FakeRepository();
+  const service = new EnquiryServiceImpl(repository);
+  await service.getReceivedEnquiries(businessContext, 265, { limit: 25, offset: 75 });
+  assert.deepEqual(repository.lastReceivedList, { context: businessContext, businessId: 265, options: { limit: 25, offset: 75 } });
+  await assert.rejects(() => service.getReceivedEnquiries(businessContext, 265, { limit: 101 }), /limit must be between 1 and 100/);
+  await assert.rejects(() => service.getReceivedEnquiries(businessContext, 265, { offset: -1 }), /offset must be between 0 and 1000000/);
 });
