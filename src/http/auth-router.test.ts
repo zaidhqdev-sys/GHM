@@ -102,6 +102,39 @@ test('POST /api/v1/auth/quoteflow-migration-reset/request is anti-enumerating an
   }
 });
 
+test('migration reset request is unavailable when delivery is not configured', async () => {
+  const priorUrl = process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_URL;
+  const priorToken = process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_TOKEN;
+  delete process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_URL;
+  delete process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_TOKEN;
+  const { createApp } = await loadApp();
+  const server = http.createServer(createApp({
+    businessIdentityService: {} as never,
+    projectService: {} as never,
+    publicProjectService: {} as never,
+    enquiryService: {} as never,
+    campaignService: {} as never,
+  }));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  try {
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/v1/auth/quoteflow-migration-reset/request`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'owner@example.test' }),
+    });
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { error: 'service_unavailable' });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    if (priorUrl === undefined) delete process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_URL;
+    else process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_URL = priorUrl;
+    if (priorToken === undefined) delete process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_TOKEN;
+    else process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_TOKEN = priorToken;
+  }
+});
+
 test('POST /api/v1/auth/quoteflow-migration-reset/complete issues GHM session only after completion', async () => {
   const order: string[] = [];
   const authService: GhmAuthService = {
