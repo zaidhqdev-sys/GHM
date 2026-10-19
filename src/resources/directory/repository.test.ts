@@ -17,7 +17,7 @@ const makePool = (rows: unknown[][]) => {
   return { pool: { connect: async () => client } as unknown as TransactionPool, calls };
 };
 
-test('directory repository binds query, category, province, and supplier filters without SQL interpolation', async () => {
+test('directory repository binds query, category, province, city, and supplier filters without SQL interpolation', async () => {
   const fake = makePool([[{ count: '1' }], [{
     id: '42',
     name: 'Durban Builder',
@@ -51,6 +51,7 @@ test('directory repository binds query, category, province, and supplier filters
     q: 'builder',
     category: 'construction',
     province: 'KwaZulu-Natal',
+    city: 'Durban',
     businessType: 'contractors',
     page: 2,
     pageSize: 10,
@@ -59,8 +60,8 @@ test('directory repository binds query, category, province, and supplier filters
   assert.equal(fake.calls.length, 2);
   assert.match(fake.calls[0].sql, /lower\(b\.province\) = lower\(\$3\)/);
   assert.match(fake.calls[0].sql, /b\.is_supplier = \$4/);
-  assert.deepEqual(fake.calls[0].values, ['builder', 'construction', 'KwaZulu-Natal', false]);
-  assert.deepEqual(fake.calls[1].values, ['builder', 'construction', 'KwaZulu-Natal', false, 10, 10]);
+  assert.deepEqual(fake.calls[0].values, ['builder', 'construction', 'KwaZulu-Natal', 'Durban', false]);
+  assert.deepEqual(fake.calls[1].values, ['builder', 'construction', 'KwaZulu-Natal', 'Durban', false, 10, 10]);
   assert.equal(result.total, 1);
   assert.equal(result.items[0].id, 42);
   assert.equal(result.items[0].province, 'KwaZulu-Natal');
