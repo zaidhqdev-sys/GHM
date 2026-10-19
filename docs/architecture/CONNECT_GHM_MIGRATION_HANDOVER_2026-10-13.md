@@ -702,3 +702,10 @@ The DTO should preserve the legacy user-visible enquiry fields only where necess
 - GHM PR #155 exact-head CI passed for `7d76bf3d21c3b6539ee18bd1e1a1070fafdda4e0` in run [39320284327](https://github.com/zaidhqdev-sys/GHM/actions/runs/39320284327), including build, disposable PostgreSQL migrations, database-backed test suite, migration audit policy tests, and runtime boundary verification.
 - Connect PR #48 exact-head GHM auth-contract workflow and web build passed for `3f18d6c5d673079fa6a6fa511da480a20f9a20a4` in run [39320326487](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39320326487). The workflow explicitly ran the new `ghm-lead-service` contract suite. Vercel preview status is green for that exact head.
 - These checks validate branch source and build behavior, not deployed GHM API/session interoperability or production readiness. Both PRs remain draft/open. Continue with non-production end-to-end qualification and remaining create/notification/customer-list parity review before considering merge or user enablement.
+
+
+### Shared workspace leads hook cutover checkpoint — 2026-10-19 20:36 UTC
+
+Connect PR #48 now also migrates `src/hooks/hooks_index.js`'s shared `useLeads` hook. Both React lead read/status consumers route through `ghmLeadService`; the old Supabase lead query, RPC status mutation and Supabase realtime channel were removed from those hooks. Since GHM has no lead realtime stream, the shared hook polls GHM every 30 seconds rather than keeping a second Supabase-backed data path.
+
+Latest Connect head `670183a91a5270be8b8c14a131917f2b028b9069` passed GHM auth-contract tests and web build in [run 39320594968](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39320594968); the Vercel preview status is green for that exact SHA. PR #48 remains draft/open. The legacy service definition remains in `src/lib/lib_supabase.js` for later cleanup; do not infer all Supabase lead use is gone until a full repository search and customer-create/notification parity review are complete.
