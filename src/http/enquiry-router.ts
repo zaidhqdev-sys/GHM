@@ -64,7 +64,7 @@ const parseCreateEnquiryInput = (body: unknown): CreateEnquiryInput | null => {
 const parseStatusInput = (body: unknown): UpdateEnquiryStatusInput | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   const input = body as Record<string, unknown>;
-  if (Object.keys(input).length !== 1 || !['new', 'contacted', 'qualified', 'quoted', 'won', 'lost', 'archived'].includes(input.status as string)) return null;
+  if (Object.keys(input).length !== 1 || !['new', 'contacted', 'quoted', 'won', 'lost', 'archived'].includes(input.status as string)) return null;
   return { status: input.status as UpdateEnquiryStatusInput['status'] };
 };
 
