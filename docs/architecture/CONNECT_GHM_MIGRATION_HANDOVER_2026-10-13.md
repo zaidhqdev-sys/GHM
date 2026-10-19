@@ -471,3 +471,14 @@ Targeted QuoteFlow main inspection identified Supabase dependencies in five oper
 Separately, inspected product data modules for business profile, customers, quotes, invoices and items use device-local AsyncStorage scoped through accountStorage. Dashboard surfaces a device-only storage warning when Supabase is not configured. This means data persistence strategy is mixed; do not assume these product records are currently cloud-hosted, and do not automatically migrate them to GHM without an explicit product decision and ownership/offline/conflict plan.
 
 The identity client currently provides identity retrieval, not product-data parity. Next work is to finish the complete source/import inventory, inspect database migrations/RLS/RPC definitions, compare each operation to deployed/source GHM contracts, and write acceptance tests before implementation. These are targeted source findings only; no runtime calls, production changes or database mutations were performed.
+
+
+## Critical GHM identity route availability check — 2026-10-19
+
+Read-only comparison of GHM main source with the client contract found a release/branch mismatch:
+- GHM main's src/http/app.ts does not register GET /api/v1/identity.
+- GHM PR #148 (https://github.com/zaidhqdev-sys/GHM/pull/148), "authenticated QuoteFlow identity context endpoint", is still draft/unmerged at inspected head 807a41d4de9dbfaa326ab6b66b69307fb7de9416.
+- GHM PR #137 (https://github.com/zaidhqdev-sys/GHM/pull/137), "expose authenticated canonical identity resolution", is also draft/unmerged at inspected head 3d394112c973a027a0e1a271f80c172b8d7385b8.
+- QuoteFlow's client is merged to QuoteFlow main and the dedicated ghm-identity-qualification sandbox service has reported successful route qualification, but this does not prove that the route exists in GHM main or the main production runtime.
+
+Treat GET /api/v1/identity as a sandbox-qualified integration contract, not an available production-main API, until the exact GHM implementation is reviewed, merged through the required documentation/security gates, deployed to a verified non-production target, and route-backed E2E is repeated. Do not switch QuoteFlow's normal provider or enable production configuration based on sandbox availability alone. Resolve this branch/deployment parity gate before production cutover.
