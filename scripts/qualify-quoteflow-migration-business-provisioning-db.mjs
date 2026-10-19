@@ -43,10 +43,14 @@ try {
         'ghm.auth_provision_quoteflow_migration_business(text,text,text,text,bigint,text,text,timestamptz)', 'EXECUTE') as can_execute,
       has_table_privilege(current_user, 'ghm.business_external_mapping', 'INSERT') as can_insert_mapping,
       has_table_privilege(current_user, 'ghm.business_external_mapping', 'UPDATE') as can_update_mapping,
-      has_table_privilege(current_user, 'ghm.business_external_mapping', 'DELETE') as can_delete_mapping
+      has_table_privilege(current_user, 'ghm.business_external_mapping', 'DELETE') as can_delete_mapping,
+      has_table_privilege(current_user, 'ghm.quoteflow_migration_business_provisioning_audit', 'INSERT') as can_insert_audit,
+      has_table_privilege(current_user, 'ghm.quoteflow_migration_business_provisioning_audit', 'UPDATE') as can_update_audit,
+      has_table_privilege(current_user, 'ghm.quoteflow_migration_business_provisioning_audit', 'DELETE') as can_delete_audit
   `);
   assert.deepEqual(privileges.rows[0], {
     can_execute: true, can_insert_mapping: false, can_update_mapping: false, can_delete_mapping: false,
+    can_insert_audit: false, can_update_audit: false, can_delete_audit: false,
   });
 
   const owner = await migrator.query(`
