@@ -616,3 +616,10 @@ This is a source comparison and construction recommendation, not a merge approva
 
 - The first QuoteFlow PR #21 CI run [39257238140](https://github.com/zaidhqdev-sys/QuoteFlow/actions/runs/39257238140) failed in the Jest test suite because strict indexed-access typing inferred `string | undefined` for test-key array elements. Typecheck itself passed; 6/7 test suites passed and 31/31 tests reported passed, but the new suite failed to compile. This failure is recorded rather than masked.
 - Fixed the test fixture by declaring the static key list as a tuple in commit `467632df28d8a192447540680f8272a3d1c828f0`. New exact-head CI run [39257408211](https://github.com/zaidhqdev-sys/QuoteFlow/actions/runs/39257408211) is in progress. PR #21 remains draft/open; no qualification claim until this run completes successfully.
+
+
+### Storage-scope CI passed — 2026-10-19 13:11 UTC
+
+- QuoteFlow PR #21 exact head `467632df28d8a192447540680f8272a3d1c828f0` passed CI run [39257408211](https://github.com/zaidhqdev-sys/QuoteFlow/actions/runs/39257408211). The prior test-typing failure was corrected and the full workflow passed on the new exact head.
+- PR #21 remains open/draft and is not merged. This qualifies the code/tests in CI only, not a real-device data copy, account/business mapping, provider switch, or production migration.
+- Safe next action is review of the migration primitive and a separate, explicitly mapped non-production test. Keep current Supabase AuthProvider and product operations untouched until the wider cutover gates pass.
