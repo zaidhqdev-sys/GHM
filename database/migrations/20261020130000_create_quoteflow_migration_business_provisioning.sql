@@ -209,8 +209,10 @@ ALTER FUNCTION ghm.auth_provision_quoteflow_migration_business(text, text, text,
   OWNER TO ghm_schema_owner;
 REVOKE ALL ON FUNCTION ghm.auth_provision_quoteflow_migration_business(text, text, text, text, bigint, text, text, timestamptz)
   FROM PUBLIC;
+REVOKE ALL ON FUNCTION ghm.auth_provision_quoteflow_migration_business(text, text, text, text, bigint, text, text, timestamptz)
+  FROM ghm_runtime;
 GRANT EXECUTE ON FUNCTION ghm.auth_provision_quoteflow_migration_business(text, text, text, text, bigint, text, text, timestamptz)
-  TO ghm_runtime;
+  TO ghm_schema_owner;
 
 REVOKE INSERT, UPDATE, DELETE ON TABLE ghm.business_external_mapping FROM ghm_runtime;
 
