@@ -43,6 +43,22 @@ const assertEligibleMarketplaceTarget = async (client: PoolClient, context: Auth
   if (result.rowCount !== 1) throw new Error('Enquiry target Business is not eligible');
 };
 
+const assertLeadManagementEntitlement = async (client: PoolClient, businessId: number): Promise<void> => {
+  const result = await client.query(
+    `SELECT 1
+     FROM ghm.commercial_subscription s
+     JOIN ghm.commercial_plan_entitlement e
+       ON e.plan_version_id = s.plan_version_id
+     WHERE s.business_id = $1
+       AND s.lifecycle_status IN ('trialing', 'active', 'grace_period', 'cancel_at_period_end')
+       AND e.entitlement_code = 'business.leads.manage'
+       AND e.access_level = 'enabled'
+     LIMIT 1`,
+    [businessId],
+  );
+  if (result.rowCount !== 1) throw new Error('Business Pro access required');
+};
+
 const findById = async (client: PoolClient, enquiryId: EnquiryId, predicate: string, params: unknown[]): Promise<Enquiry | null> => {
   const result = await client.query(`SELECT ${ENQUIRY_COLUMNS} FROM ghm.enquiry WHERE id = $1 AND ${predicate}`, [enquiryId, ...params]);
   return result.rowCount === 1 ? mapEnquiry(result.rows[0]) : null;
@@ -128,7 +144,8 @@ export class PostgresEnquiryRepository implements EnquiryRepository {
              WHERE bm.business_id = e.business_id AND bm.account_id = $2
                AND bm.membership_role = 'owner' AND bm.membership_status = 'active'
            )
-         ORDER BY e.created_at DESC, e.id DESC`,
+         ORDER BY e.created_at DESC, e.id DESC
+         LIMIT 50`,
         [businessId, context.userId],
       );
       return result.rows.map(mapEnquiry);
@@ -140,6 +157,7 @@ export class PostgresEnquiryRepository implements EnquiryRepository {
     return withAuthorizedTransaction(context, async client => {
       const existing = await this.getReceivedEnquiryInTransaction(client, context, enquiryId);
       if (!existing) throw new Error('Enquiry not found or business owner permission required');
+      await assertLeadManagementEntitlement(client, existing.businessId);
 
       const result = await client.query(
         `UPDATE ghm.enquiry SET status = $2 WHERE id = $1 RETURNING ${ENQUIRY_COLUMNS}`,
