@@ -55,13 +55,16 @@ const handleError = (error: unknown, res: Response): void => {
     }
     if (
       error.message === 'businessId must be a positive integer' ||
+      error.message === 'Business registration identity request is invalid' ||
       error.message === 'Business registration identity input is required' ||
       error.message === 'Registration status must be registered, unregistered, or null' ||
       error.message === 'Registration number must be text or null' ||
       error.message === 'Legal name must be text or null' ||
       error.message === 'Registration number must contain between 1 and 120 characters' ||
       error.message === 'Legal name must contain between 1 and 200 characters' ||
-      error.message === 'Registration fields must be empty unless the Business is registered'
+      error.message === 'Registration fields must be empty unless the Business is registered' ||
+      error.message === 'Registration fields must be empty when registration status is not declared' ||
+      error.message === 'Registration fields must be empty for an unregistered Business'
     ) {
       res.status(400).json({ error: 'invalid_request' });
       return;
