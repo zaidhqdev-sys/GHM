@@ -623,3 +623,10 @@ This is a source comparison and construction recommendation, not a merge approva
 - QuoteFlow PR #21 exact head `467632df28d8a192447540680f8272a3d1c828f0` passed CI run [39257408211](https://github.com/zaidhqdev-sys/QuoteFlow/actions/runs/39257408211). The prior test-typing failure was corrected and the full workflow passed on the new exact head.
 - PR #21 remains open/draft and is not merged. This qualifies the code/tests in CI only, not a real-device data copy, account/business mapping, provider switch, or production migration.
 - Safe next action is review of the migration primitive and a separate, explicitly mapped non-production test. Keep current Supabase AuthProvider and product operations untouched until the wider cutover gates pass.
+
+
+### Read-only migration dry-run added — 2026-10-19 13:12 UTC
+
+- QuoteFlow PR #21 now includes `dryRun: true` on `migrateAccountStorageScope`. It performs scope validation, reads the explicit source/target keys, preflights conflicts, and reports which keys would be copied/skipped without writing the journal or target values. Added a no-side-effects test.
+- Latest PR head `1578bba6263fb57b319110192f11850c808e71c3` CI run [39257859045](https://github.com/zaidhqdev-sys/QuoteFlow/actions/runs/39257859045) is in progress. The previous head passed CI, but the latest dry-run change remains unqualified until this exact-head run passes.
+- No runtime caller invokes this helper; no migration was run and the current Supabase auth/session flow remains unchanged.
