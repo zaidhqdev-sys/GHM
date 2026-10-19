@@ -11,7 +11,7 @@ const routeParam = (value: string | string[]): string | null =>
   typeof value === 'string' ? value : null;
 
 const positiveIntegerId = (value: string): number | null => {
-  if (!/^[1-9]\\d*$/.test(value)) return null;
+  if (!/^[1-9]\d*$/.test(value)) return null;
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 };
