@@ -462,3 +462,12 @@ QuoteFlow main has a GHM identity client (GET /api/v1/identity) and gated Androi
 Use a product-specific operation audit rather than copying Connect gaps wholesale into QuoteFlow. For every active Supabase operation record source caller, resource/data semantics, current authorization, GHM target contract, parity gap, acceptance test and migration/rollback needs. Resolve identity from authenticated GHM context; selected business IDs are hints and membership must be verified server-side. Never infer identity mapping from email/name/slug or coincidental IDs.
 
 Next: audit QuoteFlow auth lifecycle, organization bootstrap/context, membership/subscription/legal records, quote/customer/project persistence, RPCs, storage and all SDK imports; classify missing capabilities as Build/Extend; specify reviewed legacy UUID-to-GHM mapping and conflict reports; qualify parity in non-production with exact-head CI and route-backed negative-case E2E. Production deployment, configuration changes, database mutations, provider activation and cutover remain unauthorized by this checkpoint. Existing Connect findings are shared architecture context, not proof of QuoteFlow-specific parity gaps.
+
+
+## QuoteFlow source audit update — 2026-10-19
+
+Targeted QuoteFlow main inspection identified Supabase dependencies in five operation groups: (1) auth/session restore, callback exchange, login, signup and logout; (2) organization context/create/complete RPCs; (3) legal-document and legal-acceptance reads plus accept_quoteflow_legal RPC; (4) subscription initialization and entitlement lookup RPCs; and (5) Supabase client/config/session persistence itself.
+
+Separately, inspected product data modules for business profile, customers, quotes, invoices and items use device-local AsyncStorage scoped through accountStorage. Dashboard surfaces a device-only storage warning when Supabase is not configured. This means data persistence strategy is mixed; do not assume these product records are currently cloud-hosted, and do not automatically migrate them to GHM without an explicit product decision and ownership/offline/conflict plan.
+
+The identity client currently provides identity retrieval, not product-data parity. Next work is to finish the complete source/import inventory, inspect database migrations/RLS/RPC definitions, compare each operation to deployed/source GHM contracts, and write acceptance tests before implementation. These are targeted source findings only; no runtime calls, production changes or database mutations were performed.
