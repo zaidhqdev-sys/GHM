@@ -47,11 +47,16 @@ export interface UpdateEnquiryStatusInput {
   readonly status: EnquiryStatus;
 }
 
+export interface EnquiryListOptions {
+  readonly limit?: number;
+  readonly offset?: number;
+}
+
 export interface EnquiryRepository {
   createEnquiry(context: AuthContext, input: CreateEnquiryInput): Promise<Enquiry>;
   getOwnEnquiry(context: AuthContext, enquiryId: EnquiryId): Promise<Enquiry | null>;
   getReceivedEnquiry(context: AuthContext, enquiryId: EnquiryId): Promise<Enquiry | null>;
-  getReceivedEnquiries(context: AuthContext, businessId: BusinessId): Promise<readonly Enquiry[]>;
+  getReceivedEnquiries(context: AuthContext, businessId: BusinessId, options?: EnquiryListOptions): Promise<readonly Enquiry[]>;
   updateReceivedEnquiryStatus(context: AuthContext, enquiryId: EnquiryId, input: UpdateEnquiryStatusInput): Promise<Enquiry>;
 }
 
