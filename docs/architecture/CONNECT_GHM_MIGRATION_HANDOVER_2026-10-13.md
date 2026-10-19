@@ -570,3 +570,13 @@ This is a source comparison and construction recommendation, not a merge approva
 ### CI result update — 2026-10-19 04:22 UTC
 
 - GHM #148 exact head `18aa29c1347c498f8fddd16d0c57b4a14581447c`: CI completed successfully after adding the invalid-bearer HTTP regression test (workflow run 39199110141). The test change is now CI-qualified at this exact SHA; broader runtime/deployment and cross-client contract qualification remain open.
+
+
+## Identity-context reconciliation implementation — 2026-10-19 04:29 UTC
+
+- Continued on GHM integration candidate PR #142 branch `integration/ghm-identity-merge-candidate-20261018` rather than merging the separate #148 route and creating a duplicate endpoint.
+- Added `BusinessIdentityServiceImpl.getIdentityContext()` and its service contract; identity route now uses that operation, enforces the query allowlist (`businessId` only), rejects repeated/malformed/non-canonical selections, requires registered profile + business read access, and returns non-disclosing `404 not_found` for unauthorized/inactive selections.
+- Added service tests for zero memberships and multiple memberships without implicit selection; replaced route tests to cover authenticated explicit selection, missing/invalid bearer authentication, malformed/unknown/repeated query parameters, and non-disclosing unauthorized selection.
+- Exact candidate head after these code commits: `00273cb4e5661a89af2f504b6f15c8bc2d5258ea`. CI run [39199699582](https://github.com/zaidhqdev-sys/GHM/actions/runs/39199699582) was in progress at last check. Do not call this candidate qualified until that exact-head run completes successfully.
+- This incorporates #148's relevant route/service contract into #142's broader migration-audit candidate; #148 remains a separate open draft and must not be merged independently as-is, because that would duplicate `GET /api/v1/identity`. #142 remains draft/open. No merge, deployment, production database change, or cutover occurred.
+- Next: wait for exact-head CI; if passing, compare the final candidate's identity route and account email DTO with QuoteFlow's parser and add route-backed cross-client contract coverage. Then qualify non-production session expiry/revocation and the product workflow before changing QuoteFlow's normal AuthProvider.
