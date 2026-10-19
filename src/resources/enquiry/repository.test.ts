@@ -103,6 +103,7 @@ test('Received enquiry list asserts active owner then scopes by business_id with
   assert.match(listQuery.text, /membership_role = 'owner'/);
   assert.match(listQuery.text, /membership_status = 'active'/);
   assert.match(listQuery.text, /ORDER BY e\.created_at DESC, e\.id DESC/);
+  assert.match(listQuery.text, /LIMIT 50/);
   assert.deepEqual(listQuery.values, [265, 468]);
 });
 
