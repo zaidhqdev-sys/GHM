@@ -724,3 +724,11 @@ The current GHM generic notification create repository intentionally rejects a n
 ### Review moderation migration checkpoint — 2026-10-19 20:43 UTC
 
 Connect PR #49 (`migration/ghm-review-moderation-20261019`, stacked on PR #48) moves the admin pending-review list and approve/reject actions from the Supabase review query/RPC to GHM's authenticated review routes. The adapter validates the moderation decision and requires a non-empty rejection reason; the UI no longer has a Supabase fallback for moderation. Exact-head auth-contract tests and web build passed at `4af123897cd950f1236aa1f16b3a010ca701ee7d` in [run 39321497129](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39321497129). Vercel preview is blocked by a provider build-rate-limit response, so no preview success is claimed for PR #49. PR #49 remains draft/open and depends on the Connect leads PR #48. Non-production authorization and review-queue behavior must still be verified before merge.
+
+
+### Next registration/review boundary audit — 2026-10-19 20:45 UTC
+
+- **Business registration creation is already GHM-backed** in Connect's `BusinessCreationScreen.jsx` via authenticated `POST /api/ghm/api/v1/businesses`; do not create a second adapter for that path.
+- **Customer reviews and admin review moderation** are now covered by Connect PR #49 (stacked on #48), with exact-head contract/build CI passed. Vercel is rate-limited for the latest review preview.
+- **Founder directory listing review is still Supabase-only**: `AdminDirectoryReviewPanel.jsx` calls `directoryListingReviewService.isFounderReviewer/list/review`. The current GHM source tree has no equivalent founder-review queue/decision API or contract. Its authority is explicitly a Founder allowlist, not generic admin role. Do not replace it with the admin review endpoint or assume `isSystemAdmin` equals Founder reviewer; the next backend slice needs an explicit GHM-owned authority source, status-transition contract, audit semantics and queue API before Connect can migrate.
+- **Document verification remains separate** in `AdminVerificationScreen.jsx` and the Supabase `admin_verification_queue`; it is not equivalent to public review moderation. It requires its own GHM workflow and evidence/storage contract.
