@@ -16,6 +16,26 @@ const BUSINESS_OPERATOR_ROLES = new Set(['admin', 'business']);
 export class BusinessIdentityServiceImpl {
   constructor(private readonly repository: BusinessIdentityRepository) {}
 
+  /**
+   * Return canonical identity and the caller's own membership choices. Ambiguous
+   * multi-business membership is represented without selecting a tenant.
+   */
+  async getIdentityContext(input: ResolveIdentityInput): Promise<ApplicationIdentity> {
+    const account = await this.repository.getAccount(input.context);
+    const rawMemberships = await this.repository.getMembershipsForAccount(input.context);
+    const memberships = await Promise.all(rawMemberships.map(async (membership) => ({
+      ...membership,
+      business: await this.repository.getBusinessById(input.context, membership.businessId),
+    })));
+    const selectedBusinessId = input.selectedBusinessId ?? (memberships.length === 1 ? memberships[0].businessId : undefined);
+    if (selectedBusinessId === undefined) return { account, memberships, activeMembership: null, activeBusiness: null };
+    const membership = memberships.find((candidate) => candidate.businessId === selectedBusinessId && candidate.status === 'active');
+    if (!membership) throw new Error('Selected business context is not authorized');
+    const business = membership.business ?? await this.repository.getBusinessById(input.context, selectedBusinessId);
+    if (!business || !business.isActive) throw new Error('Selected business context is not authorized');
+    return { account, memberships, activeMembership: membership, activeBusiness: business };
+  }
+
   async resolveIdentity(input: ResolveIdentityInput): Promise<ApplicationIdentity> {
     const account = await this.repository.getAccount(input.context);
     const rawMemberships = await this.repository.getMembershipsForAccount(input.context);
