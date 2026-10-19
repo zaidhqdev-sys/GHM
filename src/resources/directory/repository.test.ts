@@ -112,3 +112,13 @@ test('directory repository omits optional filters and maps canonical numeric ide
   assert.equal(result.items[0].id, 7);
   assert.equal(result.items[0].isSupplier, true);
 });
+
+
+test('public categories query includes only active categories assigned to publicly visible businesses', async () => {
+  const fake = makePool([[{ id: 'cat-1', slug: 'construction', name: 'Construction' }]]);
+  const repository = new PostgresDirectoryRepository(fake.pool);
+  assert.deepEqual(await repository.listPublicCategories(), [{ id: 'cat-1', slug: 'construction', name: 'Construction' }]);
+  assert.match(fake.calls[0].sql, /bc\.is_active = true/);
+  assert.match(fake.calls[0].sql, /b\.verification_status = 'approved'/);
+  assert.match(fake.calls[0].sql, /b\.is_verified = true/);
+});
