@@ -14,6 +14,7 @@ export type RecoveryDeliveryWebhookFetch = (
   url: string,
   init: {
     method: 'POST';
+    redirect: 'error';
     headers: Record<string, string>;
     body: string;
     signal: AbortSignal;
@@ -32,8 +33,8 @@ export const createRecoveryWebhookDelivery = (
   } catch {
     throw new Error('Recovery delivery webhook URL is invalid');
   }
-  if (parsedUrl.protocol !== 'https:') {
-    throw new Error('Recovery delivery webhook must use HTTPS');
+  if (parsedUrl.protocol !== 'https:' || parsedUrl.username || parsedUrl.password || parsedUrl.hash) {
+    throw new Error('Recovery delivery webhook must use HTTPS without URL credentials or fragments');
   }
   if (!config.bearerToken || config.bearerToken.length < MIN_BEARER_TOKEN_LENGTH) {
     throw new Error('Recovery delivery webhook bearer token is not strong enough');
@@ -43,13 +44,13 @@ export const createRecoveryWebhookDelivery = (
     async deliver(input): Promise<void> {
       const response = await fetcher(parsedUrl.toString(), {
         method: 'POST',
+        redirect: 'error',
         headers: {
           authorization: `Bearer ${config.bearerToken}`,
           'content-type': 'application/json',
         },
         body: JSON.stringify({
           event: 'quoteflow_migration_password_reset',
-          accountId: input.accountId,
           email: input.email,
           recoveryToken: input.recoveryToken,
           expiresAt: input.expiresAt.toISOString(),
