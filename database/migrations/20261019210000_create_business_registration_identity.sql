@@ -75,6 +75,7 @@ BEGIN
     FROM ghm.business b
     JOIN ghm.business_membership bm ON bm.business_id = b.id
     WHERE b.id = p_business_id
+      AND b.is_active = true
       AND bm.account_id = p_account_id
       AND bm.membership_status = 'active'
       AND bm.membership_role IN ('owner', 'administrator')
@@ -124,6 +125,7 @@ BEGIN
     FROM ghm.business b
     JOIN ghm.business_membership bm ON bm.business_id = b.id
     WHERE b.id = p_business_id
+      AND b.is_active = true
       AND bm.account_id = p_account_id
       AND bm.membership_status = 'active'
       AND bm.membership_role IN ('owner', 'administrator')
