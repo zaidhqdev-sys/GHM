@@ -65,7 +65,7 @@ Still open: application composition-root wiring, grant expiry/enforcement, broad
 
 ## Connect integration
 
-Bounded construction-qualified seams include Connect service trust/request context, governed operation resolution, authorization binding, resource dispatch, service HTTP read boundary, assertion replay protection, **Connect-side** Business provisioning/linking, identity integration foundation, and selected resource adapters. These are not production migrations. Do not confuse Connect-side Business provisioning/linking with **QuoteFlow legacy organization → GHM Business creation**, whose reconciliation contract is qualified but whose separate Business-provisioning implementation is still not qualified (`QUOTEFLOW_MIGRATION_BUSINESS_PROVISIONING_CONTRACT.md`).
+Bounded construction-qualified seams include Connect service trust/request context, governed operation resolution, authorization binding, resource dispatch, service HTTP read boundary, assertion replay protection, **Connect-side** Business provisioning/linking, identity integration foundation, and selected resource adapters. These are not production migrations. Do not confuse Connect-side Business provisioning/linking with **QuoteFlow legacy organization → GHM Business creation**. The QuoteFlow reconciliation contract is qualified and the separate migration-only provisioning implementation plus database qualification script now exist on review branch `feat/quoteflow-business-provisioning-20261020`; CI has passed on the reviewed head, but execution against a designated non-production database remains outstanding (`QUOTEFLOW_MIGRATION_BUSINESS_PROVISIONING_CONTRACT.md`).
 
 ## QuoteFlow
 
