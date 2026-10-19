@@ -34,11 +34,12 @@ const evidenceReference = () => `synthetic:quoteflow-business-${runId}`;
 const reviewedAt = new Date('2026-10-20T00:00:00.000Z');
 const businessIds = new Set();
 
-const provision = (sourceId, name, slug, accountId = ownerId, sourceProvider = provider) =>
-  migrator.query(
+const provisionWith = (client, sourceId, name, slug, accountId = ownerId, sourceProvider = provider) =>
+  client.query(
     'select * from ghm.auth_provision_quoteflow_migration_business($1,$2,$3,$4,$5,$6,$7,$8)',
     [sourceProvider, sourceId, name, slug, accountId, evidenceReference(), 'synthetic-qualification-reviewer', reviewedAt],
   );
+const provision = (...args) => provisionWith(migrator, ...args);
 
 try {
   await runtime.connect();
@@ -152,8 +153,24 @@ try {
   assert.equal(invalidProvider.rows[0].outcome, 'blocked');
   assert.equal(invalidProvider.rows[0].reason_code, 'SOURCE_PROVIDER_NOT_ALLOWED');
 
-  const concurrent = await Promise.all(Array.from({ length: 4 }, () =>
-    provision(sourceIds[3], 'Concurrent Synthetic Business', `${slugBase}-concurrent`)));
+  // Use separate PostgreSQL sessions; Promise.all on one node-postgres Client only queues queries.
+  const concurrentClients = [];
+  let concurrent;
+  try {
+    for (let i = 0; i < 4; i += 1) {
+      const client = new Client({ connectionString: migratorUrl, ...(ssl ? { ssl } : {}) });
+      await client.connect();
+      concurrentClients.push(client);
+      await client.query('set role ghm_schema_owner');
+      const identity = await client.query('select current_database() as db, current_user as role');
+      assert.equal(identity.rows[0].db, 'ghm_db');
+      assert.equal(identity.rows[0].role, 'ghm_schema_owner');
+    }
+    concurrent = await Promise.all(concurrentClients.map(client =>
+      provisionWith(client, sourceIds[3], 'Concurrent Synthetic Business', `${slugBase}-concurrent`)));
+  } finally {
+    await Promise.all(concurrentClients.map(client => client.end().catch(() => {})));
+  }
   assert.equal(concurrent.filter(x => x.rows[0].outcome === 'created').length, 1);
   assert.equal(concurrent.filter(x => x.rows[0].outcome === 'already_provisioned').length, 3);
   assert.equal(new Set(concurrent.map(x => String(x.rows[0].business_id))).size, 1);
