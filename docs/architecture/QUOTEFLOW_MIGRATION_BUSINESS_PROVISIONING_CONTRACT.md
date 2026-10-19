@@ -92,6 +92,7 @@ The database qualification script is `scripts/qualify-quoteflow-migration-busine
 - four concurrent calls → one creation, remaining calls idempotent;
 - mapping/owner/evidence conflict → `CONFLICT` and no new Business;
 - missing owner → blocked/failure with no Business;
+- inactive owner or owner account whose canonical GHM role is not `business` → blocked with no Business;
 - invalid provider → rejected with no Business;
 - slug collision → rejected with no partial Business/membership;
 - transaction rollback removes all created records;
