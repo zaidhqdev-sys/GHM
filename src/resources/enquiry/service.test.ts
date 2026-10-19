@@ -99,3 +99,12 @@ test('Enquiry status mutation rejects invalid status values', async () => {
   const service = new EnquiryServiceImpl(new FakeRepository());
   await assert.rejects(() => service.updateReceivedEnquiryStatus(businessContext, 1, { status: 'invalid' as never }), /Invalid Enquiry status/);
 });
+
+
+test('Enquiry status update rejects qualified to preserve the legacy mutation contract', async () => {
+  const service = new EnquiryServiceImpl(new FakeRepository());
+  await assert.rejects(
+    () => service.updateReceivedEnquiryStatus(businessContext, 1, { status: 'qualified' }),
+    /Invalid Enquiry status/,
+  );
+});
