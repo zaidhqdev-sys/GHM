@@ -33,8 +33,8 @@ export const createRecoveryWebhookDelivery = (
   } catch {
     throw new Error('Recovery delivery webhook URL is invalid');
   }
-  if (parsedUrl.protocol !== 'https:' || parsedUrl.username || parsedUrl.password || parsedUrl.hash) {
-    throw new Error('Recovery delivery webhook must use HTTPS without URL credentials or fragments');
+  if (parsedUrl.protocol !== 'https:' || parsedUrl.username || parsedUrl.password || parsedUrl.search || parsedUrl.hash) {
+    throw new Error('Recovery delivery webhook must use HTTPS without URL credentials, query parameters, or fragments');
   }
   if (!config.bearerToken || config.bearerToken.length < MIN_BEARER_TOKEN_LENGTH) {
     throw new Error('Recovery delivery webhook bearer token is not strong enough');
