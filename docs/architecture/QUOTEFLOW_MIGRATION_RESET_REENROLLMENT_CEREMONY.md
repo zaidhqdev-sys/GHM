@@ -2,7 +2,15 @@
 
 **Status: RESET / ENROLLMENT / SESSION-ISSUANCE BUILDING BLOCKS CONSTRUCTED; FULL USER-FACING CEREMONY NOT YET QUALIFIED**
 
-> **Current-status reconciliation — 2026-10-13:** The atomic reset operation, canonical enrollment lookup, and session-issuance building blocks have construction qualification evidence. The complete user-facing migration ceremony remains unqualified pending non-production DB+HTTP evidence for anti-enumeration, single-use recovery, rollback, session revocation, and post-reset session issuance. The reviewed legacy identity set contains one legitimate owner account and two bot accounts; neither bot may be migrated or enrolled. Do not treat this document's ceremony design as proof of end-to-end qualification or authorization for production migration/cutover.
+> **Current-status reconciliation — 2026-10-20:** Reset, enrollment, and session-issuance building blocks exist on review branches. The migration-specific reset request/completion HTTP path and an HTTPS webhook adapter are constructed; delivery is disabled unless both server-side webhook settings are present. CI passes for the latest reset-delivery code, including fail-closed behavior when delivery is unconfigured. Full non-production DB+HTTP qualification remains open for anti-enumeration, single-use recovery, rollback, session revocation, and post-reset session issuance. The reviewed legacy identity set contains one legitimate owner account and two bot accounts; neither bot may be migrated or enrolled. No production reset delivery or cutover is authorized.
+
+## Current qualification checkpoint — 2026-10-20
+
+- Review branch: `feat/quoteflow-migration-recovery-delivery-20261020`; PR [#161](https://github.com/zaidhqdev-sys/GHM/pull/161).
+- CI evidence is not a substitute for running `npm run qualify:quoteflow-migration-reset-ceremony-db` against a designated, isolated non-production database with synthetic identities.
+- Do not set the delivery webhook values until endpoint ownership, access controls, retention, and operational monitoring have been reviewed and approved.
+- The completion handler commits the reset operation before requesting a login session. Qualification must explicitly cover the failure case where reset commits but subsequent session issuance fails, including the operator/user recovery path.
+- Bot identities must remain excluded and be tested for server-side denial independently; never modify their account state to make the tests pass.
 
 ## Decision
 
