@@ -59,6 +59,14 @@ class FakeClient {
     if (text.includes('FROM ghm.enquiry e') && text.includes('ORDER BY')) {
       return { rowCount: this.enquiryRows.length, rows: this.enquiryRows };
     }
+    if (text.includes('FROM ghm.enquiry e') && text.includes('WHERE e.id = $1')) {
+      const row = this.enquiryRows.find((item) => Number(item.id) === Number(values?.[0]));
+      return { rowCount: row ? 1 : 0, rows: row ? [row] : [] };
+    }
+    if (text.includes('UPDATE ghm.enquiry SET status = $2')) {
+      const row = this.enquiryRows.find((item) => Number(item.id) === Number(values?.[0]));
+      return { rowCount: row ? 1 : 0, rows: row ? [{ ...row, status: values?.[1] }] : [] };
+    }
     throw new Error(`Unexpected query: ${text}`);
   }
 
@@ -126,4 +134,28 @@ test('Received enquiry list rejects non-positive businessId before querying', as
   const repository = new PostgresEnquiryRepository(new FakePool(client));
   await assert.rejects(() => repository.getReceivedEnquiries(ownerContext, 0), /Invalid businessId/);
   assert.equal(client.queries.length, 0);
+});
+
+
+test('status updates require an active business.leads.manage entitlement', async () => {
+  const client = new FakeClient(1, [enquiryRow({ id: '10', business_id: '265' })], 1);
+  const repository = new PostgresEnquiryRepository(new FakePool(client));
+  const result = await repository.updateReceivedEnquiryStatus(ownerContext, 10, { status: 'contacted' });
+  assert.equal(result.status, 'contacted');
+  assert.equal(client.committed, true);
+  const entitlementQuery = client.queries.find((q) => q.text.includes('FROM ghm.commercial_subscription s'));
+  assert.ok(entitlementQuery);
+  assert.deepEqual(entitlementQuery.values, [265]);
+});
+
+test('status updates fail closed when the business lacks the leads entitlement', async () => {
+  const client = new FakeClient(1, [enquiryRow({ id: '10', business_id: '265' })], 0);
+  const repository = new PostgresEnquiryRepository(new FakePool(client));
+  await assert.rejects(
+    () => repository.updateReceivedEnquiryStatus(ownerContext, 10, { status: 'contacted' }),
+    /Business Pro access required/,
+  );
+  assert.equal(client.committed, false);
+  assert.equal(client.rolledBack, true);
+  assert.equal(client.queries.some((q) => q.text.includes('UPDATE ghm.enquiry SET status = $2')), false);
 });
