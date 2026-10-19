@@ -679,7 +679,9 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const passwordResetService =
     dependencies.passwordResetService
     ?? createPasswordResetService(authPersistence);
-  const recoveryDelivery = createRecoveryWebhookDeliveryFromEnv();
+  const recoveryDelivery = dependencies.quoteFlowMigrationResetRecoveryService
+    ? null
+    : createRecoveryWebhookDeliveryFromEnv();
   const quoteFlowMigrationResetRecoveryService =
     dependencies.quoteFlowMigrationResetRecoveryService
     ?? (recoveryDelivery
