@@ -764,3 +764,10 @@ Connect PR #49's moderation branch had diverged from its moving PR #48 base afte
 ### Review branch refresh CI confirmation — 2026-10-19 21:06 UTC
 
 The refreshed Connect PR #49 merge head `f9ad9018e28d114359c315a6a321c173eeaf7e66` passed exact-head GHM auth-contract tests and web build: [run 39324737383](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39324737383). This is still branch CI only; preview and deployed non-production authorization/queue qualification remain open.
+
+
+### Workspace received-enquiry pagination UI — 2026-10-19 21:12 UTC
+
+Connect PR #48 now exposes Previous/Next controls for the GHM-backed business workspace. The hook requests 51 records, displays 50, and uses the extra record to decide whether a next page exists; this avoids showing a Next control that leads to an empty page when the result count is an exact multiple of 50. Exact-head web build passed at `6c83c8225c5ec4ec9b542d8b1a6615f34a807f4e` ([run 39325418763](https://github.com/zaidhqdev-sys/zaid-connect)). The workspace still polls every 30 seconds because GHM has no lead realtime stream. No deployed API/session qualification or production cutover is claimed.
+
+Connect PR #49 was refreshed again from the paginated lead branch with merge commit `040c349c1e8c5e0565e346b070bed4a5c3310005`; comparison is ahead by 6 and behind by 0. Exact-head GHM auth-contract tests and web build passed ([run 39325510622](https://github.com/zaidhqdev-sys/zaid-connect)). Vercel preview remains blocked by the provider build-rate-limit response.
