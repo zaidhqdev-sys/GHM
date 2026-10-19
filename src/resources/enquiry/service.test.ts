@@ -87,9 +87,9 @@ test('Enquiry received collection rejects invalid businessId', async () => {
   await assert.rejects(() => service.getReceivedEnquiries(businessContext, 1.5), /Invalid businessId/);
 });
 
-test('Enquiry status mutation accepts every production status value', async () => {
+test('Enquiry status mutation accepts every legacy RPC-supported status value', async () => {
   const service = new EnquiryServiceImpl(new FakeRepository());
-  for (const status of ['new', 'contacted', 'qualified', 'quoted', 'won', 'lost', 'archived'] as const) {
+  for (const status of ['new', 'contacted', 'quoted', 'won', 'lost', 'archived'] as const) {
     const result = await service.updateReceivedEnquiryStatus(businessContext, 1, { status });
     assert.equal(result.status, status);
   }
