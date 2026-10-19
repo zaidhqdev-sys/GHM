@@ -2,7 +2,7 @@ import type { PoolClient } from 'pg';
 import type { AuthContext } from '../../auth/authorization';
 import { withAuthorizedTransaction } from '../../db/authorized-transaction';
 import type { TransactionPool } from '../../db/transaction';
-import type { CreateEnquiryInput, Enquiry, EnquiryId, EnquiryRepository, UpdateEnquiryStatusInput } from './contracts';
+import type { CreateEnquiryInput, Enquiry, EnquiryId, EnquiryListOptions, EnquiryRepository, UpdateEnquiryStatusInput } from './contracts';
 
 const ENQUIRY_COLUMNS = `id, business_id, customer_id, customer_name, customer_phone, customer_email, project, description, city, budget_min, budget_max, urgency, source, status, opportunity_id, created_at, updated_at`;
 
@@ -132,8 +132,12 @@ export class PostgresEnquiryRepository implements EnquiryRepository {
     return withAuthorizedTransaction(context, client => this.getReceivedEnquiryInTransaction(client, context, enquiryId), this.transactionPool);
   }
 
-  async getReceivedEnquiries(context: AuthContext, businessId: number): Promise<readonly Enquiry[]> {
+  async getReceivedEnquiries(context: AuthContext, businessId: number, options: EnquiryListOptions = {}): Promise<readonly Enquiry[]> {
     assertPositiveId(businessId, 'businessId');
+    const limit = options.limit ?? 50;
+    const offset = options.offset ?? 0;
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new Error('Enquiry limit must be between 1 and 100');
+    if (!Number.isSafeInteger(offset) || offset < 0 || offset > 1_000_000) throw new Error('Enquiry offset must be between 0 and 1000000');
     return withAuthorizedTransaction(context, async client => {
       await assertActiveOwner(client, context, businessId);
       const result = await client.query(
@@ -145,8 +149,8 @@ export class PostgresEnquiryRepository implements EnquiryRepository {
                AND bm.membership_role = 'owner' AND bm.membership_status = 'active'
            )
          ORDER BY e.created_at DESC, e.id DESC
-         LIMIT 50`,
-        [businessId, context.userId],
+         LIMIT $3 OFFSET $4`,
+        [businessId, context.userId, limit, offset],
       );
       return result.rows.map(mapEnquiry);
     }, this.transactionPool);
