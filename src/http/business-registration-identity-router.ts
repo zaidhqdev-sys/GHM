@@ -49,8 +49,8 @@ const parseUpdateInput = (businessId: number, body: unknown): UpdateBusinessRegi
 
 const handleError = (error: unknown, res: Response): void => {
   if (error instanceof Error) {
-    if (error.message === 'Business management permission required') {
-      res.status(403).json({ error: 'forbidden' });
+    if (error.message === 'Business management permission required' || error.message === 'Business tenant access denied') {
+      res.status(404).json({ error: 'not_found' });
       return;
     }
     if (
