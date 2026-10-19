@@ -826,3 +826,8 @@ Connect PR #47's profile-editor boundary fix passed exact-head CI at `77777e5302
 ### GHM profile editor capability flags verified — 2026-10-19 21:38 UTC
 
 The editor now explicitly receives the disabled `reviewWorkflowAvailable` and `logoStorageAvailable` flags from the hook, so save labels, review messages, and logo controls match the actual fail-closed behavior. Exact-head profile-editor boundary contracts and web build passed at `fe62fb99b1386e31e228eb1070843adf24285a6d` ([run 39328986283](https://github.com/zaidhqdev-sys/zaid-connect)). The legacy RPCs are no longer called from this GHM numeric-ID editor; review submission and logo storage remain unavailable until their GHM contracts are implemented.
+
+
+### Registration identity fields gated in GHM profile editor — 2026-10-19 21:41 UTC
+
+Connect PR #47 now also disables registration-classification, legal-name, and registration-number edits until GHM owns the registration identity contract. This prevents users from entering legacy-only values that the GHM save boundary must reject. The screen exposes the missing capability rather than promising submission, and supported profile saves no longer call legacy UUID RPCs. Exact-head profile-editor boundary tests and web build passed at `934dfd4b8d5156a9102d7f1ce1dc05c4df81d9d3` ([run 39329391474](https://github.com/zaidhqdev-sys/zaid-connect)).
