@@ -352,4 +352,4 @@ The current draft findings resolve an earlier handover contradiction: Relationsh
 
 ## QuoteFlow migration reset delivery — 2026-10-20
 
-The server-side HTTPS recovery webhook adapter and default migration reset-completion wiring are on review branch `feat/quoteflow-migration-recovery-delivery-20261020`. Delivery remains disabled until an approved HTTPS endpoint and bearer token are provisioned; do not activate a delivery provider or send production recovery messages as part of construction. CI and end-to-end non-production ceremony qualification remain required.
+The server-side HTTPS recovery webhook adapter and default migration reset-completion wiring are on review branch `feat/quoteflow-migration-recovery-delivery-20261020`. Delivery remains disabled until an approved HTTPS endpoint and bearer token are provisioned; do not activate a delivery provider or send production recovery messages as part of construction. CI passes on the reviewed implementation; end-to-end non-production ceremony qualification and delivery-endpoint approval remain required.
