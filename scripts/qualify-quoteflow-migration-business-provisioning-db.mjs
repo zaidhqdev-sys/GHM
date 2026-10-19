@@ -5,8 +5,18 @@ import 'dotenv/config';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
+const expectedNonProductionHost = process.env.GHM_NONPRODUCTION_DATABASE_HOST;
 assert(runtimeUrl && migratorUrl && runtimeUrl !== migratorUrl,
   'Distinct GHM_RUNTIME_DATABASE_URL and GHM_MIGRATOR_DATABASE_URL are required');
+assert(expectedNonProductionHost,
+  'GHM_NONPRODUCTION_DATABASE_HOST must be set to the approved isolated non-production database hostname');
+
+const runtimeHost = new URL(runtimeUrl).hostname;
+const migratorHost = new URL(migratorUrl).hostname;
+assert.equal(runtimeHost, expectedNonProductionHost,
+  'Runtime database host does not match the explicitly approved non-production host');
+assert.equal(migratorHost, expectedNonProductionHost,
+  'Migration database host does not match the explicitly approved non-production host');
 
 const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined;
 const runtime = new Client({ connectionString: runtimeUrl, ...(ssl ? { ssl } : {}) });
@@ -36,6 +46,10 @@ try {
   const runtimeIdentity = await runtime.query('select current_database() as db, current_user as role');
   assert.equal(runtimeIdentity.rows[0].db, 'ghm_db');
   assert.equal(runtimeIdentity.rows[0].role, 'ghm_runtime');
+
+  const migrationIdentity = await migrator.query('select current_database() as db, current_user as role');
+  assert.equal(migrationIdentity.rows[0].db, 'ghm_db');
+  assert.equal(migrationIdentity.rows[0].role, 'ghm_schema_owner');
 
   const privileges = await runtime.query(`
     select
