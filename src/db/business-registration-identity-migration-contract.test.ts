@@ -21,6 +21,7 @@ test('registration identity is stored separately and constrained as a self-decla
   assert.doesNotMatch(migration, /GRANT (?:SELECT|INSERT|UPDATE|DELETE|ALL) ON TABLE ghm\.business_registration_identity TO ghm_runtime/i);
   assert.match(migration, /SECURITY DEFINER\s+SET search_path = pg_catalog, ghm/);
   assert.match(migration, /bm\.membership_role IN \('owner', 'administrator'\)/);
+  assert.equal((migration.match(/b\.is_active = true/g) ?? []).length, 2);
   assert.match(migration, /updated_by_account_id/);
 });
 
