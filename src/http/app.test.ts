@@ -868,20 +868,16 @@ test('project update route maps closed-project denial to conflict', async () => 
 
 
 test('canonical identity route rejects missing authentication', async () => {
-  const service = {
-    resolveIdentity: async () => { throw new Error('must not be called'); },
-  } as unknown as BusinessIdentityService;
+  const service = { getIdentityContext: async () => { throw new Error('must not be called'); } } as unknown as BusinessIdentityService;
   const { server, baseUrl } = await startTestServer(service);
   try {
     const response = await fetch(`${baseUrl}/api/v1/identity`);
     assert.equal(response.status, 401);
     assert.deepEqual(await response.json(), { error: 'unauthorized' });
-  } finally {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-  }
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
-test('canonical identity route derives account context from GHM auth and validates selected membership through service', async () => {
+test('canonical identity route derives identity from auth and forwards explicit business selection', async () => {
   let received: { context: AuthContext; selectedBusinessId?: number } | undefined;
   const identity = {
     account: profile({ userId: 42, role: 'business' }),
@@ -889,18 +885,11 @@ test('canonical identity route derives account context from GHM auth and validat
     activeMembership: { id: 501, accountId: 42, businessId: 201, role: 'owner', status: 'active' },
     activeBusiness: { id: 201, name: 'Canonical Business', isActive: true },
   };
-  const service = {
-    resolveIdentity: async (input: { context: AuthContext; selectedBusinessId?: number }) => {
-      received = input;
-      return identity;
-    },
-  } as unknown as BusinessIdentityService;
+  const service = { getIdentityContext: async (input: { context: AuthContext; selectedBusinessId?: number }) => { received = input; return identity; } } as unknown as BusinessIdentityService;
   const { server, baseUrl } = await startTestServer(service);
   try {
     const token = tokenFor({ userId: 42, role: 'business' });
-    const response = await fetch(`${baseUrl}/api/v1/identity?businessId=201&accountId=999`, {
-      headers: { authorization: `Bearer ${token}` },
-    });
+    const response = await fetch(`${baseUrl}/api/v1/identity?businessId=201`, { headers: { authorization: `Bearer ${token}` } });
     assert.equal(response.status, 200);
     assert.deepEqual(received, { context: { userId: 42, role: 'business' }, selectedBusinessId: 201 });
     const body = await response.json() as typeof identity;
@@ -909,49 +898,44 @@ test('canonical identity route derives account context from GHM auth and validat
     assert.equal(body.memberships[0].businessId, 201);
     assert.equal(body.activeMembership.businessId, 201);
     assert.equal(body.activeBusiness.id, 201);
-  } finally {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-  }
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
-test('canonical identity route rejects malformed business selection before service execution', async () => {
+test('canonical identity route rejects unknown, repeated and malformed query parameters', async () => {
   let called = false;
-  const service = {
-    resolveIdentity: async () => { called = true; throw new Error('must not be called'); },
-  } as unknown as BusinessIdentityService;
+  const service = { getIdentityContext: async () => { called = true; throw new Error('must not be called'); } } as unknown as BusinessIdentityService;
   const { server, baseUrl } = await startTestServer(service);
   try {
     const token = tokenFor({ userId: 42, role: 'business' });
-    for (const value of ['0', '-1', '1.5', 'abc', '9007199254740992']) {
-      const response = await fetch(`${baseUrl}/api/v1/identity?businessId=${encodeURIComponent(value)}`, {
-        headers: { authorization: `Bearer ${token}` },
-      });
-      assert.equal(response.status, 400, `expected invalid businessId ${value} to be rejected`);
+    for (const query of ['?businessId=0', '?businessId=-1', '?businessId=1.5', '?businessId=abc', '?businessId=9007199254740992', '?businessId=1&businessId=2', '?accountId=999']) {
+      const response = await fetch(`${baseUrl}/api/v1/identity${query}`, { headers: { authorization: `Bearer ${token}` } });
+      assert.equal(response.status, 400, query);
       assert.deepEqual(await response.json(), { error: 'invalid_request' });
     }
     assert.equal(called, false);
-  } finally {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-  }
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
-test('canonical identity route maps an unauthorized business selection to 403', async () => {
-  const service = {
-    resolveIdentity: async () => { throw new Error('Selected business context is not authorized'); },
-  } as unknown as BusinessIdentityService;
+test('canonical identity route conceals unauthorized business selection as not found', async () => {
+  const service = { getIdentityContext: async () => { throw new Error('Selected business context is not authorized'); } } as unknown as BusinessIdentityService;
   const { server, baseUrl } = await startTestServer(service);
   try {
     const token = tokenFor({ userId: 42, role: 'business' });
-    const response = await fetch(`${baseUrl}/api/v1/identity?businessId=999`, {
-      headers: { authorization: `Bearer ${token}` },
-    });
-    assert.equal(response.status, 403);
-    assert.deepEqual(await response.json(), { error: 'business_context_forbidden' });
-  } finally {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-  }
+    const response = await fetch(`${baseUrl}/api/v1/identity?businessId=999`, { headers: { authorization: `Bearer ${token}` } });
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), { error: 'not_found' });
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
+test('canonical identity route rejects invalid bearer tokens before service execution', async () => {
+  const service = { getIdentityContext: async () => { throw new Error('must not be called'); } } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/identity`, { headers: { authorization: 'Bearer not-a-valid-token' } });
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: 'unauthorized' });
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
 
 test('business profile PATCH accepts owner-managed directory fields but excludes protected fields', async () => {
   let received: unknown;
