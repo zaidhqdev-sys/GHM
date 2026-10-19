@@ -400,7 +400,7 @@ test('received enquiry list accepts bounded pagination and forwards it to the se
     });
     assert.equal(response.status, 200);
     assert.deepEqual(received, { context: { userId: 468, role: 'business' }, businessId: 700, options: { limit: 25, offset: 50 } });
-  } finally { await closeServer(server); }
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
 test('received enquiry list rejects invalid pagination before service execution', async () => {
