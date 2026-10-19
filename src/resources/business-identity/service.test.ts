@@ -56,6 +56,27 @@ test('public Business slug reads require approval', async () => {
   assert.ok(await service.getPublicBusinessBySlug(context, 'business-1')); assert.equal(await service.getPublicBusinessBySlug(context, 'business-2'), null);
 });
 
+test('identity context permits zero memberships without selecting a business', async () => {
+  const context: AuthContext = { userId: 1, role: 'business' };
+  const { service } = serviceFor(context);
+  const result = await service.getIdentityContext({ context });
+  assert.deepEqual(result.memberships, []);
+  assert.equal(result.activeBusiness, null);
+  assert.equal(result.activeMembership, null);
+});
+
+test('identity context lists multiple memberships without implicit selection', async () => {
+  const context: AuthContext = { userId: 1, role: 'business' };
+  const { service, repository } = serviceFor(context);
+  repository.businesses.set(1, business(1));
+  repository.businesses.set(2, business(2));
+  repository.memberships.push(membership(1, 1, 'owner'), membership(2, 1, 'administrator'));
+  const result = await service.getIdentityContext({ context });
+  assert.equal(result.memberships.length, 2);
+  assert.equal(result.activeBusiness, null);
+  assert.equal(result.activeMembership, null);
+});
+
 test('identity resolution auto-selects the only active membership', async () => {
   const context: AuthContext = { userId: 1, role: 'business' }; const { service, repository } = serviceFor(context);
   repository.businesses.set(1, business(1)); repository.memberships.push(membership(1, 1, 'owner'));
