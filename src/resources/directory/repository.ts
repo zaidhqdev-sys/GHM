@@ -1,6 +1,6 @@
 import { pool } from '../../db/pool.js';
 import type { TransactionPool } from '../../db/transaction.js';
-import type { DirectoryQuery, DirectoryRepository, DirectoryResult, PublicDirectoryBusiness } from './contracts.js';
+import type { DirectoryQuery, DirectoryRepository, DirectoryResult, PublicDirectoryBusiness, PublicDirectoryCategory } from './contracts.js';
 
 const DIRECTORY_COLUMNS = `
   b.id,
@@ -132,6 +132,30 @@ const categoryPredicate = (query: DirectoryQuery, parameterIndex: number): { sql
 
 export class PostgresDirectoryRepository implements DirectoryRepository {
   constructor(private readonly transactionPool: TransactionPool = pool) {}
+
+  async listPublicCategories(): Promise<PublicDirectoryCategory[]> {
+    const client = await this.transactionPool.connect();
+    try {
+      const result = await client.query<{ id: string; slug: string; name: string }>(
+        `SELECT DISTINCT bc.id::text AS id, bc.slug, bc.name
+         FROM ghm.business_category bc
+         WHERE bc.is_active = true
+           AND EXISTS (
+             SELECT 1
+             FROM ghm.business_category_assignment bca
+             JOIN ghm.business b ON b.id = bca.business_id
+             WHERE bca.category_id = bc.id
+               AND b.is_active = true
+               AND b.is_verified = true
+               AND b.verification_status = 'approved'
+           )
+         ORDER BY bc.name ASC`,
+      );
+      return result.rows.map(row => ({ id: row.id, slug: row.slug, name: row.name }));
+    } finally {
+      client.release();
+    }
+  }
 
   async search(query: DirectoryQuery): Promise<DirectoryResult> {
     const client = await this.transactionPool.connect();
