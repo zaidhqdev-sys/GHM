@@ -31,7 +31,7 @@ test('delivery requires HTTPS and a strong bearer token', () => {
 });
 
 test('delivery sends the one-time credential only to the configured HTTPS boundary', async () => {
-  let request: { url: string; init: { headers: Record<string, string>; body: string; method: string } } | undefined;
+  let request: { url: string; init: { headers: Record<string, string>; body: string; method: string; redirect: string } } | undefined;
   const delivery = createRecoveryWebhookDelivery(
     { url: 'https://delivery.example.test/hook', bearerToken: token },
     async (url, init) => {
