@@ -63,7 +63,8 @@
     "audit:legacy-role-remediation": "npm run build && node scripts/audit-legacy-role-remediation.mjs",
     "qualify:storage-live-provider": "npm run build && node scripts/qualify-storage-live-provider.mjs",
     "qualify:founder-system-admin-bootstrap": "node scripts/qualify-founder-system-admin-bootstrap.mjs",
-    "test:migration-audit-policy": "node --test scripts/migration-audit-checksum.test.mjs"
+    "test:migration-audit-policy": "node --test scripts/migration-audit-checksum.test.mjs",
+    "test:business-engagement": "npm run build && node --require ./scripts/test-env.cjs --test dist/resources/business-engagement/service.test.js dist/http/business-engagement-router.test.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",
