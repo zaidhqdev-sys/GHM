@@ -737,3 +737,10 @@ Connect PR #49 (`migration/ghm-review-moderation-20261019`, stacked on PR #48) m
 ### QuoteFlow identity-client duplication audit — 2026-10-19 20:47 UTC
 
 QuoteFlow PR #11 was closed as superseded after comparing it with `src/lib/ghmAuthClient.ts` and `src/lib/ghmAuthTypes.ts` on `main`. The existing `GhmAuthClient.getIdentity` already uses `assertGhmIdentityResponse`, including account-field validation, canonical account/membership matching, active membership/business consistency, and malformed nested DTO tests in `ghmAuthClient.test.ts`. The proposed `ghmIdentityClient.ts` had no runtime callers and duplicated that parser; maintaining both would allow the contracts to drift. Keep the existing GhmAuthClient as the single identity HTTP boundary. PR #20's identity-context contract tests and PR #23's proposed mapping contract remain separate; do not wire the current Supabase AuthProvider or activate storage-scope migration without the mapping and rollout gates.
+
+
+### Received-enquiry pagination — 2026-10-19 20:57 UTC
+
+GHM PR #155 now supports bounded `limit`/`offset` on `GET /api/v1/enquiries/received`; defaults remain the newest-first 50 rows, max page size is 100, and offset is capped at 1,000,000. The SQL binds pagination values rather than interpolating them. Contract tests cover bounds, bound parameters, HTTP parsing, and forwarding. Exact-head CI passed at `8fac895956636bea3d6faad2b45fac65e6cf95bc`: [run 39323437443](https://github.com/zaidhqdev-sys/GHM/actions/runs/39323437443).
+
+Connect PR #48's `ghmLeadService.getForBusiness(businessId, { limit, offset })` now exposes that pagination contract with client-side bounds validation; its existing default remains 50 so the current workspace UI is unchanged. Exact-head Connect CI for `e4c09c41e4e9cff7646522c9dc00b787c5046096` is still running at [run 39323513081](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39323513081). The workspace UI does not yet expose page controls; do not describe the UI itself as fully paginated. No production cutover or deployed API qualification is claimed.
