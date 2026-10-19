@@ -103,8 +103,8 @@ test('Received enquiry list asserts active owner then scopes by business_id with
   assert.match(listQuery.text, /membership_role = 'owner'/);
   assert.match(listQuery.text, /membership_status = 'active'/);
   assert.match(listQuery.text, /ORDER BY e\.created_at DESC, e\.id DESC/);
-  assert.match(listQuery.text, /LIMIT 50/);
-  assert.deepEqual(listQuery.values, [265, 468]);
+  assert.match(listQuery.text, /LIMIT \$3 OFFSET \$4/);
+  assert.deepEqual(listQuery.values, [265, 468, 50, 0]);
 });
 
 test('Received enquiry list returns empty array for active owner with no enquiries', async () => {
@@ -159,4 +159,23 @@ test('status updates fail closed when the business lacks the leads entitlement',
   assert.equal(client.committed, false);
   assert.equal(client.rolledBack, true);
   assert.equal(client.queries.some((q) => q.text.includes('UPDATE ghm.enquiry SET status = $2')), false);
+});
+
+
+test('Received enquiry list applies requested limit and offset using bound parameters', async () => {
+  const client = new FakeClient(1, [enquiryRow()]);
+  const repository = new PostgresEnquiryRepository(new FakePool(client));
+  await repository.getReceivedEnquiries(ownerContext, 265, { limit: 25, offset: 75 });
+  const listQuery = client.queries.find((q) => q.text.includes('FROM ghm.enquiry e') && q.text.includes('ORDER BY'));
+  assert.ok(listQuery);
+  assert.deepEqual(listQuery.values, [265, 468, 25, 75]);
+  assert.match(listQuery.text, /LIMIT \$3 OFFSET \$4/);
+});
+
+test('Received enquiry repository rejects invalid pagination before opening a transaction', async () => {
+  const client = new FakeClient(1, []);
+  const repository = new PostgresEnquiryRepository(new FakePool(client));
+  await assert.rejects(() => repository.getReceivedEnquiries(ownerContext, 265, { limit: 101 }), /limit must be between 1 and 100/);
+  await assert.rejects(() => repository.getReceivedEnquiries(ownerContext, 265, { offset: -1 }), /offset must be between 0 and 1000000/);
+  assert.equal(client.queries.length, 0);
 });
