@@ -36,6 +36,7 @@ class FakeClient {
   constructor(
     private readonly membershipRowCount: number,
     private readonly enquiryRows: ReturnType<typeof enquiryRow>[],
+    private readonly entitlementRowCount = 1,
   ) {}
 
   async query(text: string, values?: unknown[]) {
@@ -51,6 +52,9 @@ class FakeClient {
     }
     if (text.includes('FROM ghm.business_membership') && text.includes('LIMIT 1')) {
       return { rowCount: this.membershipRowCount, rows: this.membershipRowCount === 1 ? [{}] : [] };
+    }
+    if (text.includes('FROM ghm.commercial_subscription s')) {
+      return { rowCount: this.entitlementRowCount, rows: this.entitlementRowCount === 1 ? [{}] : [] };
     }
     if (text.includes('FROM ghm.enquiry e') && text.includes('ORDER BY')) {
       return { rowCount: this.enquiryRows.length, rows: this.enquiryRows };
