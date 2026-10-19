@@ -51,7 +51,7 @@ Any failure rolls back the Business, owner membership, and mapping together.
 
 ## Idempotency
 
-If the exact external mapping already points to the same Business, the operation returns `already_provisioned` without creating another Business.
+If the exact external mapping already points to a Business, the operation returns `already_provisioned` only when the recorded review evidence and approved owner match and an active owner membership for that account exists. If the mapping lacks the expected audit record, the owner differs, or the evidence reference/reviewer/timestamp differs, return `CONFLICT` and make no mutation.
 
 If the exact external mapping points elsewhere, return `CONFLICT` and make no mutation.
 
@@ -87,9 +87,10 @@ Legacy organization members, legacy roles, administrators, and secondary members
 The database qualification script is `scripts/qualify-quoteflow-migration-business-provisioning-db.mjs` (`npm run qualify:quoteflow-business-provisioning-db`). Before merge, non-production qualification must prove:
 
 - fresh `CREATE_REQUIRED` → exactly one Business + exactly one active owner membership + exact external mapping;
-- exact retry → `already_provisioned`, same Business;
+- exact retry with the same owner and review evidence → `already_provisioned`, same Business and owner membership;
+- existing mapping with missing audit evidence, different owner, or mismatched evidence → `CONFLICT` and no mutation;
 - four concurrent calls → one creation, remaining calls idempotent;
-- mapping conflict → `CONFLICT` and no new Business;
+- mapping/owner/evidence conflict → `CONFLICT` and no new Business;
 - missing owner → blocked/failure with no Business;
 - invalid provider → rejected with no Business;
 - slug collision → rejected with no partial Business/membership;
