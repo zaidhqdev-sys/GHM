@@ -26,7 +26,7 @@ test('directory service applies default pagination and normalizes blank query', 
   });
 
   const result = await service.search({ q: '   ', page: 1, pageSize: 20 });
-  assert.deepEqual(received, { q: undefined, category: undefined, province: undefined, businessType: undefined, page: 1, pageSize: 20 });
+  assert.deepEqual(received, { q: undefined, category: undefined, province: undefined, city: undefined, sort: 'rating', businessType: undefined, page: 1, pageSize: 20 });
   assert.equal(result.total, 0);
 });
 
@@ -97,4 +97,21 @@ test('directory service rejects malformed province and business type before repo
   await assert.rejects(() => service.search({ province: 'x'.repeat(101), page: 1, pageSize: 20 }), /province must be at most 100 characters/);
   await assert.rejects(() => service.search({ businessType: 'everyone' as 'contractors', page: 1, pageSize: 20 }), /businessType must be contractors or suppliers/);
   assert.equal(called, false);
+});
+
+test('directory service normalizes city and accepts only supported sort modes', async () => {
+  let received: unknown;
+  const service = new DirectoryServiceImpl({
+    search: async query => {
+      received = query;
+      return { items: [], page: query.page, pageSize: query.pageSize, total: 0 };
+    },
+  });
+  await service.search({ city: '  Durban ', sort: 'reviews', page: 1, pageSize: 20 });
+  assert.deepEqual(received, {
+    q: undefined, category: undefined, province: undefined, city: 'Durban',
+    sort: 'reviews', businessType: undefined, page: 1, pageSize: 20,
+  });
+  await assert.rejects(() => service.search({ sort: 'distance' as 'rating', page: 1, pageSize: 20 }), /sort must be rating, reviews, views, or newest/);
+  await assert.rejects(() => service.search({ city: ' ', page: 1, pageSize: 20 }), /city must not be blank/);
 });
