@@ -89,6 +89,7 @@ test('public directory route allows anonymous access and returns the directory r
   };
   let received: unknown;
   const directoryService: DirectoryService = {
+    listPublicCategories: async () => [],
     search: async query => {
       received = query;
       return result;
@@ -1089,5 +1090,22 @@ test('own-profile PATCH rejects unknown Connect role and protected fields before
     assert.equal(called, false);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+
+test('public business category route returns the filtered GHM taxonomy without requiring a session', async () => {
+  const categories = [{ id: 'cat-1', slug: 'construction', name: 'Construction' }];
+  const directoryService: DirectoryService = {
+    listPublicCategories: async () => categories,
+    search: async query => ({ items: [], page: query.page, pageSize: query.pageSize, total: 0 }),
+  };
+  const { server, baseUrl } = await startDirectoryTestServer(directoryService);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/public/business-categories`);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { categories });
+  } finally {
+    server.close();
   }
 });
