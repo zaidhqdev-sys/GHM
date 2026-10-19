@@ -836,3 +836,10 @@ Connect PR #47 now also disables registration-classification, legal-name, and re
 ### Business logo storage migration contract — 2026-10-19 21:43 UTC
 
 GHM PR #158 records the provider-neutral logo storage contract needed to replace Connect's Supabase `media/logos/{legacy-business-uuid}/logo.*` path and UUID-based `set_business_logo/clear_business_logo` RPCs. It defines canonical GHM Business authorization, server-side MIME/signature/pixel validation, trusted public URL derivation, object/database compensation, cleanup semantics, and a verified mapping requirement for any existing-object copy. The storage provider remains an explicit decision gate; no credentials, provider resources, schema changes, or cutover are included: [PR #158](https://github.com/zaidhqdev-sys/GHM).
+
+
+### Private Business registration identity API — 2026-10-19 21:55 UTC
+
+GHM PR #159 adds a separate managed-only registration identity resource for self-declared registration classification, registration number, and legal name. The fields live in a private table with RLS enabled, no direct runtime-table grants, narrow security-definer read/update functions, active owner/administrator membership checks, and no inclusion in general/public Business DTOs. Exact-head build, migration chain, test suite, migration audit, and runtime-boundary verification passed for `5944e594813a1c13c90ca2df0be5b4d808565c32` ([run 39330943367](https://github.com/zaidhqdev-sys/GHM)). This is not independent registration verification and does not enable Founder review or production use.
+
+Connect PR #47 intentionally keeps registration editing disabled until the GHM API is merged/deployed and non-production session/authorization behavior is qualified. Do not re-enable the UI based only on branch CI.
