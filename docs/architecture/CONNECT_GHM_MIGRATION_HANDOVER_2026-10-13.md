@@ -749,3 +749,8 @@ Connect PR #48's `ghmLeadService.getForBusiness(businessId, { limit, offset })` 
 ### Pagination CI confirmation — 2026-10-19 21:00 UTC
 
 Follow-up to the pending note above: GHM PR #155 exact-head CI passed for `8fac895956636bea3d6faad2b45fac65e6cf95bc` ([run 39323437443](https://github.com/zaidhqdev-sys/GHM)); Connect PR #48 exact-head auth-contract tests and web build passed for `e4c09c41e4e9cff7646522c9dc00b787c5046096` ([run 39323513081](https://github.com/zaidhqdev-sys/zaid-connect)). The UI's first-page limitation and the need for deployed non-production API/session qualification remain open.
+
+
+### Enquiry boundary validation hardening — 2026-10-19 21:04 UTC
+
+Connect PR #47 now rejects too-short/overlong optional contact fields and overlong required enquiry text before sending the marketplace request, rather than silently truncating values that GHM would reject. Exact-head auth-contract tests and web build passed at `5b7439cb9e28a37c1367df4a5133b8caf3ee122f` ([run 39324275466](https://github.com/zaidhqdev-sys/zaid-connect)). Connect PR #48 now validates received GHM enquiry DTO required strings, contact field types, timestamps and budget ranges before mapping; exact-head auth-contract tests and web build passed at `f093da9d488fdbbef144179b23d4da0ec674a760` ([run 39324387095](https://github.com/zaidhqdev-sys/zaid-connect)). Preview and deployed non-production API/session qualification remain outstanding.
