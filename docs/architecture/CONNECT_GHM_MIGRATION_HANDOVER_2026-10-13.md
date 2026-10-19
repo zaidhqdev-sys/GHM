@@ -855,3 +855,12 @@ Connect PR #47 adds a separate authenticated registration-identity adapter and f
 ### Latest registration identity PR verification — 2026-10-19 22:01 UTC
 
 GHM PR #159 advanced after the initial implementation to `7ec7af122d46fc88c93b32621d20cfde9af87b40`. Current-head CI passed, including PostgreSQL migrations, database-backed tests, migration-audit policy, and runtime-boundary verification: [run 39331231179](https://github.com/zaidhqdev-sys/GHM/actions/runs/39331231179). Cloudflare Pages preview deployed successfully at the same head. Production and non-production API/session qualification are still separate gates.
+
+
+### Leads and admin review client migration status — 2026-10-19 22:03 UTC
+
+- Connect PR #48 migrates business workspace lead reads/status changes to GHM, replaces realtime subscriptions with bounded 30-second polling, validates canonical numeric IDs/DTOs, and adds pagination. Exact-head client tests/build passed at `0b51e248a2c2dd6bd4186c0b493931a3f72ed2a3`: [run 39326973033](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39326973033). Its GHM status mutation depends on the business.leads.manage entitlement and GHM PR #155; deployed non-production authorization remains unqualified.
+- GHM PR #156 restores owner notifications for marketplace enquiry creation in the same transaction; its exact-head CI passed at [run 39326011306](https://github.com/zaidhqdev-sys/GHM/actions/runs/39326011306).
+- Connect PR #49 migrates admin customer-review moderation to GHM and remains stacked on PR #48. Current head `5fc05404e7b12382fccaf31edfa540c16639769c` passed at [run 39327035864](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39327035864). This is customer review moderation, distinct from Founder-controlled Business directory listing review.
+- Connect PR #50 tightens fail-closed identity context handling; current head `1bb017d40ce2a947ce70accd830966269cba0f98` passed at [run 39327542112](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39327542112).
+- These are construction-branch CI results only. Do not infer deployed parity or production cutover. Founder directory listing review remains a separate workflow with a dedicated reviewer allowlist and verified canonical reviewer mapping requirement.
