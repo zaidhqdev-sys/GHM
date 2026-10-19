@@ -816,3 +816,8 @@ Connect PR #50's exact-head identity resolver hardening remains green at `1bb017
 ### Profile-editor legacy-ID boundary fix — 2026-10-19 21:36 UTC
 
 Connect PR #47's GHM-backed business profile editor still had legacy Supabase calls after GHM profile/hour writes: registration identity and Founder review RPCs expect UUID Business IDs, while the active GHM identity resolver supplies canonical numeric IDs. Those calls could fail after the GHM write had already succeeded. The editor now avoids those legacy RPCs, preserves only already-present legacy-only fields, blocks review submission until GHM owns the review contract, and disables logo upload/removal until GHM storage is implemented. Contract tests and web build are being added to the branch workflow; exact-head verification is pending. The corresponding review migration contract is documented in GHM PR #157. No production cutover is claimed.
+
+
+### Profile-editor boundary CI confirmation — 2026-10-19 21:36 UTC
+
+Connect PR #47's profile-editor boundary fix passed exact-head CI at `77777e530258a7d3558b895bd9ff1878f58fa847` ([run 39328769029](https://github.com/zaidhqdev-sys/zaid-connect)). The run includes GHM auth/identity contracts, marketplace contracts, the newly added profile-editor legacy-boundary tests, and the web build. This qualifies source-level behavior only; review submission and logo storage remain intentionally unavailable until GHM equivalents exist.
