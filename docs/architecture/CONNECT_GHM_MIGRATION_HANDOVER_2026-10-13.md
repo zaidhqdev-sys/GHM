@@ -610,3 +610,9 @@ This is a source comparison and construction recommendation, not a merge approva
 - Added opt-in GHM active scope support to `accountStorage.ts`, but the existing AuthProvider does not activate it and no automatic migration is wired. This is a construction primitive only; no device data was migrated, no account/business mapping was inferred, and no Supabase caller was removed.
 - Exact-head CI for `0cb9463895d1d9d69891345954bfe394f1791b88` was queued as run [39257238140](https://github.com/zaidhqdev-sys/QuoteFlow/actions/runs/39257238140) at last check. Do not call this qualified until the exact-head run passes.
 - Next: verify exact-head CI and review the storage migration helper; then wire it only after authoritative legacy organization → GHM Business mapping and the session/business selection contract are qualified. Continue to leave Supabase AuthProvider, legal acceptance, subscription entitlements, and production cutover unchanged.
+
+
+### CI correction and current qualification — 2026-10-19 13:10 UTC
+
+- The first QuoteFlow PR #21 CI run [39257238140](https://github.com/zaidhqdev-sys/QuoteFlow/actions/runs/39257238140) failed in the Jest test suite because strict indexed-access typing inferred `string | undefined` for test-key array elements. Typecheck itself passed; 6/7 test suites passed and 31/31 tests reported passed, but the new suite failed to compile. This failure is recorded rather than masked.
+- Fixed the test fixture by declaring the static key list as a tuple in commit `467632df28d8a192447540680f8272a3d1c828f0`. New exact-head CI run [39257408211](https://github.com/zaidhqdev-sys/QuoteFlow/actions/runs/39257408211) is in progress. PR #21 remains draft/open; no qualification claim until this run completes successfully.
