@@ -35,6 +35,7 @@ test('directory service applies default pagination and normalizes blank query', 
 test('directory service accepts category UUID or slug', async () => {
   const received: string[] = [];
   const service = new DirectoryServiceImpl({
+    listPublicCategories: async () => [],
     search: async query => {
       received.push(query.category ?? '');
       return { items: [], page: query.page, pageSize: query.pageSize, total: 0 };
@@ -73,6 +74,7 @@ test('directory service rejects non-string query values', async () => {
 test('directory service normalizes province and accepts only contractor/supplier filter values', async () => {
   const received: Array<{ province?: string; businessType?: 'contractors' | 'suppliers' }> = [];
   const service = new DirectoryServiceImpl({
+    listPublicCategories: async () => [],
     search: async query => {
       received.push({ province: query.province, businessType: query.businessType });
       return { items: [], page: query.page, pageSize: query.pageSize, total: 0 };
@@ -90,6 +92,7 @@ test('directory service normalizes province and accepts only contractor/supplier
 test('directory service rejects malformed province and business type before repository execution', async () => {
   let called = false;
   const service = new DirectoryServiceImpl({
+    listPublicCategories: async () => [],
     search: async () => {
       called = true;
       return { items: [], page: 1, pageSize: 20, total: 0 };
@@ -105,6 +108,7 @@ test('directory service rejects malformed province and business type before repo
 test('directory service normalizes city and accepts only supported sort modes', async () => {
   let received: unknown;
   const service = new DirectoryServiceImpl({
+    listPublicCategories: async () => [],
     search: async query => {
       received = query;
       return { items: [], page: query.page, pageSize: query.pageSize, total: 0 };
