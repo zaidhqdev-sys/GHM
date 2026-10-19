@@ -1,8 +1,8 @@
 # QuoteFlow Migration Business Provisioning Contract
 
-> **Current-status reconciliation — 2026-10-13:** The legacy-organization reconciliation contract is qualified for its four synthetic outcomes only; it does not perform live PostgreSQL transactions or create a Business. The separate migration-only Business-provisioning implementation remains unqualified. This status is current, not a stale historical Gate statement. Both known QuoteFlow accounts are founder-owned; source-account reconciliation and full reset/re-enrollment ceremony qualification remain independent gates. No production mutation or QuoteFlow cutover is authorized.
+> **Current-status reconciliation — 2026-10-20:** A migration-only PostgreSQL provisioning primitive and database-backed qualification script have been added on branch `feat/quoteflow-business-provisioning-20261020`. They are **not yet qualified or merged** until CI and the database-backed qualification run pass. The provisioner creates an inactive/pending Business, one active owner membership, and exact source mapping atomically; source data is not read or mutated by the primitive. Account/session migration, legacy membership reconciliation, reset/re-enrollment ceremony, and production cutover remain separate gates. No production mutation or QuoteFlow cutover is authorized.
 
-**Status:** CONSTRUCTION CONTRACT — IMPLEMENTATION NOT YET QUALIFIED (reconciled 2026-10-13)
+**Status:** CONSTRUCTION CONTRACT — IMPLEMENTATION ADDED ON REVIEW BRANCH; DATABASE QUALIFICATION PENDING (reconciled 2026-10-20)
 
 This slice defines the migration-only capability required when an approved QuoteFlow organization has outcome `CREATE_REQUIRED`. It creates a canonical GHM Business only from an explicitly reviewed migration target. It is not a public Business-registration mechanism.
 
@@ -84,7 +84,7 @@ Legacy organization members, legacy roles, administrators, and secondary members
 
 ## Qualification requirements
 
-Synthetic non-production qualification must prove:
+The database qualification script is `scripts/qualify-quoteflow-migration-business-provisioning-db.mjs` (`npm run qualify:quoteflow-business-provisioning-db`). Before merge, non-production qualification must prove:
 
 - fresh `CREATE_REQUIRED` → exactly one Business + exactly one active owner membership + exact external mapping;
 - exact retry → `already_provisioned`, same Business;
@@ -103,4 +103,4 @@ No production migration, production source export, public Business API change, l
 
 ## Founder gate
 
-Construction and non-production qualification only.
+Construction and non-production qualification only. Do not apply this migration to a production database or route QuoteFlow traffic until account mapping, owner membership, full user/session migration, legacy member reconciliation, recovery/rollback, and cutover approval are separately evidenced.
