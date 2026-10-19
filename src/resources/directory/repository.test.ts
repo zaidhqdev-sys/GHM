@@ -58,6 +58,8 @@ test('directory repository binds query, category, province, city, and supplier f
   });
 
   assert.equal(fake.calls.length, 2);
+  assert.match(fake.calls[0].sql, /b\.category = \$2/);
+  assert.match(fake.calls[0].sql, /bc\.id::text = \$2 OR bc\.slug = \$2/);
   assert.match(fake.calls[0].sql, /lower\(b\.province\) = lower\(\$3\)/);
   assert.match(fake.calls[0].sql, /lower\(b\.city\) = lower\(\$4\)/);
   assert.match(fake.calls[0].sql, /b\.is_supplier = \$5/);
