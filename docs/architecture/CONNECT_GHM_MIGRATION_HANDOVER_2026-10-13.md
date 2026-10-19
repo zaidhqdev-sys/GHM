@@ -797,3 +797,10 @@ PR #49 was refreshed from that latest lead head with merge commit `0041ad9df4a0c
 ### Strict GHM enquiry DTO identifier validation — 2026-10-19 21:23 UTC
 
 Connect PR #48 now requires the GHM received-enquiry DTO's `id`, `businessId`, and `customerId` to be positive safe integers as transmitted, rather than coercing numeric-looking strings. Focused contract tests and web build passed at `0b51e248a2c2dd6bd4186c0b493931a3f72ed2a3` ([run 39326973033](https://github.com/zaidhqdev-sys/zaid-connect)). PR #49 was refreshed from that head with merge commit `5fc05404e7b12382fccaf31edfa540c16639769c`; comparison is ahead by 8 and behind by 0, and exact-head CI is running ([run 39327035864](https://github.com/zaidhqdev-sys/zaid-connect)).
+
+
+### GHM identity resolver fail-closed hardening — 2026-10-19 21:27 UTC
+
+Connect PR #50 addresses an active-context integrity gap: the resolver previously coerced IDs and could synthesize an active membership not present in the canonical membership list. It now requires strict positive numeric account/membership/business IDs, exact account binding, membership-list membership for the selected active membership, and a matching active Business. Exact-head identity tests, the GHM auth-contract suite, and web build passed at `1bb017d40ce2a947ce70accd830966269cba0f98` ([run 39327542112](https://github.com/zaidhqdev-sys/zaid-connect)). PR #50 is a draft stacked on the business-capabilities migration branch; no auth cutover or identity-link write is included.
+
+Connect PR #49's latest refreshed stacked head `5fc05404e7b12382fccaf31edfa540c16639769c` also passed exact-head auth-contract tests and web build ([run 39327035864](https://github.com/zaidhqdev-sys/zaid-connect)). The preview provider remains rate-limited; deployed non-production session/API qualification remains a separate gate.
