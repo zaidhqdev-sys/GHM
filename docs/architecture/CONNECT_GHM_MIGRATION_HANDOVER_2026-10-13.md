@@ -714,3 +714,8 @@ Latest Connect head `670183a91a5270be8b8c14a131917f2b028b9069` passed GHM auth-c
 ### Final shared-leads hook CI checkpoint — 2026-10-19 20:38 UTC
 
 The latest Connect PR #48 head is `0ecd704dba5d77ccb180c1776fb0958f7f6f3e90`. Exact-head GHM auth-contract tests (including `ghm-lead-service`) and the web build passed in [run 39320788159](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39320788159); the Vercel preview status is green for the same SHA. PR #48 remains draft/open. The shared hook now prevents overlapping polling requests and clears stale leads when the active business context changes. Deployed non-production GHM API/session qualification and notification/client parity remain outstanding.
+
+
+### Notification parity boundary clarified — 2026-10-19 20:39 UTC
+
+The current GHM generic notification create repository intentionally rejects a non-admin `type='lead'` notification when the recipient differs from the caller, returning `Lead notification identity mapping is not established`. The Connect marketplace enquiry adapter already posts creation to GHM, but GHM's enquiry transaction does not create the owner notification; meanwhile Connect's notification client/list/realtime subscription still reads Supabase. Therefore the GHM-backed lead adapter is only a read/status migration, not full lead-notification parity. Do not bypass the generic guard by trusting browser-supplied recipient IDs. The next notification slice must derive the recipient from canonical active business membership and define a trusted transactional/outbox path, then migrate notification reads/mark-read and realtime/polling together. 
