@@ -2,7 +2,7 @@
 
 **Status: RESET / ENROLLMENT / SESSION-ISSUANCE BUILDING BLOCKS CONSTRUCTED; FULL USER-FACING CEREMONY NOT YET QUALIFIED**
 
-> **Current-status reconciliation — 2026-10-13:** The atomic reset operation, canonical enrollment lookup, and session-issuance building blocks have construction qualification evidence. The complete user-facing migration ceremony remains unqualified pending non-production DB+HTTP evidence for anti-enumeration, single-use recovery, rollback, session revocation, and post-reset session issuance for each of the two founder-owned accounts. Do not treat this document's ceremony design as proof of end-to-end qualification or authorization for production migration/cutover.
+> **Current-status reconciliation — 2026-10-13:** The atomic reset operation, canonical enrollment lookup, and session-issuance building blocks have construction qualification evidence. The complete user-facing migration ceremony remains unqualified pending non-production DB+HTTP evidence for anti-enumeration, single-use recovery, rollback, session revocation, and post-reset session issuance. The reviewed legacy identity set contains one legitimate owner account and two bot accounts; neither bot may be migrated or enrolled. Do not treat this document's ceremony design as proof of end-to-end qualification or authorization for production migration/cutover.
 
 ## Decision
 
@@ -97,9 +97,9 @@ Until the above qualification exists:
 
 ## Delivery boundary
 
-A delivery provider remains a separate capability decision.
+A delivery provider remains a separate capability decision. The server-side HTTPS webhook adapter is available on review branch `feat/quoteflow-migration-recovery-delivery-20261020`; it remains disabled unless both `GHM_RECOVERY_DELIVERY_WEBHOOK_URL` and `GHM_RECOVERY_DELIVERY_WEBHOOK_TOKEN` are configured. Without an approved endpoint, the migration reset-request route remains unavailable (503) by design.
 
-This architecture does not authorize a paid email provider, SMS provider, or other external delivery integration. The existing injected delivery port is the canonical boundary.
+This architecture does not authorize a paid email provider, SMS provider, or other external delivery integration. The existing injected delivery port is the canonical boundary. The webhook adapter requires HTTPS, a strong bearer token, rejects redirects, has a five-second timeout, and does not log or return recovery credentials.
 
 Qualification may use a deterministic in-memory/test delivery sink.
 
