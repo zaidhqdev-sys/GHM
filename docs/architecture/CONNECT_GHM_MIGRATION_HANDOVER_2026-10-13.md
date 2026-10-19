@@ -785,3 +785,10 @@ Connect PR #47 also now strictly rejects malformed successful Enquiry response I
 GHM PR #148 now has its exact-head status documented: `GET /api/v1/identity` implementation and service/HTTP tests passed CI for `18aa29c1347c498f8fddd16d0c57b4a14581447c` ([run 39199110141](https://github.com/zaidhqdev-sys/GHM)). QuoteFlow PR #20's client-contract tests for multiple memberships without forced selection and non-disclosing `404 not_found` on unauthorized business selection passed exact-head CI for `1368f65ecfe6b267eb43c462dccfcc9c1f869cc9` ([run 39199912721](https://github.com/zaidhqdev-sys/QuoteFlow)).
 
 This still does not integrate GHM identity into QuoteFlow's normal Supabase-backed `AuthContext` or map QuoteFlow organization UUIDs to GHM numeric Business IDs. Keep those authorities separate; no identity inference, active auth cutover, or production linking is authorized.
+
+
+### Lead pagination closure fix and stacked review refresh — 2026-10-19 21:21 UTC
+
+Connect PR #48's follow-up loader-closure fix passed exact-head tests and web build at `e670fad3dea54d9a5369a31e3b511f7eee621ba4` ([run 39326711860](https://github.com/zaidhqdev-sys/zaid-connect)). The lead pagination callback no longer retains an obsolete page offset in its default argument.
+
+PR #49 was refreshed from that latest lead head with merge commit `0041ad9df4a0c73dbd224e0764d69903cde3b5d7`; comparison is ahead by 7 and behind by 0, and GitHub reports the PR mergeable. Exact-head CI is running at [run 39326779840](https://github.com/zaidhqdev-sys/zaid-connect). The previous review-branch head passed, but it does not qualify this latest merge commit.
