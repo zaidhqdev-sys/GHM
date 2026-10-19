@@ -804,3 +804,10 @@ Connect PR #48 now requires the GHM received-enquiry DTO's `id`, `businessId`, a
 Connect PR #50 addresses an active-context integrity gap: the resolver previously coerced IDs and could synthesize an active membership not present in the canonical membership list. It now requires strict positive numeric account/membership/business IDs, exact account binding, membership-list membership for the selected active membership, and a matching active Business. Exact-head identity tests, the GHM auth-contract suite, and web build passed at `1bb017d40ce2a947ce70accd830966269cba0f98` ([run 39327542112](https://github.com/zaidhqdev-sys/zaid-connect)). PR #50 is a draft stacked on the business-capabilities migration branch; no auth cutover or identity-link write is included.
 
 Connect PR #49's latest refreshed stacked head `5fc05404e7b12382fccaf31edfa540c16639769c` also passed exact-head auth-contract tests and web build ([run 39327035864](https://github.com/zaidhqdev-sys/zaid-connect)). The preview provider remains rate-limited; deployed non-production session/API qualification remains a separate gate.
+
+
+### Founder directory review migration contract — 2026-10-19 21:30 UTC
+
+GHM PR #157 adds a documentation-only contract for replacing Connect's Supabase Founder directory-review RPCs. It specifies owner submission/resubmission, Founder-only queue and decisions, private registration data, append-only review events, owner/Founder notification side effects, public visibility invariants, and required tests. It explicitly blocks reviewer seeding until the current Founder reviewer is mapped to a canonical GHM account through an approved process. No runtime or schema changes are included: [PR #157](https://github.com/zaidhqdev-sys/GHM/pull/157).
+
+Connect PR #50's exact-head identity resolver hardening remains green at `1bb017d40ce2a947ce70accd830966269cba0f98` ([run 39327542112](https://github.com/zaidhqdev-sys/zaid-connect)); PR #49's latest stacked review head remains green at `5fc05404e7b12382fccaf31edfa540c16639769c` ([run 39327035864](https://github.com/zaidhqdev-sys/zaid-connect)).
