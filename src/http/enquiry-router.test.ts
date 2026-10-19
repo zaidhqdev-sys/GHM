@@ -385,3 +385,35 @@ test('Enquiry received list returns empty enquiries array without 404', async ()
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });
+
+
+test('received enquiry list accepts bounded pagination and forwards it to the service', async () => {
+  let received: unknown;
+  const enquiryService = { getReceivedEnquiries: async (context: AuthContext, businessId: number, options?: unknown) => {
+    received = { context, businessId, options };
+    return [enquiryFixture()];
+  } } as unknown as EnquiryService;
+  const { server, baseUrl } = await startServer(enquiryService);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/enquiries/received?businessId=700&limit=25&offset=50`, {
+      headers: { authorization: `Bearer ${tokenFor({ userId: 468, role: 'business' })}` },
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(received, { context: { userId: 468, role: 'business' }, businessId: 700, options: { limit: 25, offset: 50 } });
+  } finally { await closeServer(server); }
+});
+
+test('received enquiry list rejects invalid pagination before service execution', async () => {
+  let called = false;
+  const enquiryService = { getReceivedEnquiries: async () => { called = true; return []; } } as unknown as EnquiryService;
+  const { server, baseUrl } = await startServer(enquiryService);
+  try {
+    for (const query of ['limit=0', 'limit=101', 'offset=-1', 'offset=1000001', 'limit=abc']) {
+      const response = await fetch(`${baseUrl}/api/v1/enquiries/received?businessId=700&${query}`, {
+        headers: { authorization: `Bearer ${tokenFor({ userId: 468, role: 'business' })}` },
+      });
+      assert.equal(response.status, 400, query);
+    }
+    assert.equal(called, false);
+  } finally { await closeServer(server); }
+});
