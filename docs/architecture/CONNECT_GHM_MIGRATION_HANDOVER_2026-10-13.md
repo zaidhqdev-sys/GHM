@@ -507,3 +507,34 @@ This section supersedes any earlier wording in this checkpoint that could be rea
 3. Recover and reconcile the decisions in closed-unmerged QuoteFlow ownership PRs #56–62. Keep local-only product data local unless an explicitly approved GHM resource and mapping are qualified; QuoteFlow Quote depends on Customer and Item semantics, so do not migrate Quote in isolation.
 4. Continue the existing implementation branches only after exact-head contract tests; then verify deployed non-production login/restore/refresh/logout/revocation, selected-business authorization, and product journeys.
 5. No merge, production deployment, data migration, provider activation, shadow traffic or cutover is authorized by this documentation update. Explicit authority gates in the original handovers remain in force.
+
+
+## Authoritative QuoteFlow migration status reconciliation — 2026-10-19
+
+Use the current GHM mainline architecture contracts below as the authority; earlier branch-only identity-link proposals are historical where the documents explicitly say they were superseded.
+
+### Already constructed/qualified migration primitives (not product cutover)
+- Canonical runtime identity is GHM ghm.account_identity.id; business context is GHM ghm.business.id plus active ghm.business_membership. Supabase user/organization UUIDs are migration provenance only, never runtime identity/authorization keys.
+- GHM's (provider=supabase, subject=<exact legacy UUID>) → account_identity.id external-identity provenance mapping and credentialless account-provisioning boundary have construction qualification. Existing-account reconciliation executor and deterministic migration snapshot/dry-run manifest are also recorded as qualified in QUOTEFLOW_EXISTING_USER_MIGRATION_BOUNDARY.md.
+- The migration reset/re-enrollment HTTP path is constructed, but complete DB + HTTP ceremony qualification remains open (anti-enumeration, one-time recovery, rollback, session revocation, post-reset session proof, and non-production end-to-end). Do not assume old password hashes or Supabase sessions can be imported.
+- The legacy organization → GHM Business reconciliation contract is qualified only for synthetic outcomes; live Business provisioning remains unqualified. Organization creation/reuse, membership/status semantics, legal acceptance, and subscriptions do not have a safe 1:1 mapping by assumption.
+- GHM's QuoteFlow identity route exists on integration branches (not main at the inspected main SHA). The candidate route returns canonical account/membership/business context and checks a selected business against authenticated active membership. Candidate CI passed; this is construction evidence, not deployment qualification.
+- Earlier GHM QuoteFlow PRs #51–55 merged their architecture decisions. PRs #56–62 closed unmerged and are not themselves mainline acceptance of their branch-only content. Current mainline reconciliation contracts now supersede parts of that old identity-link proposal; use current docs such as QUOTEFLOW_GHM_CANONICAL_IDENTITY_RECONCILIATION.md, QUOTEFLOW_EXISTING_USER_MIGRATION_BOUNDARY.md, QUOTEFLOW_MIGRATION_ACCOUNT_PROVISIONING_CONTRACT.md, QUOTEFLOW_MIGRATION_BUSINESS_PROVISIONING_CONTRACT.md, and QUOTEFLOW_MIGRATION_RESET_REENROLLMENT_CEREMONY.md.
+
+### Product ownership and parity decisions
+- QuoteFlow business profile, customers, quotes, invoices and catalog items are currently local-first/device-owned through AsyncStorage. Do not auto-upload or rewrite local storage IDs. A deterministic, atomic, recoverable storage-scope transition is a cutover prerequisite.
+- QuoteFlow Quote has structural overlap with GHM Quote, but QuoteFlow Customer/Item and organization/business identity are not automatically equivalent to their GHM counterparts. Quote/Customer/Item migration must be planned as a dependency graph with explicit ownership/ID mapping, not as isolated adapters.
+- Legal acceptance remains QuoteFlow/Supabase-owned for now: the flow permits account-level acceptance before any organization exists; no canonical GHM legal-acceptance resource or ownership decision authorizes moving it.
+- Subscription and entitlement remain QuoteFlow/Supabase/product-owned for now. GHM's commercial/payment primitives do not imply QuoteFlow subscription status, plan, entitlement, provider or webhook parity. No paid provider activation.
+- Device-local notifications remain local; no server-side push delivery or notification migration is established.
+- Individual GHM resource construction (Customer, Quote, Project Quote, storage, etc.) does not prove the QuoteFlow product workflow is parity-qualified or authorize product traffic.
+
+### Exact next execution sequence
+1. Reconcile GHM PR #142 integration candidate with #148 and #137 into one candidate branch, preserving the latest migration audit policy changes; don't duplicate the route or merge branches just to make the endpoint appear on main.
+2. Qualify the candidate identity HTTP contract against QuoteFlow src/lib/ghmAuthTypes.ts and src/lib/ghmAuthClient.ts, including nullable account email, all-memberships response, selected-business success, invalid/inactive/unauthorized business failures, expired/revoked token, and route registry authorization. Run exact-head CI and non-production HTTP E2E.
+3. Complete the migration reset/re-enrollment ceremony qualification and the live Business-provisioning qualification before using real migrated account/business state.
+4. Implement an operation-by-operation QuoteFlow adapter matrix using the current GHM contracts and product ownership decisions. Keep legal acceptance/subscriptions local/source-owned until separately authorized; explicitly preserve local-only product data or design an approved mapping/migration plan for it.
+5. Only then integrate the canonical GHM session into QuoteFlow's normal AuthProvider and migrate the organization context to GHM business context, with deterministic/recoverable local-storage scope migration. Do not perform a superficial provider swap while organization RPCs still require Supabase.
+6. Remove Supabase runtime dependencies only after every active caller is replaced or formally excluded with source/build evidence, and exact-head CI plus route-backed product E2E pass. Production migration/cutover remains a separate explicit approval gate.
+
+No production deployment, live database mutation, source data import, environment/routing change, provider activation, or cutover was performed by this checkpoint.
