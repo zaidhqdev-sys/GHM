@@ -131,17 +131,15 @@ export const registerAuthRoutes = (
       await quoteFlowMigrationResetRecoveryService.request(input.email);
       res.status(202).json({ ok: true });
     } catch (error) {
-      // Preserve migration anti-enumeration at HTTP: malformed email is a request error,
-      // but unknown/ineligible migration state is intentionally indistinguishable from success.
-      if (error instanceof Error && error.name === 'EmailNormalizationError') {
-        res.status(202).json({ ok: true });
-        return;
+      // Preserve migration anti-enumeration at HTTP: malformed emails, unknown/ineligible
+      // migration state, and delivery/persistence failures must not have distinguishable responses.
+      if (!(error instanceof Error && error.name === 'EmailNormalizationError')) {
+        console.error(JSON.stringify({
+          event: 'ghm_quoteflow_migration_reset_request_failed',
+          error: { name: error instanceof Error ? error.name : 'UnknownError' },
+        }));
       }
-      console.error(JSON.stringify({
-        event: 'ghm_quoteflow_migration_reset_request_failed',
-        error: { name: error instanceof Error ? error.name : 'UnknownError' },
-      }));
-      res.status(500).json({ error: 'internal_error' });
+      res.status(202).json({ ok: true });
     }
   });
 
