@@ -831,3 +831,8 @@ The editor now explicitly receives the disabled `reviewWorkflowAvailable` and `l
 ### Registration identity fields gated in GHM profile editor — 2026-10-19 21:41 UTC
 
 Connect PR #47 now also disables registration-classification, legal-name, and registration-number edits until GHM owns the registration identity contract. This prevents users from entering legacy-only values that the GHM save boundary must reject. The screen exposes the missing capability rather than promising submission, and supported profile saves no longer call legacy UUID RPCs. Exact-head profile-editor boundary tests and web build passed at `934dfd4b8d5156a9102d7f1ce1dc05c4df81d9d3` ([run 39329391474](https://github.com/zaidhqdev-sys/zaid-connect)).
+
+
+### Business logo storage migration contract — 2026-10-19 21:43 UTC
+
+GHM PR #158 records the provider-neutral logo storage contract needed to replace Connect's Supabase `media/logos/{legacy-business-uuid}/logo.*` path and UUID-based `set_business_logo/clear_business_logo` RPCs. It defines canonical GHM Business authorization, server-side MIME/signature/pixel validation, trusted public URL derivation, object/database compensation, cleanup semantics, and a verified mapping requirement for any existing-object copy. The storage provider remains an explicit decision gate; no credentials, provider resources, schema changes, or cutover are included: [PR #158](https://github.com/zaidhqdev-sys/GHM).
