@@ -453,3 +453,12 @@ This checkpoint preserves the exact evidence from the 2026-10-17 troubleshooting
 
 ### Continuity and safety rule
 Start from this checkpoint and the open PR #140, not from another password reset. Sandbox forensic verdict is still unresolved/INVESTIGATE until the migration baseline discrepancy is reconciled. No production launch or cutover is authorized.
+
+
+## Cross-repository continuity checkpoint — 2026-10-19
+
+QuoteFlow main has a GHM identity client (GET /api/v1/identity) and gated Android sandbox panel, but normal AuthProvider/login/signup still use Supabase and env validation still requires Supabase URL/key. Five sandbox app checks passed for one dedicated account; GHM-only logout left the Supabase session untouched. This is not a completed auth/backend migration. QuoteFlow PRs #12/#13/#14/#15/#18 are merged; provider replacement, complete Supabase caller inventory, explicit legacy-to-canonical mapping, data/RPC/storage parity and E2E acceptance remain open.
+
+Use a product-specific operation audit rather than copying Connect gaps wholesale into QuoteFlow. For every active Supabase operation record source caller, resource/data semantics, current authorization, GHM target contract, parity gap, acceptance test and migration/rollback needs. Resolve identity from authenticated GHM context; selected business IDs are hints and membership must be verified server-side. Never infer identity mapping from email/name/slug or coincidental IDs.
+
+Next: audit QuoteFlow auth lifecycle, organization bootstrap/context, membership/subscription/legal records, quote/customer/project persistence, RPCs, storage and all SDK imports; classify missing capabilities as Build/Extend; specify reviewed legacy UUID-to-GHM mapping and conflict reports; qualify parity in non-production with exact-head CI and route-backed negative-case E2E. Production deployment, configuration changes, database mutations, provider activation and cutover remain unauthorized by this checkpoint. Existing Connect findings are shared architecture context, not proof of QuoteFlow-specific parity gaps.
