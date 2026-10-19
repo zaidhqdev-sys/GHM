@@ -437,26 +437,30 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     res.status(200).json({ status: 'ok' });
   });
 
-  // Canonical browser identity contract: all account and business context is derived
-  // from the authenticated GHM context. A requested business ID is only a selection,
-  // never an authority claim; resolveIdentity verifies active membership server-side.
-  app.get('/api/v1/identity', resourceAuthMiddleware, requireRegisteredAccess('profile', 'read'), async (req: Request, res: Response) => {
-    const context = req.authContext as AuthContext;
-    const rawBusinessId = req.query.businessId;
-    let selectedBusinessId: number | undefined;
-    if (rawBusinessId !== undefined) {
-      if (typeof rawBusinessId !== 'string' || !/^[1-9][0-9]*$/.test(rawBusinessId)) {
-        res.status(400).json({ error: 'invalid_request' });
-        return;
-      }
-      selectedBusinessId = Number(rawBusinessId);
-      if (!Number.isSafeInteger(selectedBusinessId) || selectedBusinessId <= 0) {
-        res.status(400).json({ error: 'invalid_request' });
-        return;
-      }
-    }
+  // Canonical identity context is derived only from the verified GHM auth context.
+  // Business selection is not an authorization claim and must never reveal tenant existence.
+  app.get('/api/v1/identity', resourceAuthMiddleware, requireRegisteredAccess('profile', 'read'), requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
     try {
-      const identity = await service.resolveIdentity({ context, selectedBusinessId });
+      const allowed = new Set(['businessId']);
+      if (Object.keys(req.query).some((key) => !allowed.has(key))) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const context = req.authContext as AuthContext;
+      const rawBusinessId = req.query.businessId;
+      let selectedBusinessId: number | undefined;
+      if (rawBusinessId !== undefined) {
+        if (typeof rawBusinessId !== 'string' || !/^[1-9][0-9]*$/.test(rawBusinessId)) {
+          res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+        selectedBusinessId = Number(rawBusinessId);
+        if (!Number.isSafeInteger(selectedBusinessId) || selectedBusinessId <= 0) {
+          res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+      }
+      const identity = await service.getIdentityContext({ context, selectedBusinessId });
       res.status(200).json({
         account: identity.account,
         memberships: identity.memberships,
@@ -464,20 +468,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         activeBusiness: identity.activeBusiness,
       });
     } catch (error) {
-      if (error instanceof Error && error.message === 'business-selection-required') {
-        res.status(409).json({ error: 'business_selection_required' });
-        return;
-      }
-      if (error instanceof Error && error.message === 'Selected business context is not authorized') {
-        res.status(403).json({ error: 'business_context_forbidden' });
-        return;
-      }
-      if (error instanceof Error && error.message === 'Selected business not found') {
+      if (error instanceof Error && /Selected business context is not authorized|Selected business not found|Selected business is inactive/.test(error.message)) {
         res.status(404).json({ error: 'not_found' });
-        return;
-      }
-      if (error instanceof Error && error.message === 'Selected business is inactive') {
-        res.status(403).json({ error: 'business_inactive' });
         return;
       }
       handleError(error, res);
