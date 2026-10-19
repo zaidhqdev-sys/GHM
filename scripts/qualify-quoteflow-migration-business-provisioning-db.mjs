@@ -183,18 +183,27 @@ try {
     mutation_scope: 'synthetic qualification records only',
   }, null, 2));
 } finally {
-  if (ownerId !== undefined) {
-    await migrator.query('begin').catch(() => {});
-    await migrator.query('set local role ghm_schema_owner').catch(() => {});
-    await migrator.query('delete from ghm.quoteflow_migration_business_provisioning_audit where provider=$1 and external_business_id like $2', [provider, `qualify-quoteflow-org-%${runId}%`]).catch(() => {});
-    await migrator.query('delete from ghm.quoteflow_migration_business_provisioning_audit where provider=$1 and external_business_id like $2', [provider, `qualify-quoteflow-org-rollback-%${runId}`]).catch(() => {});
-    await migrator.query('delete from ghm.business_external_mapping where provider=$1 and external_business_id like $2', [provider, `qualify-quoteflow-org-%${runId}%`]).catch(() => {});
-    await migrator.query('delete from ghm.business_external_mapping where provider=$1 and external_business_id like $2', [provider, `qualify-quoteflow-org-rollback-%${runId}`]).catch(() => {});
-    await migrator.query('delete from ghm.business_membership where account_id = any($1::bigint[]) or business_id in (select id from ghm.business where slug like $2)', [[ownerId, disabledOwnerId, alternateOwnerId, secondBusinessOwnerId].filter(Boolean), `${slugBase}%`]).catch(() => {});
-    await migrator.query('delete from ghm.business where slug like $1', [`${slugBase}%`]).catch(() => {});
-    await migrator.query('delete from ghm.account_identity where id = any($1::bigint[])', [[ownerId, disabledOwnerId, alternateOwnerId, secondBusinessOwnerId].filter(Boolean)]).catch(() => {});
-    await migrator.query('commit').catch(() => {});
+  let cleanupFailed = false;
+  try {
+    if (ownerId !== undefined) {
+      await migrator.query('begin');
+      await migrator.query('set local role ghm_schema_owner');
+      await migrator.query('delete from ghm.quoteflow_migration_business_provisioning_audit where provider=$1 and external_business_id like $2', [provider, `qualify-quoteflow-org-%${runId}%`]);
+      await migrator.query('delete from ghm.quoteflow_migration_business_provisioning_audit where provider=$1 and external_business_id like $2', [provider, `qualify-quoteflow-org-rollback-%${runId}`]);
+      await migrator.query('delete from ghm.business_external_mapping where provider=$1 and external_business_id like $2', [provider, `qualify-quoteflow-org-%${runId}%`]);
+      await migrator.query('delete from ghm.business_external_mapping where provider=$1 and external_business_id like $2', [provider, `qualify-quoteflow-org-rollback-%${runId}`]);
+      await migrator.query('delete from ghm.business_membership where account_id = any($1::bigint[]) or business_id in (select id from ghm.business where slug like $2)', [[ownerId, disabledOwnerId, alternateOwnerId, secondBusinessOwnerId].filter(Boolean), `${slugBase}%`]);
+      await migrator.query('delete from ghm.business where slug like $1', [`${slugBase}%`]);
+      await migrator.query('delete from ghm.account_identity where id = any($1::bigint[])', [[ownerId, disabledOwnerId, alternateOwnerId, secondBusinessOwnerId].filter(Boolean)]);
+      await migrator.query('commit');
+    }
+  } catch (error) {
+    cleanupFailed = true;
+    await migrator.query('rollback').catch(() => {});
+    console.error('QuoteFlow provisioning qualification cleanup failed; synthetic residue may remain. Investigate the isolated qualification database before retrying.', error);
+  } finally {
+    await runtime.end().catch(() => {});
+    await migrator.end().catch(() => {});
   }
-  await runtime.end().catch(() => {});
-  await migrator.end().catch(() => {});
+  if (cleanupFailed) throw new Error('QuoteFlow provisioning qualification failed because cleanup did not complete');
 }
