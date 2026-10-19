@@ -24,7 +24,6 @@ DECLARE
   v_business_id bigint;
   v_membership_id bigint;
   v_owner_status text;
-  v_owner_role text;
 BEGIN
   IF p_provider IS DISTINCT FROM 'supabase' THEN
     outcome := 'blocked';
@@ -55,14 +54,13 @@ BEGIN
     pg_catalog.hashtextextended('ghm-business-slug:' || btrim(p_business_slug), 0)
   );
 
-  SELECT a.account_status, a.role
-    INTO v_owner_status, v_owner_role
+  SELECT a.account_status
+    INTO v_owner_status
     FROM ghm.account_identity AS a
    WHERE a.id = p_owner_account_id
    FOR UPDATE;
 
-  IF NOT FOUND OR v_owner_status IS DISTINCT FROM 'active'
-     OR v_owner_role NOT IN ('business', 'admin') THEN
+  IF NOT FOUND OR v_owner_status IS DISTINCT FROM 'active' THEN
     outcome := 'blocked';
     business_id := NULL;
     owner_membership_id := NULL;
