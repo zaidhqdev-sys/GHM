@@ -116,14 +116,14 @@ const categoryPredicate = (query: DirectoryQuery, parameterIndex: number): { sql
   if (!query.category) return { sql: '', values: [] };
   return {
     sql: `AND (
-      b.category = ${parameterIndex}
+      b.category = $${parameterIndex}
       OR EXISTS (
         SELECT 1
         FROM ghm.business_category_assignment bca
         JOIN ghm.business_category bc ON bc.id = bca.category_id
         WHERE bca.business_id = b.id
           AND bc.is_active = true
-          AND (bc.id::text = ${parameterIndex} OR bc.slug = ${parameterIndex})
+          AND (bc.id::text = $${parameterIndex} OR bc.slug = $${parameterIndex})
       )
     )`,
     values: [query.category],
@@ -144,11 +144,11 @@ export class PostgresDirectoryRepository implements DirectoryRepository {
         : { sql: '', values: [] };
       const cityIndex = provinceIndex + province.values.length;
       const city = query.city
-        ? { sql: `AND lower(b.city) = lower(${cityIndex})`, values: [query.city] }
+        ? { sql: `AND lower(b.city) = lower($${cityIndex})`, values: [query.city] }
         : { sql: '', values: [] };
       const businessTypeIndex = cityIndex + city.values.length;
       const businessType = query.businessType
-        ? { sql: `AND b.is_supplier = ${businessTypeIndex}`, values: [query.businessType === 'suppliers'] }
+        ? { sql: `AND b.is_supplier = $${businessTypeIndex}`, values: [query.businessType === 'suppliers'] }
         : { sql: '', values: [] };
       const values = [...text.values, ...category.values, ...province.values, ...city.values, ...businessType.values];
 
