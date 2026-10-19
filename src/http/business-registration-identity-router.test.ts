@@ -131,3 +131,18 @@ test('registration identity update binds only the canonical complete declaration
     });
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 });
+
+
+test('registration identity hides unknown or unmanaged Businesses', async () => {
+  const service = {
+    getRegistrationIdentity: async () => { throw new Error('Business tenant access denied'); },
+  } as unknown as BusinessRegistrationIdentityService;
+  const { server, baseUrl } = await startServer(service);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/businesses/55/registration-identity`, {
+      headers: { authorization: `Bearer ${tokenFor({ userId: 42, role: 'business' })}` },
+    });
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), { error: 'not_found' });
+  } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+});
