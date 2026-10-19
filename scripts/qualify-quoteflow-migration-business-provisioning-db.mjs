@@ -143,9 +143,10 @@ try {
     select
       (select count(*)::int from ghm.business where id=$1) as business_count,
       (select count(*)::int from ghm.business_membership where id=$2) as membership_count,
-      (select count(*)::int from ghm.business_external_mapping where provider=$3 and external_business_id=$4) as mapping_count
+      (select count(*)::int from ghm.business_external_mapping where provider=$3 and external_business_id=$4) as mapping_count,
+      (select count(*)::int from ghm.quoteflow_migration_business_provisioning_audit where provider=$3 and external_business_id=$4) as audit_count
   `, [rollbackBusinessId, Number(rolled.rows[0].owner_membership_id), provider, `qualify-quoteflow-org-rollback-${runId}`]);
-  assert.deepEqual(rollbackCheck.rows[0], { business_count: 0, membership_count: 0, mapping_count: 0 });
+  assert.deepEqual(rollbackCheck.rows[0], { business_count: 0, membership_count: 0, mapping_count: 0, audit_count: 0 });
 
   console.log('QuoteFlow migration Business provisioning DB qualification: PASS');
   console.log(JSON.stringify({
