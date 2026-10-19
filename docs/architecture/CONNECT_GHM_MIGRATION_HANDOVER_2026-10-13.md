@@ -538,3 +538,22 @@ Use the current GHM mainline architecture contracts below as the authority; earl
 6. Remove Supabase runtime dependencies only after every active caller is replaced or formally excluded with source/build evidence, and exact-head CI plus route-backed product E2E pass. Production migration/cutover remains a separate explicit approval gate.
 
 No production deployment, live database mutation, source data import, environment/routing change, provider activation, or cutover was performed by this checkpoint.
+
+
+## Identity contract branch comparison — 2026-10-19
+
+Compared QuoteFlow main's src/lib/ghmAuthTypes.ts and src/lib/ghmAuthClient.ts against GHM PR #142 and #148 source.
+
+### Compatible contract fields
+- QuoteFlow parser expects numeric canonical account/business/membership IDs, nullable account email, account fullName/phone/avatarRef/role, memberships with status/role, and nullable activeMembership/activeBusiness.
+- GHM #148's AccountIdentity and ApplicationIdentity expose those fields; Date values serialize to ISO strings matching QuoteFlow's date parser. Its BusinessMembership may omit nested business summaries, which QuoteFlow's parser explicitly permits.
+- QuoteFlow's client sends only optional businessId to GET /api/v1/identity and does not send an account ID. This preserves the server-authoritative identity boundary.
+
+### Prefer the stronger parts of #148 when reconciling with #142/#137
+- #148 adds getIdentityContext() to return the authenticated account's membership choices without treating ambiguous multi-business membership as an error.
+- #148 rejects unknown/repeated/malformed query parameters and maps unauthorized/inactive selected businesses to 404 not_found, avoiding business-existence disclosure.
+- #142's integration branch already includes the email projection, the route, and broader migration-audit policy protections. Its route uses resolveIdentity(), permits unrecognized query keys, and returns 403 for unauthorized selection. When reconciling, preserve #142's migration policy changes but carry forward #148's dedicated context operation, strict query allowlist and non-disclosing 404 behavior.
+- #148's tests cover unauthenticated requests, multiple memberships without selection, explicit selection, unauthorized selection, and malformed query. Add/retain an explicit zero-membership/customer case and run the final merged candidate's exact-head suite.
+- The route's presence and CI do not qualify deployed token expiry/revocation, runtime configuration, actual membership data, or QuoteFlow's full AuthProvider/product workflows.
+
+This is a source comparison and construction recommendation, not a merge approval or deployment/cutover authorization.
