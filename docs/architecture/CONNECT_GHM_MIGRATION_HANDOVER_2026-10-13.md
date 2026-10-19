@@ -843,3 +843,10 @@ GHM PR #158 records the provider-neutral logo storage contract needed to replace
 GHM PR #159 adds a separate managed-only registration identity resource for self-declared registration classification, registration number, and legal name. The fields live in a private table with RLS enabled, no direct runtime-table grants, narrow security-definer read/update functions, active owner/administrator membership checks, and no inclusion in general/public Business DTOs. Exact-head build, migration chain, test suite, migration audit, and runtime-boundary verification passed for `5944e594813a1c13c90ca2df0be5b4d808565c32` ([run 39330943367](https://github.com/zaidhqdev-sys/GHM)). This is not independent registration verification and does not enable Founder review or production use.
 
 Connect PR #47 intentionally keeps registration editing disabled until the GHM API is merged/deployed and non-production session/authorization behavior is qualified. Do not re-enable the UI based only on branch CI.
+
+
+### Business registration identity API and Connect adapter — 2026-10-19 21:58 UTC
+
+GHM PR #159 adds a private self-declared Business registration identity table and authenticated owner/administrator GET/PUT API, with runtime table access revoked, narrow security-definer functions, strict validation, and no changes to verification/approval state. Exact-head GHM CI passed at `5944e594813a1c13c90ca2df0be5b4d808565c32`: [run 39330943367](https://github.com/zaidhqdev-sys/GHM/actions/runs/39330943367). The Cloudflare branch preview also deployed successfully for that commit; this is preview deployment evidence, not production qualification.
+
+Connect PR #47 adds a separate authenticated registration-identity adapter and focused contract tests. The profile editor remains gated until legacy registration values can be reconciled against canonical GHM Business IDs; enabling writes before that reconciliation could make an empty GHM record appear to replace existing legacy declarations. Exact-head client CI is pending for the newest client test/workflow commits. No legacy data migration, production cutover, or full Supabase removal is claimed.
