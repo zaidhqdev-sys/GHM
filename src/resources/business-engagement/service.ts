@@ -26,7 +26,7 @@ const validate = (context: AuthContext, input: RecordBusinessEngagementInput): R
 
 export class BusinessEngagementServiceImpl implements BusinessEngagementService {
   constructor(private readonly repository: BusinessEngagementRepository) {}
-  record(context: AuthContext, input: RecordBusinessEngagementInput) {
+  async record(context: AuthContext, input: RecordBusinessEngagementInput) {
     return this.repository.record(context, validate(context, input));
   }
 }
