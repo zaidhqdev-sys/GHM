@@ -778,3 +778,10 @@ Connect PR #49 was refreshed again from the paginated lead branch with merge com
 GHM PR #156 restores the legacy Marketplace lead-created notification as a transactionally persisted side effect of GHM Enquiry creation. Recipients are selected from canonical active Business owner memberships; customer input cannot choose a notification recipient. The event includes numeric `enquiry_id`/`business_id` metadata, and notification insert failure rolls back the Enquiry/Opportunity transaction. Exact-head CI passed for `98b146a3a1f2a2a4638afca2187ed045c09ca2f6` ([run 39326011306](https://github.com/zaidhqdev-sys/GHM)). The dormant Connect notification inbox, realtime stream, payment and verification producers are not migrated by this slice.
 
 Connect PR #47 also now strictly rejects malformed successful Enquiry response IDs (null, non-positive, or string values), with exact-head contract tests and web build passing at `4f7544ef76c77b685ddd830c2bdf4a9110aee742` ([run 39326107638](https://github.com/zaidhqdev-sys/zaid-connect)). These are source/CI checkpoints only; deployed non-production qualification and production cutover remain separate gates.
+
+
+### QuoteFlow identity-context API/client contract — 2026-10-19 21:18 UTC
+
+GHM PR #148 now has its exact-head status documented: `GET /api/v1/identity` implementation and service/HTTP tests passed CI for `18aa29c1347c498f8fddd16d0c57b4a14581447c` ([run 39199110141](https://github.com/zaidhqdev-sys/GHM)). QuoteFlow PR #20's client-contract tests for multiple memberships without forced selection and non-disclosing `404 not_found` on unauthorized business selection passed exact-head CI for `1368f65ecfe6b267eb43c462dccfcc9c1f869cc9` ([run 39199912721](https://github.com/zaidhqdev-sys/QuoteFlow)).
+
+This still does not integrate GHM identity into QuoteFlow's normal Supabase-backed `AuthContext` or map QuoteFlow organization UUIDs to GHM numeric Business IDs. Keep those authorities separate; no identity inference, active auth cutover, or production linking is authorized.
