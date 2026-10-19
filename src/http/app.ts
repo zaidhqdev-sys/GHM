@@ -57,6 +57,9 @@ import type { PasswordRecoveryService } from '../auth/password-recovery';
 import type { PasswordResetService } from '../auth/password-reset';
 import type { QuoteFlowMigrationResetRecoveryService } from '../migrations/quoteflow-migration-reset-recovery';
 import type { QuoteFlowMigrationResetCompletionService } from '../migrations/quoteflow-migration-reset-completion';
+import { createQuoteFlowMigrationResetRecoveryService } from '../migrations/quoteflow-migration-reset-recovery';
+import { createQuoteFlowMigrationResetCompletionService } from '../migrations/quoteflow-migration-reset-completion';
+import { createRecoveryWebhookDeliveryFromEnv } from '../auth/recovery-webhook-delivery';
 import { createPasswordResetService } from '../auth/password-reset';
 import { PostgresAuthPersistence } from '../auth/foundation/persistence';
 import { PostgresProjectQuoteRepository } from '../resources/project-quote/repository';
@@ -672,15 +675,25 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerNotificationRoutes(app, notificationService, resourceAuthMiddleware);
   registerBusinessCategoryRoutes(app, businessCategoryService, resourceAuthMiddleware);
   registerBusinessOfferingRoutes(app, businessOfferingService, resourceAuthMiddleware);
+  const authPersistence = new PostgresAuthPersistence();
   const passwordResetService =
     dependencies.passwordResetService
-    ?? createPasswordResetService(new PostgresAuthPersistence());
+    ?? createPasswordResetService(authPersistence);
+  const recoveryDelivery = createRecoveryWebhookDeliveryFromEnv();
+  const quoteFlowMigrationResetRecoveryService =
+    dependencies.quoteFlowMigrationResetRecoveryService
+    ?? (recoveryDelivery
+      ? createQuoteFlowMigrationResetRecoveryService(authPersistence, recoveryDelivery)
+      : undefined);
+  const quoteFlowMigrationResetCompletionService =
+    dependencies.quoteFlowMigrationResetCompletionService
+    ?? createQuoteFlowMigrationResetCompletionService(authPersistence);
   registerAuthRoutes(app, {
     authService: dependencies.authService,
     passwordRecoveryService: dependencies.passwordRecoveryService,
     passwordResetService,
-    quoteFlowMigrationResetRecoveryService: dependencies.quoteFlowMigrationResetRecoveryService,
-    quoteFlowMigrationResetCompletionService: dependencies.quoteFlowMigrationResetCompletionService,
+    quoteFlowMigrationResetRecoveryService,
+    quoteFlowMigrationResetCompletionService,
   } satisfies AuthRouterDependencies);
   registerCommercialInternalRoutes(app);
   registerConnectServiceRoutes(app, {
