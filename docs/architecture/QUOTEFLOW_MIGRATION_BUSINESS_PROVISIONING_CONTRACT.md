@@ -61,7 +61,7 @@ Concurrent requests for the same source organization must resolve deterministica
 
 Migration provisioning must not fabricate verification.
 
-The new Business begins in GHM's canonical unverified/pending operational state as defined by the current Business resource contract. `is_active` and verification status are not migration shortcuts.
+The new Business begins with `verification_status = 'unverified'` and `is_active = false`. Do not use the historical `pending` value: the canonical database constraint excludes it. `is_active` and verification status are not migration shortcuts.
 
 ## Slug handling
 
