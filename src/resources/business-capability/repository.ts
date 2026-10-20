@@ -55,7 +55,13 @@ export class PostgresBusinessCapabilityRepository implements BusinessCapabilityR
   async getBusinessCapability(context: AuthContext, businessCapabilityId: BusinessCapabilityId): Promise<BusinessCapability | null> {
     const id = requirePositiveId(businessCapabilityId, 'businessCapabilityId');
     return withAuthorizedTransaction(context, async client => {
-      const result = await client.query(`SELECT ${COLUMNS} FROM ghm.business_capability WHERE id = $1`, [id]);
+      const result = await client.query(
+        `SELECT bc.*, c.name AS capability_name
+           FROM ghm.business_capability bc
+           JOIN ghm.capability c ON c.id = bc.capability_id
+          WHERE bc.id = $1`,
+        [id],
+      );
       if (result.rowCount !== 1) return null;
       await resolveTenantContext(client, context, Number(result.rows[0].business_id));
       return mapBusinessCapability(result.rows[0]);
@@ -65,7 +71,14 @@ export class PostgresBusinessCapabilityRepository implements BusinessCapabilityR
   async listBusinessCapabilities(context: AuthContext, businessId: number): Promise<BusinessCapability[]> {
     const id = requirePositiveId(businessId, 'businessId');
     return withTenantTransaction(context, id, async (client) => {
-      const result = await client.query(`SELECT ${COLUMNS} FROM ghm.business_capability WHERE business_id = $1 ORDER BY created_at ASC, id ASC`, [id]);
+      const result = await client.query(
+        `SELECT bc.*, c.name AS capability_name
+           FROM ghm.business_capability bc
+           JOIN ghm.capability c ON c.id = bc.capability_id
+          WHERE bc.business_id = $1
+          ORDER BY bc.created_at ASC, bc.id ASC`,
+        [id],
+      );
       return result.rows.map(mapBusinessCapability);
     }, this.transactionPool);
   }
