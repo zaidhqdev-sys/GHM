@@ -10,6 +10,7 @@
 - CI evidence is not a substitute for running `npm run qualify:quoteflow-migration-reset-ceremony-db` against a designated, isolated non-production database with synthetic identities.
 - Do not set the delivery webhook values until endpoint ownership, access controls, retention, and operational monitoring have been reviewed and approved.
 - The completion handler commits the reset operation before requesting a login session. Qualification must explicitly cover the failure case where reset commits but subsequent session issuance fails, including the operator/user recovery path.
+- **Access-token revocation boundary:** the current access JWT contains an account subject and expires after 15 minutes; bearer authentication checks the account's current `active` status but does not bind the JWT to a persisted session ID. Therefore revoking persisted sessions/refresh credentials does not immediately invalidate an already-issued access JWT for an account that remains active; it may remain usable until expiry (plus configured clock tolerance). Qualification must explicitly test and document this window, and security owners must decide whether the bounded window is acceptable or whether access tokens need session/version binding or another immediate-revocation mechanism. Do not claim immediate access-token revocation from session-row revocation alone.
 - Bot identities must remain excluded and be tested for server-side denial independently; never modify their account state to make the tests pass.
 
 ## Decision
@@ -146,6 +147,7 @@ The following remain closed:
 - [ ] complete migration-specific RESET_REQUIRED ceremony qualification
 - [x] recovery credential single-use/expiry qualification for the synthetic migrated-account reset operation
 - [x] session revocation qualification for the synthetic migrated-account reset operation
+- [ ] integrated HTTP qualification of already-issued access JWT behavior after reset; persisted-session revocation alone does not currently invalidate stateless access JWTs immediately
 - [ ] post-reset GHM session qualification
 - [x] atomic reset transaction boundary qualified at DB primitive level
 - [ ] production delivery approval
