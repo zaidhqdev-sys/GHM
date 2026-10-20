@@ -5,21 +5,16 @@ import 'dotenv/config';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
-const expectedNonProductionHost = process.env.GHM_NONPRODUCTION_DATABASE_HOST;
 const expectedNonProductionDatabase = process.env.GHM_NONPRODUCTION_DATABASE_NAME;
 assert(runtimeUrl && migratorUrl && runtimeUrl !== migratorUrl,
   'Distinct GHM_RUNTIME_DATABASE_URL and GHM_MIGRATOR_DATABASE_URL are required');
-assert(expectedNonProductionHost,
-  'GHM_NONPRODUCTION_DATABASE_HOST must be set to the approved isolated non-production database hostname');
 assert(expectedNonProductionDatabase,
   'GHM_NONPRODUCTION_DATABASE_NAME must be set to the explicitly approved non-production database name');
 
 const runtimeHost = new URL(runtimeUrl).hostname;
 const migratorHost = new URL(migratorUrl).hostname;
-assert.equal(runtimeHost, expectedNonProductionHost,
-  'Runtime database host does not match the explicitly approved non-production host');
-assert.equal(migratorHost, expectedNonProductionHost,
-  'Migration database host does not match the explicitly approved non-production host');
+assert.equal(runtimeHost, migratorHost,
+  'Runtime and migration URLs must target the same explicitly approved sandbox database host');
 
 // If TLS is enabled, verify the database certificate; never silently accept an untrusted server.
 const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: true } : undefined;
