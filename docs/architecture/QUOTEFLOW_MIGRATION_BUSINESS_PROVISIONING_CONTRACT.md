@@ -1,8 +1,8 @@
 # QuoteFlow Migration Business Provisioning Contract
 
-> **Current-status reconciliation — 2026-10-13:** The legacy-organization reconciliation contract is qualified for its four synthetic outcomes only; it does not perform live PostgreSQL transactions or create a Business. The separate migration-only Business-provisioning implementation remains unqualified. This status is current, not a stale historical Gate statement. Both known QuoteFlow accounts are founder-owned; source-account reconciliation and full reset/re-enrollment ceremony qualification remain independent gates. No production mutation or QuoteFlow cutover is authorized.
+> **Current-status reconciliation — 2026-10-20:** A migration-only PostgreSQL provisioning primitive and database-backed qualification script are present on the combined review candidate. Fresh CI validation and database-backed qualification against an explicitly approved isolated non-production database remain pending. The provisioner creates an inactive/unverified Business, one active owner membership, and exact source mapping atomically; source data is not read or mutated by the primitive. The function is intended to be executable only by `ghm_schema_owner`, not `ghm_runtime`. Account/session migration, legacy membership reconciliation, reset/re-enrollment ceremony, and production cutover remain separate gates. No production mutation or QuoteFlow cutover is authorized.
 
-**Status:** CONSTRUCTION CONTRACT — IMPLEMENTATION NOT YET QUALIFIED (reconciled 2026-10-13)
+**Status:** CONSTRUCTION CONTRACT — IMPLEMENTATION PRESENT; CI AND DATABASE QUALIFICATION PENDING (reconciled 2026-10-20)
 
 This slice defines the migration-only capability required when an approved QuoteFlow organization has outcome `CREATE_REQUIRED`. It creates a canonical GHM Business only from an explicitly reviewed migration target. It is not a public Business-registration mechanism.
 
@@ -51,7 +51,7 @@ Any failure rolls back the Business, owner membership, and mapping together.
 
 ## Idempotency
 
-If the exact external mapping already points to the same Business, the operation returns `already_provisioned` without creating another Business.
+If the exact external mapping already points to a Business, the operation returns `already_provisioned` only when the recorded review evidence and approved owner match and an active owner membership for that account exists. If the mapping lacks the expected audit record, the owner differs, or the evidence reference/reviewer/timestamp differs, return `CONFLICT` and make no mutation.
 
 If the exact external mapping points elsewhere, return `CONFLICT` and make no mutation.
 
@@ -76,7 +76,7 @@ Legacy organization members, legacy roles, administrators, and secondary members
 ## Security boundary
 
 - migration-only SECURITY DEFINER capability;
-- executable only by `ghm_runtime`;
+- executable only by `ghm_schema_owner`; `ghm_runtime` execution is explicitly revoked;
 - underlying Business/membership/mapping DML remains unavailable directly to `ghm_runtime`;
 - no public HTTP exposure;
 - no QuoteFlow runtime dependency;
@@ -84,13 +84,15 @@ Legacy organization members, legacy roles, administrators, and secondary members
 
 ## Qualification requirements
 
-Synthetic non-production qualification must prove:
+The database qualification script is `scripts/qualify-quoteflow-migration-business-provisioning-db.mjs` (`npm run qualify:quoteflow-business-provisioning-db`). Before merge, non-production qualification must prove the following. The operator must set `GHM_NONPRODUCTION_DATABASE_HOST` to the approved isolated test database hostname; both runtime and migration connection hosts must match it, and the script asserts the effective runtime and schema-owner roles before mutations:
 
 - fresh `CREATE_REQUIRED` → exactly one Business + exactly one active owner membership + exact external mapping;
-- exact retry → `already_provisioned`, same Business;
+- exact retry with the same owner and review evidence → `already_provisioned`, same Business and owner membership;
+- existing mapping with missing audit evidence, different owner, or mismatched evidence → `CONFLICT` and no mutation;
 - four concurrent calls → one creation, remaining calls idempotent;
-- mapping conflict → `CONFLICT` and no new Business;
+- mapping/owner/evidence conflict → `CONFLICT` and no new Business;
 - missing owner → blocked/failure with no Business;
+- inactive owner or owner account whose canonical GHM role is not `business` → blocked with no Business;
 - invalid provider → rejected with no Business;
 - slug collision → rejected with no partial Business/membership;
 - transaction rollback removes all created records;
@@ -103,4 +105,4 @@ No production migration, production source export, public Business API change, l
 
 ## Founder gate
 
-Construction and non-production qualification only.
+Construction and non-production qualification only. Do not apply this migration to a production database or route QuoteFlow traffic until account mapping, owner membership, full user/session migration, legacy member reconciliation, recovery/rollback, and cutover approval are separately evidenced.
