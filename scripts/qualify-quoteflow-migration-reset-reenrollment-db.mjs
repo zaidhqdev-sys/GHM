@@ -224,5 +224,6 @@ try {
     await migrator.end().catch(() => {});
     await runtime.end().catch(() => {});
   }
+  if (!cleanupFailed) console.log('QUOTEFLOW RESET RE-ENROLLMENT FIXTURE CLEANUP PASS');
   if (cleanupFailed) throw new Error('QuoteFlow reset qualification failed because cleanup did not complete');
 }
