@@ -2,10 +2,12 @@ import assert from 'node:assert/strict';
 import { createHmac, randomUUID } from 'node:crypto';
 import { Client, Pool } from 'pg';
 import 'dotenv/config';
+import { assertMatchingPostgresTargets, assertNonProductionQualificationTarget, assertPostgresTargetConfiguration } from '../dist/db/postgres-target-guard.js';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 const expectedNonProductionDatabase = process.env.GHM_NONPRODUCTION_DATABASE_NAME;
+const expectedNonProductionHost = process.env.GHM_NONPRODUCTION_DATABASE_HOST;
 const pepperValue = process.env.GHM_AUTH_TOKEN_PEPPER;
 assert(runtimeUrl, 'GHM_RUNTIME_DATABASE_URL is required');
 assert(migratorUrl, 'GHM_MIGRATOR_DATABASE_URL is required');
@@ -13,11 +15,18 @@ assert(expectedNonProductionDatabase, 'GHM_NONPRODUCTION_DATABASE_NAME must be s
 assert(pepperValue && pepperValue.length >= 32, 'GHM_AUTH_TOKEN_PEPPER is required');
 assert.notEqual(runtimeUrl, migratorUrl, 'runtime and migrator URLs must be distinct');
 
-const normalizeRenderPostgresHost = (host) => host.replace(/\.frankfurt-postgres\.render\.com$/i, '');
-const runtimeHost = normalizeRenderPostgresHost(new URL(runtimeUrl).hostname);
-const migratorHost = normalizeRenderPostgresHost(new URL(migratorUrl).hostname);
-assert.equal(runtimeHost, migratorHost,
-  'Runtime and migration URLs must target the same explicitly approved Render sandbox database');
+const runtimeTarget = assertPostgresTargetConfiguration(runtimeUrl, {
+  databaseName: expectedNonProductionDatabase,
+  host: expectedNonProductionHost,
+  label: 'QuoteFlow reset qualification runtime target',
+});
+const migratorTarget = assertPostgresTargetConfiguration(migratorUrl, {
+  databaseName: expectedNonProductionDatabase,
+  host: expectedNonProductionHost,
+  label: 'QuoteFlow reset qualification migration target',
+});
+assertMatchingPostgresTargets(runtimeTarget, migratorTarget, 'QuoteFlow reset qualification');
+assertNonProductionQualificationTarget(runtimeTarget, 'QuoteFlow reset qualification');
 
 // The existing Render sandbox uses encrypted PostgreSQL connections with a self-signed
 // server certificate. Match the established identity qualification policy for this sandbox;

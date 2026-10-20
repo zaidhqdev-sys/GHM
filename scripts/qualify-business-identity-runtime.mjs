@@ -2,14 +2,22 @@ import { randomUUID } from 'node:crypto';
 import http from 'node:http';
 import { Pool } from 'pg';
 import 'dotenv/config';
+import { assertMatchingPostgresTargets, assertNonProductionQualificationTarget, assertPostgresTargetConfiguration } from '../dist/db/postgres-target-guard.js';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
-const expectedDatabaseName = process.env.GHM_QUALIFICATION_DATABASE_NAME ?? 'ghm_db';
+const expectedDatabaseName = process.env.GHM_QUALIFICATION_DATABASE_NAME;
+const expectedDatabaseHost = process.env.GHM_QUALIFICATION_DATABASE_HOST;
 
-if (!runtimeUrl) throw new Error('Missing GHM_RUNTIME_DATABASE_URL or DATABASE_URL for the dedicated runtime qualification connection');
-if (!migratorUrl) throw new Error('Missing GHM_MIGRATOR_DATABASE_URL for construction cleanup authority');
+const runtimeTarget = assertPostgresTargetConfiguration(runtimeUrl, {
+  databaseName: expectedDatabaseName, host: expectedDatabaseHost, label: 'GHM runtime qualification target',
+});
+const cleanupTarget = assertPostgresTargetConfiguration(migratorUrl, {
+  databaseName: expectedDatabaseName, host: expectedDatabaseHost, label: 'GHM qualification cleanup target',
+});
 if (runtimeUrl === migratorUrl) throw new Error('Runtime and migrator connections must be distinct');
+assertMatchingPostgresTargets(runtimeTarget, cleanupTarget, 'GHM identity qualification target');
+assertNonProductionQualificationTarget(runtimeTarget, 'GHM identity qualification');
 
 process.env.CORS_ORIGINS ??= 'http://localhost';
 const { BusinessIdentityServiceImpl } = await import('../dist/resources/business-identity/service.js');
@@ -19,9 +27,11 @@ const { createApp } = await import('../dist/http/app.js');
 const { createAccessJwtService } = await import('../dist/auth/foundation/access-jwt.js');
 const { loadEs256Keys } = await import('../dist/auth/foundation/es256-keys.js');
 
-const ssl = { rejectUnauthorized: false };
-const runtimePool = new Pool({ connectionString: runtimeUrl, ssl, connectionTimeoutMillis: 15000 });
-const cleanupPool = new Pool({ connectionString: migratorUrl, ssl, connectionTimeoutMillis: 15000 });
+// Render's non-production PostgreSQL requires TLS; disposable local CI PostgreSQL does not.
+const ssl = process.env.DATABASE_SSL === 'false' ? undefined : { rejectUnauthorized: false };
+const poolOptions = ssl ? { ssl } : {};
+const runtimePool = new Pool({ connectionString: runtimeUrl, ...poolOptions, connectionTimeoutMillis: 15000 });
+const cleanupPool = new Pool({ connectionString: migratorUrl, ...poolOptions, connectionTimeoutMillis: 15000 });
 
 const runtimeIdentity = async () => {
   const { rows } = await runtimePool.query(`
