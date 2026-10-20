@@ -6,10 +6,12 @@ import 'dotenv/config';
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 const expectedNonProductionHost = process.env.GHM_NONPRODUCTION_DATABASE_HOST;
+const expectedNonProductionDatabase = process.env.GHM_NONPRODUCTION_DATABASE_NAME;
 const pepperValue = process.env.GHM_AUTH_TOKEN_PEPPER;
 assert(runtimeUrl, 'GHM_RUNTIME_DATABASE_URL is required');
 assert(migratorUrl, 'GHM_MIGRATOR_DATABASE_URL is required');
 assert(expectedNonProductionHost, 'GHM_NONPRODUCTION_DATABASE_HOST must be set to the approved isolated non-production database hostname');
+assert(expectedNonProductionDatabase, 'GHM_NONPRODUCTION_DATABASE_NAME must be set to the explicitly approved non-production database name');
 assert(pepperValue && pepperValue.length >= 32, 'GHM_AUTH_TOKEN_PEPPER is required');
 assert.notEqual(runtimeUrl, migratorUrl, 'runtime and migrator URLs must be distinct');
 
@@ -59,11 +61,13 @@ try {
   await migrator.query('set role ghm_schema_owner');
 
   const identity = await runtime.query('select current_database() as database, current_user as user_name');
-  assert.equal(identity.rows[0].database, 'ghm_db');
+  assert.equal(identity.rows[0].database, expectedNonProductionDatabase,
+    'Runtime database name does not match the explicitly approved non-production database');
   assert.equal(identity.rows[0].user_name, 'ghm_runtime');
 
   const migrationIdentity = await migrator.query('select current_database() as database, current_user as user_name');
-  assert.equal(migrationIdentity.rows[0].database, 'ghm_db');
+  assert.equal(migrationIdentity.rows[0].database, expectedNonProductionDatabase,
+    'Migration database name does not match the explicitly approved non-production database');
   assert.equal(migrationIdentity.rows[0].user_name, 'ghm_schema_owner');
 
   const privilege = await runtime.query(`
