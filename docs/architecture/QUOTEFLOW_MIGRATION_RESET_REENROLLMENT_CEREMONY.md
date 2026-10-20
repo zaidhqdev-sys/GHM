@@ -97,6 +97,9 @@ Until the above qualification exists:
 
 ## Delivery boundary
 
+The server-side HTTPS webhook adapter is now included in the integration candidate. Delivery remains disabled unless both `GHM_RECOVERY_DELIVERY_WEBHOOK_URL` and `GHM_RECOVERY_DELIVERY_WEBHOOK_TOKEN` are configured. The adapter rejects non-HTTPS URLs, URL credentials/query/fragments, rejects redirects, uses a five-second timeout, and does not log or return recovery credentials. Do not configure either value until endpoint ownership, access controls, retention, and monitoring are reviewed and approved.
+
+
 A delivery provider remains a separate capability decision.
 
 This architecture does not authorize a paid email provider, SMS provider, or other external delivery integration. The existing injected delivery port is the canonical boundary.
