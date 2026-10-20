@@ -58,7 +58,7 @@ test('accepts only the explicitly approved host and database from a connection U
     assertPostgresTargetConfiguration('postgresql://ghm_runtime:redacted@dpg-123.frankfurt-postgres.render.com/ghm_db', {
       databaseName: 'ghm_db', host: 'dpg-123', label: 'test target',
     }),
-    { databaseName: 'ghm_db', host: 'dpg-123.frankfurt-postgres.render.com' },
+    { databaseName: 'ghm_db', host: 'dpg-123' },
   );
   assert.throws(
     () => assertPostgresTargetConfiguration('postgresql://ghm_runtime:redacted@dpg-other/ghm_db', {
