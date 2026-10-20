@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHmac, randomUUID } from 'node:crypto';
 import { Client, Pool } from 'pg';
 import 'dotenv/config';
-import { assertMatchingPostgresTargets, assertPostgresTargetConfiguration } from '../dist/db/postgres-target-guard.js';
+import { assertMatchingPostgresTargets, assertNonProductionQualificationTarget, assertPostgresTargetConfiguration } from '../dist/db/postgres-target-guard.js';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
@@ -26,6 +26,7 @@ const migratorTarget = assertPostgresTargetConfiguration(migratorUrl, {
   label: 'QuoteFlow reset qualification migration target',
 });
 assertMatchingPostgresTargets(runtimeTarget, migratorTarget, 'QuoteFlow reset qualification');
+assertNonProductionQualificationTarget(runtimeTarget, 'QuoteFlow reset qualification');
 
 // The existing Render sandbox uses encrypted PostgreSQL connections with a self-signed
 // server certificate. Match the established identity qualification policy for this sandbox;
