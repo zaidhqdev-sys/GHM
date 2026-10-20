@@ -2,14 +2,21 @@ import { randomUUID } from 'node:crypto';
 import http from 'node:http';
 import { Pool } from 'pg';
 import 'dotenv/config';
+import { assertMatchingPostgresTargets, assertPostgresTargetConfiguration } from '../dist/db/postgres-target-guard.js';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
-const expectedDatabaseName = process.env.GHM_QUALIFICATION_DATABASE_NAME ?? 'ghm_db';
+const expectedDatabaseName = process.env.GHM_QUALIFICATION_DATABASE_NAME;
+const expectedDatabaseHost = process.env.GHM_QUALIFICATION_DATABASE_HOST;
 
-if (!runtimeUrl) throw new Error('Missing GHM_RUNTIME_DATABASE_URL or DATABASE_URL for the dedicated runtime qualification connection');
-if (!migratorUrl) throw new Error('Missing GHM_MIGRATOR_DATABASE_URL for construction cleanup authority');
+const runtimeTarget = assertPostgresTargetConfiguration(runtimeUrl, {
+  databaseName: expectedDatabaseName, host: expectedDatabaseHost, label: 'GHM runtime qualification target',
+});
+const cleanupTarget = assertPostgresTargetConfiguration(migratorUrl, {
+  databaseName: expectedDatabaseName, host: expectedDatabaseHost, label: 'GHM qualification cleanup target',
+});
 if (runtimeUrl === migratorUrl) throw new Error('Runtime and migrator connections must be distinct');
+assertMatchingPostgresTargets(runtimeTarget, cleanupTarget, 'GHM identity qualification target');
 
 process.env.CORS_ORIGINS ??= 'http://localhost';
 const { BusinessIdentityServiceImpl } = await import('../dist/resources/business-identity/service.js');
