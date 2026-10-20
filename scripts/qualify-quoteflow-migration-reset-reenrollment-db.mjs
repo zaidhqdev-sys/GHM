@@ -13,10 +13,11 @@ assert(expectedNonProductionDatabase, 'GHM_NONPRODUCTION_DATABASE_NAME must be s
 assert(pepperValue && pepperValue.length >= 32, 'GHM_AUTH_TOKEN_PEPPER is required');
 assert.notEqual(runtimeUrl, migratorUrl, 'runtime and migrator URLs must be distinct');
 
-const runtimeHost = new URL(runtimeUrl).hostname;
-const migratorHost = new URL(migratorUrl).hostname;
+const normalizeRenderPostgresHost = (host) => host.replace(/\.frankfurt-postgres\.render\.com$/i, '');
+const runtimeHost = normalizeRenderPostgresHost(new URL(runtimeUrl).hostname);
+const migratorHost = normalizeRenderPostgresHost(new URL(migratorUrl).hostname);
 assert.equal(runtimeHost, migratorHost,
-  'Runtime and migration URLs must target the same explicitly approved sandbox database host');
+  'Runtime and migration URLs must target the same explicitly approved Render sandbox database');
 
 // If TLS is enabled, verify the database certificate; never silently accept an untrusted server.
 const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: true } : undefined;
