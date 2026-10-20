@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import http from 'node:http';
 import { Pool } from 'pg';
 import 'dotenv/config';
-import { assertMatchingPostgresTargets, assertPostgresTargetConfiguration } from '../dist/db/postgres-target-guard.js';
+import { assertMatchingPostgresTargets, assertNonProductionQualificationTarget, assertPostgresTargetConfiguration } from '../dist/db/postgres-target-guard.js';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
@@ -17,6 +17,7 @@ const cleanupTarget = assertPostgresTargetConfiguration(migratorUrl, {
 });
 if (runtimeUrl === migratorUrl) throw new Error('Runtime and migrator connections must be distinct');
 assertMatchingPostgresTargets(runtimeTarget, cleanupTarget, 'GHM identity qualification target');
+assertNonProductionQualificationTarget(runtimeTarget, 'GHM identity qualification');
 
 process.env.CORS_ORIGINS ??= 'http://localhost';
 const { BusinessIdentityServiceImpl } = await import('../dist/resources/business-identity/service.js');
