@@ -102,6 +102,70 @@ test('POST /api/v1/auth/quoteflow-migration-reset/request is anti-enumerating an
   }
 });
 
+test('migration reset request remains anti-enumerating when persistence or delivery fails', async () => {
+  const { createApp } = await loadApp();
+  const server = http.createServer(createApp({
+    businessIdentityService: {} as never,
+    projectService: {} as never,
+    publicProjectService: {} as never,
+    enquiryService: {} as never,
+    campaignService: {} as never,
+    quoteFlowMigrationResetRecoveryService: {
+      request: async () => { throw new Error('synthetic delivery failure'); },
+    },
+  }));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const originalError = console.error;
+  console.error = () => undefined;
+  try {
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/v1/auth/quoteflow-migration-reset/request`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'legacy@example.com' }),
+    });
+    assert.equal(response.status, 202);
+    assert.deepEqual(await response.json(), { ok: true });
+  } finally {
+    console.error = originalError;
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('migration reset request is unavailable when delivery is not configured', async () => {
+  const priorUrl = process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_URL;
+  const priorToken = process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_TOKEN;
+  delete process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_URL;
+  delete process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_TOKEN;
+  const { createApp } = await loadApp();
+  const server = http.createServer(createApp({
+    businessIdentityService: {} as never,
+    projectService: {} as never,
+    publicProjectService: {} as never,
+    enquiryService: {} as never,
+    campaignService: {} as never,
+  }));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  try {
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/v1/auth/quoteflow-migration-reset/request`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'owner@example.test' }),
+    });
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { error: 'service_unavailable' });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    if (priorUrl === undefined) delete process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_URL;
+    else process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_URL = priorUrl;
+    if (priorToken === undefined) delete process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_TOKEN;
+    else process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_TOKEN = priorToken;
+  }
+});
+
 test('POST /api/v1/auth/quoteflow-migration-reset/complete issues GHM session only after completion', async () => {
   const order: string[] = [];
   const authService: GhmAuthService = {
@@ -144,6 +208,48 @@ test('POST /api/v1/auth/quoteflow-migration-reset/complete issues GHM session on
       'complete:opaque-token:CorrectHorseBattery1',
       'login:legacy@example.com:CorrectHorseBattery1',
     ]);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('migration reset returns a sanitized error if session issuance fails after reset completion', async () => {
+  const order: string[] = [];
+  const authService: GhmAuthService = {
+    login: async () => {
+      order.push('login');
+      throw new Error('synthetic session issuer failure');
+    },
+    refresh: async () => sampleTokens(),
+    logout: async () => undefined,
+  };
+  const { createApp } = await loadApp();
+  const server = http.createServer(createApp({
+    businessIdentityService: {} as never,
+    projectService: {} as never,
+    publicProjectService: {} as never,
+    enquiryService: {} as never,
+    campaignService: {} as never,
+    authService,
+    quoteFlowMigrationResetCompletionService: {
+      complete: async () => {
+        order.push('complete');
+        return { accountId: 42, loginEmail: 'legacy@example.com' };
+      },
+    },
+  }));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  try {
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/v1/auth/quoteflow-migration-reset/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: 'opaque-token', password: 'CorrectHorseBattery1' }),
+    });
+    assert.equal(response.status, 500);
+    assert.deepEqual(await response.json(), { error: 'internal_error' });
+    assert.deepEqual(order, ['complete', 'login']);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
