@@ -228,5 +228,6 @@ try {
     await runtime.end().catch(() => {});
     await migrator.end().catch(() => {});
   }
+  if (!cleanupFailed) console.log('QUOTEFLOW BUSINESS PROVISIONING FIXTURE CLEANUP PASS');
   if (cleanupFailed) throw new Error('QuoteFlow provisioning qualification failed because cleanup did not complete');
 }
