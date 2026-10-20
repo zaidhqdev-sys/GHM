@@ -107,7 +107,7 @@ try {
 
   const created = await provision(sourceIds[0], 'Synthetic QuoteFlow Business', `${slugBase}-fresh`);
   assert.equal(created.rows[0].outcome, 'created');
-  assert.equal(created.rows[0].reason_code, 'CREATED_UNVERIFIED_REVIEW');
+  assert.equal(created.rows[0].reason_code, 'CREATED_PENDING_REVIEW');
   const businessId = Number(created.rows[0].business_id);
   const membershipId = Number(created.rows[0].owner_membership_id);
   businessIds.add(businessId);
