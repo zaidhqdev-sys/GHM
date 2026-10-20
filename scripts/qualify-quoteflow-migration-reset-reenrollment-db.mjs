@@ -3,21 +3,30 @@ import { createHmac, randomUUID } from 'node:crypto';
 import { Client, Pool } from 'pg';
 import 'dotenv/config';
 
-const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL;
+const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
+const expectedNonProductionDatabase = process.env.GHM_NONPRODUCTION_DATABASE_NAME;
 const pepperValue = process.env.GHM_AUTH_TOKEN_PEPPER;
 assert(runtimeUrl, 'GHM_RUNTIME_DATABASE_URL is required');
 assert(migratorUrl, 'GHM_MIGRATOR_DATABASE_URL is required');
+assert(expectedNonProductionDatabase, 'GHM_NONPRODUCTION_DATABASE_NAME must be set to the explicitly approved non-production database name');
 assert(pepperValue && pepperValue.length >= 32, 'GHM_AUTH_TOKEN_PEPPER is required');
 assert.notEqual(runtimeUrl, migratorUrl, 'runtime and migrator URLs must be distinct');
 
+const runtimeHost = new URL(runtimeUrl).hostname;
+const migratorHost = new URL(migratorUrl).hostname;
+assert.equal(runtimeHost, migratorHost,
+  'Runtime and migration URLs must target the same explicitly approved sandbox database host');
+
+// If TLS is enabled, verify the database certificate; never silently accept an untrusted server.
+const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: true } : undefined;
 const runtime = new Pool({
   connectionString: runtimeUrl,
-  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
+  ...(ssl ? { ssl } : {}),
 });
 const migrator = new Client({
   connectionString: migratorUrl,
-  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
+  ...(ssl ? { ssl } : {}),
 });
 
 const protectRecovery = (wire) =>
@@ -49,9 +58,15 @@ try {
   await migrator.connect();
   await migrator.query('set role ghm_schema_owner');
 
-  const identity = await runtime.query('select current_database() database, current_user user_name');
-  assert.equal(identity.rows[0].database, 'ghm_db');
+  const identity = await runtime.query('select current_database() as database, current_user as user_name');
+  assert.equal(identity.rows[0].database, expectedNonProductionDatabase,
+    'Runtime database name does not match the explicitly approved non-production database');
   assert.equal(identity.rows[0].user_name, 'ghm_runtime');
+
+  const migrationIdentity = await migrator.query('select current_database() as database, current_user as user_name');
+  assert.equal(migrationIdentity.rows[0].database, expectedNonProductionDatabase,
+    'Migration database name does not match the explicitly approved non-production database');
+  assert.equal(migrationIdentity.rows[0].user_name, 'ghm_schema_owner');
 
   const privilege = await runtime.query(`
     select
@@ -188,15 +203,25 @@ try {
     ],
   }, null, 2));
 } finally {
-  if (createdAccounts.length) {
-    await migrator.query('begin').catch(() => {});
-    await migrator.query('set local role ghm_schema_owner').catch(() => {});
-    await migrator.query(
-      'delete from ghm.account_identity where id = any($1::bigint[])',
-      [createdAccounts],
-    ).catch(() => {});
-    await migrator.query('commit').catch(() => {});
+  let cleanupFailed = false;
+  try {
+    if (createdAccounts.length) {
+      await migrator.query('begin');
+      await migrator.query('set local role ghm_schema_owner');
+      await migrator.query(
+        'delete from ghm.account_identity where id = any($1::bigint[])',
+        [createdAccounts],
+      );
+      await migrator.query('commit');
+    }
+  } catch (error) {
+    cleanupFailed = true;
+    await migrator.query('rollback').catch(() => {});
+    console.error('QuoteFlow reset qualification cleanup failed; synthetic residue may remain. Investigate the isolated qualification database before retrying.', error);
+  } finally {
+    await migrator.end().catch(() => {});
+    await runtime.end().catch(() => {});
   }
-  await migrator.end().catch(() => {});
-  await runtime.end().catch(() => {});
+  if (!cleanupFailed) console.log('QUOTEFLOW RESET RE-ENROLLMENT FIXTURE CLEANUP PASS');
+  if (cleanupFailed) throw new Error('QuoteFlow reset qualification failed because cleanup did not complete');
 }
