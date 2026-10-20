@@ -43,6 +43,19 @@ export const assertPostgresTargetConfiguration = (
   return { databaseName, host };
 };
 
+export const assertNonProductionQualificationTarget = (
+  target: { databaseName: string; host: string },
+  label: string,
+  environment: { NODE_ENV?: string } = process.env,
+): void => {
+  if (environment.NODE_ENV?.trim().toLowerCase() === 'production') {
+    throw new Error(`${label}: fixture-mutating qualification is forbidden when NODE_ENV=production`);
+  }
+  if (target.databaseName.trim().toLowerCase() === 'ghm_db') {
+    throw new Error(`${label}: fixture-mutating qualification refuses the protected production database ghm_db`);
+  }
+};
+
 export const assertMatchingPostgresTargets = (
   first: { databaseName: string; host: string },
   second: { databaseName: string; host: string },
