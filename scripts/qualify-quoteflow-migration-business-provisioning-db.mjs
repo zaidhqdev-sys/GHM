@@ -17,8 +17,10 @@ const migratorHost = normalizeRenderPostgresHost(new URL(migratorUrl).hostname);
 assert.equal(runtimeHost, migratorHost,
   'Runtime and migration URLs must target the same explicitly approved Render sandbox database');
 
-// If TLS is enabled, verify the database certificate; never silently accept an untrusted server.
-const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: true } : undefined;
+// The existing Render sandbox uses encrypted PostgreSQL connections with a self-signed
+// server certificate. Match the established sandbox identity qualification policy only here;
+// exact database-name, host, and role guards remain mandatory.
+const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined;
 const runtime = new Client({ connectionString: runtimeUrl, connectionTimeoutMillis: 15000, ...(ssl ? { ssl } : {}) });
 const migrator = new Client({ connectionString: migratorUrl, connectionTimeoutMillis: 15000, ...(ssl ? { ssl } : {}) });
 const runId = randomUUID();
@@ -235,6 +237,7 @@ try {
     created_businesses: businessIds.size,
     mutation_scope: 'synthetic qualification records only',
   }, null, 2));
+  console.log('QUOTEFLOW BUSINESS PROVISIONING QUALIFICATION: PASS');
 } finally {
   let cleanupFailed = false;
   try {
