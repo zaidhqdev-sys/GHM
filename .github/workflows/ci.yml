@@ -37,6 +37,10 @@ jobs:
       GHM_MIGRATOR_DATABASE_URL: postgres://ghm_migrator:migrator-test-password@localhost:5432/ghm
       GHM_MIGRATION_DATABASE_NAME: ghm
       GHM_MIGRATION_DATABASE_HOST: localhost
+      GHM_QUALIFICATION_DATABASE_NAME: ghm
+      GHM_QUALIFICATION_DATABASE_HOST: localhost
+      GHM_NONPRODUCTION_DATABASE_NAME: ghm
+      GHM_NONPRODUCTION_DATABASE_HOST: localhost
       DATABASE_SSL: "false"
       INVITE_CODE: test-invite-code
       CORS_ORIGINS: http://localhost:3000
@@ -77,6 +81,9 @@ jobs:
 
       - name: Apply all migrations to disposable PostgreSQL
         run: npm run migrate
+
+      - name: Qualify business identity and QuoteFlow migration against disposable PostgreSQL
+        run: npm run qualify:business-identity-runtime
 
       - name: Test suite (database-backed tests are required)
         run: npm test
