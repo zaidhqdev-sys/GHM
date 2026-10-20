@@ -20,8 +20,8 @@ const { createAccessJwtService } = await import('../dist/auth/foundation/access-
 const { loadEs256Keys } = await import('../dist/auth/foundation/es256-keys.js');
 
 const ssl = { rejectUnauthorized: false };
-const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
-const cleanupPool = new Pool({ connectionString: migratorUrl, ssl });
+const runtimePool = new Pool({ connectionString: runtimeUrl, ssl, connectionTimeoutMillis: 15000 });
+const cleanupPool = new Pool({ connectionString: migratorUrl, ssl, connectionTimeoutMillis: 15000 });
 
 const runtimeIdentity = async () => {
   const { rows } = await runtimePool.query(`
@@ -89,6 +89,7 @@ const fixture = {
 let qualificationServer;
 
 try {
+  console.log('GHM BUSINESS IDENTITY RUNTIME QUALIFICATION START');
   const [runtime, cleanup] = await Promise.all([runtimeIdentity(), cleanupIdentity()]);
   console.log(`RUNTIME IDENTITY PASS: ${runtime.database_name}/${runtime.current_user}`);
   console.log(`CLEANUP AUTHORITY PASS: ${cleanup.database_name}/${cleanup.current_user}`);
