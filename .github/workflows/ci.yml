@@ -35,6 +35,8 @@ jobs:
       DATABASE_URL: postgres://ghm_runtime:runtime-test-password@localhost:5432/ghm
       GHM_RUNTIME_DATABASE_URL: postgres://ghm_runtime:runtime-test-password@localhost:5432/ghm
       GHM_MIGRATOR_DATABASE_URL: postgres://ghm_migrator:migrator-test-password@localhost:5432/ghm
+      GHM_MIGRATION_DATABASE_NAME: ghm
+      GHM_MIGRATION_DATABASE_HOST: localhost
       DATABASE_SSL: "false"
       INVITE_CODE: test-invite-code
       CORS_ORIGINS: http://localhost:3000
