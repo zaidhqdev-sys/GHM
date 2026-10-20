@@ -25,10 +25,12 @@ assert.equal(runtimeHost, migratorHost,
 const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined;
 const runtime = new Pool({
   connectionString: runtimeUrl,
+  connectionTimeoutMillis: 15000,
   ...(ssl ? { ssl } : {}),
 });
 const migrator = new Client({
   connectionString: migratorUrl,
+  connectionTimeoutMillis: 15000,
   ...(ssl ? { ssl } : {}),
 });
 
@@ -58,6 +60,7 @@ const provision = async (subject) => {
 };
 
 try {
+  console.log('QUOTEFLOW RESET RE-ENROLLMENT QUALIFICATION START');
   await migrator.connect();
   await migrator.query('set role ghm_schema_owner');
 
