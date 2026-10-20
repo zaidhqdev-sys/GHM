@@ -6,10 +6,13 @@ import 'dotenv/config';
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 const expectedNonProductionHost = process.env.GHM_NONPRODUCTION_DATABASE_HOST;
+const expectedNonProductionDatabase = process.env.GHM_NONPRODUCTION_DATABASE_NAME;
 assert(runtimeUrl && migratorUrl && runtimeUrl !== migratorUrl,
   'Distinct GHM_RUNTIME_DATABASE_URL and GHM_MIGRATOR_DATABASE_URL are required');
 assert(expectedNonProductionHost,
   'GHM_NONPRODUCTION_DATABASE_HOST must be set to the approved isolated non-production database hostname');
+assert(expectedNonProductionDatabase,
+  'GHM_NONPRODUCTION_DATABASE_NAME must be set to the explicitly approved non-production database name');
 
 const runtimeHost = new URL(runtimeUrl).hostname;
 const migratorHost = new URL(migratorUrl).hostname;
@@ -47,11 +50,13 @@ try {
   await migrator.query('set role ghm_schema_owner');
 
   const runtimeIdentity = await runtime.query('select current_database() as db, current_user as role');
-  assert.equal(runtimeIdentity.rows[0].db, 'ghm_db');
+  assert.equal(runtimeIdentity.rows[0].db, expectedNonProductionDatabase,
+    'Runtime database name does not match the explicitly approved non-production database');
   assert.equal(runtimeIdentity.rows[0].role, 'ghm_runtime');
 
   const migrationIdentity = await migrator.query('select current_database() as db, current_user as role');
-  assert.equal(migrationIdentity.rows[0].db, 'ghm_db');
+  assert.equal(migrationIdentity.rows[0].db, expectedNonProductionDatabase,
+    'Migration database name does not match the explicitly approved non-production database');
   assert.equal(migrationIdentity.rows[0].role, 'ghm_schema_owner');
 
   const privileges = await runtime.query(`
@@ -163,7 +168,8 @@ try {
       concurrentClients.push(client);
       await client.query('set role ghm_schema_owner');
       const identity = await client.query('select current_database() as db, current_user as role');
-      assert.equal(identity.rows[0].db, 'ghm_db');
+      assert.equal(identity.rows[0].db, expectedNonProductionDatabase,
+        'Concurrent migration database name does not match the explicitly approved non-production database');
       assert.equal(identity.rows[0].role, 'ghm_schema_owner');
     }
     concurrent = await Promise.all(concurrentClients.map(client =>
