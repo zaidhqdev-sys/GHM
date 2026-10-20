@@ -27,7 +27,7 @@ const runtime = new Client({ connectionString: runtimeUrl, ...(ssl ? { ssl } : {
 const migrator = new Client({ connectionString: migratorUrl, ...(ssl ? { ssl } : {}) });
 const runId = randomUUID();
 const provider = 'supabase';
-const sourceIds = [0, 1, 2, 3].map(i => `qualify-quoteflow-org-${runId}-${i}`);
+const sourceIds = [0, 1, 2, 3, 4].map(i => `qualify-quoteflow-org-${runId}-${i}`);
 const slugBase = `qualify-quoteflow-${runId}`;
 let ownerId;
 let disabledOwnerId;
@@ -37,11 +37,13 @@ const evidenceReference = () => `synthetic:quoteflow-business-${runId}`;
 const reviewedAt = new Date('2026-10-20T00:00:00.000Z');
 const businessIds = new Set();
 
-const provisionWith = (client, sourceId, name, slug, accountId = ownerId, sourceProvider = provider) =>
-  client.query(
-    'select * from ghm.auth_provision_quoteflow_migration_business($1,$2,$3,$4,$5,$6,$7,$8)',
-    [sourceProvider, sourceId, name, slug, accountId, evidenceReference(), 'synthetic-qualification-reviewer', reviewedAt],
-  );
+const provisionWith = (
+  client, sourceId, name, slug, accountId = ownerId, sourceProvider = provider,
+  evidence = evidenceReference(), reviewer = 'synthetic-qualification-reviewer', reviewed = reviewedAt,
+) => client.query(
+  'select * from ghm.auth_provision_quoteflow_migration_business($1,$2,$3,$4,$5,$6,$7,$8)',
+  [sourceProvider, sourceId, name, slug, accountId, evidence, reviewer, reviewed],
+);
 const provision = (...args) => provisionWith(migrator, ...args);
 
 try {
@@ -138,13 +140,43 @@ try {
   assert.equal(Number(retry.rows[0].business_id), businessId);
   assert.equal(Number(retry.rows[0].owner_membership_id), membershipId);
 
+  const evidenceConflict = await provisionWith(
+    migrator, sourceIds[0], 'Synthetic QuoteFlow Business', `${slugBase}-fresh`,
+    ownerId, provider, `synthetic:changed-evidence-${runId}`,
+  );
+  assert.equal(evidenceConflict.rows[0].outcome, 'conflict');
+  assert.equal(evidenceConflict.rows[0].reason_code, 'EXISTING_PROVISIONING_EVIDENCE_MISMATCH');
+
   const ownerConflict = await provision(sourceIds[0], 'Synthetic QuoteFlow Business', `${slugBase}-fresh`, secondBusinessOwnerId);
   assert.equal(ownerConflict.rows[0].outcome, 'conflict');
   assert.equal(ownerConflict.rows[0].reason_code, 'EXISTING_MAPPING_NOT_AUDITED_FOR_OWNER');
 
+  const unreviewedBusiness = await migrator.query(
+    `insert into ghm.business (name, slug, verification_status, is_active)
+     values ('Synthetic Unreviewed Mapping Business', $1, 'pending', false) returning id`,
+    [`${slugBase}-unreviewed`],
+  );
+  const unreviewedBusinessId = Number(unreviewedBusiness.rows[0].id);
+  businessIds.add(unreviewedBusinessId);
+  await migrator.query(
+    'insert into ghm.business_external_mapping (provider, external_business_id, business_id) values ($1,$2,$3)',
+    [provider, sourceIds[4], unreviewedBusinessId],
+  );
+  const missingAudit = await provision(sourceIds[4], 'Synthetic Unreviewed Mapping Business', `${slugBase}-unreviewed`);
+  assert.equal(missingAudit.rows[0].outcome, 'conflict');
+  assert.equal(missingAudit.rows[0].reason_code, 'EXISTING_MAPPING_NOT_AUDITED_FOR_OWNER');
+
   const slugConflict = await provision(sourceIds[1], 'Different Synthetic Business', `${slugBase}-fresh`);
   assert.equal(slugConflict.rows[0].outcome, 'conflict');
   assert.equal(slugConflict.rows[0].reason_code, 'BUSINESS_SLUG_COLLISION');
+
+  const missingOwnerIdentity = await migrator.query(
+    `select nextval(pg_get_serial_sequence('ghm.account_identity', 'id')) as id`,
+  );
+  const missingOwnerId = Number(missingOwnerIdentity.rows[0].id);
+  const missingOwner = await provision(sourceIds[2], 'Missing Owner Business', `${slugBase}-missing-owner`, missingOwnerId);
+  assert.equal(missingOwner.rows[0].outcome, 'blocked');
+  assert.equal(missingOwner.rows[0].reason_code, 'OWNER_ACCOUNT_NOT_ELIGIBLE');
 
   const disabled = await provision(sourceIds[2], 'Disabled Owner Business', `${slugBase}-disabled`, disabledOwnerId);
   assert.equal(disabled.rows[0].outcome, 'blocked');
@@ -199,7 +231,8 @@ try {
   console.log('QuoteFlow migration Business provisioning DB qualification: PASS');
   console.log(JSON.stringify({
     checks: ['fresh atomic provision', 'inactive/pending Business', 'active owner membership', 'exact provenance mapping',
-      'durable review evidence', 'idempotent retry', 'alternate-owner conflict', 'slug collision fail-closed',
+      'durable review evidence', 'idempotent retry', 'mismatched evidence conflict', 'alternate-owner conflict',
+      'existing mapping without audit conflict', 'missing owner blocked', 'slug collision fail-closed',
       'disabled owner blocked', 'non-business owner role blocked', 'invalid provider blocked', 'four-way concurrency', 'transaction rollback',
       'runtime cannot execute provisioning or write mapping/audit; migration role can execute'],
     created_businesses: businessIds.size,
