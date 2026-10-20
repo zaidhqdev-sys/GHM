@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { Client } from 'pg';
 import 'dotenv/config';
+import { assertMatchingPostgresTargets, assertPostgresTargetConfiguration } from '../dist/db/postgres-target-guard.js';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
@@ -11,11 +12,18 @@ assert(runtimeUrl && migratorUrl && runtimeUrl !== migratorUrl,
 assert(expectedNonProductionDatabase,
   'GHM_NONPRODUCTION_DATABASE_NAME must be set to the explicitly approved non-production database name');
 
-const normalizeRenderPostgresHost = (host) => host.replace(/\.frankfurt-postgres\.render\.com$/i, '');
-const runtimeHost = normalizeRenderPostgresHost(new URL(runtimeUrl).hostname);
-const migratorHost = normalizeRenderPostgresHost(new URL(migratorUrl).hostname);
-assert.equal(runtimeHost, migratorHost,
-  'Runtime and migration URLs must target the same explicitly approved Render sandbox database');
+const expectedNonProductionHost = process.env.GHM_NONPRODUCTION_DATABASE_HOST;
+const runtimeTarget = assertPostgresTargetConfiguration(runtimeUrl, {
+  databaseName: expectedNonProductionDatabase,
+  host: expectedNonProductionHost,
+  label: 'QuoteFlow business provisioning runtime target',
+});
+const migratorTarget = assertPostgresTargetConfiguration(migratorUrl, {
+  databaseName: expectedNonProductionDatabase,
+  host: expectedNonProductionHost,
+  label: 'QuoteFlow business provisioning migration target',
+});
+assertMatchingPostgresTargets(runtimeTarget, migratorTarget, 'QuoteFlow business provisioning qualification');
 
 // The existing Render sandbox uses encrypted PostgreSQL connections with a self-signed
 // server certificate. Match the established sandbox identity qualification policy only here;
