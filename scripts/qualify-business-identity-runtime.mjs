@@ -26,9 +26,11 @@ const { createApp } = await import('../dist/http/app.js');
 const { createAccessJwtService } = await import('../dist/auth/foundation/access-jwt.js');
 const { loadEs256Keys } = await import('../dist/auth/foundation/es256-keys.js');
 
-const ssl = { rejectUnauthorized: false };
-const runtimePool = new Pool({ connectionString: runtimeUrl, ssl, connectionTimeoutMillis: 15000 });
-const cleanupPool = new Pool({ connectionString: migratorUrl, ssl, connectionTimeoutMillis: 15000 });
+// Render's non-production PostgreSQL requires TLS; disposable local CI PostgreSQL does not.
+const ssl = process.env.DATABASE_SSL === 'false' ? undefined : { rejectUnauthorized: false };
+const poolOptions = ssl ? { ssl } : {};
+const runtimePool = new Pool({ connectionString: runtimeUrl, ...poolOptions, connectionTimeoutMillis: 15000 });
+const cleanupPool = new Pool({ connectionString: migratorUrl, ...poolOptions, connectionTimeoutMillis: 15000 });
 
 const runtimeIdentity = async () => {
   const { rows } = await runtimePool.query(`
