@@ -19,8 +19,8 @@ assert.equal(runtimeHost, migratorHost,
 
 // If TLS is enabled, verify the database certificate; never silently accept an untrusted server.
 const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: true } : undefined;
-const runtime = new Client({ connectionString: runtimeUrl, ...(ssl ? { ssl } : {}) });
-const migrator = new Client({ connectionString: migratorUrl, ...(ssl ? { ssl } : {}) });
+const runtime = new Client({ connectionString: runtimeUrl, connectionTimeoutMillis: 15000, ...(ssl ? { ssl } : {}) });
+const migrator = new Client({ connectionString: migratorUrl, connectionTimeoutMillis: 15000, ...(ssl ? { ssl } : {}) });
 const runId = randomUUID();
 const provider = 'supabase';
 const sourceIds = [0, 1, 2, 3, 4].map(i => `qualify-quoteflow-org-${runId}-${i}`);
@@ -43,6 +43,7 @@ const provisionWith = (
 const provision = (...args) => provisionWith(migrator, ...args);
 
 try {
+  console.log('QUOTEFLOW BUSINESS PROVISIONING QUALIFICATION START');
   await runtime.connect();
   await migrator.connect();
   await migrator.query('set role ghm_schema_owner');
