@@ -176,7 +176,7 @@ try {
   const expiryAccountId = await provision(subjects[2]);
   const expiryRecovery = await persistence.issueRecovery(expiryAccountId, 30);
   await migrator.query(
-    'update ghm.password_recovery_credential set expires_at = now() - interval \'1 second\' where token_hash = $1',
+    'update ghm.password_recovery_credential set created_at = now() - interval \'1 minute\', expires_at = now() - interval \'1 second\' where token_hash = $1',
     [protectRecovery(expiryRecovery.recoveryTokenWire)],
   );
   await assert.rejects(
