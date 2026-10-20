@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import test from 'node:test';
-import { assertMatchingPostgresTargets, assertPostgresTargetConfiguration, normalizePostgresHost } from './postgres-target-guard';
+import { assertMatchingPostgresTargets, assertNonProductionQualificationTarget, assertPostgresTargetConfiguration, normalizePostgresHost } from './postgres-target-guard';
 import {
   migrationSqlChecksum,
   matchesMigrationSqlChecksum,
@@ -86,4 +86,35 @@ test('normalizes Render host aliases and rejects different database targets', ()
     { databaseName: 'ghm_db', host: 'dpg-456' },
     'test target',
   ), /must target the same explicitly approved PostgreSQL database/);
+});
+
+
+test('refuses fixture-mutating qualification in production environment', () => {
+  assert.throws(
+    () => assertNonProductionQualificationTarget(
+      { databaseName: 'ghm_identity_qualification_20261018', host: 'dpg-qualification' },
+      'test qualification',
+      { NODE_ENV: 'production' },
+    ),
+    /forbidden when NODE_ENV=production/,
+  );
+});
+
+test('refuses fixture-mutating qualification against the protected production database', () => {
+  assert.throws(
+    () => assertNonProductionQualificationTarget(
+      { databaseName: 'ghm_db', host: 'dpg-production' },
+      'test qualification',
+      { NODE_ENV: 'test' },
+    ),
+    /refuses the protected production database ghm_db/,
+  );
+});
+
+test('allows qualification against an explicitly approved non-production target', () => {
+  assert.doesNotThrow(() => assertNonProductionQualificationTarget(
+    { databaseName: 'ghm_identity_qualification_20261018', host: 'dpg-qualification' },
+    'test qualification',
+    { NODE_ENV: 'test' },
+  ));
 });
