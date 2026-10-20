@@ -20,6 +20,15 @@ process.env.GHM_AUTH_TOKEN_PEPPER ??= randomBytes(32).toString('base64url');
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 
+const isLoopbackPostgresUrl = (value: string | undefined): boolean => {
+  if (!value) return false;
+  try {
+    return ['localhost', '127.0.0.1', '::1'].includes(new URL(value).hostname);
+  } catch {
+    return false;
+  }
+};
+
 const probeAuthSchemaReady = async (): Promise<boolean> => {
   if (!runtimeUrl || !migratorUrl || runtimeUrl === migratorUrl) return false;
   const pool = new Pool({
@@ -49,6 +58,19 @@ const probeAuthSchemaReady = async (): Promise<boolean> => {
 };
 
 test('auth foundation persistence (database)', async (t) => {
+  // CI provisions a disposable PostgreSQL instance with isolated runtime/migrator roles.
+  // Local runs must opt in explicitly, and that opt-in is restricted to loopback hosts
+  // so an ordinary npm test cannot mutate a configured remote/shared database.
+  if (process.env.CI !== 'true') {
+    if (process.env.GHM_ALLOW_LOCAL_AUTH_PERSISTENCE_DB_TESTS !== 'true') {
+      t.skip('Local auth persistence DB test disabled; use an isolated local PostgreSQL instance and explicitly opt in');
+      return;
+    }
+    if (!isLoopbackPostgresUrl(runtimeUrl) || !isLoopbackPostgresUrl(migratorUrl)) {
+      throw new Error('Local auth persistence DB tests require both runtime and migrator URLs to target localhost/127.0.0.1/::1');
+    }
+  }
+
   const dbAvailable = await probeAuthSchemaReady();
   if (!dbAvailable) {
     const reason = 'Auth schema/functions not migrated or distinct GHM_MIGRATOR_DATABASE_URL / runtime URL unavailable';
