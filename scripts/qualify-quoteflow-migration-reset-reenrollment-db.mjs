@@ -15,11 +15,17 @@ assert(expectedNonProductionDatabase, 'GHM_NONPRODUCTION_DATABASE_NAME must be s
 assert(pepperValue && pepperValue.length >= 32, 'GHM_AUTH_TOKEN_PEPPER is required');
 assert.notEqual(runtimeUrl, migratorUrl, 'runtime and migrator URLs must be distinct');
 
-const normalizeRenderPostgresHost = (host) => host.replace(/\.frankfurt-postgres\.render\.com$/i, '');
-const runtimeHost = normalizeRenderPostgresHost(new URL(runtimeUrl).hostname);
-const migratorHost = normalizeRenderPostgresHost(new URL(migratorUrl).hostname);
-assert.equal(runtimeHost, migratorHost,
-  'Runtime and migration URLs must target the same explicitly approved Render sandbox database');
+const runtimeTarget = assertPostgresTargetConfiguration(runtimeUrl, {
+  databaseName: expectedNonProductionDatabase,
+  host: expectedNonProductionHost,
+  label: 'QuoteFlow reset qualification runtime target',
+});
+const migratorTarget = assertPostgresTargetConfiguration(migratorUrl, {
+  databaseName: expectedNonProductionDatabase,
+  host: expectedNonProductionHost,
+  label: 'QuoteFlow reset qualification migration target',
+});
+assertMatchingPostgresTargets(runtimeTarget, migratorTarget, 'QuoteFlow reset qualification');
 
 // The existing Render sandbox uses encrypted PostgreSQL connections with a self-signed
 // server certificate. Match the established identity qualification policy for this sandbox;
