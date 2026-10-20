@@ -76,6 +76,25 @@ jobs:
           GRANT USAGE, CREATE ON SCHEMA public TO ghm_schema_owner;
           SQL
 
+      - name: Generate ephemeral ES256 keys for isolated qualification
+        shell: bash
+        run: |
+          set -euo pipefail
+          private_key="$RUNNER_TEMP/ghm-ci-es256-private.pem"
+          public_key="$RUNNER_TEMP/ghm-ci-es256-public.pem"
+          openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out "$private_key"
+          openssl pkey -in "$private_key" -pubout -out "$public_key"
+          {
+            echo 'GHM_JWT_ES256_PRIVATE_KEY_PEM<<GHM_CI_PRIVATE_KEY'
+            cat "$private_key"
+            echo 'GHM_CI_PRIVATE_KEY'
+            echo 'GHM_JWT_ES256_PUBLIC_KEY_PEM<<GHM_CI_PUBLIC_KEY'
+            cat "$public_key"
+            echo 'GHM_CI_PUBLIC_KEY'
+            echo 'GHM_JWT_ES256_KID=ghm-ci-ephemeral'
+          } >> "$GITHUB_ENV"
+          rm -f "$private_key" "$public_key"
+
       - name: Build
         run: npm run build
 
