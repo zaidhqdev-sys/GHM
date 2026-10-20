@@ -235,8 +235,8 @@ try {
   if (malformedSelection.body?.error !== 'invalid_request') throw new Error(`Identity malformed-selection error contract failed: ${JSON.stringify(malformedSelection.body)}`);
 
   const forbiddenSelection = await identityRequest(`/api/v1/identity?businessId=${createdBusiness.id}`, identityToken(emptyAccountId));
-  assertHttp(forbiddenSelection, 403, 'Identity unauthorized business selection');
-  if (forbiddenSelection.body?.error !== 'business_context_forbidden') throw new Error(`Identity unauthorized-selection error contract failed: ${JSON.stringify(forbiddenSelection.body)}`);
+  assertHttp(forbiddenSelection, 404, 'Identity unauthorized business selection');
+  if (forbiddenSelection.body?.error !== 'not_found') throw new Error(`Identity unauthorized-selection error contract failed: ${JSON.stringify(forbiddenSelection.body)}`);
   console.log('IDENTITY HTTP INVALID + UNAUTHORIZED SELECTION DENIAL PASS');
 
   const rollbackAccountId = await createFixtureAccount(`${fixture.marker} rollback`);
@@ -305,6 +305,7 @@ try {
       [fixture.accountIds],
     );
     await cleanupPool.query(`COMMIT`);
+    console.log('QUALIFICATION FIXTURE CLEANUP PASS');
   } catch (cleanupError) {
     await cleanupPool.query(`ROLLBACK`).catch(() => {});
     throw cleanupError;
