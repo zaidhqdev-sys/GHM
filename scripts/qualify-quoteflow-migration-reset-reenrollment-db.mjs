@@ -2,10 +2,12 @@ import assert from 'node:assert/strict';
 import { createHmac, randomUUID } from 'node:crypto';
 import { Client, Pool } from 'pg';
 import 'dotenv/config';
+import { assertMatchingPostgresTargets, assertPostgresTargetConfiguration } from '../dist/db/postgres-target-guard.js';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 const expectedNonProductionDatabase = process.env.GHM_NONPRODUCTION_DATABASE_NAME;
+const expectedNonProductionHost = process.env.GHM_NONPRODUCTION_DATABASE_HOST;
 const pepperValue = process.env.GHM_AUTH_TOKEN_PEPPER;
 assert(runtimeUrl, 'GHM_RUNTIME_DATABASE_URL is required');
 assert(migratorUrl, 'GHM_MIGRATOR_DATABASE_URL is required');
