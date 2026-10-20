@@ -107,7 +107,7 @@ try {
 
   const created = await provision(sourceIds[0], 'Synthetic QuoteFlow Business', `${slugBase}-fresh`);
   assert.equal(created.rows[0].outcome, 'created');
-  assert.equal(created.rows[0].reason_code, 'CREATED_PENDING_REVIEW');
+  assert.equal(created.rows[0].reason_code, 'CREATED_UNVERIFIED_REVIEW');
   const businessId = Number(created.rows[0].business_id);
   const membershipId = Number(created.rows[0].owner_membership_id);
   businessIds.add(businessId);
@@ -123,7 +123,7 @@ try {
      where b.id=$1
   `, [businessId, ownerId]);
   assert.equal(state.rowCount, 1);
-  assert.equal(state.rows[0].verification_status, 'pending');
+  assert.equal(state.rows[0].verification_status, 'unverified');
   assert.equal(state.rows[0].is_active, false);
   assert.equal(state.rows[0].membership_role, 'owner');
   assert.equal(state.rows[0].membership_status, 'active');
@@ -152,7 +152,7 @@ try {
 
   const unreviewedBusiness = await migrator.query(
     `insert into ghm.business (name, slug, verification_status, is_active)
-     values ('Synthetic Unreviewed Mapping Business', $1, 'pending', false) returning id`,
+     values ('Synthetic Unreviewed Mapping Business', $1, 'unverified', false) returning id`,
     [`${slugBase}-unreviewed`],
   );
   const unreviewedBusinessId = Number(unreviewedBusiness.rows[0].id);
@@ -229,7 +229,7 @@ try {
 
   console.log('QuoteFlow migration Business provisioning DB qualification: PASS');
   console.log(JSON.stringify({
-    checks: ['fresh atomic provision', 'inactive/pending Business', 'active owner membership', 'exact provenance mapping',
+    checks: ['fresh atomic provision', 'inactive/unverified Business', 'active owner membership', 'exact provenance mapping',
       'durable review evidence', 'idempotent retry', 'mismatched evidence conflict', 'alternate-owner conflict',
       'existing mapping without audit conflict', 'missing owner blocked', 'slug collision fail-closed',
       'disabled owner blocked', 'non-business owner role blocked', 'invalid provider blocked', 'four-way concurrency', 'transaction rollback',
