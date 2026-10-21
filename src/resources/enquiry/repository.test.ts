@@ -63,6 +63,22 @@ class FakeClient {
       const row = this.enquiryRows.find((item) => Number(item.id) === Number(values?.[0]));
       return { rowCount: row ? 1 : 0, rows: row ? [row] : [] };
     }
+    if (text.includes('FROM ghm.business b') && text.includes("verification_status = 'approved'")) {
+      return { rowCount: 1, rows: [{}] };
+    }
+    if (text.includes('FROM ghm.opportunity_type')) return { rowCount: 1, rows: [{ id: 7 }] };
+    if (text.includes('INSERT INTO ghm.opportunity') && text.includes('RETURNING id')) {
+      return { rowCount: 1, rows: [{ id: 900 }] };
+    }
+    if (text.includes('INSERT INTO ghm.opportunity_participant')) return { rowCount: 1, rows: [] };
+    if (text.includes('INSERT INTO ghm.enquiry') && text.includes('RETURNING')) {
+      return { rowCount: 1, rows: [enquiryRow({
+        id: '10', business_id: String(values?.[0]), customer_id: String(values?.[1]),
+        customer_name: values?.[2], project: values?.[5], description: values?.[6],
+        opportunity_id: values?.[11],
+      })] };
+    }
+    if (text.includes('INSERT INTO ghm.notification')) return { rowCount: 1, rows: [] };
     if (text.includes('UPDATE ghm.enquiry SET status = $2')) {
       const row = this.enquiryRows.find((item) => Number(item.id) === Number(values?.[0]));
       return { rowCount: row ? 1 : 0, rows: row ? [{ ...row, status: values?.[1] }] : [] };
@@ -179,3 +195,48 @@ test('Received enquiry repository rejects invalid pagination before opening a tr
   await assert.rejects(() => repository.getReceivedEnquiries(ownerContext, 265, { offset: -1 }), /offset must be between 0 and 1000000/);
   assert.equal(client.queries.length, 0);
 });
+
+const customerContext: AuthContext = { userId: 99, role: 'customer' };
+
+const marketplaceEnquiryInput = {
+  businessId: 265,
+  customerName: 'Customer',
+  project: 'Kitchen renovation',
+  description: 'Need a kitchen renovation quote',
+  city: 'Durban',
+};
+
+test('Marketplace enquiry creation inserts a lead notification for active canonical Business owners in the same transaction', async () => {
+  const client = new FakeClient(1, []);
+  const repository = new PostgresEnquiryRepository(new FakePool(client));
+  const result = await repository.createEnquiry(customerContext, marketplaceEnquiryInput);
+  assert.equal(result.id, 10);
+  assert.equal(client.committed, true);
+  const notification = client.queries.find(q => q.text.includes('INSERT INTO ghm.notification'));
+  assert.ok(notification);
+  assert.match(notification.text, /SELECT bm\.account_id, 'lead', 'New Lead!'/);
+  assert.match(notification.text, /bm\.membership_role = 'owner'/);
+  assert.match(notification.text, /bm\.membership_status = 'active'/);
+  assert.match(notification.text, /jsonb_build_object\('enquiry_id', \$3::bigint, 'business_id', \$1::bigint\)/);
+  assert.deepEqual(notification.values, [265, 'Customer is enquiring about Kitchen renovation', '10']);
+  assert.ok(client.queries.findIndex(q => q.text.includes('INSERT INTO ghm.enquiry')) <
+    client.queries.findIndex(q => q.text.includes('INSERT INTO ghm.notification')));
+});
+
+test('Marketplace enquiry creation rolls back if its owner notification cannot be persisted', async () => {
+  class NotificationFailureClient extends FakeClient {
+    async query(text: string, values?: unknown[]) {
+      if (text.includes('INSERT INTO ghm.notification')) {
+        this.queries.push({ text, values });
+        throw new Error('notification insert failed');
+      }
+      return super.query(text, values);
+    }
+  }
+  const client = new NotificationFailureClient(1, []);
+  const repository = new PostgresEnquiryRepository(new FakePool(client));
+  await assert.rejects(() => repository.createEnquiry(customerContext, marketplaceEnquiryInput), /notification insert failed/);
+  assert.equal(client.committed, false);
+  assert.equal(client.rolledBack, true);
+});
+

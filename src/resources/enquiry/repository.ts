@@ -118,6 +118,17 @@ export class PostgresEnquiryRepository implements EnquiryRepository {
          RETURNING ${ENQUIRY_COLUMNS}`,
         [input.businessId, context.userId, input.customerName, input.customerPhone ?? null, input.customerEmail ?? null, input.project, input.description, input.city ?? null, input.budgetMin ?? null, input.budgetMax ?? null, input.urgency ?? 'standard', opportunityId],
       );
+      // Resolve recipients from canonical active Business ownership; the customer cannot choose them.
+      await client.query(
+        `INSERT INTO ghm.notification (user_id, type, title, body, metadata)
+         SELECT bm.account_id, 'lead', 'New Lead!', $2,
+                jsonb_build_object('enquiry_id', $3::bigint, 'business_id', $1::bigint)
+           FROM ghm.business_membership bm
+          WHERE bm.business_id = $1
+            AND bm.membership_role = 'owner'
+            AND bm.membership_status = 'active'`,
+        [input.businessId, `${input.customerName} is enquiring about ${input.project}`, result.rows[0].id],
+      );
       return mapEnquiry(result.rows[0]);
     }, this.transactionPool);
   }
