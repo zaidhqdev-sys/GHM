@@ -214,10 +214,10 @@ test('Marketplace enquiry creation inserts a lead notification for active canoni
   assert.equal(client.committed, true);
   const notification = client.queries.find(q => q.text.includes('INSERT INTO ghm.notification'));
   assert.ok(notification);
-  assert.match(notification.text, /SELECT bm\\.account_id, 'lead', 'New Lead!'/);
-  assert.match(notification.text, /bm\\.membership_role = 'owner'/);
-  assert.match(notification.text, /bm\\.membership_status = 'active'/);
-  assert.match(notification.text, /jsonb_build_object\\('enquiry_id', \\$3::bigint, 'business_id', \\$1::bigint\\)/);
+  assert.match(notification.text, /SELECT bm\.account_id, 'lead', 'New Lead!'/);
+  assert.match(notification.text, /bm\.membership_role = 'owner'/);
+  assert.match(notification.text, /bm\.membership_status = 'active'/);
+  assert.match(notification.text, /jsonb_build_object\('enquiry_id', \$3::bigint, 'business_id', \$1::bigint\)/);
   assert.deepEqual(notification.values, [265, 'Customer is enquiring about Kitchen renovation', '10']);
   assert.ok(client.queries.findIndex(q => q.text.includes('INSERT INTO ghm.enquiry')) <
     client.queries.findIndex(q => q.text.includes('INSERT INTO ghm.notification')));
