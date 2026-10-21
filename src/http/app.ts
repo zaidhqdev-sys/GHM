@@ -97,6 +97,10 @@ import { PostgresBusinessOfferingRepository } from '../resources/business-offeri
 import { BusinessOfferingServiceImpl } from '../resources/business-offering/service';
 import type { BusinessOfferingService } from '../resources/business-offering/contracts';
 import { registerBusinessOfferingRoutes } from './business-offering-router';
+import { PostgresBusinessEngagementRepository } from '../resources/business-engagement/repository';
+import { BusinessEngagementServiceImpl } from '../resources/business-engagement/service';
+import type { BusinessEngagementService } from '../resources/business-engagement/contracts';
+import { registerBusinessEngagementRoutes } from './business-engagement-router';
 import { registerConnectServiceRoutes, type ConnectServiceHttpDependencies } from './connect-service-router';
 import { registerCommercialInternalRoutes } from './commercial-internal-router';
 
@@ -123,6 +127,7 @@ export interface AppDependencies {
   readonly notificationService?: NotificationService;
   readonly businessCategoryService?: BusinessCategoryService;
   readonly businessOfferingService?: BusinessOfferingService;
+  readonly businessEngagementService?: BusinessEngagementService;
   readonly directoryService?: DirectoryService;
   readonly authService?: GhmAuthService;
   readonly passwordRecoveryService?: PasswordRecoveryService;
@@ -420,6 +425,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const businessCategoryService = dependencies.businessCategoryService ?? new BusinessCategoryServiceImpl(new PostgresBusinessCategoryRepository());
   const directoryService = dependencies.directoryService ?? new DirectoryServiceImpl(new PostgresDirectoryRepository());
   const businessOfferingService = dependencies.businessOfferingService ?? new BusinessOfferingServiceImpl(new PostgresBusinessOfferingRepository());
+  const businessEngagementService = dependencies.businessEngagementService ?? new BusinessEngagementServiceImpl(new PostgresBusinessEngagementRepository());
   app.disable('x-powered-by');
   app.disable('etag');
   app.use((_req: Request, res: Response, next: NextFunction) => {
@@ -504,9 +510,18 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
+  app.get('/api/v1/public/business-categories', requireRegisteredPublicAccess('directory', 'read'), async (_req: Request, res: Response) => {
+    try {
+      const categories = await directoryService.listPublicCategories();
+      res.status(200).json({ categories });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
   app.get('/api/v1/public/businesses', requireRegisteredPublicAccess('directory', 'read'), async (req: Request, res: Response) => {
     try {
-      const allowed = new Set(['q', 'category', 'province', 'businessType', 'page', 'pageSize']);
+      const allowed = new Set(['q', 'category', 'province', 'city', 'sort', 'businessType', 'page', 'pageSize']);
       const keys = Object.keys(req.query);
       if (keys.some((key) => !allowed.has(key))) {
         res.status(400).json({ error: 'invalid_request' });
@@ -530,6 +545,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       const q = readStringQuery('q');
       const category = readStringQuery('category');
       const province = readStringQuery('province');
+      const city = readStringQuery('city');
+      const sort = readStringQuery('sort');
       const businessType = readStringQuery('businessType');
       const pageValue = parsePositiveQueryInteger('page');
       const pageSizeValue = parsePositiveQueryInteger('pageSize');
@@ -538,6 +555,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         (req.query.q !== undefined && q === undefined) ||
         (req.query.category !== undefined && category === undefined) ||
         (req.query.province !== undefined && province === undefined) ||
+        (req.query.city !== undefined && city === undefined) ||
+        (req.query.sort !== undefined && sort === undefined) ||
         (req.query.businessType !== undefined && businessType === undefined) ||
         (req.query.page !== undefined && pageValue === undefined) ||
         (req.query.pageSize !== undefined && pageSizeValue === undefined)
@@ -548,6 +567,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
 
       if (
         (province !== undefined && (province.trim().length === 0 || province.trim().length > 100)) ||
+        (city !== undefined && (city.trim().length === 0 || city.trim().length > 100)) ||
+        (sort !== undefined && !['rating', 'reviews', 'views', 'newest'].includes(sort)) ||
         (businessType !== undefined && businessType !== 'contractors' && businessType !== 'suppliers')
       ) {
         res.status(400).json({ error: 'invalid_request' });
@@ -563,6 +584,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         q,
         category,
         province: province?.trim(),
+        city: city?.trim(),
+        sort: sort as 'rating' | 'reviews' | 'views' | 'newest' | undefined,
         businessType: businessType as 'contractors' | 'suppliers' | undefined,
         page: pageValue ?? 1,
         pageSize: pageSizeValue ?? 20,
@@ -579,6 +602,10 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
           error.message === 'province must be a string' ||
           error.message === 'province must not be blank' ||
           error.message === 'province must be at most 100 characters' ||
+          error.message === 'city must be a string' ||
+          error.message === 'city must not be blank' ||
+          error.message === 'city must be at most 100 characters' ||
+          error.message === 'sort must be rating, reviews, views, or newest' ||
           error.message === 'businessType must be contractors or suppliers' ||
           error.message === 'page must be a positive integer' ||
           error.message === 'pageSize must be a positive integer' ||
@@ -797,6 +824,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerNotificationRoutes(app, notificationService, resourceAuthMiddleware);
   registerBusinessCategoryRoutes(app, businessCategoryService, resourceAuthMiddleware);
   registerBusinessOfferingRoutes(app, businessOfferingService, resourceAuthMiddleware);
+  registerBusinessEngagementRoutes(app, businessEngagementService, resourceAuthMiddleware);
   const authPersistence = new PostgresAuthPersistence();
   const passwordResetService =
     dependencies.passwordResetService
