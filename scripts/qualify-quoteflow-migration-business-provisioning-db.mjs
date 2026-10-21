@@ -29,7 +29,7 @@ assertNonProductionQualificationTarget(runtimeTarget, 'QuoteFlow business provis
 // The existing Render sandbox uses encrypted PostgreSQL connections with a self-signed
 // server certificate. Match the established sandbox identity qualification policy only here;
 // exact database-name, host, and role guards remain mandatory.
-const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined;
+const ssl = process.env.DATABASE_SSL === 'false' ? undefined : { rejectUnauthorized: false };
 const runtime = new Client({ connectionString: runtimeUrl, connectionTimeoutMillis: 15000, ...(ssl ? { ssl } : {}) });
 const migrator = new Client({ connectionString: migratorUrl, connectionTimeoutMillis: 15000, ...(ssl ? { ssl } : {}) });
 const runId = randomUUID();
