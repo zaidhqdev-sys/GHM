@@ -9,6 +9,7 @@ const COLUMNS = `id, business_id, capability_id, proficiency_level, description,
 
 const mapBusinessCapability = (row: any): BusinessCapability => ({
   id: Number(row.id), businessId: Number(row.business_id), capabilityId: String(row.capability_id),
+  ...(typeof row.capability_name === 'string' ? { capabilityName: row.capability_name } : {}),
   proficiencyLevel: row.proficiency_level, description: row.description, assertionStatus: row.assertion_status,
   assertionBasis: row.assertion_basis, verificationStatus: row.verification_status, effectiveFrom: row.effective_from,
   effectiveUntil: row.effective_until, sourceReference: row.source_reference, submittedAt: row.submitted_at,
