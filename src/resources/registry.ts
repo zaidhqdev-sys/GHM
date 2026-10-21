@@ -46,6 +46,7 @@ export const resourceRegistry: readonly ResourceDefinition[] = [
   { resource: 'opportunity', operations: ['read', 'create', 'update', 'transition'] },
   { resource: 'opportunity_participant', operations: ['read', 'create', 'update'] },
   { resource: 'saved_business', operations: ['read', 'create', 'delete'] },
+  { resource: 'business_engagement', operations: ['create'] },
   { resource: 'trust_score', operations: ['read', 'readPublic', 'calculate'] },
   { resource: 'campaign', operations: ['read', 'create', 'update'] },
 ];
