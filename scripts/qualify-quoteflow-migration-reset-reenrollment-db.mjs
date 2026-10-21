@@ -31,7 +31,7 @@ assertNonProductionQualificationTarget(runtimeTarget, 'QuoteFlow reset qualifica
 // The existing Render sandbox uses encrypted PostgreSQL connections with a self-signed
 // server certificate. Match the established identity qualification policy for this sandbox;
 // exact database-name and runtime/migrator-role guards remain the target boundary.
-const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined;
+const ssl = process.env.DATABASE_SSL === 'false' ? undefined : { rejectUnauthorized: false };
 const runtime = new Pool({
   connectionString: runtimeUrl,
   connectionTimeoutMillis: 15000,
