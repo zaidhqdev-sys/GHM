@@ -6,8 +6,8 @@ import { assertMatchingPostgresTargets, assertNonProductionQualificationTarget, 
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
-const expectedDatabaseName = process.env.GHM_QUALIFICATION_DATABASE_NAME;
-const expectedDatabaseHost = process.env.GHM_QUALIFICATION_DATABASE_HOST;
+const expectedDatabaseName = process.env.GHM_NONPRODUCTION_DATABASE_NAME;
+const expectedDatabaseHost = process.env.GHM_NONPRODUCTION_DATABASE_HOST;
 
 const runtimeTarget = assertPostgresTargetConfiguration(runtimeUrl, {
   databaseName: expectedDatabaseName, host: expectedDatabaseHost, label: 'GHM runtime qualification target',
