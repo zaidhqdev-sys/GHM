@@ -6,6 +6,7 @@ import type {
   EnquiryRepository,
   EnquiryService,
   EnquiryStatus,
+  EnquiryListOptions,
   UpdateEnquiryStatusInput,
 } from './contracts';
 
@@ -48,7 +49,7 @@ const validateSource = (value: unknown): CreateEnquiryInput['source'] => {
 };
 
 const validateStatus = (value: unknown): EnquiryStatus => {
-  if (value !== 'new' && value !== 'contacted' && value !== 'qualified' && value !== 'quoted' && value !== 'won' && value !== 'lost' && value !== 'archived') {
+  if (value !== 'new' && value !== 'contacted' && value !== 'quoted' && value !== 'won' && value !== 'lost' && value !== 'archived') {
     throw new Error('Invalid Enquiry status');
   }
   return value;
@@ -87,10 +88,14 @@ export class EnquiryServiceImpl implements EnquiryService {
     assertRole(context, 'business');
     return this.repository.getReceivedEnquiry(context, enquiryId);
   }
-  async getReceivedEnquiries(context: AuthContext, businessId: number): Promise<readonly Enquiry[]> {
+  async getReceivedEnquiries(context: AuthContext, businessId: number, options: EnquiryListOptions = {}): Promise<readonly Enquiry[]> {
     assertRole(context, 'business');
     if (!Number.isSafeInteger(businessId) || businessId <= 0) throw new Error('Invalid businessId');
-    return this.repository.getReceivedEnquiries(context, businessId);
+    const limit = options.limit ?? 50;
+    const offset = options.offset ?? 0;
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new Error('Enquiry limit must be between 1 and 100');
+    if (!Number.isSafeInteger(offset) || offset < 0 || offset > 1_000_000) throw new Error('Enquiry offset must be between 0 and 1000000');
+    return this.repository.getReceivedEnquiries(context, businessId, { limit, offset });
   }
   async updateReceivedEnquiryStatus(context: AuthContext, enquiryId: number, input: UpdateEnquiryStatusInput): Promise<Enquiry> {
     assertRole(context, 'business');
