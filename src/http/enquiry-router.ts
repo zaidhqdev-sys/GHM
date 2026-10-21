@@ -64,7 +64,7 @@ const parseCreateEnquiryInput = (body: unknown): CreateEnquiryInput | null => {
 const parseStatusInput = (body: unknown): UpdateEnquiryStatusInput | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   const input = body as Record<string, unknown>;
-  if (Object.keys(input).length !== 1 || !['new', 'contacted', 'qualified', 'quoted', 'won', 'lost', 'archived'].includes(input.status as string)) return null;
+  if (Object.keys(input).length !== 1 || !['new', 'contacted', 'quoted', 'won', 'lost', 'archived'].includes(input.status as string)) return null;
   return { status: input.status as UpdateEnquiryStatusInput['status'] };
 };
 
@@ -116,11 +116,15 @@ export const registerEnquiryRoutes = (app: Express, service: EnquiryService, aut
         return;
       }
       const businessId = positiveIntegerId(rawBusinessId);
-      if (businessId === null) {
+      const rawLimit = queryValue(req.query.limit);
+      const rawOffset = queryValue(req.query.offset);
+      const limit = rawLimit === null ? (req.query.limit === undefined ? 50 : null) : positiveIntegerId(rawLimit);
+      const offset = rawOffset === null ? (req.query.offset === undefined ? 0 : null) : /^(0|[1-9]\d*)$/.test(rawOffset) && Number.isSafeInteger(Number(rawOffset)) ? Number(rawOffset) : null;
+      if (businessId === null || limit === null || offset === null || limit > 100 || offset > 1_000_000) {
         res.status(400).json({ error: 'invalid_request' });
         return;
       }
-      const enquiries = await service.getReceivedEnquiries(context, businessId);
+      const enquiries = await service.getReceivedEnquiries(context, businessId, { limit, offset });
       res.status(200).json({ enquiries });
     } catch (error) {
       handleEnquiryError(error, res);
