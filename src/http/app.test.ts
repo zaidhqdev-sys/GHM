@@ -89,6 +89,7 @@ test('public directory route allows anonymous access and returns the directory r
   };
   let received: unknown;
   const directoryService: DirectoryService = {
+    listPublicCategories: async () => [],
     search: async query => {
       received = query;
       return result;
@@ -96,9 +97,9 @@ test('public directory route allows anonymous access and returns the directory r
   };
   const { server, baseUrl } = await startDirectoryTestServer(directoryService);
   try {
-    const response = await fetch(`${baseUrl}/api/v1/public/businesses?q=build&category=construction&province=KwaZulu-Natal&businessType=contractors&page=1&pageSize=20`);
+    const response = await fetch(`${baseUrl}/api/v1/public/businesses?q=build&category=construction&province=KwaZulu-Natal&city=Durban&sort=reviews&businessType=contractors&page=1&pageSize=20`);
     assert.equal(response.status, 200);
-    assert.deepEqual(received, { q: 'build', category: 'construction', province: 'KwaZulu-Natal', businessType: 'contractors', page: 1, pageSize: 20 });
+    assert.deepEqual(received, { q: 'build', category: 'construction', province: 'KwaZulu-Natal', city: 'Durban', sort: 'reviews', businessType: 'contractors', page: 1, pageSize: 20 });
     const body = await response.json() as DirectoryResult & { items: Array<PublicBusiness & { createdAt: string; updatedAt: string }> };
     assert.equal(body.items[0].id, 301);
     assert.equal(body.page, 1);
@@ -110,6 +111,7 @@ test('public directory route allows anonymous access and returns the directory r
 test('public directory route applies pagination defaults and ignores authentication', async () => {
   let received: unknown;
   const directoryService: DirectoryService = {
+    listPublicCategories: async () => [],
     search: async query => {
       received = query;
       return { items: [], page: query.page, pageSize: query.pageSize, total: 0 };
@@ -121,13 +123,14 @@ test('public directory route applies pagination defaults and ignores authenticat
       headers: { authorization: 'Bearer invalid-token' },
     });
     assert.equal(response.status, 200);
-    assert.deepEqual(received, { q: undefined, category: undefined, province: undefined, businessType: undefined, page: 1, pageSize: 20 });
+    assert.deepEqual(received, { q: undefined, category: undefined, province: undefined, city: undefined, sort: undefined, businessType: undefined, page: 1, pageSize: 20 });
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
 test('public directory route rejects unsupported and malformed query parameters before service execution', async () => {
   let called = false;
   const directoryService: DirectoryService = {
+    listPublicCategories: async () => [],
     search: async () => {
       called = true;
       throw new Error('must not be called');
@@ -135,11 +138,14 @@ test('public directory route rejects unsupported and malformed query parameters 
   };
   const { server, baseUrl } = await startDirectoryTestServer(directoryService);
   try {
-    const unsupported = await fetch(`${baseUrl}/api/v1/public/businesses?city=Durban`);
+    const unsupported = await fetch(`${baseUrl}/api/v1/public/businesses?radius=50`);
     assert.equal(unsupported.status, 400);
 
     const malformed = await fetch(`${baseUrl}/api/v1/public/businesses?page=0`);
     assert.equal(malformed.status, 400);
+
+    const invalidSort = await fetch(`${baseUrl}/api/v1/public/businesses?sort=distance`);
+    assert.equal(invalidSort.status, 400);
 
     const oversized = await fetch(`${baseUrl}/api/v1/public/businesses?pageSize=51`);
     assert.equal(oversized.status, 400);
@@ -152,6 +158,7 @@ test('public directory route rejects unsupported and malformed query parameters 
 test('public directory route rejects invalid province and business type filters', async () => {
   let called = false;
   const directoryService: DirectoryService = {
+    listPublicCategories: async () => [],
     search: async () => {
       called = true;
       return { items: [], page: 1, pageSize: 20, total: 0 };
@@ -1086,5 +1093,22 @@ test('own-profile PATCH rejects unknown Connect role and protected fields before
     assert.equal(called, false);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+
+test('public business category route returns the filtered GHM taxonomy without requiring a session', async () => {
+  const categories = [{ id: 'cat-1', slug: 'construction', name: 'Construction' }];
+  const directoryService: DirectoryService = {
+    listPublicCategories: async () => categories,
+    search: async query => ({ items: [], page: query.page, pageSize: query.pageSize, total: 0 }),
+  };
+  const { server, baseUrl } = await startDirectoryTestServer(directoryService);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/public/business-categories`);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { categories });
+  } finally {
+    server.close();
   }
 });
