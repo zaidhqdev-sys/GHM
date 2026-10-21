@@ -3,7 +3,7 @@ import test from 'node:test';
 import { isRegisteredOperation, resourceRegistry } from './registry';
 
 test('resource registry contains only explicit governed resources', () => {
-  assert.deepEqual(resourceRegistry.map((definition) => definition.resource), ['profile', 'business', 'directory', 'business_capability', 'business_category', 'business_category_assignment', 'business_offering', 'business_hours', 'project', 'project_quote', 'opportunity_requirements', 'customer', 'quote', 'notification', 'support_request', 'enquiry', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'trust_score', 'campaign']);
+  assert.deepEqual(resourceRegistry.map((definition) => definition.resource), ['profile', 'business', 'directory', 'business_capability', 'business_category', 'business_category_assignment', 'business_offering', 'business_hours', 'project', 'project_quote', 'opportunity_requirements', 'customer', 'quote', 'notification', 'support_request', 'enquiry', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'business_engagement', 'trust_score', 'campaign']);
 });
 
 test('registered operations are accepted', () => {
@@ -57,6 +57,8 @@ test('registered operations are accepted', () => {
   assert.equal(isRegisteredOperation('saved_business', 'read'), true);
   assert.equal(isRegisteredOperation('saved_business', 'create'), true);
   assert.equal(isRegisteredOperation('saved_business', 'delete'), true);
+  assert.equal(isRegisteredOperation('business_engagement', 'create'), true);
+  assert.equal(isRegisteredOperation('business_engagement', 'read'), false);
   assert.equal(isRegisteredOperation('trust_score', 'read'), true);
   assert.equal(isRegisteredOperation('trust_score', 'readPublic'), true);
   assert.equal(isRegisteredOperation('trust_score', 'calculate'), true);
