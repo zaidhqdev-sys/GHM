@@ -238,3 +238,16 @@ This authorization remains construction-only. Production deployment and product 
 ## Connect migration parity boundary — 2026-10-13
 
 The CLOSED/PASS status above applies only to the bounded GHM Enquiry schema/runtime slice. It does not establish parity with Connect's separate `leads` workflow or authorize Supabase removal. Connect currently lists leads for the active business and updates lead status through its own status RPC; GHM Enquiry has its own recipient/customer authorization and lifecycle. Before reuse, document an explicit lead-to-enquiry mapping, status-transition compatibility, list ordering/pagination, customer/business visibility, response envelopes, idempotency and audit behavior. If the lifecycle concepts differ, preserve Enquiry as a canonical resource and build a separately named compatibility operation rather than silently aliasing them. No production cutover is authorized.
+
+
+## Enquiry notification parity extension — 2026-10-19
+
+Connect's legacy Marketplace lead-create path emits a `lead` notification to the Business owner after creating the lead. The GHM Marketplace Enquiry path previously created the Enquiry and Opportunity workflow without an equivalent notification. This extension restores that event inside the same authorized database transaction as the Enquiry.
+
+- Recipient accounts are resolved only from active `ghm.business_membership` rows with `membership_role = 'owner'`; the customer request cannot choose a recipient.
+- The notification body retains the existing product semantics (`{customerName} is enquiring about {project}`) and metadata uses canonical numeric `enquiry_id` and `business_id`.
+- Notification persistence is atomic with enquiry creation. If the notification insert fails, the transaction rolls back instead of returning a successful enquiry with a silently missing owner notification.
+- This does not create a browser notification inbox, realtime subscription, or migration of other notification producers. Payment, verification, and other system notification paths remain separate.
+- Tests cover canonical recipient selection, event payload and transaction rollback on notification failure.
+
+This is a construction change on a migration branch. It does not change the historical qualification record above and does not authorize production deployment, migration, or cutover.
