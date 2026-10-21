@@ -30,6 +30,9 @@ test('Commercial is a coarse authorized resource for every authenticated GHM rol
   assert.equal(canAccessResource(contexts.admin, 'commercial'), true);
   assert.equal(canAccessResource(contexts.customer, 'commercial'), true);
   assert.equal(canAccessResource(contexts.business, 'commercial'), true);
+  assert.equal(canAccessResource(contexts.admin, 'business_engagement'), true);
+  assert.equal(canAccessResource(contexts.customer, 'business_engagement'), true);
+  assert.equal(canAccessResource(contexts.business, 'business_engagement'), true);
 });
 
 test('Commercial domain operations remain outside the generic HTTP resource vocabulary', () => {
@@ -43,6 +46,7 @@ test('unregistered resource operations are denied by the registry', () => {
   assert.equal(isRegisteredOperation('notification', 'create'), true);
   assert.equal(isRegisteredOperation('saved_business', 'create'), true);
   assert.equal(isRegisteredOperation('saved_business', 'delete'), true);
+  assert.equal(isRegisteredOperation('business_engagement', 'create'), true);
 });
 
 test('ownership rejects a non-owner', () => {
