@@ -1102,7 +1102,7 @@ test('lazy auth service uses the app-injected auth persistence for reset session
   const authPersistence = {} as never;
   let receivedPersistence: unknown;
   let loginCalled = false;
-  t.mock.method(authModule, 'createGhmAuthService', (persistence) => {
+  t.mock.method(authModule, 'createGhmAuthService', (persistence: import('../auth/foundation/persistence').AuthPersistence) => {
     receivedPersistence = persistence;
     return {
       login: async () => {
