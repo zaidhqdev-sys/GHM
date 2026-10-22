@@ -301,3 +301,9 @@ Expanded targeted inspection covered auth context/service, Connect authorization
 CI [#1515](https://github.com/zaidhqdev-sys/GHM/actions/runs/39874206024) passed on current head `5eff3eaff0d72695a644e0ac4814b7824e2df1c3`, including disposable PostgreSQL, QuoteFlow reset HTTP qualification, DB-backed tests, migration audit policy, and runtime boundary checks.
 
 Current auth router lazily calls `createGhmAuthService(dependencies.authPersistence)`, confirming shared persistence injection is present. Persistence exposes password-change and account-disable wrappers that call SECURITY DEFINER functions executable by `ghm_runtime`; the inspected auth router has no public routes for these methods. The identity-authority function is also runtime-executable, but no wrapper was found in the inspected persistence class. These targeted findings are not an exhaustive callsite trace. Independent review, full source-wide trace, and dedicated governed Render DB qualification remain open. No grants or infrastructure changed.
+
+## Current-head CI #1518 — 2026-10-23
+
+CI [#1518](https://github.com/zaidhqdev-sys/GHM/actions/runs/39874483294) passed on PR head `bfe740630d514bedb331dff7672cbe1a3b4e57ef`: build, disposable PostgreSQL migrations, business identity + QuoteFlow reset HTTP qualification, DB-backed tests, migration audit policy, and runtime boundary checks succeeded.
+
+The full source-wide caller trace for `auth_change_password`, `auth_disable_account`, and `auth_read_connect_identity_authority` remains incomplete. Targeted findings do not prove absence of callers. Independent SECURITY DEFINER review and dedicated governed Render DB qualification remain open. No grant or infrastructure changes made.
