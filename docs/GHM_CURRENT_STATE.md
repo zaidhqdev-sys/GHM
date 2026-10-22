@@ -270,3 +270,9 @@ CI #1497 passed on current PR head `57028b92c435f643ea63c0c8e6ea3ba4676ec606`. T
 CI [run #39872544366](https://github.com/zaidhqdev-sys/GHM/actions/runs/39872544366) passed on prior PR head `bc0ba1b1d0f53ecbdbd4d0127b791d4237b31533`, including disposable PostgreSQL qualification, database-backed tests, migration audit policy, and runtime-boundary verification.
 
 Repeated GitHub code searches for the password-change/account-disable and identity-authority symbols returned no indexed results and are inconclusive. Targeted inspection found persistence wrappers for password-change/account-disable SQL functions but no corresponding route in the inspected auth router. The identity-authority SQL function is granted to runtime, but no wrapper was found in the inspected persistence class. Full caller trace and independent review remain open; no grants changed. Dedicated Render DB qualification remains open.
+
+## CI #1503 — 2026-10-23
+
+CI [run #39872823317](https://github.com/zaidhqdev-sys/GHM/actions/runs/39872823317) passed on prior head `903d35446dbffbb2e2975cc60b46fb1c211816f2`. Build, disposable PostgreSQL migrations, business identity and QuoteFlow reset HTTP qualification, database-backed tests, migration-audit policy, and runtime-boundary verification all succeeded.
+
+The shared-persistence qualification gap is covered by the PR's injected persistence wiring and regression/HTTP qualification. Remaining release gates are the complete caller trace and independent review of SECURITY DEFINER identity/session functions, plus the governed isolated Render DB qualification. GitHub code search results remain inconclusive; no SQL grants changed.
