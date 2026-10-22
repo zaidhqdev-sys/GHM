@@ -373,3 +373,8 @@ For migration `20261016100000_add_connect_identity_authority_contract.sql`, the 
 ## Auth/SQL boundary follow-up — 2026-10-23
 
 CI run #39869935033 passed on code head `be0ced510352095079f511350399e6440d33ad3f`; docs-only changes followed and current-head CI must be checked. Bounded inspection of reset completion, storage-persistence, and core auth SQL found explicit search paths, owner/grant hardening, and transaction-based reset/session revocation in the inspected functions. Independent review remains mandatory, particularly for every SECURITY DEFINER caller and its binding of account/session/object IDs to verified auth context. No confirmed vulnerability or complete audit is claimed.
+
+
+## Auth SECURITY DEFINER caller tracing — 2026-10-23
+
+CI run #39870134670 passed on PR #183 head `ec132b000c9296874b605cda1512d4f5c887343e`. Continue exhaustive callsite tracing for persistence methods `changePassword` and `disableAccount` and SQL functions `auth_change_password` / `auth_disable_account`, which accept account/session IDs and are executable by `ghm_runtime`. The router review did not find corresponding routes in the inspected excerpt, but do not infer absence across the entire application without full search. Ensure any callers bind IDs to authenticated context. Independent security review remains required.
