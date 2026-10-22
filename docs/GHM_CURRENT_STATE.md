@@ -289,3 +289,9 @@ Complete caller trace remains open: source tree has 174 non-test TypeScript file
 CI #1509 passed on head `7d97d2a511993707678e342007ab59f405ada0ef` including all disposable PostgreSQL and HTTP qualification steps.
 
 Important trust-boundary detail: `auth_change_password`, `auth_disable_account`, and `auth_read_connect_identity_authority` are SECURITY DEFINER functions executable by `ghm_runtime` and accept account IDs (and for password change, a keep-session ID) as parameters. Their SQL bodies do not independently derive the actor from a verified HTTP session. The inspected auth router has no public password-change/disable route, and no wrapper for the identity-authority function was found in the inspected persistence class. This needs complete caller/privilege review; it is not a confirmed vulnerability by itself. Do not alter grants until callsites and intended runtime trust model are independently reviewed. Full source-wide trace and dedicated governed Render DB qualification remain open.
+
+## Current-head CI #1512 and expanded source review — 2026-10-23
+
+CI #1512 passed on head `db6f1d9d224b0427957d8081f04be3cd9163fbed`; all quality checks passed including disposable PostgreSQL and reset HTTP qualification.
+
+Expanded targeted inspection covered auth context/service, Connect authorization binding and identity adapter, relevant HTTP routers, and QuoteFlow reset completion. It did not find direct TypeScript calls to password-change/account-disable persistence methods or a wrapper for the identity-authority function in those files. This is bounded, not exhaustive; 174 non-test TypeScript files plus migrations still need complete search. Connect's authorization binding maps a trusted integration request to account mapping and current account-auth state, but does not close the unrelated SECURITY DEFINER caller review. No grants changed. Dedicated governed Render DB qualification remains open.
