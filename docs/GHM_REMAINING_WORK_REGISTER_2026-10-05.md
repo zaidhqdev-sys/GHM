@@ -426,3 +426,9 @@ CI #1509 passed on PR head `7d97d2a511993707678e342007ab59f405ada0ef`. Review of
 ## CI #1512 — expanded targeted source review
 
 CI #1512 passed on PR head `db6f1d9d224b0427957d8081f04be3cd9163fbed`. Expanded targeted reads of auth context/service, Connect authorization binding, relevant routers, and QuoteFlow reset completion found no direct TypeScript call to password-change/account-disable persistence wrappers or wrapper for the identity-authority SQL function in the files inspected. This is not exhaustive across the 174 non-test TypeScript files and migrations. Full caller trace, independent SECURITY DEFINER review, and dedicated governed Render DB qualification remain open. No grants or infrastructure changed.
+
+## Checkpoint #1515 — 2026-10-23
+
+CI #1515 passed on PR head `5eff3eaff0d72695a644e0ac4814b7824e2df1c3`: build, disposable PostgreSQL migrations, business identity + QuoteFlow reset HTTP qualification, DB-backed tests, migration audit policy, and runtime boundary verification all succeeded.
+
+Current auth router passes `dependencies.authPersistence` into lazy `createGhmAuthService`, confirming shared persistence wiring. Password-change/account-disable wrappers invoke SECURITY DEFINER functions granted to runtime; no matching public route was found in the inspected auth router. The identity-authority SQL function is runtime-granted with no wrapper found in the inspected persistence class. This is not an exhaustive callsite proof. Remaining gates: full caller trace, independent SECURITY DEFINER trust-boundary review, dedicated governed Render DB qualification. No grant or infrastructure changes.
