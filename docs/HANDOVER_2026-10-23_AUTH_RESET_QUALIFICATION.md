@@ -9,7 +9,7 @@
 - Base candidate commit: `e5462b05e8b2b9cbc7a445c8464590a4f6d32a53`
 - Last observed PR head: `5394bd1704c1b2ddd221b4d2075cce7415aa0e51` (handover documentation commit)
 - PR is open, draft, and not merged. No reviews were present at the last check.
-- Latest CI at last check: [run #39869380123 / run number 1472](https://github.com/zaidhqdev-sys/GHM/actions/runs/39869380123), still in progress. Earlier code head `dd5d79dad5b51845c99bdd6c25078cb358eb293c` passed [run #39868903311 / run number 1470](https://github.com/zaidhqdev-sys/GHM/actions/runs/39868903311). Re-check CI on the current head before stating latest branch is green.
+- CI [run #39869472703 / run number 1473](https://github.com/zaidhqdev-sys/GHM/actions/runs/39869472703) passed on handover-doc head `86f1217927508d69a8a1264d870284902dd9b956`: build, disposable migrations, business identity/QuoteFlow qualification, database-backed test suite, migration-audit policy tests, and runtime-boundary verification. This is the latest verified green head before the next documentation note; re-check CI after subsequent commits.
 
 ## What changed on PR #183
 
@@ -42,6 +42,6 @@
 
 1. Check workflow run #39869380123 for current head `5394bd1704c1b2ddd221b4d2075cce7415aa0e51`; inspect logs if it fails.
 2. Inspect any new PR review comments and fix proven code-level gaps while keeping the PR draft.
-3. Do a bounded read-only review of every relevant `SECURITY DEFINER` function and HTTP caller; record evidence and questions for an independent reviewer. Do not declare independent review complete just because of self-review.
+3. Do a bounded read-only review of every relevant `SECURITY DEFINER` function and HTTP caller; record evidence and questions for an independent reviewer. Do not declare independent review complete just because of self-review. Specific review question: migration `20261016100000_add_connect_identity_authority_contract.sql` defines `ghm.auth_read_connect_identity_authority(p_account_id bigint)` as `SECURITY DEFINER` and grants execution to `ghm_runtime`; it accepts an account ID parameter and returns role, operator intent, system-admin, and founder-reviewer flags. I found no callsite in the two inspected Connect adapters (`identity-adapter.ts` and `authorization-binding.ts`), but that is not exhaustive proof of no callsites. Trace all callers and determine whether the function is necessary and whether callers bind the ID to verified request identity; treat this as an independent-review question, not a confirmed vulnerability.
 4. Continue updating this handover plus `GHM_CURRENT_STATE.md` and the remaining-work register after material changes and before ending a session.
 5. Keep the dedicated DB gate open until access is resolved through an approved path; do not attempt infra workarounds or use another database as substitute evidence.
