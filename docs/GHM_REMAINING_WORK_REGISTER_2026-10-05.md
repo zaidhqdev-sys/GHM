@@ -413,3 +413,8 @@ CI #1500 passed on prior PR head `bc0ba1b1d0f53ecbdbd4d0127b791d4237b31533`. Tar
 CI #1503 passed on PR head `903d35446dbffbb2e2975cc60b46fb1c211816f2`, covering build, disposable migrations, QuoteFlow reset HTTP qualification, DB-backed tests, migration-audit policy, and runtime-boundary verification. The PR's shared auth-persistence wiring is now exercised by tests.
 
 Still open: complete source-wide caller trace for `auth_change_password`, `auth_disable_account`, and `auth_read_connect_identity_authority`; independent security review of SECURITY DEFINER grants/identity binding; governed isolated Render database qualification. No grant, production, or Render configuration changes were made. Recheck CI after these handover edits produce a new commit.
+
+
+## Current-head CI #1506 — 2026-10-23
+
+CI #1506 passed on PR head `712d989a46693ea296df23a077bc6862317215b0`. Dedicated governed Render DB qualification and independent security review remain open. The full caller trace across 174 non-test TypeScript files is not complete; do not infer absence of callers from targeted results. No database grants or infrastructure changed.
