@@ -383,3 +383,8 @@ CI run #39870134670 passed on PR #183 head `ec132b000c9296874b605cda1512d4f5c887
 ## Auth change/disable function trust boundary — 2026-10-23
 
 CI run #1483 passed on PR head `37bcd4924be473aab388745bcf0a3806bf7e8ebe`. The SECURITY DEFINER functions `auth_change_password` and `auth_disable_account` accept account/session IDs and are executable by `ghm_runtime`; application callers must bind those identifiers to trusted auth context. Router inspection found no matching public endpoints, but code-search endpoint results were empty and do not prove there are no callsites. Exhaustive local/repo-wide search and independent review remain open. Do not change grants until callers and intended use are established.
+
+
+## Latest CI and caller-search status — 2026-10-23
+
+CI #1486 passed on PR #183 head `11e2859b8428d51d1f67a769cdf91a409f72db38`. Caller tracing for `changePassword`, `disableAccount`, `auth_change_password`, `auth_disable_account`, and `auth_read_connect_identity_authority` remains open because available GitHub search did not return indexed matches and the file-by-file scan could not complete. Do not interpret missing search results as absence of callers. Obtain a complete repository-wide search before concluding trust-boundary review or changing grants.
