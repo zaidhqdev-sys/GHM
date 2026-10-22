@@ -26,6 +26,9 @@ const { config } = await import('../dist/config.js');
 const { createApp } = await import('../dist/http/app.js');
 const { createAccessJwtService } = await import('../dist/auth/foundation/access-jwt.js');
 const { loadEs256Keys } = await import('../dist/auth/foundation/es256-keys.js');
+const { PostgresAuthPersistence } = await import('../dist/auth/foundation/persistence.js');
+const { createGhmBearerAuthenticator, PostgresAccountAuthStateStore } = await import('../dist/auth/ghm-bearer.js');
+const { createRequireResourceAuth } = await import('../dist/auth/resource-auth.js');
 
 // Render's non-production PostgreSQL requires TLS; disposable local CI PostgreSQL does not.
 const ssl = process.env.DATABASE_SSL === 'false' ? undefined : { rejectUnauthorized: false };
@@ -178,7 +181,19 @@ try {
   if (!singleCreated.activeBusiness) throw new Error('Single-membership HTTP fixture did not create a business');
   fixture.businessIds.push(singleCreated.activeBusiness.id);
 
-  qualificationServer = http.createServer(createApp({ businessIdentityService: service }));
+  const authPersistence = new PostgresAuthPersistence(runtimePool);
+  const qualificationAuthenticator = createGhmBearerAuthenticator(
+    createAccessJwtService(loadEs256Keys()),
+    new PostgresAccountAuthStateStore(runtimePool),
+  );
+  const qualificationResourceAuth = createRequireResourceAuth({
+    ghmAuthenticator: qualificationAuthenticator,
+  });
+  qualificationServer = http.createServer(createApp({
+    businessIdentityService: service,
+    authPersistence,
+    resourceAuthMiddleware: qualificationResourceAuth,
+  }));
   await new Promise((resolve, reject) => {
     qualificationServer.once('error', reject);
     qualificationServer.listen(0, '127.0.0.1', resolve);
