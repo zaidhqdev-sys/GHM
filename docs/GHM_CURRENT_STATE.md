@@ -264,3 +264,9 @@ Bounded source inspection confirms persistence methods call SECURITY DEFINER fun
 ## Auth caller trace refinement — 2026-10-23
 
 CI #1497 passed on current PR head `57028b92c435f643ea63c0c8e6ea3ba4676ec606`. Targeted inspection confirms persistence exposes `changePassword` and `disableAccount` methods that call the respective SECURITY DEFINER functions, while the inspected auth router has no matching routes. The identity-authority SQL function has a grant to `ghm_runtime` but no wrapper in the inspected persistence file. The whole-repository caller trace is still incomplete; no grant changes made.
+
+## CI #1500 — 2026-10-23
+
+CI [run #39872544366](https://github.com/zaidhqdev-sys/GHM/actions/runs/39872544366) passed on prior PR head `bc0ba1b1d0f53ecbdbd4d0127b791d4237b31533`, including disposable PostgreSQL qualification, database-backed tests, migration audit policy, and runtime-boundary verification.
+
+Repeated GitHub code searches for the password-change/account-disable and identity-authority symbols returned no indexed results and are inconclusive. Targeted inspection found persistence wrappers for password-change/account-disable SQL functions but no corresponding route in the inspected auth router. The identity-authority SQL function is granted to runtime, but no wrapper was found in the inspected persistence class. Full caller trace and independent review remain open; no grants changed. Dedicated Render DB qualification remains open.
