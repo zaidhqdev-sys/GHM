@@ -1097,6 +1097,53 @@ test('own-profile PATCH rejects unknown Connect role and protected fields before
 });
 
 
+test('lazy auth service uses the app-injected auth persistence for reset session issuance', async (t) => {
+  const authModule = require('../auth/ghm-auth-service') as typeof import('../auth/ghm-auth-service');
+  const authPersistence = {} as never;
+  let receivedPersistence: unknown;
+  let loginCalled = false;
+  t.mock.method(authModule, 'createGhmAuthService', (persistence) => {
+    receivedPersistence = persistence;
+    return {
+      login: async () => {
+        loginCalled = true;
+        return {
+          accessToken: 'access.jwt',
+          refreshToken: 'refresh-wire',
+          tokenType: 'Bearer' as const,
+          expiresIn: 900,
+          sessionId: 99,
+          accountId: 42,
+        };
+      },
+      refresh: async () => { throw new Error('unused'); },
+      logout: async () => undefined,
+    };
+  });
+  const server = http.createServer(createApp({
+    authPersistence,
+    businessIdentityService: {} as never,
+    quoteFlowMigrationResetCompletionService: {
+      complete: async () => ({ accountId: 42, loginEmail: 'legacy@example.com' }),
+    },
+  }));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  try {
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/v1/auth/quoteflow-migration-reset/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: 'opaque-token', password: 'CorrectHorseBattery1' }),
+    });
+    assert.equal(response.status, 200);
+    assert.equal(receivedPersistence, authPersistence);
+    assert.equal(loginCalled, true);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
 test('public business category route returns the filtered GHM taxonomy without requiring a session', async () => {
   const categories = [{ id: 'cat-1', slug: 'construction', name: 'Construction' }];
   const directoryService: DirectoryService = {
