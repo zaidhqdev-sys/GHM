@@ -254,3 +254,9 @@ The caller trace for auth SECURITY DEFINER functions remains incomplete. GitHub 
 CI run [#39871050327](https://github.com/zaidhqdev-sys/GHM/actions/runs/39871050327) passed on PR #183 head `97f947045859a928577fefbc5206271201f66ae1`. PR remains draft. The PR summary records shared auth-persistence injection and database-backed HTTP reset-ceremony coverage; this CI result is not a substitute for the dedicated Render nonproduction DB qualification.
 
 Security caller tracing remains incomplete because the available source scan did not cover all 174 non-test TypeScript files. Do not treat absent search results as evidence of no callers; complete a local/repository-wide search before any permission change.
+
+## Latest checkpoint — 2026-10-23
+
+CI run [#39871983637 / run 1494](https://github.com/zaidhqdev-sys/GHM/actions/runs/39871983637) passed on current PR head `daf9f184093726b19cbdf288bdf7cee70f845f2a`, including migration audit policy tests and runtime-boundary verification. PR #183 remains draft.
+
+Bounded source inspection confirms persistence methods call SECURITY DEFINER functions `auth_change_password` and `auth_disable_account` using numeric account/session identifiers. No corresponding route was found in the inspected auth router. The identity-authority function did not appear in the inspected persistence class; GitHub code search was marked incomplete and cannot prove absence of callers. Full source trace and independent review remain open; no SQL grants changed.
