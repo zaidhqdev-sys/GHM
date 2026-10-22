@@ -432,3 +432,9 @@ CI #1512 passed on PR head `db6f1d9d224b0427957d8081f04be3cd9163fbed`. Expanded 
 CI #1515 passed on PR head `5eff3eaff0d72695a644e0ac4814b7824e2df1c3`: build, disposable PostgreSQL migrations, business identity + QuoteFlow reset HTTP qualification, DB-backed tests, migration audit policy, and runtime boundary verification all succeeded.
 
 Current auth router passes `dependencies.authPersistence` into lazy `createGhmAuthService`, confirming shared persistence wiring. Password-change/account-disable wrappers invoke SECURITY DEFINER functions granted to runtime; no matching public route was found in the inspected auth router. The identity-authority SQL function is runtime-granted with no wrapper found in the inspected persistence class. This is not an exhaustive callsite proof. Remaining gates: full caller trace, independent SECURITY DEFINER trust-boundary review, dedicated governed Render DB qualification. No grant or infrastructure changes.
+
+## CI #1518 checkpoint — 2026-10-23
+
+CI #1518 passed on PR head `bfe740630d514bedb331dff7672cbe1a3b4e57ef`. All quality checks including disposable PostgreSQL, reset HTTP qualification, DB-backed tests, migration audit policy, and runtime boundary verification succeeded.
+
+Remaining release gates: complete caller trace for the three runtime-executable SECURITY DEFINER functions, independent review of grants/identity binding, and governed isolated Render DB qualification. No grants or infrastructure changed. Recheck CI after this handover update creates a new head.
