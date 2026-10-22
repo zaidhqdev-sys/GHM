@@ -96,3 +96,10 @@ Caller-tracing status is unchanged: available GitHub code search returned no ind
 Confirmed CI [run #39871757166 / run 1493](https://github.com/zaidhqdev-sys/GHM/actions/runs/39871757166) completed successfully on PR #183 head `934714faf795671e3281cb8494c8bd4b72c06388`. The PR remains draft. This verifies the then-current handover commit. Subsequent edits will require their own CI result.
 
 I attempted a complete GitHub-blob scan of source TypeScript and SQL migrations for `changePassword`, `disableAccount`, `auth_change_password`, `auth_disable_account`, and `auth_read_connect_identity_authority`, but the orchestration tool enforced a maximum tool-call count before the scan completed. Treat the caller trace as incomplete; no conclusion of absent callers or clean security boundary follows. The next practical step is a local clone/grep or a smaller, explicitly bounded set of blob batches, then verify every actual caller and tests. No code/security grants were changed during this attempt.
+
+
+## Latest checkpoint — 2026-10-23 23:30 UTC
+
+Confirmed CI run [#39871983637 / run 1494](https://github.com/zaidhqdev-sys/GHM/actions/runs/39871983637) succeeded on PR head `daf9f184093726b19cbdf288bdf7cee70f845f2a`; job `quality` completed successfully, including migration audit policy tests and runtime-boundary verification. PR #183 remains draft.
+
+Targeted source review: `src/auth/foundation/persistence.ts` defines and calls `auth_change_password` and `auth_disable_account`, accepting account/session IDs; no matching public route appeared in the inspected `src/http/auth-router.ts`. The SQL migration grants `ghm_runtime` EXECUTE on these SECURITY DEFINER functions, so trusted caller context remains important. The `auth_read_connect_identity_authority` function is defined in its migration but did not appear in the inspected persistence class; GitHub code search reported zero results with `incomplete_results: true`, which is inconclusive. A complete source caller trace is still outstanding; do not infer no callers or change grants based on this bounded scan. Dedicated Render DB qualification and independent security review remain open.
