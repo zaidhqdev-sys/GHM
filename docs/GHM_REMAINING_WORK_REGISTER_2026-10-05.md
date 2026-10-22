@@ -418,3 +418,7 @@ Still open: complete source-wide caller trace for `auth_change_password`, `auth_
 ## Current-head CI #1506 — 2026-10-23
 
 CI #1506 passed on PR head `712d989a46693ea296df23a077bc6862317215b0`. Dedicated governed Render DB qualification and independent security review remain open. The full caller trace across 174 non-test TypeScript files is not complete; do not infer absence of callers from targeted results. No database grants or infrastructure changed.
+
+## SECURITY DEFINER trust boundary — 2026-10-23
+
+CI #1509 passed on PR head `7d97d2a511993707678e342007ab59f405ada0ef`. Review of the migration SQL confirms three runtime-executable SECURITY DEFINER functions accept account identifiers from callers; their SQL bodies do not bind those IDs to a verified actor session. The auth router inspected has no public password-change/disable route; the identity-authority function has no wrapper in the inspected persistence file. This is a concrete independent-review item, not a confirmed exploit. Complete the source-wide callsite trace and decide whether runtime grants are required before any privilege change. Governed isolated Render DB qualification remains open.
