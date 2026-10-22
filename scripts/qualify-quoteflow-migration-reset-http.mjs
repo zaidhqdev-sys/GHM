@@ -174,7 +174,8 @@ try {
 
   const verifier = await cleanupPool.connect();
   try {
-    await verifier.query('set role ghm_schema_owner');
+    await verifier.query('begin');
+    await verifier.query('set local role ghm_schema_owner');
     const enrollment = await verifier.query(
       'select enrollment_status from ghm.quoteflow_migration_reset_enrollment where id=$1',
       [fixture.enrollmentIds[0]],
@@ -199,6 +200,10 @@ try {
       [completed.body.sessionId, accountId],
     );
     assert.equal(newSession.rows[0]?.session_status, 'active');
+    await verifier.query('commit');
+  } catch (error) {
+    await verifier.query('rollback').catch(() => {});
+    throw error;
   } finally {
     verifier.release();
   }
