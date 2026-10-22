@@ -378,3 +378,8 @@ CI run #39869935033 passed on code head `be0ced510352095079f511350399e6440d33ad3
 ## Auth SECURITY DEFINER caller tracing — 2026-10-23
 
 CI run #39870134670 passed on PR #183 head `ec132b000c9296874b605cda1512d4f5c887343e`. Continue exhaustive callsite tracing for persistence methods `changePassword` and `disableAccount` and SQL functions `auth_change_password` / `auth_disable_account`, which accept account/session IDs and are executable by `ghm_runtime`. The router review did not find corresponding routes in the inspected excerpt, but do not infer absence across the entire application without full search. Ensure any callers bind IDs to authenticated context. Independent security review remains required.
+
+
+## Auth change/disable function trust boundary — 2026-10-23
+
+CI run #1483 passed on PR head `37bcd4924be473aab388745bcf0a3806bf7e8ebe`. The SECURITY DEFINER functions `auth_change_password` and `auth_disable_account` accept account/session IDs and are executable by `ghm_runtime`; application callers must bind those identifiers to trusted auth context. Router inspection found no matching public endpoints, but code-search endpoint results were empty and do not prove there are no callsites. Exhaustive local/repo-wide search and independent review remain open. Do not change grants until callers and intended use are established.
