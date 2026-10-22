@@ -240,3 +240,10 @@ Bounded caller review of auth persistence and runtime SQL identified `changePass
 CI run [#39870377111](https://github.com/zaidhqdev-sys/GHM/actions/runs/39870377111) passed on PR #183 head `37bcd4924be473aab388745bcf0a3806bf7e8ebe`, including build, disposable PostgreSQL migrations, business identity/QuoteFlow qualification, DB-backed tests, migration-audit policy, and runtime-boundary verification.
 
 Read-only SQL review confirms `auth_change_password` and `auth_disable_account` are SECURITY DEFINER functions granted to `ghm_runtime` and accept account/session identifiers. Their bodies do not authenticate an HTTP principal; safe use depends on trusted application callsites. The inspected router has no matching routes, but the repository search endpoint returned no indexed callsite results and cannot establish absence. Keep exhaustive caller tracing and independent review open; no function grant or schema change made.
+
+
+## CI #1486 checkpoint — 2026-10-23
+
+CI [run #39870798140](https://github.com/zaidhqdev-sys/GHM/actions/runs/39870798140) passed on PR #183 head `11e2859b8428d51d1f67a769cdf91a409f72db38`, including build, disposable PostgreSQL migrations, identity/QuoteFlow qualification, DB-backed tests, migration-audit policy tests, and runtime-boundary verification.
+
+The caller trace for auth SECURITY DEFINER functions remains incomplete. GitHub code search returned no indexed results and the available batched file scan hit a tool call limit before all relevant TypeScript files were examined. This is a tooling limitation, not evidence that callers do not exist. Next step is a complete local/repository-wide search and review of identity binding; do not change SQL grants until that evidence exists.
