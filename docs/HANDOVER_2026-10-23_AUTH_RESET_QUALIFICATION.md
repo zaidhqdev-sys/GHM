@@ -89,3 +89,10 @@ Caller tracing remains incomplete. The inspected persistence layer is the only p
 Confirmed CI [run #39871558529 / run 1492](https://github.com/zaidhqdev-sys/GHM/actions/runs/39871558529) completed successfully on PR #183 head `b90b74881b81105221db5389bea49e434a9b9ac4`, which includes the current handover updates. The PR remains draft. This green run covers CI's configured checks but does not close the isolated Render database qualification or independent security-review gates.
 
 Caller-tracing status is unchanged: available GitHub code search returned no indexed results for `auth_read_connect_identity_authority`, and the full non-test TypeScript scan could not be completed within tool call limits. No conclusion of “no callers” is justified. Next work should use a complete local clone/repository-wide search or a reliable source-indexing route and trace exact callsites before changing any SECURITY DEFINER grants.
+
+
+## CI rerun after handover update — 2026-10-23
+
+Confirmed CI [run #39871757166 / run 1493](https://github.com/zaidhqdev-sys/GHM/actions/runs/39871757166) completed successfully on PR #183 head `934714faf795671e3281cb8494c8bd4b72c06388`. The PR remains draft. This verifies the then-current handover commit. Subsequent edits will require their own CI result.
+
+I attempted a complete GitHub-blob scan of source TypeScript and SQL migrations for `changePassword`, `disableAccount`, `auth_change_password`, `auth_disable_account`, and `auth_read_connect_identity_authority`, but the orchestration tool enforced a maximum tool-call count before the scan completed. Treat the caller trace as incomplete; no conclusion of absent callers or clean security boundary follows. The next practical step is a local clone/grep or a smaller, explicitly bounded set of blob batches, then verify every actual caller and tests. No code/security grants were changed during this attempt.
