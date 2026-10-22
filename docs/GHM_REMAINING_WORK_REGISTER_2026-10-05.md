@@ -422,3 +422,7 @@ CI #1506 passed on PR head `712d989a46693ea296df23a077bc6862317215b0`. Dedicated
 ## SECURITY DEFINER trust boundary — 2026-10-23
 
 CI #1509 passed on PR head `7d97d2a511993707678e342007ab59f405ada0ef`. Review of the migration SQL confirms three runtime-executable SECURITY DEFINER functions accept account identifiers from callers; their SQL bodies do not bind those IDs to a verified actor session. The auth router inspected has no public password-change/disable route; the identity-authority function has no wrapper in the inspected persistence file. This is a concrete independent-review item, not a confirmed exploit. Complete the source-wide callsite trace and decide whether runtime grants are required before any privilege change. Governed isolated Render DB qualification remains open.
+
+## CI #1512 — expanded targeted source review
+
+CI #1512 passed on PR head `db6f1d9d224b0427957d8081f04be3cd9163fbed`. Expanded targeted reads of auth context/service, Connect authorization binding, relevant routers, and QuoteFlow reset completion found no direct TypeScript call to password-change/account-disable persistence wrappers or wrapper for the identity-authority SQL function in the files inspected. This is not exhaustive across the 174 non-test TypeScript files and migrations. Full caller trace, independent SECURITY DEFINER review, and dedicated governed Render DB qualification remain open. No grants or infrastructure changed.
