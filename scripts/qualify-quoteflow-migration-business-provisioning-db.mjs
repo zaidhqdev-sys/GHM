@@ -59,15 +59,23 @@ try {
   await migrator.connect();
   await migrator.query('set role ghm_schema_owner');
 
-  const runtimeIdentity = await runtime.query('select current_database() as db, current_user as role');
-  assert.equal(runtimeIdentity.rows[0].db, expectedNonProductionDatabase,
-    'Runtime database name does not match the explicitly approved non-production database');
-  assert.equal(runtimeIdentity.rows[0].role, 'ghm_runtime');
+  const runtimeIdentity = await runtime.query(
+    'select current_database() as db, session_user as session_role, current_user as role',
+  );
+  assert.deepEqual(runtimeIdentity.rows[0], {
+    db: expectedNonProductionDatabase,
+    session_role: 'ghm_runtime',
+    role: 'ghm_runtime',
+  }, 'Runtime connection must originate from and act as ghm_runtime');
 
-  const migrationIdentity = await migrator.query('select current_database() as db, current_user as role');
-  assert.equal(migrationIdentity.rows[0].db, expectedNonProductionDatabase,
-    'Migration database name does not match the explicitly approved non-production database');
-  assert.equal(migrationIdentity.rows[0].role, 'ghm_schema_owner');
+  const migrationIdentity = await migrator.query(
+    'select current_database() as db, session_user as session_role, current_user as role',
+  );
+  assert.deepEqual(migrationIdentity.rows[0], {
+    db: expectedNonProductionDatabase,
+    session_role: 'ghm_migrator',
+    role: 'ghm_schema_owner',
+  }, 'Migration connection must originate from ghm_migrator and act as ghm_schema_owner');
 
   const privileges = await runtime.query(`
     select
@@ -207,10 +215,14 @@ try {
       await client.connect();
       concurrentClients.push(client);
       await client.query('set role ghm_schema_owner');
-      const identity = await client.query('select current_database() as db, current_user as role');
-      assert.equal(identity.rows[0].db, expectedNonProductionDatabase,
-        'Concurrent migration database name does not match the explicitly approved non-production database');
-      assert.equal(identity.rows[0].role, 'ghm_schema_owner');
+      const identity = await client.query(
+        'select current_database() as db, session_user as session_role, current_user as role',
+      );
+      assert.deepEqual(identity.rows[0], {
+        db: expectedNonProductionDatabase,
+        session_role: 'ghm_migrator',
+        role: 'ghm_schema_owner',
+      }, 'Concurrent migration connection must originate from ghm_migrator and act as ghm_schema_owner');
     }
     concurrent = await Promise.all(concurrentClients.map(client =>
       provisionWith(client, sourceIds[3], 'Concurrent Synthetic Business', `${slugBase}-concurrent`)));
