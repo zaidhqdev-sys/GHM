@@ -9,7 +9,7 @@
 - Base candidate commit: `e5462b05e8b2b9cbc7a445c8464590a4f6d32a53`
 - PR head advances with handover updates; inspect [PR #183](https://github.com/zaidhqdev-sys/GHM/pull/183) for the live SHA before resuming. The code/test changes are in the commits before the handover-only updates.
 - PR is open, draft, and not merged. No reviews were present at the last check.
-- CI [run #39869676505 / run number 1475](https://github.com/zaidhqdev-sys/GHM/actions/runs/39869676505) passed on the then-current PR head `be0ced510352095079f511350399e6440d33ad3f`: build, disposable migrations, business identity/QuoteFlow qualification, database-backed test suite, migration-audit policy tests, and runtime-boundary verification. The current docs update will trigger another run; check the live PR head again before treating the newest SHA as green.
+- CI [run #39869935033 / run number 1477](https://github.com/zaidhqdev-sys/GHM/actions/runs/39869935033) passed on code head `be0ced510352095079f511350399e6440d33ad3f`: build, disposable migrations, business identity/QuoteFlow qualification, database-backed test suite, migration-audit policy tests, and runtime-boundary verification. Handover docs were updated afterward; verify CI for the live PR head before treating the newest SHA as green.
 
 ## What changed on PR #183
 
@@ -52,3 +52,10 @@
 Reviewed migration `20261016100000_add_connect_identity_authority_contract.sql` and the `src/integrations/connect/identity-adapter.ts` and `src/integrations/connect/authorization-binding.ts` files. The function `ghm.auth_read_connect_identity_authority(p_account_id bigint)` is `STABLE SECURITY DEFINER`, owned by `ghm_schema_owner`, with `PUBLIC` execution revoked and execution granted to `ghm_runtime`. It uses `SET search_path = ghm, pg_temp` and returns Connect role, business-operator intent, system-admin status, and active founder-directory-reviewer status for the supplied account ID. The two inspected Connect adapter files do not call it; this bounded check is not proof that no other caller exists.
 
 **Independent review question (not a confirmed vulnerability):** determine whether this function is needed by any runtime caller and whether caller-supplied account IDs are always derived from verified identity context. Because the runtime role can execute it for an arbitrary ID, assess whether cross-account authority-flag disclosure is acceptable under the intended trust boundary. Review the entire migration chain and all callers before changing or removing the function.
+
+
+## Additional read-only SQL boundary checks — 2026-10-23
+
+Inspected the definitions and grants for the QuoteFlow reset completion function, storage persistence functions, and the core auth runtime-function migration. The reset completion function is `SECURITY DEFINER`, owned by `ghm_schema_owner`, sets `search_path = pg_catalog, ghm, pg_temp`, revokes PUBLIC execution, and grants runtime execution; its body validates the token/password inputs, locks and validates enrollment/account/recovery state, updates password, revokes sessions, and completes enrollment in one transaction. Storage migration defines explicit object-state transition functions and a subsequent hardening migration changes them to SECURITY DEFINER, fixes search_path to `pg_catalog, ghm`, revokes PUBLIC execution, and grants execution to runtime. Core auth functions generally use `search_path = pg_catalog, ghm`, owner `ghm_schema_owner`, revoke PUBLIC execution, and grant selected operations to `ghm_runtime`.
+
+This is a bounded source inspection, not an independent security audit. Continue tracing every caller and reviewing argument-to-authenticated-context binding, especially for functions that accept account/session/object IDs. No proven defect was established by this pass; keep independent review as a release gate.
