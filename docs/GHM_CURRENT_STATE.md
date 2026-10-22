@@ -295,3 +295,9 @@ Important trust-boundary detail: `auth_change_password`, `auth_disable_account`,
 CI #1512 passed on head `db6f1d9d224b0427957d8081f04be3cd9163fbed`; all quality checks passed including disposable PostgreSQL and reset HTTP qualification.
 
 Expanded targeted inspection covered auth context/service, Connect authorization binding and identity adapter, relevant HTTP routers, and QuoteFlow reset completion. It did not find direct TypeScript calls to password-change/account-disable persistence methods or a wrapper for the identity-authority function in those files. This is bounded, not exhaustive; 174 non-test TypeScript files plus migrations still need complete search. Connect's authorization binding maps a trusted integration request to account mapping and current account-auth state, but does not close the unrelated SECURITY DEFINER caller review. No grants changed. Dedicated governed Render DB qualification remains open.
+
+## CI #1515 and latest auth persistence review — 2026-10-23
+
+CI [#1515](https://github.com/zaidhqdev-sys/GHM/actions/runs/39874206024) passed on current head `5eff3eaff0d72695a644e0ac4814b7824e2df1c3`, including disposable PostgreSQL, QuoteFlow reset HTTP qualification, DB-backed tests, migration audit policy, and runtime boundary checks.
+
+Current auth router lazily calls `createGhmAuthService(dependencies.authPersistence)`, confirming shared persistence injection is present. Persistence exposes password-change and account-disable wrappers that call SECURITY DEFINER functions executable by `ghm_runtime`; the inspected auth router has no public routes for these methods. The identity-authority function is also runtime-executable, but no wrapper was found in the inspected persistence class. These targeted findings are not an exhaustive callsite trace. Independent review, full source-wide trace, and dedicated governed Render DB qualification remain open. No grants or infrastructure changed.
