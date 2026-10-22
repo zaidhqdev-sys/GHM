@@ -395,3 +395,7 @@ CI #1486 passed on PR #183 head `11e2859b8428d51d1f67a769cdf91a409f72db38`. Call
 CI #1489 passed on PR #183 head `97f947045859a928577fefbc5206271201f66ae1`. Shared auth-persistence wiring and database-backed reset HTTP qualification are included in PR #183 per its current summary. Dedicated governed Render DB qualification and independent security review remain open.
 
 Repository-wide caller tracing is still incomplete: the available scan covered only a subset of 174 non-test TypeScript files. Do not infer that functions have no callers and do not alter grants until a complete source search and identity-binding review are available.
+
+## CI #1494 and auth caller review — 2026-10-23
+
+CI #1494 passed on PR head `daf9f184093726b19cbdf288bdf7cee70f845f2a`. Targeted review found persistence wrappers invoking `auth_change_password` and `auth_disable_account` with numeric account/session identifiers, while the inspected auth router exposes no matching public routes. This is not an exhaustive caller trace. GitHub code search was incomplete for `auth_read_connect_identity_authority`; do not treat zero indexed results as evidence of no caller. Complete full source search and independent review before changing grants. Dedicated governed Render database qualification remains open.
