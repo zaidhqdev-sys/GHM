@@ -283,3 +283,9 @@ The shared-persistence qualification gap is covered by the PR's injected persist
 CI [run #39873076795 / run 1506](https://github.com/zaidhqdev-sys/GHM/actions/runs/39873076795) passed on current PR head `712d989a46693ea296df23a077bc6862317215b0`. All quality steps succeeded, including disposable PostgreSQL qualification, reset HTTP qualification, database-backed tests, migration audit policy, and runtime-boundary verification.
 
 Complete caller trace remains open: source tree has 174 non-test TypeScript files and available repository tooling has not enabled a full content scan. Targeted findings are not exhaustive. Dedicated governed Render DB qualification remains blocked by its existing access restriction. No grants or infrastructure changed.
+
+## CI #1509 and SECURITY DEFINER review finding — 2026-10-23
+
+CI #1509 passed on head `7d97d2a511993707678e342007ab59f405ada0ef` including all disposable PostgreSQL and HTTP qualification steps.
+
+Important trust-boundary detail: `auth_change_password`, `auth_disable_account`, and `auth_read_connect_identity_authority` are SECURITY DEFINER functions executable by `ghm_runtime` and accept account IDs (and for password change, a keep-session ID) as parameters. Their SQL bodies do not independently derive the actor from a verified HTTP session. The inspected auth router has no public password-change/disable route, and no wrapper for the identity-authority function was found in the inspected persistence class. This needs complete caller/privilege review; it is not a confirmed vulnerability by itself. Do not alter grants until callsites and intended runtime trust model are independently reviewed. Full source-wide trace and dedicated governed Render DB qualification remain open.
