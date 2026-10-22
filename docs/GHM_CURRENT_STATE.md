@@ -233,3 +233,10 @@ Bounded read-only source checks of reset-completion, storage-persistence, and co
 CI run [#39870134670](https://github.com/zaidhqdev-sys/GHM/actions/runs/39870134670) passed on PR #183 head `ec132b000c9296874b605cda1512d4f5c887343e`, including build, disposable PostgreSQL migrations, identity/QuoteFlow qualification, database-backed tests, migration-audit policy tests, and runtime-boundary verification.
 
 Bounded caller review of auth persistence and runtime SQL identified `changePassword`/`disableAccount` persistence methods and SECURITY DEFINER functions `auth_change_password(account_id, keep_session_id, ...)` and `auth_disable_account(account_id)` granted to `ghm_runtime`. The HTTP router excerpt inspected does not expose corresponding user-facing routes, but all repository callsites still need tracing. Verify any callers bind account/session IDs to verified identity context. This is an open security-review task, not a confirmed vulnerability.
+
+
+## CI #1483 and auth function review — 2026-10-23
+
+CI run [#39870377111](https://github.com/zaidhqdev-sys/GHM/actions/runs/39870377111) passed on PR #183 head `37bcd4924be473aab388745bcf0a3806bf7e8ebe`, including build, disposable PostgreSQL migrations, business identity/QuoteFlow qualification, DB-backed tests, migration-audit policy, and runtime-boundary verification.
+
+Read-only SQL review confirms `auth_change_password` and `auth_disable_account` are SECURITY DEFINER functions granted to `ghm_runtime` and accept account/session identifiers. Their bodies do not authenticate an HTTP principal; safe use depends on trusted application callsites. The inspected router has no matching routes, but the repository search endpoint returned no indexed callsite results and cannot establish absence. Keep exhaustive caller tracing and independent review open; no function grant or schema change made.
