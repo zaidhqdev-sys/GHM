@@ -9,7 +9,7 @@
 - Base candidate commit: `e5462b05e8b2b9cbc7a445c8464590a4f6d32a53`
 - PR head advances with handover updates; inspect [PR #183](https://github.com/zaidhqdev-sys/GHM/pull/183) for the live SHA before resuming. The code/test changes are in the commits before the handover-only updates.
 - PR is open, draft, and not merged. No reviews were present at the last check.
-- CI [run #39869472703 / run number 1473](https://github.com/zaidhqdev-sys/GHM/actions/runs/39869472703) passed on commit `86f1217927508d69a8a1264d870284902dd9b956`: build, disposable migrations, business identity/QuoteFlow qualification, database-backed test suite, migration-audit policy tests, and runtime-boundary verification. Later commits only update handover documentation; confirm CI for the live PR head before treating that exact head as green.
+- CI [run #39869676505 / run number 1475](https://github.com/zaidhqdev-sys/GHM/actions/runs/39869676505) passed on the then-current PR head `be0ced510352095079f511350399e6440d33ad3f`: build, disposable migrations, business identity/QuoteFlow qualification, database-backed test suite, migration-audit policy tests, and runtime-boundary verification. The current docs update will trigger another run; check the live PR head again before treating the newest SHA as green.
 
 ## What changed on PR #183
 
@@ -45,3 +45,10 @@
 3. Do a bounded read-only review of every relevant `SECURITY DEFINER` function and HTTP caller; record evidence and questions for an independent reviewer. Do not declare independent review complete just because of self-review. Specific review question: migration `20261016100000_add_connect_identity_authority_contract.sql` defines `ghm.auth_read_connect_identity_authority(p_account_id bigint)` as `SECURITY DEFINER` and grants execution to `ghm_runtime`; it accepts an account ID parameter and returns role, operator intent, system-admin, and founder-reviewer flags. I found no callsite in the two inspected Connect adapters (`identity-adapter.ts` and `authorization-binding.ts`), but that is not exhaustive proof of no callsites. Trace all callers and determine whether the function is necessary and whether callers bind the ID to verified request identity; treat this as an independent-review question, not a confirmed vulnerability.
 4. Continue updating this handover plus `GHM_CURRENT_STATE.md` and the remaining-work register after material changes and before ending a session.
 5. Keep the dedicated DB gate open until access is resolved through an approved path; do not attempt infra workarounds or use another database as substitute evidence.
+
+
+## Bounded SECURITY DEFINER follow-up — 2026-10-23
+
+Reviewed migration `20261016100000_add_connect_identity_authority_contract.sql` and the `src/integrations/connect/identity-adapter.ts` and `src/integrations/connect/authorization-binding.ts` files. The function `ghm.auth_read_connect_identity_authority(p_account_id bigint)` is `STABLE SECURITY DEFINER`, owned by `ghm_schema_owner`, with `PUBLIC` execution revoked and execution granted to `ghm_runtime`. It uses `SET search_path = ghm, pg_temp` and returns Connect role, business-operator intent, system-admin status, and active founder-directory-reviewer status for the supplied account ID. The two inspected Connect adapter files do not call it; this bounded check is not proof that no other caller exists.
+
+**Independent review question (not a confirmed vulnerability):** determine whether this function is needed by any runtime caller and whether caller-supplied account IDs are always derived from verified identity context. Because the runtime role can execute it for an arbitrary ID, assess whether cross-account authority-flag disclosure is acceptable under the intended trust boundary. Review the entire migration chain and all callers before changing or removing the function.
