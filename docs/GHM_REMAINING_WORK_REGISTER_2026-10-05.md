@@ -219,7 +219,7 @@ Required:
 ### QF-02 — QuoteFlow password reset/re-enrollment ceremony
 **Classification:** GHM/Auth + product integration — open.
 
-Credentialless account-provisioning database capability is construction-qualified. The migration-specific reset/re-enrollment request/completion path has been constructed, but the full non-production DB + HTTP ceremony qualification remains open for anti-enumeration, single-use recovery, rollback, session revocation, and post-reset-session proof. Both known QuoteFlow accounts are founder-owned and must be reconciled independently; do not treat them as unrelated customer accounts or merge their identity provenance.
+Credentialless account-provisioning database capability is construction-qualified. The migration-specific reset/re-enrollment request/completion path has been constructed, but the full non-production DB + HTTP ceremony qualification remains open for anti-enumeration, single-use recovery, rollback, session revocation, and post-reset-session proof. The reviewed QuoteFlow identity set contains one legitimate owner account and two bot accounts. Keep all identities distinct; exclude both bot accounts from migration and verify their server-side denial separately.
 
 Required:
 - deterministic reset state;
@@ -238,12 +238,13 @@ QuoteFlow currently remains Supabase-authenticated. A GHM session client and run
 
 The organization-to-Business reconciliation contract and its synthetic manifest outcomes are defined/qualified; live legacy organization → GHM Business resolution/creation plus owner-membership provisioning is explicitly **not yet qualified**. This is separate from the already-qualified credentialless GHM account-provisioning capability.
 
-Before implementation:
-- authoritative organization/owner evidence;
+Qualification and merge gates for the migration-only provisioning implementation:
+- authoritative organization/owner evidence for each approved target;
 - deterministic create-vs-map outcome;
-- idempotency/concurrency proof;
+- non-production idempotency/concurrency and rollback proof;
 - owner membership establishment under GHM authority;
-- no silent legacy-role translation.
+- no silent legacy-role translation;
+- confirm the migration-only function is executable only by `ghm_schema_owner`, with runtime execution and direct runtime DML denied.
 
 ### QF-05 — QuoteFlow production cutover
 **Classification:** production migration — not started.
@@ -329,7 +330,7 @@ If construction stopped at this register today, the exact blockers preventing GH
 
 **Connect:** product adapter and operation-by-operation mapping, remaining authoritative source reconciliation, selected directory/storage/commercial/runtime/realtime workflows, atomic workflow parity, and end-to-end qualification. Bounded identity/service/resource slices already qualified are foundations, not production migration.
 
-**QuoteFlow:** authoritative legacy provenance for both founder-owned accounts, full reset/re-enrollment DB+HTTP ceremony qualification, GHM session client, separate legacy-organization-to-GHM-Business provisioning qualification, then product workflow/cutover qualification.
+**QuoteFlow:** authoritative legacy provenance for the one legitimate owner account; keep both bot accounts excluded and separately verify server-side denial. Complete reset/re-enrollment DB+HTTP ceremony qualification, GHM session client, separate legacy-organization-to-GHM-Business provisioning qualification, then product workflow/cutover qualification.
 
 **Production:** deployment/secrets (including closure of the specific authentication decisions still open in §19 of `docs/architecture/GHM_AUTHENTICATION_IMPLEMENTATION_PARAMETER_GATE.md` and secret provisioning), recovery/rollback, observability, shadow qualification, and founder-authorized reversible cutover.
 
@@ -348,3 +349,8 @@ Preserve no-Supabase target, explicit ID/identity mapping, GHM-native user-token
 The Connect-specific caller-to-contract findings are currently on draft PR #133 and are **not yet on main**; do not describe them as merged or qualified. Until that documentation PR is reviewed and merged, the durable resume point on the draft branch is `docs/architecture/CONNECT_GHM_MIGRATION_HANDOVER_2026-10-13.md`, read with `GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md` and `CONNECT_BACKEND_OPERATION_INVENTORY.md`.
 
 The current draft findings resolve an earlier handover contradiction: Relationships/Outcomes is a registered authenticated Connect route requiring `BUSINESS_READ` and active-business context, so its missing GHM domain is an active **Build** gap, not conditional on reachability. Existing identity-adapter, storage/R2, Business Hours, Project Quote and commercial-trial qualifications remain bounded evidence; none proves complete Connect parity or no-Supabase cutover readiness. This is documentation-only and does not authorize construction, production mutation, provider activation or cutover.
+
+
+## QuoteFlow migration Business provisioning — 2026-10-20
+
+A migration-only Business provisioning SQL primitive and database-backed qualification script are present on the combined review candidate. Fresh CI validation and database-backed qualification against an approved isolated non-production database remain pending. The operation creates an inactive/unverified Business, one active owner membership, and an exact external mapping atomically. Existing source mapping, owner eligibility, and slug conflicts fail closed. This does not close user/session migration, reset/re-enrollment ceremony, legacy membership reconciliation, production recovery, or cutover gates.

@@ -10,10 +10,16 @@ export type MembershipStatus = 'active' | 'inactive' | 'revoked';
 
 export interface AccountIdentity {
   readonly id: AccountId;
+  /** Canonical login email for this authenticated account, or null if unavailable. */
+  readonly email: string | null;
   readonly fullName: string | null;
   readonly phone: string | null;
   readonly avatarRef: string | null;
   readonly role: GhmRole;
+  readonly connectRole?: 'customer' | 'contractor' | 'supplier' | null;
+  readonly businessOperatorIntent?: boolean;
+  readonly isSystemAdmin?: boolean;
+  readonly isDirectoryListingFounderReviewer?: boolean;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
@@ -25,6 +31,14 @@ export interface BusinessIdentity {
   readonly description: string | null;
   readonly phone: string | null;
   readonly email: string | null;
+  readonly category: string | null;
+  readonly province: string | null;
+  readonly city: string | null;
+  readonly physicalAddress: string | null;
+  readonly whatsapp: string | null;
+  readonly website: string | null;
+  readonly isSupplier: boolean | null;
+  readonly yearsInBusiness: number;
   readonly insuranceVerified: boolean;
   readonly jobsCompleted: number;
   readonly verificationStatus: BusinessVerificationStatus;
@@ -42,6 +56,8 @@ export interface BusinessMembership {
   readonly createdBy: AccountId | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
+  /** Included in the authenticated identity response only for the caller's own memberships. */
+  readonly business?: BusinessIdentity | null;
 }
 
 export interface ApplicationIdentity {
@@ -60,6 +76,10 @@ export interface UpdateProfileInput {
   readonly fullName?: string | null;
   readonly phone?: string | null;
   readonly avatarRef?: string | null;
+  /** User-declared Connect product role; never an authorization grant. */
+  readonly connectRole?: 'customer' | 'contractor' | 'supplier' | null;
+  /** User-declared intent only; business membership remains separately authorized. */
+  readonly businessOperatorIntent?: boolean;
 }
 
 export interface CreateBusinessInput {
@@ -73,6 +93,14 @@ export interface UpdateBusinessProfileInput {
   readonly description?: string | null;
   readonly phone?: string | null;
   readonly email?: string | null;
+  readonly category?: string | null;
+  readonly province?: string | null;
+  readonly city?: string | null;
+  readonly physicalAddress?: string | null;
+  readonly whatsapp?: string | null;
+  readonly website?: string | null;
+  readonly isSupplier?: boolean | null;
+  readonly yearsInBusiness?: number;
 }
 
 export interface BusinessIdentityRepository {
@@ -87,6 +115,7 @@ export interface BusinessIdentityRepository {
 
 export interface BusinessIdentityService {
   resolveIdentity(input: ResolveIdentityInput): Promise<ApplicationIdentity>;
+  getIdentityContext(input: ResolveIdentityInput): Promise<ApplicationIdentity>;
   getOwnProfile(context: AuthContext): Promise<AccountIdentity>;
   updateOwnProfile(context: AuthContext, input: UpdateProfileInput): Promise<AccountIdentity>;
   createBusiness(context: AuthContext, input: CreateBusinessInput): Promise<ApplicationIdentity>;
@@ -115,6 +144,14 @@ export const BUSINESS_PROFILE_OWNER_FIELDS = Object.freeze([
   'description',
   'phone',
   'email',
+  'category',
+  'province',
+  'city',
+  'physicalAddress',
+  'whatsapp',
+  'website',
+  'isSupplier',
+  'yearsInBusiness',
 ] as const);
 
 export const BUSINESS_PROFILE_PROTECTED_FIELDS = Object.freeze([

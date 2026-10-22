@@ -14,6 +14,7 @@ export interface BusinessCapability {
   readonly id: BusinessCapabilityId;
   readonly businessId: BusinessId;
   readonly capabilityId: CapabilityId;
+  readonly capabilityName?: string;
   readonly proficiencyLevel: BusinessCapabilityProficiency | null;
   readonly description: string | null;
   readonly assertionStatus: BusinessCapabilityAssertionStatus;

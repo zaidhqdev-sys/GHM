@@ -2,22 +2,45 @@ import assert from 'node:assert/strict';
 import { createHmac, randomUUID } from 'node:crypto';
 import { Client, Pool } from 'pg';
 import 'dotenv/config';
+import { assertMatchingPostgresTargets, assertNonProductionQualificationTarget, assertPostgresTargetConfiguration } from '../dist/db/postgres-target-guard.js';
 
-const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL;
+const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
+const expectedNonProductionDatabase = process.env.GHM_NONPRODUCTION_DATABASE_NAME;
+const expectedNonProductionHost = process.env.GHM_NONPRODUCTION_DATABASE_HOST;
 const pepperValue = process.env.GHM_AUTH_TOKEN_PEPPER;
 assert(runtimeUrl, 'GHM_RUNTIME_DATABASE_URL is required');
 assert(migratorUrl, 'GHM_MIGRATOR_DATABASE_URL is required');
+assert(expectedNonProductionDatabase, 'GHM_NONPRODUCTION_DATABASE_NAME must be set to the explicitly approved non-production database name');
 assert(pepperValue && pepperValue.length >= 32, 'GHM_AUTH_TOKEN_PEPPER is required');
 assert.notEqual(runtimeUrl, migratorUrl, 'runtime and migrator URLs must be distinct');
 
+const runtimeTarget = assertPostgresTargetConfiguration(runtimeUrl, {
+  databaseName: expectedNonProductionDatabase,
+  host: expectedNonProductionHost,
+  label: 'QuoteFlow reset qualification runtime target',
+});
+const migratorTarget = assertPostgresTargetConfiguration(migratorUrl, {
+  databaseName: expectedNonProductionDatabase,
+  host: expectedNonProductionHost,
+  label: 'QuoteFlow reset qualification migration target',
+});
+assertMatchingPostgresTargets(runtimeTarget, migratorTarget, 'QuoteFlow reset qualification');
+assertNonProductionQualificationTarget(runtimeTarget, 'QuoteFlow reset qualification');
+
+// The existing Render sandbox uses encrypted PostgreSQL connections with a self-signed
+// server certificate. Match the established identity qualification policy for this sandbox;
+// exact database-name and runtime/migrator-role guards remain the target boundary.
+const ssl = process.env.DATABASE_SSL === 'false' ? undefined : { rejectUnauthorized: false };
 const runtime = new Pool({
   connectionString: runtimeUrl,
-  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
+  connectionTimeoutMillis: 15000,
+  ...(ssl ? { ssl } : {}),
 });
 const migrator = new Client({
   connectionString: migratorUrl,
-  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
+  connectionTimeoutMillis: 15000,
+  ...(ssl ? { ssl } : {}),
 });
 
 const protectRecovery = (wire) =>
@@ -46,12 +69,27 @@ const provision = async (subject) => {
 };
 
 try {
+  console.log('QUOTEFLOW RESET RE-ENROLLMENT QUALIFICATION START');
   await migrator.connect();
   await migrator.query('set role ghm_schema_owner');
 
-  const identity = await runtime.query('select current_database() database, current_user user_name');
-  assert.equal(identity.rows[0].database, 'ghm_db');
-  assert.equal(identity.rows[0].user_name, 'ghm_runtime');
+  const identity = await runtime.query(
+    'select current_database() as database, session_user as session_user, current_user as user_name',
+  );
+  assert.deepEqual(identity.rows[0], {
+    database: expectedNonProductionDatabase,
+    session_user: 'ghm_runtime',
+    user_name: 'ghm_runtime',
+  }, 'Runtime connection must originate from and act as ghm_runtime');
+
+  const migrationIdentity = await migrator.query(
+    'select current_database() as database, session_user as session_user, current_user as user_name',
+  );
+  assert.deepEqual(migrationIdentity.rows[0], {
+    database: expectedNonProductionDatabase,
+    session_user: 'ghm_migrator',
+    user_name: 'ghm_schema_owner',
+  }, 'Migration connection must originate from ghm_migrator and act as ghm_schema_owner');
 
   const privilege = await runtime.query(`
     select
@@ -155,7 +193,7 @@ try {
   const expiryAccountId = await provision(subjects[2]);
   const expiryRecovery = await persistence.issueRecovery(expiryAccountId, 30);
   await migrator.query(
-    'update ghm.password_recovery_credential set expires_at = now() - interval \'1 second\' where token_hash = $1',
+    'update ghm.password_recovery_credential set created_at = now() - interval \'1 minute\', expires_at = now() - interval \'1 second\' where token_hash = $1',
     [protectRecovery(expiryRecovery.recoveryTokenWire)],
   );
   await assert.rejects(
@@ -188,15 +226,25 @@ try {
     ],
   }, null, 2));
 } finally {
-  if (createdAccounts.length) {
-    await migrator.query('begin').catch(() => {});
-    await migrator.query('set local role ghm_schema_owner').catch(() => {});
-    await migrator.query(
-      'delete from ghm.account_identity where id = any($1::bigint[])',
-      [createdAccounts],
-    ).catch(() => {});
-    await migrator.query('commit').catch(() => {});
+  let cleanupFailed = false;
+  try {
+    if (createdAccounts.length) {
+      await migrator.query('begin');
+      await migrator.query('set local role ghm_schema_owner');
+      await migrator.query(
+        'delete from ghm.account_identity where id = any($1::bigint[])',
+        [createdAccounts],
+      );
+      await migrator.query('commit');
+    }
+  } catch (error) {
+    cleanupFailed = true;
+    await migrator.query('rollback').catch(() => {});
+    console.error('QuoteFlow reset qualification cleanup failed; synthetic residue may remain. Investigate the isolated qualification database before retrying.', error);
+  } finally {
+    await migrator.end().catch(() => {});
+    await runtime.end().catch(() => {});
   }
-  await migrator.end().catch(() => {});
-  await runtime.end().catch(() => {});
+  if (!cleanupFailed) console.log('QUOTEFLOW RESET RE-ENROLLMENT FIXTURE CLEANUP PASS');
+  if (cleanupFailed) throw new Error('QuoteFlow reset qualification failed because cleanup did not complete');
 }

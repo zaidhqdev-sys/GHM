@@ -15,7 +15,7 @@ const contexts: Record<'admin' | 'customer' | 'business', AuthContext> = {
 };
 
 test('all declared resources are accessible by the current construction primitive', () => {
-  for (const resource of ['profile', 'business', 'project', 'project_quote', 'quote', 'notification', 'support_request', 'saved_business', 'trust_score', 'campaign'] as const) {
+  for (const resource of ['profile', 'business', 'business_registration_identity', 'business_engagement', 'project', 'project_quote', 'quote', 'notification', 'support_request', 'saved_business', 'trust_score', 'campaign'] as const) {
     assert.equal(canAccessResource(contexts.customer, resource), true);
   }
 });
@@ -39,6 +39,12 @@ test('Commercial domain operations remain outside the generic HTTP resource voca
 });
 test('unregistered resource operations are denied by the registry', () => {
   assert.equal(isRegisteredOperation('profile', 'read'), true);
+  assert.equal(isRegisteredOperation('business_registration_identity', 'read'), true);
+  assert.equal(isRegisteredOperation('business_registration_identity', 'update'), true);
+  assert.equal(canAccessResource(contexts.admin, 'business_engagement'), true);
+  assert.equal(canAccessResource(contexts.customer, 'business_engagement'), true);
+  assert.equal(canAccessResource(contexts.business, 'business_engagement'), true);
+  assert.equal(isRegisteredOperation('business_engagement', 'create'), true);
   assert.equal(isRegisteredOperation('profile', 'delete'), false);
   assert.equal(isRegisteredOperation('notification', 'create'), true);
   assert.equal(isRegisteredOperation('saved_business', 'create'), true);

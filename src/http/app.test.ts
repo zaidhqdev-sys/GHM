@@ -12,6 +12,7 @@ import { DirectoryResult, DirectoryService } from '../resources/directory/contra
 
 const profile = (context: AuthContext): AccountIdentity => ({
   id: context.userId,
+  email: 'http-user@example.com',
   fullName: 'HTTP Qualification User',
   phone: null,
   avatarRef: null,
@@ -35,6 +36,20 @@ const publicBusinessFixture = (overrides: Partial<PublicBusiness> = {}): PublicB
   description: 'Public description',
   phone: '0111234567',
   email: 'business@example.com',
+  category: 'construction',
+  province: 'KwaZulu-Natal',
+  city: 'Durban',
+  physicalAddress: null,
+  whatsapp: null,
+  website: null,
+  logoUrl: null,
+  avatarLetter: 'P',
+  avatarColor: '#123456',
+  isSupplier: false,
+  tier: 'free',
+  isFeatured: false,
+  profileViews: 0,
+  yearsInBusiness: 0,
   rating: 4.5,
   reviewCount: 12,
   jobsCompleted: 8,
@@ -43,7 +58,7 @@ const publicBusinessFixture = (overrides: Partial<PublicBusiness> = {}): PublicB
   createdAt: new Date('2026-09-10T00:00:00.000Z'),
   updatedAt: new Date('2026-09-10T00:00:00.000Z'),
   ...overrides,
-});
+} as PublicBusiness);
 
 const startPublicBusinessTestServer = async (publicBusinessService: PublicBusinessService) => {
   const businessService = {} as BusinessIdentityService;
@@ -74,6 +89,7 @@ test('public directory route allows anonymous access and returns the directory r
   };
   let received: unknown;
   const directoryService: DirectoryService = {
+    listPublicCategories: async () => [],
     search: async query => {
       received = query;
       return result;
@@ -81,9 +97,9 @@ test('public directory route allows anonymous access and returns the directory r
   };
   const { server, baseUrl } = await startDirectoryTestServer(directoryService);
   try {
-    const response = await fetch(`${baseUrl}/api/v1/public/businesses?q=build&category=construction&page=1&pageSize=20`);
+    const response = await fetch(`${baseUrl}/api/v1/public/businesses?q=build&category=construction&province=KwaZulu-Natal&city=Durban&sort=reviews&businessType=contractors&page=1&pageSize=20`);
     assert.equal(response.status, 200);
-    assert.deepEqual(received, { q: 'build', category: 'construction', page: 1, pageSize: 20 });
+    assert.deepEqual(received, { q: 'build', category: 'construction', province: 'KwaZulu-Natal', city: 'Durban', sort: 'reviews', businessType: 'contractors', page: 1, pageSize: 20 });
     const body = await response.json() as DirectoryResult & { items: Array<PublicBusiness & { createdAt: string; updatedAt: string }> };
     assert.equal(body.items[0].id, 301);
     assert.equal(body.page, 1);
@@ -95,6 +111,7 @@ test('public directory route allows anonymous access and returns the directory r
 test('public directory route applies pagination defaults and ignores authentication', async () => {
   let received: unknown;
   const directoryService: DirectoryService = {
+    listPublicCategories: async () => [],
     search: async query => {
       received = query;
       return { items: [], page: query.page, pageSize: query.pageSize, total: 0 };
@@ -106,13 +123,14 @@ test('public directory route applies pagination defaults and ignores authenticat
       headers: { authorization: 'Bearer invalid-token' },
     });
     assert.equal(response.status, 200);
-    assert.deepEqual(received, { q: undefined, category: undefined, page: 1, pageSize: 20 });
+    assert.deepEqual(received, { q: undefined, category: undefined, province: undefined, city: undefined, sort: undefined, businessType: undefined, page: 1, pageSize: 20 });
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
 test('public directory route rejects unsupported and malformed query parameters before service execution', async () => {
   let called = false;
   const directoryService: DirectoryService = {
+    listPublicCategories: async () => [],
     search: async () => {
       called = true;
       throw new Error('must not be called');
@@ -120,15 +138,38 @@ test('public directory route rejects unsupported and malformed query parameters 
   };
   const { server, baseUrl } = await startDirectoryTestServer(directoryService);
   try {
-    const unsupported = await fetch(`${baseUrl}/api/v1/public/businesses?city=Durban`);
+    const unsupported = await fetch(`${baseUrl}/api/v1/public/businesses?radius=50`);
     assert.equal(unsupported.status, 400);
 
     const malformed = await fetch(`${baseUrl}/api/v1/public/businesses?page=0`);
     assert.equal(malformed.status, 400);
 
+    const invalidSort = await fetch(`${baseUrl}/api/v1/public/businesses?sort=distance`);
+    assert.equal(invalidSort.status, 400);
+
     const oversized = await fetch(`${baseUrl}/api/v1/public/businesses?pageSize=51`);
     assert.equal(oversized.status, 400);
 
+    assert.equal(called, false);
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+
+test('public directory route rejects invalid province and business type filters', async () => {
+  let called = false;
+  const directoryService: DirectoryService = {
+    listPublicCategories: async () => [],
+    search: async () => {
+      called = true;
+      return { items: [], page: 1, pageSize: 20, total: 0 };
+    },
+  };
+  const { server, baseUrl } = await startDirectoryTestServer(directoryService);
+  try {
+    const invalidType = await fetch(`${baseUrl}/api/v1/public/businesses?businessType=everyone`);
+    assert.equal(invalidType.status, 400);
+    const blankProvince = await fetch(`${baseUrl}/api/v1/public/businesses?province=%20%20`);
+    assert.equal(blankProvince.status, 400);
     assert.equal(called, false);
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
@@ -829,5 +870,245 @@ test('project update route maps closed-project denial to conflict', async () => 
     assert.deepEqual(await response.json(), { error: 'conflict' });
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+
+test('canonical identity route rejects missing authentication', async () => {
+  const service = { getIdentityContext: async () => { throw new Error('must not be called'); } } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/identity`);
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: 'unauthorized' });
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+test('canonical identity route returns a QuoteFlow-compatible selected identity DTO', async () => {
+  let received: { context: AuthContext; selectedBusinessId?: number } | undefined;
+  const createdAt = new Date('2026-01-01T00:00:00.000Z');
+  const business = {
+    id: 201, name: 'Canonical Business', slug: 'canonical-business', description: null, phone: null, email: null,
+    category: null, province: null, city: null, physicalAddress: null, whatsapp: null, website: null,
+    isSupplier: null, yearsInBusiness: 0, insuranceVerified: false, jobsCompleted: 0,
+    verificationStatus: 'unverified', isActive: true, createdAt, updatedAt: createdAt,
+  };
+  const membership = {
+    id: 501, accountId: 42, businessId: 201, role: 'owner', status: 'active', createdBy: 42,
+    createdAt, updatedAt: createdAt, business,
+  };
+  const identity = {
+    account: profile({ userId: 42, role: 'business' }),
+    memberships: [membership],
+    activeMembership: membership,
+    activeBusiness: business,
+  };
+  const service = { getIdentityContext: async (input: { context: AuthContext; selectedBusinessId?: number }) => { received = input; return identity; } } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const token = tokenFor({ userId: 42, role: 'business' });
+    const response = await fetch(`${baseUrl}/api/v1/identity?businessId=201`, { headers: { authorization: `Bearer ${token}` } });
+    assert.equal(response.status, 200);
+    assert.deepEqual(received, { context: { userId: 42, role: 'business' }, selectedBusinessId: 201 });
+    const body = await response.json() as typeof identity;
+    assert.equal(body.account.id, 42);
+    assert.equal(body.account.email, 'http-user@example.com');
+    assert.equal(body.memberships[0].businessId, 201);
+    assert.equal(body.memberships[0].createdBy, 42);
+    assert.equal(typeof body.memberships[0].createdAt, 'string');
+    assert.equal(body.activeMembership.businessId, 201);
+    assert.equal(body.activeBusiness.id, 201);
+    assert.equal(body.activeBusiness.slug, 'canonical-business');
+    assert.equal(typeof body.activeBusiness.updatedAt, 'string');
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+test('canonical identity route returns multiple membership choices without selecting a business', async () => {
+  const createdAt = new Date('2026-01-01T00:00:00.000Z');
+  const membership = (id: number, businessId: number, role: 'owner' | 'member') => ({
+    id, accountId: 42, businessId, role, status: 'active', createdBy: 42,
+    createdAt, updatedAt: createdAt,
+    business: {
+      id: businessId, name: `Business ${businessId}`, slug: `business-${businessId}`,
+      description: null, phone: null, email: null, category: null, province: null, city: null,
+      physicalAddress: null, whatsapp: null, website: null, isSupplier: null, yearsInBusiness: 0,
+      insuranceVerified: false, jobsCompleted: 0, verificationStatus: 'unverified', isActive: true,
+      createdAt, updatedAt: createdAt,
+    },
+  });
+  const identity = {
+    account: profile({ userId: 42, role: 'business' }),
+    memberships: [membership(501, 201, 'owner'), membership(502, 202, 'member')],
+    activeMembership: null,
+    activeBusiness: null,
+  };
+  const service = { getIdentityContext: async () => identity } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const token = tokenFor({ userId: 42, role: 'business' });
+    const response = await fetch(`${baseUrl}/api/v1/identity`, { headers: { authorization: `Bearer ${token}` } });
+    assert.equal(response.status, 200);
+    const body = await response.json() as typeof identity;
+    assert.equal(body.memberships.length, 2);
+    assert.equal(body.activeMembership, null);
+    assert.equal(body.activeBusiness, null);
+    assert.equal(typeof body.memberships[0].createdAt, 'string');
+    assert.equal(typeof body.memberships[0].business?.createdAt, 'string');
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+test('canonical identity route rejects unknown, repeated and malformed query parameters', async () => {
+  let called = false;
+  const service = { getIdentityContext: async () => { called = true; throw new Error('must not be called'); } } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const token = tokenFor({ userId: 42, role: 'business' });
+    for (const query of ['?businessId=0', '?businessId=-1', '?businessId=1.5', '?businessId=abc', '?businessId=9007199254740992', '?businessId=1&businessId=2', '?accountId=999']) {
+      const response = await fetch(`${baseUrl}/api/v1/identity${query}`, { headers: { authorization: `Bearer ${token}` } });
+      assert.equal(response.status, 400, query);
+      assert.deepEqual(await response.json(), { error: 'invalid_request' });
+    }
+    assert.equal(called, false);
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+test('canonical identity route conceals unauthorized business selection as not found', async () => {
+  const service = { getIdentityContext: async () => { throw new Error('Selected business context is not authorized'); } } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const token = tokenFor({ userId: 42, role: 'business' });
+    const response = await fetch(`${baseUrl}/api/v1/identity?businessId=999`, { headers: { authorization: `Bearer ${token}` } });
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), { error: 'not_found' });
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+test('canonical identity route rejects invalid bearer tokens before service execution', async () => {
+  const service = { getIdentityContext: async () => { throw new Error('must not be called'); } } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/identity`, { headers: { authorization: 'Bearer not-a-valid-token' } });
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: 'unauthorized' });
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+test('business profile PATCH accepts owner-managed directory fields but excludes protected fields', async () => {
+  let received: unknown;
+  const service = {
+    updateBusiness: async (context: AuthContext, businessId: number, input: unknown) => {
+      received = { context, businessId, input };
+      return {
+        id: businessId, name: 'Business', slug: 'business', description: null, phone: null, email: null,
+        category: 'construction', province: 'KwaZulu-Natal', city: 'Durban', physicalAddress: null,
+        whatsapp: null, website: 'https://example.com', isSupplier: null, yearsInBusiness: 4,
+        insuranceVerified: false, jobsCompleted: 0, verificationStatus: 'unverified', isActive: true,
+        createdAt: new Date(0), updatedAt: new Date(0),
+      };
+    },
+  } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const token = tokenFor({ userId: 42, role: 'business' });
+    const response = await fetch(`${baseUrl}/api/v1/businesses/201`, {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ category: 'construction', province: 'KwaZulu-Natal', city: 'Durban', website: 'https://example.com', isSupplier: null, yearsInBusiness: 4 }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(received, {
+      context: { userId: 42, role: 'business' },
+      businessId: 201,
+      input: { category: 'construction', province: 'KwaZulu-Natal', city: 'Durban', website: 'https://example.com', isSupplier: null, yearsInBusiness: 4 },
+    });
+    for (const body of [
+      { isFeatured: true }, { tier: 'premium' }, { logoUrl: 'https://example.com/logo.png' },
+      { isVerified: true }, { rating: 5 }, { isSupplier: 'yes' }, { yearsInBusiness: 501 }, { category: 'Not A Slug' }, { website: 'javascript:alert(1)' },
+    ]) {
+      const invalid = await fetch(`${baseUrl}/api/v1/businesses/201`, {
+        method: 'PATCH',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      assert.equal(invalid.status, 400, JSON.stringify(body));
+    }
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('own-profile PATCH stores declared Connect role and operator intent through authenticated context', async () => {
+  let receivedContext: AuthContext | undefined;
+  let receivedInput: unknown;
+  const service = {
+    updateOwnProfile: async (context: AuthContext, input: unknown) => {
+      receivedContext = context;
+      receivedInput = input;
+      return { ...profile(context), connectRole: 'contractor', businessOperatorIntent: true };
+    },
+  } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const token = tokenFor({ userId: 42, role: 'customer' });
+    const response = await fetch(`${baseUrl}/api/v1/profile`, {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ connectRole: 'contractor', businessOperatorIntent: true }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(receivedContext, { userId: 42, role: 'customer' });
+    assert.deepEqual(receivedInput, { connectRole: 'contractor', businessOperatorIntent: true });
+    const body = await response.json() as { profile: AccountIdentity };
+    assert.equal(body.profile.connectRole, 'contractor');
+    assert.equal(body.profile.businessOperatorIntent, true);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('own-profile PATCH rejects unknown Connect role and protected fields before service call', async () => {
+  let called = false;
+  const service = {
+    updateOwnProfile: async () => { called = true; throw new Error('must not be called'); },
+  } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const token = tokenFor({ userId: 42, role: 'customer' });
+    for (const body of [
+      { connectRole: 'admin' },
+      { connectRole: 'business' },
+      { isSystemAdmin: true },
+      { isDirectoryListingFounderReviewer: true },
+      { businessOperatorIntent: 'yes' },
+      {},
+    ]) {
+      const response = await fetch(`${baseUrl}/api/v1/profile`, {
+        method: 'PATCH',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      assert.equal(response.status, 400);
+      assert.deepEqual(await response.json(), { error: 'invalid_request' });
+    }
+    assert.equal(called, false);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+
+test('public business category route returns the filtered GHM taxonomy without requiring a session', async () => {
+  const categories = [{ id: 'cat-1', slug: 'construction', name: 'Construction' }];
+  const directoryService: DirectoryService = {
+    listPublicCategories: async () => categories,
+    search: async query => ({ items: [], page: query.page, pageSize: query.pageSize, total: 0 }),
+  };
+  const { server, baseUrl } = await startDirectoryTestServer(directoryService);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/public/business-categories`);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { categories });
+  } finally {
+    server.close();
   }
 });

@@ -102,6 +102,70 @@ test('POST /api/v1/auth/quoteflow-migration-reset/request is anti-enumerating an
   }
 });
 
+test('migration reset request remains anti-enumerating when persistence or delivery fails', async () => {
+  const { createApp } = await loadApp();
+  const server = http.createServer(createApp({
+    businessIdentityService: {} as never,
+    projectService: {} as never,
+    publicProjectService: {} as never,
+    enquiryService: {} as never,
+    campaignService: {} as never,
+    quoteFlowMigrationResetRecoveryService: {
+      request: async () => { throw new Error('synthetic delivery failure'); },
+    },
+  }));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const originalError = console.error;
+  console.error = () => undefined;
+  try {
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/v1/auth/quoteflow-migration-reset/request`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'legacy@example.com' }),
+    });
+    assert.equal(response.status, 202);
+    assert.deepEqual(await response.json(), { ok: true });
+  } finally {
+    console.error = originalError;
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('migration reset request is unavailable when delivery is not configured', async () => {
+  const priorUrl = process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_URL;
+  const priorToken = process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_TOKEN;
+  delete process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_URL;
+  delete process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_TOKEN;
+  const { createApp } = await loadApp();
+  const server = http.createServer(createApp({
+    businessIdentityService: {} as never,
+    projectService: {} as never,
+    publicProjectService: {} as never,
+    enquiryService: {} as never,
+    campaignService: {} as never,
+  }));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  try {
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/v1/auth/quoteflow-migration-reset/request`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'owner@example.test' }),
+    });
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { error: 'service_unavailable' });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    if (priorUrl === undefined) delete process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_URL;
+    else process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_URL = priorUrl;
+    if (priorToken === undefined) delete process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_TOKEN;
+    else process.env.GHM_RECOVERY_DELIVERY_WEBHOOK_TOKEN = priorToken;
+  }
+});
+
 test('POST /api/v1/auth/quoteflow-migration-reset/complete issues GHM session only after completion', async () => {
   const order: string[] = [];
   const authService: GhmAuthService = {
@@ -144,6 +208,48 @@ test('POST /api/v1/auth/quoteflow-migration-reset/complete issues GHM session on
       'complete:opaque-token:CorrectHorseBattery1',
       'login:legacy@example.com:CorrectHorseBattery1',
     ]);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('migration reset returns a sanitized error if session issuance fails after reset completion', async () => {
+  const order: string[] = [];
+  const authService: GhmAuthService = {
+    login: async () => {
+      order.push('login');
+      throw new Error('synthetic session issuer failure');
+    },
+    refresh: async () => sampleTokens(),
+    logout: async () => undefined,
+  };
+  const { createApp } = await loadApp();
+  const server = http.createServer(createApp({
+    businessIdentityService: {} as never,
+    projectService: {} as never,
+    publicProjectService: {} as never,
+    enquiryService: {} as never,
+    campaignService: {} as never,
+    authService,
+    quoteFlowMigrationResetCompletionService: {
+      complete: async () => {
+        order.push('complete');
+        return { accountId: 42, loginEmail: 'legacy@example.com' };
+      },
+    },
+  }));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  try {
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/v1/auth/quoteflow-migration-reset/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: 'opaque-token', password: 'CorrectHorseBattery1' }),
+    });
+    assert.equal(response.status, 500);
+    assert.deepEqual(await response.json(), { error: 'internal_error' });
+    assert.deepEqual(order, ['complete', 'login']);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
@@ -543,6 +649,89 @@ test('POST /api/v1/auth/login enforces the approved 10-per-15-minute IP limit', 
     });
     assert.equal(limited.status, 429);
     assert.deepEqual(await limited.json(), { error: 'rate_limited' });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+
+test('web auth keeps refresh credentials in HttpOnly cookies and rotates/revokes them', async () => {
+  process.env.GHM_WEB_AUTH_ALLOWED_ORIGINS = 'http://localhost:3000';
+  process.env.GHM_WEB_AUTH_COOKIE_SECURE = 'false';
+  const logoutTokens: string[] = [];
+  const authService: GhmAuthService = {
+    register: async () => sampleTokens({ refreshToken: 'register-refresh' }),
+    login: async () => sampleTokens({ refreshToken: 'login-refresh' }),
+    refresh: async (token) => {
+      assert.equal(token, 'login-refresh');
+      return sampleTokens({ accessToken: 'rotated-access', refreshToken: 'rotated-refresh', sessionId: 12 });
+    },
+    logout: async (token) => { logoutTokens.push(token); },
+  };
+  const { server, baseUrl } = await startApp(authService);
+  const originHeaders = { origin: 'http://localhost:3000', 'content-type': 'application/json' };
+  try {
+    const login = await fetch(`${baseUrl}/api/v1/auth/web/login`, {
+      method: 'POST',
+      headers: originHeaders,
+      body: JSON.stringify({ email: 'user@example.com', password: 'CorrectHorseBattery1' }),
+    });
+    assert.equal(login.status, 200);
+    const loginBody = await login.json() as Record<string, unknown>;
+    assert.equal(loginBody.accessToken, 'access.jwt');
+    assert.equal(Object.hasOwn(loginBody, 'refreshToken'), false);
+    const loginCookie = login.headers.get('set-cookie');
+    assert.ok(loginCookie);
+    assert.match(loginCookie, /^ghm_web_refresh=login-refresh;/);
+    assert.match(loginCookie, /HttpOnly/);
+    assert.match(loginCookie, /SameSite=Lax/);
+    assert.match(loginCookie, /Path=\/api\/ghm/);
+
+    const refresh = await fetch(`${baseUrl}/api/v1/auth/web/refresh`, {
+      method: 'POST',
+      headers: { origin: 'http://localhost:3000', cookie: 'ghm_web_refresh=login-refresh' },
+    });
+    assert.equal(refresh.status, 200);
+    const refreshBody = await refresh.json() as Record<string, unknown>;
+    assert.equal(refreshBody.accessToken, 'rotated-access');
+    assert.equal(Object.hasOwn(refreshBody, 'refreshToken'), false);
+    assert.match(refresh.headers.get('set-cookie') ?? '', /^ghm_web_refresh=rotated-refresh;/);
+    assert.match(refresh.headers.get('set-cookie') ?? '', /HttpOnly/);
+
+    const logout = await fetch(`${baseUrl}/api/v1/auth/web/logout`, {
+      method: 'POST',
+      headers: { origin: 'http://localhost:3000', cookie: 'ghm_web_refresh=rotated-refresh' },
+    });
+    assert.equal(logout.status, 200);
+    assert.deepEqual(await logout.json(), { ok: true });
+    assert.deepEqual(logoutTokens, ['rotated-refresh']);
+    assert.match(logout.headers.get('set-cookie') ?? '', /Max-Age=0/);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('web auth fails closed for missing or unapproved browser Origin', async () => {
+  process.env.GHM_WEB_AUTH_ALLOWED_ORIGINS = 'https://connect.example.test';
+  process.env.GHM_WEB_AUTH_COOKIE_SECURE = 'false';
+  const authService: GhmAuthService = {
+    login: async () => sampleTokens(),
+    refresh: async () => sampleTokens(),
+    logout: async () => undefined,
+  };
+  const { server, baseUrl } = await startApp(authService);
+  try {
+    for (const origin of [undefined, 'https://attacker.example.test']) {
+      const headers: Record<string, string> = { 'content-type': 'application/json' };
+      if (origin) headers.origin = origin;
+      const response = await fetch(`${baseUrl}/api/v1/auth/web/login`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ email: 'user@example.com', password: 'CorrectHorseBattery1' }),
+      });
+      assert.equal(response.status, 403);
+      assert.deepEqual(await response.json(), { error: 'origin_not_allowed' });
+    }
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
