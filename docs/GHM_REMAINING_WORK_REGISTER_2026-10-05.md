@@ -403,3 +403,7 @@ CI #1494 passed on PR head `daf9f184093726b19cbdf288bdf7cee70f845f2a`. Targeted 
 ## Auth SECURITY DEFINER caller trace — 2026-10-23
 
 CI #1497 passed on PR head `57028b92c435f643ea63c0c8e6ea3ba4676ec606`. The persistence interface exposes password-change and account-disable methods which call SECURITY DEFINER SQL functions; the inspected auth router has no corresponding route. The identity-authority function is granted to runtime but lacks a wrapper in the inspected persistence file. Whether other modules invoke these methods/functions is not yet exhaustively established. Caller trace and independent review remain open; no permissions changed.
+
+## CI #1500 and security caller trace — 2026-10-23
+
+CI #1500 passed on prior PR head `bc0ba1b1d0f53ecbdbd4d0127b791d4237b31533`. Targeted source review found persistence wrappers invoking password-change and account-disable SECURITY DEFINER functions, no matching route in the inspected auth router, and a runtime-granted identity-authority function with no wrapper in the inspected persistence class. GitHub search returned no indexed matches, which does not establish caller absence. Full source-wide trace and independent review remain release gates. No SQL grants or infrastructure changed. Dedicated governed Render DB qualification remains blocked.
