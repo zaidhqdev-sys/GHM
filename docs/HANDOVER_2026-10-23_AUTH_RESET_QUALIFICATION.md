@@ -7,9 +7,9 @@
 - Working branch: `fix/shared-auth-persistence-qualification`
 - Base branch: `integration/ghm-identity-merge-candidate-20261018`
 - Base candidate commit: `e5462b05e8b2b9cbc7a445c8464590a4f6d32a53`
-- Last observed PR head: `5394bd1704c1b2ddd221b4d2075cce7415aa0e51` (handover documentation commit)
+- PR head advances with handover updates; inspect [PR #183](https://github.com/zaidhqdev-sys/GHM/pull/183) for the live SHA before resuming. The code/test changes are in the commits before the handover-only updates.
 - PR is open, draft, and not merged. No reviews were present at the last check.
-- CI [run #39869472703 / run number 1473](https://github.com/zaidhqdev-sys/GHM/actions/runs/39869472703) passed on handover-doc head `86f1217927508d69a8a1264d870284902dd9b956`: build, disposable migrations, business identity/QuoteFlow qualification, database-backed test suite, migration-audit policy tests, and runtime-boundary verification. This is the latest verified green head before the next documentation note; re-check CI after subsequent commits.
+- CI [run #39869472703 / run number 1473](https://github.com/zaidhqdev-sys/GHM/actions/runs/39869472703) passed on commit `86f1217927508d69a8a1264d870284902dd9b956`: build, disposable migrations, business identity/QuoteFlow qualification, database-backed test suite, migration-audit policy tests, and runtime-boundary verification. Later commits only update handover documentation; confirm CI for the live PR head before treating that exact head as green.
 
 ## What changed on PR #183
 
