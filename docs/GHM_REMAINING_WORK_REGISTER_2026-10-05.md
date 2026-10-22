@@ -399,3 +399,7 @@ Repository-wide caller tracing is still incomplete: the available scan covered o
 ## CI #1494 and auth caller review — 2026-10-23
 
 CI #1494 passed on PR head `daf9f184093726b19cbdf288bdf7cee70f845f2a`. Targeted review found persistence wrappers invoking `auth_change_password` and `auth_disable_account` with numeric account/session identifiers, while the inspected auth router exposes no matching public routes. This is not an exhaustive caller trace. GitHub code search was incomplete for `auth_read_connect_identity_authority`; do not treat zero indexed results as evidence of no caller. Complete full source search and independent review before changing grants. Dedicated governed Render database qualification remains open.
+
+## Auth SECURITY DEFINER caller trace — 2026-10-23
+
+CI #1497 passed on PR head `57028b92c435f643ea63c0c8e6ea3ba4676ec606`. The persistence interface exposes password-change and account-disable methods which call SECURITY DEFINER SQL functions; the inspected auth router has no corresponding route. The identity-authority function is granted to runtime but lacks a wrapper in the inspected persistence file. Whether other modules invoke these methods/functions is not yet exhaustively established. Caller trace and independent review remain open; no permissions changed.
