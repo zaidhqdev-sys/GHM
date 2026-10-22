@@ -76,3 +76,10 @@ CI run #1483 passed on PR head `37bcd4924be473aab388745bcf0a3806bf7e8ebe`. A clo
 ## Latest checkpoint — 2026-10-23
 
 CI run #1486 passed on the PR head that included the latest handover updates. The full available source scan has not yet been completed: GitHub's repository search endpoint returned no indexed results for the password-change/disable symbols, and batched file retrieval hit the tool's call limit before all 67 relevant TypeScript files could be scanned. Therefore, no claim of exhaustive caller absence is justified. Next: use a local clone/repository-wide grep or another complete source-search method to trace `changePassword`, `disableAccount`, `auth_change_password`, `auth_disable_account`, and `auth_read_connect_identity_authority`; document exact callers and test that account/session IDs originate from authenticated context. Do not alter SQL grants or remove functions based on incomplete search evidence.
+
+
+## CI checkpoint — 2026-10-23 23:20 UTC
+
+CI run [#39871050327 / run 1489](https://github.com/zaidhqdev-sys/GHM/actions/runs/39871050327) passed on PR head `97f947045859a928577fefbc5206271201f66ae1`. PR #183 remains draft. The PR summary describes shared `AuthPersistence` injection into `createApp`/auth routes, binding qualification auth to the guarded runtime pool, and disposable-PostgreSQL HTTP coverage for anti-enumerating recovery, reset completion, fresh bearer validation, old-session revocation, and token replay. CI is not a substitute for the blocked governed Render DB qualification.
+
+Caller tracing remains incomplete. The inspected persistence layer is the only positive code hit found so far for `auth_change_password` and `auth_disable_account`; router excerpts contain no public password-change or account-disable route. This is not an exhaustive result: the 174-file source tree scan was only partially completed due tool call limits. Do not infer absence of other callers. Continue targeted search in the remaining source/resource/migration files or obtain a local clone, then verify identity binding and document concrete callsites. Do not change grants based on incomplete search.
