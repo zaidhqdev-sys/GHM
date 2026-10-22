@@ -78,10 +78,14 @@ try {
     'Runtime database name does not match the explicitly approved non-production database');
   assert.equal(identity.rows[0].user_name, 'ghm_runtime');
 
-  const migrationIdentity = await migrator.query('select current_database() as database, current_user as user_name');
-  assert.equal(migrationIdentity.rows[0].database, expectedNonProductionDatabase,
-    'Migration database name does not match the explicitly approved non-production database');
-  assert.equal(migrationIdentity.rows[0].user_name, 'ghm_schema_owner');
+  const migrationIdentity = await migrator.query(
+    'select current_database() as database, session_user as session_user, current_user as user_name',
+  );
+  assert.deepEqual(migrationIdentity.rows[0], {
+    database: expectedNonProductionDatabase,
+    session_user: 'ghm_migrator',
+    user_name: 'ghm_schema_owner',
+  }, 'Migration connection must originate from ghm_migrator and act as ghm_schema_owner');
 
   const privilege = await runtime.query(`
     select
