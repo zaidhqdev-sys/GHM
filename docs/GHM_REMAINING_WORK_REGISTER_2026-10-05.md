@@ -388,3 +388,10 @@ CI run #1483 passed on PR head `37bcd4924be473aab388745bcf0a3806bf7e8ebe`. The S
 ## Latest CI and caller-search status — 2026-10-23
 
 CI #1486 passed on PR #183 head `11e2859b8428d51d1f67a769cdf91a409f72db38`. Caller tracing for `changePassword`, `disableAccount`, `auth_change_password`, `auth_disable_account`, and `auth_read_connect_identity_authority` remains open because available GitHub search did not return indexed matches and the file-by-file scan could not complete. Do not interpret missing search results as absence of callers. Obtain a complete repository-wide search before concluding trust-boundary review or changing grants.
+
+
+## Latest CI and caller tracing — 2026-10-23
+
+CI #1489 passed on PR #183 head `97f947045859a928577fefbc5206271201f66ae1`. Shared auth-persistence wiring and database-backed reset HTTP qualification are included in PR #183 per its current summary. Dedicated governed Render DB qualification and independent security review remain open.
+
+Repository-wide caller tracing is still incomplete: the available scan covered only a subset of 174 non-test TypeScript files. Do not infer that functions have no callers and do not alter grants until a complete source search and identity-binding review are available.
