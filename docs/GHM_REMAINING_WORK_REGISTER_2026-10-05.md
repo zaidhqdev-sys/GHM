@@ -407,3 +407,9 @@ CI #1497 passed on PR head `57028b92c435f643ea63c0c8e6ea3ba4676ec606`. The persi
 ## CI #1500 and security caller trace — 2026-10-23
 
 CI #1500 passed on prior PR head `bc0ba1b1d0f53ecbdbd4d0127b791d4237b31533`. Targeted source review found persistence wrappers invoking password-change and account-disable SECURITY DEFINER functions, no matching route in the inspected auth router, and a runtime-granted identity-authority function with no wrapper in the inspected persistence class. GitHub search returned no indexed matches, which does not establish caller absence. Full source-wide trace and independent review remain release gates. No SQL grants or infrastructure changed. Dedicated governed Render DB qualification remains blocked.
+
+## CI #1503 and remaining security gates — 2026-10-23
+
+CI #1503 passed on PR head `903d35446dbffbb2e2975cc60b46fb1c211816f2`, covering build, disposable migrations, QuoteFlow reset HTTP qualification, DB-backed tests, migration-audit policy, and runtime-boundary verification. The PR's shared auth-persistence wiring is now exercised by tests.
+
+Still open: complete source-wide caller trace for `auth_change_password`, `auth_disable_account`, and `auth_read_connect_identity_authority`; independent security review of SECURITY DEFINER grants/identity binding; governed isolated Render database qualification. No grant, production, or Render configuration changes were made. Recheck CI after these handover edits produce a new commit.
