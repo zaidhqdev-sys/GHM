@@ -260,3 +260,7 @@ Security caller tracing remains incomplete because the available source scan did
 CI run [#39871983637 / run 1494](https://github.com/zaidhqdev-sys/GHM/actions/runs/39871983637) passed on current PR head `daf9f184093726b19cbdf288bdf7cee70f845f2a`, including migration audit policy tests and runtime-boundary verification. PR #183 remains draft.
 
 Bounded source inspection confirms persistence methods call SECURITY DEFINER functions `auth_change_password` and `auth_disable_account` using numeric account/session identifiers. No corresponding route was found in the inspected auth router. The identity-authority function did not appear in the inspected persistence class; GitHub code search was marked incomplete and cannot prove absence of callers. Full source trace and independent review remain open; no SQL grants changed.
+
+## Auth caller trace refinement — 2026-10-23
+
+CI #1497 passed on current PR head `57028b92c435f643ea63c0c8e6ea3ba4676ec606`. Targeted inspection confirms persistence exposes `changePassword` and `disableAccount` methods that call the respective SECURITY DEFINER functions, while the inspected auth router has no matching routes. The identity-authority SQL function has a grant to `ghm_runtime` but no wrapper in the inspected persistence file. The whole-repository caller trace is still incomplete; no grant changes made.
