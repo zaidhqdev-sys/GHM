@@ -73,10 +73,14 @@ try {
   await migrator.connect();
   await migrator.query('set role ghm_schema_owner');
 
-  const identity = await runtime.query('select current_database() as database, current_user as user_name');
-  assert.equal(identity.rows[0].database, expectedNonProductionDatabase,
-    'Runtime database name does not match the explicitly approved non-production database');
-  assert.equal(identity.rows[0].user_name, 'ghm_runtime');
+  const identity = await runtime.query(
+    'select current_database() as database, session_user as session_user, current_user as user_name',
+  );
+  assert.deepEqual(identity.rows[0], {
+    database: expectedNonProductionDatabase,
+    session_user: 'ghm_runtime',
+    user_name: 'ghm_runtime',
+  }, 'Runtime connection must originate from and act as ghm_runtime');
 
   const migrationIdentity = await migrator.query(
     'select current_database() as database, session_user as session_user, current_user as user_name',
