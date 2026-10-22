@@ -38,6 +38,7 @@ const cleanupPool = new Pool({ connectionString: migratorUrl, ...poolOptions, co
 const runId = randomBytes(16).toString('hex');
 const subject = `qualify-reset-http-${runId}`;
 const email = `quoteflow-reset-http-${runId}@example.test`;
+const approvedEmail = `QuoteFlow-Reset-Http-${runId}@example.test`;
 const fixture = { accountIds: [], enrollmentIds: [] };
 let server;
 let deliveredRecovery = null;
@@ -119,7 +120,7 @@ try {
 
   const registration = await runtimePool.query(
     'select * from ghm.auth_register_quoteflow_migration_reset_enrollment($1,$2,$3,$4,$5,$6)',
-    [accountId, 'supabase', subject, 'Owner@Example.com', email, `synthetic/${runId}`],
+    [accountId, 'supabase', subject, approvedEmail, email, `synthetic/${runId}`],
   );
   assert.equal(registration.rows[0]?.outcome, 'created');
   fixture.enrollmentIds.push(Number(registration.rows[0].enrollment_id));
