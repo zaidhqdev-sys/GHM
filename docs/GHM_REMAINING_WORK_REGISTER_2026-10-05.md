@@ -368,3 +368,8 @@ Remaining gates are unchanged: (1) independent migration/SECURITY DEFINER review
 ## SECURITY DEFINER bounded review note — 2026-10-23
 
 For migration `20261016100000_add_connect_identity_authority_contract.sql`, the function `ghm.auth_read_connect_identity_authority(bigint)` is SECURITY DEFINER, owner `ghm_schema_owner`, PUBLIC execute revoked, runtime execute granted. It returns Connect role, operator intent, system-admin and founder-reviewer flags for the supplied account ID. It was not referenced in the two inspected Connect adapter files; all callers still need exhaustive tracing. Independent review must decide whether arbitrary account-ID calls can expose authority flags across accounts and whether any caller binds that ID to verified identity context. Do not call this a confirmed vulnerability; do not change/remove the function until its intended callers and trust contract are established. CI run #39869676505 passed on the previous docs head; re-check latest PR head after these docs commits.
+
+
+## Auth/SQL boundary follow-up — 2026-10-23
+
+CI run #39869935033 passed on code head `be0ced510352095079f511350399e6440d33ad3f`; docs-only changes followed and current-head CI must be checked. Bounded inspection of reset completion, storage-persistence, and core auth SQL found explicit search paths, owner/grant hardening, and transaction-based reset/session revocation in the inspected functions. Independent review remains mandatory, particularly for every SECURITY DEFINER caller and its binding of account/session/object IDs to verified auth context. No confirmed vulnerability or complete audit is claimed.
