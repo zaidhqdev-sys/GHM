@@ -226,3 +226,10 @@ A bounded review of `20261016100000_add_connect_identity_authority_contract.sql`
 CI run [#39869935033](https://github.com/zaidhqdev-sys/GHM/actions/runs/39869935033) passed on code head `be0ced510352095079f511350399e6440d33ad3f`, including build, migrations, business identity/QuoteFlow qualification, database-backed tests, migration-audit policy, and runtime-boundary verification. Handover documentation has since advanced the branch; verify CI for the live head.
 
 Bounded read-only source checks of reset-completion, storage-persistence, and core auth SQL found consistent patterns in inspected functions: explicit fixed search paths, `ghm_schema_owner` ownership, PUBLIC execution revocation, and explicit runtime execute grants. Reset completion uses a single SECURITY DEFINER transaction for password update, session revocation, and enrollment completion. Storage state changes are mediated by dedicated functions, hardened in a later migration. This is not an independent audit; all callers and argument-to-authenticated-context bindings still need independent review, and no claim of full security sign-off is made.
+
+
+## Current CI and auth function review — 2026-10-23
+
+CI run [#39870134670](https://github.com/zaidhqdev-sys/GHM/actions/runs/39870134670) passed on PR #183 head `ec132b000c9296874b605cda1512d4f5c887343e`, including build, disposable PostgreSQL migrations, identity/QuoteFlow qualification, database-backed tests, migration-audit policy tests, and runtime-boundary verification.
+
+Bounded caller review of auth persistence and runtime SQL identified `changePassword`/`disableAccount` persistence methods and SECURITY DEFINER functions `auth_change_password(account_id, keep_session_id, ...)` and `auth_disable_account(account_id)` granted to `ghm_runtime`. The HTTP router excerpt inspected does not expose corresponding user-facing routes, but all repository callsites still need tracing. Verify any callers bind account/session IDs to verified identity context. This is an open security-review task, not a confirmed vulnerability.
