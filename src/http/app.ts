@@ -61,7 +61,7 @@ import { createQuoteFlowMigrationResetRecoveryService } from '../migrations/quot
 import { createQuoteFlowMigrationResetCompletionService } from '../migrations/quoteflow-migration-reset-completion';
 import { createRecoveryWebhookDeliveryFromEnv } from '../auth/recovery-webhook-delivery';
 import { createPasswordResetService } from '../auth/password-reset';
-import { PostgresAuthPersistence } from '../auth/foundation/persistence';
+import { PostgresAuthPersistence, type AuthPersistence } from '../auth/foundation/persistence';
 import { PostgresProjectQuoteRepository } from '../resources/project-quote/repository';
 import { ProjectQuoteServiceImpl } from '../resources/project-quote/service';
 import type { ProjectQuoteService } from '../resources/project-quote/contracts';
@@ -135,6 +135,7 @@ export interface AppDependencies {
   readonly businessRegistrationIdentityService?: BusinessRegistrationIdentityService;
   readonly directoryService?: DirectoryService;
   readonly authService?: GhmAuthService;
+  readonly authPersistence?: AuthPersistence;
   readonly passwordRecoveryService?: PasswordRecoveryService;
   readonly passwordResetService?: PasswordResetService;
   readonly quoteFlowMigrationResetRecoveryService?: QuoteFlowMigrationResetRecoveryService;
@@ -888,7 +889,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerBusinessOfferingRoutes(app, businessOfferingService, resourceAuthMiddleware);
   registerBusinessEngagementRoutes(app, businessEngagementService, resourceAuthMiddleware);
   registerBusinessRegistrationIdentityRoutes(app, businessRegistrationIdentityService, resourceAuthMiddleware);
-  const authPersistence = new PostgresAuthPersistence();
+  const authPersistence = dependencies.authPersistence ?? new PostgresAuthPersistence();
   const passwordResetService =
     dependencies.passwordResetService
     ?? createPasswordResetService(authPersistence);
@@ -905,6 +906,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     ?? createQuoteFlowMigrationResetCompletionService(authPersistence);
   registerAuthRoutes(app, {
     authService: dependencies.authService,
+    authPersistence,
     passwordRecoveryService: dependencies.passwordRecoveryService,
     passwordResetService,
     quoteFlowMigrationResetRecoveryService,

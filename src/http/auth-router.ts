@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import type { AuthTokenResponse, GhmAuthService } from '../auth/ghm-auth-service';
+import type { AuthPersistence } from '../auth/foundation/persistence';
 import type { PasswordRecoveryService } from '../auth/password-recovery';
 import type { PasswordResetService } from '../auth/password-reset';
 import type { QuoteFlowMigrationResetRecoveryService } from '../migrations/quoteflow-migration-reset-recovery';
@@ -153,6 +154,7 @@ const handleAuthError = (error: unknown, res: Response): void => {
 
 export interface AuthRouterDependencies {
   readonly authService?: GhmAuthService;
+  readonly authPersistence?: AuthPersistence;
   readonly passwordRecoveryService?: PasswordRecoveryService;
   readonly passwordResetService?: PasswordResetService;
   readonly quoteFlowMigrationResetRecoveryService?: QuoteFlowMigrationResetRecoveryService;
@@ -196,7 +198,7 @@ export const registerAuthRoutes = (
     if (!authService) {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { createGhmAuthService } = require('../auth/ghm-auth-service') as typeof import('../auth/ghm-auth-service');
-      authService = createGhmAuthService();
+      authService = createGhmAuthService(dependencies.authPersistence);
     }
     return authService;
   };

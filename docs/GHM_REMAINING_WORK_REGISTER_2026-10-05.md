@@ -354,3 +354,188 @@ The current draft findings resolve an earlier handover contradiction: Relationsh
 ## QuoteFlow migration Business provisioning — 2026-10-20
 
 A migration-only Business provisioning SQL primitive and database-backed qualification script are present on the combined review candidate. Fresh CI validation and database-backed qualification against an approved isolated non-production database remain pending. The operation creates an inactive/unverified Business, one active owner membership, and an exact external mapping atomically. Existing source mapping, owner eligibility, and slug conflicts fail closed. This does not close user/session migration, reset/re-enrollment ceremony, legacy membership reconciliation, production recovery, or cutover gates.
+
+
+## Auth/reset persistence consistency and HTTP ceremony — 2026-10-22/23
+
+**Code-level gap addressed on draft PR #183; governed environment qualification remains open.** The auth router now receives the app's shared `AuthPersistence` and uses it when lazily constructing the default GHM auth service. This ensures the reset-completion persistence and subsequent login/session issuance share the same persistence instance when the caller supplies one. The business-identity qualification server also explicitly binds persistence and bearer account-state reads to the guarded runtime pool.
+
+A new regression test checks the persistence handoff. A disposable-PostgreSQL HTTP ceremony is wired into `npm run qualify:business-identity-runtime` and checks anti-enumeration, recovery delivery, reset completion, fresh bearer authentication, prior-session revocation, and recovery-token replay rejection. Existing DB qualification covers expiry/rollback. CI run [#39868903311](https://github.com/zaidhqdev-sys/GHM/actions/runs/39868903311) passed for PR head `dd5d79dad5b51845c99bdd6c25078cb358eb293c` before the current documentation-only changes; rerun status must be checked for the latest commit.
+
+Remaining gates are unchanged: (1) independent migration/SECURITY DEFINER review; (2) approved isolated non-production Render database qualification; (3) GHM-native identity/session and selected-business HTTP flows in non-production; (4) QuoteFlow reset/re-enrollment ceremony on the governed target, including expiry/replay/rollback/revocation/fresh session; (5) cross-client parser/runtime and data/storage-scope migration; (6) Zaid Connect browser E2E and workflows. Do not change the Render DB allowlist, use the shared PayFast sandbox as substitute evidence, or perform production changes without explicit authorization.
+
+
+## SECURITY DEFINER bounded review note — 2026-10-23
+
+For migration `20261016100000_add_connect_identity_authority_contract.sql`, the function `ghm.auth_read_connect_identity_authority(bigint)` is SECURITY DEFINER, owner `ghm_schema_owner`, PUBLIC execute revoked, runtime execute granted. It returns Connect role, operator intent, system-admin and founder-reviewer flags for the supplied account ID. It was not referenced in the two inspected Connect adapter files; all callers still need exhaustive tracing. Independent review must decide whether arbitrary account-ID calls can expose authority flags across accounts and whether any caller binds that ID to verified identity context. Do not call this a confirmed vulnerability; do not change/remove the function until its intended callers and trust contract are established. CI run #39869676505 passed on the previous docs head; re-check latest PR head after these docs commits.
+
+
+## Auth/SQL boundary follow-up — 2026-10-23
+
+CI run #39869935033 passed on code head `be0ced510352095079f511350399e6440d33ad3f`; docs-only changes followed and current-head CI must be checked. Bounded inspection of reset completion, storage-persistence, and core auth SQL found explicit search paths, owner/grant hardening, and transaction-based reset/session revocation in the inspected functions. Independent review remains mandatory, particularly for every SECURITY DEFINER caller and its binding of account/session/object IDs to verified auth context. No confirmed vulnerability or complete audit is claimed.
+
+
+## Auth SECURITY DEFINER caller tracing — 2026-10-23
+
+CI run #39870134670 passed on PR #183 head `ec132b000c9296874b605cda1512d4f5c887343e`. Continue exhaustive callsite tracing for persistence methods `changePassword` and `disableAccount` and SQL functions `auth_change_password` / `auth_disable_account`, which accept account/session IDs and are executable by `ghm_runtime`. The router review did not find corresponding routes in the inspected excerpt, but do not infer absence across the entire application without full search. Ensure any callers bind IDs to authenticated context. Independent security review remains required.
+
+
+## Auth change/disable function trust boundary — 2026-10-23
+
+CI run #1483 passed on PR head `37bcd4924be473aab388745bcf0a3806bf7e8ebe`. The SECURITY DEFINER functions `auth_change_password` and `auth_disable_account` accept account/session IDs and are executable by `ghm_runtime`; application callers must bind those identifiers to trusted auth context. Router inspection found no matching public endpoints, but code-search endpoint results were empty and do not prove there are no callsites. Exhaustive local/repo-wide search and independent review remain open. Do not change grants until callers and intended use are established.
+
+
+## Latest CI and caller-search status — 2026-10-23
+
+CI #1486 passed on PR #183 head `11e2859b8428d51d1f67a769cdf91a409f72db38`. Caller tracing for `changePassword`, `disableAccount`, `auth_change_password`, `auth_disable_account`, and `auth_read_connect_identity_authority` remains open because available GitHub search did not return indexed matches and the file-by-file scan could not complete. Do not interpret missing search results as absence of callers. Obtain a complete repository-wide search before concluding trust-boundary review or changing grants.
+
+
+## Latest CI and caller tracing — 2026-10-23
+
+CI #1489 passed on PR #183 head `97f947045859a928577fefbc5206271201f66ae1`. Shared auth-persistence wiring and database-backed reset HTTP qualification are included in PR #183 per its current summary. Dedicated governed Render DB qualification and independent security review remain open.
+
+Repository-wide caller tracing is still incomplete: the available scan covered only a subset of 174 non-test TypeScript files. Do not infer that functions have no callers and do not alter grants until a complete source search and identity-binding review are available.
+
+## CI #1494 and auth caller review — 2026-10-23
+
+CI #1494 passed on PR head `daf9f184093726b19cbdf288bdf7cee70f845f2a`. Targeted review found persistence wrappers invoking `auth_change_password` and `auth_disable_account` with numeric account/session identifiers, while the inspected auth router exposes no matching public routes. This is not an exhaustive caller trace. GitHub code search was incomplete for `auth_read_connect_identity_authority`; do not treat zero indexed results as evidence of no caller. Complete full source search and independent review before changing grants. Dedicated governed Render database qualification remains open.
+
+## Auth SECURITY DEFINER caller trace — 2026-10-23
+
+CI #1497 passed on PR head `57028b92c435f643ea63c0c8e6ea3ba4676ec606`. The persistence interface exposes password-change and account-disable methods which call SECURITY DEFINER SQL functions; the inspected auth router has no corresponding route. The identity-authority function is granted to runtime but lacks a wrapper in the inspected persistence file. Whether other modules invoke these methods/functions is not yet exhaustively established. Caller trace and independent review remain open; no permissions changed.
+
+## CI #1500 and security caller trace — 2026-10-23
+
+CI #1500 passed on prior PR head `bc0ba1b1d0f53ecbdbd4d0127b791d4237b31533`. Targeted source review found persistence wrappers invoking password-change and account-disable SECURITY DEFINER functions, no matching route in the inspected auth router, and a runtime-granted identity-authority function with no wrapper in the inspected persistence class. GitHub search returned no indexed matches, which does not establish caller absence. Full source-wide trace and independent review remain release gates. No SQL grants or infrastructure changed. Dedicated governed Render DB qualification remains blocked.
+
+## CI #1503 and remaining security gates — 2026-10-23
+
+CI #1503 passed on PR head `903d35446dbffbb2e2975cc60b46fb1c211816f2`, covering build, disposable migrations, QuoteFlow reset HTTP qualification, DB-backed tests, migration-audit policy, and runtime-boundary verification. The PR's shared auth-persistence wiring is now exercised by tests.
+
+Still open: complete source-wide caller trace for `auth_change_password`, `auth_disable_account`, and `auth_read_connect_identity_authority`; independent security review of SECURITY DEFINER grants/identity binding; governed isolated Render database qualification. No grant, production, or Render configuration changes were made. Recheck CI after these handover edits produce a new commit.
+
+
+## Current-head CI #1506 — 2026-10-23
+
+CI #1506 passed on PR head `712d989a46693ea296df23a077bc6862317215b0`. Dedicated governed Render DB qualification and independent security review remain open. The full caller trace across 174 non-test TypeScript files is not complete; do not infer absence of callers from targeted results. No database grants or infrastructure changed.
+
+## SECURITY DEFINER trust boundary — 2026-10-23
+
+CI #1509 passed on PR head `7d97d2a511993707678e342007ab59f405ada0ef`. Review of the migration SQL confirms three runtime-executable SECURITY DEFINER functions accept account identifiers from callers; their SQL bodies do not bind those IDs to a verified actor session. The auth router inspected has no public password-change/disable route; the identity-authority function has no wrapper in the inspected persistence file. This is a concrete independent-review item, not a confirmed exploit. Complete the source-wide callsite trace and decide whether runtime grants are required before any privilege change. Governed isolated Render DB qualification remains open.
+
+## CI #1512 — expanded targeted source review
+
+CI #1512 passed on PR head `db6f1d9d224b0427957d8081f04be3cd9163fbed`. Expanded targeted reads of auth context/service, Connect authorization binding, relevant routers, and QuoteFlow reset completion found no direct TypeScript call to password-change/account-disable persistence wrappers or wrapper for the identity-authority SQL function in the files inspected. This is not exhaustive across the 174 non-test TypeScript files and migrations. Full caller trace, independent SECURITY DEFINER review, and dedicated governed Render DB qualification remain open. No grants or infrastructure changed.
+
+## Checkpoint #1515 — 2026-10-23
+
+CI #1515 passed on PR head `5eff3eaff0d72695a644e0ac4814b7824e2df1c3`: build, disposable PostgreSQL migrations, business identity + QuoteFlow reset HTTP qualification, DB-backed tests, migration audit policy, and runtime boundary verification all succeeded.
+
+Current auth router passes `dependencies.authPersistence` into lazy `createGhmAuthService`, confirming shared persistence wiring. Password-change/account-disable wrappers invoke SECURITY DEFINER functions granted to runtime; no matching public route was found in the inspected auth router. The identity-authority SQL function is runtime-granted with no wrapper found in the inspected persistence class. This is not an exhaustive callsite proof. Remaining gates: full caller trace, independent SECURITY DEFINER trust-boundary review, dedicated governed Render DB qualification. No grant or infrastructure changes.
+
+## CI #1518 checkpoint — 2026-10-23
+
+CI #1518 passed on PR head `bfe740630d514bedb331dff7672cbe1a3b4e57ef`. All quality checks including disposable PostgreSQL, reset HTTP qualification, DB-backed tests, migration audit policy, and runtime boundary verification succeeded.
+
+Remaining release gates: complete caller trace for the three runtime-executable SECURITY DEFINER functions, independent review of grants/identity binding, and governed isolated Render DB qualification. No grants or infrastructure changed. Recheck CI after this handover update creates a new head.
+
+## CI #1521 verified — 2026-10-24
+
+CI #1521 passed on head `288c5971db99534c0f41e48ba3fa2deebe0de919`, including disposable PostgreSQL migrations, business identity/QuoteFlow reset qualification, DB-backed tests, migration audit policy, and runtime-boundary verification.
+
+Full source-wide caller trace remains open: local clone was unavailable because github.com DNS resolution failed, and GitHub code search did not return indexed results. Targeted source findings are not exhaustive. Independent SECURITY DEFINER/grant review and dedicated governed Render DB qualification remain release gates. No grants or infrastructure changed; verify CI after this handover update creates a new head.
+
+## 2026-10-23 — caller-trace continuation
+
+On PR #183 head `a74873ef11be01b35a3bca7ccbac02c73e2af823`, the repository tree was enumerated and exact-name code searches were retried for `auth_change_password`, `auth_disable_account`, and `auth_read_connect_identity_authority`; search returned no results, while a broad blob scan exceeded tool-call limits. This does **not** complete the repository-wide trace. Targeted reads reconfirm the two password-change/disable persistence wrappers, no corresponding public route in the inspected auth router, and the runtime grant on the identity-authority SECURITY DEFINER function, which takes a caller-supplied account ID. Treat this as a concrete authorization review item, not a confirmed vulnerability.
+
+Next: complete source + SQL caller mapping using a reliable full-repository checkout or bulk-content access; document caller identity binding and necessity of each runtime grant; obtain independent security review; then resume governed non-production DB qualification when access is authorized. No grants, production, Render settings, secrets, provider activation, or cutover changed. PR #183 remains draft. CI #1524 passed on the previous head; verify a new run after these docs commits.
+
+
+## SQL body trust-boundary follow-up — 2026-10-23
+
+Targeted SQL-body review adds detail but does not close the caller trace: `auth_change_password` changes credentials for its supplied account ID and preserves its supplied session ID without itself binding those IDs to the authenticated actor; `auth_disable_account` disables the supplied account and revokes sessions without an in-function actor/admin check; and `auth_read_connect_identity_authority` reads authority fields for the supplied account ID. These may be intended trusted-runtime primitives, but caller-side identity/privilege enforcement must be demonstrated. `src/auth/ghm-auth-service.ts` has no visible use of password-change/disable wrappers in the inspected source; `src/auth/foundation/persistence.test.ts` does exercise disableAccount as an integration-test caller. No privilege changes are justified by this bounded evidence. Full source/migration trace and independent review remain open.
+
+
+## 2026-10-23 — source/migration caller trace completed for tracked code-like files
+
+At base `843718e34b4ac9ade906c1158327286c859c9a56`, scanned 305 `.ts/.tsx` files (tests included), 77 `.js/.mjs/.cjs/.mts/.cts` files, and all 88 SQL migrations. `auth_change_password` and `auth_disable_account` are defined/granted in the auth runtime migration and called by wrappers in `src/auth/foundation/persistence.ts`, but no production application invocation was found in the scanned code. `disableAccount` has an integration-test call; other method hits are mocks.
+
+Corrected identity-authority caller map: `ghm.auth_read_connect_identity_authority(id)` is called twice in `src/resources/business-identity/repository.ts` (account SELECT projection and profile UPDATE RETURNING). Both paths derive the ID from verified `context.userId` and execute under `withAuthorizedTransaction`; the profile HTTP routes require GHM bearer authentication and registered profile access. The function itself still trusts its ID parameter, so the trusted runtime grant remains part of the boundary. This supersedes the earlier auth-persistence-only note saying no identity-authority caller/wrapper was found.
+
+Independent security review remains required to decide whether the two apparently unused mutation grants should be removed and to assess direct-runtime invocation risk for the authority read. No grants or infrastructure changed. Documentation commits need fresh CI. Dedicated governed non-production Render DB qualification remains blocked by existing access restrictions.
+
+
+## 2026-10-23 — CI recheck and independent review request
+
+CI #1531 (run ID `39877622657`) passed on commit `518c4541b8af589ad101777a12d6b189ce764293`; all quality steps, including disposable-PostgreSQL migration qualification and database-backed tests, succeeded. [CI run](https://github.com/zaidhqdev-sys/GHM/actions/runs/39877622657). Because this note is a later docs commit, verify CI again on the resulting PR head.
+
+No independent security review is recorded. Request an authorized maintainer to assign an independent reviewer for the three SECURITY DEFINER functions and runtime grants. Do not change grants pending that review. Existing governed non-production Render DB qualification remains blocked by access restrictions.
+
+
+## 2026-10-23 — CI #1534 passed; review remains open
+
+CI #1534 (run ID `39877952670`) passed on commit `9f5a10b3b34374046953147e6209c7c3ee47ad8f`. All quality steps succeeded, including disposable PostgreSQL, migration qualification, DB-backed tests, audit-policy tests, and runtime-boundary verification. [CI #1534](https://github.com/zaidhqdev-sys/GHM/actions/runs/39877952670). This documentation append requires a fresh CI check on the new head.
+
+Rechecked PR #183: no submitted review or independent reviewer response is recorded yet. Security review request remains open; no grant changes pending review. Governed non-production Render DB qualification remains blocked by access restrictions.
+
+
+## 2026-10-23 — CI #1537 passed
+
+CI #1537 (run ID `39878195086`) passed on documentation head `3686ba65d70dceaaeaa6a08216e0934f721223d2`. [CI run](https://github.com/zaidhqdev-sys/GHM/actions/runs/39878195086). This register update needs fresh CI verification on the resulting head.
+
+Independent security review is still not submitted. Do not change grants before review; governed non-production Render DB qualification remains blocked by access restrictions. PR #183 remains draft.
+
+
+## 2026-10-23 — CI #1540 passed
+
+CI #1540 (run ID `39878374504`) passed on commit `4f3219fb56b2b502d93ed4e59a036f45bec28015`; all quality steps succeeded, including disposable-PostgreSQL migrations/qualification, DB-backed tests, audit-policy tests, and runtime-boundary verification. [CI #1540](https://github.com/zaidhqdev-sys/GHM/actions/runs/39878374504). This append requires fresh CI verification on the new docs head.
+
+Independent security review is still outstanding. Do not change grants pending review. Governed non-production Render DB qualification remains blocked by access restrictions. PR #183 remains draft; no production or infrastructure changes made.
+
+
+## 2026-10-23 — latest docs-head checks green
+
+Checks on `bb67b0d1356073a9586295926a4b896b48c45ee6` passed: quality workflow run `39878645668` and Cloudflare Pages preview. [Quality job](https://github.com/zaidhqdev-sys/GHM/actions/runs/39878645668/job/120170380742) · [Cloudflare check](https://github.com/zaidhqdev-sys/GHM/runs/120170619258). Preview deployment is not production cutover and does not satisfy governed DB qualification. This register update requires fresh CI on the resulting head.
+
+Independent security review remains outstanding; PR #183 remains draft. Do not change grants pending review. Governed non-production Render DB qualification remains blocked by access restrictions.
+
+
+## 2026-10-23 — CI #1545 passed; review and governed DB gates remain
+
+Quality workflow [run #39878954979](https://github.com/zaidhqdev-sys/GHM/actions/runs/39878954979), job [120171393883](https://github.com/zaidhqdev-sys/GHM/actions/runs/39878954979/job/120171393883), passed on `9860289e833bc610db1ee9a74ad91780f81cc23c`. Disposable PostgreSQL migrations, Business Identity/QuoteFlow qualification, DB-backed tests, migration-audit policy, and runtime-boundary verification passed. Cloudflare Pages check [passed](https://github.com/zaidhqdev-sys/GHM/runs/120171643798), which is preview evidence only.
+
+Still blocked: independent review of `auth_change_password`, `auth_disable_account`, and `auth_read_connect_identity_authority` plus runtime grants; governed isolated Render non-production DB qualification due to existing access restrictions. PR #183 remains draft and no grants were changed. This register update requires fresh CI on the resulting head.
+
+## 2026-10-23 — CI #1548 passed; outstanding release gates unchanged
+
+Quality workflow [run #39879408009](https://github.com/zaidhqdev-sys/GHM/actions/runs/39879408009), job [120172885901](https://github.com/zaidhqdev-sys/GHM/actions/runs/39879408009/job/120172885901), passed on `568e3c6729d772204e58008a2344ee3e01baf951`. Disposable PostgreSQL migrations, Business Identity/QuoteFlow qualification, database-backed tests, migration-audit policy, and runtime-boundary verification all passed.
+
+Still blocked: independent security review of `auth_change_password`, `auth_disable_account`, and `auth_read_connect_identity_authority` plus runtime grants; governed isolated Render non-production DB qualification due to existing access restrictions. PR #183 remains draft and no grants were changed. This register update requires fresh CI on the resulting head.
+
+## 2026-10-23 — CI #1551 passed; review and governed DB gates remain
+
+Quality workflow [run #39879776643](https://github.com/zaidhqdev-sys/GHM/actions/runs/39879776643), job [120174083356](https://github.com/zaidhqdev-sys/GHM/actions/runs/39879776643/job/120174083356), passed on `f2564571d5982a46d3107acd3367aa7e1b16ea09`. Disposable PostgreSQL migrations, Business Identity/QuoteFlow qualification, DB-backed tests, migration-audit policy, and runtime-boundary verification passed. Cloudflare Pages preview check [passed](https://github.com/zaidhqdev-sys/GHM/runs/120174330790).
+
+Outstanding: independent review of `auth_change_password`, `auth_disable_account`, `auth_read_connect_identity_authority`, and runtime grants; governed isolated Render non-production DB qualification due to existing access restrictions. PR #183 remains draft; no grants changed. This register update requires fresh CI on the resulting head.
+
+## 2026-10-23 — CI #1554 passed; release gates unchanged
+
+Quality workflow [run #39879986416](https://github.com/zaidhqdev-sys/GHM/actions/runs/39879986416), job [120174765405](https://github.com/zaidhqdev-sys/GHM/actions/runs/39879986416/job/120174765405), passed on `dbe90e491595e706f1c4fd362dce2455e4464e52`. Disposable PostgreSQL migrations, Business Identity/QuoteFlow qualification, database-backed tests, migration-audit policy, and runtime-boundary verification passed. Cloudflare Pages preview check [passed](https://github.com/zaidhqdev-sys/GHM/runs/120174970239).
+
+Outstanding: independent review of `auth_change_password`, `auth_disable_account`, `auth_read_connect_identity_authority`, and runtime grants; governed isolated Render non-production DB qualification due to existing access restrictions. PR #183 remains draft; no grants changed. This register update requires fresh CI on the resulting head.
+
+## 2026-10-23 — CI #1557 passed; release gates unchanged
+
+Quality workflow [run #39880270795](https://github.com/zaidhqdev-sys/GHM/actions/runs/39880270795), job [120175712480](https://github.com/zaidhqdev-sys/GHM/actions/runs/39880270795/job/120175712480), passed on `7c25c5ef3d8c01b4cfc8167eae7aff0816c33b89`. Disposable PostgreSQL migrations, Business Identity/QuoteFlow qualification, DB-backed tests, migration-audit policy, and runtime-boundary verification passed. Cloudflare Pages preview check [passed](https://github.com/zaidhqdev-sys/GHM/runs/120175932255).
+
+Outstanding: independent review of `auth_change_password`, `auth_disable_account`, `auth_read_connect_identity_authority`, and runtime grants; governed isolated Render non-production DB qualification due to existing access restrictions. PR #183 remains draft; no grants changed. This register update requires fresh CI on the resulting head.
+
+## 2026-10-23 — CI #1560 passed; review gates remain
+
+Quality CI [run #1560](https://github.com/zaidhqdev-sys/GHM/actions/runs/39880723364) ([job details](https://github.com/zaidhqdev-sys/GHM/actions/runs/39880723364/job/120177186734)) passed all required build, disposable-PostgreSQL migration/qualification, database-backed test, migration-audit policy, and runtime-boundary steps on `ce5441ffcc8445c818e7485e4c518074dc8045f1`; the [Cloudflare Pages preview check](https://github.com/zaidhqdev-sys/GHM/runs/120177424421) passed too. Remaining blockers are the independent security review and governed non-production database qualification. Do not change grants or access controls without authorization; no production cutover is implied.
+
+
+## 2026-10-23 — Docs-head checks passed
+
+On `83712fb241cd7d4d56f7f32da390ffe00ca23116`, [quality CI](https://github.com/zaidhqdev-sys/GHM/actions/runs/39881521280) and [Cloudflare Pages](https://github.com/zaidhqdev-sys/GHM/runs/120179840437) both completed successfully. Remaining blockers are independent security review and governed non-production database qualification; no production cutover or grant change is implied.

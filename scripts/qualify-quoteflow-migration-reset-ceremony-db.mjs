@@ -15,6 +15,7 @@ const migratorPool = new Pool({ connectionString: migratorUrl, ...(ssl ? { ssl }
 const runId = randomBytes(16).toString('hex');
 const subject = `qualify-reset-${runId}`;
 const email = `quoteflow-reset-${runId}@example.test`;
+const approvedEmail = `QuoteFlow-Reset-${runId}@example.test`;
 let accountId = null;
 let enrollmentId = null;
 
@@ -46,7 +47,7 @@ try {
 
     const register = await runtime.query(
       'select * from ghm.auth_register_quoteflow_migration_reset_enrollment($1,$2,$3,$4,$5,$6)',
-      [accountId, 'supabase', subject, 'Owner@Example.com', email, `synthetic/${runId}`],
+      [accountId, 'supabase', subject, approvedEmail, email, `synthetic/${runId}`],
     );
     assert.equal(register.rows[0].outcome, 'created');
     enrollmentId = Number(register.rows[0].enrollment_id);
@@ -76,7 +77,7 @@ try {
     );
     assert.equal(completed.rowCount, 1);
     assert.equal(Number(completed.rows[0].account_id), accountId);
-    assert.equal(completed.rows[0].login_email, 'Owner@Example.com');
+    assert.equal(completed.rows[0].login_email, approvedEmail);
 
     const verifier = await migratorPool.connect();
     await verifier.query('set role ghm_schema_owner');
@@ -91,7 +92,7 @@ try {
       [accountId],
     );
     assert.deepEqual(credential.rows[0], {
-      login_email: 'Owner@Example.com',
+      login_email: approvedEmail,
       login_email_normalized: email,
       credential_status: 'active',
     });
