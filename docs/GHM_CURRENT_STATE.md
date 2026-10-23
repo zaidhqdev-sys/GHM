@@ -404,3 +404,8 @@ PR #183 remains draft. Independent review and governed Render DB qualification r
 ## 2026-10-23 — Latest qualification CI checkpoint
 
 Quality CI [run #1560](https://github.com/zaidhqdev-sys/GHM/actions/runs/39880723364) ([job details](https://github.com/zaidhqdev-sys/GHM/actions/runs/39880723364/job/120177186734)) passed on `ce5441ffcc8445c818e7485e4c518074dc8045f1`, including build, isolated least-privilege roles, ephemeral ES256 keys, all migrations on disposable PostgreSQL, Business Identity and QuoteFlow qualification, database-backed tests, migration-audit policy tests, and runtime-boundary verification. The [Cloudflare Pages preview check](https://github.com/zaidhqdev-sys/GHM/runs/120177424421) passed on that head. Still outstanding: independent review of the SECURITY DEFINER grant/caller boundary and governed non-production database qualification. No grant or infrastructure changes were made.
+
+
+## 2026-10-23 — Documentation-head CI and preview recheck
+
+The docs commit `83712fb241cd7d4d56f7f32da390ffe00ca23116` was verified successfully: [quality CI](https://github.com/zaidhqdev-sys/GHM/actions/runs/39881521280) passed all required stages and [Cloudflare Pages](https://github.com/zaidhqdev-sys/GHM/runs/120179840437) passed. This validates the updated docs head in disposable PostgreSQL CI and the preview pipeline only. Independent security review and governed non-production database qualification remain outstanding.

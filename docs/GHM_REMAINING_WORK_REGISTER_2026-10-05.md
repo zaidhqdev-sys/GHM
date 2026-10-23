@@ -534,3 +534,8 @@ Outstanding: independent review of `auth_change_password`, `auth_disable_account
 ## 2026-10-23 — CI #1560 passed; review gates remain
 
 Quality CI [run #1560](https://github.com/zaidhqdev-sys/GHM/actions/runs/39880723364) ([job details](https://github.com/zaidhqdev-sys/GHM/actions/runs/39880723364/job/120177186734)) passed all required build, disposable-PostgreSQL migration/qualification, database-backed test, migration-audit policy, and runtime-boundary steps on `ce5441ffcc8445c818e7485e4c518074dc8045f1`; the [Cloudflare Pages preview check](https://github.com/zaidhqdev-sys/GHM/runs/120177424421) passed too. Remaining blockers are the independent security review and governed non-production database qualification. Do not change grants or access controls without authorization; no production cutover is implied.
+
+
+## 2026-10-23 — Docs-head checks passed
+
+On `83712fb241cd7d4d56f7f32da390ffe00ca23116`, [quality CI](https://github.com/zaidhqdev-sys/GHM/actions/runs/39881521280) and [Cloudflare Pages](https://github.com/zaidhqdev-sys/GHM/runs/120179840437) both completed successfully. Remaining blockers are independent security review and governed non-production database qualification; no production cutover or grant change is implied.
