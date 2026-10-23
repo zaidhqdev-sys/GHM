@@ -464,3 +464,10 @@ At base `843718e34b4ac9ade906c1158327286c859c9a56`, scanned 305 `.ts/.tsx` files
 Corrected identity-authority caller map: `ghm.auth_read_connect_identity_authority(id)` is called twice in `src/resources/business-identity/repository.ts` (account SELECT projection and profile UPDATE RETURNING). Both paths derive the ID from verified `context.userId` and execute under `withAuthorizedTransaction`; the profile HTTP routes require GHM bearer authentication and registered profile access. The function itself still trusts its ID parameter, so the trusted runtime grant remains part of the boundary. This supersedes the earlier auth-persistence-only note saying no identity-authority caller/wrapper was found.
 
 Independent security review remains required to decide whether the two apparently unused mutation grants should be removed and to assess direct-runtime invocation risk for the authority read. No grants or infrastructure changed. Documentation commits need fresh CI. Dedicated governed non-production Render DB qualification remains blocked by existing access restrictions.
+
+
+## 2026-10-23 — CI recheck and independent review request
+
+CI #1531 (run ID `39877622657`) passed on commit `518c4541b8af589ad101777a12d6b189ce764293`; all quality steps, including disposable-PostgreSQL migration qualification and database-backed tests, succeeded. [CI run](https://github.com/zaidhqdev-sys/GHM/actions/runs/39877622657). Because this note is a later docs commit, verify CI again on the resulting PR head.
+
+No independent security review is recorded. Request an authorized maintainer to assign an independent reviewer for the three SECURITY DEFINER functions and runtime grants. Do not change grants pending that review. Existing governed non-production Render DB qualification remains blocked by access restrictions.
