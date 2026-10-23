@@ -334,3 +334,10 @@ Scanned all tracked `.ts/.tsx` (305 files including tests), `.js/.mjs/.cjs/.mts/
 - `auth_read_connect_identity_authority` has exactly two source callsites, both in `src/resources/business-identity/repository.ts`: account SELECT projection and profile UPDATE RETURNING. Both use the authenticated `context.userId`. Repository calls run through `withAuthorizedTransaction`; profile HTTP routes use verified GHM bearer middleware and registered profile access. This is the observed caller-side binding; the SECURITY DEFINER function itself still trusts its argument and can be invoked directly by any role retaining EXECUTE.
 
 This supersedes earlier notes suggesting the identity-authority function had no application caller; only the auth persistence class lacked a wrapper. No out-of-repository callers can be ruled out. Independent security review should decide whether to remove the two apparently unused runtime mutation grants and validate the identity-authority read grant; no grants should change before that review. No runtime, production, Render, or secrets changes made. Documentation commits need fresh CI. Governed non-production DB qualification remains blocked.
+
+
+## CI and security-review checkpoint — 2026-10-23
+
+CI run #1531 (run ID `39877622657`) passed on caller-trace head `518c4541b8af589ad101777a12d6b189ce764293`; all quality steps succeeded, including disposable-PostgreSQL migration/qualification, DB-backed tests, migration audit policy tests, and runtime-boundary verification. [Run #1531](https://github.com/zaidhqdev-sys/GHM/actions/runs/39877622657). This result predates this documentation update, so the updated docs head needs fresh CI verification.
+
+No independent security review is recorded in PR #183. Next action: ask repository maintainers to assign an independent reviewer for the bounded SECURITY DEFINER/grant review. No grant changes until that review resolves whether the apparently unused `auth_change_password` and `auth_disable_account` runtime grants are required and validates the direct-runtime invocation boundary for `auth_read_connect_identity_authority`.
