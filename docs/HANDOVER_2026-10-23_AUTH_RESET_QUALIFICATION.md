@@ -190,3 +190,15 @@ Direct source evidence reconfirmed:
 These observations identify a concrete review question, **not a confirmed exploit**: establish every source and SQL caller, how caller identity is authenticated/bound, whether any route/job can supply arbitrary account/session IDs, and whether each runtime EXECUTE grant is necessary. Do not alter grants until the callsite map and independent security review are complete.
 
 The current-head tree and targeted source reads were read-only. No code behavior, grants, database state, production, Render configuration/networking, secrets, provider activation, or cutover was changed. PR #183 remains draft. CI #1524 was green on the prior head `a74873ef11be01b35a3bca7ccbac02c73e2af823`; documentation commits made after that head require a fresh CI result. Remaining gates: (1) exhaustive source/migration caller trace, (2) independent SECURITY DEFINER/grant review, and (3) dedicated governed non-production Render DB qualification when authorized access is available.
+
+
+## SQL body semantics — targeted follow-up, 2026-10-23 00:11Z
+
+Read the relevant SQL bodies in `database/migrations/20260921130000_create_auth_runtime_functions.sql` (lines around the password-change and account-disable definitions), plus application wiring and the persistence integration test. This sharpens the review question:
+
+- `auth_change_password(p_account_id, p_keep_session_id, ...)` delegates to `auth_set_password(p_account_id, ...)`, then revokes all sessions for the supplied account except the supplied keep-session ID. The body does not itself establish that the caller is authenticated as that account, or that `p_keep_session_id` belongs to `p_account_id`.
+- `auth_disable_account(p_account_id)` updates the supplied account to disabled and revokes its sessions. The body does not itself bind the supplied account ID to an authenticated actor or a separate governed administrator authority.
+- `auth_read_connect_identity_authority(p_account_id)` returns identity/authority attributes for the supplied account ID and has no actor/session argument. This may be acceptable behind a trusted server-side boundary, but that boundary and every caller must be demonstrated.
+- `src/http/app.ts` creates one `authPersistence` and injects it into password-reset and QuoteFlow reset services and the auth router. `src/auth/ghm-auth-service.ts` uses the persistence interface for normal registration/login/session flows; the inspected service source contains no use of the password-change or account-disable methods. `src/auth/foundation/persistence.test.ts` does directly exercise `disableAccount` as an integration-test caller; that is test evidence, not an application route.
+
+The SQL functions are deliberately privileged mutation/read boundaries, so a trusted runtime may be the intended caller. The unresolved issue is whether that trust is adequately enforced at every callsite and whether each runtime grant is necessary. This targeted inspection still does not replace an exhaustive repository-wide source/migration caller map or independent review. No grant change is recommended from this evidence alone.
