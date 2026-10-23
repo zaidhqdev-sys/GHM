@@ -165,3 +165,12 @@ The three docs are being updated now, producing a new head that will require a f
 Verified CI [run #39874483294 / #1518](https://github.com/zaidhqdev-sys/GHM/actions/runs/39874483294) passed on PR head `bfe740630d514bedb331dff7672cbe1a3b4e57ef`. The quality job completed successfully: build, all migrations on disposable PostgreSQL, business identity and QuoteFlow reset HTTP qualification, DB-backed test suite, migration-audit policy, and runtime-boundary verification.
 
 No code or privilege changes were made in this checkpoint. The complete source-wide callsite trace for `auth_change_password`, `auth_disable_account`, and `auth_read_connect_identity_authority` remains open; prior targeted file inspections are not proof of no callers. Independent review of SECURITY DEFINER grants/trust boundaries and dedicated governed Render DB qualification also remain open. This documentation update creates a newer commit and requires a new CI check for that head. PR #183 stays draft; production, Render settings, and secrets remain unchanged.
+
+
+## CI #1521 confirmed green — 2026-10-24
+
+Verified current head `288c5971db99534c0f41e48ba3fa2deebe0de919` has successful [CI run #1521](https://github.com/zaidhqdev-sys/GHM/actions/runs/39874751091). The quality job completed all steps successfully: build, disposable PostgreSQL migration application, business identity and QuoteFlow reset qualification, required database-backed test suite, migration audit policy, and runtime-boundary verification.
+
+Attempted to obtain a local checkout for a complete source/migration grep, but this environment cannot resolve github.com; the repository API's code search returns no results and its index status is unavailable. Therefore a true exhaustive source-wide callsite trace cannot be claimed from this session. Bounded direct reads still show persistence wrappers for `auth_change_password` and `auth_disable_account`, no public route in the inspected auth router, and no wrapper for `auth_read_connect_identity_authority` in the inspected persistence class. The SQL functions accept caller-supplied account/session identifiers and are executable by `ghm_runtime`; keep this as an independent-review gate. Do not alter grants until full callsites and intended runtime trust model are established.
+
+This doc update creates a newer head and therefore needs a fresh CI check. PR #183 remains draft. Dedicated governed Render DB qualification remains blocked by existing access restrictions. No SQL grants, production, Render configuration, or secrets changed.
