@@ -307,3 +307,9 @@ Current auth router lazily calls `createGhmAuthService(dependencies.authPersiste
 CI [#1518](https://github.com/zaidhqdev-sys/GHM/actions/runs/39874483294) passed on PR head `bfe740630d514bedb331dff7672cbe1a3b4e57ef`: build, disposable PostgreSQL migrations, business identity + QuoteFlow reset HTTP qualification, DB-backed tests, migration audit policy, and runtime boundary checks succeeded.
 
 The full source-wide caller trace for `auth_change_password`, `auth_disable_account`, and `auth_read_connect_identity_authority` remains incomplete. Targeted findings do not prove absence of callers. Independent SECURITY DEFINER review and dedicated governed Render DB qualification remain open. No grant or infrastructure changes made.
+
+## CI #1521 — current head passed
+
+CI [#1521](https://github.com/zaidhqdev-sys/GHM/actions/runs/39874751091) passed on head `288c5971db99534c0f41e48ba3fa2deebe0de919`. Build, disposable PostgreSQL migrations, business identity and QuoteFlow reset qualification, database-backed tests, migration audit policy, and runtime boundary verification succeeded.
+
+A local checkout attempt failed because this environment could not resolve github.com; repository code search returned no matches and index status is unavailable. Therefore the full source-wide caller trace is not complete. Bounded direct inspection continues to identify runtime-executable SECURITY DEFINER functions accepting caller-supplied account/session identifiers, with no corresponding public auth route found in the inspected router. Independent review and full caller trace remain open. No grants or infrastructure changed.
