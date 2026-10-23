@@ -324,3 +324,13 @@ No grants or infrastructure changed. Do not adjust grants before the exhaustive 
 ## SQL body trust-boundary follow-up — 2026-10-23
 
 Targeted SQL-body review adds detail but does not close the caller trace: `auth_change_password` changes credentials for its supplied account ID and preserves its supplied session ID without itself binding those IDs to the authenticated actor; `auth_disable_account` disables the supplied account and revokes sessions without an in-function actor/admin check; and `auth_read_connect_identity_authority` reads authority fields for the supplied account ID. These may be intended trusted-runtime primitives, but caller-side identity/privilege enforcement must be demonstrated. `src/auth/ghm-auth-service.ts` has no visible use of password-change/disable wrappers in the inspected source; `src/auth/foundation/persistence.test.ts` does exercise disableAccount as an integration-test caller. No privilege changes are justified by this bounded evidence. Full source/migration trace and independent review remain open.
+
+
+## Repository-wide source/migration caller trace — 2026-10-23
+
+Scanned all tracked `.ts/.tsx` (305 files including tests), `.js/.mjs/.cjs/.mts/.cts` (77 files), and `.sql` migration (88 files) at baseline `843718e34b4ac9ade906c1158327286c859c9a56` for the three SQL names and the password-change/disable wrapper methods.
+
+- `auth_change_password` and `auth_disable_account` appear in their migration definitions/grants and in the two wrappers in `src/auth/foundation/persistence.ts`; no production application callsite was found. The disable wrapper is exercised by an integration test; other test hits are interface mocks.
+- `auth_read_connect_identity_authority` has exactly two source callsites, both in `src/resources/business-identity/repository.ts`: account SELECT projection and profile UPDATE RETURNING. Both use the authenticated `context.userId`. Repository calls run through `withAuthorizedTransaction`; profile HTTP routes use verified GHM bearer middleware and registered profile access. This is the observed caller-side binding; the SECURITY DEFINER function itself still trusts its argument and can be invoked directly by any role retaining EXECUTE.
+
+This supersedes earlier notes suggesting the identity-authority function had no application caller; only the auth persistence class lacked a wrapper. No out-of-repository callers can be ruled out. Independent security review should decide whether to remove the two apparently unused runtime mutation grants and validate the identity-authority read grant; no grants should change before that review. No runtime, production, Render, or secrets changes made. Documentation commits need fresh CI. Governed non-production DB qualification remains blocked.
