@@ -499,3 +499,10 @@ Independent security review is still outstanding. Do not change grants pending r
 Checks on `bb67b0d1356073a9586295926a4b896b48c45ee6` passed: quality workflow run `39878645668` and Cloudflare Pages preview. [Quality job](https://github.com/zaidhqdev-sys/GHM/actions/runs/39878645668/job/120170380742) · [Cloudflare check](https://github.com/zaidhqdev-sys/GHM/runs/120170619258). Preview deployment is not production cutover and does not satisfy governed DB qualification. This register update requires fresh CI on the resulting head.
 
 Independent security review remains outstanding; PR #183 remains draft. Do not change grants pending review. Governed non-production Render DB qualification remains blocked by access restrictions.
+
+
+## 2026-10-23 — CI #1545 passed; review and governed DB gates remain
+
+Quality workflow [run #39878954979](https://github.com/zaidhqdev-sys/GHM/actions/runs/39878954979), job [120171393883](https://github.com/zaidhqdev-sys/GHM/actions/runs/39878954979/job/120171393883), passed on `9860289e833bc610db1ee9a74ad91780f81cc23c`. Disposable PostgreSQL migrations, Business Identity/QuoteFlow qualification, DB-backed tests, migration-audit policy, and runtime-boundary verification passed. Cloudflare Pages check [passed](https://github.com/zaidhqdev-sys/GHM/runs/120171643798), which is preview evidence only.
+
+Still blocked: independent review of `auth_change_password`, `auth_disable_account`, and `auth_read_connect_identity_authority` plus runtime grants; governed isolated Render non-production DB qualification due to existing access restrictions. PR #183 remains draft and no grants were changed. This register update requires fresh CI on the resulting head.
