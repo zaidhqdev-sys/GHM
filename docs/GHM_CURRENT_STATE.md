@@ -341,3 +341,10 @@ This supersedes earlier notes suggesting the identity-authority function had no 
 CI run #1531 (run ID `39877622657`) passed on caller-trace head `518c4541b8af589ad101777a12d6b189ce764293`; all quality steps succeeded, including disposable-PostgreSQL migration/qualification, DB-backed tests, migration audit policy tests, and runtime-boundary verification. [Run #1531](https://github.com/zaidhqdev-sys/GHM/actions/runs/39877622657). This result predates this documentation update, so the updated docs head needs fresh CI verification.
 
 No independent security review is recorded in PR #183. Next action: ask repository maintainers to assign an independent reviewer for the bounded SECURITY DEFINER/grant review. No grant changes until that review resolves whether the apparently unused `auth_change_password` and `auth_disable_account` runtime grants are required and validates the direct-runtime invocation boundary for `auth_read_connect_identity_authority`.
+
+
+## CI #1534 / independent-review status — 2026-10-23
+
+CI #1534 (run ID `39877952670`) passed on `9f5a10b3b34374046953147e6209c7c3ee47ad8f`, including build, disposable-PostgreSQL migrations and qualification, required DB-backed tests, migration audit policy tests, and runtime-boundary verification. [Run #1534](https://github.com/zaidhqdev-sys/GHM/actions/runs/39877952670). This result predates this documentation append, so verify CI on the resulting updated head.
+
+PR #183 currently has no submitted review and no independent-review response recorded to the request in the PR discussion. Security review is still a hard gate; no grant changes are made. PR remains draft; governed non-production Render DB qualification remains blocked by existing access restrictions.
