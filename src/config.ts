@@ -28,15 +28,11 @@ const parseOrigins = (value: string): string[] => {
 };
 
 const hasStorageConfiguration = [
-  "STORAGE_PROVIDER",
   "STORAGE_ENDPOINT",
   "STORAGE_REGION",
   "STORAGE_BUCKET",
   "STORAGE_ACCESS_KEY_ID",
   "STORAGE_SECRET_ACCESS_KEY",
-  "STORAGE_FORCE_PATH_STYLE",
-  "STORAGE_UPLOAD_GRANT_TTL_SECONDS",
-  "STORAGE_DOWNLOAD_GRANT_MAX_TTL_SECONDS",
 ].some((name) => Boolean(process.env[name]?.trim()));
 
 export const config = Object.freeze({
