@@ -88,3 +88,20 @@ A request-log query for `/healthz` returned no matching records, and the metrics
 1. If investigating the 00:54 startup further, inspect Render dashboard Events and instance/lifecycle details around `2026-10-24 00:54 UTC`; the API event history queried so far does not identify a trigger.
 2. Do not restart/redeploy, rotate credentials, alter grants, or run migrations just to address the unexplained startup. The evidence currently shows the app is listening and the health endpoint returns OK.
 3. Preserve production/sandbox separation and keep all secrets out of handover notes and chat logs.
+
+
+## Follow-up investigation — 2026-10-24 13:53 UTC
+
+A second read-only Render inspection was performed after the initial handover was committed.
+
+- Service metadata still reports `autoDeploy: no`, `suspended: not_suspended`, the same service ID, and the same latest recorded deployment `dep-dbdvm6rncjis73dlnh9g`.
+- Event history from 00:40–01:10 UTC returned no events. Event history from 00:26 through 13:53 UTC showed only the 00:26 successful deployment start/end; no restart, server failure, or additional deployment event was returned.
+- The queried app logs for 00:40–01:10 UTC contained no warning/error entries.
+- App and request logs for 12:50–13:53 UTC returned no entries, including the `/healthz` request-log query. This is inconclusive: absence of logs is not proof that the service is down or healthy.
+- Attempting to open the health URL through the web inspection path was not accessible there. The earlier user-reported direct response `{"status":"ok"}` remains the last positive endpoint observation, at approximately 00:58 UTC.
+
+**Conclusion unchanged:** the 00:54 UTC process startup is confirmed, but its trigger remains unknown in the available Render event history. No evidence surfaced of a subsequent deployment or reported service failure. This follow-up was read-only; no deploy, restart, configuration, credential, or database changes were made.
+
+### Next action
+
+If current availability needs confirmation, request `https://ghm-internal-runtime.onrender.com/healthz` directly in a browser or from an approved external health monitor and record the timestamp/status. For the 00:54 trigger, check the Render dashboard's instance/lifecycle details or Render support; the service event API and log queries above did not expose a cause. Do not rotate credentials or run migrations based on this unresolved startup alone.
