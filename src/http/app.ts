@@ -382,7 +382,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   app.use(express.json({ limit: '1mb' }));
 
   if (config.storage) {
-    registerStorageRoutes(app, createStorageProvider(config.storage), resourceAuthMiddleware);
+    registerStorageRoutes(app, createStorageProvider(config.storage), resourceAuthMiddleware, config.storage.uploadGrantTtlSeconds);
   }
 
   app.get('/', (_req: Request, res: Response) => {
