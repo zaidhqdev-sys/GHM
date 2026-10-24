@@ -197,3 +197,12 @@ Recorded from the operator-provided inventories in chat. This section records **
 - The repository's storage configuration contract in `src/storage/config.ts` names these variables: `STORAGE_PROVIDER`, `STORAGE_ENDPOINT`, `STORAGE_REGION`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`, and optional `STORAGE_FORCE_PATH_STYLE`, `STORAGE_UPLOAD_URL_TTL_SECONDS`, `STORAGE_DOWNLOAD_URL_TTL_SECONDS`. The configuration module alone does not establish which deployed service currently invokes the storage integration.
 - Before adding variables, verify the Cloudflare R2 bucket/account endpoint and intended service ownership, then confirm the application's deployed upload/download path and required URL-signing behavior. Add only the variables needed by the owning service through Render's environment settings.
 - Do not put access-key secrets in this handover, source control, or chat. After integration, run a controlled upload/download test and verify bucket permissions and signed-URL behavior.
+
+## Architecture clarification — production vs. sandbox — recorded 2026-10-24 15:06 UTC
+
+The operator clarified the intended service/database layout; this section supersedes any ambiguity in earlier notes about ownership or sandbox database separation:
+
+- **Production:** `GHM-Internal-Runtime` is the production runtime and uses the production GHM DB. Cloudflare R2 storage credentials are intended to live in this production service when the integration is ready.
+- **Sandbox testing:** `GHM PayFast Sandbox Runtime` and `GHM Identity Qualification` are separate services that share the same sandbox database, `ghm_payfast_sandbox_db`. Identity Qualification was created to separate qualification/testing work from the PayFast sandbox runtime at the service level; it was not intended to introduce a separate database.
+- Do not treat the two sandbox services' shared database as an unresolved design choice, and do not create or configure another database based on the earlier caution.
+- R2 credentials have not yet been added to any Render service. Do not copy sandbox payment credentials into production. No Render environment configuration was changed by recording this clarification.
