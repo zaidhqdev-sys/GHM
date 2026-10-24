@@ -119,3 +119,73 @@ A further read-only check was made to establish whether there was a newer deploy
 - The last positive endpoint observation remains the user's earlier direct check returning `{"status":"ok"}` around 00:58 UTC.
 
 **Current conclusion:** no newer deployment or failure event was found, but current external health could not be independently verified from this environment. The 00:54 UTC startup trigger remains unresolved. No production or Render settings were changed. To close the health check, open `https://ghm-internal-runtime.onrender.com/healthz` directly in a browser or query it from an approved external monitor, then record the timestamp, HTTP status, and response. For the startup trigger, use Render dashboard instance/lifecycle details or Render support if the dashboard exposes no additional event. Do not restart/redeploy or change database credentials based on the current evidence alone.
+
+## Render environment-variable inventory — recorded 2026-10-24 14:50 UTC
+
+Recorded from the operator-provided inventories in chat. This section records **variable names and safe, non-secret connection-target metadata only**. It deliberately excludes passwords, private-key contents, token/pepper values, merchant keys, passphrases, invite codes, and complete connection URLs. Treat the Render dashboard as the source of truth for current values.
+
+### GHM-Internal-Runtime
+
+- `CORS_ORIGINS`
+- `DATABASE_SSL`
+- `DATABASE_URL` — PostgreSQL target: database `ghm_db`, runtime user `ghm_runtime`, production Postgres ID `dpg-dag0sdtbedkc7389vi2g-a` (Frankfurt).
+- `GHM_AUTH_TOKEN_PEPPER`
+- `GHM_JWT_ES256_KID`
+- `GHM_JWT_ES256_PRIVATE_KEY_PEM`
+- `GHM_JWT_ES256_PUBLIC_KEY_PEM`
+- `GHM_MIGRATOR_DATABASE_URL` — **operator confirms this was the later addition to GHM-Internal-Runtime**; migration connection is separate from the runtime `DATABASE_URL`.
+- `INVITE_CODE`
+- `JWT_SECRET` — legacy variable, noted as legacy by operator.
+- `NODE_ENV`
+- `TRUST_PROXY`
+
+### GHM PayFast Sandbox Runtime
+
+- `CORS_ORIGINS`
+- `DATABASE_SSL`
+- `DATABASE_URL` — PostgreSQL target: database `ghm_payfast_sandbox_db`, runtime user `ghm_runtime`, sandbox Postgres ID `dpg-db4416vlk1mc73eocug0-a`.
+- `GHM_AUTH_TOKEN_PEPPER`
+- `GHM_JWT_ES256_KID`
+- `GHM_JWT_ES256_PRIVATE_KEY_PEM`
+- `GHM_JWT_ES256_PUBLIC_KEY_PEM`
+- `GHM_MIGRATOR_DATABASE_URL` — PostgreSQL target: database `ghm_payfast_sandbox_db`, migration user `ghm_migrator`, sandbox Postgres ID `dpg-db4416vlk1mc73eocug0-a`.
+- `GHM_QUALIFICATION_DATABASE_NAME` — value reported: `ghm_payfast_sandbox_db`.
+- `INVITE_CODE`
+- `NODE_ENV`
+- `PAYFAST_CANCEL_URL`
+- `PAYFAST_ENVIRONMENT`
+- `PAYFAST_MERCHANT_ID`
+- `PAYFAST_MERCHANT_KEY`
+- `PAYFAST_NOTIFY_URL`
+- `PAYFAST_PASSPHRASE`
+- `PAYFAST_RETURN_URL`
+
+### GHM Identity Qualification
+
+- `CORS_ORIGINS`
+- `DATABASE_SSL`
+- `DATABASE_URL` — PostgreSQL target reported as database `ghm_payfast_sandbox_db`, runtime user `ghm_runtime`, sandbox Postgres ID `dpg-db4416vlk1mc73eocug0-a`.
+- `GHM_AUTH_TOKEN_PEPPER`
+- `GHM_JWT_ES256_KID`
+- `GHM_JWT_ES256_PRIVATE_KEY_PEM`
+- `GHM_JWT_ES256_PUBLIC_KEY_PEM`
+- `GHM_MIGRATOR_DATABASE_URL` — PostgreSQL target reported as database `ghm_payfast_sandbox_db`, migration user `ghm_migrator`, with a credential different from the runtime credential; operator supplied a Frankfurt fully qualified hostname for this connection.
+- `GHM_NONPRODUCTION_DATABASE_NAME` — value not included in the inventory message.
+- `GHM_QUALIFICATION_DATABASE_NAME` — value not included in the inventory message.
+- `INVITE_CODE`
+- `NODE_ENV`
+- `PAYFAST_CANCEL_URL`
+- `PAYFAST_ENVIRONMENT`
+- `PAYFAST_MERCHANT_ID`
+- `PAYFAST_MERCHANT_KEY`
+- `PAYFAST_NOTIFY_URL`
+- `PAYFAST_PASSPHRASE`
+- `PAYFAST_RETURN_URL`
+
+### Reconciliation notes
+
+- The three lists above are the operator-provided inventories; do not silently normalize one service to another or remove variables because they appear redundant.
+- The only subsequent change explicitly identified by the operator is adding `GHM_MIGRATOR_DATABASE_URL` to `GHM-Internal-Runtime`. Its inclusion above records that update; do not infer any other environment changes.
+- The Identity Qualification service's runtime and migrator URLs were both reported as targeting `ghm_payfast_sandbox_db`, while using different credentials. Confirm intended routing against the Render dashboard before making any change; this handover entry is documentation, not approval to modify configuration.
+- Variable names are not proof that each value is valid or that each feature is fully wired. No Render variables were read back or changed as part of recording this inventory.
+
