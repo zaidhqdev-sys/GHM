@@ -235,3 +235,5 @@ Read-only Render Postgres queries were run against the actual production databas
 - Queries were read-only. No migrations, data, credentials, or Render configuration were changed.
 
 **Production enablement remains blocked:** the API storage repository calls the above canonical database lifecycle routines, so the storage migration must be located/reviewed and applied through the established migration process before enabling R2. Do not add production R2 credentials or enable the storage routes until that schema/privilege prerequisite is satisfied. This is a verified live preflight result, not an assumption based on source code.
+
+- Follow-up source review on the default `main` branch searched for the canonical table and lifecycle function definitions and found no checked-in migration definition. The PR therefore must not be merged as production-ready until the schema migration is located or authored, reviewed against the database security conventions, and validated in qualification before production rollout.
