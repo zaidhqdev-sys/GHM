@@ -79,8 +79,10 @@ export const registerStorageRoutes = (
       const objectId = objectIdParam(req.params.objectId);
       if (!context) { res.status(401).json({ error: "unauthorized" }); return; }
       if (!objectId) { res.status(400).json({ error: "invalid_request" }); return; }
+      const metadata = await createPostgresStorageMetadataStore(context).getById(objectId);
+      if (!metadata) { res.status(404).json({ error: "not_found" }); return; }
       const record = await serviceFor(context).completeUpload({
-        caller: { userId: String(context.userId), businessId: String(req.body?.businessId ?? "") },
+        caller: { userId: String(context.userId), businessId: metadata.businessId },
         objectId,
       });
       res.status(200).json({ object: record });
