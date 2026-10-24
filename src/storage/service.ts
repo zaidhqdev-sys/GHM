@@ -95,7 +95,12 @@ export function createStorageService(deps: {
   provider: StorageProvider;
   metadata: StorageMetadataStore;
   authorization: StorageAuthorization;
+  uploadGrantTtlSeconds?: number;
 }): StorageService {
+  const uploadGrantTtlSeconds = deps.uploadGrantTtlSeconds ?? 900;
+  if (!Number.isSafeInteger(uploadGrantTtlSeconds) || uploadGrantTtlSeconds < 1 || uploadGrantTtlSeconds > 3600) {
+    throw new Error("invalid storage upload grant expiry");
+  }
   return {
     async createUpload(input) {
       const policy = storagePolicyFor(input.objectClass);
@@ -126,7 +131,7 @@ export function createStorageService(deps: {
           key: providerKey,
           contentType: input.contentType,
           byteSize: input.byteSize,
-          expiresInSeconds: 900,
+          expiresInSeconds: uploadGrantTtlSeconds,
         });
         return { objectId: metadata.id, providerKey, grant };
       } catch (error) {
