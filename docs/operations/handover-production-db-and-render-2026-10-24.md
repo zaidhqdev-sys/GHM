@@ -225,3 +225,13 @@ Implementation is available for review in draft PR [#184 — Wire authenticated 
 - GitHub Actions CI for commit `a483e48ee2c5c062006414b28e7db50805a68116` completed successfully: build, test suite, migration audit policy tests, and runtime-boundary verification passed.
 - This is not yet merged or deployed. Before enabling in production, review the PR and confirm the existing storage schema/functions and privileges are present in the production GHM DB; then configure the Cloudflare R2 environment variables only on `GHM-Internal-Runtime`, validate R2 bucket CORS for the intended web origins, and run the live-provider qualification using a disposable object.
 - No Render environment settings, database schema, or live storage credentials were changed.
+
+## Live database preflight — 2026-10-24 15:22 UTC
+
+Read-only Render Postgres queries were run against the actual production database and PayFast sandbox database using the configured Render workspace:
+
+- Production `ghm_db` (Postgres service ID `dpg-dag0sdtbedkc7389vi2g-a`): `ghm.storage_object` does **not** exist; none of the five expected lifecycle routines (`storage_create_pending`, `storage_mark_available`, `storage_mark_deletion_pending`, `storage_mark_deleted`, `storage_get_object`) were found in schema `ghm`.
+- Sandbox `ghm_payfast_sandbox_db` (service ID `dpg-db4416vlk1mc73eocug0-a`): same result; storage table absent and lifecycle routine count is zero.
+- Queries were read-only. No migrations, data, credentials, or Render configuration were changed.
+
+**Production enablement remains blocked:** the API storage repository calls the above canonical database lifecycle routines, so the storage migration must be located/reviewed and applied through the established migration process before enabling R2. Do not add production R2 credentials or enable the storage routes until that schema/privilege prerequisite is satisfied. This is a verified live preflight result, not an assumption based on source code.
