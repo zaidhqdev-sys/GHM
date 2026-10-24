@@ -206,3 +206,11 @@ The operator clarified the intended service/database layout; this section supers
 - **Sandbox testing:** `GHM PayFast Sandbox Runtime` and `GHM Identity Qualification` are separate services that share the same sandbox database, `ghm_payfast_sandbox_db`. Identity Qualification was created to separate qualification/testing work from the PayFast sandbox runtime at the service level; it was not intended to introduce a separate database.
 - Do not treat the two sandbox services' shared database as an unresolved design choice, and do not create or configure another database based on the earlier caution.
 - R2 credentials have not yet been added to any Render service. Do not copy sandbox payment credentials into production. No Render environment configuration was changed by recording this clarification.
+
+## R2 integration code-path review — recorded 2026-10-24 15:10 UTC
+
+Repository review confirms the S3-compatible storage building blocks already exist: `src/storage/config.ts`, `src/storage/s3-provider.ts`, `src/storage/factory.ts`, `src/storage/service.ts`, and `src/storage/repository.ts`. The configuration supports an HTTPS custom endpoint, credentials, bucket/region, path-style addressing, and bounded signed-grant TTLs. The environment template already lists the `STORAGE_*` variables.
+
+**Important deployment gap:** the current `src/http/app.ts` does not import or register the storage service/router, and `src/config.ts` does not load storage configuration. Therefore, adding R2 credentials to Render alone would not connect the feature to the running API. The provider/service/repository code exists, but the application-level request path is not wired in the reviewed app entry point.
+
+Next implementation work is to complete and test the authenticated storage HTTP path, construct the provider and metadata store from runtime config, connect the existing authorization and database storage functions, and verify the relevant schema/migration is present and deployed. Only after this code path is complete should R2 settings be added to **GHM-Internal-Runtime**. Do not add storage credentials to either sandbox service. This review did not change application code or Render settings, and no secret values are recorded here.
