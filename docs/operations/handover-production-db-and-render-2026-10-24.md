@@ -214,3 +214,14 @@ Repository review confirms the S3-compatible storage building blocks already exi
 **Important deployment gap:** the current `src/http/app.ts` does not import or register the storage service/router, and `src/config.ts` does not load storage configuration. Therefore, adding R2 credentials to Render alone would not connect the feature to the running API. The provider/service/repository code exists, but the application-level request path is not wired in the reviewed app entry point.
 
 Next implementation work is to complete and test the authenticated storage HTTP path, construct the provider and metadata store from runtime config, connect the existing authorization and database storage functions, and verify the relevant schema/migration is present and deployed. Only after this code path is complete should R2 settings be added to **GHM-Internal-Runtime**. Do not add storage credentials to either sandbox service. This review did not change application code or Render settings, and no secret values are recorded here.
+
+## R2 runtime wiring implementation — 2026-10-24 15:15 UTC
+
+Implementation is available for review in draft PR [#184 — Wire authenticated storage API for Cloudflare R2](https://github.com/zaidhqdev-sys/GHM/pull/184), branch `feat/cloudflare-r2-runtime-wiring`.
+
+- Added authenticated API routes for business-logo upload grants, upload completion, signed access grants, and deletion. Upload bytes are sent directly to the S3-compatible provider using the short-lived signed URL; completion verifies provider content type and byte size before metadata becomes available.
+- Added a tenant-aware authorization adapter using existing business membership transactions and the existing storage metadata lifecycle functions.
+- Runtime wiring is conditional: if storage credentials are absent, storage routes remain disabled and the API can start as before. If credentials are partially supplied, configuration fails closed instead of silently enabling a broken integration.
+- GitHub Actions CI for commit `a483e48ee2c5c062006414b28e7db50805a68116` completed successfully: build, test suite, migration audit policy tests, and runtime-boundary verification passed.
+- This is not yet merged or deployed. Before enabling in production, review the PR and confirm the existing storage schema/functions and privileges are present in the production GHM DB; then configure the Cloudflare R2 environment variables only on `GHM-Internal-Runtime`, validate R2 bucket CORS for the intended web origins, and run the live-provider qualification using a disposable object.
+- No Render environment settings, database schema, or live storage credentials were changed.
