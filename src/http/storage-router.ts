@@ -5,9 +5,6 @@ import type { StorageProvider } from "../storage/provider.js";
 import { createStorageService } from "../storage/service.js";
 import { createPostgresStorageMetadataStore } from "../storage/repository.js";
 import { createPostgresStorageAuthorization } from "../storage/authorization-adapter.js";
-import { config } from "../config.js";
-
-const storageUploadGrantTtlSeconds = config.storage?.uploadGrantTtlSeconds ?? 900;
 
 const positiveInteger = (value: unknown): number | null => {
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 1) return null;
@@ -42,12 +39,13 @@ export const registerStorageRoutes = (
   app: Express,
   provider: StorageProvider,
   authMiddleware: RequestHandler = requireAuth,
+  uploadGrantTtlSeconds = 900,
 ): void => {
   const serviceFor = (context: AuthContext) => createStorageService({
     provider,
     metadata: createPostgresStorageMetadataStore(context),
     authorization: createPostgresStorageAuthorization(context),
-    uploadGrantTtlSeconds: storageUploadGrantTtlSeconds,
+    uploadGrantTtlSeconds,
   });
 
   app.post("/api/v1/storage/business-logos/upload", authMiddleware, async (req: Request, res: Response) => {
