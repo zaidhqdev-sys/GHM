@@ -189,3 +189,11 @@ Recorded from the operator-provided inventories in chat. This section records **
 - The Identity Qualification service's runtime and migrator URLs were both reported as targeting `ghm_payfast_sandbox_db`, while using different credentials. Confirm intended routing against the Render dashboard before making any change; this handover entry is documentation, not approval to modify configuration.
 - Variable names are not proof that each value is valid or that each feature is fully wired. No Render variables were read back or changed as part of recording this inventory.
 
+
+## Cloudflare R2 storage integration status — recorded 2026-10-24 14:57 UTC
+
+- Operator reports that the Cloudflare storage setup has been created, but its credentials have **not** been added to any of the three Render services listed above.
+- Treat this as a known, pending integration task—not as an unexplained difference or a runtime regression. No Render environment variables were changed as part of recording this status.
+- The repository's storage configuration contract in `src/storage/config.ts` names these variables: `STORAGE_PROVIDER`, `STORAGE_ENDPOINT`, `STORAGE_REGION`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`, and optional `STORAGE_FORCE_PATH_STYLE`, `STORAGE_UPLOAD_URL_TTL_SECONDS`, `STORAGE_DOWNLOAD_URL_TTL_SECONDS`. The configuration module alone does not establish which deployed service currently invokes the storage integration.
+- Before adding variables, verify the Cloudflare R2 bucket/account endpoint and intended service ownership, then confirm the application's deployed upload/download path and required URL-signing behavior. Add only the variables needed by the owning service through Render's environment settings.
+- Do not put access-key secrets in this handover, source control, or chat. After integration, run a controlled upload/download test and verify bucket permissions and signed-URL behavior.
