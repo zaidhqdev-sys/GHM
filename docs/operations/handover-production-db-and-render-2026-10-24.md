@@ -105,3 +105,17 @@ A second read-only Render inspection was performed after the initial handover wa
 ### Next action
 
 If current availability needs confirmation, request `https://ghm-internal-runtime.onrender.com/healthz` directly in a browser or from an approved external health monitor and record the timestamp/status. For the 00:54 trigger, check the Render dashboard's instance/lifecycle details or Render support; the service event API and log queries above did not expose a cause. Do not rotate credentials or run migrations based on this unresolved startup alone.
+
+
+## Follow-up — 2026-10-24 13:55 UTC
+
+A further read-only check was made to establish whether there was a newer deploy or lifecycle failure and whether current health could be independently confirmed.
+
+- Render deployment listing still shows `dep-dbdvm6rncjis73dlnh9g` as the latest live deployment, for commit `8376c88cc99db156e9cd3488669ec35e4ed498cf`, started 00:26:05 and finished 00:26:25 UTC. No later deploy appears in the returned list.
+- Filtered service events from 00:00–14:00 UTC returned only the 00:26 deploy-start/deploy-end events; no `server_restarted`, `server_failed`, `server_hardware_failure`, `server_available`, or service suspend/resume event was returned.
+- Render service metadata remains `autoDeploy: no`, `suspended: not_suspended`, one instance, with `/healthz` configured as the health-check path.
+- App and request log queries from 12:50–13:53 UTC returned no entries, so they do not independently establish current endpoint health.
+- A direct endpoint fetch from the investigation environment could not be completed because DNS resolution failed in that environment. The web inspection tool also could not access the endpoint. These are limitations of the checking environment, **not proof that the service endpoint is down**.
+- The last positive endpoint observation remains the user's earlier direct check returning `{"status":"ok"}` around 00:58 UTC.
+
+**Current conclusion:** no newer deployment or failure event was found, but current external health could not be independently verified from this environment. The 00:54 UTC startup trigger remains unresolved. No production or Render settings were changed. To close the health check, open `https://ghm-internal-runtime.onrender.com/healthz` directly in a browser or query it from an approved external monitor, then record the timestamp, HTTP status, and response. For the startup trigger, use Render dashboard instance/lifecycle details or Render support if the dashboard exposes no additional event. Do not restart/redeploy or change database credentials based on the current evidence alone.
