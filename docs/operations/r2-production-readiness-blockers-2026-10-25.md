@@ -127,3 +127,20 @@ Observed on both DBs:
 CI runs 1601 and 1602 completed successfully for the authorization test/refactor commits. Run 1600 failed on an earlier commit in the same series; the subsequent corrected commits are green.
 
 Next: reconcile the live schema against the canonical migration history/source, inspect constraints and lifecycle transition rules using an authorized read-only role, and add authenticated cross-tenant HTTP/integration tests. Do not rerun or create a migration merely because the prior preflight said the objects were missing. No database or Render settings were changed during this recheck.
+
+
+## Lifecycle routine and identifier review — 2026-10-25 21:27 UTC
+
+CI run 1603 completed successfully for the current authorization-test fixes.
+
+A read-only inspection of the live sandbox database retrieved all five function definitions and table columns. The lifecycle routines enforce state transitions:
+- create inserts status `pending`;
+- mark-available only transitions `pending` to `available`;
+- mark-deletion-pending only transitions `available` to `deletion_pending`;
+- mark-deleted only transitions `deletion_pending` to `deleted`;
+- get-by-ID returns a row by ID.
+The functions are SECURITY DEFINER, use fixed `search_path = pg_catalog, ghm`, and do not perform caller/tenant membership checks themselves.
+
+**New potential schema defect to resolve before enablement:** the `ghm.storage_object.id` column is a non-null bigint and the catalog query showed no column default or identity property, while a sequence named `storage_object_id_seq` exists and is owned by that column. The create routine omits `id` in its INSERT. A trigger/default may be absent; current read-only role lacks sufficient privileges to fully inspect trigger definitions, so this needs an authorized schema-owner review before concluding inserts work. Do not test by inserting into the shared sandbox; verify from catalog under an authorized read-only role or a disposable DB.
+
+The live constraints could not be fully read with the available read-only credentials due to schema permission restrictions. The checked-in migration source/history is still not reconciled with the live objects. Next action: obtain the authoritative migration/DDL source or schema-owner review, verify ID generation and constraints, then add a disposable-DB lifecycle test and authenticated cross-tenant HTTP tests. Production and sandbox remain unmodified by this inspection; no Render settings were changed.
