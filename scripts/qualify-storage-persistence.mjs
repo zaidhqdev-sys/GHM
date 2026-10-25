@@ -8,6 +8,10 @@ if (!databaseUrl) {
   console.error("missing GHM_QUALIFICATION_DATABASE_URL, GHM_RUNTIME_DATABASE_URL, or DATABASE_URL");
   process.exit(2);
 }
+if (process.env.GHM_STORAGE_QUALIFICATION_ALLOW_MUTATIONS !== "true") {
+  console.error("refusing mutating storage qualification; set GHM_STORAGE_QUALIFICATION_ALLOW_MUTATIONS=true only for a disposable qualification database");
+  process.exit(2);
+}
 
 const client = new Client({
   connectionString: databaseUrl,
@@ -36,8 +40,11 @@ async function expectFailure(label, fn) {
 try {
   await client.connect();
 
-  const identity = await q("select current_user, session_user, current_schema()");
+  const identity = await q("select current_user, session_user, current_schema(), current_database()");
   evidence.push({ label: "runtime identity", status: "OBSERVED", ...identity.rows[0] });
+  if (!/(qualification|qual|test|disposable)/i.test(String(identity.rows[0].current_database))) {
+    throw new Error("refusing storage lifecycle writes: database name must clearly identify a disposable qualification/test database");
+  }
 
   await q("set search_path = ghm, public");
 
@@ -52,8 +59,8 @@ try {
     await q(
       `insert into ghm.storage_object
        (tenant_business_id, resource_type, resource_id, object_class, provider_key, content_type, byte_size, visibility)
-       values (1, 'qualification', 0, 'qualification_probe', 'qualification/probe', 'image/png', 1, 'private')`
-    , [tenantBusinessId]);
+       values ($1, 'qualification', $1, 'qualification_probe', 'qualification/direct-insert-' || gen_random_uuid()::text, 'image/png', 1, 'private')`,
+      [tenantBusinessId]);
   });
 
   const functionPrivileges = await q(`
