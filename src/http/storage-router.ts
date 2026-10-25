@@ -40,12 +40,14 @@ export const registerStorageRoutes = (
   provider: StorageProvider,
   authMiddleware: RequestHandler = requireAuth,
   uploadGrantTtlSeconds = 900,
+  downloadGrantMaxTtlSeconds = 3600,
 ): void => {
   const serviceFor = (context: AuthContext) => createStorageService({
     provider,
     metadata: createPostgresStorageMetadataStore(context),
     authorization: createPostgresStorageAuthorization(context),
     uploadGrantTtlSeconds,
+    downloadGrantMaxTtlSeconds,
   });
 
   app.post("/api/v1/storage/business-logos/upload", authMiddleware, async (req: Request, res: Response) => {
