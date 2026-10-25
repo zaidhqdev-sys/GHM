@@ -101,3 +101,14 @@ CI run 1596 passed for the preceding authorization-boundary refactor commit. CI 
 A source search did not find checked-in `ghm_schema_owner` role/bootstrap or `ALTER DEFAULT PRIVILEGES` conventions. This confirms the schema migration cannot yet be safely authored from available checked-in examples. Do not infer or create roles/grants speculatively; inspect the authoritative DB bootstrap/role setup and confirm the storage table's full transition/tenant contract first.
 
 Current remaining production blockers: migration and least-privilege qualification; authenticated cross-tenant HTTP tests with a controlled transaction/database seam; and a disposable-database integration test for lifecycle transitions and privileges. No live DB or Render changes were made.
+
+
+## CI failure and correction — 2026-10-25 21:20 UTC
+
+CI run 1598 failed in two new adapter tests. The failures exposed a real testability/refactor issue: the private-read path still called the default tenant transaction instead of the injected transaction, and the mismatched-business test constructed matching caller/resource business IDs. Corrected both:
+- private-read membership now uses the injected tenant transaction boundary consistently;
+- the mismatched-tenant test now supplies a caller business ID that differs from the resource tenant.
+
+CI run 1600 was in progress after the correction. Do not treat the new adapter suite as green until a workflow run for the corrected commits passes. The route-level tests currently verify unauthenticated requests; authenticated cross-tenant HTTP integration is still not complete.
+
+No database migrations or Render settings were changed.
