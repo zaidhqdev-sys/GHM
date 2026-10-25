@@ -250,3 +250,10 @@ The production handover was updated with the same findings in commit `45da83731e
 The latest source changes now remove `GHM_RUNTIME_DATABASE_URL` and generic `DATABASE_URL` fallbacks; the script accepts only `GHM_QUALIFICATION_DATABASE_URL`. The direct-INSERT denial probe now uses a matching `$1` bind and unique provider key, and the lifecycle create/transition/final-read queries use `SELECT * FROM ghm.storage_...(...)` for consistent row mapping and single function evaluation. Existing explicit mutation opt-in and database-name guard remain.
 
 These edits are source-reviewed but latest-head CI has not yet been confirmed. Do not execute the script until CI passes and a dedicated disposable qualification database is provisioned/verified. Production/shared sandbox remain prohibited targets. Ledger/DDL reconciliation and membership-backed tenant-isolation tests remain blockers; no database writes, migrations, or Render changes were made.
+
+
+## Strict qualification assertions added — 2026-10-25 22:00 UTC
+
+The storage qualification script now requires expected SQLSTATE values for negative security probes (`42501` direct table DML denied; `P0001` invalid pending-to-deleted transition), checks that all runtime direct DML privileges are false and all required lifecycle function EXECUTE privileges are true, and normalizes the final deleted transition to `SELECT * FROM ghm.storage_mark_deleted($1)`. This prevents arbitrary SQL/parameter errors from being counted as proof of a privilege boundary.
+
+CI run 1634 passed before this latest test-hardening commit; CI run 1635 is queued and must pass before these newest changes are considered validated. The qualification script has not been executed. The live ledger query remains blocked by the inspection role's lack of `ghm` schema USAGE. Do not add R2 variables, execute the script on production/shared sandbox, run migrations, or change Render. PR #184 remains draft/unmerged.
