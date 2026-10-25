@@ -71,3 +71,8 @@ Historical gate criteria:
 8. documentation remains reconciled.
 
 No object provider provisioning or product integration is included.
+
+
+## Metadata lookup scope follow-up
+
+The source migration now replaces `storage_get_object(bigint)` with an account-aware `storage_get_object(bigint,bigint)`, checking active public business-logo visibility or active business membership and returning the same missing-object error for unauthorized IDs. The repository passes the authenticated `AuthContext.userId`, with a regression test asserting the second argument. The read-only audit SQL checks that the one-argument function is absent and the two-argument overload exists. This is defense in depth only; a shared runtime credential can supply arbitrary function parameters, so application-level membership authorization remains required. The migration is not applied to production or sandbox. Disposable database migration/lifecycle tests and real membership-backed integration tests remain required.
