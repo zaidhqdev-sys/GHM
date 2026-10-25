@@ -205,3 +205,10 @@ Source review found a concrete runtime defect in `src/storage/repository.ts`: th
 CI run 1616 is in progress for the repository query fix; run 1617 is in progress for its regression test. The latest test inclusion commit has not yet reported a workflow run. Do not count this fix as validated until CI for the latest branch head completes.
 
 Migration source reconciliation is now partially complete: the three canonical migration files were found. However, the production read-only role returned permission denied for schema `ghm` when reading the migration ledger, and no `public.ghm_schema_migrations` table exists. Thus applied versions/checksums and exact DDL equivalence remain unverified; an authorized schema-owner/migration-audit read-only check is needed. No writes/migrations/Render changes were made.
+
+
+## Repository query invocation refinement — 2026-10-25 21:47 UTC
+
+After the composite-row mapping fix, a further PostgreSQL review identified that expanding a composite-returning function with `(function_call).*` can risk repeated evaluation of the function expression. Changed the five lifecycle queries to `SELECT * FROM ghm.storage_...(...)`, which returns the composite columns from a set-returning FROM item and avoids that repeated-expression pattern. Updated the repository regression assertion to require the `SELECT * FROM` form. CI run 1620 is in progress for the query change; the subsequent assertion update does not yet have a reported workflow run. Treat these latest commits as unvalidated until CI passes on the current head.
+
+The PR remains draft. Live migration ledger/checksum and full constraints review still need authorized read-only access; do not add R2 credentials or change Render. No database writes or migrations were performed.
