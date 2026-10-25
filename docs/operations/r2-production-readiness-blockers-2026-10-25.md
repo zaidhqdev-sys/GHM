@@ -257,3 +257,8 @@ These edits are source-reviewed but latest-head CI has not yet been confirmed. D
 The storage qualification script now requires expected SQLSTATE values for negative security probes (`42501` direct table DML denied; `P0001` invalid pending-to-deleted transition), checks that all runtime direct DML privileges are false and all required lifecycle function EXECUTE privileges are true, and normalizes the final deleted transition to `SELECT * FROM ghm.storage_mark_deleted($1)`. This prevents arbitrary SQL/parameter errors from being counted as proof of a privilege boundary.
 
 CI run 1634 passed before this latest test-hardening commit; CI run 1635 is queued and must pass before these newest changes are considered validated. The qualification script has not been executed. The live ledger query remains blocked by the inspection role's lack of `ghm` schema USAGE. Do not add R2 variables, execute the script on production/shared sandbox, run migrations, or change Render. PR #184 remains draft/unmerged.
+
+
+## Follow-up qualification guard review — 2026-10-26
+
+After CI run 1637 passed for the previous head, static review tightened the qualification script's database-name check to require delimited qualification/test/disposable tokens, made direct-DML privilege checks fail closed on NULL/unknown results, and made final lifecycle-state validation require exactly one row with status `deleted`. These newest source commits still need CI confirmation. The qualification script has not been run against any database. No database writes, migrations, or Render changes were made. Remaining blockers are authorized read-only migration ledger/checksum and live DDL review, verified disposable-database qualification, and real membership-backed tenant-isolation tests.
