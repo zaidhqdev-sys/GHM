@@ -112,3 +112,18 @@ CI run 1598 failed in two new adapter tests. The failures exposed a real testabi
 CI run 1600 was in progress after the correction. Do not treat the new adapter suite as green until a workflow run for the corrected commits passes. The route-level tests currently verify unauthenticated requests; authenticated cross-tenant HTTP integration is still not complete.
 
 No database migrations or Render settings were changed.
+
+
+## Live database recheck — 2026-10-25 21:22 UTC
+
+A new read-only recheck found an important state change relative to the earlier preflight: `ghm.storage_object` and all five `storage_*` lifecycle functions are now present in **both production and the shared sandbox database**. The earlier note saying they were absent is historical and no longer reflects current live state. This recheck did not create or modify these objects.
+
+Observed on both DBs:
+- `storage_object` is owned by `ghm_schema_owner`; its ACL grants table DML only to that owner (no direct runtime DML grant shown).
+- All five lifecycle routines are owned by `ghm_schema_owner`, are `SECURITY DEFINER`, set a fixed `search_path` of `pg_catalog, ghm`, and grant EXECUTE to `ghm_runtime` plus the owner.
+- The live lifecycle routines accept object/business IDs but do not themselves resolve end-user tenant membership; application-layer authorization remains essential.
+- Current repository search still finds no checked-in migration definition for these live objects, and the migration ledger could not be read with the read-only connection's privileges. Therefore the origin/version/checksum of the live schema change is unverified.
+
+CI runs 1601 and 1602 completed successfully for the authorization test/refactor commits. Run 1600 failed on an earlier commit in the same series; the subsequent corrected commits are green.
+
+Next: reconcile the live schema against the canonical migration history/source, inspect constraints and lifecycle transition rules using an authorized read-only role, and add authenticated cross-tenant HTTP/integration tests. Do not rerun or create a migration merely because the prior preflight said the objects were missing. No database or Render settings were changed during this recheck.
