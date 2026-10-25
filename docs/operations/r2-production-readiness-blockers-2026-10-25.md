@@ -90,3 +90,14 @@ No migration was executed and no Render/database settings were changed.
 - The latest commits `ff85323a5a3250eb5c8b46e834f292f0bf82a554` and `beda357f3ce6b9172461a31be11061b785ec9189` do not yet have a reported PR workflow run. Treat the HTTP tests as unverified until CI runs and passes.
 - These tests establish unauthenticated denial only; they do not simulate authenticated cross-tenant attempts. Cross-tenant route/integration tests and the database migration/privilege qualification remain blockers.
 - No database migration or Render configuration was changed.
+
+
+## Authorization adapter qualification tests — 2026-10-25 21:17 UTC
+
+Added `src/storage/authorization-adapter.test.ts` with tests for: binding the requested tenant to the authenticated context, rejecting a caller-supplied different business ID before a tenant query, denying non-manager membership, and propagating missing-membership denial for private-object reads. Added the suite to the package test command.
+
+CI run 1596 passed for the preceding authorization-boundary refactor commit. CI runs 1597 and 1598 for the new tests and test-command inclusion were still in progress at this update; they must complete successfully before these tests are considered validated.
+
+A source search did not find checked-in `ghm_schema_owner` role/bootstrap or `ALTER DEFAULT PRIVILEGES` conventions. This confirms the schema migration cannot yet be safely authored from available checked-in examples. Do not infer or create roles/grants speculatively; inspect the authoritative DB bootstrap/role setup and confirm the storage table's full transition/tenant contract first.
+
+Current remaining production blockers: migration and least-privilege qualification; authenticated cross-tenant HTTP tests with a controlled transaction/database seam; and a disposable-database integration test for lifecycle transitions and privileges. No live DB or Render changes were made.
