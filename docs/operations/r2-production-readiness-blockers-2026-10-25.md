@@ -30,10 +30,19 @@ Implemented on this feature branch after the initial review:
 - Storage activation/partial-config detection now includes provider, path-style, and both TTL variables, so setting one of these alone causes startup validation to fail rather than silently leaving storage disabled.
 - Added focused tests for a lower configured download TTL and for partial provider/TTL configuration.
 
-Latest observed CI run for commit `b4c4012a5fbc5057188e2c8ec192a67ebe2b5d48` was still in progress when this note was updated; do not treat these changes as test-passed until the run completes.
+CI completed successfully for the hardening commit `b4c4012a5fbc5057188e2c8ec192a67ebe2b5d48` and the subsequent documentation commit `8c47398e0ec474f52fa00a938affc26d50706a38` (workflow runs 1586 and 1587). This verifies the repository CI suite for those commits, but does not substitute for route-level authorization tests or database migration qualification.
 
 ## Remaining blockers
 
 - The canonical storage schema migration is still not authored. I have not created one by guessing at the database security conventions: the current runtime calls `SECURITY DEFINER` lifecycle functions while the runtime role should not have direct table DML, and the migration must define the exact object shape, transitions, ownership, grants, and tenant-boundary protections correctly. A guessed migration could create a cross-tenant write vulnerability.
 - HTTP route-level tests and explicit cross-tenant/database-privilege qualification remain outstanding.
 - No database, Render environment, production service, or sandbox service was changed.
+
+
+## Latest continuation — 2026-10-25 21:02 UTC
+
+- Rechecked GitHub Actions: CI passed for the TTL/config hardening and subsequent docs update.
+- PR #184 remains open and draft; it has not been merged.
+- The migration remains the critical blocker because both live databases were previously verified to lack the storage table and lifecycle functions. The migration runner uses `GHM_MIGRATOR_DATABASE_URL`, assumes `ghm_migrator` can `SET ROLE ghm_schema_owner`, and applies pending migration files transactionally. I did not execute it.
+- I will not create a speculative schema migration without confirming existing role/grant conventions and exact database contract, and I will not run a migration against the shared sandbox or production DB without the approved migration plan.
+- No Render settings, credentials, or database state were changed.
