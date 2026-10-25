@@ -32,7 +32,7 @@ test("storage management authorization rejects a caller-supplied different busin
   await assert.rejects(
     auth.assertCanManage(
       { userId: "7", businessId: "202" },
-      { type: "business", id: "202", businessId: "202" },
+      { type: "business", id: "201", businessId: "201" },
     ),
     /storage access denied/,
   );
