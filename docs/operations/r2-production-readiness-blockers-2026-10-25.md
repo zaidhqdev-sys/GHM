@@ -328,3 +328,8 @@ CI run 1666 passed for the retryable deletion fix. A least-privilege review foun
 ## Account-scoped metadata getter — 2026-10-26
 
 Added a source migration replacing the ID-only metadata getter with a two-argument lookup that checks active public business-logo visibility or active membership for the supplied account, and drops the old unscoped function. Repository calls now pass the authenticated context account ID, a regression test asserts that parameter, and the read-only audit SQL checks the old/new signatures. Important limitation: this is defense in depth, not cryptographic binding to the end-user identity; the application must still enforce membership authorization because a shared DB runtime role can supply function arguments. The migration has not been applied to any live database. CI, disposable-database migration/lifecycle qualification, and real membership-backed integration tests remain outstanding. No Render settings changed; production R2 variables remain on hold.
+
+
+## Scoped metadata lookup CI result — 2026-10-26
+
+CI run [1678](https://github.com/zaidhqdev-sys/GHM/actions/runs/40242355456) passed the build, test suite, migration audit policy tests, and runtime-boundary verification for head `9fea65df616abb9ee1c9b8e1fd19bad82209b942`. An earlier run failed only because two new tests over-escaped a regular expression; the assertions were corrected to literal substring checks. This is not live database qualification: the new migration has not been applied, no disposable-database migration/lifecycle run has been performed, and real PostgreSQL membership-backed tenant-isolation tests remain open. No live DB or Render changes were made; production R2 variables remain on hold.
