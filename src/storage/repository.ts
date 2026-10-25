@@ -81,8 +81,8 @@ export class TransactionalPostgresStorageMetadataStore implements StorageMetadat
     return this.run(async (client) => {
       try {
         const result = await client.query(
-          "SELECT * FROM ghm.storage_get_object($1)",
-          [Number(id)],
+          "SELECT * FROM ghm.storage_get_object($1, $2)",
+          [Number(id), this.context.userId],
         );
         return result.rowCount === 1 ? mapStorageMetadata(result.rows[0]) : null;
       } catch (error) {
