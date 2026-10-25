@@ -39,3 +39,8 @@ This persistence gate did not qualify provider credentials, object upload/downlo
 This decision reconciles the storage persistence boundary with the storage capability boundary, service contract, metadata schema, database authority model, and runtime authorization boundary.
 
 No provider provisioning is authorized by this change.
+
+
+## Account-scoped metadata lookup — proposed, not live-applied
+
+Migration `20261026120000_scope_storage_metadata_lookup.sql` replaces the ID-only `storage_get_object(bigint)` with `storage_get_object(bigint,bigint)`. It returns an active public business-logo record only for an active business, or a record for which the supplied account has an active membership in the business; missing and unauthorized IDs share one error. The old unscoped signature is dropped, and runtime callers now pass `AuthContext.userId`. This is defense in depth, not a database-authenticated end-user identity: a shared runtime DB role can invoke a function with caller-supplied parameters, so application authorization must remain authoritative. Apply only through the normal reviewed migration process after CI, disposable-database tests, and migration-ledger reconciliation pass. No live database function was changed by this source commit.
