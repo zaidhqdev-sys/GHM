@@ -177,15 +177,17 @@ export function createStorageService(deps: {
 
     async deleteObject(input) {
       const record = await deps.metadata.getById(input.objectId);
-      if (!record || record.status !== "available") throw new Error("storage object not available");
-      await deps.authorization.assertCanDelete(input.caller, record);
-      await deps.metadata.markDeletionPending(record.id);
-      try {
-        await deps.provider.deleteObject(record.providerKey);
-        await deps.metadata.markDeleted(record.id);
-      } catch (error) {
-        throw error;
+      if (!record || (record.status !== "available" && record.status !== "deletion_pending")) {
+        throw new Error("storage object not available");
       }
+      await deps.authorization.assertCanDelete(input.caller, record);
+      // A previous attempt may have marked the row deletion_pending before the
+      // provider or final metadata update failed. Retrying the provider delete
+      // is safe for object stores and lets the lifecycle recover without
+      // reopening the object for reads or requiring a manual DB edit.
+      if (record.status === "available") await deps.metadata.markDeletionPending(record.id);
+      await deps.provider.deleteObject(record.providerKey);
+      await deps.metadata.markDeleted(record.id);
     },
   };
 }
