@@ -66,3 +66,18 @@ CI green for the earlier TTL/config fix is not a pass for these security conditi
 The storage authorization adapter and tenant resolver were retrieved and reviewed. The adapter verifies the authenticated user ID, checks active tenant membership through `withTenantTransaction`, restricts business-logo management/deletion to owner or administrator membership, and allows public reads only for public business resources on active businesses. The tenant resolver binds both business ID and authenticated account ID in its membership query and rejects absent membership. Existing `src/auth/tenant-resolver.test.ts` already covers active membership, missing membership, and invalid tenant IDs.
 
 This improves confidence in the application-layer boundary, but route-level storage authorization tests and a checked-in migration remain missing. The lifecycle repository invokes SQL functions without a caller identity parameter, so the database migration must be reviewed against the runtime role and transaction context rather than assuming the SQL routines can identify the end user. I did not apply a migration or change Render/database settings. PR #184 remains draft and unmerged.
+
+
+## Service-level authorization regression tests — 2026-10-25 21:11 UTC
+
+Added four tests to `src/storage/service.test.ts` to assert that denied authorization prevents side effects for upload creation, upload completion, private access signing, and deletion state transitions. The tests exercise the service's authorization gates; they are not a substitute for HTTP-route tests or live PostgreSQL privilege checks.
+
+CI for the test commit `d6eda4381920c2d8a91100e40d26157019a7bb17` was still in progress at the time of this update (run 1591). Await a completed successful run before considering the test commit validated.
+
+### Still required
+
+- HTTP-level tests for missing authentication and cross-tenant attempts across all four endpoints.
+- Canonical migration for `ghm.storage_object` and lifecycle functions, reviewed against actual schema-owner/migrator grants and the transaction model.
+- Qualification on a disposable test database, followed by an approved migration window for the shared sandbox. Production migration remains a separate explicit gate.
+
+No migration was executed and no Render/database settings were changed.
