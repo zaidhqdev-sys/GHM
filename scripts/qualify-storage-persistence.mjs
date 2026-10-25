@@ -53,8 +53,8 @@ try {
 
   const identity = await q("select current_user, session_user, current_schema(), current_database()");
   evidence.push({ label: "runtime identity", status: "OBSERVED", ...identity.rows[0] });
-  if (!/(^|[_-])(qualification|qual|test|disposable)([_-]|$)/i.test(String(identity.rows[0].current_database))) {
-    throw new Error("refusing storage lifecycle writes: database name must clearly identify a disposable qualification/test database");
+  if (!/(^|[_-])(qualification|qual|test|testing|disposable|sandbox)([_-]|$)/i.test(String(identity.rows[0].current_database))) {
+    throw new Error("refusing storage lifecycle writes: database name must clearly identify an approved sandbox or qualification/test database");
   }
 
   await q("set search_path = ghm, public");
