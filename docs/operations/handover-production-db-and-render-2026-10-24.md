@@ -293,3 +293,8 @@ CI run 1637 passed for the prior branch head. Further static review tightened th
 ## Latest validation result — 2026-10-26
 
 CI run 1639 passed for source commit `eec2d4dbb20d4a19e0984c537792279cc71401bf`. It includes the latest qualification-script hardening: delimited qualification/test/disposable database-name token, fail-closed privilege assertions, and strict final lifecycle row/status check. PR #184 remains draft/unmerged. This is repository CI only; the script has not been run against a database, and CI does not establish live production migration checksums, live grants, or real cross-tenant authorization. The two handover docs were updated after this source commit; no CI run is reported for the documentation-only commits. No database writes, migrations, or Render changes were made. R2 credentials remain on hold.
+
+
+## Follow-up source review — 2026-10-26
+
+The latest review found malformed literal `\\n` sequences in the final lifecycle assertion of `scripts/qualify-storage-persistence.mjs`, which would prevent the script from parsing. This has now been corrected to ordinary source newlines in commit `40fb35e44a71a440cf50c27192aaf4e986df8edc`. The PR head is this commit, but the workflow-run lookup returned no run for this commit; therefore the syntax repair is not yet CI-verified. Do not run the script or treat it as qualified until CI passes. No database was connected to, and no database writes, migrations, or Render changes were made.
