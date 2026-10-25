@@ -276,3 +276,10 @@ The qualification script safety improvements that were previously blocked are no
 - Storage create/transition/final-read queries use `SELECT * FROM ghm.storage_...(...)` to avoid repeated composite function evaluation and expose columns consistently.
 
 These changes are source-reviewed but have not yet been confirmed by CI at the latest branch head. Do not run the script until CI passes and a dedicated disposable database has been provisioned and verified. It must never target production or the shared PayFast sandbox. The authorized read-only migration-ledger/DDL review and real membership-backed tenant-isolation tests remain open. No database writes, migrations, or Render changes were made.
+
+
+## Qualification assertion hardening — 2026-10-25 22:00 UTC
+
+CI run 1634 passed for the branch before this latest test-hardening commit. The qualification script has now been tightened further: negative probes must fail with the expected SQLSTATE (`42501` for denied direct DML and `P0001` for an invalid lifecycle transition), rather than treating any arbitrary error (such as a bind-parameter mismatch or missing object) as proof of the security boundary. It also explicitly fails if runtime direct INSERT/UPDATE/DELETE privileges are present or if any required lifecycle EXECUTE privilege is absent. The final deletion transition now uses `SELECT * FROM ghm.storage_mark_deleted($1)` for consistent return handling.
+
+CI run 1635 is queued for this change; do not count it as validated until it passes on the latest head. The Render read-only query still fails with permission denied for schema `ghm`, so migration ledger and live DDL checks remain unverified through that connection. No qualification script was executed; no database writes/migrations or Render changes were made. R2 variables remain on hold.
