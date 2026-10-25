@@ -267,3 +267,8 @@ After CI run 1637 passed for the previous head, static review tightened the qual
 ## Latest validation result — 2026-10-26
 
 CI run 1639 passed for source commit `eec2d4dbb20d4a19e0984c537792279cc71401bf`, covering the stricter qualification database-name token, fail-closed privilege checks, and exact final deleted-state assertion. PR #184 remains draft/unmerged. The script has not been run against any database; CI does not prove live migration ledger/checksum reconciliation, live grants, or real membership-backed cross-tenant authorization. These docs were committed after the tested source commit and have no reported workflow run. No database writes, migrations, or Render changes were made. Keep R2 variables on hold.
+
+
+## Qualification script syntax repair — 2026-10-26
+
+Static review identified malformed literal `\\n` sequences in the final lifecycle assertion, making the script invalid JavaScript. Corrected to normal source newlines in commit `40fb35e44a71a440cf50c27192aaf4e986df8edc`. The workflow-run lookup returned no CI result for the current PR head, so the repair is not yet validated. Do not execute the script until CI passes. No database or Render changes were made; production R2 credentials remain on hold.
