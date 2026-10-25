@@ -164,3 +164,13 @@ No live database or Render settings were changed.
 - Added `src/storage/authorization-public-read.test.ts` for active-business public logo reads, inactive-business denial, and caller identity mismatch before database access. Added it to the npm test command. CI for the new commits `c2fe8efc24bd3f4172a9c36950e377d21dd4b1f8` and `943d003b3ed64e488e5b191d8c689860db2b309b` must complete before this suite is considered validated.
 - This does not resolve the missing canonical migration history/source or replace authorized constraint review. The available DB connection cannot inspect all constraints/trigger metadata due schema privileges. Authenticated HTTP cross-tenant tests are still not implemented; existing router tests cover only unauthenticated rejection.
 - No database writes, migrations, or Render settings changes were made.
+
+
+## Authenticated storage HTTP denial coverage — 2026-10-25 21:34 UTC
+
+- CI runs 1606 and 1607 passed, validating the public-read authorization unit tests and package test-command inclusion.
+- Added a narrow injectable route seam so HTTP tests can exercise authenticated route handling without contacting a real database or object store.
+- Added `src/http/storage-router.tenant-auth.test.ts`: covers authenticated requests to completion, access-grant, deletion, and upload where the storage service reports tenant denial, and asserts the HTTP layer returns 403. Existing tests cover unauthenticated rejection.
+- CI run 1612 is in progress for the latest test-command change; do not call this latest suite green until CI completes successfully.
+- Scope limitation: these are HTTP boundary tests using a controlled service seam; they do not replace a disposable-Postgres end-to-end test of the real authorization adapter against actual tenant membership rows. That remains required before production enablement.
+- No database writes, migrations, or Render changes were made.
