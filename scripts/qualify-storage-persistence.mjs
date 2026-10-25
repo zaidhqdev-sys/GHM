@@ -91,7 +91,7 @@ try {
       has_table_privilege(current_user, 'ghm.storage_object', 'DELETE') as delete_allowed
   `);
   evidence.push({ label: "direct table DML privileges", status: "OBSERVED", ...tablePrivileges.rows[0] });
-  if (tablePrivileges.rows[0].insert_allowed || tablePrivileges.rows[0].update_allowed || tablePrivileges.rows[0].delete_allowed) {
+  if (tablePrivileges.rows[0].insert_allowed !== false || tablePrivileges.rows[0].update_allowed !== false || tablePrivileges.rows[0].delete_allowed !== false) {
     throw new Error("runtime role has direct storage_object DML privileges; expected INSERT/UPDATE/DELETE all false");
   }
   if (Object.values(functionPrivileges.rows[0]).some((allowed) => allowed !== true)) {
@@ -125,7 +125,7 @@ try {
   evidence.push({ label: "deletion_pending -> deleted", status: "PASS" });
 
   const final = await q("select * from ghm.storage_get_object($1)", [objectId]);
-  evidence.push({ label: "final lifecycle state", status: final.rows[0].status === "deleted" ? "PASS" : "FAIL", row: final.rows[0] });
+  if (final.rows.length !== 1 || final.rows[0].status !== "deleted") {\n    throw new Error("final lifecycle state did not resolve to exactly one deleted object");\n  }\n  evidence.push({ label: "final lifecycle state", status: "PASS", row: final.rows[0] });
 
   await q("begin");
   await q("select set_config('statement_timeout', '5000', true)");
