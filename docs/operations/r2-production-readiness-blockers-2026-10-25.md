@@ -272,3 +272,8 @@ CI run 1639 passed for source commit `eec2d4dbb20d4a19e0984c537792279cc71401bf`,
 ## Qualification script syntax repair — 2026-10-26
 
 Static review identified malformed literal `\\n` sequences in the final lifecycle assertion, making the script invalid JavaScript. Corrected to normal source newlines in commit `40fb35e44a71a440cf50c27192aaf4e986df8edc`. The workflow-run lookup returned no CI result for the current PR head, so the repair is not yet validated. Do not execute the script until CI passes. No database or Render changes were made; production R2 credentials remain on hold.
+
+
+## Explicit syntax CI gate — 2026-10-26
+
+CI workflow now runs `node --check scripts/qualify-storage-persistence.mjs` before build/test, making script parse failures an explicit CI failure. Latest source/workflow commit is `61f083c7e5eeb1ea0983edf3a391dc6da8dd996c`; CI run 1647 is currently in progress. No qualification DB run, DB write, migration, or Render change occurred. Keep production R2 credentials on hold until CI passes and the remaining database/tenant-isolation checks are completed.
