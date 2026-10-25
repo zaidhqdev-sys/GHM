@@ -298,3 +298,8 @@ CI run 1639 passed for source commit `eec2d4dbb20d4a19e0984c537792279cc71401bf`.
 ## Follow-up source review — 2026-10-26
 
 The latest review found malformed literal `\\n` sequences in the final lifecycle assertion of `scripts/qualify-storage-persistence.mjs`, which would prevent the script from parsing. This has now been corrected to ordinary source newlines in commit `40fb35e44a71a440cf50c27192aaf4e986df8edc`. The PR head is this commit, but the workflow-run lookup returned no run for this commit; therefore the syntax repair is not yet CI-verified. Do not run the script or treat it as qualified until CI passes. No database was connected to, and no database writes, migrations, or Render changes were made.
+
+
+## CI syntax gate added — 2026-10-26
+
+Added an explicit `node --check scripts/qualify-storage-persistence.mjs` step to `.github/workflows/ci.yml` so syntax errors in the mutating qualification script are caught directly by CI. Current branch head is `61f083c7e5eeb1ea0983edf3a391dc6da8dd996c`; CI run 1647 is in progress. The qualification script has not been executed against a database. No DB writes, migrations, or Render changes were made. Continue to hold R2 variables pending CI pass, authorized read-only ledger/DDL reconciliation, disposable DB lifecycle qualification, and real membership-backed tenant-isolation tests.
