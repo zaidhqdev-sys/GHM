@@ -59,3 +59,10 @@ A further source review of `src/http/storage-router.ts` found why route-level te
 Accordingly, I am not approving the storage routes or inventing a migration that must align with their authorization contract. Required next step: retrieve/review the adapter and the existing tenant resolver + DB grants, then add cross-tenant route/integration tests and author a migration that enforces tenant checks inside the database routines as well as in application code.
 
 CI green for the earlier TTL/config fix is not a pass for these security conditions. No environment variables, database state, or Render settings were changed.
+
+
+## Follow-up at 2026-10-25 21:07 UTC
+
+The storage authorization adapter and tenant resolver were retrieved and reviewed. The adapter verifies the authenticated user ID, checks active tenant membership through `withTenantTransaction`, restricts business-logo management/deletion to owner or administrator membership, and allows public reads only for public business resources on active businesses. The tenant resolver binds both business ID and authenticated account ID in its membership query and rejects absent membership. Existing `src/auth/tenant-resolver.test.ts` already covers active membership, missing membership, and invalid tenant IDs.
+
+This improves confidence in the application-layer boundary, but route-level storage authorization tests and a checked-in migration remain missing. The lifecycle repository invokes SQL functions without a caller identity parameter, so the database migration must be reviewed against the runtime role and transaction context rather than assuming the SQL routines can identify the end user. I did not apply a migration or change Render/database settings. PR #184 remains draft and unmerged.
