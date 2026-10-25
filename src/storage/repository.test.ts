@@ -61,5 +61,5 @@ test("storage metadata repository expands lifecycle composite return values into
   assert.equal(created.id, "8");
   assert.equal(created.businessId, "42");
   assert.equal(created.status, "available");
-  assert.match(queries[0], /\(ghm\.storage_create_pending\([^)]*\)\)\.\*/);
+  assert.match(queries[0], /SELECT \* FROM ghm\.storage_create_pending\(/);
 });
