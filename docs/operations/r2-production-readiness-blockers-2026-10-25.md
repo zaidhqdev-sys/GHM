@@ -174,3 +174,10 @@ No live database or Render settings were changed.
 - CI run 1612 is in progress for the latest test-command change; do not call this latest suite green until CI completes successfully.
 - Scope limitation: these are HTTP boundary tests using a controlled service seam; they do not replace a disposable-Postgres end-to-end test of the real authorization adapter against actual tenant membership rows. That remains required before production enablement.
 - No database writes, migrations, or Render changes were made.
+
+
+## Latest CI and PR summary correction — 2026-10-25 21:37 UTC
+
+CI run 1612 completed successfully for the package test-command commit, including build, full test suite, migration audit policy tests, and runtime-boundary verification. The authenticated HTTP boundary tests are therefore green as tests, with the documented limitation that they use a controlled service seam and do not prove the real PostgreSQL tenant-membership path end-to-end.
+
+Updated PR #184's body to remove stale claims that the live storage objects are absent and to accurately list current validation and remaining gates. PR remains draft and unmerged. Canonical migration/source reconciliation, authorized constraint/privilege review, disposable-Postgres lifecycle tests, and real membership-backed cross-tenant integration tests remain blockers. No DB writes, migrations, or Render settings changes were made.
