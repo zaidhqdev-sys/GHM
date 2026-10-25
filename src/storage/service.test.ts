@@ -163,6 +163,57 @@ test("storage service rejects unsafe access-grant expiry before persistence/prov
   assert.deepEqual(d.calls, []);
 });
 
+
+test("storage service stops upload before persistence when tenant authorization denies access", async () => {
+  const d = deps();
+  d.authorization.assertCanManage = async () => { d.calls.push("manage-denied"); throw new Error("storage access denied"); };
+  const service = createStorageService(d);
+  await assert.rejects(service.createUpload({
+    caller: { userId: "u2", businessId: "2" },
+    resource: { type: "business", id: "2", businessId: "2" },
+    objectClass: "business_logo",
+    contentType: "image/png",
+    byteSize: 100,
+  }), /storage access denied/);
+  assert.deepEqual(d.calls, ["manage-denied"]);
+});
+
+test("storage service stops upload completion before provider access when tenant authorization denies access", async () => {
+  const d = deps();
+  d.authorization.assertCanManage = async () => { d.calls.push("manage-denied"); throw new Error("storage access denied"); };
+  const service = createStorageService(d);
+  await assert.rejects(
+    service.completeUpload({ caller: { userId: "u2", businessId: "2" }, objectId: "object-1" }),
+    /storage access denied/,
+  );
+  assert.deepEqual(d.calls, ["get", "manage-denied"]);
+});
+
+test("storage service stops private access grant before signing when tenant authorization denies access", async () => {
+  const d = deps();
+  d.record.visibility = "private";
+  d.metadata.getById = async () => { d.calls.push("get"); return { ...d.record, status: "available" }; };
+  d.authorization.assertCanRead = async () => { d.calls.push("read-denied"); throw new Error("storage access denied"); };
+  const service = createStorageService(d);
+  await assert.rejects(
+    service.getAccess({ caller: { userId: "u2", businessId: "2" }, objectId: "object-1", expiresInSeconds: 300 }),
+    /storage access denied/,
+  );
+  assert.deepEqual(d.calls, ["get", "read-denied"]);
+});
+
+test("storage service stops deletion before state transition when tenant authorization denies access", async () => {
+  const d = deps();
+  d.metadata.getById = async () => { d.calls.push("get"); return { ...d.record, status: "available" }; };
+  d.authorization.assertCanDelete = async () => { d.calls.push("delete-denied"); throw new Error("storage access denied"); };
+  const service = createStorageService(d);
+  await assert.rejects(
+    service.deleteObject({ caller: { userId: "u2", businessId: "2" }, objectId: "object-1" }),
+    /storage access denied/,
+  );
+  assert.deepEqual(d.calls, ["get", "delete-denied"]);
+});
+
 test("storage service leaves deletion pending when provider deletion fails", async () => {
   const d = deps();
   d.provider.deleteObject = async () => { d.calls.push("delete"); throw new Error("provider unavailable"); };
