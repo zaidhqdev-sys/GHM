@@ -40,7 +40,7 @@ export function createPostgresStorageAuthorization(
         );
         if (result.rowCount === 1) return;
       }
-      await withTenantTransaction(context, Number(record.businessId), async () => undefined);
+      await tenantTransaction(context, Number(record.businessId), async () => undefined);
     },
 
     async assertCanDelete(caller, record) {
