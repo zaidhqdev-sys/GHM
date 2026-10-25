@@ -81,3 +81,12 @@ CI for the test commit `d6eda4381920c2d8a91100e40d26157019a7bb17` was still in p
 - Qualification on a disposable test database, followed by an approved migration window for the shared sandbox. Production migration remains a separate explicit gate.
 
 No migration was executed and no Render/database settings were changed.
+
+
+## HTTP authentication regression tests — 2026-10-25 21:14 UTC
+
+- CI run 1591 completed successfully for commit `d6eda4381920c2d8a91100e40d26157019a7bb17`, including the service-level authorization regression tests.
+- Added `src/http/storage-router.test.ts` with HTTP tests for unauthenticated requests to upload, complete, access-grant, and delete endpoints. Added this test file to the package test command.
+- The latest commits `ff85323a5a3250eb5c8b46e834f292f0bf82a554` and `beda357f3ce6b9172461a31be11061b785ec9189` do not yet have a reported PR workflow run. Treat the HTTP tests as unverified until CI runs and passes.
+- These tests establish unauthenticated denial only; they do not simulate authenticated cross-tenant attempts. Cross-tenant route/integration tests and the database migration/privilege qualification remain blockers.
+- No database migration or Render configuration was changed.
