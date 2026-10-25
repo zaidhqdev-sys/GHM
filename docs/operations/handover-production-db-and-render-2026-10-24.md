@@ -248,3 +248,10 @@ The Render SQL inspection connection lacks USAGE on schema `ghm`, so it cannot r
 Caution: `scripts/qualify-storage-persistence.mjs` performs writes. Its direct-INSERT denial probe passes a bind parameter to a statement with no placeholder, so a parameter-count error could falsely appear to prove privilege denial. Do not run it on production or shared sandbox. Correct the probe and use only a disposable database.
 
 Do not add R2 variables, run migrations, or merge as production-ready until authorized migration/DDL review and disposable-database lifecycle/privilege plus tenant-isolation tests pass. When explicitly approved, production R2 credentials belong only on `GHM-Internal-Runtime`. No database or Render changes were made in this continuation.
+
+
+## Storage qualification probe hardening — 2026-10-25 21:54 UTC
+
+Follow-up code review found and corrected a false-positive risk in `scripts/qualify-storage-persistence.mjs`: its direct-INSERT denial probe previously passed a bind parameter to a statement without a placeholder. The probe now uses the selected tenant ID in `$1` and a unique generated provider key. Because this script performs lifecycle writes, it now refuses to run unless `GHM_STORAGE_QUALIFICATION_ALLOW_MUTATIONS=true` is explicitly set and the connected database name includes `qualification`, `qual`, `test`, or `disposable`. This is a guardrail, not a replacement for checking the target connection before use.
+
+The updated script has not yet reported a CI run and has not been executed against any database. Validate it in CI and then only against a dedicated disposable database. Do not run it against production or the shared PayFast sandbox. No database or Render settings were changed.
