@@ -262,3 +262,8 @@ CI run 1634 passed before this latest test-hardening commit; CI run 1635 is queu
 ## Follow-up qualification guard review — 2026-10-26
 
 After CI run 1637 passed for the previous head, static review tightened the qualification script's database-name check to require delimited qualification/test/disposable tokens, made direct-DML privilege checks fail closed on NULL/unknown results, and made final lifecycle-state validation require exactly one row with status `deleted`. These newest source commits still need CI confirmation. The qualification script has not been run against any database. No database writes, migrations, or Render changes were made. Remaining blockers are authorized read-only migration ledger/checksum and live DDL review, verified disposable-database qualification, and real membership-backed tenant-isolation tests.
+
+
+## Latest validation result — 2026-10-26
+
+CI run 1639 passed for source commit `eec2d4dbb20d4a19e0984c537792279cc71401bf`, covering the stricter qualification database-name token, fail-closed privilege checks, and exact final deleted-state assertion. PR #184 remains draft/unmerged. The script has not been run against any database; CI does not prove live migration ledger/checksum reconciliation, live grants, or real membership-backed cross-tenant authorization. These docs were committed after the tested source commit and have no reported workflow run. No database writes, migrations, or Render changes were made. Keep R2 variables on hold.
