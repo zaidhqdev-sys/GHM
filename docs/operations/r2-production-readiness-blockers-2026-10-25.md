@@ -196,3 +196,12 @@ This resolves the claim that no checked-in migration source exists. Earlier sear
 Security review point from the canonical SQL: the SECURITY DEFINER routines enforce input validation and lifecycle status transitions but do not independently check authenticated tenant membership. The app authorization adapter currently checks membership and owner/administrator role before invoking them. Therefore real runtime authorization integration tests and confirmation that only the trusted app server holds `ghm_runtime` credentials are required; database routines alone are not a tenant boundary.
 
 No migration was executed, no database was modified, and no Render settings were changed.
+
+
+## Storage repository contract defect found and patched — 2026-10-25 21:43 UTC
+
+Source review found a concrete runtime defect in `src/storage/repository.ts`: the SQL selected each composite-returning lifecycle function as `... AS row`, but `mapStorageMetadata` expects the returned object to contain table columns at the top level. PostgreSQL drivers return the composite under a nested `row` field for that query shape, so fields such as `id` and `tenant_business_id` would not be mapped correctly. Updated the five repository calls to expand the composite with `SELECT (ghm.storage_...(...)).*` and map the top-level columns. Updated `src/storage/repository.test.ts` fixtures to match actual row shape and added a regression assertion, then added that test file to the npm test script.
+
+CI run 1616 is in progress for the repository query fix; run 1617 is in progress for its regression test. The latest test inclusion commit has not yet reported a workflow run. Do not count this fix as validated until CI for the latest branch head completes.
+
+Migration source reconciliation is now partially complete: the three canonical migration files were found. However, the production read-only role returned permission denied for schema `ghm` when reading the migration ledger, and no `public.ghm_schema_migrations` table exists. Thus applied versions/checksums and exact DDL equivalence remain unverified; an authorized schema-owner/migration-audit read-only check is needed. No writes/migrations/Render changes were made.
