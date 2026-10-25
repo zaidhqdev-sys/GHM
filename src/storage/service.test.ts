@@ -233,3 +233,23 @@ test("storage service completes deletion only after provider deletion", async ()
   await service.deleteObject({ caller: { userId: "u1", businessId: "1" }, objectId: "object-1" });
   assert.deepEqual(d.calls, ["get", "delete-auth", "deletion-pending", "delete", "deleted"]);
 });
+
+test("storage service retries provider deletion for an object already deletion_pending", async () => {
+  const d = deps();
+  d.metadata.getById = async () => { d.calls.push("get"); return { ...d.record, status: "deletion_pending" }; };
+  const service = createStorageService(d);
+  await service.deleteObject({ caller: { userId: "u1", businessId: "1" }, objectId: "object-1" });
+  assert.deepEqual(d.calls, ["get", "delete-auth", "delete", "deleted"]);
+});
+
+test("storage service permits retry after provider deletion failed with deletion_pending state", async () => {
+  const d = deps();
+  d.metadata.getById = async () => { d.calls.push("get"); return { ...d.record, status: "deletion_pending" }; };
+  d.provider.deleteObject = async () => { d.calls.push("delete"); throw new Error("provider unavailable"); };
+  const service = createStorageService(d);
+  await assert.rejects(
+    service.deleteObject({ caller: { userId: "u1", businessId: "1" }, objectId: "object-1" }),
+    /provider unavailable/,
+  );
+  assert.deepEqual(d.calls, ["get", "delete-auth", "delete"]);
+});
