@@ -40,14 +40,14 @@ test("storage metadata repository passes authenticated account to scoped getter"
   const repo = new TransactionalPostgresStorageMetadataStore({ userId: 71, role: "business" }, async (work) => work(client as any));
   const row = await repo.getById("7");
   assert.equal(row?.id, "7");
-  assert.match(observedQuery, /ghm\\.storage_get_object\\(\\$1, \\$2\\)/);
+  assert.ok(observedQuery.includes("ghm.storage_get_object($1, $2)"));
   assert.deepEqual(observedParams, [7, 71]);
 });
 
 test("storage metadata repository recognizes canonical missing-object error", async () => {
   const client = {
     async query(text: string, params: unknown[]) {
-      assert.match(text, /ghm\\.storage_get_object\\(\\$1, \\$2\\)/);
+      assert.ok(text.includes("ghm.storage_get_object($1, $2)"));
       assert.deepEqual(params, [999, 1]);
       throw new Error("storage object does not exist");
     },
