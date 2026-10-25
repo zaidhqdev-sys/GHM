@@ -43,7 +43,10 @@ async function withServer(work: (baseUrl: string) => Promise<void>, authenticate
         getById: async (id: string) => id === metadataRecord.id ? metadataRecord : null,
       } satisfies StorageMetadataStore),
       serviceForContext: (() => ({
-        createUpload: async () => { throw new Error("must not be reached in this test"); },
+        createUpload: async ({ caller }) => {
+          if (caller.userId !== "7" || caller.businessId !== "202") throw new Error("storage access denied");
+          throw new Error("Business tenant access denied");
+        },
         completeUpload: async ({ caller }) => {
           if (caller.userId !== "7" || caller.businessId !== "201") throw new Error("storage access denied");
           throw new Error("Business tenant access denied");
@@ -119,7 +122,7 @@ test("authenticated upload for a non-member tenant is denied", async () => {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ businessId: 202, byteSize: 100, contentType: "image/png" }),
     });
-    assert.equal(response.status, 500);
-    assert.deepEqual(await response.json(), { error: "internal_error" });
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { error: "forbidden" });
   });
 });
