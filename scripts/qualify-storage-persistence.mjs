@@ -82,38 +82,32 @@ try {
   evidence.push({ label: "direct table DML privileges", status: "OBSERVED", ...tablePrivileges.rows[0] });
 
   const probe = await q(`
-    select (ghm.storage_create_pending(
+    select * from ghm.storage_create_pending(
       $1, 'qualification', 0, 'qualification_probe',
       'qualification/probe-' || gen_random_uuid()::text,
       'image/png', 1, 'private', 'probe.png'
-    )).id as object_id
+    )
   `, [tenantBusinessId]);
-  const objectId = probe.rows[0].object_id;
+  const objectId = probe.rows[0].id;
   if (objectId === null || objectId === undefined) {
     throw new Error("storage_create_pending returned no object id");
   }
   evidence.push({ label: "create pending through canonical function", status: "PASS", object_id: objectId });
 
   await expectFailure("pending object cannot be marked deleted directly", async () => {
-    await q("select ghm.storage_mark_deleted($1)", [objectId]);
+    await q("select * from ghm.storage_mark_deleted($1)", [objectId]);
   });
 
-  await q("select ghm.storage_mark_available($1, $2)", [objectId, "qualification-checksum"]);
+  await q("select * from ghm.storage_mark_available($1, $2)", [objectId, "qualification-checksum"]);
   evidence.push({ label: "pending -> available", status: "PASS" });
 
-  await q("select ghm.storage_mark_deletion_pending($1)", [objectId]);
+  await q("select * from ghm.storage_mark_deletion_pending($1)", [objectId]);
   evidence.push({ label: "available -> deletion_pending", status: "PASS" });
 
   await q("select ghm.storage_mark_deleted($1)", [objectId]);
   evidence.push({ label: "deletion_pending -> deleted", status: "PASS" });
 
-  const final = await q(`
-    select
-      (ghm.storage_get_object($1)).id as id,
-      (ghm.storage_get_object($1)).status as status,
-      (ghm.storage_get_object($1)).checksum as checksum,
-      (ghm.storage_get_object($1)).deleted_at as deleted_at
-  `, [objectId]);
+  const final = await q("select * from ghm.storage_get_object($1)", [objectId]);
   evidence.push({ label: "final lifecycle state", status: final.rows[0].status === "deleted" ? "PASS" : "FAIL", row: final.rows[0] });
 
   await q("begin");
