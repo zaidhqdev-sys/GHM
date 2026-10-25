@@ -264,3 +264,15 @@ The updated script has not yet reported a CI run and has not been executed again
 - The script's `storage_get_object` final-state query calls the composite-returning function multiple times in one SELECT; change it to `SELECT * FROM ghm.storage_get_object($1)` and use `SELECT * FROM ghm.storage_create_pending(...)` for the create result to avoid repeated function expressions and keep the row shape aligned with the repository's current query pattern. These follow-up changes are not applied.
 - Continue to prohibit running the mutating qualification script against production or shared sandbox. Migration-ledger reconciliation still needs the approved read-only `ghm_schema_owner` audit path; real membership-backed tenant isolation remains unqualified.
 - Both this handover and the R2 readiness tracker have been updated in this branch. No database writes, migrations, or Render changes were made.
+
+
+## Storage qualification hardening applied — 2026-10-25 21:58 UTC
+
+The qualification script safety improvements that were previously blocked are now applied on this branch:
+
+- `GHM_QUALIFICATION_DATABASE_URL` is now the only accepted connection-string source; runtime and generic `DATABASE_URL` fallbacks have been removed.
+- Mutations still require explicit `GHM_STORAGE_QUALIFICATION_ALLOW_MUTATIONS=true`, and the connected database name must clearly indicate qualification/test/disposable use.
+- The direct-INSERT privilege probe now has a matching `$1` parameter and a unique provider key.
+- Storage create/transition/final-read queries use `SELECT * FROM ghm.storage_...(...)` to avoid repeated composite function evaluation and expose columns consistently.
+
+These changes are source-reviewed but have not yet been confirmed by CI at the latest branch head. Do not run the script until CI passes and a dedicated disposable database has been provisioned and verified. It must never target production or the shared PayFast sandbox. The authorized read-only migration-ledger/DDL review and real membership-backed tenant-isolation tests remain open. No database writes, migrations, or Render changes were made.
