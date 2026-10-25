@@ -21,3 +21,19 @@ For Cloudflare R2, the expected values are typically `STORAGE_PROVIDER=s3`, `STO
 ## Go/no-go
 
 **Do not add R2 credentials to Render yet.** The next engineering steps are to author and review the schema migration under the repository's established migration/security conventions, implement the TTL and fail-closed fixes, add focused tests, and qualify the migration in the shared sandbox DB using the approved migration process. Production migration and production credential configuration remain separate gated operations requiring explicit approval. No Render environment variables or database state were changed during this review.
+
+## Follow-up implementation — 2026-10-25
+
+Implemented on this feature branch after the initial review:
+
+- `STORAGE_DOWNLOAD_GRANT_MAX_TTL_SECONDS` is now passed from runtime config through the HTTP router into the storage service, and the service enforces that configured cap.
+- Storage activation/partial-config detection now includes provider, path-style, and both TTL variables, so setting one of these alone causes startup validation to fail rather than silently leaving storage disabled.
+- Added focused tests for a lower configured download TTL and for partial provider/TTL configuration.
+
+Latest observed CI run for commit `b4c4012a5fbc5057188e2c8ec192a67ebe2b5d48` was still in progress when this note was updated; do not treat these changes as test-passed until the run completes.
+
+## Remaining blockers
+
+- The canonical storage schema migration is still not authored. I have not created one by guessing at the database security conventions: the current runtime calls `SECURITY DEFINER` lifecycle functions while the runtime role should not have direct table DML, and the migration must define the exact object shape, transitions, ownership, grants, and tenant-boundary protections correctly. A guessed migration could create a cross-tenant write vulnerability.
+- HTTP route-level tests and explicit cross-tenant/database-privilege qualification remain outstanding.
+- No database, Render environment, production service, or sandbox service was changed.
