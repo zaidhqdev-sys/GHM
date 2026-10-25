@@ -237,3 +237,14 @@ Read-only Render Postgres queries were run against the actual production databas
 **Production enablement remains blocked:** the API storage repository calls the above canonical database lifecycle routines, so the storage migration must be located/reviewed and applied through the established migration process before enabling R2. Do not add production R2 credentials or enable the storage routes until that schema/privilege prerequisite is satisfied. This is a verified live preflight result, not an assumption based on source code.
 
 - Follow-up source review on the default `main` branch searched for the canonical table and lifecycle function definitions and found no checked-in migration definition. The PR therefore must not be merged as production-ready until the schema migration is located or authored, reviewed against the database security conventions, and validated in qualification before production rollout.
+
+
+## R2 readiness correction — 2026-10-25 21:52 UTC
+
+The earlier notes saying the storage schema was absent are superseded. The feature branch contains three canonical migrations: `20261004220000_create_storage_object.sql`, `20261004221000_establish_storage_persistence_boundary.sql`, and `20261004222000_harden_storage_persistence_function_authority.sql`. Read-only catalog checks observed the storage table and five lifecycle routines in both production and shared sandbox databases. Current branch head CI run 1623 passed. PR #184 remains draft and unmerged.
+
+The Render SQL inspection connection lacks USAGE on schema `ghm`, so it cannot read the migration ledger. Applied migration checksums and full live-DDL equivalence remain unverified. Lifecycle routines do not independently enforce end-user tenant membership; real membership-backed integration testing is still required.
+
+Caution: `scripts/qualify-storage-persistence.mjs` performs writes. Its direct-INSERT denial probe passes a bind parameter to a statement with no placeholder, so a parameter-count error could falsely appear to prove privilege denial. Do not run it on production or shared sandbox. Correct the probe and use only a disposable database.
+
+Do not add R2 variables, run migrations, or merge as production-ready until authorized migration/DDL review and disposable-database lifecycle/privilege plus tenant-isolation tests pass. When explicitly approved, production R2 credentials belong only on `GHM-Internal-Runtime`. No database or Render changes were made in this continuation.
