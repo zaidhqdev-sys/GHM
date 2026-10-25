@@ -27,9 +27,28 @@ test("storage metadata repository uses canonical persistence functions", async (
   assert.match(calls[0], /ghm\.storage_create_pending/);
 });
 
+test("storage metadata repository passes authenticated account to scoped getter", async () => {
+  let observedQuery = "";
+  let observedParams: unknown[] = [];
+  const client = {
+    async query(text: string, params: unknown[]) {
+      observedQuery = text;
+      observedParams = params;
+      return { rowCount: 1, rows: [{ id: "7", tenant_business_id: "42", resource_type: "business", resource_id: "42", object_class: "business_logo", provider_key: "media/logos/42/object", content_type: "image/png", byte_size: "100", visibility: "public", status: "available" }] };
+    },
+  };
+  const repo = new TransactionalPostgresStorageMetadataStore({ userId: 71, role: "business" }, async (work) => work(client as any));
+  const row = await repo.getById("7");
+  assert.equal(row?.id, "7");
+  assert.match(observedQuery, /ghm\\.storage_get_object\\(\\$1, \\$2\\)/);
+  assert.deepEqual(observedParams, [7, 71]);
+});
+
 test("storage metadata repository recognizes canonical missing-object error", async () => {
   const client = {
-    async query() {
+    async query(text: string, params: unknown[]) {
+      assert.match(text, /ghm\\.storage_get_object\\(\\$1, \\$2\\)/);
+      assert.deepEqual(params, [999, 1]);
       throw new Error("storage object does not exist");
     },
   };
