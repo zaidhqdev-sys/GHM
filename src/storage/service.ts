@@ -96,10 +96,15 @@ export function createStorageService(deps: {
   metadata: StorageMetadataStore;
   authorization: StorageAuthorization;
   uploadGrantTtlSeconds?: number;
+  downloadGrantMaxTtlSeconds?: number;
 }): StorageService {
   const uploadGrantTtlSeconds = deps.uploadGrantTtlSeconds ?? 900;
+  const downloadGrantMaxTtlSeconds = deps.downloadGrantMaxTtlSeconds ?? 3600;
   if (!Number.isSafeInteger(uploadGrantTtlSeconds) || uploadGrantTtlSeconds < 1 || uploadGrantTtlSeconds > 3600) {
     throw new Error("invalid storage upload grant expiry");
+  }
+  if (!Number.isSafeInteger(downloadGrantMaxTtlSeconds) || downloadGrantMaxTtlSeconds < 1 || downloadGrantMaxTtlSeconds > 3600) {
+    throw new Error("invalid storage download grant expiry");
   }
   return {
     async createUpload(input) {
@@ -156,7 +161,7 @@ export function createStorageService(deps: {
     },
 
     async getAccess(input) {
-      if (!Number.isSafeInteger(input.expiresInSeconds) || input.expiresInSeconds < 1 || input.expiresInSeconds > 3600) {
+      if (!Number.isSafeInteger(input.expiresInSeconds) || input.expiresInSeconds < 1 || input.expiresInSeconds > downloadGrantMaxTtlSeconds) {
         throw new Error("invalid storage grant expiry");
       }
       const record = await deps.metadata.getById(input.objectId);
