@@ -277,3 +277,8 @@ Static review identified malformed literal `\\n` sequences in the final lifecycl
 ## Explicit syntax CI gate — 2026-10-26
 
 CI workflow now runs `node --check scripts/qualify-storage-persistence.mjs` before build/test, making script parse failures an explicit CI failure. Latest source/workflow commit is `61f083c7e5eeb1ea0983edf3a391dc6da8dd996c`; CI run 1647 is currently in progress. No qualification DB run, DB write, migration, or Render change occurred. Keep production R2 credentials on hold until CI passes and the remaining database/tenant-isolation checks are completed.
+
+
+## Follow-up migration-owner convention review — 2026-10-26
+
+Verified `src/db/migrate.ts`: the migration runner connects with `GHM_MIGRATOR_DATABASE_URL`, executes `SET ROLE ghm_schema_owner`, and verifies `current_user = ghm_schema_owner` and `session_user = ghm_migrator` before executing migration SQL inside a transaction. PostgreSQL creates/replaces the lifecycle functions under the effective role in that migration session; therefore the missing explicit `ALTER FUNCTION ... OWNER TO ...` statements are not by themselves proof of wrong ownership for functions created by this runner. The role switch is documented in the main handover as validated against production earlier. This is a source/process review only, not a live storage migration or grant verification. Before applying storage migrations, still verify role attributes and function owners/grants on the intended target using the approved read-only audit connection, and test the migration on a disposable database. No database or Render settings were changed. PR #184 remains draft/unmerged.
