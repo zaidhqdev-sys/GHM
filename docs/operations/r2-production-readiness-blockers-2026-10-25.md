@@ -46,3 +46,16 @@ CI completed successfully for the hardening commit `b4c4012a5fbc5057188e2c8ec192
 - The migration remains the critical blocker because both live databases were previously verified to lack the storage table and lifecycle functions. The migration runner uses `GHM_MIGRATOR_DATABASE_URL`, assumes `ghm_migrator` can `SET ROLE ghm_schema_owner`, and applies pending migration files transactionally. I did not execute it.
 - I will not create a speculative schema migration without confirming existing role/grant conventions and exact database contract, and I will not run a migration against the shared sandbox or production DB without the approved migration plan.
 - No Render settings, credentials, or database state were changed.
+
+
+## Continued review — 2026-10-25 21:05 UTC
+
+A further source review of `src/http/storage-router.ts` found why route-level tests are required before this can be enabled:
+
+- The complete/access/delete handlers first look up metadata and then construct the service caller's `businessId` from that metadata. This is safe only if the authorization adapter independently derives and verifies the authenticated user's tenant membership from `AuthContext`, and never trusts that caller-supplied business ID as authority. That must be verified in the adapter and integration-tested with a user from a different tenant.
+- The upload handler accepts `businessId` from request JSON. This is acceptable only if `assertCanManage` resolves actual tenant authority from the authenticated context and denies a non-member; a request field must not grant membership.
+- The source path `src/storage/authorization-adapter.ts` could not be retrieved through the connected GitHub file API during this review, so I cannot truthfully certify the above invariant from source here.
+
+Accordingly, I am not approving the storage routes or inventing a migration that must align with their authorization contract. Required next step: retrieve/review the adapter and the existing tenant resolver + DB grants, then add cross-tenant route/integration tests and author a migration that enforces tenant checks inside the database routines as well as in application code.
+
+CI green for the earlier TTL/config fix is not a pass for these security conditions. No environment variables, database state, or Render settings were changed.
