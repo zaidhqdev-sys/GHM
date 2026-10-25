@@ -27,13 +27,24 @@ async function q(sql, params = []) {
   return client.query(sql, params);
 }
 
-async function expectFailure(label, fn) {
+async function expectSqlState(label, expectedCode, fn) {
   try {
     await fn();
     evidence.push({ label, status: "FAIL", reason: "operation unexpectedly succeeded" });
     mutationObserved = true;
+    throw new Error(`${label}: operation unexpectedly succeeded; refusing to continue qualification`);
   } catch (error) {
-    evidence.push({ label, status: "PASS", reason: String(error.message).slice(0, 240) });
+    if (error?.message?.includes("operation unexpectedly succeeded")) throw error;
+    if (error?.code !== expectedCode) {
+      evidence.push({
+        label, status: "FAIL",
+        expected_sqlstate: expectedCode,
+        actual_sqlstate: error?.code ?? null,
+        reason: String(error.message).slice(0, 240),
+      });
+      throw new Error(`${label}: expected SQLSTATE ${expectedCode}, got ${error?.code ?? "unknown"}`);
+    }
+    evidence.push({ label, status: "PASS", sqlstate: error.code });
   }
 }
 
@@ -55,7 +66,7 @@ try {
   const tenantBusinessId = tenant.rows[0].id;
   evidence.push({ label: "qualification tenant", status: "OBSERVED", tenant_business_id: tenantBusinessId });
 
-  await expectFailure("direct runtime INSERT is denied", async () => {
+  await expectSqlState("direct runtime INSERT is denied", "42501", async () => {
     await q(
       `insert into ghm.storage_object
        (tenant_business_id, resource_type, resource_id, object_class, provider_key, content_type, byte_size, visibility)
@@ -80,6 +91,12 @@ try {
       has_table_privilege(current_user, 'ghm.storage_object', 'DELETE') as delete_allowed
   `);
   evidence.push({ label: "direct table DML privileges", status: "OBSERVED", ...tablePrivileges.rows[0] });
+  if (tablePrivileges.rows[0].insert_allowed || tablePrivileges.rows[0].update_allowed || tablePrivileges.rows[0].delete_allowed) {
+    throw new Error("runtime role has direct storage_object DML privileges; expected INSERT/UPDATE/DELETE all false");
+  }
+  if (Object.values(functionPrivileges.rows[0]).some((allowed) => allowed !== true)) {
+    throw new Error("runtime role lacks EXECUTE on one or more required storage lifecycle functions");
+  }
 
   const probe = await q(`
     select * from ghm.storage_create_pending(
@@ -94,7 +111,7 @@ try {
   }
   evidence.push({ label: "create pending through canonical function", status: "PASS", object_id: objectId });
 
-  await expectFailure("pending object cannot be marked deleted directly", async () => {
+  await expectSqlState("pending object cannot be marked deleted directly", "P0001", async () => {
     await q("select * from ghm.storage_mark_deleted($1)", [objectId]);
   });
 
@@ -104,7 +121,7 @@ try {
   await q("select * from ghm.storage_mark_deletion_pending($1)", [objectId]);
   evidence.push({ label: "available -> deletion_pending", status: "PASS" });
 
-  await q("select ghm.storage_mark_deleted($1)", [objectId]);
+  await q("select * from ghm.storage_mark_deleted($1)", [objectId]);
   evidence.push({ label: "deletion_pending -> deleted", status: "PASS" });
 
   const final = await q("select * from ghm.storage_get_object($1)", [objectId]);
