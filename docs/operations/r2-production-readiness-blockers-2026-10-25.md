@@ -318,3 +318,8 @@ CI run 1660 passed for branch head `48887b07118d7d995e40f9ba0ecd94680d7609b7`. T
 ## New code review fix: retryable deletion — 2026-10-26
 
 Found and fixed a lifecycle recovery issue in `src/storage/service.ts`: an object left in `deletion_pending` after provider failure could not be retried via the service. Deletion now accepts `available` and `deletion_pending`, authorizes both, transitions only an `available` object, retries provider deletion, and marks the row `deleted` only after provider deletion succeeds. Added tests for successful retry and a provider failure during retry. Commits: `a1afb1d6a71c869e6971b04aa9291c2bb3f62b89`, `2633fde904e6fadbd7ac74585558c22e9a6dfa68`. CI for these code changes remains unconfirmed. This is not production qualification; no database or Render settings changed, and production R2 variables remain on hold.
+
+
+## Additional blocker: metadata getter is not tenant-scoped — 2026-10-26
+
+CI run 1666 passed for the retryable deletion fix. A least-privilege review found `ghm.storage_get_object(bigint)` is a `SECURITY DEFINER` function granted to `ghm_runtime` that returns an object row solely by ID; it does not take a tenant identifier or enforce visibility. Normal service flow checks authorization after loading the row, but direct SQL invocation by the runtime role can retrieve metadata for arbitrary IDs. This is a database-layer tenant-isolation weakness under a compromised runtime/query path. It does not disclose provider credentials, but must be resolved before production enablement. Design and test a tenant-scoped lookup while preserving explicitly public logo reads; do not change live DB functions or permissions ad hoc. No database or Render settings changed. Keep production R2 variables on hold.
