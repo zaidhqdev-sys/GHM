@@ -81,3 +81,19 @@ SELECT pg_catalog.to_regclass('ghm.storage_object')::text AS storage_table,
 -- using the approved migration-audit procedure if either relation exists.
 SELECT pg_catalog.to_regclass('ghm.ghm_schema_migrations')::text AS ghm_ledger,
        pg_catalog.to_regclass('public.ghm_schema_migrations')::text AS public_ledger;
+
+-- The unscoped one-argument metadata getter must be absent after the scoped
+-- lookup migration. The expected two-argument overload must be present.
+SELECT
+  EXISTS (
+    SELECT 1 FROM pg_catalog.pg_proc p
+    JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'ghm' AND p.proname = 'storage_get_object'
+      AND pg_catalog.pg_get_function_identity_arguments(p.oid) = 'p_object_id bigint'
+  ) AS unscoped_getter_present,
+  EXISTS (
+    SELECT 1 FROM pg_catalog.pg_proc p
+    JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'ghm' AND p.proname = 'storage_get_object'
+      AND pg_catalog.pg_get_function_identity_arguments(p.oid) = 'p_object_id bigint, p_account_id bigint'
+  ) AS account_scoped_getter_present;
