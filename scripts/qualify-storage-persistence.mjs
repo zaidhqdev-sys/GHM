@@ -125,7 +125,10 @@ try {
   evidence.push({ label: "deletion_pending -> deleted", status: "PASS" });
 
   const final = await q("select * from ghm.storage_get_object($1)", [objectId]);
-  if (final.rows.length !== 1 || final.rows[0].status !== "deleted") {\n    throw new Error("final lifecycle state did not resolve to exactly one deleted object");\n  }\n  evidence.push({ label: "final lifecycle state", status: "PASS", row: final.rows[0] });
+  if (final.rows.length !== 1 || final.rows[0].status !== "deleted") {
+    throw new Error("final lifecycle state did not resolve to exactly one deleted object");
+  }
+  evidence.push({ label: "final lifecycle state", status: "PASS", row: final.rows[0] });
 
   await q("begin");
   await q("select set_config('statement_timeout', '5000', true)");
