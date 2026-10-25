@@ -34,6 +34,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check storage qualification script syntax
+        run: node --check scripts/qualify-storage-persistence.mjs
+
       - name: Build
         run: npm run build
 
