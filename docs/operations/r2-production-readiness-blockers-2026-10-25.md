@@ -287,3 +287,8 @@ Verified `src/db/migrate.ts`: the migration runner connects with `GHM_MIGRATOR_D
 ## Read-only audit query file available — 2026-10-26
 
 Added [`database/audits/storage-persistence-readonly-audit.sql`](../../database/audits/storage-persistence-readonly-audit.sql). It gathers connection identity, role attributes, storage relation owner/RLS state, lifecycle function owner/security settings/ACLs, direct runtime DML privileges, and migration-ledger presence without writes or role switching. Use only with the approved audit connection, one explicitly selected target at a time, and keep production and sandbox results separate. This does not qualify the migration or authorize applying it. No live database or Render changes were made.
+
+
+## Read-only role audit results — 2026-10-26
+
+CI run 1654 passed for the branch head containing the read-only audit file and handover updates. Read-only role checks against Render show `ghm_schema_owner` exists and is non-login, non-superuser, and `NOBYPASSRLS` on both production and sandbox. `ghm_migrator` and `ghm_runtime` exist and are also non-superuser/`NOBYPASSRLS`; production `ghm_app_user` is likewise non-superuser/`NOBYPASSRLS`. However, the inspection role receives `permission denied for schema ghm` (SQLSTATE 42501) when querying relation/ledger metadata in either database. Table/function ownership, effective grants, and ledger checksums therefore remain unresolved. This is an access limitation, not proof that objects are missing. No database writes, migrations, or Render changes occurred. Do not add production R2 credentials yet.
