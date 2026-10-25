@@ -135,6 +135,24 @@ test("storage service returns provider-neutral download grants", async () => {
   assert.deepEqual(d.calls, ["get", "read", "download-grant"]);
 });
 
+
+test("storage service enforces a lower configured download grant maximum", async () => {
+  const d = deps();
+  d.metadata.getById = async () => { d.calls.push("get"); return { ...d.record, status: "available" }; };
+  const service = createStorageService({ ...d, downloadGrantMaxTtlSeconds: 120 });
+  await assert.rejects(
+    service.getAccess({ caller: { userId: "u1", businessId: "1" }, objectId: "object-1", expiresInSeconds: 121 }),
+    /invalid storage grant expiry/,
+  );
+  assert.deepEqual(d.calls, []);
+  const grant = await service.getAccess({
+    caller: { userId: "u1", businessId: "1" },
+    objectId: "object-1",
+    expiresInSeconds: 120,
+  });
+  assert.equal(grant.url, "https://download.invalid");
+});
+
 test("storage service rejects unsafe access-grant expiry before persistence/provider access", async () => {
   const d = deps();
   const service = createStorageService(d);
