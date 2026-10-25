@@ -3,6 +3,7 @@ import type { AuthContext } from "../auth/authorization.js";
 import { requireAuth } from "../auth/http.js";
 import type { StorageProvider } from "../storage/provider.js";
 import { createStorageService } from "../storage/service.js";
+import type { StorageMetadataStore, StorageService } from "../storage/service.js";
 import { createPostgresStorageMetadataStore } from "../storage/repository.js";
 import { createPostgresStorageAuthorization } from "../storage/authorization-adapter.js";
 
@@ -35,20 +36,30 @@ const handleStorageError = (error: unknown, res: Response): void => {
   res.status(500).json({ error: "internal_error" });
 };
 
+export interface StorageRouteTestSeam {
+  metadataStoreForContext?: (context: AuthContext) => StorageMetadataStore;
+  serviceForContext?: (context: AuthContext) => StorageService;
+}
+
 export const registerStorageRoutes = (
   app: Express,
   provider: StorageProvider,
   authMiddleware: RequestHandler = requireAuth,
   uploadGrantTtlSeconds = 900,
   downloadGrantMaxTtlSeconds = 3600,
+  testSeam: StorageRouteTestSeam = {},
 ): void => {
-  const serviceFor = (context: AuthContext) => createStorageService({
-    provider,
-    metadata: createPostgresStorageMetadataStore(context),
-    authorization: createPostgresStorageAuthorization(context),
-    uploadGrantTtlSeconds,
-    downloadGrantMaxTtlSeconds,
-  });
+  const metadataFor = (context: AuthContext): StorageMetadataStore =>
+    testSeam.metadataStoreForContext?.(context) ?? createPostgresStorageMetadataStore(context);
+
+  const serviceFor = (context: AuthContext): StorageService =>
+    testSeam.serviceForContext?.(context) ?? createStorageService({
+      provider,
+      metadata: metadataFor(context),
+      authorization: createPostgresStorageAuthorization(context),
+      uploadGrantTtlSeconds,
+      downloadGrantMaxTtlSeconds,
+    });
 
   app.post("/api/v1/storage/business-logos/upload", authMiddleware, async (req: Request, res: Response) => {
     try {
@@ -83,7 +94,7 @@ export const registerStorageRoutes = (
       const objectId = objectIdParam(req.params.objectId);
       if (!context) { res.status(401).json({ error: "unauthorized" }); return; }
       if (!objectId) { res.status(400).json({ error: "invalid_request" }); return; }
-      const metadata = await createPostgresStorageMetadataStore(context).getById(objectId);
+      const metadata = await metadataFor(context).getById(objectId);
       if (!metadata) { res.status(404).json({ error: "not_found" }); return; }
       const record = await serviceFor(context).completeUpload({
         caller: { userId: String(context.userId), businessId: metadata.businessId },
@@ -103,7 +114,7 @@ export const registerStorageRoutes = (
         res.status(400).json({ error: "invalid_request" });
         return;
       }
-      const record = await createPostgresStorageMetadataStore(context).getById(objectId);
+      const record = await metadataFor(context).getById(objectId);
       if (!record) { res.status(404).json({ error: "not_found" }); return; }
       const grant = await serviceFor(context).getAccess({
         caller: { userId: String(context.userId), businessId: record.businessId },
@@ -120,7 +131,7 @@ export const registerStorageRoutes = (
       const objectId = objectIdParam(req.params.objectId);
       if (!context) { res.status(401).json({ error: "unauthorized" }); return; }
       if (!objectId) { res.status(400).json({ error: "invalid_request" }); return; }
-      const record = await createPostgresStorageMetadataStore(context).getById(objectId);
+      const record = await metadataFor(context).getById(objectId);
       if (!record) { res.status(404).json({ error: "not_found" }); return; }
       await serviceFor(context).deleteObject({
         caller: { userId: String(context.userId), businessId: record.businessId },
