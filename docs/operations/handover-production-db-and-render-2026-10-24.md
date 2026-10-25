@@ -308,3 +308,8 @@ Added an explicit `node --check scripts/qualify-storage-persistence.mjs` step to
 ## Storage migration authority clarification — 2026-10-26
 
 Reviewed `src/db/migrate.ts` to resolve the open question about `ghm_schema_owner`. The established migration runner requires `GHM_MIGRATOR_DATABASE_URL`, executes `SET ROLE ghm_schema_owner`, verifies the effective role and session user (`ghm_schema_owner` / `ghm_migrator`), then runs migration SQL in a transaction. Thus a separate `ALTER FUNCTION OWNER` statement is not necessarily required for functions created under this runner's effective role. This is a source/process conclusion, not live verification of the storage functions' owner or grants. Before any storage migration, use the approved read-only audit to verify role attributes, function owners, and effective grants on the intended target, and qualify the migration against a disposable database. No DB or Render changes were made; PR #184 remains draft and unmerged.
+
+
+## Read-only storage audit queries added — 2026-10-26
+
+Added `database/audits/storage-persistence-readonly-audit.sql` on the feature branch. It only queries current connection identity, role attributes, storage relation ownership/RLS flags, lifecycle function owners/security settings/ACLs, runtime table DML privileges, and migration-ledger relation presence. It contains no DDL/DML and does not switch roles. Run it only with an approved audit connection against one explicitly selected database at a time; retain production and sandbox outputs separately. The audit file is a convenience for evidence gathering, not a qualification pass. No database or Render changes were made.
