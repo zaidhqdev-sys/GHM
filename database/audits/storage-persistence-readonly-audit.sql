@@ -89,11 +89,11 @@ SELECT
     SELECT 1 FROM pg_catalog.pg_proc p
     JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = 'ghm' AND p.proname = 'storage_get_object'
-      AND pg_catalog.pg_get_function_identity_arguments(p.oid) = 'p_object_id bigint'
+      AND p.pronargs = 1 AND p.proargtypes[0] = 'bigint'::regtype
   ) AS unscoped_getter_present,
   EXISTS (
     SELECT 1 FROM pg_catalog.pg_proc p
     JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = 'ghm' AND p.proname = 'storage_get_object'
-      AND pg_catalog.pg_get_function_identity_arguments(p.oid) = 'p_object_id bigint, p_account_id bigint'
+      AND p.pronargs = 2 AND p.proargtypes[0] = 'bigint'::regtype AND p.proargtypes[1] = 'bigint'::regtype
   ) AS account_scoped_getter_present;
