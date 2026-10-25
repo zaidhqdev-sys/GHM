@@ -229,3 +229,10 @@ The main production handover was updated in commit `9bd01f01d3a47a3e86bad75aed8e
 Additional safety finding: `scripts/qualify-storage-persistence.mjs` is a mutating probe, not a read-only audit. Its direct-INSERT negative test issues an INSERT with no SQL placeholder but passes `[tenantBusinessId]` as a bind-parameter array; PostgreSQL can reject the mismatched parameter count before checking privileges, making the test falsely pass. Do not use this script as privilege evidence and do not run it against production/shared sandbox. Correct this probe and require a dedicated disposable qualification database before executing lifecycle writes.
 
 Current branch head `b3da5f03e23fff8ecb6a20905b84f9d469944f67` passed CI run 1623. PR #184 remains draft and unmerged. No database writes, migrations, or Render configuration changes were made.
+
+
+## Qualification probe guard added — 2026-10-25 21:54 UTC
+
+Updated `scripts/qualify-storage-persistence.mjs` to fix its direct-INSERT denial probe (it now supplies the tenant ID as `$1` and uses a unique generated provider key). Since the script creates and advances storage records, it now requires explicit `GHM_STORAGE_QUALIFICATION_ALLOW_MUTATIONS=true` and a database name clearly marked qualification/qual/test/disposable. This guard has not yet been CI-validated, and the script has not been executed against any DB. Use only on a dedicated disposable database; never production or shared sandbox.
+
+The main handover now includes the same correction and guardrails. CI run 1623 passed for the preceding branch head; no workflow result is yet reported for this script patch. PR remains draft, no database writes or Render changes.
