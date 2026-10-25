@@ -236,3 +236,10 @@ Current branch head `b3da5f03e23fff8ecb6a20905b84f9d469944f67` passed CI run 162
 Updated `scripts/qualify-storage-persistence.mjs` to fix its direct-INSERT denial probe (it now supplies the tenant ID as `$1` and uses a unique generated provider key). Since the script creates and advances storage records, it now requires explicit `GHM_STORAGE_QUALIFICATION_ALLOW_MUTATIONS=true` and a database name clearly marked qualification/qual/test/disposable. This guard has not yet been CI-validated, and the script has not been executed against any DB. Use only on a dedicated disposable database; never production or shared sandbox.
 
 The main handover now includes the same correction and guardrails. CI run 1623 passed for the preceding branch head; no workflow result is yet reported for this script patch. PR remains draft, no database writes or Render changes.
+
+
+## Latest continuation — 2026-10-25 21:56 UTC
+
+CI run 1628 passed for the then-current PR head `5e69a2cfb59c9adfb22413d19547ae683b8aceb4`; PR #184 remains draft and unmerged. Latest source inspection shows `scripts/qualify-storage-persistence.mjs` still accepts `GHM_RUNTIME_DATABASE_URL` and generic `DATABASE_URL` fallbacks when `GHM_QUALIFICATION_DATABASE_URL` is absent. The mutating script therefore needs another safety hardening pass before it is considered usable: accept only the dedicated qualification URL, use `SELECT * FROM ghm.storage_create_pending(...)` for consistent row mapping, and make the final read `SELECT * FROM ghm.storage_get_object($1)` rather than repeating the function call. The repository tool blocked the source update, so these changes are not applied. Do not run the qualification script on any database until this is corrected, CI-tested, and a disposable DB target is explicitly provisioned.
+
+The production handover was updated with the same findings in commit `45da83731e2527b688256d9d04e6f0fa87294247`. No database writes, migrations, or Render configuration changes were made. The R2 environment variables remain on hold pending authorized migration-ledger/DDL reconciliation and real membership-backed tenant isolation testing.
