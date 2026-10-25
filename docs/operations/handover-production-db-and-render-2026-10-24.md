@@ -288,3 +288,8 @@ CI run 1635 is queued for this change; do not count it as validated until it pas
 ## Follow-up qualification guard review — 2026-10-26
 
 CI run 1637 passed for the prior branch head. Further static review tightened the mutating qualification script: the connected database name must contain a delimited qualification/test/disposable token (not merely a substring), direct-DML privilege checks now fail closed if a privilege result is NULL/unknown, and the final lifecycle assertion now requires exactly one returned row with status `deleted`. These are newer code commits and remain unvalidated until CI passes on the current head. No database was connected to by the qualification script. No migration, database write, or Render setting was changed. R2 rollout remains blocked on authorized read-only ledger/DDL reconciliation, a verified disposable qualification target and runtime privilege/lifecycle test, and real membership-backed cross-tenant integration tests.
+
+
+## Latest validation result — 2026-10-26
+
+CI run 1639 passed for source commit `eec2d4dbb20d4a19e0984c537792279cc71401bf`. It includes the latest qualification-script hardening: delimited qualification/test/disposable database-name token, fail-closed privilege assertions, and strict final lifecycle row/status check. PR #184 remains draft/unmerged. This is repository CI only; the script has not been run against a database, and CI does not establish live production migration checksums, live grants, or real cross-tenant authorization. The two handover docs were updated after this source commit; no CI run is reported for the documentation-only commits. No database writes, migrations, or Render changes were made. R2 credentials remain on hold.
