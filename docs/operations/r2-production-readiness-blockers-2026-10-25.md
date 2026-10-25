@@ -181,3 +181,18 @@ No live database or Render settings were changed.
 CI run 1612 completed successfully for the package test-command commit, including build, full test suite, migration audit policy tests, and runtime-boundary verification. The authenticated HTTP boundary tests are therefore green as tests, with the documented limitation that they use a controlled service seam and do not prove the real PostgreSQL tenant-membership path end-to-end.
 
 Updated PR #184's body to remove stale claims that the live storage objects are absent and to accurately list current validation and remaining gates. PR remains draft and unmerged. Canonical migration/source reconciliation, authorized constraint/privilege review, disposable-Postgres lifecycle tests, and real membership-backed cross-tenant integration tests remain blockers. No DB writes, migrations, or Render settings changes were made.
+
+
+## Canonical migration source reconciliation — 2026-10-25 21:38 UTC
+
+Correction to earlier tracker entries: the canonical storage migrations DO exist in the repository under `database/migrations/` on this branch:
+
+- `20261004220000_create_storage_object.sql` defines the table, identity ID, foreign key to `ghm.business`, uniqueness/check constraints, and indexes.
+- `20261004221000_establish_storage_persistence_boundary.sql` revokes direct table access from runtime/migrator and defines the five lifecycle routines.
+- `20261004222000_harden_storage_persistence_function_authority.sql` changes those routines to SECURITY DEFINER, fixes search_path, revokes PUBLIC execute, and grants execution to `ghm_runtime`.
+
+This resolves the claim that no checked-in migration source exists. Earlier searches were incomplete; the prior statement that the canonical migration was absent is superseded. The actual remaining reconciliation is to compare the live ledger/checksums and live DDL against these exact migration files. The read-only role previously could not inspect the ledger/constraints fully, so whether these versions/checksums are applied to each live DB remains unconfirmed.
+
+Security review point from the canonical SQL: the SECURITY DEFINER routines enforce input validation and lifecycle status transitions but do not independently check authenticated tenant membership. The app authorization adapter currently checks membership and owner/administrator role before invoking them. Therefore real runtime authorization integration tests and confirmation that only the trusted app server holds `ghm_runtime` credentials are required; database routines alone are not a tenant boundary.
+
+No migration was executed, no database was modified, and no Render settings were changed.
