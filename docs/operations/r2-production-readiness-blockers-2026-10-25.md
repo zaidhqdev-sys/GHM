@@ -220,3 +220,12 @@ The PR remains draft. Live migration ledger/checksum and full constraints review
 - Source review confirmed the canonical migrations: the table migration defines identity, FK, status/lifecycle checks, uniqueness and indexes; the boundary migration revokes direct table DML and defines lifecycle routines; the hardening migration changes them to SECURITY DEFINER with fixed search_path and PUBLIC execute revoked.
 - Production migration-ledger access remains blocked by DB permissions: the connection runs with `current_user=ghm_db_user`, `session_user=ghm_app_user`, and `has_schema_privilege(current_user,'ghm','USAGE')=false`. Queries against `ghm.ghm_schema_migrations` fail with permission denied for schema `ghm`. No applied-version/checksum claim can be made from this connection. An authorized `ghm_schema_owner`/migration-audit read-only session is required.
 - No migration, database write, or Render change was performed. PR remains draft. R2 activation remains blocked pending ledger/checksum reconciliation, authorized live-constraint review, and real membership-backed tenant isolation qualification.
+
+
+## Handover synchronization and qualification-script safety — 2026-10-25 21:53 UTC
+
+The main production handover was updated in commit `9bd01f01d3a47a3e86bad75aed8ef1bfa3cea10b` to supersede stale statements that the canonical storage migration was absent. The three canonical migration files are present, and catalog checks observe the table/functions in production and shared sandbox. The remaining database blocker is ledger/checksum and full DDL reconciliation through an authorized read-only role, not absence of source files.
+
+Additional safety finding: `scripts/qualify-storage-persistence.mjs` is a mutating probe, not a read-only audit. Its direct-INSERT negative test issues an INSERT with no SQL placeholder but passes `[tenantBusinessId]` as a bind-parameter array; PostgreSQL can reject the mismatched parameter count before checking privileges, making the test falsely pass. Do not use this script as privilege evidence and do not run it against production/shared sandbox. Correct this probe and require a dedicated disposable qualification database before executing lifecycle writes.
+
+Current branch head `b3da5f03e23fff8ecb6a20905b84f9d469944f67` passed CI run 1623. PR #184 remains draft and unmerged. No database writes, migrations, or Render configuration changes were made.
