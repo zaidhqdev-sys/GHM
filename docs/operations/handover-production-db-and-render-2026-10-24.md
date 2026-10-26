@@ -365,7 +365,7 @@ CI run [1678](https://github.com/zaidhqdev-sys/GHM/actions/runs/40242355456) pas
 
 ### Source and test verification
 
-- CI run [1682](https://github.com/zaidhqdev-sys/GHM/actions/runs/4024) was reported passing for source commit `0fdf3052d795473450561eb4dda2de78ea11a053`. (Confirm the run link/ID in GitHub before relying on this abbreviated link; the source SHA is the definitive reference.)
+- CI run #1682 was reported passing for source commit `0fdf3052d795473450561eb4dda2de78ea11a053`.
 - Local `npm run build` completed successfully.
 - Focused storage tests passed: 47 tests, 0 failures, 0 skipped.
 - Migration-audit policy tests passed: 6 tests, 0 failures, 0 skipped.
