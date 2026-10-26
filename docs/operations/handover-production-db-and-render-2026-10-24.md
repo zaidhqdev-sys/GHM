@@ -517,3 +517,12 @@ Current decision: Issue #185 has no maintainer baseline approval recorded at thi
 The exact-head workflow for checklist commit `9643c8f41d36e9417995f30ba965a3194ee4c4a6` passed as [CI #1706](https://github.com/zaidhqdev-sys/GHM/actions/runs/40323967117). All steps succeeded: isolated least-privilege PostgreSQL roles, qualification script syntax, build, full migrations on disposable PostgreSQL, fixture seeding, getter/catalog checks, lifecycle and tenant authorization qualification, full test suite, migration-audit policy tests, and runtime-boundary verification.
 
 This confirms the checklist documentation commit and storage qualification are green. It does not resolve migration-baseline authority: Issue #185 remains open with the required decision unchecked, and PRs #142 and #184 remain drafts. Do not run the checklist against Render until the baseline decision and controlled rollout approval are recorded.
+
+
+### Integration-candidate divergence assessment — 2026-10-26
+
+Read-only GitHub comparison confirms `main` is the repository default branch and the integration candidate `integration/ghm-identity-merge-candidate-20261018` is **diverged**, not a simple forward-only migration addition: candidate is 55 commits ahead and 9 commits behind `main` (merge base `8376c88cc99db156e9cd3488669ec35e4ed498cf`; main head at comparison `a966ada3695f2cfed1f7ad64679565be4d25c46d`). The comparison includes broad application, auth, API, migration-runner, CI, and database changes, not only the eight extra ledger files.
+
+Therefore do not merge PR #142 wholesale as a migration-ledger repair, and do not infer the production baseline from that branch alone. Maintainers should choose an explicit integration strategy after reviewing the full branch diff, then reconcile the sandbox ledger against the selected baseline. The storage migration remains independently qualified on disposable PostgreSQL; that does not authorize persistent changes.
+
+Latest handover/PR CI checkpoint: [CI #1707](https://github.com/zaidhqdev-sys/GHM/actions/runs/40324507287) passed. No Render database was modified.
