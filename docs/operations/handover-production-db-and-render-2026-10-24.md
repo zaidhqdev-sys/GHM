@@ -403,3 +403,13 @@ Render inventory shows an existing PostgreSQL instance named `ghm_identity_quali
 The handover update is committed on the feature branch. CI run #1684 completed successfully for that documentation commit. PR #184 remains open and draft; no merge, deployment, database migration, database write, or Render environment change was performed.
 
 Next concrete gate: use an approved local/operational connection to verify the purpose and contents of `ghm_identity_qualification_20261018` or provision a clearly disposable database with explicit approval for any associated cost. Only then run the mutating storage qualification against that isolated database, including the migration, runtime direct-DML denial, lifecycle transitions, public-logo read, and real membership-backed same-tenant/cross-tenant cases. Keep production R2 settings and credentials on hold until that gate and the baseline reconciliation are reviewed.
+
+
+### Disposable PostgreSQL CI gate added — 2026-10-26
+
+To close the gap where the feature branch CI only compiled and ran tests without applying the repository migrations, `.github/workflows/ci.yml` now provisions an ephemeral PostgreSQL 18 service for CI, creates isolated `ghm_schema_owner`, `ghm_migrator`, and `ghm_runtime` roles, runs the migration chain through the guarded migrator, and then runs the existing tests/policy/runtime-boundary checks. The role credentials and database exist only inside the ephemeral GitHub Actions job; this does not change Render or any persistent database.
+
+- Workflow change commit: `1dfa38fec3265f0ca4c59c5cbb86e0950368d1dd`.
+- Exact-head CI run [#1686](https://github.com/zaidhqdev-sys/GHM/actions/runs/40250770182) started and was in progress at the time this note was written.
+- This step deliberately does not invoke `scripts/qualify-storage-persistence.mjs`: that script is mutating and currently expects an active business with active membership in its qualification DB. Run it only after a disposable CI fixture is implemented/verified or an explicitly approved disposable qualification DB is available.
+- If the migration chain or DB-backed suite fails, fix the disposable CI fixture/migration contract before any live qualification; do not work around a failure by running against Render.
