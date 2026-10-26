@@ -58,7 +58,7 @@ import type { PasswordResetService } from '../auth/password-reset';
 import type { QuoteFlowMigrationResetRecoveryService } from '../migrations/quoteflow-migration-reset-recovery';
 import type { QuoteFlowMigrationResetCompletionService } from '../migrations/quoteflow-migration-reset-completion';
 import { createPasswordResetService } from '../auth/password-reset';
-import { PostgresAuthPersistence } from '../auth/foundation/persistence';
+import { PostgresAuthPersistence, type AuthPersistence } from '../auth/foundation/persistence';
 import { PostgresProjectQuoteRepository } from '../resources/project-quote/repository';
 import { ProjectQuoteServiceImpl } from '../resources/project-quote/service';
 import type { ProjectQuoteService } from '../resources/project-quote/contracts';
@@ -124,6 +124,7 @@ export interface AppDependencies {
   readonly businessOfferingService?: BusinessOfferingService;
   readonly directoryService?: DirectoryService;
   readonly authService?: GhmAuthService;
+  readonly authPersistence?: AuthPersistence;
   readonly passwordRecoveryService?: PasswordRecoveryService;
   readonly passwordResetService?: PasswordResetService;
   readonly quoteFlowMigrationResetRecoveryService?: QuoteFlowMigrationResetRecoveryService;
@@ -678,11 +679,13 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerNotificationRoutes(app, notificationService, resourceAuthMiddleware);
   registerBusinessCategoryRoutes(app, businessCategoryService, resourceAuthMiddleware);
   registerBusinessOfferingRoutes(app, businessOfferingService, resourceAuthMiddleware);
+  const authPersistence = dependencies.authPersistence ?? new PostgresAuthPersistence();
   const passwordResetService =
     dependencies.passwordResetService
-    ?? createPasswordResetService(new PostgresAuthPersistence());
+    ?? createPasswordResetService(authPersistence);
   registerAuthRoutes(app, {
     authService: dependencies.authService,
+    authPersistence,
     passwordRecoveryService: dependencies.passwordRecoveryService,
     passwordResetService,
     quoteFlowMigrationResetRecoveryService: dependencies.quoteFlowMigrationResetRecoveryService,
