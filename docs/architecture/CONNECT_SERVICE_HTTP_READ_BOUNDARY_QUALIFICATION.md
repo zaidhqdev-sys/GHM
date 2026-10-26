@@ -1,5 +1,10 @@
 # Connect Service HTTP Read Boundary Qualification
 
+## Migration-state boundary — legacy identity input is not target qualification (2026-10-15)
+
+This qualification records the bounded service-to-service read boundary as tested, including its legacy Connect external-identity input. The statements below that carry a Supabase identity reference describe the qualified source-era sub-slice only; they do **not** qualify the approved target runtime. The target must remove active Supabase runtime dependencies and establish GHM-native identity/session semantics through a separately contracted and qualified path. Do not infer target authentication, session migration, browser-safe access, broader workflow parity, deployment readiness, or production cutover from this read-boundary result. Current target status is governed by `GHM_CURRENT_STATE.md`, `GHM_CONNECT_PRODUCTION_READINESS_GAP_REGISTER.md`, the dated migration handover, and target-specific qualification evidence. No implementation or cutover is authorized by this clarification.
+
+
 ## Status
 
 **CONSTRUCTION QUALIFIED — SERVICE HTTP READ BOUNDARY SUB-SLICE ONLY**

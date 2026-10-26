@@ -1,5 +1,10 @@
 # Connect Backend Operation Inventory
 
+## Current-target interpretation correction — identity/session row (2026-10-15)
+
+The historical inventory row and overlay statement that GHM Connect binding “still requires provider `supabase`” describe the source-era external-identity adapter contract and its current limitation, not an approved target dependency. Read that statement as: **the existing bounded adapter is provider-bound and therefore does not yet satisfy the no-Supabase target identity/session contract**. The target remains a blocker until GHM-native credentials/session, role mapping, active-account checks, refresh/recovery, and no-Supabase identity binding are separately specified, implemented, and qualified. Preserve the original historical inventory counts and source evidence; do not treat them as current parity measurements or infer readiness. No implementation or cutover is authorized by this clarification.
+
+
 **Status:** HISTORICAL EVIDENCE INVENTORY — BRIDGE TO FUTURE ADAPTER WORK (NOT AUTHORIZED)  
 **Connect commit:** `abcffa73f893602c25310a58946bebb91fd7eeb5`  
 **GHM comparison tip:** historical docs/resources snapshot from the 2026-09-18 evidence sprint; not the current mainline  
@@ -18,6 +23,8 @@ Status values: `GHM_PROVIDES` | `GHM_PARTIAL` | `GHM_ABSENT` | `EXTERNAL` | `CON
 ## 2A. Current reconciliation
 
 The GHM authentication foundation is now construction-qualified, including the canonical identity mapping foundation. That changes the auth/identity evidence boundary only. It does **not** establish Connect product adapter behavior, business/profile provisioning parity, membership migration, storage/realtime/provider equivalence, or production cutover.
+
+**Current qualification overlay (2026-10-14; read alongside, not by rewriting, the historical rows below):** GHM Trust and Business Category resource slices are QUALIFIED / CLOSED, but Connect score-input parity, category assignment, HTTP/adapter, UI and filter parity remain OPEN. GHM Business Offering is also QUALIFIED / CLOSED; the Connect offering adapter remains unconfirmed because no mounted caller has been proven. GHM PayFast checkout and ITN/server-confirmation implementation is merged, while sandbox/runtime end-to-end qualification and provider authorization remain open. Historical Connect Paystack rows below describe source code only and do not establish target-provider selection or PayStack approval. The summary counts below remain counts of the historical inventory classifications, not current GHM qualification counts.
 
 ## 2B. Historical inventory
 
@@ -97,7 +104,7 @@ A future Connect adapter must map each row to GHM operation, external provider, 
 
 This file remains a **historical operation-family inventory**, not the final operation-by-operation migration contract. The current requirement is that ZAID Connect removes all active Supabase runtime dependencies and uses GHM Internal Runtime for required backend journeys. The 2026-09-18 classifications and counts above must not be presented as a fresh measurement of current GHM coverage.
 
-Continue by verifying active Connect callers against current GHM HTTP route methods, schemas, response contracts, authorization and transaction semantics. Explicitly separate reuse candidates from incomplete contracts, missing domains and legacy/orphan references. The durable current gap register and resume instructions are in `docs/architecture/CONNECT_GHM_MIGRATION_HANDOVER_2026-10-13.md`. No implementation or cutover is authorized by this inventory update.
+The caller-to-contract reconciliation is recorded in the overlay below and the operation-by-operation matrix in `CONNECT_GHM_MIGRATION_HANDOVER_2026-10-13.md`. Use those records and the per-capability contracts to resolve each active caller's route, schema, response, authorization, transaction and gap status; do not restart the source inventory or infer readiness from this historical table alone. The handover is the durable resume point. No implementation or cutover is authorized by this inventory update.
 
 
 ## 2026-10-13 current caller-to-contract reconciliation overlay
@@ -124,7 +131,8 @@ This overlay supersedes any implication that the historical operation rows above
 | Quote analysis / AI | analyzer history uses Connect DB; AI transport targets Supabase Edge Function, provider gate false | **Split** | migrate history/data operations; remove Supabase transport but preserve fail-closed provider gate |
 | Commercial | Connect offer/trial panel active; GHM internal commercial routes exist; payment activation remains disabled | **Reuse/extend, separately gated** | preserve all launch/payment flags; no provider activation |
 | Notifications inbox/realtime/push | GHM routes exist; current UI inbox/push active caller not established | **Evidence insufficient** | only migrate producer operations proven active; don't rebuild dormant UI |
-| Supplier/referral/dispute/offerings legacy services | no confirmed current mounted caller in searches | **Legacy/unconfirmed** | exclude unless reachability audit finds active caller |
+| Supplier/referral/dispute legacy services | no confirmed current mounted caller in searches | **Legacy/unconfirmed** | exclude unless reachability audit finds active caller |
+| Connect `businessOfferingService` UI path | no confirmed current mounted caller; GHM `business_offering` construction contract is independently QUALIFIED / CLOSED | **Legacy/unconfirmed at Connect caller boundary; GHM resource remains closed** | do not reopen GHM construction; only assess an adapter if a mounted Connect caller is proven and separately authorized |
 
 The numeric Connect IDs and GHM numeric IDs/UUID assumptions must never be presumed equivalent. Define explicit identity/resource mappings. The signed `POST /api/v1/connect/service` remains server-to-server only; browser code needs a secure BFF or GHM-native user-token API. This overlay is documentation only and grants no implementation, merge, production or cutover authorization.
 

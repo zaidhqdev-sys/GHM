@@ -1,5 +1,10 @@
 # Connect GHM Authorization Binding Qualification
 
+## Migration-state boundary — historical provider-bound qualification (2026-10-15)
+
+The frozen sub-slice below requires `provider=supabase`. Its existing tests and construction status remain evidence for that exact provider-bound contract, not qualification of the approved no-Supabase target runtime. Target authentication must derive the canonical account, active state, membership and resource permission from trusted GHM-native identity/session context without Supabase provider input or implicit identity bootstrap. Do not infer target readiness, browser exposure, production deployment, or cutover from this historical sub-slice. The current-state index, readiness gap register, dated migration handover, and future target-specific qualification govern target status. No implementation or cutover is authorized by this clarification.
+
+
 **Status:** CONSTRUCTION QUALIFIED — GHM AUTHORIZATION BINDING SUB-SLICE ONLY
 **Evidence:** 431/431 tests passing; TypeScript build passing on the qualification branch
 

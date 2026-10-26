@@ -1,5 +1,10 @@
 # Connect Trusted Request Context Qualification
 
+## Migration-state boundary — legacy external identity is not target authority (2026-10-15)
+
+The `provider="supabase"` external-identity envelope described in this qualification is the frozen source-era Connect request-context contract. It is not the approved no-Supabase target identity/session contract and must not be treated as target qualification. Preserve this slice's evidence for verified integration request context only. The target must establish end-user authority through a separately contracted GHM-native identity/session path; the service integration identity is never a substitute for the end user. No target authentication, browser exposure, production deployment, or cutover is authorized by this record.
+
+
 **Status:** CONSTRUCTION QUALIFIED — TRUSTED REQUEST CONTEXT SUB-SLICE ONLY
 **Evidence:** 431/431 tests passing; TypeScript build passing on the qualification branch
 
