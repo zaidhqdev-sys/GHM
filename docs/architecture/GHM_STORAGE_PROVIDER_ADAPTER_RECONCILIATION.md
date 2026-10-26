@@ -1,9 +1,9 @@
 # GHM Storage Provider Adapter Reconciliation
 
 ## Status
-**CONSTRUCTION — LIVE PROVIDER DATA-PATH QUALIFIED / APPLICATION ENABLEMENT STILL GATED — reconciled 2026-10-13**
+**CONSTRUCTION — LIVE PROVIDER DATA-PATH REQUALIFIED / APPLICATION ENABLEMENT STILL GATED — reconciled 2026-10-26**
 
-The provider-adapter implementation is reconciled onto the already-qualified PostgreSQL persistence boundary. The concrete S3-compatible adapter has additionally passed a controlled live Cloudflare R2 data-path qualification. Production application enablement remains separately gated.
+The provider-adapter implementation is reconciled onto the already-qualified PostgreSQL persistence boundary. The concrete S3-compatible adapter passed live Cloudflare R2 data-path qualification on 2026-10-05 and passed again on 2026-10-26. The latest run used the only existing bucket, `zaid-ghm-production`; its temporary qualification object was deleted and absence confirmed. This bucket name does not establish that it is non-production. Application enablement remains separately gated.
 
 The qualified persistence branch remains the source of truth for `ghm.storage_object`. This slice does not modify the database, grant runtime table privileges, provision a bucket, or enable production credentials.
 
@@ -98,10 +98,15 @@ Remaining separate gates are grant-expiry enforcement, broader provider-error ma
 - changing the canonical storage key contract;
 - automatic provider selection from business or request data.
 
-The live R2 upload/download/delete data-path check has already passed as recorded in `docs/evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-05.md`. This list no longer treats that completed controlled test as unperformed work.
+The live R2 upload/download/delete data-path check has already passed as recorded in `docs/evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-05.md` and `docs/evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-26.md`. This list no longer treats that completed controlled test as unperformed work.
 
 ## Next gate
 
 The controlled live-provider data-path qualification is already **PASS**; it does not establish application composition-root wiring or production enablement.
 
-The next gate is to wire this factory into the application's composition root in a controlled manner, then separately qualify grant expiry/enforcement, broader provider-error mapping, full service-level tenant/resource authorization, failed-operation recovery/orphan reconciliation, backup/recovery, and the intended HTTP/product exposure. Use a dedicated non-production bucket/container and deployment-managed test credentials for any additional live tests. Production credentials, production enablement, and founder-authorized cutover remain separate gates.
+The next gate is to qualify the guarded database persistence harness and authenticated application/API path against the qualification database. Then separately qualify composition-root wiring, grant expiry/enforcement, broader provider-error mapping, full service-level tenant/resource authorization, failed-operation recovery/orphan reconciliation, backup/recovery, and intended HTTP/product exposure. The only bucket created so far is named `zaid-ghm-production`; do not treat it as a non-production bucket or repeat mutation tests there by default. Use a dedicated non-production bucket for future live mutation qualification when available. Production enablement and cutover remain separate gates.
+
+
+## Requalification addendum — 2026-10-26
+
+The local command `npm run qualify:storage-live-provider` completed with `status: QUALIFIED`. TypeScript build passed. All eight reported checks passed: signed upload grant, signed PUT, provider HEAD, metadata match, signed download grant, downloaded payload integrity (39 bytes), provider DELETE, and deleted-object absence. Exact evidence: `docs/evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-26.md`. This confirms provider connectivity and the byte-object data path only; it does not establish authenticated HTTP integration, database persistence qualification in the current environment, or production readiness.
