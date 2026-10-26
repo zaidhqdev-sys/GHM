@@ -57,3 +57,11 @@ The result must remain consistent with:
 - authorization/tenant-isolation contracts.
 
 This persistence-only qualification does not authorize provider provisioning by itself. Controlled non-production Cloudflare R2 provider data-path qualification was subsequently completed as recorded in `../evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-05.md`; production provider enablement and application wiring remain separately gated.
+
+## Qualification reconciliation — 2026-10-26
+
+The migration runner completed successfully against the explicitly selected qualification database on 2026-10-26, and catalog checks confirmed the scoped `storage_get_object(bigint,bigint)` function, absence of the one-argument overload, owner-controlled `SECURITY DEFINER` lifecycle functions, runtime execute grants, and no direct runtime table DML grant. The authenticated storage API, scoped getter migration, migration safeguards, and disposable PostgreSQL lifecycle/tenant qualification were merged into `main` by PR #184 (merge commit `43450e42e902594493bdab4ba2c689b0c4099912`).
+
+The live Cloudflare R2 provider data path was requalified on 2026-10-26; all reported checks passed, including upload, metadata observation, payload integrity, deletion, and absence confirmation. See `../evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-26.md`. The only bucket created so far is named `zaid-ghm-production`; this test does not prove that it is a dedicated non-production bucket.
+
+Still open: deployed authenticated application/API end-to-end qualification, runtime/composition-root verification, any remaining guarded persistence qualification under the intended restricted role, production migration-ledger/DDL reconciliation, recovery/orphan handling, backups, and production enablement/cutover. The code merge is not a production deployment or authorization to change production configuration.

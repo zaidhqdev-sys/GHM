@@ -105,3 +105,11 @@ The live R2 upload/download/delete data-path check has already passed as recorde
 The controlled live-provider data-path qualification is already **PASS**; it does not establish application composition-root wiring or production enablement.
 
 The next gate is to wire this factory into the application's composition root in a controlled manner, then separately qualify grant expiry/enforcement, broader provider-error mapping, full service-level tenant/resource authorization, failed-operation recovery/orphan reconciliation, backup/recovery, and the intended HTTP/product exposure. Use a dedicated non-production bucket/container and deployment-managed test credentials for any additional live tests. Production credentials, production enablement, and founder-authorized cutover remain separate gates.
+
+## Requalification and merge checkpoint — 2026-10-26
+
+The live Cloudflare R2 S3-compatible provider path was requalified successfully on 2026-10-26. The build, signed upload, provider HEAD/metadata match, signed download and payload integrity, deletion, and deleted-object absence checks all passed. Evidence: `docs/evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-26.md`.
+
+The authenticated storage API, scoped metadata getter, migration safeguards, and disposable PostgreSQL lifecycle/tenant authorization checks were merged to `main` by PR #184 at commit `43450e42e902594493bdab4ba2c689b0c4099912`. This integrates the qualified code; it does not enable production storage.
+
+The only existing bucket is named `zaid-ghm-production`; do not treat it as a dedicated non-production bucket or repeat mutation tests there by default. Remaining gates include deployed authenticated HTTP end-to-end qualification, runtime/composition-root verification, production migration baseline review, recovery/orphan reconciliation, backup/recovery, and explicit production rollout approval.
