@@ -462,3 +462,10 @@ The qualification script's legacy-function privilege query was updated to use `t
 - The shared Render sandbox audit remains `INVESTIGATE` because its eight extra ledger entries belong to another branch's migration history. The storage migration is still unapplied there.
 - No Render database writes, live migrations, production configuration changes, or R2 credential changes were made.
 - Remaining release gate: confirm the authoritative migration baseline for the shared sandbox and review the proposed live migration/rollout plan. Keep PR #184 in draft and production R2 settings on hold until that review is complete.
+
+
+### Migration baseline authority clarification — 2026-10-26
+
+Further GitHub review confirms PR [#142](https://github.com/zaidhqdev-sys/GHM/pull/142), which carries the eight extra migration files seen in the sandbox ledger, is still **open and draft**, based on `main`, and explicitly says the candidate is not merge or deployment authorization. Its exact candidate head had successful CI, but the branch has not been merged into `main`. PR #165's QuoteFlow correction is merged into that candidate branch, not thereby established as the live production migration baseline.
+
+This means the sandbox ledger is consistent with an unmerged integration-candidate history, but there is no safe basis to declare that candidate authoritative for the shared sandbox or to merge/rebase PR #142 wholesale. Resolve the intended migration baseline with the maintainers/approved integration plan before applying the storage migration to any persistent database. Continue to leave the shared sandbox and production unchanged.
