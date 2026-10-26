@@ -4,7 +4,7 @@
 
 **QUALIFIED / PASS — live provider data-path qualification**
 
-This evidence records the first successful live qualification of the GHM storage provider adapter against the concrete Cloudflare R2 bucket selected for GHM storage.
+This evidence records the first successful live qualification of the GHM storage provider adapter against the Cloudflare R2 bucket configured at that time. The bucket name is `zaid-ghm-production`; this historical test does not prove that the storage target was a dedicated non-production bucket. A later rerun is recorded in `STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-26.md`.
 
 The qualification was executed from the existing GHM construction branch with deployment credentials supplied only through the local process environment. No credentials are stored in this repository.
 
@@ -83,3 +83,8 @@ The R2 access key and secret were never committed to source control and were not
 ## Authority
 
 This document is live qualification evidence. It does not replace the storage architecture contracts or authorize production cutover.
+
+
+## Environment-scope clarification (2026-10-26)
+
+The original evidence above documents provider-level test outcomes only. Because the named bucket is `zaid-ghm-production`, do not describe the target as a dedicated non-production bucket without separate evidence. The 2026-10-26 rerun also passed and confirmed deletion of its temporary object; see the dated rerun evidence for exact details and the remaining application/database qualification gates.
