@@ -683,3 +683,47 @@ The previously qualified slices are now integrated into `main` rather than waiti
 The remaining open PRs are #142 (broad identity integration candidate; 69 commits ahead and 9 behind main, unmergeable) and #183 (candidate-specific reset HTTP qualification stacked on #142). Do not merge #142 wholesale: separate remaining code into independently qualified slices. The core persistence wiring from #183 is already in main via #187; the full candidate-only HTTP harness remains gated by its dependencies and non-production qualification.
 
 No production migration, Render configuration change, credential change, deployment, or cutover was performed by these merges. Production readiness remains separately gated.
+
+## GHM-Internal-Runtime environment reconciliation plan — 2026-10-26 22:20 UTC
+
+This is the production-specific reconciliation plan; do **not** mirror the qualification service's complete environment wholesale. The Render service metadata was rechecked: `GHM-Internal-Runtime` is `srv-damupsek1f9s73eq8kkg`, tracks `main`, has auto-deploy disabled, and remains connected to production DB `ghm_db`. The identity qualification service is `srv-dbahvenbtjjs73f83rlg`, tracks the divergent integration-candidate branch, and shares the PayFast sandbox database. The values of environment variables are not exposed by the service-metadata API, so this is a name/source audit against the handover and current repository contract, not a secret-value audit.
+
+### Keep on production
+
+Preserve the existing production-specific values for `DATABASE_URL` (runtime role/production database), `GHM_MIGRATOR_DATABASE_URL` (separate migrator role/production database), `GHM_AUTH_TOKEN_PEPPER`, `GHM_JWT_ES256_KID`, `GHM_JWT_ES256_PRIVATE_KEY_PEM`, `GHM_JWT_ES256_PUBLIC_KEY_PEM`, `INVITE_CODE`, `CORS_ORIGINS`, `DATABASE_SSL`, `NODE_ENV`, and `TRUST_PROXY`. Do not copy any database URL, key, pepper, or invite code from the sandbox service.
+
+### Legacy removal
+
+- `JWT_SECRET` is explicitly marked legacy in the existing operator inventory and is not part of the current `.env.example` contract. Remove this key from `GHM-Internal-Runtime` after verifying the production deployed commit uses the ES256 key configuration and has no remaining `JWT_SECRET` consumer. Do not rotate or replace the ES256 key pair as part of this cleanup.
+- Do not remove `GHM_MIGRATOR_DATABASE_URL`: it is a required, separate migration connection, not a duplicate of `DATABASE_URL`.
+
+### Storage variables intended for production
+
+The owner previously clarified that Cloudflare R2 storage credentials are intended for `GHM-Internal-Runtime`, not either sandbox service. Current `main` source contract is `src/storage/config.ts` and `.env.example`; use these exact names (the old handover inventory's `STORAGE_UPLOAD_URL_TTL_SECONDS` / `STORAGE_DOWNLOAD_URL_TTL_SECONDS` names are stale and must not be used):
+
+- `STORAGE_PROVIDER=s3`
+- `STORAGE_ENDPOINT=https://a9b80a604a1ac4e9b26ecdac2fde7d5e.r2.cloudflarestorage.com`
+- `STORAGE_REGION=auto`
+- `STORAGE_BUCKET=zaid-ghm-production`
+- `STORAGE_ACCESS_KEY_ID` — enter the R2 S3 API access key ID in Render's secret UI.
+- `STORAGE_SECRET_ACCESS_KEY` — enter the corresponding R2 S3 API secret in Render's secret UI.
+- `STORAGE_FORCE_PATH_STYLE=true`
+- `STORAGE_UPLOAD_GRANT_TTL_SECONDS=900`
+- `STORAGE_DOWNLOAD_GRANT_MAX_TTL_SECONDS=3600`
+
+**Do not partially add the storage block.** `src/config.ts` treats any non-empty `STORAGE_*` setting as opting into storage config and then requires the region, bucket and credentials; a partial block can make service startup fail. The only bucket created so far is named `zaid-ghm-production`; a live provider test passed upload, metadata, download integrity, delete and absence checks against it. This proves provider access, not that the production API is deployed with the storage routes or that a production rollout is approved. Add the full block only when the two key values are entered securely and the intended code revision is confirmed.
+
+### Do not copy qualification-only / sandbox variables into production
+
+- Do **not** add `GHM_QUALIFICATION_DATABASE_NAME` or `GHM_NONPRODUCTION_DATABASE_NAME` to production merely to match the qualification service. These describe non-production target guards and are not part of the current app runtime's `.env.example` contract.
+- Do **not** copy sandbox PayFast merchant credentials or callback URLs. The production `PAYFAST_ENVIRONMENT` and live merchant/callback values require a separate explicit PayFast go-live decision. The current app defaults PayFast mode to `sandbox` if the variable is absent; do not infer production payment intent from the qualification service's `PAYFAST_*` list.
+- `PORT` is supplied by Render and has a repository default; it does not need to be copied from the qualification service.
+
+### Execution status and safe sequence
+
+No Render environment variables were changed during this comparison. The available Render environment mutation operation supports merge or full replacement but does not expose a safe single-key deletion operation; full replacement is unsafe here because current secret values cannot be read back through the available service metadata API. Therefore:
+
+1. In the Render dashboard for `GHM-Internal-Runtime`, remove only `JWT_SECRET` after checking the deployed `main` commit's consumers. Preserve all ES256 auth variables and both production DB URLs.
+2. Enter `STORAGE_ACCESS_KEY_ID` and `STORAGE_SECRET_ACCESS_KEY` directly in Render's secret UI; never paste them into chat, GitHub, or this document.
+3. Once those two secret values are saved, the remaining eight non-secret storage settings above can be merged without replacing the service's existing environment. Confirm the intended deployed code revision and schedule any restart/deploy separately because auto-deploy is off.
+4. Verify service startup and health, then test the authenticated storage API path and tenant-scoped metadata behavior. Keep production DB migrations and PayFast live activation out of this environment-only change.
