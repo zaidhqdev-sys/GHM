@@ -413,3 +413,10 @@ To close the gap where the feature branch CI only compiled and ran tests without
 - Exact-head CI run [#1686](https://github.com/zaidhqdev-sys/GHM/actions/runs/40250770182) started and was in progress at the time this note was written.
 - This step deliberately does not invoke `scripts/qualify-storage-persistence.mjs`: that script is mutating and currently expects an active business with active membership in its qualification DB. Run it only after a disposable CI fixture is implemented/verified or an explicitly approved disposable qualification DB is available.
 - If the migration chain or DB-backed suite fails, fix the disposable CI fixture/migration contract before any live qualification; do not work around a failure by running against Render.
+
+
+### Disposable PostgreSQL CI iteration — TLS policy correction — 2026-10-26
+
+The first new migration-qualification run, [#1686](https://github.com/zaidhqdev-sys/GHM/actions/runs/40250770182), successfully started PostgreSQL 18, created the three isolated roles, and built the code, but migration execution failed because `src/db/migrate.ts` unconditionally requested TLS while the disposable local PostgreSQL service has TLS disabled. No live database was involved.
+
+Corrected the migration runner to honor `DATABASE_SSL=true` for TLS, use plaintext only when explicitly configured for non-production, and refuse to run with TLS disabled when `NODE_ENV=production`. CI sets `DATABASE_SSL=false` only for its ephemeral PostgreSQL service. The correction is commit `0918217c70dfb88eb02efa5bd1af527e4fd90384`; the next exact-head CI result is pending. Do not describe disposable migration qualification as passed until that run completes.
