@@ -510,3 +510,10 @@ This checklist is intentionally a plan only. Do not execute the persistent-datab
 - Record the exact commit, database identity (no secrets), ledger diff, catalog evidence, test output, operator, and approval in the issue before any further step.
 
 Current decision: Issue #185 has no maintainer baseline approval recorded at this checkpoint. Therefore this checklist is **not authorization to execute**; shared sandbox and production remain unchanged.
+
+
+### Rollout checklist CI verification — PASS — 2026-10-26
+
+The exact-head workflow for checklist commit `9643c8f41d36e9417995f30ba965a3194ee4c4a6` passed as [CI #1706](https://github.com/zaidhqdev-sys/GHM/actions/runs/40323967117). All steps succeeded: isolated least-privilege PostgreSQL roles, qualification script syntax, build, full migrations on disposable PostgreSQL, fixture seeding, getter/catalog checks, lifecycle and tenant authorization qualification, full test suite, migration-audit policy tests, and runtime-boundary verification.
+
+This confirms the checklist documentation commit and storage qualification are green. It does not resolve migration-baseline authority: Issue #185 remains open with the required decision unchecked, and PRs #142 and #184 remain drafts. Do not run the checklist against Render until the baseline decision and controlled rollout approval are recorded.
