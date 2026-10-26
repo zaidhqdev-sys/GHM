@@ -628,3 +628,12 @@ Secret values and connection strings are intentionally excluded from this handov
 
 Do not change the production-connected `GHM-Internal-Runtime` service or its database/migrator configuration as part of this sandbox/qualification work. Keep qualification, sandbox, and production targets separate.
 
+## Identity Qualification R2 follow-up — 2026-10-26 20:25 UTC
+
+- Owner confirmed the 28 environment variable names listed above are saved and deployed on `ghm-identity-qualification` (`srv-dbahvenbtjjs73f83rlg`).
+- Live Render service metadata confirms the service was running from `integration/ghm-identity-merge-candidate-20261018` at commit `e5462b05e8b2b9cbc7a445c8464590a4f6d32a53`. That revision contains the storage provider classes but does not load storage configuration or register storage HTTP routes in `src/config.ts` / `src/http/app.ts`; environment variables alone therefore did not activate the R2 API.
+- Created draft PR [#186](https://github.com/zaidhqdev-sys/GHM/pull/186) to integrate the storage runtime into the identity-qualification branch without replacing its identity work. The draft adds config/runtime wiring, authenticated routes and authorization adapter, the account-scoped metadata getter migration, and storage tests.
+- CI run [#1724](https://github.com/zaidhqdev-sys/GHM/actions/runs/40395254306) **passed** on 2026-10-26: build, disposable PostgreSQL migration chain, qualification, and test suite succeeded.
+- **Not deployed yet.** Render's service is configured with auto-deploy off and remains on the integration branch. Do not run migrations using `GHM_MIGRATOR_DATABASE_URL` until its target is confirmed as the qualification database. The migration runner requires explicit `GHM_MIGRATION_DATABASE_NAME` and `GHM_MIGRATION_DATABASE_HOST` guards; those names were not in the owner's reported environment list. Do not weaken the target guard or point it at production.
+- Next safe sequence: align the qualification service to the PR branch after reviewing/merging the storage integration; explicitly identify the qualification database/host for the migration guard; apply the pending storage migration only to that non-production target; then deploy and verify startup, authenticated upload/access/delete flow, and tenant-isolation behavior. Leave `GHM-Internal-Runtime` untouched.
+
