@@ -172,7 +172,7 @@ BEGIN
   -- Nested exception block guarantees uniqueness errors roll back all four writes.
   BEGIN
     INSERT INTO ghm.business (name, slug, verification_status, is_active)
-    VALUES (btrim(p_business_name), btrim(p_business_slug), 'unverified', false)
+    VALUES (btrim(p_business_name), btrim(p_business_slug), 'pending', false)
     RETURNING id INTO v_business_id;
 
     INSERT INTO ghm.business_membership (
@@ -224,4 +224,4 @@ COMMENT ON TABLE ghm.quoteflow_migration_business_provisioning_audit IS
   'Append-only provenance evidence for explicitly reviewed QuoteFlow organization-to-GHM Business provisioning. Direct runtime DML is revoked.';
 
 COMMENT ON FUNCTION ghm.auth_provision_quoteflow_migration_business(text, text, text, text, bigint, text, text, timestamptz) IS
-  'Migration-only QuoteFlow organization provisioning. Atomically creates one inactive/unverified GHM Business, its active owner membership, exact Supabase-source mapping, and review-evidence audit. Idempotent only when mapping, owner, and evidence all match; fails closed on conflicts. Not public HTTP; does not migrate additional memberships, credentials, sessions, verification, or production traffic.';
+  'Migration-only QuoteFlow organization provisioning. Atomically creates one inactive/pending GHM Business, its active owner membership, exact Supabase-source mapping, and review-evidence audit. Idempotent only when mapping, owner, and evidence all match; fails closed on conflicts. Not public HTTP; does not migrate additional memberships, credentials, sessions, verification, or production traffic.';
