@@ -85,3 +85,6 @@ The forensic audit distinguishes **current migration reconciliation** from **his
 
 This clarification changes audit classification only. It does not rewrite or remove historical exception records, update migration ledger rows, rerun migrations, or authorize any database mutation, deployment, cutover, or production action.
 
+## Applied-byte checksum reconciliation — 2026-10-26
+
+The applied historical migration `20261020130000_create_quoteflow_migration_business_provisioning.sql` had a checksum mismatch because the repository copy differed from the bytes already applied to the qualification database. Commit [`5229b37700f2e21ac4caf2d4c5547bb929ab2de8`](https://github.com/zaidhqdev-sys/GHM/commit/5229b37700f2e21ac4caf2d4c5547bb929ab2de8) restored the historical SQL bytes rather than changing the live ledger or rewriting migration history. The restored file matches the recorded database checksum. The user's subsequent `npm run migrate` completed successfully with exit code 0 on 2026-10-26; supported legacy line-ending checksum messages were informational, and no failure was reported. This records the qualification-database run only and is not evidence that production was migrated.
