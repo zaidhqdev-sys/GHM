@@ -442,3 +442,23 @@ The migration runner now strips a leading BOM from the SQL string immediately be
 - This CI qualification does not insert fixtures or mutate data. It does **not** yet establish positive active-membership reads, cross-tenant denial for a real existing object, or public active business-logo reads. Those still need fixture-backed PostgreSQL tests, with test data isolated to a disposable database.
 - The read-only sandbox audit remains `INVESTIGATE` because its eight extra ledger entries reflect a different branch history and the new migration has not been applied there. The shared sandbox is not used by CI and remains unchanged.
 - Latest code commit with the new qualification step: `529e9237a4e3d2c45642ae8f7adfa43fc67fa43d`. PR #184 remains draft. Do not configure production R2 credentials or apply the migration to Render until the authoritative migration baseline and fixture-backed tenant/public-logo tests are reviewed.
+
+
+### Fixture-backed PostgreSQL storage qualification — PASS — 2026-10-26
+
+CI run [#1701](https://github.com/zaidhqdev-sys/GHM/actions/runs/40251687608) completed successfully end-to-end. The workflow uses the explicitly named ephemeral database `ghm_disposable_test` on PostgreSQL 18, with ephemeral `ghm_schema_owner`, `ghm_migrator`, and `ghm_runtime` roles. It applied the complete migration chain, seeded one synthetic active business plus an active owner membership, and then ran:
+
+1. Read-only storage getter/catalog/privilege qualification as `ghm_runtime`.
+2. Fixture-backed lifecycle qualification via `scripts/qualify-storage-persistence.mjs`, with mutations enabled only for the disposable CI database.
+3. Full application test suite.
+4. Migration-audit policy tests.
+5. Runtime-boundary verification.
+
+The fixture-backed storage qualification passed, including denial of direct runtime INSERT/UPDATE/DELETE, active-member scoped read, denial to a non-member for a real private object, public active business-logo read without membership, and valid lifecycle transitions. The read-only getter test also verified the unscoped overload is absent and the scoped function has the expected owner, SECURITY DEFINER status, fixed search path, and privileges.
+
+The qualification script's legacy-function privilege query was updated to use `to_regprocedure` so a deliberately removed overload is treated as absent rather than causing the catalog check itself to error. The CI target is named `ghm_disposable_test` and the qualification runner checks that explicit disposable name before mutating data.
+
+- Successful exact-head run: [CI #1701](https://github.com/zaidhqdev-sys/GHM/actions/runs/40251687608).
+- The shared Render sandbox audit remains `INVESTIGATE` because its eight extra ledger entries belong to another branch's migration history. The storage migration is still unapplied there.
+- No Render database writes, live migrations, production configuration changes, or R2 credential changes were made.
+- Remaining release gate: confirm the authoritative migration baseline for the shared sandbox and review the proposed live migration/rollout plan. Keep PR #184 in draft and production R2 settings on hold until that review is complete.
