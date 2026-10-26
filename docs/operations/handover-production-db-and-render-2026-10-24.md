@@ -469,3 +469,10 @@ The qualification script's legacy-function privilege query was updated to use `t
 Further GitHub review confirms PR [#142](https://github.com/zaidhqdev-sys/GHM/pull/142), which carries the eight extra migration files seen in the sandbox ledger, is still **open and draft**, based on `main`, and explicitly says the candidate is not merge or deployment authorization. Its exact candidate head had successful CI, but the branch has not been merged into `main`. PR #165's QuoteFlow correction is merged into that candidate branch, not thereby established as the live production migration baseline.
 
 This means the sandbox ledger is consistent with an unmerged integration-candidate history, but there is no safe basis to declare that candidate authoritative for the shared sandbox or to merge/rebase PR #142 wholesale. Resolve the intended migration baseline with the maintainers/approved integration plan before applying the storage migration to any persistent database. Continue to leave the shared sandbox and production unchanged.
+
+
+### Handover validation after baseline note — 2026-10-26
+
+The exact-head CI run for the previous handover update, [#1703](https://github.com/zaidhqdev-sys/GHM/actions/runs/40251833412), has now completed successfully. This confirms the handover-only commit itself is green; the substantive storage qualification remains green on [#1702](https://github.com/zaidhqdev-sys/GHM/actions/runs/40251782080).
+
+Current safe next step is governed baseline reconciliation, not a live migration. The eight extra ledger entries are traceable to open draft integration candidate PR #142; because that PR explicitly disclaims merge/deployment authorization and is not merged to `main`, do not treat it as the authoritative persistent-database baseline without maintainer sign-off. Keep the shared sandbox and production unchanged, and keep production R2 configuration on hold.
