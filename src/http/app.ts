@@ -16,6 +16,8 @@ import { ProjectServiceImpl } from '../resources/project/service';
 import { CreateProjectInput, ProjectService, UpdateProjectInput } from '../resources/project/contracts';
 import { isRegisteredOperation, ResourceOperation } from '../resources/registry';
 import { config } from '../config';
+import { registerStorageRoutes } from './storage-router';
+import { createStorageProvider } from '../storage/factory';
 import { PostgresPublicProjectRepository } from '../resources/project/public-repository';
 import { PublicProjectServiceImpl } from '../resources/project/public-service';
 import { PublicProjectService } from '../resources/project/public-contracts';
@@ -477,6 +479,16 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   app.set('trust proxy', config.trustProxy);
   app.use(cors({ origin: config.corsOrigins }));
   app.use(express.json({ limit: '1mb' }));
+
+  if (config.storage) {
+    registerStorageRoutes(
+      app,
+      createStorageProvider(config.storage),
+      resourceAuthMiddleware,
+      config.storage.uploadGrantTtlSeconds,
+      config.storage.downloadGrantMaxTtlSeconds,
+    );
+  }
 
   app.get('/', (_req: Request, res: Response) => {
     res.json({ service: 'GHM Core Engine', version: '2.0.0' });
