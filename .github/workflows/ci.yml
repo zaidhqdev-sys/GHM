@@ -25,7 +25,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d ghm"
+          --health-cmd "pg_isready -U postgres -d ghm_disposable_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
@@ -63,13 +63,13 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: |
-          psql -h localhost -U postgres -d ghm -v ON_ERROR_STOP=1 <<'SQL'
+          psql -h localhost -U postgres -d ghm_disposable_test -v ON_ERROR_STOP=1 <<'SQL'
           CREATE ROLE ghm_schema_owner NOLOGIN;
           CREATE ROLE ghm_migrator LOGIN NOINHERIT PASSWORD 'migrator-test-password';
           GRANT ghm_schema_owner TO ghm_migrator;
           CREATE ROLE ghm_runtime LOGIN NOINHERIT PASSWORD 'runtime-test-password';
-          GRANT CONNECT ON DATABASE ghm TO ghm_migrator, ghm_runtime;
-          GRANT CREATE ON DATABASE ghm TO ghm_schema_owner;
+          GRANT CONNECT ON DATABASE ghm_disposable_test TO ghm_migrator, ghm_runtime;
+          GRANT CREATE ON DATABASE ghm_disposable_test TO ghm_schema_owner;
           GRANT USAGE, CREATE ON SCHEMA public TO ghm_schema_owner;
           SQL
 
