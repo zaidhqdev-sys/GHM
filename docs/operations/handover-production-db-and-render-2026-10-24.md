@@ -577,3 +577,54 @@ Until those items are explicitly decided, this remains a deployment blocker. CI 
 [CI #1711](https://github.com/zaidhqdev-sys/GHM/actions/runs/40386125737) passed on handover commit `6aabb57ba176d9af1f33fde5993c0314d8ce4358`. The subsequent handover-only commit `2233183502068a87ff0dfb51af8060d0260a93b2` was validated by [CI #1712](https://github.com/zaidhqdev-sys/GHM/actions/runs/40386514328), whose quality job and every step completed successfully. The checks include disposable PostgreSQL migration application, storage getter/catalog checks, fixture-backed tenant/lifecycle qualification, full tests, migration-audit policy tests, and runtime-boundary verification.
 
 No maintainer has checked off the baseline decision in Issue #185. Do not apply the migration to Render, merge the diverged candidate, edit historical checksums, or change production R2 settings without explicit approval. No persistent database writes were performed.
+
+## GHM Identity Qualification — storage environment configuration (2026-10-26)
+
+The project owner reports that the environment variables below have been saved and deployed on the Render service **GHM Identity Qualification**. This records the reported configuration state; it does not independently verify each value or prove that Cloudflare R2 operations succeed.
+
+- Service: `ghm-identity-qualification` (Render service ID `srv-dbahvenbtjjs73f83rlg`).
+- Dashboard: https://dashboard.render.com/web/srv-dbahvenbtjjs73f83rlg
+- Deployment/environment state: owner-confirmed saved and deployed on 2026-10-26.
+- Configured variable names:
+  - `CORS_ORIGINS`
+  - `DATABASE_SSL`
+  - `DATABASE_URL`
+  - `GHM_AUTH_TOKEN_PEPPER`
+  - `GHM_JWT_ES256_KID`
+  - `GHM_JWT_ES256_PRIVATE_KEY_PEM`
+  - `GHM_JWT_ES256_PUBLIC_KEY_PEM`
+  - `GHM_MIGRATOR_DATABASE_URL`
+  - `GHM_NONPRODUCTION_DATABASE_NAME`
+  - `GHM_QUALIFICATION_DATABASE_NAME`
+  - `INVITE_CODE`
+  - `NODE_ENV`
+  - `PAYFAST_CANCEL_URL`
+  - `PAYFAST_ENVIRONMENT`
+  - `PAYFAST_MERCHANT_ID`
+  - `PAYFAST_MERCHANT_KEY`
+  - `PAYFAST_NOTIFY_URL`
+  - `PAYFAST_PASSPHRASE`
+  - `PAYFAST_RETURN_URL`
+  - `STORAGE_ACCESS_KEY_ID`
+  - `STORAGE_BUCKET`
+  - `STORAGE_DOWNLOAD_GRANT_MAX_TTL_SECONDS`
+  - `STORAGE_ENDPOINT`
+  - `STORAGE_FORCE_PATH_STYLE`
+  - `STORAGE_PROVIDER`
+  - `STORAGE_REGION`
+  - `STORAGE_SECRET_ACCESS_KEY`
+  - `STORAGE_UPLOAD_GRANT_TTL_SECONDS`
+
+Secret values and connection strings are intentionally excluded from this handover. Do not copy secret values into repository files, commits, issues, or chat.
+
+### Storage qualification status
+
+- [x] Owner reports all required storage environment variable names are present on GHM Identity Qualification.
+- [x] Owner reports the environment changes were saved and deployed.
+- [ ] Confirm the deployed service is running the intended Cloudflare R2/S3 storage-wiring code revision; environment presence alone does not establish code-version alignment.
+- [ ] Check the service deployment/startup logs for storage configuration validation errors.
+- [ ] Run a non-destructive storage qualification against the configured R2 bucket (for example, upload/read/delete a uniquely named test object if the qualification procedure supports it), and verify account-scoped metadata authorization.
+- [ ] Record the qualification result and deployed commit after those checks complete.
+
+Do not change the production-connected `GHM-Internal-Runtime` service or its database/migrator configuration as part of this sandbox/qualification work. Keep qualification, sandbox, and production targets separate.
+
