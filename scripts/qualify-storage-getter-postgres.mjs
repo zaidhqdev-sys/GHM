@@ -35,7 +35,7 @@ try {
            session_user AS session_user
   `);
   const who = identity.rows[0];
-  assert(who?.database_name === "ghm", `Refusing qualification against unexpected database: ${who?.database_name}`);
+  assert(who?.database_name === "ghm_disposable_test", `Refusing qualification against unexpected database: ${who?.database_name}`);
   assert(who?.current_user === "ghm_runtime" && who?.session_user === "ghm_runtime",
     `Expected direct ghm_runtime identity, got current_user=${who?.current_user}, session_user=${who?.session_user}`);
 
