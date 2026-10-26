@@ -359,3 +359,38 @@ Added migration `database/migrations/20261026120000_scope_storage_metadata_looku
 ## Scoped metadata lookup CI result — 2026-10-26
 
 CI run [1678](https://github.com/zaidhqdev-sys/GHM/actions/runs/40242355456) passed for source head `9fea65df616abb9ee1c9b8e1fd19bad82209b942`, including the test suite, migration audit policy tests, and runtime-boundary verification. The immediately preceding run failed because two newly added tests over-escaped a regular expression; those assertions were corrected to use literal substring checks, and the new run passed. This validates source-level tests only. The new migration has not been applied to production or sandbox; no disposable-database migration test or real PostgreSQL membership-backed cross-tenant integration test has been completed. No live DB or Render changes were made. Keep R2 variables on hold.
+
+
+## Storage metadata lookup — latest verification and migration-ledger reconciliation — 2026-10-26
+
+### Source and test verification
+
+- CI run [1682](https://github.com/zaidhqdev-sys/GHM/actions/runs/4024) was reported passing for source commit `0fdf3052d795473450561eb4dda2de78ea11a053`. (Confirm the run link/ID in GitHub before relying on this abbreviated link; the source SHA is the definitive reference.)
+- Local `npm run build` completed successfully.
+- Focused storage tests passed: 47 tests, 0 failures, 0 skipped.
+- Migration-audit policy tests passed: 6 tests, 0 failures, 0 skipped.
+- `git diff HEAD --check` passed and the worktree was clean on `feat/cloudflare-r2-runtime-wiring`, tracking its origin branch.
+- The repository calls `ghm.storage_get_object($1, $2)` with the authenticated account ID. The migration drops the old one-argument function, adds the account-scoped function, and preserves the narrow active public business-logo path.
+
+### Read-only sandbox migration audit
+
+A read-only reconciliation was run against the explicitly named Render sandbox database `ghm_payfast_sandbox_db` using `ghm_migrator`, followed by `SET ROLE ghm_schema_owner` inside the script's read-only transaction. The authority checks passed: the actual database matched the expected sandbox name and the role switch succeeded. No write transaction was opened and no migration was applied.
+
+The audit verdict was **INVESTIGATE**, not PASS:
+
+- 79 migration files were present in the feature-branch repository and 86 rows were present in the sandbox ledger.
+- 78 ledger checksums matched repository files under the supported historical CRLF checksum rule; there were no unexplained checksum mismatches or name mismatches.
+- The new migration `20261026120000_scope_storage_metadata_lookup` was absent from the live ledger, as expected before application.
+- Eight ledger entries were not present on this feature branch. Investigation found all eight migration files in `origin/integration/ghm-identity-merge-candidate-20261018`; six matched the sandbox ledger checksum exactly, and the QuoteFlow provisioning migration's ledger checksum matched an earlier Git blob, followed by a later additive reconciliation migration. This supports branch-history divergence as the explanation, but does not by itself establish which branch is the authoritative baseline for the shared sandbox.
+- The candidate branch and feature branch are materially divergent: GitHub comparison reported the feature branch 126 commits ahead and 55 behind the candidate branch. Do not merge or rebase wholesale merely to make the audit counts match.
+- Seven historical checksum exceptions were reported as redundant; there were no orphaned exceptions. Treat this as cleanup evidence, not permission to rewrite ledger rows.
+
+### Next gates and safety constraints
+
+1. Establish the intended migration baseline for the shared sandbox from the reviewed integration/merge history before interpreting its eight extra ledger rows as a defect.
+2. Run the migration and positive/negative membership/public-logo checks against a dedicated disposable PostgreSQL database, not production and not the shared PayFast sandbox. The existing `qualify:storage-persistence` script is mutating and must only run after its database target is explicitly provisioned and verified disposable.
+3. Add/perform real PostgreSQL membership-backed cross-tenant tests; the current 47 focused tests and HTTP tenant-auth tests do not replace live database integration coverage.
+4. Re-run the read-only migration audit against the agreed baseline after reconciliation. Do not edit the live ledger or add checksum exceptions to make the result green.
+5. Keep production R2 credentials/settings on hold until the database and authorization qualification gates pass.
+
+No database writes, live migrations, production changes, or Render service/environment changes were made during this verification. The migration remains unapplied to both the sandbox and production. Do not place database credentials in this handover, GitHub comments, or chat.
