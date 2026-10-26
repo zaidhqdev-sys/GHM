@@ -31,7 +31,7 @@ export class TransactionalPostgresStorageMetadataStore implements StorageMetadat
   async createPending(input: Omit<StorageMetadataRecord, "id" | "status">): Promise<StorageMetadataRecord> {
     return this.run(async (client) => {
       const result = await client.query(
-        "SELECT ghm.storage_create_pending($1,$2,$3,$4,$5,$6,$7,$8,NULL) AS row",
+        "SELECT * FROM ghm.storage_create_pending($1,$2,$3,$4,$5,$6,$7,$8,NULL)",
         [
           Number(input.businessId),
           input.resourceType,
@@ -43,37 +43,37 @@ export class TransactionalPostgresStorageMetadataStore implements StorageMetadat
           input.visibility,
         ],
       );
-      return mapStorageMetadata(result.rows[0].row);
+      return mapStorageMetadata(result.rows[0]);
     });
   }
 
   async markAvailable(id: string, checksum?: string | null): Promise<StorageMetadataRecord> {
     return this.run(async (client) => {
       const result = await client.query(
-        "SELECT ghm.storage_mark_available($1,$2) AS row",
+        "SELECT * FROM ghm.storage_mark_available($1,$2)",
         [Number(id), checksum ?? null],
       );
-      return mapStorageMetadata(result.rows[0].row);
+      return mapStorageMetadata(result.rows[0]);
     });
   }
 
   async markDeletionPending(id: string): Promise<StorageMetadataRecord> {
     return this.run(async (client) => {
       const result = await client.query(
-        "SELECT ghm.storage_mark_deletion_pending($1) AS row",
+        "SELECT * FROM ghm.storage_mark_deletion_pending($1)",
         [Number(id)],
       );
-      return mapStorageMetadata(result.rows[0].row);
+      return mapStorageMetadata(result.rows[0]);
     });
   }
 
   async markDeleted(id: string): Promise<StorageMetadataRecord> {
     return this.run(async (client) => {
       const result = await client.query(
-        "SELECT ghm.storage_mark_deleted($1) AS row",
+        "SELECT * FROM ghm.storage_mark_deleted($1)",
         [Number(id)],
       );
-      return mapStorageMetadata(result.rows[0].row);
+      return mapStorageMetadata(result.rows[0]);
     });
   }
 
@@ -81,8 +81,8 @@ export class TransactionalPostgresStorageMetadataStore implements StorageMetadat
     return this.run(async (client) => {
       try {
         const result = await client.query(
-          "SELECT * FROM ghm.storage_get_object($1,$2)",
-          [Number(id), Number(this.context.userId)],
+          "SELECT * FROM ghm.storage_get_object($1, $2)",
+          [Number(id), this.context.userId],
         );
         return result.rowCount === 1 ? mapStorageMetadata(result.rows[0]) : null;
       } catch (error) {
