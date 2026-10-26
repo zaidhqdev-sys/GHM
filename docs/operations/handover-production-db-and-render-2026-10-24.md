@@ -541,3 +541,10 @@ Recommended safe decision path:
 4. Re-review the storage migration on the selected baseline and only then approve a separately controlled sandbox application.
 
 No decision has been supplied on Issue #185 as of this checkpoint. This is an explicit governance blocker, not a reason to perform speculative writes. Shared sandbox and production remain unchanged; production R2 remains on hold.
+
+
+### Final verification checkpoint for integration-path note — 2026-10-26
+
+Exact-head CI for commit `ad4c487741ffe0ced4f4ad53a25296b238d836fc` passed in [CI #1709](https://github.com/zaidhqdev-sys/GHM/actions/runs/40325419562). All workflow steps succeeded, including isolated least-privilege database roles, build, all migrations on disposable PostgreSQL, fixture setup, scoped getter/catalog checks, storage lifecycle and tenant authorization qualification, full tests, migration-audit policy tests, and runtime-boundary verification.
+
+The shared Render sandbox ledger remains read-only-audited, not changed. Issue #185 still has no recorded maintainer decision on the approved migration baseline or integration strategy. The candidate branch divergence is documented; no PR merge, ledger rewrite, persistent DB migration, or production/R2 configuration change is authorized by this CI result.
