@@ -394,3 +394,12 @@ The audit verdict was **INVESTIGATE**, not PASS:
 5. Keep production R2 credentials/settings on hold until the database and authorization qualification gates pass.
 
 No database writes, live migrations, production changes, or Render service/environment changes were made during this verification. The migration remains unapplied to both the sandbox and production. Do not place database credentials in this handover, GitHub comments, or chat.
+
+
+### Follow-up: qualification database access and handover commit — 2026-10-26
+
+Render inventory shows an existing PostgreSQL instance named `ghm_identity_qualification_20261018` (15 GB, paid `basic_256mb` plan), but its IP allowlist is empty. The hosted Render query tool cannot connect because of that allowlist. I did not change networking or broaden access, and I did not assume this database is disposable or repurpose it for storage qualification. The shared PayFast sandbox remains shared and is not an acceptable substitute for a disposable target.
+
+The handover update is committed on the feature branch. CI run #1684 completed successfully for that documentation commit. PR #184 remains open and draft; no merge, deployment, database migration, database write, or Render environment change was performed.
+
+Next concrete gate: use an approved local/operational connection to verify the purpose and contents of `ghm_identity_qualification_20261018` or provision a clearly disposable database with explicit approval for any associated cost. Only then run the mutating storage qualification against that isolated database, including the migration, runtime direct-DML denial, lifecycle transitions, public-logo read, and real membership-backed same-tenant/cross-tenant cases. Keep production R2 settings and credentials on hold until that gate and the baseline reconciliation are reviewed.
