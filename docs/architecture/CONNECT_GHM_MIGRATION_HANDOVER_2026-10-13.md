@@ -864,3 +864,13 @@ GHM PR #159 advanced after the initial implementation to `7ec7af122d46fc88c93b32
 - Connect PR #49 migrates admin customer-review moderation to GHM and remains stacked on PR #48. Current head `5fc05404e7b12382fccaf31edfa540c16639769c` passed at [run 39327035864](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39327035864). This is customer review moderation, distinct from Founder-controlled Business directory listing review.
 - Connect PR #50 tightens fail-closed identity context handling; current head `1bb017d40ce2a947ce70accd830966269cba0f98` passed at [run 39327542112](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39327542112).
 - These are construction-branch CI results only. Do not infer deployed parity or production cutover. Founder directory listing review remains a separate workflow with a dedicated reviewer allowlist and verified canonical reviewer mapping requirement.
+
+## Shared storage and migration checkpoint — 2026-10-26
+
+This is a cross-capability status note only; it does not change Connect's no-Supabase target or imply Connect workflow parity.
+
+- GHM's authenticated storage API, account-scoped storage metadata lookup, migration safeguards, and disposable PostgreSQL storage lifecycle/tenant authorization qualification were merged into GHM `main` in PR #184, merge commit `43450e42e902594493bdab4ba2c689b0c4099912`.
+- The exact-head CI for that merge passed in [run #40407751688](https://github.com/zaidhqdev-sys/GHM/actions/runs/40407751688).
+- The live Cloudflare R2 provider qualification passed on 2026-10-26; evidence is in `docs/evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-26.md`. The only bucket created so far is named `zaid-ghm-production`; the temporary test object was deleted and absence confirmed, but the bucket is not assumed to be a dedicated non-production target.
+- The qualification database migration run completed with exit code 0 after restoring the exact historical migration SQL bytes. This does not establish that production was migrated.
+- These bounded GHM storage results do not qualify the Connect browser workflow, no-Supabase session authority, broader product parity, or production cutover. Keep those gates open until their own evidence exists.
