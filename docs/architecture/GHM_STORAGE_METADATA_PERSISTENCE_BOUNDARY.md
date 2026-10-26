@@ -74,3 +74,11 @@ This schema must remain reconciled with:
 - storage recovery contract.
 
 No provider provisioning or object migration is authorized by this document.
+
+## Current qualification reconciliation — 2026-10-26
+
+The migration runner completed successfully against the explicitly selected qualification database on 2026-10-26, and catalog checks confirmed the scoped `storage_get_object(bigint,bigint)` function, removal of the one-argument overload, owner-controlled `SECURITY DEFINER` lifecycle functions, runtime execute grants, and no direct runtime table DML grant. This catalog evidence does not replace the dedicated mutation qualification under the intended restricted qualification role.
+
+The live Cloudflare R2 provider data path was requalified on 2026-10-26; all checks passed, including upload, metadata observation, payload integrity, deletion, and absence confirmation. See `../evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-26.md`. The only bucket created so far is named `zaid-ghm-production`, so the successful provider test must not be interpreted as proof of a dedicated non-production storage environment.
+
+Still open: guarded database persistence qualification in the intended role, authenticated application/API end-to-end qualification, complete tenant/resource authorization, recovery/orphan reconciliation, backups, and production enablement.
