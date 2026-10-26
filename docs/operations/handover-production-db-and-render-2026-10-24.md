@@ -476,3 +476,6 @@ This means the sandbox ledger is consistent with an unmerged integration-candida
 The exact-head CI run for the previous handover update, [#1703](https://github.com/zaidhqdev-sys/GHM/actions/runs/40251833412), has now completed successfully. This confirms the handover-only commit itself is green; the substantive storage qualification remains green on [#1702](https://github.com/zaidhqdev-sys/GHM/actions/runs/40251782080).
 
 Current safe next step is governed baseline reconciliation, not a live migration. The eight extra ledger entries are traceable to open draft integration candidate PR #142; because that PR explicitly disclaims merge/deployment authorization and is not merged to `main`, do not treat it as the authoritative persistent-database baseline without maintainer sign-off. Keep the shared sandbox and production unchanged, and keep production R2 configuration on hold.
+
+
+A tracked maintainer decision item is now open: [Issue #185 — Reconcile shared Render sandbox migration baseline before storage rollout](https://github.com/zaidhqdev-sys/GHM/issues/185). It records the evidence, the required baseline decision, and the no-live-change safety boundary. Treat this as the next operational gate.
