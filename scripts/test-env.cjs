@@ -5,6 +5,8 @@
 require('dotenv/config');
 
 process.env.NODE_ENV ??= 'test';
+// Deterministic test-only secret; never used by application runtime configuration.
+process.env.GHM_AUTH_TOKEN_PEPPER ??= 'test-only-pepper-for-local-and-ci-tests-000000000000000000000000';
 process.env.DATABASE_URL ??= 'postgres://qualification:test@localhost:5432/ghm';
 process.env.INVITE_CODE ??= 'test-invite-code';
 process.env.CORS_ORIGINS ??= 'http://localhost:3000';

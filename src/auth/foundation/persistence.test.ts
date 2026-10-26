@@ -20,6 +20,15 @@ process.env.GHM_AUTH_TOKEN_PEPPER ??= randomBytes(32).toString('base64url');
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 
+const isLoopbackPostgresUrl = (value: string | undefined): boolean => {
+  if (!value) return false;
+  try {
+    return ['localhost', '127.0.0.1', '::1'].includes(new URL(value).hostname);
+  } catch {
+    return false;
+  }
+};
+
 const probeAuthSchemaReady = async (): Promise<boolean> => {
   if (!runtimeUrl || !migratorUrl || runtimeUrl === migratorUrl) return false;
   const pool = new Pool({
@@ -36,6 +45,7 @@ const probeAuthSchemaReady = async (): Promise<boolean> => {
         AND to_regprocedure('ghm.auth_create_account(text,text,text,text,text,integer,integer,integer)') IS NOT NULL
         AND to_regprocedure('ghm.auth_link_external_identity(text,text,bigint)') IS NOT NULL
         AND to_regprocedure('ghm.auth_link_business_external_mapping(text,text,bigint)') IS NOT NULL
+        AND to_regprocedure('ghm.auth_read_account_email(bigint)') IS NOT NULL
         AS ready
     `);
     return Boolean(result.rows[0]?.ready);
@@ -48,9 +58,24 @@ const probeAuthSchemaReady = async (): Promise<boolean> => {
 };
 
 test('auth foundation persistence (database)', async (t) => {
+  // CI provisions a disposable PostgreSQL instance with isolated runtime/migrator roles.
+  // Local runs must opt in explicitly, and that opt-in is restricted to loopback hosts
+  // so an ordinary npm test cannot mutate a configured remote/shared database.
+  if (process.env.CI !== 'true') {
+    if (process.env.GHM_ALLOW_LOCAL_AUTH_PERSISTENCE_DB_TESTS !== 'true') {
+      t.skip('Local auth persistence DB test disabled; use an isolated local PostgreSQL instance and explicitly opt in');
+      return;
+    }
+    if (!isLoopbackPostgresUrl(runtimeUrl) || !isLoopbackPostgresUrl(migratorUrl)) {
+      throw new Error('Local auth persistence DB tests require both runtime and migrator URLs to target localhost/127.0.0.1/::1');
+    }
+  }
+
   const dbAvailable = await probeAuthSchemaReady();
   if (!dbAvailable) {
-    t.skip('Auth schema/functions not migrated or GHM_MIGRATOR_DATABASE_URL / runtime URL unavailable');
+    const reason = 'Auth schema/functions not migrated or distinct GHM_MIGRATOR_DATABASE_URL / runtime URL unavailable';
+    if (process.env.CI === 'true') throw new Error(reason);
+    t.skip(reason);
     return;
   }
 
@@ -614,5 +639,23 @@ test('auth foundation persistence (database)', async (t) => {
     assert.ok(looked);
     assert.equal(looked!.accountId, accountId);
     assert.match(looked!.passwordHash, /^\$argon2id\$/);
+
+    const runtimeClient = await runtimePool.connect();
+    try {
+      const email = await runtimeClient.query<{ email: string | null }>(
+        'SELECT ghm.auth_read_account_email($1) AS email',
+        [accountId],
+      );
+      assert.equal(email.rows[0]?.email, `user+${marker}@Example.COM`);
+      await assert.rejects(
+        () => runtimeClient.query('SELECT login_email FROM ghm.account_password_credential WHERE account_id = $1', [accountId]),
+        (error: unknown) => {
+          const err = error as { code?: string; message?: string };
+          return err.code === '42501' || Boolean(err.message?.match(/permission denied/i));
+        },
+      );
+    } finally {
+      runtimeClient.release();
+    }
   });
 });

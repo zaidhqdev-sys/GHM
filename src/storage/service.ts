@@ -95,7 +95,17 @@ export function createStorageService(deps: {
   provider: StorageProvider;
   metadata: StorageMetadataStore;
   authorization: StorageAuthorization;
+  uploadGrantTtlSeconds?: number;
+  downloadGrantMaxTtlSeconds?: number;
 }): StorageService {
+  const uploadGrantTtlSeconds = deps.uploadGrantTtlSeconds ?? 900;
+  const downloadGrantMaxTtlSeconds = deps.downloadGrantMaxTtlSeconds ?? 3600;
+  if (!Number.isSafeInteger(uploadGrantTtlSeconds) || uploadGrantTtlSeconds < 1 || uploadGrantTtlSeconds > 3600) {
+    throw new Error("invalid storage upload grant expiry");
+  }
+  if (!Number.isSafeInteger(downloadGrantMaxTtlSeconds) || downloadGrantMaxTtlSeconds < 1 || downloadGrantMaxTtlSeconds > 3600) {
+    throw new Error("invalid storage download grant expiry");
+  }
   return {
     async createUpload(input) {
       const policy = storagePolicyFor(input.objectClass);
@@ -126,7 +136,7 @@ export function createStorageService(deps: {
           key: providerKey,
           contentType: input.contentType,
           byteSize: input.byteSize,
-          expiresInSeconds: 900,
+          expiresInSeconds: uploadGrantTtlSeconds,
         });
         return { objectId: metadata.id, providerKey, grant };
       } catch (error) {
@@ -151,7 +161,7 @@ export function createStorageService(deps: {
     },
 
     async getAccess(input) {
-      if (!Number.isSafeInteger(input.expiresInSeconds) || input.expiresInSeconds < 1 || input.expiresInSeconds > 3600) {
+      if (!Number.isSafeInteger(input.expiresInSeconds) || input.expiresInSeconds < 1 || input.expiresInSeconds > downloadGrantMaxTtlSeconds) {
         throw new Error("invalid storage grant expiry");
       }
       const record = await deps.metadata.getById(input.objectId);
@@ -167,15 +177,17 @@ export function createStorageService(deps: {
 
     async deleteObject(input) {
       const record = await deps.metadata.getById(input.objectId);
-      if (!record || record.status !== "available") throw new Error("storage object not available");
-      await deps.authorization.assertCanDelete(input.caller, record);
-      await deps.metadata.markDeletionPending(record.id);
-      try {
-        await deps.provider.deleteObject(record.providerKey);
-        await deps.metadata.markDeleted(record.id);
-      } catch (error) {
-        throw error;
+      if (!record || (record.status !== "available" && record.status !== "deletion_pending")) {
+        throw new Error("storage object not available");
       }
+      await deps.authorization.assertCanDelete(input.caller, record);
+      // A previous attempt may have marked the row deletion_pending before the
+      // provider or final metadata update failed. Retrying the provider delete
+      // is safe for object stores and lets the lifecycle recover without
+      // reopening the object for reads or requiring a manual DB edit.
+      if (record.status === "available") await deps.metadata.markDeletionPending(record.id);
+      await deps.provider.deleteObject(record.providerKey);
+      await deps.metadata.markDeleted(record.id);
     },
   };
 }

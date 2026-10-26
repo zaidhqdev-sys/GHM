@@ -10,12 +10,14 @@ import { PublicBusinessServiceImpl } from '../resources/business-identity/public
 import type { PublicBusinessService } from '../resources/business-identity/public-contracts';
 import { PostgresBusinessHoursRepository } from '../resources/business-hours/repository';
 import { BusinessHoursServiceImpl } from '../resources/business-hours/service';
-import { BusinessHoursService } from '../resources/business-hours/contracts';
+import { BusinessHoursEntryInput, BusinessHoursService } from '../resources/business-hours/contracts';
 import { PostgresProjectRepository } from '../resources/project/repository';
 import { ProjectServiceImpl } from '../resources/project/service';
 import { CreateProjectInput, ProjectService, UpdateProjectInput } from '../resources/project/contracts';
 import { isRegisteredOperation, ResourceOperation } from '../resources/registry';
 import { config } from '../config';
+import { registerStorageRoutes } from './storage-router';
+import { createStorageProvider } from '../storage/factory';
 import { PostgresPublicProjectRepository } from '../resources/project/public-repository';
 import { PublicProjectServiceImpl } from '../resources/project/public-service';
 import { PublicProjectService } from '../resources/project/public-contracts';
@@ -57,6 +59,9 @@ import type { PasswordRecoveryService } from '../auth/password-recovery';
 import type { PasswordResetService } from '../auth/password-reset';
 import type { QuoteFlowMigrationResetRecoveryService } from '../migrations/quoteflow-migration-reset-recovery';
 import type { QuoteFlowMigrationResetCompletionService } from '../migrations/quoteflow-migration-reset-completion';
+import { createQuoteFlowMigrationResetRecoveryService } from '../migrations/quoteflow-migration-reset-recovery';
+import { createQuoteFlowMigrationResetCompletionService } from '../migrations/quoteflow-migration-reset-completion';
+import { createRecoveryWebhookDeliveryFromEnv } from '../auth/recovery-webhook-delivery';
 import { createPasswordResetService } from '../auth/password-reset';
 import { PostgresAuthPersistence } from '../auth/foundation/persistence';
 import { PostgresProjectQuoteRepository } from '../resources/project-quote/repository';
@@ -94,6 +99,14 @@ import { PostgresBusinessOfferingRepository } from '../resources/business-offeri
 import { BusinessOfferingServiceImpl } from '../resources/business-offering/service';
 import type { BusinessOfferingService } from '../resources/business-offering/contracts';
 import { registerBusinessOfferingRoutes } from './business-offering-router';
+import { PostgresBusinessEngagementRepository } from '../resources/business-engagement/repository';
+import { BusinessEngagementServiceImpl } from '../resources/business-engagement/service';
+import type { BusinessEngagementService } from '../resources/business-engagement/contracts';
+import { registerBusinessEngagementRoutes } from './business-engagement-router';
+import { PostgresBusinessRegistrationIdentityRepository } from '../resources/business-registration-identity/repository';
+import { BusinessRegistrationIdentityServiceImpl } from '../resources/business-registration-identity/service';
+import type { BusinessRegistrationIdentityService } from '../resources/business-registration-identity/contracts';
+import { registerBusinessRegistrationIdentityRoutes } from './business-registration-identity-router';
 import { registerConnectServiceRoutes, type ConnectServiceHttpDependencies } from './connect-service-router';
 import { registerCommercialInternalRoutes } from './commercial-internal-router';
 
@@ -120,6 +133,8 @@ export interface AppDependencies {
   readonly notificationService?: NotificationService;
   readonly businessCategoryService?: BusinessCategoryService;
   readonly businessOfferingService?: BusinessOfferingService;
+  readonly businessEngagementService?: BusinessEngagementService;
+  readonly businessRegistrationIdentityService?: BusinessRegistrationIdentityService;
   readonly directoryService?: DirectoryService;
   readonly authService?: GhmAuthService;
   readonly passwordRecoveryService?: PasswordRecoveryService;
@@ -160,6 +175,34 @@ const positiveIntegerId = (value: string): number | null => {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 };
 
+const parseOwnProfileUpdateInput = (body: unknown): import('../resources/business-identity/contracts').UpdateProfileInput | null => {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  const input = body as Record<string, unknown>;
+  const allowed = new Set(['fullName', 'phone', 'avatarRef', 'connectRole', 'businessOperatorIntent']);
+  const keys = Object.keys(input);
+  if (keys.length === 0 || keys.some(key => !allowed.has(key))) return null;
+  const result: Record<string, unknown> = {};
+  for (const key of ['fullName', 'phone', 'avatarRef'] as const) {
+    if (!Object.hasOwn(input, key)) continue;
+    const value = input[key];
+    if (value !== null && typeof value !== 'string') return null;
+    if (key === 'fullName' && typeof value === 'string' && value.length > 200) return null;
+    if (key === 'phone' && typeof value === 'string' && value.length > 32) return null;
+    if (key === 'avatarRef' && typeof value === 'string' && value.length > 1024) return null;
+    result[key] = value;
+  }
+  if (Object.hasOwn(input, 'connectRole')) {
+    const value = input.connectRole;
+    if (value !== null && value !== 'customer' && value !== 'contractor' && value !== 'supplier') return null;
+    result.connectRole = value;
+  }
+  if (Object.hasOwn(input, 'businessOperatorIntent')) {
+    if (typeof input.businessOperatorIntent !== 'boolean') return null;
+    result.businessOperatorIntent = input.businessOperatorIntent;
+  }
+  return result as import('../resources/business-identity/contracts').UpdateProfileInput;
+};
+
 const parseCreateBusinessInput = (body: unknown): { name: string } | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   const input = body as Record<string, unknown>;
@@ -170,7 +213,7 @@ const parseCreateBusinessInput = (body: unknown): { name: string } | null => {
 const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   const input = body as Record<string, unknown>;
-  const allowed = new Set(['name', 'slug', 'description', 'phone', 'email']);
+  const allowed = new Set(['name', 'slug', 'description', 'phone', 'email', 'category', 'province', 'city', 'physicalAddress', 'whatsapp', 'website', 'isSupplier', 'yearsInBusiness']);
   const keys = Object.keys(input);
   if (keys.length === 0 || keys.some((key) => !allowed.has(key))) return null;
   if (Object.hasOwn(input, 'name') && (typeof input.name !== 'string' || !input.name.trim())) return null;
@@ -178,12 +221,34 @@ const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | n
   if (Object.hasOwn(input, 'description') && input.description !== null && typeof input.description !== 'string') return null;
   if (Object.hasOwn(input, 'phone') && input.phone !== null && typeof input.phone !== 'string') return null;
   if (Object.hasOwn(input, 'email') && input.email !== null && typeof input.email !== 'string') return null;
+  for (const key of ['category', 'province', 'city', 'physicalAddress', 'whatsapp', 'website']) {
+    if (Object.hasOwn(input, key) && input[key] !== null && typeof input[key] !== 'string') return null;
+  }
+  if (typeof input.category === 'string' && (input.category.length > 100 || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(input.category))) return null;
+  if (typeof input.province === 'string' && (input.province.trim().length < 1 || input.province.trim().length > 100)) return null;
+  if (typeof input.city === 'string' && (input.city.trim().length < 1 || input.city.trim().length > 120)) return null;
+  if (typeof input.physicalAddress === 'string' && (input.physicalAddress.trim().length < 1 || input.physicalAddress.trim().length > 500)) return null;
+  if (typeof input.whatsapp === 'string' && (input.whatsapp.trim().length < 7 || input.whatsapp.trim().length > 32)) return null;
+  if (typeof input.website === 'string') {
+    if (input.website.trim().length < 1 || input.website.trim().length > 2048) return null;
+    try { const url = new URL(input.website); if (url.protocol !== 'https:' && url.protocol !== 'http:') return null; } catch { return null; }
+  }
+  if (Object.hasOwn(input, 'isSupplier') && input.isSupplier !== null && typeof input.isSupplier !== 'boolean') return null;
+  if (Object.hasOwn(input, 'yearsInBusiness') && (!Number.isInteger(input.yearsInBusiness) || Number(input.yearsInBusiness) < 0 || Number(input.yearsInBusiness) > 500)) return null;
   return {
     ...(Object.hasOwn(input, 'name') ? { name: input.name as string } : {}),
     ...(Object.hasOwn(input, 'slug') ? { slug: input.slug as string } : {}),
     ...(Object.hasOwn(input, 'description') ? { description: input.description as string | null } : {}),
     ...(Object.hasOwn(input, 'phone') ? { phone: input.phone as string | null } : {}),
     ...(Object.hasOwn(input, 'email') ? { email: input.email as string | null } : {}),
+    ...(Object.hasOwn(input, 'category') ? { category: input.category as string | null } : {}),
+    ...(Object.hasOwn(input, 'province') ? { province: input.province as string | null } : {}),
+    ...(Object.hasOwn(input, 'city') ? { city: input.city as string | null } : {}),
+    ...(Object.hasOwn(input, 'physicalAddress') ? { physicalAddress: input.physicalAddress as string | null } : {}),
+    ...(Object.hasOwn(input, 'whatsapp') ? { whatsapp: input.whatsapp as string | null } : {}),
+    ...(Object.hasOwn(input, 'website') ? { website: input.website as string | null } : {}),
+    ...(Object.hasOwn(input, 'isSupplier') ? { isSupplier: input.isSupplier as boolean | null } : {}),
+    ...(Object.hasOwn(input, 'yearsInBusiness') ? { yearsInBusiness: input.yearsInBusiness as number } : {}),
   };
 };
 
@@ -293,6 +358,39 @@ const parseProjectUpdateInput = (body: unknown): UpdateProjectInput | null => {
   return input as UpdateProjectInput;
 };
 
+const parseBusinessHoursReplaceBody = (body: unknown): readonly BusinessHoursEntryInput[] | null => {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  const input = body as Record<string, unknown>;
+  if (Object.keys(input).length !== 1 || !Object.hasOwn(input, 'hours') || !Array.isArray(input.hours) || input.hours.length > 7) return null;
+
+  const seen = new Set<number>();
+  const timePattern = /^(?:[01][0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$/;
+  const timeToSeconds = (value: string): number => {
+    const [hours, minutes, seconds = 0] = value.split(':').map(Number);
+    return hours * 3600 + minutes * 60 + seconds;
+  };
+  const entries: BusinessHoursEntryInput[] = [];
+  for (const candidate of input.hours) {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return null;
+    const entry = candidate as Record<string, unknown>;
+    if (Object.keys(entry).some(key => !['dayOfWeek', 'isClosed', 'openTime', 'closeTime'].includes(key))) return null;
+    if (!Number.isInteger(entry.dayOfWeek) || (entry.dayOfWeek as number) < 0 || (entry.dayOfWeek as number) > 6 || typeof entry.isClosed !== 'boolean') return null;
+    const day = entry.dayOfWeek as number;
+    if (seen.has(day)) return null;
+    seen.add(day);
+    if (entry.isClosed) {
+      if (entry.openTime != null || entry.closeTime != null) return null;
+      entries.push({ dayOfWeek: day, isClosed: true });
+      continue;
+    }
+    if (typeof entry.openTime !== 'string' || typeof entry.closeTime !== 'string' ||
+        !timePattern.test(entry.openTime) || !timePattern.test(entry.closeTime) ||
+        timeToSeconds(entry.openTime) >= timeToSeconds(entry.closeTime)) return null;
+    entries.push({ dayOfWeek: day, isClosed: false, openTime: entry.openTime, closeTime: entry.closeTime });
+  }
+  return entries;
+};
+
 const handleError = (error: unknown, res: Response): void => {
   if (error instanceof Error) {
     if (
@@ -367,6 +465,9 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const businessCategoryService = dependencies.businessCategoryService ?? new BusinessCategoryServiceImpl(new PostgresBusinessCategoryRepository());
   const directoryService = dependencies.directoryService ?? new DirectoryServiceImpl(new PostgresDirectoryRepository());
   const businessOfferingService = dependencies.businessOfferingService ?? new BusinessOfferingServiceImpl(new PostgresBusinessOfferingRepository());
+  const businessEngagementService = dependencies.businessEngagementService ?? new BusinessEngagementServiceImpl(new PostgresBusinessEngagementRepository());
+  const businessRegistrationIdentityService = dependencies.businessRegistrationIdentityService
+    ?? new BusinessRegistrationIdentityServiceImpl(new PostgresBusinessRegistrationIdentityRepository());
   app.disable('x-powered-by');
   app.disable('etag');
   app.use((_req: Request, res: Response, next: NextFunction) => {
@@ -379,12 +480,61 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   app.use(cors({ origin: config.corsOrigins }));
   app.use(express.json({ limit: '1mb' }));
 
+  if (config.storage) {
+    registerStorageRoutes(
+      app,
+      createStorageProvider(config.storage),
+      resourceAuthMiddleware,
+      config.storage.uploadGrantTtlSeconds,
+      config.storage.downloadGrantMaxTtlSeconds,
+    );
+  }
+
   app.get('/', (_req: Request, res: Response) => {
     res.json({ service: 'GHM Core Engine', version: '2.0.0' });
   });
 
   app.get('/healthz', (_req: Request, res: Response) => {
     res.status(200).json({ status: 'ok' });
+  });
+
+  // Canonical identity context is derived only from the verified GHM auth context.
+  // Business selection is not an authorization claim and must never reveal tenant existence.
+  app.get('/api/v1/identity', resourceAuthMiddleware, requireRegisteredAccess('profile', 'read'), requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
+    try {
+      const allowed = new Set(['businessId']);
+      if (Object.keys(req.query).some((key) => !allowed.has(key))) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const context = req.authContext as AuthContext;
+      const rawBusinessId = req.query.businessId;
+      let selectedBusinessId: number | undefined;
+      if (rawBusinessId !== undefined) {
+        if (typeof rawBusinessId !== 'string' || !/^[1-9][0-9]*$/.test(rawBusinessId)) {
+          res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+        selectedBusinessId = Number(rawBusinessId);
+        if (!Number.isSafeInteger(selectedBusinessId) || selectedBusinessId <= 0) {
+          res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+      }
+      const identity = await service.getIdentityContext({ context, selectedBusinessId });
+      res.status(200).json({
+        account: identity.account,
+        memberships: identity.memberships,
+        activeMembership: identity.activeMembership,
+        activeBusiness: identity.activeBusiness,
+      });
+    } catch (error) {
+      if (error instanceof Error && /Selected business context is not authorized|Selected business not found|Selected business is inactive/.test(error.message)) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      handleError(error, res);
+    }
   });
 
   app.get('/api/v1/profile', resourceAuthMiddleware, requireRegisteredAccess('profile', 'read'), async (req: Request, res: Response) => {
@@ -397,9 +547,33 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
+  app.patch('/api/v1/profile', resourceAuthMiddleware, requireRegisteredAccess('profile', 'update'), async (req: Request, res: Response) => {
+    try {
+      const input = parseOwnProfileUpdateInput(req.body);
+      if (!input) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const context = req.authContext as AuthContext;
+      const profile = await service.updateOwnProfile(context, input);
+      res.status(200).json({ profile });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.get('/api/v1/public/business-categories', requireRegisteredPublicAccess('directory', 'read'), async (_req: Request, res: Response) => {
+    try {
+      const categories = await directoryService.listPublicCategories();
+      res.status(200).json({ categories });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
   app.get('/api/v1/public/businesses', requireRegisteredPublicAccess('directory', 'read'), async (req: Request, res: Response) => {
     try {
-      const allowed = new Set(['q', 'category', 'page', 'pageSize']);
+      const allowed = new Set(['q', 'category', 'province', 'city', 'sort', 'businessType', 'page', 'pageSize']);
       const keys = Object.keys(req.query);
       if (keys.some((key) => !allowed.has(key))) {
         res.status(400).json({ error: 'invalid_request' });
@@ -422,14 +596,32 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
 
       const q = readStringQuery('q');
       const category = readStringQuery('category');
+      const province = readStringQuery('province');
+      const city = readStringQuery('city');
+      const sort = readStringQuery('sort');
+      const businessType = readStringQuery('businessType');
       const pageValue = parsePositiveQueryInteger('page');
       const pageSizeValue = parsePositiveQueryInteger('pageSize');
 
       if (
         (req.query.q !== undefined && q === undefined) ||
         (req.query.category !== undefined && category === undefined) ||
+        (req.query.province !== undefined && province === undefined) ||
+        (req.query.city !== undefined && city === undefined) ||
+        (req.query.sort !== undefined && sort === undefined) ||
+        (req.query.businessType !== undefined && businessType === undefined) ||
         (req.query.page !== undefined && pageValue === undefined) ||
         (req.query.pageSize !== undefined && pageSizeValue === undefined)
+      ) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+
+      if (
+        (province !== undefined && (province.trim().length === 0 || province.trim().length > 100)) ||
+        (city !== undefined && (city.trim().length === 0 || city.trim().length > 100)) ||
+        (sort !== undefined && !['rating', 'reviews', 'views', 'newest'].includes(sort)) ||
+        (businessType !== undefined && businessType !== 'contractors' && businessType !== 'suppliers')
       ) {
         res.status(400).json({ error: 'invalid_request' });
         return;
@@ -443,6 +635,10 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       const result = await directoryService.search({
         q,
         category,
+        province: province?.trim(),
+        city: city?.trim(),
+        sort: sort as 'rating' | 'reviews' | 'views' | 'newest' | undefined,
+        businessType: businessType as 'contractors' | 'suppliers' | undefined,
         page: pageValue ?? 1,
         pageSize: pageSizeValue ?? 20,
       });
@@ -455,6 +651,14 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
           error.message === 'category must be a string' ||
           error.message === 'category must not be blank' ||
           error.message === 'category must be a valid category id or slug' ||
+          error.message === 'province must be a string' ||
+          error.message === 'province must not be blank' ||
+          error.message === 'province must be at most 100 characters' ||
+          error.message === 'city must be a string' ||
+          error.message === 'city must not be blank' ||
+          error.message === 'city must be at most 100 characters' ||
+          error.message === 'sort must be rating, reviews, views, or newest' ||
+          error.message === 'businessType must be contractors or suppliers' ||
           error.message === 'page must be a positive integer' ||
           error.message === 'pageSize must be a positive integer' ||
           error.message === 'pageSize must be at most 50')
@@ -556,6 +760,28 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         }
         const hours = await businessHoursService.getBusinessHours(context, businessId);
         res.status(200).json({ hours });
+      } catch (error) {
+        handleError(error, res);
+      }
+    },
+  );
+
+  app.put(
+    '/api/v1/businesses/:businessId/hours',
+    resourceAuthMiddleware,
+    requireRegisteredAccess('business_hours', 'replace'),
+    async (req: Request, res: Response) => {
+      try {
+        const context = req.authContext as AuthContext;
+        const businessIdValue = routeParam(req.params.businessId);
+        const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
+        const hours = parseBusinessHoursReplaceBody(req.body);
+        if (businessId === null || hours === null) {
+          res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+        const updated = await businessHoursService.replaceBusinessHours(context, { businessId, hours });
+        res.status(200).json({ hours: updated });
       } catch (error) {
         handleError(error, res);
       }
@@ -672,15 +898,29 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerNotificationRoutes(app, notificationService, resourceAuthMiddleware);
   registerBusinessCategoryRoutes(app, businessCategoryService, resourceAuthMiddleware);
   registerBusinessOfferingRoutes(app, businessOfferingService, resourceAuthMiddleware);
+  registerBusinessEngagementRoutes(app, businessEngagementService, resourceAuthMiddleware);
+  registerBusinessRegistrationIdentityRoutes(app, businessRegistrationIdentityService, resourceAuthMiddleware);
+  const authPersistence = new PostgresAuthPersistence();
   const passwordResetService =
     dependencies.passwordResetService
-    ?? createPasswordResetService(new PostgresAuthPersistence());
+    ?? createPasswordResetService(authPersistence);
+  const recoveryDelivery = dependencies.quoteFlowMigrationResetRecoveryService
+    ? null
+    : createRecoveryWebhookDeliveryFromEnv();
+  const quoteFlowMigrationResetRecoveryService =
+    dependencies.quoteFlowMigrationResetRecoveryService
+    ?? (recoveryDelivery
+      ? createQuoteFlowMigrationResetRecoveryService(authPersistence, recoveryDelivery)
+      : undefined);
+  const quoteFlowMigrationResetCompletionService =
+    dependencies.quoteFlowMigrationResetCompletionService
+    ?? createQuoteFlowMigrationResetCompletionService(authPersistence);
   registerAuthRoutes(app, {
     authService: dependencies.authService,
     passwordRecoveryService: dependencies.passwordRecoveryService,
     passwordResetService,
-    quoteFlowMigrationResetRecoveryService: dependencies.quoteFlowMigrationResetRecoveryService,
-    quoteFlowMigrationResetCompletionService: dependencies.quoteFlowMigrationResetCompletionService,
+    quoteFlowMigrationResetRecoveryService,
+    quoteFlowMigrationResetCompletionService,
   } satisfies AuthRouterDependencies);
   registerCommercialInternalRoutes(app);
   registerConnectServiceRoutes(app, {

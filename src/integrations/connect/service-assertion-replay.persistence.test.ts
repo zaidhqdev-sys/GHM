@@ -9,7 +9,12 @@ const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined;
 
 test('Connect service assertion replay: live PostgreSQL qualification', async (t) => {
-  if (!runtimeUrl || !migratorUrl || runtimeUrl === migratorUrl) { t.skip('Distinct runtime/migrator database URLs are required'); return; }
+  if (!runtimeUrl || !migratorUrl || runtimeUrl === migratorUrl) {
+    const reason = 'Distinct runtime/migrator database URLs are required';
+    if (process.env.CI === 'true') throw new Error(reason);
+    t.skip(reason);
+    return;
+  }
   const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
   const migratorPool = new Pool({ connectionString: migratorUrl, ssl });
   const requestId = 'qualification-replay-' + Date.now() + '-' + Math.random().toString(36).slice(2);

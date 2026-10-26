@@ -3,9 +3,13 @@ import "dotenv/config";
 import pg from "pg";
 
 const { Client } = pg;
-const databaseUrl = process.env.GHM_QUALIFICATION_DATABASE_URL || process.env.GHM_RUNTIME_DATABASE_URL || process.env.DATABASE_URL;
+const databaseUrl = process.env.GHM_QUALIFICATION_DATABASE_URL;
 if (!databaseUrl) {
-  console.error("missing GHM_QUALIFICATION_DATABASE_URL, GHM_RUNTIME_DATABASE_URL, or DATABASE_URL");
+  console.error("missing GHM_QUALIFICATION_DATABASE_URL; runtime and generic DATABASE_URL fallbacks are deliberately disabled");
+  process.exit(2);
+}
+if (process.env.GHM_STORAGE_QUALIFICATION_ALLOW_MUTATIONS !== "true") {
+  console.error("refusing mutating storage qualification; set GHM_STORAGE_QUALIFICATION_ALLOW_MUTATIONS=true only for a disposable qualification database");
   process.exit(2);
 }
 
@@ -23,37 +27,81 @@ async function q(sql, params = []) {
   return client.query(sql, params);
 }
 
-async function expectFailure(label, fn) {
+async function expectSqlState(label, expectedCode, fn) {
   try {
     await fn();
     evidence.push({ label, status: "FAIL", reason: "operation unexpectedly succeeded" });
     mutationObserved = true;
+    throw new Error(`${label}: operation unexpectedly succeeded; refusing to continue qualification`);
   } catch (error) {
-    evidence.push({ label, status: "PASS", reason: String(error.message).slice(0, 240) });
+    if (error?.message?.includes("operation unexpectedly succeeded")) throw error;
+    if (error?.code !== expectedCode) {
+      evidence.push({
+        label, status: "FAIL",
+        expected_sqlstate: expectedCode,
+        actual_sqlstate: error?.code ?? null,
+        reason: String(error.message).slice(0, 240),
+      });
+      throw new Error(`${label}: expected SQLSTATE ${expectedCode}, got ${error?.code ?? "unknown"}`);
+    }
+    evidence.push({ label, status: "PASS", sqlstate: error.code });
   }
 }
 
 try {
   await client.connect();
 
-  const identity = await q("select current_user, session_user, current_schema()");
+  const identity = await q("select current_user, session_user, current_schema(), current_database()");
   evidence.push({ label: "runtime identity", status: "OBSERVED", ...identity.rows[0] });
+  if (!/(^|[_-])(qualification|qual|test|testing|disposable|sandbox)([_-]|$)/i.test(String(identity.rows[0].current_database))) {
+    throw new Error("refusing storage lifecycle writes: database name must clearly identify an approved sandbox or qualification/test database");
+  }
 
   await q("set search_path = ghm, public");
 
-  const tenant = await q("select id from ghm.business order by id asc limit 1");
+  const tenant = await q(`
+    select b.id
+      from ghm.business b
+      join ghm.business_membership bm on bm.business_id = b.id
+     where b.is_active = true and bm.membership_status = 'active'
+     order by b.id, bm.account_id
+     limit 1
+  `);
   if (tenant.rows.length === 0) {
-    throw new Error("no qualifying tenant business exists in ghm.business");
+    throw new Error("no active business with an active membership exists in the qualification database");
   }
   const tenantBusinessId = tenant.rows[0].id;
-  evidence.push({ label: "qualification tenant", status: "OBSERVED", tenant_business_id: tenantBusinessId });
+  const member = await q(`
+    select bm.account_id
+      from ghm.business_membership bm
+      join ghm.business b on b.id = bm.business_id
+     where bm.business_id = $1
+       and bm.membership_status = 'active'
+       and b.is_active = true
+     order by bm.account_id
+     limit 1
+  `, [tenantBusinessId]);
+  if (member.rows.length === 0) throw new Error("no active membership exists for the selected qualification tenant");
+  const memberAccountId = member.rows[0].account_id;
+  const nonMember = await q(`
+    select coalesce(max(account_id), 0) + 1000000 as account_id
+      from ghm.business_membership
+  `);
+  const nonMemberAccountId = nonMember.rows[0].account_id;
+  evidence.push({
+    label: "qualification tenant and identities",
+    status: "OBSERVED",
+    tenant_business_id: tenantBusinessId,
+    member_account_id: memberAccountId,
+    non_member_account_id: nonMemberAccountId,
+  });
 
-  await expectFailure("direct runtime INSERT is denied", async () => {
+  await expectSqlState("direct runtime INSERT is denied", "42501", async () => {
     await q(
       `insert into ghm.storage_object
        (tenant_business_id, resource_type, resource_id, object_class, provider_key, content_type, byte_size, visibility)
-       values (1, 'qualification', 0, 'qualification_probe', 'qualification/probe', 'image/png', 1, 'private')`
-    , [tenantBusinessId]);
+       values ($1, 'qualification', $1, 'qualification_probe', 'qualification/direct-insert-' || gen_random_uuid()::text, 'image/png', 1, 'private')`,
+      [tenantBusinessId]);
   });
 
   const functionPrivileges = await q(`
@@ -62,7 +110,8 @@ try {
       has_function_privilege(current_user, 'ghm.storage_mark_available(bigint,text)', 'EXECUTE') as mark_available_execute,
       has_function_privilege(current_user, 'ghm.storage_mark_deletion_pending(bigint)', 'EXECUTE') as mark_deletion_pending_execute,
       has_function_privilege(current_user, 'ghm.storage_mark_deleted(bigint)', 'EXECUTE') as mark_deleted_execute,
-      has_function_privilege(current_user, 'ghm.storage_get_object(bigint)', 'EXECUTE') as get_object_execute
+      has_function_privilege(current_user, 'ghm.storage_get_object(bigint,bigint)', 'EXECUTE') as get_object_execute,
+      coalesce(has_function_privilege(current_user, to_regprocedure('ghm.storage_get_object(bigint)'), 'EXECUTE'), false) as legacy_get_object_execute
   `);
   evidence.push({ label: "canonical lifecycle EXECUTE privileges", status: "OBSERVED", ...functionPrivileges.rows[0] });
 
@@ -73,41 +122,84 @@ try {
       has_table_privilege(current_user, 'ghm.storage_object', 'DELETE') as delete_allowed
   `);
   evidence.push({ label: "direct table DML privileges", status: "OBSERVED", ...tablePrivileges.rows[0] });
+  if (tablePrivileges.rows[0].insert_allowed !== false || tablePrivileges.rows[0].update_allowed !== false || tablePrivileges.rows[0].delete_allowed !== false) {
+    throw new Error("runtime role has direct storage_object DML privileges; expected INSERT/UPDATE/DELETE all false");
+  }
+  const { legacy_get_object_execute: legacyGetterExecute, ...requiredFunctionPrivileges } = functionPrivileges.rows[0];
+  if (Object.values(requiredFunctionPrivileges).some((allowed) => allowed !== true)) {
+    throw new Error("runtime role lacks EXECUTE on one or more required storage lifecycle functions");
+  }
+  if (legacyGetterExecute !== false) {
+    throw new Error("runtime role still has EXECUTE on the unscoped storage_get_object(bigint) function");
+  }
 
   const probe = await q(`
-    select (ghm.storage_create_pending(
+    select * from ghm.storage_create_pending(
       $1, 'qualification', 0, 'qualification_probe',
       'qualification/probe-' || gen_random_uuid()::text,
       'image/png', 1, 'private', 'probe.png'
-    )).id as object_id
+    )
   `, [tenantBusinessId]);
-  const objectId = probe.rows[0].object_id;
+  const objectId = probe.rows[0].id;
   if (objectId === null || objectId === undefined) {
     throw new Error("storage_create_pending returned no object id");
   }
   evidence.push({ label: "create pending through canonical function", status: "PASS", object_id: objectId });
 
-  await expectFailure("pending object cannot be marked deleted directly", async () => {
-    await q("select ghm.storage_mark_deleted($1)", [objectId]);
+  const scopedRead = await q(
+    "select * from ghm.storage_get_object($1, $2)",
+    [objectId, memberAccountId],
+  );
+  if (scopedRead.rows.length !== 1 || String(scopedRead.rows[0].id) !== String(objectId)) {
+    throw new Error("account-scoped getter did not return the qualification tenant's object for an active member");
+  }
+  evidence.push({ label: "account-scoped getter allows active tenant member", status: "PASS" });
+
+  await expectSqlState("account-scoped getter denies non-member", "P0001", async () => {
+    await q("select * from ghm.storage_get_object($1, $2)", [objectId, nonMemberAccountId]);
   });
 
-  await q("select ghm.storage_mark_available($1, $2)", [objectId, "qualification-checksum"]);
+  const publicProbe = await q(`
+    select * from ghm.storage_create_pending(
+      $1, 'business', $1, 'business_logo',
+      'qualification/public-logo-' || gen_random_uuid()::text,
+      'image/png', 1, 'public', 'public-logo.png'
+    )
+  `, [tenantBusinessId]);
+  const publicObjectId = publicProbe.rows[0]?.id;
+  if (publicObjectId === null || publicObjectId === undefined) {
+    throw new Error("storage_create_pending returned no public-logo object id");
+  }
+  await q("select * from ghm.storage_mark_available($1, $2)", [publicObjectId, "qualification-public-logo"]);
+  const publicRead = await q(
+    "select * from ghm.storage_get_object($1, $2)",
+    [publicObjectId, nonMemberAccountId],
+  );
+  if (publicRead.rows.length !== 1 || String(publicRead.rows[0].id) !== String(publicObjectId)) {
+    throw new Error("active public business logo was not readable by a non-member");
+  }
+  evidence.push({ label: "active public business logo remains readable without membership", status: "PASS" });
+  await q("select * from ghm.storage_mark_deletion_pending($1)", [publicObjectId]);
+  await q("select * from ghm.storage_mark_deleted($1)", [publicObjectId]);
+
+  await expectSqlState("pending object cannot be marked deleted directly", "P0001", async () => {
+    await q("select * from ghm.storage_mark_deleted($1)", [objectId]);
+  });
+
+  await q("select * from ghm.storage_mark_available($1, $2)", [objectId, "qualification-checksum"]);
   evidence.push({ label: "pending -> available", status: "PASS" });
 
-  await q("select ghm.storage_mark_deletion_pending($1)", [objectId]);
+  await q("select * from ghm.storage_mark_deletion_pending($1)", [objectId]);
   evidence.push({ label: "available -> deletion_pending", status: "PASS" });
 
-  await q("select ghm.storage_mark_deleted($1)", [objectId]);
+  await q("select * from ghm.storage_mark_deleted($1)", [objectId]);
   evidence.push({ label: "deletion_pending -> deleted", status: "PASS" });
 
-  const final = await q(`
-    select
-      (ghm.storage_get_object($1)).id as id,
-      (ghm.storage_get_object($1)).status as status,
-      (ghm.storage_get_object($1)).checksum as checksum,
-      (ghm.storage_get_object($1)).deleted_at as deleted_at
-  `, [objectId]);
-  evidence.push({ label: "final lifecycle state", status: final.rows[0].status === "deleted" ? "PASS" : "FAIL", row: final.rows[0] });
+  const final = await q("select * from ghm.storage_get_object($1, $2)", [objectId, memberAccountId]);
+  if (final.rows.length !== 1 || final.rows[0].status !== "deleted") {
+    throw new Error("final lifecycle state did not resolve to exactly one deleted object");
+  }
+  evidence.push({ label: "final lifecycle state", status: "PASS", row: final.rows[0] });
 
   await q("begin");
   await q("select set_config('statement_timeout', '5000', true)");

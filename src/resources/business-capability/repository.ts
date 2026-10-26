@@ -9,6 +9,7 @@ const COLUMNS = `id, business_id, capability_id, proficiency_level, description,
 
 const mapBusinessCapability = (row: any): BusinessCapability => ({
   id: Number(row.id), businessId: Number(row.business_id), capabilityId: String(row.capability_id),
+  ...(typeof row.capability_name === 'string' ? { capabilityName: row.capability_name } : {}),
   proficiencyLevel: row.proficiency_level, description: row.description, assertionStatus: row.assertion_status,
   assertionBasis: row.assertion_basis, verificationStatus: row.verification_status, effectiveFrom: row.effective_from,
   effectiveUntil: row.effective_until, sourceReference: row.source_reference, submittedAt: row.submitted_at,
@@ -55,7 +56,13 @@ export class PostgresBusinessCapabilityRepository implements BusinessCapabilityR
   async getBusinessCapability(context: AuthContext, businessCapabilityId: BusinessCapabilityId): Promise<BusinessCapability | null> {
     const id = requirePositiveId(businessCapabilityId, 'businessCapabilityId');
     return withAuthorizedTransaction(context, async client => {
-      const result = await client.query(`SELECT ${COLUMNS} FROM ghm.business_capability WHERE id = $1`, [id]);
+      const result = await client.query(
+        `SELECT bc.*, c.name AS capability_name
+           FROM ghm.business_capability bc
+           JOIN ghm.capability c ON c.id = bc.capability_id
+          WHERE bc.id = $1`,
+        [id],
+      );
       if (result.rowCount !== 1) return null;
       await resolveTenantContext(client, context, Number(result.rows[0].business_id));
       return mapBusinessCapability(result.rows[0]);
@@ -65,7 +72,14 @@ export class PostgresBusinessCapabilityRepository implements BusinessCapabilityR
   async listBusinessCapabilities(context: AuthContext, businessId: number): Promise<BusinessCapability[]> {
     const id = requirePositiveId(businessId, 'businessId');
     return withTenantTransaction(context, id, async (client) => {
-      const result = await client.query(`SELECT ${COLUMNS} FROM ghm.business_capability WHERE business_id = $1 ORDER BY created_at ASC, id ASC`, [id]);
+      const result = await client.query(
+        `SELECT bc.*, c.name AS capability_name
+           FROM ghm.business_capability bc
+           JOIN ghm.capability c ON c.id = bc.capability_id
+          WHERE bc.business_id = $1
+          ORDER BY bc.created_at ASC, bc.id ASC`,
+        [id],
+      );
       return result.rows.map(mapBusinessCapability);
     }, this.transactionPool);
   }

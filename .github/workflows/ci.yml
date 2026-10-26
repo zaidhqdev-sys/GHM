@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - main
+      - integration/ghm-identity-merge-candidate-20261018
 
 permissions:
   contents: read
@@ -14,10 +15,33 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ghm
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ghm"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     env:
       NODE_ENV: test
-      DATABASE_URL: postgres://qualification:test@localhost:5432/ghm
+      DATABASE_URL: postgres://ghm_runtime:runtime-test-password@localhost:5432/ghm
+      GHM_RUNTIME_DATABASE_URL: postgres://ghm_runtime:runtime-test-password@localhost:5432/ghm
+      GHM_MIGRATOR_DATABASE_URL: postgres://ghm_migrator:migrator-test-password@localhost:5432/ghm
+      GHM_MIGRATION_DATABASE_NAME: ghm
+      GHM_MIGRATION_DATABASE_HOST: localhost
+      GHM_QUALIFICATION_DATABASE_NAME: ghm
+      GHM_QUALIFICATION_DATABASE_HOST: localhost
+      GHM_NONPRODUCTION_DATABASE_NAME: ghm
+      GHM_NONPRODUCTION_DATABASE_HOST: localhost
+      DATABASE_SSL: "false"
       INVITE_CODE: test-invite-code
       CORS_ORIGINS: http://localhost:3000
       GHM_AUTH_TOKEN_PEPPER: ci-test-token-pepper-32-bytes-minimum-length-000
@@ -34,10 +58,53 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Create isolated least-privilege database roles
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d ghm -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE ghm_schema_owner NOLOGIN;
+          CREATE ROLE ghm_migrator LOGIN NOINHERIT PASSWORD 'migrator-test-password';
+          GRANT ghm_schema_owner TO ghm_migrator;
+          CREATE ROLE ghm_runtime LOGIN NOINHERIT PASSWORD 'runtime-test-password';
+          GRANT CONNECT ON DATABASE ghm TO ghm_migrator, ghm_runtime;
+          -- The migration chain creates the ghm schema while acting as its owner.
+          -- CREATE on this disposable database is scoped to the schema owner only.
+          GRANT CREATE ON DATABASE ghm TO ghm_schema_owner;
+          -- Historical bootstrap migrations create objects in public before moving them into ghm.
+          -- This grant exists only on this disposable CI database, never production.
+          GRANT USAGE, CREATE ON SCHEMA public TO ghm_schema_owner;
+          SQL
+
+      - name: Generate ephemeral ES256 keys for isolated qualification
+        shell: bash
+        run: |
+          set -euo pipefail
+          private_key="$RUNNER_TEMP/ghm-ci-es256-private.pem"
+          public_key="$RUNNER_TEMP/ghm-ci-es256-public.pem"
+          openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out "$private_key"
+          openssl pkey -in "$private_key" -pubout -out "$public_key"
+          {
+            echo 'GHM_JWT_ES256_PRIVATE_KEY_PEM<<GHM_CI_PRIVATE_KEY'
+            cat "$private_key"
+            echo 'GHM_CI_PRIVATE_KEY'
+            echo 'GHM_JWT_ES256_PUBLIC_KEY_PEM<<GHM_CI_PUBLIC_KEY'
+            cat "$public_key"
+            echo 'GHM_CI_PUBLIC_KEY'
+            echo 'GHM_JWT_ES256_KID=ghm-ci-ephemeral'
+          } >> "$GITHUB_ENV"
+          rm -f "$private_key" "$public_key"
+
       - name: Build
         run: npm run build
 
-      - name: Test suite
+      - name: Apply all migrations to disposable PostgreSQL
+        run: npm run migrate
+
+      - name: Qualify business identity and QuoteFlow migration against disposable PostgreSQL
+        run: npm run qualify:business-identity-runtime
+
+      - name: Test suite (database-backed tests are required)
         run: npm test
 
       - name: Migration audit policy tests
