@@ -80,6 +80,9 @@ jobs:
       - name: Apply all migrations to disposable PostgreSQL
         run: npm run migrate
 
+      - name: Qualify storage getter on disposable PostgreSQL
+        run: node scripts/qualify-storage-getter-postgres.mjs
+
       - name: Test suite
         run: npm test
 
