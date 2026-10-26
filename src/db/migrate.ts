@@ -9,7 +9,15 @@ import { Pool, PoolClient } from 'pg';
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
 if (!databaseUrl) throw new Error('Missing required environment variable: GHM_MIGRATOR_DATABASE_URL');
 
-const pool = new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } });
+const databaseSsl = process.env.DATABASE_SSL === 'true';
+if (process.env.NODE_ENV === 'production' && !databaseSsl) {
+  throw new Error('DATABASE_SSL must be true in production');
+}
+
+const pool = new Pool({
+  connectionString: databaseUrl,
+  ssl: databaseSsl ? { rejectUnauthorized: false } : false,
+});
 const MIGRATION_PATTERN = /^(\d{14})_([a-z0-9][a-z0-9_-]*)\.sql$/;
 const MIGRATIONS_DIR = path.resolve(process.cwd(), 'database', 'migrations');
 const PUBLIC_LEDGER_TABLE = 'public.ghm_schema_migrations';
