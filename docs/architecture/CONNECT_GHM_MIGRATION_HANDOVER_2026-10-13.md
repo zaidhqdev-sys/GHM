@@ -453,3 +453,424 @@ This checkpoint preserves the exact evidence from the 2026-10-17 troubleshooting
 
 ### Continuity and safety rule
 Start from this checkpoint and the open PR #140, not from another password reset. Sandbox forensic verdict is still unresolved/INVESTIGATE until the migration baseline discrepancy is reconciled. No production launch or cutover is authorized.
+
+
+## Cross-repository continuity checkpoint — 2026-10-19
+
+QuoteFlow main has a GHM identity client (GET /api/v1/identity) and gated Android sandbox panel, but normal AuthProvider/login/signup still use Supabase and env validation still requires Supabase URL/key. Five sandbox app checks passed for one dedicated account; GHM-only logout left the Supabase session untouched. This is not a completed auth/backend migration. QuoteFlow PRs #12/#13/#14/#15/#18 are merged; provider replacement, complete Supabase caller inventory, explicit legacy-to-canonical mapping, data/RPC/storage parity and E2E acceptance remain open.
+
+Use a product-specific operation audit rather than copying Connect gaps wholesale into QuoteFlow. For every active Supabase operation record source caller, resource/data semantics, current authorization, GHM target contract, parity gap, acceptance test and migration/rollback needs. Resolve identity from authenticated GHM context; selected business IDs are hints and membership must be verified server-side. Never infer identity mapping from email/name/slug or coincidental IDs.
+
+Next: audit QuoteFlow auth lifecycle, organization bootstrap/context, membership/subscription/legal records, quote/customer/project persistence, RPCs, storage and all SDK imports; classify missing capabilities as Build/Extend; specify reviewed legacy UUID-to-GHM mapping and conflict reports; qualify parity in non-production with exact-head CI and route-backed negative-case E2E. Production deployment, configuration changes, database mutations, provider activation and cutover remain unauthorized by this checkpoint. Existing Connect findings are shared architecture context, not proof of QuoteFlow-specific parity gaps.
+
+
+## QuoteFlow source audit update — 2026-10-19
+
+Targeted QuoteFlow main inspection identified Supabase dependencies in five operation groups: (1) auth/session restore, callback exchange, login, signup and logout; (2) organization context/create/complete RPCs; (3) legal-document and legal-acceptance reads plus accept_quoteflow_legal RPC; (4) subscription initialization and entitlement lookup RPCs; and (5) Supabase client/config/session persistence itself.
+
+Separately, inspected product data modules for business profile, customers, quotes, invoices and items use device-local AsyncStorage scoped through accountStorage. Dashboard surfaces a device-only storage warning when Supabase is not configured. This means data persistence strategy is mixed; do not assume these product records are currently cloud-hosted, and do not automatically migrate them to GHM without an explicit product decision and ownership/offline/conflict plan.
+
+The identity client currently provides identity retrieval, not product-data parity. Next work is to finish the complete source/import inventory, inspect database migrations/RLS/RPC definitions, compare each operation to deployed/source GHM contracts, and write acceptance tests before implementation. These are targeted source findings only; no runtime calls, production changes or database mutations were performed.
+
+
+## Critical GHM identity route availability check — 2026-10-19
+
+Read-only comparison of GHM main source with the client contract found a release/branch mismatch:
+- GHM main's src/http/app.ts does not register GET /api/v1/identity.
+- GHM PR #148 (https://github.com/zaidhqdev-sys/GHM/pull/148), "authenticated QuoteFlow identity context endpoint", is still draft/unmerged at inspected head 807a41d4de9dbfaa326ab6b66b69307fb7de9416.
+- GHM PR #137 (https://github.com/zaidhqdev-sys/GHM/pull/137), "expose authenticated canonical identity resolution", is also draft/unmerged at inspected head 3d394112c973a027a0e1a271f80c172b8d7385b8.
+- QuoteFlow's client is merged to QuoteFlow main and the dedicated ghm-identity-qualification sandbox service has reported successful route qualification, but this does not prove that the route exists in GHM main or the main production runtime.
+
+Treat GET /api/v1/identity as a sandbox-qualified integration contract, not an available production-main API, until the exact GHM implementation is reviewed, merged through the required documentation/security gates, deployed to a verified non-production target, and route-backed E2E is repeated. Do not switch QuoteFlow's normal provider or enable production configuration based on sandbox availability alone. Resolve this branch/deployment parity gate before production cutover.
+
+
+## Branch-aware reconciliation correction — 2026-10-19
+
+This section supersedes any earlier wording in this checkpoint that could be read as saying the identity endpoint or all related gap analysis does not exist. Re-check branch/PR state before restarting work.
+
+### Existing integration candidate and qualification evidence
+- GHM PR #142, branch integration/ghm-identity-merge-candidate-20261018, head d74d340587615939ba46b08d9b1612d3f1184ef8, is an integration candidate containing GET /api/v1/identity in src/http/app.ts, backed by canonical account/membership resolution and selected-business authorization. Its PR-triggered CI run completed successfully.
+- GHM PR #148, branch feat/quoteflow-identity-context-contract-20261019, head 807a41d4de9dbfaa326ab6b66b69307fb7de9416, also contains the QuoteFlow identity-context endpoint; its PR-triggered CI run completed successfully.
+- GHM PR #137, branch construction/identity-resolution-api-20261016, head 3d394112c973a027a0e1a271f80c172b8d7385b8, contains the broader canonical identity work; remains draft/unmerged.
+- Connect PR #39, head feeb3d781b2ed9583b62ef84dcaf6bec8aecbb9c, contains the integrated GHM browser auth/session path, same-origin proxy, identity resolver, and first marketplace clients. Its configured auth contract workflow passed.
+- Connect PR #40, head 00342050ebda4decc07d7fced25724075c6baa18, adds fail-closed role mapping and regression coverage. Its configured auth contract workflow passed.
+- These branches are not merged/deployed by this evidence. GHM main still lacks the route at the inspected main SHA. Treat candidate CI as construction evidence, not hosted E2E or production readiness.
+
+### QuoteFlow reconciliation PR dispositions
+- GHM PRs #51–55 were merged: organization-to-GHM business semantics, legal-acceptance ownership analysis, subscription/entitlement analysis, identity-mapping boundary, and identity-link authority boundary.
+- GHM PRs #56–62 were closed unmerged. Do not count their branch-only content as accepted/mainline decisions without recovering the relevant contracts from the branch/PR history and confirming the latest authority decisions. This set includes customer, business-profile, quote, item, invoice, notification and dual-sided identity-link work.
+- The mainline capability inventory still states QuoteFlow product adapter and controlled cutover are open; production Connect and QuoteFlow remain on Supabase. Construction qualification of individual GHM resources does not establish product-level parity.
+
+### Next execution step — continue existing work, do not restart
+1. Reconcile GHM #142 with #148/#137 and the latest GHM mainline/docs. Select one integration candidate; avoid duplicating or independently rebuilding identity endpoints.
+2. Compare QuoteFlow's src/lib/ghmAuthTypes.ts parser and GET /api/v1/identity request/response against the selected GHM route and exact HTTP tests. Preserve canonical numeric GHM account/business/membership IDs and fail-closed selected-business authorization; do not map to legacy UUIDs implicitly.
+3. Recover and reconcile the decisions in closed-unmerged QuoteFlow ownership PRs #56–62. Keep local-only product data local unless an explicitly approved GHM resource and mapping are qualified; QuoteFlow Quote depends on Customer and Item semantics, so do not migrate Quote in isolation.
+4. Continue the existing implementation branches only after exact-head contract tests; then verify deployed non-production login/restore/refresh/logout/revocation, selected-business authorization, and product journeys.
+5. No merge, production deployment, data migration, provider activation, shadow traffic or cutover is authorized by this documentation update. Explicit authority gates in the original handovers remain in force.
+
+
+## Authoritative QuoteFlow migration status reconciliation — 2026-10-19
+
+Use the current GHM mainline architecture contracts below as the authority; earlier branch-only identity-link proposals are historical where the documents explicitly say they were superseded.
+
+### Already constructed/qualified migration primitives (not product cutover)
+- Canonical runtime identity is GHM ghm.account_identity.id; business context is GHM ghm.business.id plus active ghm.business_membership. Supabase user/organization UUIDs are migration provenance only, never runtime identity/authorization keys.
+- GHM's (provider=supabase, subject=<exact legacy UUID>) → account_identity.id external-identity provenance mapping and credentialless account-provisioning boundary have construction qualification. Existing-account reconciliation executor and deterministic migration snapshot/dry-run manifest are also recorded as qualified in QUOTEFLOW_EXISTING_USER_MIGRATION_BOUNDARY.md.
+- The migration reset/re-enrollment HTTP path is constructed, but complete DB + HTTP ceremony qualification remains open (anti-enumeration, one-time recovery, rollback, session revocation, post-reset session proof, and non-production end-to-end). Do not assume old password hashes or Supabase sessions can be imported.
+- The legacy organization → GHM Business reconciliation contract is qualified only for synthetic outcomes; live Business provisioning remains unqualified. Organization creation/reuse, membership/status semantics, legal acceptance, and subscriptions do not have a safe 1:1 mapping by assumption.
+- GHM's QuoteFlow identity route exists on integration branches (not main at the inspected main SHA). The candidate route returns canonical account/membership/business context and checks a selected business against authenticated active membership. Candidate CI passed; this is construction evidence, not deployment qualification.
+- Earlier GHM QuoteFlow PRs #51–55 merged their architecture decisions. PRs #56–62 closed unmerged and are not themselves mainline acceptance of their branch-only content. Current mainline reconciliation contracts now supersede parts of that old identity-link proposal; use current docs such as QUOTEFLOW_GHM_CANONICAL_IDENTITY_RECONCILIATION.md, QUOTEFLOW_EXISTING_USER_MIGRATION_BOUNDARY.md, QUOTEFLOW_MIGRATION_ACCOUNT_PROVISIONING_CONTRACT.md, QUOTEFLOW_MIGRATION_BUSINESS_PROVISIONING_CONTRACT.md, and QUOTEFLOW_MIGRATION_RESET_REENROLLMENT_CEREMONY.md.
+
+### Product ownership and parity decisions
+- QuoteFlow business profile, customers, quotes, invoices and catalog items are currently local-first/device-owned through AsyncStorage. Do not auto-upload or rewrite local storage IDs. A deterministic, atomic, recoverable storage-scope transition is a cutover prerequisite.
+- QuoteFlow Quote has structural overlap with GHM Quote, but QuoteFlow Customer/Item and organization/business identity are not automatically equivalent to their GHM counterparts. Quote/Customer/Item migration must be planned as a dependency graph with explicit ownership/ID mapping, not as isolated adapters.
+- Legal acceptance remains QuoteFlow/Supabase-owned for now: the flow permits account-level acceptance before any organization exists; no canonical GHM legal-acceptance resource or ownership decision authorizes moving it.
+- Subscription and entitlement remain QuoteFlow/Supabase/product-owned for now. GHM's commercial/payment primitives do not imply QuoteFlow subscription status, plan, entitlement, provider or webhook parity. No paid provider activation.
+- Device-local notifications remain local; no server-side push delivery or notification migration is established.
+- Individual GHM resource construction (Customer, Quote, Project Quote, storage, etc.) does not prove the QuoteFlow product workflow is parity-qualified or authorize product traffic.
+
+### Exact next execution sequence
+1. Reconcile GHM PR #142 integration candidate with #148 and #137 into one candidate branch, preserving the latest migration audit policy changes; don't duplicate the route or merge branches just to make the endpoint appear on main.
+2. Qualify the candidate identity HTTP contract against QuoteFlow src/lib/ghmAuthTypes.ts and src/lib/ghmAuthClient.ts, including nullable account email, all-memberships response, selected-business success, invalid/inactive/unauthorized business failures, expired/revoked token, and route registry authorization. Run exact-head CI and non-production HTTP E2E.
+3. Complete the migration reset/re-enrollment ceremony qualification and the live Business-provisioning qualification before using real migrated account/business state.
+4. Implement an operation-by-operation QuoteFlow adapter matrix using the current GHM contracts and product ownership decisions. Keep legal acceptance/subscriptions local/source-owned until separately authorized; explicitly preserve local-only product data or design an approved mapping/migration plan for it.
+5. Only then integrate the canonical GHM session into QuoteFlow's normal AuthProvider and migrate the organization context to GHM business context, with deterministic/recoverable local-storage scope migration. Do not perform a superficial provider swap while organization RPCs still require Supabase.
+6. Remove Supabase runtime dependencies only after every active caller is replaced or formally excluded with source/build evidence, and exact-head CI plus route-backed product E2E pass. Production migration/cutover remains a separate explicit approval gate.
+
+No production deployment, live database mutation, source data import, environment/routing change, provider activation, or cutover was performed by this checkpoint.
+
+
+## Identity contract branch comparison — 2026-10-19
+
+Compared QuoteFlow main's src/lib/ghmAuthTypes.ts and src/lib/ghmAuthClient.ts against GHM PR #142 and #148 source.
+
+### Compatible contract fields
+- QuoteFlow parser expects numeric canonical account/business/membership IDs, nullable account email, account fullName/phone/avatarRef/role, memberships with status/role, and nullable activeMembership/activeBusiness.
+- GHM #148's AccountIdentity and ApplicationIdentity expose those fields; Date values serialize to ISO strings matching QuoteFlow's date parser. Its BusinessMembership may omit nested business summaries, which QuoteFlow's parser explicitly permits.
+- QuoteFlow's client sends only optional businessId to GET /api/v1/identity and does not send an account ID. This preserves the server-authoritative identity boundary.
+
+### Prefer the stronger parts of #148 when reconciling with #142/#137
+- #148 adds getIdentityContext() to return the authenticated account's membership choices without treating ambiguous multi-business membership as an error.
+- #148 rejects unknown/repeated/malformed query parameters and maps unauthorized/inactive selected businesses to 404 not_found, avoiding business-existence disclosure.
+- #142's integration branch already includes the email projection, the route, and broader migration-audit policy protections. Its route uses resolveIdentity(), permits unrecognized query keys, and returns 403 for unauthorized selection. When reconciling, preserve #142's migration policy changes but carry forward #148's dedicated context operation, strict query allowlist and non-disclosing 404 behavior.
+- #148's tests cover unauthenticated requests, multiple memberships without selection, explicit selection, unauthorized selection, and malformed query. Add/retain an explicit zero-membership/customer case and run the final merged candidate's exact-head suite.
+- The route's presence and CI do not qualify deployed token expiry/revocation, runtime configuration, actual membership data, or QuoteFlow's full AuthProvider/product workflows.
+
+This is a source comparison and construction recommendation, not a merge approval or deployment/cutover authorization.
+
+
+## Work resumed — 2026-10-19 04:16 UTC
+
+- Rechecked current PR metadata: #142, #148 and #152 remain open. #142 and #148 CI passed for the previously checked exact SHAs; Connect #39 and #40 auth-contract workflows passed for their checked SHAs. These are construction checks, not deployment/runtime qualification.
+- Read the #148 service and HTTP tests directly. The service supports zero memberships, a sole membership, multiple memberships without implicit selection, and explicit selected-business validation. The HTTP route rejects unrecognized/repeated/malformed query values and maps unauthorized selection to 404.
+- Added regression coverage on #148 branch `feat/quoteflow-identity-context-contract-20261019`, commit `18aa29c1347c498f8fddd16d0c57b4a14581447c`: invalid bearer token to `GET /api/v1/identity` returns 401 without calling the identity service. Exact-head CI was in progress at last check.
+- Next: confirm exact-head CI, then reconcile #142's migration-audit protections with #148's dedicated identity-context service and stricter HTTP contract into one candidate. Avoid duplicate route registration and run the final merged candidate's complete test suite. Production deployment, live database changes, data import, runtime switches and cutover remain unauthorized/not performed.
+
+
+### CI result update — 2026-10-19 04:22 UTC
+
+- GHM #148 exact head `18aa29c1347c498f8fddd16d0c57b4a14581447c`: CI completed successfully after adding the invalid-bearer HTTP regression test (workflow run 39199110141). The test change is now CI-qualified at this exact SHA; broader runtime/deployment and cross-client contract qualification remain open.
+
+
+## Identity-context reconciliation implementation — 2026-10-19 04:29 UTC
+
+- Continued on GHM integration candidate PR #142 branch `integration/ghm-identity-merge-candidate-20261018` rather than merging the separate #148 route and creating a duplicate endpoint.
+- Added `BusinessIdentityServiceImpl.getIdentityContext()` and its service contract; identity route now uses that operation, enforces the query allowlist (`businessId` only), rejects repeated/malformed/non-canonical selections, requires registered profile + business read access, and returns non-disclosing `404 not_found` for unauthorized/inactive selections.
+- Added service tests for zero memberships and multiple memberships without implicit selection; replaced route tests to cover authenticated explicit selection, missing/invalid bearer authentication, malformed/unknown/repeated query parameters, and non-disclosing unauthorized selection.
+- Exact candidate head after these code commits: `00273cb4e5661a89af2f504b6f15c8bc2d5258ea`. CI run [39199699582](https://github.com/zaidhqdev-sys/GHM/actions/runs/39199699582) was in progress at last check. Do not call this candidate qualified until that exact-head run completes successfully.
+- This incorporates #148's relevant route/service contract into #142's broader migration-audit candidate; #148 remains a separate open draft and must not be merged independently as-is, because that would duplicate `GET /api/v1/identity`. #142 remains draft/open. No merge, deployment, production database change, or cutover occurred.
+- Next: wait for exact-head CI; if passing, compare the final candidate's identity route and account email DTO with QuoteFlow's parser and add route-backed cross-client contract coverage. Then qualify non-production session expiry/revocation and the product workflow before changing QuoteFlow's normal AuthProvider.
+
+
+## Follow-up verification — 2026-10-19 04:32 UTC
+
+- GHM reconciled identity candidate PR #142 head `44d84ba582ed494105d0d93d590727c1085bf222` completed CI successfully (run [39199745905](https://github.com/zaidhqdev-sys/GHM/actions/runs/39199745905)). Its immediately preceding code head `00273cb4e5661a89af2f504b6f15c8bc2d5258ea` also passed CI (run [39199699582](https://github.com/zaidhqdev-sys/GHM/actions/runs/39199699582)). The passing head includes the identity-context route/service reconciliation and route/service regression tests. No deployed runtime or production behavior is implied.
+- Opened QuoteFlow PR #20: https://github.com/zaidhqdev-sys/QuoteFlow/pull/20, branch `fix/ghm-identity-context-contract-20261019`, head `1368f65ecfe6b267eb43c462dccfcc9c1f869cc9`. It replaces the stale 409-selection-required expectation with the GHM non-disclosing 404 contract and adds a client test that multiple memberships are returned without selecting a business. QuoteFlow exact-head CI run [39199912721](https://github.com/zaidhqdev-sys/QuoteFlow/actions/runs/39199912721) was queued at last check.
+- Current GHM PR #142 remains open/draft; QuoteFlow PR #20 remains open/draft. Next: confirm QuoteFlow #20 exact-head CI, then add a response-shape contract check tying GHM's route output to QuoteFlow's strict DTO parser. Keep normal QuoteFlow AuthProvider on its current path until storage-scope/data migration and remaining Supabase-backed workflows are safely addressed.
+
+
+## Cross-repository contract test update — 2026-10-19 04:33 UTC
+
+- QuoteFlow PR #20 exact head `1368f65ecfe6b267eb43c462dccfcc9c1f869cc9` passed CI (run [39199912721](https://github.com/zaidhqdev-sys/QuoteFlow/actions/runs/39199912721)). It now tests the GHM contract's non-disclosing 404 on unauthorized selected-business requests and the no-selection multi-membership response.
+- Added further GHM route-level DTO-shape coverage on PR #142 branch, commit `5d8ec87a5a4abc610d968ef32960b551927cd3d9`: selected identity response includes canonical account email, numeric IDs, ISO date strings, required membership provenance fields, full Business DTO fields, and multi-membership responses remain unselected. This is aimed at QuoteFlow's strict `assertGhmIdentityResponse` parser contract. Exact-head CI for this latest GHM test change had not returned a run/result at last check; do not treat it as qualified until verified.
+- GHM #142 remains open/draft. QuoteFlow #20 remains open/draft despite passing CI; it is test-only and does not enable GHM auth in the normal QuoteFlow provider. Continue to keep production cutover disabled.
+
+
+### Latest exact-head CI result — 2026-10-19 04:34 UTC
+
+- GHM PR #142 current code/test head `5d8ec87a5a4abc610d968ef32960b551927cd3d9` completed CI successfully (run [39200012152](https://github.com/zaidhqdev-sys/GHM/actions/runs/39200012152)). This head includes the identity-context service/route reconciliation and the expanded QuoteFlow-compatible DTO shape tests. It is still a draft PR and has not been deployed; runtime/session and end-to-end product qualification remain separate gates.
+
+
+## Recoverable local storage-scope migration primitive — 2026-10-19 13:07 UTC
+
+- Opened QuoteFlow PR #21: https://github.com/zaidhqdev-sys/QuoteFlow/pull/21, branch `feat/recoverable-ghm-storage-scope-migration-20261019`, current head `0cb9463895d1d9d69891345954bfe394f1791b88`.
+- Added explicit storage scope types for legacy organization/user scopes and canonical numeric GHM account/business scopes. Legacy UUIDs are retained only in the legacy source key; no UUID-to-GHM ID coercion is introduced.
+- Added `migrateAccountStorageScope`: explicit source/target and key allowlist; conflict preflight before target writes; durable in-progress/completed journal; raw value copy; read-after-write verification; retry after interrupted writes; idempotent completed result; reject source=target, invalid IDs, changed keysets, and malformed journals. It never deletes or overwrites the source data. A conflicting existing target returns `conflict` without writing any target keys.
+- Added tests for copy/preserve, conflict preflight, idempotency, keyset mismatch, interrupted-copy retry, and invalid scopes. Strengthened journal validation so changing the keyset while resuming an in-progress operation is rejected.
+- Added opt-in GHM active scope support to `accountStorage.ts`, but the existing AuthProvider does not activate it and no automatic migration is wired. This is a construction primitive only; no device data was migrated, no account/business mapping was inferred, and no Supabase caller was removed.
+- Exact-head CI for `0cb9463895d1d9d69891345954bfe394f1791b88` was queued as run [39257238140](https://github.com/zaidhqdev-sys/QuoteFlow/actions/runs/39257238140) at last check. Do not call this qualified until the exact-head run passes.
+- Next: verify exact-head CI and review the storage migration helper; then wire it only after authoritative legacy organization → GHM Business mapping and the session/business selection contract are qualified. Continue to leave Supabase AuthProvider, legal acceptance, subscription entitlements, and production cutover unchanged.
+
+
+### CI correction and current qualification — 2026-10-19 13:10 UTC
+
+- The first QuoteFlow PR #21 CI run [39257238140](https://github.com/zaidhqdev-sys/QuoteFlow/actions/runs/39257238140) failed in the Jest test suite because strict indexed-access typing inferred `string | undefined` for test-key array elements. Typecheck itself passed; 6/7 test suites passed and 31/31 tests reported passed, but the new suite failed to compile. This failure is recorded rather than masked.
+- Fixed the test fixture by declaring the static key list as a tuple in commit `467632df28d8a192447540680f8272a3d1c828f0`. New exact-head CI run [39257408211](https://github.com/zaidhqdev-sys/QuoteFlow/actions/runs/39257408211) is in progress. PR #21 remains draft/open; no qualification claim until this run completes successfully.
+
+
+### Storage-scope CI passed — 2026-10-19 13:11 UTC
+
+- QuoteFlow PR #21 exact head `467632df28d8a192447540680f8272a3d1c828f0` passed CI run [39257408211](https://github.com/zaidhqdev-sys/QuoteFlow/actions/runs/39257408211). The prior test-typing failure was corrected and the full workflow passed on the new exact head.
+- PR #21 remains open/draft and is not merged. This qualifies the code/tests in CI only, not a real-device data copy, account/business mapping, provider switch, or production migration.
+- Safe next action is review of the migration primitive and a separate, explicitly mapped non-production test. Keep current Supabase AuthProvider and product operations untouched until the wider cutover gates pass.
+
+
+### Read-only migration dry-run added — 2026-10-19 13:12 UTC
+
+- QuoteFlow PR #21 now includes `dryRun: true` on `migrateAccountStorageScope`. It performs scope validation, reads the explicit source/target keys, preflights conflicts, and reports which keys would be copied/skipped without writing the journal or target values. Added a no-side-effects test.
+- Latest PR head `1578bba6263fb57b319110192f11850c808e71c3` CI run [39257859045](https://github.com/zaidhqdev-sys/QuoteFlow/actions/runs/39257859045) is in progress. The previous head passed CI, but the latest dry-run change remains unqualified until this exact-head run passes.
+- No runtime caller invokes this helper; no migration was run and the current Supabase auth/session flow remains unchanged.
+
+
+### Read-only dry-run exact-head CI passed — 2026-10-19 13:13 UTC
+
+- QuoteFlow PR #21 current head `1578bba6263fb57b319110192f11850c808e71c3` passed CI run [39257859045](https://github.com/zaidhqdev-sys/QuoteFlow/actions/runs/39257859045). This verifies the scope helper and its tests in CI, including dry-run no-side-effects. PR #21 remains draft/open and not merged.
+- No device or production data migration occurred. The storage-scope helper remains unwired; no identity mapping is inferred, no GHM target scope is activated, and Supabase auth/session and legal/subscription callers remain unchanged.
+
+
+## Cross-repository continuation checkpoint — 2026-10-19 20:25 UTC
+
+This section supersedes older "next action" notes where the referenced PRs have since advanced. It records source/CI state only; it does not authorize merge, production deployment, data migration, provider activation, or cutover.
+
+### Current migration slices
+
+- **Connect PR #47** is open/draft, head `migration/ghm-engagement-events-client-20261019` at `9b2e34bdc0c98957dcebe93c6ab56b6fa22c27b2`, based on `migration/ghm-business-capabilities-read-20261019`. Its configured GitHub Actions workflow passed for the exact head. A Vercel bot comment subsequently reported a Ready preview deployment for the branch at 20:09 UTC; verify the deployment's source SHA before treating it as exact-head preview evidence. The PR is not merged and production cutover is not claimed.
+- **GHM PR #154** (`migration/business-engagement-events-20261019`) is open/draft and targets `integration/ghm-identity-merge-candidate-20261018`, not `main`. Its exact-head CI run passed. It provides the public category and authenticated engagement-event contracts consumed by Connect #47, but does not replace legacy analytics aggregation.
+- **QuoteFlow identity work** remains staged: QuoteFlow PR #11 (canonical identity client) and PR #20 (identity-context response/authorization contract tests) are open/draft; their recorded exact-head CI runs passed. GHM identity-context consolidation PR #142 remains open/draft. QuoteFlow PR #21's recoverable local storage-scope helper has passed CI at its latest recorded head, but remains unwired and must not be activated until authoritative identity/business mapping and non-production validation are complete. QuoteFlow PR #23's identity-mapping contract remains proposed, not approved.
+- These are separate prerequisite branches. Do not merge a child branch into production simply because its focused contract tests pass; reconcile branch ancestry, GHM API availability, deployed runtime configuration, and product/data parity first.
+
+### Newly confirmed next contract gap: Connect leads
+
+A repository search of GHM's current indexed source did not identify a canonical leads/enquiries API. Connect's active legacy `leadService` in `src/lib/lib_supabase.js` currently:
+- creates rows in `public.leads` with business/customer IDs, contact details, project/description, city, budget range, urgency and source;
+- lists leads for a business, optionally filtered by status and ordered newest-first;
+- changes status through the `update_business_lead_status` RPC with version `1`;
+- attempts a notification to the business owner after lead creation through the legacy notification service.
+
+This is a **contract gap**, not a safe client-only adapter task. Before replacing these calls, define and qualify a GHM-owned contract for lead creation, owner-authorized listing, allowed status transitions/concurrency, canonical business and account identity, contact-data access, notification delivery/failure semantics, pagination/limits, and auditability. GHM must derive the caller from verified authentication and active business membership; it must not trust browser-supplied owner/account identity or guess legacy UUID-to-numeric ID mappings. No Supabase fallback should be added.
+
+### Execution order
+
+1. Finish review of the existing identity/storage and Connect migration candidates; confirm exact-head CI and deployed non-production API/session behavior before wiring a normal AuthProvider or activating a new storage scope.
+2. Specify the Connect leads contract against the current schema/RPC and product callers, then implement the GHM API and authorization tests before creating a Connect adapter.
+3. Continue the remaining Connect caller inventory (registration/review workflows, logo/media storage, AI proxy, notifications/realtime, and other Postgres/RPC callers) only after each backend contract and compatibility boundary is explicit.
+4. Keep merge, production cutover, data migration, commercial activation, and provider activation separate approval gates.
+
+
+### Lead-contract source findings — 2026-10-19 20:28 UTC
+
+The current Connect migration SQL defines legacy lead statuses as `new`, `contacted`, `qualified`, `quoted`, `won`, `lost`, and `archived`; urgency as `standard`, `urgent`, or `emergency`; and source as `marketplace`, `directory`, `ai_quote`, or `direct`. The table stores a UUID lead ID, UUID business/customer IDs, customer name plus optional phone/email snapshots, project, description, optional city/budget bounds, status and timestamps. It validates text lengths and non-negative ordered budget bounds.
+
+The legacy mutation RPC is stricter/different from the table constraint: `update_business_lead_status` accepts only `new`, `contacted`, `quoted`, `won`, `lost`, and `archived` (not `qualified`), requires command version `1`, verifies `business.manage` and the `business.leads.manage` entitlement, and locks the row before updating. The RPC does not encode a transition graph; it accepts any listed status from any current status. A replacement contract must explicitly decide whether to preserve this behavior, support `qualified`, or introduce governed transition rules rather than accidentally changing it.
+
+The migration also establishes separate read policies for the customer and recipient business owner, permits marketplace creation only for an approved, verified, active business not owned by the submitting customer, and defers notifications, realtime, anti-spam/rate limiting, retention/anonymisation and administration access. These are compatibility and security requirements to resolve in the GHM contract, not evidence that GHM already implements them.
+
+
+### Proposed lead API boundary for review — not an approved contract
+
+A minimal compatibility candidate for cross-repository design review is:
+
+- `POST /api/v1/leads`: create a marketplace enquiry. Derive customer account from verified GHM auth; accept canonical numeric `businessId` plus validated enquiry fields only. Never accept customer/account/owner identity from the browser.
+- `GET /api/v1/businesses/:businessId/leads?status=&page=&pageSize=`: list enquiries only after GHM verifies active membership and `business.manage` (or the explicitly selected equivalent permission) plus `business.leads.manage` entitlement. Bound page size and use stable newest-first pagination.
+- `PATCH /api/v1/leads/:leadId/status`: update only the status field after resolving the lead's business, re-checking membership/permission and entitlement, validating a versioned command, and writing an audit record. Return a non-disclosing not-found result for unauthorized resource selections where consistent with GHM conventions.
+
+The DTO should preserve the legacy user-visible enquiry fields only where necessary: canonical lead/business IDs, customer name and explicitly permitted contact snapshots, project, description, city, budget range, urgency, source, status, and created/updated timestamps. Contact snapshots are personal data; restrict them to the submitting customer and authorized recipient members, avoid returning them from public business routes, and define retention/deletion before launch.
+
+**Open decisions before implementation:** whether `qualified` remains a supported status (the table constraint permits it but the legacy status RPC rejects it); whether status changes need a transition graph and optimistic concurrency beyond command versioning; which role/permission allows creation; how approved/verified/active directory eligibility is checked; whether non-marketplace sources are in scope; notification delivery and retry semantics; audit event shape; privacy retention; and whether a customer-owned enquiry-list API is required by an active caller. Do not build this proposal as code until GHM and Connect docs agree on the contract and authorization matrix.
+
+
+### Lead migration implementation started — 2026-10-19 20:34 UTC
+
+- **GHM PR #155** (`migration/ghm-enquiry-lead-authorization-20261019`, targeting `integration/ghm-identity-merge-candidate-20261018`) now enforces the `business.leads.manage` entitlement before recipient-business status changes, rejects `qualified` as a mutation to match the legacy RPC allowlist, and caps the received-enquiry response at the existing UI's 50-row limit. Tests cover entitlement allow/deny, mutation rollback, status compatibility and the list bound. Exact-head CI is running; the first run exposed an old test that expected `qualified` to be mutable, and the test was updated to reflect the legacy RPC contract. Do not treat earlier failed runs as final; require a passing run for the current head.
+- **Connect PR #48** (`migration/ghm-leads-client-20261019`, based on `migration/ghm-business-capabilities-read-20261019`) adds a GHM client adapter, maps the enquiry DTO into the existing workspace shape, routes workspace reads/status changes to authenticated GHM endpoints, rejects non-numeric/legacy business IDs, and has a dedicated contract-test command wired into the GHM auth-contract workflow. The earlier exact-head auth-contract run passed before the latest response-validation and workflow-step commits; the latest head has a new workflow run queued and Vercel preview pending. Re-verify both against the latest head SHA before marking verified.
+- The Connect UI migration is intentionally fail-closed and has no Supabase fallback. It does not remove the legacy `leadService` from the shared library because other callers still need inventory and the customer-create path/notifications require parity review.
+- Remaining known gaps: GHM list API currently caps at 50 but does not expose pagination or status filtering; lead creation and notification delivery still need an explicit end-to-end parity/ownership plan; customer enquiry list behavior and contact-data retention need review. No production cutover or data migration is authorized.
+
+
+### Lead PR exact-head CI resolution — 2026-10-19 20:35 UTC
+
+- GHM PR #155 exact-head CI passed for `7d76bf3d21c3b6539ee18bd1e1a1070fafdda4e0` in run [39320284327](https://github.com/zaidhqdev-sys/GHM/actions/runs/39320284327), including build, disposable PostgreSQL migrations, database-backed test suite, migration audit policy tests, and runtime boundary verification.
+- Connect PR #48 exact-head GHM auth-contract workflow and web build passed for `3f18d6c5d673079fa6a6fa511da480a20f9a20a4` in run [39320326487](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39320326487). The workflow explicitly ran the new `ghm-lead-service` contract suite. Vercel preview status is green for that exact head.
+- These checks validate branch source and build behavior, not deployed GHM API/session interoperability or production readiness. Both PRs remain draft/open. Continue with non-production end-to-end qualification and remaining create/notification/customer-list parity review before considering merge or user enablement.
+
+
+### Shared workspace leads hook cutover checkpoint — 2026-10-19 20:36 UTC
+
+Connect PR #48 now also migrates `src/hooks/hooks_index.js`'s shared `useLeads` hook. Both React lead read/status consumers route through `ghmLeadService`; the old Supabase lead query, RPC status mutation and Supabase realtime channel were removed from those hooks. Since GHM has no lead realtime stream, the shared hook polls GHM every 30 seconds rather than keeping a second Supabase-backed data path.
+
+Latest Connect head `670183a91a5270be8b8c14a131917f2b028b9069` passed GHM auth-contract tests and web build in [run 39320594968](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39320594968); the Vercel preview status is green for that exact SHA. PR #48 remains draft/open. The legacy service definition remains in `src/lib/lib_supabase.js` for later cleanup; do not infer all Supabase lead use is gone until a full repository search and customer-create/notification parity review are complete.
+
+
+### Final shared-leads hook CI checkpoint — 2026-10-19 20:38 UTC
+
+The latest Connect PR #48 head is `0ecd704dba5d77ccb180c1776fb0958f7f6f3e90`. Exact-head GHM auth-contract tests (including `ghm-lead-service`) and the web build passed in [run 39320788159](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39320788159); the Vercel preview status is green for the same SHA. PR #48 remains draft/open. The shared hook now prevents overlapping polling requests and clears stale leads when the active business context changes. Deployed non-production GHM API/session qualification and notification/client parity remain outstanding.
+
+
+### Notification parity boundary clarified — 2026-10-19 20:39 UTC
+
+The current GHM generic notification create repository intentionally rejects a non-admin `type='lead'` notification when the recipient differs from the caller, returning `Lead notification identity mapping is not established`. The Connect marketplace enquiry adapter already posts creation to GHM, but GHM's enquiry transaction does not create the owner notification; meanwhile Connect's notification client/list/realtime subscription still reads Supabase. Therefore the GHM-backed lead adapter is only a read/status migration, not full lead-notification parity. Do not bypass the generic guard by trusting browser-supplied recipient IDs. The next notification slice must derive the recipient from canonical active business membership and define a trusted transactional/outbox path, then migrate notification reads/mark-read and realtime/polling together. 
+
+
+### Review moderation migration checkpoint — 2026-10-19 20:43 UTC
+
+Connect PR #49 (`migration/ghm-review-moderation-20261019`, stacked on PR #48) moves the admin pending-review list and approve/reject actions from the Supabase review query/RPC to GHM's authenticated review routes. The adapter validates the moderation decision and requires a non-empty rejection reason; the UI no longer has a Supabase fallback for moderation. Exact-head auth-contract tests and web build passed at `4af123897cd950f1236aa1f16b3a010ca701ee7d` in [run 39321497129](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39321497129). Vercel preview is blocked by a provider build-rate-limit response, so no preview success is claimed for PR #49. PR #49 remains draft/open and depends on the Connect leads PR #48. Non-production authorization and review-queue behavior must still be verified before merge.
+
+
+### Next registration/review boundary audit — 2026-10-19 20:45 UTC
+
+- **Business registration creation is already GHM-backed** in Connect's `BusinessCreationScreen.jsx` via authenticated `POST /api/ghm/api/v1/businesses`; do not create a second adapter for that path.
+- **Customer reviews and admin review moderation** are now covered by Connect PR #49 (stacked on #48), with exact-head contract/build CI passed. Vercel is rate-limited for the latest review preview.
+- **Founder directory listing review is still Supabase-only**: `AdminDirectoryReviewPanel.jsx` calls `directoryListingReviewService.isFounderReviewer/list/review`. The current GHM source tree has no equivalent founder-review queue/decision API or contract. Its authority is explicitly a Founder allowlist, not generic admin role. Do not replace it with the admin review endpoint or assume `isSystemAdmin` equals Founder reviewer; the next backend slice needs an explicit GHM-owned authority source, status-transition contract, audit semantics and queue API before Connect can migrate.
+- **Document verification remains separate** in `AdminVerificationScreen.jsx` and the Supabase `admin_verification_queue`; it is not equivalent to public review moderation. It requires its own GHM workflow and evidence/storage contract.
+
+
+### QuoteFlow identity-client duplication audit — 2026-10-19 20:47 UTC
+
+QuoteFlow PR #11 was closed as superseded after comparing it with `src/lib/ghmAuthClient.ts` and `src/lib/ghmAuthTypes.ts` on `main`. The existing `GhmAuthClient.getIdentity` already uses `assertGhmIdentityResponse`, including account-field validation, canonical account/membership matching, active membership/business consistency, and malformed nested DTO tests in `ghmAuthClient.test.ts`. The proposed `ghmIdentityClient.ts` had no runtime callers and duplicated that parser; maintaining both would allow the contracts to drift. Keep the existing GhmAuthClient as the single identity HTTP boundary. PR #20's identity-context contract tests and PR #23's proposed mapping contract remain separate; do not wire the current Supabase AuthProvider or activate storage-scope migration without the mapping and rollout gates.
+
+
+### Received-enquiry pagination — 2026-10-19 20:57 UTC
+
+GHM PR #155 now supports bounded `limit`/`offset` on `GET /api/v1/enquiries/received`; defaults remain the newest-first 50 rows, max page size is 100, and offset is capped at 1,000,000. The SQL binds pagination values rather than interpolating them. Contract tests cover bounds, bound parameters, HTTP parsing, and forwarding. Exact-head CI passed at `8fac895956636bea3d6faad2b45fac65e6cf95bc`: [run 39323437443](https://github.com/zaidhqdev-sys/GHM/actions/runs/39323437443).
+
+Connect PR #48's `ghmLeadService.getForBusiness(businessId, { limit, offset })` now exposes that pagination contract with client-side bounds validation; its existing default remains 50 so the current workspace UI is unchanged. Exact-head Connect CI for `e4c09c41e4e9cff7646522c9dc00b787c5046096` is still running at [run 39323513081](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39323513081). The workspace UI does not yet expose page controls; do not describe the UI itself as fully paginated. No production cutover or deployed API qualification is claimed.
+
+
+### Pagination CI confirmation — 2026-10-19 21:00 UTC
+
+Follow-up to the pending note above: GHM PR #155 exact-head CI passed for `8fac895956636bea3d6faad2b45fac65e6cf95bc` ([run 39323437443](https://github.com/zaidhqdev-sys/GHM)); Connect PR #48 exact-head auth-contract tests and web build passed for `e4c09c41e4e9cff7646522c9dc00b787c5046096` ([run 39323513081](https://github.com/zaidhqdev-sys/zaid-connect)). The UI's first-page limitation and the need for deployed non-production API/session qualification remain open.
+
+
+### Enquiry boundary validation hardening — 2026-10-19 21:04 UTC
+
+Connect PR #47 now rejects too-short/overlong optional contact fields and overlong required enquiry text before sending the marketplace request, rather than silently truncating values that GHM would reject. Exact-head auth-contract tests and web build passed at `5b7439cb9e28a37c1367df4a5133b8caf3ee122f` ([run 39324275466](https://github.com/zaidhqdev-sys/zaid-connect)). Connect PR #48 now validates received GHM enquiry DTO required strings, contact field types, timestamps and budget ranges before mapping; exact-head auth-contract tests and web build passed at `f093da9d488fdbbef144179b23d4da0ec674a760` ([run 39324387095](https://github.com/zaidhqdev-sys/zaid-connect)). Preview and deployed non-production API/session qualification remain outstanding.
+
+
+### Stacked review branch refresh — 2026-10-19 21:06 UTC
+
+Connect PR #49's moderation branch had diverged from its moving PR #48 base after the lead adapter pagination/DTO hardening commits. It has been refreshed with merge commit `f9ad9018e28d114359c315a6a321c173eeaf7e66`, preserving the four review-moderation file changes and combining the workflow path triggers. The comparison is now ahead by 5 and behind by 0, and GitHub reports the PR mergeable. Exact-head CI is pending at [run 39324737383](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39324737383); the earlier successful review CI does not qualify this merge head. Vercel remains rate-limited.
+
+
+### Review branch refresh CI confirmation — 2026-10-19 21:06 UTC
+
+The refreshed Connect PR #49 merge head `f9ad9018e28d114359c315a6a321c173eeaf7e66` passed exact-head GHM auth-contract tests and web build: [run 39324737383](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39324737383). This is still branch CI only; preview and deployed non-production authorization/queue qualification remain open.
+
+
+### Workspace received-enquiry pagination UI — 2026-10-19 21:12 UTC
+
+Connect PR #48 now exposes Previous/Next controls for the GHM-backed business workspace. The hook requests 51 records, displays 50, and uses the extra record to decide whether a next page exists; this avoids showing a Next control that leads to an empty page when the result count is an exact multiple of 50. Exact-head web build passed at `6c83c8225c5ec4ec9b542d8b1a6615f34a807f4e` ([run 39325418763](https://github.com/zaidhqdev-sys/zaid-connect)). The workspace still polls every 30 seconds because GHM has no lead realtime stream. No deployed API/session qualification or production cutover is claimed.
+
+Connect PR #49 was refreshed again from the paginated lead branch with merge commit `040c349c1e8c5e0565e346b070bed4a5c3310005`; comparison is ahead by 6 and behind by 0. Exact-head GHM auth-contract tests and web build passed ([run 39325510622](https://github.com/zaidhqdev-sys/zaid-connect)). Vercel preview remains blocked by the provider build-rate-limit response.
+
+
+### Marketplace enquiry notification parity — 2026-10-19 21:16 UTC
+
+GHM PR #156 restores the legacy Marketplace lead-created notification as a transactionally persisted side effect of GHM Enquiry creation. Recipients are selected from canonical active Business owner memberships; customer input cannot choose a notification recipient. The event includes numeric `enquiry_id`/`business_id` metadata, and notification insert failure rolls back the Enquiry/Opportunity transaction. Exact-head CI passed for `98b146a3a1f2a2a4638afca2187ed045c09ca2f6` ([run 39326011306](https://github.com/zaidhqdev-sys/GHM)). The dormant Connect notification inbox, realtime stream, payment and verification producers are not migrated by this slice.
+
+Connect PR #47 also now strictly rejects malformed successful Enquiry response IDs (null, non-positive, or string values), with exact-head contract tests and web build passing at `4f7544ef76c77b685ddd830c2bdf4a9110aee742` ([run 39326107638](https://github.com/zaidhqdev-sys/zaid-connect)). These are source/CI checkpoints only; deployed non-production qualification and production cutover remain separate gates.
+
+
+### QuoteFlow identity-context API/client contract — 2026-10-19 21:18 UTC
+
+GHM PR #148 now has its exact-head status documented: `GET /api/v1/identity` implementation and service/HTTP tests passed CI for `18aa29c1347c498f8fddd16d0c57b4a14581447c` ([run 39199110141](https://github.com/zaidhqdev-sys/GHM)). QuoteFlow PR #20's client-contract tests for multiple memberships without forced selection and non-disclosing `404 not_found` on unauthorized business selection passed exact-head CI for `1368f65ecfe6b267eb43c462dccfcc9c1f869cc9` ([run 39199912721](https://github.com/zaidhqdev-sys/QuoteFlow)).
+
+This still does not integrate GHM identity into QuoteFlow's normal Supabase-backed `AuthContext` or map QuoteFlow organization UUIDs to GHM numeric Business IDs. Keep those authorities separate; no identity inference, active auth cutover, or production linking is authorized.
+
+
+### Lead pagination closure fix and stacked review refresh — 2026-10-19 21:21 UTC
+
+Connect PR #48's follow-up loader-closure fix passed exact-head tests and web build at `e670fad3dea54d9a5369a31e3b511f7eee621ba4` ([run 39326711860](https://github.com/zaidhqdev-sys/zaid-connect)). The lead pagination callback no longer retains an obsolete page offset in its default argument.
+
+PR #49 was refreshed from that latest lead head with merge commit `0041ad9df4a0c73dbd224e0764d69903cde3b5d7`; comparison is ahead by 7 and behind by 0, and GitHub reports the PR mergeable. Exact-head CI is running at [run 39326779840](https://github.com/zaidhqdev-sys/zaid-connect). The previous review-branch head passed, but it does not qualify this latest merge commit.
+
+
+### Strict GHM enquiry DTO identifier validation — 2026-10-19 21:23 UTC
+
+Connect PR #48 now requires the GHM received-enquiry DTO's `id`, `businessId`, and `customerId` to be positive safe integers as transmitted, rather than coercing numeric-looking strings. Focused contract tests and web build passed at `0b51e248a2c2dd6bd4186c0b493931a3f72ed2a3` ([run 39326973033](https://github.com/zaidhqdev-sys/zaid-connect)). PR #49 was refreshed from that head with merge commit `5fc05404e7b12382fccaf31edfa540c16639769c`; comparison is ahead by 8 and behind by 0, and exact-head CI is running ([run 39327035864](https://github.com/zaidhqdev-sys/zaid-connect)).
+
+
+### GHM identity resolver fail-closed hardening — 2026-10-19 21:27 UTC
+
+Connect PR #50 addresses an active-context integrity gap: the resolver previously coerced IDs and could synthesize an active membership not present in the canonical membership list. It now requires strict positive numeric account/membership/business IDs, exact account binding, membership-list membership for the selected active membership, and a matching active Business. Exact-head identity tests, the GHM auth-contract suite, and web build passed at `1bb017d40ce2a947ce70accd830966269cba0f98` ([run 39327542112](https://github.com/zaidhqdev-sys/zaid-connect)). PR #50 is a draft stacked on the business-capabilities migration branch; no auth cutover or identity-link write is included.
+
+Connect PR #49's latest refreshed stacked head `5fc05404e7b12382fccaf31edfa540c16639769c` also passed exact-head auth-contract tests and web build ([run 39327035864](https://github.com/zaidhqdev-sys/zaid-connect)). The preview provider remains rate-limited; deployed non-production session/API qualification remains a separate gate.
+
+
+### Founder directory review migration contract — 2026-10-19 21:30 UTC
+
+GHM PR #157 adds a documentation-only contract for replacing Connect's Supabase Founder directory-review RPCs. It specifies owner submission/resubmission, Founder-only queue and decisions, private registration data, append-only review events, owner/Founder notification side effects, public visibility invariants, and required tests. It explicitly blocks reviewer seeding until the current Founder reviewer is mapped to a canonical GHM account through an approved process. No runtime or schema changes are included: [PR #157](https://github.com/zaidhqdev-sys/GHM/pull/157).
+
+Connect PR #50's exact-head identity resolver hardening remains green at `1bb017d40ce2a947ce70accd830966269cba0f98` ([run 39327542112](https://github.com/zaidhqdev-sys/zaid-connect)); PR #49's latest stacked review head remains green at `5fc05404e7b12382fccaf31edfa540c16639769c` ([run 39327035864](https://github.com/zaidhqdev-sys/zaid-connect)).
+
+
+### Profile-editor legacy-ID boundary fix — 2026-10-19 21:36 UTC
+
+Connect PR #47's GHM-backed business profile editor still had legacy Supabase calls after GHM profile/hour writes: registration identity and Founder review RPCs expect UUID Business IDs, while the active GHM identity resolver supplies canonical numeric IDs. Those calls could fail after the GHM write had already succeeded. The editor now avoids those legacy RPCs, preserves only already-present legacy-only fields, blocks review submission until GHM owns the review contract, and disables logo upload/removal until GHM storage is implemented. Contract tests and web build are being added to the branch workflow; exact-head verification is pending. The corresponding review migration contract is documented in GHM PR #157. No production cutover is claimed.
+
+
+### Profile-editor boundary CI confirmation — 2026-10-19 21:36 UTC
+
+Connect PR #47's profile-editor boundary fix passed exact-head CI at `77777e530258a7d3558b895bd9ff1878f58fa847` ([run 39328769029](https://github.com/zaidhqdev-sys/zaid-connect)). The run includes GHM auth/identity contracts, marketplace contracts, the newly added profile-editor legacy-boundary tests, and the web build. This qualifies source-level behavior only; review submission and logo storage remain intentionally unavailable until GHM equivalents exist.
+
+
+### GHM profile editor capability flags verified — 2026-10-19 21:38 UTC
+
+The editor now explicitly receives the disabled `reviewWorkflowAvailable` and `logoStorageAvailable` flags from the hook, so save labels, review messages, and logo controls match the actual fail-closed behavior. Exact-head profile-editor boundary contracts and web build passed at `fe62fb99b1386e31e228eb1070843adf24285a6d` ([run 39328986283](https://github.com/zaidhqdev-sys/zaid-connect)). The legacy RPCs are no longer called from this GHM numeric-ID editor; review submission and logo storage remain unavailable until their GHM contracts are implemented.
+
+
+### Registration identity fields gated in GHM profile editor — 2026-10-19 21:41 UTC
+
+Connect PR #47 now also disables registration-classification, legal-name, and registration-number edits until GHM owns the registration identity contract. This prevents users from entering legacy-only values that the GHM save boundary must reject. The screen exposes the missing capability rather than promising submission, and supported profile saves no longer call legacy UUID RPCs. Exact-head profile-editor boundary tests and web build passed at `934dfd4b8d5156a9102d7f1ce1dc05c4df81d9d3` ([run 39329391474](https://github.com/zaidhqdev-sys/zaid-connect)).
+
+
+### Business logo storage migration contract — 2026-10-19 21:43 UTC
+
+GHM PR #158 records the provider-neutral logo storage contract needed to replace Connect's Supabase `media/logos/{legacy-business-uuid}/logo.*` path and UUID-based `set_business_logo/clear_business_logo` RPCs. It defines canonical GHM Business authorization, server-side MIME/signature/pixel validation, trusted public URL derivation, object/database compensation, cleanup semantics, and a verified mapping requirement for any existing-object copy. The storage provider remains an explicit decision gate; no credentials, provider resources, schema changes, or cutover are included: [PR #158](https://github.com/zaidhqdev-sys/GHM).
+
+
+### Private Business registration identity API — 2026-10-19 21:55 UTC
+
+GHM PR #159 adds a separate managed-only registration identity resource for self-declared registration classification, registration number, and legal name. The fields live in a private table with RLS enabled, no direct runtime-table grants, narrow security-definer read/update functions, active owner/administrator membership checks, and no inclusion in general/public Business DTOs. Exact-head build, migration chain, test suite, migration audit, and runtime-boundary verification passed for `5944e594813a1c13c90ca2df0be5b4d808565c32` ([run 39330943367](https://github.com/zaidhqdev-sys/GHM)). This is not independent registration verification and does not enable Founder review or production use.
+
+Connect PR #47 intentionally keeps registration editing disabled until the GHM API is merged/deployed and non-production session/authorization behavior is qualified. Do not re-enable the UI based only on branch CI.
+
+
+### Business registration identity API and Connect adapter — 2026-10-19 21:58 UTC
+
+GHM PR #159 adds a private self-declared Business registration identity table and authenticated owner/administrator GET/PUT API, with runtime table access revoked, narrow security-definer functions, strict validation, and no changes to verification/approval state. Exact-head GHM CI passed at `5944e594813a1c13c90ca2df0be5b4d808565c32`: [run 39330943367](https://github.com/zaidhqdev-sys/GHM/actions/runs/39330943367). The Cloudflare branch preview also deployed successfully for that commit; this is preview deployment evidence, not production qualification.
+
+Connect PR #47 adds a separate authenticated registration-identity adapter and focused contract tests. The profile editor remains gated until legacy registration values can be reconciled against canonical GHM Business IDs; enabling writes before that reconciliation could make an empty GHM record appear to replace existing legacy declarations. Exact-head Connect client contract CI passed at `17514205e9b5e5727d48f192ad389467ff9ce976`: [run 39331616551](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39331616551). No legacy data migration, production cutover, or full Supabase removal is claimed.
+
+
+### Latest registration identity PR verification — 2026-10-19 22:01 UTC
+
+GHM PR #159 advanced after the initial implementation to `7ec7af122d46fc88c93b32621d20cfde9af87b40`. Current-head CI passed, including PostgreSQL migrations, database-backed tests, migration-audit policy, and runtime-boundary verification: [run 39331231179](https://github.com/zaidhqdev-sys/GHM/actions/runs/39331231179). Cloudflare Pages preview deployed successfully at the same head. Production and non-production API/session qualification are still separate gates.
+
+
+### Leads and admin review client migration status — 2026-10-19 22:03 UTC
+
+- Connect PR #48 migrates business workspace lead reads/status changes to GHM, replaces realtime subscriptions with bounded 30-second polling, validates canonical numeric IDs/DTOs, and adds pagination. Exact-head client tests/build passed at `0b51e248a2c2dd6bd4186c0b493931a3f72ed2a3`: [run 39326973033](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39326973033). Its GHM status mutation depends on the business.leads.manage entitlement and GHM PR #155; deployed non-production authorization remains unqualified.
+- GHM PR #156 restores owner notifications for marketplace enquiry creation in the same transaction; its exact-head CI passed at [run 39326011306](https://github.com/zaidhqdev-sys/GHM/actions/runs/39326011306).
+- Connect PR #49 migrates admin customer-review moderation to GHM and remains stacked on PR #48. Current head `5fc05404e7b12382fccaf31edfa540c16639769c` passed at [run 39327035864](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39327035864). This is customer review moderation, distinct from Founder-controlled Business directory listing review.
+- Connect PR #50 tightens fail-closed identity context handling; current head `1bb017d40ce2a947ce70accd830966269cba0f98` passed at [run 39327542112](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/39327542112).
+- These are construction-branch CI results only. Do not infer deployed parity or production cutover. Founder directory listing review remains a separate workflow with a dedicated reviewer allowlist and verified canonical reviewer mapping requirement.
+
+## Shared storage and migration checkpoint — 2026-10-26
+
+This is a cross-capability status note only; it does not change Connect's no-Supabase target or imply Connect workflow parity.
+
+- GHM's authenticated storage API, account-scoped storage metadata lookup, migration safeguards, and disposable PostgreSQL storage lifecycle/tenant authorization qualification were merged into GHM `main` in PR #184, merge commit `43450e42e902594493bdab4ba2c689b0c4099912`.
+- The exact-head CI for that merge passed in [run #40407751688](https://github.com/zaidhqdev-sys/GHM/actions/runs/40407751688).
+- The live Cloudflare R2 provider qualification passed on 2026-10-26; evidence is in `docs/evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-26.md`. The only bucket created so far is named `zaid-ghm-production`; the temporary test object was deleted and absence confirmed, but the bucket is not assumed to be a dedicated non-production target.
+- The qualification database migration run completed with exit code 0 after restoring the exact historical migration SQL bytes. This does not establish that production was migrated.
+- These bounded GHM storage results do not qualify the Connect browser workflow, no-Supabase session authority, broader product parity, or production cutover. Keep those gates open until their own evidence exists.

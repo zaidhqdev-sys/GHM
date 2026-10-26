@@ -637,3 +637,35 @@ Do not change the production-connected `GHM-Internal-Runtime` service or its dat
 - **Not deployed yet.** Render's service is configured with auto-deploy off and remains on the integration branch. Do not run migrations using `GHM_MIGRATOR_DATABASE_URL` until its target is confirmed as the qualification database. The migration runner requires explicit `GHM_MIGRATION_DATABASE_NAME` and `GHM_MIGRATION_DATABASE_HOST` guards; those names were not in the owner's reported environment list. Do not weaken the target guard or point it at production.
 - Next safe sequence: align the qualification service to the PR branch after reviewing/merging the storage integration; explicitly identify the qualification database/host for the migration guard; apply the pending storage migration only to that non-production target; then deploy and verify startup, authenticated upload/access/delete flow, and tenant-isolation behavior. Leave `GHM-Internal-Runtime` untouched.
 
+
+## Addendum — storage and migration reconciliation (2026-10-26 21:39 UTC)
+
+This addendum supersedes earlier next-step statements in this handover that said the qualification-database migration was still blocked or had not yet been applied. It does not change the production safety boundary.
+
+### Qualification database migration — PASS
+
+- Target: Render PostgreSQL database `ghm_payfast_sandbox_db` (`dpg-db4416vlk1mc73eocug0-a`).
+- The local `npm run migrate` completed with PowerShell `$LASTEXITCODE = 0` on 2026-10-26.
+- Before the successful run, commit [`5229b37700f2e21ac4caf2d4c5547bb929ab2de8`](https://github.com/zaidhqdev-sys/GHM/commit/5229b37700f2e21ac4caf2d4c5547bb929ab2de8) restored the exact historical SQL bytes for `20261020130000_create_quoteflow_migration_business_provisioning.sql`, resolving its applied-checksum mismatch. The restored file matches the historical database checksum; the migration runner accepted supported legacy line-ending checksums and exited successfully.
+- Read-only catalog checks after migration confirmed `ghm.storage_get_object(bigint,bigint)` exists, the legacy one-argument overload is absent, storage lifecycle functions are `SECURITY DEFINER` owned by `ghm_schema_owner`, and execution is granted to `ghm_runtime`. The storage table ACL did not grant direct runtime DML.
+- No production migration was run. Keep `GHM-Internal-Runtime` and production database `ghm_db` untouched.
+
+### Live R2 provider qualification — PASS
+
+Command run locally on 2026-10-26: `npm run qualify:storage-live-provider`. Build and all live checks passed: signed upload grant, signed PUT, provider HEAD, content-type/size metadata match, signed download grant, downloaded payload integrity (39 bytes), provider DELETE, and confirmation that the deleted object was absent. Evidence is recorded in `docs/evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-26.md`.
+
+The existing bucket was `zaid-ghm-production`, the only bucket created so far. The test object key was `qualification/storage-live/1793050677636-1c3c234d-7b62-4c99-805d-b95a15020b1f.bin`; deletion and absence checks passed. Because the bucket name indicates production, do not treat this as a dedicated non-production bucket or run additional mutation tests there by default. No credentials or signed URLs belong in source control or handover notes.
+
+### Merge and rollout distinction
+
+The authenticated storage API, scoped metadata getter, migration safeguards, and disposable PostgreSQL lifecycle/tenant qualification were merged to `main` in [PR #184](https://github.com/zaidhqdev-sys/GHM/pull/184), merge commit [`43450e42e902594493bdab4ba2c689b0c4099912`](https://github.com/zaidhqdev-sys/GHM/commit/43450e42e902594493bdab4ba2c689b0c4099912). This is code integration, not a production deployment or authorization to configure production R2 credentials or mutate the production database. Main-branch CI run [#40407751688](https://github.com/zaidhqdev-sys/GHM/actions/runs/40407751688) was running when this addendum was prepared; check its final result before calling main-head CI green.
+
+### Still open
+
+- Verify the post-merge main CI result.
+- Complete the deployed authenticated application/API end-to-end path and confirm composition-root/runtime wiring.
+- Complete any remaining persistence qualification using the intended restricted qualification role and explicit disposable target; do not substitute the migrator URL.
+- Confirm production migration-ledger/DDL baseline and perform an explicit, controlled rollout decision before production configuration or migration.
+- Qualify failure recovery/orphan reconciliation and backup/recovery.
+
+The old paragraph above saying the next operation must first apply the sandbox migration is historical and superseded by this addendum; the qualification-database migration run is complete.
