@@ -479,3 +479,34 @@ Current safe next step is governed baseline reconciliation, not a live migration
 
 
 A tracked maintainer decision item is now open: [Issue #185 — Reconcile shared Render sandbox migration baseline before storage rollout](https://github.com/zaidhqdev-sys/GHM/issues/185). It records the evidence, the required baseline decision, and the no-live-change safety boundary. Treat this as the next operational gate.
+
+
+### Controlled rollout checklist for storage getter — prepared, not authorized — 2026-10-26
+
+This checklist is intentionally a plan only. Do not execute the persistent-database steps until Issue #185 records an explicit maintainer-approved migration baseline and rollout decision.
+
+#### Go/no-go prerequisites
+
+- [ ] Issue #185 records the approved baseline for both the shared sandbox and production, including treatment of the eight extra ledger entries and QuoteFlow checksum provenance.
+- [ ] The exact commit containing `20261026120000_scope_storage_metadata_lookup.sql` is reviewed against that approved baseline; CI is green for that exact commit.
+- [ ] A database owner confirms the target database name, host, session/current role, and backup/restore point without printing credentials.
+- [ ] A controlled sandbox window and operator are named; production and R2 credential changes are explicitly out of scope.
+- [ ] The operator has verified the migration ledger and schema/function catalog read-only before applying anything.
+
+#### Sandbox execution sequence after approval
+
+1. Capture a fresh read-only preflight: `current_database()`, `session_user`, `current_user`, effective ability to `SET ROLE ghm_schema_owner`, current migration ledger, and existing storage getter overloads/owner/security/search-path/grants. Abort if any identity or baseline differs from the approved plan.
+2. Apply the migration using the repository's approved migration runner and migrator credential only after confirming the runner's target database guard. Never use the production-bound internal runtime service or its environment.
+3. Re-run the read-only catalog qualification as `ghm_runtime`; require the two-argument getter, no one-argument overload, owner `ghm_schema_owner`, `SECURITY DEFINER`, fixed `search_path=pg_catalog, ghm`, runtime EXECUTE, no PUBLIC EXECUTE, and no direct runtime table DML.
+4. Run the fixture-backed authorization/lifecycle qualification only against a newly provisioned disposable database. Do not run the mutating qualification script against the shared Render sandbox because it creates objects and changes lifecycle state.
+5. Verify through approved integration tests that active membership can read, another tenant cannot read an existing private object, and an active public business logo remains readable without membership. Record results and migration ledger evidence without credentials or object payloads.
+6. Stop for review. Do not proceed to production or configure R2 credentials as a consequence of sandbox success alone.
+
+#### Failure and rollback handling
+
+- If the migration fails before commit, confirm the transaction rolled back and re-run read-only preflight before retrying; do not blindly retry.
+- After commit, do **not** restore the old one-argument `SECURITY DEFINER` getter as a rollback. It is the unscoped entry point this change removes. If an issue is found, stop storage traffic/rollout as appropriate and prepare a reviewed forward-fix migration that preserves tenant scoping, or restore application code only if it still uses the scoped signature.
+- Preserve the migration ledger; never edit historical checksums to force reconciliation.
+- Record the exact commit, database identity (no secrets), ledger diff, catalog evidence, test output, operator, and approval in the issue before any further step.
+
+Current decision: Issue #185 has no maintainer baseline approval recorded at this checkpoint. Therefore this checklist is **not authorization to execute**; shared sandbox and production remain unchanged.
