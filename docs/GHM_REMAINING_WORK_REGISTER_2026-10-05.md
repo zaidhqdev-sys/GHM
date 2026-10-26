@@ -351,8 +351,15 @@ The current draft findings resolve an earlier handover contradiction: Relationsh
 
 ## Storage/provider checkpoint update — 2026-10-26
 
-The authenticated storage API, scoped metadata lookup migration, migration safeguards, and disposable PostgreSQL lifecycle/tenant authorization qualification are merged to `main` in PR #184, commit `43450e42e902594493bdab4ba2c689b0c4099912`. The live Cloudflare R2 S3-compatible provider data path is also **QUALIFIED / PASS** for signed upload, provider metadata observation, signed download, payload integrity, deletion, and absence confirmation. See `docs/evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-26.md`. Main-head CI run [#40407751688](https://github.com/zaidhqdev-sys/GHM/actions/runs/40407751688) must be checked for its final result.
+The authenticated storage API, scoped metadata lookup migration, migration safeguards, and disposable PostgreSQL lifecycle/tenant authorization qualification are merged to `main` in PR #184, commit `43450e42e902594493bdab4ba2c689b0c4099912`. The live Cloudflare R2 S3-compatible provider data path is also **QUALIFIED / PASS** for signed upload, provider metadata observation, signed download, payload integrity, deletion, and absence confirmation. See `docs/evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-26.md`. Main-head CI run [#40407751688](https://github.com/zaidhqdev-sys/GHM/actions/runs/40407751688) passed; the later mainline auth-fix commit also passed CI [#40409715942](https://github.com/zaidhqdev-sys/GHM/actions/runs/40409715942).
 
 The only bucket created so far is named `zaid-ghm-production`; do not assume it is a dedicated non-production target or run further mutating qualification there by default. Still open: deployed authenticated application/API integration, runtime/composition-root verification, production migration-ledger/DDL reconciliation, recovery/orphan reconciliation, backup/recovery, and production enablement/cutover.
 
 The qualification-database migration run completed with exit code 0 on 2026-10-26. The historical checksum issue was resolved by restoring applied migration bytes in commit [`5229b37700f2e21ac4caf2d4c5547bb929ab2de8`](https://github.com/zaidhqdev-sys/GHM/commit/5229b37700f2e21ac4caf2d4c5547bb929ab2de8); production migration status is unchanged and must not be inferred from that sandbox run.
+
+
+## Mainline delivery reconciliation — 2026-10-26
+
+Qualified slices are no longer being held behind the broad integration candidate: PR #184 (storage API + scoped getter + disposable PostgreSQL tenant/lifecycle qualification), PR #152 (handover/evidence consolidation), PR #135 (non-overlapping Connect target-runtime contract corrections), and PR #187 (shared auth persistence regression fix) are merged to `main`; exact-head main CI passed for each merge. Live R2 provider qualification also passed, but this does not enable production storage.
+
+The remaining open PRs are #142 (broad divergent identity candidate, not mergeable) and #183 (candidate-specific reset HTTP harness stacked on #142). Do not merge the broad candidate wholesale; continue splitting independently qualified slices and keep governed non-production E2E, migration baseline review, recovery/backup, production enablement, and cutover as separate gates.

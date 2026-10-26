@@ -658,7 +658,7 @@ The existing bucket was `zaid-ghm-production`, the only bucket created so far. T
 
 ### Merge and rollout distinction
 
-The authenticated storage API, scoped metadata getter, migration safeguards, and disposable PostgreSQL lifecycle/tenant qualification were merged to `main` in [PR #184](https://github.com/zaidhqdev-sys/GHM/pull/184), merge commit [`43450e42e902594493bdab4ba2c689b0c4099912`](https://github.com/zaidhqdev-sys/GHM/commit/43450e42e902594493bdab4ba2c689b0c4099912). This is code integration, not a production deployment or authorization to configure production R2 credentials or mutate the production database. Main-branch CI run [#40407751688](https://github.com/zaidhqdev-sys/GHM/actions/runs/40407751688) was running when this addendum was prepared; check its final result before calling main-head CI green.
+The authenticated storage API, scoped metadata getter, migration safeguards, and disposable PostgreSQL lifecycle/tenant qualification were merged to `main` in [PR #184](https://github.com/zaidhqdev-sys/GHM/pull/184), merge commit [`43450e42e902594493bdab4ba2c689b0c4099912`](https://github.com/zaidhqdev-sys/GHM/commit/43450e42e902594493bdab4ba2c689b0c4099912). This is code integration, not a production deployment or authorization to configure production R2 credentials or mutate the production database. Main-branch CI run [#40407751688](https://github.com/zaidhqdev-sys/GHM/actions/runs/40407751688) passed on commit `43450e42e902594493bdab4ba2c689b0c4099912`. The later current-main CI after documentation and auth-fix merges also passed: [run #40409715942](https://github.com/zaidhqdev-sys/GHM/actions/runs/40409715942) on commit `2e5484531e98a5a29df1d61eb2fe4dcb75e664a5`.
 
 ### Still open
 
@@ -669,3 +669,17 @@ The authenticated storage API, scoped metadata getter, migration safeguards, and
 - Qualify failure recovery/orphan reconciliation and backup/recovery.
 
 The old paragraph above saying the next operation must first apply the sandbox migration is historical and superseded by this addendum; the qualification-database migration run is complete.
+
+
+## Mainline delivery checkpoint — 2026-10-26 22:07 UTC
+
+The previously qualified slices are now integrated into `main` rather than waiting behind the broad candidate:
+
+- [PR #184](https://github.com/zaidhqdev-sys/GHM/pull/184): authenticated storage API, scoped metadata lookup, migration safeguards, and disposable PostgreSQL lifecycle/tenant authorization qualification. Merge commit `43450e42e902594493bdab4ba2c689b0c4099912`; main CI [#40407751688](https://github.com/zaidhqdev-sys/GHM/actions/runs/40407751688) passed.
+- [PR #152](https://github.com/zaidhqdev-sys/GHM/pull/152): consolidated migration/storage handover and dated provider evidence. Merge commit `e2e2183b37d020b119e26b71a72ddfdfd4f7d29e`; main CI [#40409249775](https://github.com/zaidhqdev-sys/GHM/actions/runs/40409249775) passed.
+- [PR #135](https://github.com/zaidhqdev-sys/GHM/pull/135): non-overlapping Connect target-runtime contract corrections. Merge commit `8285ff4e5aaa49c5d0d3210246c78db7c385e45a`; main CI [#40409671620](https://github.com/zaidhqdev-sys/GHM/actions/runs/40409671620) passed.
+- [PR #187](https://github.com/zaidhqdev-sys/GHM/pull/187): shared auth persistence across reset and lazy session issuance, with regression test. Merge commit `2e5484531e98a5a29df1d61eb2fe4dcb75e664a5`; main CI [#40409715942](https://github.com/zaidhqdev-sys/GHM/actions/runs/40409715942) passed.
+
+The remaining open PRs are #142 (broad identity integration candidate; 69 commits ahead and 9 behind main, unmergeable) and #183 (candidate-specific reset HTTP qualification stacked on #142). Do not merge #142 wholesale: separate remaining code into independently qualified slices. The core persistence wiring from #183 is already in main via #187; the full candidate-only HTTP harness remains gated by its dependencies and non-production qualification.
+
+No production migration, Render configuration change, credential change, deployment, or cutover was performed by these merges. Production readiness remains separately gated.

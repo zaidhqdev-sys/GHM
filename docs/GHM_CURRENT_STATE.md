@@ -201,3 +201,14 @@ For the Connect no-Supabase migration, the target caller identity must be establ
 - `npm run qualify:storage-live-provider` returned `QUALIFIED` on 2026-10-26. Build, signed upload, provider HEAD/metadata match, signed download, payload integrity, deletion, and deleted-object absence all passed. Evidence: `docs/evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-26.md`.
 - The only bucket created so far is named `zaid-ghm-production`; a successful provider-path test does not establish a dedicated non-production bucket. The test object was confirmed deleted. Avoid further mutating qualification runs against that bucket by default.
 - Remaining storage gates: verify main-head CI, deployed authenticated application/API end-to-end testing, runtime/composition-root wiring, production migration-ledger/DDL reconciliation, recovery/orphan reconciliation, backup/recovery, and explicit production enablement/cutover. Keep production database and `GHM-Internal-Runtime` untouched.
+
+
+## Mainline delivery checkpoint — 2026-10-26
+
+Qualified, independently applicable slices have been merged and exact-head main CI passed:
+- Storage API, scoped metadata lookup, migration safeguards, and disposable PostgreSQL lifecycle/tenant authorization qualification: PR #184, commit `43450e42e902594493bdab4ba2c689b0c4099912`, CI [#40407751688](https://github.com/zaidhqdev-sys/GHM/actions/runs/40407751688).
+- Consolidated handover and dated provider qualification evidence: PR #152, commit `e2e2183b37d020b119e26b71a72ddfdfd4f7d29e`, CI [#40409249775](https://github.com/zaidhqdev-sys/GHM/actions/runs/40409249775).
+- Connect target-runtime contract corrections: PR #135, commit `8285ff4e5aaa49c5d0d3210246c78db7c385e45a`, CI [#40409671620](https://github.com/zaidhqdev-sys/GHM/actions/runs/40409671620).
+- Shared auth persistence for reset and lazy session issuance: PR #187, commit `2e5484531e98a5a29df1d61eb2fe4dcb75e664a5`, CI [#40409715942](https://github.com/zaidhqdev-sys/GHM/actions/runs/40409715942).
+
+Only two PRs remain open: #142 is a broad, divergent identity integration candidate and is not safe to merge wholesale; #183 is stacked on that candidate for its candidate-dependent reset HTTP harness. Keep production DB, Render settings/credentials, and cutover unchanged until their distinct gates pass.
