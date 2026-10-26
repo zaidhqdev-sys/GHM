@@ -18,3 +18,7 @@ export const matchesMigrationSqlChecksum = (storedChecksum: string, sql: string)
     .digest('hex');
   return storedChecksum === legacyCrlfChecksum;
 };
+
+/** Remove a leading UTF-8 BOM before passing migration SQL to PostgreSQL. */
+export const normalizeMigrationSqlForExecution = (sql: string): string =>
+  sql.replace(/^\uFEFF/, '');
