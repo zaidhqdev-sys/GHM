@@ -574,8 +574,6 @@ Until those items are explicitly decided, this remains a deployment blocker. CI 
 
 ### Exact-head CI #1712 result — 2026-10-26
 
-[CI #1712](https://github.com/zaidhqdev-sys/GHM/actions/runs/40386514328) passed on commit `6aabb57ba176d9af1f33fde5993c0314d8ce4358`; the quality job and every step completed successfully. This includes disposable PostgreSQL migration application, storage getter/catalog checks, fixture-backed tenant/lifecycle qualification, full tests, migration-audit policy tests, and runtime-boundary verification.
-
-The follow-up handover commit `2233183502068a87ff0dfb51af8060d0260a93b2` is now the branch head and has its own CI run in progress at [CI #1712 follow-up / latest run](https://github.com/zaidhqdev-sys/GHM/actions/runs/40386514328) only if reported by GitHub for that exact commit; verify the latest commit status in Actions before treating the handover-only change as validated.
+[CI #1711](https://github.com/zaidhqdev-sys/GHM/actions/runs/40386125737) passed on handover commit `6aabb57ba176d9af1f33fde5993c0314d8ce4358`. The subsequent handover-only commit `2233183502068a87ff0dfb51af8060d0260a93b2` was validated by [CI #1712](https://github.com/zaidhqdev-sys/GHM/actions/runs/40386514328), whose quality job and every step completed successfully. The checks include disposable PostgreSQL migration application, storage getter/catalog checks, fixture-backed tenant/lifecycle qualification, full tests, migration-audit policy tests, and runtime-boundary verification.
 
 No maintainer has checked off the baseline decision in Issue #185. Do not apply the migration to Render, merge the diverged candidate, edit historical checksums, or change production R2 settings without explicit approval. No persistent database writes were performed.
