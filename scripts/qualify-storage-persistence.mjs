@@ -111,7 +111,7 @@ try {
       has_function_privilege(current_user, 'ghm.storage_mark_deletion_pending(bigint)', 'EXECUTE') as mark_deletion_pending_execute,
       has_function_privilege(current_user, 'ghm.storage_mark_deleted(bigint)', 'EXECUTE') as mark_deleted_execute,
       has_function_privilege(current_user, 'ghm.storage_get_object(bigint,bigint)', 'EXECUTE') as get_object_execute,
-      has_function_privilege(current_user, 'ghm.storage_get_object(bigint)', 'EXECUTE') as legacy_get_object_execute
+      coalesce(has_function_privilege(current_user, to_regprocedure('ghm.storage_get_object(bigint)'), 'EXECUTE'), false) as legacy_get_object_execute
   `);
   evidence.push({ label: "canonical lifecycle EXECUTE privileges", status: "OBSERVED", ...functionPrivileges.rows[0] });
 
