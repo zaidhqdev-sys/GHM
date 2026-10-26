@@ -420,3 +420,10 @@ To close the gap where the feature branch CI only compiled and ran tests without
 The first new migration-qualification run, [#1686](https://github.com/zaidhqdev-sys/GHM/actions/runs/40250770182), successfully started PostgreSQL 18, created the three isolated roles, and built the code, but migration execution failed because `src/db/migrate.ts` unconditionally requested TLS while the disposable local PostgreSQL service has TLS disabled. No live database was involved.
 
 Corrected the migration runner to honor `DATABASE_SSL=true` for TLS, use plaintext only when explicitly configured for non-production, and refuse to run with TLS disabled when `NODE_ENV=production`. CI sets `DATABASE_SSL=false` only for its ephemeral PostgreSQL service. The correction is commit `0918217c70dfb88eb02efa5bd1af527e4fd90384`; the next exact-head CI result is pending. Do not describe disposable migration qualification as passed until that run completes.
+
+
+### Disposable PostgreSQL CI iteration — UTF-8 BOM in historical migration — 2026-10-26
+
+Runs [#1688](https://github.com/zaidhqdev-sys/GHM/actions/runs/40250865207) and [#1689](https://github.com/zaidhqdev-sys/GHM/actions/runs/40250877780) both got through PostgreSQL service startup, isolated role creation, and build, but failed while applying the existing migration chain. PostgreSQL identified a leading UTF-8 BOM (U+FEFF) in a historical migration as a syntax error. This is repository migration input, not a connection or live-database issue.
+
+The migration runner now strips a leading BOM from the SQL string immediately before executing it while preserving the original file text for checksum calculation. This avoids changing historical migration files/checksums. Fix commit: `cfe5fed17aa6e51be78196ef820001e7d8bd12c7`. The new exact-head CI result is pending; do not mark the disposable migration gate passed until it finishes.
