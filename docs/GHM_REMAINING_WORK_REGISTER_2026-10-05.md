@@ -354,3 +354,11 @@ The current draft findings resolve an earlier handover contradiction: Relationsh
 ## QuoteFlow migration Business provisioning — 2026-10-20
 
 A migration-only Business provisioning SQL primitive and database-backed qualification script are present on the combined review candidate. Fresh CI validation and database-backed qualification against an approved isolated non-production database remain pending. The operation creates an inactive/unverified Business, one active owner membership, and an exact external mapping atomically. Existing source mapping, owner eligibility, and slug conflicts fail closed. This does not close user/session migration, reset/re-enrollment ceremony, legacy membership reconciliation, production recovery, or cutover gates.
+
+## Storage/provider checkpoint update — 2026-10-26
+
+The historical checklist item `concrete storage provider enablement` must be read with the newer bounded provider evidence: the live Cloudflare R2 S3-compatible data path is now **QUALIFIED / PASS** for signed upload, provider metadata observation, signed download, payload integrity, deletion, and absence confirmation. See `docs/evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-26.md`. This closes only provider data-path connectivity for the tested bucket; it does not mean application production enablement or cutover is approved.
+
+The only bucket created so far is named `zaid-ghm-production`; do not assume it is a dedicated non-production target or run further mutating qualification there by default. Still open: guarded database persistence qualification with the intended restricted role, authenticated application/API integration, composition-root and deployment configuration, complete tenant/resource authorization, failure recovery/orphan reconciliation, backup/recovery, and production enablement/cutover.
+
+The qualification-database migration run completed with exit code 0 on 2026-10-26. The historical checksum issue was resolved by restoring applied migration bytes in commit [`5229b37700f2e21ac4caf2d4c5547bb929ab2de8`](https://github.com/zaidhqdev-sys/GHM/commit/5229b37700f2e21ac4caf2d4c5547bb929ab2de8); production migration status is unchanged and must not be inferred from that sandbox run.
