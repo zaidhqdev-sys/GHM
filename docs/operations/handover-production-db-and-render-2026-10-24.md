@@ -526,3 +526,18 @@ Read-only GitHub comparison confirms `main` is the repository default branch and
 Therefore do not merge PR #142 wholesale as a migration-ledger repair, and do not infer the production baseline from that branch alone. Maintainers should choose an explicit integration strategy after reviewing the full branch diff, then reconcile the sandbox ledger against the selected baseline. The storage migration remains independently qualified on disposable PostgreSQL; that does not authorize persistent changes.
 
 Latest handover/PR CI checkpoint: [CI #1707](https://github.com/zaidhqdev-sys/GHM/actions/runs/40324507287) passed. No Render database was modified.
+
+
+### Latest CI and integration strategy checkpoint — 2026-10-26
+
+Exact-head CI for the prior handover commit `9447b273139472bbd6ee53bfd5b40aeaa482bc4c` passed in [CI #1708](https://github.com/zaidhqdev-sys/GHM/actions/runs/40325048127), including all migration application, disposable fixture setup, scoped getter/catalog checks, tenant/lifecycle qualification, full tests, migration-audit policy tests, and runtime-boundary verification.
+
+A full read-only compare of `main` to the candidate confirms 10 added migration files in the branch diff (the eight ledger entries discussed in the sandbox audit plus two additional migrations that are not among those eight ledger extras), and broad application changes. The candidate modifies `.github/workflows/ci.yml`, `src/db/migrate.ts`, `src/db/postgres-target-guard.ts`, migration checksum tests, auth/config/app/API handlers, and adds business registration identity and engagement functionality. This is not a surgical migration-baseline patch.
+
+Recommended safe decision path:
+1. Maintainers choose whether candidate integration is still wanted and nominate a reviewer/owner for the full 55-commit diff.
+2. If wanted, integrate/rebase/merge it through the normal reviewed PR path, resolve the nine commits of divergence from `main`, and pass CI on the resulting target branch; do not use the sandbox ledger as the reason to force-merge it.
+3. Independently reconcile the shared sandbox ledger to the approved commit history, preserving historical checksums and recording provenance.
+4. Re-review the storage migration on the selected baseline and only then approve a separately controlled sandbox application.
+
+No decision has been supplied on Issue #185 as of this checkpoint. This is an explicit governance blocker, not a reason to perform speculative writes. Shared sandbox and production remain unchanged; production R2 remains on hold.
