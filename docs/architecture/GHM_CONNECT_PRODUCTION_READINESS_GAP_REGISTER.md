@@ -4,7 +4,7 @@
 **Source audit:** docs/architecture/GHM_CONNECT_BACKEND_READINESS_AUDIT.md
 **Audited GHM tree:** historical Connect audit checkpoint; current GHM construction state is the consolidated `main` line.
 **Connect source:** abcffa73f893602c25310a58946bebb91fd7eeb5
-**Current reconciliation checkpoint (2026-10-13):** This register remains a governed product-readiness gap record, not a live deployment snapshot. The historical dependency counts and source commit below remain provenance from the earlier audit. Later bounded construction is reconciled in the living status index and per-capability evidence. PayFast checkout/ITN/server-to-server confirmation is implemented and merged with deterministic local qualification; real sandbox/runtime end-to-end qualification, broader Connect product workflows, provider enablement, and production cutover remain open.
+**Historical readiness checkpoint (2026-10-13; follow-up correction in review 2026-10-14):** This register remains a governed product-readiness gap record, not a live deployment snapshot. The historical dependency counts and source commit below remain provenance from the earlier audit. Later bounded construction is reconciled in the living status index and per-capability evidence. PayFast checkout/ITN/server-to-server confirmation is implemented and merged with deterministic local qualification; real sandbox/runtime end-to-end qualification, broader Connect product workflows, provider enablement, and production cutover remain open. The 2026-10-14 status/resume audit found stale PR-status statements after the earlier checkpoint; do not treat the date on this paragraph as proof of a complete current repository-wide reconciliation.
 **Evidence sprint checkpoint:** see §8 (this document update)
 
 ## Purpose
@@ -60,7 +60,7 @@ The principal remaining blockers are the Connect/QuoteFlow product adapters and 
 These are **not** migration-missing. They remain blocked for GHM construction until separately authorized:
 
 - `business_capability_evidence`
-- `business_categories` / `business_category_assignments`
+- `business_categories` / `business_category_assignments` — GHM Business Category resource QUALIFIED / CLOSED; Connect assignment, HTTP/adapter, UI and filter parity remains open
 - ~~`trust_scores`~~ → GHM `trust_score` QUALIFIED / CLOSED (Business profile input parity still open)
 - `account_onboarding_progress`
 - `business_engagement_events` / `business_profile_view_visitors`
@@ -116,22 +116,25 @@ A closed capability may require a separately authorized adapter/projection layer
 
 ## 4. Provider / ownership boundary
 
-The following remain external or separately governed unless new evidence says otherwise:
+**Target-runtime rule:** ZAID Connect must remove all active Supabase runtime dependencies. The Supabase items below describe the legacy/source architecture and migration evidence, not providers to retain in the GHM-backed target runtime.
 
+Legacy Connect source dependencies to replace or retire from active runtime paths:
 - Supabase Auth
-- Supabase Postgres/RLS production authority
+- Supabase Postgres/RLS
 - Supabase Realtime
 - Supabase Storage
 - Supabase Edge Functions
-- Paystack
-- PayFast
+
+Separately governed providers/capabilities (not activated or selected merely by this migration):
+- Paystack — approval/activation remains unconfirmed; do not infer it from PayFast approval or historical source code.
+- PayFast — approval exists, but GHM sandbox/runtime end-to-end qualification and any production activation remain separately gated.
 - Meta WhatsApp Cloud API
-- AI model/provider runtime
+- AI model/provider runtime — preserve the fail-closed AI gate.
 - client-local WhatsApp deep links
 - client-local PDF generation
 - local AI heuristics
 
-GHM should not absorb a provider dependency merely because Connect currently uses it.
+GHM should not absorb a provider dependency merely because Connect currently uses it. For Supabase, the target decision is already to remove active runtime coupling; for other providers, require explicit product/provider selection and qualification.
 
 ## 5. Required evidence sequence
 
@@ -152,9 +155,8 @@ These remain evidence/authorization gates, not implementation tasks.
 
 ## 6. Production boundary
 
-Until separately authorized and qualified:
+Until separately authorized and qualified, the existing Connect source/runtime configuration remains unchanged and still contains Supabase coupling; this is a no-cutover control, **not** a claim that the hosted Supabase project is currently reachable or that Supabase remains the approved target:
 
-- Connect remains on Supabase.
 - No production database changes.
 - No DNS/routing changes.
 - No credential changes.
@@ -221,9 +223,9 @@ The verified audit now gives the concrete gap boundary required to authorize fut
 - Directory search/featured/nearby as Connect product behavior
 - Storage logos on bucket `media` / prefix `logos/` (not `business-logos`)
 - Realtime subscriptions only for notifications INSERT and leads INSERT
-- Live Edge functions: Paystack checkout, Paystack webhook, AI proxy
+- Historical Connect source-audit observation (2026-09-18): Edge functions existed for Paystack checkout, Paystack webhook, and AI proxy. This records source-code presence at that checkpoint only; it does not establish hosted availability or provider approval.
 - Atomic gaps: Project ↔ Opportunity create; payment prepare/apply; capability replace/evidence; directory founder review
-- Class A missing GHM domains include Trust, offerings, categories, evidence, onboarding, engagement, relationships/outcomes
+**Historical 2026-09-18 Class A snapshot (not current GHM coverage):** the original audit listed Trust, offerings, categories, evidence, onboarding, engagement, and relationships/outcomes as missing at that checkpoint. Subsequent GHM construction qualified the bounded Trust, Business Category, and Business Offering resource slices; those GHM resource qualifications do not establish Connect adapter parity or cutover readiness. Capability-evidence submission/review, onboarding, engagement, and relationships/outcomes remain separate product-contract gaps to verify against the current operation inventory and migration handover.
 
 ### Requirements / assumptions disproven or corrected
 
@@ -255,7 +257,7 @@ The verified audit now gives the concrete gap boundary required to authorize fut
 
 **Current reconciled state:** Connect identity adapter boundary, trusted request context, governed operation resolution, and GHM authorization binding are Founder-authorized construction slices with their qualification evidence recorded in dedicated architecture documents. Business Offering is also **QUALIFIED / CLOSED** at the GHM construction boundary. Its qualification is recorded in `BUSINESS_OFFERING_OPERATION_CONTRACT.md` and the dedicated runtime evidence below.
 
-The Business Offering qualification does not authorize a public HTTP API, product session migration, production cutover, or any other Connect product adapter. The next product construction capability still requires a separate evidence-backed contract and explicit authorization.
+The Business Offering qualification does not authorize a public HTTP API, product session migration, production cutover, or any other Connect product adapter. The original “next product construction capability” wording described sequencing at that qualification checkpoint; it is not a current migration work queue or authorization. The current no-Supabase caller-parity overlay below governs the documented product gaps, and each new construction slice still requires a separate evidence-backed contract and explicit authorization.
 
 
 ---
@@ -293,7 +295,8 @@ This overlay supersedes any implication that the historical operation rows above
 | Quote analysis / AI | analyzer history uses Connect DB; AI transport targets Supabase Edge Function, provider gate false | **Split** | migrate history/data operations; remove Supabase transport but preserve fail-closed provider gate |
 | Commercial | Connect offer/trial panel active; GHM internal commercial routes exist; payment activation remains disabled | **Reuse/extend, separately gated** | preserve all launch/payment flags; no provider activation |
 | Notifications inbox/realtime/push | GHM routes exist; current UI inbox/push active caller not established | **Evidence insufficient** | only migrate producer operations proven active; don't rebuild dormant UI |
-| Supplier/referral/dispute/offerings legacy services | no confirmed current mounted caller in searches | **Legacy/unconfirmed** | exclude unless reachability audit finds active caller |
+| Supplier/referral/dispute legacy services | no confirmed current mounted caller in searches | **Legacy/unconfirmed** | exclude unless reachability audit finds active caller |
+| Connect `businessOfferingService` UI path | no confirmed current mounted caller; GHM `business_offering` construction contract is independently QUALIFIED / CLOSED | **Legacy/unconfirmed at Connect caller boundary; GHM resource remains closed** | do not reopen GHM construction; only assess an adapter if a mounted Connect caller is proven and separately authorized |
 
 The numeric Connect IDs and GHM numeric IDs/UUID assumptions must never be presumed equivalent. Define explicit identity/resource mappings. The signed `POST /api/v1/connect/service` remains server-to-server only; browser code needs a secure BFF or GHM-native user-token API. This overlay is documentation only and grants no implementation, merge, production or cutover authorization.
 
@@ -303,3 +306,38 @@ The previously qualified `(provider, subject) → GHM account identity` foundati
 
 For target Connect runtime, GHM-native access/session credentials must establish the caller; GHM then resolves the canonical account, active state, business membership and resource authorization server-side. A source-provider/subject pair may remain as migration provenance for legacy data only, isolated from runtime authentication and not accepted as authority for new requests. Do not remove historical evidence or silently change the existing qualification's scope. Do not allow identity bootstrap or account linking as a side effect of routine requests.
 
+## Documentation review checkpoint — 2026-10-14 (PR #135; unmerged)
+
+The GHM status-correction review in PR #135 updates the durable migration handover and this governed gap register alongside the historical operation inventory, historical readiness audit, current-state index, and remaining-work register. The review is documentation-only and remains open/unmerged at this checkpoint; verify live PR metadata and the changed-file list before relying on this statement in a later session.
+
+This review does **not** change capability qualification or production readiness. In particular:
+
+- PayFast checkout/ITN/server-to-server confirmation is merged into GHM main and deterministic local qualification is passing; real sandbox/runtime end-to-end qualification, production credentials/enablement, and Connect-wide commercial workflow parity remain open.
+- PayFast approval is distinct from PayStack approval/activation; no PayStack approval is inferred.
+- GHM Internal Runtime remains the target backend, with no active Supabase runtime dependency in the intended Connect target. The existing Supabase-bound Connect identity adapter, lack of a qualified browser-safe GHM user API/BFF, and broader active-workflow parity remain blockers.
+- The operation inventory and readiness audit are dated historical evidence snapshots. Their counts are not current capability measurements; this governed register, `docs/GHM_CURRENT_STATE.md`, and per-capability qualification evidence govern current GHM status.
+- PR #135 being open or these documentation edits being complete is not evidence that the full repository documentation set is reconciled. No merge, implementation, provider activation, migration, shadow qualification, or cutover is authorized by this note.
+
+
+## 2026-10-15 implementation backlog cross-check — gaps to preserve after documentation reconciliation
+
+This section is an action-oriented cross-check of known gaps, not a new authorization or a claim that the entire operation matrix has been revalidated. The handover and capability-specific qualification records remain the evidence sources. When documentation reconciliation is complete, work should be planned from these blockers rather than restarting source discovery or reopening qualified foundations.
+
+| Workstream | Confirmed missing / unqualified capability | What is needed to close the gap | Must not be confused with |
+|---|---|---|---|
+| Connect identity and sessions | The qualified external identity bridge is still provider-bound to the legacy Supabase identity source; the approved Connect target requires GHM-native user authentication/session lifecycle. | Define and separately qualify GHM-native sign-in/session, role and active-account checks, refresh/recovery/logout, membership/ownership mapping, browser-safe transport, and no-Supabase binding. | The qualified generic external-identity mapping or legacy Business UUID mapping; neither proves target auth/session readiness. |
+| Browser-to-GHM transport | The signed Connect service endpoint is server-to-server, not a browser user API. | Choose and authorize a secure BFF or GHM-native user-token API; specify token validation, authorization context, error envelope, CORS/CSRF boundaries where applicable, and tests. | Reusing the signed service endpoint directly from browser code. |
+| Business profile and directory parity | Directory v1 is narrow; Connect additionally uses province/city/tier/geo/radius/sort, broader pagination/count semantics, profile composition, saved state and engagement behavior. | Freeze required launch scope; specify exact filters, public field allowlist, ordering/pagination/count, geography ownership, profile composition and privacy; qualify each selected extension. | Reopening the already-qualified narrow public Business/Directory v1 foundation. |
+| Founder directory review and capability evidence | Connect's submit/queue/approve/reject/revoke workflows and event history do not have a matching qualified GHM HTTP/product contract evidenced in inspected routers. | Define founder/verifier authority, allowed state transitions, reason/version/concurrency rules, event audit, route and negative tests. | Generic customer review routes or verification fields alone. |
+| Business provisioning and membership | The bounded external Business mapping/provisioning slice is qualified, but end-user session migration and broader membership/ownership migration are not. | Reconcile legacy Business IDs and owner membership from authoritative evidence; define idempotent mapping, conflicts, permissions, rollback and migration proof. | The bounded provisioning adapter qualification or routine identity bootstrap. |
+| Projects and atomic workflows | Connect uses an atomic project-plus-opportunity create; GHM project/quote routes do not by themselves prove that transaction. Additional payment prepare/apply, capability-evidence/replacement and review transactions need their own parity decisions. | Produce operation-level input/output/authorization/transaction contracts and fault/concurrency tests for each active source-proven atomic journey. | Independent routes existing for each object. |
+| Opportunity marketplace | Detail/requirement boundaries exist, but Connect list/discovery behavior remains unqualified. | Qualify lifecycle/time-window eligibility, search/type filters, nested requirements, exact count/pagination, ownership and response mapping. | Qualified Opportunity Core or capability-requirement replacement slices. |
+| Onboarding, analytics, relationships/outcomes | Active Connect journeys call source RPCs or domains without matching qualified GHM contracts evidenced in the inspected inventory. | Confirm mounted callers; then define minimal launch operations, tenant/business scope, lifecycle/period semantics, authorization and tests—or document evidence-backed exclusion. | Recreating unmounted legacy services or inferring a requirement from an old table. |
+| Storage/media and product exposure | Storage metadata/persistence and the R2 foundation are distinct from an authorized product/HTTP surface, object-level authorization, logo lifecycle, private-document policy and recovery. | Decide selected objects/paths; qualify upload/read/delete authorization, signed grants, metadata consistency, R2 failure/reconciliation/recovery and public-vs-private policy; separately gate production enablement. | Storage metadata qualification or R2 bucket foundation alone. |
+| Realtime and notifications/leads | Notification persistence exists; delivery ownership and the actual active UI subscriber scope remain unresolved. | Verify mounted consumers and required events, choose provider/polling/GHM delivery, define authorization, retries/order/retention and operational evidence—or explicitly exclude dormant paths. | Notification CRUD or a generic realtime platform assumption. |
+| Quote analysis / AI | Source analyzer history persists in Connect data and AI transport targets a Supabase Edge Function; provider gate is false. | Split data/history migration from inference transport; define the GHM-facing contract and preserve fail-closed provider/credential gating. | Enabling a paid/external AI provider or treating source code presence as service availability. |
+| Commercial and PayFast | PayFast checkout/ITN/server confirmation is merged and locally qualified; real sandbox/runtime end-to-end, production credentials/enablement and Connect-wide lifecycle parity remain open. | Isolated real sandbox checkout → ITN/server verification → governed result application; idempotency/replay/failure evidence; explicit production/provider authorization. Keep PayStack status separate. | Local deterministic tests, provider approval, or payment-boundary qualification alone. |
+| QuoteFlow migration (separate product gates) | Full password reset/re-enrollment ceremony qualification, GHM session client/cutover, live organization→Business plus owner-membership provisioning, local-data transition and rollback remain open. | Complete non-production integrated auth/recovery and provisioning ceremonies; reconcile the two founder-owned accounts independently; prove rollback/recovery and require separate cutover approval. | Connect's no-Supabase target or the already-qualified credentialless account-provisioning primitive. |
+| Production readiness and operations | End-to-end shadow/cutover, monitoring/diagnostics, failure recovery, operational acceptance and rollback are not implied by unit/resource qualification. | Define product-specific acceptance, isolated non-production end-to-end evidence, observability and incident/recovery exercises, reconciliation and rollback; secure explicit founder go/no-go. | Build/test success, readyz, isolated resource qualification, or documentation merge. |
+
+**Post-audit rule:** once the complete documentation corpus is reconciled, turn each still-open row into a sequenced work item with its authoritative contract, exact source caller, dependencies, acceptance tests, qualification evidence and required founder decision. Keep rows marked qualified/closed closed unless new source evidence demonstrates a distinct gap. No implementation or cutover is authorized by this backlog cross-check.

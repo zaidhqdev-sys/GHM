@@ -1,5 +1,10 @@
 # GHM Connect Business Provisioning and External Linking Contract
 
+## Target-runtime boundary — external Business mapping is not session authority (2026-10-15)
+
+This contract preserves the bounded legacy Connect Business UUID → canonical GHM Business mapping, whose provider key is `supabase`. That key is source-identity provenance for this adapter slice; it must not be interpreted as approval to retain Supabase as an active target-runtime dependency. In particular, the historical sentence below that says Supabase Auth remains the Connect production session authority describes the pre-migration source state only. The approved target is to remove active Supabase runtime dependencies and establish GHM-native identity/session semantics under a separate target contract and qualification. External Business mapping is not end-user authentication or session authority. No production routing, provider cleanup, backfill, migration, or cutover is authorized by this clarification.
+
+
 **Status:** CONSTRUCTION CONTRACT — FOUNDER-AUTHORIZED 2026-10-01
 **Scope:** Connect Business UUID -> canonical GHM Business provisioning/linking
 **Source:** Connect source audited at `abcffa73f893602c25310a58946bebb91fd7eeb5`
@@ -169,7 +174,7 @@ The provider identifier is metadata describing the external identity source. It 
 
 GHM must not accept a Supabase JWT as a GHM bearer token.
 
-Supabase Auth remains the Connect production session authority until a separately authorized product-auth migration exists.
+**Historical source-state statement (not the approved target):** at the inspected source checkpoint, Supabase Auth remained Connect's production session authority. The approved target removes active Supabase runtime dependencies and requires separately specified and qualified GHM-native product authentication/session authority before cutover.
 
 ## 13. No product cutover
 

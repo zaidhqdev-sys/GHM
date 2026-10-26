@@ -1,5 +1,10 @@
 # GHM ↔ Zaid Connect Identity Bridge Qualification
 
+## Migration-state boundary — source identity mapping only (2026-10-15)
+
+The provider-plus-subject mapping and examples below preserve the qualified identity foundation and its source-era Supabase identity provenance. They do not mean that Supabase remains the approved Connect runtime identity provider or that this foundation qualifies the no-Supabase target. The separate identity adapter qualification explicitly covers only external identity resolution, not Connect login/session replacement, browser authentication, full product parity, deployment, or cutover. The approved target requires GHM-native identity/session semantics and separate target-specific evidence. Do not rewrite this historical mapping as target runtime authority.
+
+
 **Status:** CONSTRUCTION QUALIFIED — PRODUCT ADAPTER / CUTOVER NOT AUTHORIZED
 **Historical qualification baseline:** the consolidated `main` state recorded at qualification time; not a current HEAD pointer
 **Founder approval:** Authentication Gate 3B approved 2026-09-30
