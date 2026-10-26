@@ -1,3 +1,4 @@
+import { loadStorageRuntimeConfig } from "./storage/config";
 import 'dotenv/config';
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -26,6 +27,18 @@ const parseOrigins = (value: string): string[] => {
   return origins;
 };
 
+const hasStorageConfiguration = [
+  "STORAGE_PROVIDER",
+  "STORAGE_ENDPOINT",
+  "STORAGE_REGION",
+  "STORAGE_BUCKET",
+  "STORAGE_ACCESS_KEY_ID",
+  "STORAGE_SECRET_ACCESS_KEY",
+  "STORAGE_FORCE_PATH_STYLE",
+  "STORAGE_UPLOAD_GRANT_TTL_SECONDS",
+  "STORAGE_DOWNLOAD_GRANT_MAX_TTL_SECONDS",
+].some((name) => Boolean(process.env[name]?.trim()));
+
 export const config = Object.freeze({
   nodeEnv: process.env.NODE_ENV ?? 'development',
   isProduction,
@@ -35,6 +48,7 @@ export const config = Object.freeze({
   inviteCode: required('INVITE_CODE'),
   corsOrigins: parseOrigins(required('CORS_ORIGINS')),
   trustProxy: process.env.TRUST_PROXY === 'true',
+  storage: hasStorageConfiguration ? loadStorageRuntimeConfig() : null,
   payfast: Object.freeze({
     environment: (process.env.PAYFAST_ENVIRONMENT ?? 'sandbox') as 'sandbox' | 'live',
     merchantId: process.env.PAYFAST_MERCHANT_ID?.trim() ?? '',

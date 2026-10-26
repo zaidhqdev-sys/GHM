@@ -5,6 +5,7 @@ import {
   migrationSqlChecksum,
   matchesMigrationSqlChecksum,
   normalizeMigrationSqlForChecksum,
+  normalizeMigrationSqlForExecution,
 } from './migration-checksum';
 
 const sqlLf = 'SELECT 1;\nREVOKE SELECT ON TABLE ghm.example FROM ghm_runtime;\n';
@@ -24,4 +25,10 @@ test('accepts legacy checksum recorded from CRLF migration bytes', () => {
 test('rejects a checksum for genuinely different migration SQL', () => {
   const checksum = migrationSqlChecksum(sqlLf);
   assert.equal(matchesMigrationSqlChecksum(checksum, 'SELECT 2;\n'), false);
+});
+
+test('strips a leading UTF-8 BOM before executing SQL without changing checksum input', () => {
+  const withBom = '\uFEFFSELECT 1;\n';
+  assert.equal(normalizeMigrationSqlForExecution(withBom), 'SELECT 1;\n');
+  assert.notEqual(migrationSqlChecksum(withBom), migrationSqlChecksum(normalizeMigrationSqlForExecution(withBom)));
 });

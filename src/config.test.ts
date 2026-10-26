@@ -40,3 +40,15 @@ test('non-production configuration preserves explicit database TLS setting', () 
   assert.equal(loaded.isProduction, false);
   assert.equal(loaded.databaseSsl, false);
 });
+
+test('partial storage provider configuration fails closed', () => {
+  const result = loadConfig({ ...baseEnv, STORAGE_PROVIDER: 's3' });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr + result.stdout, /Missing required storage environment variable: STORAGE_REGION/);
+});
+
+test('partial storage TTL configuration fails closed', () => {
+  const result = loadConfig({ ...baseEnv, STORAGE_DOWNLOAD_GRANT_MAX_TTL_SECONDS: '120' });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr + result.stdout, /Missing required storage environment variable: STORAGE_REGION/);
+});

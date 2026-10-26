@@ -14,6 +14,15 @@ export const matchesSupportedMigrationChecksum = (storedChecksum, sql) =>
   storedChecksum === migrationChecksum(sql) ||
   storedChecksum === legacyCrlfMigrationChecksum(sql);
 
+export const classifyRetainedHistoricalMigration = ({ version, registered, live, repository }) => {
+  if (!live) return { version, status: 'ORPHANED', reason: 'missing_live_ledger_row' };
+  if (repository) return { version, status: 'REPOSITORY_MIGRATION_PRESENT', reason: 'historical_entry_has_repository_migration' };
+  if (!registered || live.name !== registered.name || live.checksum !== registered.checksum) {
+    return { version, status: 'LEDGER_MISMATCH', reason: 'live_ledger_does_not_match_registered_history' };
+  }
+  return { version, status: 'VERIFIED_RETAINED_HISTORY', reason: 'ledger_name_and_checksum_match_registered_history' };
+};
+
 /**
  * Exception records preserve a historical applied-byte checksum. Their value
  * need not equal today's ledger checksum: current reconciliation is based on

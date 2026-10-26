@@ -96,6 +96,8 @@ import type { BusinessOfferingService } from '../resources/business-offering/con
 import { registerBusinessOfferingRoutes } from './business-offering-router';
 import { registerConnectServiceRoutes, type ConnectServiceHttpDependencies } from './connect-service-router';
 import { registerCommercialInternalRoutes } from './commercial-internal-router';
+import { registerStorageRoutes } from './storage-router';
+import { createStorageProvider } from '../storage/factory';
 
 
 export interface AppDependencies {
@@ -378,6 +380,10 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   app.set('trust proxy', config.trustProxy);
   app.use(cors({ origin: config.corsOrigins }));
   app.use(express.json({ limit: '1mb' }));
+
+  if (config.storage) {
+    registerStorageRoutes(app, createStorageProvider(config.storage), resourceAuthMiddleware, config.storage.uploadGrantTtlSeconds, config.storage.downloadGrantMaxTtlSeconds);
+  }
 
   app.get('/', (_req: Request, res: Response) => {
     res.json({ service: 'GHM Core Engine', version: '2.0.0' });

@@ -3,13 +3,21 @@ import 'dotenv/config';
 import fs from 'fs/promises';
 import path from 'path';
 import historicalProvenanceExceptions from '../../config/historical-migration-provenance-exceptions.json';
-import { migrationSqlChecksum, matchesMigrationSqlChecksum } from './migration-checksum';
+import { migrationSqlChecksum, matchesMigrationSqlChecksum, normalizeMigrationSqlForExecution } from './migration-checksum';
 import { Pool, PoolClient } from 'pg';
 
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
 if (!databaseUrl) throw new Error('Missing required environment variable: GHM_MIGRATOR_DATABASE_URL');
 
-const pool = new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } });
+const databaseSsl = process.env.DATABASE_SSL === 'true';
+if (process.env.NODE_ENV === 'production' && !databaseSsl) {
+  throw new Error('DATABASE_SSL must be true in production');
+}
+
+const pool = new Pool({
+  connectionString: databaseUrl,
+  ssl: databaseSsl ? { rejectUnauthorized: false } : false,
+});
 const MIGRATION_PATTERN = /^(\d{14})_([a-z0-9][a-z0-9_-]*)\.sql$/;
 const MIGRATIONS_DIR = path.resolve(process.cwd(), 'database', 'migrations');
 const PUBLIC_LEDGER_TABLE = 'public.ghm_schema_migrations';
@@ -91,7 +99,9 @@ const migrate = async (): Promise<void> => {
         }
         continue;
       }
-      await client.query(migration.sql);
+      // A UTF-8 BOM is not SQL syntax. Preserve the original bytes for the
+      // historical checksum, but remove a leading BOM before PostgreSQL execution.
+      await client.query(normalizeMigrationSqlForExecution(migration.sql));
       ledgerTable = await resolveLedgerTable(client);
       if (!ledgerTable) throw new Error(`Migration ${migration.filename} completed but the migration ledger cannot be resolved`);
       await client.query(`INSERT INTO ${ledgerTable} (version, name, checksum) VALUES ($1, $2, $3)`, [migration.version, migration.name, migration.checksum]);

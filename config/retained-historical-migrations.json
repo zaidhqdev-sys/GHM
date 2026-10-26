@@ -1,0 +1,50 @@
+{
+  "20261016100000": {
+    "name": "add_connect_identity_authority_contract",
+    "checksum": "c3f8cf693fd9761575fc24c2485374f6410cb9d74aa668048736d49b6897c439",
+    "source": "integration/ghm-identity-merge-candidate-20261018",
+    "reason": "Applied to the shared sandbox from the historical identity integration candidate; checksum verified against the candidate migration."
+  },
+  "20261016120000": {
+    "name": "create_account_external_mapping",
+    "checksum": "13b3984ae87ac34a10f5fdb91f1e595e9ec06d02515426747d7111b30543ba2f",
+    "source": "integration/ghm-identity-merge-candidate-20261018",
+    "reason": "Applied to the shared sandbox from the historical identity integration candidate; checksum verified against the candidate migration."
+  },
+  "20261016170000": {
+    "name": "add_connect_directory_contract",
+    "checksum": "7df18574bec5187666e0f07217596571edf95be7e52acea1abaedb176f22648b",
+    "source": "integration/ghm-identity-merge-candidate-20261018",
+    "reason": "Applied to the shared sandbox from the historical identity integration candidate; checksum verified against the candidate migration."
+  },
+  "20261016180000": {
+    "name": "extend_owner_managed_directory_profile",
+    "checksum": "47477c7f9006f37491e0bdb322a9de816cc34798133c33fbdd37fcfaca254f3a",
+    "source": "integration/ghm-identity-merge-candidate-20261018",
+    "reason": "Applied to the shared sandbox from the historical identity integration candidate; checksum verified against the candidate migration."
+  },
+  "20261016190000": {
+    "name": "expose_authenticated_account_email",
+    "checksum": "9c81727f1038b945974953c11e76dddd442227d528058b9134184074215a1216",
+    "source": "integration/ghm-identity-merge-candidate-20261018",
+    "reason": "Applied to the shared sandbox from the historical identity integration candidate; checksum verified against the candidate migration."
+  },
+  "20261018210000": {
+    "name": "grant_runtime_account_profile_column_updates",
+    "checksum": "8273254084092233c94161772c2106560b89ca8c617ce8bff00e1259a71e51ec",
+    "source": "integration/ghm-identity-merge-candidate-20261018",
+    "reason": "Applied to the shared sandbox from the historical identity integration candidate; checksum verified against the candidate migration."
+  },
+  "20261020130000": {
+    "name": "create_quoteflow_migration_business_provisioning",
+    "checksum": "a453171e85f6717476258c6d2d59a39b663be89826316036e6b9891cadfb13e9",
+    "source": "historical applied migration blob 620efa57ac35d494f1aa506f26a7ad810c821d9a",
+    "reason": "Preserves the original applied checksum. The later unverified-state correction is a separate additive migration (20261020140000); do not rewrite the applied ledger checksum."
+  },
+  "20261020140000": {
+    "name": "reconcile_quoteflow_provisioning_verification_status",
+    "checksum": "922295b2a94dfed4cc6441569b0b911f99e7bf4aed81d1f1938a481dc7e9c465",
+    "source": "integration/ghm-identity-merge-candidate-20261018",
+    "reason": "Applied to the shared sandbox from the historical identity/QuoteFlow integration history; checksum verified against the candidate migration."
+  }
+}

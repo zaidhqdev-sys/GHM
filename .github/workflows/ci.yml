@@ -14,10 +14,35 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ghm_disposable_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ghm_disposable_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     env:
       NODE_ENV: test
-      DATABASE_URL: postgres://qualification:test@localhost:5432/ghm
+      DATABASE_URL: postgres://ghm_runtime:runtime-test-password@localhost:5432/ghm_disposable_test
+      GHM_RUNTIME_DATABASE_URL: postgres://ghm_runtime:runtime-test-password@localhost:5432/ghm_disposable_test
+      GHM_MIGRATOR_DATABASE_URL: postgres://ghm_migrator:migrator-test-password@localhost:5432/ghm_disposable_test
+      GHM_MIGRATION_DATABASE_NAME: ghm_disposable_test
+      GHM_MIGRATION_DATABASE_HOST: localhost
+      GHM_QUALIFICATION_DATABASE_NAME: ghm_disposable_test
+      GHM_QUALIFICATION_DATABASE_HOST: localhost
+      GHM_NONPRODUCTION_DATABASE_NAME: ghm_disposable_test
+      GHM_NONPRODUCTION_DATABASE_HOST: localhost
+      GHM_QUALIFICATION_DATABASE_URL: postgres://ghm_runtime:runtime-test-password@localhost:5432/ghm_disposable_test
+      GHM_STORAGE_QUALIFICATION_ALLOW_MUTATIONS: "true"
+      DATABASE_SSL: "false"
       INVITE_CODE: test-invite-code
       CORS_ORIGINS: http://localhost:3000
       GHM_AUTH_TOKEN_PEPPER: ci-test-token-pepper-32-bytes-minimum-length-000
@@ -34,8 +59,54 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Create isolated least-privilege database roles
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d ghm_disposable_test -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE ghm_schema_owner NOLOGIN;
+          CREATE ROLE ghm_migrator LOGIN NOINHERIT PASSWORD 'migrator-test-password';
+          GRANT ghm_schema_owner TO ghm_migrator;
+          CREATE ROLE ghm_runtime LOGIN NOINHERIT PASSWORD 'runtime-test-password';
+          GRANT CONNECT ON DATABASE ghm_disposable_test TO ghm_migrator, ghm_runtime;
+          GRANT CREATE ON DATABASE ghm_disposable_test TO ghm_schema_owner;
+          GRANT USAGE, CREATE ON SCHEMA public TO ghm_schema_owner;
+          SQL
+
+      - name: Check storage qualification script syntax
+        run: node --check scripts/qualify-storage-persistence.mjs
+
       - name: Build
         run: npm run build
+
+      - name: Apply all migrations to disposable PostgreSQL
+        run: npm run migrate
+
+      - name: Seed disposable storage qualification fixture
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d ghm_disposable_test -v ON_ERROR_STOP=1 <<'SQL'
+          WITH fixture_account AS (
+            INSERT INTO ghm.account_identity (full_name, role)
+            VALUES ('CI Storage Qualification Member', 'business')
+            RETURNING id
+          ),
+          fixture_business AS (
+            INSERT INTO ghm.business (name, slug, verification_status, is_active)
+            VALUES ('CI Storage Qualification Business', 'ci-storage-qualification-' || gen_random_uuid()::text, 'unverified', true)
+            RETURNING id
+          )
+          INSERT INTO ghm.business_membership (business_id, account_id, membership_role, membership_status)
+          SELECT fixture_business.id, fixture_account.id, 'owner', 'active'
+          FROM fixture_business CROSS JOIN fixture_account;
+          SQL
+
+      - name: Qualify storage getter on disposable PostgreSQL
+        run: node scripts/qualify-storage-getter-postgres.mjs
+
+      - name: Qualify storage lifecycle and tenant authorization on disposable PostgreSQL
+        run: node scripts/qualify-storage-persistence.mjs
 
       - name: Test suite
         run: npm test
