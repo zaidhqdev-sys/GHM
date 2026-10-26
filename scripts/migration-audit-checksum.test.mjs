@@ -5,6 +5,7 @@ import {
   legacyCrlfMigrationChecksum,
   matchesSupportedMigrationChecksum,
   classifyHistoricalException,
+  classifyRetainedHistoricalMigration,
 } from './migration-audit-checksum.mjs';
 
 test('canonical checksum normalizes CRLF and CR to LF', () => {
@@ -47,4 +48,27 @@ test('redundant exception is reported separately from an orphan', () => {
     live: { checksum: 'b'.repeat(64) },
     repository: { canonicalChecksum: 'c'.repeat(64), legacyCrlfChecksum: 'd'.repeat(64) },
   }).status, 'REDUNDANT');
+});
+
+test('retained historical migration passes only when live name and checksum match the manifest', () => {
+  const registered = { name: 'historical_name', checksum: 'b'.repeat(64) };
+  assert.equal(classifyRetainedHistoricalMigration({
+    version: '20261016100000', registered,
+    live: { name: registered.name, checksum: registered.checksum }, repository: null,
+  }).status, 'VERIFIED_RETAINED_HISTORY');
+  assert.equal(classifyRetainedHistoricalMigration({
+    version: '20261016100000', registered,
+    live: { name: registered.name, checksum: 'c'.repeat(64) }, repository: null,
+  }).status, 'LEDGER_MISMATCH');
+});
+
+test('retained historical migration cannot hide a missing row or a repository migration', () => {
+  const registered = { name: 'historical_name', checksum: 'b'.repeat(64) };
+  assert.equal(classifyRetainedHistoricalMigration({
+    version: '20261016100000', registered, live: null, repository: null,
+  }).status, 'ORPHANED');
+  assert.equal(classifyRetainedHistoricalMigration({
+    version: '20261016100000', registered, live: { name: registered.name, checksum: registered.checksum },
+    repository: { name: registered.name },
+  }).status, 'REPOSITORY_MIGRATION_PRESENT');
 });
