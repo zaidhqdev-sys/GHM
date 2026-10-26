@@ -645,3 +645,31 @@ Do not change the production-connected `GHM-Internal-Runtime` service or its dat
 - **Deployment is intentionally held at the database-migration gate.** The service's migration runner requires `GHM_MIGRATION_DATABASE_NAME` and `GHM_MIGRATION_DATABASE_HOST`, neither of which appears in the owner-reported environment-variable list. Render's available SQL interface is read-only and cannot apply the migration. The live value of `GHM_MIGRATOR_DATABASE_URL` cannot be verified from the service metadata, so do not assume it targets `ghm_payfast_sandbox_db`.
 - Next operation must use a writable, explicitly verified qualification-database migration path with target guards, then deploy the already-merged commit and run live storage smoke tests. Keep the production-connected `GHM-Internal-Runtime` untouched.
 
+## Addendum — storage and migration reconciliation (2026-10-26 21:39 UTC)
+
+This addendum supersedes earlier next-step statements in this handover that said the sandbox migration was still blocked or had not yet been applied. It does not change the production safety boundary.
+
+### Qualification database migration — PASS
+
+- Target: Render PostgreSQL database `ghm_payfast_sandbox_db` (`dpg-db4416vlk1mc73eocug0-a`).
+- The local `npm run migrate` completed with PowerShell `$LASTEXITCODE = 0` on 2026-10-26.
+- Before the successful run, commit [`5229b37700f2e21ac4caf2d4c5547bb929ab2de8`](https://github.com/zaidhqdev-sys/GHM/commit/5229b37700f2e21ac4caf2d4c5547bb929ab2de8) restored the exact historical SQL bytes for `20261020130000_create_quoteflow_migration_business_provisioning.sql`, resolving its applied-checksum mismatch. The restored file matches the historical database checksum; the migration runner accepted supported legacy line-ending checksums and exited successfully.
+- Read-only catalog checks after migration confirmed `ghm.storage_get_object(bigint,bigint)` exists, the legacy one-argument overload is absent, storage lifecycle functions are `SECURITY DEFINER` owned by `ghm_schema_owner`, and execution is granted to `ghm_runtime`. The storage table ACL did not grant direct runtime DML.
+- No production migration was run. Keep `GHM-Internal-Runtime` and production database `ghm_db` untouched.
+
+### Live R2 provider qualification — PASS
+
+Command run locally on 2026-10-26:
+`npm run qualify:storage-live-provider`
+
+Build and all live checks passed: signed upload grant, signed PUT, provider HEAD, content-type/size metadata match, signed download grant, downloaded payload integrity (39 bytes), provider DELETE, and confirmation that the deleted object was absent. Evidence is recorded in `docs/evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-26.md`.
+
+The existing bucket was `zaid-ghm-production`, the only bucket created so far. The test object key was `qualification/storage-live/1793050677636-1c3c234d-7b62-4c99-805d-b95a15020b1f.bin`; the qualification reported deletion and absence checks PASS. Because the bucket name indicates production, do not treat this as a dedicated non-production bucket or run additional mutation tests there by default. No credentials or signed URLs belong in source control or handover notes.
+
+### Still open
+
+- The live provider test does **not** qualify the authenticated application/API path or the database-backed storage persistence harness end to end.
+- Run `scripts/qualify-storage-persistence.mjs` only against the explicitly guarded qualification database, using the intended restricted qualification/runtime role and the script's required mutation opt-in. Do not substitute the migrator URL or production database.
+- Application composition-root wiring, full tenant/resource authorization, failure recovery/orphan reconciliation, backup/recovery, HTTP/product exposure, and production enablement/cutover remain separate gates.
+- The old paragraph above saying the next operation must first apply the sandbox migration is historical and superseded by this addendum; the sandbox migration run is complete.
+
