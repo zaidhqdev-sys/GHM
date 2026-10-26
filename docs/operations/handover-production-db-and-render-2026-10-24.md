@@ -427,3 +427,18 @@ Corrected the migration runner to honor `DATABASE_SSL=true` for TLS, use plainte
 Runs [#1688](https://github.com/zaidhqdev-sys/GHM/actions/runs/40250865207) and [#1689](https://github.com/zaidhqdev-sys/GHM/actions/runs/40250877780) both got through PostgreSQL service startup, isolated role creation, and build, but failed while applying the existing migration chain. PostgreSQL identified a leading UTF-8 BOM (U+FEFF) in a historical migration as a syntax error. This is repository migration input, not a connection or live-database issue.
 
 The migration runner now strips a leading BOM from the SQL string immediately before executing it while preserving the original file text for checksum calculation. This avoids changing historical migration files/checksums. Fix commit: `cfe5fed17aa6e51be78196ef820001e7d8bd12c7`. The new exact-head CI result is pending; do not mark the disposable migration gate passed until it finishes.
+
+
+### Disposable PostgreSQL migration and storage getter qualification — CI green — 2026-10-26
+
+- Fixed migration-runner TLS selection so disposable local PostgreSQL uses `DATABASE_SSL=false`, while `NODE_ENV=production` refuses TLS-disabled operation. No live database connection was changed.
+- Added execution-time removal of a leading UTF-8 BOM for migration SQL while preserving original migration bytes for checksum calculation. Added a unit regression test for BOM normalization.
+- CI run [#1694](https://github.com/zaidhqdev-sys/GHM/actions/runs/40251156201) passed: build, all repository migrations applied successfully to ephemeral PostgreSQL 18, full test suite, migration-audit policy tests, and runtime-boundary verification.
+- Added `scripts/qualify-storage-getter-postgres.mjs`, an explicitly read-only test run as `ghm_runtime` against the ephemeral CI database. CI run [#1696](https://github.com/zaidhqdev-sys/GHM/actions/runs/40251325096) passed with this new step enabled. It checks:
+  - scoped `storage_get_object(bigint,bigint)` exists and legacy unscoped overload is absent;
+  - owner is `ghm_schema_owner`, function remains `SECURITY DEFINER`, and fixed `search_path` is `pg_catalog, ghm`;
+  - runtime has EXECUTE, PUBLIC does not, and runtime lacks direct INSERT/UPDATE/DELETE on `ghm.storage_object`;
+  - null IDs, non-positive account IDs, and nonexistent object IDs fail with the expected generic `P0001` error.
+- This CI qualification does not insert fixtures or mutate data. It does **not** yet establish positive active-membership reads, cross-tenant denial for a real existing object, or public active business-logo reads. Those still need fixture-backed PostgreSQL tests, with test data isolated to a disposable database.
+- The read-only sandbox audit remains `INVESTIGATE` because its eight extra ledger entries reflect a different branch history and the new migration has not been applied there. The shared sandbox is not used by CI and remains unchanged.
+- Latest code commit with the new qualification step: `529e9237a4e3d2c45642ae8f7adfa43fc67fa43d`. PR #184 remains draft. Do not configure production R2 credentials or apply the migration to Render until the authoritative migration baseline and fixture-backed tenant/public-logo tests are reviewed.
