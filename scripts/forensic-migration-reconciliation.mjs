@@ -4,6 +4,7 @@ import path from 'node:path';
 import { Client } from 'pg';
 import {
   classifyHistoricalException,
+  classifyRetainedHistoricalMigration,
   migrationChecksum,
   legacyCrlfMigrationChecksum,
 } from './migration-audit-checksum.mjs';
@@ -144,15 +145,11 @@ const main = async () => {
       }
     }
 
-    const retainedAudit = Object.entries(retained).map(([version, entry]) => {
-      const live = liveByVersion.get(version);
-      const repo = repoByVersion.get(version);
-      const status = !live ? 'ORPHANED' :
-        repo ? 'REPOSITORY_MIGRATION_PRESENT' :
-        live.name !== entry.name || live.checksum !== entry.checksum ? 'LEDGER_MISMATCH' :
-        'VERIFIED_RETAINED_HISTORY';
-      return { version, status };
-    });
+    const retainedAudit = Object.entries(retained).map(([version, entry]) =>
+      classifyRetainedHistoricalMigration({
+        version, registered: entry, live: liveByVersion.get(version), repository: repoByVersion.get(version),
+      }),
+    );
     const invalidRetained = retainedAudit.filter((item) => item.status !== 'VERIFIED_RETAINED_HISTORY');
     const exceptionAudit = Object.entries(exceptions).map(([version, registeredChecksum]) =>
       classifyHistoricalException({
