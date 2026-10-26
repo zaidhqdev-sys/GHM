@@ -3,7 +3,7 @@ import 'dotenv/config';
 import fs from 'fs/promises';
 import path from 'path';
 import historicalProvenanceExceptions from '../../config/historical-migration-provenance-exceptions.json';
-import { migrationSqlChecksum, matchesMigrationSqlChecksum } from './migration-checksum';
+import { migrationSqlChecksum, matchesMigrationSqlChecksum, normalizeMigrationSqlForExecution } from './migration-checksum';
 import { Pool, PoolClient } from 'pg';
 
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
@@ -101,7 +101,7 @@ const migrate = async (): Promise<void> => {
       }
       // A UTF-8 BOM is not SQL syntax. Preserve the original bytes for the
       // historical checksum, but remove a leading BOM before PostgreSQL execution.
-      await client.query(migration.sql.replace(/^\\uFEFF/, ''));
+      await client.query(normalizeMigrationSqlForExecution(migration.sql));
       ledgerTable = await resolveLedgerTable(client);
       if (!ledgerTable) throw new Error(`Migration ${migration.filename} completed but the migration ledger cannot be resolved`);
       await client.query(`INSERT INTO ${ledgerTable} (version, name, checksum) VALUES ($1, $2, $3)`, [migration.version, migration.name, migration.checksum]);
