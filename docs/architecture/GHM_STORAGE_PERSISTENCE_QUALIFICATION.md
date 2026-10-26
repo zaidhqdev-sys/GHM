@@ -2,7 +2,8 @@
 
 ## Status
 
-**QUALIFIED / PASS — 2026-10-05**
+**Persistence boundary: QUALIFIED / PASS — 2026-10-05**  
+**Live provider path: REQUALIFIED / PASS — 2026-10-26**
 
 ## Purpose
 
@@ -37,7 +38,7 @@ The qualification creates one isolated probe object. The object is driven to the
 
 This qualification is intentionally provider-free and does not itself qualify provider credentials, object upload/download, signed URLs, tenant authorization, provider/object reconciliation, or backup/recovery.
 
-The later controlled live-provider data-path result is recorded separately in `docs/evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-05.md`; it qualifies real signed upload/download, provider metadata observation, payload integrity, and deletion for that bounded test. It does not close the following remaining gates:
+The original live-provider data-path result is recorded in `../evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-05.md`. The provider path was requalified on 2026-10-26; current run evidence is in `../evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-26.md`. Both results qualify signed upload/download, provider metadata observation, payload integrity, and deletion for the bounded provider test, not the full application workflow. It does not close the following remaining gates:
 
 - full service-level tenant/resource authorization;
 - failed-operation recovery and orphan/provider reconciliation;
@@ -56,4 +57,4 @@ The result must remain consistent with:
 - GHM database authority;
 - authorization/tenant-isolation contracts.
 
-This persistence-only qualification does not authorize provider provisioning by itself. Controlled non-production Cloudflare R2 provider data-path qualification was subsequently completed as recorded in `../evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-05.md`; production provider enablement and application wiring remain separately gated.
+This persistence-only qualification does not authorize provider provisioning by itself. Live Cloudflare R2 provider data-path qualification is recorded in the dated evidence files above. The 2026-10-26 run used the only existing bucket, named `zaid-ghm-production`; although its temporary qualification object was confirmed deleted, this is not evidence of a dedicated non-production bucket. Production provider enablement and application wiring remain separately gated. The authenticated application/API path and the guarded database persistence qualification still need end-to-end confirmation.
