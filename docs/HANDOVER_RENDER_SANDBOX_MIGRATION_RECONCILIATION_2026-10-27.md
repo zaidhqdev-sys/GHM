@@ -406,3 +406,18 @@ The primary preflight showed no `ghm_runtime` table-level grants on `ghm.busines
 ### Resume point
 
 The next useful step is to verify the current live Render deployment status/commit and inspect existing qualification evidence for the storage getter, while keeping all database operations read-only. The compatibility mismatch and candidate/main distinction above are now documented; do not repeat broad GitHub code search, which previously returned no usable results.
+
+
+## Addendum — Render deployment status rechecked (2026-10-28)
+
+Read-only Render service/deployment queries reconfirmed:
+
+- `ghm-payfast-sandbox-runtime` (`srv-db5vtgl9fdbs73eaclbg`) is configured for `main`, auto-deploy on commit. Its latest listed live deployment is commit `0da8fdc792fa7873a89c4b0d507b3b4047688e68`, deploy `dep-dbft4np5efls73ec8skg`, completed 2026-10-26 22:22 UTC.
+- `ghm-identity-qualification` (`srv-dbahvenbtjjs73f83rlg`) is configured for `integration/ghm-identity-merge-candidate-20261018`, auto-deploy off. Its latest listed live deployment is commit `7fb1bbe07fc64ede652ae589ab72bdc96f23d906`, deploy `dep-dbfrn1586sus73euig9g`, completed 2026-10-26 20:45 UTC.
+- No deploy was triggered and no service settings were changed.
+
+**Important scope qualification:** the source-to-schema incompatibility is proven between the audited primary database `ghm_db` catalog (one-argument getter only) and the storage repository source in both inspected commits (two-argument getter call). However, the Render service's effective database target was not read from its environment configuration, so do not claim yet that the live Render service definitely connects to `ghm_db`. Confirm the service-to-database mapping using safe metadata that does not reveal secrets before describing this as a live production incident. If the runtime service does use `ghm_db`, storage `getById` paths are expected to fail until the schema and code are reconciled.
+
+The documented qualification evidence on `main` says the scoped getter migration and persistence qualification passed on the separate qualification database. That evidence is **not** proof the primary `ghm_db` has the migration applied. The qualification script deliberately hard-checks `ghm_disposable_test`; never bypass that guard or run fixture-creating directory/profile qualification scripts against `ghm_db`.
+
+Next step remains read-only: establish the runtime service's database target without exposing connection strings or secrets, and inspect any existing `ghm_disposable_test` storage qualification output. Then draft a database-specific reviewed migration plan; do not apply migrations or edit ledger records without explicit authorization.
