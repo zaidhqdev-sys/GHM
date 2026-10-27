@@ -217,3 +217,33 @@ Do not change the IP allowlist or use the empty PayFast sandbox database as a su
 The user states that because `ghm-payfast-sandbox-db` is empty, the earlier 89-entry ledger must be in `ghm-db` (`ghm_db`, Render ID `dpg-dag0sdtbedkc7389vi2g-a`). This is a reasonable hypothesis, but it remains **unverified**. The hosted Render read-only query connection to `ghm-db` was blocked because its IP allowlist is empty. Do not change the allowlist to test this.
 
 Next safe step: use the same already-authorized local connection context that produced the 89-row audit to run read-only identification queries, and confirm `current_database()` before reading the ledger. Because `ghm-db` is the primary database, keep all access read-only and do not run migrations or alter data. If the 89-row audit did in fact target `ghm_db`, retrieve only the two target ledger rows and compare their stored checksums to the SQL bytes in deployed commit `7fb1bbe07fc64ede652ae589ab72bdc96f23d906`.
+
+
+## Addendum — primary `ghm_db` catalog inspection (2026-10-27 19:09 UTC)
+
+The user asked to proceed on the hypothesis that the original 89-entry ledger was in `ghm-db`. Read-only Render queries now establish the following:
+
+- Connected database: `ghm_db`; connected role: `ghm_db_user`.
+- The migration ledger table **does exist** at `ghm.ghm_schema_migrations` (not `public.ghm_schema_migrations`). The earlier public-schema-only check was insufficient and must not be interpreted as absence of the ledger.
+- Catalog metadata reports the schema and table owner as `ghm_schema_owner`.
+- `pg_stat_user_tables.n_live_tup` reports an estimated 78 live rows for `ghm.ghm_schema_migrations`. This is only a statistics estimate, not an exact count and not evidence for 89 rows.
+- A direct SELECT against `ghm.ghm_schema_migrations` failed with `permission denied for schema ghm` for the hosted tool's `ghm_db_user` role. No permissions were changed.
+
+### Next step
+
+Use the already-authorized local database connection/role that performed the original audit, or ask the database owner to run these read-only queries. Do not grant privileges, change roles/allowlists, or modify data just to make the hosted query tool work.
+
+```sql
+SELECT current_database() AS database_name, current_user AS connected_role;
+
+SELECT count(*) AS exact_ledger_entries,
+       count(DISTINCT version) AS distinct_versions
+FROM ghm.ghm_schema_migrations;
+
+SELECT version, name, checksum, applied_at
+FROM ghm.ghm_schema_migrations
+WHERE version IN ('20261019190000', '20261019210000')
+ORDER BY version;
+```
+
+Run the last query only after the first two confirm the intended database and exact ledger count. Compare the returned checksums with SHA-256 over the exact raw SQL bytes from the deployed integration commit. Do not equate Git blob IDs with file SHA-256 values. Keep all queries read-only.
