@@ -145,3 +145,43 @@ Do not repeat the broad search for these names. The next step is to establish de
 5. Until these checks agree, classify the two entries as **likely explained by integration-branch migration history, but not yet checksum/deployment-verified**. Do not edit ledger rows, run migrations, or promote/merge branches as part of this investigation.
 
 The handover PR itself is documentation-only: [PR #188](https://github.com/zaidhqdev-sys/GHM/pull/188). It has not been merged at the time of this addendum.
+
+
+## Addendum — Render inventory and target-database ambiguity (2026-10-27)
+
+Read-only Render inventory identified three PostgreSQL instances in workspace `ZAID Technologies`:
+
+- `ghm-db` — database `ghm_db`, ID `dpg-dag0sdtbedkc7389vi2g-a`, environment `evm-d9t1la7qj5pc73dludsg`.
+- `ghm-payfast-sandbox-db` — database `ghm_payfast_sandbox_db`, ID `dpg-db4416vlk1mc73eocug0-a`, environment `evm-db43vk4s728c739fn460`.
+- `ghm-identity-qualification-20261018` — database `ghm_identity_qualification_20261018`, ID `dpg-dba0tu3rjlhs738fs2sg-a`, environment `evm-db43vk4s728c739fn460`.
+
+Related services:
+- `ghm-payfast-sandbox-runtime` (`srv-db5vtgl9fdbs73eaclbg`) deploys from `main`, with auto-deploy enabled.
+- `ghm-identity-qualification` (`srv-dbahvenbtjjs73f83rlg`) deploys from `integration/ghm-identity-merge-candidate-20261018`, with auto-deploy disabled.
+
+A read-only Render Postgres query against `ghm_payfast_sandbox_db` returned no application tables and no migration ledger table. This is an important mismatch with the earlier reported 89-row ledger audit. Do **not** conclude that the ledger disappeared or recreate it: the query may have targeted a different database than the one used for the prior audit, or this Render database may be empty and not the audit target.
+
+Attempts to query the other two Render databases through the hosted Render connection were blocked because their IP allowlists are empty. Do not change those allowlists to enable this investigation. The Render deploy history for `ghm-payfast-sandbox-runtime` shows the latest live deployment is from `main` commit `0da8fdc792fa7873a89c4b0d507b3b4047688e68` (2026-10-26). The qualification service's latest listed deployment is from integration commit `7fb1bbe07fc64ede652ae589ab72bdc96f23d906` (2026-10-26). This inventory alone does not establish which database was the earlier 89-row audit target.
+
+### Revised immediate next step — identify the exact audited database before any further DB query
+
+Ask the user for the exact database target used by the prior 89-row audit (Render instance name/ID or a redacted connection target showing only host and database name). Do not request credentials or a full connection string. Alternatively, have the user run a read-only query in the same already-approved local connection context used for that audit:
+
+```sql
+SELECT current_database() AS database_name,
+       current_user AS connected_role,
+       inet_server_addr()::text AS server_address,
+       inet_server_port() AS server_port;
+
+SELECT table_schema, table_name
+FROM information_schema.tables
+WHERE table_type = 'BASE TABLE'
+  AND table_name = 'ghm_schema_migrations'
+ORDER BY table_schema, table_name;
+```
+
+Share only the results, not passwords, tokens, or a complete connection URL. Once the exact target is identified, repeat the SELECT-only lookup for the two ledger rows on that database. Do not use the Render database with no ledger as a substitute, and do not alter any IP allowlist, credentials, ledger row, or migration state.
+
+### Updated assessment of the two entries
+
+Both migration SQL files have now been recovered from remote Git branches with exact blob IDs and are associated with refreshed PRs merged into the integration candidate branch (#174 for engagement events and #172 for registration identity). This makes their provenance plausible and traceable, but **the actual database target and the two stored checksums still need to be matched**. Keep each entry classified as “branch/PR provenance found; applied-database and checksum match unverified” until that evidence is obtained.
