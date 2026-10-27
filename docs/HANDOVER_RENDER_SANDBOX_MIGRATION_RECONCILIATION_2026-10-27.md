@@ -210,3 +210,10 @@ The two migration entries now have strong repository/deployment-source provenanc
 ### Next safe step
 
 Do not change the IP allowlist or use the empty PayFast sandbox database as a substitute. From the already-approved local connection context that produced the 89-row audit, run read-only identification and ledger queries. First confirm `current_database()`, then list non-system tables, then retrieve only the two matching rows from `ghm_schema_migrations`. Do not share secrets. Compare the stored SHA-256 checksums to the exact raw SQL bytes from deployed commit `7fb1bbe07fc64ede652ae589ab72bdc96f23d906`; Git blob SHA-1 IDs above are not interchangeable with SQL SHA-256 checksums.
+
+
+## Addendum — likely audit target identified by user (2026-10-27 19:08 UTC)
+
+The user states that because `ghm-payfast-sandbox-db` is empty, the earlier 89-entry ledger must be in `ghm-db` (`ghm_db`, Render ID `dpg-dag0sdtbedkc7389vi2g-a`). This is a reasonable hypothesis, but it remains **unverified**. The hosted Render read-only query connection to `ghm-db` was blocked because its IP allowlist is empty. Do not change the allowlist to test this.
+
+Next safe step: use the same already-authorized local connection context that produced the 89-row audit to run read-only identification queries, and confirm `current_database()` before reading the ledger. Because `ghm-db` is the primary database, keep all access read-only and do not run migrations or alter data. If the 89-row audit did in fact target `ghm_db`, retrieve only the two target ledger rows and compare their stored checksums to the SQL bytes in deployed commit `7fb1bbe07fc64ede652ae589ab72bdc96f23d906`.
