@@ -185,3 +185,28 @@ Share only the results, not passwords, tokens, or a complete connection URL. Onc
 ### Updated assessment of the two entries
 
 Both migration SQL files have now been recovered from remote Git branches with exact blob IDs and are associated with refreshed PRs merged into the integration candidate branch (#174 for engagement events and #172 for registration identity). This makes their provenance plausible and traceable, but **the actual database target and the two stored checksums still need to be matched**. Keep each entry classified as “branch/PR provenance found; applied-database and checksum match unverified” until that evidence is obtained.
+
+
+## Addendum — deployed commit confirms both SQL files; sandbox target still unresolved (2026-10-27)
+
+Further read-only checks were completed after the user confirmed the audit was against a sandbox database:
+
+1. A direct read-only connection to Render Postgres instance `ghm-payfast-sandbox-db` (`dpg-db4416vlk1mc73eocug0-a`) confirms:
+   - `current_database() = ghm_payfast_sandbox_db`
+   - `current_user = ghm_payfast_sandbox_db_user`
+   - `ghm_schema_migrations` table count = 0
+   - A second catalog query found **zero non-system base tables** in that database.
+2. Therefore this specific Render database is reachable but empty. It cannot be the same database state that produced an 89-row migration ledger unless the state/target has changed since the audit. Do not recreate tables or apply migrations to it.
+3. The Render service `ghm-identity-qualification` is configured to deploy from `integration/ghm-identity-merge-candidate-20261018`. Its last listed deployment commit is `7fb1bbe07fc64ede652ae589ab72bdc96f23d906` (2026-10-26). Inspecting that exact commit's Git tree confirms both migrations are present with the expected Git blob IDs:
+   - `database/migrations/20261019190000_create_business_engagement_events.sql` — `c83965ce74347cc7ca3799e9b0f3f4f9460dcd2d` (1502 bytes)
+   - `database/migrations/20261019210000_create_business_registration_identity.sql` — `c1c3e4d9b4148376109177cf3106aa3519e15df6` (7295 bytes)
+4. The separate Render Postgres instance `ghm-identity-qualification-20261018` (`dpg-dba0tu3rjlhs738fs2sg-a`) has an empty IP allowlist, and the hosted read-only query tool cannot connect. No allowlist, credentials, or database configuration was changed.
+5. The service's deployed commit proves the files are included in the deployed source tree; it does **not** prove those migrations were applied to the database, nor does it provide the ledger checksums.
+
+### Current conclusion
+
+The two migration entries now have strong repository/deployment-source provenance. The remaining blocker is identifying which sandbox database held the reported 89-row ledger and reading its two checksums. The named PayFast sandbox database currently has no application tables. The identity qualification database is a plausible candidate because it is paired with the integration-branch service that deploys both files, but this is not yet confirmed and its ledger has not been inspected.
+
+### Next safe step
+
+Do not change the IP allowlist or use the empty PayFast sandbox database as a substitute. From the already-approved local connection context that produced the 89-row audit, run read-only identification and ledger queries. First confirm `current_database()`, then list non-system tables, then retrieve only the two matching rows from `ghm_schema_migrations`. Do not share secrets. Compare the stored SHA-256 checksums to the exact raw SQL bytes from deployed commit `7fb1bbe07fc64ede652ae589ab72bdc96f23d906`; Git blob SHA-1 IDs above are not interchangeable with SQL SHA-256 checksums.
