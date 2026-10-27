@@ -247,3 +247,16 @@ ORDER BY version;
 ```
 
 Run the last query only after the first two confirm the intended database and exact ledger count. Compare the returned checksums with SHA-256 over the exact raw SQL bytes from the deployed integration commit. Do not equate Git blob IDs with file SHA-256 values. Keep all queries read-only.
+
+
+## Addendum — role membership checked; hosted query still cannot read ledger (2026-10-27 19:11 UTC)
+
+Additional read-only catalog inspection of `ghm_db` found that `ghm_db_user` is a member of `ghm_schema_owner` with admin option, and `ghm_schema_migrations` is owned by `ghm_schema_owner`. However, the hosted query tool wraps each query in a read-only transaction and opens/closes a fresh connection per call. It rejects multiple SQL commands in one prepared statement, so a `SET ROLE` followed by a ledger SELECT cannot be performed in one call. No role changes or grants were made.
+
+Current known evidence:
+- Database `ghm_db` contains `ghm.ghm_schema_migrations`.
+- Table statistics estimate 78 live rows; this is not an exact count.
+- Direct SELECT under `ghm_db_user` fails due to lack of schema/table read privilege.
+- Exact row count and checksums remain unverified.
+
+Do not try to bypass permissions with ad hoc functions or alter database grants. The straightforward next action is to use the user's existing authorized audit connection/role and run the documented SELECT-only queries, or have the database owner execute them. The current hosted tool cannot complete the row inspection under its connection restrictions.
