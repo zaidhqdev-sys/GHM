@@ -110,3 +110,38 @@ Record:
 ## Completion criteria
 
 This investigation is not complete until both unexplained entries have a documented, evidence-backed explanation or are explicitly left unresolved for the owner to decide. A matching migration count alone is not proof of consistency, and a checksum match for one migration does not resolve the two unexplained ledger entries.
+
+
+## Addendum — remote branch/PR provenance discovered on 2026-10-27
+
+The first remote GitHub investigation found both exact migration files on dedicated migration branches; the initial local-only search is therefore no longer the right first step.
+
+### Business engagement events
+
+- File: `database/migrations/20261019190000_create_business_engagement_events.sql`
+- Git blob SHA: `c83965ce74347cc7ca3799e9b0f3f4f9460dcd2d`
+- Found on `migration/business-engagement-events-20261019` and refreshed branch `migration/business-engagement-events-refresh-20261021`.
+- Related refreshed PR [#174](https://github.com/zaidhqdev-sys/GHM/pull/174) was merged on 2026-10-21 into `integration/ghm-identity-merge-candidate-20261018`, merge commit `5d3958434afc16ab7d1c6db61fb334dcd4201e29`.
+- PR #174 says the refreshed integration work carries the business-engagement implementation forward.
+
+### Business registration identity
+
+- File: `database/migrations/20261019210000_create_business_registration_identity.sql`
+- Git blob SHA: `c1c3e4d9b4148376109177cf3106aa3519e15df6`
+- Found on `migration/ghm-business-registration-identity-20261019` and refreshed branch `migration/business-registration-identity-refresh-20261021`.
+- Related refreshed PR [#172](https://github.com/zaidhqdev-sys/GHM/pull/172) was merged on 2026-10-21 into `integration/ghm-identity-merge-candidate-20261018`, merge commit `7681736389b13c82a81f7a6419826204ef584676`.
+- PR #172 describes a private self-declared registration identity table and narrow owner/administrator-authorized functions; it explicitly requires migration/security review before promotion.
+
+GitHub code search on the default branch `main` did not return either filename/name, and the current `main` migration directory listing did not include either file. That does **not** prove the sandbox ledger entries are invalid: both files existed in dedicated branches and their changes were merged into the integration candidate branch. The branch/PR evidence is a strong lead for why the sandbox ledger may contain them, but it is not yet proof of which commit was deployed to Render or whether these exact file bytes match the sandbox ledger checksums.
+
+### Revised next action
+
+Do not repeat the broad search for these names. The next step is to establish deployment provenance and checksum equality, read-only:
+
+1. Retrieve the two complete sandbox ledger rows (migration version/name, checksum, applied timestamp, and any execution/deployment metadata available). Do not change them.
+2. Determine the exact commit/ref deployed to the Render sandbox around the migration timestamps, if available from Render deployment history or the owner’s records.
+3. Compare that commit/ref with the integration candidate branch and the two PR merge commits above. Establish whether the deployed commit contains both migration blobs.
+4. Compare each ledger checksum to the exact raw SQL bytes from its matching deployed commit/file. Do not assume a Git blob SHA is equivalent to a SHA-256 checksum; they are different hash schemes. Preserve raw bytes when hashing.
+5. Until these checks agree, classify the two entries as **likely explained by integration-branch migration history, but not yet checksum/deployment-verified**. Do not edit ledger rows, run migrations, or promote/merge branches as part of this investigation.
+
+The handover PR itself is documentation-only: [PR #188](https://github.com/zaidhqdev-sys/GHM/pull/188). It has not been merged at the time of this addendum.
