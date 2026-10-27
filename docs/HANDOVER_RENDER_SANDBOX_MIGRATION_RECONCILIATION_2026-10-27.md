@@ -362,3 +362,47 @@ No migrations have been executed, no ledger rows inserted/updated/deleted, no gr
 ### How to resume without repeating work
 
 Start from this addendum and the 11-version list. Do **not** repeat the initial two-entry historical-migration search, the Render instance inventory, or the flawed function-signature preflight. The current immediate task is application compatibility and migration readiness for the primary `ghm_db`, with special attention to the old storage getter and runtime privileges. The documentation handover PR remains [#188](https://github.com/zaidhqdev-sys/GHM/pull/188) unless its status is separately verified.
+
+
+## Addendum — source-to-live-schema compatibility findings (2026-10-28, continued read-only review)
+
+Read-only GitHub source inspection was performed against both the known live `main` deployment commit `0da8fdc792fa7873a89c4b0d507b3b4047688e68` and the qualification/integration commit `7fb1bbe07fc64ede652ae589ab72bdc96f23d906`. No repository source, database state, or deployment was changed.
+
+### Confirmed storage caller mismatch — high priority
+
+The file `src/storage/repository.ts` has the same Git blob on `main` and the integration candidate (blob `abd1c335128ff7768e8a838a1ef491eb077846e3`). Its `getById(id)` method calls:
+
+```ts
+client.query("SELECT * FROM ghm.storage_get_object($1, $2)", [
+  Number(id),
+  this.context.userId,
+]);
+```
+
+This supplies the account ID from the server-side authenticated `AuthContext`, matching the new migration's intended contract; it does not take that account ID from request input. The HTTP storage router uses this repository for object complete/access/delete paths.
+
+However, the primary `ghm_db` live catalog currently contains only `ghm.storage_get_object(p_object_id bigint)`, not the two-argument `storage_get_object(bigint,bigint)` required by the deployed application source. Migration `20261026120000_scope_storage_metadata_lookup.sql` exists in both inspected source refs, but its ledger entry and schema effect are missing in the primary database. **This is a confirmed app/schema compatibility mismatch:** any path invoking `getById` is expected to fail with a PostgreSQL function-signature resolution error until code/schema are reconciled. Do not assume all storage routes are affected; the mismatch is specifically on callers that use `getById`.
+
+The intended migration replaces the ID-only getter with a two-argument account-aware function and drops the old overload. This is the intended direction for least-privilege access, and the application call site already passes the authenticated account ID. Before applying it, still confirm the exact currently running deployment and exercise the migration's dedicated qualification against an approved disposable test database. The existing `scripts/qualify-storage-getter-postgres.mjs` explicitly refuses any database other than `ghm_disposable_test`; **do not repoint or bypass that guard to run it against `ghm_db`**.
+
+### Directory feature is branch-scoped; do not apply candidate schema effects to main blindly
+
+The integration candidate's `src/resources/directory/repository.ts` selects the new `ghm.business` fields (`category`, `province`, `city`, `physical_address`, `whatsapp`, `website`, `logo_url`, `avatar_letter`, `avatar_color`, `is_supplier`, `tier`, `is_featured`, `profile_views`, `years_in_business`) and filters on province/city/supplier. The candidate's profile-update migration `20261016180000` expands the SECURITY DEFINER function to allow a limited set of owner-managed descriptive fields, and depends on columns from `20261016170000`.
+
+By contrast, `main`'s `src/resources/directory/repository.ts` selects only the pre-existing business fields and does not reference those new columns. Thus the new directory columns are an integration-candidate feature dependency, not a reason by themselves to migrate the primary database for the currently known `main` runtime. The candidate service is configured to deploy from the integration branch with auto-deploy disabled and must be qualified against its intended database before promotion. Do not promote the candidate or apply all 11 migrations to `ghm_db` as a shortcut.
+
+### External business mapping privilege check
+
+The primary preflight showed no `ghm_runtime` table-level grants on `ghm.business_external_mapping`. Source history also contains `20261012120000_revoke_runtime_business_mapping_table_access.sql`, which revokes all direct runtime table privileges; the new account-external-mapping migration's DML revocation is therefore not the first revocation for that table. Keep access through the existing narrow SECURITY DEFINER lookup/link functions, and do not restore direct table access for convenience. This reduces the privilege-change uncertainty, but does not replace a fresh effective-privilege check before any migration.
+
+### Updated action order
+
+1. **Keep all database activity read-only.** The storage caller mismatch is now evidenced; do not run migrations or hand-edit the ledger as an emergency patch.
+2. Record/verify the exact live deployment still uses commit `0da8fdc792fa7873a89c4b0d507b3b4047688e68` before treating this as current runtime behavior.
+3. Use the already-defined disposable-database storage qualification only on `ghm_disposable_test`, and inspect its latest result if available. Do not run qualification scripts that create fixtures against `ghm_db`; the directory/profile qualification scripts include INSERTs and cleanup and are not read-only.
+4. Prepare a reviewed, explicit migration plan for the intended database and release. At minimum it must reconcile the missing migration ledger records with missing schema effects, respect migration dependencies, and account for the old storage function being removed. Any actual migration run requires separate explicit authorization.
+5. For the integration candidate, establish the correct target database first, then run its directory/business-profile qualification only against an approved disposable or staging target. Do not use the primary database simply because the local migrator URL points there.
+
+### Resume point
+
+The next useful step is to verify the current live Render deployment status/commit and inspect existing qualification evidence for the storage getter, while keeping all database operations read-only. The compatibility mismatch and candidate/main distinction above are now documented; do not repeat broad GitHub code search, which previously returned no usable results.
