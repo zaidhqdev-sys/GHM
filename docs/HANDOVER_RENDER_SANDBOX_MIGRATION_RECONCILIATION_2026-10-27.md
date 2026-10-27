@@ -260,3 +260,105 @@ Current known evidence:
 - Exact row count and checksums remain unverified.
 
 Do not try to bypass permissions with ad hoc functions or alter database grants. The straightforward next action is to use the user's existing authorized audit connection/role and run the documented SELECT-only queries, or have the database owner execute them. The current hosted tool cannot complete the row inspection under its connection restrictions.
+
+
+## Addendum — authoritative primary-database migration/effects audit (2026-10-27 23:55 UTC)
+
+**This addendum supersedes earlier assumptions in this document that the immediate task was only to explain two unexplained historical ledger entries.** The latest local audit is connected to the primary Render database `ghm_db` using the already-configured `GHM_MIGRATOR_DATABASE_URL`, and `SET ROLE ghm_schema_owner` succeeds. The connection context was confirmed as:
+
+- `current_database() = ghm_db`
+- `current_user = ghm_schema_owner`
+- `transaction_read_only = on`
+
+No database changes have been made. The audit and all preflight queries used read-only transactions and rolled back.
+
+### Latest migration-ledger audit
+
+The latest audit reported:
+
+- Repository migrations: **89**
+- Live ledger entries: **78**
+- Canonical checksum matches: **7**
+- Supported legacy CRLF matches: **62**
+- Approved historical matches: **9**
+- Missing repository migrations in the live ledger: **11**
+- Unexplained checksum mismatches: **0**
+- Name mismatches: **0**
+- Extra ledger entries: **0**
+- Orphaned exceptions: **0**
+- Redundant exceptions: **7**
+- Overall verdict: **INVESTIGATE**
+
+The 11 missing versions are:
+
+1. `20261016100000_add_connect_identity_authority_contract`
+2. `20261016120000_create_account_external_mapping`
+3. `20261016170000_add_connect_directory_contract`
+4. `20261016180000_extend_owner_managed_directory_profile`
+5. `20261016190000_expose_authenticated_account_email`
+6. `20261018210000_grant_runtime_account_profile_column_updates`
+7. `20261019190000_create_business_engagement_events`
+8. `20261019210000_create_business_registration_identity`
+9. `20261020130000_create_quoteflow_migration_business_provisioning`
+10. `20261020140000_reconcile_quoteflow_provisioning_verification_status`
+11. `20261026120000_scope_storage_metadata_lookup`
+
+These are missing ledger records **and** their expected schema effects are absent in the inspected primary database. Do not treat this as a ledger-only repair. Do not write ledger entries or apply SQL until the preflight and deployment compatibility checks are complete.
+
+### Read-only object inventory on primary `ghm_db`
+
+The expected effects below were absent:
+
+- Identity columns: `ghm.account_identity.connect_role`, `business_operator_intent`.
+- Directory columns on `ghm.business`: `category`, `province`, `city`, `physical_address`, `whatsapp`, `website`, `logo_url`, `avatar_letter`, `avatar_color`, `is_supplier`, `tier`, `is_featured`, `profile_views`, `years_in_business`.
+- Tables: `ghm.account_external_mapping`, `ghm.connect_founder_directory_reviewer`, `ghm.business_engagement_event`, `ghm.business_registration_identity`, `ghm.quoteflow_migration_business_provisioning_audit`.
+- Functions: `auth_read_connect_identity_authority`, `auth_lookup_account_external_mapping`, `auth_read_account_email`, `read_business_registration_identity`, `update_business_registration_identity`, `auth_provision_quoteflow_migration_business`.
+
+A corrected function inventory (using PostgreSQL's identity-argument strings correctly) confirmed these deployed functions:
+
+- `ghm.storage_get_object(p_object_id bigint)` exists, is `SECURITY DEFINER`, owned by `ghm_schema_owner`, and executable by `ghm_runtime`.
+- `ghm.update_business_profile(p_account_id bigint, p_business_id bigint, p_patch jsonb)` exists, is `SECURITY DEFINER`, owned by `ghm_schema_owner`, and executable by `ghm_runtime`. Its deployed definition permits only `name`, `slug`, `description`, `phone`, and `email`; it does not support the new directory fields.
+
+The existing storage getter filters only on `storage_object.id = p_object_id`. Migration `20261026120000_scope_storage_metadata_lookup` replaces it with an account-aware two-argument signature and drops the old one-argument function. **This is security-relevant and potentially breaking for callers that still use the old signature.** Verify deployed application call sites and the exact release compatibility before applying it.
+
+The stored `update_business_profile` definition as printed by `pg_get_functiondef` included suspicious joined tokens such as `IFp_account_id` and `patch_keysLOOP`. Do not infer the function is broken from the printed output alone; validate the exact deployed definition and migration source if this becomes material. The reliable finding for this audit is that the live function's allowed-key list is the old five-field list and the directory columns are absent.
+
+### Additional preflight results
+
+- `ghm.business_external_mapping` exists with **3 rows**. Aggregate checks found zero blank providers, zero blank external IDs, zero null business IDs, and 3 distinct provider/external-ID pairs. No identifiers were output.
+- Approximate catalog statistics showed 23 rows in `account_identity`, 16 in `business`, 3 in `business_external_mapping`, and 2 in `business_membership`. These are estimates from catalog statistics, not exact row counts.
+- The business table was reported at approximately 80 kB; `account_identity` at 64 kB; `business_external_mapping` at 96 kB; `business_membership` at 128 kB. These small sizes do not replace checking locks, constraints, dependencies, or application behavior.
+- No conflicting indexes or constraints were found for the specific names queried by the preflight.
+- The storage function inventory returned only the one-argument getter; runtime execution is currently allowed.
+- The directory-column catalog query returned no expected directory columns.
+- The privilege views showed current `ghm_runtime` table/column grants, including SELECT on `account_identity`, INSERT/SELECT on `business`, and UPDATE on `business.rating`, `review_count`, and `updated_at`. Treat these as catalog-view output, not a complete effective-privilege proof. In particular, do not infer that a migration's privilege effect is safe merely because a queried row is absent.
+- A previous comprehensive preflight had two known defects: it compared `pg_get_function_identity_arguments()` (which includes argument names) to type-only strings, incorrectly marking existing functions absent; and its “constraint violations = 0” checks referenced directory fields that do not exist, so those zeros were meaningless. Use the corrected function inventory and do not reuse those invalid zero counts.
+
+### Migration dependencies and risk notes
+
+- `20261016100000` introduces identity authority fields, a private reviewer-authority table, and a read function. The role is intentionally nullable; do not infer contractor/supplier authority from legacy business role.
+- `20261016120000` creates explicit provider-scoped account mapping. Its lookup is migrator-only and is not an authentication mechanism. It also revokes runtime DML on `business_external_mapping`; review current application dependencies before changing that permission.
+- `20261016170000` adds directory fields, constraints, and partial indexes. It revokes runtime UPDATE on protected directory fields; the new profile API intentionally excludes tier, featured status, avatar/media, and analytics.
+- `20261016180000` replaces the profile update function and depends on the directory columns from `20261016170000`.
+- `20261018210000` grants column-scoped account-profile updates and depends on the identity columns from `20261016100000`.
+- `20261016190000` exposes only the active canonical login email through a narrow function. Callers must derive the account ID from authenticated server context.
+- `20261019190000` creates engagement events and grants narrowly scoped runtime insert/select permissions.
+- `20261019210000` creates private self-declared registration data and membership-checked owner/administrator functions; it is not independent verification of registration.
+- `20261020130000` and `20261020140000` create/replace a migration-only QuoteFlow provisioning function. The function can create a business, owner membership, mapping and audit row when invoked; its execution is granted to `ghm_schema_owner`, not `ghm_runtime`. Do not invoke it as part of migration reconciliation.
+- `20261026120000` is security-relevant and has a signature-removal compatibility risk as described above.
+
+### Current go/no-go status
+
+**Do not apply all 11 migrations as a blind batch yet.** The schema effects are missing, but the remaining go/no-go checks are:
+
+1. Inspect exact migration SQL and dependency order (source review has been completed for the 11 files on `integration/ghm-identity-merge-candidate-20261018`).
+2. Check deployed application references/call sites for `storage_get_object` and directory-profile fields against the exact running service commit. Repository code search did not return usable matches; that is not proof that callers are absent.
+3. Verify the current `business_external_mapping` runtime usage before applying its privilege revocation.
+4. Confirm migration runner behavior and the intended target/release. Do not assume the qualification service's integration branch authorizes changing the primary database.
+5. Re-run the read-only preflight after any reviewed remediation and before any write operation.
+
+No migrations have been executed, no ledger rows inserted/updated/deleted, no grants or role memberships changed, no allowlists changed, and no branches promoted as part of this investigation.
+
+### How to resume without repeating work
+
+Start from this addendum and the 11-version list. Do **not** repeat the initial two-entry historical-migration search, the Render instance inventory, or the flawed function-signature preflight. The current immediate task is application compatibility and migration readiness for the primary `ghm_db`, with special attention to the old storage getter and runtime privileges. The documentation handover PR remains [#188](https://github.com/zaidhqdev-sys/GHM/pull/188) unless its status is separately verified.
