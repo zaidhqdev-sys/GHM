@@ -65,3 +65,15 @@ The scoped getter exists as `ghm.storage_get_object(bigint,bigint)`, is owned by
 - Use the primary `ghm_db` for this production issue; do not confuse it with `ghm_payfast_sandbox_db`.
 - Do not copy database URLs, passwords, or secret environment values into handover documentation.
 - The Render Postgres query interface is read-only; it cannot apply SQL changes. The role grant above was executed by the user directly and was verified afterward.
+
+
+## Follow-up direct function invocation — 2026-10-28
+
+After the role grant, a read-only call through the Render Postgres query connection attempted:
+
+```sql
+SELECT count(*) AS rows_for_nonexistent_object
+FROM ghm.storage_get_object(9223372036854775807::bigint, 1::bigint);
+```
+
+The function was invoked and returned its designed generic `storage object does not exist` exception (SQLSTATE `P0001`), **not** a schema/function permission-denied error. The deliberately out-of-range object ID does not select or mutate a real object. This is stronger evidence that the scoped function is callable under the query connection's effective role after the grant, but it is not an end-to-end request through the Render application and does not validate migration-ledger state.
