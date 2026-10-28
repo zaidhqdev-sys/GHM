@@ -396,3 +396,14 @@ The qualification-database migration run completed with exit code 0 on 2026-10-2
 - Build output continues to report 3 npm audit vulnerabilities (moderate/high/critical); package-level triage is still required.
 
 Next actions: obtain a known dedicated Connect preview deployment/origin via authorized Vercel access or an existing deployment URL; confirm/set only that exact origin on the qualification service; run regression tests in CI; execute non-production HTTP tests for auth/session, identity, rate limits and tenant isolation; triage dependency advisories. No production service, environment variables, database, or payment configuration was changed.
+
+
+### Sandbox verification attempt — 2026-10-29 00:08 UTC
+
+- Reconfirmed Render deploy `dep-dbh723m7bikc73fellpg` is `live`, commit `d110bca50f229256a86308712ef4b581fa8ba8c5`; build succeeded and startup logged `GHM Core Engine listening on port 10000`.
+- Source confirms the service exposes `GET /healthz`. However, the web inspection tool and execution container both fail DNS resolution for `ghm-identity-qualification.onrender.com`; no HTTP status/body was observed. This is an inspection-network limitation, not evidence that the service itself is down.
+- Reviewed `src/http/auth-router.test.ts`: it includes browser login/refresh/logout cookie assertions, rejection of missing/unapproved Origin, and the new 61st-logout-request rate-limit assertion. Those test cases are present in the branch, but no successful CI run for the current head was returned; Render's build command is `npm ci --include=dev && npm run build`, not `npm test`. Thus tests are not yet proven to have executed.
+- Vercel access context currently lists only `zaid-technologies-website` under the ZAID Technologies team; lookup of `zaid-connect` project/deployment/environment returns not found. The Connect sandbox preview origin therefore cannot be safely discovered or allowlisted using this connection. Do not substitute the known production origin or guess a preview hostname.
+- No changes to Render env, Connect project configuration, production runtime, database, or payments were made.
+
+Immediate blocker: obtain a working authorized Vercel connection/project context for `zaid-connect` (or a verified dedicated sandbox preview URL) and a network path that can reach the Render sandbox. Then run `npm test`/the auth-router tests in CI and execute HTTP/browser integration checks. Until those evidence gates pass, mark sandbox deployment as build/live only, not auth-qualified.
