@@ -77,3 +77,11 @@ FROM ghm.storage_get_object(9223372036854775807::bigint, 1::bigint);
 ```
 
 The function was invoked and returned its designed generic `storage object does not exist` exception (SQLSTATE `P0001`), **not** a schema/function permission-denied error. The deliberately out-of-range object ID does not select or mutate a real object. This is stronger evidence that the scoped function is callable under the query connection's effective role after the grant, but it is not an end-to-end request through the Render application and does not validate migration-ledger state.
+
+
+## Additional live-service checks — 2026-10-28 00:52 UTC
+
+- Source inspection of the deployed mainline commit confirms `src/http/app.ts` defines `GET /healthz`; `src/server.ts` also defines `GET /readyz` based on its startup readiness flag. Render service metadata configures `/healthz` as its health-check path.
+- Attempted to fetch `https://ghm-internal-runtime.onrender.com/healthz` and the root URL from available web/network tools; both were inaccessible from this environment. A local network probe also failed DNS resolution, so this is a limitation of the current checking environment, not proof of service failure.
+- Render request logs for 2026-10-28 00:40–01:00 UTC returned no rows. HTTP request-count metrics for the same interval returned an empty data series. These results do not establish whether the service is receiving requests or healthy.
+- The next meaningful test needs a client with network access to the Render hostname and a safe authenticated application context. Do not use a fabricated token or an unscoped object ID. The database function invocation above is the only live call currently verified.
