@@ -19,6 +19,15 @@ export const matchesMigrationSqlChecksum = (storedChecksum: string, sql: string)
   return storedChecksum === legacyCrlfChecksum;
 };
 
-/** Remove a leading UTF-8 BOM before passing migration SQL to PostgreSQL. */
-export const normalizeMigrationSqlForExecution = (sql: string): string =>
-  sql.replace(/^\uFEFF/, '');
+/**
+ * Prepare canonical migration SQL for the runner's already-open transaction.
+ * Migration files may retain explicit outer BEGIN/COMMIT for standalone use;
+ * strip only a leading BEGIN and trailing COMMIT when executing via this runner.
+ * Checksum calculation always uses the untouched canonical SQL.
+ */
+export const normalizeMigrationSqlForExecution = (sql: string): string => {
+  const withoutBom = sql.replace(/^\uFEFF/, '');
+  return withoutBom
+    .replace(/^\s*BEGIN\s*;\s*/i, '')
+    .replace(/\s*COMMIT\s*;\s*$/i, '\n');
+};
