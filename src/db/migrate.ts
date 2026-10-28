@@ -5,9 +5,14 @@ import path from 'path';
 import historicalProvenanceExceptions from '../../config/historical-migration-provenance-exceptions.json';
 import { migrationSqlChecksum, matchesMigrationSqlChecksum, normalizeMigrationSqlForExecution } from './migration-checksum';
 import { Pool, PoolClient } from 'pg';
+import { assertPostgresTargetConfiguration } from './postgres-target-guard';
 
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
-if (!databaseUrl) throw new Error('Missing required environment variable: GHM_MIGRATOR_DATABASE_URL');
+const approvedTarget = assertPostgresTargetConfiguration(databaseUrl, {
+  databaseName: process.env.GHM_MIGRATION_DATABASE_NAME,
+  host: process.env.GHM_MIGRATION_DATABASE_HOST,
+  label: 'GHM migration target',
+});
 
 const databaseSsl = process.env.DATABASE_SSL === 'true';
 if (process.env.NODE_ENV === 'production' && !databaseSsl) {
