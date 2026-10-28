@@ -441,3 +441,43 @@ Resume actions:
 2. Inspect database inventory and safe, non-secret service-to-database mapping evidence.
 3. If `ghm_disposable_test` is available and its connection is already configured, run only the guarded read-only getter qualification there and capture its output; do not change its guards.
 4. Continue to keep `ghm_db` read-only until a migration plan for the intended service/database pair is reviewed and explicitly authorized.
+
+
+## Addendum — confirmed Render environment mapping and sandbox schema (2026-10-28 00:04 UTC)
+
+The user explicitly authorized use of the Render workspace **ZAID Technologies** (`tea-d9svua6417fc73bhcutg`). Subsequent calls passed that workspace ID explicitly; no global workspace selection was changed.
+
+### Environment mapping now established from Render metadata
+
+- `ghm-payfast-sandbox-runtime` (`srv-db5vtgl9fdbs73eaclbg`) has Render environment ID `evm-db43vk4s728c739fn460`.
+- `ghm-payfast-sandbox-db` (`dpg-db4416vlk1mc73eocug0-a`) has the same environment ID `evm-db43vk4s728c739fn460`.
+- `ghm-db` (`dpg-dag0sdtbedkc7389vi2g-a`) has a different environment ID, `evm-d9t1la7qj5pc73dludsg`.
+- `GHM-Internal-Runtime` also has the primary `ghm-db` environment ID, but it is a separate service and was not established as the storage caller under investigation.
+- `ghm-identity-qualification` shares the PayFast sandbox environment ID but its database target cannot yet be verified through the Render SQL tool because that qualification database blocks external connections via an empty IP allowlist. Do not change that allowlist merely to make this investigation easier.
+
+This environment-ID match is strong Render-level evidence that the PayFast sandbox runtime belongs with `ghm-payfast-sandbox-db`, not the primary `ghm-db`. It is not a substitute for inspecting secret environment-variable values; those were not retrieved or exposed.
+
+### Read-only Render SQL catalog check: sandbox versus primary
+
+Using Render's read-only Postgres query tool, the safe catalog probe returned:
+
+| Database | Legacy one-argument getter | Scoped two-argument getter | Directory columns |
+|---|---:|---:|---:|
+| `ghm_db` (primary) | present | absent | 0 of 14 |
+| `ghm_payfast_sandbox_db` | absent | present | 0 of 14 |
+
+The sandbox catalog also lists `ghm.ghm_schema_migrations` and `ghm.quoteflow_migration_business_provisioning_audit`. A follow-up attempt to read schema-qualified ledger rows was denied by the connected database role's lack of `USAGE` on schema `ghm`; no access was changed and no ledger row values were retrieved. The first probe's information-schema counts for new tables are not authoritative here because information-schema visibility is privilege-filtered. Use catalog metadata for existence checks, and do not infer table absence from an empty information-schema result under this role.
+
+### Updated interpretation
+
+The previously observed storage-function mismatch is confirmed for the **primary `ghm_db`**, but Render environment metadata points the PayFast sandbox runtime at the separate `ghm_payfast_sandbox_db`, where the account-scoped getter is already present. Therefore, do **not** describe the primary database mismatch as a confirmed outage for `ghm-payfast-sandbox-runtime`. The primary database still has the legacy signature and missing candidate directory schema, and the separate `GHM-Internal-Runtime` environment association means its use of that database deserves its own deliberate review before any changes.
+
+The sandbox database has the storage getter signature required by the source, but its directory columns are absent; this is consistent with the current `main` source not depending on the integration candidate's directory columns. The sandbox schema inventory also shows the QuoteFlow provisioning audit table. This limited catalog probe does not establish the complete migration ledger state or prove every migration's effects; those require a permission-appropriate read-only audit.
+
+### Resume here
+
+1. Keep using explicit workspace ID `tea-d9svua6417fc73bhcutg` on Render calls.
+2. Continue read-only catalog auditing of `ghm_payfast_sandbox_db` and `ghm_db` separately; do not query or expose business/account row contents.
+3. Do not alter allowlists or grants to overcome the qualification DB's external-connection block.
+4. Before planning primary-database changes, inspect `GHM-Internal-Runtime`'s database dependency using safe non-secret metadata and determine which release actually needs the candidate schema.
+5. No migrations, ledger edits, permission changes, allowlist changes, or deployments were performed in this step.
