@@ -407,3 +407,13 @@ Next actions: obtain a known dedicated Connect preview deployment/origin via aut
 - No changes to Render env, Connect project configuration, production runtime, database, or payments were made.
 
 Immediate blocker: obtain a working authorized Vercel connection/project context for `zaid-connect` (or a verified dedicated sandbox preview URL) and a network path that can reach the Render sandbox. Then run `npm test`/the auth-router tests in CI and execute HTTP/browser integration checks. Until those evidence gates pass, mark sandbox deployment as build/live only, not auth-qualified.
+
+
+### Connect preview origin identified; Vercel access still blocks verification — 2026-10-29 00:12 UTC
+
+- Operator supplied the Vercel deployment overview. Independent read-only project/deployment listing now works when the team scope is omitted: project `zaid-connect`, project ID `prj_tnaxl6AL2x3av4H9NEJj3T0A64Px`, production deployment `zaid-connect-2thdsocys-zaid-technologies.vercel.app` on `main` commit `e87ec1595f8ba412d37bccaa32120aa38d3d78d0`.
+- A READY preview exists for branch `construction/ghm-identity-adapter-only-20261016`, commit `49226f5ab03f95a04afe3acd394f28baa4394cc3`, at `https://zaid-connect-420zcpxr7-zaid-technologies.vercel.app`. This is a deployment-specific URL; do not treat it as a stable branch alias.
+- Vercel environment listing shows production-scoped variables named `VITE_SUPABASE_ANON_KEY` and `VITE_SUPABASE_URL`; values were not decrypted. A branch-filtered environment listing for `construction/ghm-identity-adapter-only-20261016` returned no variables. This is consistent with the migration preview not yet being configured to call the GHM qualification service.
+- Attempts to read the production or preview deployment through Vercel's protected-deployment fetch failed with HTTP 403 at the deployment access/bypass stage. Domain enumeration via the connected tool also returns HTTP 400. The web inspection path cannot access the preview or Render health URL either. Thus source/deployment metadata is visible, but HTTP responses and runtime behavior are not.
+- Do not add `CONNECT_WEB_ORIGIN` using the per-deployment URL as a permanent branch value: each new preview deployment has a different host. Obtain a stable, verified branch alias (or use a deliberate preview origin strategy) and working Vercel deployment access first. Then configure `GHM_INTERNAL_RUNTIME_URL` and the exact matching `CONNECT_WEB_ORIGIN` only for the migration preview, and set GHM's `GHM_WEB_AUTH_ALLOWED_ORIGINS` to that same verified origin on the Render qualification service. Do not change production-scoped values.
+- No environment variables or deployments were modified in this check.
