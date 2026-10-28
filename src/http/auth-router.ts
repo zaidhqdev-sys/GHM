@@ -104,6 +104,13 @@ export const registerAuthRoutes = (
     legacyHeaders: false,
     handler: (_req, res) => res.status(429).json({ error: 'rate_limited' }),
   });
+  const browserLogoutRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 60,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    handler: (_req, res) => res.status(429).json({ error: 'rate_limited' }),
+  });
   // Lazy default: existing HS product tests createApp() without GHM Auth secrets.
   let authService = dependencies.authService;
   const passwordRecoveryService = dependencies.passwordRecoveryService;
@@ -397,7 +404,7 @@ export const registerAuthRoutes = (
     }
   });
 
-  app.post('/api/v1/auth/web/logout', requireBrowserOrigin, async (req: Request, res: Response) => {
+  app.post('/api/v1/auth/web/logout', requireBrowserOrigin, browserLogoutRateLimit, async (req: Request, res: Response) => {
     const config = getBrowserCookieConfig();
     if (!config) { res.status(503).json({ error: 'browser_auth_not_configured' }); return; }
     const refreshToken = readBrowserCookie(req);
