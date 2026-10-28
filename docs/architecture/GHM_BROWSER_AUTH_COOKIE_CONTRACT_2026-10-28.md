@@ -58,3 +58,10 @@ No production environment changes, deployment, merge, data import, provider acti
 A read-only inspection of Render application logs for the current `GHM-Internal-Runtime` service showed repeated `express-rate-limit` validation warnings: `ERR_ERL_PERMISSIVE_TRUST_PROXY` because Express `trust proxy` is set to `true`. The warning explicitly notes that this permits clients to bypass IP-based rate limiting by influencing forwarded IP headers. The source mounts auth rate limiters, so this must be treated as a runtime security qualification blocker, not dismissed as a cosmetic log.
 
 Before production browser-auth cutover, review the existing Render proxy topology and configure Express to trust only the known proxy hop/ranges supported by the hosting environment (or use a validated platform-specific setting), then prove the client IP and rate-limit key behavior with integration tests and fresh runtime logs. Do not blindly set a hop count without confirming the request path. This browser-auth PR does not change production proxy trust configuration.
+
+
+## Proxy-trust remediation candidate — 2026-10-28
+
+The GHM configuration branch now maps the existing explicit `TRUST_PROXY=true` setting to Express hop count `1`, instead of boolean `true`; unset/false remains `false`. Added config tests verify both behaviors. This is a **candidate code fix**, not a runtime change. Render service metadata identifies GHM Internal Runtime as a public Render web service behind Render's ingress; before deployment, verify with the deployed service and request-level tests that the one-hop trust boundary matches the actual ingress path.
+
+Release gate: CI must pass, and a non-production integration test must prove that spoofed client-supplied `X-Forwarded-For` chains cannot rotate/bypass the auth rate-limit key, while legitimate requests still resolve to the intended client IP. Recheck fresh logs for absence of `ERR_ERL_PERMISSIVE_TRUST_PROXY`. Do not manually change the production environment or deploy this branch as part of this PR.
