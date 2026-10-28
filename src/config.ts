@@ -47,7 +47,8 @@ export const config = Object.freeze({
   databaseSsl,
   inviteCode: required('INVITE_CODE'),
   corsOrigins: parseOrigins(required('CORS_ORIGINS')),
-  trustProxy: process.env.TRUST_PROXY === 'true',
+  // Render terminates external traffic at one trusted reverse-proxy hop. Never use boolean true here: it trusts arbitrary forwarded chains and weakens IP-based rate limits.
+  trustProxy: process.env.TRUST_PROXY === 'true' ? 1 : false,
   storage: hasStorageConfiguration ? loadStorageRuntimeConfig() : null,
   payfast: Object.freeze({
     environment: (process.env.PAYFAST_ENVIRONMENT ?? 'sandbox') as 'sandbox' | 'live',

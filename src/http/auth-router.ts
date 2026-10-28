@@ -104,6 +104,13 @@ export const registerAuthRoutes = (
     legacyHeaders: false,
     handler: (_req, res) => res.status(429).json({ error: 'rate_limited' }),
   });
+  const browserLogoutRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 60,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    handler: (_req, res) => res.status(429).json({ error: 'rate_limited' }),
+  });
   // Lazy default: existing HS product tests createApp() without GHM Auth secrets.
   let authService = dependencies.authService;
   const passwordRecoveryService = dependencies.passwordRecoveryService;
@@ -288,4 +295,138 @@ export const registerAuthRoutes = (
       handleAuthError(error, res);
     }
   });
+  // Browser-only contract for the same-origin Connect BFF. Keep native bearer-token
+  // routes above unchanged: server clients continue sending refreshToken in JSON.
+  const browserCookieName = 'zaid_connect_refresh';
+  const readBrowserCookie = (req: Request): string | null => {
+    const raw = req.headers.cookie;
+    if (typeof raw !== 'string' || raw.length > 8192) return null;
+    for (const part of raw.split(';')) {
+      const separator = part.indexOf('=');
+      if (separator < 0 || part.slice(0, separator).trim() !== browserCookieName) continue;
+      const value = part.slice(separator + 1).trim();
+      try {
+        const decoded = decodeURIComponent(value);
+        return decoded.length > 0 && decoded.length <= 4096 ? decoded : null;
+      } catch { return null; }
+    }
+    return null;
+  };
+  const getBrowserCookieConfig = (): { origins: Set<string>; path: string; maxAge: number } | null => {
+    const origins = (process.env.GHM_WEB_AUTH_ALLOWED_ORIGINS || '').split(',').map((value) => value.trim()).filter(Boolean);
+    const path = process.env.GHM_WEB_AUTH_COOKIE_PATH;
+    const maxAge = Number(process.env.GHM_WEB_AUTH_COOKIE_MAX_AGE_SECONDS);
+    if (
+      origins.length === 0 ||
+      origins.some((value) => {
+        try {
+          const parsed = new URL(value);
+          return parsed.origin !== value || (parsed.protocol !== 'https:' && parsed.hostname !== 'localhost' && parsed.hostname !== '127.0.0.1');
+        } catch { return true; }
+      }) ||
+      path !== '/api/ghm' ||
+      !Number.isSafeInteger(maxAge) || maxAge < 60 || maxAge > 2_592_000
+    ) return null;
+    return { origins: new Set(origins), path, maxAge };
+  };
+  const browserCookieHeader = (token: string | null, config: { path: string; maxAge: number }): string => {
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    const value = token
+      ? `${browserCookieName}=${encodeURIComponent(token)}; Max-Age=${config.maxAge}`
+      : `${browserCookieName}=; Max-Age=0`;
+    return `${value}; Path=${config.path}; HttpOnly; SameSite=Lax${secure}`;
+  };
+  const requireBrowserOrigin = (req: Request, res: Response, next: import('express').NextFunction): void => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Pragma', 'no-cache');
+    const config = getBrowserCookieConfig();
+    if (!config) {
+      res.status(503).json({ error: 'browser_auth_not_configured' });
+      return;
+    }
+    const origin = req.headers.origin;
+    if (typeof origin !== 'string' || !config.origins.has(origin)) {
+      res.status(403).json({ error: 'origin_not_allowed' });
+      return;
+    }
+    next();
+  };
+  const accessOnlyPayload = (tokens: AuthTokenResponse) => ({
+    accessToken: tokens.accessToken,
+    tokenType: tokens.tokenType,
+    expiresIn: tokens.expiresIn,
+    sessionId: tokens.sessionId,
+    accountId: tokens.accountId,
+  });
+
+  app.post('/api/v1/auth/web/register', requireBrowserOrigin, loginRateLimit, async (req: Request, res: Response) => {
+    try {
+      const input = parseRegistrationBody(req.body);
+      if (!input) { res.status(400).json({ error: 'invalid_request' }); return; }
+      const service = getAuthService();
+      if (!service.register) { res.status(503).json({ error: 'service_unavailable' }); return; }
+      const tokens = await service.register(input);
+      const config = getBrowserCookieConfig();
+      if (!config) { res.status(503).json({ error: 'browser_auth_not_configured' }); return; }
+      res.setHeader('Set-Cookie', browserCookieHeader(tokens.refreshToken, config));
+      res.status(201).json(accessOnlyPayload(tokens));
+    } catch (error) { handleAuthError(error, res); }
+  });
+
+  app.post('/api/v1/auth/web/login', requireBrowserOrigin, loginRateLimit, async (req: Request, res: Response) => {
+    try {
+      const input = parseLoginBody(req.body);
+      if (!input) { res.status(400).json({ error: 'invalid_request' }); return; }
+      const tokens = await getAuthService().login(input.email, input.password);
+      const config = getBrowserCookieConfig();
+      if (!config) { res.status(503).json({ error: 'browser_auth_not_configured' }); return; }
+      res.setHeader('Set-Cookie', browserCookieHeader(tokens.refreshToken, config));
+      res.status(200).json(accessOnlyPayload(tokens));
+    } catch (error) { handleAuthError(error, res); }
+  });
+
+  app.post('/api/v1/auth/web/refresh', requireBrowserOrigin, refreshRateLimit, async (req: Request, res: Response) => {
+    const config = getBrowserCookieConfig();
+    if (!config) { res.status(503).json({ error: 'browser_auth_not_configured' }); return; }
+    const refreshToken = readBrowserCookie(req);
+    if (!refreshToken) {
+      res.setHeader('Set-Cookie', browserCookieHeader(null, config));
+      res.status(401).json({ error: 'unauthorized' });
+      return;
+    }
+    try {
+      const tokens = await getAuthService().refresh(refreshToken);
+      res.setHeader('Set-Cookie', browserCookieHeader(tokens.refreshToken, config));
+      res.status(200).json(accessOnlyPayload(tokens));
+    } catch (error) {
+      res.setHeader('Set-Cookie', browserCookieHeader(null, config));
+      handleAuthError(error, res);
+    }
+  });
+
+  app.post('/api/v1/auth/web/logout', requireBrowserOrigin, browserLogoutRateLimit, async (req: Request, res: Response) => {
+    const config = getBrowserCookieConfig();
+    if (!config) { res.status(503).json({ error: 'browser_auth_not_configured' }); return; }
+    const refreshToken = readBrowserCookie(req);
+    let revocationFailed = false;
+    try {
+      if (refreshToken) await getAuthService().logout(refreshToken);
+    } catch (error) {
+      revocationFailed = true;
+      console.error(JSON.stringify({
+        event: 'ghm_browser_auth_logout_failed',
+        error: { name: error instanceof Error ? error.name : 'UnknownError' },
+      }));
+    } finally {
+      // Always remove the browser's cookie, but don't claim server-side revocation
+      // succeeded when the auth persistence layer reported a failure.
+      res.setHeader('Set-Cookie', browserCookieHeader(null, config));
+    }
+    if (revocationFailed) {
+      res.status(503).json({ error: 'logout_revocation_unavailable' });
+      return;
+    }
+    res.status(200).json({ ok: true });
+  });
+
 };
