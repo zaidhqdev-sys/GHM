@@ -228,3 +228,6 @@ Only two PRs remain open: #142 is a broad, divergent identity integration candid
 
 
 - Further runtime verification at 2026-10-28 00:52 UTC: source defines `GET /healthz` and startup readiness `GET /readyz`; Render's configured health path is `/healthz`. The available web/network environment could not resolve/reach the service hostname. Render request logs were empty for 00:40–01:00 UTC and HTTP-count metrics returned no points; neither result proves service failure or success. The authenticated app-level storage call remains pending. See [detailed handover](HANDOVER_2026-10-28_STORAGE_PERMISSION_FIX.md).
+
+
+- Render application logs were queried through 00:55 UTC and confirm the deployed `60814931bd3905c4be95a2366ea4b16957b48cb1` process started with `npm start`, logged `GHM Core Engine listening on port 10000` at 00:27:16.997 UTC, and Render marked the service live at 00:27:22.664 UTC. This proves startup/live status at deployment time, not an end-to-end storage request after the permission grant. See [the detailed handover](HANDOVER_2026-10-28_STORAGE_PERMISSION_FIX.md).
