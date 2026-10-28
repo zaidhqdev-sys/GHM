@@ -710,3 +710,16 @@ Outstanding: exact-head CI for any subsequent handover-only commit; non-producti
 - Exact candidate head after these code commits: `00273cb4e5661a89af2f504b6f15c8bc2d5258ea`. CI run [39199699582](https://github.com/zaidhqdev-sys/GHM/actions/runs/39199699582) was in progress at last check. Do not call this candidate qualified until that exact-head run completes successfully.
 - This incorporates #148's relevant route/service contract into #142's broader migration-audit candidate; #148 remains a separate open draft and must not be merged independently as-is, because that would duplicate `GET /api/v1/identity`. #142 remains draft/open. No merge, deployment, production database change, or cutover occurred.
 - Next: wait for exact-head CI; if passing, compare the final candidate's identity route and account email DTO with QuoteFlow's parser and add route-backed cross-client contract coverage. Then qualify non-production session expiry/revocation and the product workflow before changing QuoteFlow's normal AuthProvider.
+
+
+## Connect Preview directory checkpoint — 2026-10-28 23:55 UTC
+
+This is a dated integration observation, not a claim that production data has migrated.
+
+- Connect Preview branch `construction/ghm-identity-adapter-only-20261016` was manually exercised through sign-in into the app shell and public Directory page.
+- The public business and category proxy routes now return valid responses. The Directory showed a successful empty result (`items=[]`, `total=0`) with no reported browser console/network errors.
+- Connect owner believes GHM likely has no test account/business fixtures yet. A test email account and a public business listing are separate concerns; a user account does not itself create a public listing. Therefore zero listings is consistent with an unseeded sandbox and is not proof of missing or migrated Connect records.
+- Current public eligibility requires an active, approved, verified business. The attempted read-only qualification count was denied access to schema `ghm`; no grants were changed and no access bypass was attempted.
+- Connect added an explicit empty-sandbox empty-state message and a regression test for a valid zero-listing response. Exact Connect workflow [40790314216](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/40790314216) passed the configured contract tests and production web build at commit `683472074eadcf9acb3563679f3ae7ea7253f150`. This qualifies code/tests, not live business data.
+- No fixture was seeded, no Production data copied, no database or production configuration changed, and no payment/provider activation or cutover occurred.
+- Follow-up: when an approved disposable GHM sandbox creation path exists, create one clearly marked test business and verify public eligibility, directory display, filters, and detail/profile read behavior. Keep visibility rules intact; do not invent data, weaken authorization, or use Production records. Until then, treat the empty directory as a valid sandbox state and keep Connect source-to-GHM business/membership reconciliation as an independent migration gate.
