@@ -212,3 +212,13 @@ Qualified, independently applicable slices have been merged and exact-head main 
 - Shared auth persistence for reset and lazy session issuance: PR #187, commit `2e5484531e98a5a29df1d61eb2fe4dcb75e664a5`, CI [#40409715942](https://github.com/zaidhqdev-sys/GHM/actions/runs/40409715942).
 
 Only two PRs remain open: #142 is a broad, divergent identity integration candidate and is not safe to merge wholesale; #183 is stacked on that candidate for its candidate-dependent reset HTTP harness. Keep production DB, Render settings/credentials, and cutover unchanged until their distinct gates pass.
+
+
+## Production storage permission correction — 2026-10-28
+
+- PR #189 is merged at `60814931bd3905c4be95a2366ea4b16957b48cb1`; Render service `GHM-Internal-Runtime` is deployed from the mainline and its service metadata shows the update at 2026-10-28 00:27:22 UTC.
+- The user applied `GRANT ghm_runtime TO ghm_db_user;` on the primary `ghm_db` database. The user's follow-up SQL returned `schema_usage=t` and `scoped_getter_execute=t`.
+- Independent read-only catalog verification confirmed `ghm_db_user` is a member of `ghm_runtime`, has USAGE on schema `ghm`, can EXECUTE `ghm.storage_get_object(bigint,bigint)`, and the scoped function exists.
+- The Render query interface cannot SELECT from `ghm.ghm_schema_migrations` using its current read-only role, so production migration-ledger state remains unverified. Do not infer migration success from the function existing alone and do not rerun migrations just to address the now-fixed role membership.
+- A live application-level request invoking the getter is still required to close end-to-end verification. The generic web fetch did not access the service URL or `/healthz`; this tool limitation is not evidence of app failure. No relevant app logs were returned for the short interval inspected.
+- Detailed current-session resume steps and evidence are recorded in [the 2026-10-28 storage permission handover](HANDOVER_2026-10-28_STORAGE_PERMISSION_FIX.md).
