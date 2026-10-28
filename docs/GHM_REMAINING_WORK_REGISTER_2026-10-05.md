@@ -383,3 +383,16 @@ The qualification-database migration run completed with exit code 0 on 2026-10-2
 3. Test `/healthz`, register/login, session restore, refresh rotation, logout/revocation failure, identity and membership resolution, and tenant-isolation/storage routes using sandbox test accounts and disposable test objects.
 4. Triage the 3 npm audit findings; require evidence-based remediation before any production release.
 5. Keep production runtime, production database, payment activation, and cutover unchanged until sandbox gates pass.
+
+
+### Follow-up sandbox deployment result — 2026-10-28 22:04 UTC
+
+- Render deploy `dep-dbh723m7bikc73fellpg` completed successfully and is live on `ghm-identity-qualification`, running integration branch commit `d110bca50f229256a86308712ef4b581fa8ba8c5`.
+- Startup log confirms `GHM Core Engine listening on port 10000`; Render emitted its service-live message. The follow-up commit adds `browserLogoutRateLimit` (60 requests per 15 minutes per limiter key) to `POST /api/v1/auth/web/logout` and a regression test intended to verify the 61st request receives HTTP 429.
+- GitHub reported no workflow runs or commit status checks for this exact head at the time of this check. Deployment/build success is not evidence that the new regression test passed.
+- The external health endpoint could not be reached using available web inspection, and no sandbox browser client was configured/available to drive a real session journey. Therefore no claims are made that health, login, refresh rotation, logout/revocation, identity/membership, or tenant isolation has passed end-to-end.
+- The Render service remains public (`0.0.0.0/0`) and has no configured Render health-check path. Keep this service limited to disposable qualification data and never use production credentials/data. The exact allowed browser origin remains unverified; web-auth endpoints are designed to fail closed if `GHM_WEB_AUTH_ALLOWED_ORIGINS` is absent.
+- Vercel preview deployment/environment inspection for the Connect project was denied/not found via the available integration. No attempt was made to weaken access controls or guess an origin.
+- Build output continues to report 3 npm audit vulnerabilities (moderate/high/critical); package-level triage is still required.
+
+Next actions: obtain a known dedicated Connect preview deployment/origin via authorized Vercel access or an existing deployment URL; confirm/set only that exact origin on the qualification service; run regression tests in CI; execute non-production HTTP tests for auth/session, identity, rate limits and tenant isolation; triage dependency advisories. No production service, environment variables, database, or payment configuration was changed.
