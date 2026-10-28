@@ -515,3 +515,26 @@ A read-only Render log search for the literal `storage_get_object` and for appli
 ### Resume point
 
 Do not re-ask whether `GHM-Internal-Runtime` uses `ghm_db`; it does per explicit user confirmation. Next, prepare the ordered, risk-reviewed migration plan and identify the exact migration-runner command/options without executing it. Preserve the separation between primary runtime and PayFast sandbox runtime.
+
+
+## Addendum — migration-runner review and PayFast configuration clarification (2026-10-28 00:14 UTC)
+
+### PayFast configuration clarification
+
+The prior note saying PayFast-specific variables were deliberately not added to `GHM-Internal-Runtime` incorrectly attributed the decision to the user. The user clarified that PayFast is the payment merchant and `GHM-Internal-Runtime` is production, and that the earlier advice not to add the variables came from the assistant without a code-verified rationale. Treat that earlier advice as provisional and withdrawn, not as an operator policy. Do not add/remove/alter variables during this migration investigation; separately inspect the production code's required PayFast configuration and reconcile it with the user's intended production setup. Do not expose secret values.
+
+### Migration runner findings — read-only source review
+
+- `main`'s `src/db/migrate.ts` reads `GHM_MIGRATOR_DATABASE_URL`, sets role `ghm_schema_owner`, verifies role/session identity, takes advisory transaction lock 731824, loads every matching migration file in `database/migrations`, and runs every version absent from the ledger. It has no single-version selector.
+- The inspected `main` runner does **not** require an explicit approved database name/host. The integration candidate's runner does use `assertPostgresTargetConfiguration` with `GHM_MIGRATION_DATABASE_NAME` and `GHM_MIGRATION_DATABASE_HOST`, and checks the connected database against that target. Do not invoke the unguarded `main` runner against production as a diagnostic or first remediation step.
+- The runner applies all missing migrations it finds in sorted order, so it is not safe to assume `npm run migrate` would apply only the storage getter. It also wraps the batch in a transaction, while some migration files contain their own `BEGIN`/`COMMIT`; that interaction must be explicitly resolved/reviewed before using the runner, because a nested `COMMIT` in PostgreSQL can end the surrounding transaction.
+- On `main`, the current storage repository call is `ghm.storage_get_object($1, $2)` with `this.context.userId`. `AuthContext.userId` is typed as a positive numeric ID by the auth-context guard, and the SQL migration expects an account ID. This confirms the value is server-authenticated, not request-body input, but the interface alone does not prove that every auth provider maps `userId` to `ghm.account_identity.id`. Trace the authentication adapters before claiming the semantic identity match is fully proven.
+- The candidate-only migration files are not all present at the same paths on `main` (direct fetch of the two disputed historical files and both QuoteFlow provisioning files returned 404 on `main`, while they are present on the integration candidate). Do not copy candidate-only schema changes into production simply to reconcile the ledger. First produce a branch-specific inventory of which of the 11 missing versions actually exist on `main`, which belong only to the candidate release, and which are needed by the deployed production code.
+- No migration command was executed; no database or ledger writes, environment changes, or deployments occurred.
+
+### Next safe sequence
+
+1. Build a branch-by-branch matrix of all 11 missing versions: file present on `main`/candidate, runtime code dependency, schema effect currently absent, prerequisites, transaction wrapper, and whether the effect is production-required.
+2. Trace `AuthContext.userId` through the production authentication adapter to confirm it is the account identity primary key used by `business_membership.account_id`.
+3. Resolve the runner's target guard and transaction-boundary behavior before any execution. Prefer a reviewed, target-pinned migration procedure that cannot accidentally run every candidate migration against production.
+4. Keep the production database read-only until the exact minimal migration set and rollback/forward-recovery strategy are documented and separately approved.
