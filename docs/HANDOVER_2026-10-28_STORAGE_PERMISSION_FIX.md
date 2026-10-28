@@ -97,3 +97,31 @@ A broader Render application-log query for 00:26–00:55 UTC returned the succes
 - No application error was present in this startup sequence.
 
 This confirms the deployed process started and Render marked it live at that time. It does **not** prove the current live HTTP health endpoint or authenticated storage route works after the database grant. External HTTP requests from this checking environment still fail due to DNS/network access, and no HTTP request metrics/logs were returned in the checked interval.
+
+
+## Final diagnostic pass — 2026-10-28 00:56 UTC
+
+A fresh read-only catalog query against primary `ghm_db` reports:
+
+- `session_user = ghm_app_user`
+- `current_user = ghm_db_user`
+- `pg_has_role(current_user, 'ghm_runtime', 'MEMBER') = true`
+- `ghm.ghm_schema_migrations` exists; `public.ghm_schema_migrations` does not.
+- The Render query connection cannot SELECT from the migration ledger (`has_table_privilege(current_user, 'ghm.ghm_schema_migrations', 'SELECT') = false`).
+- The scoped getter exists.
+
+This is good confirmation that the DB connection's configured app login is switching to `ghm_db_user` and inheriting the runtime role. The ledger entry remains inaccessible to the current connection; do not grant ledger SELECT to the application role just for diagnosis.
+
+## User-network HTTP smoke test (non-mutating)
+
+The checking environment cannot resolve/reach the public Render hostname, so the remaining HTTP smoke test must be run from a network that can reach it. In PowerShell:
+
+```powershell
+$base = 'https://ghm-internal-runtime.onrender.com'
+Invoke-WebRequest -Uri "$base/healthz" -TimeoutSec 20 | Select-Object StatusCode, Content
+Invoke-WebRequest -Uri "$base/readyz" -TimeoutSec 20 | Select-Object StatusCode, Content
+```
+
+If the health endpoint returns success but readiness does not, record both statuses and response bodies; do not treat a timeout/DNS error from the current tool environment as proof of an outage. These unauthenticated endpoints do not exercise storage. An end-to-end storage check requires an existing valid app session/token and a known object ID that the session is authorized to access; use `GET /api/v1/storage/objects/:objectId/access` (read-only grant creation, not object deletion) only with those real values. Do not paste bearer tokens or signed URLs into chat or handover docs.
+
+No migration was rerun in this pass. The role grant and direct database function invocation are verified; authenticated HTTP lookup and the migration-ledger row are still pending.
