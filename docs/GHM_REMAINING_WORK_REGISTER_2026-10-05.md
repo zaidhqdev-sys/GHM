@@ -417,3 +417,17 @@ Immediate blocker: obtain a working authorized Vercel connection/project context
 - Attempts to read the production or preview deployment through Vercel's protected-deployment fetch failed with HTTP 403 at the deployment access/bypass stage. Domain enumeration via the connected tool also returns HTTP 400. The web inspection path cannot access the preview or Render health URL either. Thus source/deployment metadata is visible, but HTTP responses and runtime behavior are not.
 - Do not add `CONNECT_WEB_ORIGIN` using the per-deployment URL as a permanent branch value: each new preview deployment has a different host. Obtain a stable, verified branch alias (or use a deliberate preview origin strategy) and working Vercel deployment access first. Then configure `GHM_INTERNAL_RUNTIME_URL` and the exact matching `CONNECT_WEB_ORIGIN` only for the migration preview, and set GHM's `GHM_WEB_AUTH_ALLOWED_ORIGINS` to that same verified origin on the Render qualification service. Do not change production-scoped values.
 - No environment variables or deployments were modified in this check.
+
+
+### Sandbox preview origin and environment wiring — 2026-10-29 00:16 UTC
+
+- Using Vercel's project alias listing, verified the stable branch alias for `construction/ghm-identity-adapter-only-20261016`: `https://zaid-connect-git-construction-ghm-iden-fe5b54-zaid-technologies.vercel.app`. The alias currently maps to the migration preview deployment; deployment-specific URLs should not be used as the allowlist value.
+- Added branch-scoped (Preview only, exact branch) Vercel variables:
+  - `GHM_INTERNAL_RUNTIME_URL=https://ghm-identity-qualification.onrender.com`
+  - `CONNECT_WEB_ORIGIN=https://zaid-connect-git-construction-ghm-iden-fe5b54-zaid-technologies.vercel.app`
+  The values were confirmed through a non-decrypted listing; both have no reported Vercel security issues. Production target variables were not changed.
+- Added `GHM_WEB_AUTH_ALLOWED_ORIGINS` with the exact same branch alias to Render service `ghm-identity-qualification`. Render accepted the environment update and requested a deploy. Two deploys are present: `dep-dbh77pfb9u1s73e689c0` build succeeded and was updating at last check; `dep-dbh77rrpkm4c73dok090` is queued. Confirm final deploy is live before testing.
+- Vercel's protected deployment fetch still returns HTTP 403, and the execution container cannot resolve public Vercel/Render hostnames. Therefore the origin/runtime wiring is configured, but proxy responses and browser auth are not yet verified. Do not claim end-to-end success based on env presence or a successful build alone.
+- No production-scoped environment variables, production deployments, database state, or payments were changed.
+
+Next: confirm the final Render deployment is live; trigger a fresh Preview deployment for the migration branch so Vercel picks up its new branch-scoped variables; then test proxy error/success responses and complete the browser login/refresh/logout/identity journey. If Vercel preview access remains blocked, ask the user to refresh the Vercel connector authorization for the ZAID Technologies team/project rather than changing deployment protection.
