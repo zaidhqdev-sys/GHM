@@ -85,3 +85,15 @@ The function was invoked and returned its designed generic `storage object does 
 - Attempted to fetch `https://ghm-internal-runtime.onrender.com/healthz` and the root URL from available web/network tools; both were inaccessible from this environment. A local network probe also failed DNS resolution, so this is a limitation of the current checking environment, not proof of service failure.
 - Render request logs for 2026-10-28 00:40–01:00 UTC returned no rows. HTTP request-count metrics for the same interval returned an empty data series. These results do not establish whether the service is receiving requests or healthy.
 - The next meaningful test needs a client with network access to the Render hostname and a safe authenticated application context. Do not use a fabricated token or an unscoped object ID. The database function invocation above is the only live call currently verified.
+
+
+## Render startup evidence — 2026-10-28 00:55 UTC
+
+A broader Render application-log query for 00:26–00:55 UTC returned the successful startup sequence for deployed commit `60814931bd3905c4be95a2366ea4b16957b48cb1`:
+
+- `npm start` ran `node dist/server.js`.
+- `GHM Core Engine listening on port 10000` at 00:27:16.997 UTC.
+- Render reported `Your service is live` at 00:27:22.664 UTC and detected port 10000 later.
+- No application error was present in this startup sequence.
+
+This confirms the deployed process started and Render marked it live at that time. It does **not** prove the current live HTTP health endpoint or authenticated storage route works after the database grant. External HTTP requests from this checking environment still fail due to DNS/network access, and no HTTP request metrics/logs were returned in the checked interval.
