@@ -231,3 +231,7 @@ Only two PRs remain open: #142 is a broad, divergent identity integration candid
 
 
 - Render application logs were queried through 00:55 UTC and confirm the deployed `60814931bd3905c4be95a2366ea4b16957b48cb1` process started with `npm start`, logged `GHM Core Engine listening on port 10000` at 00:27:16.997 UTC, and Render marked the service live at 00:27:22.664 UTC. This proves startup/live status at deployment time, not an end-to-end storage request after the permission grant. See [the detailed handover](HANDOVER_2026-10-28_STORAGE_PERMISSION_FIX.md).
+
+
+- Final DB diagnostic (2026-10-28 00:56 UTC): Render read-only query session reports `session_user=ghm_app_user`, `current_user=ghm_db_user`, and effective membership in `ghm_runtime=true`. The schema ledger `ghm.ghm_schema_migrations` exists, but the query role lacks SELECT; the public ledger does not exist. Do not grant app-role SELECT solely for diagnosis.
+- The current checking environment cannot resolve/reach the Render hostname, so live HTTP smoke test instructions are recorded in [the storage handover](HANDOVER_2026-10-28_STORAGE_PERMISSION_FIX.md). Authenticated storage lookup and exact migration-ledger row remain unverified.
