@@ -611,3 +611,19 @@ Current validation state at this addendum: the latest CI run is in progress; no 
 - Render `GHM-Internal-Runtime` deployment `dep-dbgk2fqjnfac73c7aprg` is `live` for the merged commit, finished at 2026-10-28 00:27:22 UTC. Startup logs report `GHM Core Engine listening on port 10000`.
 - The code deployment does not invoke migrations on startup. Production `ghm_db` schema and ledger remain unchanged; the one shared missing migration `20261026120000_scope_storage_metadata_lookup` still needs a controlled execution.
 - Available Render Postgres SQL access is read-only in this session, and there is no connected shell/one-off execution path exposing the existing migrator secret. Therefore no production SQL write was attempted. Next execution must use a controlled environment with the existing `GHM_MIGRATOR_DATABASE_URL` secret, plus explicit `GHM_MIGRATION_DATABASE_NAME=ghm_db` and `GHM_MIGRATION_DATABASE_HOST=dpg-dag0sdtbedkc7389vi2g-a.frankfurt-postgres.render.com`; confirm target identity and apply only the one migration missing from production `main`. Do not run candidate-only migrations.
+
+
+### Controlled production execution command (operator runbook)
+
+Because this session's Render SQL connector is read-only and no remote shell is exposed, the actual production migration must be launched from the operator's controlled shell with the existing local `.env` migrator URL. Run from a clean checkout of the merged `main` commit `60814931bd3905c4be95a2366ea4b16957b48cb1`:
+
+```powershell
+$env:GHM_MIGRATION_DATABASE_NAME = "ghm_db"
+$env:GHM_MIGRATION_DATABASE_HOST = "dpg-dag0sdtbedkc7389vi2g-a.frankfurt-postgres.render.com"
+node -r dotenv/config -e '$u = new URL(process.env.GHM_MIGRATOR_DATABASE_URL); if ($u.pathname.TrimStart("/") -ne "ghm_db" -or $u.hostname -ne "dpg-dag0sdtbedkc7389vi2g-a.frankfurt-postgres.render.com") { throw "Refusing migration: GHM_MIGRATOR_DATABASE_URL is not the approved ghm_db primary target" }; "Migration target URL matches approved database and host; credentials not displayed."'
+npm run migrate
+```
+
+The URL assertion deliberately prints no credentials. The hardened runner then independently enforces the same explicit database name/host, confirms the connected database identity and migrator/schema-owner roles, and applies only migration files present on `main` whose versions are absent from the ledger. Based on the confirmed main inventory, that should be only `20261026120000_scope_storage_metadata_lookup`. Stop if the URL assertion or runner guard fails; do not bypass the guard or manually insert the ledger row. After execution, rerun the read-only catalog probes to verify the two-argument function exists, the one-argument function is absent, grants/owner/security-definer/search_path match the migration, and exactly one ledger record was added with the canonical checksum.
+
+This command has been documented but **has not been executed in this session**. Do not run it from a checkout containing candidate-only migrations or with a different branch.
