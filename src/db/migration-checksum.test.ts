@@ -32,3 +32,14 @@ test('strips a leading UTF-8 BOM before executing SQL without changing checksum 
   assert.equal(normalizeMigrationSqlForExecution(withBom), 'SELECT 1;\n');
   assert.notEqual(migrationSqlChecksum(withBom), migrationSqlChecksum(normalizeMigrationSqlForExecution(withBom)));
 });
+
+test('strips only outer BEGIN and COMMIT for runner execution', () => {
+  const wrapped = 'BEGIN;\nSELECT 1;\nCOMMIT;\n';
+  assert.equal(normalizeMigrationSqlForExecution(wrapped), 'SELECT 1;\n');
+  assert.equal(migrationSqlChecksum(wrapped), migrationSqlChecksum('BEGIN;\r\nSELECT 1;\r\nCOMMIT;\r\n'));
+});
+
+test('does not strip transaction keywords inside migration statements', () => {
+  const sql = "SELECT 'BEGIN;';\nSELECT 'COMMIT;';\n";
+  assert.equal(normalizeMigrationSqlForExecution(sql), sql);
+});
