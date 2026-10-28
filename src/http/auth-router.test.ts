@@ -632,3 +632,29 @@ test('browser auth rejects missing or unapproved Origin before calling Auth serv
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 });
+
+
+test('browser logout clears cookie but reports server-side revocation failure', async () => {
+  const { server, baseUrl } = await startApp({
+    register: async () => sampleTokens(),
+    login: async () => sampleTokens(),
+    refresh: async () => sampleTokens(),
+    logout: async () => { throw new Error('database unavailable'); },
+  });
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/auth/web/logout`, {
+      method: 'POST',
+      headers: {
+        origin: 'http://localhost:3000',
+        cookie: 'zaid_connect_refresh=refresh-to-revoke',
+      },
+    });
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { error: 'logout_revocation_unavailable' });
+    const cookie = response.headers.get('set-cookie') || '';
+    assert.match(cookie, /zaid_connect_refresh=; Max-Age=0/);
+    assert.match(cookie, /HttpOnly/i);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
