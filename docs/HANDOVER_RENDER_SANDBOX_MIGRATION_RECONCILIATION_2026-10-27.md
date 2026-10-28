@@ -538,3 +538,41 @@ The prior note saying PayFast-specific variables were deliberately not added to 
 2. Trace `AuthContext.userId` through the production authentication adapter to confirm it is the account identity primary key used by `business_membership.account_id`.
 3. Resolve the runner's target guard and transaction-boundary behavior before any execution. Prefer a reviewed, target-pinned migration procedure that cannot accidentally run every candidate migration against production.
 4. Keep the production database read-only until the exact minimal migration set and rollback/forward-recovery strategy are documented and separately approved.
+
+
+## Addendum — branch-specific missing-migration matrix and production remediation scope (2026-10-28 00:17 UTC)
+
+### Repository inventory resolved the main/candidate ambiguity
+
+Read-only GitHub Contents API inventories show:
+- `main`: 79 migration files; among the 11 versions missing from the primary ledger, **only** `20261026120000_scope_storage_metadata_lookup.sql` exists.
+- `integration/ghm-identity-merge-candidate-20261018`: 89 migration files; all 11 versions exist.
+- Primary `ghm_db`: 11 ledger entries missing according to the audit performed against the 89-file candidate inventory. That is a candidate-branch reconciliation result, not evidence that all 11 should be applied to the production `main` schema.
+
+This is the central distinction: production is running `main`, and the ten older missing entries are candidate-only migrations. Running the candidate migration batch against production would apply feature and identity-schema changes that are not part of the currently deployed production branch. **Do not do that.** The immediate production compatibility issue is the one shared migration `20261026120000`.
+
+### Missing-version matrix
+
+| Version | Present on production `main`? | Present on candidate? | Effect / dependency | Production disposition |
+|---|---|---|---|---|
+| `20261016100000` | No | Yes | Adds identity authority fields/reviewer table and authenticated authority reader | Candidate-only; do not apply to production as ledger cleanup |
+| `20261016120000` | No | Yes | Adds private account/external identity mapping and restricted lookup function; tightens mapping access | Candidate-only; do not apply to production as ledger cleanup |
+| `20261016170000` | No | Yes | Adds 14 business-directory columns, constraints, and indexes | Candidate directory feature; not required by inspected `main` directory repository |
+| `20261016180000` | No | Yes | Expands owner-managed business-profile patch keys; depends on `16170000` | Candidate-only; dependent on candidate directory columns |
+| `20261016190000` | No | Yes | Adds authenticated account-email reader | Candidate-only; inspect production code dependency before any future promotion |
+| `20261018210000` | No | Yes | Grants account-profile column updates; depends on identity authority fields from `16100000` | Candidate-only; privilege change, do not apply independently |
+| `20261019190000` | No | Yes | Creates business engagement events and runtime insert/select grants | Candidate-only feature schema; not a ledger-only fix |
+| `20261019210000` | No | Yes | Creates private business-registration identity storage and owner/admin-gated reader/updater | Candidate-only feature/security schema; not a ledger-only fix |
+| `20261020130000` | No | Yes | Creates QuoteFlow provisioning audit and privileged provisioning function with record-creation effects | Candidate-only; do not invoke provisioning function; review effects before any future promotion |
+| `20261020140000` | No | Yes | Replaces provisioning function to store new records as `unverified`; depends on `20130000` | Candidate-only; must follow its prerequisite if ever promoted |
+| `20261026120000` | **Yes** | **Yes** | Replaces ID-only storage getter with account-scoped getter and drops old signature | **Only missing migration in production `main`; immediate remediation candidate** |
+
+### Authenticated identity semantics confirmed in source
+
+The production source explicitly documents `GhmAuthContext.accountId` as the canonical `ghm.account_identity.id`. The bearer authenticator loads the account state using `SELECT id FROM ghm.account_identity WHERE id = $1`, then `toLegacyAuthContext` maps `accountId` to `AuthContext.userId`. Therefore, for this GHM bearer-auth path, the storage repository's `this.context.userId` is sourced from the authenticated account identity, not from request-body input. Other legacy authentication adapters should still be checked for any alternate construction of `AuthContext` before the rollout.
+
+### Execution blocker identified
+
+The current production `main` migration runner wraps the whole batch in `BEGIN` and calls `client.query(normalizeMigrationSqlForExecution(migration.sql))` for each file. The storage migration itself contains explicit `BEGIN;` and `COMMIT;`. PostgreSQL transaction control inside a SQL string can terminate the runner's outer transaction before the ledger insert, risking a schema change without an atomically committed ledger row. The candidate runner has a target-name/host guard, but still needs its transaction-boundary behavior reviewed. Do not invoke either runner until the nested-transaction issue is fixed or an execution method that preserves atomic schema-plus-ledger behavior is prepared.
+
+The Render Postgres query connector is read-only; it cannot apply SQL changes. No production schema or ledger change was attempted. The next implementation step is to prepare a migration-runner hardening patch and tests on a non-production branch: explicit database name/host guard, deterministic migration selection or an explicit allowlist, and safe handling of migration transaction boundaries. Then qualify the exact storage migration against a disposable database and prepare a separately approved production rollout. Do not use the 11-file candidate batch for production.
