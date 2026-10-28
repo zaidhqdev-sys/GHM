@@ -362,3 +362,24 @@ The historical checklist item `concrete storage provider enablement` must be rea
 The only bucket created so far is named `zaid-ghm-production`; do not assume it is a dedicated non-production target or run further mutating qualification there by default. Still open: guarded database persistence qualification with the intended restricted role, authenticated application/API integration, composition-root and deployment configuration, complete tenant/resource authorization, failure recovery/orphan reconciliation, backup/recovery, and production enablement/cutover.
 
 The qualification-database migration run completed with exit code 0 on 2026-10-26. The historical checksum issue was resolved by restoring applied migration bytes in commit [`5229b37700f2e21ac4caf2d4c5547bb929ab2de8`](https://github.com/zaidhqdev-sys/GHM/commit/5229b37700f2e21ac4caf2d4c5547bb929ab2de8); production migration status is unchanged and must not be inferred from that sandbox run.
+
+
+## Render identity-qualification sandbox deployment — 2026-10-28 22:02 UTC
+
+- Operator confirmed that Render's test environment is a sandbox and instructed proceeding there.
+- Service: `ghm-identity-qualification` (`srv-dbahvenbtjjs73f83rlg`), URL `https://ghm-identity-qualification.onrender.com`; production `GHM-Internal-Runtime` was not touched.
+- Manually triggered Render deploy `dep-dbh70r6i0phs73b1esr0` of integration branch commit `5fc845dd1e756ad2924af3284176aa3330f44cb4`. Render reports **live/succeeded** at 2026-10-28 22:01:13 UTC. Build completed successfully; application logs report `GHM Core Engine listening on port 10000` and Render reports the service live.
+- Queried logs after startup: no error/critical/warning entries returned in the checked interval. This is not equivalent to a complete runtime or security test.
+- Build logs report `npm audit` found 3 dependency vulnerabilities (1 moderate, 1 high, 1 critical). Identify the affected packages and assess compatible fixes before production use; do not run a blanket `npm audit fix` against this branch without reviewing lockfile and breaking-change risk.
+- The branch includes the bounded `TRUST_PROXY` parser/config tests and storage runtime routes. The latest browser-auth PR's additional logout-specific rate limiter is **not** present on this integration branch; browser-auth hardening remains a follow-up.
+- Browser-auth origin gate is fail-closed: GHM web auth returns `503 web_auth_not_configured` if `GHM_WEB_AUTH_ALLOWED_ORIGINS` is empty, and rejects unlisted Origin values. The previous operator-provided environment-variable inventory did not list this variable. Current live values cannot be read back through the available Render inspection tool, so this configuration is **unverified**. Do not set it to the production Connect origin to make tests pass; first identify the dedicated Connect sandbox/preview origin and allow only that exact origin.
+- The Render request-log and metrics queries returned no data in the short post-deploy interval. The external health URL could not be independently fetched from the inspection environment because its DNS resolution was unavailable there. Thus the process is live per Render, but an external HTTP health response and browser login/session/refresh/logout/identity journey are not yet confirmed.
+- No environment variables were changed, no database migration was run by this deploy, and no production service/configuration was changed.
+
+### Next sandbox qualification gates
+
+1. Resolve the exact dedicated Connect sandbox/preview origin and confirm the same-origin proxy's sandbox configuration; then set the exact allowed origin on this qualification service only if absent.
+2. Add the browser-logout rate limiter to the integrated branch through a reviewed change and re-deploy sandbox.
+3. Test `/healthz`, register/login, session restore, refresh rotation, logout/revocation failure, identity and membership resolution, and tenant-isolation/storage routes using sandbox test accounts and disposable test objects.
+4. Triage the 3 npm audit findings; require evidence-based remediation before any production release.
+5. Keep production runtime, production database, payment activation, and cutover unchanged until sandbox gates pass.
