@@ -51,3 +51,10 @@ The existing native `/api/v1/auth/{register,login,refresh,logout}` contract must
 ## Release gates
 
 No production environment changes, deployment, merge, data import, provider activation, payment activation, or cutover are authorized by this decision record. Required approval gates in the Connect migration handover remain in force.
+
+
+## Additional runtime security gate observed — 2026-10-28
+
+A read-only inspection of Render application logs for the current `GHM-Internal-Runtime` service showed repeated `express-rate-limit` validation warnings: `ERR_ERL_PERMISSIVE_TRUST_PROXY` because Express `trust proxy` is set to `true`. The warning explicitly notes that this permits clients to bypass IP-based rate limiting by influencing forwarded IP headers. The source mounts auth rate limiters, so this must be treated as a runtime security qualification blocker, not dismissed as a cosmetic log.
+
+Before production browser-auth cutover, review the existing Render proxy topology and configure Express to trust only the known proxy hop/ranges supported by the hosting environment (or use a validated platform-specific setting), then prove the client IP and rate-limit key behavior with integration tests and fresh runtime logs. Do not blindly set a hop count without confirming the request path. This browser-auth PR does not change production proxy trust configuration.
