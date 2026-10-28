@@ -481,3 +481,37 @@ The sandbox database has the storage getter signature required by the source, bu
 3. Do not alter allowlists or grants to overcome the qualification DB's external-connection block.
 4. Before planning primary-database changes, inspect `GHM-Internal-Runtime`'s database dependency using safe non-secret metadata and determine which release actually needs the candidate schema.
 5. No migrations, ledger edits, permission changes, allowlist changes, or deployments were performed in this step.
+
+
+## Addendum — internal runtime target explicitly confirmed by user (2026-10-28 00:08 UTC)
+
+The user explicitly confirmed that **`GHM-Internal-Runtime` uses the primary `ghm_db` database** and that PayFast-specific variables were deliberately not added to the internal runtime. Treat this as authoritative operator-provided configuration context; do not ask again which database the internal runtime should use and do not suggest adding PayFast variables to it.
+
+### Current Render deployment facts
+
+Read-only Render metadata for `GHM-Internal-Runtime`:
+
+- Service ID: `srv-damupsek1f9s73eq8kkg`
+- Dashboard: https://dashboard.render.com/web/srv-damupsek1f9s73eq8kkg
+- Branch: `main`; auto-deploy trigger: checks pass
+- Render environment ID: `evm-d9t1la7qj5pc73dludsg` (same environment as primary `ghm-db`)
+- Latest listed live deploy: `dep-dbgen8c9v7es73cuh390`
+- Deployed commit: `0da8fdc792fa7873a89c4b0d507b3b4047688e68`
+- Deploy finished: 2026-10-27 18:22:08 UTC
+
+The current `main` source at that commit has the storage repository calling `ghm.storage_get_object($1, $2)`, passing the object ID and server-authenticated `AuthContext.userId`. The primary `ghm_db` catalog has only `ghm.storage_get_object(p_object_id bigint)`; the account-scoped two-argument overload is absent. With the user-confirmed runtime-to-database mapping, this is now a **confirmed code/schema signature mismatch for GHM-Internal-Runtime's configured database**. Calls through the storage repository's `getById` path are expected to fail function resolution until code and schema are reconciled. This does not prove that every request fails or that the route is currently being exercised.
+
+A read-only Render log search for the literal `storage_get_object` and for application-level error severity from 2026-10-27 18:22 UTC through 2026-10-28 00:09 UTC returned no matching entries. This is not proof of healthy behavior: the route may not have been called, logs may omit SQL details, or errors may be surfaced differently.
+
+### Required next action — plan the minimal safe remediation
+
+1. Keep the primary database read-only while preparing a reviewed, exact plan. The candidate migration `20261026120000_scope_storage_metadata_lookup.sql` creates `storage_get_object(bigint,bigint)`, sets its owner/search path, grants execution to runtime and schema owner, revokes PUBLIC/migrator execution, and drops the old one-argument overload. It is security-relevant and changes a function signature, so compatibility must be deliberate.
+2. The repository caller already passes `AuthContext.userId` rather than a request-body account ID, which matches the migration's intended contract. Confirm the exact auth-context type/ID semantics and migration runner's behavior before executing.
+3. The primary ledger currently lacks all 11 listed migration records and corresponding expected schema effects. Do not apply only the storage migration and then mark the other 10 as complete. Build a per-migration dependency/effect plan and reconcile each ledger entry only after verifying its effects and checksum.
+4. The directory migrations are candidate-feature schema changes and are not needed by the inspected `main` directory repository, which uses the older columns. Keep them separate from the immediate storage compatibility fix unless another primary-runtime dependency demonstrates need.
+5. Use `ghm_disposable_test` for guarded storage qualification; do not bypass script database/role checks or run fixture-creating qualification scripts against primary `ghm_db`.
+6. Any actual production database migration or ledger write still requires explicit user authorization after presenting the concrete plan. No changes were made in this investigation.
+
+### Resume point
+
+Do not re-ask whether `GHM-Internal-Runtime` uses `ghm_db`; it does per explicit user confirmation. Next, prepare the ordered, risk-reviewed migration plan and identify the exact migration-runner command/options without executing it. Preserve the separation between primary runtime and PayFast sandbox runtime.
