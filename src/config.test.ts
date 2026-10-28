@@ -52,3 +52,17 @@ test('partial storage TTL configuration fails closed', () => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr + result.stdout, /Missing required storage environment variable: STORAGE_REGION/);
 });
+
+test('TRUST_PROXY=true trusts one hosting proxy hop, not an arbitrary forwarded chain', () => {
+  const result = loadConfig({ ...baseEnv, TRUST_PROXY: 'true' });
+  assert.equal(result.status, 0, result.stderr);
+  const loaded = JSON.parse(result.stdout.trim());
+  assert.equal(loaded.trustProxy, 1);
+});
+
+test('TRUST_PROXY is disabled unless explicitly enabled', () => {
+  const result = loadConfig({ ...baseEnv, TRUST_PROXY: 'false' });
+  assert.equal(result.status, 0, result.stderr);
+  const loaded = JSON.parse(result.stdout.trim());
+  assert.equal(loaded.trustProxy, false);
+});
