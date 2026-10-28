@@ -225,3 +225,6 @@ Only two PRs remain open: #142 is a broad, divergent identity integration candid
 
 
 - Follow-up direct function invocation through the Render read-only query connection attempted a lookup using a deliberately nonexistent bigint object ID. The scoped getter returned its expected generic `storage object does not exist` exception (`P0001`), not a permission-denied error. This verifies function invocation under that connection's effective role but is not an application HTTP end-to-end test.
+
+
+- Further runtime verification at 2026-10-28 00:52 UTC: source defines `GET /healthz` and startup readiness `GET /readyz`; Render's configured health path is `/healthz`. The available web/network environment could not resolve/reach the service hostname. Render request logs were empty for 00:40–01:00 UTC and HTTP-count metrics returned no points; neither result proves service failure or success. The authenticated app-level storage call remains pending. See [detailed handover](HANDOVER_2026-10-28_STORAGE_PERMISSION_FIX.md).
