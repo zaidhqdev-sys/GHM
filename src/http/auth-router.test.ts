@@ -9,6 +9,9 @@ process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL = 'postgres://qualification:test@localhost:5432/ghm';
 process.env.INVITE_CODE = 'test-invite-code';
 process.env.CORS_ORIGINS = 'http://localhost:3000';
+process.env.GHM_WEB_AUTH_ALLOWED_ORIGINS = 'http://localhost:3000';
+process.env.GHM_WEB_AUTH_COOKIE_PATH = '/api/ghm';
+process.env.GHM_WEB_AUTH_COOKIE_MAX_AGE_SECONDS = '2592000';
 
 type AuthTokenResponse = {
   accessToken: string;
@@ -545,5 +548,87 @@ test('POST /api/v1/auth/login enforces the approved 10-per-15-minute IP limit', 
     assert.deepEqual(await limited.json(), { error: 'rate_limited' });
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+
+test('browser login keeps refresh token in HttpOnly cookie and returns access-only payload', async () => {
+  const { server, baseUrl } = await startApp({
+    register: async () => sampleTokens(),
+    login: async () => sampleTokens({ refreshToken: 'browser-refresh' }),
+    refresh: async () => sampleTokens({ refreshToken: 'rotated-refresh', accessToken: 'rotated-access' }),
+    logout: async () => {},
+  });
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/auth/web/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      body: JSON.stringify({ email: 'person@example.com', password: 'ValidPassword123' }),
+    });
+    assert.equal(response.status, 200);
+    const payload = await response.json() as Record<string, unknown>;
+    assert.equal(payload.accessToken, 'access.jwt');
+    assert.equal('refreshToken' in payload, false);
+    const cookie = response.headers.get('set-cookie') || '';
+    assert.match(cookie, /zaid_connect_refresh=browser-refresh/);
+    assert.match(cookie, /HttpOnly/i);
+    assert.match(cookie, /SameSite=Lax/i);
+    assert.match(cookie, /Path=\/api\/ghm/);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test('browser refresh rotates cookie without accepting a body refresh token', async () => {
+  let seenRefreshToken: string | null = null;
+  const { server, baseUrl } = await startApp({
+    register: async () => sampleTokens(),
+    login: async () => sampleTokens(),
+    refresh: async (token) => {
+      seenRefreshToken = token;
+      return sampleTokens({ refreshToken: 'rotated-refresh', accessToken: 'rotated-access' });
+    },
+    logout: async () => {},
+  });
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/auth/web/refresh`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        origin: 'http://localhost:3000',
+        cookie: 'zaid_connect_refresh=old-refresh',
+      },
+      body: '{}',
+    });
+    assert.equal(response.status, 200);
+    assert.equal(seenRefreshToken, 'old-refresh');
+    const payload = await response.json() as Record<string, unknown>;
+    assert.equal(payload.accessToken, 'rotated-access');
+    assert.equal('refreshToken' in payload, false);
+    assert.match(response.headers.get('set-cookie') || '', /zaid_connect_refresh=rotated-refresh/);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test('browser auth rejects missing or unapproved Origin before calling Auth service', async () => {
+  let loginCalled = false;
+  const { server, baseUrl } = await startApp({
+    register: async () => sampleTokens(),
+    login: async () => { loginCalled = true; return sampleTokens(); },
+    refresh: async () => sampleTokens(),
+    logout: async () => {},
+  });
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/auth/web/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'https://attacker.example' },
+      body: JSON.stringify({ email: 'person@example.com', password: 'ValidPassword123' }),
+    });
+    assert.equal(response.status, 403);
+    assert.equal(loginCalled, false);
+    assert.deepEqual(await response.json(), { error: 'origin_not_allowed' });
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 });
