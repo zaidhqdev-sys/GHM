@@ -736,3 +736,32 @@ test('web auth fails closed for missing or unapproved browser Origin', async () 
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });
+
+
+test('POST /api/v1/auth/web/logout enforces a 60-per-15-minute IP limit', async () => {
+  process.env.GHM_WEB_AUTH_ALLOWED_ORIGINS = 'http://localhost:3000';
+  process.env.GHM_WEB_AUTH_COOKIE_SECURE = 'false';
+  const authService: GhmAuthService = {
+    login: async () => sampleTokens(),
+    refresh: async () => sampleTokens(),
+    logout: async () => undefined,
+  };
+  const { server, baseUrl } = await startApp(authService);
+  try {
+    for (let index = 0; index < 60; index += 1) {
+      const response = await fetch(`${baseUrl}/api/v1/auth/web/logout`, {
+        method: 'POST',
+        headers: { origin: 'http://localhost:3000', cookie: 'ghm_web_refresh=test-refresh' },
+      });
+      assert.equal(response.status, 200);
+    }
+    const limited = await fetch(`${baseUrl}/api/v1/auth/web/logout`, {
+      method: 'POST',
+      headers: { origin: 'http://localhost:3000', cookie: 'ghm_web_refresh=test-refresh' },
+    });
+    assert.equal(limited.status, 429);
+    assert.deepEqual(await limited.json(), { error: 'rate_limited' });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
