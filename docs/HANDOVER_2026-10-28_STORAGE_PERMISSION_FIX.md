@@ -125,3 +125,45 @@ Invoke-WebRequest -Uri "$base/readyz" -TimeoutSec 20 | Select-Object StatusCode,
 If the health endpoint returns success but readiness does not, record both statuses and response bodies; do not treat a timeout/DNS error from the current tool environment as proof of an outage. These unauthenticated endpoints do not exercise storage. An end-to-end storage check requires an existing valid app session/token and a known object ID that the session is authorized to access; use `GET /api/v1/storage/objects/:objectId/access` (read-only grant creation, not object deletion) only with those real values. Do not paste bearer tokens or signed URLs into chat or handover docs.
 
 No migration was rerun in this pass. The role grant and direct database function invocation are verified; authenticated HTTP lookup and the migration-ledger row are still pending.
+
+
+## HTTPS failure reported from user's PowerShell — 2026-10-28 00:57 UTC
+
+User ran `Invoke-WebRequest "$base/healthz" -TimeoutSec 20` and received "The underlying connection was closed: An unexpected error occurred on a receive." The `/readyz` request timed out after 20 seconds.
+
+Render control-plane diagnostics collected immediately afterward show a new documentation-triggered deploy:
+
+- Deploy `dep-dbgkginb9u1s73cu2qo0` from docs-only commit `86dda225ad040d8ac467cb360d86bfe09173e6a6`.
+- Deployment began 00:56:42 UTC and finished successfully/live at 00:57:25.845 UTC.
+- New instance logged `GHM Core Engine listening on port 10000` at 00:57:20.093 UTC; Render marked service live at 00:57:26 UTC.
+- The service is configured with one instance and health-check path `/healthz`. Source shows `/healthz` returns static JSON `{"status":"ok"}`; `/readyz` returns 200 only after the server's initial `SELECT 1` completes and listen callback sets readiness.
+- No HTTP request-count metrics were available in the inspected time range. App logs contained startup/deploy records but no request logs. These observations do not show whether the user's requests reached the app.
+
+The requests happened close to the docs-triggered redeploy window, so transient routing during restart is plausible but not proven. Do not diagnose an app bug or change runtime code based only on these two errors.
+
+### Next diagnostic from Windows PowerShell
+
+Windows PowerShell's TLS defaults may cause compatibility issues; test TLS 1.2 explicitly and also use `curl.exe` to separate PowerShell/.NET behavior from the endpoint itself:
+
+```powershell
+$base = 'https://ghm-internal-runtime.onrender.com'
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+try {
+  $r = Invoke-WebRequest "$base/healthz" -TimeoutSec 25 -UseBasicParsing
+  "healthz status=$([int]$r.StatusCode) body=$($r.Content)"
+} catch {
+  "healthz error: $($_.Exception.Message)"
+}
+
+try {
+  $r = Invoke-WebRequest "$base/readyz" -TimeoutSec 25 -UseBasicParsing
+  "readyz status=$([int]$r.StatusCode) body=$($r.Content)"
+} catch {
+  "readyz error: $($_.Exception.Message)"
+}
+
+curl.exe -sS -v --connect-timeout 10 --max-time 25 "$base/healthz" -o NUL
+```
+
+Share only status/error text and curl's TLS/HTTP diagnostic lines; do not share cookies, authorization headers, or tokens. If both still fail after the deploy has settled, inspect DNS/TLS/network path and Render events/logs before changing app code. Do not rerun migrations for an HTTP transport symptom.
