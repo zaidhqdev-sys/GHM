@@ -65,3 +65,10 @@ Before production browser-auth cutover, review the existing Render proxy topolog
 The GHM configuration branch now maps the existing explicit `TRUST_PROXY=true` setting to Express hop count `1`, instead of boolean `true`; unset/false remains `false`. Added config tests verify both behaviors. This is a **candidate code fix**, not a runtime change. Render service metadata identifies GHM Internal Runtime as a public Render web service behind Render's ingress; before deployment, verify with the deployed service and request-level tests that the one-hop trust boundary matches the actual ingress path.
 
 Release gate: CI must pass, and a non-production integration test must prove that spoofed client-supplied `X-Forwarded-For` chains cannot rotate/bypass the auth rate-limit key, while legitimate requests still resolve to the intended client IP. Recheck fresh logs for absence of `ERR_ERL_PERMISSIVE_TRUST_PROXY`. Do not manually change the production environment or deploy this branch as part of this PR.
+
+
+## Runtime recheck — 2026-10-28 21:46 UTC
+
+A fresh read-only Render log query still returns `ERR_ERL_PERMISSIVE_TRUST_PROXY` warnings at 20:35:16Z and 20:55:46Z from the live `GHM-Internal-Runtime` instance. The live service is configured for auto-deploy from branch `main`; its latest listed successful deployment is commit `a2501ee9a10f51d7c2866107e261b57f7f82253b` (documentation-only health-check evidence). The proxy-trust candidate remains on the draft PR branch, so these production warnings are expected to persist until an approved deployment is made.
+
+The latest PR #191 head `aa0cc98797b98ba89470b2516e93d942e92ed9b0` has a completed GHM CI run with conclusion `success`. This does not change production or prove runtime IP behavior. Direct HTTP inspection of the Render health endpoint was not available through the current read-only inspection path; no live authentication requests were sent.
