@@ -401,15 +401,23 @@ export const registerAuthRoutes = (
     const config = getBrowserCookieConfig();
     if (!config) { res.status(503).json({ error: 'browser_auth_not_configured' }); return; }
     const refreshToken = readBrowserCookie(req);
+    let revocationFailed = false;
     try {
       if (refreshToken) await getAuthService().logout(refreshToken);
     } catch (error) {
+      revocationFailed = true;
       console.error(JSON.stringify({
         event: 'ghm_browser_auth_logout_failed',
         error: { name: error instanceof Error ? error.name : 'UnknownError' },
       }));
     } finally {
+      // Always remove the browser's cookie, but don't claim server-side revocation
+      // succeeded when the auth persistence layer reported a failure.
       res.setHeader('Set-Cookie', browserCookieHeader(null, config));
+    }
+    if (revocationFailed) {
+      res.status(503).json({ error: 'logout_revocation_unavailable' });
+      return;
     }
     res.status(200).json({ ok: true });
   });
