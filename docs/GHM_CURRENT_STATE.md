@@ -222,3 +222,6 @@ Only two PRs remain open: #142 is a broad, divergent identity integration candid
 - The Render query interface cannot SELECT from `ghm.ghm_schema_migrations` using its current read-only role, so production migration-ledger state remains unverified. Do not infer migration success from the function existing alone and do not rerun migrations just to address the now-fixed role membership.
 - A live application-level request invoking the getter is still required to close end-to-end verification. The generic web fetch did not access the service URL or `/healthz`; this tool limitation is not evidence of app failure. No relevant app logs were returned for the short interval inspected.
 - Detailed current-session resume steps and evidence are recorded in [the 2026-10-28 storage permission handover](HANDOVER_2026-10-28_STORAGE_PERMISSION_FIX.md).
+
+
+- Follow-up direct function invocation through the Render read-only query connection attempted a lookup using a deliberately nonexistent bigint object ID. The scoped getter returned its expected generic `storage object does not exist` exception (`P0001`), not a permission-denied error. This verifies function invocation under that connection's effective role but is not an application HTTP end-to-end test.
