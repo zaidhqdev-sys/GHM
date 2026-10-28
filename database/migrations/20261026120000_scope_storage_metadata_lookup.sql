@@ -1,3 +1,5 @@
+BEGIN;
+
 -- Replace the ID-only getter with an account-aware lookup. The function
 -- returns a row only for an active public business logo or when the supplied
 -- account has an active membership in the object's business.
@@ -78,3 +80,4 @@ REVOKE ALL ON FUNCTION ghm.storage_get_object(bigint) FROM PUBLIC;
 REVOKE ALL ON FUNCTION ghm.storage_get_object(bigint) FROM ghm_runtime;
 DROP FUNCTION ghm.storage_get_object(bigint);
 
+COMMIT;
