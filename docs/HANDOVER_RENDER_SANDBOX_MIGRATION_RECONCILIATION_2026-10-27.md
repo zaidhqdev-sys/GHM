@@ -602,3 +602,12 @@ The first PR #189 CI run completed build and disposable-Postgres storage qualifi
 The review also caught a checksum-preservation concern: editing the historical storage migration file would change its canonical checksum and cause checksum drift on databases where that migration is already recorded. The PR now restores the migration file byte-for-byte from `main` and instead strips only a leading `BEGIN;` and trailing `COMMIT;` at execution-normalization time, while computing checksums from untouched migration SQL. Tests were added for this behavior. This retains the historical migration checksum while keeping the runner's schema effects and ledger insert inside the same outer transaction.
 
 Current validation state at this addendum: the latest CI run is in progress; no merge, production migration, database write, environment change, or deployment has occurred.
+
+
+### Merged and deployed — guarded migration runner (2026-10-28 00:27 UTC)
+
+- PR #189 merged as commit `60814931bd3905c4be95a2366ea4b16957b48cb1`.
+- CI for the merge commit completed successfully, including build, all tests, migration audit policy tests, runtime boundary verification, and disposable PostgreSQL migration/storage lifecycle/tenant authorization qualification.
+- Render `GHM-Internal-Runtime` deployment `dep-dbgk2fqjnfac73c7aprg` is `live` for the merged commit, finished at 2026-10-28 00:27:22 UTC. Startup logs report `GHM Core Engine listening on port 10000`.
+- The code deployment does not invoke migrations on startup. Production `ghm_db` schema and ledger remain unchanged; the one shared missing migration `20261026120000_scope_storage_metadata_lookup` still needs a controlled execution.
+- Available Render Postgres SQL access is read-only in this session, and there is no connected shell/one-off execution path exposing the existing migrator secret. Therefore no production SQL write was attempted. Next execution must use a controlled environment with the existing `GHM_MIGRATOR_DATABASE_URL` secret, plus explicit `GHM_MIGRATION_DATABASE_NAME=ghm_db` and `GHM_MIGRATION_DATABASE_HOST=dpg-dag0sdtbedkc7389vi2g-a.frankfurt-postgres.render.com`; confirm target identity and apply only the one migration missing from production `main`. Do not run candidate-only migrations.
