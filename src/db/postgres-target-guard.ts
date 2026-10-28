@@ -26,6 +26,10 @@ export const assertPostgresTargetConfiguration = (
     throw new Error(`${expectation.label}: database connection URL is invalid`);
   }
 
+  if (!['postgres:', 'postgresql:'].includes(parsed.protocol)) {
+    throw new Error(`${expectation.label}: only PostgreSQL connection URLs are allowed`);
+  }
+
   const databaseName = decodeURIComponent(parsed.pathname.replace(/^\//, ''));
   const host = normalizePostgresHost(parsed.hostname);
   const expectedHost = normalizePostgresHost(expectation.host);
@@ -36,10 +40,6 @@ export const assertPostgresTargetConfiguration = (
   if (!host || host !== expectedHost) {
     throw new Error(`${expectation.label}: connected database URL does not match the explicitly approved PostgreSQL host`);
   }
-  if (!['postgres:', 'postgresql:'].includes(parsed.protocol)) {
-    throw new Error(`${expectation.label}: only PostgreSQL connection URLs are allowed`);
-  }
-
   return { databaseName, host };
 };
 
