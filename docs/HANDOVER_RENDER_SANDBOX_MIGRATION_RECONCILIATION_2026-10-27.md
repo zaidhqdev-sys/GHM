@@ -421,3 +421,23 @@ Read-only Render service/deployment queries reconfirmed:
 The documented qualification evidence on `main` says the scoped getter migration and persistence qualification passed on the separate qualification database. That evidence is **not** proof the primary `ghm_db` has the migration applied. The qualification script deliberately hard-checks `ghm_disposable_test`; never bypass that guard or run fixture-creating directory/profile qualification scripts against `ghm_db`.
 
 Next step remains read-only: establish the runtime service's database target without exposing connection strings or secrets, and inspect any existing `ghm_disposable_test` storage qualification output. Then draft a database-specific reviewed migration plan; do not apply migrations or edit ledger records without explicit authorization.
+
+
+## Addendum — qualification guardrails and next external dependency (2026-10-28)
+
+Inspected the current `main` qualification scripts read-only:
+
+- `scripts/qualify-storage-getter-postgres.mjs` requires an explicit `GHM_RUNTIME_DATABASE_URL` and hard-fails unless both `current_database()` is exactly `ghm_disposable_test` and both `current_user` and `session_user` are exactly `ghm_runtime`. It performs catalog and rejection checks and reports `mutations_performed: false`. Do not bypass or edit these checks to target the primary database.
+- `scripts/qualify-storage-persistence.mjs` is **mutating**. It requires the separate `GHM_QUALIFICATION_DATABASE_URL` and `GHM_STORAGE_QUALIFICATION_ALLOW_MUTATIONS=true`, then only permits a database name that clearly identifies a sandbox/qualification/test/disposable target. Do not run it as part of this read-only investigation.
+- `scripts/qualify-directory-runtime.mjs` and `scripts/qualify-business-profile-runtime.mjs` create fixture accounts/businesses/categories or profile fixtures and perform cleanup using the migrator connection. They assert database name `ghm_db`; do not run them against the current primary database while migration readiness is unresolved.
+- Existing evidence in `docs/architecture/GHM_STORAGE_PERSISTENCE_QUALIFICATION.md` states that the scoped getter and persistence qualification passed on a separate qualification database. That does not demonstrate that the primary `ghm_db` has the migration.
+
+Render read-only service/deploy metadata reconfirmed the latest known live commits as recorded above. The available Render tools do not expose service environment-variable values in the service metadata response, so the runtime service's actual database target remains unverified. Do not print or copy connection strings or secrets to establish it; verify only a non-secret database identity through an approved safe diagnostic.
+
+**Workspace gate:** Render returned “no workspace selected” for the database inventory call. The workspace list returned one team workspace, `ZAID Technologies` (`tea-d9svua6417fc73bhcutg`), but the operator must explicitly confirm which workspace to use before continuing Render database inventory/query calls. No workspace was selected automatically and no Render database query was run in this step.
+
+Resume actions:
+1. Confirm the intended Render workspace.
+2. Inspect database inventory and safe, non-secret service-to-database mapping evidence.
+3. If `ghm_disposable_test` is available and its connection is already configured, run only the guarded read-only getter qualification there and capture its output; do not change its guards.
+4. Continue to keep `ghm_db` read-only until a migration plan for the intended service/database pair is reviewed and explicitly authorized.
