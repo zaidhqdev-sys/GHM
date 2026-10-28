@@ -74,6 +74,9 @@ const migrate = async (): Promise<void> => {
   try {
     await client.query(`SET ROLE ${MIGRATION_OWNER_ROLE}`);
     const identity = await client.query<{ current_user: string; session_user: string; current_database: string }>(`SELECT current_user, session_user, current_database()`);
+    if (identity.rows[0]?.current_database !== approvedTarget.databaseName) {
+      throw new Error('Migration refused: connected database does not match the explicitly approved database name');
+    }
     if (identity.rows[0]?.current_user !== MIGRATION_OWNER_ROLE || identity.rows[0]?.session_user !== 'ghm_migrator') {
       throw new Error(`Migration authority identity mismatch: current_user=${identity.rows[0]?.current_user}, session_user=${identity.rows[0]?.session_user}`);
     }
