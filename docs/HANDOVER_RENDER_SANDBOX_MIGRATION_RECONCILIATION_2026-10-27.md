@@ -593,3 +593,12 @@ Changes in the draft:
 This is a code proposal only. The PR is draft, not merged. CI/build/tests have not been run from this environment, no production variables were changed to supply the new guard values, and no migration was executed. Before merge, CI must pass and the guarded storage getter qualification must pass on `ghm_disposable_test`. After merge, the production migration still requires an explicitly target-pinned execution step with the new guard variables set; do not run the candidate branch's 11-migration batch against production.
 
 The primary production database remains unchanged, and the ten candidate-only migration effects remain out of production scope. The PayFast variable discussion is separate from this migration PR; no payment variables were changed.
+
+
+### Follow-up hardening from first CI run (2026-10-28 00:23 UTC)
+
+The first PR #189 CI run completed build and disposable-Postgres storage qualification successfully, but one new target-guard unit test failed because the protocol check occurred after host matching. The guard was corrected to reject non-PostgreSQL schemes before checking host/database. A new CI run was triggered for that correction.
+
+The review also caught a checksum-preservation concern: editing the historical storage migration file would change its canonical checksum and cause checksum drift on databases where that migration is already recorded. The PR now restores the migration file byte-for-byte from `main` and instead strips only a leading `BEGIN;` and trailing `COMMIT;` at execution-normalization time, while computing checksums from untouched migration SQL. Tests were added for this behavior. This retains the historical migration checksum while keeping the runner's schema effects and ledger insert inside the same outer transaction.
+
+Current validation state at this addendum: the latest CI run is in progress; no merge, production migration, database write, environment change, or deployment has occurred.
