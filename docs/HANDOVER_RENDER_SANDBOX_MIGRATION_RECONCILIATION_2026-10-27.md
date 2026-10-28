@@ -576,3 +576,20 @@ The production source explicitly documents `GhmAuthContext.accountId` as the can
 The current production `main` migration runner wraps the whole batch in `BEGIN` and calls `client.query(normalizeMigrationSqlForExecution(migration.sql))` for each file. The storage migration itself contains explicit `BEGIN;` and `COMMIT;`. PostgreSQL transaction control inside a SQL string can terminate the runner's outer transaction before the ledger insert, risking a schema change without an atomically committed ledger row. The candidate runner has a target-name/host guard, but still needs its transaction-boundary behavior reviewed. Do not invoke either runner until the nested-transaction issue is fixed or an execution method that preserves atomic schema-plus-ledger behavior is prepared.
 
 The Render Postgres query connector is read-only; it cannot apply SQL changes. No production schema or ledger change was attempted. The next implementation step is to prepare a migration-runner hardening patch and tests on a non-production branch: explicit database name/host guard, deterministic migration selection or an explicit allowlist, and safe handling of migration transaction boundaries. Then qualify the exact storage migration against a disposable database and prepare a separately approved production rollout. Do not use the 11-file candidate batch for production.
+
+
+## Addendum — implementation started on guarded migration PR (2026-10-28 00:20 UTC)
+
+Following the user's direction to proceed with backend correction, a draft code PR was opened: [PR #189 — Guard production migrations and fix storage migration transaction boundary](https://github.com/zaidhqdev-sys/GHM/pull/189).
+
+Branch: `fix/guarded-production-storage-migration-20261028`, based on production `main` commit `0da8fdc792fa7873a89c4b0d507b3b4047688e68`.
+
+Changes in the draft:
+- Add a reusable PostgreSQL target guard requiring explicit `GHM_MIGRATION_DATABASE_NAME` and `GHM_MIGRATION_DATABASE_HOST` values, validating the supplied URL's database and host, and rejecting non-PostgreSQL URLs.
+- Apply the guard in `src/db/migrate.ts` and verify the connected database name matches the approved name before migrations run.
+- Remove the explicit outer `BEGIN`/`COMMIT` from `20261026120000_scope_storage_metadata_lookup.sql` so the migration runner's existing transaction owns both schema effects and its migration-ledger insert atomically.
+- Add unit tests for missing/mismatched target configuration and malformed/non-PostgreSQL URLs, and include the tests in the package test command.
+
+This is a code proposal only. The PR is draft, not merged. CI/build/tests have not been run from this environment, no production variables were changed to supply the new guard values, and no migration was executed. Before merge, CI must pass and the guarded storage getter qualification must pass on `ghm_disposable_test`. After merge, the production migration still requires an explicitly target-pinned execution step with the new guard variables set; do not run the candidate branch's 11-migration batch against production.
+
+The primary production database remains unchanged, and the ten candidate-only migration effects remain out of production scope. The PayFast variable discussion is separate from this migration PR; no payment variables were changed.
