@@ -818,3 +818,14 @@ Follow-up repository inspection refined the earlier remaining-caller inventory. 
 - **Next safe bounded work:** establish and test the Connect-side read-only Saved Business adapter contract against GHM's authenticated list endpoint using same-origin GHM session auth and numeric GHM business IDs, without wiring new UI controls or migrating UUID-based legacy rows. If identity mapping cannot be verified, fail closed and document the blocker. Do not mutate saved rows during qualification.
 - Latest reviewed GHM CI evidence on the integration branch remains run `40396014963` at commit `ef09793aaf8484ffa163fac0fcc80c0face3dae5`; this run predates the current integration branch head and must not be represented as validating newer commits.
 - No production data/config, payment settings, sandbox DB target, provider activation, or merge status changed.
+
+
+## Read-only Saved Business adapter qualification — 2026-10-29 00:18 UTC
+
+- Connect now has `src/features/marketplace/ghmSavedBusinesses.js`, a read-only browser client that calls GHM's authenticated `GET /api/v1/saved-businesses` through the same-origin proxy and `ghmWebAuthClient.authenticatedFetch`.
+- Added `tests/ghm-saved-businesses.test.js` covering own-list contract shape, empty list, malformed payloads/records, unauthorized/forbidden errors, and rejection of legacy Connect UUID business IDs rather than coercing them into numeric GHM IDs.
+- Added `npm run ghm-saved-businesses` and wired it into `.github/workflows/ghm-auth-contract.yml`. The direct-Supabase guard now includes this new client.
+- CI run [40793127580](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/40793127580) was in progress when recorded and was triggered at commit `93f827202dc5f51015e3e88187cb886d788d57bb`; the final guard-list commit is `2b4d89a0a721cd0f48f2f0ee341dd306fbad4068`. Wait for a workflow run on the final head before claiming the entire updated suite passed.
+- This is an intentionally **unwired read-only adapter**, not a user-facing feature release. No save/remove/toggle operation or UI control was added; this preserves the current read-only migration constraint. It does not reconcile existing Connect UUID business IDs to GHM numeric IDs, migrate legacy saved rows, or prove live sandbox route behavior.
+- GHM Saved Business resource itself is separately qualified; see `docs/architecture/SAVED_BUSINESS_QUALIFICATION.md`. No data was read or mutated in the live sandbox by this adapter work.
+- No production configuration/data, payment settings, sandbox DB target, R2 provider configuration, visibility rules, or merge status changed.
