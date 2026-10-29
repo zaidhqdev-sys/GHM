@@ -815,7 +815,7 @@ The two-argument getter scopes rows to either an active public business logo or 
 
 ### Latest proxy-fix status — 2026-10-29 20:54 UTC
 
-PR #193 merged as `b59fa6b8f1d5f7b759bb2e070b487d2626a7862d`. The app now narrows legacy `TRUST_PROXY=true` to one hop and accepts explicit bounded `TRUST_PROXY_HOPS`. CI for the code revision passed; main's post-merge CI was still running at the latest check, and Render had not yet reported a new deployment after the merge. No Render environment variable was changed. Once deployment completes, inspect startup logs and health, then validate client IP/rate-limit behavior with spoofed `X-Forwarded-For`. Production DB ledger and R2 rollout remain separate gates.
+PR #193 merged as `b59fa6b8f1d5f7b759bb2e070b487d2626a7862d`. The app now narrows legacy `TRUST_PROXY=true` to one hop and accepts explicit bounded `TRUST_PROXY_HOPS`. CI for merged commit `b59fa6b8f1d5f7b759bb2e070b487d2626a7862d` completed successfully at `2026-10-29T20:54:41Z`: https://github.com/zaidhqdev-sys/GHM/actions/runs/40953060564. Render's latest deployment listing still showed the prior commit `a2501ee9a10f51d7c2866107e261b57f7f82253b`; deployment of the proxy fix is not yet confirmed. No Render environment variable was changed. Once deployment completes, inspect startup logs and health, then validate client IP/rate-limit behavior with spoofed `X-Forwarded-For`. Production DB ledger and R2 rollout remain separate gates.
 
 
 ### Direct health probe attempt — 2026-10-29 20:41 UTC
