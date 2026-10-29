@@ -727,3 +727,31 @@ No Render environment variables were changed during this comparison. The availab
 2. Enter `STORAGE_ACCESS_KEY_ID` and `STORAGE_SECRET_ACCESS_KEY` directly in Render's secret UI; never paste them into chat, GitHub, or this document.
 3. Once those two secret values are saved, the remaining eight non-secret storage settings above can be merged without replacing the service's existing environment. Confirm the intended deployed code revision and schedule any restart/deploy separately because auto-deploy is off.
 4. Verify service startup and health, then test the authenticated storage API path and tenant-scoped metadata behavior. Keep production DB migrations and PayFast live activation out of this environment-only change.
+
+
+
+## Proxy-trust remediation continuation — 2026-10-29 20:50 UTC
+
+Operator confirmed that GHM identity qualification (sandbox/test) has no trust-proxy setting; only GHM Internal Runtime (production) has it. Scope this finding/remediation to production and do not alter qualification configuration.
+
+### Code and PR work
+
+- Created `fix/render-trust-proxy-hop-config-2026-10-29`.
+- Added explicit `TRUST_PROXY_HOPS` parsing in `src/config.ts` (integer 0–10, malformed values fail closed; explicit numeric setting overrides legacy boolean `TRUST_PROXY=true`).
+- Added config tests covering valid numeric hop, precedence, and invalid values; updated `.env.example`.
+- Opened PR #193: https://github.com/zaidhqdev-sys/GHM/pull/193. CI run `40952611309` was in progress when this record was written. Do not treat as passed until the run completes.
+- No production or qualification Render environment variables, service settings, or deployments were changed.
+
+Render published an Express example using `app.set('trust proxy', 1)`: https://render.com/articles/how-to-implement-authentication-and-authorization. Its DDoS article describes Cloudflare plus Render load balancers and recommends reading `X-Forwarded-For`: https://render.com/articles/how-render-handles-ddos-attacks. These references are guidance, not proof of the exact chain seen by this app; verify effective forwarding and spoofing behavior before setting a production hop count.
+
+### Unresolved runtime/source mismatch
+
+Production logs recorded `ERR_ERL_PERMISSIVE_TRUST_PROXY` at `2026-10-29T20:06:15.836212737Z`, but inspection of the available `main` sources `src/config.ts`, `src/http/app.ts`, and `src/server.ts` did not locate the `express-rate-limit` middleware call that emitted it. Before claiming the PR resolves the production warning, inspect the exact deployed commit/build artifact and identify the middleware call path.
+
+### Next actions
+
+1. Wait for PR #193 CI and address any failures.
+2. Identify the exact production deployed artifact/source of the warning.
+3. Verify the effective forwarded-header chain and ensure forged `X-Forwarded-For` cannot change rate-limit identity.
+4. Only after PR merge and deployment, set a verified numeric `TRUST_PROXY_HOPS` on Internal Runtime if the observed topology warrants it; then check startup logs and rate-limit behavior.
+5. Do not change GHM identity qualification. Keep storage migration and R2 go-live gates as previously documented.
