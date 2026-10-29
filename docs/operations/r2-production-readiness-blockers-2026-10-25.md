@@ -376,3 +376,80 @@ The implementation was tightened after review: if legacy `TRUST_PROXY=true` is s
 ### Source-path reconciliation correction — 2026-10-29 20:53 UTC
 
 Follow-up inspection located the rate limiter in `src/http/auth-router.ts`, which the earlier source check had not inspected. It creates `express-rate-limit` middleware for login (10 requests/15 minutes), password recovery (5/15 minutes), and refresh (60/15 minutes). `src/http/app.ts` sets Express trust proxy from `config.trustProxy`. The production stack therefore matches the repository's auth-router rate limiter; the earlier statement that the source did not expose the call path was incomplete and is superseded by this correction. Existing test `POST /api/v1/auth/login enforces the approved 10-per-15-minute IP limit` verifies the basic limiter, but does not yet test spoofed `X-Forwarded-For`. The new config regression test narrows legacy `TRUST_PROXY=true` to numeric one hop. After successful CI and rollout, verify the production IP key with spoofed-header tests and a safe external request. Do not change the identity qualification service.
+
+
+## Continuation record — 2026-10-29 20:36–20:40 UTC
+
+This section records the resumed review and read-only checks performed after the earlier handover. It supersedes older statements in this document that PR #184 was still draft or that the scoped getter migration had not been exercised in disposable PostgreSQL; those statements were accurate at their recorded timestamps but are no longer the latest state.
+
+### Repository and CI state verified
+
+- PR #184 is **merged**; GitHub reports merge time `2026-10-26T21:50:49Z`. See https://github.com/zaidhqdev-sys/GHM/pull/184.
+- Merge commit inspected: `43450e42e902594493bdab4ba2c689b0c4099912`.
+- GitHub Actions run `40395626703` completed successfully. Its quality job reports success for the following relevant steps: least-privilege database roles, storage qualification script syntax, build, apply all migrations to disposable PostgreSQL, seed disposable storage fixture, qualify storage getter on disposable PostgreSQL, qualify storage lifecycle and tenant authorization on disposable PostgreSQL, test suite, migration audit policy tests, and runtime boundary verification. See https://github.com/zaidhqdev-sys/GHM/actions/runs/40395626703.
+- This verifies the isolated CI qualification run. It is not evidence that this migration was applied to production, and it does not replace live migration-ledger reconciliation.
+
+### Read-only production PostgreSQL catalog inspection
+
+Using the Render Postgres read-only query operation against the production database ID recorded in the operational handover, the session reported:
+
+- `current_database() = ghm_db`
+- `current_user = ghm_db_user`; `session_user = ghm_app_user`
+- `ghm.storage_get_object(bigint,bigint)` exists and `ghm.storage_get_object(bigint)` does not.
+- The scoped getter is owned by `ghm_schema_owner`, is `SECURITY DEFINER`, and has fixed function setting `search_path=pg_catalog, ghm`.
+- Its ACL reports execute granted to `ghm_schema_owner` and `ghm_runtime`; PUBLIC execute is false.
+- Catalog privilege checks report `ghm_runtime` has no direct SELECT, INSERT, UPDATE, or DELETE privilege on `ghm.storage_object`.
+- Attempting to read `ghm.ghm_schema_migrations` with this inspection connection failed with permission denied. Consequently, the production migration version/checksum and ledger reconciliation were **not verified** in this session.
+
+These were catalog/privilege reads only. No production data was selected from storage objects, no function was invoked with object/account IDs, no migration was run, and no live database write or grant change was performed.
+
+### Render service metadata inspected
+
+- `GHM-Internal-Runtime` service ID `srv-damupsek1f9s73eq8kkg` currently reports branch `main`, auto-deploy `yes`, trigger `checksPass`, and updated-at `2026-10-28T01:01:29.670131Z`.
+- The latest deployment in the returned list was `dep-dbgki03jvrbc73cdvf1g`, status `live`, for documentation commit `a2501ee9a10f51d7c2866107e261b57f7f82253b`, finished `2026-10-28T01:01:29.587137Z`.
+- This metadata is not a fresh successful health-check observation and does not prove storage routes or R2 configuration are ready. The earlier documented health-check failures remain a separate operational issue to investigate.
+
+### Security interpretation and remaining gates
+
+The scoped getter requires an account ID and enforces either the explicitly public active-business-logo rule or active membership for that supplied account. The repository passes the authenticated `AuthContext.userId`. This is defense in depth, **not cryptographic binding of the argument to end-user identity**: a caller that already controls the shared runtime database credential can choose function arguments. Application authentication and authorization must remain authoritative.
+
+Next steps, in order:
+
+1. Run `scripts/forensic-migration-reconciliation.mjs` only from the approved operational environment using the authorized migrator/audit connection, with `GHM_MIGRATION_AUDIT_DATABASE=ghm_db`; record sanitized verdict, migration counts, missing entries, checksum mismatches, and extra entries. Do not paste credentials. Do not bypass ledger permissions or grant additional access to the inspection role just to obtain the result.
+2. Preserve the production migration guard: do not run a mutating migration until the ledger audit and approved migration-baseline decision are recorded.
+3. Preserve the passing disposable PostgreSQL qualification as CI evidence; if a separate manual lifecycle qualification is needed, use a dedicated disposable database with the script's explicit mutation opt-in, never production or the shared PayFast sandbox.
+4. Investigate current Render health-check failures using service events/logs and a direct approved health probe. Record timestamps and returned status; do not infer health solely from deployment state.
+5. Keep production R2 credential/configuration changes and storage go-live on hold until migration reconciliation, health, end-to-end authenticated route checks, and rollout approval are complete.
+
+### Changes made during this continuation
+
+- Documentation-only branch created: `docs/storage-security-handover-2026-10-29`.
+- No application code, database schema/data/permissions, Render environment variables, deployment settings, or deployments were changed.
+- This continuation record is being added to the readiness blocker document and the production DB/Render handover so historical checkpoints remain intact and the latest state is explicit.
+
+
+### Latest proxy-fix status — 2026-10-29 20:54 UTC
+
+PR #193 merged as commit `b59fa6b8f1d5f7b759bb2e070b487d2626a7862d`. The change narrows legacy `TRUST_PROXY=true` to one trusted hop and supports explicit bounded `TRUST_PROXY_HOPS`. CI for merged commit `b59fa6b8f1d5f7b759bb2e070b487d2626a7862d` completed successfully at `2026-10-29T20:54:41Z`: https://github.com/zaidhqdev-sys/GHM/actions/runs/40953060564. Render's latest deployment listing still showed `a2501ee9a10f51d7c2866107e261b57f7f82253b` after that check, so the production deployment of the proxy fix is not yet confirmed. No Render environment variable was edited. After the new deploy, verify health and confirm the warning no longer occurs, then validate client IP/rate-limit behavior against spoofed `X-Forwarded-For`. Keep migration-ledger reconciliation and R2 rollout gates unchanged.
+
+
+### Direct health probe attempt — 2026-10-29 20:41 UTC
+
+A read-only HTTPS GET was attempted from the session against `https://ghm-internal-runtime.onrender.com/healthz`. The environment returned DNS resolution error `Could not resolve host` before an HTTP connection. This is a checking-environment limitation, not evidence that Render is down. A timestamped direct health result remains outstanding; use an approved browser or external monitor and record the HTTP status/body.
+
+
+## Additional Render runtime evidence — 2026-10-29 20:40 UTC
+
+Follow-up read-only Render log, event, and metrics queries were made after the previous continuation record was written.
+
+- Application logs show the service instance `srv-damupsek1f9s73eq8kkg-m7vrf` starting `npm start` at 2026-10-29 20:06:04 UTC and logging `GHM Core Engine listening on port 10000` at 20:06:09 UTC.
+- At 20:06:15 UTC, application logs emitted Express Rate Limit validation warning/error code `ERR_ERL_PERMISSIVE_TRUST_PROXY`: `The Express 'trust proxy' setting is true, which allows anyone to trivially bypass IP-based rate limiting.` The trace originates from `express-rate-limit`.
+- Current `main` source reads `TRUST_PROXY` as a boolean in `src/config.ts`, and `src/http/app.ts` sets Express `trust proxy` to that boolean. `.env.example` says this should only be true behind a trusted HTTPS reverse proxy. The deployed runtime appears to have the permissive setting active; confirm the effective environment and proxy topology before changing it.
+- Render service event history returned no event newer than the successful deploy ending 2026-10-28 01:01:29 UTC in the response examined. The logs nevertheless show a process start on 2026-10-29 20:06 UTC; its trigger is not established by the returned event history.
+- Request logs and HTTP request-count/latency metrics filtered to `/healthz` for 2026-10-29 19:30–20:40 UTC returned no records/data. Absence of telemetry is inconclusive, not proof that the endpoint failed or succeeded. The external web inspection path could not retrieve the health URL, so a fresh direct health result is still unavailable.
+
+### Additional required actions
+
+1. Treat the permissive `TRUST_PROXY=true` / `ERR_ERL_PERMISSIVE_TRUST_PROXY` warning as a security-hardening item. Confirm Render's actual trusted proxy chain and rate-limit key behavior, then select the narrowest supported Express proxy trust configuration. Do not simply set it false or to an arbitrary hop count without validating client-IP behavior behind Render. Add/adjust tests so spoofed `X-Forwarded-For` cannot evade rate limits.
+2. Obtain a timestamped direct `/healthz` response using an approved HTTP client/monitor and correlate with Render logs. Do not mark runtime health passed from the `live` deploy label alone.
+3. These checks were read-only. No runtime environment variable, source code, deployment, or database state was changed.
