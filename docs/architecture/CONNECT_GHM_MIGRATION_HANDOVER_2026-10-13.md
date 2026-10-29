@@ -768,3 +768,13 @@ Directory response with zero eligible listings is consistent with an unseeded sa
 - PR #47 disables unimplemented Founder directory-review submission and logo upload/removal rather than falling back to Supabase. Those capabilities remain migration blockers, not completed features.
 - Zero eligible businesses in the GHM qualification sandbox remains an expected empty state absent a legitimate fixture. Do not seed fake listings or weaken active/approved/verified public eligibility.
 - Owner-confirmed setup: `ghm-identity-qualification` uses the sandbox DB, not main `ghm-db`. Keep that setup unchanged. No service environment, database target, allowlist, permissions, production settings, payment config, data, or merge status was changed.
+
+
+## Auth/directory direct-Supabase regression guard — 2026-10-29 00:10 UTC
+
+- Added `tests/ghm-no-direct-supabase-auth-directory.test.js`, which asserts the migrated browser auth, app-shell session, directory screen, directory search hook and GHM directory client contain no direct Supabase references.
+- Added `npm run ghm-no-direct-supabase-auth-directory` and wired it into `.github/workflows/ghm-auth-contract.yml` before the production web build. This makes future direct Supabase regressions in these migrated surfaces fail CI.
+- Latest source/CI commit: `81240bed615cc319059e128d23d9f5609a78a7bf`. [Workflow run 40792269825](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/40792269825) was queued at handover time; do not claim this new guard has passed until the run completes.
+- Earlier exact-head run `40791802425` passed all then-configured auth/identity, proxy, marketplace, directory-client tests and Vite build. The new guard is an additional check and requires its own completed run.
+- This is a code-level guard for the migrated surfaces only. It does not prove that all product flows have left Supabase: `src/lib/lib_supabase.js`, PayFast callbacks/webhooks, storage/RPC operations and other product services still contain legacy Supabase calls and remain separately gated.
+- No production data/configuration, payment settings, DB target, allowlists, or merge status changed. Qualification service remains on the owner-confirmed sandbox database; directory empty state remains valid for an unseeded sandbox.
