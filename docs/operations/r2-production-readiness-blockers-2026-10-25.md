@@ -346,7 +346,7 @@ Scope confirmed by operator: GHM identity qualification (sandbox/test) has no tr
 - Added `TRUST_PROXY_HOPS` support in `src/config.ts`: explicit non-negative integer from 0 through 10, invalid values fail startup, and the numeric setting takes precedence over legacy `TRUST_PROXY=true`.
 - Added config tests for numeric hop configuration, precedence over the legacy boolean, and rejection of malformed/out-of-range values.
 - Updated `.env.example` to recommend explicit, topology-verified hop count rather than unrestricted trust.
-- Opened PR #193: https://github.com/zaidhqdev-sys/GHM/pull/193. At this record's timestamp, CI run `40952611309` was still in progress; do not call this change tested/passed until CI completes.
+- Opened PR #193: https://github.com/zaidhqdev-sys/GHM/pull/193. CI run `40952611309` completed successfully for commit `7c922970f36933765a6c3264cea54e7349a612bd`; the quality job passed the build, disposable PostgreSQL qualification, test suite, migration audit policy tests, and runtime boundary verification. The later handover-only commits do not change application code. See https://github.com/zaidhqdev-sys/GHM/actions/runs/40952611309.
 - No production or sandbox Render environment variables, service settings, or deployments were changed. PR #193 remains unmerged.
 
 ### Platform guidance and limitation
