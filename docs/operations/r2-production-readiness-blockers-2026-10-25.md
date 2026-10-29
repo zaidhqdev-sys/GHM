@@ -400,3 +400,8 @@ Follow-up read-only Render log, event, and metrics queries were made after the p
 1. Treat the permissive `TRUST_PROXY=true` / `ERR_ERL_PERMISSIVE_TRUST_PROXY` warning as a security-hardening item. Confirm Render's actual trusted proxy chain and rate-limit key behavior, then select the narrowest supported Express proxy trust configuration. Do not simply set it false or to an arbitrary hop count without validating client-IP behavior behind Render. Add/adjust tests so spoofed `X-Forwarded-For` cannot evade rate limits.
 2. Obtain a timestamped direct `/healthz` response using an approved HTTP client/monitor and correlate with Render logs. Do not mark runtime health passed from the `live` deploy label alone.
 3. These checks were read-only. No runtime environment variable, source code, deployment, or database state was changed.
+
+
+### Direct health-probe attempt — 2026-10-29 20:41 UTC
+
+A read-only HTTPS GET was attempted from the resumed session against `https://ghm-internal-runtime.onrender.com/healthz`. The execution environment returned a DNS resolution error (`Could not resolve host`) before connecting. This is an environment/network limitation, not evidence that the Render service or endpoint is down. A direct health result remains unverified; use an approved browser or external health monitor and record the actual timestamp/status.
