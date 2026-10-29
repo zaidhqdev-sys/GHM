@@ -829,3 +829,12 @@ Follow-up repository inspection refined the earlier remaining-caller inventory. 
 - This is an intentionally **unwired read-only adapter**, not a user-facing feature release. No save/remove/toggle operation or UI control was added; this preserves the current read-only migration constraint. It does not reconcile existing Connect UUID business IDs to GHM numeric IDs, migrate legacy saved rows, or prove live sandbox route behavior.
 - GHM Saved Business resource itself is separately qualified; see `docs/architecture/SAVED_BUSINESS_QUALIFICATION.md`. No data was read or mutated in the live sandbox by this adapter work.
 - No production configuration/data, payment settings, sandbox DB target, R2 provider configuration, visibility rules, or merge status changed.
+
+
+## Saved Business projection privacy + fixture correction — 2026-10-29 00:25 UTC
+
+- Tightened Connect's read-only saved-business adapter so it validates GHM's `accountId` field as part of the server record contract but **does not expose the internal account ID in its returned browser-facing projection**. This follows least-data exposure for a list UI that only needs saved-business and business identifiers.
+- First CI run on the updated test accidentally removed `accountId` from the successful response fixture while the parser correctly requires it for response-contract validation; run `40793784546` failed at that test, not in the application build or other contracts. Fixed the fixture and expected client projection in commit `a06c079d9cad34b11c4034bad6b9c73e42184bd4`.
+- A new workflow run on the corrected head is required before declaring the privacy change and entire suite passing. The last confirmed green run remains `40793178735` on the earlier adapter/test head.
+- Live HTTP qualification is still not confirmed: the Render qualification service's latest live deploy is `954fbf63ff8f515426beb2bc37fcefe233c6f857`, a docs-only commit, and Render auto-deploy is off. Do not assume new GHM branch source has been deployed to the running qualification service. A read-only unauthenticated HTTP check may establish route reachability, but authenticated list behavior still needs a legitimate sandbox session.
+- No deployment was triggered, no Render env/database target or allowlist changed, no data was modified, and no PR was merged.
