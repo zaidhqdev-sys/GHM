@@ -727,3 +727,49 @@ No Render environment variables were changed during this comparison. The availab
 2. Enter `STORAGE_ACCESS_KEY_ID` and `STORAGE_SECRET_ACCESS_KEY` directly in Render's secret UI; never paste them into chat, GitHub, or this document.
 3. Once those two secret values are saved, the remaining eight non-secret storage settings above can be merged without replacing the service's existing environment. Confirm the intended deployed code revision and schedule any restart/deploy separately because auto-deploy is off.
 4. Verify service startup and health, then test the authenticated storage API path and tenant-scoped metadata behavior. Keep production DB migrations and PayFast live activation out of this environment-only change.
+
+
+## Storage security continuation handover — 2026-10-29 20:36–20:40 UTC
+
+This addendum records exactly what was checked during the resumed storage-security task. Earlier sections in this handover are historical snapshots and should not be read as current status where later evidence below supersedes them.
+
+### GitHub / CI
+
+- PR #184 is merged (GitHub-reported merge time: 2026-10-26 21:50:49 UTC): https://github.com/zaidhqdev-sys/GHM/pull/184.
+- Merge commit inspected: `43450e42e902594493bdab4ba2c689b0c4099912`.
+- CI run `40395626703` passed its quality job, including disposable PostgreSQL migration application, storage fixture seeding, scoped-getter qualification, storage lifecycle/tenant authorization qualification, test suite, migration audit policy tests, and runtime-boundary verification: https://github.com/zaidhqdev-sys/GHM/actions/runs/40395626703.
+- This is disposable CI evidence only; it is not proof that the migration is in the production migration ledger.
+
+### Production DB catalog (read-only)
+
+A Render read-only PostgreSQL query against production database `ghm_db` returned `current_user=ghm_db_user` and `session_user=ghm_app_user`. Catalog checks returned:
+
+- Scoped function `ghm.storage_get_object(bigint,bigint)` exists; old `ghm.storage_get_object(bigint)` does not.
+- Scoped function owner is `ghm_schema_owner`; `prosecdef=true`; function setting is `search_path=pg_catalog, ghm`.
+- Function ACL grants execute to `ghm_schema_owner` and `ghm_runtime`; PUBLIC execute is false.
+- `has_table_privilege` reports `ghm_runtime` has no direct SELECT, INSERT, UPDATE, or DELETE on `ghm.storage_object`.
+- Ledger query against `ghm.ghm_schema_migrations` was denied for the inspection connection. Production applied migration version/checksum and full ledger reconciliation therefore remain **unverified**. Do not widen inspection permissions just to get around this; use the approved migration-audit connection and script.
+
+No storage object rows were read, the function was not invoked against production data, and no production migration, write, grant, or schema change was performed.
+
+### Render service metadata (read-only)
+
+Service `GHM-Internal-Runtime` (`srv-damupsek1f9s73eq8kkg`) reports branch `main`, auto-deploy `yes`, trigger `checksPass`, and updated-at `2026-10-28T01:01:29.670131Z`. The latest listed deployment was `dep-dbgki03jvrbc73cdvf1g`, status `live`, for commit `a2501ee9a10f51d7c2866107e261b57f7f82253b`, finished `2026-10-28T01:01:29.587137Z`. This metadata does not prove current health or storage API readiness. Prior handover evidence of health-check failures remains unresolved; obtain a current direct health probe and correlate it with service events/logs.
+
+### Security nuance
+
+The two-argument getter scopes rows to either an active public business logo or active membership for the supplied account ID. The repository supplies authenticated `AuthContext.userId`. This reduces accidental/direct ID-only disclosure, but does not cryptographically bind the argument to the end-user: a caller with control of the shared runtime DB credential can choose arguments. Keep application authentication and membership authorization authoritative.
+
+### Required next steps
+
+1. From the approved operational environment, run `scripts/forensic-migration-reconciliation.mjs` with the authorized migrator/audit connection and `GHM_MIGRATION_AUDIT_DATABASE=ghm_db`. Record only sanitized counts and verdict; never copy credentials into notes or chat.
+2. Do not apply or reapply production migrations until the ledger audit and approved migration-baseline decision are recorded. Historical notes document a prior shared-sandbox ledger discrepancy linked to draft PR #142; do not merge that broad candidate or rewrite historical checksums as a shortcut.
+3. If additional manual mutating lifecycle qualification is needed, use a dedicated disposable PostgreSQL database with explicit mutation opt-in. Do not use production or the shared PayFast sandbox.
+4. Investigate current Render health-check failures with timestamped direct probe results and service events/logs. Deployment status alone is not a health check.
+5. Keep production R2 environment changes and go-live gated on ledger reconciliation, runtime health, end-to-end authenticated route tests, and explicit rollout approval.
+
+### Changes made in this continuation
+
+- Created documentation branch `docs/storage-security-handover-2026-10-29`.
+- Updated `docs/operations/r2-production-readiness-blockers-2026-10-25.md` with the same dated evidence and action list.
+- No application code, live database schema/data/permissions, Render environment variables, deployment settings, or deployments were changed.
