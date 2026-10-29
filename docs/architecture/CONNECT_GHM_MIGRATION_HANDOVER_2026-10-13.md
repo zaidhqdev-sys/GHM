@@ -743,3 +743,12 @@ Current facts:
 - Read-only query tooling could not reach that database because of its IP allowlist. No allowlist or database permissions were changed.
 - Runtime DB target remains unverified by this tool session; the correct next step is to continue using the established qualification service and its existing test suite, and only pursue a runtime-target check if an approved non-secret method is available. Do not change service environment variables, network rules, or database targets just to resolve metadata ambiguity.
 - Directory empty state remains consistent with no seeded public business fixtures. Do not create a fixture until a supported and authorized sandbox business-creation route is identified.
+
+
+## Owner-confirmed qualification database target — 2026-10-29 00:03 UTC
+
+Owner clarification: `ghm-identity-qualification` intentionally uses the sandbox database, **not** the main `ghm-db`. Treat this as the expected configuration; do not infer misconfiguration from Render environment association metadata, and do not change the service's database target or environment variables.
+
+The separate database inventory is contextual only: `ghm-identity-qualification-20261018` exists, while `ghm-payfast-sandbox-db` is the sandbox database the owner says this qualification service uses. Prior read-only tooling could not access `ghm-identity-qualification-20261018` because its IP allowlist is empty, but that does not contradict the owner-confirmed runtime target.
+
+Directory response with zero eligible listings is consistent with an unseeded sandbox. Continue contract and integration testing with existing qualification setup. A public business fixture is optional for the current tests and must only be created through an approved sandbox flow; no fake listings, production data, visibility changes, network-rule changes, or database-target changes.
