@@ -75,3 +75,11 @@ test('trust proxy rejects invalid hop counts', () => {
     assert.match(result.stderr + result.stdout, /TRUST_PROXY_HOPS/);
   }
 });
+
+
+test('legacy TRUST_PROXY=true is narrowed to one trusted hop', () => {
+  const result = loadConfig({ ...baseEnv, TRUST_PROXY: 'true' });
+  assert.equal(result.status, 0, result.stderr);
+  const loaded = JSON.parse(result.stdout.trim());
+  assert.equal(loaded.trustProxy, 1);
+});
