@@ -727,3 +727,41 @@ No Render environment variables were changed during this comparison. The availab
 2. Enter `STORAGE_ACCESS_KEY_ID` and `STORAGE_SECRET_ACCESS_KEY` directly in Render's secret UI; never paste them into chat, GitHub, or this document.
 3. Once those two secret values are saved, the remaining eight non-secret storage settings above can be merged without replacing the service's existing environment. Confirm the intended deployed code revision and schedule any restart/deploy separately because auto-deploy is off.
 4. Verify service startup and health, then test the authenticated storage API path and tenant-scoped metadata behavior. Keep production DB migrations and PayFast live activation out of this environment-only change.
+
+
+
+## Proxy-trust remediation continuation — 2026-10-29 20:50 UTC
+
+Operator confirmed that GHM identity qualification (sandbox/test) has no trust-proxy setting; only GHM Internal Runtime (production) has it. Scope this finding/remediation to production and do not alter qualification configuration.
+
+### Code and PR work
+
+- Created `fix/render-trust-proxy-hop-config-2026-10-29`.
+- Added explicit `TRUST_PROXY_HOPS` parsing in `src/config.ts` (integer 0–10, malformed values fail closed; explicit numeric setting overrides legacy boolean `TRUST_PROXY=true`).
+- Added config tests covering valid numeric hop, precedence, and invalid values; updated `.env.example`.
+- Opened PR #193: https://github.com/zaidhqdev-sys/GHM/pull/193. CI run `40952611309` completed successfully for application-code commit `7c922970f36933765a6c3264cea54e7349a612bd`, including build, disposable PostgreSQL qualification, tests, migration audit policy tests, and runtime boundary verification. Later commits on this branch only updated handover documentation. See https://github.com/zaidhqdev-sys/GHM/actions/runs/40952611309.
+- No production or qualification Render environment variables, service settings, or deployments were changed.
+
+Render published an Express example using `app.set('trust proxy', 1)`: https://render.com/articles/how-to-implement-authentication-and-authorization. Its DDoS article describes Cloudflare plus Render load balancers and recommends reading `X-Forwarded-For`: https://render.com/articles/how-render-handles-ddos-attacks. These references are guidance, not proof of the exact chain seen by this app; verify effective forwarding and spoofing behavior before setting a production hop count.
+
+### Unresolved runtime/source mismatch
+
+Production logs recorded `ERR_ERL_PERMISSIVE_TRUST_PROXY` at `2026-10-29T20:06:15.836212737Z`, but inspection of the available `main` sources `src/config.ts`, `src/http/app.ts`, and `src/server.ts` did not locate the `express-rate-limit` middleware call that emitted it. Before claiming the PR resolves the production warning, inspect the exact deployed commit/build artifact and identify the middleware call path.
+
+### Next actions
+
+1. Wait for PR #193 CI and address any failures.
+2. Identify the exact production deployed artifact/source of the warning.
+3. Verify the effective forwarded-header chain and ensure forged `X-Forwarded-For` cannot change rate-limit identity.
+4. Only after PR merge and deployment, set a verified numeric `TRUST_PROXY_HOPS` on Internal Runtime if the observed topology warrants it; then check startup logs and rate-limit behavior.
+5. Do not change GHM identity qualification. Keep storage migration and R2 go-live gates as previously documented.
+
+
+### Bounded legacy fallback update — 2026-10-29 20:52 UTC
+
+The code now maps legacy `TRUST_PROXY=true` to numeric `1` when `TRUST_PROXY_HOPS` is absent; explicit numeric configuration still takes precedence. This is intended to avoid unrestricted Express proxy trust. Added a regression test for this fallback. Re-run CI for the latest commit before merge. After deployment, validate real client-IP/rate-limit behavior and spoofed `X-Forwarded-For`; the Render example using one hop is guidance, not proof of the exact chain at this service. No Render environment or deployment change was made.
+
+
+### Source-path reconciliation correction — 2026-10-29 20:53 UTC
+
+Follow-up inspection located the rate limiter in `src/http/auth-router.ts`, which the earlier source check had not inspected. It creates `express-rate-limit` middleware for login (10 requests/15 minutes), password recovery (5/15 minutes), and refresh (60/15 minutes). `src/http/app.ts` sets Express trust proxy from `config.trustProxy`. The production stack therefore matches the repository's auth-router rate limiter; the earlier statement that the source did not expose the call path was incomplete and is superseded by this correction. Existing test `POST /api/v1/auth/login enforces the approved 10-per-15-minute IP limit` verifies the basic limiter, but does not yet test spoofed `X-Forwarded-For`. The new config regression test narrows legacy `TRUST_PROXY=true` to numeric one hop. After successful CI and rollout, verify the production IP key with spoofed-header tests and a safe external request. Do not change the identity qualification service.

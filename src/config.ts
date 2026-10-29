@@ -4,6 +4,23 @@ import 'dotenv/config';
 const isProduction = process.env.NODE_ENV === 'production';
 const databaseSsl = process.env.DATABASE_SSL === 'true';
 
+const parseTrustProxy = (): boolean | number => {
+  const hops = process.env.TRUST_PROXY_HOPS?.trim();
+  if (hops) {
+    if (!/^(0|[1-9]\d*)$/.test(hops)) {
+      throw new Error('TRUST_PROXY_HOPS must be a non-negative integer');
+    }
+    const parsed = Number(hops);
+    if (!Number.isSafeInteger(parsed) || parsed > 10) {
+      throw new Error('TRUST_PROXY_HOPS must be between 0 and 10');
+    }
+    return parsed;
+  }
+  // Legacy boolean compatibility is intentionally narrowed to one trusted hop.
+  // Prefer TRUST_PROXY_HOPS when the deployed proxy topology has been verified.
+  return process.env.TRUST_PROXY === 'true' ? 1 : false;
+};
+
 const required = (name: string): string => {
   const value = process.env[name]?.trim();
   if (!value) {
@@ -47,7 +64,7 @@ export const config = Object.freeze({
   databaseSsl,
   inviteCode: required('INVITE_CODE'),
   corsOrigins: parseOrigins(required('CORS_ORIGINS')),
-  trustProxy: process.env.TRUST_PROXY === 'true',
+  trustProxy: parseTrustProxy(),
   storage: hasStorageConfiguration ? loadStorageRuntimeConfig() : null,
   payfast: Object.freeze({
     environment: (process.env.PAYFAST_ENVIRONMENT ?? 'sandbox') as 'sandbox' | 'live',
