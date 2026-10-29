@@ -865,3 +865,12 @@ Added a regression test in `src/http/auth-router.test.ts` that models one truste
 - A second direct health-probe attempt through the web retrieval tool to `https://ghm-internal-runtime.onrender.com/healthz` returned “URL is not accessible via this tool”; the earlier session-level request failed DNS resolution before HTTP. Neither failure establishes that the service is unhealthy. A direct external HTTP status/body remains unverified.
 - No production login requests were sent for spoofed-header qualification. Do not send synthetic auth traffic or treat the test as production evidence without an approved, bounded external qualification plan.
 - No Render environment variables or service settings, database state, or production credentials were changed. The production migration-ledger read limitation and R2 rollout gate remain unchanged.
+
+
+## Follow-up read-only recheck — 2026-10-29 21:08 UTC
+
+- Confirmed Render service `GHM-Internal-Runtime` (`srv-damupsek1f9s73eq8kkg`) remains on `main`, auto-deploy trigger `checksPass`, health-check path `/healthz`, one instance, maintenance mode disabled, and Render IP allow-list `0.0.0.0/0` (publicly reachable at the platform network layer). No service settings were changed. Application authentication/authorization must therefore remain the security boundary; do not treat the Render IP allow-list as a restriction.
+- Read-only Render HTTP request logs for `/healthz` from `20:45Z` through `21:10Z` returned no records; the HTTP request-count metric for that path returned an empty series. These are absence-of-observability results, not a health failure and not a successful HTTP probe.
+- A further direct fetch of `https://ghm-internal-runtime.onrender.com/healthz` was rejected by the available web retrieval tool as inaccessible. No independent HTTP status/body has been obtained; keep direct health verification marked pending.
+- Rechecked the production database through the existing read-only inspector: `current_user=ghm_db_user`, `ghm.ghm_schema_migrations` exists, but the inspector has no SELECT privilege and the catalog reports zero SELECT grants for that ledger table. Applied migration version/checksum remains unverifiable with this role. Obtain the approved migration-audit credential/process; do not grant the application/inspection role broad ledger access just to satisfy this check.
+- No production DB writes, migrations, grants, environment-variable changes, auth traffic, or R2 activation were performed.
