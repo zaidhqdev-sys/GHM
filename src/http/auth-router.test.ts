@@ -42,16 +42,18 @@ const loadApp = async () => {
   return { createApp, GhmAuthServiceError, createGhmAuthService };
 };
 
-const startApp = async (authService: GhmAuthService) => {
+const startApp = async (authService: GhmAuthService, trustProxy?: boolean | number) => {
   const { createApp } = await loadApp();
-  const server = http.createServer(createApp({
+  const app = createApp({
     businessIdentityService: {} as never,
     projectService: {} as never,
     publicProjectService: {} as never,
     enquiryService: {} as never,
     campaignService: {} as never,
     authService,
-  }));
+  });
+  if (trustProxy !== undefined) app.set('trust proxy', trustProxy);
+  const server = http.createServer(app);
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
@@ -543,6 +545,38 @@ test('POST /api/v1/auth/login enforces the approved 10-per-15-minute IP limit', 
     });
     assert.equal(limited.status, 429);
     assert.deepEqual(await limited.json(), { error: 'rate_limited' });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+
+test('POST /api/v1/auth/login keys rate limits on the rightmost trusted forwarded client IP', async () => {
+  const authService: GhmAuthService = {
+    login: async () => sampleTokens(),
+    refresh: async () => sampleTokens(),
+    logout: async () => undefined,
+  };
+  const { server, baseUrl } = await startApp(authService, 1);
+  const postLogin = (xff: string, email: string) => fetch(`${baseUrl}/api/v1/auth/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-forwarded-for': xff },
+    body: JSON.stringify({ email, password: 'CorrectHorseBattery1' }),
+  });
+  try {
+    // Simulate Render appending the actual client address after any client-supplied
+    // X-Forwarded-For value. The leftmost spoofed value must not control the key.
+    for (let index = 0; index < 10; index += 1) {
+      const response = await postLogin(`192.0.2.${index + 1}, 198.51.100.77`, `xff-limit-${index}@example.com`);
+      assert.equal(response.status, 200);
+    }
+
+    const spoofedAgain = await postLogin('203.0.113.200, 198.51.100.77', 'xff-limit-final@example.com');
+    assert.equal(spoofedAgain.status, 429);
+    assert.deepEqual(await spoofedAgain.json(), { error: 'rate_limited' });
+
+    const differentForwardedClient = await postLogin('203.0.113.200, 198.51.100.78', 'xff-limit-other-client@example.com');
+    assert.equal(differentForwardedClient.status, 200);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }

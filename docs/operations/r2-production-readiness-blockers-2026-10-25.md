@@ -465,3 +465,8 @@ Follow-up read-only Render log, event, and metrics queries were made after the p
 - Direct external `/healthz` verification remains incomplete because this session's DNS resolution failed before HTTP. Render's deployment is live and `/healthz` remains the configured health-check path, but a direct timestamped response was not obtained.
 - Spoofed `X-Forwarded-For` / client-IP rate-limit behavior still needs an approved external qualification request. Do not claim this check passed until tested.
 - Production migration-ledger reconciliation remains unverified; the read-only inspection role could not read `ghm.ghm_schema_migrations`. Storage migration/R2 go-live gates remain in force.
+
+
+## Follow-up: forwarded-IP rate-limit regression test — 2026-10-29 21:01 UTC
+
+Added a regression test in `src/http/auth-router.test.ts` that models one trusted proxy hop. Ten login attempts with changing leftmost spoofed `X-Forwarded-For` values but the same rightmost trusted client address must share one rate-limit bucket; an eleventh attempt is expected to return 429; a different rightmost client address is expected to have a separate bucket. The test explicitly sets the test app's Express trust-proxy value to `1`, rather than depending on the test environment's default. This is an isolated test change only: no live requests were sent to the production login endpoint and no Render or database settings changed. CI must pass before considering this qualification covered; production-side spoofed-header testing remains outstanding.

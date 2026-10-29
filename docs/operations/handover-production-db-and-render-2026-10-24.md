@@ -851,3 +851,8 @@ No environment variables, code, deployment settings, database state, or service 
 - No Render environment variable was changed. Code now narrows legacy `TRUST_PROXY=true` to numeric one hop; explicit `TRUST_PROXY_HOPS` overrides it.
 - Direct external `/healthz` response remains unverified because this session could not resolve the hostname before HTTP. Render marked the deployment live with `/healthz` configured as the service health-check path.
 - Production storage migration-ledger reconciliation remains unverified; the inspection role cannot read the ledger. Keep production migrations and R2 go-live gated.
+
+
+## Follow-up: forwarded-IP rate-limit regression test — 2026-10-29 21:01 UTC
+
+Added a regression test in `src/http/auth-router.test.ts` that models one trusted proxy hop. Ten login attempts with changing leftmost spoofed `X-Forwarded-For` values but the same rightmost trusted client address must share one rate-limit bucket; an eleventh attempt is expected to return 429; a different rightmost client address is expected to have a separate bucket. The test explicitly sets the test app's Express trust-proxy value to `1`, rather than depending on the test environment's default. This is an isolated test change only: no live requests were sent to the production login endpoint and no Render or database settings changed. CI must pass before considering this qualification covered; production-side spoofed-header testing remains outstanding.
