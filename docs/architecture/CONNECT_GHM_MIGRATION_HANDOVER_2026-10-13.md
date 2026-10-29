@@ -778,3 +778,30 @@ Directory response with zero eligible listings is consistent with an unseeded sa
 - Earlier exact-head run `40791802425` passed all then-configured auth/identity, proxy, marketplace, directory-client tests and Vite build. The new guard is an additional check and requires its own completed run.
 - This is a code-level guard for the migrated surfaces only. It does not prove that all product flows have left Supabase: `src/lib/lib_supabase.js`, PayFast callbacks/webhooks, storage/RPC operations and other product services still contain legacy Supabase calls and remain separately gated.
 - No production data/configuration, payment settings, DB target, allowlists, or merge status changed. Qualification service remains on the owner-confirmed sandbox database; directory empty state remains valid for an unseeded sandbox.
+
+
+## Follow-on caller audit — 2026-10-29 00:12 UTC
+
+### Latest CI result confirmed
+
+- Connect workflow [run 40792300563](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/40792300563) completed successfully on `02139aef3528f13b901760b3d1eb7f2f08536582`.
+- All configured steps passed: auth client, identity adapter, browser auth, same-origin proxy, identity resolver, marketplace enquiry and directory contracts, signup privilege boundary, directory client, **new direct-Supabase guard**, and Vite production build.
+
+### Remaining direct-Supabase caller inventory (not migrated by the auth/directory guard)
+
+Repository search identified at least these separate runtime paths that must be handled as bounded slices:
+- Payment lifecycle: `src/lib/lib_payfast.js`, `src/supabase/supabase_edge_functions.ts`, and `supabase/functions/payfast-webhook/index.ts` write subscriptions and business tiers after payment completion. Treat these as high-risk; do not modify payment flows/configuration without a dedicated contract, sandbox-only end-to-end tests, and explicit owner authorization.
+- Saved businesses: `src/lib/lib_supabase.js` mutates `saved_businesses`; needs a GHM-owned saved/favourite business API and authorization contract before replacing calls.
+- Push subscriptions: `src/lib/lib_notifications.js` persists `push_subscriptions`; needs a GHM API and browser permission/subscription contract before migration.
+- Referrals: `src/components/components_index.jsx` reads `referrals`; needs a GHM read model and stable identity mapping.
+- Media/avatar: `src/lib/lib_supabase.js` uploads to the Supabase `media` bucket and stores a public URL. Requires a replacement storage contract and access/privacy decision before migration.
+- Additional `lib_supabase.js` methods may still contain legacy callers; inventory must be exhaustive before declaring Supabase removable.
+
+### Safe next sequence
+
+1. Keep payment paths unchanged while specifying their API/data contracts and sandbox acceptance tests.
+2. Pick the next lower-risk domain only after confirming GHM has an equivalent endpoint and the current Connect identity maps to its owner correctly; otherwise implement/test the GHM endpoint first.
+3. Extend the direct-Supabase CI guard only as each caller is migrated. Do not ban remaining intentional legacy calls globally yet.
+4. Do not remove the conditional legacy Supabase client until every reachable caller is migrated or deliberately retired and the production cutover is separately authorized.
+
+No Production data/configuration, payment settings, sandbox database target, visibility rules, or merge status changed during this audit.
