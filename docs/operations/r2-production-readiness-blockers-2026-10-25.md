@@ -431,3 +431,8 @@ Next steps, in order:
 ### Latest proxy-fix status — 2026-10-29 20:54 UTC
 
 PR #193 merged as commit `b59fa6b8f1d5f7b759bb2e070b487d2626a7862d`. The change narrows legacy `TRUST_PROXY=true` to one trusted hop and supports explicit bounded `TRUST_PROXY_HOPS`. CI for the code revision passed; a fresh CI run on `main` is currently in progress. Render production deployment had not yet advanced beyond `a2501ee9a10f51d7c2866107e261b57f7f82253b` in the latest read immediately after merge, because main's `checksPass` workflow was still running. No Render environment variable was edited. After the new deploy, verify health and confirm the warning no longer occurs, then validate client IP/rate-limit behavior against spoofed `X-Forwarded-For`. Keep migration-ledger reconciliation and R2 rollout gates unchanged.
+
+
+### Direct health probe attempt — 2026-10-29 20:41 UTC
+
+A read-only HTTPS GET was attempted from the session against `https://ghm-internal-runtime.onrender.com/healthz`. The environment returned DNS resolution error `Could not resolve host` before an HTTP connection. This is a checking-environment limitation, not evidence that Render is down. A timestamped direct health result remains outstanding; use an approved browser or external monitor and record the HTTP status/body.
