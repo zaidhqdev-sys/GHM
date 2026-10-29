@@ -739,7 +739,7 @@ Operator confirmed that GHM identity qualification (sandbox/test) has no trust-p
 - Created `fix/render-trust-proxy-hop-config-2026-10-29`.
 - Added explicit `TRUST_PROXY_HOPS` parsing in `src/config.ts` (integer 0–10, malformed values fail closed; explicit numeric setting overrides legacy boolean `TRUST_PROXY=true`).
 - Added config tests covering valid numeric hop, precedence, and invalid values; updated `.env.example`.
-- Opened PR #193: https://github.com/zaidhqdev-sys/GHM/pull/193. CI run `40952611309` was in progress when this record was written. Do not treat as passed until the run completes.
+- Opened PR #193: https://github.com/zaidhqdev-sys/GHM/pull/193. CI run `40952611309` completed successfully for application-code commit `7c922970f36933765a6c3264cea54e7349a612bd`, including build, disposable PostgreSQL qualification, tests, migration audit policy tests, and runtime boundary verification. Later commits on this branch only updated handover documentation. See https://github.com/zaidhqdev-sys/GHM/actions/runs/40952611309.
 - No production or qualification Render environment variables, service settings, or deployments were changed.
 
 Render published an Express example using `app.set('trust proxy', 1)`: https://render.com/articles/how-to-implement-authentication-and-authorization. Its DDoS article describes Cloudflare plus Render load balancers and recommends reading `X-Forwarded-For`: https://render.com/articles/how-render-handles-ddos-attacks. These references are guidance, not proof of the exact chain seen by this app; verify effective forwarding and spoofing behavior before setting a production hop count.
