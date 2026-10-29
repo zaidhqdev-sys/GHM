@@ -856,3 +856,12 @@ No environment variables, code, deployment settings, database state, or service 
 ## Follow-up: forwarded-IP rate-limit regression test — 2026-10-29 21:01 UTC
 
 Added a regression test in `src/http/auth-router.test.ts` that models one trusted proxy hop. Ten login attempts with changing leftmost spoofed `X-Forwarded-For` values but the same rightmost trusted client address must share one rate-limit bucket; an eleventh attempt is expected to return 429; a different rightmost client address is expected to have a separate bucket. The test explicitly sets the test app's Express trust-proxy value to `1`, rather than depending on the test environment's default. This is an isolated test change only: no live requests were sent to the production login endpoint and no Render or database settings changed. CI must pass before considering this qualification covered; production-side spoofed-header testing remains outstanding.
+
+
+## Forwarded-IP test result and health-probe limitation — 2026-10-29 21:04 UTC
+
+- PR #196 merged as `fc0e0c68947db94fc2c829d9d938258ab65fc612`. CI run `40954284204` passed the complete quality workflow, including build, disposable PostgreSQL migrations/qualification, test suite, migration audit policy tests, and runtime boundary verification.
+- The new test explicitly sets Express trust proxy to numeric `1`, submits ten login requests with changing spoofed leftmost `X-Forwarded-For` values but the same rightmost client address, expects request eleven to be rate-limited (429), and expects a different rightmost client address to have a fresh bucket. This proves the configured one-hop Express behavior in the test environment, not the real Render proxy chain.
+- A second direct health-probe attempt through the web retrieval tool to `https://ghm-internal-runtime.onrender.com/healthz` returned “URL is not accessible via this tool”; the earlier session-level request failed DNS resolution before HTTP. Neither failure establishes that the service is unhealthy. A direct external HTTP status/body remains unverified.
+- No production login requests were sent for spoofed-header qualification. Do not send synthetic auth traffic or treat the test as production evidence without an approved, bounded external qualification plan.
+- No Render environment variables or service settings, database state, or production credentials were changed. The production migration-ledger read limitation and R2 rollout gate remain unchanged.
