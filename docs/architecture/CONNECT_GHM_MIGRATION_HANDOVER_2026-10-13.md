@@ -805,3 +805,16 @@ Repository search identified at least these separate runtime paths that must be 
 4. Do not remove the conditional legacy Supabase client until every reachable caller is migrated or deliberately retired and the production cutover is separately authorized.
 
 No Production data/configuration, payment settings, sandbox database target, visibility rules, or merge status changed during this audit.
+
+
+## Capability inventory correction — 2026-10-29 00:15 UTC
+
+Follow-up repository inspection refined the earlier remaining-caller inventory. Some GHM-side resource work already exists; do not describe these as needing a new API without qualification:
+
+- **Saved Business:** GHM has a qualified account-owned resource and authenticated routes (`GET /api/v1/saved-businesses`, item read, `POST` create, `DELETE` remove) with ownership isolation. Qualification record: `docs/architecture/SAVED_BUSINESS_QUALIFICATION.md`, construction commit `77cfb425ec33a1eac53a70773c9a4ffdf72a012f`. Connect has a bounded adapter in `src/integrations/connect/saved-business-adapter.ts`, but a browser-facing Connect client/UI integration and migration of the legacy caller are not thereby proven.
+- **Important Saved Business mapping constraint:** the old Connect relationship stores UUID `business_id`; the GHM resource accepts numeric GHM business IDs. Do not send Connect UUIDs to the GHM API or imply legacy saved relationships have migrated. Existing saved IDs require an explicit, verified Connect-business-to-GHM-business mapping/reconciliation contract before feature cutover. Public directory's numeric GHM ID is the current safe identifier for newly discovered GHM listings.
+- **Storage:** GHM storage persistence and the R2 provider data path have since been qualified, per `docs/architecture/CONNECT_STORAGE_MEDIA_SOURCE_AUDIT.md`. This does not by itself prove browser-facing logo/avatar upload/read flows are wired, production storage config is enabled, or all media prefixes/privacy policies have parity. Do not add upload/edit controls or activate provider config; preserve read-only UX constraints.
+- **Notifications:** the canonical resource persistence boundary exists, but the Notification operation/HTTP/event-delivery workflow is not closed merely by persistence qualification. Browser push subscriptions and realtime delivery remain separate capabilities; do not conflate them.
+- **Next safe bounded work:** establish and test the Connect-side read-only Saved Business adapter contract against GHM's authenticated list endpoint using same-origin GHM session auth and numeric GHM business IDs, without wiring new UI controls or migrating UUID-based legacy rows. If identity mapping cannot be verified, fail closed and document the blocker. Do not mutate saved rows during qualification.
+- Latest reviewed GHM CI evidence on the integration branch remains run `40396014963` at commit `ef09793aaf8484ffa163fac0fcc80c0face3dae5`; this run predates the current integration branch head and must not be represented as validating newer commits.
+- No production data/config, payment settings, sandbox DB target, provider activation, or merge status changed.
