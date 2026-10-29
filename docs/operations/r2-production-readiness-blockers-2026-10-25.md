@@ -333,3 +333,53 @@ Added a source migration replacing the ID-only metadata getter with a two-argume
 ## Scoped metadata lookup CI result — 2026-10-26
 
 CI run [1678](https://github.com/zaidhqdev-sys/GHM/actions/runs/40242355456) passed the build, test suite, migration audit policy tests, and runtime-boundary verification for head `9fea65df616abb9ee1c9b8e1fd19bad82209b942`. An earlier run failed only because two new tests over-escaped a regular expression; the assertions were corrected to literal substring checks. This is not live database qualification: the new migration has not been applied, no disposable-database migration/lifecycle run has been performed, and real PostgreSQL membership-backed tenant-isolation tests remain open. No live DB or Render changes were made; production R2 variables remain on hold.
+
+
+## Continuation record — 2026-10-29 20:36–20:40 UTC
+
+This section records the resumed review and read-only checks performed after the earlier handover. It supersedes older statements in this document that PR #184 was still draft or that the scoped getter migration had not been exercised in disposable PostgreSQL; those statements were accurate at their recorded timestamps but are no longer the latest state.
+
+### Repository and CI state verified
+
+- PR #184 is **merged**; GitHub reports merge time `2026-10-26T21:50:49Z`. See https://github.com/zaidhqdev-sys/GHM/pull/184.
+- Merge commit inspected: `43450e42e902594493bdab4ba2c689b0c4099912`.
+- GitHub Actions run `40395626703` completed successfully. Its quality job reports success for the following relevant steps: least-privilege database roles, storage qualification script syntax, build, apply all migrations to disposable PostgreSQL, seed disposable storage fixture, qualify storage getter on disposable PostgreSQL, qualify storage lifecycle and tenant authorization on disposable PostgreSQL, test suite, migration audit policy tests, and runtime boundary verification. See https://github.com/zaidhqdev-sys/GHM/actions/runs/40395626703.
+- This verifies the isolated CI qualification run. It is not evidence that this migration was applied to production, and it does not replace live migration-ledger reconciliation.
+
+### Read-only production PostgreSQL catalog inspection
+
+Using the Render Postgres read-only query operation against the production database ID recorded in the operational handover, the session reported:
+
+- `current_database() = ghm_db`
+- `current_user = ghm_db_user`; `session_user = ghm_app_user`
+- `ghm.storage_get_object(bigint,bigint)` exists and `ghm.storage_get_object(bigint)` does not.
+- The scoped getter is owned by `ghm_schema_owner`, is `SECURITY DEFINER`, and has fixed function setting `search_path=pg_catalog, ghm`.
+- Its ACL reports execute granted to `ghm_schema_owner` and `ghm_runtime`; PUBLIC execute is false.
+- Catalog privilege checks report `ghm_runtime` has no direct SELECT, INSERT, UPDATE, or DELETE privilege on `ghm.storage_object`.
+- Attempting to read `ghm.ghm_schema_migrations` with this inspection connection failed with permission denied. Consequently, the production migration version/checksum and ledger reconciliation were **not verified** in this session.
+
+These were catalog/privilege reads only. No production data was selected from storage objects, no function was invoked with object/account IDs, no migration was run, and no live database write or grant change was performed.
+
+### Render service metadata inspected
+
+- `GHM-Internal-Runtime` service ID `srv-damupsek1f9s73eq8kkg` currently reports branch `main`, auto-deploy `yes`, trigger `checksPass`, and updated-at `2026-10-28T01:01:29.670131Z`.
+- The latest deployment in the returned list was `dep-dbgki03jvrbc73cdvf1g`, status `live`, for documentation commit `a2501ee9a10f51d7c2866107e261b57f7f82253b`, finished `2026-10-28T01:01:29.587137Z`.
+- This metadata is not a fresh successful health-check observation and does not prove storage routes or R2 configuration are ready. The earlier documented health-check failures remain a separate operational issue to investigate.
+
+### Security interpretation and remaining gates
+
+The scoped getter requires an account ID and enforces either the explicitly public active-business-logo rule or active membership for that supplied account. The repository passes the authenticated `AuthContext.userId`. This is defense in depth, **not cryptographic binding of the argument to end-user identity**: a caller that already controls the shared runtime database credential can choose function arguments. Application authentication and authorization must remain authoritative.
+
+Next steps, in order:
+
+1. Run `scripts/forensic-migration-reconciliation.mjs` only from the approved operational environment using the authorized migrator/audit connection, with `GHM_MIGRATION_AUDIT_DATABASE=ghm_db`; record sanitized verdict, migration counts, missing entries, checksum mismatches, and extra entries. Do not paste credentials. Do not bypass ledger permissions or grant additional access to the inspection role just to obtain the result.
+2. Preserve the production migration guard: do not run a mutating migration until the ledger audit and approved migration-baseline decision are recorded.
+3. Preserve the passing disposable PostgreSQL qualification as CI evidence; if a separate manual lifecycle qualification is needed, use a dedicated disposable database with the script's explicit mutation opt-in, never production or the shared PayFast sandbox.
+4. Investigate current Render health-check failures using service events/logs and a direct approved health probe. Record timestamps and returned status; do not infer health solely from deployment state.
+5. Keep production R2 credential/configuration changes and storage go-live on hold until migration reconciliation, health, end-to-end authenticated route checks, and rollout approval are complete.
+
+### Changes made during this continuation
+
+- Documentation-only branch created: `docs/storage-security-handover-2026-10-29`.
+- No application code, database schema/data/permissions, Render environment variables, deployment settings, or deployments were changed.
+- This continuation record is being added to the readiness blocker document and the production DB/Render handover so historical checkpoints remain intact and the latest state is explicit.
