@@ -453,3 +453,15 @@ Follow-up read-only Render log, event, and metrics queries were made after the p
 1. Treat the permissive `TRUST_PROXY=true` / `ERR_ERL_PERMISSIVE_TRUST_PROXY` warning as a security-hardening item. Confirm Render's actual trusted proxy chain and rate-limit key behavior, then select the narrowest supported Express proxy trust configuration. Do not simply set it false or to an arbitrary hop count without validating client-IP behavior behind Render. Add/adjust tests so spoofed `X-Forwarded-For` cannot evade rate limits.
 2. Obtain a timestamped direct `/healthz` response using an approved HTTP client/monitor and correlate with Render logs. Do not mark runtime health passed from the `live` deploy label alone.
 3. These checks were read-only. No runtime environment variable, source code, deployment, or database state was changed.
+
+
+## Post-deployment verification — 2026-10-29 20:57 UTC
+
+- Proxy hardening PR #193 merged as `b59fa6b8f1d5f7b759bb2e070b487d2626a7862d`; main CI run `40953060564` passed (build, disposable PostgreSQL qualification, test suite, migration audit policy tests, runtime-boundary verification).
+- Render deployment `dep-dbhr6229lscs738ru42g` built successfully and is **live** for commit `b59fa6b8f1d5f7b759bb2e070b487d2626a7862d`. Deployment ended `2026-10-29T20:57:32.500167Z`.
+- New instance `srv-damupsek1f9s73eq8kkg-rvrx7` logged `GHM Core Engine listening on port 10000` at `20:57:23.097Z`; Render then logged `Your service is live` at `20:57:32.672Z`.
+- Read-only log search for `ERR_ERL_PERMISSIVE_TRUST_PROXY` from `20:57:15Z` to `20:58:30Z` returned no matches. This is positive startup evidence, not proof of all rate-limit behavior.
+- No Render environment variable was changed; the merged code maps legacy `TRUST_PROXY=true` to numeric one hop and supports explicit `TRUST_PROXY_HOPS`.
+- Direct external `/healthz` verification remains incomplete because this session's DNS resolution failed before HTTP. Render's deployment is live and `/healthz` remains the configured health-check path, but a direct timestamped response was not obtained.
+- Spoofed `X-Forwarded-For` / client-IP rate-limit behavior still needs an approved external qualification request. Do not claim this check passed until tested.
+- Production migration-ledger reconciliation remains unverified; the read-only inspection role could not read `ghm.ghm_schema_migrations`. Storage migration/R2 go-live gates remain in force.
