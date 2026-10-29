@@ -7,7 +7,7 @@ const databaseSsl = process.env.DATABASE_SSL === 'true';
 const parseTrustProxy = (): boolean | number => {
   const hops = process.env.TRUST_PROXY_HOPS?.trim();
   if (hops) {
-    if (!/^(0|[1-9]\\d*)$/.test(hops)) {
+    if (!/^(0|[1-9]\d*)$/.test(hops)) {
       throw new Error('TRUST_PROXY_HOPS must be a non-negative integer');
     }
     const parsed = Number(hops);
