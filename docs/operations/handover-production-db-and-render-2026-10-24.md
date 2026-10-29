@@ -755,3 +755,8 @@ Production logs recorded `ERR_ERL_PERMISSIVE_TRUST_PROXY` at `2026-10-29T20:06:1
 3. Verify the effective forwarded-header chain and ensure forged `X-Forwarded-For` cannot change rate-limit identity.
 4. Only after PR merge and deployment, set a verified numeric `TRUST_PROXY_HOPS` on Internal Runtime if the observed topology warrants it; then check startup logs and rate-limit behavior.
 5. Do not change GHM identity qualification. Keep storage migration and R2 go-live gates as previously documented.
+
+
+### Bounded legacy fallback update — 2026-10-29 20:52 UTC
+
+The code now maps legacy `TRUST_PROXY=true` to numeric `1` when `TRUST_PROXY_HOPS` is absent; explicit numeric configuration still takes precedence. This is intended to avoid unrestricted Express proxy trust. Added a regression test for this fallback. Re-run CI for the latest commit before merge. After deployment, validate real client-IP/rate-limit behavior and spoofed `X-Forwarded-For`; the Render example using one hop is guidance, not proof of the exact chain at this service. No Render environment or deployment change was made.
