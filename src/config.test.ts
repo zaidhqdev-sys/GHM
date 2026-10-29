@@ -52,3 +52,26 @@ test('partial storage TTL configuration fails closed', () => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr + result.stdout, /Missing required storage environment variable: STORAGE_REGION/);
 });
+
+
+test('trust proxy accepts a numeric hop count for an explicitly verified proxy topology', () => {
+  const result = loadConfig({ ...baseEnv, TRUST_PROXY_HOPS: '1', TRUST_PROXY: 'true' });
+  assert.equal(result.status, 0, result.stderr);
+  const loaded = JSON.parse(result.stdout.trim());
+  assert.equal(loaded.trustProxy, 1);
+});
+
+test('trust proxy hop count overrides the legacy permissive boolean', () => {
+  const result = loadConfig({ ...baseEnv, TRUST_PROXY_HOPS: '0', TRUST_PROXY: 'true' });
+  assert.equal(result.status, 0, result.stderr);
+  const loaded = JSON.parse(result.stdout.trim());
+  assert.equal(loaded.trustProxy, 0);
+});
+
+test('trust proxy rejects invalid hop counts', () => {
+  for (const value of ['true', '-1', '1.5', '11', '1x']) {
+    const result = loadConfig({ ...baseEnv, TRUST_PROXY_HOPS: value });
+    assert.notEqual(result.status, 0, `expected TRUST_PROXY_HOPS=${value} to fail`);
+    assert.match(result.stderr + result.stdout, /TRUST_PROXY_HOPS/);
+  }
+});
