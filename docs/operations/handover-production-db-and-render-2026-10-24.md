@@ -760,3 +760,8 @@ Production logs recorded `ERR_ERL_PERMISSIVE_TRUST_PROXY` at `2026-10-29T20:06:1
 ### Bounded legacy fallback update — 2026-10-29 20:52 UTC
 
 The code now maps legacy `TRUST_PROXY=true` to numeric `1` when `TRUST_PROXY_HOPS` is absent; explicit numeric configuration still takes precedence. This is intended to avoid unrestricted Express proxy trust. Added a regression test for this fallback. Re-run CI for the latest commit before merge. After deployment, validate real client-IP/rate-limit behavior and spoofed `X-Forwarded-For`; the Render example using one hop is guidance, not proof of the exact chain at this service. No Render environment or deployment change was made.
+
+
+### Source-path reconciliation correction — 2026-10-29 20:53 UTC
+
+Follow-up inspection located the rate limiter in `src/http/auth-router.ts`, which the earlier source check had not inspected. It creates `express-rate-limit` middleware for login (10 requests/15 minutes), password recovery (5/15 minutes), and refresh (60/15 minutes). `src/http/app.ts` sets Express trust proxy from `config.trustProxy`. The production stack therefore matches the repository's auth-router rate limiter; the earlier statement that the source did not expose the call path was incomplete and is superseded by this correction. Existing test `POST /api/v1/auth/login enforces the approved 10-per-15-minute IP limit` verifies the basic limiter, but does not yet test spoofed `X-Forwarded-For`. The new config regression test narrows legacy `TRUST_PROXY=true` to numeric one hop. After successful CI and rollout, verify the production IP key with spoofed-header tests and a safe external request. Do not change the identity qualification service.
