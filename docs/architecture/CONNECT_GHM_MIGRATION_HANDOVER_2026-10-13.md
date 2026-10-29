@@ -838,3 +838,12 @@ Follow-up repository inspection refined the earlier remaining-caller inventory. 
 - A new workflow run on the corrected head is required before declaring the privacy change and entire suite passing. The last confirmed green run remains `40793178735` on the earlier adapter/test head.
 - Live HTTP qualification is still not confirmed: the Render qualification service's latest live deploy is `954fbf63ff8f515426beb2bc37fcefe233c6f857`, a docs-only commit, and Render auto-deploy is off. Do not assume new GHM branch source has been deployed to the running qualification service. A read-only unauthenticated HTTP check may establish route reachability, but authenticated list behavior still needs a legitimate sandbox session.
 - No deployment was triggered, no Render env/database target or allowlist changed, no data was modified, and no PR was merged.
+
+
+## Saved Business live qualification gate — 2026-10-29
+
+- The candidate branch contains authenticated `GET /api/v1/saved-businesses`; route tests cover unauthenticated rejection, authenticated context binding, and invalid IDs. The branch preview deployed successfully at `https://integration-ghm-identity-mer.ghm-cu1.pages.dev` for the static/Pages surface, but this does **not** prove the Render API service runs the same source.
+- Render service `ghm-identity-qualification` has auto-deploy disabled and the latest recorded live deployment is commit `954fbf63ff8f515426beb2bc37fcefe233c6f857`, which predates the Saved Business route on the integration candidate. Do not infer that the route exists on the live qualification service.
+- A direct unauthenticated HTTP probe could not be completed from the current execution environment because outbound DNS resolution was unavailable. This is an environment limitation, not evidence of endpoint success or failure.
+- Next gate: review an exact-head GHM candidate CI run and deploy only an explicitly selected, isolated sandbox code slice after verifying its migration baseline/database target. Then use a legitimate disposable sandbox browser session to verify list request (200 + `savedBusinesses` array), unauthenticated request (401), and authorization/tenant isolation. Do not seed or mutate records merely to prove connectivity.
+- No deployment, production configuration, payment settings, database target, or PR merge was changed as part of this check.
