@@ -436,3 +436,20 @@ PR #193 merged as commit `b59fa6b8f1d5f7b759bb2e070b487d2626a7862d`. The change 
 ### Direct health probe attempt — 2026-10-29 20:41 UTC
 
 A read-only HTTPS GET was attempted from the session against `https://ghm-internal-runtime.onrender.com/healthz`. The environment returned DNS resolution error `Could not resolve host` before an HTTP connection. This is a checking-environment limitation, not evidence that Render is down. A timestamped direct health result remains outstanding; use an approved browser or external monitor and record the HTTP status/body.
+
+
+## Additional Render runtime evidence — 2026-10-29 20:40 UTC
+
+Follow-up read-only Render log, event, and metrics queries were made after the previous continuation record was written.
+
+- Application logs show the service instance `srv-damupsek1f9s73eq8kkg-m7vrf` starting `npm start` at 2026-10-29 20:06:04 UTC and logging `GHM Core Engine listening on port 10000` at 20:06:09 UTC.
+- At 20:06:15 UTC, application logs emitted Express Rate Limit validation warning/error code `ERR_ERL_PERMISSIVE_TRUST_PROXY`: `The Express 'trust proxy' setting is true, which allows anyone to trivially bypass IP-based rate limiting.` The trace originates from `express-rate-limit`.
+- Current `main` source reads `TRUST_PROXY` as a boolean in `src/config.ts`, and `src/http/app.ts` sets Express `trust proxy` to that boolean. `.env.example` says this should only be true behind a trusted HTTPS reverse proxy. The deployed runtime appears to have the permissive setting active; confirm the effective environment and proxy topology before changing it.
+- Render service event history returned no event newer than the successful deploy ending 2026-10-28 01:01:29 UTC in the response examined. The logs nevertheless show a process start on 2026-10-29 20:06 UTC; its trigger is not established by the returned event history.
+- Request logs and HTTP request-count/latency metrics filtered to `/healthz` for 2026-10-29 19:30–20:40 UTC returned no records/data. Absence of telemetry is inconclusive, not proof that the endpoint failed or succeeded. The external web inspection path could not retrieve the health URL, so a fresh direct health result is still unavailable.
+
+### Additional required actions
+
+1. Treat the permissive `TRUST_PROXY=true` / `ERR_ERL_PERMISSIVE_TRUST_PROXY` warning as a security-hardening item. Confirm Render's actual trusted proxy chain and rate-limit key behavior, then select the narrowest supported Express proxy trust configuration. Do not simply set it false or to an arbitrary hop count without validating client-IP behavior behind Render. Add/adjust tests so spoofed `X-Forwarded-For` cannot evade rate limits.
+2. Obtain a timestamped direct `/healthz` response using an approved HTTP client/monitor and correlate with Render logs. Do not mark runtime health passed from the `live` deploy label alone.
+3. These checks were read-only. No runtime environment variable, source code, deployment, or database state was changed.
