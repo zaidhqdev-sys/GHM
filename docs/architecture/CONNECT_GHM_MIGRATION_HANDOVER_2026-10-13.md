@@ -752,3 +752,19 @@ Owner clarification: `ghm-identity-qualification` intentionally uses the sandbox
 The separate database inventory is contextual only: `ghm-identity-qualification-20261018` exists, while `ghm-payfast-sandbox-db` is the sandbox database the owner says this qualification service uses. Prior read-only tooling could not access `ghm-identity-qualification-20261018` because its IP allowlist is empty, but that does not contradict the owner-confirmed runtime target.
 
 Directory response with zero eligible listings is consistent with an unseeded sandbox. Continue contract and integration testing with existing qualification setup. A public business fixture is optional for the current tests and must only be created through an approved sandbox flow; no fake listings, production data, visibility changes, network-rule changes, or database-target changes.
+
+
+## Follow-up qualification and directory migration gates — 2026-10-29 00:05 UTC
+
+### Current exact-head checks
+
+- Connect branch `construction/ghm-identity-adapter-only-20261016`, commit `b2e8896196ac31b122722ef6f07856f5fde6addf`: [GHM auth contract run 40791494795](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/40791494795) completed successfully. The workflow's auth client, identity adapter, browser auth, same-origin proxy, identity resolver, marketplace enquiry/directory, signup privilege boundary, GHM directory client tests, and Vite production build all passed.
+- GHM integration branch `integration/ghm-identity-merge-candidate-20261018`, head `b3dceba897896903dd99c4c444b6c535c2923a2b): [CI run 40396014963](https://github.com/zaidhqdev-sys/GHM/actions/runs/40396014963) passed on that branch head. This is contract/CI evidence, not proof of production cutover or directory fixture data.
+
+### Related draft migration PRs (do not merge without explicit authorization)
+
+- Connect PR #47 (directory/profile/engagement/support) and PR #48 (workspace leads) are still draft, separate bounded slices; PR #50 hardens identity resolution. Their recorded focused checks passed at their respective heads, but those checks are from 2026-10-19 and should be rerun on any new head before review/merge.
+- PR #47 intentionally removes distance/radius filtering because the GHM public directory contract does not yet provide a geospatial query contract. This is a known parity gap to restore only when GHM can support it safely; don't claim full directory parity.
+- PR #47 disables unimplemented Founder directory-review submission and logo upload/removal rather than falling back to Supabase. Those capabilities remain migration blockers, not completed features.
+- Zero eligible businesses in the GHM qualification sandbox remains an expected empty state absent a legitimate fixture. Do not seed fake listings or weaken active/approved/verified public eligibility.
+- Owner-confirmed setup: `ghm-identity-qualification` uses the sandbox DB, not main `ghm-db`. Keep that setup unchanged. No service environment, database target, allowlist, permissions, production settings, payment config, data, or merge status was changed.
