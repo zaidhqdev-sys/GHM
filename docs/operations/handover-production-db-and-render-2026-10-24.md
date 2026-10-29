@@ -816,3 +816,8 @@ The two-argument getter scopes rows to either an active public business logo or 
 ### Latest proxy-fix status — 2026-10-29 20:54 UTC
 
 PR #193 merged as `b59fa6b8f1d5f7b759bb2e070b487d2626a7862d`. The app now narrows legacy `TRUST_PROXY=true` to one hop and accepts explicit bounded `TRUST_PROXY_HOPS`. CI for the code revision passed; main's post-merge CI was still running at the latest check, and Render had not yet reported a new deployment after the merge. No Render environment variable was changed. Once deployment completes, inspect startup logs and health, then validate client IP/rate-limit behavior with spoofed `X-Forwarded-For`. Production DB ledger and R2 rollout remain separate gates.
+
+
+### Direct health probe attempt — 2026-10-29 20:41 UTC
+
+A read-only HTTPS GET was attempted from this session against `https://ghm-internal-runtime.onrender.com/healthz`. DNS resolution failed before an HTTP connection (`Could not resolve host`). This is the session's DNS/network limitation, not evidence that Render is down. A timestamped direct health result remains outstanding from an approved browser or external monitor.
