@@ -42,16 +42,18 @@ const loadApp = async () => {
   return { createApp, GhmAuthServiceError, createGhmAuthService };
 };
 
-const startApp = async (authService: GhmAuthService) => {
+const startApp = async (authService: GhmAuthService, trustProxy?: boolean | number) => {
   const { createApp } = await loadApp();
-  const server = http.createServer(createApp({
+  const app = createApp({
     businessIdentityService: {} as never,
     projectService: {} as never,
     publicProjectService: {} as never,
     enquiryService: {} as never,
     campaignService: {} as never,
     authService,
-  }));
+  });
+  if (trustProxy !== undefined) app.set('trust proxy', trustProxy);
+  const server = http.createServer(app);
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
@@ -555,7 +557,7 @@ test('POST /api/v1/auth/login keys rate limits on the rightmost trusted forwarde
     refresh: async () => sampleTokens(),
     logout: async () => undefined,
   };
-  const { server, baseUrl } = await startApp(authService);
+  const { server, baseUrl } = await startApp(authService, 1);
   const postLogin = (xff: string, email: string) => fetch(`${baseUrl}/api/v1/auth/login`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-forwarded-for': xff },
