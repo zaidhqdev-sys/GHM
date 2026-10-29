@@ -792,3 +792,8 @@ After the prior continuation record, performed read-only Render event, applicati
 3. Keep the health status unverified until a direct check succeeds. This is separate from the storage migration-ledger gate.
 
 No environment variables, code, deployment settings, database state, or service deployment were changed during this check.
+
+
+### Direct health-probe attempt — 2026-10-29 20:41 UTC
+
+A read-only HTTPS GET was attempted from this session to `https://ghm-internal-runtime.onrender.com/healthz`. The execution environment returned `Could not resolve host` before any HTTP connection. This reflects the session's DNS/network limitation and does not show that Render is down. A timestamped direct health result is still required from an approved browser or external monitor.
