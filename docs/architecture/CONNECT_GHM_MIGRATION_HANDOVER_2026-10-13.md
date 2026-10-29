@@ -731,3 +731,15 @@ This is a dated integration observation, not a claim that production data has mi
 - Render inventory shows a dedicated database `ghm-identity-qualification-20261018` (`dpg-dba0tu3rjlhs738fs2sg-a`) distinct from `ghm-payfast-sandbox-db`. A read-only connection attempt was blocked because the dedicated DB has an empty IP allowlist and the hosted Render MCP does not provide an allowlistable static IP. No IP rules, grants, data, or SQL were changed.
 - The qualification web service's Render metadata reports environment `evm-db43vk4s728c739fn460`, which matches the PayFast sandbox DB environment metadata rather than the dedicated identity qualification DB's environment metadata. This is a configuration association requiring clarification, not proof of the effective runtime DB connection.
 - Next safe gate: verify the service's effective DB target through approved non-secret deployment metadata and use a supported guarded qualification path that requires the expected database name and host before creating/removing one disposable business fixture. If target identity cannot be proven without network/security changes or exposing secrets, stop and leave the directory empty. No Production seeding, source-data copying, visibility-rule relaxation, payment activation, or cutover.
+
+
+## Clarification to prior database-environment note — 2026-10-29 00:01 UTC
+
+The service `ghm-identity-qualification` has been intentionally used to run GHM identity qualification tests. Its Render environment ID matching the PayFast sandbox database's environment is **not evidence by itself** that the service is connected to the PayFast database or configured incorrectly. Render service/environment association metadata and the process's effective database connection are distinct facts. Do not characterize this as a suspected wrong-database setup without runtime evidence.
+
+Current facts:
+- Qualification service: `srv-dbahvenbtjjs73f83rlg`, live at `https://ghm-identity-qualification.onrender.com`, branch `integration/ghm-identity-merge-candidate-20261018`.
+- Dedicated qualification database exists: `ghm-identity-qualification-20261018` (`dpg-dba0tu3rjlhs738fs2sg-a`), with an empty external IP allowlist.
+- Read-only query tooling could not reach that database because of its IP allowlist. No allowlist or database permissions were changed.
+- Runtime DB target remains unverified by this tool session; the correct next step is to continue using the established qualification service and its existing test suite, and only pursue a runtime-target check if an approved non-secret method is available. Do not change service environment variables, network rules, or database targets just to resolve metadata ambiguity.
+- Directory empty state remains consistent with no seeded public business fixtures. Do not create a fixture until a supported and authorized sandbox business-creation route is identified.
