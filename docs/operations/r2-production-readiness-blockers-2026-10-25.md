@@ -498,3 +498,20 @@ Added a regression test in `src/http/auth-router.test.ts` that models one truste
 - Direct health endpoint verification remains pending: a direct `curl` attempt in this session failed DNS resolution (`Could not resolve host`) before any HTTP status/body was received. This is a network/tool limitation, not evidence of service failure.
 - The application sets Express `trust proxy` from `config.trustProxy`; `TRUST_PROXY_HOPS` takes precedence and is parsed as an integer 0–10, while legacy `TRUST_PROXY=true` maps to one hop. The new isolated test explicitly sets one hop. This test does not establish the production Render proxy topology or verify production spoofed-header behavior. No production login traffic was sent.
 - No production database writes, migrations, grants, Render setting/environment changes, or R2 activation were performed. Keep migration-ledger reconciliation, direct health verification, and bounded production client-IP qualification as open gates.
+
+
+## Render deployment policy clarification — 2026-10-29 22:59 UTC
+
+- Deployment semantics: a successful GitHub merge/CI run is not proof that a service has received the commit. Render production `GHM-Internal-Runtime` (`srv-damupsek1f9s73eq8kkg`) is configured with `autoDeploy=yes`, trigger `checksPass`, branch `main`. Production commits deploy automatically only after the configured checks pass.
+- The GHM identity qualification sandbox `ghm-identity-qualification` (`srv-dbahvenbtjjs73f83rlg`) is configured `autoDeploy=no`, trigger `off`, branch `integration/ghm-identity-merge-candidate-20261018`. It is a manual-deploy service. Do not infer that it deploys when main changes or when CI passes; confirm its deployed commit separately before claiming sandbox validation.
+- Render inventory also contains a separate service named `ghm-payfast-sandbox-runtime` (`srv-db5vtgl9fdbs73eaclbg`) reporting `autoDeploy=yes`, trigger `commit`, branch `main`. This conflicts with a blanket statement that every Render sandbox is manual. Treat it as a distinct service, do not conflate it with `ghm-identity-qualification`, and confirm with the service owner whether its auto-deploy configuration is intentional. No Render settings were changed.
+- Therefore, for this handover, "production auto-deploy" refers specifically to `GHM-Internal-Runtime`; "sandbox manual deploy" refers specifically to `ghm-identity-qualification`. Any statement about sandbox deployment must name the service and cite its actual deploy record/commit.
+- This clarification is documentation only. No deploy was triggered, no service settings or environment variables were changed, and no production DB writes/migrations or R2 activation occurred.
+
+## Identity qualification auto-deploy enabled — 2026-10-29 23:06 UTC
+
+- The service owner changed and saved the Render setting for `ghm-identity-qualification` (`srv-dbahvenbtjjs73f83rlg`). A subsequent Render read confirmed `autoDeploy=yes`, trigger `checksPass`, branch `integration/ghm-identity-merge-candidate-20261018`. Render recorded `auto_deploy_enabled` at `2026-10-29T23:06:33.281235Z` with `newTrigger=checksPass`.
+- This supersedes the earlier 22:59 UTC observation in this document that the identity qualification service was manual (`autoDeploy=no`, trigger `off`). The sandbox now auto-deploys from its dedicated qualification branch after configured CI checks pass; it does not follow production `main`.
+- No deployment was triggered by this settings change. At verification, the currently live sandbox deployment remained commit `954fbf63ff8f515426beb2bc37fcefe233c6f857` (`docs(ops): record Connect preview and Vercel access findings`, deploy `dep-dbh77rrpkm4c73dok090`). A later branch update and passing checks are required to trigger a new deployment.
+- Production `GHM-Internal-Runtime` remains a separate service on `main` with `autoDeploy=yes`, trigger `checksPass`. The separate `ghm-payfast-sandbox-runtime` configuration is unchanged and remains a distinct item to reconcile.
+- No production database writes/migrations/grants, R2 activation, or Render environment-variable changes were performed.
