@@ -16,8 +16,9 @@ const parseTrustProxy = (): boolean | number => {
     }
     return parsed;
   }
-  // Legacy compatibility only. Prefer TRUST_PROXY_HOPS with a topology-verified value.
-  return process.env.TRUST_PROXY === 'true';
+  // Legacy boolean compatibility is intentionally narrowed to one trusted hop.
+  // Prefer TRUST_PROXY_HOPS when the deployed proxy topology has been verified.
+  return process.env.TRUST_PROXY === 'true' ? 1 : false;
 };
 
 const required = (name: string): string => {
