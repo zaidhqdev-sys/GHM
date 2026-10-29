@@ -797,3 +797,16 @@ No environment variables, code, deployment settings, database state, or service 
 ### Direct health-probe attempt — 2026-10-29 20:41 UTC
 
 A read-only HTTPS GET was attempted from this session to `https://ghm-internal-runtime.onrender.com/healthz`. The execution environment returned `Could not resolve host` before any HTTP connection. This reflects the session's DNS/network limitation and does not show that Render is down. A timestamped direct health result is still required from an approved browser or external monitor.
+
+
+
+## Trust-proxy scope clarification — 2026-10-29 20:46 UTC
+
+Operator clarified: GHM identity qualification (sandbox/test) has no `trust proxy` setting; GHM Internal Runtime (production) does. Keep findings and any remediation isolated to production. Do not alter qualification service configuration for this production-only warning.
+
+Read-only comparison:
+- Qualification: `ghm-identity-qualification`, `srv-dbahvenbtjjs73f83rlg`, branch `integration/ghm-identity-merge-candidate-20261018`, auto-deploy off, no Render health-check path. Log search for `ERR_ERL_PERMISSIVE_TRUST_PROXY` / `trust proxy` (2026-10-29 19:30–20:50 UTC) returned no rows; HTTP count/latency metrics were empty. These empty results are not proof of all environment values.
+- Production: `GHM-Internal-Runtime`, `srv-damupsek1f9s73eq8kkg`, branch `main`, health-check path `/healthz`. The warning was observed at `2026-10-29T20:06:15.836212737Z` on instance `srv-damupsek1f9s73eq8kkg-m7vrf`. Metrics for the same window were empty.
+- Code inspection: `TRUST_PROXY=true` becomes boolean `true` in `src/config.ts`; `src/http/app.ts` passes it directly to Express. Before changing production, verify the Render proxy chain and client-IP forwarding, then use a narrow trust policy and add tests for spoofed `X-Forwarded-For`. Do not guess a hop count or simply toggle it off.
+
+No production or qualification environment variables, deployment settings, code, or database state were changed in this continuation.
