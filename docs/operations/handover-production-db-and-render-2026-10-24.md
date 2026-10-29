@@ -821,3 +821,22 @@ PR #193 merged as `b59fa6b8f1d5f7b759bb2e070b487d2626a7862d`. The app now narrow
 ### Direct health probe attempt — 2026-10-29 20:41 UTC
 
 A read-only HTTPS GET was attempted from this session against `https://ghm-internal-runtime.onrender.com/healthz`. DNS resolution failed before an HTTP connection (`Could not resolve host`). This is the session's DNS/network limitation, not evidence that Render is down. A timestamped direct health result remains outstanding from an approved browser or external monitor.
+
+
+## Follow-up Render runtime logs — 2026-10-29 20:40 UTC
+
+After the prior continuation record, performed read-only Render event, application/request log, and HTTP metrics queries for `GHM-Internal-Runtime` (`srv-damupsek1f9s73eq8kkg`).
+
+- App logs show instance `srv-damupsek1f9s73eq8kkg-m7vrf` running `npm start` at 20:06:04 UTC and logging `GHM Core Engine listening on port 10000` at 20:06:09 UTC on 2026-10-29.
+- At 20:06:15 UTC, `express-rate-limit` emitted `ERR_ERL_PERMISSIVE_TRUST_PROXY` with the message that `trust proxy=true` allows clients to trivially bypass IP-based rate limiting.
+- Source review confirms `src/config.ts` parses `TRUST_PROXY` as a boolean and `src/http/app.ts` calls `app.set('trust proxy', config.trustProxy)`. `.env.example` describes true as appropriate only behind a trusted HTTPS reverse proxy. Verify effective Render environment and actual proxy topology before changing it.
+- Render event history in the returned results contained the last deploy completion at 2026-10-28 01:01:29 UTC, with no newer lifecycle event; it did not explain the 2026-10-29 20:06 process start.
+- Request logs and HTTP request count/latency metrics filtered to `/healthz` over 19:30–20:40 UTC on 2026-10-29 returned no entries/data. This is inconclusive. The external inspection path also could not retrieve the health URL, so no fresh direct health result was established.
+
+### Follow-up actions
+
+1. Investigate and fix the permissive proxy trust configuration with a validated Render proxy chain and tests for client-IP/rate-limit spoofing. Do not blindly switch `TRUST_PROXY` off or set an arbitrary hop count.
+2. Obtain and record a timestamped direct `/healthz` response, then correlate with request logs/events.
+3. Keep the health status unverified until a direct check succeeds. This is separate from the storage migration-ledger gate.
+
+No environment variables, code, deployment settings, database state, or service deployment were changed during this check.
