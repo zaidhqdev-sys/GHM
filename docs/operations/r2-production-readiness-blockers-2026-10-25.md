@@ -366,3 +366,8 @@ The production app log shows `ERR_ERL_PERMISSIVE_TRUST_PROXY` at `2026-10-29T20:
 5. Keep storage migration reconciliation and R2 go-live gates unchanged.
 
 These steps were repository/documentation and read-only platform investigation only; no live configuration change or deploy was made.
+
+
+### Bounded legacy fallback update — 2026-10-29 20:52 UTC
+
+The implementation was tightened after review: if legacy `TRUST_PROXY=true` is set and `TRUST_PROXY_HOPS` is unset, the application now uses numeric `1` instead of Express boolean `true`. An explicit `TRUST_PROXY_HOPS` value still takes precedence. A config test asserts the legacy boolean is narrowed to one hop. This avoids the permissive boolean that triggered `ERR_ERL_PERMISSIVE_TRUST_PROXY` while preserving a safe migration path. CI must be rerun for this latest code commit before merge. This is based on Render's published Express example using one hop, but does not yet prove the original-client IP is resolved correctly in this service; after deployment, verify observed `req.ip`/rate-limit key behavior with spoofed `X-Forwarded-For` tests. No Render setting or deployment was changed here.
