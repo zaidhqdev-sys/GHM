@@ -405,3 +405,16 @@ Follow-up read-only Render log, event, and metrics queries were made after the p
 ### Direct health-probe attempt — 2026-10-29 20:41 UTC
 
 A read-only HTTPS GET was attempted from the resumed session against `https://ghm-internal-runtime.onrender.com/healthz`. The execution environment returned a DNS resolution error (`Could not resolve host`) before connecting. This is an environment/network limitation, not evidence that the Render service or endpoint is down. A direct health result remains unverified; use an approved browser or external health monitor and record the actual timestamp/status.
+
+
+
+## Deployment-scope clarification — 2026-10-29 20:46 UTC
+
+The operator clarified that the GHM identity qualification service (sandbox/test) does not have a `trust proxy` setting, while GHM Internal Runtime (production) does. Keep these contexts separate; the production warning is not evidence of a qualification-service configuration problem.
+
+Read-only Render cross-check:
+- `ghm-identity-qualification`: service ID `srv-dbahvenbtjjs73f83rlg`, branch `integration/ghm-identity-merge-candidate-20261018`, auto-deploy off, no configured Render health-check path. Application log search for `ERR_ERL_PERMISSIVE_TRUST_PROXY` / `trust proxy` in 2026-10-29 19:30–20:50 UTC returned no entries. HTTP count/latency metrics in that window were empty. This is consistent with no observed warning, but absence of logs/metrics does not prove all runtime environment details.
+- `GHM-Internal-Runtime`: service ID `srv-damupsek1f9s73eq8kkg`, branch `main`, health-check path `/healthz`. Application logs contain `ERR_ERL_PERMISSIVE_TRUST_PROXY` at `2026-10-29T20:06:15.836212737Z` from instance `srv-damupsek1f9s73eq8kkg-m7vrf`; the message explicitly states Express `trust proxy=true` can allow bypassing IP-based rate limits. HTTP count/latency metrics in 19:30–20:50 UTC were empty, so this pass did not establish health.
+- Source reviewed on `main`: `src/config.ts` sets `config.trustProxy` only when `TRUST_PROXY === 'true'`; `src/http/app.ts` applies it using `app.set('trust proxy', config.trustProxy)`. `.env.example` says true should be used only behind a trusted HTTPS reverse proxy.
+
+Action is scoped to production only: verify the actual Render forwarding chain and client-IP behavior, then implement a narrowly trusted proxy policy supported by the topology and test rate-limit resistance to spoofed `X-Forwarded-For`. Do not alter the qualification service to address this warning. No Render environment variables or service configuration were changed.
