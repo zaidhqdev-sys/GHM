@@ -333,3 +333,36 @@ Added a source migration replacing the ID-only metadata getter with a two-argume
 ## Scoped metadata lookup CI result — 2026-10-26
 
 CI run [1678](https://github.com/zaidhqdev-sys/GHM/actions/runs/40242355456) passed the build, test suite, migration audit policy tests, and runtime-boundary verification for head `9fea65df616abb9ee1c9b8e1fd19bad82209b942`. An earlier run failed only because two new tests over-escaped a regular expression; the assertions were corrected to literal substring checks. This is not live database qualification: the new migration has not been applied, no disposable-database migration/lifecycle run has been performed, and real PostgreSQL membership-backed tenant-isolation tests remain open. No live DB or Render changes were made; production R2 variables remain on hold.
+
+
+
+## Proxy-trust remediation continuation — 2026-10-29 20:50 UTC
+
+Scope confirmed by operator: GHM identity qualification (sandbox/test) has no trust-proxy setting; the warning is specific to GHM Internal Runtime (production). Do not change the qualification service.
+
+### New work performed
+
+- Created branch `fix/render-trust-proxy-hop-config-2026-10-29`.
+- Added `TRUST_PROXY_HOPS` support in `src/config.ts`: explicit non-negative integer from 0 through 10, invalid values fail startup, and the numeric setting takes precedence over legacy `TRUST_PROXY=true`.
+- Added config tests for numeric hop configuration, precedence over the legacy boolean, and rejection of malformed/out-of-range values.
+- Updated `.env.example` to recommend explicit, topology-verified hop count rather than unrestricted trust.
+- Opened PR #193: https://github.com/zaidhqdev-sys/GHM/pull/193. At this record's timestamp, CI run `40952611309` was still in progress; do not call this change tested/passed until CI completes.
+- No production or sandbox Render environment variables, service settings, or deployments were changed. PR #193 remains unmerged.
+
+### Platform guidance and limitation
+
+Render's published guidance includes an Express example using `app.set('trust proxy', 1)` behind its load balancer: https://render.com/articles/how-to-implement-authentication-and-authorization. Render also describes traffic traversing Cloudflare and Render load balancers and recommends reading `X-Forwarded-For` for client IP: https://render.com/articles/how-render-handles-ddos-attacks. This guidance supports investigating a numeric hop policy, but does not itself prove the exact forwarded-header chain reaching this particular service. Do not apply `TRUST_PROXY_HOPS=1` to production until the effective chain/client IP is checked with a safe request or confirmed with Render support.
+
+### Important unresolved discrepancy
+
+The production app log shows `ERR_ERL_PERMISSIVE_TRUST_PROXY` at `2026-10-29T20:06:15.836212737Z`. Reviewing the currently available `main` versions of `src/config.ts`, `src/http/app.ts`, and `src/server.ts` found boolean proxy configuration but did not identify an `express-rate-limit` middleware call in those inspected files. The running instance/deployed build or another imported module therefore needs reconciliation before claiming the new config alone fixes the warning. Inspect the exact deployed commit/build artifact and dependency call path.
+
+### Next steps
+
+1. Let PR #193 CI complete; fix any test/build failures before merge.
+2. Inspect the exact production deployment's commit and compiled artifact/module stack for the source of the rate-limit validation warning. Record evidence.
+3. Safely establish the forwarded-header chain on production (use a temporary diagnostic that does not log secrets or persist arbitrary headers, or confirm with Render support). Verify that forged leftmost `X-Forwarded-For` values cannot alter the rate-limit identity.
+4. After merge and successful deployment only, set a topology-verified numeric `TRUST_PROXY_HOPS` on **GHM-Internal-Runtime** if warranted, then verify startup logs and rate-limit behavior. Do not touch GHM identity qualification for this warning.
+5. Keep storage migration reconciliation and R2 go-live gates unchanged.
+
+These steps were repository/documentation and read-only platform investigation only; no live configuration change or deploy was made.
