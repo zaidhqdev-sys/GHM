@@ -840,3 +840,14 @@ After the prior continuation record, performed read-only Render event, applicati
 3. Keep the health status unverified until a direct check succeeds. This is separate from the storage migration-ledger gate.
 
 No environment variables, code, deployment settings, database state, or service deployment were changed during this check.
+
+
+## Post-deployment verification — 2026-10-29 20:57 UTC
+
+- PR #193 merged as `b59fa6b8f1d5f7b759bb2e070b487d2626a7862d`; main CI run `40953060564` passed build, disposable PostgreSQL qualification, test suite, migration audit policy tests, and runtime-boundary verification.
+- Render deployment `dep-dbhr6229lscs738ru42g` is **live** for that commit and ended at `2026-10-29T20:57:32.500167Z`.
+- New instance `srv-damupsek1f9s73eq8kkg-rvrx7` logged `GHM Core Engine listening on port 10000` at `20:57:23.097Z`; Render logged `Your service is live` at `20:57:32.672Z`.
+- No `ERR_ERL_PERMISSIVE_TRUST_PROXY` matches were returned for logs from `20:57:15Z` to `20:58:30Z`. This supports that the startup warning did not recur in that window, but spoofed-header/client-IP rate-limit behavior has not yet been qualified.
+- No Render environment variable was changed. Code now narrows legacy `TRUST_PROXY=true` to numeric one hop; explicit `TRUST_PROXY_HOPS` overrides it.
+- Direct external `/healthz` response remains unverified because this session could not resolve the hostname before HTTP. Render marked the deployment live with `/healthz` configured as the service health-check path.
+- Production storage migration-ledger reconciliation remains unverified; the inspection role cannot read the ledger. Keep production migrations and R2 go-live gated.
