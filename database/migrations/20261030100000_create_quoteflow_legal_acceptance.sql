@@ -75,7 +75,7 @@ AS $$
          v.effective_at,
          a.accepted_at
     FROM ghm.quoteflow_legal_document d
-    JOIN LATERAL (
+    LEFT JOIN LATERAL (
       SELECT version.id, version.version_label, version.content_markdown,
              version.content_sha256, version.effective_at
         FROM ghm.quoteflow_legal_document_version version
