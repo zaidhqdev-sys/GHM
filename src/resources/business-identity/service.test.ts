@@ -124,3 +124,16 @@ test('updateBusiness delegates owner-managed profile fields', async () => {
     input: { description: 'Hello', phone: '0111234567', email: 'a@b.co' },
   });
 });
+
+test('business context listing returns all active memberships with canonical Business details', async () => {
+  const context: AuthContext = { userId: 1, role: 'business' };
+  const { service, repository } = serviceFor(context);
+  repository.businesses.set(1, business(1));
+  repository.businesses.set(2, business(2));
+  repository.businesses.set(3, { ...business(3), isActive: false });
+  repository.memberships.push(membership(1, 1, 'owner'), membership(2, 1, 'administrator'), membership(3, 1, 'owner'));
+  const contexts = await service.listBusinessContexts(context);
+  assert.equal(contexts.length, 2);
+  assert.deepEqual(contexts.map(value => value.business.id), [1, 2]);
+  assert.deepEqual(contexts.map(value => value.membership.role), ['owner', 'administrator']);
+});
