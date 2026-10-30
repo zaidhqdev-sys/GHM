@@ -7,7 +7,7 @@ CREATE TABLE ghm.quoteflow_legal_document (
   is_required boolean NOT NULL DEFAULT true,
   document_status text NOT NULL DEFAULT 'active'
     CHECK (document_status IN ('active', 'retired')),
-  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE ghm.quoteflow_legal_document_version (
@@ -18,8 +18,8 @@ CREATE TABLE ghm.quoteflow_legal_document_version (
   content_sha256 char(64) NOT NULL
     CHECK (content_sha256 ~ '^[0-9a-f]{64}$'),
   effective_at timestamptz NOT NULL,
-  published_at timestamptz NOT NULL DEFAULT clock_timestamp(),
-  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  published_at timestamptz NOT NULL DEFAULT now(),
+  created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (document_id, version_label)
 );
 
@@ -31,7 +31,7 @@ CREATE TABLE ghm.quoteflow_legal_acceptance (
   account_id bigint NOT NULL REFERENCES ghm.account_identity(id),
   document_version_id bigint NOT NULL REFERENCES ghm.quoteflow_legal_document_version(id),
   document_sha256 char(64) NOT NULL CHECK (document_sha256 ~ '^[0-9a-f]{64}$'),
-  accepted_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  accepted_at timestamptz NOT NULL DEFAULT now(),
   acceptance_channel text NOT NULL DEFAULT 'quoteflow_android'
     CHECK (acceptance_channel IN ('quoteflow_android', 'quoteflow_web')),
   UNIQUE (account_id, document_version_id)
@@ -80,8 +80,8 @@ AS $$
              version.content_sha256, version.effective_at
         FROM ghm.quoteflow_legal_document_version version
        WHERE version.document_id = d.id
-         AND version.published_at <= clock_timestamp()
-         AND version.effective_at <= clock_timestamp()
+         AND version.published_at <= now()
+         AND version.effective_at <= now()
        ORDER BY version.effective_at DESC, version.id DESC
        LIMIT 1
     ) v ON true
@@ -119,6 +119,7 @@ DECLARE
 BEGIN
   IF p_account_id IS NULL OR p_account_id <= 0
      OR p_document_version_id IS NULL OR p_document_version_id <= 0
+     OR p_acceptance_channel IS NULL
      OR p_acceptance_channel NOT IN ('quoteflow_android', 'quoteflow_web') THEN
     RAISE EXCEPTION 'invalid legal acceptance request' USING ERRCODE = '22023';
   END IF;
@@ -136,14 +137,14 @@ BEGIN
     JOIN ghm.quoteflow_legal_document d ON d.id = v.document_id
    WHERE v.id = p_document_version_id
      AND d.document_status = 'active'
-     AND v.published_at <= clock_timestamp()
-     AND v.effective_at <= clock_timestamp()
+     AND v.published_at <= now()
+     AND v.effective_at <= now()
      AND NOT EXISTS (
        SELECT 1
          FROM ghm.quoteflow_legal_document_version newer
         WHERE newer.document_id = v.document_id
-          AND newer.published_at <= clock_timestamp()
-          AND newer.effective_at <= clock_timestamp()
+          AND newer.published_at <= now()
+          AND newer.effective_at <= now()
           AND (newer.effective_at, newer.id) > (v.effective_at, v.id)
      );
 
