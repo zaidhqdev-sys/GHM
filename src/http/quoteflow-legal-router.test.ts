@@ -38,7 +38,7 @@ test('legal acceptance uses the authenticated account and server-side version co
   const { server, baseUrl } = await start(async (sql, values) => {
     queryCount += 1;
     if (queryCount === 1) {
-      assert.match(sql, /ghm\\.quoteflow_legal_current_documents/);
+      assert.match(sql, /ghm\.quoteflow_legal_current_documents/);
       assert.deepEqual(values, [77]);
       return { rows: [{
         document_key: 'terms_of_service',
