@@ -51,6 +51,11 @@ export interface ApplicationIdentity {
   readonly activeBusiness: BusinessIdentity | null;
 }
 
+export interface BusinessMembershipContext {
+  readonly membership: BusinessMembership;
+  readonly business: BusinessIdentity;
+}
+
 export interface ResolveIdentityInput {
   readonly context: AuthContext;
   readonly selectedBusinessId?: BusinessId;
@@ -87,6 +92,7 @@ export interface BusinessIdentityRepository {
 
 export interface BusinessIdentityService {
   resolveIdentity(input: ResolveIdentityInput): Promise<ApplicationIdentity>;
+  listBusinessContexts(context: AuthContext): Promise<readonly BusinessMembershipContext[]>;
   getOwnProfile(context: AuthContext): Promise<AccountIdentity>;
   updateOwnProfile(context: AuthContext, input: UpdateProfileInput): Promise<AccountIdentity>;
   createBusiness(context: AuthContext, input: CreateBusinessInput): Promise<ApplicationIdentity>;
