@@ -34,14 +34,31 @@ test('current legal documents fail closed when no approved document versions are
 test('legal acceptance uses the authenticated account and server-side version contract', async () => {
   let receivedSql = '';
   let receivedValues: unknown[] = [];
+  let queryCount = 0;
   const { server, baseUrl } = await start(async (sql, values) => {
+    queryCount += 1;
+    if (queryCount === 1) {
+      assert.match(sql, /ghm\\.quoteflow_legal_current_documents/);
+      assert.deepEqual(values, [77]);
+      return { rows: [{
+        document_key: 'terms_of_service',
+        title: 'Terms of Service',
+        is_required: true,
+        version_id: '12',
+        version_label: '1.0',
+        content_markdown: 'Approved terms for test',
+        content_sha256: 'f566662530f5a2cf0b738ddc0df4c02f3c4024a0719e3849601de908d4127457',
+        effective_at: '2026-10-30T00:00:00.000Z',
+        accepted_at: null,
+      }] };
+    }
     receivedSql = sql;
     receivedValues = values ?? [];
     return { rows: [{
       acceptance_id: '501',
       account_id: '77',
       document_version_id: '12',
-      document_sha256: 'a'.repeat(64),
+      document_sha256: 'f566662530f5a2cf0b738ddc0df4c02f3c4024a0719e3849601de908d4127457',
       accepted_at: '2026-10-30T22:00:00.000Z',
       acceptance_channel: 'quoteflow_android',
     }] };
@@ -62,7 +79,7 @@ test('legal acceptance uses the authenticated account and server-side version co
     assert.match(receivedSql, /ghm\.quoteflow_legal_accept/);
     assert.deepEqual(receivedValues, [77, 12, 'quoteflow_android']);
     const body = await accepted.json() as { acceptance: { id: number; accountId: number; versionId: number } };
-    assert.deepEqual(body.acceptance, { id: 501, accountId: 77, versionId: 12, sha256: 'a'.repeat(64), acceptedAt: '2026-10-30T22:00:00.000Z', channel: 'quoteflow_android' });
+    assert.deepEqual(body.acceptance, { id: 501, accountId: 77, versionId: 12, sha256: 'f566662530f5a2cf0b738ddc0df4c02f3c4024a0719e3849601de908d4127457', acceptedAt: '2026-10-30T22:00:00.000Z', channel: 'quoteflow_android' });
   } finally {
     await new Promise<void>(resolve => server.close(() => resolve()));
   }
