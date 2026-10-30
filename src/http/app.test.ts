@@ -878,3 +878,63 @@ test('lazy auth service uses the app-injected auth persistence for reset session
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });
+
+test('authenticated Business membership route returns every active Business context', async () => {
+  const businessService = {
+    listBusinessContexts: async (context: AuthContext) => {
+      assert.equal(context.userId, 701);
+      return [{
+        membership: {
+          id: 11, businessId: 21, accountId: 701, role: 'owner', status: 'active',
+          createdBy: 701, createdAt: new Date('2026-10-30T00:00:00.000Z'), updatedAt: new Date('2026-10-30T00:00:00.000Z'),
+        },
+        business: {
+          id: 21, name: 'First Business', slug: 'first-business', description: null, phone: null, email: null,
+          insuranceVerified: false, jobsCompleted: 0, verificationStatus: 'unverified', isActive: true,
+          createdAt: new Date('2026-10-30T00:00:00.000Z'), updatedAt: new Date('2026-10-30T00:00:00.000Z'),
+        },
+      }];
+    },
+  } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(businessService);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/businesses/memberships`, { headers: { authorization: `Bearer ${tokenFor({ userId: 701, role: 'business' })}` } });
+    assert.equal(response.status, 200);
+    const body = await response.json() as { memberships: Array<{ membership: { businessId: number }; business: { name: string } }> };
+    assert.equal(body.memberships.length, 1);
+    assert.equal(body.memberships[0].membership.businessId, 21);
+    assert.equal(body.memberships[0].business.name, 'First Business');
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+test('managed Business route accepts an explicit authorized Business selection', async () => {
+  let selectedBusinessId: number | undefined;
+  const businessService = {
+    resolveIdentity: async ({ context, selectedBusinessId: selected }: { context: AuthContext; selectedBusinessId?: number }) => {
+      assert.equal(context.userId, 702);
+      selectedBusinessId = selected;
+      return {
+        account: profile(context),
+        memberships: [],
+        activeMembership: {
+          id: 12, businessId: 22, accountId: 702, role: 'owner', status: 'active',
+          createdBy: 702, createdAt: new Date('2026-10-30T00:00:00.000Z'), updatedAt: new Date('2026-10-30T00:00:00.000Z'),
+        },
+        activeBusiness: {
+          id: 22, name: 'Selected Business', slug: 'selected-business', description: null, phone: null, email: null,
+          insuranceVerified: false, jobsCompleted: 0, verificationStatus: 'unverified', isActive: true,
+          createdAt: new Date('2026-10-30T00:00:00.000Z'), updatedAt: new Date('2026-10-30T00:00:00.000Z'),
+        },
+      };
+    },
+  } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(businessService);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/businesses/managed?businessId=22`, { headers: { authorization: `Bearer ${tokenFor({ userId: 702, role: 'business' })}` } });
+    assert.equal(response.status, 200);
+    assert.equal(selectedBusinessId, 22);
+    const body = await response.json() as { business: { id: number }; membership: { businessId: number } };
+    assert.equal(body.business.id, 22);
+    assert.equal(body.membership.businessId, 22);
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
