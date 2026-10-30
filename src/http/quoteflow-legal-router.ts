@@ -26,7 +26,7 @@ type LegalAcceptanceRow = {
 const positiveId = (value: unknown): number | null => {
   if (typeof value !== 'string' && typeof value !== 'number') return null;
   const raw = String(value);
-  if (!/^[1-9]\\d*$/.test(raw)) return null;
+  if (!/^[1-9]\d*$/.test(raw)) return null;
   const parsed = Number(raw);
   return Number.isSafeInteger(parsed) ? parsed : null;
 };
