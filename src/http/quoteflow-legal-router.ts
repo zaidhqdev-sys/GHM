@@ -7,11 +7,11 @@ type LegalDocumentRow = {
   document_key: string;
   title: string;
   is_required: boolean;
-  version_id: string | number;
-  version_label: string;
-  content_markdown: string;
-  content_sha256: string;
-  effective_at: Date | string;
+  version_id: string | number | null;
+  version_label: string | null;
+  content_markdown: string | null;
+  content_sha256: string | null;
+  effective_at: Date | string | null;
   accepted_at: Date | string | null;
 };
 
@@ -56,13 +56,13 @@ export const registerQuoteFlowLegalRoutes = (
         'SELECT * FROM ghm.quoteflow_legal_current_documents($1)',
         [accountId],
       );
-      if (result.rows.length === 0 || result.rows.some(row => createHash('sha256').update(row.content_markdown, 'utf8').digest('hex') !== row.content_sha256)) {
+      if (result.rows.length === 0 || result.rows.some(row => row.is_required && row.version_id === null) || result.rows.some(row => row.version_id !== null && (!row.content_markdown || !row.content_sha256 || createHash('sha256').update(row.content_markdown, 'utf8').digest('hex') !== row.content_sha256))) {
         // An empty catalogue must never be interpreted by a client as acceptance.
         res.status(503).json({ error: 'legal_documents_unavailable' });
         return;
       }
       res.status(200).json({
-        documents: result.rows.map(row => ({
+        documents: result.rows.filter(row => row.version_id !== null).map(row => ({
           documentKey: row.document_key,
           title: row.title,
           required: row.is_required,
@@ -105,8 +105,8 @@ export const registerQuoteFlowLegalRoutes = (
         'SELECT * FROM ghm.quoteflow_legal_current_documents($1)',
         [accountId],
       );
-      const version = current.rows.find(row => Number(row.version_id) === versionId);
-      if (!version || createHash('sha256').update(version.content_markdown, 'utf8').digest('hex') !== version.content_sha256) {
+      const version = current.rows.find(row => row.version_id !== null && Number(row.version_id) === versionId);
+      if (!version || !version.content_markdown || !version.content_sha256 || createHash('sha256').update(version.content_markdown, 'utf8').digest('hex') !== version.content_sha256) {
         res.status(409).json({ error: 'legal_version_not_current' });
         return;
       }
@@ -129,9 +129,17 @@ export const registerQuoteFlowLegalRoutes = (
           channel: row.acceptance_channel,
         },
       });
-    } catch {
-      // Do not disclose whether an account or document version exists.
-      res.status(409).json({ error: 'legal_version_not_current' });
+    } catch (error) {
+      // Invalid/stale version requests are conflicts; database/runtime failures
+      // remain unavailable and never become a client-side acceptance.
+      const code = error && typeof error === 'object' && 'code' in error
+        ? String((error as { code?: unknown }).code)
+        : '';
+      if (code === '22023' || code === 'P0002') {
+        res.status(409).json({ error: 'legal_version_not_current' });
+        return;
+      }
+      res.status(503).json({ error: 'legal_acceptance_unavailable' });
     }
   });
 };
