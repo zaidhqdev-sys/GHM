@@ -519,7 +519,13 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   app.get('/api/v1/businesses/managed', resourceAuthMiddleware, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
-      const identity = await service.resolveIdentity({ context });
+      const selectedValue = req.query.businessId;
+      const selectedBusinessId = selectedValue === undefined ? undefined : (typeof selectedValue === 'string' ? positiveIntegerId(selectedValue) : null);
+      if (selectedValue !== undefined && selectedBusinessId === null) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const identity = await service.resolveIdentity({ context, selectedBusinessId: selectedBusinessId ?? undefined });
       if (!identity.activeBusiness || !identity.activeMembership) {
         res.status(404).json({ error: 'not_found' });
         return;
