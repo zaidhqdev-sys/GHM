@@ -1,5 +1,6 @@
 import type { Express, Request, Response, RequestHandler } from 'express';
 import type { Pool } from 'pg';
+import { createHash } from 'node:crypto';
 import { rateLimit } from 'express-rate-limit';
 
 type LegalDocumentRow = {
@@ -55,7 +56,7 @@ export const registerQuoteFlowLegalRoutes = (
         'SELECT * FROM ghm.quoteflow_legal_current_documents($1)',
         [accountId],
       );
-      if (result.rows.length === 0) {
+      if (result.rows.length === 0 || result.rows.some(row => createHash('sha256').update(row.content_markdown, 'utf8').digest('hex') !== row.content_sha256)) {
         // An empty catalogue must never be interpreted by a client as acceptance.
         res.status(503).json({ error: 'legal_documents_unavailable' });
         return;
@@ -99,9 +100,19 @@ export const registerQuoteFlowLegalRoutes = (
         res.status(400).json({ error: 'invalid_request' });
         return;
       }
+      const versionId = positiveId(body.versionId);
+      const current = await pool.query<LegalDocumentRow>(
+        'SELECT * FROM ghm.quoteflow_legal_current_documents($1)',
+        [accountId],
+      );
+      const version = current.rows.find(row => Number(row.version_id) === versionId);
+      if (!version || createHash('sha256').update(version.content_markdown, 'utf8').digest('hex') !== version.content_sha256) {
+        res.status(409).json({ error: 'legal_version_not_current' });
+        return;
+      }
       const result = await pool.query<LegalAcceptanceRow>(
         'SELECT * FROM ghm.quoteflow_legal_accept($1, $2, $3)',
-        [accountId, positiveId(body.versionId), body.channel ?? 'quoteflow_android'],
+        [accountId, versionId, body.channel ?? 'quoteflow_android'],
       );
       const row = result.rows[0];
       if (!row) {
