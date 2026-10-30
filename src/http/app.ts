@@ -507,6 +507,15 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
+  app.get('/api/v1/businesses/memberships', resourceAuthMiddleware, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const memberships = await service.listBusinessContexts(context);
+      res.status(200).json({ memberships });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
   app.get('/api/v1/businesses/managed', resourceAuthMiddleware, requireRegisteredAccess('business', 'read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
