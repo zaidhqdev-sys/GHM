@@ -21,7 +21,7 @@ if (process.env.NODE_ENV === 'production' && !databaseSsl) {
 
 const pool = new Pool({
   connectionString: databaseUrl,
-  ssl: databaseSsl ? { rejectUnauthorized: false } : false,
+  ssl: databaseSsl ? { rejectUnauthorized: true } : false,
 });
 const MIGRATION_PATTERN = /^(\d{14})_([a-z0-9][a-z0-9_-]*)\.sql$/;
 const MIGRATIONS_DIR = path.resolve(process.cwd(), 'database', 'migrations');
