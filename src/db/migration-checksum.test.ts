@@ -45,8 +45,8 @@ test('does not strip transaction keywords inside migration statements', () => {
 });
 
 test('accepts historical checksum of BOM-prefixed CRLF source bytes', () => {
-  const sourceSql = '\uFEFFSELECT 1;\\r\\nREVOKE SELECT ON TABLE ghm.example FROM ghm_runtime;\\r\\n';
+  const sourceSql = '\uFEFFSELECT 1;\r\nREVOKE SELECT ON TABLE ghm.example FROM ghm_runtime;\r\n';
   const legacyChecksum = crypto.createHash('sha256').update(sourceSql, 'utf8').digest('hex');
   assert.equal(matchesMigrationSqlChecksum(legacyChecksum, sourceSql), true);
-  assert.equal(matchesMigrationSqlChecksum(legacyChecksum, sourceSql.replace(/^\\uFEFF/, '')), false);
+  assert.equal(matchesMigrationSqlChecksum(legacyChecksum, sourceSql.replace(/^\uFEFF/, '')), false);
 });
