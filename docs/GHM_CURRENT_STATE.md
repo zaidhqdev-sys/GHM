@@ -207,3 +207,19 @@ The confirmed legacy identity classification is one legitimate owner account and
 - `npm run qualify:storage-live-provider` returned `QUALIFIED` on 2026-10-26. Build, signed upload, provider HEAD/metadata match, signed download, payload integrity, deletion, and deleted-object absence all passed. Exact evidence: `docs/evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-26.md`.
 - The only bucket created so far is named `zaid-ghm-production`; a successful provider-path test does not establish a dedicated non-production bucket. The test object was confirmed deleted. Avoid further mutating qualification runs against that bucket by default.
 - Remaining storage gates: guarded persistence qualification under the intended restricted qualification role, authenticated application/API end-to-end qualification, composition-root/deployment wiring, full tenant/resource authorization, recovery/orphan reconciliation, backup/recovery, and production enablement/cutover. Keep production database and `GHM-Internal-Runtime` untouched.
+
+
+## Runtime database identity startup guard — qualified on 2026-10-31
+
+The integration candidate now enforces the dedicated PostgreSQL runtime identity before the HTTP server begins listening.
+
+- Implementation: `src/db/runtime-identity.ts` queries `session_user`, `current_user`, and `current_database()`; startup is rejected unless both the login identity and effective role are exactly `ghm_runtime`.
+- Startup integration: `src/db/runtime-startup.ts` runs the assertion before the `server.listen()` callback. The `/readyz` endpoint remains not-ready until the listener starts.
+- Local validation on the rebased candidate: **680 tests passed, 0 failed, 1 skipped** (681 total); `npm run build` passed; `git diff --check` was clean.
+- Qualification deployment: Render service `ghm-identity-qualification` (`srv-dbahvenbtjjs73f83rlg`), branch `integration/ghm-identity-merge-candidate-20261018`, commit [`7a17a781a9a1910a6ea76b8819f4714680ac282e`](https://github.com/zaidhqdev-sys/GHM/commit/7a17a781a9a1910a6ea76b8819f4714680ac282e), deployment `dep-dbildsu417fc73a3cpu0`: Render reported `live`; build succeeded; application startup logged `GHM Core Engine listening on port 10000`.
+- Live readiness probe on 2026-10-31 returned **HTTP 200** with `{"status":"ready"}`. Since the server only begins listening after the identity assertion resolves, this is runtime evidence that the configured qualification connection passed the role-identity guard.
+- The qualification service is owner-configured to use sandbox database `ghm_payfast_sandbox_db`, not production `ghm_db`. A separate read-only role catalog audit found `ghm_runtime` is not superuser, cannot create roles or databases, has no replication or bypass-RLS attribute, and has no inherited/reachable role memberships. No role, grant, database, or production configuration was changed for this qualification.
+
+**Scope and remaining caveats:** the guard currently enforces `session_user` and `current_user`; although `current_database()` is selected, the implementation does not compare it to an expected database name. The separate catalog audit is evidence about the sandbox role configuration, not a replacement for a database-name assertion in code. The startup guard does not by itself qualify every object/table privilege or all application workflows. Render's build output also reported three npm audit findings (one moderate, one high, one critical); dependency triage remains open. Do not run `npm audit fix` as part of this qualification without a separate review.
+
+This qualification applies only to the isolated Render qualification service and sandbox database. Production service `GHM-Internal-Runtime`, production database `ghm_db`, production credentials/configuration, product routing, and cutover were not touched or authorized.
