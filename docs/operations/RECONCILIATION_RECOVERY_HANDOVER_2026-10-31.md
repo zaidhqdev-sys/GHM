@@ -120,3 +120,13 @@ Do not deploy until the production service has an explicitly provisioned `GHM_RU
 - Corrected only the test signing helper to allow jsonwebtoken to retain the explicit `iat`; verifier validation remains unchanged and strict.
 - Fix commit: `7bc0e90d9c677b9efcc4164935fcaa693855a42d`. Awaiting local pull and full test run.
 - No DB, migration execution, deployment or production changes.
+
+## Directory profile reconciliation — 2026-11-01
+- Added forward-only directory metadata migrations: `20261101090000_add_business_directory_profile_fields.sql` and `20261101100000_extend_business_profile_directory_fields.sql`.
+- Kept category normalized through `ghm.business_category_assignment`; did not add a duplicate `business.category` field.
+- Extended owner/administrator profile mutation only for province, city, physical address, WhatsApp, website, self-declared supplier flag, and years in business. Existing name/slug/description/phone/email behavior and SECURITY DEFINER membership check remain.
+- Protected logo/avatar references, tier, featured state, analytics, verification and Trust fields from owner profile mutation. Runtime grants remain narrow; no table-wide UPDATE grant was added.
+- Extended business identity and public directory DTO/repository projections and request validation for the new fields. Directory search keeps its existing category-assignment filter and visibility guard.
+- Added migration contract test and registered it in `npm test`.
+- Relevant commit sequence: `2c98b73973489e1de879f29ed781aadf3f0f54a9`, `72dfed1657c1cfa13ceb9d5fa83c93a6a6633dd9`, `7533d2e3b7ba17e0768d8b126a07d69eb7977d55`, `fbdd87bdff1717cc2eb2a04143cd2710c2d23e19`, `2060cf94702c4fade4eac5c90dc85b67856dc1e2`, `6d99c8f5ff111633c5de7532a2a866e6f5eb0aa3`, `6e5fbec76e2be4cdc60fa17d5b4b10185dc6212f`, `e23c0413448b3cd54c8e187fba1ea2cdd13c930e`, `37da533dca6e08da8347e8a62d1cc8ae5ec7ad89`, `1fe4edc5c69c89f2cb1f2aa0a633fab1914452d1`, `00418ae92a14a61defb34c8b8a95a09dab8b2832`, `c8b542cd21b89e1eafd9aeede232738da56d9004`, `60d8518f54e608b757d74a3985f8e8320dc883a9`.
+- Awaiting local TypeScript build and full test verification. No migration was executed; no database, deployment, production service, PR, main branch or integration branch was touched.
