@@ -5,6 +5,8 @@ import test from 'node:test';
 
 const schema = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261101090000_add_business_directory_profile_fields.sql'), 'utf8');
 const profile = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261101100000_extend_business_profile_directory_fields.sql'), 'utf8');
+const normalizedSchema = schema.replace(/\\s+/g, ' ');
+const normalizedProfile = profile.replace(/\\s+/g, ' ');
 
 test('directory profile schema constrains fields and leaves protected columns runtime-read-only', () => {
   for (const column of ['province', 'city', 'physical_address', 'whatsapp', 'website', 'logo_url', 'avatar_letter', 'avatar_color', 'is_supplier', 'tier', 'is_featured', 'profile_views', 'years_in_business']) {
@@ -20,7 +22,7 @@ test('directory profile schema constrains fields and leaves protected columns ru
 test('owner profile function permits descriptive fields only and preserves membership and definer boundary', () => {
   assert.match(profile, /SECURITY DEFINER\s+SET search_path = pg_catalog, ghm/);
   assert.match(profile, /membership_role IN \('owner', 'administrator'\)/);
-  assert.match(profile, /'province', 'city', 'physicalAddress', 'whatsapp', 'website', 'isSupplier', 'yearsInBusiness'/);
+  assert.match(normalizedProfile, /'province',\\s*'city',\\s*'physicalAddress',\\s*'whatsapp',\\s*'website',\\s*'isSupplier',\\s*'yearsInBusiness'/);
   assert.match(profile, /is_supplier = CASE WHEN p_patch \? 'isSupplier'/);
   assert.match(profile, /years_in_business = CASE WHEN p_patch \? 'yearsInBusiness'/);
   assert.doesNotMatch(profile, /'logoUrl'|'avatarLetter'|'avatarColor'|'tier'|'isFeatured'|'profileViews'|'insuranceVerified'|'jobsCompleted'|'verificationStatus'/);
