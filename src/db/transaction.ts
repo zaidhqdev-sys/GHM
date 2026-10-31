@@ -1,5 +1,4 @@
 import { PoolClient } from 'pg';
-import { pool } from './pool';
 
 export interface TransactionPool {
   connect(): Promise<PoolClient>;
@@ -9,9 +8,10 @@ export type TransactionWork<T> = (client: PoolClient) => Promise<T>;
 
 export const withTransaction = async <T>(
   work: TransactionWork<T>,
-  transactionPool: TransactionPool = pool,
+  transactionPool?: TransactionPool,
 ): Promise<T> => {
-  const client = await transactionPool.connect();
+  const activePool = transactionPool ?? (await import('./pool')).pool;
+  const client = await activePool.connect();
 
   try {
     await client.query('BEGIN');

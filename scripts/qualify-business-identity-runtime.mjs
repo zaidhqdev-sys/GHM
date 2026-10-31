@@ -26,6 +26,8 @@ const { config } = await import('../dist/config.js');
 const { createApp } = await import('../dist/http/app.js');
 const { createAccessJwtService } = await import('../dist/auth/foundation/access-jwt.js');
 const { loadEs256Keys } = await import('../dist/auth/foundation/es256-keys.js');
+const { createGhmBearerAuthenticator, PostgresAccountAuthStateStore } = await import('../dist/auth/ghm-bearer.js');
+const { toLegacyAuthContext } = await import('../dist/auth/ghm-auth-context.js');
 
 // Render's non-production PostgreSQL requires TLS; disposable local CI PostgreSQL does not.
 const ssl = { rejectUnauthorized: true };
@@ -178,7 +180,30 @@ try {
   if (!singleCreated.activeBusiness) throw new Error('Single-membership HTTP fixture did not create a business');
   fixture.businessIds.push(singleCreated.activeBusiness.id);
 
-  qualificationServer = http.createServer(createApp({ businessIdentityService: service }));
+  const identityJwt = createAccessJwtService(loadEs256Keys());
+  const identityAuthenticator = createGhmBearerAuthenticator(
+    identityJwt,
+    new PostgresAccountAuthStateStore(runtimePool),
+  );
+
+  // Exercise the real GHM ES256 verifier and runtime-role account-state lookup.
+  // Adapt only after authentication, using the role loaded from trusted DB state.
+  const qualificationAuthMiddleware = (req, res, next) => {
+    void identityAuthenticator.authenticateAndLoadState(req)
+      .then(({ context, state }) => {
+        req.ghmAuthContext = context;
+        req.authContext = toLegacyAuthContext(context, state.role);
+        next();
+      })
+      .catch(() => {
+        res.status(401).json({ error: 'unauthorized' });
+      });
+  };
+
+  qualificationServer = http.createServer(createApp({
+    businessIdentityService: service,
+    resourceAuthMiddleware: qualificationAuthMiddleware,
+  }));
   await new Promise((resolve, reject) => {
     qualificationServer.once('error', reject);
     qualificationServer.listen(0, '127.0.0.1', resolve);
@@ -186,7 +211,7 @@ try {
   const address = qualificationServer.address();
   if (!address || typeof address === 'string') throw new Error('Identity HTTP qualification server did not expose an address');
   const baseUrl = `http://127.0.0.1:${address.port}`;
-  const identityJwt = createAccessJwtService(loadEs256Keys());
+
   const identityToken = (userId) => identityJwt.sign(Number(userId));
   const identityRequest = async (path, token) => {
     const response = await fetch(`${baseUrl}${path}`, {
