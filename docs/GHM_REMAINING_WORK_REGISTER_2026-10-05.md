@@ -441,3 +441,19 @@ Next: confirm the final Render deployment is live; trigger a fresh Preview deplo
 - The protected preview fetch also remains HTTP 403. The container's DNS resolver cannot resolve public Vercel or Render hostnames, so there is no direct external HTTP validation available from this execution environment.
 - Result: configuration values are set for the intended preview branch and Render sandbox, and the Render service is live; however, the current Vercel preview build has not been rebuilt with the new values, and browser auth is not yet qualified. The existing preview may continue using its old build-time environment.
 - Next required action: restore Vercel connector permission to create/read Preview deployments for the ZAID Technologies `zaid-connect` project, then trigger a Preview redeploy of branch `construction/ghm-identity-adapter-only-20261016`. Keep target explicitly Preview; do not use production promotion. After the new preview is Ready, validate `/api/ghm/auth/web/login` with an intentionally invalid payload (expect a controlled 4xx, not proxy 403/502), then test sandbox login/refresh/logout/identity using a disposable test account.
+
+
+### Runtime PostgreSQL identity guard — qualification result, 2026-10-31
+
+**Bounded gate: PASS on the qualification service.**
+
+- Added a startup guard requiring PostgreSQL `session_user = ghm_runtime` and `current_user = ghm_runtime`; it executes before the HTTP listener starts.
+- Local suite: 680 passed, 0 failed, 1 skipped; TypeScript build passed; `git diff --check` clean.
+- Pushed integration commit: [`7a17a781a9a1910a6ea76b8819f4714680ac282e`](https://github.com/zaidhqdev-sys/GHM/commit/7a17a781a9a1910a6ea76b8819f4714680ac282e).
+- Render qualification deploy `dep-dbildsu417fc73a3cpu0` is `live`; build succeeded and application startup reached `GHM Core Engine listening on port 10000`.
+- Live `GET /readyz` returned HTTP 200 and `{"status":"ready"}`, confirming startup passed the guard with the qualification service's configured sandbox connection.
+- Sandbox role catalog review found `ghm_runtime` has no superuser, CREATEROLE, CREATEDB, replication, or BYPASSRLS attributes and no reachable role memberships.
+
+**Do not overstate the result:** `current_database()` is queried but is not yet compared against an expected database name by the code. The role guard does not establish complete table/object least-privilege or qualify product workflows. Add an explicit expected-database check only through a separately reviewed code change with a clear non-production configuration contract. Keep role/grant changes out of scope.
+
+**Still open:** triage Render's three npm audit findings (1 moderate, 1 high, 1 critical) without blindly running `npm audit fix`; independently review effective object/table privileges as required by the database least-privilege gate; decide whether to add an expected-database assertion; and continue the broader production-readiness, recovery, migration, and founder-authorized cutover gates. Production service/database/configuration remain untouched.
