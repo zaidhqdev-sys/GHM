@@ -7,6 +7,10 @@ export const migrationSqlChecksum = (sql: string): string =>
   crypto.createHash('sha256').update(normalizeMigrationSqlForChecksum(sql), 'utf8').digest('hex');
 
 export const matchesMigrationSqlChecksum = (storedChecksum: string, sql: string): boolean => {
+  // Historical ledgers may contain a checksum of the exact BOM-prefixed source bytes.
+  const exactSourceChecksum = crypto.createHash('sha256').update(sql, 'utf8').digest('hex');
+  if (storedChecksum === exactSourceChecksum) return true;
+
   const normalizedSql = normalizeMigrationSqlForChecksum(sql);
   const canonicalChecksum = migrationSqlChecksum(normalizedSql);
   if (storedChecksum === canonicalChecksum) return true;

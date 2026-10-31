@@ -16,9 +16,19 @@ const parseTrustProxy = (): boolean | number => {
     }
     return parsed;
   }
-  // Legacy boolean compatibility is intentionally narrowed to one trusted hop.
-  // Prefer TRUST_PROXY_HOPS when the deployed proxy topology has been verified.
-  return process.env.TRUST_PROXY === 'true' ? 1 : false;
+  // Legacy compatibility: true means one hop; numeric values remain bounded.
+  // TRUST_PROXY_HOPS takes precedence when explicitly configured.
+  const legacy = process.env.TRUST_PROXY?.trim().toLowerCase() ?? '';
+  if (!legacy || legacy === 'false') return false;
+  if (legacy === 'true') return 1;
+  if (!/^(0|[1-9]\\d*)$/.test(legacy)) {
+    throw new Error('TRUST_PROXY must be false, true, or a non-negative integer hop count');
+  }
+  const legacyHops = Number(legacy);
+  if (!Number.isSafeInteger(legacyHops) || legacyHops > 5) {
+    throw new Error('TRUST_PROXY hop count must be between 0 and 5');
+  }
+  return legacyHops === 0 ? false : legacyHops;
 };
 
 const required = (name: string): string => {

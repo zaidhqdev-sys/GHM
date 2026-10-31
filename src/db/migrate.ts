@@ -6,6 +6,7 @@ import historicalProvenanceExceptions from '../../config/historical-migration-pr
 import { migrationSqlChecksum, matchesMigrationSqlChecksum, normalizeMigrationSqlForExecution } from './migration-checksum';
 import { Pool, PoolClient } from 'pg';
 import { assertPostgresTargetConfiguration } from './postgres-target-guard';
+import { postgresSslConfig } from './postgres-ssl';
 
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
 const approvedTarget = assertPostgresTargetConfiguration(databaseUrl, {
@@ -21,7 +22,7 @@ if (process.env.NODE_ENV === 'production' && !databaseSsl) {
 
 const pool = new Pool({
   connectionString: databaseUrl,
-  ssl: databaseSsl ? { rejectUnauthorized: false } : false,
+  ssl: postgresSslConfig(databaseSsl),
 });
 const MIGRATION_PATTERN = /^(\d{14})_([a-z0-9][a-z0-9_-]*)\.sql$/;
 const MIGRATIONS_DIR = path.resolve(process.cwd(), 'database', 'migrations');
@@ -98,7 +99,7 @@ const migrate = async (): Promise<void> => {
       if (existingChecksum) {
         if (existingChecksum !== migration.checksum) {
           if (matchesMigrationSqlChecksum(existingChecksum, migration.sql)) {
-            console.warn(`Accepted legacy line-ending checksum for ${migration.filename}: database=${existingChecksum}, canonical=${migration.checksum}`);
+            console.warn(`Accepted legacy migration checksum for ${migration.filename}: database=${existingChecksum}, canonical=${migration.checksum}`);
           } else if (!isDocumentedHistoricalProvenanceException(migration.version, existingChecksum)) {
             throw new Error(`Migration checksum mismatch for ${migration.filename}: database=${existingChecksum}, repository=${migration.checksum}`);
           } else {
