@@ -1,7 +1,8 @@
 import { Pool } from 'pg';
 import { config } from '../config';
+import { postgresSslConfig } from './postgres-ssl';
 
 export const pool = new Pool({
   connectionString: config.databaseUrl,
-  ssl: config.databaseSsl ? { rejectUnauthorized: false } : false,
+  ssl: postgresSslConfig(config.databaseSsl),
 });
