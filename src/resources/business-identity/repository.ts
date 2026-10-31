@@ -9,12 +9,12 @@ import { resolveTenantContext } from '../../auth/tenant-resolver';
 import type { TransactionPool } from '../../db/transaction';
 
 const ACCOUNT_SELECT = `SELECT id, full_name, phone, avatar_ref, role, created_at, updated_at FROM ghm.account_identity WHERE id = $1`;
-const BUSINESS_COLUMNS = `id, name, slug, description, phone, email, insurance_verified, jobs_completed, verification_status, is_active, created_at, updated_at`;
+const BUSINESS_COLUMNS = `id, name, slug, description, phone, email, province, city, physical_address, whatsapp, website, is_supplier, years_in_business, insurance_verified, jobs_completed, verification_status, is_active, created_at, updated_at`;
 const BUSINESS_SELECT = `SELECT ${BUSINESS_COLUMNS} FROM ghm.business WHERE id = $1`;
 const BUSINESS_BY_SLUG_SELECT = `SELECT ${BUSINESS_COLUMNS} FROM ghm.business WHERE slug = $1`;
 const MEMBERSHIPS_SELECT = `SELECT id, business_id, account_id, membership_role, membership_status, created_by, created_at, updated_at FROM ghm.business_membership WHERE account_id = $1 AND membership_status = 'active' ORDER BY created_at, id`;
 
-const ALLOWED_PROFILE_FIELDS = new Set(['name', 'slug', 'description', 'phone', 'email']);
+const ALLOWED_PROFILE_FIELDS = new Set(['name', 'slug', 'description', 'phone', 'email', 'province', 'city', 'physicalAddress', 'whatsapp', 'website', 'isSupplier', 'yearsInBusiness']);
 
 const mapAccount = (row: any): AccountIdentity => ({ id: Number(row.id), fullName: row.full_name, phone: row.phone, avatarRef: row.avatar_ref, role: row.role, createdAt: row.created_at, updatedAt: row.updated_at });
 const mapBusiness = (row: any): BusinessIdentity => ({
@@ -24,6 +24,13 @@ const mapBusiness = (row: any): BusinessIdentity => ({
   description: row.description ?? null,
   phone: row.phone ?? null,
   email: row.email ?? null,
+  province: row.province ?? null,
+  city: row.city ?? null,
+  physicalAddress: row.physical_address ?? null,
+  whatsapp: row.whatsapp ?? null,
+  website: row.website ?? null,
+  isSupplier: typeof row.is_supplier === 'boolean' ? row.is_supplier : null,
+  yearsInBusiness: Number(row.years_in_business ?? 0),
   insuranceVerified: row.insurance_verified === true,
   jobsCompleted: Number(row.jobs_completed ?? 0),
   verificationStatus: row.verification_status,
@@ -83,6 +90,31 @@ const buildProfilePatch = (input: UpdateBusinessProfileInput): Record<string, un
       if (email.length < 3 || email.length > 320) throw new Error('Email must be between 3 and 320 characters');
       if (!EMAIL_PATTERN.test(email)) throw new Error('Enter a valid email address');
       patch.email = email;
+      continue;
+    }
+    if (['province', 'city', 'physicalAddress', 'whatsapp', 'website'].includes(key)) {
+      if (value === null) { patch[key] = null; continue; }
+      if (typeof value !== 'string') throw new Error(`${key} must be text or null`);
+      const text = value.trim();
+      if (!text) { patch[key] = null; continue; }
+      const limits: Record<string, number> = { province: 100, city: 120, physicalAddress: 500, whatsapp: 32, website: 2048 };
+      if (text.length > limits[key] || (key === 'whatsapp' && text.length < 7)) throw new Error(`Invalid ${key}`);
+      if (key === 'website') {
+        let url: URL;
+        try { url = new URL(text); } catch { throw new Error('Website must be a valid HTTP(S) URL'); }
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('Website must be a valid HTTP(S) URL');
+      }
+      patch[key] = text;
+      continue;
+    }
+    if (key === 'isSupplier') {
+      if (value !== null && typeof value !== 'boolean') throw new Error('Supplier classification must be boolean or null');
+      patch.isSupplier = value;
+      continue;
+    }
+    if (key === 'yearsInBusiness') {
+      if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 500) throw new Error('Years in business must be an integer from 0 to 500');
+      patch.yearsInBusiness = value;
       continue;
     }
   }
