@@ -4,7 +4,7 @@ import { PostgresPublicBusinessRepository } from './public-repository';
 import type { TransactionPool } from '../../db/transaction';
 
 const selectedColumns = [
-  'id', 'name', 'slug', 'description', 'phone', 'email', 'rating',
+  'id', 'name', 'slug', 'description', 'phone', 'email', 'province', 'city', 'physical_address', 'whatsapp', 'website', 'logo_url', 'avatar_letter', 'avatar_color', 'is_supplier', 'years_in_business', 'tier', 'is_featured', 'rating',
   'review_count', 'jobs_completed', 'verification_status', 'is_verified',
   'created_at', 'updated_at',
 ];
@@ -65,6 +65,15 @@ const assertMappedDetails = (business: Awaited<ReturnType<PostgresPublicBusiness
   assert.equal(business.description, 'Renovation');
   assert.equal(business.phone, '0311234567');
   assert.equal(business.email, 'builder@example.com');
+  assert.equal(business.province, 'KwaZulu-Natal');
+  assert.equal(business.city, 'Durban');
+  assert.equal(business.physicalAddress, '1 Example Road');
+  assert.equal(business.whatsapp, '+27311234567');
+  assert.equal(business.website, 'https://example.com');
+  assert.equal(business.isSupplier, true);
+  assert.equal(business.yearsInBusiness, 8);
+  assert.equal(business.tier, 'verified');
+  assert.equal(business.isFeatured, true);
   assert.equal(business.rating, 4.5);
   assert.equal(business.reviewCount, 12);
   assert.equal(business.jobsCompleted, 9);
