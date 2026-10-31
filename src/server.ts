@@ -1,7 +1,9 @@
+
 import http from 'http';
 import { config } from './config';
 import { createApp } from './http/app';
 import { pool } from './db/pool';
+import { startRuntimeServer } from './db/runtime-startup';
 
 const app = createApp();
 const server = http.createServer(app);
@@ -21,11 +23,15 @@ app.get('/readyz', (_req, res) => {
 });
 
 const start = async (): Promise<void> => {
-  await pool.query('SELECT 1');
-  server.listen(config.port, () => {
-    ready = true;
-    console.log(`GHM Core Engine listening on port ${config.port}`);
-  });
+  await startRuntimeServer(
+    (sql) => pool.query(sql),
+    () => {
+      server.listen(config.port, () => {
+        ready = true;
+        console.log(`GHM Core Engine listening on port ${config.port}`);
+      });
+    },
+  );
 };
 
 const shutdown = async (signal: string): Promise<void> => {
