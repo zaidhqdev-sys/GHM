@@ -97,6 +97,14 @@ import { PostgresBusinessOfferingRepository } from '../resources/business-offeri
 import { BusinessOfferingServiceImpl } from '../resources/business-offering/service';
 import type { BusinessOfferingService } from '../resources/business-offering/contracts';
 import { registerBusinessOfferingRoutes } from './business-offering-router';
+import { PostgresBusinessEngagementRepository } from '../resources/business-engagement/repository';
+import { BusinessEngagementServiceImpl } from '../resources/business-engagement/service';
+import type { BusinessEngagementService } from '../resources/business-engagement/contracts';
+import { registerBusinessEngagementRoutes } from './business-engagement-router';
+import { PostgresBusinessRegistrationIdentityRepository } from '../resources/business-registration-identity/repository';
+import { BusinessRegistrationIdentityServiceImpl } from '../resources/business-registration-identity/service';
+import type { BusinessRegistrationIdentityService } from '../resources/business-registration-identity/contracts';
+import { registerBusinessRegistrationIdentityRoutes } from './business-registration-identity-router';
 import { registerConnectServiceRoutes, type ConnectServiceHttpDependencies } from './connect-service-router';
 import { registerCommercialInternalRoutes } from './commercial-internal-router';
 import { registerStorageRoutes } from './storage-router';
@@ -125,6 +133,8 @@ export interface AppDependencies {
   readonly notificationService?: NotificationService;
   readonly businessCategoryService?: BusinessCategoryService;
   readonly businessOfferingService?: BusinessOfferingService;
+  readonly businessEngagementService?: BusinessEngagementService;
+  readonly businessRegistrationIdentityService?: BusinessRegistrationIdentityService;
   readonly directoryService?: DirectoryService;
   readonly authService?: GhmAuthService;
   readonly authPersistence?: AuthPersistence;
@@ -373,6 +383,10 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const businessCategoryService = dependencies.businessCategoryService ?? new BusinessCategoryServiceImpl(new PostgresBusinessCategoryRepository());
   const directoryService = dependencies.directoryService ?? new DirectoryServiceImpl(new PostgresDirectoryRepository());
   const businessOfferingService = dependencies.businessOfferingService ?? new BusinessOfferingServiceImpl(new PostgresBusinessOfferingRepository());
+  const businessEngagementService = dependencies.businessEngagementService
+    ?? new BusinessEngagementServiceImpl(new PostgresBusinessEngagementRepository());
+  const businessRegistrationIdentityService = dependencies.businessRegistrationIdentityService
+    ?? new BusinessRegistrationIdentityServiceImpl(new PostgresBusinessRegistrationIdentityRepository());
   app.disable('x-powered-by');
   app.disable('etag');
   app.use((_req: Request, res: Response, next: NextFunction) => {
@@ -682,6 +696,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerNotificationRoutes(app, notificationService, resourceAuthMiddleware);
   registerBusinessCategoryRoutes(app, businessCategoryService, resourceAuthMiddleware);
   registerBusinessOfferingRoutes(app, businessOfferingService, resourceAuthMiddleware);
+  registerBusinessEngagementRoutes(app, businessEngagementService, resourceAuthMiddleware);
+  registerBusinessRegistrationIdentityRoutes(app, businessRegistrationIdentityService, resourceAuthMiddleware);
   const authPersistence = dependencies.authPersistence ?? new PostgresAuthPersistence();
   const passwordResetService =
     dependencies.passwordResetService
