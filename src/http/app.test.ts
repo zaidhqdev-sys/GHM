@@ -1112,3 +1112,109 @@ test('public business category route returns the filtered GHM taxonomy without r
     server.close();
   }
 });
+
+
+test('managed business identity route rejects missing authentication', async () => {
+  const service = {} as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/businesses/managed`);
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: 'unauthorized' });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('managed business identity route returns not found when caller has no active business', async () => {
+  let receivedContext: AuthContext | undefined;
+  const service = {
+    resolveIdentity: async ({ context }: { context: AuthContext }) => {
+      receivedContext = context;
+      return { activeBusiness: null, activeMembership: null, memberships: [] };
+    },
+  } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/businesses/managed`, {
+      headers: { authorization: `Bearer ${tokenFor({ userId: 43, role: 'business' })}` },
+    });
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), { error: 'not_found' });
+    assert.deepEqual(receivedContext, { userId: 43, role: 'business' });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('managed business identity route requires explicit selection for multiple active memberships', async () => {
+  const service = {
+    resolveIdentity: async () => { throw new Error('business-selection-required'); },
+  } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/businesses/managed`, {
+      headers: { authorization: `Bearer ${tokenFor({ userId: 44, role: 'business' })}` },
+    });
+    assert.equal(response.status, 409);
+    assert.deepEqual(await response.json(), { error: 'business_selection_required' });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('managed business identity route returns the active business and membership projection', async () => {
+  const business = {
+    id: 501, name: 'Managed HTTP Business', slug: 'managed-http-business',
+    description: null, phone: null, email: null, category: null, province: null,
+    city: null, physicalAddress: null, whatsapp: null, website: null,
+    isSupplier: false, yearsInBusiness: 0, insuranceVerified: false,
+    jobsCompleted: 0, verificationStatus: 'unverified', isActive: true,
+    createdAt: new Date('2026-09-10T00:00:00.000Z'),
+    updatedAt: new Date('2026-09-10T00:00:00.000Z'),
+  };
+  const membership = {
+    id: 601, businessId: 501, accountId: 45, role: 'owner', status: 'active',
+    createdBy: 45, createdAt: new Date('2026-09-10T00:00:00.000Z'),
+    updatedAt: new Date('2026-09-10T00:00:00.000Z'),
+  };
+  const service = {
+    resolveIdentity: async () => ({
+      activeBusiness: business, activeMembership: membership, memberships: [membership],
+    }),
+  } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/businesses/managed`, {
+      headers: { authorization: `Bearer ${tokenFor({ userId: 45, role: 'business' })}` },
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      business: { ...business, createdAt: business.createdAt.toISOString(), updatedAt: business.updatedAt.toISOString() },
+      membership: { ...membership, createdAt: membership.createdAt.toISOString(), updatedAt: membership.updatedAt.toISOString() },
+    });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('managed business by-id route rejects callers without management membership', async () => {
+  let received: { context: AuthContext; businessId: number } | undefined;
+  const service = {
+    getManagedBusiness: async (context: AuthContext, businessId: number) => {
+      received = { context, businessId };
+      throw new Error('Business management permission required');
+    },
+  } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/businesses/777/managed`, {
+      headers: { authorization: `Bearer ${tokenFor({ userId: 46, role: 'business' })}` },
+    });
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { error: 'forbidden' });
+    assert.deepEqual(received, { context: { userId: 46, role: 'business' }, businessId: 777 });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
