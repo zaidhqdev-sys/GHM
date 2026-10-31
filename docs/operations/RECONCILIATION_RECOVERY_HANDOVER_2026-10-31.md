@@ -114,3 +114,9 @@ Do not deploy until the production service has an explicitly provisioned `GHM_RU
 - Directory schema/profile migrations remain held. The profile migration replaces a SECURITY DEFINER function and requires exact reconciliation with recovery's current profile validation and Trust constraints. No public directory route is added in this batch.
 - Batch commits: `422977b0dd4ca040b32337e521d953235600e8f7`, `6e88b6fb22d6b42093f3cda79324a12fc1241494`, `74c43e766aaa9b6d4b70d8953267492e4689cc31`, `31740f44c9290733e469d2e2438447edebf30727`, `0b0186e427bd32b9efd15e82795925f00db12188`, `a65b7a47087ba0991123d96ba67c87265310bd71`.
 - Not yet locally pulled or tested. Source-only; no migration execution, database access/mutation, deployment, PR, merge to main, or integration-branch modification.
+## QuoteFlow attestation test correction — 2026-10-31
+- User pulled the provisioning/attestation batch at `7d5d7c9a` and reported `npm test`: TypeScript build passed; 674 passed, 1 failed.
+- Failure was isolated to the valid-attestation test fixture. `jsonwebtoken`'s `noTimestamp: true` option removes the supplied `iat`, so the verifier correctly rejected the otherwise valid token as missing required timestamps.
+- Corrected only the test signing helper to allow jsonwebtoken to retain the explicit `iat`; verifier validation remains unchanged and strict.
+- Fix commit: `7bc0e90d9c677b9efcc4164935fcaa693855a42d`. Awaiting local pull and full test run.
+- No DB, migration execution, deployment or production changes.
