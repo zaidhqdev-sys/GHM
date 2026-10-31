@@ -44,3 +44,15 @@ Do not deploy until the production service has an explicitly provisioned `GHM_RU
 - Sandbox DB only for explicitly approved qualification fixtures and cleanup.
 - No migrations, deployment, PR creation, main merge, or production configuration changes are authorised by this handover.
 - Do not modify the original integration branch.
+
+
+## Verification update — 2026-10-31 22:24 UTC
+- Local recovery branch fast-forwarded successfully to `ab4408cd1bbaaea4b389c883560e9316b96143aa`.
+- Local `npm test`: TypeScript build succeeded; 616 tests passed, 0 failed.
+- Local `npm run verify:runtime`: passed.
+- PowerShell pasted-output errors were command-prompt/output text accidentally re-entered; no repository changes resulted from those parser errors.
+- The next migration-safety batch on this branch:
+  - `4b4b1fc6f23fffc9150bdd9ae34e9d593130d702` — accept historical exact-byte BOM checksum before canonical/CRLF compatibility.
+  - `fe75c61bcade3902cd7612131a85e3354c9c4b30` — test BOM + CRLF historical checksum compatibility.
+  - `eda8c7783daee7d168712f5d84bba89f47281983` — require certificate validation for migration TLS.
+- No migration command was run. No database was mutated. These changes have not yet been pulled or tested locally.
