@@ -90,6 +90,11 @@
     "@types/pg": "^8.11.5",
     "typescript": "^5.4.5"
   },
+  "overrides": {
+  "express": {
+    "qs": "6.16.2"
+  }
+},
   "engines": {
     "node": ">=18.0.0"
   }
