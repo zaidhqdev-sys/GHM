@@ -32,7 +32,7 @@ const sign = (overrides: Record<string, unknown> = {}, kid = keys.active.kid): s
     iat: now,
     exp: now + 300,
     ...overrides,
-  }, privateKeyPem, { algorithm: 'ES256', keyid: kid, noTimestamp: true });
+  }, privateKeyPem, { algorithm: 'ES256', keyid: kid });
 
 test('accepts a valid QuoteFlow identity-link attestation', () => {
   const result = verifier.verify(sign());
