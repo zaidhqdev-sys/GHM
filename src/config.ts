@@ -60,7 +60,7 @@ export const config = Object.freeze({
   nodeEnv: process.env.NODE_ENV ?? 'development',
   isProduction,
   port: Number.parseInt(process.env.PORT ?? '3000', 10),
-  databaseUrl: required('DATABASE_URL'),
+  databaseUrl: required('GHM_RUNTIME_DATABASE_URL'),
   databaseSsl,
   inviteCode: required('INVITE_CODE'),
   corsOrigins: parseOrigins(required('CORS_ORIGINS')),
