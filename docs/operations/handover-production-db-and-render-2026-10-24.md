@@ -673,3 +673,30 @@ The existing bucket was `zaid-ghm-production`, the only bucket created so far. T
 - Application composition-root wiring, full tenant/resource authorization, failure recovery/orphan reconciliation, backup/recovery, HTTP/product exposure, and production enablement/cutover remain separate gates.
 - The old paragraph above saying the next operation must first apply the sandbox migration is historical and superseded by this addendum; the sandbox migration run is complete.
 
+
+## Addendum — runtime database identity guard deployed and verified (2026-10-31)
+
+This addendum records a qualification-only code deployment. It does not authorize production deployment, database changes, role/grant changes, or product cutover.
+
+### Implementation and local checks
+
+- Commit: [`7a17a781a9a1910a6ea76b8819f4714680ac282e`](https://github.com/zaidhqdev-sys/GHM/commit/7a17a781a9a1910a6ea76b8819f4714680ac282e) on `integration/ghm-identity-merge-candidate-20261018`.
+- `src/db/runtime-identity.ts` checks that PostgreSQL `session_user` and `current_user` are both `ghm_runtime`; `src/db/runtime-startup.ts` runs this check before the HTTP listener is opened.
+- Local validation: 680 tests passed, 0 failed, 1 skipped; TypeScript build passed; `git diff --check` clean.
+
+### Render qualification deployment
+
+- Service: `ghm-identity-qualification`; ID `srv-dbahvenbtjjs73f83rlg`.
+- Target: owner-confirmed sandbox database `ghm_payfast_sandbox_db` (`ghm-payfast-sandbox-db`), not production `ghm_db`.
+- Deployment: `dep-dbildsu417fc73a3cpu0`; status `live`; deployed commit `7a17a781a9a1910a6ea76b8819f4714680ac282e`.
+- Render build command `npm ci --include=dev && npm run build` completed successfully. Startup log: `GHM Core Engine listening on port 10000`.
+- Live readiness probe on 2026-10-31: `GET https://ghm-identity-qualification.onrender.com/readyz` returned HTTP 200 and `{"status":"ready"}`.
+
+### Database role audit and limitations
+
+- Read-only sandbox catalog inspection found `ghm_runtime` is not a superuser and has no CREATEROLE, CREATEDB, REPLICATION, or BYPASSRLS attribute; the inspected role-membership closure contained no memberships.
+- The runtime identity query also selects `current_database()`, but the current code does **not** assert an expected database name. This remains a code-level limitation to address only through a separately reviewed change.
+- These checks do not prove the full effective table/object privilege surface or qualify all product/API workflows.
+- Render build output reported 3 npm audit findings: 1 moderate, 1 high, 1 critical. Dependency triage remains open; do not blindly run `npm audit fix`.
+
+No production service, production database, credentials, environment variables, database roles/grants, network allowlists, payment settings, or product routing were changed. Do not point qualification or migration commands at `ghm_db`; keep `GHM-Internal-Runtime` and production configuration untouched.
