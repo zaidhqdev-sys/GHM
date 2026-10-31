@@ -72,14 +72,16 @@ Do not deploy until the production service has an explicitly provisioned `GHM_RU
 - This batch has not yet been pulled or tested locally. No database migrations, fixture mutations, deployment or production configuration changes were made.
 
 
-## Verification update — 2026-11-01 (UTC)
-- Local recovery branch last verified at `3ea29f423bc028e0fbf3060dabe4f6d63b31b6a6`; `npm test` passed with 624 tests, 0 failures.
-- Next business identity/engagement batch committed remotely after that baseline:
+## Verification update — 2026-10-31 22:47 UTC
+- Local recovery branch fast-forwarded successfully from `31f2c26c` through the two correction commits to `57701855`.
+- Local `npm test`: TypeScript build succeeded; 646 tests passed, 0 failed.
+- The first compile attempt exposed a malformed regular expression in the business-engagement migration contract test and assertions against fields not present in the public business contract. Both were corrected on this recovery branch before the successful 646-test run.
+- Business identity/engagement batch:
   - Added business engagement and business registration identity domain services, repositories, contracts and tests.
   - Added HTTP route modules and wired them into `createApp` with injectable service dependencies.
   - Added both resources to the authorization resource union and per-role resource access list; registered only `business_engagement.create` and `business_registration_identity.read/update`.
   - Restored `database/migrations/20261019190000_create_business_engagement_events.sql` and `database/migrations/20261019210000_create_business_registration_identity.sql` as source files.
   - Added migration contract tests for both schema boundaries and included new domain/router/migration/reset-enrollment tests in `npm test`.
-- Latest batch commit sequence includes `d6624652be19c34ffe0cac814538aa1c7b26fcd4`, `34b217f23a6a79bcf9b6c7217bb8556ee201e263`, `36298e0c2033bd11bc538c60203d51f280e483bf`, `6431c2da6ed9fb718f2d6bd59e7634f3dd9f51be`, `a011bd21302079119277548a4babb4c1668aebff`, `cf955adda30709d626f186b38b81bc4af2f6f44d`, `d92b4c4286bc5cf4282269e7286360e171bd4142`, `f9327ba522ff3f484539ccb85f0da7528f5dd454`.
+- Batch commits include `d6624652be19c34ffe0cac814538aa1c7b26fcd4`, `34b217f23a6a79bcf9b6c7217bb8556ee201e263`, `36298e0c2033bd11bc538c60203d51f280e483bf`, `6431c2da6ed9fb718f2d6bd59e7634f3dd9f51be`, `a011bd21302079119277548a4babb4c1668aebff`, `cf955adda30709d626f186b38b81bc4af2f6f44d`, `d92b4c4286bc5cf4282269e7286360e171bd4142`, `f9327ba522ff3f484539ccb85f0da7528f5dd454`, `9dd5d0f0497d563005de08d197d442527a8599aa`, and `57701855ef94c0b70a5aa302724ea07ce3299ab1`.
 - These migration files are source changes only. No migration command was run, no DB was mutated, and no deployment occurred.
-- This batch has not yet been pulled or tested locally. Treat it as unverified until local `npm test` passes.
+- This batch is now locally verified by the 646-test passing run above.
