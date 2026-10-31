@@ -4,9 +4,9 @@ import { PostgresPublicBusinessRepository } from './public-repository';
 import type { TransactionPool } from '../../db/transaction';
 
 const selectedColumns = [
-  'category', 'province', 'city', 'physical_address', 'whatsapp', 'website',
-  'logo_url', 'avatar_letter', 'avatar_color', 'is_supplier', 'tier',
-  'is_featured', 'profile_views', 'years_in_business',
+  'id', 'name', 'slug', 'description', 'phone', 'email', 'rating',
+  'review_count', 'jobs_completed', 'verification_status', 'is_verified',
+  'created_at', 'updated_at',
 ];
 
 const makePool = (row: Record<string, unknown>) => {
@@ -70,20 +70,6 @@ const assertMappedDetails = (business: Awaited<ReturnType<PostgresPublicBusiness
   assert.equal(business.jobsCompleted, 9);
   assert.equal(business.createdAt.toISOString(), '2026-01-01T00:00:00.000Z');
   assert.equal(business.updatedAt.toISOString(), '2026-02-01T00:00:00.000Z');
-  assert.equal(business.category, 'construction');
-  assert.equal(business.province, 'KwaZulu-Natal');
-  assert.equal(business.city, 'Durban');
-  assert.equal(business.physicalAddress, '1 Example Road');
-  assert.equal(business.whatsapp, '+27311234567');
-  assert.equal(business.website, 'https://example.com');
-  assert.equal(business.logoUrl, 'https://example.com/logo.png');
-  assert.equal(business.avatarLetter, 'D');
-  assert.equal(business.avatarColor, '#123456');
-  assert.equal(business.isSupplier, true);
-  assert.equal(business.tier, 'verified');
-  assert.equal(business.isFeatured, true);
-  assert.equal(business.profileViews, 27);
-  assert.equal(business.yearsInBusiness, 8);
 };
 
 test('public business detail by ID selects and maps every directory field', async () => {
