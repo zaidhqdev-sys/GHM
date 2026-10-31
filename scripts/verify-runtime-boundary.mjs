@@ -19,6 +19,10 @@ if (!/server\.keepAliveTimeout\s*=\s*5_000/.test(source)) failures.push(['bounde
 if (!/app\.disable\(['"]etag['"]\)/.test(appSource)) failures.push(['ETag disabled', /required/]);
 if (!/X-Content-Type-Options/.test(appSource) || !/X-Frame-Options/.test(appSource) || !/Referrer-Policy/.test(appSource)) failures.push(['baseline security headers', /required/]);
 if (!/must not contain wildcard origin/.test(configSource)) failures.push(['wildcard CORS rejected at configuration', /required/]);
+if (!/startRuntimeServer\s*\(/.test(source)) failures.push(['runtime identity verified before HTTP listen', /required/]);
+if (!/GHM_RUNTIME_DATABASE_URL/.test(configSource)) failures.push(['dedicated runtime database URL', /required/]);
+const poolSource = await readFile(new URL('../src/db/pool.ts', import.meta.url), 'utf8');
+if (!/rejectUnauthorized:\s*true/.test(poolSource)) failures.push(['PostgreSQL TLS certificate validation', /required/]);
 
 if (failures.length > 0) {
   console.error('Runtime boundary verification FAILED.');
