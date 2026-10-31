@@ -5,8 +5,8 @@ import test from 'node:test';
 
 const schema = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261101090000_add_business_directory_profile_fields.sql'), 'utf8');
 const profile = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261101100000_extend_business_profile_directory_fields.sql'), 'utf8');
-const normalizedSchema = schema.replace(/\\s+/g, ' ');
-const normalizedProfile = profile.replace(/\\s+/g, ' ');
+const normalizedSchema = schema.replace(/\s+/g, ' ');
+const normalizedProfile = profile.replace(/\s+/g, ' ');
 
 test('directory profile schema constrains fields and leaves protected columns runtime-read-only', () => {
   for (const column of ['province', 'city', 'physical_address', 'whatsapp', 'website', 'logo_url', 'avatar_letter', 'avatar_color', 'is_supplier', 'tier', 'is_featured', 'profile_views', 'years_in_business']) {
