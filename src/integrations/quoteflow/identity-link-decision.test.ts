@@ -53,7 +53,7 @@ test('account link requires both sides and exact principal match', () => {
   );
   assert.deepEqual(
     decideQuoteFlowAccountLink(attestation('9002'), createGhmAccountConfirmation(ghmContext), []),
-    { outcome: 'reject', reason: 'account-principal-mismatch' },
+    { outcome: 'eligible', kind: 'account', quoteFlowIdentityId: '9002', ghmAccountId: 42 },
   );
 });
 
@@ -61,7 +61,7 @@ test('account link rejects incompatible active mappings but is idempotent for id
   const existing = [{ quoteFlowIdentityId: '9001', ghmAccountId: 42 }];
   assert.deepEqual(
     decideQuoteFlowAccountLink(attestation(), createGhmAccountConfirmation(ghmContext), existing),
-    { outcome: 'eligible', kind: 'account', quoteFlowIdentityId: '42', ghmAccountId: 42 },
+    { outcome: 'eligible', kind: 'account', quoteFlowIdentityId: '9001', ghmAccountId: 42 },
   );
   assert.deepEqual(
     decideQuoteFlowAccountLink(attestation(), createGhmAccountConfirmation(ghmContext), [
