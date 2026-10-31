@@ -58,6 +58,9 @@ import type { PasswordResetService } from '../auth/password-reset';
 import type { QuoteFlowMigrationResetRecoveryService } from '../migrations/quoteflow-migration-reset-recovery';
 import type { QuoteFlowMigrationResetCompletionService } from '../migrations/quoteflow-migration-reset-completion';
 import { createPasswordResetService } from '../auth/password-reset';
+import { createQuoteFlowMigrationResetRecoveryService } from '../migrations/quoteflow-migration-reset-recovery';
+import { createQuoteFlowMigrationResetCompletionService } from '../migrations/quoteflow-migration-reset-completion';
+import { createRecoveryWebhookDeliveryFromEnv } from '../auth/recovery-webhook-delivery';
 import { PostgresAuthPersistence, type AuthPersistence } from '../auth/foundation/persistence';
 import { PostgresProjectQuoteRepository } from '../resources/project-quote/repository';
 import { ProjectQuoteServiceImpl } from '../resources/project-quote/service';
@@ -683,13 +686,24 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const passwordResetService =
     dependencies.passwordResetService
     ?? createPasswordResetService(authPersistence);
+  const recoveryDelivery = dependencies.quoteFlowMigrationResetRecoveryService
+    ? null
+    : createRecoveryWebhookDeliveryFromEnv();
+  const quoteFlowMigrationResetRecoveryService =
+    dependencies.quoteFlowMigrationResetRecoveryService
+    ?? (recoveryDelivery
+      ? createQuoteFlowMigrationResetRecoveryService(authPersistence, recoveryDelivery)
+      : undefined);
+  const quoteFlowMigrationResetCompletionService =
+    dependencies.quoteFlowMigrationResetCompletionService
+    ?? createQuoteFlowMigrationResetCompletionService(authPersistence);
   registerAuthRoutes(app, {
     authService: dependencies.authService,
     authPersistence,
     passwordRecoveryService: dependencies.passwordRecoveryService,
     passwordResetService,
-    quoteFlowMigrationResetRecoveryService: dependencies.quoteFlowMigrationResetRecoveryService,
-    quoteFlowMigrationResetCompletionService: dependencies.quoteFlowMigrationResetCompletionService,
+    quoteFlowMigrationResetRecoveryService,
+    quoteFlowMigrationResetCompletionService,
   } satisfies AuthRouterDependencies);
   registerCommercialInternalRoutes(app);
   registerConnectServiceRoutes(app, {
