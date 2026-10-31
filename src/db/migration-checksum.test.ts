@@ -33,6 +33,18 @@ test('strips a leading UTF-8 BOM before executing SQL without changing checksum 
   assert.notEqual(migrationSqlChecksum(withBom), migrationSqlChecksum(normalizeMigrationSqlForExecution(withBom)));
 });
 
+test('accepts historical checksum of BOM-prefixed CRLF migration bytes', () => {
+  const bomCrlf = '\uFEFFSELECT 1;\\r\\nREVOKE SELECT ON TABLE ghm.example FROM ghm_runtime;\\r\\n';
+  const historicalChecksum = crypto.createHash('sha256').update(bomCrlf, 'utf8').digest('hex');
+
+  assert.equal(matchesMigrationSqlChecksum(historicalChecksum, bomCrlf), true);
+  assert.equal(
+    matchesMigrationSqlChecksum(migrationSqlChecksum(bomCrlf), bomCrlf),
+    true,
+  );
+  assert.equal(normalizeMigrationSqlForExecution(bomCrlf).startsWith('SELECT 1;'), true);
+});
+
 test('strips only outer BEGIN and COMMIT for runner execution', () => {
   const wrapped = 'BEGIN;\nSELECT 1;\nCOMMIT;\n';
   assert.equal(normalizeMigrationSqlForExecution(wrapped), 'SELECT 1;\n');
