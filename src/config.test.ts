@@ -3,7 +3,21 @@ import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 
 const loadConfig = (overrides: Record<string, string | undefined>) => {
-  const env = { ...process.env, ...overrides };
+  const env = { ...process.env };
+  for (const name of [
+    'STORAGE_PROVIDER',
+    'STORAGE_ENDPOINT',
+    'STORAGE_REGION',
+    'STORAGE_BUCKET',
+    'STORAGE_ACCESS_KEY_ID',
+    'STORAGE_SECRET_ACCESS_KEY',
+    'STORAGE_FORCE_PATH_STYLE',
+    'STORAGE_UPLOAD_GRANT_TTL_SECONDS',
+    'STORAGE_DOWNLOAD_GRANT_MAX_TTL_SECONDS',
+  ]) {
+    delete env[name];
+  }
+  Object.assign(env, overrides);
   env.DATABASE_SSL = overrides.DATABASE_SSL ?? '';
   return spawnSync(
     process.execPath,
