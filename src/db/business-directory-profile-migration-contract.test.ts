@@ -22,7 +22,7 @@ test('directory profile schema constrains fields and leaves protected columns ru
 test('owner profile function permits descriptive fields only and preserves membership and definer boundary', () => {
   assert.match(profile, /SECURITY DEFINER\s+SET search_path = pg_catalog, ghm/);
   assert.match(profile, /membership_role IN \('owner', 'administrator'\)/);
-  assert.match(normalizedProfile, /'province',\\s*'city',\\s*'physicalAddress',\\s*'whatsapp',\\s*'website',\\s*'isSupplier',\\s*'yearsInBusiness'/);
+  assert.match(normalizedProfile, /'province',\s*'city',\s*'physicalAddress',\s*'whatsapp',\s*'website',\s*'isSupplier',\s*'yearsInBusiness'/);
   assert.match(profile, /is_supplier = CASE WHEN p_patch \? 'isSupplier'/);
   assert.match(profile, /years_in_business = CASE WHEN p_patch \? 'yearsInBusiness'/);
   assert.doesNotMatch(profile, /'logoUrl'|'avatarLetter'|'avatarColor'|'tier'|'isFeatured'|'profileViews'|'insuranceVerified'|'jobsCompleted'|'verificationStatus'/);
