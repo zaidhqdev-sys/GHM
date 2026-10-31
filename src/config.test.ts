@@ -14,7 +14,7 @@ const loadConfig = (overrides: Record<string, string | undefined>) => {
 
 const baseEnv = {
   NODE_ENV: 'development',
-  DATABASE_URL: 'postgres://example.invalid/ghm',
+  GHM_RUNTIME_DATABASE_URL: 'postgres://example.invalid/ghm',
   INVITE_CODE: 'test-invite-code',
   CORS_ORIGINS: 'http://localhost:3000',
 };
