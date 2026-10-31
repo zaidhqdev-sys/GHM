@@ -56,3 +56,17 @@ Do not deploy until the production service has an explicitly provisioned `GHM_RU
   - `fe75c61bcade3902cd7612131a85e3354c9c4b30` — test BOM + CRLF historical checksum compatibility.
   - `eda8c7783daee7d168712f5d84bba89f47281983` — require certificate validation for migration TLS.
 - No migration command was run. No database was mutated. These changes have not yet been pulled or tested locally.
+
+
+## Verification update — 2026-10-31 22:27 UTC
+- Local recovery branch fast-forwarded to `f882a9efa8f4299e8c60ecaad0fb263712ae3e46`.
+- Local `npm test`: TypeScript build succeeded; 617 tests passed, 0 failed.
+- QuoteFlow recovery integration batch committed remotely after that verified baseline:
+  - `758fdf0e935d2a13a315c3ecff514f16464c7fce` — secure recovery webhook delivery implementation.
+  - `5a933955dbcacf2aaf1309c79860b30c72fcd24b` — webhook delivery security and failure tests.
+  - `9e9b89d442b1cb72d3f501003f52f1a9950467f3` — wire migration reset recovery/completion through the app's single injected AuthPersistence instance.
+  - `0b26b54afd07948dccb81ba02a644d6c84336be9` — include recovery delivery and reset service tests in npm test.
+  - `0d851f344d639c801210bd771d4830774994bce4` — document optional recovery webhook configuration; both values must be set together.
+- The reset recovery endpoint remains unavailable (503) unless an operator explicitly configures the HTTPS delivery URL and strong bearer token. No token is returned by the HTTP API.
+- The existing mainline `authPersistence` injection is preserved and shared by password reset, QuoteFlow reset recovery/completion, and lazy auth-service session issuance.
+- This batch has not yet been pulled or tested locally. No database migrations, fixture mutations, deployment or production configuration changes were made.
