@@ -15,7 +15,9 @@ const loadConfig = (overrides: Record<string, string | undefined>) => {
     'STORAGE_UPLOAD_GRANT_TTL_SECONDS',
     'STORAGE_DOWNLOAD_GRANT_MAX_TTL_SECONDS',
   ]) {
-    delete env[name];
+    // Empty strings intentionally block dotenv/config in the child process
+    // from reloading developer-local values while remaining unset to config.
+    env[name] = '';
   }
   Object.assign(env, overrides);
   env.DATABASE_SSL = overrides.DATABASE_SSL ?? '';
