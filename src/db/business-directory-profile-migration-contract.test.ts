@@ -14,7 +14,7 @@ test('directory profile schema constrains fields and leaves protected columns ru
   }
   assert.match(schema, /business_directory_years_in_business_check/);
   assert.match(schema, /business_directory_profile_views_check/);
-  assert.match(normalizedSchema, /REVOKE UPDATE \([\s\S]*?tier, is_featured,[\s\S]*?profile_views, years_in_business\)/);
+  assert.match(normalizedSchema, /REVOKE UPDATE \([\s\S]*?tier, is_featured,[\s\S]*?profile_views, years_in_business\s*\)/);
   assert.doesNotMatch(schema, /GRANT UPDATE ON TABLE ghm\.business TO ghm_runtime/i);
   assert.match(schema, /business_directory_province_city_idx/);
 });
