@@ -9,6 +9,18 @@ const DIRECTORY_COLUMNS = `
   b.description,
   b.phone,
   b.email,
+  b.province,
+  b.city,
+  b.physical_address,
+  b.whatsapp,
+  b.website,
+  b.logo_url,
+  b.avatar_letter,
+  b.avatar_color,
+  b.is_supplier,
+  b.years_in_business,
+  b.tier,
+  b.is_featured,
   b.rating,
   b.review_count,
   b.jobs_completed,
@@ -31,6 +43,18 @@ interface DirectoryRow {
   description: string | null;
   phone: string | null;
   email: string | null;
+  province: string | null;
+  city: string | null;
+  physical_address: string | null;
+  whatsapp: string | null;
+  website: string | null;
+  logo_url: string | null;
+  avatar_letter: string | null;
+  avatar_color: string | null;
+  is_supplier: boolean | null;
+  years_in_business: string | number;
+  tier: PublicDirectoryBusiness['tier'];
+  is_featured: boolean;
   rating: string | number;
   review_count: string | number;
   jobs_completed: string | number;
@@ -47,6 +71,18 @@ const mapDirectoryBusiness = (row: DirectoryRow): PublicDirectoryBusiness => ({
   description: row.description ?? null,
   phone: row.phone ?? null,
   email: row.email ?? null,
+  province: row.province ?? null,
+  city: row.city ?? null,
+  physicalAddress: row.physical_address ?? null,
+  whatsapp: row.whatsapp ?? null,
+  website: row.website ?? null,
+  logoUrl: row.logo_url ?? null,
+  avatarLetter: row.avatar_letter ?? null,
+  avatarColor: row.avatar_color ?? null,
+  isSupplier: typeof row.is_supplier === 'boolean' ? row.is_supplier : null,
+  yearsInBusiness: Number(row.years_in_business ?? 0),
+  tier: row.tier,
+  isFeatured: row.is_featured === true,
   rating: Number(row.rating),
   reviewCount: Number(row.review_count),
   jobsCompleted: Number(row.jobs_completed),
