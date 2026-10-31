@@ -7,6 +7,18 @@ export interface PublicBusiness {
   readonly description: string | null;
   readonly phone: string | null;
   readonly email: string | null;
+  readonly province: string | null;
+  readonly city: string | null;
+  readonly physicalAddress: string | null;
+  readonly whatsapp: string | null;
+  readonly website: string | null;
+  readonly logoUrl: string | null;
+  readonly avatarLetter: string | null;
+  readonly avatarColor: string | null;
+  readonly isSupplier: boolean | null;
+  readonly yearsInBusiness: number;
+  readonly tier: 'free' | 'verified' | 'featured' | 'premium';
+  readonly isFeatured: boolean;
   readonly rating: number;
   readonly reviewCount: number;
   readonly jobsCompleted: number;
