@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createBusinessMigrationProvisioningService } from './quoteflow-migration-business-provisioning';
+import { createBusinessMigrationProvisioningService, createPostgresBusinessMigrationProvisioningStore } from './quoteflow-migration-business-provisioning';
 
 const base = {
   sourceProvider: 'supabase' as const,
@@ -74,4 +74,50 @@ test('rejects blank source, business, and review fields', async () => {
   await assert.rejects(() => service.provision({ ...base, sourceOrganizationId: ' ' }), /sourceOrganizationId must be non-blank/);
   await assert.rejects(() => service.provision({ ...base, evidenceReference: ' ' }), /evidenceReference must be non-blank/);
   await assert.rejects(() => service.provision({ ...base, reviewedBy: ' ' }), /reviewedBy must be non-blank/);
+});
+
+
+test('PostgreSQL store calls the migration-only function with exact review evidence', async () => {
+  let observed: { sql: string; values: unknown[] } | undefined;
+  const store = createPostgresBusinessMigrationProvisioningStore({
+    async query(sql: string, values?: unknown[]) {
+      observed = { sql, values: values ?? [] };
+      return {
+        rows: [{ outcome: 'created', business_id: '101', owner_membership_id: '202', reason_code: 'CREATED_PENDING_REVIEW' }],
+      };
+    },
+  } as never);
+  const result = await store.provisionBusinessWithOwnerAndMapping({
+    sourceProvider: 'supabase',
+    sourceOrganizationId: 'org-7',
+    businessName: 'Example',
+    businessSlug: 'example',
+    ownerAccountId: 42,
+    evidenceReference: 'ticket/7',
+    reviewedBy: 'founder',
+    reviewedAt: '2026-10-31T12:00:00.000Z',
+  });
+  assert.deepEqual(result, {
+    outcome: 'created', businessId: 101, ownerMembershipId: 202, reasonCode: 'CREATED_PENDING_REVIEW',
+  });
+  assert.match(observed?.sql ?? '', /auth_provision_quoteflow_migration_business/);
+  assert.deepEqual(observed?.values, [
+    'supabase', 'org-7', 'Example', 'example', 42, 'ticket/7', 'founder', '2026-10-31T12:00:00.000Z',
+  ]);
+});
+
+test('PostgreSQL store rejects an empty or unknown database outcome', async () => {
+  const store = createPostgresBusinessMigrationProvisioningStore({
+    async query() { return { rows: [] }; },
+  } as never);
+  await assert.rejects(() => store.provisionBusinessWithOwnerAndMapping({
+    sourceProvider: 'supabase',
+    sourceOrganizationId: 'org-7',
+    businessName: 'Example',
+    businessSlug: 'example',
+    ownerAccountId: 42,
+    evidenceReference: 'ticket/7',
+    reviewedBy: 'founder',
+    reviewedAt: '2026-10-31T12:00:00.000Z',
+  }), /returned no outcome/);
 });
