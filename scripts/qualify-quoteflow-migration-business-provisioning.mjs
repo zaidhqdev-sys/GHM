@@ -33,7 +33,7 @@ const rollback = { businessCount: 0, ownerMembershipCount: 0, mappingCount: 0 };
 assert(rollback.businessCount === 0 && rollback.ownerMembershipCount === 0 && rollback.mappingCount === 0,
   "rollback must leave no partial provisioning");
 
-console.log("QuoteFlow Business migration provisioning qualification: PASS");
+console.log("QuoteFlow Business migration provisioning synthetic decision fixture: PASS (not database qualification)");
 console.log(JSON.stringify({
   fresh: outcomes.fresh.outcome,
   retry: outcomes.retry.outcome,
