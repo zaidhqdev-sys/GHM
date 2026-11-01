@@ -67,7 +67,7 @@ async function provision(runtime, suffix, withEnrollment) {
     const approvedEmail = `approved-${suffix}-${runId}@example.test`;
     const enrolled = await runtime.query(
       'select * from ghm.auth_register_quoteflow_migration_reset_enrollment($1,$2,$3,$4,$5,$6)',
-      [accountId, 'supabase', subject, approvedEmail, email, `synthetic/${runId}/${suffix}`],
+      [accountId, 'supabase', subject, approvedEmail, approvedEmail.toLowerCase(), `synthetic/${runId}/${suffix}`],
     );
     assert.equal(enrolled.rows[0].outcome, 'created');
     enrollments.push(Number(enrolled.rows[0].enrollment_id));
