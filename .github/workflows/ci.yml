@@ -100,7 +100,7 @@ jobs:
             ['GHM_JWT_ES256_KID', 'ghm-ci-quoteflow-reset'],
           ];
           for (const [key, value] of env) {
-            appendFileSync(process.env.GITHUB_ENV, `${key}=${value.replace(/\\n/g, '\\\\n')}\\n`);
+            appendFileSync(process.env.GITHUB_ENV, `${key}=${value.replace(/\n/g, '\\n')}\n`);
           }
           NODE
 
