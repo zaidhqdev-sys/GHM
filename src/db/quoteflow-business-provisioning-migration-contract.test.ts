@@ -33,10 +33,10 @@ test('provisioning has no public HTTP or credential/session side effects', () =>
 
 
 test('effective Business provisioning authority is schema-owner-only', () => {
-  assert.match(reconciled, /REVOKE ALL ON FUNCTION ghm\\.auth_provision_quoteflow_migration_business[\\s\\S]*FROM PUBLIC/i);
-  assert.match(reconciled, /REVOKE ALL ON FUNCTION ghm\\.auth_provision_quoteflow_migration_business[\\s\\S]*FROM ghm_runtime/i);
-  assert.match(reconciled, /GRANT EXECUTE ON FUNCTION ghm\\.auth_provision_quoteflow_migration_business[\\s\\S]*TO ghm_schema_owner/i);
-  assert.doesNotMatch(reconciled, /GRANT EXECUTE ON FUNCTION ghm\\.auth_provision_quoteflow_migration_business[\\s\\S]*TO ghm_runtime/i);
+  assert.match(reconciled, /REVOKE ALL ON FUNCTION ghm\.auth_provision_quoteflow_migration_business[\s\S]*FROM PUBLIC/i);
+  assert.match(reconciled, /REVOKE ALL ON FUNCTION ghm\.auth_provision_quoteflow_migration_business[\s\S]*FROM ghm_runtime/i);
+  assert.match(reconciled, /GRANT EXECUTE ON FUNCTION ghm\.auth_provision_quoteflow_migration_business[\s\S]*TO ghm_schema_owner/i);
+  assert.doesNotMatch(reconciled, /GRANT EXECUTE ON FUNCTION ghm\.auth_provision_quoteflow_migration_business[\s\S]*TO ghm_runtime/i);
 });
 
 test('database qualification source is isolated, strict-TLS, and rollback-only', () => {
@@ -44,7 +44,7 @@ test('database qualification source is isolated, strict-TLS, and rollback-only',
   assert.match(script, /I_HAVE_CONFIRMED_ISOLATED_NON_PRODUCTION/);
   assert.match(script, /GHM_BUSINESS_QUALIFICATION_DATABASE.*ghm_qualification/);
   assert.match(script, /rejectUnauthorized: true/);
-  assert.match(script, /await migrator\\.query\\('rollback'\\)/);
+  assert.match(script, /await migrator\.query\\('rollback'\\)/);
   assert.match(script, /concurrency: 'NOT TESTED'/);
   assert.doesNotMatch(script, /DATABASE_SSL.*false/);
 });
