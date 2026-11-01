@@ -167,11 +167,14 @@ try {
   assert.equal(auditCount.rows[0].count, 1);
 
   await migrator.query('rollback');
+  await migrator.query('begin');
+  await migrator.query('set local role ghm_schema_owner');
   const afterRollback = await migrator.query(
     'select (select count(*) from ghm.business_external_mapping where provider=$1 and external_business_id=$2) as mapping_count, (select count(*) from ghm.business where slug=$3) as business_count, (select count(*) from ghm.quoteflow_migration_business_provisioning_audit where provider=$1 and external_business_id=$2) as audit_count',
     ['supabase', sourceId, slug],
   );
   assert.deepEqual(afterRollback.rows[0], { mapping_count: '0', business_count: '0', audit_count: '0' });
+  await migrator.query('commit');
 
   console.log('QuoteFlow Business provisioning isolated DB qualification: PASS');
   console.log(JSON.stringify({
