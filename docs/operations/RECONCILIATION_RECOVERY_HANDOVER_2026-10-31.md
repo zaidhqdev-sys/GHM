@@ -130,3 +130,17 @@ Do not deploy until the production service has an explicitly provisioned `GHM_RU
 - Added migration contract test and registered it in `npm test`.
 - Relevant commit sequence: `2c98b73973489e1de879f29ed781aadf3f0f54a9`, `72dfed1657c1cfa13ceb9d5fa83c93a6a6633dd9`, `7533d2e3b7ba17e0768d8b126a07d69eb7977d55`, `fbdd87bdff1717cc2eb2a04143cd2710c2d23e19`, `2060cf94702c4fade4eac5c90dc85b67856dc1e2`, `6d99c8f5ff111633c5de7532a2a866e6f5eb0aa3`, `6e5fbec76e2be4cdc60fa17d5b4b10185dc6212f`, `e23c0413448b3cd54c8e187fba1ea2cdd13c930e`, `37da533dca6e08da8347e8a62d1cc8ae5ec7ad89`, `1fe4edc5c69c89f2cb1f2aa0a633fab1914452d1`, `00418ae92a14a61defb34c8b8a95a09dab8b2832`, `c8b542cd21b89e1eafd9aeede232738da56d9004`, `60d8518f54e608b757d74a3985f8e8320dc883a9`.
 - Awaiting local TypeScript build and full test verification. No migration was executed; no database, deployment, production service, PR, main branch or integration branch was touched.
+
+
+## QuoteFlow Business provisioning database qualification — 2026-11-01
+
+- The QuoteFlow Business provisioning migration qualification is now **QUALIFIED / PASS** on the isolated, disposable local PostgreSQL 18.6 cluster. Evidence: `docs/evidence/QUOTEFLOW_BUSINESS_PROVISIONING_DB_QUALIFICATION_2026-11-01.md`; execution plan: `docs/architecture/QUOTEFLOW_BUSINESS_PROVISIONING_EXTENDED_QUALIFICATION_PLAN.md`.
+- The user fast-forwarded the local recovery branch to `efe9168a616412c62fe5a4d38e6c0e180ce045c3` before running the qualification. All 91 migrations were applied to `ghm_qualification` at `127.0.0.1:5440` with certificate-verified TLS. Synthetic active business owner fixture ID was `1`; no real/founder account was used.
+- Baseline rollback-only qualification: **PASS**; all privilege, provisioning, retry/conflict, provenance and rollback checks passed; no committed provisioning mutations.
+- Test A forced mid-write atomicity: **PASS**; injected audit-trigger SQLSTATE `P0001`; zero partial resource rows; test-only DDL absent after rollback.
+- Test B two-session concurrency: **PASS**; A returned `created`, B returned `already_provisioned` with matching IDs; PostgreSQL directly showed B waiting on an advisory lock; final counts were exactly one Business, one active owner membership, one mapping and one exact audit row.
+- Test B database disposition: **PASS**; the database was immediately dropped and recreated after the test. Both test and cleanup exit codes were `0`.
+- Qualification-only observer grants (schema `USAGE` for `ghm_migrator` and `SELECT` on the four count/catalog resources) were confined to the disposable database and discarded when it was dropped. No qualification script or application source was edited.
+- Current local qualification database state: newly recreated and empty; owner `ghm_schema_owner`; CONNECT revoked from PUBLIC and granted to `ghm_migrator` and `ghm_runtime`. Do not treat it as migrated or fixture-ready without a fresh migration and fixture setup.
+- No production database/service, deployment, production credentials, founder-owned accounts, original integration branch, main merge, or PR was touched.
+- Next safe work: review the next bounded source/implementation task against the updated qualification evidence. Do not infer that production cutover or full QuoteFlow identity-link integration is authorized by this database qualification.
