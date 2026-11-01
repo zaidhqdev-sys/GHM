@@ -25,7 +25,7 @@ const { createApp } = await import('../dist/http/app.js');
 const { createQuoteFlowMigrationResetRecoveryService } = await import('../dist/migrations/quoteflow-migration-reset-recovery.js');
 const { createQuoteFlowMigrationResetCompletionService } = await import('../dist/migrations/quoteflow-migration-reset-completion.js');
 
-const persistence = new PostgresAuthPersistence();
+const persistence = new PostgresAuthPersistence(runtimePool);
 const delivery = {
   async deliver(message) {
     // Keep raw credentials in memory only; never print or persist them.
@@ -55,7 +55,7 @@ async function provision(runtime, suffix, withEnrollment) {
   const email = `qf-reset-${runId}-${suffix}@example.test`;
   const result = await runtime.query(
     'select * from ghm.auth_provision_migration_account($1,$2,$3,$4)',
-    ['quoteflow', subject, `Synthetic QuoteFlow Reset ${suffix}`, 'customer'],
+    ['supabase', subject, `Synthetic QuoteFlow Reset ${suffix}`, 'customer'],
   );
   assert.equal(result.rows[0].outcome, 'created');
   const accountId = Number(result.rows[0].account_id);
@@ -64,7 +64,7 @@ async function provision(runtime, suffix, withEnrollment) {
     const approvedEmail = `approved-${suffix}-${runId}@example.test`;
     const enrolled = await runtime.query(
       'select * from ghm.auth_register_quoteflow_migration_reset_enrollment($1,$2,$3,$4,$5,$6)',
-      [accountId, 'quoteflow', subject, approvedEmail, email, `synthetic/${runId}/${suffix}`],
+      [accountId, 'supabase', subject, approvedEmail, email, `synthetic/${runId}/${suffix}`],
     );
     assert.equal(enrolled.rows[0].outcome, 'created');
     enrollments.push(Number(enrolled.rows[0].enrollment_id));
