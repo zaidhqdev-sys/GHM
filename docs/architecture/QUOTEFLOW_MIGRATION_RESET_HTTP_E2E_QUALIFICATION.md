@@ -14,8 +14,9 @@ DATABASE_SSL=true \
 INVITE_CODE='non-production-invite-code' \
 CORS_ORIGINS='http://127.0.0.1:3000' \
 GHM_AUTH_TOKEN_PEPPER='...' \
-GHM_AUTH_ACCESS_PRIVATE_KEY='...' \
-GHM_AUTH_ACCESS_PUBLIC_KEY='...' \
+GHM_JWT_ES256_PRIVATE_KEY_PEM='...' \
+GHM_JWT_ES256_PUBLIC_KEY_PEM='...' \
+GHM_JWT_ES256_KID='nonprod-key-id' \
 npm run qualify:quoteflow-migration-reset-http-e2e
 ```
 
