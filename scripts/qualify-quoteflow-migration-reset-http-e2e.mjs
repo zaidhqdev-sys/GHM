@@ -72,7 +72,7 @@ async function provision(runtime, suffix, withEnrollment) {
     assert.equal(enrolled.rows[0].outcome, 'created');
     enrollments.push(Number(enrolled.rows[0].enrollment_id));
     const old = await persistence.createSessionWithRefresh(accountId);
-    oldSessions.push({ accountId, sessionId: old.session.sessionId, refreshToken: old.refreshTokenWire });
+    oldSessions.push({ accountId, sessionId: old.session.id, refreshToken: old.refreshTokenWire });
     return { accountId, requestEmail: email, approvedEmail };
   }
   return { accountId, requestEmail: email };
