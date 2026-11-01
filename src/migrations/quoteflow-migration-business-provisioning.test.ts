@@ -121,3 +121,21 @@ test('PostgreSQL store rejects an empty or unknown database outcome', async () =
     reviewedAt: '2026-10-31T12:00:00.000Z',
   }), /returned no outcome/);
 });
+
+test('PostgreSQL store rejects unknown database outcomes', async () => {
+  const store = createPostgresBusinessMigrationProvisioningStore({
+    async query() {
+      return { rows: [{ outcome: 'unexpected', business_id: null, owner_membership_id: null, reason_code: 'UNKNOWN' }] };
+    },
+  } as never);
+  await assert.rejects(() => store.provisionBusinessWithOwnerAndMapping({
+    sourceProvider: 'supabase',
+    sourceOrganizationId: 'org-7',
+    businessName: 'Example',
+    businessSlug: 'example',
+    ownerAccountId: 42,
+    evidenceReference: 'ticket/7',
+    reviewedBy: 'founder',
+    reviewedAt: '2026-10-31T12:00:00.000Z',
+  }), /unknown outcome/);
+});
