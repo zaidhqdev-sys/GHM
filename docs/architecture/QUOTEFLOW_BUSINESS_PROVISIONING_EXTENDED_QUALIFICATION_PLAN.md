@@ -1,6 +1,6 @@
 # QuoteFlow Business Provisioning — Extended Qualification Plan
 
-> **Status:** IMPLEMENTED AS SOURCE-ONLY TEST HARNESS; NOT EXECUTED. The user has separately authorized qualification against a disposable, isolated, non-production database named `ghm_qualification`. No database connection, migration, fixture creation, or mutation has been performed by this assistant. Production, founder-owned accounts, and the original integration branch remain out of scope.
+> **Status: QUALIFIED / PASS — 2026-11-01.** The user executed the rollback-only baseline, Test A, and Test B against the disposable isolated PostgreSQL 18.6 database `ghm_qualification`; all three passed. Test B's committed rows were immediately discarded by dropping and recreating the database. Detailed evidence: `docs/evidence/QUOTEFLOW_BUSINESS_PROVISIONING_DB_QUALIFICATION_2026-11-01.md`. Production, founder-owned accounts, and the original integration branch remained out of scope.
 
 ## Scope and invariant
 
@@ -13,7 +13,7 @@ Two separate scripts implement the extended tests:
 - Test A: `scripts/qualify-quoteflow-migration-business-provisioning-atomicity-db.mjs` — rollback-only; installs a temporary audit trigger and function inside a transaction.
 - Test B: `scripts/qualify-quoteflow-migration-business-provisioning-concurrency-db.mjs` — commit-bearing; requires explicit discard acknowledgement and a disposable database that will be discarded/recreated immediately after the test, including on failure.
 
-Both scripts are source-only until run by the user in the isolated qualification environment. They require strict TLS and verify the database name and migrator login. They do not print connection strings or credentials.
+Both scripts were executed by the user in the isolated qualification environment and passed. They require strict TLS and verify the database name and migrator login. They do not print connection strings or credentials.
 
 ## Gate 0 — isolated fixture
 
@@ -86,13 +86,26 @@ Failure handling: if Session B returns `created`, a conflicting result, differen
 5. Immediately discard/recreate `ghm_qualification` after Test B, whether it passes or fails.
 6. Preserve sanitized complete output, SQLSTATE, and lock-wait evidence. Never paste credentials or full connection strings.
 
+## Executed qualification result — 2026-11-01
+
+All three stages passed on the isolated PostgreSQL 18.6 cluster at `127.0.0.1:5440`, using certificate-verified TLS and 91 applied migrations (`00000000000000` through `20261101110000`). The synthetic active business-role owner fixture was account ID `1` with `is_system_admin=false`.
+
+- Baseline rollback-only qualification: **PASS**; runtime execute/direct-DML denials, provisioning outcomes, provenance audit, and complete rollback verified; `committed_mutations: false`.
+- Test A: **PASS**; deliberate audit-trigger failure SQLSTATE `P0001`; no partial Business, membership, external mapping, or audit rows; test DDL absent after rollback; `committed_mutations: false`.
+- Test B: **PASS**; Session A `created`; Session B `already_provisioned`; same Business and membership IDs; PostgreSQL directly reported an advisory-lock wait; final counts were exactly one Business, active owner membership, mapping, and exact audit row.
+- Test B immediate disposition: **PASS**; database dropped and recreated, with test exit code `0` and cleanup exit code `0`.
+
+The harness required narrowly scoped observer permissions in the disposable database: `USAGE` on schema `ghm` for `ghm_migrator`, plus `SELECT` on `ghm.business`, `ghm.business_membership`, `ghm.business_external_mapping`, and `ghm.quoteflow_migration_business_provisioning_audit`. These grants were needed because Test A's final catalog check and Test B's final count query run as the login role after local role switching has ended. The grants were confined to the disposable database and disappeared when it was dropped. Initial attempts exposed these missing observer permissions; both tests passed on rerun after applying the grants. No repository test scripts were modified.
+
+Final state: `ghm_qualification` is a newly recreated empty database, owned by `ghm_schema_owner`, with CONNECT revoked from PUBLIC and granted to `ghm_migrator` and `ghm_runtime`. Its migration schema, fixture, test rows, and qualification-only grants were discarded. See `docs/evidence/QUOTEFLOW_BUSINESS_PROVISIONING_DB_QUALIFICATION_2026-11-01.md` for complete sanitized evidence.
+
 ## Separation from existing qualification
 
 - The existing rollback-only script may continue to test permissions, ordinary creation, exact retry within one transaction, evidence mismatch, invalid owner/provider, slug collision, and full transaction rollback.
 - Test A is a separate rollback-only atomicity exercise that requires temporary test DDL.
 - Test B is a separate commit-bearing concurrency exercise on a disposable database. Its database must be discarded after the run.
 - Concurrency is not proven by the existing single-session script or by static inspection of `pg_advisory_xact_lock`.
-- No result may be described as database-qualified until the corresponding approved test has actually run and its complete output has been reviewed.
+- Qualification status is **PASS** for the three executed database tests documented above. This does not qualify production configuration, deployment, cutover, or end-to-end application/HTTP identity linking.
 
 ## Authorization boundary
 
