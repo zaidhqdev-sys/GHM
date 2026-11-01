@@ -150,15 +150,12 @@ try {
   assert.equal(invalidProvider.rows[0].outcome, 'blocked');
   assert.equal(invalidProvider.rows[0].reason_code, 'SOURCE_PROVIDER_NOT_ALLOWED');
 
-  const existingSlug = await migrator.query('select slug from ghm.business limit 1');
-  if (existingSlug.rowCount) {
-    const slugConflict = await migrator.query(
-      'select * from ghm.auth_provision_quoteflow_migration_business($1,$2,$3,$4,$5,$6,$7,$8)',
-      ['supabase', `slug-${runId}`, 'Slug Collision', existingSlug.rows[0].slug, ownerAccountId, evidence, reviewer, reviewedAt],
-    );
-    assert.equal(slugConflict.rows[0].outcome, 'conflict');
-    assert.equal(slugConflict.rows[0].reason_code, 'BUSINESS_SLUG_COLLISION');
-  }
+  const slugConflict = await migrator.query(
+    'select * from ghm.auth_provision_quoteflow_migration_business($1,$2,$3,$4,$5,$6,$7,$8)',
+    ['supabase', `slug-${runId}`, 'Slug Collision', slug, ownerAccountId, evidence, reviewer, reviewedAt],
+  );
+  assert.equal(slugConflict.rows[0].outcome, 'conflict');
+  assert.equal(slugConflict.rows[0].reason_code, 'BUSINESS_SLUG_COLLISION');
 
   const auditCount = await migrator.query(
     'select count(*)::int as count from ghm.quoteflow_migration_business_provisioning_audit where provider=$1 and external_business_id=$2',
@@ -183,7 +180,7 @@ try {
     checks: ['runtime execute and direct-DML denied', 'schema-owner execution', 'fresh provisioning',
       'inactive unverified Business', 'exact owner and provenance audit', 'exact retry',
       'evidence mismatch conflict', 'missing owner blocked', 'invalid provider blocked',
-      'slug collision conflict when a fixture slug exists', 'full transaction rollback'],
+      'slug collision conflict against the in-transaction fixture Business', 'full transaction rollback'],
     concurrency: 'NOT TESTED',
     committed_mutations: false,
   }, null, 2));
