@@ -193,7 +193,7 @@ try {
   }
 
   assert.notEqual(Number(completedTokens[0].accountId), Number(completedTokens[1].accountId));
-  const replay = await request(firstBase, '/api/v1/auth/quoteflow-migration-reset/complete', {
+  const replay = await request(secondBase, '/api/v1/auth/quoteflow-migration-reset/complete', {
     token: deliveries[0].recoveryToken,
     password: `Synthetic-Replay-${runId}-Strong9!`,
   });
