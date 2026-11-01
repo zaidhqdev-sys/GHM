@@ -73,14 +73,41 @@ jobs:
           GRANT USAGE, CREATE ON SCHEMA public TO ghm_schema_owner;
           SQL
 
-      - name: Check storage qualification script syntax
-        run: node --check scripts/qualify-storage-persistence.mjs
+      - name: Check qualification script syntax
+        run: |
+          node --check scripts/qualify-storage-persistence.mjs
+          node --check scripts/qualify-quoteflow-migration-reset-http-e2e.mjs
 
       - name: Build
         run: npm run build
 
       - name: Apply all migrations to disposable PostgreSQL
         run: npm run migrate
+
+      - name: Generate ephemeral CI ES256 signing key
+        run: |
+          node --input-type=module <<'NODE'
+          import { generateKeyPairSync } from 'node:crypto';
+          import { appendFileSync } from 'node:fs';
+          const pair = generateKeyPairSync('ec', {
+            namedCurve: 'prime256v1',
+            privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+            publicKeyEncoding: { type: 'spki', format: 'pem' },
+          });
+          const env = [
+            ['GHM_JWT_ES256_PRIVATE_KEY_PEM', pair.privateKey],
+            ['GHM_JWT_ES256_PUBLIC_KEY_PEM', pair.publicKey],
+            ['GHM_JWT_ES256_KID', 'ghm-ci-quoteflow-reset'],
+          ];
+          for (const [key, value] of env) {
+            appendFileSync(process.env.GITHUB_ENV, `${key}=${value.replace(/\\n/g, '\\\\n')}\\n`);
+          }
+          NODE
+
+      - name: Qualify QuoteFlow migration reset over real HTTP and disposable PostgreSQL
+        env:
+          GHM_QUALIFICATION_ENV: non-production
+        run: npm run qualify:quoteflow-migration-reset-http-e2e
 
       - name: Seed disposable storage qualification fixture
         env:
