@@ -9,7 +9,7 @@ const pepperText = process.env.GHM_AUTH_TOKEN_PEPPER;
 assert(runtimeUrl && migratorUrl && runtimeUrl !== migratorUrl);
 assert(pepperText && Buffer.byteLength(pepperText, 'utf8') >= 32);
 
-const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined;
+const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: true } : undefined;
 const runtimePool = new Pool({ connectionString: runtimeUrl, ...(ssl ? { ssl } : {}) });
 const migratorPool = new Pool({ connectionString: migratorUrl, ...(ssl ? { ssl } : {}) });
 const runId = randomBytes(16).toString('hex');
