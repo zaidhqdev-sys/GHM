@@ -1,0 +1,64 @@
+# QuoteFlow and Connect go-live gap audit — 2026-11-02
+
+**Status:** source-backed audit; documentation only.  
+**Authority:** GHM is the backend source of truth. This audit reads GHM `main`, current product PR heads, their exact-head CI checks, and the product migration handovers.  
+**Decision:** neither QuoteFlow nor Connect is approved for production cutover by the evidence reviewed here.
+
+## Executive decision
+
+Keep both products on their existing production paths until their own end-to-end migration, recovery, rollback, operational, and founder-approval gates pass. GHM resource construction and green CI are not product cutover evidence.
+
+Do not restart completed work:
+- QuoteFlow's reset HTTP qualification on the GHM integration candidate is already recorded as passing in GHM PR #183 / CI run #40022333417. The portable shared AuthPersistence fix was separately merged to main in PR #187. Do not recreate the HTTP harness or repeat that disposable-PostgreSQL run.
+- QuoteFlow's recoverable local storage-scope migration primitive is already CI-qualified in QuoteFlow PR #21 (run #39260638333). It remains an inactive primitive; no scope activation or real-device migration is proven.
+- GHM legal capability PR #201 and multi-Business API PR #202 have passing exact-head CI and successful Cloudflare preview checks. Both are still draft and unmerged; preview deployments are not production deployment.
+- Connect's current GHM identity compatibility adapter PR #39 has passing exact-head auth/identity contract CI. That is a narrow contract check, not browser-session or product journey qualification.
+
+## Evidence ledger
+
+| Area | Existing evidence | What that evidence does not prove |
+|---|---|---|
+| QuoteFlow reset/re-enrollment | GHM PR #183, head `89b48d7ecc6833be70938cb6d1e3c3e71b6bf567`, records candidate-specific disposable-PostgreSQL HTTP reset qualification: anti-enumeration, recovery delivery, reset completion, fresh bearer acceptance, old-session revocation, replay rejection. CI run #40022333417 passed. PR #187 merged the portable shared persistence wiring to GHM main. | It does not close the complete two-founder-account user-facing migration ceremony, production recovery delivery, account-specific source mapping, rollback/recovery rehearsal, or production cutover. The GHM current-state index and reset reconciliation continue to mark the full ceremony separately gated. |
+| QuoteFlow account identity migration | GHM account-onboarding/migration boundary, account provisioning, external identity provenance, snapshot validation and reconciliation executor are documented/qualified construction slices. | Does not create a live source-account → GHM account decision for either founder account; no email/name/slug inference. |
+| QuoteFlow legacy organisation → Business | Synthetic reconciliation outcomes are qualified. | GHM `QUOTEFLOW_MIGRATION_BUSINESS_PROVISIONING_CONTRACT.md` explicitly says migration-specific Business provisioning implementation is not yet qualified. Membership/owner-role reconciliation remains separate. |
+| QuoteFlow local data | QuoteFlow PR #21 CI-qualified resumable, journalled, conflict-first copy primitive with read-after-write verification and source preservation. PR #25 adds a key-name-only inventory. | The installed RKStorage copy examined in the handover contained no operational QuoteFlow keys; Android Backup's 6.7 MB indication is an unresolved lead, not verified contents. No authoritative source namespace / target Business crosswalk, controlled inventory result, migration, rollback rehearsal or storage-scope activation is evidenced. |
+| QuoteFlow GHM client | PR #25 exact-head TypeScript/Jest checks passed (run #41145108473); Android side-by-side preview build check passed (run #41145108541). The branch removes Supabase SDK/runtime references and uses GHM auth, membership selection and proposed legal endpoints. | PR #25 remains draft/unmerged. Its own description still identifies live GHM identity/session qualification, source-data mapping/recovery, legal API publication, entitlement authority, and cutover as blockers. A preview APK is not a production release or end-to-end device acceptance. |
+| QuoteFlow legal | GHM PR #201 exact-head quality CI passed (run #41140825830); legal API/schema proposal includes versioned documents and account-bound acceptance. | PR #201 is draft/unmerged. No approved legal wording/version/digest has been supplied and published by reviewed migration; no deployed mainline contract or QuoteFlow end-to-end acceptance proof. Do not treat a client checkbox or preview endpoint as legal evidence. |
+| QuoteFlow multi-Business | GHM PR #202 exact-head quality CI passed (run #41143709416); adds authenticated membership listing and explicit authorized selection. | PR #202 is draft/unmerged. QuoteFlow PR #25 depends on these proposed contracts; merge/review and deployment/runtime compatibility remain gates. |
+| QuoteFlow entitlements | PR #25 intentionally fails closed to Free. | GHM entitlement authority/contract for QuoteFlow remains unresolved. Do not enable paid tiers or infer entitlement from commercial primitives. |
+| Connect authentication/session | GHM PR #191 defines a separate cookie-backed browser auth contract; its exact-head quality CI passed (run #40774901765). Connect PR #39 has passing auth/identity contract CI (run #40794347651). | Both are draft. PR #191 requires exact origin allowlist, cookie path/lifetime configuration, and non-production browser E2E through Connect's same-origin proxy (cookie rotation/clearing, origin enforcement, replay, expiry/revocation). PR #39 is a compatibility adapter, not proof of complete GHM-native account/session/role migration. |
+| Connect product workflows | Connect PRs #42–#50 cover staged slices: business-hours, reviews, profile, saved businesses, capability assertions, directory/support, leads, review moderation and fail-closed identity. Exact-head auth-contract checks are green for PRs #39, #48, #49 and #50 at the inspected SHAs. | These are open draft PRs and several are stacked on migration branches. CI contract tests and preview status do not prove complete active-workflow parity, merged mainline, deployed GHM interoperability, or a no-Supabase production runtime. |
+| Connect remaining parity | GHM's current-state and Connect gap register retain open gaps for browser-safe auth, target identity binding, directory parity, founder directory review, enquiry/lead creation + notifications + customer list/retention, opportunity discovery, onboarding/analytics/relationships, storage/media object authorization and recovery, AI history/transport, commercial/payment E2E. | Existing GHM resources or narrow adapters must not be mistaken for full Connect workflow parity. Legacy inventories are historical snapshots; use the current-state index, gap register and capability-specific evidence. |
+
+## Product go-live gates
+
+### QuoteFlow — ordered gates
+
+1. **Preserve and reconcile each founder account independently.** Use the qualified GHM migration provenance/account-onboarding boundary. Confirm exact source subject, canonical GHM account, credential/reset path and evidence for both accounts. No email-only matching, password-hash assumption, or Supabase-token import.
+2. **Finish the complete non-production recovery ceremony.** Carry forward PR #183 and #187. Reconcile the candidate-specific HTTP pass with the canonical ceremony checklist and produce integrated, account-path-specific evidence for request, anti-enumeration, delivery, one-time/expiry, completion, fresh GHM login/session, old-session revocation, rollback and replay. This is not a request to recreate the existing harness.
+3. **Qualify migration-only Business provisioning and membership.** Implement/qualify the GHM migration-specific provisioning contract; prove deterministic/idempotent creation/reuse, conflict behavior, explicit owner membership and role/status semantics against synthetic non-production PostgreSQL. Do not substitute public `POST /api/v1/businesses` for migration provisioning.
+4. **Resolve local data recovery and mapping.** Preserve the current device backup and Google backup. Identify exact source records and namespace using a separately preserved diagnostic copy; record explicit source organisation/user → GHM account/Business mapping. Run PR #21's existing dry-run first; only after separate authorization run copy, read-after-write verification and rollback checks. Keep source data intact.
+5. **Merge and deploy reviewed GHM contracts through normal controls.** Review/merge #201 and #202; deploy via the established GHM process; verify runtime API behavior. Publish only owner/legal-reviewed Terms, Privacy Notice and other required documents using a reviewed immutable version migration. Empty catalogue/errors remain blocked.
+6. **Qualify QuoteFlow end-to-end on a separate preview install.** Verify login, refresh/cold start/logout, account-level legal review and durable acceptance, zero/one/multiple Business selection, authorized Business creation, migration gate, local records and rollback. Keep installed app and legacy data untouched.
+7. **Resolve entitlement authority.** Remain Free until a GHM-owned entitlement contract and product behavior are approved and qualified.
+8. **Operational acceptance and explicit go/no-go.** Verify observability, support/recovery, backup/restore and rollback. Only a separate explicit founder approval can authorize production migration, configuration change, deployment or cutover.
+
+### Connect — ordered gates
+
+1. **Complete target identity/session boundary.** Review/merge GHM #191 and Connect #39/related role-resolution work only after exact-head CI and code review. Configure browser auth only in approved non-production environment. Prove same-origin proxy, cookie attributes/path/rotation/clearing, origin rejection, refresh replay, expiry/revocation, account status, canonical account and role/membership mapping. No Supabase identity dependency in the target runtime.
+2. **Finish operation-level caller parity.** Use the durable Connect migration handover and current GHM gap register, not historical inventory counts. For every active mounted caller, record source semantics, GHM route, authorization, transaction/concurrency, DTO, error behavior, tests, migration and rollback. Specifically close the current open gaps listed above; exclude dormant/unmounted services only with reachability evidence.
+3. **Qualify integrated workflows.** Test full browser journeys against a deployed non-production GHM runtime, including negative authorization and tenant-isolation cases, not just adapter mocks or contract workflow checks. Confirm notification, realtime/polling, media, opportunity discovery, directory/review and commercial behavior for the agreed launch scope.
+4. **Reconcile data and operational behavior.** Explicitly map legacy resource IDs and ownership, reconcile records and conflicts, prove import/export/backup/restore and rollback. Preserve payment/provider flags and AI provider gates; do not activate PayFast/PayStack/AI by inference.
+5. **Shadow and acceptance.** Define launch-scope acceptance, metrics, error budgets, incident/support runbooks and a bounded shadow comparison with no duplicate writes. Resolve every material discrepancy before cutover.
+6. **Separate production go/no-go.** Only after merged mainline code, deployed GHM contracts, end-to-end non-production evidence, data reconciliation, rollback rehearsal, operational acceptance and explicit founder approval.
+
+## Immediate next work
+
+- Do not add another reset qualification harness or rerun the already-passed disposable-PostgreSQL reset CI.
+- The next QuoteFlow implementation gap is the **migration-only legacy organisation → GHM Business provisioning capability** described by `QUOTEFLOW_MIGRATION_BUSINESS_PROVISIONING_CONTRACT.md`, after verifying its implementation has not since appeared on an active branch/PR. Its synthetic reconciliation contract is not that implementation.
+- In parallel, Connect's next safe work is to complete the **GHM-native browser session / same-origin proxy E2E** around GHM PR #191 and Connect PR #39, then advance active workflow parity by the current gap register—not start a broad rewrite.
+- Before implementing either slice, recheck live PRs and exact branch heads to avoid duplicating work. Keep changes scoped to the relevant product/backend PR; no production operations.
+
+## Explicit non-actions
+
+This audit performs no application code change, schema migration, production database query/write, Render or Cloudflare production configuration change, credential operation, product deployment, device installation, local storage mutation, provider activation, merge, or cutover. It does not authorize any of those actions.
