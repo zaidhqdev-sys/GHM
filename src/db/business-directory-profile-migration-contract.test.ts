@@ -14,6 +14,8 @@ test('directory profile schema constrains fields and leaves protected columns ru
   }
   assert.match(schema, /business_directory_years_in_business_check/);
   assert.match(schema, /business_directory_profile_views_check/);
+  assert.match(schema, /business_directory_address_check[\\s\\S]*?physical_address IS NULL OR length\\(btrim\\(physical_address\\)\\) BETWEEN 1 AND 500/);
+  assert.match(schema, /business_directory_website_check[\\s\\S]*?website ~\\* '\\^https\\?:\\/\\/\\[\\^\\/\\?\\#\\[\\:\\:space:\\]\\]\\+\\(\\[\\/\\?\\#\\]\\[\\^\\[\\:space:\\]\\]\\*\\)\\?\\
   assert.match(normalizedSchema, /REVOKE UPDATE \([\s\S]*?tier, is_featured,[\s\S]*?profile_views, years_in_business\s*\)/);
   assert.doesNotMatch(schema, /GRANT UPDATE ON TABLE ghm\.business TO ghm_runtime/i);
   assert.match(schema, /business_directory_province_city_idx/);
@@ -28,4 +30,29 @@ test('owner profile function permits descriptive fields only and preserves membe
   assert.doesNotMatch(profile, /'logoUrl'|'avatarLetter'|'avatarColor'|'tier'|'isFeatured'|'profileViews'|'insuranceVerified'|'jobsCompleted'|'verificationStatus'/);
   assert.match(profile, /REVOKE ALL ON FUNCTION ghm\.update_business_profile/);
   assert.match(profile, /GRANT EXECUTE ON FUNCTION ghm\.update_business_profile\(bigint, bigint, jsonb\) TO ghm_runtime/);
+});
+/);
+  assert.match(normalizedSchema, /REVOKE UPDATE \([\s\S]*?tier, is_featured,[\s\S]*?profile_views, years_in_business\s*\)/);
+  assert.doesNotMatch(schema, /GRANT UPDATE ON TABLE ghm\.business TO ghm_runtime/i);
+  assert.match(schema, /business_directory_province_city_idx/);
+});
+
+test('owner profile function permits descriptive fields only and preserves membership and definer boundary', () => {
+  assert.match(profile, /SECURITY DEFINER\s+SET search_path = pg_catalog, ghm/);
+  assert.match(profile, /membership_role IN \('owner', 'administrator'\)/);
+  assert.match(normalizedProfile, /'province',\s*'city',\s*'physicalAddress',\s*'whatsapp',\s*'website',\s*'isSupplier',\s*'yearsInBusiness'/);
+  assert.match(profile, /is_supplier = CASE WHEN p_patch \? 'isSupplier'/);
+  assert.match(profile, /years_in_business = CASE WHEN p_patch \? 'yearsInBusiness'/);
+  assert.doesNotMatch(profile, /'logoUrl'|'avatarLetter'|'avatarColor'|'tier'|'isFeatured'|'profileViews'|'insuranceVerified'|'jobsCompleted'|'verificationStatus'/);
+  assert.match(profile, /REVOKE ALL ON FUNCTION ghm\.update_business_profile/);
+  assert.match(profile, /GRANT EXECUTE ON FUNCTION ghm\.update_business_profile\(bigint, bigint, jsonb\) TO ghm_runtime/);
+});
+
+test('follow-up hardening migration replaces permissive address and website constraints', () => {
+  const hardening = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261101110000_harden_business_directory_profile_constraints.sql'), 'utf8');
+  assert.match(hardening, /DROP CONSTRAINT business_directory_address_check/);
+  assert.match(hardening, /DROP CONSTRAINT business_directory_website_check/);
+  assert.match(hardening, /physical_address IS NULL[\\s\\S]*?length\\(btrim\\(physical_address\\)\\) BETWEEN 1 AND 500/);
+  assert.match(hardening, /website = btrim\\(website\\)/);
+  assert.match(hardening, /website ~\\* '\\^https\\?:\\/\\/\\[\\^\\/\\?\\#\\[\\:\\:space:\\]\\]\\+\\(\\[\\/\\?\\#\\]\\[\\^\\[\\:space:\\]\\]\\*\\)\\?\\$'/);
 });
