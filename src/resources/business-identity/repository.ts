@@ -102,7 +102,7 @@ const buildProfilePatch = (input: UpdateBusinessProfileInput): Record<string, un
       if (key === 'website') {
         let url: URL;
         try { url = new URL(text); } catch { throw new Error('Website must be a valid HTTP(S) URL'); }
-        if ((url.protocol !== 'http:' && url.protocol !== 'https:') || /\\s/.test(text)) throw new Error('Website must be a valid HTTP(S) URL without whitespace');
+        if ((url.protocol !== 'http:' && url.protocol !== 'https:') || /\s/.test(text)) throw new Error('Website must be a valid HTTP(S) URL without whitespace');
       }
       patch[key] = text;
       continue;
