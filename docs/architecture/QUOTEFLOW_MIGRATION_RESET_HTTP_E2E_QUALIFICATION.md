@@ -62,3 +62,15 @@ Those are separate qualification items. Do not claim the full founder migration 
 - Do not point this script at production. It creates and deletes account rows.
 - Do not use real founder/customer email addresses, external subjects, passwords, tokens, local backups or device data.
 - Do not enable QuoteFlow local storage scope or cut over real users based on this result.
+
+
+## Automated CI execution
+
+The GHM quality workflow now:
+1. checks the new qualification script's syntax;
+2. builds the application and applies all migrations to the workflow's disposable PostgreSQL service;
+3. generates an ephemeral ES256 keypair for this CI run only;
+4. runs this full HTTP + PostgreSQL qualification with `GHM_QUALIFICATION_ENV=non-production`;
+5. continues with the existing database qualification and test suite.
+
+This CI database is created for the workflow and discarded with its job. The ephemeral signing key is not stored as a repository secret or artifact. The qualification uses the real GHM HTTP app and runtime role, not mocks. A green quality workflow on the PR head will therefore constitute an actual synthetic DB-backed HTTP integration run for this harness. It still does not prove delivery through the production email provider or the mapping/recovery of real founder accounts.
