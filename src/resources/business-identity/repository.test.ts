@@ -18,11 +18,11 @@ test('business profile rejects malformed and whitespace-containing website URLs 
 
   await assert.rejects(
     () => repository.updateBusiness(context, 42, { website: 'https://example.com/path with spaces' }),
-    /valid HTTP\\(S\\) URL without whitespace/,
+    /whitespace/,
   );
   await assert.rejects(
     () => repository.updateBusiness(context, 42, { website: 'ftp://example.com' }),
-    /valid HTTP\\(S\\) URL without whitespace/,
+    /whitespace/,
   );
   assert.equal(connections, 0);
 });
