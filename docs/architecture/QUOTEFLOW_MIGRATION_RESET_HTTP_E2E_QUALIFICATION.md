@@ -6,17 +6,18 @@
 ## Command
 
 ```bash
-GHM_QUALIFICATION_ENV=non-production \
-GHM_RUNTIME_DATABASE_URL='postgres://...runtime...' \
-GHM_MIGRATOR_DATABASE_URL='postgres://...migrator...' \
-DATABASE_URL="$GHM_RUNTIME_DATABASE_URL" \
-DATABASE_SSL=true \
-INVITE_CODE='non-production-invite-code' \
-CORS_ORIGINS='http://127.0.0.1:3000' \
-GHM_AUTH_TOKEN_PEPPER='...' \
-GHM_JWT_ES256_PRIVATE_KEY_PEM='...' \
-GHM_JWT_ES256_PUBLIC_KEY_PEM='...' \
-GHM_JWT_ES256_KID='nonprod-key-id' \
+export GHM_QUALIFICATION_ENV=non-production
+export GHM_RUNTIME_DATABASE_URL='postgres://...runtime...'
+export GHM_MIGRATOR_DATABASE_URL='postgres://...migrator...'
+export DATABASE_URL="$GHM_RUNTIME_DATABASE_URL"
+export DATABASE_SSL=true
+export INVITE_CODE='non-production-invite-code'
+export CORS_ORIGINS='http://127.0.0.1:3000'
+export GHM_AUTH_TOKEN_PEPPER='...'
+export GHM_JWT_ES256_PRIVATE_KEY_PEM='...'
+export GHM_JWT_ES256_PUBLIC_KEY_PEM='...'
+export GHM_JWT_ES256_KID='nonprod-key-id'
+
 npm run qualify:quoteflow-migration-reset-http-e2e
 ```
 
