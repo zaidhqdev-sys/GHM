@@ -78,10 +78,12 @@ try {
 
   const backendB = await sessionB.query('select pg_backend_pid() as pid');
   const pidB = backendB.rows[0].pid;
+  // Convert rejection into a fulfilled tagged result immediately so a fast
+  // database error cannot become an unhandled promise while lock evidence polls.
   bQueryPromise = sessionB.query(
     'select * from ghm.auth_provision_quoteflow_migration_business($1,$2,$3,$4,$5,$6,$7,$8)',
     args,
-  );
+  ).then(value => ({ value }), error => ({ error }));
 
   // Require direct PostgreSQL evidence that B is blocked on an advisory lock;
   // polling is bounded, and elapsed time alone is never accepted as proof.
@@ -113,14 +115,17 @@ try {
     aOpen = false;
     const timedOutResult = await bQueryPromise;
     bQueryPromise = undefined;
-    assert.fail(`No advisory-lock wait was observed; B returned ${JSON.stringify(timedOutResult.rows[0])}`);
+    if (timedOutResult.error) throw timedOutResult.error;
+    assert.fail(`No advisory-lock wait was observed; B returned ${JSON.stringify(timedOutResult.value.rows[0])}`);
   }
 
   await sessionA.query('commit');
   aOpen = false;
 
-  const resultB = await bQueryPromise;
+  const settledB = await bQueryPromise;
   bQueryPromise = undefined;
+  if (settledB.error) throw settledB.error;
+  const resultB = settledB.value;
   assert.equal(resultB.rowCount, 1);
   assert.equal(resultB.rows[0].outcome, 'already_provisioned');
   assert.equal(String(resultB.rows[0].business_id), businessId);
