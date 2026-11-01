@@ -20,7 +20,7 @@ const accounts = [];
 const enrollments = [];
 const oldSessions = [];
 const deliveries = [];
-let server;
+const servers = [];
 let firstAccount;
 let secondAccount;
 let ineligibleAccount;
@@ -38,7 +38,7 @@ const delivery = {
     deliveries.push({ ...message });
   },
 };
-const app = createApp({
+const createQualificationApp = () => createApp({
   authPersistence: persistence,
   authService: createGhmAuthService(persistence),
   quoteFlowMigrationResetRecoveryService:
@@ -76,13 +76,13 @@ async function provision(runtime, suffix, withEnrollment) {
     enrollments.push(Number(enrolled.rows[0].enrollment_id));
     const old = await persistence.createSessionWithRefresh(accountId);
     oldSessions.push({ accountId, sessionId: old.session.id, refreshToken: old.refreshTokenWire });
-    return { accountId, requestEmail: email, approvedEmail };
+    return { accountId, requestEmail: approvedEmail.toUpperCase(), approvedEmail };
   }
   return { accountId, requestEmail: email };
 }
 
 async function cleanup() {
-  if (server) await new Promise((resolve) => server.close(resolve));
+  await Promise.all(servers.map((server) => new Promise((resolve) => server.close(resolve))));
   const migrator = await migratorPool.connect();
   try {
     await migrator.query('begin');
@@ -122,23 +122,30 @@ try {
     runtime.release();
   }
 
-  server = http.createServer(app);
-  await new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', resolve);
-  });
-  const address = server.address();
-  assert(address && typeof address === 'object');
-  const base = `http://127.0.0.1:${address.port}`;
+  async function startServer() {
+    const server = http.createServer(createQualificationApp());
+    await new Promise((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(0, '127.0.0.1', resolve);
+    });
+    servers.push(server);
+    const address = server.address();
+    assert(address && typeof address === 'object');
+    return `http://127.0.0.1:${address.port}`;
+  }
+  // Each app has its own intentionally scoped rate-limit state. Keep the first
+  // app at its five-request budget while qualifying anti-enumeration + reset + replay.
+  const firstBase = await startServer();
+  const secondBase = await startServer();
 
   const first = firstAccount;
   const second = secondAccount;
   const ineligibleEmail = ineligibleAccount.requestEmail;
 
-  const unknown = await request(base, '/api/v1/auth/quoteflow-migration-reset/request', {
+  const unknown = await request(firstBase, '/api/v1/auth/quoteflow-migration-reset/request', {
     email: `unknown-${runId}@example.test`,
   });
-  const ineligible = await request(base, '/api/v1/auth/quoteflow-migration-reset/request', {
+  const ineligible = await request(firstBase, '/api/v1/auth/quoteflow-migration-reset/request', {
     email: ineligibleEmail,
   });
   assert.equal(unknown.status, 202);
@@ -148,7 +155,7 @@ try {
   assert.equal(deliveries.length, 0, 'Unknown/ineligible addresses must not trigger delivery');
 
   for (const [index, account] of [first, second].entries()) {
-    const requested = await request(base, '/api/v1/auth/quoteflow-migration-reset/request', {
+    const requested = await request(index === 0 ? firstBase : secondBase, '/api/v1/auth/quoteflow-migration-reset/request', {
       email: account.requestEmail,
     });
     assert.equal(requested.status, 202);
@@ -163,7 +170,8 @@ try {
 
   const completedTokens = [];
   for (const [index, account] of [first, second].entries()) {
-    const completed = await request(base, '/api/v1/auth/quoteflow-migration-reset/complete', {
+    const accountBase = index === 0 ? firstBase : secondBase;
+    const completed = await request(accountBase, '/api/v1/auth/quoteflow-migration-reset/complete', {
       token: deliveries[index].recoveryToken,
       password: `Synthetic-Reset-${runId}-${index}-Strong9!`,
     });
@@ -177,7 +185,7 @@ try {
     assert.equal(oldSession.isUsable, false, 'Pre-reset session must be revoked');
     assert.equal(oldSession.accountId, account.accountId);
 
-    const refresh = await request(base, '/api/v1/auth/refresh', {
+    const refresh = await request(accountBase, '/api/v1/auth/refresh', {
       refreshToken: completed.body.refreshToken,
     });
     assert.equal(refresh.status, 200, JSON.stringify(refresh.body));
@@ -185,7 +193,7 @@ try {
   }
 
   assert.notEqual(Number(completedTokens[0].accountId), Number(completedTokens[1].accountId));
-  const replay = await request(base, '/api/v1/auth/quoteflow-migration-reset/complete', {
+  const replay = await request(firstBase, '/api/v1/auth/quoteflow-migration-reset/complete', {
     token: deliveries[0].recoveryToken,
     password: `Synthetic-Replay-${runId}-Strong9!`,
   });
