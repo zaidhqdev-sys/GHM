@@ -35,17 +35,19 @@ A matching mapping, owner membership, and identical review evidence returns `alr
 
 ## Qualification boundary
 
-The former synthetic-outcome script did not exercise PostgreSQL and is not database qualification. The DB qualification script is intended only for an explicitly provisioned, isolated database named `ghm_qualification`, with a pre-existing synthetic active GHM business-role owner fixture. It checks the actual function, outcomes, privileges, atomicity, and transaction rollback. Its source is not permission to run it: no database test has been executed as part of this change.
+The former synthetic-outcome script did not exercise PostgreSQL and is not database qualification. The rollback-only DB qualification script is intended only for an explicitly provisioned, isolated database named `ghm_qualification`, with a pre-existing synthetic active GHM business-role owner fixture. It checks the actual function, outcomes, privileges, ordinary idempotency, and transaction rollback. It does not create or alter a founder-owned account and refuses to connect unless the explicit qualification acknowledgement and dedicated database-name guard are present. TLS certificate validation is strict.
 
-The script is deliberately rollback-only. It does not create or alter a founder-owned account and refuses to connect unless the explicit qualification acknowledgement and dedicated database-name guard are present. TLS certificate validation is strict. It does not prove partial-write failure atomicity or concurrent-session behavior. A separate design-only plan now specifies (A) an injected mid-write audit failure in a rollback-only transaction and (B) a two-session idempotency test on a disposable database. Test B is commit-bearing by design and must never be added to the rollback-only script. See `QUOTEFLOW_BUSINESS_PROVISIONING_EXTENDED_QUALIFICATION_PLAN.md`. Neither test has been run or authorized.
+The user has separately authorized qualification against the disposable, isolated, non-production `ghm_qualification` database, including required migrations and Tests A and B. Two separate source scripts implement the extended tests: (A) an injected mid-write audit failure in a rollback-only transaction and (B) a two-session idempotency test that intentionally commits and therefore requires immediate database discard/recreation, including on failure. Test B must never be added to the rollback-only script. See `QUOTEFLOW_BUSINESS_PROVISIONING_EXTENDED_QUALIFICATION_PLAN.md`. No database connection, migration, fixture creation, or database test has yet been executed as part of this source change.
 
 ## Remaining gates
 
-1. Run local non-database tests after pulling this source-only patch.
-2. Independently approve and provision the isolated qualification database and synthetic owner fixture.
-3. Separately design and authorize concurrency qualification and verify cleanup/rollback behavior.
-4. Reconcile the two founder-owned source accounts with exact Supabase provenance; never use email-only matching.
-5. Complete reset/re-enrollment qualification and separate legacy membership decisions.
-6. Reassess QuoteFlow integration only after those gates, using canonical GHM auth and membership.
+1. Pull the source-only harness and run local syntax, build, and non-database tests.
+2. Provision only the authorized disposable qualification database and synthetic owner fixture; apply the required migration chain there.
+3. Run the rollback-only DB qualification and Test A; stop on any failure.
+4. Run Test B only with its explicit discard acknowledgement, then immediately discard/recreate the qualification database even if the test fails.
+5. Review sanitized complete outputs before describing the capability as database-qualified.
+6. Independently reconcile the two founder-owned source accounts with exact Supabase provenance; never use email-only matching.
+7. Complete reset/re-enrollment qualification and separate legacy membership decisions.
+8. Reassess QuoteFlow integration only after those gates, using canonical GHM auth and membership.
 
 No production migration, database connection, production source export, membership translation, public Business API, credential/session migration, QuoteFlow runtime change, payment/DNS/routing/environment change, or cutover is authorized.
