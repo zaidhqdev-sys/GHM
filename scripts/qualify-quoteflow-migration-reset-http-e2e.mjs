@@ -4,6 +4,9 @@ import http from 'node:http';
 import { Pool } from 'pg';
 import 'dotenv/config';
 
+assert.notEqual(process.env.NODE_ENV, 'production', 'Refusing to run qualification with NODE_ENV=production');
+assert.equal(process.env.GHM_QUALIFICATION_ENV, 'non-production',
+  'Set GHM_QUALIFICATION_ENV=non-production only after verifying the target database is isolated');
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 assert(runtimeUrl && migratorUrl && runtimeUrl !== migratorUrl,
