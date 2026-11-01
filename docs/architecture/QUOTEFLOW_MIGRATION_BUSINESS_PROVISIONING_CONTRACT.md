@@ -37,7 +37,7 @@ A matching mapping, owner membership, and identical review evidence returns `alr
 
 The former synthetic-outcome script did not exercise PostgreSQL and is not database qualification. The DB qualification script is intended only for an explicitly provisioned, isolated database named `ghm_qualification`, with a pre-existing synthetic active GHM business-role owner fixture. It checks the actual function, outcomes, privileges, atomicity, and transaction rollback. Its source is not permission to run it: no database test has been executed as part of this change.
 
-The script is deliberately rollback-only. It does not create or alter a founder-owned account and refuses to connect unless the explicit qualification acknowledgement and dedicated database-name guard are present. TLS certificate validation is strict. It does not prove concurrent-session behavior; that remains a separate qualification item requiring a separately approved isolated-DB test plan.
+The script is deliberately rollback-only. It does not create or alter a founder-owned account and refuses to connect unless the explicit qualification acknowledgement and dedicated database-name guard are present. TLS certificate validation is strict. It does not prove partial-write failure atomicity or concurrent-session behavior. A separate design-only plan now specifies (A) an injected mid-write audit failure in a rollback-only transaction and (B) a two-session idempotency test on a disposable database. Test B is commit-bearing by design and must never be added to the rollback-only script. See `QUOTEFLOW_BUSINESS_PROVISIONING_EXTENDED_QUALIFICATION_PLAN.md`. Neither test has been run or authorized.
 
 ## Remaining gates
 
