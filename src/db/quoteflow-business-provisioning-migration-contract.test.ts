@@ -44,7 +44,7 @@ test('database qualification source is isolated, strict-TLS, and rollback-only',
   assert.match(script, /I_HAVE_CONFIRMED_ISOLATED_NON_PRODUCTION/);
   assert.match(script, /GHM_BUSINESS_QUALIFICATION_DATABASE.*ghm_qualification/);
   assert.match(script, /rejectUnauthorized: true/);
-  assert.match(script, /await migrator\.query\\('rollback'\\)/);
+  assert.match(script, /await migrator\.query\('rollback'\)/);
   assert.match(script, /concurrency: 'NOT TESTED'/);
   assert.doesNotMatch(script, /DATABASE_SSL.*false/);
 });
