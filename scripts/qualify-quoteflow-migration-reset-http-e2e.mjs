@@ -21,6 +21,9 @@ const enrollments = [];
 const oldSessions = [];
 const deliveries = [];
 let server;
+let firstAccount;
+let secondAccount;
+let ineligibleAccount;
 
 const { PostgresAuthPersistence } = await import('../dist/auth/foundation/persistence.js');
 const { createGhmAuthService } = await import('../dist/auth/ghm-auth-service.js');
@@ -110,13 +113,11 @@ try {
     const who = await runtime.query('select current_user');
     assert.equal(who.rows[0].current_user, 'ghm_runtime',
       'Runtime connection must authenticate as ghm_runtime');
-    const [first, second, ineligible] = await Promise.all([
-      provision(runtime, 'one', true),
-      provision(runtime, 'two', true),
-      provision(runtime, 'ineligible', false),
-    ]);
-    assert.notEqual(first.accountId, second.accountId);
-    assert.notEqual(first.approvedEmail, second.approvedEmail);
+    firstAccount = await provision(runtime, 'one', true);
+    secondAccount = await provision(runtime, 'two', true);
+    ineligibleAccount = await provision(runtime, 'ineligible', false);
+    assert.notEqual(firstAccount.accountId, secondAccount.accountId);
+    assert.notEqual(firstAccount.approvedEmail, secondAccount.approvedEmail);
   } finally {
     runtime.release();
   }
@@ -130,17 +131,9 @@ try {
   assert(address && typeof address === 'object');
   const base = `http://127.0.0.1:${address.port}`;
 
-  const first = {
-    accountId: accounts[0],
-    requestEmail: `qf-reset-${runId}-one@example.test`,
-    approvedEmail: `approved-one-${runId}@example.test`,
-  };
-  const second = {
-    accountId: accounts[1],
-    requestEmail: `qf-reset-${runId}-two@example.test`,
-    approvedEmail: `approved-two-${runId}@example.test`,
-  };
-  const ineligibleEmail = `qf-reset-${runId}-ineligible@example.test`;
+  const first = firstAccount;
+  const second = secondAccount;
+  const ineligibleEmail = ineligibleAccount.requestEmail;
 
   const unknown = await request(base, '/api/v1/auth/quoteflow-migration-reset/request', {
     email: `unknown-${runId}@example.test`,
