@@ -55,7 +55,7 @@ RETURNS ghm.commercial_payment_transaction
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = pg_catalog, ghm
-AS $
+AS $$
 DECLARE
   v_provider_code text;
   v_currency_code text;
