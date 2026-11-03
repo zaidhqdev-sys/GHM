@@ -219,7 +219,7 @@ test('Commercial payment preparation rejects invalid idempotency keys before ope
 
 test('Commercial payment preparation rejects idempotency reuse by another actor', async () => {
   const existing = {
-    id: 71, business_id: businessId, subscription_id: 21, price_id: 41, initiated_by: 8,
+    id: 71, business_id: businessId, subscription_id: 21, price_id: 41, initiated_by: 8, provider_code: 'payfast',
     attempt_status: 'pending_checkout', amount_minor_units: 19900, currency_id: 1,
     billing_interval: 'month', idempotency_key: 'idem-key-123', checkout_reference: null,
     expires_at: null, failure_code: null, failure_message: null,
@@ -262,7 +262,7 @@ test('Commercial payment preparation resolves price and persists a provider-neut
       }
       if (sql.includes('INSERT INTO ghm.commercial_payment_attempt')) {
         return { rowCount: 1, rows: [{
-          id: 71, business_id: businessId, subscription_id: 21, price_id: 41, initiated_by: userId,
+          id: 71, business_id: businessId, subscription_id: 21, price_id: 41, initiated_by: userId, provider_code: 'payfast',
           attempt_status: 'pending_checkout', amount_minor_units: 19900, currency_id: 1,
           billing_interval: 'month', idempotency_key: 'idem-key-123', checkout_reference: null,
           expires_at: new Date(preparedAt.getTime() + 15 * 60000), failure_code: null, failure_message: null,
