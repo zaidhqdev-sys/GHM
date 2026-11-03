@@ -167,6 +167,31 @@ try {
       )
     `, [fixture.attemptId])).rows[0];
     if (!result?.id || result.transaction_status !== 'succeeded') throw new Error('PayFast settlement function did not create succeeded transaction');
+
+    const duplicate = (await provider.query(`
+      SELECT * FROM ghm.commercial_apply_payfast_payment_result(
+        $1, 'qualification-event-1', 'payment_complete',
+        repeat('b', 64), 'payment', 'succeeded', 'PF-QUAL-1', now(), '{"qualification":true}'::jsonb
+      )
+    `, [fixture.attemptId])).rows[0];
+    if (Number(duplicate?.id) !== Number(result.id)) throw new Error('Identical provider event retry was not idempotent');
+
+    await provider.query('SAVEPOINT terminal_attempt_probe');
+    let terminalRejected = false;
+    try {
+      await provider.query(`
+        SELECT * FROM ghm.commercial_apply_payfast_payment_result(
+          $1, 'qualification-event-new-after-success', 'payment_complete',
+          repeat('e', 64), 'payment', 'succeeded', 'PF-QUAL-2', now(), '{"qualification":true}'::jsonb
+        )
+      `, [fixture.attemptId]);
+    } catch (error) {
+      terminalRejected = String(error?.message).includes('commercial payment attempt is not payable');
+      await provider.query('ROLLBACK TO SAVEPOINT terminal_attempt_probe');
+    }
+    await provider.query('RELEASE SAVEPOINT terminal_attempt_probe');
+    if (!terminalRejected) throw new Error('New provider event unexpectedly settled a terminal attempt');
+    console.log('PROVIDER EVENT IDEMPOTENCY AND TERMINAL ATTEMPT GUARD PASS');
     const state = (await provider.query('SELECT attempt_status FROM ghm.commercial_payment_attempt WHERE id = $1', [fixture.attemptId])).rows[0];
     if (state.attempt_status !== 'succeeded') throw new Error(`Payment attempt state was not advanced: ${state.attempt_status}`);
     const subscription = (await provider.query('SELECT lifecycle_status FROM ghm.commercial_subscription WHERE id = $1', [fixture.subscriptionId])).rows[0];
