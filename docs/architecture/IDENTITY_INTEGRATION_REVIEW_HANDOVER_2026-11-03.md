@@ -558,3 +558,46 @@ Implementation started on isolated branch `security/payfast-provider-binding-202
 - Added `providerCode: 'payfast'` to that fixture in commit `9634dd9b2628e826dfbea9fdbc32a49e267cecda`.
 - Corrected run `41739138801` passed all quality steps on commit `9634dd9b2628e826dfbea9fdbc32a49e267cecda`: build; all migrations on disposable PostgreSQL 18; Business Identity and QuoteFlow migration qualification; full database-backed test suite; migration audit policy tests; runtime boundary verification.
 - This is isolated CI evidence only. It does not resolve the known shared `ghm_runtime` direct-EXECUTE settlement trust boundary, nor historical NULL provider_code reconciliation. PR #205 remains draft and must not be merged/treated as production-approved.
+
+
+## Next P0 trust-boundary design — dedicated provider settlement execution (2026-11-04)
+
+Read-only trace after the green CI run confirms:
+- `src/db/pool.ts` creates the application's only PostgreSQL pool from `config.databaseUrl` (`DATABASE_URL`).
+- `src/resources/commercial/provider-boundary.ts` defaults to that shared pool and calls `ghm.commercial_apply_payment_result`.
+- `src/config.ts` has no separate provider database connection configuration.
+- The migration grants the SECURITY DEFINER settlement function to `ghm_runtime`.
+- The PayFast ITN route is registered in the same ordinary HTTP application, so merely adding a second pool variable to the same process would not create a strong process/secret boundary: application code running in that process could potentially access the provider credential.
+
+### Preferred architecture to evaluate
+Use a **separate provider callback service/process** (or isolated worker) with its own deployment identity and dedicated database login, not a second secret exposed to the general API process.
+
+- General API service: retains `ghm_runtime`; revoke its EXECUTE on the settlement function. It can prepare attempts and create PayFast checkout, but cannot settle.
+- Provider callback service: exclusively receives PayFast ITN, validates source IP/merchant/signature/amount/server confirmation, then calls a narrowly scoped SECURITY DEFINER function through a dedicated login (e.g. `ghm_payment_provider`).
+- Dedicated login: NOLOGIN owner separation; grant only CONNECT, schema USAGE, and EXECUTE on the one provider-specific settlement function. No direct table DML/SELECT beyond what is strictly required. The SECURITY DEFINER function owner remains `ghm_schema_owner`; its fixed search_path and explicit validation are mandatory.
+- Prefer a PayFast-specific SQL function with no caller-supplied provider parameter (it internally binds `payfast`) rather than a generic provider argument. Keep the attempt.provider_code comparison in SQL.
+- Do not put the provider DB URL in the general API service's environment. Store it only in the callback service's secret configuration. Keep DB credential creation/rotation in controlled infrastructure operations, not migrations with hard-coded passwords.
+- General API's ordinary checkout route may remain service-authenticated, but it must not have access to settlement credentials or settlement function EXECUTE.
+
+### Qualification required for the dedicated identity
+- `ghm_runtime` cannot execute either generic or PayFast settlement functions.
+- The provider login can execute only the PayFast-specific function; cannot read/write provider event, attempt, transaction, subscription, commercial event, or founding allocation tables directly.
+- Ordinary API connection pool cannot invoke settlement even when supplied a forged `providerCode = 'payfast'`.
+- Callback service verifies PayFast's full ITN requirements before function invocation; invalid signature/source/merchant/amount/server confirmation never reaches SQL.
+- Valid PayFast ITN settles only a stored `provider_code = 'payfast'` attempt.
+- Duplicate event idempotency and payload-hash conflict behavior remain intact under concurrent callbacks.
+- Credential rotation/revocation and service-to-service ingress restrictions are documented and tested.
+
+### Historical attempts — safe inventory only
+The nullable migration intentionally leaves pre-existing attempts NULL. Before backfill, run a strictly read-only inventory against an explicitly approved target and classify:
+- count by `attempt_status`, created date, and provider_code;
+- pending/unexpired attempts versus expired/terminal attempts;
+- any provider event/transaction evidence linked to each attempt;
+- checkout/provider history evidence, where available.
+
+Do not backfill every NULL row to PayFast solely because PayFast is currently the only adapter in this candidate. Backfill only rows with trustworthy historical evidence. Unknown pending attempts should be quarantined/expired via a separately approved process; unknown terminal rows can remain NULL if no later callback can validly settle them. NOT NULL should wait until all retained rows have a defensible provider assignment or have been archived/handled.
+
+### Newly identified application edge case to verify
+The idempotency replay branch in `preparePayment` reads `provider_code` and maps the existing attempt. A pre-migration attempt replayed by idempotency key may have NULL provider_code; ensure the repository fails closed with an explicit reconciliation conflict instead of returning a runtime null that violates the narrowed TypeScript `'payfast'` contract. Add a regression test before calling the slice fully source-reviewed.
+
+No provider service, second DB login, credentials, deployment, historical-row query, backfill or environment mutation was created or executed. This is an architecture proposal and read-only source trace only.
