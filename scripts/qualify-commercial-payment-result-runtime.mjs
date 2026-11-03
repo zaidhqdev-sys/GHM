@@ -85,9 +85,9 @@ try {
     `, [business.id, version.id, price.id])).rows[0];
     const attempt = (await setup.query(`
       INSERT INTO ghm.commercial_payment_attempt (
-        business_id, subscription_id, price_id, initiated_by, attempt_status,
+        business_id, subscription_id, price_id, initiated_by, provider_code, attempt_status,
         amount_minor_units, currency_id, billing_interval, idempotency_key
-      ) VALUES ($1, $2, $3, $4, 'pending_payment', 19900, $5, 'month', $6)
+      ) VALUES ($1, $2, $3, $4, 'payfast', 'pending_payment', 19900, $5, 'month', $6)
       RETURNING id
     `, [business.id, subscription.id, price.id, account.id, currency.id, `result-${Date.now()}`])).rows[0];
     fixture = { accountId:Number(account.id), businessId:Number(business.id), planId:Number(plan.id), versionId:Number(version.id), priceId:Number(price.id), subscriptionId:Number(subscription.id), attemptId:Number(attempt.id) };
