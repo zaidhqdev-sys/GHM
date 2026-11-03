@@ -71,15 +71,15 @@ END;
 $$;
 
 ALTER FUNCTION ghm.commercial_apply_payfast_payment_result(
-  bigint,text,text,text,text,text,text,text,timestamptz,jsonb
+  bigint,text,text,text,text,text,text,timestamptz,jsonb
 ) OWNER TO ghm_schema_owner;
 
 REVOKE ALL ON FUNCTION ghm.commercial_apply_payfast_payment_result(
-  bigint,text,text,text,text,text,text,text,timestamptz,jsonb
+  bigint,text,text,text,text,text,text,timestamptz,jsonb
 ) FROM PUBLIC, ghm_runtime;
 
 GRANT EXECUTE ON FUNCTION ghm.commercial_apply_payfast_payment_result(
-  bigint,text,text,text,text,text,text,text,timestamptz,jsonb
+  bigint,text,text,text,text,text,text,timestamptz,jsonb
 ) TO ghm_payment_provider;
 
 COMMIT;
