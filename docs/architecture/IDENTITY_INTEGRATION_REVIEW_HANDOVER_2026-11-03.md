@@ -132,3 +132,28 @@ Read-only sample review at candidate SHA `8739b0bf24ef2619f63a14d06a1db3f6413833
 
 ### Resume point
 Next read-only pass: remaining resource families and Connect service routes, especially review/trust-score, category/assignment, business engagement, opportunity requirements, and any internal Connect adapter that calls multiple services. Preserve the existing access-token revocation caveat and production configuration checks. No code, database, CI, Render, or production changes were made in this pass.
+
+
+## Remaining resource families and Connect service review (2026-11-03)
+
+Read-only review at candidate SHA `8739b0bf24ef2619f63a14d06a1db3f64138330c`. Inspected review, trust-score, business-category, business-engagement, opportunity-requirements routers/services/repositories, plus Connect service router, assertion/replay, trusted-request context, governed-operation resolution, authorization binding, and opportunity-participant adapter/tests.
+
+### Findings
+- Review creation is customer-role gated in the service and records reviewer account from `context.userId`; repository checks target eligibility and writes the review under that identity. Public review reads expose only approved reviews for active, approved Businesses. Moderation is admin-gated and transactional.
+- Trust-score public reads filter to active, verified, approved Businesses. Authenticated reads expose public scores plus non-public scores only to active owner/administrator members. Calculation delegates to `ghm.calculate_business_trust_score(account_id, business_id)`; the SQL function's internal authorization still needs separate migration-level confirmation before treating calculation as fully cleared.
+- Business-category assignment reads are tenant-scoped; assignment and primary-category changes require owner/administrator membership and active/selectable categories.
+- Business-engagement events are attributed to `context.userId` and can only be recorded against an active, verified, approved Business. The current implementation does not require the caller to be a Business member; this appears consistent with customer engagement analytics, but event types/context must remain non-sensitive and rate-limited to prevent analytics spam.
+- Opportunity requirements reads are limited to creator, tenant members, or opportunities with authenticated/public visibility. Replacement is restricted to creator or owner/administrator of the owning Business and validates active/selectable capability IDs.
+- Connect service endpoint rejects browser-originated requests, verifies short-lived ES256 service assertions, consumes a one-time replay identifier, confirms integration lifecycle is active, resolves an existing Supabase identity mapping without bootstrap, reloads current account status/role, checks the canonical resource registry, and dispatches through capability-specific adapters. Integration principal does not become the end-user principal.
+- Connect opportunity-participant adapter checks that authorized resource/capability/operation agree before dispatch. Input parsers use allow-lists and validate IDs/types. Existing tests exercise the route with injected identity/account/assertion/replay dependencies.
+- No confirmed cross-tenant access or end-user identity substitution found in these reviewed paths.
+
+### Follow-up / limitations
+- Inspect SQL definition and grants for `ghm.calculate_business_trust_score` to confirm caller/business membership checks and runtime execution scope.
+- Review all Connect capability adapters and the governed operation map against the resource registry, especially project quotes, quotes, enquiries, and opportunities; this pass inspected the central dispatch and participant adapter but not every adapter implementation in depth.
+- Business-engagement event creation has no tenant membership requirement; confirm that all allowed event types and context fields are suitable for any authenticated customer and cannot carry secrets/PII. Add abuse controls if operational telemetry shows spam risk.
+- Opportunity requirements deliberately allow authenticated/public opportunity visibility; confirm this matches the intended disclosure policy.
+- No runtime or production config verification was performed.
+
+### Resume point
+Next: inspect trust-score calculation SQL function/grants, then complete adapter-by-adapter Connect capability authorization and compare all governed capabilities with registered resource operations. Continue read-only. No code, database, CI, Render, or production changes were made.
