@@ -272,6 +272,25 @@ try {
       await migrator.query('delete from ghm.business_membership where account_id = any($1::bigint[]) or business_id in (select id from ghm.business where slug like $2)', [[ownerId, disabledOwnerId, alternateOwnerId, secondBusinessOwnerId].filter(Boolean), `${slugBase}%`]);
       await migrator.query('delete from ghm.business where slug like $1', [`${slugBase}%`]);
       await migrator.query('delete from ghm.account_identity where id = any($1::bigint[])', [[ownerId, disabledOwnerId, alternateOwnerId, secondBusinessOwnerId].filter(Boolean)]);
+
+      // Verify fixture removal before committing cleanup. If any residue remains,
+      // throw so the cleanup transaction rolls back and the operator gets an explicit failure.
+      const cleanupVerification = await migrator.query(`
+        select
+          (select count(*)::int from ghm.account_identity where id = any($1::bigint[])) as account_count,
+          (select count(*)::int from ghm.business where slug like $2) as business_count,
+          (select count(*)::int from ghm.business_membership where account_id = any($1::bigint[]) or business_id in (select id from ghm.business where slug like $2)) as membership_count,
+          (select count(*)::int from ghm.business_external_mapping where provider=$3 and external_business_id like $4) as mapping_count,
+          (select count(*)::int from ghm.quoteflow_migration_business_provisioning_audit where provider=$3 and external_business_id like $4) as audit_count
+      `, [
+        [ownerId, disabledOwnerId, alternateOwnerId, secondBusinessOwnerId].filter(Boolean),
+        `${slugBase}%`,
+        provider,
+        `qualify-quoteflow-org-%${runId}%`,
+      ]);
+      assert.deepEqual(cleanupVerification.rows[0], {
+        account_count: 0, business_count: 0, membership_count: 0, mapping_count: 0, audit_count: 0,
+      }, 'All synthetic QuoteFlow qualification fixtures must be absent before cleanup commits');
       await migrator.query('commit');
     }
   } catch (error) {
