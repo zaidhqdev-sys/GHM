@@ -64,7 +64,7 @@ const transactionStatus = (status: string): ApplyCommercialPaymentResultInput['t
 export class PayfastHttpBoundary {
   constructor(
     private readonly transactionPool: Pick<Pool, 'query'>,
-    private readonly providerBoundary: CommercialProviderBoundary,
+    private readonly providerBoundary?: CommercialProviderBoundary,
     private readonly validateItn: PayfastItnValidator = validatePayfastItnWithProvider,
   ) {}
 
@@ -111,6 +111,7 @@ export class PayfastHttpBoundary {
     const providerPaymentId = verified.providerPaymentId;
     if (!providerPaymentId || !/^[!-~]{1,200}$/.test(providerPaymentId)) throw new Error('Payfast ITN provider payment identifier missing or invalid');
     await this.validateItn(fields, config.payfast.environment);
+    if (!this.providerBoundary) throw new Error('Payfast settlement is available only through the isolated callback service');
     return this.providerBoundary.applyCommercialPaymentResult({
       paymentAttemptId, providerCode: 'payfast', externalProviderEventId: providerPaymentId,
       providerEventType: 'itn', providerPayloadHash: payloadHash(fields), transactionKind: 'payment',
