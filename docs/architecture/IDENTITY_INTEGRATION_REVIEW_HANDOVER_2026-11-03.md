@@ -107,3 +107,28 @@ Reviewed `src/auth/authorization.ts`, `src/resources/registry.ts`, `src/auth/res
 
 ### Updated review status
 No confirmed bypass was found in the inspected role/resource, browser-origin/cookie, or recovery-delivery paths. Remaining access-token revocation caveat remains as documented above (persisted session revocation does not invalidate an already-issued access JWT before its 15-minute expiry). This remains source-level review at the recorded candidate SHA, not deployment verification. Next: inspect full route authorization/tenant scoping for the broader resource surface and confirm relevant production edge/configuration separately. Continue read-only; no code or environment changes.
+
+
+## Broader resource-route and tenant-scope review (2026-11-03)
+
+Read-only sample review at candidate SHA `8739b0bf24ef2619f63a14d06a1db3f64138330c`. Inspected route composition and authorization patterns in `src/http/app.ts`, customer, enquiry, opportunity, opportunity-participant, project-quote, quote, support-request, notification, saved-business, campaign, business-offering, business-capability and storage routers; then traced representative repositories for campaign, opportunity participants, enquiry, notifications, support requests, saved businesses, customers, opportunities, project quotes, business hours, and storage service/tenant tests.
+
+### Positive findings
+- `app.ts` composes resource routers with the same resource-auth middleware and per-route registered-operation/role gates. Public read routes are separately registered and use public projections/services.
+- Tenant-owned Business Hours reads use `withTenantTransaction`; writes additionally require owner/administrator membership and execute the database replacement function. This matches the earlier tenant-boundary pattern.
+- Enquiry creation derives customer identity from `context.userId`, checks the target Business is eligible and that the customer is not improperly acting as the target owner, and writes the opportunity/enquiry/notification within a transaction. Received-enquiry access checks active owner membership and lead-management entitlement.
+- Campaign reads are scoped to the caller's active Business membership; writes delegate to database functions that accept the authenticated account ID, with membership/management checks in the SQL contract.
+- Opportunity creation binds creator to `context.userId`; optional owner Business requires active owner/administrator membership. Participant creation requires opportunity creator or owning Business manager authority, validates target account/business existence and eligibility, and records `created_by=context.userId`. Participant updates are deliberately disabled pending qualified transition authority.
+- Support requests bind account ownership to `context.userId`; customer creation/replies require customer role and account ownership, while administrative read/status/reply paths explicitly require admin role.
+- Customer and saved-business records are scoped to `context.userId` except explicit admin access. Notification service rejects non-admin attempts to create notifications for another account; repository reads/updates are scoped to the authenticated account.
+- Storage routes derive caller identity from `req.authContext`, resolve stored metadata before access/delete, and delegate authorization to tenant-aware storage service. Existing tenant-auth tests cover unauthenticated requests and cross-tenant upload/completion/access/delete denials.
+- No confirmed cross-tenant read/write or account-ID substitution vulnerability was found in the sampled routes/repositories.
+
+### Scope caveats / follow-up
+- This was a representative sample, not a line-by-line audit of every route and SQL function. The remaining routers (including review, trust-score, category/assignment, business engagement, opportunity requirements, and Connect service endpoints) still need focused checks.
+- Some resources intentionally permit broad role-level access in the route registry, with decisive ownership/tenant scoping deferred to service/repository/database layers. Future review should continue tracing the full call chain rather than treating route gates alone as tenant authorization.
+- Opportunity participant list visibility is intentionally opportunity-scoped; confirm product/privacy expectations for exposing the other participants on an opportunity to every account/business participant. No unauthorized access was demonstrated, but the policy merits explicit product confirmation.
+- Confirm production behavior for database functions, RLS/grants, and storage authorization through approved non-production qualification; this source review does not prove deployed configuration.
+
+### Resume point
+Next read-only pass: remaining resource families and Connect service routes, especially review/trust-score, category/assignment, business engagement, opportunity requirements, and any internal Connect adapter that calls multiple services. Preserve the existing access-token revocation caveat and production configuration checks. No code, database, CI, Render, or production changes were made in this pass.
