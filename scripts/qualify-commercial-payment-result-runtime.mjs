@@ -119,7 +119,7 @@ try {
     }
     const grants = (await provider.query(`
       SELECT
-        has_function_privilege(current_user, 'ghm.commercial_apply_payfast_payment_result(bigint,text,text,text,text,text,text,text,timestamptz,jsonb)', 'EXECUTE') AS payfast_execute,
+        has_function_privilege(current_user, 'ghm.commercial_apply_payfast_payment_result(bigint,text,text,text,text,text,text,timestamptz,jsonb)', 'EXECUTE') AS payfast_execute,
         has_function_privilege(current_user, 'ghm.commercial_apply_payment_result(bigint,text,text,text,text,text,text,text,timestamptz,jsonb)', 'EXECUTE') AS generic_execute,
         has_table_privilege(current_user, 'ghm.commercial_payment_attempt', 'SELECT') AS attempt_select,
         has_table_privilege(current_user, 'ghm.commercial_payment_transaction', 'INSERT') AS transaction_insert
