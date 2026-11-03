@@ -99,6 +99,20 @@ try {
   const runtime = await runtimePool.connect();
   try {
     await runtime.query('BEGIN');
+    let mismatchRejected = false;
+    try {
+      await runtime.query(`
+        SELECT * FROM ghm.commercial_apply_payment_result(
+          $1, 'other_provider', 'qualification-event-mismatch', 'payment_complete',
+          repeat('c', 64), 'payment', 'succeeded', 'OTHER-1', now(), '{"qualification":true}'::jsonb
+        )
+      `, [fixture.attemptId]);
+    } catch (error) {
+      mismatchRejected = String(error?.message).includes('provider does not match attempt');
+    }
+    if (!mismatchRejected) throw new Error('Provider mismatch was not rejected by the database boundary');
+    console.log('RUNTIME COMMERCIAL PAYMENT PROVIDER MISMATCH REJECTION PASS');
+
     const result = (await runtime.query(`
       SELECT * FROM ghm.commercial_apply_payment_result(
         $1, 'payfast', 'qualification-event-1', 'payment_complete',
