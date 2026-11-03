@@ -198,3 +198,20 @@ test('Payfast ITN rejects an attempt bound to another provider before provider c
   assert.equal(confirmed, false);
   assert.equal(applied, false);
 });
+
+
+test('Payfast checkout rejects an attempt bound to another provider', async () => {
+  const boundary = new PayfastHttpBoundary(
+    {
+      query: async () => ({
+        command: 'SELECT',
+        rowCount: 1,
+        oid: 0,
+        fields: [],
+        rows: [{ id: 42, provider_code: 'other_provider', amount_minor_units: 19900, attempt_status: 'pending_checkout', currency_code: 'ZAR', business_name: 'Demo' }],
+      }),
+    },
+    { applyCommercialPaymentResult: async () => ({} as never) },
+  );
+  await assert.rejects(boundary.createCheckout(42), /provider mismatch/);
+});
