@@ -239,3 +239,34 @@ Reviewed at candidate SHA `8739b0bf24ef2619f63a14d06a1db3f64138330c`: customer, 
 
 ### Resume point
 Next inspect other SECURITY DEFINER functions that accept caller/account/verifier IDs and claim to enforce authorization internally, especially quote/project/opportunity lifecycle transitions and administrative moderation. Compare every such parameter to trusted session identity and active account status. Then finish the resource registry ↔ HTTP ↔ Connect operation matrix. Continue read-only; no source, CI, DB, Render or production changes were made.
+
+
+## SECURITY DEFINER caller-identity parameter audit (2026-11-03)
+
+Continued the read-only SQL review at candidate SHA `8739b0bf24ef2619f63a14d06a1db3f64138330c`. Examined the Business Capability verification transition, campaign create/update functions and reconciliation migration, project quote grants, opportunity core grants, review schema/grants, commercial payment-result boundary, founder bootstrap function, and the relevant application repositories where source paths were available.
+
+### Confirmed pattern beyond Business Capability
+- `ghm.create_campaign(p_account_id, p_business_id, p_title)` and `ghm.update_campaign(p_account_id, p_campaign_id, p_title, p_status)` are SECURITY DEFINER, owned by `ghm_schema_owner`, revoke PUBLIC execution and grant execution to `ghm_runtime`.
+- Both use caller-supplied `p_account_id` to check active owner/administrator membership. Neither binds that parameter to a trusted session principal nor checks the account's active status as part of the function.
+- Application campaign repository passes `context.userId`, so ordinary HTTP callers cannot choose this value through the reviewed service path. But a runtime DB caller can invoke the function with another manager's account ID. This is the same class of database caller-identity gap as the Business Capability verifier function.
+- Treat this as a **confirmed database authorization defense-in-depth gap** in both campaign functions. No direct unauthenticated HTTP exploit has been demonstrated.
+
+### Other reviewed SQL boundaries
+- Project quote migration grants column-level INSERT/UPDATE (including status) to runtime; the repository/service layer provides the object-level checks and transaction semantics reviewed previously. The inspected transition-privilege reconciliation adds only the underlying project status primitive. This is a different architecture from the SECURITY DEFINER caller-ID functions and needs continued app-level enforcement; do not infer database-enforced identity from grants alone.
+- Opportunity core migration grants runtime INSERT/UPDATE on opportunity rows; creator/owner scoping is enforced in application service/repository paths reviewed earlier. No separate SQL transition function was found in that migration.
+- Review schema establishes moderator attribution columns and constraints, but the initial review migration itself does not establish a SECURITY DEFINER moderation function. Moderation is application/admin-gated in the reviewed service path.
+- Commercial payment-result SECURITY DEFINER function takes provider event/payment attempt data, not a user account/verifier ID. It is a provider integration trust boundary and should be audited separately for who can invoke it and whether the caller is restricted to the trusted provider callback path.
+- Founder system-admin bootstrap function is explicitly revoked from both PUBLIC and `ghm_runtime`; it is not an ordinary runtime callable path.
+
+### Important distinction
+These findings do not establish that the app's authenticated HTTP paths allow account impersonation: those paths pass verified `context.userId`. They establish that the database functions themselves trust caller-supplied account identity and therefore are not independent identity boundaries when executable by the shared runtime database role. A compromised runtime credential, SQL injection, or unintended internal call site could select another account ID. This should be fixed consistently rather than one function at a time.
+
+### Recommended remediation design (not applied)
+- Prefer a transaction-local authenticated principal set by trusted server code on the same checked-out connection (e.g. a validated account ID set with `SET LOCAL` / transaction-local config), with functions reading only that context and rejecting missing/invalid identity. Ensure runtime callers cannot set arbitrary identity through a separate untrusted code path; a custom GUC alone is not cryptographic proof, so its trust derives from the tightly controlled application transaction boundary.
+- Alternatively, move sensitive transitions behind narrowly scoped SQL procedures whose identity derives from a verifiable database principal or another non-forgeable credential, and revoke direct runtime execution of the parameterized versions.
+- Check active account status and current role inside the function in addition to identity binding.
+- Add negative DB qualification proving a runtime caller cannot pass a different administrator/account ID to impersonate them. Include business capability verification and both campaign functions.
+- Any remediation requires a new migration, app transaction-context plumbing, test/qualification, and explicit approval. No code or migration change was made.
+
+### Resume point
+Next inventory every SECURITY DEFINER function across all migrations, classify by caller type (user, provider, migration/admin), execution grants, identity parameters, and application call site. Prioritize other user-attributed functions such as campaign and verification, then payment-result provider boundary. No CI, DB, Render, or production changes in this pass.
