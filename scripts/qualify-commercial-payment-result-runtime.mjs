@@ -3,12 +3,14 @@ import 'dotenv/config';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
-if (!runtimeUrl || !migratorUrl) throw new Error('Missing GHM runtime/migrator database URLs');
-if (runtimeUrl === migratorUrl) throw new Error('Runtime and migrator connections must be distinct');
+const providerUrl = process.env.GHM_PAYMENT_PROVIDER_DATABASE_URL;
+if (!runtimeUrl || !migratorUrl || !providerUrl) throw new Error('Missing GHM runtime/migrator/provider database URLs');
+if (new Set([runtimeUrl, migratorUrl, providerUrl]).size !== 3) throw new Error('Runtime, migrator and provider connections must be distinct');
 
 const ssl = { rejectUnauthorized: false };
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
 const migratorPool = new Pool({ connectionString: migratorUrl, ssl });
+const providerPool = new Pool({ connectionString: providerUrl, ssl });
 
 const expectPermissionDenied = async (work, label) => {
   try { await work(); } catch (error) {
@@ -35,8 +37,8 @@ try {
         'EXECUTE'
       ) AS execute_granted
     `)).rows[0];
-    if (!privilege.execute_granted) throw new Error('Runtime lacks commercial payment result function EXECUTE privilege');
-    console.log('COMMERCIAL PAYMENT RESULT FUNCTION EXECUTE PASS');
+    if (privilege.execute_granted) throw new Error('Runtime unexpectedly has commercial payment result function EXECUTE privilege');
+    console.log('RUNTIME COMMERCIAL PAYMENT RESULT EXECUTE DENIAL PASS');
 
     await expectPermissionDenied(
       () => runtime.query("INSERT INTO ghm.commercial_provider_event (provider_code, provider_event_id, event_type, payload_hash) VALUES ('payfast', 'qualification-direct', 'direct', repeat('a', 64))"),
@@ -98,39 +100,68 @@ try {
 
   const runtime = await runtimePool.connect();
   try {
-    await runtime.query('BEGIN');
-    let mismatchRejected = false;
-    await runtime.query('SAVEPOINT provider_mismatch_probe');
-    try {
-      await runtime.query(`
+    await expectPermissionDenied(
+      () => runtime.query(`
         SELECT * FROM ghm.commercial_apply_payment_result(
-          $1, 'other_provider', 'qualification-event-mismatch', 'payment_complete',
+          $1, 'payfast', 'qualification-runtime-forbidden', 'payment_complete',
+          repeat('d', 64), 'payment', 'succeeded', 'FORBIDDEN', now(), '{"qualification":true}'::jsonb
+        )
+      `, [fixture.attemptId]),
+      'RUNTIME SETTLEMENT EXECUTE DENIAL',
+    );
+  } finally { runtime.release(); }
+
+  const provider = await providerPool.connect();
+  try {
+    const identity = (await provider.query('SELECT session_user, current_user')).rows[0];
+    if (identity.session_user !== 'ghm_payment_provider' || identity.current_user !== 'ghm_payment_provider') {
+      throw new Error(`Unexpected provider identity: ${JSON.stringify(identity)}`);
+    }
+    const grants = (await provider.query(`
+      SELECT
+        has_function_privilege(current_user, 'ghm.commercial_apply_payfast_payment_result(bigint,text,text,text,text,text,text,text,timestamptz,jsonb)', 'EXECUTE') AS payfast_execute,
+        has_function_privilege(current_user, 'ghm.commercial_apply_payment_result(bigint,text,text,text,text,text,text,text,timestamptz,jsonb)', 'EXECUTE') AS generic_execute,
+        has_table_privilege(current_user, 'ghm.commercial_payment_attempt', 'SELECT') AS attempt_select,
+        has_table_privilege(current_user, 'ghm.commercial_payment_transaction', 'INSERT') AS transaction_insert
+    `)).rows[0];
+    if (!grants.payfast_execute || grants.generic_execute || grants.attempt_select || grants.transaction_insert) {
+      throw new Error(`Unexpected provider privilege set: ${JSON.stringify(grants)}`);
+    }
+    console.log('PROVIDER IDENTITY AND LEAST-PRIVILEGE MATRIX PASS');
+
+    await provider.query('BEGIN');
+    await provider.query('SAVEPOINT provider_mismatch_probe');
+    let mismatchRejected = false;
+    try {
+      await provider.query(`
+        SELECT * FROM ghm.commercial_apply_payfast_payment_result(
+          $1, 'qualification-event-mismatch', 'payment_complete',
           repeat('c', 64), 'payment', 'succeeded', 'OTHER-1', now(), '{"qualification":true}'::jsonb
         )
       `, [fixture.attemptId]);
     } catch (error) {
       mismatchRejected = String(error?.message).includes('provider does not match attempt');
-      await runtime.query('ROLLBACK TO SAVEPOINT provider_mismatch_probe');
+      await provider.query('ROLLBACK TO SAVEPOINT provider_mismatch_probe');
     }
-    await runtime.query('RELEASE SAVEPOINT provider_mismatch_probe');
-    if (!mismatchRejected) throw new Error('Provider mismatch was not rejected by the database boundary');
-    console.log('RUNTIME COMMERCIAL PAYMENT PROVIDER MISMATCH REJECTION PASS');
+    await provider.query('RELEASE SAVEPOINT provider_mismatch_probe');
+    if (!mismatchRejected) throw new Error('Provider-specific SQL boundary did not reject a non-PayFast attempt');
+    console.log('PROVIDER-SPECIFIC SQL PROVIDER BINDING PASS');
 
-    const result = (await runtime.query(`
-      SELECT * FROM ghm.commercial_apply_payment_result(
-        $1, 'payfast', 'qualification-event-1', 'payment_complete',
+    const result = (await provider.query(`
+      SELECT * FROM ghm.commercial_apply_payfast_payment_result(
+        $1, 'qualification-event-1', 'payment_complete',
         repeat('b', 64), 'payment', 'succeeded', 'PF-QUAL-1', now(), '{"qualification":true}'::jsonb
       )
     `, [fixture.attemptId])).rows[0];
-    if (!result?.id || result.transaction_status !== 'succeeded') throw new Error('Commercial payment result function did not create succeeded transaction');
-    const state = (await runtime.query('SELECT attempt_status FROM ghm.commercial_payment_attempt WHERE id = $1', [fixture.attemptId])).rows[0];
+    if (!result?.id || result.transaction_status !== 'succeeded') throw new Error('PayFast settlement function did not create succeeded transaction');
+    const state = (await provider.query('SELECT attempt_status FROM ghm.commercial_payment_attempt WHERE id = $1', [fixture.attemptId])).rows[0];
     if (state.attempt_status !== 'succeeded') throw new Error(`Payment attempt state was not advanced: ${state.attempt_status}`);
-    const subscription = (await runtime.query('SELECT lifecycle_status FROM ghm.commercial_subscription WHERE id = $1', [fixture.subscriptionId])).rows[0];
+    const subscription = (await provider.query('SELECT lifecycle_status FROM ghm.commercial_subscription WHERE id = $1', [fixture.subscriptionId])).rows[0];
     if (subscription.lifecycle_status !== 'active') throw new Error(`Subscription state was not activated: ${subscription.lifecycle_status}`);
-    console.log('RUNTIME COMMERCIAL PAYMENT RESULT APPLY PASS');
-    await runtime.query('ROLLBACK');
-    console.log('RUNTIME COMMERCIAL PAYMENT RESULT ROLLBACK PASS');
-  } finally { runtime.release(); }
+    console.log('DEDICATED PROVIDER SETTLEMENT PASS');
+    await provider.query('ROLLBACK');
+    console.log('PROVIDER SETTLEMENT ROLLBACK PASS');
+  } finally { provider.release(); }
 } finally {
   if (fixture) {
     const cleanup = await migratorPool.connect();
@@ -149,5 +180,5 @@ try {
     } catch (error) { await cleanup.query('ROLLBACK'); throw error; }
     finally { cleanup.release(); }
   }
-  await runtimePool.end(); await migratorPool.end();
+  await runtimePool.end(); await migratorPool.end(); await providerPool.end();
 }
