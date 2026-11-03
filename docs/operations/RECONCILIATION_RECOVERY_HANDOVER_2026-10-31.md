@@ -209,3 +209,30 @@ Current checkout raw SHA-256 values:
 - **Finding:** both migrations pass canonical checksum reconciliation. The previous raw SHA-256 differences were due to line-ending/byte representation; they are not evidence of migration drift or corruption.
 - No migration, qualification script, ledger edit, grant, or database write was run as part of this check.
 - Next work is no longer checksum investigation. Review the guarded integration-branch qualification script and its cleanup/rollback behavior against the shared sandbox safety boundary before deciding whether to execute the previously approved synthetic qualification. The current reconciliation-branch script remains unsuitable for the shared sandbox because it lacks a host guard. Do not run either script until the exact target guard and cleanup behavior are reviewed and documented.
+
+
+## Shared-sandbox QuoteFlow qualification script review — 2026-11-03
+
+### Reviewed source
+- Reviewed `scripts/qualify-quoteflow-migration-business-provisioning-db.mjs` on `integration/ghm-identity-merge-candidate-20261018` at original blob `24d3af674c8dfc1d6552366ddd49f175991dcbde`.
+- Reviewed `src/db/postgres-target-guard.ts`, `package.json`, and both applied QuoteFlow provisioning migrations on that branch.
+- The integration script has explicit database-name and host checks, matching runtime/migrator target checks, non-production guard, exact runtime/migrator role assertions, runtime privilege-denial assertions, schema-owner execution, synthetic fixtures, four-session contention, rollback check, and finally-block cleanup.
+
+### Issues found and changes committed
+- The original script allowed `DATABASE_URL` as a fallback runtime connection. Removed that fallback; it now requires distinct `GHM_RUNTIME_DATABASE_URL` and `GHM_MIGRATOR_DATABASE_URL`.
+- Replaced caller-provided expected database/host environment values with constants pinned to the specifically approved shared sandbox: database `ghm_payfast_sandbox_db`, host `dpg-db4416vlk1mc73eocug0-a.frankfurt-postgres.render.com`. Runtime and migrator URLs must both match this exact target.
+- Added an assertion that all four concurrent callers return the same owner-membership ID as well as the same Business ID.
+- Added post-cleanup zero-residue verification for synthetic accounts, Businesses, memberships, mappings, and audit rows before cleanup commits.
+- Integration branch commits: `7a572edeb281080603dc6b51671930a619abf747` (verify cleanup) and `af9a663b95d256886ba98bb30645301e1710184b` (pin approved sandbox and strengthen concurrency assertion).
+
+### Execution status and remaining safeguards
+- These are source-only edits on the integration candidate branch. No qualification script was run; no database writes, migrations, grants, deployment, or production changes were performed.
+- Cleanup is best-effort if the process is forcibly terminated or the host dies; a `finally` block cannot guarantee cleanup after SIGKILL, process crash, or network loss. The new verification catches ordinary cleanup omissions before commit, but does not make cleanup crash-proof. Any run must be supervised and followed by independent residue inspection; preserve run ID/output for recovery if interrupted.
+- The script's synthetic owner/account/business inserts and deletes consume PostgreSQL identity sequence values; sequence gaps are expected and are not rolled back by deleting fixture rows. No business records should remain after successful cleanup.
+- The script currently sets the migration client's role to `ghm_schema_owner` and uses the migration connection for fixture DML; runtime is only used to prove role and privilege restrictions. This matches the narrowly privileged migration contract.
+- Do not run until the changed branch head has passed CI/source checks and the operator has confirmed both connection URLs are the approved shared sandbox credentials. Do not use production or a different database.
+
+### Next exact action
+1. Verify the integration branch head includes `af9a663b95d256886ba98bb30645301e1710184b` and `7a572edeb281080603dc6b51671930a619abf747`; run the repository build/test or CI for this exact head.
+2. If checks pass, run only `npm run qualify:quoteflow-business-provisioning-db` with the pinned sandbox target and dedicated runtime/migrator credentials, under supervision. Do not run the broader `qualify:business-identity-runtime` aggregate.
+3. Capture complete redacted output and independently verify no `qualify-quoteflow` synthetic rows remain. If cleanup fails or execution is interrupted, stop and investigate residue before any retry.
