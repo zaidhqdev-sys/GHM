@@ -76,7 +76,7 @@ try {
     'select current_database() as db, session_user as session_role, current_user as role',
   );
   assert.deepEqual(runtimeIdentity.rows[0], {
-    db: runtimeTarget.database,
+    db: runtimeTarget.databaseName,
     session_role: 'ghm_runtime',
     role: 'ghm_runtime',
   }, 'Runtime connection must originate from and act as ghm_runtime');
@@ -85,7 +85,7 @@ try {
     'select current_database() as db, session_user as session_role, current_user as role',
   );
   assert.deepEqual(migrationIdentity.rows[0], {
-    db: migratorTarget.database,
+    db: migratorTarget.databaseName,
     session_role: 'ghm_migrator',
     role: 'ghm_schema_owner',
   }, 'Migration connection must originate from ghm_migrator and act as ghm_schema_owner');
@@ -232,7 +232,7 @@ try {
         'select current_database() as db, session_user as session_role, current_user as role',
       );
       assert.deepEqual(identity.rows[0], {
-        db: migratorTarget.database,
+        db: migratorTarget.databaseName,
         session_role: 'ghm_migrator',
         role: 'ghm_schema_owner',
       }, 'Concurrent migration connection must originate from ghm_migrator and act as ghm_schema_owner');
