@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { Pool } from 'pg';
-import { generatePayfastSignature, PAYFAST_ITN_VALIDATION_URLS, verifyPayfastItn } from './payfast';
+import { PAYFAST_ITN_VALIDATION_URLS, verifyPayfastItn } from './payfast';
 
 type Environment = 'sandbox' | 'live';
 const amountMinor = (value: unknown): number => Number(value);
@@ -89,6 +89,3 @@ export class PayfastCallbackBoundary {
     );
   }
 }
-
-export const callbackSignature = (fields: Record<string, string>, passphrase?: string | null): string =>
-  generatePayfastSignature(fields, passphrase);
