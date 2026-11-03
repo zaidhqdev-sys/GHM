@@ -777,3 +777,8 @@ Operator ran the prescribed read-only checks successfully against `localhost:543
 - Operator removed the temporary `PGPASSWORD` process variable after the checks. No passwords were included in the reported output.
 - This verifies local connection identity and bootstrap grants only. No migration, fixture write, or qualification command has run. PostgreSQL version remains 17.11 (CI uses 18).
 - Next: run the TypeScript build; then set explicit process-scoped local CI target variables and apply migrations only to `ghm@localhost`. Never inherit the `.env` Render/production URL values as the target. Stop on any target-guard, migration, or checksum error; do not improvise grants or alter the existing `ghm_db`.
+
+
+### Local TypeScript build verification — 2026-11-03
+
+Operator ran `npm run build` from `C:\\GHM`; output showed `tsc` and returned to the PowerShell prompt without diagnostics. Record as a successful local TypeScript build on the currently checked-out integration branch. This is not a test-suite or migration result. The isolated local PostgreSQL 17.11 database remains fresh (no `ghm` schema/ledger observed) and no migration or qualification command has run.
