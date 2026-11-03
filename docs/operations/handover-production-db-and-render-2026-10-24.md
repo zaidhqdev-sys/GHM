@@ -889,3 +889,14 @@ Corrected the assertion to compare `runtimeTarget.databaseName` with the approve
 - Code change committed: `c76a95f9b544ceffd8b504a55ab4b8d6b3b12fca`.
 - Business Identity runtime qualification remains **not passed**. The script was not rerun after this correction. Next: pull the code change, run `npm run build` and the focused Business Identity tests, inspect results, then rerun only `node scripts/qualify-business-identity-runtime.mjs` against the verified disposable local database if build/tests pass.
 - No database grants, migrations, shared Render changes, or production changes were made. The previous failed run reported fixture cleanup success.
+
+
+### 2026-11-03 — Business Identity runtime qualification passed
+
+- After pulling source correction commit `c76a95f9b544ceffd8b504a55ab4b8d6b3b12fca`, the local TypeScript build passed and focused Business Identity service tests passed: 12/12, zero failures, zero skipped.
+- Operator then ran only `node scripts/qualify-business-identity-runtime.mjs` against the process-scoped disposable local PostgreSQL target. Result: `GHM BUSINESS IDENTITY RUNTIME QUALIFICATION: PASS`.
+- Runtime identity check passed as `ghm/ghm_runtime`; cleanup authority check passed as `ghm/ghm_migrator`.
+- All reported qualification checks passed: profile read; empty membership read; business creation and owner membership; managed read; public approval boundary; managed update; role authorization rejection; multi-business creation and membership preservation; HTTP authentication denial; HTTP empty-membership contract; HTTP multi-membership chooser; authorized business selection; single-membership auto-selection; invalid/unauthorized selection denial; duplicate-slug atomic failure and rollback; concurrent multi-business creation serialization and preservation.
+- `QUALIFICATION FIXTURE CLEANUP PASS` was reported at completion.
+- Scope: local PostgreSQL 17.11 only. CI uses PostgreSQL 18, so PostgreSQL 18 CI parity remains unverified. This does not establish qualification against the shared Render sandbox or production.
+- No database grants or migrations were changed; in particular, the deliberate EXECUTE revocation on `ghm.auth_read_connect_identity_authority(bigint)` remains intact. No Render settings, deployments, or production resources were changed.
