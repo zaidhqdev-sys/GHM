@@ -519,3 +519,35 @@ Follow-up source trace of `PostgresCommercialRepository.prepareCommercialPayment
 7. Once all existing rows are accounted for and qualification proves coverage, enforce NOT NULL and a provider allow-list/check constraint in a follow-up migration.
 
 No implementation, test, CI, DB, Render or production operation was performed. PR #142 remains open and draft.
+
+
+## P0 PayFast provider-binding implementation branch (2026-11-04)
+
+Implementation started on isolated branch `security/payfast-provider-binding-20261104`, forked from candidate commit `a726c1154b2a8ef127f67589a331ac2dffc6ab00`. This branch is intentionally separate from PR #142 and the integration candidate.
+
+### Implemented in source (not yet CI-qualified)
+- Added nullable `provider_code` to `ghm.commercial_payment_attempt` with a check allowing only `payfast` or NULL during the transition.
+- Commercial payment preparation now inserts `provider_code = 'payfast'` as a server-side literal, returns/maps the stored provider, and the public input contract does not allow a caller to choose a provider.
+- PayFast checkout and ITN now require the stored attempt provider to equal `payfast` before generating checkout or verifying/applying ITN.
+- `ghm.commercial_apply_payment_result` now locks the attempt and rejects provider mismatch before creating provider events or mutating subscription/attempt state.
+- Removed `POST /api/v1/internal/commercial/payment-result` from the Connect internal router; retained payment preparation, PayFast checkout and provider-specific PayFast ITN.
+- Narrowed the TypeScript provider code contract to literal `'payfast'`.
+- Added/updated unit fixtures and assertions for provider persistence, ITN provider mismatch, and absence of the generic Connect settlement route.
+- Updated `scripts/qualify-commercial-payment-result-runtime.mjs` to probe provider mismatch rejection using a savepoint before the positive settlement fixture.
+
+### Critical residual limitation — not full P0 closure
+- The migration deliberately leaves historical `provider_code` values NULL. It does not blindly backfill production rows without data evidence. Such historical attempts will fail closed in PayFast checkout/ITN and payment-result SQL until reconciled. A read-only inventory and documented backfill decision are required before rollout; NOT NULL is deferred to a later migration.
+- The migration still grants `EXECUTE` on `commercial_apply_payment_result` to shared `ghm_runtime`. That means any code running with the shared runtime DB credential can still call the function directly and submit a matching `payfast` result without proving PayFast ITN. Removing the generic HTTP route reduces the exposed application surface but **does not close the shared-runtime database trust boundary**.
+- Full settlement authorization requires a dedicated provider execution identity/role and separate credential/pool or another DB-verifiable trust mechanism. Do not claim complete P0 security until that is designed, implemented, and qualified. The existing runtime qualification intentionally still demonstrates runtime EXECUTE; that test must be replaced/expanded when dedicated provider role architecture is approved.
+- Provider binding is an allow-list of PayFast only. Introducing another provider requires a forward migration and explicit server-side provider selection; do not widen the check constraint casually.
+
+### Validation status
+- No local build, unit test, migration application, database qualification, CI run, shared Render check, or production operation has been performed from this branch yet.
+- Source edits have been reviewed by fetching the resulting GitHub files, but are not yet considered compile- or runtime-verified.
+- The branch should be opened as a draft PR against `integration/ghm-identity-merge-candidate-20261018` for isolated diff/CI review only after final static inspection. It must not be merged until historical row reconciliation and dedicated DB settlement identity are addressed.
+
+### Immediate next tasks
+1. Verify exact SQL migration transaction/grants and all changed query/RETURNING columns; inspect complete diff.
+2. Finish negative unit tests and run CI on the isolated branch.
+3. Design a dedicated provider DB role/pool so `ghm_runtime` cannot directly execute settlement; keep provider credential values out of GitHub/source/logs.
+4. Add read-only inventory query for historical attempts and define safe backfill/expiry handling; no shared/production mutation without fresh explicit authorization.
