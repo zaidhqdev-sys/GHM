@@ -39,6 +39,8 @@ try {
     `)).rows[0];
     if (privilege.execute_granted) throw new Error('Runtime unexpectedly has commercial payment result function EXECUTE privilege');
     console.log('RUNTIME COMMERCIAL PAYMENT RESULT EXECUTE DENIAL PASS');
+    const providerSpecificPrivilege = (await runtime.query(`SELECT has_function_privilege(current_user, 'ghm.commercial_apply_payfast_payment_result(bigint,text,text,text,text,text,text,timestamptz,jsonb)', 'EXECUTE') AS execute_granted`)).rows[0];
+    if (providerSpecificPrivilege.execute_granted) throw new Error('Runtime unexpectedly has PayFast-specific settlement EXECUTE privilege');
 
     await expectPermissionDenied(
       () => runtime.query("INSERT INTO ghm.commercial_provider_event (provider_code, provider_event_id, event_type, payload_hash) VALUES ('payfast', 'qualification-direct', 'direct', repeat('a', 64))"),
@@ -128,6 +130,8 @@ try {
       throw new Error(`Unexpected provider privilege set: ${JSON.stringify(grants)}`);
     }
     console.log('PROVIDER IDENTITY AND LEAST-PRIVILEGE MATRIX PASS');
+    await expectPermissionDenied(() => provider.query('SELECT * FROM ghm.commercial_payment_attempt LIMIT 1'), 'PROVIDER DIRECT ATTEMPT READ DENIAL');
+    await expectPermissionDenied(() => provider.query('INSERT INTO ghm.commercial_payment_transaction DEFAULT VALUES'), 'PROVIDER DIRECT TRANSACTION INSERT DENIAL');
 
     await provider.query('BEGIN');
     await provider.query('SAVEPOINT provider_mismatch_probe');
