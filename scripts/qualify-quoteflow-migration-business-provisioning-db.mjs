@@ -13,7 +13,7 @@ const expectedNonProductionDatabase = isCiQualification
   ? (() => {
     assert(runtimeUrl, 'GHM_RUNTIME_DATABASE_URL is required');
     const parsed = new URL(runtimeUrl);
-    const databaseName = decodeURIComponent(parsed.pathname.replace(/^\\//, ''));
+    const databaseName = decodeURIComponent(parsed.pathname.replace(/^\//, ''));
     assert(['ghm', 'ghm_disposable_test'].includes(databaseName),
       'CI qualification database must be an explicitly allowed disposable database');
     return databaseName;
