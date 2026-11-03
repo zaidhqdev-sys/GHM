@@ -65,10 +65,10 @@ PostgreSQL SECURITY DEFINER function
 
 - `ghm_schema_owner`: owns schema objects and SECURITY DEFINER functions; NOLOGIN.
 - `ghm_runtime`: ordinary API login; must not execute either generic or PayFast settlement functions and must not have direct DML on settlement tables.
-- `ghm_payment_provider`: dedicated callback login, provisioned out-of-band by the database/infrastructure owner. Grant only CONNECT, schema USAGE, and EXECUTE on the single PayFast-specific settlement function. No direct SELECT/INSERT/UPDATE/DELETE on commercial tables.
+- `ghm_payment_provider`: dedicated callback LOGIN, provisioned out-of-band by the database/infrastructure owner. Grant only database CONNECT, schema USAGE, and EXECUTE on the two narrowly scoped PayFast attempt-read and settlement functions. No direct SELECT/INSERT/UPDATE/DELETE on commercial tables.
 - Do not embed passwords, connection strings, or role credentials in SQL migrations, Git, workflow logs, or the general API environment.
 
-Role creation is a cluster-level infrastructure prerequisite, not something to fake with a schema-owner migration. Migration should fail clearly if the required NOLOGIN group role is absent. The actual LOGIN credential and rotation are provisioned outside GitHub and outside application migrations.
+The dedicated LOGIN role and its credential are a cluster-level infrastructure prerequisite, not something to fake with a schema-owner migration. Migration should fail clearly if the required LOGIN role is absent. The actual credential and rotation are provisioned outside GitHub and outside application migrations.
 
 ### Function
 
