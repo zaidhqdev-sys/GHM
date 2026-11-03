@@ -811,3 +811,16 @@ Corrected the assertion to compare `runtimeTarget.databaseName` with the approve
 - Corrected all three remaining runtime/migrator target database references in `scripts/qualify-quoteflow-migration-business-provisioning-db.mjs` to use `.databaseName`. This preserves the target guard and does not broaden permitted targets.
 - Fix committed on `integration/ghm-identity-merge-candidate-20261018`: `eb742d56eeafe43fe1113f05019eab30cfadfe6b`.
 - Qualification remains **not yet passed**. Pull this commit, then rerun the same pinned local-only qualification command. If it fails, stop and inspect the exact failure before another run; do not point it at Render or production.
+
+
+### 2026-11-03 — Local QuoteFlow Business-provisioning qualification passed
+
+- After pulling the corrected qualification script and handover commits, ran `npm run qualify:quoteflow-business-provisioning-db` with process-scoped environment pinned to the dedicated local `ghm@localhost:5432` database. The command exited successfully.
+- Result: `QuoteFlow migration Business provisioning DB qualification: PASS`.
+- All 17 reported checks passed:
+  - fresh atomic provision; inactive/unverified Business; active owner membership; exact provenance mapping; durable review evidence;
+  - idempotent retry; mismatched-evidence conflict; alternate-owner conflict; existing mapping without audit conflict;
+  - missing owner blocked; slug collision fail-closed; disabled owner blocked; non-business owner role blocked; invalid provider blocked;
+  - four-way concurrency; transaction rollback; runtime cannot execute provisioning or write mapping/audit while migration role can execute.
+- Output reported `created_businesses: 3`, `mutation_scope: synthetic qualification records only`, and `QUOTEFLOW BUSINESS PROVISIONING FIXTURE CLEANUP PASS`.
+- This establishes the scripted qualification result on local PostgreSQL 17.11 only. It does not establish PostgreSQL 18 CI parity, Render/non-production qualification, production readiness, migration of existing QuoteFlow members, or production traffic readiness. No Render or production database was targeted.
