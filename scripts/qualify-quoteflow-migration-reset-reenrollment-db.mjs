@@ -28,10 +28,12 @@ const migratorTarget = assertPostgresTargetConfiguration(migratorUrl, {
 assertMatchingPostgresTargets(runtimeTarget, migratorTarget, 'QuoteFlow reset qualification');
 assertNonProductionQualificationTarget(runtimeTarget, 'QuoteFlow reset qualification');
 
-// The existing Render sandbox uses encrypted PostgreSQL connections with a self-signed
-// server certificate. Match the established identity qualification policy for this sandbox;
-// exact database-name and runtime/migrator-role guards remain the target boundary.
-const ssl = { rejectUnauthorized: true };
+// Local disposable PostgreSQL used by NODE_ENV=test does not require TLS.
+// Non-local qualification targets retain verified TLS; database-name, host, and
+// runtime/migrator-role guards remain mandatory in either mode.
+const isLocalQualification = process.env.NODE_ENV?.trim().toLowerCase() === 'test'
+  && runtimeTarget.host === 'localhost';
+const ssl = isLocalQualification ? false : { rejectUnauthorized: true };
 const runtime = new Pool({
   connectionString: runtimeUrl,
   connectionTimeoutMillis: 15000,
