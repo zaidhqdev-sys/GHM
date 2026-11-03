@@ -335,3 +335,31 @@ test('Commercial payment preparation rolls back when event persistence fails', a
     /payment event failure/,
   );
 });
+
+
+test('Commercial payment preparation fails closed when idempotency replay finds an unreconciled provider', async () => {
+  const existing = {
+    id: 71, business_id: businessId, subscription_id: 21, price_id: 41, initiated_by: userId, provider_code: null,
+    attempt_status: 'pending_checkout', amount_minor_units: 19900, currency_id: 1,
+    billing_interval: 'month', idempotency_key: 'idem-key-123', checkout_reference: null,
+    expires_at: null, failure_code: null, failure_message: null,
+    created_at: new Date(1000), updated_at: new Date(1000),
+  };
+  const client = {
+    async query(sql: string): Promise<{ rowCount: number; rows: Record<string, unknown>[] }> {
+      if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rowCount: 0, rows: [] };
+      if (sql.includes('FROM ghm.business_membership')) return { rowCount: 1, rows: [] };
+      if (sql.includes('FROM ghm.commercial_payment_attempt')) return { rowCount: 1, rows: [existing] };
+      throw new Error(`Unexpected SQL in provider reconciliation test: ${sql}`);
+    },
+    release(): void {},
+  };
+  const pool: TransactionPool = { async connect(): Promise<PoolClient> { return client as unknown as PoolClient; } };
+  await assert.rejects(
+    () => new PostgresCommercialRepository(pool).prepareCommercialPayment(
+      context(),
+      { businessId, idempotencyKey: 'idem-key-123' },
+    ),
+    /provider reconciliation required/,
+  );
+});
