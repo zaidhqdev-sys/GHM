@@ -716,8 +716,9 @@ This addendum supersedes the earlier note that the QuoteFlow migration provision
   - `7a572edeb281080603dc6b51671930a619abf747`: verify zero synthetic account, Business, membership, mapping and audit residue before cleanup commits.
   - `af9a663b95d256886ba98bb30645301e1710184b`: remove the `DATABASE_URL` fallback; require distinct runtime and migrator URLs; initially pin the expected database and host to the owner-approved shared sandbox; assert all concurrent attempts return the same owner-membership ID as well as Business ID.
 - `c2bc13c1e4e3d9927a0c3e8454de9a817faeb55d` and `f91ec409071edebd82151f638aac01735e86824b`: allow only two explicit target pairs—disposable CI (`ghm` on `localhost`, only when `NODE_ENV=test`) or the approved Render sandbox (`ghm_payfast_sandbox_db` on `dpg-db4416vlk1mc73eocug0-a.frankfurt-postgres.render.com`). The Render host literal was corrected in the follow-up commit. No caller-provided expected-target override or `DATABASE_URL` fallback is accepted.
-- Current PR #142 remains draft/open. Its head is `af9a663b95d256886ba98bb30645301e1710184b`.
-- GitHub reports the Cloudflare Pages preview check succeeded, but there are no repository test/status checks on this commit. The Pages deployment is not evidence that TypeScript, Node tests, or the qualification script passed.
+- Current PR #142 remains draft/open. Its latest head is `29e9758369549e679af36c35ea4e2906a370e2b2` (the code hardening is in parent `f91ec409071edebd82151f638aac01735e86824b`; the latest commit updates this handover).
+- GitHub reports the Cloudflare Pages preview check succeeded on the latest head, but `/actions/runs?head_sha=29e9758369549e679af36c35ea4e2906a370e2b2` returned no workflow runs and the check-runs endpoint shows no code-quality/test checks. The Pages deployment is not evidence that TypeScript, Node tests, or the qualification script passed.
+- PR #142 description was updated with the checksum reconciliation, safety changes, commit list, current test status, and remaining qualification gates. The PR remains a draft and unmerged.
 
 ### Execution and safety status
 - The qualification script has **not** been executed against Render. No migration, fixture write, grant, deployment, or production change was performed as part of this addendum.
