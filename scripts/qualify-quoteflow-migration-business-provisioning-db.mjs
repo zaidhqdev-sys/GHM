@@ -6,10 +6,13 @@ import { assertMatchingPostgresTargets, assertNonProductionQualificationTarget, 
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
-// Pin this qualification to the explicitly approved shared Render sandbox. Do not
-// accept DATABASE_URL or caller-supplied target overrides as an alternate destination.
-const expectedNonProductionDatabase = 'ghm_payfast_sandbox_db';
-const expectedNonProductionHost = 'dpg-db4416vlk1mc73eocug0-a.frankfurt-postgres.render.com';
+// Allow only the disposable CI PostgreSQL target or the explicitly approved shared
+// Render sandbox. Do not accept DATABASE_URL or caller-supplied target overrides.
+const isCiQualification = process.env.NODE_ENV?.trim().toLowerCase() === 'test';
+const expectedNonProductionDatabase = isCiQualification ? 'ghm' : 'ghm_payfast_sandbox_db';
+const expectedNonProductionHost = isCiQualification
+  ? 'localhost'
+  : 'dpg-db4416vlk1mc73eocug0.frankfurt-postgres.render.com';
 assert(runtimeUrl && migratorUrl && runtimeUrl !== migratorUrl,
   'Distinct GHM_RUNTIME_DATABASE_URL and GHM_MIGRATOR_DATABASE_URL are required; DATABASE_URL fallback is forbidden');
 
