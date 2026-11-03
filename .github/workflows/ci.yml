@@ -9,6 +9,7 @@ on:
     branches:
       - main
       - integration/ghm-identity-merge-candidate-20261018
+      - security/payfast-provider-binding-20261104
 
 permissions:
   contents: read
