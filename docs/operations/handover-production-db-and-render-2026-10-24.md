@@ -765,3 +765,15 @@ This addendum supersedes the earlier instruction to stop because no local CI dat
 - **Version deviation:** CI uses PostgreSQL 18; this local disposable database is hosted by PostgreSQL 17.11. Any local result is therefore a PostgreSQL 17 compatibility check, not an exact reproduction of CI. Do not describe it as CI-equivalent. Obtain a PostgreSQL 18 run in CI before treating the CI gate as passed.
 - Next gate: verify both local login roles connect to database `ghm`, verify `ghm_migrator` can `SET ROLE ghm_schema_owner`, and confirm the database has no GHM schema/ledger before building or applying migrations. Set explicit process-scoped local CI environment variables (including `NODE_ENV=test`, database name `ghm`, host `localhost`, and TLS disabled) so dotenv cannot supply Render/production connection values. Keep all credentials local and never paste them into chat or commit them.
 - After successful read-only verification, build and run migrations only against the pinned local `ghm@localhost` target. Then run the single QuoteFlow business-provisioning qualification script, inspect its cleanup result, and record exact output. Do not run the aggregate identity qualification unless separately approved. Do not change the shared sandbox or production.
+
+
+### Local disposable database role/target verification — 2026-11-03
+
+Operator ran the prescribed read-only checks successfully against `localhost:5432/ghm`:
+- Runtime session: database `ghm`, session/current role both `ghm_runtime`.
+- Fresh-target check: `ghm` schema and `ghm.ghm_schema_migrations` ledger both absent.
+- Migration session: database `ghm`, session role `ghm_migrator`, current role after `SET ROLE` is `ghm_schema_owner`.
+- Schema owner reports CREATE privilege on database `ghm` and CREATE privilege on schema `public`.
+- Operator removed the temporary `PGPASSWORD` process variable after the checks. No passwords were included in the reported output.
+- This verifies local connection identity and bootstrap grants only. No migration, fixture write, or qualification command has run. PostgreSQL version remains 17.11 (CI uses 18).
+- Next: run the TypeScript build; then set explicit process-scoped local CI target variables and apply migrations only to `ghm@localhost`. Never inherit the `.env` Render/production URL values as the target. Stop on any target-guard, migration, or checksum error; do not improvise grants or alter the existing `ghm_db`.
