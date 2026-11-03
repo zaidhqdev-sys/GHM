@@ -395,3 +395,40 @@ Follow-up read-only review at candidate SHA `8739b0bf24ef2619f63a14d06a1db3f6413
 
 ### Resume point
 Next trace key deployment/secret ownership only through authorized source/config documentation and available repository workflows (do not read secret values), locate any out-of-repository assertion broker references, and inspect all provider/payment-attempt schema constraints. Then assemble a concise prioritized remediation register for payment-result, SQL caller-ID functions and service assertion key custody. No source, CI, DB, Render or production changes were made.
+
+
+## Assertion key custody, provider schema and prioritized remediation register (2026-11-04)
+
+Read-only follow-up at candidate SHA `8739b0bf24ef2619f63a14d06a1db3f64138330c`. Reviewed the governing Connect service-trust contract, implementation parameters, assertion construction evidence, production readiness gap register, commercial schema, payment-result qualification script and CI workflow.
+
+### Key custody / issuance conclusion
+- Governing docs explicitly say deployment-managed credential issuance/rotation and production credentials are deferred; the assertion construction evidence qualifies only the cryptographic primitive, not full service trust or production issuance.
+- CI generates an ephemeral P-256 keypair in the runner for isolated qualification and removes the temporary files. This is not evidence of production key custody.
+- Repository source has a shared GHM signing key configuration and a signing method that takes an integration subject, but no production credential issuer or HTTP minting endpoint was found in the reviewed routers.
+- No secret values were accessed. Repository/workflow inspection cannot establish which deployed service/person holds the production private key or whether an external assertion broker exists. Mark this as an unresolved operational dependency, not a proven compromise.
+
+### Provider-to-attempt schema conclusion
+- `ghm.commercial_payment_attempt` has business, subscription, price, initiator, amount, currency, billing interval, checkout reference and state fields; it has **no provider_code/provider_id column or provider foreign key**.
+- `commercial_apply_payment_result` accepts provider code independently from the attempt and does not compare it to a provider binding on the attempt/price/subscription.
+- Existing idempotency is keyed by (provider_code, external provider event ID), and transaction uniqueness by provider_event_id. This prevents duplicate event application but does not establish that the provider is authorized for the target attempt.
+- The runtime qualification script directly invokes the SECURITY DEFINER payment-result function using the runtime connection and a caller-selected `payfast` provider code; it proves function operation under runtime role, not provider authentication or provider-to-attempt authorization.
+
+### Prioritized remediation register (design only; no changes applied)
+
+| Priority | Finding | Required control | Required proof |
+|---|---|---|---|
+| P0 | Generic internal payment-result accepts any active integration assertion; no provider/capability scope | Remove from general Connect assertion path or require dedicated provider-scoped identity/permission | Unauthorized integration and wrong-provider route tests fail closed |
+| P0 | Payment attempt has no expected provider binding; SQL trusts caller provider code | Persist expected provider at attempt/checkout creation and enforce exact provider match in SQL | DB negative test cannot settle attempt with another provider |
+| P1 | Business Capability verifier and campaign functions trust caller-supplied account IDs | Bind actor to trusted transaction principal; check active status and role inside DB boundary | Runtime-role impersonation tests fail |
+| P1 | Auth persistence exposes privileged account/session mutation functions to shared runtime role | Narrow callable DB surface or prove all call sites transaction-bound and non-user-selectable; split admin-only functions where possible | Repository-wide call-site inventory plus DB negative tests |
+| P1 | Shared assertion signing key and arbitrary subject input; issuance/custody not qualified | Establish per-integration credential issuance or tightly controlled broker, scoped subject/permissions, auditable rotation/revocation | Credential issuance/rotation/revocation qualification without exposing keys |
+| P2 | PayFast IP check depends on deployed proxy topology | Verify exact Render `TRUST_PROXY` value and edge forwarded-header sanitization | Deployment config evidence and spoofed-forwarded-for test |
+| P2 | Commercial provider callback and runtime paths have separate trust assumptions | Keep provider-specific ITN verification separate; ensure no generic route bypasses it | End-to-end sandbox evidence on isolated environment |
+
+### Important qualification distinctions
+- The prior payment-result runtime qualification script proves that `ghm_runtime` can execute the function and that the state transition works; it does not test caller/provider authorization. Do not treat it as a security qualification.
+- The Connect service-trust contract and readiness register explicitly retain production issuance, full service authorization, payment provider authorization and cutover as open gates. This review is consistent with those existing gates and does not supersede them.
+- No production or shared environment was queried. No secret values were read.
+
+### Resume point
+Next, produce a concrete remediation proposal with minimal schema/API changes and migration/test plan for P0 payment-result/provider binding, then a separate proposal for P1 SQL actor binding. Do not implement without explicit approval. Obtain deployment key-custody and proxy configuration evidence only through an authorized read-only operational review. No source, CI, DB, Render or production changes were made.
