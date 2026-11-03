@@ -1,5 +1,5 @@
 import http from 'node:http';
-import express, { type Request, type Response } from 'express';
+import express, { type NextFunction, type Request, type Response } from 'express';
 import { Pool } from 'pg';
 import { postgresSslConfig } from './db/postgres-ssl';
 import { PayfastCallbackBoundary, parsePayfastItnFields } from './resources/commercial/payfast-callback';
@@ -58,7 +58,7 @@ app.post('/api/v1/commercial/payfast/itn', express.urlencoded({ extended: false,
   }
 });
 
-app.use((error: unknown, _req: Request, res: Response, _next: express.NextFunction) => {
+app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   const status = error && typeof error === 'object' && 'status' in error ? Number((error as { status?: unknown }).status) : 500;
   if (status === 400 || status === 413 || status === 415) { res.status(400).send('INVALID'); return; }
   console.error(JSON.stringify({ event: 'payfast_callback_parser_failed', error: { name: error instanceof Error ? error.name : 'UnknownError' } }));
