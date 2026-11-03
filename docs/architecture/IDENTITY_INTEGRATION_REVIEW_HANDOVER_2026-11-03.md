@@ -497,3 +497,25 @@ Do not combine account-ID actor binding for Business Capability/campaign/auth SQ
 
 ### Outstanding decision before implementation
 Confirm whether the intended initial provider for every newly created paid attempt is PayFast, or whether attempt creation can precede provider choice. This determines whether provider_code can be set at creation or must be set atomically by a server-side provider-selection step before checkout. No code, tests, CI, DB, Render or production changes were made.
+
+
+## P0 provider-selection decision resolved from current code (2026-11-04)
+
+Follow-up source trace of `PostgresCommercialRepository.prepareCommercialPayment`, `registerCommercialInternalRoutes`, `PayfastHttpBoundary.createCheckout` and `PayfastHttpBoundary.handleItn` resolves the outstanding design question for the current candidate:
+
+- The current payment preparation flow selects an eligible commercial price and creates the payment attempt before checkout. It does not accept or select a provider.
+- The only implemented checkout adapter is PayFast: `GET /api/v1/internal/commercial/payfast/checkout/:paymentAttemptId`. The only implemented provider callback is PayFast ITN, which hardcodes `providerCode: 'payfast'` after provider verification.
+- Therefore, for the current single-provider implementation, **every newly created payable attempt should be assigned `provider_code = 'payfast'` server-side at attempt creation**. Do not ask the caller or Connect integration to choose it.
+- This conclusion is grounded in current repository code, not a claim that every future attempt must always use PayFast. When a second provider is introduced, add an explicit server-side provider-selection step (or separate provider-specific preparation operation) that validates eligibility and atomically persists the selected provider before checkout. Never make the provider a free-form caller-controlled settlement field.
+- PayFast checkout should additionally select and assert `a.provider_code = 'payfast'`; ITN should lock/read the attempt and verify the same stored binding before verification/application; SQL remains the final enforcement point.
+
+### Revised P0 migration detail
+1. Add nullable `provider_code` to payment attempts.
+2. Backfill existing attempts to `payfast` only after checking the current deployment's supported checkout/callback history. Candidate source shows only PayFast checkout and ITN, but this is not proof that all historical deployed rows used PayFast. In an isolated qualification DB, seed/backfill explicit fixtures. For any real rollout, inspect data/read-only evidence and handle unknown rows conservatively.
+3. Update payment preparation INSERT and idempotency SELECT/mapping to persist and return `provider_code`; assign constant `payfast` server-side.
+4. Update PayFast checkout and ITN queries to require the stored provider equals `payfast`.
+5. Update SQL payment-result function to compare caller/provider-bound input to the locked attempt's provider and reject mismatch/unknown values before writes.
+6. Remove generic Connect payment-result route and caller-controlled `providerCode` parser/type usage.
+7. Once all existing rows are accounted for and qualification proves coverage, enforce NOT NULL and a provider allow-list/check constraint in a follow-up migration.
+
+No implementation, test, CI, DB, Render or production operation was performed. PR #142 remains open and draft.
