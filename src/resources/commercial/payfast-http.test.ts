@@ -117,7 +117,7 @@ test('Payfast ITN boundary applies the governed result only after provider confi
         rowCount: 1,
         oid: 0,
         fields: [],
-        rows: [{ id: 42, amount_minor_units: 19900, attempt_status: 'pending_payment' }],
+        rows: [{ id: 42, provider_code: 'payfast', amount_minor_units: 19900, attempt_status: 'pending_payment' }],
       }),
     },
     {
