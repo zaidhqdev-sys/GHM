@@ -157,3 +157,38 @@ Read-only review at candidate SHA `8739b0bf24ef2619f63a14d06a1db3f64138330c`. In
 
 ### Resume point
 Next: inspect trust-score calculation SQL function/grants, then complete adapter-by-adapter Connect capability authorization and compare all governed capabilities with registered resource operations. Continue read-only. No code, database, CI, Render, or production changes were made.
+
+
+## Trust-score SQL and Connect capability adapter follow-up (2026-11-03)
+
+Reviewed at candidate SHA `8739b0bf24ef2619f63a14d06a1db3f64138330c`:
+- `database/migrations/20260916240000_create_trust_score.sql`
+- `database/migrations/20260916250000_extend_business_profile_trust_inputs.sql`
+- `src/resources/trust-score/service.ts`, `src/resources/trust-score/repository.ts`
+- `src/resources/registry.ts`, `src/integrations/connect/authorization-binding.ts`, `src/integrations/connect/governed-operation-resolution.ts`, `src/integrations/connect/resource-capability-dispatch.ts`
+- Connect adapters: business, business-capability, business-offering, customer, enquiry, identity, opportunity, opportunity-participant, project, project-quote, quote and saved-business.
+
+### Trust-score SQL findings
+- `ghm.calculate_business_trust_score(bigint,bigint)` is SECURITY DEFINER, owned by `ghm_schema_owner`, pins `search_path = pg_catalog, ghm`, revokes PUBLIC execution and grants execution to `ghm_runtime`.
+- It validates positive account/business IDs and independently requires an active owner/administrator membership before calculating/upserting. Direct runtime INSERT/UPDATE/DELETE on `ghm.trust_score` is revoked; SELECT is granted.
+- The profile extension explicitly protects `insurance_verified` and `jobs_completed` from direct runtime updates; owner profile updates allow only name/slug/description/phone/email. Review aggregate fields remain separately writable for the review workflow.
+- Trust-score repository passes `context.userId` from authenticated context to SQL. Public score queries filter to active, verified, approved Businesses; private score queries additionally allow the active owner/administrator of the relevant Business.
+- No SQL privilege escalation or caller-ID substitution was found in the inspected trust-score path. The calculation function checks membership but does not itself require the Business to be active/verified/approved; public visibility is separately filtered in read queries. Confirm whether allowing an owner to calculate an unpublished/inactive Business score is intended.
+
+### Connect adapter findings
+- Governed operation resolution admits only operations registered in the canonical resource registry.
+- Authorization binding requires a trusted request, exact resource/operation match, mapped Supabase subject (bootstrap disabled), active GHM account, current database role, and role permission for the resource. The integration principal does not replace the mapped end-user account.
+- Most inspected adapters check exact capability/resource/operation correspondence before invoking typed services. Several also add role checks (e.g. business offering, project, project quote, enquiry). Underlying services/repositories remain responsible for tenant/object ownership.
+- Saved-business dispatch checks exact capability/resource/operation; service methods receive the bound AuthContext.
+- Identity adapter is a mapping seam, not a bearer-auth endpoint; bootstrap is an explicit option and is disabled in governed authorization binding.
+- Business adapter is a separate provision-or-resolve seam with role and membership checks; it is not itself the generic typed capability dispatcher.
+- No confirmed adapter mismatch that bypasses tenant service checks was identified in this sample.
+
+### Remaining adapter / qualification caveats
+- This source review does not exhaustively inspect every adapter's tests and every underlying service/repository. Keep adapter-by-adapter comparison against resource registry and object-level service checks as an ongoing review task.
+- Trust-score calculation on inactive/unapproved Businesses is a product-policy question, not a demonstrated cross-tenant bypass.
+- The broad resource role registry still relies on service/repository/database object checks for tenant isolation.
+- Do not infer production grants from migration source alone; confirm only in separately authorized non-production qualification.
+
+### Resume point
+Next inspect the remaining Connect adapter implementation/test pairs and underlying object-level services for quote/project/business mutation and lifecycle transitions. Then reconcile the candidate's complete resource registry with every HTTP/Connect operation, documenting unsupported or intentionally disabled operations. Continue read-only; no source, CI, DB, Render or production changes in this pass.
