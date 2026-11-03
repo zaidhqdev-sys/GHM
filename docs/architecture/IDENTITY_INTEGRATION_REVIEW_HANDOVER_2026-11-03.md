@@ -653,3 +653,14 @@ The first authored provider-function ALTER/GRANT signature had one extra text ar
 3. Review the full PR diff, especially migration ordering/signatures, SQL grants, source-IP/proxy handling, callback parser errors, and duplicate event behavior.
 4. Require CI proof that `ghm_runtime` cannot execute either settlement function; `ghm_payment_provider` can execute only the PayFast wrapper/read function; provider cannot directly access payment tables; only callback service uses its credential.
 5. Keep both PRs draft until historical-attempt handling and the separate deployment/credential plan are approved. No shared Render or production operations without fresh explicit authorization.
+
+
+### Follow-up hardening before first CI run
+- The dedicated PayFast SQL wrapper now independently locks the attempt, requires stored provider `payfast`, and requires currency `ZAR` before delegating to the generic SECURITY DEFINER settlement function.
+- The attempt-read function returns currency code as well as provider, amount and status; callback checks ZAR before PayFast server confirmation.
+- The provider-binding migration now rejects a **new** provider event for a terminal attempt after first checking event idempotency. This preserves an identical event retry (same provider event ID + payload hash) while rejecting a new event after settlement/failure. Callback application deliberately lets terminal attempts reach SQL so legitimate retries can return the existing transaction.
+- Qualification now creates a second synthetic NULL-provider attempt, checks the PayFast wrapper rejects it, checks an identical successful event retry returns the same transaction, and checks a new event cannot settle the terminal attempt.
+- Runtime is also checked for lack of EXECUTE on the PayFast-specific wrapper and attempt-read function. Provider identity is checked for lack of direct attempt SELECT and transaction INSERT.
+- The callback service startup and readiness probes now assert both `session_user` and `current_user` are exactly `ghm_payment_provider`; it refuses a misconfigured runtime credential. Port selection honors platform `PORT` first.
+- Parser tests reject duplicate/multi-valued fields, malformed field names, oversized values and non-object bodies. Oversized/malformed Express parser errors are normalized to a safe INVALID response.
+- Migration provider function signatures were corrected to the exact arity before CI; generic function retains its separate signature.
