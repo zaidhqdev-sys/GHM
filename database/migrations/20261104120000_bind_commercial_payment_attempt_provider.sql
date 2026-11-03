@@ -7,8 +7,6 @@ ALTER TABLE ghm.commercial_payment_attempt
   ADD CONSTRAINT commercial_payment_attempt_provider_code_valid
   CHECK (provider_code IS NULL OR provider_code IN ('payfast'));
 
-BEGIN;
-
 CREATE OR REPLACE FUNCTION ghm.commercial_apply_payment_result(
   p_payment_attempt_id bigint,
   p_provider_code text,
