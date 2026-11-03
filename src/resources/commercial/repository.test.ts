@@ -315,7 +315,7 @@ test('Commercial payment preparation rolls back when event persistence fails', a
       if (sql === 'SELECT now() AS prepared_at') return { rowCount: 1, rows: [{ prepared_at: new Date(1000) }] };
       if (sql.includes('FROM ghm.commercial_plan_price')) return { rowCount: 1, rows: [{ id: 41, amount_minor_units: 19900, currency_id: 1, billing_interval: 'month' }] };
       if (sql.includes('INSERT INTO ghm.commercial_payment_attempt')) return { rowCount: 1, rows: [{
-        id: 71, business_id: businessId, subscription_id: 21, price_id: 41, initiated_by: userId,
+        id: 71, business_id: businessId, subscription_id: 21, price_id: 41, initiated_by: userId, provider_code: 'payfast',
         attempt_status: 'pending_checkout', amount_minor_units: 19900, currency_id: 1,
         billing_interval: 'month', idempotency_key: 'idem-key-123', checkout_reference: null,
         expires_at: null, failure_code: null, failure_message: null,
