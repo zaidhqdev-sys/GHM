@@ -4,11 +4,13 @@ BEGIN;
 -- The migration intentionally fails if that prerequisite is absent.
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'ghm_payment_provider') THEN
-    RAISE EXCEPTION 'required role ghm_payment_provider is missing; provision it as NOLOGIN before applying this migration';
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'ghm_payment_provider' AND rolcanlogin) THEN
+    RAISE EXCEPTION 'required LOGIN role ghm_payment_provider is missing; provision it out-of-band before applying this migration';
   END IF;
 END;
 $$;
+
+GRANT USAGE ON SCHEMA ghm TO ghm_payment_provider;
 
 -- Ordinary API connections must never settle provider payments directly.
 REVOKE EXECUTE ON FUNCTION ghm.commercial_apply_payment_result(
