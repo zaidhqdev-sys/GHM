@@ -177,7 +177,7 @@ Current checkout raw SHA-256 values:
 - `src/db/migrate.ts` also permits an explicit historical provenance exception from `config/historical-migration-provenance-exceptions.json`.
 - The exception file was inspected on this branch. Neither version `20261020130000` nor `20261020140000` is listed.
 - Git history confirms the first migration changed across multiple commits; the second also has a follow-up correction. History alone does not establish which bytes were applied to the sandbox.
-- **Not yet checked:** canonical normalized SHA-256 values versus the two ledger checksums. The raw mismatch is not yet proof of corruption; line-ending normalization or a historical file revision may explain it.
+- **Resolved on 2026-11-03:** the user computed canonical normalized SHA-256 values using the repository's CRLF/CR-to-LF normalization. Both values exactly match the sandbox ledger checksums shown above. The earlier raw-hash mismatch is therefore explained by byte-level line-ending differences; there is no remaining checksum discrepancy for these two migrations under the runner's canonical checksum rule. This is checksum reconciliation only; it does not authorize rerunning either migration.
 
 ### Qualification script boundary
 - The current reconciliation-branch script `scripts/qualify-quoteflow-migration-business-provisioning-db.mjs` is designed for isolated database `ghm_qualification`, requires an explicit acknowledgement, and has a database-name guard but lacks a host guard. Do not point it at the shared Render sandbox.
@@ -199,3 +199,13 @@ Current checkout raw SHA-256 values:
 - Inspection of migration checksum implementation, runner exception logic, migration Git history, and the full historical exception JSON.
 
 **Working rule:** Continue from the canonical-hash comparison. Do not ask the user to repeat the above commands or rediscover these facts.
+
+
+## Canonical checksum reconciliation — 2026-11-03
+
+- User ran the canonical normalization hash calculation for both current QuoteFlow migration SQL files.
+- `20261020130000_create_quoteflow_migration_business_provisioning.sql`: `a453171e85f6717476258c6d2d59a39b663be89826316036e6b9891cadfb13e9` — exact match to the shared sandbox ledger.
+- `20261020140000_reconcile_quoteflow_provisioning_verification_status.sql`: `922295b2a94dfed4cc6441569b0b911f99e7bf4aed81d1f1938a481dc7e9c465` — exact match to the shared sandbox ledger.
+- **Finding:** both migrations pass canonical checksum reconciliation. The previous raw SHA-256 differences were due to line-ending/byte representation; they are not evidence of migration drift or corruption.
+- No migration, qualification script, ledger edit, grant, or database write was run as part of this check.
+- Next work is no longer checksum investigation. Review the guarded integration-branch qualification script and its cleanup/rollback behavior against the shared sandbox safety boundary before deciding whether to execute the previously approved synthetic qualification. The current reconciliation-branch script remains unsuitable for the shared sandbox because it lacks a host guard. Do not run either script until the exact target guard and cleanup behavior are reviewed and documented.
