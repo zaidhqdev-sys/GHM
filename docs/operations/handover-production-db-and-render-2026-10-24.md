@@ -725,3 +725,17 @@ This addendum supersedes the earlier note that the QuoteFlow migration provision
 - The script pins both connection targets to the shared sandbox, validates matching runtime/migrator targets and expected roles, and performs synthetic fixture cleanup in a `finally` block. Cleanup is not crash-proof: forced process termination, host failure or network loss can interrupt it. Sequence values may advance even when fixture rows are deleted.
 - Before any Render run, build/test the exact PR head and verify both connection URLs resolve to the pinned shared sandbox without disclosing credentials. The existing CI workflow uses the separate hard-coded disposable `ghm@localhost` pair under `NODE_ENV=test`; it must never inherit Render credentials. Run only `npm run qualify:quoteflow-business-provisioning-db` for the supervised Render qualification, not the aggregate identity qualification command. Capture redacted output and independently inspect for remaining `qualify-quoteflow` rows. If interrupted or cleanup fails, stop and resolve residue before retrying.
 - Production `ghm_db` and production-connected services remain excluded.
+
+
+## QuoteFlow qualification CI compatibility — 2026-11-03
+
+Source review of `.github/workflows/ci.yml` found that the disposable PostgreSQL database on the current integration branch is `ghm`, while main's CI workflow uses `ghm_disposable_test`. The local CI PostgreSQL service does not use TLS. The qualification script was adjusted:
+
+- In `NODE_ENV=test`, parse the runtime URL, allow only `ghm` or `ghm_disposable_test`, require localhost, and pass the exact parsed database name through the shared target guard. Runtime and migrator targets must match.
+- Outside CI, retain the exact approved Render sandbox database and host pin.
+- Disable TLS only for local CI PostgreSQL. Render mode keeps TLS certificate verification enabled.
+- Compare runtime, migrator and concurrent session identity against the resolved exact database name.
+
+Commits: `db4191995aee60429cd8b1ba681fc89ef587fed1`, `1fe3c3b0d981916bce7f431289ac4628542055d7`, `2964df3bf77b3751301948701a0a867e3173ac54`.
+
+GitHub's latest observed check for the current head is Cloudflare Pages; the Actions workflow-runs query returned no CI runs. No local build/test execution is available through the repository connection. Tests are therefore **not verified**. The shared Render qualification remains unexecuted. Next gate: obtain an actual CI quality job result for the exact latest head, then proceed only if it passes. No database writes, migrations, grants, deployments or production changes were made.
