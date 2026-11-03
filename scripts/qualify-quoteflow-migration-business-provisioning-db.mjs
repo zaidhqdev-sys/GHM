@@ -12,7 +12,7 @@ const isCiQualification = process.env.NODE_ENV?.trim().toLowerCase() === 'test';
 const expectedNonProductionDatabase = isCiQualification ? 'ghm' : 'ghm_payfast_sandbox_db';
 const expectedNonProductionHost = isCiQualification
   ? 'localhost'
-  : 'dpg-db4416vlk1mc73eocug0.frankfurt-postgres.render.com';
+  : 'dpg-db4416vlk1mc73eocug0-a.frankfurt-postgres.render.com';
 assert(runtimeUrl && migratorUrl && runtimeUrl !== migratorUrl,
   'Distinct GHM_RUNTIME_DATABASE_URL and GHM_MIGRATOR_DATABASE_URL are required; DATABASE_URL fallback is forbidden');
 
