@@ -220,10 +220,10 @@ Current checkout raw SHA-256 values:
 
 ### Issues found and changes committed
 - The original script allowed `DATABASE_URL` as a fallback runtime connection. Removed that fallback; it now requires distinct `GHM_RUNTIME_DATABASE_URL` and `GHM_MIGRATOR_DATABASE_URL`.
-- Replaced caller-provided expected database/host environment values with constants pinned to the specifically approved shared sandbox: database `ghm_payfast_sandbox_db`, host `dpg-db4416vlk1mc73eocug0-a.frankfurt-postgres.render.com`. Runtime and migrator URLs must both match this exact target.
+- Replaced caller-provided expected database/host environment values with a two-pair allowlist: disposable CI (`ghm` on `localhost`, only when `NODE_ENV=test`) or the specifically approved shared sandbox (`ghm_payfast_sandbox_db` on `dpg-db4416vlk1mc73eocug0-a.frankfurt-postgres.render.com`). Runtime and migrator URLs must both match one exact pair. The intermediate host typo was corrected before proceeding; final source has the exact Render hostname.
 - Added an assertion that all four concurrent callers return the same owner-membership ID as well as the same Business ID.
 - Added post-cleanup zero-residue verification for synthetic accounts, Businesses, memberships, mappings, and audit rows before cleanup commits.
-- Integration branch commits: `7a572edeb281080603dc6b51671930a619abf747` (verify cleanup) and `af9a663b95d256886ba98bb30645301e1710184b` (pin approved sandbox and strengthen concurrency assertion).
+- Integration branch commits: `7a572edeb281080603dc6b51671930a619abf747` (verify cleanup); `af9a663b95d256886ba98bb30645301e1710184b` (remove DATABASE_URL fallback and strengthen concurrency assertion); `c2bc13c1e4e3d9927a0c3e8454de9a817faeb55d` (explicit CI/sandbox target allowlist); and `f91ec409071edebd82151f638aac01735e86824b` (correct exact sandbox host).
 
 ### Execution status and remaining safeguards
 - These are source-only edits on the integration candidate branch. No qualification script was run; no database writes, migrations, grants, deployment, or production changes were performed.
@@ -233,6 +233,6 @@ Current checkout raw SHA-256 values:
 - Do not run until the changed branch head has passed CI/source checks and the operator has confirmed both connection URLs are the approved shared sandbox credentials. Do not use production or a different database.
 
 ### Next exact action
-1. Verify the integration branch head includes `af9a663b95d256886ba98bb30645301e1710184b` and `7a572edeb281080603dc6b51671930a619abf747`; run the repository build/test or CI for this exact head.
+1. Verify the integration branch head includes all four commits above; run the repository build/test or CI for the exact head. At the time of this update, the PR head is `f91ec409071edebd82151f638aac01735e86824b`; GitHub shows the Cloudflare Pages preview check successful but no repository test/check runs yet. A Pages preview is not a code-test result.
 2. If checks pass, run only `npm run qualify:quoteflow-business-provisioning-db` with the pinned sandbox target and dedicated runtime/migrator credentials, under supervision. Do not run the broader `qualify:business-identity-runtime` aggregate.
 3. Capture complete redacted output and independently verify no `qualify-quoteflow` synthetic rows remain. If cleanup fails or execution is interrupted, stop and investigate residue before any retry.
