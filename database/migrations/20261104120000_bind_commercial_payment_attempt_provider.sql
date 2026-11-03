@@ -239,6 +239,3 @@ GRANT EXECUTE ON FUNCTION ghm.commercial_apply_payment_result(
 ) TO ghm_runtime;
 
 COMMIT;
-
-
-COMMIT;
