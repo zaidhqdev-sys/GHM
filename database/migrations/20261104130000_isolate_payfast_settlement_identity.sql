@@ -1,6 +1,6 @@
 BEGIN;
 
--- This role is provisioned as a NOLOGIN group by the database/infrastructure owner.
+-- This LOGIN role and its credential are provisioned out-of-band by the database/infrastructure owner.
 -- The migration intentionally fails if that prerequisite is absent.
 DO $$
 BEGIN
