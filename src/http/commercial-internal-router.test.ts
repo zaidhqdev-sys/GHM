@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { AccountAuthStateStore } from '../auth/ghm-bearer';
-import { parsePrepareInput, resolveCommercialPaymentActor, resolveConnectBusinessId } from './commercial-internal-router';
+import { parsePrepareInput, registerCommercialInternalRoutes, resolveCommercialPaymentActor, resolveConnectBusinessId } from './commercial-internal-router';
 
 const store = (state: any): AccountAuthStateStore => ({
   getAccountAuthState: async (accountId) => state && accountId === state.accountId ? state : null,
@@ -85,4 +85,25 @@ test('missing or invalid Connect Business mapping fails closed', async () => {
   assert.equal(await resolveConnectBusinessId(externalBusinessId, async () => ({
     rowCount: 1, rows: [{ business_id: '0' }],
   })), null);
+});
+
+
+test('generic Connect payment-result route is not registered', () => {
+  const paths: string[] = [];
+  const app = {
+    post: (path: string) => { paths.push(path); },
+    get: (path: string) => { paths.push(path); },
+  };
+  registerCommercialInternalRoutes(
+    app as never,
+    { applyCommercialPaymentResult: async () => ({} as never) },
+    {
+      createCheckout: async () => ({} as never),
+      handleItn: async () => ({}),
+    },
+  );
+  assert.equal(paths.includes('/api/v1/internal/commercial/payment-result'), false);
+  assert.ok(paths.includes('/api/v1/internal/commercial/payment-prepare'));
+  assert.ok(paths.includes('/api/v1/internal/commercial/payfast/checkout/:paymentAttemptId'));
+  assert.ok(paths.includes('/api/v1/commercial/payfast/itn'));
 });
