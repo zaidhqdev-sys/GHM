@@ -270,3 +270,37 @@ These findings do not establish that the app's authenticated HTTP paths allow ac
 
 ### Resume point
 Next inventory every SECURITY DEFINER function across all migrations, classify by caller type (user, provider, migration/admin), execution grants, identity parameters, and application call site. Prioritize other user-attributed functions such as campaign and verification, then payment-result provider boundary. No CI, DB, Render, or production changes in this pass.
+
+
+## SECURITY DEFINER inventory — authentication, migration, storage and provider boundaries (2026-11-03)
+
+Read-only inventory continued at candidate SHA `8739b0bf24ef2619f63a14d06a1db3f64138330c`. This pass inspected function definitions and grants in the auth runtime migration, registration and QuoteFlow account provisioning, QuoteFlow reset completion, QuoteFlow Business provisioning, storage persistence, Business Capability verification, campaign functions, and commercial payment-result boundary.
+
+### Classification and findings
+
+**User/account-attributed runtime functions**
+- Auth migration exposes multiple SECURITY DEFINER functions to `ghm_runtime` that accept account/session IDs as parameters: `auth_set_password`, `auth_create_session_with_refresh`, `auth_revoke_session`, `auth_revoke_all_sessions_for_account`, `auth_change_password`, `auth_disable_account`, and `auth_issue_recovery`. Some functions are token-bound (e.g. `auth_redeem_recovery`, `auth_rotate_refresh`) or read-only lookup operations.
+- These are privileged persistence primitives. Their account/session parameters are not universally bound to a database-authenticated caller inside SQL. The application service is therefore a critical authorization boundary. The source review previously found app-level reset/recovery flows bind target account to a verified recovery token and/or authenticated context, and the route layer derives identity from verified auth state. However, this does not make these SQL functions independently safe against arbitrary use of the shared runtime DB credential.
+- `auth_internal_revoke_session_family` and `auth_internal_revoke_all_sessions_for_account` have PUBLIC execution revoked and no explicit `ghm_runtime` grant in this migration; they are internal helpers called by the exposed auth functions.
+- `auth_disable_account` and `auth_issue_recovery` are especially sensitive: direct runtime execution can target an arbitrary account ID. Confirm all application call sites and ensure no generic route exposes these primitives without strict account/role policy. Treat them as privileged internal APIs, not self-authorizing database boundaries.
+
+**Migration-only functions**
+- `auth_provision_migration_account` is a QuoteFlow migration provisioning primitive; execution grants must remain restricted to the migration role. It is not a normal auth registration function.
+- `auth_complete_quoteflow_migration_reset` is token/enrollment-bound and checks active account plus source identity within one transaction; it does not accept caller-supplied account ID.
+- `auth_provision_quoteflow_migration_business` is granted to `ghm_schema_owner`, not `ghm_runtime`, and uses source identity / active owner constraints. It remains migration-only.
+- Founder system-admin bootstrap is revoked from `PUBLIC` and `ghm_runtime`.
+- Standard `auth_create_account` is registration-oriented: role allow-list is customer/business and system-admin is false. Confirm its grant and call sites separately, but no caller-selected privileged role is permitted by the inspected function body.
+
+**Provider boundary**
+- `commercial_apply_payment_result` is SECURITY DEFINER and runtime-executable. It accepts provider/payment event data, not an end-user account ID. Its trust boundary is the provider callback/service path and payment-attempt binding, idempotency and event authenticity. It needs a separate call-site audit to ensure arbitrary authenticated users cannot invoke it.
+
+**Storage functions**
+- Storage persistence functions inspected are SECURITY INVOKER, not SECURITY DEFINER. Their authority depends on runtime table grants and service-level tenant authorization; they should not be grouped with the SECURITY DEFINER caller-ID issue.
+
+### Review conclusion
+- The three previously documented user-attributed functions (Business Capability verifier and campaign create/update) remain confirmed examples where a runtime-executable SECURITY DEFINER function trusts a caller-supplied account ID without binding it to trusted transaction identity.
+- The auth runtime migration exposes a broader family of privileged account/session mutation primitives. This is a design-level database trust boundary concern, but the application call sites must be fully traced before classifying individual functions as exploitable. Do not describe every such function as a confirmed vulnerability solely because it accepts an ID.
+- This inventory is based on migration source and grants, not live database ACL inspection. Do not infer deployed privileges from source alone.
+
+### Resume point
+Next trace every call site of `auth_disable_account`, `auth_issue_recovery`, `auth_set_password`, `auth_change_password`, `auth_create_session_with_refresh`, `auth_revoke_session` and `auth_revoke_all_sessions_for_account`; inspect the payment-result callback call path and all grants for registration/bootstrap. Then inventory remaining SECURITY DEFINER functions across earlier business, review, quote, opportunity, commercial and storage migrations. Continue read-only; no source, CI, DB, Render or production changes.
