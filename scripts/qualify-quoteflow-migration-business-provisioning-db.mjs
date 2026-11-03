@@ -10,7 +10,14 @@ const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 // Render sandbox. Do not accept DATABASE_URL or caller-supplied target overrides.
 const isCiQualification = process.env.NODE_ENV?.trim().toLowerCase() === 'test';
 const expectedNonProductionDatabase = isCiQualification
-  ? new Set(['ghm', 'ghm_disposable_test'])
+  ? (() => {
+    assert(runtimeUrl, 'GHM_RUNTIME_DATABASE_URL is required');
+    const parsed = new URL(runtimeUrl);
+    const databaseName = decodeURIComponent(parsed.pathname.replace(/^\\//, ''));
+    assert(['ghm', 'ghm_disposable_test'].includes(databaseName),
+      'CI qualification database must be an explicitly allowed disposable database');
+    return databaseName;
+  })()
   : 'ghm_payfast_sandbox_db';
 const expectedNonProductionHost = isCiQualification
   ? 'localhost'
@@ -19,24 +26,18 @@ assert(runtimeUrl && migratorUrl && runtimeUrl !== migratorUrl,
   'Distinct GHM_RUNTIME_DATABASE_URL and GHM_MIGRATOR_DATABASE_URL are required; DATABASE_URL fallback is forbidden');
 
 const runtimeTarget = assertPostgresTargetConfiguration(runtimeUrl, {
-  databaseName: typeof expectedNonProductionDatabase === 'string'
-    ? expectedNonProductionDatabase
-    : undefined,
+  databaseName: expectedNonProductionDatabase,
   host: expectedNonProductionHost,
   label: 'QuoteFlow business provisioning runtime target',
 });
 const migratorTarget = assertPostgresTargetConfiguration(migratorUrl, {
-  databaseName: typeof expectedNonProductionDatabase === 'string'
-    ? expectedNonProductionDatabase
-    : undefined,
+  databaseName: expectedNonProductionDatabase,
   host: expectedNonProductionHost,
   label: 'QuoteFlow business provisioning migration target',
 });
 assertMatchingPostgresTargets(runtimeTarget, migratorTarget, 'QuoteFlow business provisioning qualification');
-assert(isCiQualification
-  ? expectedNonProductionDatabase.has(runtimeTarget.database)
-  : runtimeTarget.database === expectedNonProductionDatabase,
-'Qualification database is not in the explicit target allowlist');
+assert.equal(runtimeTarget.database, expectedNonProductionDatabase,
+  'Qualification database is not the explicitly approved target');
 assertNonProductionQualificationTarget(runtimeTarget, 'QuoteFlow business provisioning qualification');
 
 // CI PostgreSQL is a local disposable service without TLS. Render sandbox connections
