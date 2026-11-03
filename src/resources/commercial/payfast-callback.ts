@@ -50,7 +50,7 @@ export class PayfastCallbackBoundary {
     if (lookup.rowCount !== 1) throw new Error('Commercial payment attempt not found');
     const attempt = lookup.rows[0];
     if (attempt.provider_code !== 'payfast') throw new Error('Payfast payment attempt provider mismatch');
-    if (!['pending_checkout', 'pending_payment'].includes(attempt.attempt_status)) throw new Error('Payfast payment attempt is not payable');
+    if (attempt.currency_code !== 'ZAR') throw new Error('Payfast settlement requires ZAR');
     const verified = verifyPayfastItn({
       fields,
       sourceIp,
