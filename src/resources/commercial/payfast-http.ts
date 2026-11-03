@@ -71,7 +71,7 @@ export class PayfastHttpBoundary {
   async createCheckout(paymentAttemptIdValue: unknown): Promise<PayfastCheckout> {
     const paymentAttemptId = requireAttemptId(paymentAttemptIdValue);
     const result = await this.transactionPool.query(
-      `SELECT a.id, a.amount_minor_units, a.attempt_status, c.code AS currency_code, b.name AS business_name
+      `SELECT a.id, a.provider_code, a.amount_minor_units, a.attempt_status, c.code AS currency_code, b.name AS business_name
        FROM ghm.commercial_payment_attempt a
        JOIN ghm.currency c ON c.id = a.currency_id
        JOIN ghm.business b ON b.id = a.business_id
@@ -80,6 +80,7 @@ export class PayfastHttpBoundary {
     );
     if (result.rowCount !== 1) throw new Error('Commercial payment attempt not found');
     const row = result.rows[0];
+    if (row.provider_code !== 'payfast') throw new Error('Commercial payment attempt provider mismatch');
     if (!['pending_checkout', 'pending_payment'].includes(row.attempt_status)) throw new Error('Commercial payment attempt is not payable');
     if (row.currency_code !== 'ZAR') throw new Error('Payfast checkout requires ZAR');
     if (!config.payfast.merchantId || !config.payfast.merchantKey) throw new Error('Payfast checkout credentials are not configured');
@@ -97,10 +98,11 @@ export class PayfastHttpBoundary {
     const paymentAttemptId = requireAttemptId(Number(rawId));
     if (String(paymentAttemptId) !== rawId) throw new Error('Payfast ITN payment identifier invalid');
     const attempt = await this.transactionPool.query(
-      `SELECT id, amount_minor_units, attempt_status FROM ghm.commercial_payment_attempt WHERE id = $1 LIMIT 1`,
+      `SELECT id, provider_code, amount_minor_units, attempt_status FROM ghm.commercial_payment_attempt WHERE id = $1 LIMIT 1`,
       [paymentAttemptId],
     );
     if (attempt.rowCount !== 1) throw new Error('Commercial payment attempt not found');
+    if (attempt.rows[0].provider_code !== 'payfast') throw new Error('Payfast payment attempt provider mismatch');
     if (!['pending_checkout', 'pending_payment'].includes(attempt.rows[0].attempt_status)) throw new Error('Commercial payment attempt is not payable');
     const verified = verifyPayfastItn({
       fields, sourceIp, expectedMerchantId: config.payfast.merchantId,
