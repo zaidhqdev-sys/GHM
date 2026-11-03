@@ -136,6 +136,7 @@ export interface CommercialPaymentAttempt {
   readonly subscriptionId: CommercialSubscriptionId | null;
   readonly priceId: CommercialPlanPriceId;
   readonly initiatedByAccountId: AccountId;
+  readonly providerCode: 'payfast';
   readonly amountMinorUnits: number;
   readonly currencyId: CurrencyId;
   readonly billingInterval: 'month';
@@ -225,7 +226,7 @@ export interface ScheduleCommercialCancellationInput {
 
 export interface ApplyCommercialPaymentResultInput {
   readonly paymentAttemptId: CommercialPaymentAttemptId;
-  readonly providerCode: string;
+  readonly providerCode: 'payfast';
   readonly externalProviderEventId: string;
   readonly providerEventType: string;
   readonly providerPayloadHash: string;
