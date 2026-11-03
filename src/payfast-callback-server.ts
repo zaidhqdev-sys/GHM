@@ -11,7 +11,7 @@ const required = (name: string): string => {
 };
 const environment = process.env.PAYFAST_ENVIRONMENT?.trim() || 'sandbox';
 if (environment !== 'sandbox' && environment !== 'live') throw new Error('PAYFAST_ENVIRONMENT must be sandbox or live');
-const port = Number(process.env.PAYFAST_CALLBACK_PORT ?? '3100');
+const port = Number(process.env.PORT ?? process.env.PAYFAST_CALLBACK_PORT ?? '3100');
 if (!Number.isSafeInteger(port) || port < 1 || port > 65535) throw new Error('PAYFAST_CALLBACK_PORT is invalid');
 const trustProxyRaw = process.env.PAYFAST_CALLBACK_TRUST_PROXY?.trim() ?? 'false';
 const trustProxy = trustProxyRaw === 'false' || trustProxyRaw === '' ? false : Number(trustProxyRaw);
@@ -38,7 +38,11 @@ app.disable('x-powered-by');
 app.set('trust proxy', trustProxy);
 app.get('/healthz', (_req, res) => res.status(200).json({ status: 'ok' }));
 app.get('/readyz', async (_req, res) => {
-  try { await database.query('SELECT 1'); res.status(200).json({ status: 'ready' }); }
+  try {
+    const identity = (await database.query('SELECT session_user, current_user')).rows[0];
+    if (identity.session_user !== 'ghm_payment_provider' || identity.current_user !== 'ghm_payment_provider') throw new Error('unexpected database identity');
+    res.status(200).json({ status: 'ready' });
+  }
   catch { res.status(503).json({ status: 'not_ready' }); }
 });
 app.post('/api/v1/commercial/payfast/itn', express.urlencoded({ extended: false, limit: '32kb', parameterLimit: 64 }), async (req: Request, res: Response) => {
@@ -71,7 +75,10 @@ server.headersTimeout = 10000;
 server.keepAliveTimeout = 5000;
 let ready = false;
 const start = async (): Promise<void> => {
-  await database.query('SELECT 1');
+  const identity = (await database.query('SELECT session_user, current_user')).rows[0];
+  if (identity.session_user !== 'ghm_payment_provider' || identity.current_user !== 'ghm_payment_provider') {
+    throw new Error('PAYFAST_CALLBACK_DATABASE_URL must authenticate as ghm_payment_provider');
+  }
   server.listen(port, () => { ready = true; console.log(`PayFast callback listener ready on port ${port}`); });
 };
 const shutdown = async (signal: string): Promise<void> => {
