@@ -838,3 +838,13 @@ Corrected the assertion to compare `runtimeTarget.databaseName` with the approve
 - Ran `npm test` on the current local checkout after the QuoteFlow Business-provisioning database qualification passed.
 - Reported Node test summary: 686 tests, 685 passed, 0 failed, 0 cancelled, 1 skipped, 0 todo; duration 5,434.3622 ms. The process returned to the PowerShell prompt without an error.
 - This is a local test-suite result. It does not replace CI evidence or the separate live database qualifications that have not been run.
+
+
+### 2026-11-03 — Remaining identity qualification review and local TLS correction
+
+- Inspected `qualify:business-identity-runtime` and `qualify:quoteflow-migration-reset-reenrollment-db` before authorizing further fixture-mutating tests.
+- The aggregate identity command chains three live database qualifications (business identity runtime, QuoteFlow provisioning, and QuoteFlow reset/re-enrollment); it is not being run as a shortcut.
+- The reset/re-enrollment script had strict explicit database/host matching, distinct runtime and migrator URLs, a non-production guard, and role assertions, but unconditionally enabled certificate-verified TLS. That conflicts with the approved local PostgreSQL `NODE_ENV=test` target, which does not use TLS.
+- Updated only the connection TLS selection: `NODE_ENV=test` plus normalized target host `localhost` uses no TLS; all other targets retain `rejectUnauthorized: true`. Target and role guards were not weakened.
+- Script fix commit: `4a058891564e8de14cc2b8ff7b066f61bf21a69c`.
+- The reset/re-enrollment qualification is not yet run. Next, pull this commit and inspect the local test environment for `GHM_AUTH_TOKEN_PEPPER` (at least 32 characters); do not paste its value into chat or documentation. Then run only the reset/re-enrollment qualification with the same local `ghm@localhost` runtime/migrator URLs and explicit non-production database/host variables. The identity runtime qualification requires separate review of its TLS and cleanup behavior before execution.
