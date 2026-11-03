@@ -100,6 +100,7 @@ try {
   try {
     await runtime.query('BEGIN');
     let mismatchRejected = false;
+    await runtime.query('SAVEPOINT provider_mismatch_probe');
     try {
       await runtime.query(`
         SELECT * FROM ghm.commercial_apply_payment_result(
@@ -109,7 +110,9 @@ try {
       `, [fixture.attemptId]);
     } catch (error) {
       mismatchRejected = String(error?.message).includes('provider does not match attempt');
+      await runtime.query('ROLLBACK TO SAVEPOINT provider_mismatch_probe');
     }
+    await runtime.query('RELEASE SAVEPOINT provider_mismatch_probe');
     if (!mismatchRejected) throw new Error('Provider mismatch was not rejected by the database boundary');
     console.log('RUNTIME COMMERCIAL PAYMENT PROVIDER MISMATCH REJECTION PASS');
 
