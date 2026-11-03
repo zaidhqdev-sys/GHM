@@ -869,3 +869,13 @@ Corrected the assertion to compare `runtimeTarget.databaseName` with the approve
 - `QUOTEFLOW RESET RE-ENROLLMENT FIXTURE CLEANUP PASS` confirmed. No synthetic residue was reported.
 - Scope is local PostgreSQL 17.11 compatibility qualification only. No shared Render sandbox, production database, Render service, deployment, or production data was changed.
 - The shared Render sandbox must remain out of scope for fixture-mutating qualification unless separately authorized. Continue using explicit process-scoped local overrides rather than changing the shared `.env`.
+
+
+### 2026-11-03 — Local Business Identity runtime qualification TLS correction
+
+- Reviewed `scripts/qualify-business-identity-runtime.mjs` before execution.
+- Confirmed it has explicit non-production database/host guards, verifies distinct runtime and migrator connections and their expected roles, creates synthetic account/Business fixtures, and removes those fixtures in a `finally` cleanup block. It also starts a loopback-only HTTP server for identity-route checks.
+- Found that its PostgreSQL pools always required TLS, preventing use against the already-qualified local PostgreSQL instance.
+- Corrected TLS policy to disable TLS only when `NODE_ENV=test` and the validated runtime target host is exactly `localhost`. All other targets retain `rejectUnauthorized: true`; database-name, host, matching-target, non-production, and role identity guards remain in place.
+- Change committed to `integration/ghm-identity-merge-candidate-20261018`: `47c6f9eaa547e2bdea376b3c61989a91fa4ea26d`.
+- The qualification has **not** yet been run. Next: pull this commit, verify local process-scoped runtime/migrator identities and local-only target settings, then run only `node scripts/qualify-business-identity-runtime.mjs` (not the aggregate npm script, which repeats the two completed QuoteFlow DB qualifications).
