@@ -163,3 +163,38 @@ test('Payfast ITN boundary fails closed when provider confirmation fails', async
   await assert.rejects(boundary.handleItn(fields, '197.97.145.150'), /server confirmation invalid/);
   assert.equal(applied, false);
 });
+
+
+test('Payfast ITN rejects an attempt bound to another provider before provider confirmation', async () => {
+  let confirmed = false;
+  let applied = false;
+  const unsigned = {
+    merchant_id: '10000100',
+    m_payment_id: '42',
+    pf_payment_id: 'pf-123',
+    amount_gross: '199.00',
+    payment_status: 'COMPLETE',
+  };
+  const fields = { ...unsigned, signature: generatePayfastSignature(unsigned, 'secret') };
+  const boundary = new PayfastHttpBoundary(
+    {
+      query: async () => ({
+        command: 'SELECT',
+        rowCount: 1,
+        oid: 0,
+        fields: [],
+        rows: [{ id: 42, provider_code: 'stripe', amount_minor_units: 19900, attempt_status: 'pending_payment' }],
+      }),
+    },
+    {
+      applyCommercialPaymentResult: async () => {
+        applied = true;
+        return {} as never;
+      },
+    },
+    async () => { confirmed = true; },
+  );
+  await assert.rejects(boundary.handleItn(fields, '197.97.145.150'), /provider mismatch/);
+  assert.equal(confirmed, false);
+  assert.equal(applied, false);
+});
