@@ -244,7 +244,7 @@ test('Commercial payment preparation rejects idempotency reuse by another actor'
   );
 });
 
-test('Commercial payment preparation resolves price and persists a provider-neutral attempt atomically', async () => {
+test('Commercial payment preparation resolves price and persists a PayFast-bound attempt atomically', async () => {
   const preparedAt = new Date('2026-10-03T10:00:00.000Z');
   const calls: string[] = [];
   const params: unknown[][] = [];
@@ -286,6 +286,7 @@ test('Commercial payment preparation resolves price and persists a provider-neut
   );
   assert.equal(result.id, 71);
   assert.equal(result.lifecycleStatus, 'pending_checkout');
+  assert.equal(result.providerCode, 'payfast');
   assert.equal(result.priceId, 41);
   assert.equal(result.amountMinorUnits, 19900);
   assert.equal(result.currencyId, 1);
@@ -295,7 +296,10 @@ test('Commercial payment preparation resolves price and persists a provider-neut
   assert.match(priceSql, /price\.lifecycle_status = 'active'/);
   assert.match(priceSql, /price\.country_id = \$3::bigint/);
   assert.deepEqual(params[calls.indexOf(priceSql!)], [31, preparedAt, 1]);
-  assert.equal(calls.filter((sql) => sql.includes('INSERT INTO ghm.commercial_payment_attempt')).length, 1);
+  const attemptInsert = calls.find((sql) => sql.includes('INSERT INTO ghm.commercial_payment_attempt'));
+  assert.ok(attemptInsert);
+  assert.match(attemptInsert, /provider_code/);
+  assert.match(attemptInsert, /'payfast'/);
   assert.equal(calls.filter((sql) => sql.includes('INSERT INTO ghm.commercial_event')).length, 1);
   assert.equal(calls[0], 'BEGIN');
   assert.equal(calls.at(-1), 'COMMIT');
