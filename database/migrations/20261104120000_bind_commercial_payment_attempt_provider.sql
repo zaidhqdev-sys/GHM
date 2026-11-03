@@ -112,6 +112,10 @@ BEGIN
     END IF;
   END IF;
 
+  IF v_attempt.attempt_status NOT IN ('pending_checkout', 'pending_payment') THEN
+    RAISE EXCEPTION 'commercial payment attempt is not payable';
+  END IF;
+
   IF p_transaction_status = 'succeeded' AND p_transaction_kind = 'payment' THEN
     v_period_start := p_occurred_at;
     v_period_end := p_occurred_at + interval '1 month';
