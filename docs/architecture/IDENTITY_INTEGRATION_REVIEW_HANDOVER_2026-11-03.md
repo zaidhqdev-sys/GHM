@@ -601,3 +601,10 @@ Do not backfill every NULL row to PayFast solely because PayFast is currently th
 The idempotency replay branch in `preparePayment` reads `provider_code` and maps the existing attempt. A pre-migration attempt replayed by idempotency key may have NULL provider_code; ensure the repository fails closed with an explicit reconciliation conflict instead of returning a runtime null that violates the narrowed TypeScript `'payfast'` contract. Add a regression test before calling the slice fully source-reviewed.
 
 No provider service, second DB login, credentials, deployment, historical-row query, backfill or environment mutation was created or executed. This is an architecture proposal and read-only source trace only.
+
+
+### Follow-up CI result — idempotency replay guard (2026-11-04)
+- Added fail-closed behavior to `prepareCommercialPayment`: if an idempotency-key replay resolves to a historical attempt with `provider_code IS NULL` (or any value other than `payfast`), it throws an explicit provider-reconciliation conflict instead of mapping/returning an invalid provider contract.
+- Added a regression test for the NULL-provider replay case.
+- CI run [#41739588105](https://github.com/zaidhqdev-sys/GHM/actions/runs/41739588105) passed on head commit `e2637eb1a3f85770013e6a398fcde28f2cc8b590`. The quality job passed build, all migrations on disposable PostgreSQL, Business Identity/QuoteFlow qualification, full DB-backed test suite, migration audit policy tests, and runtime-boundary verification.
+- PR #205 remains draft. This success qualifies the code in isolated CI only; it does not resolve the shared `ghm_runtime` settlement EXECUTE grant or historical NULL rows already persisted in any shared/production database.
