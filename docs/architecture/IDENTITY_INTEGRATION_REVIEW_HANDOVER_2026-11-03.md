@@ -192,3 +192,26 @@ Reviewed at candidate SHA `8739b0bf24ef2619f63a14d06a1db3f64138330c`:
 
 ### Resume point
 Next inspect the remaining Connect adapter implementation/test pairs and underlying object-level services for quote/project/business mutation and lifecycle transitions. Then reconcile the candidate's complete resource registry with every HTTP/Connect operation, documenting unsupported or intentionally disabled operations. Continue read-only; no source, CI, DB, Render or production changes in this pass.
+
+
+## Connect adapter tests and object-level quote/project service follow-up (2026-11-03)
+
+Read-only review at candidate SHA `8739b0bf24ef2619f63a14d06a1db3f64138330c`. Inspected Connect adapter/test pairs for quote, project quote, project, business, and business capability; inspected quote, project-quote, project, business-capability and business-offering service/repository paths.
+
+### Findings
+- Quote adapter verifies exact authorized capability/resource/operation and positive identifiers before calling quote service. Quote creation service/repository binds customer ownership to `context.userId`; repository scopes quote reads/updates to owner account (admin has explicit wider path) and checks customer ownership on creation.
+- Project adapter enforces customer role for create/update; project repository scopes records to `context.userId`.
+- Project-quote adapter enforces role split: customer for received/read-decision actions, business for own/read-create-update actions. Repository independently checks project ownership or active Business owner membership, validates quote/project association, and performs accept/reject transactionally with project transition. This is a strong layered boundary.
+- Business capability writes use tenant transaction and owner/administrator membership; verification transition delegates to a dedicated SQL function. Reads are tenant-context scoped. Customer read dispatch is permitted by adapter and is constrained by service/repository tenant policy.
+- Business offering mutations require owner/administrator membership after resolving tenant context; public listing uses a separate public repository query.
+- Adapter tests verify capability/resource/operation mismatch fails before service access, role mismatches fail closed, and malformed IDs are rejected. Tests use injected service stubs, so they prove adapter dispatch rules rather than the full production persistence boundary; repository tests/DB qualification remain important.
+- Business adapter resolution checks active membership for an existing mapping; provisioning is a separate role-gated transactional path with advisory locking and external mapping.
+- No confirmed object-level authorization bypass was identified in these inspected quote/project paths.
+
+### Residual questions
+- Quote adapter accepts status and notes updates as separate branches. The repository scopes by quote owner/account and admin, but confirm whether business-role users are intended to update customer-owned quote status/notes and whether status transition rules are enforced consistently (the service currently validates identifier and notes shape but delegates status transition policy to repository). Treat as product/transition-policy verification, not a confirmed vulnerability.
+- Business capability read is available to customer context at the adapter layer. Confirm the service/repository only returns fields intended for customer visibility; tenant context currently provides the isolation boundary.
+- Continue with customer, enquiry, opportunity, saved-business and business-offering adapter/test pairs plus SQL transition functions. Then produce a complete operation-to-resource matrix; this pass remains sampled, not exhaustive.
+
+### Resume point
+Next: inspect remaining Connect adapters and their object-level services, then inspect SQL transition functions for quote/project/capability and verify resource registry parity. Continue read-only; no source, CI, database, Render or production changes were made.
