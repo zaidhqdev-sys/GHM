@@ -22,14 +22,16 @@ RETURNS TABLE (
   payment_attempt_id bigint,
   provider_code text,
   amount_minor_units bigint,
-  attempt_status text
+  attempt_status text,
+  currency_code text
 )
 LANGUAGE sql
 SECURITY DEFINER
 SET search_path = pg_catalog, ghm
 AS $$
-  SELECT a.id, a.provider_code, a.amount_minor_units, a.attempt_status
+  SELECT a.id, a.provider_code, a.amount_minor_units, a.attempt_status, c.code
   FROM ghm.commercial_payment_attempt AS a
+  JOIN ghm.currency AS c ON c.id = a.currency_id
   WHERE a.id = p_payment_attempt_id
   LIMIT 1
 $$;
@@ -53,8 +55,27 @@ RETURNS ghm.commercial_payment_transaction
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = pg_catalog, ghm
-AS $$
+AS $
+DECLARE
+  v_provider_code text;
+  v_currency_code text;
 BEGIN
+  SELECT a.provider_code, c.code INTO v_provider_code, v_currency_code
+  FROM ghm.commercial_payment_attempt AS a
+  JOIN ghm.currency AS c ON c.id = a.currency_id
+  WHERE a.id = p_payment_attempt_id
+  FOR UPDATE OF a;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'commercial payment attempt not found';
+  END IF;
+  IF v_provider_code IS DISTINCT FROM 'payfast' THEN
+    RAISE EXCEPTION 'commercial payment provider does not match attempt';
+  END IF;
+  IF v_currency_code <> 'ZAR' THEN
+    RAISE EXCEPTION 'PayFast settlement requires ZAR';
+  END IF;
+
   RETURN ghm.commercial_apply_payment_result(
     p_payment_attempt_id,
     'payfast',
