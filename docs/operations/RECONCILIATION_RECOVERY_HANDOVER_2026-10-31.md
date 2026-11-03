@@ -144,3 +144,58 @@ Do not deploy until the production service has an explicitly provisioned `GHM_RU
 - Current local qualification database state: newly recreated and empty; owner `ghm_schema_owner`; CONNECT revoked from PUBLIC and granted to `ghm_migrator` and `ghm_runtime`. Do not treat it as migrated or fixture-ready without a fresh migration and fixture setup.
 - No production database/service, deployment, production credentials, founder-owned accounts, original integration branch, main merge, or PR was touched.
 - Next safe work: review the next bounded source/implementation task against the updated qualification evidence. Do not infer that production cutover or full QuoteFlow identity-link integration is authorized by this database qualification.
+
+
+## Render shared-sandbox migration provenance investigation — 2026-11-03
+
+**Current investigation state:** READ-ONLY; migration provenance unresolved. Do not run migrations or the shared-sandbox qualification script until this section's discrepancy is reconciled.
+
+### Target and execution status
+- Shared Render sandbox: `ghm_payfast_sandbox_db`, resource `dpg-db4416vlk1mc73eocug0-a`, Frankfurt host `dpg-db4416vlk1mc73eocug0-a.frankfurt-postgres.render.com`.
+- This database is shared by GHM identity qualification and PayFast sandbox runtime. There is no separate Render identity-qualification database.
+- Production database `ghm_db` is explicitly excluded.
+- Read-only preflight passed for runtime identity/restricted privileges, migrator authentication and `SET ROLE`, and schema-owner function permission. No write, migration, or qualification was executed against the shared Render database.
+- Ledger inspection used a read-only transaction with TLS verification and role identity `session_user=ghm_migrator`, `current_user=ghm_schema_owner`, database `ghm_payfast_sandbox_db`.
+- Latest observed ledger migration: `20261026120000_scope_storage_metadata_lookup`. The current branch contains three Nov 1 directory migrations not yet applied there: `20261101090000`, `20261101100000`, and `20261101110000`. Do not apply them as part of this investigation.
+
+### QuoteFlow migration checksum discrepancy
+The sandbox ledger contains these checksums:
+
+| Migration | Ledger checksum |
+|---|---|
+| `20261020130000_create_quoteflow_migration_business_provisioning` | `a453171e85f6717476258c6d2d59a39b663be89826316036e6b9891cadfb13e9` |
+| `20261020140000_reconcile_quoteflow_provisioning_verification_status` | `922295b2a94dfed4cc6441569b0b911f99e7bf4aed81d1f1938a481dc7e9c465` |
+
+Current checkout raw SHA-256 values:
+
+| Migration | Current raw file checksum |
+|---|---|
+| `20261020130000` | `5559354653735f01c17badc828f4280d7333f8f03faf3031f60ad0dc1848413e` |
+| `20261020140000` | `7e856b8f2fb33c0b34395ed6fafef86675f2df9ea72bd69e10e3647277de8e74` |
+
+- `src/db/migration-checksum.ts` computes a canonical checksum after normalizing CRLF/CR to LF, and supports exact-byte, canonical, and legacy CRLF matching.
+- `src/db/migrate.ts` also permits an explicit historical provenance exception from `config/historical-migration-provenance-exceptions.json`.
+- The exception file was inspected on this branch. Neither version `20261020130000` nor `20261020140000` is listed.
+- Git history confirms the first migration changed across multiple commits; the second also has a follow-up correction. History alone does not establish which bytes were applied to the sandbox.
+- **Not yet checked:** canonical normalized SHA-256 values versus the two ledger checksums. The raw mismatch is not yet proof of corruption; line-ending normalization or a historical file revision may explain it.
+
+### Qualification script boundary
+- The current reconciliation-branch script `scripts/qualify-quoteflow-migration-business-provisioning-db.mjs` is designed for isolated database `ghm_qualification`, requires an explicit acknowledgement, and has a database-name guard but lacks a host guard. Do not point it at the shared Render sandbox.
+- A different script exists on `integration/ghm-identity-merge-candidate-20261018`; it has a target guard and broader tests, but its cleanup is best-effort and it is not interchangeable with the current-branch script. Review exact source and cleanup behavior before any execution.
+- Prior isolated local PostgreSQL qualification evidence in `docs/evidence/QUOTEFLOW_BUSINESS_PROVISIONING_DB_QUALIFICATION_2026-11-01.md` applies only to its disposable local database. It does not qualify the shared Render sandbox or production.
+
+### Exact next step
+1. Compute the two current files' canonical normalized checksums using the repository's exact normalization function and compare them with the ledger values above. Read-only only.
+2. If they still differ, calculate checksums for historical file contents at the relevant commits (including the migration restoration commit) and compare exact/canonical hashes. Do not infer applied bytes from commit messages.
+3. Reconcile the discrepancy and document the evidence before considering any qualification. No ledger edits, exception additions, migration runs, grants, or sandbox writes are authorized by this investigation.
+
+### Already completed — do not repeat
+- Render workspace/resource inventory and identification of the shared sandbox versus production database.
+- PostgreSQL client installation/version check and connection to the shared sandbox.
+- Read-only role/schema/object/ACL inspection.
+- Strict read-only runtime/migrator preflight (PASS).
+- Read-only migration ledger inspection and latest-applied-version check.
+- Current raw SHA-256 calculation for both QuoteFlow migration files.
+- Inspection of migration checksum implementation, runner exception logic, migration Git history, and the full historical exception JSON.
+
+**Working rule:** Continue from the canonical-hash comparison. Do not ask the user to repeat the above commands or rediscover these facts.
