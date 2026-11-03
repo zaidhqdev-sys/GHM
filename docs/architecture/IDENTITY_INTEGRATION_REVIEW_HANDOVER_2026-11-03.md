@@ -215,3 +215,27 @@ Read-only review at candidate SHA `8739b0bf24ef2619f63a14d06a1db3f64138330c`. In
 
 ### Resume point
 Next: inspect remaining Connect adapters and their object-level services, then inspect SQL transition functions for quote/project/capability and verify resource registry parity. Continue read-only; no source, CI, database, Render or production changes were made.
+
+
+## Remaining Connect adapters and capability-verification SQL (2026-11-03)
+
+Reviewed at candidate SHA `8739b0bf24ef2619f63a14d06a1db3f64138330c`: customer, enquiry, opportunity, saved-business and business-offering Connect adapters and their adapter tests; business-capability repository; and migration `20261003202000_create_business_capability_verification_transition.sql`.
+
+### Adapter findings
+- Customer adapter enforces capability/resource/operation equality, validates IDs, and dispatches using the trusted bound AuthContext. Object-level customer ownership/admin restrictions remain in customer services/repositories.
+- Enquiry adapter separates customer-owned reads/creation from business received-enquiry reads/updates and requires an explicit enquiry/business ID for each read mode. Service/repository layer remains responsible for membership/ownership.
+- Opportunity adapter enforces exact capability/resource/operation and delegates to owned-opportunity service methods; earlier repository review confirmed creator/account scoping.
+- Saved-business adapter uses the mapped active GHM account context and passes it to user-scoped service methods.
+- Business-offering adapter requires business/admin role and exact capability/resource/operation; service/repository adds tenant manager checks.
+- Tests exercise capability mismatch, operation mismatch, role mismatch, malformed IDs and dispatch identity. As before, adapter stub tests validate dispatch rather than DB behavior.
+- No confirmed adapter-level cross-tenant bypass found in this pass.
+
+### Business-capability verification SQL: important defense-in-depth gap
+- The transition function is SECURITY DEFINER, owned by `ghm_schema_owner`, pins `search_path`, revokes PUBLIC execution, and grants EXECUTE to `ghm_runtime`; direct runtime UPDATE/DELETE is intentionally denied.
+- It validates positive capability/verifier IDs, locks the target row, checks expected-state freshness, prohibits self-verification, validates allowed transitions, and requires reasons for rejected/revoked transitions.
+- However, the function authorizes the verifier by looking up the caller-supplied `p_verifier_id` and checking only that the stored role is `admin`. It does not independently bind that ID to the current authenticated database principal/session, nor does it check account active status.
+- The application repository currently passes `context.userId`, and the HTTP/resource middleware constructs that context from a verified token plus current DB account state. Thus no direct HTTP exploit was established in this source review. But because `ghm_runtime` can execute the SECURITY DEFINER function and supply an arbitrary admin ID, the SQL function's apparent independent authorization check is not a true caller-binding boundary. A compromised/misused runtime DB credential or another call site could impersonate an admin at this function.
+- Treat this as a **confirmed database defense-in-depth authorization gap**, not as proof of an exploitable unauthenticated HTTP route. Before relying on SQL as an independent authorization boundary, bind verifier identity to trusted DB session context (or move the transition behind a narrowly controlled DB API whose caller identity cannot be selected by the runtime parameter) and verify active admin status. Any fix requires separate review, migration qualification and explicit authorization; no change was made.
+
+### Resume point
+Next inspect other SECURITY DEFINER functions that accept caller/account/verifier IDs and claim to enforce authorization internally, especially quote/project/opportunity lifecycle transitions and administrative moderation. Compare every such parameter to trusted session identity and active account status. Then finish the resource registry ↔ HTTP ↔ Connect operation matrix. Continue read-only; no source, CI, DB, Render or production changes were made.
