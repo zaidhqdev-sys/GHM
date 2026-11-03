@@ -84,3 +84,26 @@ Reviewed at the same immutable candidate head `8739b0bf24ef2619f63a14d06a1db3f64
 
 ### Review status / next step
 No confirmed account-identity substitution or reset-token bypass was found in the inspected source paths. This remains source review, not runtime/deployment qualification. Next inspect role/resource authorization registry and the full auth route wiring/configuration (including origin/cookie policy and delivery configuration), then continue route-level coverage. Keep the review read-only. No code, database, shared Render, or production changes were made in this continuation.
+
+
+## Role/resource registry and browser auth configuration review (2026-11-03)
+
+Reviewed `src/auth/authorization.ts`, `src/resources/registry.ts`, `src/auth/resource-auth.ts`, `src/auth/ghm-bearer.ts`, `src/auth/http.ts`, `src/http/auth-router.ts`, `src/auth/recovery-webhook-delivery.ts`, and relevant authorization, resource-auth, auth-router, and webhook-delivery tests.
+
+### Findings
+- The generic resource registry gives all three GHM roles coarse access to `business_registration_identity` read/update. This is not the final tenant authorization: the route then calls the service/repository, which independently requires active owner/administrator membership for the requested Business. SQL functions repeat the active Business and membership checks. The tests assert registry vocabulary and the route tests exercise the tenant boundary. No cross-tenant access was demonstrated in inspected paths.
+- Resource middleware requires a Bearer token, verifies it with the ES256 authenticator, loads active account status/role/system-admin flag from the database, and builds `req.authContext` from that database state. HS tokens fail closed; JWT role/userId claims do not override DB state. Tests cover invalid issuer/audience/algorithm/kid/expiry, disabled accounts, HS rejection, and system-admin role resolution.
+- Browser auth routes require an exact configured Origin allow-list. If no origins are configured, web auth fails closed with 503; missing/unlisted Origin gets 403. Responses set `Cache-Control: no-store` and `Vary: Origin` after origin validation.
+- Browser refresh credential is held in an HttpOnly, SameSite=Lax cookie scoped by default to `/api/ghm`; Secure is enabled in production unless explicitly overridden. Cookie path is validated to start with slash and exclude semicolon. Refresh/logout use cookie-only credentials for web routes; raw API routes use explicit refresh token body.
+- Recovery webhook delivery is disabled unless both URL and bearer token are configured. It requires HTTPS, no URL credentials/query/fragment, a bearer token at least 32 chars, POST with redirects disabled, five-second timeout, and fails when receiver rejects. Raw recovery token is sent only to that configured webhook boundary.
+- Auth route tests cover migration reset anti-enumeration and unavailable delivery, completion-before-login order, sanitized failure after committed completion, and standard login/register behavior.
+
+### Remaining questions / hardening observations (not confirmed blockers)
+- Coarse role registry inclusion for `business_registration_identity` is broader than the apparent business-manager use case. Tenant membership checks currently provide the decisive gate, so this is not a demonstrated bypass; consider tightening the coarse role list for clarity/defense in depth if product semantics require only business/admin roles.
+- Browser cookie policy uses SameSite=Lax plus exact Origin validation, which is a sensible CSRF boundary for the inspected POST routes. No explicit CSRF token is used. Confirm the deployed reverse-proxy preserves the browser Origin header and that the configured allow-list exactly matches the trusted frontend origins. The raw non-cookie API auth routes intentionally remain separate.
+- `GHM_WEB_AUTH_COOKIE_SECURE=false` can disable Secure even in production. This is an explicit override; production configuration should leave it unset/true and be checked operationally before enablement.
+- The webhook validates HTTPS and URL shape but does not pin destination host/IP or prevent DNS rebinding/private-network destinations. Since the URL is operator-configured rather than user-controlled, this is an operator trust boundary; restrict the configured endpoint through deployment policy/egress controls.
+- Rate limits are in-process Express rate-limiters (10 login/register, 5 recovery, 60 refresh/logout per 15 minutes). They are not shared/distributed across replicas unless separately configured; production multi-instance abuse controls should be confirmed at the edge.
+
+### Updated review status
+No confirmed bypass was found in the inspected role/resource, browser-origin/cookie, or recovery-delivery paths. Remaining access-token revocation caveat remains as documented above (persisted session revocation does not invalidate an already-issued access JWT before its 15-minute expiry). This remains source-level review at the recorded candidate SHA, not deployment verification. Next: inspect full route authorization/tenant scoping for the broader resource surface and confirm relevant production edge/configuration separately. Continue read-only; no code or environment changes.
