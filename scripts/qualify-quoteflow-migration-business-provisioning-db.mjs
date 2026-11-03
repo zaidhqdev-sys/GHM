@@ -4,15 +4,15 @@ import { Client } from 'pg';
 import 'dotenv/config';
 import { assertMatchingPostgresTargets, assertNonProductionQualificationTarget, assertPostgresTargetConfiguration } from '../dist/db/postgres-target-guard.js';
 
-const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
+const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
-const expectedNonProductionDatabase = process.env.GHM_NONPRODUCTION_DATABASE_NAME;
+// Pin this qualification to the explicitly approved shared Render sandbox. Do not
+// accept DATABASE_URL or caller-supplied target overrides as an alternate destination.
+const expectedNonProductionDatabase = 'ghm_payfast_sandbox_db';
+const expectedNonProductionHost = 'dpg-db4416vlk1mc73eocug0-a.frankfurt-postgres.render.com';
 assert(runtimeUrl && migratorUrl && runtimeUrl !== migratorUrl,
-  'Distinct GHM_RUNTIME_DATABASE_URL and GHM_MIGRATOR_DATABASE_URL are required');
-assert(expectedNonProductionDatabase,
-  'GHM_NONPRODUCTION_DATABASE_NAME must be set to the explicitly approved non-production database name');
+  'Distinct GHM_RUNTIME_DATABASE_URL and GHM_MIGRATOR_DATABASE_URL are required; DATABASE_URL fallback is forbidden');
 
-const expectedNonProductionHost = process.env.GHM_NONPRODUCTION_DATABASE_HOST;
 const runtimeTarget = assertPostgresTargetConfiguration(runtimeUrl, {
   databaseName: expectedNonProductionDatabase,
   host: expectedNonProductionHost,
@@ -232,6 +232,7 @@ try {
   assert.equal(concurrent.filter(x => x.rows[0].outcome === 'created').length, 1);
   assert.equal(concurrent.filter(x => x.rows[0].outcome === 'already_provisioned').length, 3);
   assert.equal(new Set(concurrent.map(x => String(x.rows[0].business_id))).size, 1);
+  assert.equal(new Set(concurrent.map(x => String(x.rows[0].owner_membership_id))).size, 1);
   businessIds.add(Number(concurrent[0].rows[0].business_id));
 
   await migrator.query('begin');
