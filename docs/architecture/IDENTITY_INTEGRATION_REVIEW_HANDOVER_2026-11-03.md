@@ -304,3 +304,32 @@ Read-only inventory continued at candidate SHA `8739b0bf24ef2619f63a14d06a1db3f6
 
 ### Resume point
 Next trace every call site of `auth_disable_account`, `auth_issue_recovery`, `auth_set_password`, `auth_change_password`, `auth_create_session_with_refresh`, `auth_revoke_session` and `auth_revoke_all_sessions_for_account`; inspect the payment-result callback call path and all grants for registration/bootstrap. Then inventory remaining SECURITY DEFINER functions across earlier business, review, quote, opportunity, commercial and storage migrations. Continue read-only; no source, CI, DB, Render or production changes.
+
+
+## Auth privileged-function call sites and commercial provider callback review (2026-11-03)
+
+Read-only review at candidate SHA `8739b0bf24ef2619f63a14d06a1db3f64138330c`. Traced the exposed auth persistence methods through `src/auth/ghm-auth-service.ts`, `src/auth/foundation/persistence.ts`, `src/auth/password-recovery.ts`, `src/auth/password-reset.ts`, `src/http/auth-router.ts`, and reviewed PayFast verification plus the commercial internal router and payment-result SQL boundary.
+
+### Auth call-site findings
+- `auth_issue_recovery` is called by the password-recovery service only after normalized-email lookup returns an active account and active password credential. The raw recovery token is delivered through the configured delivery port; the HTTP route returns a generic 202 response, preserving anti-enumeration. The SQL function itself still trusts its supplied account ID and is not an independent authorization boundary.
+- Recovery reset redeems a one-time opaque token and obtains account ID from the redeemed credential inside a single DB transaction, then changes the password and revokes all sessions for that derived account. The HTTP reset route accepts token/email/password but no account ID. This is a strong app/transaction binding; email must still match the account in `auth_set_password`.
+- `auth_set_password` is used for login-time password rehash and token-derived recovery reset in inspected call paths. The reset call is within the same transaction as redemption and session revocation.
+- `auth_create_session_with_refresh` is called after account creation or successful password verification; refresh rotation uses the account ID returned by the persisted refresh credential, not a caller-supplied account ID.
+- Logout revokes using the opaque refresh token and persistence-resolved session/account. The exposed `revokeSession(sessionId)`, `revokeAllSessionsForAccount(accountId)`, `changePassword(accountId, keepSessionId,...)`, and `disableAccount(accountId)` persistence methods are privileged primitives. In the inspected HTTP/service files, no ordinary public route was found that accepts a caller-selected session/account ID and calls these methods. `disableAccount` and `changePassword` appear to be currently unused by the reviewed app call paths. This is not a complete repository-wide call-site proof.
+- These SQL functions remain executable by the shared runtime role and rely on trusted application call sites. Do not treat them as self-authorizing against a compromised runtime credential.
+
+### Commercial provider callback findings
+- PayFast ITN is intentionally unauthenticated at the HTTP layer, but validates the provider source IPv4 allow-list, merchant ID, signed fields using constant-time signature comparison, expected gross amount against the stored payment attempt, provider-side ITN confirmation (must return `VALID`), and provider payment identifier before applying the result.
+- The callback resolves the payment attempt from the stored GHM numeric attempt ID and checks payable state before verification. SQL locks the payment attempt/subscription, checks provider-event idempotency and payload hash consistency, and updates transaction/subscription/event records atomically.
+- Internal payment preparation and checkout routes require ES256 service assertions, fresh replay IDs, active integration lifecycle and no browser Origin. Payment preparation resolves mapped Supabase identity to current active GHM account state and resolves Business UUID through canonical mapping; it does not accept caller-supplied numeric GHM Business IDs.
+- Internal `payment-result` route also requires a fresh assertion and active integration, but the reviewed route does not visibly bind the assertion's integration to a specific payment-result capability/provider scope before invoking the shared provider boundary. This warrants confirmation against assertion claims and integration policy: if every active integration can submit arbitrary payment results, that is a high-impact trust-boundary issue. No exploit is confirmed from the inspected files alone.
+- The SQL function `commercial_apply_payment_result` is SECURITY DEFINER and executable by `ghm_runtime`; it validates structure and locks/updates the attempt but does not authenticate the provider or caller. Its safety depends on only trusted callback/service code invoking it. As with auth primitives, the shared runtime credential is a broad trust boundary.
+
+### Residual risks / next actions
+1. Complete repository-wide call-site search for `disableAccount`, `changePassword`, `revokeSession`, `revokeAllSessionsForAccount` and all direct SQL function invocations. No complete search result was obtained in this pass.
+2. Verify Connect service assertion claims and integration capability policy for internal commercial payment-result; bind provider result submission to an explicit trusted integration/provider permission.
+3. Verify Express `trust proxy` configuration for PayFast source-IP validation; `req.ip` is only reliable if proxy trust is configured safely.
+4. Add DB qualification proving runtime-role callers cannot impersonate another account for auth/campaign/business-capability functions, and cannot directly apply provider payment results outside approved callback/service boundary. Requires explicit authorization; no tests/migrations run.
+5. Confirm deployed grants/config separately; migration source does not prove live database ACLs.
+
+No confirmed public HTTP account impersonation was identified in the auth call paths reviewed. The previously documented SQL caller-identity gaps remain confirmed design weaknesses. No code, CI, database, Render or production changes were made.
