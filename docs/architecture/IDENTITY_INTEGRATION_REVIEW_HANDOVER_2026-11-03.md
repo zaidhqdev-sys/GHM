@@ -432,3 +432,68 @@ Read-only follow-up at candidate SHA `8739b0bf24ef2619f63a14d06a1db3f64138330c`.
 
 ### Resume point
 Next, produce a concrete remediation proposal with minimal schema/API changes and migration/test plan for P0 payment-result/provider binding, then a separate proposal for P1 SQL actor binding. Do not implement without explicit approval. Obtain deployment key-custody and proxy configuration evidence only through an authorized read-only operational review. No source, CI, DB, Render or production changes were made.
+
+
+## P0 payment-result remediation proposal (design only; 2026-11-04)
+
+Prepared a minimal implementation proposal after re-reading the exact candidate route, SQL function, payment-attempt schema and runtime qualification script. No implementation or environment action was taken.
+
+### Current vulnerable path
+`POST /api/v1/internal/commercial/payment-result` accepts a valid active Connect service assertion and caller-selected `paymentAttemptId`, `providerCode` and transaction status, then invokes `commercial_apply_payment_result`. The SQL function locks the attempt but does not bind `providerCode` to the attempt. The attempt schema currently has no provider field. The runtime qualification script demonstrates that the shared `ghm_runtime` role can directly call this SECURITY DEFINER function with `payfast` and mark its fixture succeeded.
+
+### Proposed minimal safe target
+**A. Remove the generic integration settlement path.**
+- Remove/unregister `/api/v1/internal/commercial/payment-result` from the ordinary Connect internal router. Do not replace it with a generic route merely adding a broad `payment_result` scope to the existing shared assertion.
+- Keep PayFast settlement on the provider-specific ITN route, which performs PayFast source-IP, merchant, signature, amount and PayFast server-confirmation checks.
+- If a future provider requires server-to-server callbacks, create a provider-specific adapter/route with a provider-specific credential or assertion audience and a fixed provider identity. Do not let the caller choose `providerCode`.
+
+**B. Bind provider to the payment attempt.**
+- Add `provider_code` to `ghm.commercial_payment_attempt` with a strict non-empty allow-list/check constraint (or a provider registry FK if a provider registry is introduced).
+- Populate it at the point the attempt is created from server-side commercial provider routing. With the current single PayFast checkout implementation, the initial rollout may assign `payfast` server-side; do not accept it from Connect request JSON. If provider selection is added later, it must be an explicit server-side selection from eligible configured providers.
+- For existing rows, backfill only where evidence establishes the provider. Do not blindly label historical rows `payfast`; quarantine/expire unresolved pending attempts or use a documented manual reconciliation. Then enforce NOT NULL.
+- Add an index only if query plans/lookup patterns justify it; uniqueness is not needed for provider binding.
+
+**C. Enforce the binding in SQL.**
+- In `commercial_apply_payment_result`, after locking the attempt, reject unless `p_provider_code = v_attempt.provider_code` exactly. Reject unsupported provider codes at the schema/function boundary too.
+- Preserve event idempotency on (provider_code, provider_event_id), payload-hash conflict behavior, attempt/subscription row locks, and atomic transaction updates.
+- Prefer a second, narrower SQL entry point for PayFast (or an internal provider identity argument that cannot be chosen by untrusted request data) if this helps remove caller control over provider identity. The DB comparison is still mandatory.
+- Consider revoking direct EXECUTE from `ghm_runtime` and exposing only a narrowly scoped provider-result function to a dedicated DB role. This is a stronger follow-up; it requires connection-pool/role design and should not be mixed into the smallest migration without proving the app can use the role safely.
+
+**D. Make route authorization structurally provider-specific.**
+- PayFast ITN has no Connect assertion; its provider verification is the authorization. It should call a PayFast-specific boundary method that fixes provider code internally.
+- Do not accept `providerCode` from the ITN payload; PayFast adapter supplies the constant `payfast`.
+- Ensure checkout creation verifies the attempt is assigned to PayFast before generating PayFast checkout fields.
+- Internal Connect payment-prepare/checkout routes remain service-authenticated; their integration permissions should be reviewed separately, but they must not have settlement authority.
+
+### Migration and rollout sequence
+1. Add a forward-only migration adding nullable provider_code, backfill only provable PayFast attempts, and report unresolved rows; do not mutate shared/production DB during this design stage.
+2. Update attempt creation and PayFast checkout to persist/check `payfast`.
+3. Update SQL function to reject provider mismatch and unsupported provider.
+4. Remove generic payment-result HTTP route and its caller-controlled parser/type surface.
+5. Update PayFast ITN adapter to submit a fixed provider code through the provider-specific boundary.
+6. Add tests and qualification before considering NOT NULL enforcement. In an isolated qualification DB, verify all seeded attempts have an explicit provider; then add NOT NULL/check constraint in a subsequent migration if rollout/backfill evidence is clean.
+7. Only after isolated tests and review, plan deployment sequencing; no production/shared migration or deployment is authorised by this proposal.
+
+### Required negative and regression tests
+- Active Connect integration assertion cannot submit a payment result (route absent/404).
+- PayFast ITN with invalid source IP, merchant, signature, amount or provider confirmation cannot settle.
+- Valid PayFast ITN can settle only an attempt whose stored provider is `payfast`.
+- Direct SQL invocation with `p_provider_code <> attempt.provider_code` fails before event/transaction/state mutation.
+- Unknown provider code fails.
+- PayFast checkout rejects an attempt bound to another provider.
+- Duplicate same-provider event remains idempotent; same event ID with different payload hash still conflicts.
+- Concurrent valid PayFast callbacks produce one transaction and consistent subscription state.
+- Qualification proves rollback leaves no event, transaction, attempt or subscription residue.
+
+### Acceptance criteria
+- No ordinary Connect service assertion can settle a payment.
+- Provider identity is selected by trusted server-side routing and stored on the attempt before checkout.
+- Both HTTP/provider adapter and SQL enforce provider-to-attempt match.
+- All negative tests above pass on disposable PostgreSQL; CI passes.
+- Existing PayFast ITN behavior and idempotency regressions pass.
+
+### Separate P1 work (not bundled)
+Do not combine account-ID actor binding for Business Capability/campaign/auth SQL functions with this P0 payment remediation. Design that as a separate transaction-principal change with its own migration, connection-pool implications and negative DB tests.
+
+### Outstanding decision before implementation
+Confirm whether the intended initial provider for every newly created paid attempt is PayFast, or whether attempt creation can precede provider choice. This determines whether provider_code can be set at creation or must be set atomically by a server-side provider-selection step before checkout. No code, tests, CI, DB, Render or production changes were made.
