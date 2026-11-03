@@ -748,3 +748,20 @@ GitHub's latest observed check for the current head is Cloudflare Pages; the Act
 - Corrected the expression to `parsed.pathname.replace(/^\\//, '')` in commit `c44acc71f9b69d1fbb46def630718167372de105` on `integration/ghm-identity-merge-candidate-20261018`. Re-fetched the branch file and verified the corrected source line. This is a targeted source fix only; no tests have yet been executed against the fix.
 - The operator's local branch is now behind the remote by this one fix commit; fetch/fast-forward before the next attempt. **Do not rerun the qualification command yet.** First validate JavaScript syntax and run the safe disposable-CI setup/qualification path, confirming `NODE_ENV=test`, both dedicated CI URLs, and the workflow's exact database/role setup. Do not use the shared Render sandbox credentials for this local test and do not run the qualification against production. If the CI PostgreSQL service and roles are not provisioned locally, stop rather than substituting another database.
 - The assistant acknowledges it supplied the command before independently validating this exact script syntax. No Render qualification, migration, deployment, or production operation was performed as part of this incident. The next result must be recorded here after the corrected source is tested.
+
+
+## Local disposable PostgreSQL qualification setup — 2026-11-03
+
+This addendum supersedes the earlier instruction to stop because no local CI database was provisioned. It records local operator-reported setup; it does not record a migration or qualification run.
+
+- Operator confirmed Docker is unavailable. Local PostgreSQL server is PostgreSQL 17.11 on Windows at `localhost:5432`; it accepts connections. The operator authenticated as local `postgres`.
+- Read-only inventory showed existing database `ghm_db`, but neither `ghm` nor `ghm_disposable_test`; only the `postgres` role existed among the expected CI roles. Existing `ghm_db` was left untouched.
+- Operator successfully created the isolated local database `ghm` and roles:
+  - `ghm_schema_owner NOLOGIN`
+  - `ghm_migrator LOGIN NOINHERIT`, member of `ghm_schema_owner`
+  - `ghm_runtime LOGIN NOINHERIT`
+- Operator successfully granted CONNECT on `ghm` to `ghm_migrator` and `ghm_runtime`, CREATE on database `ghm` to `ghm_schema_owner`, and USAGE/CREATE on schema `public` to `ghm_schema_owner`, matching the CI workflow's disposable-database role setup.
+- These actions were performed only on the operator's local PostgreSQL server. No command targeted Render, the shared sandbox, or production. No migrations or qualification scripts have been run against this local database yet.
+- **Version deviation:** CI uses PostgreSQL 18; this local disposable database is hosted by PostgreSQL 17.11. Any local result is therefore a PostgreSQL 17 compatibility check, not an exact reproduction of CI. Do not describe it as CI-equivalent. Obtain a PostgreSQL 18 run in CI before treating the CI gate as passed.
+- Next gate: verify both local login roles connect to database `ghm`, verify `ghm_migrator` can `SET ROLE ghm_schema_owner`, and confirm the database has no GHM schema/ledger before building or applying migrations. Set explicit process-scoped local CI environment variables (including `NODE_ENV=test`, database name `ghm`, host `localhost`, and TLS disabled) so dotenv cannot supply Render/production connection values. Keep all credentials local and never paste them into chat or commit them.
+- After successful read-only verification, build and run migrations only against the pinned local `ghm@localhost` target. Then run the single QuoteFlow business-provisioning qualification script, inspect its cleanup result, and record exact output. Do not run the aggregate identity qualification unless separately approved. Do not change the shared sandbox or production.
