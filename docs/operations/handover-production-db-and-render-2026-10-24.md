@@ -848,3 +848,24 @@ Corrected the assertion to compare `runtimeTarget.databaseName` with the approve
 - Updated only the connection TLS selection: `NODE_ENV=test` plus normalized target host `localhost` uses no TLS; all other targets retain `rejectUnauthorized: true`. Target and role guards were not weakened.
 - Script fix commit: `4a058891564e8de14cc2b8ff7b066f61bf21a69c`.
 - The reset/re-enrollment qualification is not yet run. Next, pull this commit and inspect the local test environment for `GHM_AUTH_TOKEN_PEPPER` (at least 32 characters); do not paste its value into chat or documentation. Then run only the reset/re-enrollment qualification with the same local `ghm@localhost` runtime/migrator URLs and explicit non-production database/host variables. The identity runtime qualification requires separate review of its TLS and cleanup behavior before execution.
+
+
+### 2026-11-03 — Local QuoteFlow reset/re-enrollment DB qualification passed
+
+- Ran `npm run qualify:quoteflow-migration-reset-reenrollment-db` from the current integration branch with the temporary PowerShell process environment explicitly targeting the local disposable PostgreSQL database `ghm` on `localhost`.
+- Verified runtime connection identity as database `ghm`, role `ghm_runtime`, local server address `::1/128`; verified migrator connection identity as database `ghm`, role `ghm_migrator`, same local server address.
+- The repository `.env` was left unchanged; it continues to point at the shared Render sandbox. Only process-scoped PowerShell overrides were used for this qualification. `NODE_ENV=test`; existing pepper was loaded via dotenv and met the minimum length requirement. No secret values were recorded.
+- Build (`tsc`) passed as part of the command.
+- Qualification result: PASS. Run ID: `3fa89d62-083a-4515-9624-549cced64845`.
+- All eight checks passed:
+  1. synthetic credentialless migration account;
+  2. successful Argon2id password establishment;
+  3. existing session revocation;
+  4. legacy external identity unchanged;
+  5. recovery credential single-use;
+  6. transaction rollback;
+  7. expired recovery rejection;
+  8. runtime secret-table DML remains sealed.
+- `QUOTEFLOW RESET RE-ENROLLMENT FIXTURE CLEANUP PASS` confirmed. No synthetic residue was reported.
+- Scope is local PostgreSQL 17.11 compatibility qualification only. No shared Render sandbox, production database, Render service, deployment, or production data was changed.
+- The shared Render sandbox must remain out of scope for fixture-mutating qualification unless separately authorized. Continue using explicit process-scoped local overrides rather than changing the shared `.env`.
