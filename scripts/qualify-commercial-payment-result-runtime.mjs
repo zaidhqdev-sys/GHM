@@ -25,7 +25,7 @@ try {
   const runtime = await runtimePool.connect();
   try {
     const identity = (await runtime.query('SELECT current_database(), session_user, current_user, current_role')).rows[0];
-    if (identity.current_database !== 'ghm_db' || identity.session_user !== 'ghm_runtime' || identity.current_user !== 'ghm_runtime' || identity.current_role !== 'ghm_runtime') {
+    if (identity.current_database !== (process.env.GHM_QUALIFICATION_DATABASE_NAME ?? 'ghm') || identity.session_user !== 'ghm_runtime' || identity.current_user !== 'ghm_runtime' || identity.current_role !== 'ghm_runtime') {
       throw new Error(`Unexpected runtime identity: ${JSON.stringify(identity)}`);
     }
     console.log('COMMERCIAL PAYMENT RESULT RUNTIME IDENTITY PASS');
