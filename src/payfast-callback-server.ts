@@ -2,7 +2,7 @@ import http from 'node:http';
 import express, { type Request, type Response } from 'express';
 import { Pool } from 'pg';
 import { postgresSslConfig } from './db/postgres-ssl';
-import { PayfastCallbackBoundary } from './resources/commercial/payfast-callback';
+import { PayfastCallbackBoundary, parsePayfastItnFields } from './resources/commercial/payfast-callback';
 
 const required = (name: string): string => {
   const value = process.env[name]?.trim();
@@ -43,11 +43,8 @@ app.get('/readyz', async (_req, res) => {
 });
 app.post('/api/v1/commercial/payfast/itn', express.urlencoded({ extended: false, limit: '32kb', parameterLimit: 64 }), async (req: Request, res: Response) => {
   try {
-    const body = req.body;
-    if (!body || typeof body !== 'object' || Array.isArray(body)) { res.status(400).send('INVALID'); return; }
-    const entries = Object.entries(body as Record<string, unknown>);
-    if (entries.some(([, value]) => typeof value !== 'string')) { res.status(400).send('INVALID'); return; }
-    const fields = Object.fromEntries(entries as Array<[string, string]>);
+    const fields = parsePayfastItnFields(req.body);
+    if (!fields) { res.status(400).send('INVALID'); return; }
     const sourceIp = req.ip ?? req.socket.remoteAddress ?? '';
     await boundary.handleItn(fields, sourceIp);
     res.status(200).send('OK');
@@ -59,6 +56,13 @@ app.post('/api/v1/commercial/payfast/itn', express.urlencoded({ extended: false,
     console.error(JSON.stringify({ event: 'payfast_callback_failed', error: { name: error instanceof Error ? error.name : 'UnknownError' } }));
     res.status(500).send('ERROR');
   }
+});
+
+app.use((error: unknown, _req: Request, res: Response, _next: express.NextFunction) => {
+  const status = error && typeof error === 'object' && 'status' in error ? Number((error as { status?: unknown }).status) : 500;
+  if (status === 400 || status === 413 || status === 415) { res.status(400).send('INVALID'); return; }
+  console.error(JSON.stringify({ event: 'payfast_callback_parser_failed', error: { name: error instanceof Error ? error.name : 'UnknownError' } }));
+  res.status(500).send('ERROR');
 });
 
 const server = http.createServer(app);
