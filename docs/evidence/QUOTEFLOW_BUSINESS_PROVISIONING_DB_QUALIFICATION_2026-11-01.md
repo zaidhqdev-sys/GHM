@@ -72,3 +72,10 @@ This result qualifies the tested database contract and behavior only. It does no
 See also:
 - `docs/architecture/QUOTEFLOW_BUSINESS_PROVISIONING_EXTENDED_QUALIFICATION_PLAN.md`
 - `docs/operations/RECONCILIATION_RECOVERY_HANDOVER_2026-10-31.md`
+
+
+## Scope clarification — shared Render sandbox (2026-11-03)
+
+The PASS above is specifically for the disposable local PostgreSQL 18.6 database `ghm_qualification` described in this evidence. It must not be interpreted as qualification of the shared Render database `ghm_payfast_sandbox_db` or production `ghm_db`.
+
+A separate read-only investigation of the shared Render sandbox is in progress and is recorded in `docs/operations/RECONCILIATION_RECOVERY_HANDOVER_2026-10-31.md` under **Render shared-sandbox migration provenance investigation — 2026-11-03**. That investigation found a discrepancy between the two QuoteFlow migration ledger checksums and current source-file hashes; canonical normalized hashes and historical file provenance remain to be reconciled. No shared-sandbox migration or qualification write has been performed. Do not use this local qualification PASS as a substitute for that outstanding evidence.
