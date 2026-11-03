@@ -36,7 +36,7 @@ const migratorTarget = assertPostgresTargetConfiguration(migratorUrl, {
   label: 'QuoteFlow business provisioning migration target',
 });
 assertMatchingPostgresTargets(runtimeTarget, migratorTarget, 'QuoteFlow business provisioning qualification');
-assert.equal(runtimeTarget.database, expectedNonProductionDatabase,
+assert.equal(runtimeTarget.databaseName, expectedNonProductionDatabase,
   'Qualification database is not the explicitly approved target');
 assertNonProductionQualificationTarget(runtimeTarget, 'QuoteFlow business provisioning qualification');
 
