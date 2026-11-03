@@ -233,6 +233,6 @@ Current checkout raw SHA-256 values:
 - Do not run until the changed branch head has passed CI/source checks and the operator has confirmed both connection URLs are the approved shared sandbox credentials. Do not use production or a different database.
 
 ### Next exact action
-1. Verify the integration branch head includes all four commits above; run the repository build/test or CI for the exact head. At the time of this update, the PR head is `f91ec409071edebd82151f638aac01735e86824b`; GitHub shows the Cloudflare Pages preview check successful but no repository test/check runs yet. A Pages preview is not a code-test result.
+1. Verify the integration branch includes all four source commits above. The current integration branch head is `c0c4b77ae652728a7357b927c458531e0fdbff64`; the latest source-code commit is `f91ec409071edebd82151f638aac01735e86824b` (subsequent commits only update handover documentation). PR #142 remains draft/open. GitHub shows a successful Cloudflare Pages preview but no GitHub Actions workflow runs or code-quality/test checks for the latest head. A Pages preview is not a code-test result.
 2. If checks pass, run only `npm run qualify:quoteflow-business-provisioning-db` with the pinned sandbox target and dedicated runtime/migrator credentials, under supervision. Do not run the broader `qualify:business-identity-runtime` aggregate.
 3. Capture complete redacted output and independently verify no `qualify-quoteflow` synthetic rows remain. If cleanup fails or execution is interrupted, stop and investigate residue before any retry.
