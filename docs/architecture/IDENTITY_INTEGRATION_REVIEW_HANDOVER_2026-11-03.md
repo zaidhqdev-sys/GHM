@@ -333,3 +333,28 @@ Read-only review at candidate SHA `8739b0bf24ef2619f63a14d06a1db3f64138330c`. Tr
 5. Confirm deployed grants/config separately; migration source does not prove live database ACLs.
 
 No confirmed public HTTP account impersonation was identified in the auth call paths reviewed. The previously documented SQL caller-identity gaps remain confirmed design weaknesses. No code, CI, database, Render or production changes were made.
+
+
+## Commercial payment-result permission and PayFast proxy-trust follow-up (2026-11-04)
+
+Read-only review at candidate SHA `8739b0bf24ef2619f63a14d06a1db3f64138330c`. Inspected `src/http/commercial-internal-router.ts`, `src/http/connect-service-router.ts`, `src/integrations/connect/service-assertion.ts`, `src/integrations/connect/integration-lifecycle.ts`, `src/resources/commercial/payfast-http.ts`, `src/resources/commercial/payfast.ts`, `src/config.ts`, `src/http/app.ts`, and available router tests.
+
+### Confirmed payment-result authorization gap
+- Connect service assertions contain only `sub` (integration ID), issuer, audience, issued-at, expiry and replay ID. There is no capability/scope claim.
+- `/api/v1/internal/commercial/payment-result` verifies the ES256 assertion, consumes the replay ID, and checks only that the integration is active. It then accepts caller-supplied payment attempt ID, provider code, event ID/type, payload hash, status and metadata and calls `applyCommercialPaymentResult`.
+- Unlike the ordinary Connect capability router, this route does not resolve a governed operation or check an integration-specific provider/payment-result permission.
+- Therefore any integration able to obtain a valid service assertion and remain active appears able to submit a payment result for an arbitrary payment attempt, subject to downstream attempt/provider/idempotency validation. The SQL function itself does not authenticate provider origin. This is a **confirmed route authorization gap in source** unless an external network or key-issuance restriction not represented in this repository makes the route unreachable to other integrations.
+- Severity is potentially high because a forged `succeeded` event could affect payment/subscription state. Do not test against shared/production systems. Recommended fix: remove this generic route from ordinary integration assertions; expose a provider-specific callback path (PayFast ITN) or require an explicit provider-scoped permission bound to integration ID and provider code, and validate the payment attempt's provider code matches the authorized provider. Add negative tests for active but unauthorized integrations and mismatched provider/attempt.
+
+### PayFast source-IP and proxy-trust findings
+- PayFast ITN derives source IP from `req.ip` then socket remote address. Express `trust proxy` is set centrally from `TRUST_PROXY`.
+- `TRUST_PROXY` defaults to false; literal true is deliberately parsed as exactly one trusted hop; explicit numeric hop count is limited to 0–5. This avoids Express's unsafe boolean trust-all mode.
+- With default false, the direct socket peer is used and spoofed forwarded headers are ignored. With one-hop trust, correctness depends on the deployed edge proxy overwriting/sanitizing forwarded-for headers. The source code does not prove the deployed Render setting or proxy behavior.
+- No code-level trust-all proxy configuration was found. Deployment value and edge behavior remain runtime configuration evidence to obtain separately.
+
+### Other call-site inventory
+- Targeted source search found the known privileged auth persistence methods used in auth service/recovery/reset code, but no ordinary public HTTP route was identified that accepts arbitrary account/session IDs for disable/revoke operations. Repository-wide completeness is not proven.
+- The internal commercial payment-prepare and checkout routes both accept any active signed integration assertion as an outer service-auth gate; payment preparation then independently binds a mapped active end-user and Business membership in service/repository. Checkout is keyed by stored payment-attempt state. Their integration-specific permission policy still deserves review, but the payment-result operation is materially more sensitive because it can assert settlement outcome.
+
+### Resume point
+Next: trace who can mint Connect service assertions and how integration keys/credentials are assigned; inspect integration lifecycle/permission schema and provider onboarding to determine whether all active integrations share one signing authority. Review provider code matching in commercial payment repository/SQL. Then propose a minimal remediation plan for payment-result authorization and the earlier account-ID SQL identity gaps. No source, CI, DB, Render or production changes were made.
