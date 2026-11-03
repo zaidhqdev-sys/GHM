@@ -700,3 +700,26 @@ This addendum records a qualification-only code deployment. It does not authoriz
 - Render build output reported 3 npm audit findings: 1 moderate, 1 high, 1 critical. Dependency triage remains open; do not blindly run `npm audit fix`.
 
 No production service, production database, credentials, environment variables, database roles/grants, network allowlists, payment settings, or product routing were changed. Do not point qualification or migration commands at `ghm_db`; keep `GHM-Internal-Runtime` and production configuration untouched.
+
+
+## Addendum — QuoteFlow shared-sandbox provisioning qualification hardening (2026-11-03)
+
+This addendum supersedes the earlier note that the QuoteFlow migration provisioning checksum mismatch remained unresolved. It records source review and hardening only; it does not record a qualification run.
+
+### Migration checksum reconciliation
+- The shared sandbox ledger checksums for migrations `20261020130000` and `20261020140000` were compared with the current source files using the repository's canonical CRLF/CR-to-LF normalization.
+- Both canonical hashes exactly match the ledger: `a453171e85f6717476258c6d2d59a39b663be89826316036e6b9891cadfb13e9` and `922295b2a94dfed4cc6441569b0b911f99e7bf4aed81d1f1938a481dc7e9c465`, respectively. Earlier raw-byte hashes differed due to line-ending representation; no remaining checksum discrepancy was found.
+
+### Qualification script review and changes
+- Reviewed the existing integration-branch script `scripts/qualify-quoteflow-migration-business-provisioning-db.mjs`, target guard, package script, and both applied provisioning migrations.
+- Hardened script commits on this branch:
+  - `7a572edeb281080603dc6b51671930a619abf747`: verify zero synthetic account, Business, membership, mapping and audit residue before cleanup commits.
+  - `af9a663b95d256886ba98bb30645301e1710184b`: remove the `DATABASE_URL` fallback; require distinct runtime and migrator URLs; pin the expected database and host to the owner-approved shared sandbox (`ghm_payfast_sandbox_db`, `dpg-db4416vlk1mc73eocug0-a.frankfurt-postgres.render.com`); assert all concurrent attempts return the same owner-membership ID as well as Business ID.
+- Current PR #142 remains draft/open. Its head is `af9a663b95d256886ba98bb30645301e1710184b`.
+- GitHub reports the Cloudflare Pages preview check succeeded, but there are no repository test/status checks on this commit. The Pages deployment is not evidence that TypeScript, Node tests, or the qualification script passed.
+
+### Execution and safety status
+- The qualification script has **not** been executed against Render. No migration, fixture write, grant, deployment, or production change was performed as part of this addendum.
+- The script pins both connection targets to the shared sandbox, validates matching runtime/migrator targets and expected roles, and performs synthetic fixture cleanup in a `finally` block. Cleanup is not crash-proof: forced process termination, host failure or network loss can interrupt it. Sequence values may advance even when fixture rows are deleted.
+- Before any run, build/test the exact PR head and verify the two connection URLs resolve to the pinned shared sandbox without disclosing credentials. Run only `npm run qualify:quoteflow-business-provisioning-db`, not the aggregate identity qualification command. Capture redacted output and independently inspect for remaining `qualify-quoteflow` rows. If interrupted or cleanup fails, stop and resolve residue before retrying.
+- Production `ghm_db` and production-connected services remain excluded.
