@@ -616,3 +616,40 @@ No provider service, second DB login, credentials, deployment, historical-row qu
 - It specifies role grants/revokes, callback validation, deployment/process separation, negative privilege/callback test matrix, historical-attempt reconciliation, operational prerequisites, and phased delivery.
 - ADR is a design proposal only. No callback server/module, DB function/role, secret, Render service, network rule, deployment or data query was created/performed. Existing API remains unchanged.
 - Next code task, if continuing: implement the callback service and provider-specific settlement function in a new isolated code PR, with CI-only role provisioning and disposable PostgreSQL qualification. Preserve PR #205 as draft until the runtime grant is removed and both identity paths are proven.
+
+
+## PayFast isolated callback implementation — in progress (2026-11-04)
+
+Implementation branch: `security/payfast-callback-isolation-20261104`  
+Base: integration candidate branch.  
+Related provider-binding PR: #205 (still draft; do not merge before this follow-on is qualified).
+
+### Source changes now present on this branch
+- Added `src/payfast-callback-server.ts`: separate Express entry point, separate PostgreSQL pool from `PAYFAST_CALLBACK_DATABASE_URL`, bounded URL-encoded body parser, duplicate/non-string field rejection, readiness DB-identity check, graceful shutdown, and no import of general `src/config.ts`, `src/db/pool.ts`, or `src/http/app.ts`.
+- Added `src/resources/commercial/payfast-callback.ts`: callback verification, provider-specific attempt lookup, PayFast signature/source-IP/merchant/amount checks, PayFast server confirmation, and invocation of only `ghm.commercial_apply_payfast_payment_result`.
+- Restricted `src/resources/commercial/payfast-http.ts` to checkout generation only. It no longer contains ITN settlement code or imports the settlement boundary.
+- Removed `POST /api/v1/commercial/payfast/itn` from `src/http/commercial-internal-router.ts`. General API retains authenticated Connect payment preparation and checkout only.
+- Added migration `20261104130000_isolate_payfast_settlement_identity.sql`: revokes generic settlement EXECUTE from PUBLIC and `ghm_runtime`; creates provider-only SECURITY DEFINER read function for attempt provider/amount/status; creates PayFast-specific SECURITY DEFINER settlement wrapper with provider fixed internally; grants the two narrow functions only to `ghm_payment_provider`; grants that role schema USAGE. Both functions pin `search_path = pg_catalog, ghm` and are owned by `ghm_schema_owner`.
+- Migration requires an out-of-band `ghm_payment_provider` LOGIN role to exist before applying. The database CONNECT grant and credential/rotation remain infrastructure-owner responsibilities. No password or URL is stored in Git.
+- Added callback boundary tests and strict field parser tests; added callback test to `npm test`; added `start:payfast-callback` script.
+- CI workflow now creates a disposable `ghm_payment_provider` login and runs `scripts/qualify-commercial-payment-result-runtime.mjs` against three distinct CI DB identities (runtime, migrator, provider). Qualification asserts runtime settlement denial, provider-only EXECUTE, no direct provider table read/write, NULL-provider mismatch rejection, successful PayFast settlement and rollback.
+
+### Static-review correction made during implementation
+The first authored provider-function ALTER/GRANT signature had one extra text argument. It was corrected to the exact 9-argument provider function signature (bigint, six text, timestamptz, jsonb) before CI qualification. Generic function remains its separate 10-argument signature (bigint, seven text, timestamptz, jsonb).
+
+### Current status — not yet qualified
+- No local build or test, disposable PostgreSQL run, migration application, CI run, shared Render qualification, production operation, DB role creation, credential creation, deployment, or callback cutover has been performed from this branch.
+- The CI role setup is disposable workflow-only. It is not a production role provisioning step.
+- The callback process verifies its DB login is exactly `ghm_payment_provider` at startup/readiness and refuses to start with a runtime credential.
+- `PAYFAST_NOTIFY_URL` in the general API must be pointed to the separately deployed callback service only during a separately approved cutover. It has not been changed here.
+- `PAYFAST_CALLBACK_TRUST_PROXY` must match the actual trusted proxy hop count; never enable broad trust. If deployed behind Render's edge, confirm the edge sanitizes forwarding headers before setting the trusted hop count.
+- The source-IP ranges currently come from the existing static PayFast range list in `src/resources/commercial/payfast.ts`; their currency against PayFast's current published ranges remains an explicit pre-deployment check.
+- Historical payment attempts with NULL provider remain fail-closed and still require a separately approved read-only inventory/reconciliation plan.
+- The generic SQL function remains callable by its owner `ghm_schema_owner` for nested SECURITY DEFINER invocation, but no longer by ordinary runtime or provider login. Provider login receives only the dedicated wrapper and narrow attempt-read function.
+
+### Immediate next steps
+1. Open a draft PR from this branch against `integration/ghm-identity-merge-candidate-20261018` to trigger branch CI.
+2. Fix every build, migration, test, and privilege qualification failure on this isolated branch.
+3. Review the full PR diff, especially migration ordering/signatures, SQL grants, source-IP/proxy handling, callback parser errors, and duplicate event behavior.
+4. Require CI proof that `ghm_runtime` cannot execute either settlement function; `ghm_payment_provider` can execute only the PayFast wrapper/read function; provider cannot directly access payment tables; only callback service uses its credential.
+5. Keep both PRs draft until historical-attempt handling and the separate deployment/credential plan are approved. No shared Render or production operations without fresh explicit authorization.
