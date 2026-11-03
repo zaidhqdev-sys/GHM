@@ -358,3 +358,40 @@ Read-only review at candidate SHA `8739b0bf24ef2619f63a14d06a1db3f64138330c`. In
 
 ### Resume point
 Next: trace who can mint Connect service assertions and how integration keys/credentials are assigned; inspect integration lifecycle/permission schema and provider onboarding to determine whether all active integrations share one signing authority. Review provider code matching in commercial payment repository/SQL. Then propose a minimal remediation plan for payment-result authorization and the earlier account-ID SQL identity gaps. No source, CI, DB, Render or production changes were made.
+
+
+## Connect assertion issuance/key custody and payment-result provider binding (2026-11-04)
+
+Follow-up read-only review at candidate SHA `8739b0bf24ef2619f63a14d06a1db3f64138330c`. Inspected service assertion implementation, integration lifecycle migration/repository, commercial internal router, payment-result SQL, provider boundary and route tests.
+
+### Assertion issuance and key custody
+- Connect service assertion signing uses the single active `GHM_JWT_ES256_PRIVATE_KEY_PEM` loaded by the GHM service. The signed subject is a caller-supplied `integrationId`; there is no per-integration private key or credential lookup in `createConnectServiceAssertionService.sign()`.
+- The integration lifecycle table explicitly describes itself as authoritative integration identity/lifecycle and **not a credential store**. It stores ID, display name and active/disabled/revoked status. Runtime can read lifecycle; lifecycle creation/disable/enable/revoke functions are SECURITY DEFINER with PUBLIC revoked and no runtime EXECUTE grant in the migration.
+- The ordinary Connect service router verifies an assertion and then performs replay/lifecycle checks before resolving governed capability and binding mapped end-user context.
+- No external HTTP route that mints/signs service assertions was found in the inspected routers. The signing method is a library capability requiring access to the GHM private key; repository source alone does not establish who holds that secret operationally, nor whether another trusted internal service is authorized to request assertions for arbitrary integration IDs.
+- Therefore refine the earlier payment-result finding: the route's missing provider/capability authorization is confirmed in source. The exploitability by a third-party integration is **conditional and not yet established**, because issuance and private-key custody are not fully traced. Any component holding the shared private key can create an assertion for any integration subject unless issuance is separately constrained.
+
+### Provider binding in payment-result persistence
+- `commercial_apply_payment_result` locks and validates the payment attempt and subscription, but the inspected function does not compare `p_provider_code` to a provider bound to the payment attempt/subscription/price. It trusts caller-supplied provider code to create the provider-event idempotency key and transaction provenance.
+- This compounds the route issue: there is no SQL-level binding between payment attempt and provider identity. A caller authorized only for one provider could potentially submit an event labelled as another provider if upstream code does not enforce the association.
+- PayFast ITN path independently validates PayFast-specific merchant/signature/amount/confirmation and invokes the same boundary, but the generic internal payment-result route bypasses those PayFast-specific checks.
+
+### Tests and lifecycle
+- Current commercial internal router tests cover payment actor mapping and Connect Business mapping; the fetched test file contains no payment-result authorization tests.
+- Integration lifecycle state is checked after assertion verification and replay consumption, but lifecycle state is not an operation permission or provider authorization.
+- The generic route rejects browser Origin, but that is not a substitute for integration/provider scope authorization.
+
+### Updated risk statement
+- **Confirmed source defect:** generic payment-result endpoint lacks operation/provider-specific authorization, and SQL does not bind provider code to payment attempt.
+- **Conditional exploitability:** whether an external/less-trusted integration can obtain a valid assertion with a chosen integration subject depends on operational private-key custody and any out-of-repository assertion broker. No such issuance route was found in the reviewed HTTP routers.
+- **Impact if reachable:** a valid caller could potentially mark an arbitrary payment attempt succeeded/failed, affecting subscription activation and payment state. No exploit attempt or production interaction performed.
+
+### Remediation direction
+1. Remove generic payment-result access from ordinary Connect service assertions, or introduce a separate assertion audience/key with an explicit provider identity and narrowly scoped permission.
+2. Bind each payment attempt to an expected provider and enforce exact equality in the SQL boundary; do not trust a caller-selected provider code.
+3. Ensure assertion issuance is tied to an authenticated integration credential and allowed scopes; do not let callers choose `sub` freely.
+4. Add negative route/DB tests for unauthorized active integrations, provider mismatch, and attempts to mark another provider's payment successful.
+5. Keep PayFast ITN on its provider-specific verification path.
+
+### Resume point
+Next trace key deployment/secret ownership only through authorized source/config documentation and available repository workflows (do not read secret values), locate any out-of-repository assertion broker references, and inspect all provider/payment-attempt schema constraints. Then assemble a concise prioritized remediation register for payment-result, SQL caller-ID functions and service assertion key custody. No source, CI, DB, Render or production changes were made.
