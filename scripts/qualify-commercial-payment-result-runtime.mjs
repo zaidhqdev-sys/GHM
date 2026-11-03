@@ -41,6 +41,8 @@ try {
     console.log('RUNTIME COMMERCIAL PAYMENT RESULT EXECUTE DENIAL PASS');
     const providerSpecificPrivilege = (await runtime.query(`SELECT has_function_privilege(current_user, 'ghm.commercial_apply_payfast_payment_result(bigint,text,text,text,text,text,text,timestamptz,jsonb)', 'EXECUTE') AS execute_granted`)).rows[0];
     if (providerSpecificPrivilege.execute_granted) throw new Error('Runtime unexpectedly has PayFast-specific settlement EXECUTE privilege');
+    const readPrivilege = (await runtime.query(`SELECT has_function_privilege(current_user, 'ghm.commercial_get_payfast_attempt(bigint)', 'EXECUTE') AS execute_granted`)).rows[0];
+    if (readPrivilege.execute_granted) throw new Error('Runtime unexpectedly has PayFast attempt-read EXECUTE privilege');
 
     await expectPermissionDenied(
       () => runtime.query("INSERT INTO ghm.commercial_provider_event (provider_code, provider_event_id, event_type, payload_hash) VALUES ('payfast', 'qualification-direct', 'direct', repeat('a', 64))"),
@@ -94,7 +96,14 @@ try {
       ) VALUES ($1, $2, $3, $4, 'payfast', 'pending_payment', 19900, $5, 'month', $6)
       RETURNING id
     `, [business.id, subscription.id, price.id, account.id, currency.id, `result-${Date.now()}`])).rows[0];
-    fixture = { accountId:Number(account.id), businessId:Number(business.id), planId:Number(plan.id), versionId:Number(version.id), priceId:Number(price.id), subscriptionId:Number(subscription.id), attemptId:Number(attempt.id) };
+    const unboundAttempt = (await setup.query(`
+      INSERT INTO ghm.commercial_payment_attempt (
+        business_id, subscription_id, price_id, initiated_by, provider_code, attempt_status,
+        amount_minor_units, currency_id, billing_interval, idempotency_key
+      ) VALUES ($1, $2, $3, $4, NULL, 'pending_payment', 19900, $5, 'month', $6)
+      RETURNING id
+    `, [business.id, subscription.id, price.id, account.id, currency.id, `result-unbound-${Date.now()}`])).rows[0];
+    fixture = { accountId:Number(account.id), businessId:Number(business.id), planId:Number(plan.id), versionId:Number(version.id), priceId:Number(price.id), subscriptionId:Number(subscription.id), attemptId:Number(attempt.id), unboundAttemptId:Number(unboundAttempt.id) };
     await setup.query('COMMIT');
   } catch (error) {
     await setup.query('ROLLBACK'); throw error;
@@ -142,7 +151,7 @@ try {
           $1, 'qualification-event-mismatch', 'payment_complete',
           repeat('c', 64), 'payment', 'succeeded', 'OTHER-1', now(), '{"qualification":true}'::jsonb
         )
-      `, [fixture.attemptId]);
+      `, [fixture.unboundAttemptId]);
     } catch (error) {
       mismatchRejected = String(error?.message).includes('provider does not match attempt');
       await provider.query('ROLLBACK TO SAVEPOINT provider_mismatch_probe');
@@ -172,7 +181,7 @@ try {
     try {
       await cleanup.query('SET ROLE ghm_schema_owner');
       await cleanup.query('BEGIN');
-      await cleanup.query('DELETE FROM ghm.commercial_payment_attempt WHERE id = $1', [fixture.attemptId]);
+      await cleanup.query('DELETE FROM ghm.commercial_payment_attempt WHERE id = ANY($1::bigint[])', [[fixture.attemptId, fixture.unboundAttemptId]]);
       await cleanup.query('DELETE FROM ghm.commercial_subscription WHERE id = $1', [fixture.subscriptionId]);
       await cleanup.query('DELETE FROM ghm.commercial_plan_price WHERE id = $1', [fixture.priceId]);
       await cleanup.query('DELETE FROM ghm.commercial_plan_version WHERE id = $1', [fixture.versionId]);
