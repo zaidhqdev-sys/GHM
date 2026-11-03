@@ -9,7 +9,9 @@ const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 // Allow only the disposable CI PostgreSQL target or the explicitly approved shared
 // Render sandbox. Do not accept DATABASE_URL or caller-supplied target overrides.
 const isCiQualification = process.env.NODE_ENV?.trim().toLowerCase() === 'test';
-const expectedNonProductionDatabase = isCiQualification ? 'ghm' : 'ghm_payfast_sandbox_db';
+const expectedNonProductionDatabase = isCiQualification
+  ? new Set(['ghm', 'ghm_disposable_test'])
+  : 'ghm_payfast_sandbox_db';
 const expectedNonProductionHost = isCiQualification
   ? 'localhost'
   : 'dpg-db4416vlk1mc73eocug0-a.frankfurt-postgres.render.com';
@@ -17,22 +19,29 @@ assert(runtimeUrl && migratorUrl && runtimeUrl !== migratorUrl,
   'Distinct GHM_RUNTIME_DATABASE_URL and GHM_MIGRATOR_DATABASE_URL are required; DATABASE_URL fallback is forbidden');
 
 const runtimeTarget = assertPostgresTargetConfiguration(runtimeUrl, {
-  databaseName: expectedNonProductionDatabase,
+  databaseName: typeof expectedNonProductionDatabase === 'string'
+    ? expectedNonProductionDatabase
+    : undefined,
   host: expectedNonProductionHost,
   label: 'QuoteFlow business provisioning runtime target',
 });
 const migratorTarget = assertPostgresTargetConfiguration(migratorUrl, {
-  databaseName: expectedNonProductionDatabase,
+  databaseName: typeof expectedNonProductionDatabase === 'string'
+    ? expectedNonProductionDatabase
+    : undefined,
   host: expectedNonProductionHost,
   label: 'QuoteFlow business provisioning migration target',
 });
 assertMatchingPostgresTargets(runtimeTarget, migratorTarget, 'QuoteFlow business provisioning qualification');
+assert(isCiQualification
+  ? expectedNonProductionDatabase.has(runtimeTarget.database)
+  : runtimeTarget.database === expectedNonProductionDatabase,
+'Qualification database is not in the explicit target allowlist');
 assertNonProductionQualificationTarget(runtimeTarget, 'QuoteFlow business provisioning qualification');
 
-// The existing Render sandbox uses encrypted PostgreSQL connections with a self-signed
-// server certificate. Match the established sandbox identity qualification policy only here;
-// exact database-name, host, and role guards remain mandatory.
-const ssl = { rejectUnauthorized: true };
+// CI PostgreSQL is a local disposable service without TLS. Render sandbox connections
+// require TLS with certificate verification; target and role guards remain mandatory.
+const ssl = isCiQualification ? false : { rejectUnauthorized: true };
 const runtime = new Client({ connectionString: runtimeUrl, connectionTimeoutMillis: 15000, ...(ssl ? { ssl } : {}) });
 const migrator = new Client({ connectionString: migratorUrl, connectionTimeoutMillis: 15000, ...(ssl ? { ssl } : {}) });
 const runId = randomUUID();
