@@ -405,6 +405,9 @@ const preparePayment = async (
 
   if (existingResult.rowCount === 1) {
     const existing = existingResult.rows[0];
+    if (existing.provider_code !== 'payfast') {
+      throw new Error('Payment preparation idempotency conflict: provider reconciliation required');
+    }
     if (
       Number(existing.business_id) !== input.businessId ||
       Number(existing.initiated_by) !== context.userId
