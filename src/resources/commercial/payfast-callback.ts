@@ -7,6 +7,14 @@ const amountMinor = (value: unknown): number => Number(value);
 const encodeFields = (fields: Readonly<Record<string, string>>): string =>
   Object.entries(fields).map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value).replace(/%20/g, '+')}`).join('&');
 
+export const parsePayfastItnFields = (value: unknown): Record<string, string> | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const entries = Object.entries(value as Record<string, unknown>);
+  if (entries.length === 0 || entries.length > 64) return null;
+  if (entries.some(([key, item]) => !/^[a-zA-Z0-9_]{1,64}$/.test(key) || typeof item !== 'string' || item.length > 2048)) return null;
+  return Object.fromEntries(entries as Array<[string, string]>);
+};
+
 export interface PayfastCallbackConfig {
   readonly merchantId: string;
   readonly passphrase: string | null;
@@ -55,6 +63,8 @@ export class PayfastCallbackBoundary {
     await this.validate(fields, this.settings.environment);
     const payloadHash = createHash('sha256').update(JSON.stringify(fields), 'utf8').digest('hex');
     const status = verified.transactionStatus.trim().toUpperCase();
+    if (!['COMPLETE', 'FAILED', 'CANCELLED', 'PENDING'].includes(status)) throw new Error('Payfast ITN payment status invalid');
+    if (verified.merchantPaymentId !== String(paymentAttemptId)) throw new Error('Payfast ITN merchant payment identifier mismatch');
     const transactionStatus = status === 'COMPLETE' ? 'succeeded' : status === 'FAILED' || status === 'CANCELLED' ? 'failed' : 'pending';
     await this.database.query(
       `SELECT * FROM ghm.commercial_apply_payfast_payment_result(
