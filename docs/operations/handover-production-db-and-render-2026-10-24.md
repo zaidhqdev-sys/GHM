@@ -801,3 +801,13 @@ Record as local migration success on PostgreSQL 17.11, supported by the ledger. 
 The first invocation of `npm run qualify:quoteflow-business-provisioning-db` stopped before opening either PostgreSQL client or creating fixtures. The assertion at script line 39 read `runtimeTarget.database`, but `assertPostgresTargetConfiguration` returns the validated fields `databaseName` and `host`. The observed failure was `undefined !== 'ghm'`; this was a script property-name defect, not a database/migration failure.
 
 Corrected the assertion to compare `runtimeTarget.databaseName` with the approved database name. Commit: `72d52e780507cdf83b0e674e95bbaf0deab464d1`. No target guard was weakened, and no database connection or fixture mutation occurred during the failed invocation. The qualification has **not** yet been rerun; next step is to pull this script-only fix into the local checkout and rerun the single qualification with the same explicit local `ghm@localhost` environment. Stop and investigate if any subsequent failure occurs, especially cleanup failure.
+
+
+### 2026-11-03 — QuoteFlow qualification target-identity assertion correction
+
+- After pulling commit `69371575e73ccf4e36ce8e8959f7ad9b09518732`, the qualification script passed its initial explicit target guard and reached the runtime connection identity assertion.
+- The run reported the actual runtime identity as database `ghm`, session role `ghm_runtime`, and current role `ghm_runtime`; the expected database was undefined because the assertion read `.database` rather than the target guard's `.databaseName` property.
+- The run stopped at the runtime identity assertion (script line 78) before provisioning fixtures or qualification mutations. The printed fixture-cleanup pass is the script's cleanup/finalization message, not evidence that provisioning qualification passed.
+- Corrected all three remaining runtime/migrator target database references in `scripts/qualify-quoteflow-migration-business-provisioning-db.mjs` to use `.databaseName`. This preserves the target guard and does not broaden permitted targets.
+- Fix committed on `integration/ghm-identity-merge-candidate-20261018`: `eb742d56eeafe43fe1113f05019eab30cfadfe6b`.
+- Qualification remains **not yet passed**. Pull this commit, then rerun the same pinned local-only qualification command. If it fails, stop and inspect the exact failure before another run; do not point it at Render or production.
