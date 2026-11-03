@@ -27,7 +27,7 @@ test('isolated PayFast callback confirms provider then calls only PayFast settle
     async query(sql: string, values?: unknown[]) {
       calls.push({ sql, values });
       if (sql.includes('commercial_get_payfast_attempt')) {
-        return { rowCount: 1, rows: [{ payment_attempt_id: 42, provider_code: 'payfast', amount_minor_units: 19900, attempt_status: 'pending_payment' }] };
+        return { rowCount: 1, rows: [{ payment_attempt_id: 42, provider_code: 'payfast', amount_minor_units: 19900, attempt_status: 'succeeded', currency_code: 'ZAR' }] };
       }
       return { rowCount: 1, rows: [{ id: 1 }] };
     },
@@ -43,7 +43,7 @@ test('isolated PayFast callback confirms provider then calls only PayFast settle
 
 test('isolated PayFast callback fails closed for mismatched provider before server confirmation', async () => {
   let confirmed = false;
-  const db = { query: async () => ({ rowCount: 1, rows: [{ payment_attempt_id: 42, provider_code: null, amount_minor_units: 19900, attempt_status: 'pending_payment' }] }) };
+  const db = { query: async () => ({ rowCount: 1, rows: [{ payment_attempt_id: 42, provider_code: null, amount_minor_units: 19900, attempt_status: 'pending_payment', currency_code: 'ZAR' }] }) };
   const boundary = new PayfastCallbackBoundary(db as never, settings, async () => { confirmed = true; });
   await assert.rejects(boundary.handleItn(fields, '197.97.145.150'), /provider mismatch/);
   assert.equal(confirmed, false);
@@ -51,7 +51,7 @@ test('isolated PayFast callback fails closed for mismatched provider before serv
 
 test('isolated PayFast callback fails closed for invalid signature before server confirmation', async () => {
   let confirmed = false;
-  const db = { query: async () => ({ rowCount: 1, rows: [{ payment_attempt_id: 42, provider_code: 'payfast', amount_minor_units: 19900, attempt_status: 'pending_payment' }] }) };
+  const db = { query: async () => ({ rowCount: 1, rows: [{ payment_attempt_id: 42, provider_code: 'payfast', amount_minor_units: 19900, attempt_status: 'pending_payment', currency_code: 'ZAR' }] }) };
   const boundary = new PayfastCallbackBoundary(db as never, settings, async () => { confirmed = true; });
   await assert.rejects(boundary.handleItn({ ...fields, signature: 'bad' }, '197.97.145.150'), /signature invalid/);
   assert.equal(confirmed, false);
