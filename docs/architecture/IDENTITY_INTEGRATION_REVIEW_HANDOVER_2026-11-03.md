@@ -608,3 +608,11 @@ No provider service, second DB login, credentials, deployment, historical-row qu
 - Added a regression test for the NULL-provider replay case.
 - CI run [#41739588105](https://github.com/zaidhqdev-sys/GHM/actions/runs/41739588105) passed on head commit `e2637eb1a3f85770013e6a398fcde28f2cc8b590`. The quality job passed build, all migrations on disposable PostgreSQL, Business Identity/QuoteFlow qualification, full DB-backed test suite, migration audit policy tests, and runtime-boundary verification.
 - PR #205 remains draft. This success qualifies the code in isolated CI only; it does not resolve the shared `ghm_runtime` settlement EXECUTE grant or historical NULL rows already persisted in any shared/production database.
+
+
+## Isolated PayFast settlement architecture ADR added (2026-11-04)
+- Added `docs/architecture/PAYFAST_ISOLATED_SETTLEMENT_SERVICE_ADR_2026-11-04.md` in commit `90dd3cc4a7e95e8b76adb65842c05c8ad9674058`.
+- ADR records the inspected current topology and the target split: general GHM API retains `ghm_runtime` for prepare/checkout; a separately deployed callback process alone receives `PAYFAST_CALLBACK_DATABASE_URL` for `ghm_payment_provider`; callback invokes a PayFast-specific SECURITY DEFINER settlement function with no caller-selected provider argument.
+- It specifies role grants/revokes, callback validation, deployment/process separation, negative privilege/callback test matrix, historical-attempt reconciliation, operational prerequisites, and phased delivery.
+- ADR is a design proposal only. No callback server/module, DB function/role, secret, Render service, network rule, deployment or data query was created/performed. Existing API remains unchanged.
+- Next code task, if continuing: implement the callback service and provider-specific settlement function in a new isolated code PR, with CI-only role provisioning and disposable PostgreSQL qualification. Preserve PR #205 as draft until the runtime grant is removed and both identity paths are proven.
