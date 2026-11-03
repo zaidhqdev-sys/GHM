@@ -879,3 +879,13 @@ Corrected the assertion to compare `runtimeTarget.databaseName` with the approve
 - Corrected TLS policy to disable TLS only when `NODE_ENV=test` and the validated runtime target host is exactly `localhost`. All other targets retain `rejectUnauthorized: true`; database-name, host, matching-target, non-production, and role identity guards remain in place.
 - Change committed to `integration/ghm-identity-merge-candidate-20261018`: `47c6f9eaa547e2bdea376b3c61989a91fa4ea26d`.
 - The qualification has **not** yet been run. Next: pull this commit, verify local process-scoped runtime/migrator identities and local-only target settings, then run only `node scripts/qualify-business-identity-runtime.mjs` (not the aggregate npm script, which repeats the two completed QuoteFlow DB qualifications).
+
+
+### 2026-11-03 — Business Identity runtime authority-reader correction
+
+- The local Business Identity runtime qualification stopped at the first account read with SQLSTATE `42501`: `ghm_runtime` lacked `EXECUTE` on `ghm.auth_read_connect_identity_authority(bigint)`. Runtime identity (`ghm/ghm_runtime`) and cleanup authority (`ghm/ghm_migrator`) checks passed, and the script reported `QUALIFICATION FIXTURE CLEANUP PASS`.
+- Inspection confirmed migration `20261016100000` originally granted this function to `ghm_runtime`, but migration `20261031100000_restrict_identity_authority_reader.sql` deliberately revoked it. The revocation comment reserves the function pending a reviewed runtime caller and account-scope enforcement. No grant was restored.
+- Corrected `src/resources/business-identity/repository.ts` to stop calling the revoked authority reader in both account SELECT and profile UPDATE RETURNING. The repository now maps only fields returned by the authorized account query; it no longer synthesizes Connect role, business-operator intent, system-admin, or founder-reviewer authority from that restricted function. The narrow authenticated-account email reader remains, with account ID sourced from the authenticated context.
+- Code change committed: `c76a95f9b544ceffd8b504a55ab4b8d6b3b12fca`.
+- Business Identity runtime qualification remains **not passed**. The script was not rerun after this correction. Next: pull the code change, run `npm run build` and the focused Business Identity tests, inspect results, then rerun only `node scripts/qualify-business-identity-runtime.mjs` against the verified disposable local database if build/tests pass.
+- No database grants, migrations, shared Render changes, or production changes were made. The previous failed run reported fixture cleanup success.
