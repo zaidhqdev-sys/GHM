@@ -94,16 +94,9 @@ test('generic Connect payment-result route is not registered', () => {
     post: (path: string) => { paths.push(path); },
     get: (path: string) => { paths.push(path); },
   };
-  registerCommercialInternalRoutes(
-    app as never,
-    { applyCommercialPaymentResult: async () => ({} as never) },
-    {
-      createCheckout: async () => ({} as never),
-      handleItn: async () => ({}),
-    },
-  );
+  registerCommercialInternalRoutes(app as never, { createCheckout: async () => ({} as never) });
   assert.equal(paths.includes('/api/v1/internal/commercial/payment-result'), false);
   assert.ok(paths.includes('/api/v1/internal/commercial/payment-prepare'));
   assert.ok(paths.includes('/api/v1/internal/commercial/payfast/checkout/:paymentAttemptId'));
-  assert.ok(paths.includes('/api/v1/commercial/payfast/itn'));
+  assert.equal(paths.includes('/api/v1/commercial/payfast/itn'), false);
 });
