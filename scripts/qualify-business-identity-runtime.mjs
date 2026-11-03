@@ -29,8 +29,12 @@ const { loadEs256Keys } = await import('../dist/auth/foundation/es256-keys.js');
 const { createGhmBearerAuthenticator, PostgresAccountAuthStateStore } = await import('../dist/auth/ghm-bearer.js');
 const { toLegacyAuthContext } = await import('../dist/auth/ghm-auth-context.js');
 
-// Render's non-production PostgreSQL requires TLS; disposable local CI PostgreSQL does not.
-const ssl = { rejectUnauthorized: true };
+// Disposable local PostgreSQL used by NODE_ENV=test does not require TLS.
+// Non-local qualification targets retain verified TLS; database-name, host, and
+// runtime/migrator-role guards remain mandatory in either mode.
+const isLocalQualification = process.env.NODE_ENV?.trim().toLowerCase() === 'test'
+  && runtimeTarget.host === 'localhost';
+const ssl = isLocalQualification ? false : { rejectUnauthorized: true };
 const poolOptions = ssl ? { ssl } : {};
 const runtimePool = new Pool({ connectionString: runtimeUrl, ...poolOptions, connectionTimeoutMillis: 15000 });
 const cleanupPool = new Pool({ connectionString: migratorUrl, ...poolOptions, connectionTimeoutMillis: 15000 });
