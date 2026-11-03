@@ -551,3 +551,10 @@ Implementation started on isolated branch `security/payfast-provider-binding-202
 2. Finish negative unit tests and run CI on the isolated branch.
 3. Design a dedicated provider DB role/pool so `ghm_runtime` cannot directly execute settlement; keep provider credential values out of GitHub/source/logs.
 4. Add read-only inventory query for historical attempts and define safe backfill/expiry handling; no shared/production mutation without fresh explicit authorization.
+
+
+### CI result update — 2026-11-04
+- First PR #205 run `41738700625` failed at TypeScript build only: `src/resources/commercial/service.test.ts` fixture lacked required `providerCode`. Database migration/test/qualification steps were skipped due to fail-fast build.
+- Added `providerCode: 'payfast'` to that fixture in commit `9634dd9b2628e826dfbea9fdbc32a49e267cecda`.
+- Corrected run `41739138801` passed all quality steps on commit `9634dd9b2628e826dfbea9fdbc32a49e267cecda`: build; all migrations on disposable PostgreSQL 18; Business Identity and QuoteFlow migration qualification; full database-backed test suite; migration audit policy tests; runtime boundary verification.
+- This is isolated CI evidence only. It does not resolve the known shared `ghm_runtime` direct-EXECUTE settlement trust boundary, nor historical NULL provider_code reconciliation. PR #205 remains draft and must not be merged/treated as production-approved.
