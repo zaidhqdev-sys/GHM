@@ -782,3 +782,15 @@ Operator ran the prescribed read-only checks successfully against `localhost:543
 ### Local TypeScript build verification — 2026-11-03
 
 Operator ran `npm run build` from `C:\\GHM`; output showed `tsc` and returned to the PowerShell prompt without diagnostics. Record as a successful local TypeScript build on the currently checked-out integration branch. This is not a test-suite or migration result. The isolated local PostgreSQL 17.11 database remains fresh (no `ghm` schema/ledger observed) and no migration or qualification command has run.
+
+
+### Local disposable migration run and ledger verification — 2026-11-03
+
+Operator pinned process-scoped migration variables to the dedicated local `ghm@localhost:5432` target, with `NODE_ENV=test`, separate runtime/migrator URLs and `DATABASE_SSL=false`. Target display confirmed:
+- `DATABASE_URL` and `GHM_RUNTIME_DATABASE_URL`: `ghm_runtime@localhost:5432/ghm`
+- `GHM_MIGRATOR_DATABASE_URL`: `ghm_migrator@localhost:5432/ghm`
+- migration target: `ghm@localhost`
+
+Operator ran `npm run migrate`; its TypeScript build completed and the migration process returned to the PowerShell prompt without an error. A subsequent read-only ledger query, connected as `ghm_migrator` and switched to `ghm_schema_owner`, confirmed database `ghm`, session role `ghm_migrator`, effective role `ghm_schema_owner`, 90 applied migrations, and latest version `20261031100000` (`restrict_identity_authority_reader`). The five latest ledger entries include both QuoteFlow provisioning migrations `20261020130000` and `20261020140000`.
+
+Record as local migration success on PostgreSQL 17.11, supported by the ledger. CI uses PostgreSQL 18, so this is not an exact CI reproduction. No QuoteFlow qualification fixture script has run yet. Next gate: read-only verify required QuoteFlow tables/function and runtime restrictions, then (only if they pass) run the single QuoteFlow business-provisioning qualification against the same pinned local disposable `ghm@localhost` target. Do not run the aggregate qualification or use Render/production URLs.
