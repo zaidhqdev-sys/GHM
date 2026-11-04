@@ -67,8 +67,20 @@ anything; re-check immediately before a scheduled window.
 - The Render read-only query identity could not SELECT the migration ledger
   table `ghm.ghm_schema_migrations` (permission denied). Its location was
   confirmed, but its contents and exact pending migration set were **not**
-  verified. Obtain ledger evidence using the authorized migration owner or
-  another explicitly approved read-only role before scheduling anything.
+  verified. The ledger is owned by `ghm_schema_owner` and has no explicit
+  table ACL; that read-only denial is expected. Obtain ledger evidence using
+  the authorized migration owner or another explicitly approved read-only
+  role before scheduling anything. Do not change ledger privileges merely to
+  make an inspection tool work.
+- Current catalog sizes were approximately 112 kB total for
+  `ghm.commercial_payment_attempt`, 64 kB for
+  `ghm.commercial_provider_event`, and 144 kB for
+  `ghm.commercial_payment_transaction`. The attempt table has six existing
+  indexes including its primary key, unique idempotency key, status/expiry
+  index, business indexes and subscription index. A read-only activity sample
+  observed zero other active sessions at that instant. These are point-in-time
+  observations, not a lock-free migration guarantee; still assess active
+  sessions and blockers immediately before the change.
 - The current payment attempt inventory contains **one** row, status
   `pending_checkout`, created 2026-10-07. It predates the provider-binding
   migration and would remain `provider_code IS NULL` after that migration.
