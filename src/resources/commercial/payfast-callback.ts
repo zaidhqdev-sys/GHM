@@ -11,8 +11,6 @@ const PAYFAST_ITN_FIELDS = new Set([
   'm_payment_id', 'pf_payment_id', 'payment_status', 'item_name', 'item_description',
   'amount_gross', 'amount_fee', 'amount_net', 'name_first', 'name_last',
   'email_address', 'cell_number', 'merchant_id', 'signature', 'token', 'billing_date',
-  // Retained for providers/accounts that include a transaction timestamp in ITN.
-  'payment_date',
 ]);
 const isPayfastItnField = (key: string): boolean =>
   PAYFAST_ITN_FIELDS.has(key) || /^custom_(?:int|str)[1-5]$/.test(key);
