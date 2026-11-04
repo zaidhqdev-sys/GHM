@@ -117,6 +117,7 @@ const mapPaymentAttempt = (row: any): CommercialPaymentAttempt => ({
     row.subscription_id === null ? null : Number(row.subscription_id),
   priceId: Number(row.price_id),
   initiatedByAccountId: Number(row.initiated_by),
+  providerCode: row.provider_code,
   amountMinorUnits: Number(row.amount_minor_units),
   currencyId: Number(row.currency_id),
   billingInterval: row.billing_interval,
@@ -384,6 +385,7 @@ const preparePayment = async (
        subscription_id,
        price_id,
        initiated_by,
+       provider_code,
        attempt_status,
        amount_minor_units,
        currency_id,
@@ -403,6 +405,9 @@ const preparePayment = async (
 
   if (existingResult.rowCount === 1) {
     const existing = existingResult.rows[0];
+    if (existing.provider_code !== 'payfast') {
+      throw new Error('Payment preparation idempotency conflict: provider reconciliation required');
+    }
     if (
       Number(existing.business_id) !== input.businessId ||
       Number(existing.initiated_by) !== context.userId
@@ -459,7 +464,8 @@ const preparePayment = async (
        subscription_id,
        price_id,
        initiated_by,
-       attempt_status,
+       provider_code,
+        attempt_status,
        amount_minor_units,
        currency_id,
        billing_interval,
@@ -470,7 +476,8 @@ const preparePayment = async (
        $2,
        $3,
        $4,
-       'pending_checkout',
+       'payfast',
+        'pending_checkout',
        $5,
        $6,
        $7,
@@ -483,7 +490,8 @@ const preparePayment = async (
        subscription_id,
        price_id,
        initiated_by,
-       attempt_status,
+       provider_code,
+        attempt_status,
        amount_minor_units,
        currency_id,
        billing_interval,
