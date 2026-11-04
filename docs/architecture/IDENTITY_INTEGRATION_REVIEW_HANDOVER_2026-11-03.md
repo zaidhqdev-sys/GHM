@@ -935,3 +935,24 @@ being treated as a blocker.
 No Render configuration, production database, secret, migration or payment
 setting was changed. PR #206 remains draft and unmerged pending the maintainer's
 explicit merge authorization.
+
+
+## Post-merge status — 2026-11-04 14:10 UTC
+
+This addendum supersedes earlier draft/open/unmerged status statements above.
+
+- PR #206 was marked ready and successfully squash-merged into
+  `integration/ghm-identity-merge-candidate-20261018` at
+  [merge commit d90b83b](https://github.com/zaidhqdev-sys/GHM/commit/d90b83bbf762e55321c1a985cb88051a496647e0).
+- The merged PR is [closed as merged](https://github.com/zaidhqdev-sys/GHM/pull/206).
+  Superseded prerequisite PR #205 was explicitly closed without merging;
+  its original implementation/CI history remains available in its PR record.
+- CI on the final PR head passed in [run #41844089287](https://github.com/zaidhqdev-sys/GHM/actions/runs/41844089287).
+- Merge authorization applies to integration-branch code only. It is not
+  authorization for Render changes, production database migrations, secrets,
+  PayFast activation, notify-URL changes or payment cutover.
+- Production callback secrets and `PAYFAST_CALLBACK_DATABASE_URL` must never
+  be placed on the existing production GHM API runtime. The production
+  callback must be a separate service with its dedicated provider identity.
+
+No production or hosted sandbox infrastructure was changed by the merge.
