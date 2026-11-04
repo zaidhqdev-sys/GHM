@@ -143,3 +143,68 @@ The provider-binding migration intentionally leaves historical attempts NULL. Be
 ## Explicit non-goals
 
 This ADR records the code architecture implemented in draft PR #206. It does not authorize creation of a shared/production DB login or credential, secret, service, Render resource, network rule, provider activation, migration against shared/production DB, historical backfill, or cutover. PR #206 must remain draft until review is complete; PR #205 is superseded and must not be merged independently.
+
+
+## Qualification update — 2026-11-04 (local Windows PostgreSQL 18)
+
+The current PR head `a1a046d17d04854bfc8259efaa02100b1ae09304` was additionally
+qualified by the maintainer on a native local PostgreSQL 18 instance, separate
+from the hosted sandbox:
+
+- Target was explicitly `127.0.0.1:5433/ghm_payfast_qualification`; the
+  PostgreSQL 17 cluster on port 5432 was not used.
+- `npm run migrate` completed. Read-only inspection confirmed 92 migration
+  records, including `20261104120000_bind_commercial_payment_attempt_provider`
+  and `20261104130000_isolate_payfast_settlement_identity`.
+- `npm run qualify:commercial-payment-result-runtime` passed the runtime and
+  provider identity/privilege denials, provider-specific SQL binding,
+  idempotency, terminal-attempt guard, dedicated settlement and rollback checks.
+- A read-only post-run check returned zero remaining qualification accounts,
+  businesses, plans and test transactions.
+- `npm run qualify:payfast-runtime`: 19 tests passed, zero failed. Provider
+  network calls are stubbed; no real PayFast endpoint or live credentials are
+  used by this script.
+- `npm run verify:runtime` passed.
+- A negative target-guard check rejected a deliberately mismatched host before
+  opening a database connection.
+
+GitHub Actions CI run [#41836364443](https://github.com/zaidhqdev-sys/GHM/actions/runs/41836364443)
+also passed on the exact current PR head. The quality job completed build,
+disposable PostgreSQL migrations, Business Identity/QuoteFlow qualification,
+the full DB-backed test suite, three-identity settlement qualification,
+migration audit policy tests and runtime boundary verification.
+
+This evidence strengthens local/disposable qualification only. It does not
+establish hosted Render networking, callback process deployment, live PayFast
+server confirmation, provider credential provisioning, historical attempt
+reconciliation, or sandbox/production payment delivery. No hosted database,
+Render resource, secret, notify URL or payment state was changed as part of
+this local qualification.
+
+The native Windows procedure is documented in
+`docs/payfast-local-qualification.md`. The Docker Compose path remains an
+alternative for users who have Docker; it is not a prerequisite.
+
+## Current operational gates — unchanged
+
+1. Confirm/retain the intended PayFast sandbox database before its recorded
+   free-tier expiry on 2026-11-08; do not create a paid resource without an
+   explicit cost decision.
+2. Have the sandbox database owner provision the dedicated
+   `ghm_payment_provider` LOGIN and credential out-of-band, then apply the
+   reviewed migration to that explicitly designated sandbox database.
+3. Keep `ghm-payfast-sandbox-runtime` as the ordinary API. A callback must be
+   a distinct service running `npm run start:payfast-callback` with only its
+   callback-specific secrets and database identity.
+4. Verify private DB connectivity, inbound policy, actual Render proxy/edge
+   behavior, forwarded-header sanitization, health/readiness and database
+   `session_user`/`current_user` identity before any fixture notification.
+5. Perform historical NULL-provider inventory read-only under separate
+   authorization; any reconciliation/backfill requires its own evidence and
+   change approval.
+6. Any real PayFast sandbox notification, sandbox notify URL change, live
+   activation or production cutover remains a separate supervised and
+   explicitly authorized operation.
+
+PR #206 remains draft and unmerged. PR #205 remains superseded and must not be
+merged independently.
