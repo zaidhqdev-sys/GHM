@@ -956,3 +956,17 @@ This addendum supersedes earlier draft/open/unmerged status statements above.
   callback must be a separate service with its dedicated provider identity.
 
 No production or hosted sandbox infrastructure was changed by the merge.
+
+
+## Production rollout preparation — 2026-11-04
+
+The approval-gated production rollout plan is documented in
+`docs/operations/payfast-production-rollout-runbook.md`. It covers release
+promotion (PR #206 is merged to the integration candidate, not `main`), the
+full pending migration set, production backup/PITR, dedicated provider LOGIN,
+historical NULL-provider inventory, the controlled migration/deploy window,
+rollback limits and the separate callback service configuration handover.
+The runbook is planning only. No production database, Render service, secret,
+notify URL or payment setting has been changed. Callback variables will be
+provided only when the production prerequisites are met, and only for the
+separate callback service—not the ordinary production API.
