@@ -192,10 +192,9 @@ try {
     await provider.query('RELEASE SAVEPOINT terminal_attempt_probe');
     if (!terminalRejected) throw new Error('New provider event unexpectedly settled a terminal attempt');
     console.log('PROVIDER EVENT IDEMPOTENCY AND TERMINAL ATTEMPT GUARD PASS');
-    const state = (await provider.query('SELECT attempt_status FROM ghm.commercial_payment_attempt WHERE id = $1', [fixture.attemptId])).rows[0];
+    const state = (await provider.query('SELECT * FROM ghm.commercial_get_payfast_attempt($1)', [fixture.attemptId])).rows[0];
     if (state.attempt_status !== 'succeeded') throw new Error(`Payment attempt state was not advanced: ${state.attempt_status}`);
-    const subscription = (await provider.query('SELECT lifecycle_status FROM ghm.commercial_subscription WHERE id = $1', [fixture.subscriptionId])).rows[0];
-    if (subscription.lifecycle_status !== 'active') throw new Error(`Subscription state was not activated: ${subscription.lifecycle_status}`);
+    if (state.subscription_status !== 'active') throw new Error(`Subscription state was not activated: ${state.subscription_status}`);
     console.log('DEDICATED PROVIDER SETTLEMENT PASS');
     await provider.query('ROLLBACK');
     console.log('PROVIDER SETTLEMENT ROLLBACK PASS');
