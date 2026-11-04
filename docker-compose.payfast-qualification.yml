@@ -1,0 +1,19 @@
+services:
+  payfast-qualification-db:
+    image: postgres:18
+    container_name: ghm-payfast-qualification-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: local-postgres-admin-only
+      POSTGRES_DB: ghm
+    ports:
+      - "127.0.0.1:55432:5432"
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ghm"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - ./scripts/payfast-qualification-init.sql:/docker-entrypoint-initdb.d/10-payfast-qualification-init.sql:ro
