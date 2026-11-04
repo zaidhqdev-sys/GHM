@@ -835,3 +835,14 @@ Documentation commits on this branch:
 8. A real sandbox ITN, sandbox notify URL change, live activation and production cutover remain separate supervised actions requiring explicit authorization.
 
 No Render resource, shared database, hosted credential, network rule, migration, notify URL, historical row or payment state was changed during this documentation update. Keep PR #206 draft and unmerged; PR #205 remains superseded.
+
+
+### Focused final PR diff review — 2026-11-04
+
+A focused static review was completed against PR head `df0af62caf0cf569468e9660519892a8f006572f`, covering all 26 changed files: both settlement migrations, callback server and boundary, ordinary API route removal, provider/runtime qualification, CI workflow, package scripts, local qualification guide, ADR and this handover.
+
+Review conclusion: the implementation structure is consistent with the intended boundary. The ordinary API no longer exposes payment-result settlement; the separate callback process authenticates as `ghm_payment_provider`; provider reads and settlement use narrow SECURITY DEFINER functions; runtime/provider direct settlement privileges are revoked; and the disposable PostgreSQL qualification exercises privilege denial, provider binding, idempotency, terminal-attempt behavior and settlement. The documentation distinguishes native persistent PostgreSQL from Docker tmpfs and separates local/CI evidence from hosted readiness.
+
+A non-blocking hardening recommendation was submitted inline in GitHub COMMENT review [#5769237335](https://github.com/zaidhqdev-sys/GHM/pull/206): require explicit `PAYFAST_ENVIRONMENT` in production rather than silently defaulting to sandbox. A missing production setting currently fails closed for live ITNs, but would cause valid notifications to fail server confirmation and could mask configuration error. No application code was changed during this review.
+
+No additional code-level blocker was identified in this static pass. This is not an approval for deployment or merge and is not a substitute for independent maintainer review. Keep PR #206 draft until review and hosted operational gates are completed. No hosted resources or payment settings were changed.
