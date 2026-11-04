@@ -9,9 +9,13 @@
 - PayFast settlement isolation was squash-merged by PR #206 into
   `integration/ghm-identity-merge-candidate-20261018` at
   `d90b83bbf762e55321c1a985cb88051a496647e0`.
-- The merge is on the integration candidate branch, **not `main`**. Production
-  release work must wait for an explicitly reviewed promotion to the production
-  release branch and successful CI on that exact release head.
+- The merge is on the integration candidate branch, **not `main`**.
+  At the 2026-11-04 14:36 UTC recheck, `main` remained at
+  `61202bb4f61a465f8776b192927aa22e40297fd1`. The production
+  `GHM-Internal-Runtime` service still tracked `main`; its latest live
+  deployment was that same commit. No production deployment of PR #206
+  occurred. Production release work must use a focused promotion PR and
+  successful CI on that exact release head.
 - The two feature migrations are:
   - `20261104120000_bind_commercial_payment_attempt_provider`
   - `20261104130000_isolate_payfast_settlement_identity`
@@ -47,15 +51,20 @@ anything; re-check immediately before a scheduled window.
   `0.0.0.0/0`; that is public web ingress and is distinct from database
   ingress. Review API edge/proxy behavior separately.
 - A read-only production connection reported `session_user = ghm_app_user`
-  and `current_user = ghm_db_user`. Membership inspection showed
-  `ghm_app_user` can SET ROLE `ghm_db_user`; `ghm_db_user` is a member of
-  `ghm_runtime` and `ghm_schema_owner`, with recorded ADMIN OPTION on both
-  memberships (and no SET OPTION on those memberships). This is not the
-  simple `ghm_runtime`-only identity described by the target design. Review
-  and correct this role graph deliberately before migration; in particular,
-  remove unnecessary role-administration capability from the ordinary API
-  identity after proving the intended replacement grants. Do not blindly
-  revoke roles while the live API depends on inherited privileges.
+  and `current_user = ghm_db_user`. `pg_db_role_setting` confirms a
+  database-level `role=ghm_db_user` setting for `ghm_app_user`, and the
+  application login can SET ROLE to `ghm_db_user`. Catalog inspection found
+  ADMIN OPTION memberships granted by `postgres` from `ghm_db_user` to
+  `ghm_migrator`, `ghm_runtime` and `ghm_schema_owner`; the migrator and
+  schema-owner memberships have neither INHERIT nor SET. There is also a
+  separate non-admin `ghm_db_user` -> `ghm_runtime` membership grant.
+  This is not the intended least-privilege API identity. The ordinary API
+  identity can administer memberships in infrastructure roles, a material
+  privilege-escalation path. Remove those ADMIN OPTION grants under an
+  approved database-owner change, preserve only the API's required
+  non-admin runtime membership, and verify the complete role graph and
+  effective privileges afterward. Do not revoke the runtime membership
+  blindly while the live API depends on it.
 - Roles `ghm_schema_owner`, `ghm_migrator`, and `ghm_runtime` exist;
   `ghm_payment_provider` does **not** currently exist. The dedicated
   provider LOGIN prerequisite is therefore not met.
