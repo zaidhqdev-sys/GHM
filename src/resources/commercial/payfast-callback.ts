@@ -68,12 +68,12 @@ export class PayfastCallbackBoundary {
     });
     const providerPaymentId = verified.providerPaymentId;
     if (!providerPaymentId || !/^[!-~]{1,200}$/.test(providerPaymentId)) throw new Error('Payfast ITN provider payment identifier missing or invalid');
-    await this.validate(fields, this.settings.environment);
-    const payloadHash = createHash('sha256').update(JSON.stringify(Object.fromEntries(Object.entries(fields).sort(([a], [b]) => a.localeCompare(b)))), 'utf8').digest('hex');
     const status = verified.transactionStatus.trim().toUpperCase();
     if (!['COMPLETE', 'CANCELLED'].includes(status)) throw new Error('Payfast ITN payment status invalid');
     if (verified.merchantPaymentId !== String(paymentAttemptId)) throw new Error('Payfast ITN merchant payment identifier mismatch');
-    const transactionStatus = status === 'COMPLETE' ? 'succeeded' : status === 'FAILED' || status === 'CANCELLED' ? 'failed' : 'pending';
+    await this.validate(fields, this.settings.environment);
+    const payloadHash = createHash('sha256').update(JSON.stringify(Object.fromEntries(Object.entries(fields).sort(([a], [b]) => a.localeCompare(b)))), 'utf8').digest('hex');
+    const transactionStatus = status === 'COMPLETE' ? 'succeeded' : 'failed';
     await this.database.query(
       `SELECT * FROM ghm.commercial_apply_payfast_payment_result(
         $1,$2,$3,$4,$5,$6,$7,$8,$9
