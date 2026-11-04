@@ -1,6 +1,6 @@
 # PayFast Isolated Settlement Service — Architecture Decision Record
 
-**Status:** Implemented in draft PR #206; operational rollout and payment cutover remain unauthorized  
+**Status:** Merged into the integration candidate branch via PR #206; hosted rollout and payment cutover remain unauthorized  
 **Date:** 2026-11-04  
 **Related:** PR #206, `security/payfast-callback-isolation-20261104` (includes/supersedes provider-binding slice #205)
 
@@ -134,8 +134,8 @@ The provider-binding migration intentionally leaves historical attempts NULL. Be
 
 ## Phased delivery
 
-1. **Code and CI — implemented in draft PR #206:** provider binding, isolated callback entry point, provider-specific SQL wrapper, role grants/revokes, and disposable three-identity qualification. PR #205 is superseded and must not be merged independently.
-2. **Review and qualification — complete for current source:** PR #206's latest recorded head `d16dc973f725e04772a2c70f6704aef90e7aa34a` passed CI run [#41749694611](https://github.com/zaidhqdev-sys/GHM/actions/runs/41749694611), including build, all disposable PostgreSQL 18 migrations, full DB-backed tests, three-identity settlement qualification, migration audit and runtime boundary verification. This is not shared Render or production qualification.
+1. **Code and CI — implemented and merged via PR #206:** provider binding, isolated callback entry point, provider-specific SQL wrapper, role grants/revokes, and disposable three-identity qualification. PR #205 is superseded and must not be merged independently.
+2. **Review and qualification — complete for current source:** PR #206's final head passed CI run [#41844089287](https://github.com/zaidhqdev-sys/GHM/actions/runs/41844089287), including build, all disposable PostgreSQL 18 migrations, full DB-backed tests, three-identity settlement qualification, migration audit and runtime boundary verification. This is not shared Render or production qualification.
 3. **Infrastructure assessment — read-only review completed:** Render workspace inspection found an existing sandbox general-API service and a separate sandbox database, but no callback service or provider DB login. The sandbox database expires 2026-11-08. The existing service runs `npm start` from `main` (not `start:payfast-callback`) and must not be repurposed. A callback deployment remains blocked until a provider login/credential is provisioned, the migration is applied to the intended non-production DB, a dedicated service is configured with secrets, and the actual Render ingress/proxy chain is validated. The available Render DB query operation is read-only; no DB writes or secret provisioning were performed.
 4. **Historical data plan:** perform read-only inventory only after explicit target authorization; no backfill without separately approved evidence and change plan.
 5. **Cutover:** separately authorized, supervised sandbox then production plan; never implied by code approval.
@@ -206,8 +206,9 @@ alternative for users who have Docker; it is not a prerequisite.
    activation or production cutover remains a separate supervised and
    explicitly authorized operation.
 
-PR #206 remains draft and unmerged. PR #205 remains superseded and must not be
-merged independently.
+PR #206 was squash-merged into `integration/ghm-identity-merge-candidate-20261018`
+at commit `d90b83bbf762e55321c1a985cb88051a496647e0`. PR #205 was closed as
+superseded and was not merged independently.
 
 
 ## Production GHM runtime boundary clarification — 2026-11-04
@@ -265,3 +266,36 @@ production GHM API runtime. Production callback handling requires a distinct
 callback service and dedicated production provider database identity.
 No Render service, production database, credential, notify URL or payment
 state was changed by the merge.
+
+
+## Production rollout preparation — 2026-11-04
+
+A production runbook has been added at
+`docs/operations/payfast-production-rollout-runbook.md`. It is a planning and
+preflight document only; it does not authorize or execute a production change.
+
+The repository's `main` branch has not yet received this integration-candidate
+merge. Production release planning must include the normal source promotion and
+release CI path before any production migration or callback deployment. Do
+not treat the integration branch merge as a production release.
+
+The two database migrations in this feature are
+`20261104120000_bind_commercial_payment_attempt_provider` and
+`20261104130000_isolate_payfast_settlement_identity`. The latter requires the
+dedicated `ghm_payment_provider` LOGIN to exist before migration. The migration
+runner applies every pending migration in its configured migration directory,
+not only these two; therefore the production migration ledger and complete
+pending set must be reviewed before execution.
+
+Production migration is a coordinated payment-processing change: the new
+provider binding intentionally leaves historical attempts NULL, and the
+second migration revokes settlement execution from `ghm_runtime`. Existing
+pending ITNs may retry, but no callback should be acknowledged until the new
+isolated callback process is verified ready. The runbook requires an explicit
+maintenance/cutover window and rollback based on managed backup/PITR rather
+than an improvised destructive down-migration.
+
+The callback service's own environment is separate from the ordinary API.
+At the eventual configuration handover, callback-only variables will be
+provided for the dedicated callback service only. No callback database URL or
+provider credential belongs on the production GHM API service.
