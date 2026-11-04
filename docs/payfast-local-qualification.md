@@ -21,6 +21,120 @@ second hosted web service, PayFast credentials, or network access to PayFast.
 - Node.js 20 (or the repository's supported Node version) and npm
 - A local checkout of this branch
 
+
+## Native Windows PostgreSQL 18 (PowerShell; no Docker)
+
+A native Windows PostgreSQL 18 installation can be used instead of Compose. This
+is the path exercised for the 2026-11-04 local qualification. It uses a separate
+PostgreSQL 18 cluster on port `5433` and the database
+`ghm_payfast_qualification`. Keep any other local cluster (for example
+PostgreSQL 17 on port `5432`) untouched.
+
+### Create the isolated local database and roles
+
+Open PowerShell and connect to the PostgreSQL 18 cluster as its local
+administrator:
+
+```powershell
+& "$env:ProgramFiles\PostgreSQL\18\bin\psql.exe" -h 127.0.0.1 -p 5433 -U postgres -d postgres -W -X -v ON_ERROR_STOP=1
+```
+
+At the `psql` prompt, run the following once on this local qualification
+cluster (skip roles/database that already exist; do not run this against a
+shared or hosted database):
+
+```sql
+CREATE ROLE ghm_schema_owner NOLOGIN;
+CREATE ROLE ghm_migrator LOGIN NOINHERIT;
+GRANT ghm_schema_owner TO ghm_migrator;
+CREATE ROLE ghm_runtime LOGIN NOINHERIT;
+CREATE ROLE ghm_payment_provider LOGIN NOINHERIT;
+
+CREATE DATABASE ghm_payfast_qualification;
+GRANT CONNECT ON DATABASE ghm_payfast_qualification
+  TO ghm_migrator, ghm_runtime, ghm_payment_provider;
+GRANT CONNECT, CREATE ON DATABASE ghm_payfast_qualification
+  TO ghm_schema_owner;
+
+\connect ghm_payfast_qualification
+GRANT USAGE, CREATE ON SCHEMA public TO ghm_schema_owner;
+```
+
+Set each login password interactively at the `psql` prompt; passwords are
+separate per role and must not be committed or pasted into documentation:
+
+```text
+\password ghm_migrator
+\password ghm_runtime
+\password ghm_payment_provider
+```
+
+Verify the server/cluster and role membership before proceeding:
+
+```powershell
+& "$env:ProgramFiles\PostgreSQL\18\bin\psql.exe" -h 127.0.0.1 -p 5433 -U postgres -d ghm_payfast_qualification -W -X -v ON_ERROR_STOP=1 -c "SELECT current_database(), inet_server_addr(), inet_server_port()"
+& "$env:ProgramFiles\PostgreSQL\18\bin\psql.exe" -h 127.0.0.1 -p 5433 -U postgres -d ghm_payfast_qualification -W -X -v ON_ERROR_STOP=1 -c "SELECT rolname, rolcanlogin FROM pg_roles WHERE rolname IN ('ghm_schema_owner','ghm_migrator','ghm_runtime','ghm_payment_provider') ORDER BY rolname"
+```
+
+Expected database: `ghm_payfast_qualification`; port: `5433`;
+`ghm_schema_owner` must have `rolcanlogin = false`. Also verify
+`ghm_migrator` is a member of `ghm_schema_owner`. The PostgreSQL 18
+service used in this procedure was configured with
+`listen_addresses = '*'`; for a local-only setup, restrict PostgreSQL
+listening and firewall access to the intended local interface before relying
+on it as a local-only database. Do not assume connecting to 127.0.0.1 alone
+makes a server bound to all interfaces private.
+
+### Configure the current PowerShell session
+
+Keep the same PowerShell window open while building, migrating and qualifying.
+Set the three role-specific URLs using the passwords already set above; replace
+each placeholder with that role's URL-encoded password. Do not reuse one
+role's password for another:
+
+```powershell
+$env:NODE_ENV = "test"
+$env:GHM_MIGRATOR_DATABASE_URL = "postgresql://ghm_migrator:<URL-ENCODED-PASSWORD>@127.0.0.1:5433/ghm_payfast_qualification"
+$env:GHM_RUNTIME_DATABASE_URL = "postgresql://ghm_runtime:<URL-ENCODED-PASSWORD>@127.0.0.1:5433/ghm_payfast_qualification"
+$env:GHM_PAYMENT_PROVIDER_DATABASE_URL = "postgresql://ghm_payment_provider:<URL-ENCODED-PASSWORD>@127.0.0.1:5433/ghm_payfast_qualification"
+$env:DATABASE_URL = $env:GHM_RUNTIME_DATABASE_URL
+$env:GHM_MIGRATION_DATABASE_NAME = "ghm_payfast_qualification"
+$env:GHM_MIGRATION_DATABASE_HOST = "127.0.0.1"
+$env:GHM_QUALIFICATION_DATABASE_NAME = "ghm_payfast_qualification"
+$env:GHM_QUALIFICATION_DATABASE_HOST = "127.0.0.1"
+$env:GHM_NONPRODUCTION_DATABASE_NAME = "ghm_payfast_qualification"
+$env:GHM_NONPRODUCTION_DATABASE_HOST = "127.0.0.1"
+$env:DATABASE_SSL = "false"
+```
+
+Before migration, inspect the three URLs without printing their passwords and
+confirm that all three use host `127.0.0.1`, port `5433`, and database
+`ghm_payfast_qualification`, with their respective login names. Never point
+these variables at the paid GHM database or any shared Render database.
+
+Run from the repository root:
+
+```powershell
+npm ci
+npm run migrate
+npm run qualify:commercial-payment-result-runtime
+npm run qualify:payfast-runtime
+npm run verify:runtime
+```
+
+The qualification target guards require the explicit expected database name
+and host to match every role URL before opening connections. A deliberately
+mismatched host must be rejected. The migration runs as `ghm_migrator` and
+switches to `ghm_schema_owner`; runtime and provider qualification use their
+own identities. Do not weaken or bypass these checks to make another target
+pass.
+
+This native PostgreSQL instance is persistent, unlike the Compose tmpfs
+database. Qualification fixtures are cleaned up by the script; migrations and
+their schema remain. Only drop `ghm_payfast_qualification` if you deliberately
+want to discard the local qualification database and have confirmed the
+database name and port.
+
 ## Start a fresh disposable database
 
 From the repository root:
