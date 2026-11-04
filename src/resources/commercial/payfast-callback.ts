@@ -69,7 +69,7 @@ export class PayfastCallbackBoundary {
       passphrase: this.settings.passphrase,
     });
     const providerPaymentId = verified.providerPaymentId;
-    if (!providerPaymentId || !/^[!-~]{1,200}$/.test(providerPaymentId)) throw new Error('Payfast ITN provider payment identifier missing or invalid');
+    if (!providerPaymentId || !/^\d{1,20}$/.test(providerPaymentId)) throw new Error('Payfast ITN provider payment identifier missing or invalid');
     const status = verified.transactionStatus.trim().toUpperCase();
     if (!['COMPLETE', 'CANCELLED'].includes(status)) throw new Error('Payfast ITN payment status invalid');
     if (verified.merchantPaymentId !== String(paymentAttemptId)) throw new Error('Payfast ITN merchant payment identifier mismatch');
