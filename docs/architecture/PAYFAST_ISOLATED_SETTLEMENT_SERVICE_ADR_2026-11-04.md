@@ -250,3 +250,18 @@ successful native Windows qualification on the isolated PostgreSQL 18
 non-production database. The corresponding inline review thread is resolved.
 This is a startup configuration safeguard and qualification evidence, not
 authorization to deploy or configure Render.
+
+
+## Merge status — 2026-11-04
+
+The implementation was merged into
+`integration/ghm-identity-merge-candidate-20261018` through PR #206 at
+[d90b83b](https://github.com/zaidhqdev-sys/GHM/commit/d90b83bbf762e55321c1a985cb88051a496647e0).
+The final PR-head CI run [#41844089287](https://github.com/zaidhqdev-sys/GHM/actions/runs/41844089287)
+passed. This records integration-branch code acceptance only; all hosted
+sandbox and production rollout gates remain separate. In particular, do not
+put callback credentials or `PAYFAST_CALLBACK_DATABASE_URL` on the existing
+production GHM API runtime. Production callback handling requires a distinct
+callback service and dedicated production provider database identity.
+No Render service, production database, credential, notify URL or payment
+state was changed by the merge.
