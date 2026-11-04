@@ -3,6 +3,21 @@ import type { Pool } from 'pg';
 import { PAYFAST_ITN_VALIDATION_URLS, verifyPayfastItn } from './payfast';
 
 type Environment = 'sandbox' | 'live';
+
+export const resolvePayfastEnvironment = (
+  nodeEnvironment: string | undefined,
+  configuredEnvironment: string | undefined,
+): Environment => {
+  const configured = configuredEnvironment?.trim();
+  if (nodeEnvironment === 'production' && !configured) {
+    throw new Error('PAYFAST_ENVIRONMENT must be explicitly set to sandbox or live in production');
+  }
+  const environment = configured || 'sandbox';
+  if (environment !== 'sandbox' && environment !== 'live') {
+    throw new Error('PAYFAST_ENVIRONMENT must be sandbox or live');
+  }
+  return environment;
+};
 const amountMinor = (value: unknown): number => Number(value);
 export const encodePayfastValidationFields = (fields: Readonly<Record<string, string>>): string =>
   Object.entries(fields).filter(([key, value]) => key !== 'signature' && value !== '').map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value).replace(/%20/g, '+')}`).join('&');
