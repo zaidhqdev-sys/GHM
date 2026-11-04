@@ -37,9 +37,10 @@ anything; re-check immediately before a scheduled window.
   `srv-damupsek1f9s73eq8kkg`; it tracks `main`, runs `npm start`, and
   health-checks `/healthz`. It is the ordinary API, not a callback service.
 - The production database resource's current IP allow-list includes
-  `0.0.0.0/0`. This is not private-database isolation. Restrict database
-  ingress to the actual required Render private network/approved operator
-  paths before introducing the callback service. Do not change it until the
+  `0.0.0.0/0`. This does not restrict database ingress to known source IPs; whether the
+  service-to-database private route is used must be verified separately.
+  Restrict the database allow-list to the actual required Render private
+  network/approved operator paths before introducing the callback service. Do not change it until the
   complete required connection paths are known and tested; avoid accidental
   API/database outage.
 - The existing API service's Render IP allow-list also includes
