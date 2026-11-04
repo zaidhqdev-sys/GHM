@@ -686,3 +686,11 @@ The first authored provider-function ALTER/GRANT signature had one extra text ar
 - Three-identity qualification passed: `ghm_runtime` cannot execute generic or PayFast-specific settlement or PayFast attempt-read functions and cannot directly write payment event/transaction tables; `ghm_payment_provider` can execute the narrow PayFast read/settlement functions but has no direct commercial-table SELECT/INSERT/UPDATE privileges; unbound provider attempts fail closed; valid PayFast settlement succeeds; identical event retry returns the same transaction; new events on terminal attempts are rejected; fixture transaction rolls back and cleanup completes.
 - CI setup uses only disposable credentials/database and does not provision any shared/production role or secret.
 - PR #206 remains draft and unmerged. CI success is not shared Render qualification or production approval. Historical NULL-provider reconciliation, current PayFast IP range validation, trusted-proxy configuration, provider login/credential provisioning, callback service deployment, and notify URL cutover remain open operational gates.
+
+
+### Final callback retry hardening and latest CI — 2026-11-04
+- Callback payload hash is now computed from a lexically sorted field map, so identical ITN fields in a different form-field order produce the same payload hash and retain provider-event idempotency.
+- PayFast server-confirmation request omits empty fields consistently with the original boundary; payload-hash conflicts are returned as an invalid callback rather than a retryable internal error.
+- Latest run [#41744524361](https://github.com/zaidhqdev-sys/GHM/actions/runs/41744524361) passed on exact current implementation head `38a50bf4322729afb57c0a2ab0dfbbf68a863fb4`.
+- Passed: TypeScript build; all migrations on disposable PostgreSQL 18; Business Identity/QuoteFlow DB qualification; full DB-backed tests (699 pass, 0 fail); three-identity commercial settlement qualification; migration audit policy tests; runtime boundary verification.
+- This is the latest full disposable-CI qualification. It is not a shared Render or production qualification.
