@@ -17,6 +17,8 @@ test('PayFast callback rejects duplicate and non-string form fields', () => {
   assert.equal(parsePayfastItnFields({ ...fields, signature: ['a', 'b'] }), null);
   assert.equal(parsePayfastItnFields(null), null);
   assert.equal(parsePayfastItnFields({ 'bad key': 'x' }), null);
+  assert.equal(parsePayfastItnFields({ ...fields, unexpected_admin_flag: '1' }), null);
+  assert.equal(parsePayfastItnFields({ ...fields, custom_str1: 'supported custom field' })?.custom_str1, 'supported custom field');
   assert.equal(parsePayfastItnFields({ field: 'x'.repeat(2049) }), null);
   assert.deepEqual(parsePayfastItnFields(fields), fields);
 });
