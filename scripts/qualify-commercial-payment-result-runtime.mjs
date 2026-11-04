@@ -7,7 +7,7 @@ const providerUrl = process.env.GHM_PAYMENT_PROVIDER_DATABASE_URL;
 if (!runtimeUrl || !migratorUrl || !providerUrl) throw new Error('Missing GHM runtime/migrator/provider database URLs');
 if (new Set([runtimeUrl, migratorUrl, providerUrl]).size !== 3) throw new Error('Runtime, migrator and provider connections must be distinct');
 
-const ssl = { rejectUnauthorized: false };
+const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: true } : false;
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
 const migratorPool = new Pool({ connectionString: migratorUrl, ssl });
 const providerPool = new Pool({ connectionString: providerUrl, ssl });
