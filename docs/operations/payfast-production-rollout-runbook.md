@@ -1,7 +1,7 @@
 # PayFast production rollout runbook (approval-gated)
 
 **Status:** Planning only. No production database, Render service, secret, or PayFast setting has been changed.  
-**Scope:** Production GHM database `ghm` and a *new, separate* production PayFast callback service.  
+**Scope:** Render PostgreSQL database `ghm_db` (schema `ghm`) and a *new, separate* production PayFast callback service.  
 **Not in scope:** The existing production GHM API runtime must not receive callback credentials or callback database access.
 
 ## 1. Current release position
@@ -22,6 +22,66 @@
   `ghm_payment_provider` LOGIN already exists.
 - The provider-binding migration leaves historical attempts' new
   `provider_code` as NULL. Do not backfill by assumption.
+
+
+## 1A. Verified production snapshot — read-only, 2026-11-04
+
+The following facts were observed through Render's read-only database and
+resource inspection. They are an inventory snapshot, not approval to change
+anything; re-check immediately before a scheduled window.
+
+- Render resource `ghm-db` is PostgreSQL 18, resource ID
+  `dpg-dag0sdtbedkc7389vi2g-a`, database name **`ghm_db`**, application
+  schema **`ghm`**, Frankfurt region, 1 GB disk, `0.1c-256mb` plan.
+- The existing production service is `GHM-Internal-Runtime`, resource ID
+  `srv-damupsek1f9s73eq8kkg`; it tracks `main`, runs `npm start`, and
+  health-checks `/healthz`. It is the ordinary API, not a callback service.
+- The production database resource's current IP allow-list includes
+  `0.0.0.0/0`. This is not private-database isolation. Restrict database
+  ingress to the actual required Render private network/approved operator
+  paths before introducing the callback service. Do not change it until the
+  complete required connection paths are known and tested; avoid accidental
+  API/database outage.
+- The existing API service's Render IP allow-list also includes
+  `0.0.0.0/0`; that is public web ingress and is distinct from database
+  ingress. Review API edge/proxy behavior separately.
+- A read-only production connection reported `session_user = ghm_app_user`
+  and `current_user = ghm_db_user`. Membership inspection showed
+  `ghm_app_user` can SET ROLE `ghm_db_user`; `ghm_db_user` is a member of
+  `ghm_runtime` and `ghm_schema_owner`, with recorded ADMIN OPTION on both
+  memberships (and no SET OPTION on those memberships). This is not the
+  simple `ghm_runtime`-only identity described by the target design. Review
+  and correct this role graph deliberately before migration; in particular,
+  remove unnecessary role-administration capability from the ordinary API
+  identity after proving the intended replacement grants. Do not blindly
+  revoke roles while the live API depends on inherited privileges.
+- Roles `ghm_schema_owner`, `ghm_migrator`, and `ghm_runtime` exist;
+  `ghm_payment_provider` does **not** currently exist. The dedicated
+  provider LOGIN prerequisite is therefore not met.
+- The production `ghm.commercial_payment_attempt` table currently has no
+  `provider_code` column, and the PayFast-specific read/settlement functions
+  are absent. The generic `ghm.commercial_apply_payment_result` function is
+  owned by `ghm_schema_owner` and currently grants EXECUTE to
+  `ghm_runtime`. The feature migrations have not yet been applied to this
+  production database.
+- The Render read-only query identity could not SELECT the migration ledger
+  table `ghm.ghm_schema_migrations` (permission denied). Its location was
+  confirmed, but its contents and exact pending migration set were **not**
+  verified. Obtain ledger evidence using the authorized migration owner or
+  another explicitly approved read-only role before scheduling anything.
+- The current payment attempt inventory contains **one** row, status
+  `pending_checkout`, created 2026-10-07. It predates the provider-binding
+  migration and would remain `provider_code IS NULL` after that migration.
+  Do not assume it is PayFast; identify it from reliable persisted evidence
+  and decide its safe disposition before cutover.
+- The database resource currently has a broad IP allow-list and the provider
+  role is absent. No database setting, role, migration, Render service,
+  credential or payment record was changed during this inspection.
+
+These observations change the rollout plan: first reconcile the production
+role graph and historical pending attempt, verify the full migration ledger,
+and close the database ingress exposure with a tested network plan. Only then
+can the dedicated provider role and callback-service plan be finalized.
 
 ## 2. Hard service and credential boundary
 
@@ -60,7 +120,7 @@ verified and explicitly approved by the production owner.
 ### Production database and backup
 
 - [ ] Confirm the actual production Render PostgreSQL host, database name
-      (`ghm`), region, private connection route, TLS requirements and current
+      (`ghm_db`, with application objects in schema `ghm`), region, private connection route, TLS requirements and current
       migration ledger. Never infer the host from sandbox or local values.
 - [ ] Confirm a recoverable managed backup/PITR point, retention window and
       restore procedure. Perform a restore rehearsal to a separate database
@@ -77,8 +137,10 @@ verified and explicitly approved by the production owner.
 ### Provider identity
 
 - [ ] Verify `ghm_schema_owner` and `ghm_migrator` exist with the intended
-      ownership/membership model; verify `ghm_runtime` is the ordinary API
-      login.
+      ownership/membership model; verify the actual production chain `ghm_app_user` -> `ghm_db_user` ->
+      `ghm_runtime`, and remove the unintended ADMIN OPTION on role memberships
+      after an approved replacement grant plan. The final API identity must
+      be documented and least-privileged.
 - [ ] Provision `ghm_payment_provider LOGIN NOINHERIT` out-of-band on the
       production PostgreSQL cluster. Set its unique password through the
       approved secret-handling process; never put it in Git, SQL files,
@@ -122,7 +184,7 @@ SELECT rolname, rolcanlogin, rolsuper, rolcreatedb, rolcreaterole,
        rolreplication, rolbypassrls
 FROM pg_roles
 WHERE rolname IN
-  ('ghm_schema_owner', 'ghm_migrator', 'ghm_runtime', 'ghm_payment_provider')
+  ('ghm_app_user', 'ghm_db_user', 'ghm_schema_owner', 'ghm_migrator', 'ghm_runtime', 'ghm_payment_provider')
 ORDER BY rolname;
 
 SELECT member_role.rolname AS granted_role,
@@ -131,7 +193,7 @@ FROM pg_auth_members m
 JOIN pg_roles parent_role ON parent_role.oid = m.roleid
 JOIN pg_roles member_role ON member_role.oid = m.member
 WHERE member_role.rolname IN
-  ('ghm_migrator', 'ghm_runtime', 'ghm_payment_provider')
+  ('ghm_app_user', 'ghm_db_user', 'ghm_migrator', 'ghm_runtime', 'ghm_payment_provider')
 ORDER BY 1, 2;
 ```
 
@@ -178,8 +240,9 @@ GROUP BY provider_code, attempt_status
 ORDER BY provider_code NULLS FIRST, attempt_status;
 ```
 
-Do not infer historical provider identity from the checkout URL or from a
-single status field. Inventory the historical NULL-provider population
+The current read-only snapshot shows one pending-checkout attempt dated
+2026-10-07. Do not infer historical provider identity from the checkout URL
+or from a single status field. Inventory the historical NULL-provider population
 read-only, classify each retained attempt using reliable persisted evidence,
 and document unknowns. Any backfill, expiry or quarantine operation requires
 a separately reviewed and explicitly approved data-change plan.
@@ -197,8 +260,8 @@ This is a coordinated payment-processing change, not an unattended deploy.
 4. From the exact approved release checkout, inspect the complete pending
    migration set and run the migration audit. Reconfirm
    `GHM_MIGRATOR_DATABASE_URL`, `GHM_MIGRATION_DATABASE_NAME` and
-   `GHM_MIGRATION_DATABASE_HOST` refer to the approved production `ghm`
-   target. The target guard checks the URL database and host before connecting.
+   `GHM_MIGRATION_DATABASE_HOST` refer to the approved production `ghm_db`
+   target (application schema `ghm`). The target guard checks the URL database and host before connecting.
 5. Run `npm run migrate` once under the approved change ticket and operator
    supervision. The runner applies all pending files in timestamp order using
    `ghm_migrator` then `SET ROLE ghm_schema_owner`; it does not accept a
