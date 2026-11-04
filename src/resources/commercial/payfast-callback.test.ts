@@ -9,6 +9,7 @@ const unsigned = {
   pf_payment_id: 'pf-123',
   amount_gross: '199.00',
   payment_status: 'COMPLETE',
+  item_name: 'Test item',
 };
 const fields = { ...unsigned, signature: generatePayfastSignature(unsigned, 'secret') };
 const settings = { merchantId: '10000100', passphrase: 'secret', environment: 'sandbox' as const };
@@ -16,6 +17,8 @@ const settings = { merchantId: '10000100', passphrase: 'secret', environment: 's
 test('PayFast callback rejects duplicate and non-string form fields', () => {
   assert.equal(parsePayfastItnFields({ ...fields, signature: ['a', 'b'] }), null);
   assert.equal(parsePayfastItnFields(null), null);
+  const { item_name: _itemName, ...missingRequired } = fields;
+  assert.equal(parsePayfastItnFields(missingRequired), null);
   assert.equal(parsePayfastItnFields({ 'bad key': 'x' }), null);
   assert.equal(parsePayfastItnFields({ ...fields, unexpected_admin_flag: '1' }), null);
   assert.equal(parsePayfastItnFields({ ...fields, custom_str1: 'supported custom field' })?.custom_str1, 'supported custom field');
