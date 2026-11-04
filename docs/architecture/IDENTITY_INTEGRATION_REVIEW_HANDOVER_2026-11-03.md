@@ -906,3 +906,20 @@ This CI result validates the repository state and tests; it does not authorize
 or qualify production migration, production credentials, Render configuration
 or PayFast delivery. Production GHM API/callback separation and outstanding
 production gates are recorded above. PR #206 remains draft and unmerged.
+
+
+### Production PayFast environment guard — 2026-11-04
+
+The previously noted inline hardening recommendation has now been implemented
+on the PR branch in commits `f244b55e4e5a5f8220d0f3b52cf5286a6adabd5f`,
+`30eca12297260238b622c3784888a8fb6b2ee126` and
+`75510a58abe9f0246e314c7b530ae86f4e973a1a`. Callback startup now resolves
+the mode through a tested helper: production requires an explicitly supplied
+`PAYFAST_ENVIRONMENT` value of `sandbox` or `live`; non-production retains
+the sandbox default. Focused tests cover missing/blank production values,
+valid production values, and invalid values.
+
+These commits have not yet been qualified by a reported local test run or a
+verified GitHub Actions result. Keep the inline review thread open until CI
+passes on the exact updated PR head. No Render configuration, production
+database, secret, migration or payment setting was changed.
