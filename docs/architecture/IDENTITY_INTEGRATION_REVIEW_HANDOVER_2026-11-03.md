@@ -812,7 +812,7 @@ Updated:
 Documentation commits on this branch:
 - `886bb1af423b6689011176b07186196aad348c52` — native Windows local qualification instructions.
 - `f133f295c20e30edd5b5df463d9ae14fd3b7a31b` — ADR qualification and operational-gate update.
-- Handover update is the next documentation commit; record its resulting SHA after it is created.
+- The handover update follows the two documentation commits above; the PR body has also been reconciled to the local qualification and latest CI evidence.
 
 ### Source and workflow review notes
 
