@@ -309,3 +309,42 @@ NULL-provider inventory, release promotion (the merge is not on `main`),
 separate callback service/network verification and the exact point at which
 callback-only Render variables will be handed over. It is explicitly planning
 only; no production resources or settings were changed.
+
+
+## Production preflight findings — 2026-11-04 (read-only)
+
+The Render production database resource is `ghm-db`; its PostgreSQL database
+name is `ghm_db`, and the application schema is `ghm`. Do not confuse the
+schema name with the database name.
+
+Read-only inspection observed the existing `GHM-Internal-Runtime` service
+tracking `main` and running `npm start`; it remains the ordinary API. The
+production database is PostgreSQL 18 on the `0.1c-256mb` plan with a 1 GB
+disk. Its Render database IP allow-list currently includes `0.0.0.0/0`;
+private ingress has not been established.
+
+The live connection reported `session_user=ghm_app_user` and
+`current_user=ghm_db_user`. The role graph includes
+`ghm_app_user -> ghm_db_user -> ghm_runtime`; `ghm_db_user` also has
+ADMIN OPTION on memberships in `ghm_runtime` and `ghm_schema_owner`.
+This differs from the intended simple least-privilege runtime login and must
+be reconciled carefully before the provider migration; do not revoke live
+memberships blindly.
+
+The production database has `ghm_schema_owner`, `ghm_migrator` and
+`ghm_runtime`, but no `ghm_payment_provider` LOGIN. The payment-attempt
+table has no `provider_code` column; PayFast-specific attempt-read and
+settlement functions are absent; the generic settlement function is still
+granted to `ghm_runtime`. A read-only snapshot found one
+`pending_checkout` attempt created 2026-10-07. It will remain unbound after
+the provider-binding migration unless separately reconciled with reliable
+evidence. The Render read-only identity could not read the migration ledger,
+so the exact applied/pending migration set remains unverified.
+
+These findings are captured in
+`docs/operations/payfast-production-rollout-runbook.md`. They are read-only
+observations only. No production roles, grants, database settings, services,
+secrets, payment attempts or PayFast settings were changed. The production
+migration and callback rollout are not ready to execute until the role graph,
+database ingress, migration ledger, backup/PITR, and historical pending
+attempt are resolved and explicitly approved.
