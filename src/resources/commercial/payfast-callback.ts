@@ -4,8 +4,8 @@ import { PAYFAST_ITN_VALIDATION_URLS, verifyPayfastItn } from './payfast';
 
 type Environment = 'sandbox' | 'live';
 const amountMinor = (value: unknown): number => Number(value);
-const encodeFields = (fields: Readonly<Record<string, string>>): string =>
-  Object.entries(fields).filter(([, value]) => value !== '').map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value).replace(/%20/g, '+')}`).join('&');
+export const encodePayfastValidationFields = (fields: Readonly<Record<string, string>>): string =>
+  Object.entries(fields).filter(([key, value]) => key !== 'signature' && value !== '').map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value).replace(/%20/g, '+')}`).join('&');
 
 const PAYFAST_ITN_FIELDS = new Set([
   'm_payment_id', 'pf_payment_id', 'payment_status', 'item_name', 'item_description',
@@ -37,7 +37,7 @@ export class PayfastCallbackBoundary {
       const response = await fetch(PAYFAST_ITN_VALIDATION_URLS[environment], {
         method: 'POST',
         headers: { 'content-type': 'application/x-www-form-urlencoded' },
-        body: encodeFields(fields),
+        body: encodePayfastValidationFields(fields),
         signal: AbortSignal.timeout(5000),
       });
       if (!response.ok || (await response.text()).trim() !== 'VALID') throw new Error('Payfast server confirmation invalid');
@@ -71,7 +71,7 @@ export class PayfastCallbackBoundary {
     await this.validate(fields, this.settings.environment);
     const payloadHash = createHash('sha256').update(JSON.stringify(Object.fromEntries(Object.entries(fields).sort(([a], [b]) => a.localeCompare(b)))), 'utf8').digest('hex');
     const status = verified.transactionStatus.trim().toUpperCase();
-    if (!['COMPLETE', 'FAILED', 'CANCELLED', 'PENDING'].includes(status)) throw new Error('Payfast ITN payment status invalid');
+    if (!['COMPLETE', 'CANCELLED'].includes(status)) throw new Error('Payfast ITN payment status invalid');
     if (verified.merchantPaymentId !== String(paymentAttemptId)) throw new Error('Payfast ITN merchant payment identifier mismatch');
     const transactionStatus = status === 'COMPLETE' ? 'succeeded' : status === 'FAILED' || status === 'CANCELLED' ? 'failed' : 'pending';
     await this.database.query(
