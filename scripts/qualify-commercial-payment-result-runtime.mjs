@@ -1,11 +1,31 @@
 import { Pool } from 'pg';
 import 'dotenv/config';
+import {
+  assertMatchingPostgresTargets,
+  assertNonProductionQualificationTarget,
+  assertPostgresTargetConfiguration,
+} from '../dist/db/postgres-target-guard.js';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 const providerUrl = process.env.GHM_PAYMENT_PROVIDER_DATABASE_URL;
 if (!runtimeUrl || !migratorUrl || !providerUrl) throw new Error('Missing GHM runtime/migrator/provider database URLs');
 if (new Set([runtimeUrl, migratorUrl, providerUrl]).size !== 3) throw new Error('Runtime, migrator and provider connections must be distinct');
+
+const expectedDatabaseName = process.env.GHM_QUALIFICATION_DATABASE_NAME ?? process.env.GHM_NONPRODUCTION_DATABASE_NAME;
+const expectedDatabaseHost = process.env.GHM_QUALIFICATION_DATABASE_HOST ?? process.env.GHM_NONPRODUCTION_DATABASE_HOST;
+const runtimeTarget = assertPostgresTargetConfiguration(runtimeUrl, {
+  databaseName: expectedDatabaseName, host: expectedDatabaseHost, label: 'GHM payment-result runtime qualification target',
+});
+const migratorTarget = assertPostgresTargetConfiguration(migratorUrl, {
+  databaseName: expectedDatabaseName, host: expectedDatabaseHost, label: 'GHM payment-result fixture authority target',
+});
+const providerTarget = assertPostgresTargetConfiguration(providerUrl, {
+  databaseName: expectedDatabaseName, host: expectedDatabaseHost, label: 'GHM payment-result provider target',
+});
+assertMatchingPostgresTargets(runtimeTarget, migratorTarget, 'GHM payment-result runtime/fixture target');
+assertMatchingPostgresTargets(runtimeTarget, providerTarget, 'GHM payment-result runtime/provider target');
+assertNonProductionQualificationTarget(runtimeTarget, 'GHM payment-result qualification');
 
 const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: true } : false;
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
