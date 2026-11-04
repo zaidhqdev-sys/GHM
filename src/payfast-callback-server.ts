@@ -2,15 +2,14 @@ import http from 'node:http';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { Pool } from 'pg';
 import { postgresSslConfig } from './db/postgres-ssl';
-import { PayfastCallbackBoundary, parsePayfastItnFields } from './resources/commercial/payfast-callback';
+import { PayfastCallbackBoundary, parsePayfastItnFields, resolvePayfastEnvironment } from './resources/commercial/payfast-callback';
 
 const required = (name: string): string => {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`Missing required environment variable: ${name}`);
   return value;
 };
-const environment = process.env.PAYFAST_ENVIRONMENT?.trim() || 'sandbox';
-if (environment !== 'sandbox' && environment !== 'live') throw new Error('PAYFAST_ENVIRONMENT must be sandbox or live');
+const environment = resolvePayfastEnvironment(process.env.NODE_ENV, process.env.PAYFAST_ENVIRONMENT);
 const port = Number(process.env.PORT ?? process.env.PAYFAST_CALLBACK_PORT ?? '3100');
 if (!Number.isSafeInteger(port) || port < 1 || port > 65535) throw new Error('PAYFAST_CALLBACK_PORT is invalid');
 const trustProxyRaw = process.env.PAYFAST_CALLBACK_TRUST_PROXY?.trim() ?? 'false';
