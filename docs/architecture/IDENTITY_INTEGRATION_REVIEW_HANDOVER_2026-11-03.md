@@ -710,3 +710,44 @@ The first authored provider-function ALTER/GRANT signature had one extra text ar
 - Additional source review confirms no `render.yaml` exists on the branch; package.json includes `start:payfast-callback`, but no shared callback service or Render deployment was created. A frontend Pages preview is not callback-service deployment.
 - The callback server defaults proxy trust to false and accepts only an explicit numeric hop count (1-5); keep false until the ingress chain and forwarded-header sanitization are documented.
 - No historical attempt inventory was performed. The current branch and CI work are code/disposable qualification only. No shared/production DB, provider credential, Render resource, notify URL, sandbox or live payment state was changed.
+
+
+## PayFast sandbox infrastructure readiness review — 2026-11-04
+
+This section supersedes earlier statements that no Render inspection had been performed. Review was read-only through the Render workspace connector; no service, database, environment variable, role, grant, migration, network rule, deployment, or payment operation was changed.
+
+### Render inventory observed
+
+Workspace: ZAID Technologies (Frankfurt resources).
+
+- Existing `ghm-payfast-sandbox-runtime` service: `srv-db5vtgl9fdbs73eaclbg`, Node web service on `main`, start command `npm start`, health check `/readyz`, free plan, public ingress allow-list `0.0.0.0/0`, auto-deploy enabled. Latest observed deploy was commit `61202bb4f61a465f8776b192927aa22e40297fd1` on 2026-11-03 and ran `node dist/server.js` / ordinary GHM API. This is not the isolated callback service. Do not repurpose it or expose the callback DB credential to it.
+- Existing `ghm-payfast-sandbox-db` database: `dpg-db4416vlk1mc73eocug0-a`, PostgreSQL 18, Frankfurt, free plan, expiration `2026-11-08T01:17:15Z`, inbound IP allow-list `0.0.0.0/0`. Its configured primary login is `ghm_payfast_sandbox_db_user`.
+- Existing sandbox DB user has `LOGIN`, `CREATEDB`, and `CREATEROLE` attributes (not superuser). It is an administrative/bootstrap identity, not the least-privilege callback login; do not use it as `PAYFAST_CALLBACK_DATABASE_URL`.
+- Read-only `pg_roles` inspection showed `ghm_runtime`, `ghm_schema_owner` (NOLOGIN), `ghm_migrator`, and `ghm_payfast_sandbox_db_user`; **`ghm_payment_provider` is absent**.
+- The inspected sandbox database contains the `ghm` schema and commercial payment tables plus `ghm_schema_migrations`; no PayFast-specific settlement/read functions were found. Direct inspection of schema-owned objects using the configured sandbox login returned permission denied for schema `ghm`. This is a visibility limitation, not evidence of a particular migration-ledger state.
+- No separate PayFast callback Render service exists in the listed services. No `render.yaml` exists on the PR branch. The repo has a `start:payfast-callback` script, but the existing sandbox service is configured to start the general API.
+
+### Operational conclusion / blockers
+
+1. **Do not deploy the callback against the existing service.** Its start command and environment are for the general API; it has no isolated provider credential. Changing it would risk disturbing sandbox checkout/API behavior and would not create a separate trust boundary.
+2. **The existing sandbox DB is near expiry.** Its observed expiry is 2026-11-08. Before any non-production rollout, the owner must decide whether to renew/replace this disposable DB or use a new explicitly designated sandbox database. Do not assume it is a durable environment.
+3. **Do not reuse `ghm_payfast_sandbox_db_user`.** Its CREATEDB/CREATEROLE attributes violate the intended narrow provider identity. A separate LOGIN role `ghm_payment_provider` must be provisioned by the DB owner with only CONNECT, schema USAGE and EXECUTE on the two PayFast-specific SECURITY DEFINER functions. The existing migration intentionally fails until this LOGIN role exists.
+4. The current database connector exposes read-only SQL only; no DDL, grants, role creation or migration was attempted. The configured sandbox login lacks visibility into the `ghm` schema objects through this query path.
+5. Existing DB inbound allow-list is `0.0.0.0/0`; do not infer that this is an acceptable production posture. Determine the Render private-network path and narrow DB ingress as part of an approved plan.
+6. The existing general sandbox service ingress also allows `0.0.0.0/0`. The callback needs a deliberate inbound design for PayFast ITN, including current PayFast IP ranges and how Render's proxy/edge presents the client address. Keep Express proxy trust false until the actual hop chain is verified; the callback's IP filter must not be assumed to enforce Render's edge allow-list.
+7. The current PayFast callback code/CI is isolated and qualified in disposable CI, but the shared sandbox DB has not been migrated and the callback service has not been deployed. No ITN notify URL points to this branch's callback service.
+
+### Safe next sequence
+
+- Decide and explicitly identify a durable non-production DB target (renew/replace before 2026-11-08 if continuing with this sandbox).
+- Have the DB owner provision a distinct `ghm_payment_provider` LOGIN and securely hand off its credential directly into the dedicated callback service secret store; never put it in GitHub, a PR comment, or the general API service.
+- Have the DB owner apply the reviewed migration only to that designated sandbox database after verifying role ownership and current migration baseline. Then read back the exact role/function privileges using an owner-authorized read-only session.
+- Create a distinct callback web service from branch `security/payfast-callback-isolation-20261104`, build `npm ci --include=dev && npm run build`, start `npm run start:payfast-callback`, health `/healthz`, readiness `/readyz`; set only the required callback-specific environment variables, with `PAYFAST_ENVIRONMENT=sandbox`, verified TLS for DB, and proxy trust false until ingress validation. Do not set the ordinary API's `DATABASE_URL` on this service unless separately required; do not set the provider URL on any other service.
+- Verify Render private-network connectivity, service inbound IP/edge policy, forwarded-IP behavior, health/readiness, logs, and DB session identity before any test notification.
+- Use mocked/fixture ITNs first. Any actual PayFast sandbox checkout/notification and notify URL change should be a separate supervised action with an explicit rollback plan. No live activation.
+
+### Latest code/CI reference
+
+- PR #206 latest head at time of this review: `d16dc973f725e04772a2c70f6704aef90e7aa34a`.
+- CI [#41749694611](https://github.com/zaidhqdev-sys/GHM/actions/runs/41749694611) passed on that exact head, including build, all disposable PostgreSQL 18 migrations, full DB-backed tests, three-identity settlement qualification, migration audit policy and runtime boundary verification.
+- PR #206 remains draft/unmerged; PR #205 remains superseded. This CI result is not shared sandbox or production qualification.
