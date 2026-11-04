@@ -768,3 +768,70 @@ The immediate sequence is therefore:
 4. Verify private DB connectivity, ingress/forwarded-IP behavior, health/readiness and DB session identity before fixture ITNs; sandbox notify URL changes remain a separate supervised gate.
 
 This is the intended reuse of the existing PayFast sandbox resources, not a production deployment. No resource or DB changes have yet been made by this review.
+
+
+## PayFast local qualification and documentation reconciliation — 2026-11-04
+
+### Current repository and PR state
+
+- Repository: `zaidhqdev-sys/GHM`.
+- PR #206: [security: isolate PayFast callback settlement](https://github.com/zaidhqdev-sys/GHM/pull/206), open, draft and unmerged.
+- Current PR head at this update: `a1a046d17d04854bfc8259efaa02100b1ae09304`.
+- Latest GitHub Actions CI: [run #41836364443](https://github.com/zaidhqdev-sys/GHM/actions/runs/41836364443), completed successfully on the exact current head. The quality job's substantive stages all passed: install, isolated role creation, ephemeral test keys, build, all migrations on disposable PostgreSQL 18, Business Identity/QuoteFlow qualification, full DB-backed suite, three-identity commercial settlement qualification, migration audit policy tests and runtime boundary verification.
+- PR #205 remains superseded by #206; do not merge #205 independently.
+- Local qualification evidence was recorded in PR comment [#6631859096](https://github.com/zaidhqdev-sys/GHM/pull/206#issuecomment-6631859096).
+
+### Maintainer-reported local qualification
+
+The maintainer ran the current branch on a native Windows PostgreSQL 18 cluster, without Docker or additional hosted resources:
+
+- PostgreSQL 18 endpoint: `127.0.0.1:5433`.
+- Isolated database: `ghm_payfast_qualification`.
+- PostgreSQL 17 on port 5432 was not used.
+- Database roles: `ghm_schema_owner` (NOLOGIN), `ghm_migrator`, `ghm_runtime`, and `ghm_payment_provider` (separate logins).
+- Migration command `npm run migrate` completed. Read-only inspection showed 92 applied migrations, including both PayFast migrations; expected provider-specific SQL functions and commercial tables were present.
+- `npm run qualify:commercial-payment-result-runtime` passed the three-identity permission matrix, runtime settlement denials, provider direct-table denials, provider-specific SQL binding, event idempotency, terminal-attempt guard, dedicated settlement and rollback.
+- Read-only cleanup query returned zero qualification accounts, businesses, plans and test transactions.
+- `npm run qualify:payfast-runtime`: 19 passed, 0 failed. The script explicitly reports stubbed provider network calls, no real PayFast endpoint and no production database/live credentials.
+- `npm run verify:runtime`: passed.
+- Negative target-guard test supplied an intentionally incorrect expected host; the script rejected the mismatch before connecting. The original host setting was restored afterward.
+- The local qualification evidence is user-reported from their PowerShell session; no claim that this assistant executed local database commands.
+
+No live PayFast callback, merchant credential, real server-confirmation request, hosted service, Render database, production database, notify URL or payment state was exercised or changed.
+
+### Documentation reconciliation performed
+
+A review of the complete current branch handover (771 lines), PayFast ADR, local qualification guide, package scripts and CI workflow found that the existing local guide described only Docker Compose and used a generic database name `ghm` with POSIX shell instructions. That did not match the successful native Windows procedure and could mislead a Windows maintainer.
+
+Updated:
+
+1. `docs/payfast-local-qualification.md` — added a native Windows PowerShell/PostgreSQL 18 path, separate port/database naming, role setup and password prompts, explicit target verification, per-role URL configuration, qualification commands, and cautions about persistent local data and listener exposure. The existing Docker path remains available as an alternative.
+2. `docs/architecture/PAYFAST_ISOLATED_SETTLEMENT_SERVICE_ADR_2026-11-04.md` — added exact local qualification evidence, current-head CI run, the native Windows guide reference, and a refreshed operational-gate list.
+3. This handover — records the local evidence, latest exact-head CI, documentation corrections and next safe review sequence.
+
+Documentation commits on this branch:
+- `886bb1af423b6689011176b07186196aad348c52` — native Windows local qualification instructions.
+- `f133f295c20e30edd5b5df463d9ae14fd3b7a31b` — ADR qualification and operational-gate update.
+- Handover update is the next documentation commit; record its resulting SHA after it is created.
+
+### Source and workflow review notes
+
+- The package scripts include `migrate`, `test`, `qualify:commercial-payment-result-runtime`, `qualify:payfast-runtime`, `verify:runtime`, and `start:payfast-callback`.
+- The full `npm test` command is the repository-wide suite and is included in CI; it covers callback parser/verification, callback router, commercial repository/service/provider-boundary behavior, auth, storage, Connect adapters, and the broader HTTP/resource suite. The local maintainer did not report running the full repository-wide suite separately; CI did run it successfully.
+- CI provisions disposable PostgreSQL 18 roles and credentials only inside the workflow. This is not shared sandbox qualification.
+- The callback entry point remains a separate process; `start:payfast-callback` does not mean it has been deployed.
+- The native Windows local database is persistent. The successful qualification script cleaned its fixtures, but migrations/schema remain. Do not describe it as the Docker tmpfs/discard-on-container-removal workflow.
+- The Windows guide instructs the maintainer to inspect the database endpoint and role membership before migration. Keep local PostgreSQL listening/firewall scope local; the prior local service configuration had `listen_addresses='*'`, so localhost client usage alone does not prove the server is inaccessible remotely.
+
+### Remaining review and operational gates
+
+1. Complete a focused documentation cross-check after these commits: ensure ADR, local guide, handover, PR body and CI claims all distinguish native local qualification, disposable CI, hosted sandbox and production.
+2. Continue read-only source review only where it adds material value; avoid repeating already-passed local tests. A PR diff/review pass should confirm no unrelated changes and that callback config, process composition, SQL grants, migration policy and operational instructions agree.
+3. The intended hosted non-production target remains `ghm-payfast-sandbox-db`, subject to owner decision on retention/upgrade before its recorded 2026-11-08 free-tier expiry. Do not create a paid replacement automatically.
+4. Provision the dedicated `ghm_payment_provider` login out-of-band on that designated sandbox DB; do not reuse the admin-capable sandbox login. Apply the reviewed migration only after target and role preflight.
+5. Keep `ghm-payfast-sandbox-runtime` unchanged as the ordinary API. Any callback must be a distinct service running `npm run start:payfast-callback`.
+6. Verify hosted private DB connectivity, inbound IP policy, actual proxy/forwarded-header behavior, callback readiness and database identity before fixture ITNs.
+7. Historical NULL-provider inventory remains a separate read-only task requiring explicit target authorization. Any backfill or quarantine/expiry action needs separate approval.
+8. A real sandbox ITN, sandbox notify URL change, live activation and production cutover remain separate supervised actions requiring explicit authorization.
+
+No Render resource, shared database, hosted credential, network rule, migration, notify URL, historical row or payment state was changed during this documentation update. Keep PR #206 draft and unmerged; PR #205 remains superseded.
