@@ -23,15 +23,17 @@ RETURNS TABLE (
   provider_code text,
   amount_minor_units bigint,
   attempt_status text,
-  currency_code text
+  currency_code text,
+  subscription_status text
 )
 LANGUAGE sql
 SECURITY DEFINER
 SET search_path = pg_catalog, ghm
 AS $$
-  SELECT a.id, a.provider_code, a.amount_minor_units, a.attempt_status, c.code
+  SELECT a.id, a.provider_code, a.amount_minor_units, a.attempt_status, c.code, s.lifecycle_status
   FROM ghm.commercial_payment_attempt AS a
   JOIN ghm.currency AS c ON c.id = a.currency_id
+  LEFT JOIN ghm.commercial_subscription AS s ON s.id = a.subscription_id
   WHERE a.id = p_payment_attempt_id
   LIMIT 1
 $$;
