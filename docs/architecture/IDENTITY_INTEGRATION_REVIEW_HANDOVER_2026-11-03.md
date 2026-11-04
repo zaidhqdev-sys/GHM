@@ -664,3 +664,10 @@ The first authored provider-function ALTER/GRANT signature had one extra text ar
 - The callback service startup and readiness probes now assert both `session_user` and `current_user` are exactly `ghm_payment_provider`; it refuses a misconfigured runtime credential. Port selection honors platform `PORT` first.
 - Parser tests reject duplicate/multi-valued fields, malformed field names, oversized values and non-object bodies. Oversized/malformed Express parser errors are normalized to a safe INVALID response.
 - Migration provider function signatures were corrected to the exact arity before CI; generic function retains its separate signature.
+
+
+### Initial CI feedback and fixes (2026-11-04)
+- Run [#41742974882](https://github.com/zaidhqdev-sys/GHM/actions/runs/41742974882): TypeScript build passed; migration application failed because the provider wrapper SQL body had a single-dollar delimiter. Corrected the delimiter.
+- Run [#41743212835](https://github.com/zaidhqdev-sys/GHM/actions/runs/41743212835): TypeScript build, all migrations, Business Identity/QuoteFlow qualification and full test suite passed (699 tests, zero failures); commercial privilege qualification stopped on a duplicate `const runtime` declaration. Renamed the second connection variable.
+- Run [#41743506667](https://github.com/zaidhqdev-sys/GHM/actions/runs/41743506667): same build/migration/Business Identity/QuoteFlow/full test stages passed; provider qualification failed at connection setup because the script unconditionally requested SSL from disposable PostgreSQL, which has SSL disabled. Updated qualification to follow `DATABASE_SSL` and use certificate verification when TLS is enabled.
+- Latest rerun after the TLS fix: [#41743718818](https://github.com/zaidhqdev-sys/GHM/actions/runs/41743718818), currently in progress at time of this handover update.
