@@ -20,7 +20,9 @@ export const parsePayfastItnFields = (value: unknown): Record<string, string> | 
   const entries = Object.entries(value as Record<string, unknown>);
   if (entries.length === 0 || entries.length > 64) return null;
   if (entries.some(([key, item]) => !isPayfastItnField(key) || typeof item !== 'string' || item.length > 2048)) return null;
-  return Object.fromEntries(entries as Array<[string, string]>);
+  const parsed = Object.fromEntries(entries as Array<[string, string]>);
+  if (['m_payment_id', 'pf_payment_id', 'payment_status', 'item_name', 'amount_gross', 'merchant_id', 'signature'].some((key) => !parsed[key])) return null;
+  return parsed;
 };
 
 export interface PayfastCallbackConfig {
