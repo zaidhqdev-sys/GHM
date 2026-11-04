@@ -5,7 +5,7 @@ import { PAYFAST_ITN_VALIDATION_URLS, verifyPayfastItn } from './payfast';
 type Environment = 'sandbox' | 'live';
 const amountMinor = (value: unknown): number => Number(value);
 const encodeFields = (fields: Readonly<Record<string, string>>): string =>
-  Object.entries(fields).map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value).replace(/%20/g, '+')}`).join('&');
+  Object.entries(fields).filter(([, value]) => value !== '').map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value).replace(/%20/g, '+')}`).join('&');
 
 export const parsePayfastItnFields = (value: unknown): Record<string, string> | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -61,7 +61,7 @@ export class PayfastCallbackBoundary {
     const providerPaymentId = verified.providerPaymentId;
     if (!providerPaymentId || !/^[!-~]{1,200}$/.test(providerPaymentId)) throw new Error('Payfast ITN provider payment identifier missing or invalid');
     await this.validate(fields, this.settings.environment);
-    const payloadHash = createHash('sha256').update(JSON.stringify(fields), 'utf8').digest('hex');
+    const payloadHash = createHash('sha256').update(JSON.stringify(Object.fromEntries(Object.entries(fields).sort(([a], [b]) => a.localeCompare(b)))), 'utf8').digest('hex');
     const status = verified.transactionStatus.trim().toUpperCase();
     if (!['COMPLETE', 'FAILED', 'CANCELLED', 'PENDING'].includes(status)) throw new Error('Payfast ITN payment status invalid');
     if (verified.merchantPaymentId !== String(paymentAttemptId)) throw new Error('Payfast ITN merchant payment identifier mismatch');
