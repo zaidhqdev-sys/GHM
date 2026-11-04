@@ -299,3 +299,13 @@ The callback service's own environment is separate from the ordinary API.
 At the eventual configuration handover, callback-only variables will be
 provided for the dedicated callback service only. No callback database URL or
 provider credential belongs on the production GHM API service.
+
+
+The production rollout planning runbook is now recorded at
+`docs/operations/payfast-production-rollout-runbook.md`. It documents the
+production `ghm` migration sequence and complete pending-migration review,
+backup/PITR and rollback limits, provider LOGIN provisioning, historical
+NULL-provider inventory, release promotion (the merge is not on `main`),
+separate callback service/network verification and the exact point at which
+callback-only Render variables will be handed over. It is explicitly planning
+only; no production resources or settings were changed.
