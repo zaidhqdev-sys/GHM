@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { generatePayfastSignature } from './payfast';
-import { encodePayfastValidationFields, parsePayfastItnFields, PayfastCallbackBoundary } from './payfast-callback';
+import { encodePayfastValidationFields, parsePayfastItnFields, PayfastCallbackBoundary, resolvePayfastEnvironment } from './payfast-callback';
 
 const unsigned = {
   merchant_id: '10000100',
@@ -14,6 +14,23 @@ const unsigned = {
 };
 const fields = { ...unsigned, signature: generatePayfastSignature(unsigned, 'secret') };
 const settings = { merchantId: '10000100', passphrase: 'secret', environment: 'sandbox' as const };
+
+
+test('PayFast callback environment defaults to sandbox outside production only', () => {
+  assert.equal(resolvePayfastEnvironment('test', undefined), 'sandbox');
+  assert.equal(resolvePayfastEnvironment('development', ' live '), 'live');
+  assert.throws(
+    () => resolvePayfastEnvironment('production', undefined),
+    /PAYFAST_ENVIRONMENT must be explicitly set/,
+  );
+  assert.throws(
+    () => resolvePayfastEnvironment('production', ' '),
+    /PAYFAST_ENVIRONMENT must be explicitly set/,
+  );
+  assert.equal(resolvePayfastEnvironment('production', 'live'), 'live');
+  assert.equal(resolvePayfastEnvironment('production', 'sandbox'), 'sandbox');
+  assert.throws(() => resolvePayfastEnvironment('production', 'staging'), /must be sandbox or live/);
+});
 
 test('PayFast callback rejects duplicate and non-string form fields', () => {
   assert.equal(parsePayfastItnFields({ ...fields, signature: ['a', 'b'] }), null);
