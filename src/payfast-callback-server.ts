@@ -53,7 +53,7 @@ app.post('/api/v1/commercial/payfast/itn', express.urlencoded({ extended: false,
     await boundary.handleItn(fields, sourceIp);
     res.status(200).send('OK');
   } catch (error) {
-    if (error instanceof Error && /Payfast|not found|not payable|invalid commercial payment result input|provider does not match attempt/i.test(error.message)) {
+    if (error instanceof Error && /Payfast|not found|not payable|invalid commercial payment result input|provider does not match attempt|payload hash conflict/i.test(error.message)) {
       res.status(400).send('INVALID');
       return;
     }
@@ -73,16 +73,14 @@ const server = http.createServer(app);
 server.requestTimeout = 15000;
 server.headersTimeout = 10000;
 server.keepAliveTimeout = 5000;
-let ready = false;
 const start = async (): Promise<void> => {
   const identity = (await database.query('SELECT session_user, current_user')).rows[0];
   if (identity.session_user !== 'ghm_payment_provider' || identity.current_user !== 'ghm_payment_provider') {
     throw new Error('PAYFAST_CALLBACK_DATABASE_URL must authenticate as ghm_payment_provider');
   }
-  server.listen(port, () => { ready = true; console.log(`PayFast callback listener ready on port ${port}`); });
+  server.listen(port, () => { console.log(`PayFast callback listener ready on port ${port}`); });
 };
 const shutdown = async (signal: string): Promise<void> => {
-  ready = false;
   console.log(`PayFast callback received ${signal}; shutting down`);
   await new Promise<void>((resolve) => server.close(() => resolve()));
   await database.end();
