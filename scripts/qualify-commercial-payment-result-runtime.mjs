@@ -139,7 +139,27 @@ try {
       throw new Error(`Unexpected provider privilege set: ${JSON.stringify(grants)}`);
     }
     console.log('PROVIDER IDENTITY AND LEAST-PRIVILEGE MATRIX PASS');
+    const directPrivileges = (await provider.query(`
+      SELECT
+        has_table_privilege(current_user, 'ghm.commercial_payment_attempt', 'SELECT') AS attempt_read,
+        has_table_privilege(current_user, 'ghm.commercial_provider_event', 'SELECT') AS provider_event_read,
+        has_table_privilege(current_user, 'ghm.commercial_payment_transaction', 'SELECT') AS transaction_read,
+        has_table_privilege(current_user, 'ghm.commercial_subscription', 'SELECT') AS subscription_read,
+        has_table_privilege(current_user, 'ghm.commercial_event', 'SELECT') AS commercial_event_read,
+        has_table_privilege(current_user, 'ghm.commercial_founding_allocation', 'SELECT') AS founding_allocation_read,
+        has_table_privilege(current_user, 'ghm.commercial_payment_attempt', 'UPDATE') AS attempt_update,
+        has_table_privilege(current_user, 'ghm.commercial_subscription', 'UPDATE') AS subscription_update,
+        has_table_privilege(current_user, 'ghm.commercial_provider_event', 'INSERT') AS provider_event_insert,
+        has_table_privilege(current_user, 'ghm.commercial_event', 'INSERT') AS commercial_event_insert
+    `)).rows[0];
+    if (Object.values(directPrivileges).some(Boolean)) {
+      throw new Error(`Provider role has unexpected direct commercial-table privileges: ${JSON.stringify(directPrivileges)}`);
+    }
+    console.log('PROVIDER ALL COMMERCIAL TABLE DIRECT PRIVILEGE DENIAL PASS');
     await expectPermissionDenied(() => provider.query('SELECT * FROM ghm.commercial_payment_attempt LIMIT 1'), 'PROVIDER DIRECT ATTEMPT READ DENIAL');
+    await expectPermissionDenied(() => provider.query('SELECT * FROM ghm.commercial_provider_event LIMIT 1'), 'PROVIDER DIRECT EVENT READ DENIAL');
+    await expectPermissionDenied(() => provider.query('UPDATE ghm.commercial_subscription SET lifecycle_status = lifecycle_status WHERE id = -1'), 'PROVIDER DIRECT SUBSCRIPTION UPDATE DENIAL');
+    await expectPermissionDenied(() => provider.query('INSERT INTO ghm.commercial_event DEFAULT VALUES'), 'PROVIDER DIRECT COMMERCIAL EVENT INSERT DENIAL');
     await expectPermissionDenied(() => provider.query('INSERT INTO ghm.commercial_payment_transaction DEFAULT VALUES'), 'PROVIDER DIRECT TRANSACTION INSERT DENIAL');
 
     await provider.query('BEGIN');
