@@ -694,3 +694,10 @@ The first authored provider-function ALTER/GRANT signature had one extra text ar
 - Latest run [#41744524361](https://github.com/zaidhqdev-sys/GHM/actions/runs/41744524361) passed on exact current implementation head `38a50bf4322729afb57c0a2ab0dfbbf68a863fb4`.
 - Passed: TypeScript build; all migrations on disposable PostgreSQL 18; Business Identity/QuoteFlow DB qualification; full DB-backed tests (699 pass, 0 fail); three-identity commercial settlement qualification; migration audit policy tests; runtime boundary verification.
 - This is the latest full disposable-CI qualification. It is not a shared Render or production qualification.
+
+
+### PR disposition / resume pointer
+- PR #206 is the current complete provider-binding + isolated callback implementation, open, draft, and not merged: https://github.com/zaidhqdev-sys/GHM/pull/206.
+- Latest full CI [#41744734532](https://github.com/zaidhqdev-sys/GHM/actions/runs/41744734532) passed on current PR head `a26fae0edb32660a5696446719da3da678f1a809`.
+- PR #205 is retained open/draft as the original provider-binding slice and is explicitly marked superseded by #206. Do not merge #205 independently.
+- Next work is operational readiness review only: validate PayFast's current official source-IP ranges; decide exact trusted proxy hop count/forwarded-header trust; document out-of-band `ghm_payment_provider` LOGIN/CONNECT/credential rotation; plan separately deployed callback service; perform an explicitly authorized read-only inventory of historical NULL-provider attempts; and plan a separately authorized sandbox cutover. No shared Render or production action is authorized by the green CI.
