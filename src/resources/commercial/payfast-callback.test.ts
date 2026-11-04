@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { generatePayfastSignature } from './payfast';
-import { parsePayfastItnFields, PayfastCallbackBoundary } from './payfast-callback';
+import { encodePayfastValidationFields, parsePayfastItnFields, PayfastCallbackBoundary } from './payfast-callback';
 
 const unsigned = {
   merchant_id: '10000100',
@@ -20,7 +20,10 @@ test('PayFast callback rejects duplicate and non-string form fields', () => {
   assert.equal(parsePayfastItnFields({ ...fields, unexpected_admin_flag: '1' }), null);
   assert.equal(parsePayfastItnFields({ ...fields, custom_str1: 'supported custom field' })?.custom_str1, 'supported custom field');
   assert.equal(parsePayfastItnFields({ field: 'x'.repeat(2049) }), null);
+  assert.deepEqual(parsePayfastItnFields({ ...fields, item_name: 'Example product' }), { ...fields, item_name: 'Example product' });
   assert.deepEqual(parsePayfastItnFields(fields), fields);
+  assert.equal(encodePayfastValidationFields({ ...fields, item_name: 'Example product' }).includes('signature='), false);
+  assert.match(encodePayfastValidationFields({ ...fields, item_name: 'Example product' }), /item_name=Example\+product/);
 });
 
 test('isolated PayFast callback confirms provider then calls only PayFast settlement function', async () => {
@@ -36,7 +39,7 @@ test('isolated PayFast callback confirms provider then calls only PayFast settle
   };
   let confirmed = false;
   const boundary = new PayfastCallbackBoundary(db as never, settings, async () => { confirmed = true; });
-  await boundary.handleItn(fields, '197.97.145.150');
+  await boundary.handleItn({ ...fields, item_name: 'Example product' }, '197.97.145.150');
   assert.equal(confirmed, true);
   assert.match(calls[0].sql, /commercial_get_payfast_attempt/);
   assert.match(calls[1].sql, /commercial_apply_payfast_payment_result/);
