@@ -100,7 +100,7 @@ Do not create a wrapper that merely exposes the generic function's provider para
 - Reject malformed, oversized, duplicate/ambiguous, or unexpected ITN fields.
 - Parse form data with a strict size limit and reject arrays/objects rather than silently selecting the first value.
 - Validate source IP against PayFast's current published ranges using a controlled, periodically refreshed configuration. Do not trust arbitrary forwarded headers; configure trusted proxy hops explicitly.
-- Validate signature, merchant ID, payment attempt ID, currency/amount, payment status, and provider transaction reference.
+- Validate signature, merchant ID, payment attempt ID, currency/amount, payment status, provider transaction reference, and the optional documented `payment_date` field when present.
 - Call PayFast server confirmation against the correct sandbox/live endpoint and require exact `VALID`.
 - Only after all checks pass may the callback call the provider-specific SQL function.
 - Never log full callback payloads, signatures, passphrases, merchant keys, DB URLs or payment personal data. Log correlation IDs and sanitized error categories.
