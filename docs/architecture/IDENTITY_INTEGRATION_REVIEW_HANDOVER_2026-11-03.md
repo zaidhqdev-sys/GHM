@@ -751,3 +751,20 @@ Workspace: ZAID Technologies (Frankfurt resources).
 - PR #206 latest head at time of this review: `d16dc973f725e04772a2c70f6704aef90e7aa34a`.
 - CI [#41749694611](https://github.com/zaidhqdev-sys/GHM/actions/runs/41749694611) passed on that exact head, including build, all disposable PostgreSQL 18 migrations, full DB-backed tests, three-identity settlement qualification, migration audit policy and runtime boundary verification.
 - PR #206 remains draft/unmerged; PR #205 remains superseded. This CI result is not shared sandbox or production qualification.
+
+
+### Clarification: intended PayFast sandbox resources (2026-11-04)
+
+The existing `ghm-payfast-sandbox-db` and `ghm-payfast-sandbox-runtime` are the intended non-production PayFast sandbox environment. Do not create a replacement database merely because the existing one was provisioned for sandbox use. The prior readiness note's wording "choose a durable non-production DB target" should be read as an owner decision about renewing/upgrading this designated sandbox DB or replacing it only if it cannot be retained—not as a recommendation to abandon it.
+
+The existing `ghm-payfast-sandbox-runtime` should remain the ordinary GHM sandbox API/checkout service. Its current `main` / `npm start` configuration is not the isolated callback process. Preserve it and its existing checkout behavior. The callback should be a **separate web service in the same PayFast sandbox environment**, pointed at this branch and started with `npm run start:payfast-callback`, with its own callback-only environment and `PAYFAST_CALLBACK_DATABASE_URL`. This creates process and credential isolation while reusing the sandbox environment and designated DB.
+
+The `ghm-identity-qualification` service is a separate identity qualification workload; it is not the PayFast callback and should not be repurposed.
+
+The immediate sequence is therefore:
+1. Retain/renew/upgrade `ghm-payfast-sandbox-db` before its 2026-11-08 free-tier expiry (or explicitly replace it within the same sandbox environment if the owner chooses).
+2. Apply the reviewed migration to that PayFast sandbox DB using an owner-authorized migration connection; provision the narrow `ghm_payment_provider` LOGIN and grants there. Do not use the admin-capable primary sandbox login as the callback runtime identity.
+3. Keep `ghm-payfast-sandbox-runtime` unchanged as the ordinary sandbox API; create a separate callback web service alongside it in the same environment, using this feature branch and the dedicated start command.
+4. Verify private DB connectivity, ingress/forwarded-IP behavior, health/readiness and DB session identity before fixture ITNs; sandbox notify URL changes remain a separate supervised gate.
+
+This is the intended reuse of the existing PayFast sandbox resources, not a production deployment. No resource or DB changes have yet been made by this review.
