@@ -42,7 +42,7 @@ test('isolated PayFast callback confirms provider then calls only PayFast settle
   };
   let confirmed = false;
   const boundary = new PayfastCallbackBoundary(db as never, settings, async () => { confirmed = true; });
-  await boundary.handleItn({ ...fields, item_name: 'Example product' }, '197.97.145.150');
+  await boundary.handleItn(fields, '197.97.145.150');
   assert.equal(confirmed, true);
   assert.match(calls[0].sql, /commercial_get_payfast_attempt/);
   assert.match(calls[1].sql, /commercial_apply_payfast_payment_result/);
