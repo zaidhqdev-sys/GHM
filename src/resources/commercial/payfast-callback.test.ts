@@ -10,6 +10,7 @@ const unsigned = {
   amount_gross: '199.00',
   payment_status: 'COMPLETE',
   item_name: 'Test item',
+  payment_date: '2026-11-04 00:00:00',
 };
 const fields = { ...unsigned, signature: generatePayfastSignature(unsigned, 'secret') };
 const settings = { merchantId: '10000100', passphrase: 'secret', environment: 'sandbox' as const };
@@ -47,6 +48,8 @@ test('isolated PayFast callback confirms provider then calls only PayFast settle
   assert.match(calls[0].sql, /commercial_get_payfast_attempt/);
   assert.match(calls[1].sql, /commercial_apply_payfast_payment_result/);
   assert.deepEqual(calls[1].values?.slice(0, 6), [42, '1089250', 'itn', calls[1].values?.[3], 'payment', 'succeeded']);
+  assert.ok(calls[1].values?.[7] instanceof Date);
+  assert.equal((calls[1].values?.[7] as Date).toISOString(), '2026-11-04T00:00:00.000Z');
 });
 
 test('isolated PayFast callback fails closed for mismatched provider before server confirmation', async () => {
