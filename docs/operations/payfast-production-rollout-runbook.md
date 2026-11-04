@@ -115,8 +115,20 @@ verified and explicitly approved by the production owner.
 
 ### Release and compatibility
 
-- [ ] Promote the merged integration candidate through the normal production
-      release process; verify the exact release commit and all required CI.
+- [ ] Do **not** merge the entire integration candidate branch into `main` as
+      a production shortcut; it contains broader identity/integration history.
+      Prepare a focused release PR from `main` containing the PR #206 squash
+      change (`d90b83bbf762e55321c1a985cb88051a496647e0`) and its reviewed
+      dependencies only. Review the exact diff and resolve any cherry-pick or
+      compatibility conflicts before approval.
+- [ ] The production `GHM-Internal-Runtime` Render service currently tracks
+      `main` with auto-deploy enabled and trigger `checksPass`. Merging a focused
+      release PR to `main` will therefore trigger production deployment after
+      required checks pass. Schedule that merge as part of the approved change
+      window, after the database migration is complete and callback traffic is
+      paused/retry-safe; do not merge early and assume deployment can be held.
+- [ ] Verify the exact release commit and all required CI on the focused
+      production release PR before the change window.
 - [ ] Rehearse the complete application + migration sequence against a
       production-like, isolated PostgreSQL database with the same migration
       ledger history and relevant data shape.
