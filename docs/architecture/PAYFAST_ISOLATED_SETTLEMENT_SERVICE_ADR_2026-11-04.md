@@ -235,3 +235,13 @@ are satisfied and the production callback service is ready for configuration.
 
 No production database, Render service, secret, notify URL or payment state
 was changed by this clarification.
+
+
+## Production PayFast environment startup guard — 2026-11-04
+
+The callback now requires an explicit `PAYFAST_ENVIRONMENT` value of
+`sandbox` or `live` whenever `NODE_ENV=production`. Only non-production
+processes retain the sandbox default. A focused unit test covers absent,
+blank, valid and invalid configuration. The change is committed on PR #206;
+CI qualification on the updated head is still pending. This is a startup
+configuration safeguard, not authorization to deploy or configure Render.
