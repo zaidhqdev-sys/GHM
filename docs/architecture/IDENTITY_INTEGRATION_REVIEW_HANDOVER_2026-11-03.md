@@ -846,3 +846,47 @@ Review conclusion: the implementation structure is consistent with the intended 
 A non-blocking hardening recommendation was submitted inline in GitHub COMMENT review [#5769237335](https://github.com/zaidhqdev-sys/GHM/pull/206): require explicit `PAYFAST_ENVIRONMENT` in production rather than silently defaulting to sandbox. A missing production setting currently fails closed for live ITNs, but would cause valid notifications to fail server confirmation and could mask configuration error. No application code was changed during this review.
 
 No additional code-level blocker was identified in this static pass. This is not an approval for deployment or merge and is not a substitute for independent maintainer review. Keep PR #206 draft until review and hosted operational gates are completed. No hosted resources or payment settings were changed.
+
+
+### Production GHM runtime clarification — 2026-11-04
+
+The production environment discussed by the maintainer is the existing GHM
+internal runtime on Render connected to the production `ghm` database. It is
+not the hosted PayFast sandbox runtime/database described in the earlier
+sandbox gates above. Keep these environments separate in all rollout notes.
+
+**Do not add PayFast callback environment variables, merchant secrets, or the
+provider database URL to the existing production GHM API runtime.** That
+service remains the ordinary API process and must retain its existing runtime
+database identity/configuration. The callback is a separate process and must
+be deployed as a distinct, separately configured Render service running
+`npm run start:payfast-callback`.
+
+Production-specific prerequisites remain outstanding and are not implied by
+local qualification or CI:
+
+1. Complete PR #206 review and merge only after explicit authorization.
+2. Approve a production database change plan for the `ghm` database, including
+   migration order, backup/restore and rollback, lock/impact assessment, and
+   an explicit maintenance/observation window.
+3. Provision the dedicated production `ghm_payment_provider` LOGIN and
+   credential through the production database owner, with least-privilege
+   grants and independent verification. Do not reuse the ordinary API role
+   or an admin-capable credential.
+4. Apply the reviewed settlement migrations to production only after a
+   separately approved production preflight and execution authorization.
+5. Create/approve a distinct production callback service and validate its
+   private database connectivity, ingress policy, proxy/forwarded-header
+   sanitization, health/readiness, and actual database
+   `session_user`/`current_user` identity.
+6. Resolve the production PayFast mode explicitly. Require a deliberate
+   `PAYFAST_ENVIRONMENT` value; do not rely on a sandbox default for
+   production. Validate the complete callback variable set and target service
+   before entering any Render secret values.
+7. Only after those gates pass should the maintainer be told to configure the
+   callback-specific environment variables, and the exact variable names and
+   correct callback-service target must be provided at that time.
+
+No production Render service, production `ghm` database, secret, migration,
+network rule, PayFast notify URL, or payment state was changed. This is a
+handover clarification, not production deployment authorization.
