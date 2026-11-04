@@ -109,10 +109,10 @@ try {
     await setup.query('ROLLBACK'); throw error;
   } finally { setup.release(); }
 
-  const runtime = await runtimePool.connect();
+  const runtimeSettlement = await runtimePool.connect();
   try {
     await expectPermissionDenied(
-      () => runtime.query(`
+      () => runtimeSettlement.query(`
         SELECT * FROM ghm.commercial_apply_payment_result(
           $1, 'payfast', 'qualification-runtime-forbidden', 'payment_complete',
           repeat('d', 64), 'payment', 'succeeded', 'FORBIDDEN', now(), '{"qualification":true}'::jsonb
@@ -120,7 +120,7 @@ try {
       `, [fixture.attemptId]),
       'RUNTIME SETTLEMENT EXECUTE DENIAL',
     );
-  } finally { runtime.release(); }
+  } finally { runtimeSettlement.release(); }
 
   const provider = await providerPool.connect();
   try {
