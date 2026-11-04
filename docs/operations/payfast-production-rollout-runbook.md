@@ -96,6 +96,36 @@ role graph and historical pending attempt, verify the full migration ledger,
 and close the database ingress exposure with a tested network plan. Only then
 can the dedicated provider role and callback-service plan be finalized.
 
+### Candidate role cleanup SQL (review only; not executed)
+
+The catalog showed the ADMIN OPTION memberships below were granted by
+`postgres`. If the production database owner confirms there is no legitimate
+delegation dependency, the following is the narrowly scoped candidate cleanup
+for a PostgreSQL 18 administrator. It removes the API role's ability to grant
+migration/schema-owner roles, and removes only the unnecessary ADMIN OPTION
+on the runtime membership while preserving the separate non-admin
+`ghm_db_user` -> `ghm_runtime` INHERIT/SET membership:
+
+```sql
+REVOKE ghm_migrator, ghm_schema_owner
+  FROM ghm_db_user GRANTED BY postgres;
+
+REVOKE ADMIN OPTION FOR ghm_runtime
+  FROM ghm_db_user GRANTED BY postgres;
+```
+
+Do not execute this from the ordinary API credential or as part of the PayFast
+migration. It requires the authorized role administrator and a separately
+approved change. Before and after, capture the full
+`pg_auth_members` rows including `grantor`, `admin_option`,
+`inherit_option` and `set_option`. Confirm `ghm_app_user` still receives
+only the intended ordinary runtime privileges through its configured
+`ghm_db_user` role, and confirm it cannot SET ROLE or administer
+`ghm_migrator` / `ghm_schema_owner`. If the command fails because the
+Render-managed grantor cannot be administered through the available owner
+credential, stop and obtain the supported Render/database-owner remediation;
+do not work around it by using an API credential.
+
 ## 2. Hard service and credential boundary
 
 | Component | Database identity / configuration |
