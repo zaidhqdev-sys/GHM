@@ -701,3 +701,12 @@ The first authored provider-function ALTER/GRANT signature had one extra text ar
 - Latest full CI [#41744734532](https://github.com/zaidhqdev-sys/GHM/actions/runs/41744734532) passed on current PR head `a26fae0edb32660a5696446719da3da678f1a809`.
 - PR #205 is retained open/draft as the original provider-binding slice and is explicitly marked superseded by #206. Do not merge #205 independently.
 - Next work is operational readiness review only: validate PayFast's current official source-IP ranges; decide exact trusted proxy hop count/forwarded-header trust; document out-of-band `ghm_payment_provider` LOGIN/CONNECT/credential rotation; plan separately deployed callback service; perform an explicitly authorized read-only inventory of historical NULL-provider attempts; and plan a separately authorized sandbox cutover. No shared Render or production action is authorized by the green CI.
+
+
+### Follow-up callback contract review (2026-11-04, after PR #206 draft hardening)
+- Latest completed CI at the time of the preceding review: [#41748887786](https://github.com/zaidhqdev-sys/GHM/actions/runs/41748887786), passed all 14 substantive quality steps on head `cd721b266527936a8b673ca0dfff63b91615fbec`.
+- Review found that the callback reads optional PayFast `payment_date` to populate transaction occurrence time, but the strict ITN allow-list did not include that field. Added `payment_date` to the allow-list and regression coverage asserting it is passed to the settlement function as a Date.
+- Latest source head after this fix: `830e572f1a4e728e24241b90de4e5f7e311deb1c`. Fresh CI run [#41749616550](https://github.com/zaidhqdev-sys/GHM/actions/runs/41749616550) was in progress at handover update time; do not claim it passed until verified.
+- Additional source review confirms no `render.yaml` exists on the branch; package.json includes `start:payfast-callback`, but no shared callback service or Render deployment was created. A frontend Pages preview is not callback-service deployment.
+- The callback server defaults proxy trust to false and accepts only an explicit numeric hop count (1-5); keep false until the ingress chain and forwarded-header sanitization are documented.
+- No historical attempt inventory was performed. The current branch and CI work are code/disposable qualification only. No shared/production DB, provider credential, Render resource, notify URL, sandbox or live payment state was changed.
