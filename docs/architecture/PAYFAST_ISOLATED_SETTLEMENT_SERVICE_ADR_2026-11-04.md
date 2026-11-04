@@ -1,8 +1,8 @@
 # PayFast Isolated Settlement Service — Architecture Decision Record
 
-**Status:** Proposed; implementation not yet authorized by this ADR  
+**Status:** Implemented in draft PR #206; operational rollout and payment cutover remain unauthorized  
 **Date:** 2026-11-04  
-**Related:** PR #205, `security/payfast-provider-binding-20261104`
+**Related:** PR #206, `security/payfast-callback-isolation-20261104` (includes/supersedes provider-binding slice #205)
 
 ## Decision
 
@@ -10,7 +10,7 @@ Run PayFast ITN handling in a separately deployed callback process with a dedica
 
 This is a deliberate security boundary, not merely a second connection pool in one Node process.
 
-## Evidence from the current implementation
+## Evidence from the current implementation (PR #206)
 
 - `src/server.ts` starts the single general API process and imports `src/http/app.ts`.
 - `src/db/pool.ts` creates the general pool from `DATABASE_URL`.
@@ -135,13 +135,12 @@ The provider-binding migration intentionally leaves historical attempts NULL. Be
 
 ## Phased delivery
 
-1. **Current PR #205:** provider binding and negative tests. CI is green, but the generic runtime grant remains a known blocker.
-2. **Next code-only PR:** split callback entry point/module and introduce provider-specific SQL function plus grants/revokes. Add isolated CI role setup and full negative privilege tests. No deployment or live credentials.
-3. **Local/CI qualification:** run build, unit, disposable PostgreSQL migration and privilege matrix. Do not use shared Render.
-4. **Infrastructure plan:** document separate service and credential provisioning; require fresh explicit authorization before creating roles, secrets, service, network rules or deployments.
-5. **Historical data plan:** read-only inventory only after explicit target authorization; no backfill without separately approved evidence and change plan.
-6. **Cutover:** separately authorized, supervised sandbox then production plan; never implied by code approval.
+1. **Code and CI — implemented in draft PR #206:** provider binding, isolated callback entry point, provider-specific SQL wrapper, role grants/revokes, and disposable three-identity qualification. PR #205 is superseded and must not be merged independently.
+2. **Review and qualification:** review the full PR #206 diff and rerun/inspect CI on the final head. Current recorded CI qualification is disposable-environment evidence only; it is not shared Render or production qualification.
+3. **Infrastructure plan:** document separate callback service, provider credential provisioning/rotation, network access, proxy topology, monitoring and rollback. Require fresh explicit authorization before creating roles, secrets, services, network rules or deployments.
+4. **Historical data plan:** perform read-only inventory only after explicit target authorization; no backfill without separately approved evidence and change plan.
+5. **Cutover:** separately authorized, supervised sandbox then production plan; never implied by code approval.
 
 ## Explicit non-goals
 
-This ADR does not create a DB login, password, secret, service, Render resource, network rule, provider activation, migration against shared/production DB, historical backfill, or cutover. PR #205 remains draft until the privilege and callback isolation work is implemented and qualified.
+This ADR records the code architecture implemented in draft PR #206. It does not authorize creation of a shared/production DB login or credential, secret, service, Render resource, network rule, provider activation, migration against shared/production DB, historical backfill, or cutover. PR #206 must remain draft until review is complete; PR #205 is superseded and must not be merged independently.
