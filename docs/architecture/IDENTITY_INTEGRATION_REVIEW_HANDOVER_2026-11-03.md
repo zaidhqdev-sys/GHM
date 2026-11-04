@@ -678,3 +678,11 @@ The first authored provider-function ALTER/GRANT signature had one extra text ar
 - The qualification then attempted to inspect attempt/subscription state with direct SELECT as `ghm_payment_provider`, correctly receiving permission denied. This confirmed the direct table boundary but made the test itself over-privileged.
 - Expanded the narrow SECURITY DEFINER `commercial_get_payfast_attempt` function to return the linked subscription lifecycle status along with the attempt's provider, amount, currency and status. Qualification now verifies settlement effects through that scoped function rather than direct table reads.
 - Latest run after this correction: [#41743938569](https://github.com/zaidhqdev-sys/GHM/actions/runs/41743938569), in progress at the time of this handover update.
+
+
+### Full disposable-CI qualification passed (2026-11-04)
+- Quality run [#41744099236](https://github.com/zaidhqdev-sys/GHM/actions/runs/41744099236) passed on exact head `1dbd4855eb4e5fc7ff4ba9dd0ba04d5e2b7d057f`.
+- Passed stages: TypeScript build; all migrations on disposable PostgreSQL 18; Business Identity/QuoteFlow DB qualification; full DB-backed suite (699 tests, zero failures); commercial settlement three-identity qualification; migration audit policy tests; runtime boundary verification.
+- Three-identity qualification passed: `ghm_runtime` cannot execute generic or PayFast-specific settlement or PayFast attempt-read functions and cannot directly write payment event/transaction tables; `ghm_payment_provider` can execute the narrow PayFast read/settlement functions but has no direct commercial-table SELECT/INSERT/UPDATE privileges; unbound provider attempts fail closed; valid PayFast settlement succeeds; identical event retry returns the same transaction; new events on terminal attempts are rejected; fixture transaction rolls back and cleanup completes.
+- CI setup uses only disposable credentials/database and does not provision any shared/production role or secret.
+- PR #206 remains draft and unmerged. CI success is not shared Render qualification or production approval. Historical NULL-provider reconciliation, current PayFast IP range validation, trusted-proxy configuration, provider login/credential provisioning, callback service deployment, and notify URL cutover remain open operational gates.
