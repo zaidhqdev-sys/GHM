@@ -12,14 +12,13 @@ This is a deliberate security boundary, not merely a second connection pool in o
 
 ## Evidence from the current implementation (PR #206)
 
-- `src/server.ts` starts the single general API process and imports `src/http/app.ts`.
-- `src/db/pool.ts` creates the general pool from `DATABASE_URL`.
-- `src/config.ts` loads the general API configuration, including PayFast merchant configuration.
-- `src/http/commercial-internal-router.ts` currently registers both the Connect checkout route and the public PayFast ITN route.
-- `src/resources/commercial/payfast-http.ts` currently combines checkout and ITN handling in `PayfastHttpBoundary`. ITN handling reads the attempt through the supplied pool, validates signature/source IP/merchant/amount, calls PayFast server confirmation, then invokes the provider boundary.
-- `src/resources/commercial/provider-boundary.ts` currently calls generic `ghm.commercial_apply_payment_result`.
-- The generic settlement function is SECURITY DEFINER and currently grants EXECUTE to shared `ghm_runtime`.
-- The general API's `DATABASE_URL` is the only configured DB URL. A second pool in the same process would not isolate the credential from arbitrary code in that process.
+- `src/server.ts` starts the ordinary GHM API process and imports `src/http/app.ts`; its database pool is sourced from `DATABASE_URL` and uses the ordinary `ghm_runtime` identity.
+- The ordinary API retains checkout preparation/creation but no longer registers the public PayFast ITN settlement route.
+- `src/resources/commercial/payfast-http.ts` handles the ordinary checkout boundary; callback verification and settlement are isolated in `src/resources/commercial/payfast-callback.ts`.
+- `src/payfast-callback-server.ts` is a separate process entry point. It creates its own pool from `PAYFAST_CALLBACK_DATABASE_URL`, requires the connected `session_user` and `current_user` to be `ghm_payment_provider`, and exposes only health/readiness plus the PayFast ITN route.
+- The callback validates the bounded/allow-listed ITN payload, PayFast source address, signature, merchant, amount, status and server confirmation before invoking `ghm.commercial_apply_payfast_payment_result`.
+- The migration revokes generic settlement EXECUTE from PUBLIC and `ghm_runtime`; the provider role receives only the PayFast-specific attempt-read and settlement functions. The PayFast-specific SECURITY DEFINER wrapper fixes provider identity to `payfast`, checks stored provider and ZAR currency, and invokes the generic settlement implementation internally as its owner. The provider login itself cannot execute the generic function or directly access settlement tables.
+- The general API and callback are separate processes with separate database URLs; the provider URL is not loaded by the ordinary API bootstrap.
 
 ## Target topology
 
@@ -72,7 +71,7 @@ The dedicated LOGIN role and its credential are a cluster-level infrastructure p
 
 ### Function
 
-Introduce `ghm.commercial_apply_payfast_payment_result(...)` with no provider-code parameter. The function fixes provider to `payfast` internally and performs the complete atomic settlement. It should own the settlement logic rather than making the provider role EXECUTE the generic multi-provider function.
+`ghm.commercial_apply_payfast_payment_result(...)` has no provider-code parameter. The SECURITY DEFINER wrapper fixes provider to `payfast`, validates the stored provider and ZAR currency, and invokes the existing generic settlement implementation internally under its owner. The provider login cannot EXECUTE the generic function. This preserves one settlement implementation without exposing the generic provider selector to the callback identity.
 
 - SECURITY DEFINER, owned by `ghm_schema_owner`.
 - Fixed `search_path = pg_catalog, ghm`.
@@ -87,13 +86,13 @@ Do not create a wrapper that merely exposes the generic function's provider para
 
 ## Application process split
 
-1. Extract ITN parsing/verification into a callback-specific module with injected PayFast config and provider settlement interface; remove module-level dependency on general `config`.
-2. Keep checkout generation in the general API. Checkout reads attempt/provider and uses the existing general runtime identity; it never settles.
-3. Remove `POST /api/v1/commercial/payfast/itn` registration from the general API router.
-4. Add a separate entry point (for example `src/payfast-callback-server.ts`) that creates its own Express app and Pool exclusively from `PAYFAST_CALLBACK_DATABASE_URL`. It must not import `src/config.ts`, `src/db/pool.ts`, `src/http/app.ts`, or the general API bootstrap.
-5. The callback process should not need merchant checkout credentials or account/business management dependencies; it needs only callback verification configuration and the dedicated DB credential.
-6. Add its own health/readiness endpoints. Readiness should verify DB connectivity without exposing connection details. Graceful shutdown must close HTTP server and its pool.
-7. Deploy as a distinct service with independent environment, network policy, scaling, logs, and credential rotation. Infrastructure deployment is a later explicitly authorized phase; no service is created by this ADR.
+1. Extract ITN parsing/verification into a callback-specific module with injected PayFast config and provider settlement interface; remove module-level dependency on general `config`. **Implemented.**
+2. Keep checkout generation in the general API. Checkout reads attempt/provider and uses the existing general runtime identity; it never settles. **Implemented.**
+3. Remove `POST /api/v1/commercial/payfast/itn` registration from the general API router. **Implemented.**
+4. Add a separate `src/payfast-callback-server.ts` entry point with its own Express app and Pool exclusively from `PAYFAST_CALLBACK_DATABASE_URL`. It does not import the general API bootstrap/config/pool. **Implemented.**
+5. The callback process uses callback verification configuration (`PAYFAST_MERCHANT_ID`, optional passphrase, sandbox/live mode) and the dedicated DB credential; it does not load ordinary API credentials. **Implemented.**
+6. Add health/readiness endpoints. Readiness and startup verify both database identities; graceful shutdown closes HTTP server and pool. **Implemented.**
+7. Deploy as a distinct service with independent environment, network policy, scaling, logs, and credential rotation. **Not deployed.** This requires the sandbox-only deployment gates documented below.
 
 ## Callback verification requirements
 
@@ -136,8 +135,8 @@ The provider-binding migration intentionally leaves historical attempts NULL. Be
 ## Phased delivery
 
 1. **Code and CI — implemented in draft PR #206:** provider binding, isolated callback entry point, provider-specific SQL wrapper, role grants/revokes, and disposable three-identity qualification. PR #205 is superseded and must not be merged independently.
-2. **Review and qualification:** review the full PR #206 diff and rerun/inspect CI on the final head. Current recorded CI qualification is disposable-environment evidence only; it is not shared Render or production qualification.
-3. **Infrastructure plan:** document separate callback service, provider credential provisioning/rotation, network access, proxy topology, monitoring and rollback. Require fresh explicit authorization before creating roles, secrets, services, network rules or deployments.
+2. **Review and qualification — complete for current source:** PR #206's latest recorded head `d16dc973f725e04772a2c70f6704aef90e7aa34a` passed CI run [#41749694611](https://github.com/zaidhqdev-sys/GHM/actions/runs/41749694611), including build, all disposable PostgreSQL 18 migrations, full DB-backed tests, three-identity settlement qualification, migration audit and runtime boundary verification. This is not shared Render or production qualification.
+3. **Infrastructure assessment — read-only review completed:** Render workspace inspection found an existing sandbox general-API service and a separate sandbox database, but no callback service or provider DB login. The sandbox database expires 2026-11-08. The existing service runs `npm start` from `main` (not `start:payfast-callback`) and must not be repurposed. A callback deployment remains blocked until a provider login/credential is provisioned, the migration is applied to the intended non-production DB, a dedicated service is configured with secrets, and the actual Render ingress/proxy chain is validated. The available Render DB query operation is read-only; no DB writes or secret provisioning were performed.
 4. **Historical data plan:** perform read-only inventory only after explicit target authorization; no backfill without separately approved evidence and change plan.
 5. **Cutover:** separately authorized, supervised sandbox then production plan; never implied by code approval.
 
