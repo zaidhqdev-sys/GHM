@@ -208,3 +208,30 @@ alternative for users who have Docker; it is not a prerequisite.
 
 PR #206 remains draft and unmerged. PR #205 remains superseded and must not be
 merged independently.
+
+
+## Production GHM runtime boundary clarification — 2026-11-04
+
+The production GHM internal runtime on Render, connected to the production
+`ghm` database, is distinct from the hosted PayFast sandbox runtime/database
+referenced in the non-production rollout notes.
+
+The existing production GHM API service must remain the ordinary API process.
+Do not put callback-specific PayFast secrets, `PAYFAST_CALLBACK_DATABASE_URL`,
+or the `ghm_payment_provider` credential on that service. The production
+callback must be a separately deployed Render service running
+`npm run start:payfast-callback`, with its own callback-only environment and
+dedicated provider database login.
+
+Production enablement is not yet authorized. It requires a reviewed and
+explicitly approved production `ghm` migration plan, backup/rollback plan,
+out-of-band provisioning and verification of the dedicated provider login,
+approved migration execution, and deployment-specific verification of
+database connectivity, ingress/proxy trust, readiness and effective database
+identity. Production mode must be explicitly configured; do not silently
+default production to sandbox. The exact callback environment-variable names
+and Render service target are to be supplied only when those prerequisites
+are satisfied and the production callback service is ready for configuration.
+
+No production database, Render service, secret, notify URL or payment state
+was changed by this clarification.
