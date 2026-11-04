@@ -1009,3 +1009,18 @@ secrets, payment attempts or PayFast settings were changed. The production
 migration and callback rollout are not ready to execute until the role graph,
 database ingress, migration ledger, backup/PITR, and historical pending
 attempt are resolved and explicitly approved.
+
+
+### Additional production role-graph detail
+
+A subsequent read-only catalog query confirmed `ghm_app_user` has a database
+role setting `role=ghm_db_user`. The `ghm_db_user` membership in
+`ghm_migrator`, `ghm_runtime` and `ghm_schema_owner` includes ADMIN OPTION
+granted by `postgres`; its `ghm_migrator` and `ghm_schema_owner` memberships
+have neither INHERIT nor SET. The ordinary API identity can therefore
+administer memberships in roles that must remain infrastructure-controlled.
+This is a material production least-privilege issue to resolve before
+migration. The database owner should remove those ADMIN OPTION grants (and
+remove nonessential memberships) under an approved role-change plan, while
+preserving the API's required non-admin runtime access. No role or grant was
+changed during this inspection.
