@@ -6,7 +6,7 @@ import { encodePayfastValidationFields, parsePayfastItnFields, PayfastCallbackBo
 const unsigned = {
   merchant_id: '10000100',
   m_payment_id: '42',
-  pf_payment_id: 'pf-123',
+  pf_payment_id: '1089250',
   amount_gross: '199.00',
   payment_status: 'COMPLETE',
   item_name: 'Test item',
@@ -46,7 +46,7 @@ test('isolated PayFast callback confirms provider then calls only PayFast settle
   assert.equal(confirmed, true);
   assert.match(calls[0].sql, /commercial_get_payfast_attempt/);
   assert.match(calls[1].sql, /commercial_apply_payfast_payment_result/);
-  assert.deepEqual(calls[1].values?.slice(0, 6), [42, 'pf-123', 'itn', calls[1].values?.[3], 'payment', 'succeeded']);
+  assert.deepEqual(calls[1].values?.slice(0, 6), [42, '1089250', 'itn', calls[1].values?.[3], 'payment', 'succeeded']);
 });
 
 test('isolated PayFast callback fails closed for mismatched provider before server confirmation', async () => {
