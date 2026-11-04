@@ -19,7 +19,7 @@ test('PayFast callback rejects duplicate and non-string form fields', () => {
   assert.equal(parsePayfastItnFields({ 'bad key': 'x' }), null);
   assert.equal(parsePayfastItnFields({ ...fields, unexpected_admin_flag: '1' }), null);
   assert.equal(parsePayfastItnFields({ ...fields, custom_str1: 'supported custom field' })?.custom_str1, 'supported custom field');
-  assert.equal(parsePayfastItnFields({ field: 'x'.repeat(2049) }), null);
+  assert.equal(parsePayfastItnFields({ item_name: 'x'.repeat(2049) }), null);
   assert.deepEqual(parsePayfastItnFields({ ...fields, item_name: 'Example product' }), { ...fields, item_name: 'Example product' });
   assert.deepEqual(parsePayfastItnFields(fields), fields);
   assert.equal(encodePayfastValidationFields({ ...fields, item_name: 'Example product' }).includes('signature='), false);
@@ -59,5 +59,20 @@ test('isolated PayFast callback fails closed for invalid signature before server
   const db = { query: async () => ({ rowCount: 1, rows: [{ payment_attempt_id: 42, provider_code: 'payfast', amount_minor_units: 19900, attempt_status: 'pending_payment', currency_code: 'ZAR' }] }) };
   const boundary = new PayfastCallbackBoundary(db as never, settings, async () => { confirmed = true; });
   await assert.rejects(boundary.handleItn({ ...fields, signature: 'bad' }, '197.97.145.150'), /signature invalid/);
+  assert.equal(confirmed, false);
+});
+
+
+test('isolated PayFast callback rejects non-documented payment statuses before server confirmation', async () => {
+  let confirmed = false;
+  const unsupported = { ...unsigned, payment_status: 'FAILED' };
+  const unsupportedFields = { ...unsupported, signature: generatePayfastSignature(unsupported, 'secret') };
+  const db = {
+    async query() {
+      return { rowCount: 1, rows: [{ payment_attempt_id: 42, provider_code: 'payfast', amount_minor_units: 19900, attempt_status: 'pending_payment', currency_code: 'ZAR' }] };
+    },
+  };
+  const boundary = new PayfastCallbackBoundary(db as never, settings, async () => { confirmed = true; });
+  await assert.rejects(boundary.handleItn(unsupportedFields, '197.97.145.150'), /payment status invalid/);
   assert.equal(confirmed, false);
 });
