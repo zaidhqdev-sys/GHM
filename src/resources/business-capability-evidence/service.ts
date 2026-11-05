@@ -40,7 +40,7 @@ export class BusinessCapabilityEvidenceServiceImpl implements BusinessCapability
   }
   async listForBusiness(context: AuthContext, businessId: number) {
     requireAuthenticatedContext(context); positiveId(businessId, 'businessId');
-    if (context.role !== 'business' && context.role !== 'admin') throw new Error('Business access required');
+    if (context.role !== 'business') throw new Error('Business access required');
     return this.repository.listForBusiness(context, businessId);
   }
   async listForVerification(context: AuthContext, limit = 100) {
