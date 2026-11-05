@@ -10,7 +10,8 @@ export interface Review {
   readonly id: ReviewId;
   readonly businessId: BusinessId;
   readonly reviewerId: AccountId;
-  readonly reviewerName: string;\n  readonly businessName?: string | null;
+  readonly reviewerName: string;
+  readonly businessName?: string | null;
   readonly rating: number;
   readonly title: string;
   readonly body: string;
