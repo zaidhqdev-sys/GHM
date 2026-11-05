@@ -35,6 +35,11 @@ class FakeRepository implements BusinessCategoryRepository {
   async setPrimaryBusinessCategory(): Promise<typeof assignment> { return { ...assignment, isPrimary: true }; }
 }
 
+test('public category discovery returns active canonical taxonomy without user context', async () => {
+  const service = new BusinessCategoryServiceImpl(new FakeRepository());
+  assert.equal((await service.listPublicBusinessCategories())[0].slug, 'construction');
+});
+
 test('category service validates authentication and identifiers', async () => {
   const service = new BusinessCategoryServiceImpl(new FakeRepository());
   assert.equal((await service.listBusinessCategories(context)).length, 1);
