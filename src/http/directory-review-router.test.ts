@@ -65,3 +65,15 @@ test('owner submission rejects client-supplied fields and binds authenticated ac
   assert.deepEqual(received,{context:{userId:42,role:'business'},id:55});
  } finally { await close(server); }
 });
+
+test('Founder authority endpoint returns explicit allowlist result, not generic admin role',async()=>{
+ let received:AuthContext|undefined;
+ const service={isFounderReviewer:async(context:AuthContext)=>{received=context;return false;}} as unknown as DirectoryReviewService;
+ const {server,baseUrl}=await start(service);
+ try {
+  const response=await fetch(`${baseUrl}/api/v1/admin/directory-reviews/authority`,{headers:{authorization:`Bearer ${tokenFor({userId:7,role:'admin'})}`}});
+  assert.equal(response.status,200);
+  assert.deepEqual(received,{userId:7,role:'admin'});
+  assert.deepEqual(await response.json(),{isFounderReviewer:false});
+ } finally { await close(server); }
+});
