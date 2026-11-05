@@ -51,11 +51,11 @@ export class PostgresDirectoryRepository implements DirectoryRepository {
       const add = (value: unknown): number => { values.push(value); return values.length; };
 
       if (query.q) {
-        const index = add(query.q.replace(/[\\%_]/g, '\\$&'));
-        clauses.push(`(b.name ILIKE '%' || $${index} || '%' ESCAPE E'\\\\'
-          OR b.slug ILIKE '%' || $${index} || '%' ESCAPE '\\\\'
-          OR COALESCE(b.description, '') ILIKE '%' || $${index} || '%' ESCAPE '\\\\'
-          OR COALESCE(b.city, '') ILIKE '%' || $${index} || '%' ESCAPE '\\\\')`);
+        const index = add(query.q);
+        clauses.push(`(strpos(lower(b.name), lower($${index})) > 0
+          OR strpos(lower(b.slug), lower($${index})) > 0
+          OR strpos(lower(COALESCE(b.description, '')), lower($${index})) > 0
+          OR strpos(lower(COALESCE(b.city, '')), lower($${index})) > 0)`);
       }
       if (query.category) {
         const index = add(query.category);
