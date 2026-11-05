@@ -9,7 +9,10 @@ ALTER TABLE ghm.business
   ADD COLUMN latitude double precision,
   ADD COLUMN longitude double precision,
   ADD COLUMN whatsapp text,
-  ADD COLUMN website text;
+  ADD COLUMN website text,
+  ADD COLUMN avatar_letter text,
+  ADD COLUMN avatar_color text,
+  ADD COLUMN years_in_business integer;
 
 ALTER TABLE ghm.business
   ADD CONSTRAINT business_province_length_check CHECK (province IS NULL OR length(btrim(province)) BETWEEN 1 AND 120),
@@ -19,7 +22,10 @@ ALTER TABLE ghm.business
   ADD CONSTRAINT business_longitude_range_check CHECK (longitude IS NULL OR longitude BETWEEN -180 AND 180),
   ADD CONSTRAINT business_coordinates_pair_check CHECK ((latitude IS NULL) = (longitude IS NULL)),
   ADD CONSTRAINT business_whatsapp_length_check CHECK (whatsapp IS NULL OR length(btrim(whatsapp)) BETWEEN 7 AND 32),
-  ADD CONSTRAINT business_website_length_check CHECK (website IS NULL OR length(btrim(website)) BETWEEN 8 AND 2048);
+  ADD CONSTRAINT business_website_length_check CHECK (website IS NULL OR length(btrim(website)) BETWEEN 8 AND 2048),
+  ADD CONSTRAINT business_avatar_letter_length_check CHECK (avatar_letter IS NULL OR length(btrim(avatar_letter)) BETWEEN 1 AND 3),
+  ADD CONSTRAINT business_avatar_color_length_check CHECK (avatar_color IS NULL OR length(btrim(avatar_color)) BETWEEN 1 AND 32),
+  ADD CONSTRAINT business_years_in_business_range_check CHECK (years_in_business IS NULL OR years_in_business BETWEEN 0 AND 100);
 
 CREATE INDEX business_public_directory_location_idx
   ON ghm.business (province, city, id)
@@ -36,6 +42,9 @@ COMMENT ON COLUMN ghm.business.latitude IS 'Owner-managed public directory latit
 COMMENT ON COLUMN ghm.business.longitude IS 'Owner-managed public directory longitude; paired with latitude.';
 COMMENT ON COLUMN ghm.business.whatsapp IS 'Owner-managed public WhatsApp contact number.';
 COMMENT ON COLUMN ghm.business.website IS 'Owner-managed public business website URL.';
+COMMENT ON COLUMN ghm.business.avatar_letter IS 'Owner-managed directory avatar letter.';
+COMMENT ON COLUMN ghm.business.avatar_color IS 'Owner-managed directory avatar color token.';
+COMMENT ON COLUMN ghm.business.years_in_business IS 'Owner-declared years in business; not independently verified.';
 
 CREATE OR REPLACE FUNCTION ghm.update_business_profile(
   p_account_id bigint,
@@ -49,7 +58,7 @@ SET search_path = pg_catalog, ghm
 AS $$
 DECLARE
   patch_keys text[];
-  allowed_keys text[] := ARRAY['name', 'slug', 'description', 'phone', 'email', 'province', 'city', 'physical_address', 'latitude', 'longitude', 'whatsapp', 'website'];
+  allowed_keys text[] := ARRAY['name', 'slug', 'description', 'phone', 'email', 'province', 'city', 'physical_address', 'latitude', 'longitude', 'whatsapp', 'website', 'avatar_letter', 'avatar_color', 'years_in_business'];
   forbidden text;
   next_name text;
   next_slug text;
@@ -63,6 +72,9 @@ DECLARE
   next_website text;
   next_latitude double precision;
   next_longitude double precision;
+  next_avatar_letter text;
+  next_avatar_color text;
+  next_years_in_business integer;
   updated_row ghm.business%ROWTYPE;
 BEGIN
   IF p_account_id IS NULL OR p_account_id <= 0 THEN RAISE EXCEPTION 'Authentication is required to update a Business profile.'; END IF;
@@ -146,6 +158,48 @@ BEGIN
   END IF;
   IF p_patch ? 'latitude' AND ((next_latitude IS NULL) <> (next_longitude IS NULL)) THEN
     RAISE EXCEPTION 'Latitude and longitude must be supplied or cleared together';
+  END IF;
+
+  IF p_patch ? 'avatar_letter' THEN
+    IF p_patch->'avatar_letter' = 'null'::jsonb THEN next_avatar_letter := NULL;
+    ELSIF jsonb_typeof(p_patch->'avatar_letter') <> 'string' THEN RAISE EXCEPTION 'Avatar letter must be text or null';
+    ELSE next_avatar_letter := nullif(btrim(p_patch->>'avatar_letter'), ''); IF next_avatar_letter IS NOT NULL AND length(next_avatar_letter) > 3 THEN RAISE EXCEPTION 'Avatar letter must be 3 characters or fewer'; END IF; END IF;
+  END IF;
+  IF p_patch ? 'avatar_color' THEN
+    IF p_patch->'avatar_color' = 'null'::jsonb THEN next_avatar_color := NULL;
+    ELSIF jsonb_typeof(p_patch->'avatar_color') <> 'string' THEN RAISE EXCEPTION 'Avatar color must be text or null';
+    ELSE next_avatar_color := nullif(btrim(p_patch->>'avatar_color'), ''); IF next_avatar_color IS NOT NULL AND length(next_avatar_color) > 32 THEN RAISE EXCEPTION 'Avatar color must be 32 characters or fewer'; END IF; END IF;
+  END IF;
+  IF p_patch ? 'years_in_business' THEN
+    IF jsonb_typeof(p_patch->'years_in_business') <> 'number' OR (p_patch->>'years_in_business') !~ '^[0-9]+ WHEN p_patch ? 'name' THEN next_name ELSE name END,
+    slug = CASE WHEN p_patch ? 'slug' THEN next_slug ELSE slug END,
+    description = CASE WHEN p_patch ? 'description' THEN next_description ELSE description END,
+    phone = CASE WHEN p_patch ? 'phone' THEN next_phone ELSE phone END,
+    email = CASE WHEN p_patch ? 'email' THEN next_email ELSE email END,
+    province = CASE WHEN p_patch ? 'province' THEN next_province ELSE province END,
+    city = CASE WHEN p_patch ? 'city' THEN next_city ELSE city END,
+    physical_address = CASE WHEN p_patch ? 'physical_address' THEN next_address ELSE physical_address END,
+    latitude = CASE WHEN p_patch ? 'latitude' THEN next_latitude ELSE latitude END,
+    longitude = CASE WHEN p_patch ? 'longitude' THEN next_longitude ELSE longitude END,
+    whatsapp = CASE WHEN p_patch ? 'whatsapp' THEN next_whatsapp ELSE whatsapp END,
+    website = CASE WHEN p_patch ? 'website' THEN next_website ELSE website END,
+    avatar_letter = CASE WHEN p_patch ? 'avatar_letter' THEN next_avatar_letter ELSE avatar_letter END,
+    avatar_color = CASE WHEN p_patch ? 'avatar_color' THEN next_avatar_color ELSE avatar_color END,
+    years_in_business = CASE WHEN p_patch ? 'years_in_business' THEN next_years_in_business ELSE years_in_business END,
+    updated_at = now()
+  WHERE id = p_business_id
+  RETURNING * INTO updated_row;
+  RETURN updated_row;
+END;
+$$;
+
+ALTER FUNCTION ghm.update_business_profile(bigint, bigint, jsonb)
+  OWNER TO ghm_schema_owner;
+REVOKE ALL ON FUNCTION ghm.update_business_profile(bigint, bigint, jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ghm.update_business_profile(bigint, bigint, jsonb) TO ghm_runtime;
+ THEN RAISE EXCEPTION 'Years in business must be a whole number'; END IF;
+    next_years_in_business := (p_patch->>'years_in_business')::integer;
+    IF next_years_in_business NOT BETWEEN 0 AND 100 THEN RAISE EXCEPTION 'Years in business must be between 0 and 100'; END IF;
   END IF;
 
   UPDATE ghm.business SET
