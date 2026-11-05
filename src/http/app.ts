@@ -451,7 +451,10 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       const assignment = await businessCategoryService.assignBusinessCategory(context, { businessId, categoryId: body.categoryId });
       res.status(201).json({ assignment });
     } catch (error) {
-      if (error instanceof Error && /Category|category|positive integer|Business management permission/.test(error.message)) {
+      if (error instanceof Error && error.message.includes('Business management permission required')) {
+        res.status(403).json({ error: 'forbidden' }); return;
+      }
+      if (error instanceof Error && /Category|category|positive integer/.test(error.message)) {
         res.status(400).json({ error: 'invalid_request' }); return;
       }
       handleError(error, res);
