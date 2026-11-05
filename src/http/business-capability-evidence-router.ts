@@ -22,7 +22,7 @@ const parseCreate = (body: unknown): CreateBusinessCapabilityEvidenceInput | nul
 const fail = (error: unknown, res: Response) => {
   const message = error instanceof Error ? error.message : '';
   if (/required|invalid|must be|later than|not found|not reviewable|not permitted|authority|access/i.test(message)) {
-    const forbidden = /authority|access|Business account|Business access/i.test(message);
+    const forbidden = /authority|access|Business account|Business access|management permission/i.test(message);
     res.status(forbidden ? 403 : /not found|not reviewable/i.test(message) ? 404 : 400).json({ error: forbidden ? 'forbidden' : 'invalid_request' });
     return;
   }
