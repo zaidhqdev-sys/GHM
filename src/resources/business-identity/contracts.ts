@@ -44,6 +44,11 @@ export interface BusinessMembership {
   readonly updatedAt: Date;
 }
 
+export interface ManagedBusinessContext {
+  readonly membership: BusinessMembership;
+  readonly business: BusinessIdentity;
+}
+
 export interface ApplicationIdentity {
   readonly account: AccountIdentity;
   readonly memberships: readonly BusinessMembership[];
@@ -87,6 +92,7 @@ export interface BusinessIdentityRepository {
 
 export interface BusinessIdentityService {
   resolveIdentity(input: ResolveIdentityInput): Promise<ApplicationIdentity>;
+  listManagedBusinesses(context: AuthContext): Promise<readonly ManagedBusinessContext[]>;
   getOwnProfile(context: AuthContext): Promise<AccountIdentity>;
   updateOwnProfile(context: AuthContext, input: UpdateProfileInput): Promise<AccountIdentity>;
   createBusiness(context: AuthContext, input: CreateBusinessInput): Promise<ApplicationIdentity>;
