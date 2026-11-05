@@ -4,7 +4,7 @@ import test from 'node:test';
 import { createApp } from './app';
 import { httpTestAuth, tokenFor as es256TokenFor } from './test-resource-auth';
 import type { AuthContext } from '../auth/authorization';
-import type { BusinessHours, BusinessHoursService } from '../resources/business-hours/contracts';
+import type { BusinessHours, BusinessHoursService, ReplaceBusinessHoursInput } from '../resources/business-hours/contracts';
 
 const tokenFor = es256TokenFor;
 
@@ -164,7 +164,7 @@ test('Business Hours GET for business 265 reaches service without verification g
 });
 
 test('Business Hours PUT binds authenticated context and replaces the complete schedule', async () => {
-  let received: { context: AuthContext; input: { businessId: number; hours: Array<{dayOfWeek:number;isClosed:boolean;openTime:string|null;closeTime:string|null}> } } | undefined;
+  let received: { context: AuthContext; input: ReplaceBusinessHoursInput } | undefined;
   const service = stubHoursService({
     replaceBusinessHours: async (context, input) => {
       received = { context, input };
