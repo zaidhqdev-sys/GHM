@@ -427,6 +427,57 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
+  app.get('/api/v1/businesses/:businessId/categories', resourceAuthMiddleware, requireRegisteredAccess('business_category_assignment', 'read'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const rawId = routeParam(req.params.businessId);
+      const businessId = rawId === null ? null : positiveIntegerId(rawId);
+      if (businessId === null) { res.status(400).json({ error: 'invalid_request' }); return; }
+      const assignments = await businessCategoryService.listBusinessCategoryAssignments(context, businessId);
+      res.status(200).json({ assignments });
+    } catch (error) { handleError(error, res); }
+  });
+
+  app.post('/api/v1/businesses/:businessId/categories', resourceAuthMiddleware, requireRegisteredAccess('business_category_assignment', 'create'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const rawId = routeParam(req.params.businessId);
+      const businessId = rawId === null ? null : positiveIntegerId(rawId);
+      const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body as Record<string, unknown> : null;
+      if (businessId === null || !body || Object.keys(body).length !== 1 || typeof body.categoryId !== 'string' ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.categoryId)) {
+        res.status(400).json({ error: 'invalid_request' }); return;
+      }
+      const assignment = await businessCategoryService.assignBusinessCategory(context, { businessId, categoryId: body.categoryId });
+      res.status(201).json({ assignment });
+    } catch (error) {
+      if (error instanceof Error && /Category|category|positive integer|Business management permission/.test(error.message)) {
+        res.status(400).json({ error: 'invalid_request' }); return;
+      }
+      handleError(error, res);
+    }
+  });
+
+  app.patch('/api/v1/businesses/:businessId/categories/:categoryId/primary', resourceAuthMiddleware, requireRegisteredAccess('business_category_assignment', 'update'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const rawId = routeParam(req.params.businessId);
+      const businessId = rawId === null ? null : positiveIntegerId(rawId);
+      const categoryId = routeParam(req.params.categoryId);
+      if (businessId === null || categoryId === null ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(categoryId)) {
+        res.status(400).json({ error: 'invalid_request' }); return;
+      }
+      const assignment = await businessCategoryService.setPrimaryBusinessCategory(context, { businessId, categoryId });
+      res.status(200).json({ assignment });
+    } catch (error) {
+      if (error instanceof Error && /Category|category|positive integer|Business management permission/.test(error.message)) {
+        res.status(400).json({ error: 'invalid_request' }); return;
+      }
+      handleError(error, res);
+    }
+  });
+
   app.get('/api/v1/public/businesses', requireRegisteredPublicAccess('directory', 'read'), async (req: Request, res: Response) => {
     try {
       const allowed = new Set(['q', 'category', 'province', 'city', 'latitude', 'longitude', 'radiusKm', 'sort', 'page', 'pageSize']);
