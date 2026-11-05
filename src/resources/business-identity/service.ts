@@ -68,8 +68,8 @@ export class BusinessIdentityServiceImpl {
 
   async getManagedBusiness(context: AuthContext, businessId: number): Promise<BusinessIdentity | null> {
     const memberships = await this.repository.getMembershipsForAccount(context);
-    const membership = memberships.find(c => c.businessId === businessId && c.status === 'active');
-    if (!membership) throw new Error('Business membership required');
+    const membership = memberships.find(c => c.businessId === businessId && c.status === 'active' && (c.role === 'owner' || c.role === 'administrator'));
+    if (!membership) throw new Error('Business management permission required');
     return this.repository.getBusinessById(context, businessId);
   }
 
