@@ -135,6 +135,16 @@ export const BUSINESS_PROFILE_OWNER_FIELDS = Object.freeze([
   'description',
   'phone',
   'email',
+  'province',
+  'city',
+  'physicalAddress',
+  'latitude',
+  'longitude',
+  'whatsapp',
+  'website',
+  'avatarLetter',
+  'avatarColor',
+  'yearsInBusiness',
 ] as const);
 
 export const BUSINESS_PROFILE_PROTECTED_FIELDS = Object.freeze([
