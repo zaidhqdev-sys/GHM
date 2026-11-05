@@ -27,7 +27,7 @@ export class SupportRequestServiceImpl implements SupportRequestService {
   constructor(private readonly repository: SupportRequestRepository) {}
 
   async createSupportRequest(context: AuthContext, input: CreateSupportRequestInput): Promise<SupportRequest> {
-    assertRole(context, 'customer');
+    assertRole(context, 'customer', 'business');
     return this.repository.createSupportRequest(context, {
       ...input,
       subject: assertText(input?.subject, 'subject', 3, 160),
