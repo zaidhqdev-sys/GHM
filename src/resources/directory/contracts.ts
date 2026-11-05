@@ -3,11 +3,19 @@ import type { PublicBusiness } from '../business-identity/public-contracts.js';
 export interface DirectoryQuery {
   readonly q?: string;
   readonly category?: string;
+  readonly province?: string;
+  readonly city?: string;
+  readonly latitude?: number;
+  readonly longitude?: number;
+  readonly radiusKm?: number;
+  readonly sort?: 'rating' | 'newest' | 'distance';
   readonly page: number;
   readonly pageSize: number;
 }
 
-export interface PublicDirectoryBusiness extends PublicBusiness {}
+export interface PublicDirectoryBusiness extends PublicBusiness {
+  readonly distanceKm?: number;
+}
 
 export interface DirectoryResult {
   readonly items: PublicDirectoryBusiness[];
