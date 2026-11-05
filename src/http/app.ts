@@ -189,7 +189,7 @@ const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | n
   }
   if (Object.hasOwn(input, 'avatarLetter') && input.avatarLetter !== null && typeof input.avatarLetter !== 'string') return null;
   if (Object.hasOwn(input, 'avatarColor') && input.avatarColor !== null && typeof input.avatarColor !== 'string') return null;
-  if (Object.hasOwn(input, 'yearsInBusiness') && (!Number.isInteger(input.yearsInBusiness) || (input.yearsInBusiness as number) < 0 || (input.yearsInBusiness as number) > 100)) return null;
+  if (Object.hasOwn(input, 'yearsInBusiness') && (typeof input.yearsInBusiness !== 'number' || !Number.isInteger(input.yearsInBusiness) || input.yearsInBusiness < 0 || input.yearsInBusiness > 100)) return null;
   if (Object.hasOwn(input, 'latitude') !== Object.hasOwn(input, 'longitude')) return null;
   return {
     ...(Object.hasOwn(input, 'name') ? { name: input.name as string } : {}),
