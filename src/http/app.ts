@@ -458,7 +458,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       const parseCoordinate = (key: string): number | undefined => {
         const value = readStringQuery(key);
         if (value === undefined) return undefined;
-        if (!/^-?(?:\\d+\\.?\\d*|\\.\\d+)$/.test(value)) return undefined;
+        if (!/^-?(?:\d+\.?\d*|\.\d+)$/.test(value)) return undefined;
         const parsed = Number(value);
         return Number.isFinite(parsed) ? parsed : undefined;
       };
