@@ -114,7 +114,7 @@ const buildProfilePatch = (input: UpdateBusinessProfileInput): Record<string, un
       continue;
     }
     if (key === 'yearsInBusiness') {
-      if (!Number.isInteger(value) || (value as number) < 0 || (value as number) > 100) throw new Error('yearsInBusiness must be a whole number between 0 and 100');
+      if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 100) throw new Error('yearsInBusiness must be a whole number between 0 and 100');
       patch.years_in_business = value;
       continue;
     }
