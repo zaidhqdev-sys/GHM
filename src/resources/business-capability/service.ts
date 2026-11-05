@@ -53,6 +53,11 @@ const validateTransition = (context: AuthContext, input: TransitionBusinessCapab
 export class BusinessCapabilityServiceImpl implements BusinessCapabilityService {
   constructor(private readonly repository: BusinessCapabilityRepository) {}
 
+  async listPublicBusinessCapabilities(businessId: number) {
+    requirePositiveId(businessId, 'businessId');
+    return this.repository.listPublicBusinessCapabilities(businessId);
+  }
+
   async createBusinessCapability(context: AuthContext, input: CreateBusinessCapabilityInput): Promise<BusinessCapability> {
     return this.repository.createBusinessCapability(context, validateCreate(context, input));
   }
