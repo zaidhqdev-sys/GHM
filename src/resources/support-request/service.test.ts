@@ -72,7 +72,8 @@ test('Support Request service separates customer and admin reply authority', asy
     replyAsCustomer: async () => { customerCalled = true; return message; },
     replyAsAdmin: async () => { adminCalled = true; return { ...message, senderKind: 'admin' }; },
   }));
-  await service.replyAsCustomer(customer, 1, '  Customer reply  ');\n  await service.replyAsCustomer(business, 1, '  Business reply  ');
+  await service.replyAsCustomer(customer, 1, '  Customer reply  ');
+  await service.replyAsCustomer(business, 1, '  Business reply  ');
   await service.replyAsAdmin(admin, 1, '  Admin reply  ');
   assert.equal(customerCalled, true);
   assert.equal(adminCalled, true);
