@@ -429,7 +429,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
 
   app.get('/api/v1/public/businesses', requireRegisteredPublicAccess('directory', 'read'), async (req: Request, res: Response) => {
     try {
-      const allowed = new Set(['q', 'category', 'page', 'pageSize']);
+      const allowed = new Set(['q', 'category', 'province', 'city', 'latitude', 'longitude', 'radiusKm', 'sort', 'page', 'pageSize']);
       const keys = Object.keys(req.query);
       if (keys.some((key) => !allowed.has(key))) {
         res.status(400).json({ error: 'invalid_request' });
@@ -452,12 +452,31 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
 
       const q = readStringQuery('q');
       const category = readStringQuery('category');
+      const province = readStringQuery('province');
+      const city = readStringQuery('city');
+      const sort = readStringQuery('sort');
+      const parseCoordinate = (key: string): number | undefined => {
+        const value = readStringQuery(key);
+        if (value === undefined) return undefined;
+        if (!/^-?(?:\\d+\\.?\\d*|\\.\\d+)$/.test(value)) return undefined;
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : undefined;
+      };
+      const latitude = parseCoordinate('latitude');
+      const longitude = parseCoordinate('longitude');
+      const radiusKm = parseCoordinate('radiusKm');
       const pageValue = parsePositiveQueryInteger('page');
       const pageSizeValue = parsePositiveQueryInteger('pageSize');
 
       if (
         (req.query.q !== undefined && q === undefined) ||
         (req.query.category !== undefined && category === undefined) ||
+        (req.query.province !== undefined && province === undefined) ||
+        (req.query.city !== undefined && city === undefined) ||
+        (req.query.sort !== undefined && sort === undefined) ||
+        (req.query.latitude !== undefined && latitude === undefined) ||
+        (req.query.longitude !== undefined && longitude === undefined) ||
+        (req.query.radiusKm !== undefined && radiusKm === undefined) ||
         (req.query.page !== undefined && pageValue === undefined) ||
         (req.query.pageSize !== undefined && pageSizeValue === undefined)
       ) {
@@ -473,6 +492,12 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       const result = await directoryService.search({
         q,
         category,
+        province,
+        city,
+        latitude,
+        longitude,
+        radiusKm,
+        sort: sort as 'rating' | 'reviews' | 'newest' | 'distance' | undefined,
         page: pageValue ?? 1,
         pageSize: pageSizeValue ?? 20,
       });
@@ -485,6 +510,10 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
           error.message === 'category must be a string' ||
           error.message === 'category must not be blank' ||
           error.message === 'category must be a valid category id or slug' ||
+          error.message === 'province must be a string' || error.message === 'city must be a string' ||
+          error.message === 'latitude must be a valid coordinate' || error.message === 'longitude must be a valid coordinate' ||
+          error.message === 'radiusKm must be between 0 and 500' || error.message === 'sort must be rating, reviews, newest, or distance' ||
+          error.message === 'latitude and longitude must be supplied together' || error.message === 'radiusKm requires latitude and longitude' || error.message === 'distance sort requires latitude and longitude' ||
           error.message === 'page must be a positive integer' ||
           error.message === 'pageSize must be a positive integer' ||
           error.message === 'pageSize must be at most 50')
