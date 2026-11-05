@@ -171,33 +171,7 @@ BEGIN
     ELSE next_avatar_color := nullif(btrim(p_patch->>'avatar_color'), ''); IF next_avatar_color IS NOT NULL AND length(next_avatar_color) > 32 THEN RAISE EXCEPTION 'Avatar color must be 32 characters or fewer'; END IF; END IF;
   END IF;
   IF p_patch ? 'years_in_business' THEN
-    IF jsonb_typeof(p_patch->'years_in_business') <> 'number' OR (p_patch->>'years_in_business') !~ '^[0-9]+ WHEN p_patch ? 'name' THEN next_name ELSE name END,
-    slug = CASE WHEN p_patch ? 'slug' THEN next_slug ELSE slug END,
-    description = CASE WHEN p_patch ? 'description' THEN next_description ELSE description END,
-    phone = CASE WHEN p_patch ? 'phone' THEN next_phone ELSE phone END,
-    email = CASE WHEN p_patch ? 'email' THEN next_email ELSE email END,
-    province = CASE WHEN p_patch ? 'province' THEN next_province ELSE province END,
-    city = CASE WHEN p_patch ? 'city' THEN next_city ELSE city END,
-    physical_address = CASE WHEN p_patch ? 'physical_address' THEN next_address ELSE physical_address END,
-    latitude = CASE WHEN p_patch ? 'latitude' THEN next_latitude ELSE latitude END,
-    longitude = CASE WHEN p_patch ? 'longitude' THEN next_longitude ELSE longitude END,
-    whatsapp = CASE WHEN p_patch ? 'whatsapp' THEN next_whatsapp ELSE whatsapp END,
-    website = CASE WHEN p_patch ? 'website' THEN next_website ELSE website END,
-    avatar_letter = CASE WHEN p_patch ? 'avatar_letter' THEN next_avatar_letter ELSE avatar_letter END,
-    avatar_color = CASE WHEN p_patch ? 'avatar_color' THEN next_avatar_color ELSE avatar_color END,
-    years_in_business = CASE WHEN p_patch ? 'years_in_business' THEN next_years_in_business ELSE years_in_business END,
-    updated_at = now()
-  WHERE id = p_business_id
-  RETURNING * INTO updated_row;
-  RETURN updated_row;
-END;
-$$;
-
-ALTER FUNCTION ghm.update_business_profile(bigint, bigint, jsonb)
-  OWNER TO ghm_schema_owner;
-REVOKE ALL ON FUNCTION ghm.update_business_profile(bigint, bigint, jsonb) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION ghm.update_business_profile(bigint, bigint, jsonb) TO ghm_runtime;
- THEN RAISE EXCEPTION 'Years in business must be a whole number'; END IF;
+    IF jsonb_typeof(p_patch->'years_in_business') <> 'number' OR (p_patch->>'years_in_business') !~ '^[0-9]+$' THEN RAISE EXCEPTION 'Years in business must be a whole number'; END IF;
     next_years_in_business := (p_patch->>'years_in_business')::integer;
     IF next_years_in_business NOT BETWEEN 0 AND 100 THEN RAISE EXCEPTION 'Years in business must be between 0 and 100'; END IF;
   END IF;
