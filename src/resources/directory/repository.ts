@@ -21,7 +21,7 @@ interface DirectoryRow {
   whatsapp: string | null; website: string | null; rating: string | number;
   review_count: string | number; jobs_completed: string | number;
   verification_status: PublicDirectoryBusiness['verificationStatus']; is_verified: boolean;
-  created_at: Date; updated_at: Date; distance_km?: string | number | null;
+  created_at: Date; updated_at: Date; distance_km?: string | number | null; category?: string | null;
 }
 
 const distanceSql = (latIndex: number, lonIndex: number) =>
@@ -35,7 +35,7 @@ const mapDirectoryBusiness = (row: DirectoryRow): PublicDirectoryBusiness => ({
   longitude: row.longitude === null ? null : Number(row.longitude),
   whatsapp: row.whatsapp ?? null, website: row.website ?? null,
   rating: Number(row.rating), reviewCount: Number(row.review_count),
-  jobsCompleted: Number(row.jobs_completed), verificationStatus: row.verification_status,
+  jobsCompleted: Number(row.jobs_completed), category: row.category ?? null, verificationStatus: row.verification_status,
   isVerified: row.is_verified === true, createdAt: row.created_at, updatedAt: row.updated_at,
   ...(row.distance_km === null || row.distance_km === undefined ? {} : { distanceKm: Number(row.distance_km) }),
 });
@@ -52,7 +52,7 @@ export class PostgresDirectoryRepository implements DirectoryRepository {
 
       if (query.q) {
         const index = add(query.q.replace(/[\\%_]/g, '\\$&'));
-        clauses.push(`(b.name ILIKE '%' || $${index} || '%' ESCAPE '\\\\'
+        clauses.push(`(b.name ILIKE '%' || $${index} || '%' ESCAPE E'\\\\'
           OR b.slug ILIKE '%' || $${index} || '%' ESCAPE '\\\\'
           OR COALESCE(b.description, '') ILIKE '%' || $${index} || '%' ESCAPE '\\\\'
           OR COALESCE(b.city, '') ILIKE '%' || $${index} || '%' ESCAPE '\\\\')`);
@@ -103,8 +103,9 @@ export class PostgresDirectoryRepository implements DirectoryRepository {
       if (query.sort === 'distance' && distanceExpression) orderBy = `${distanceExpression} ASC, b.id ASC`;
 
       const selectDistance = distanceExpression ? `, ${distanceExpression} AS distance_km` : '';
+      const categoryProjection = `, (SELECT bc.slug FROM ghm.business_category_assignment bca JOIN ghm.business_category bc ON bc.id = bca.category_id WHERE bca.business_id = b.id AND bca.is_primary = true AND bc.is_active = true LIMIT 1) AS category`;
       const result = await client.query<DirectoryRow>(
-        `SELECT ${DIRECTORY_COLUMNS}${selectDistance}
+        `SELECT ${DIRECTORY_COLUMNS}${selectDistance}${categoryProjection}
          FROM ghm.business b ${where}
          ORDER BY ${orderBy}
          LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
