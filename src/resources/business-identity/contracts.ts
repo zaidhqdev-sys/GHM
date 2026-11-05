@@ -25,6 +25,13 @@ export interface BusinessIdentity {
   readonly description: string | null;
   readonly phone: string | null;
   readonly email: string | null;
+  readonly province: string | null;
+  readonly city: string | null;
+  readonly physicalAddress: string | null;
+  readonly latitude: number | null;
+  readonly longitude: number | null;
+  readonly whatsapp: string | null;
+  readonly website: string | null;
   readonly insuranceVerified: boolean;
   readonly jobsCompleted: number;
   readonly verificationStatus: BusinessVerificationStatus;
@@ -73,6 +80,13 @@ export interface UpdateBusinessProfileInput {
   readonly description?: string | null;
   readonly phone?: string | null;
   readonly email?: string | null;
+  readonly province?: string | null;
+  readonly city?: string | null;
+  readonly physicalAddress?: string | null;
+  readonly latitude?: number | null;
+  readonly longitude?: number | null;
+  readonly whatsapp?: string | null;
+  readonly website?: string | null;
 }
 
 export interface BusinessIdentityRepository {
