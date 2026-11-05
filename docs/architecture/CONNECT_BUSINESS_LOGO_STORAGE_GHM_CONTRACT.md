@@ -1,6 +1,6 @@
 # Connect Business Logo Storage → GHM Contract
 
-**Status:** Contract proposal only — storage provider, canonical asset schema, and data migration are not yet qualified.
+**Status:** Canonical GHM binding/API implementation in progress on draft GHM PR #215. The S3-compatible Cloudflare R2 provider path passed provider-level qualification on 2026-10-26, but the complete Business-logo HTTP lifecycle, byte-level image validation, public rendering and cleanup recovery are not yet qualified.
 
 ## Purpose
 
@@ -14,7 +14,7 @@ The GHM-backed Connect profile editor now fails closed and disables upload/remov
 
 - GHM owns the canonical numeric Business ID and must authorize each upload/delete using an active owner/administrator membership and `business.manage` capability for that exact Business.
 - The client must not choose an arbitrary Business ID, object path, or public logo URL and expect the backend to bind it.
-- Store an opaque canonical `logo_ref`/asset key against `ghm.business`; derive the public URL from trusted server configuration. Never accept a caller-supplied `logo_url` as an authoritative write.
+- Store the canonical `storage_object.id` in `ghm.business.logo_storage_object_id`; never accept a caller-supplied `logo_url` or provider key as an authoritative write. The object is tenant/resource checked before binding.
 - Keep logo assets distinct from private verification/registration documents. A public logo must not imply that any other file in the same storage provider is public.
 - A legacy Supabase UUID path must not be rewritten as a numeric path by string substitution. Any existing-logo copy requires a separately verified canonical Business mapping and an idempotent data-migration plan.
 
@@ -88,3 +88,20 @@ Candidate route: `DELETE /api/v1/businesses/:businessId/logo`.
 - Browser-held storage credentials or arbitrary caller-supplied public URLs.
 - Reusing the public-logo store for private registration or verification documents.
 - Re-enabling legacy Supabase logo upload/remove in the GHM numeric-ID profile editor.
+
+## Current implementation checkpoint — draft GHM PR #215
+
+- Migration `20261106090000_business_logo_storage_binding.sql` adds `ghm.business.logo_storage_object_id`, a unique canonical reference to `ghm.storage_object`.
+- `ghm.set_business_logo_object(account_id, business_id, storage_object_id)` re-checks active owner/administrator membership and verifies tenant Business ID, resource identity, `business_logo` class, public visibility and available status before binding. It returns the previous object ID so the API can clean up after replacement.
+- `ghm.storage_get_public_business_logo(business_id)` returns only the provider key for an available public logo belonging to an active, verified and approved Business.
+- HTTP routes are being added for authenticated PUT/DELETE logo binding and anonymous public logo redirect through a short-lived provider download grant. Replacement/clear binds or clears the canonical reference before deleting the previous object; cleanup failures return HTTP 202 with a retry object ID.
+- Business Identity, public Business profile and public Directory projections now return the GHM public logo route when a canonical logo object is bound.
+- These changes are construction-only on branch `feat/ghm-business-logo-binding-20261106`; no persistent database has been migrated and no provider bucket or credential has been changed.
+
+## Remaining hard gate before Connect enables upload controls
+
+- The current generic storage upload-grant flow validates declared content type and byte size, then verifies provider HEAD metadata. It does **not** inspect uploaded image bytes or dimensions server-side.
+- The legacy browser helper's MIME/size/dimension checks are not an authoritative security boundary. Before enabling upload, add server-side signature/decoder validation for JPEG/PNG/WebP, enforce the 2048-pixel longest-edge rule, and prove malformed/spoofed files are rejected.
+- Qualify complete upload → complete → bind → public redirect/render → replace → clear → cleanup retry using an explicitly approved non-production storage target. The provider-level R2 qualification alone is insufficient.
+- Until those tests pass, Connect must keep logo upload/removal disabled and must not call the legacy UUID-based Supabase logo service with numeric GHM Business IDs.
+
