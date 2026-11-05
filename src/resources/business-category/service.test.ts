@@ -27,6 +27,7 @@ const assignment = {
 };
 
 class FakeRepository implements BusinessCategoryRepository {
+  async listPublicBusinessCategories(): Promise<typeof category[]> { return [category]; }
   async listBusinessCategories(): Promise<typeof category[]> { return [category]; }
   async getBusinessCategory(): Promise<typeof category | null> { return category; }
   async listBusinessCategoryAssignments(): Promise<typeof assignment[]> { return [assignment]; }
