@@ -54,7 +54,7 @@ RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, ghm AS $directory
 BEGIN
   RAISE EXCEPTION 'Directory review events are append-only';
 END;
-$;
+$directory_review$;
 ALTER FUNCTION ghm.prevent_directory_review_event_mutation() OWNER TO ghm_schema_owner;
 CREATE TRIGGER business_directory_review_event_immutable
   BEFORE UPDATE OR DELETE ON ghm.business_directory_review_event
