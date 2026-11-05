@@ -29,6 +29,31 @@ const normalizeCategory = (value: unknown): string | undefined => {
   return normalized;
 };
 
+const normalizeLocation = (value: unknown, field: string): string | undefined => {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string') throw new Error(`${field} must be a string`);
+  const normalized = value.trim();
+  return normalized || undefined;
+};
+
+const normalizeCoordinate = (value: unknown, field: string, min: number, max: number): number | undefined => {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) throw new Error(`${field} must be a valid coordinate`);
+  return value;
+};
+
+const normalizeRadius = (value: unknown): number | undefined => {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 500) throw new Error('radiusKm must be between 0 and 500');
+  return value;
+};
+
+const normalizeSort = (value: unknown): DirectoryQuery['sort'] => {
+  if (value === undefined) return 'rating';
+  if (value !== 'rating' && value !== 'newest' && value !== 'distance') throw new Error('sort must be rating, newest, or distance');
+  return value;
+};
+
 const normalizePage = (value: unknown): number => {
   if (value === undefined) return DEFAULT_PAGE;
   return requirePositiveInteger(value, 'page');
@@ -50,10 +75,19 @@ export class DirectoryServiceImpl implements DirectoryService {
     const normalized: DirectoryQuery = {
       q: normalizeQuery(query.q),
       category: normalizeCategory(query.category),
+      province: normalizeLocation(query.province, 'province'),
+      city: normalizeLocation(query.city, 'city'),
+      latitude: normalizeCoordinate(query.latitude, 'latitude', -90, 90),
+      longitude: normalizeCoordinate(query.longitude, 'longitude', -180, 180),
+      radiusKm: normalizeRadius(query.radiusKm),
+      sort: normalizeSort(query.sort),
       page: normalizePage(query.page),
       pageSize: normalizePageSize(query.pageSize),
     };
 
+    if ((normalized.latitude === undefined) !== (normalized.longitude === undefined)) throw new Error('latitude and longitude must be supplied together');
+    if (normalized.radiusKm !== undefined && normalized.latitude === undefined) throw new Error('radiusKm requires latitude and longitude');
+    if (normalized.sort === 'distance' && normalized.latitude === undefined) throw new Error('distance sort requires latitude and longitude');
     return this.repository.search(normalized);
   }
 }
