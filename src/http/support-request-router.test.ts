@@ -589,19 +589,19 @@ test('message reply rejects arbitrary fields and invalid ids', async () => {
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
-test('business role cannot read or list customer Support Requests or messages', async () => {
+test('business role can access support routes through account-scoped service context', async () => {
+  const calls: string[] = [];
   const { server, baseUrl } = await startServer(service({
-    getSupportRequest: async () => { throw new Error('must not be called'); },
-    listSupportRequests: async () => { throw new Error('must not be called'); },
-    getMessages: async () => { throw new Error('must not be called'); },
+    getSupportRequest: async (context) => { calls.push(`read:${context.userId}`); return requestFixture(); },
+    listSupportRequests: async (context) => { calls.push(`list:${context.userId}`); return [requestFixture()]; },
+    getMessages: async (context) => { calls.push(`messages:${context.userId}`); return [messageFixture()]; },
   }));
   try {
     const headers = { authorization: `Bearer ${tokenFor({ userId: 8, role: 'business' })}` };
     const read = await fetch(`${baseUrl}/api/v1/support-requests/10`, { headers });
     const list = await fetch(`${baseUrl}/api/v1/support-requests`, { headers });
     const messages = await fetch(`${baseUrl}/api/v1/support-requests/10/messages`, { headers });
-    assert.equal(read.status, 403);
-    assert.equal(list.status, 403);
-    assert.equal(messages.status, 403);
+    assert.equal(read.status, 200); assert.equal(list.status, 200); assert.equal(messages.status, 200);
+    assert.deepEqual(calls, ['read:8', 'list:8', 'messages:8']);
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
