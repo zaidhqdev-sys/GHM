@@ -1,3 +1,4 @@
+import { pool } from '../../db/pool.js';
 import type { PoolClient } from 'pg';
 import type { AuthContext } from '../../auth/authorization.js';
 import { withAuthorizedTransaction, withTenantTransaction } from '../../db/authorized-transaction.js';
