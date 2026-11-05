@@ -100,8 +100,8 @@ Candidate route: `DELETE /api/v1/businesses/:businessId/logo`.
 
 ## Remaining hard gate before Connect enables upload controls
 
-- The current generic storage upload-grant flow validates declared content type and byte size, then verifies provider HEAD metadata. It does **not** inspect uploaded image bytes or dimensions server-side.
-- The legacy browser helper's MIME/size/dimension checks are not an authoritative security boundary. Before enabling upload, add server-side signature/decoder validation for JPEG/PNG/WebP, enforce the 2048-pixel longest-edge rule, and prove malformed/spoofed files are rejected.
+- Storage completion now downloads the bounded object bytes through the provider, verifies the actual JPEG/PNG/WebP signature against the declared content type, checks the file structure/header and reads pixel dimensions, and enforces the 2 MB and 2048-pixel longest-edge limits before marking metadata available. This is header/structure validation, not a full image decoder or re-encoder; the public route serves only fixed image MIME types with nosniff protection.
+- The legacy browser helper's MIME/size/dimension checks are not an authoritative security boundary. Server-side signature/header and dimension validation is now implemented and covered by tests. A full decoder/re-encoder remains a possible hardening step, but is not a substitute for the required deployed lifecycle qualification.
 - Qualify complete upload → complete → bind → public redirect/render → replace → clear → cleanup retry using an explicitly approved non-production storage target. The provider-level R2 qualification alone is insufficient.
-- Until those tests pass, Connect must keep logo upload/removal disabled and must not call the legacy UUID-based Supabase logo service with numeric GHM Business IDs.
+- Until the complete upload → complete → bind → public redirect/render → replace → clear → cleanup-retry journey passes against an explicitly approved non-production bucket, Connect must keep logo upload/removal disabled and must not call the legacy UUID-based Supabase logo service with numeric GHM Business IDs.
 
