@@ -89,6 +89,17 @@ export class PostgresBusinessCapabilityRepository implements BusinessCapabilityR
     }, this.transactionPool);
   }
 
+  async replaceBusinessCapabilities(context: AuthContext, businessId: number, assertions: readonly import('./contracts').ReplaceBusinessCapabilityAssertionInput[]): Promise<BusinessCapability[]> {
+    const id = requirePositiveId(businessId, 'businessId');
+    return withAuthorizedTransaction(context, async client => {
+      const result = await client.query(
+        'SELECT * FROM ghm.replace_business_capability_assertions($1,$2,$3::jsonb)',
+        [id, context.userId, JSON.stringify(assertions)],
+      );
+      return result.rows.map(mapBusinessCapability);
+    }, this.transactionPool);
+  }
+
   async getBusinessCapability(context: AuthContext, businessCapabilityId: BusinessCapabilityId): Promise<BusinessCapability | null> {
     const id = requirePositiveId(businessCapabilityId, 'businessCapabilityId');
     return withAuthorizedTransaction(context, async client => {

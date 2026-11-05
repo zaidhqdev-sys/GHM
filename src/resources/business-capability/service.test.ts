@@ -6,6 +6,7 @@ import type {
   BusinessCapabilityRepository,
   CreateBusinessCapabilityInput,
   TransitionBusinessCapabilityVerificationInput,
+  ReplaceBusinessCapabilityAssertionInput,
 } from './contracts';
 import { BusinessCapabilityServiceImpl } from './service';
 
@@ -23,11 +24,16 @@ class FakeRepository implements BusinessCapabilityRepository {
   receivedContext: AuthContext | null = null;
   receivedCreate: CreateBusinessCapabilityInput | null = null;
   receivedTransition: TransitionBusinessCapabilityVerificationInput | null = null;
+  receivedReplace: { businessId: number; assertions: readonly ReplaceBusinessCapabilityAssertionInput[] } | null = null;
   rows = new Map<number, BusinessCapability>();
 
   async createBusinessCapability(context: AuthContext, input: CreateBusinessCapabilityInput): Promise<BusinessCapability> {
     this.receivedContext = context; this.receivedCreate = input;
     const created = capability(1, input.businessId, input.capabilityId); this.rows.set(created.id, created); return created;
+  }
+  async replaceBusinessCapabilities(context: AuthContext, businessId: number, assertions: readonly ReplaceBusinessCapabilityAssertionInput[]): Promise<BusinessCapability[]> {
+    this.receivedContext = context; this.receivedReplace = { businessId, assertions };
+    return [];
   }
   async getBusinessCapability(context: AuthContext, id: number): Promise<BusinessCapability | null> {
     this.receivedContext = context; return this.rows.get(id) ?? null;
@@ -99,4 +105,17 @@ test('Business Capability creation rejects unauthenticated or invalid contexts',
   await assert.rejects(() => service.createBusinessCapability({ userId: 0, role: 'business' }, validInput), /Authentication required/);
   await assert.rejects(() => service.createBusinessCapability({ userId: 10, role: 'invalid' as never }, validInput), /Authentication required/);
   assert.equal(repository.receivedCreate, null);
+});
+
+test('Business Capability replacement validates role, bounds and unique canonical catalogue IDs', async () => {
+  const repository = new FakeRepository(); const service = new BusinessCapabilityServiceImpl(repository);
+  const assertions: ReplaceBusinessCapabilityAssertionInput[] = [
+    { capabilityId: '11111111-1111-4111-8111-111111111111', proficiencyLevel: 'advanced', description: 'Electrical work' },
+  ];
+  await service.replaceBusinessCapabilities(context, 12, assertions);
+  assert.deepEqual(repository.receivedReplace, { businessId: 12, assertions });
+  await assert.rejects(() => service.replaceBusinessCapabilities({ userId: 12, role: 'customer' }, 12, assertions), /Business account required/);
+  await assert.rejects(() => service.replaceBusinessCapabilities(context, 0, assertions), /businessId must be a positive integer/);
+  await assert.rejects(() => service.replaceBusinessCapabilities(context, 12, [...assertions, ...assertions]), /Duplicate Business Capability assertions/);
+  await assert.rejects(() => service.replaceBusinessCapabilities(context, 12, Array.from({ length: 51 }, (_, i) => ({ capabilityId: `11111111-1111-4111-8111-${String(i).padStart(12,'0')}` }))), /at most 50/);
 });

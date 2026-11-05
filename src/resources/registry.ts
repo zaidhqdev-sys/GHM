@@ -30,6 +30,7 @@ export const resourceRegistry: readonly ResourceDefinition[] = [
   { resource: 'business', operations: ['read', 'readPublic', 'create', 'update'] },
   { resource: 'directory', operations: ['read'] },
   { resource: 'business_capability', operations: ['read', 'readPublic', 'create', 'transition'] },
+  { resource: 'business_capability_evidence', operations: ['read', 'create', 'readPending', 'transition'] },
   { resource: 'business_category', operations: ['read', 'readPublic'] },
   { resource: 'business_category_assignment', operations: ['read', 'create', 'update'] },
   { resource: 'business_offering', operations: ['read', 'readPublic', 'create', 'update'] },
