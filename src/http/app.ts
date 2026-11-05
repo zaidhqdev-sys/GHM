@@ -49,6 +49,9 @@ import { registerOpportunityRoutes } from './opportunity-router';
 import { registerAuthRoutes, type AuthRouterDependencies } from './auth-router';
 import { registerSavedBusinessRoutes } from './saved-business-router';
 import { registerBusinessCapabilityRoutes } from './business-capability-router';
+import { PgCapabilityRepository } from '../resources/capability/repository';
+import { CapabilityServiceImpl } from '../resources/capability/service';
+import { registerCapabilityCatalogueRoutes } from './capability-catalogue-router';
 import { PostgresBusinessCapabilityEvidenceRepository } from '../resources/business-capability-evidence/repository';
 import { BusinessCapabilityEvidenceServiceImpl } from '../resources/business-capability-evidence/service';
 import type { BusinessCapabilityEvidenceService } from '../resources/business-capability-evidence/contracts';
@@ -676,6 +679,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerOpportunityRoutes(app, opportunityService, resourceAuthMiddleware);
   registerSavedBusinessRoutes(app, savedBusinessService, resourceAuthMiddleware);
   registerBusinessCapabilityRoutes(app, businessCapabilityService, resourceAuthMiddleware);
+  registerCapabilityCatalogueRoutes(app, new CapabilityServiceImpl(new PgCapabilityRepository()), resourceAuthMiddleware);
   registerBusinessCapabilityEvidenceRoutes(app, businessCapabilityEvidenceService, resourceAuthMiddleware);
   registerTrustScoreRoutes(app, trustScoreService, resourceAuthMiddleware);
   registerSupportRequestRoutes(app, supportRequestService, resourceAuthMiddleware);
