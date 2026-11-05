@@ -91,7 +91,7 @@ const buildProfilePatch = (input: UpdateBusinessProfileInput): Record<string, un
       if (!normalized) { patch[key === 'physicalAddress' ? 'physical_address' : key] = null; continue; }
       if (normalized.length > limits[key]) throw new Error(`${key} exceeds its maximum length`);
       if (key === 'whatsapp' && normalized.length < 7) throw new Error('whatsapp must be between 7 and 32 characters');
-      if (key === 'website' && !/^https?:\\/\\/[^\\s]+$/i.test(normalized)) throw new Error('website must be a valid HTTP(S) URL');
+      if (key === 'website' && !/^https?:\/\/[^\s]+$/i.test(normalized)) throw new Error('website must be a valid HTTP(S) URL');
       patch[key === 'physicalAddress' ? 'physical_address' : key] = normalized;
       continue;
     }
