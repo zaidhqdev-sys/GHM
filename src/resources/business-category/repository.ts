@@ -61,6 +61,21 @@ const getSelectableCategory = async (client: PoolClient, categoryId: string): Pr
 export class PostgresBusinessCategoryRepository implements BusinessCategoryRepository {
   constructor(private readonly transactionPool?: TransactionPool) {}
 
+  async listPublicBusinessCategories(): Promise<BusinessCategory[]> {
+    const client = await (this.transactionPool ?? pool).connect();
+    try {
+      const result = await client.query(
+        `SELECT ${CATEGORY_COLUMNS}
+         FROM ghm.business_category
+         WHERE is_active = true
+         ORDER BY sort_order, name, id`,
+      );
+      return result.rows.map(mapCategory);
+    } finally {
+      client.release();
+    }
+  }
+
   async listBusinessCategories(context: AuthContext, filter: ListBusinessCategoriesFilter = {}): Promise<BusinessCategory[]> {
     return withAuthorizedTransaction(context, async client => {
       const result = await client.query(
