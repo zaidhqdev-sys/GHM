@@ -56,3 +56,19 @@ test("public logo HTTP access redirects through a short-lived provider grant", (
   assert.match(storageRouter, /Math\.min\(300, downloadGrantMaxTtlSeconds\)/);
   assert.match(storageRouter, /res\.redirect\(302, grant\.url\)/);
 });
+
+
+test("storage completion inspects image bytes and enforces signature and pixel limits", () => {
+  const storageService = fs.readFileSync("src/storage/service.ts", "utf8");
+  const providerContract = fs.readFileSync("src/storage/provider.ts", "utf8");
+  const s3Provider = fs.readFileSync("src/storage/s3-provider.ts", "utf8");
+  const imageValidator = fs.readFileSync("src/storage/business-logo-image.ts", "utf8");
+  assert.match(providerContract, /getObject\(key: string\): Promise<Uint8Array>/);
+  assert.match(s3Provider, /async getObject\(key: string\)/);
+  assert.match(storageService, /validateBusinessLogoBytes\(bytes, record\.contentType\)/);
+  assert.match(imageValidator, /image\/jpeg/);
+  assert.match(imageValidator, /image\/png/);
+  assert.match(imageValidator, /image\/webp/);
+  assert.match(imageValidator, /MAX_BYTES = 2 \* 1024 \* 1024/);
+  assert.match(imageValidator, /MAX_EDGE = 2048/);
+});
