@@ -3,6 +3,7 @@ import type {
   ApplicationIdentity,
   BusinessIdentity,
   BusinessIdentityRepository,
+  ManagedBusinessContext,
   CreateBusinessInput,
   ResolveIdentityInput,
   UpdateBusinessProfileInput,
@@ -30,6 +31,18 @@ export class BusinessIdentityServiceImpl {
     if (!business) throw new Error('Selected business not found');
     if (!business.isActive) throw new Error('Selected business is inactive');
     return { account, memberships, activeMembership: membership, activeBusiness: business };
+  }
+
+  async listManagedBusinesses(context: AuthContext): Promise<readonly ManagedBusinessContext[]> {
+    const memberships = await this.repository.getMembershipsForAccount(context);
+    const contexts = await Promise.all(memberships
+      .filter(membership => membership.status === 'active')
+      .map(async membership => {
+        const business = await this.repository.getBusinessById(context, membership.businessId);
+        if (!business || !business.isActive) return null;
+        return { membership, business };
+      }));
+    return contexts.filter((value): value is ManagedBusinessContext => value !== null);
   }
 
   async getOwnProfile(context: AuthContext): Promise<AccountIdentity> { return this.repository.getAccount(context); }
