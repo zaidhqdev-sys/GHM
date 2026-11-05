@@ -9,7 +9,7 @@ import { resolveTenantContext } from '../../auth/tenant-resolver';
 import type { TransactionPool } from '../../db/transaction';
 
 const ACCOUNT_SELECT = `SELECT id, full_name, phone, avatar_ref, role, created_at, updated_at FROM ghm.account_identity WHERE id = $1`;
-const BUSINESS_COLUMNS = `id, name, slug, description, phone, email, province, city, physical_address, latitude, longitude, whatsapp, website, avatar_letter, avatar_color, years_in_business, insurance_verified, jobs_completed, verification_status, is_active, created_at, updated_at`;
+const BUSINESS_COLUMNS = `id, name, slug, description, phone, email, province, city, physical_address, latitude, longitude, whatsapp, website, avatar_letter, avatar_color, years_in_business, logo_storage_object_id, insurance_verified, jobs_completed, verification_status, is_active, created_at, updated_at`;
 const BUSINESS_SELECT = `SELECT ${BUSINESS_COLUMNS} FROM ghm.business WHERE id = $1`;
 const BUSINESS_BY_SLUG_SELECT = `SELECT ${BUSINESS_COLUMNS} FROM ghm.business WHERE slug = $1`;
 const MEMBERSHIPS_SELECT = `SELECT id, business_id, account_id, membership_role, membership_status, created_by, created_at, updated_at FROM ghm.business_membership WHERE account_id = $1 AND membership_status = 'active' ORDER BY created_at, id`;
@@ -34,6 +34,7 @@ const mapBusiness = (row: any): BusinessIdentity => ({
   avatarLetter: row.avatar_letter ?? null,
   avatarColor: row.avatar_color ?? null,
   yearsInBusiness: row.years_in_business === null || row.years_in_business === undefined ? null : Number(row.years_in_business),
+  logoUrl: row.logo_storage_object_id === null || row.logo_storage_object_id === undefined ? null : `/api/v1/public/businesses/${Number(row.id)}/logo`,
   insuranceVerified: row.insurance_verified === true,
   jobsCompleted: Number(row.jobs_completed ?? 0),
   verificationStatus: row.verification_status,
