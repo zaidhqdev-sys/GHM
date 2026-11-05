@@ -19,7 +19,6 @@ export type ResourceOperation =
   | 'delete'
   | 'calculate'
   | 'accept'
-  | 'submit';
 
 export interface ResourceDefinition {
   readonly resource: Resource;
