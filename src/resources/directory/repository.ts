@@ -72,7 +72,7 @@ export class PostgresDirectoryRepository implements DirectoryRepository {
       }
       if (query.city) {
         const index = add(query.city);
-        clauses.push(`b.city ILIKE '%' || $${index} || '%'`);
+        clauses.push(`strpos(lower(COALESCE(b.city, '')), lower(${index})) > 0`);
       }
 
       let distanceExpression: string | null = null;
