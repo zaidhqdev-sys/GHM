@@ -155,7 +155,7 @@ export const registerSupportRequestRoutes = (
   app.get(
     '/api/v1/support-requests/:requestId',
     authMiddleware,
-    requireSupportAccess('read', ['customer', 'admin']),
+    requireSupportAccess('read', ['customer', 'business', 'admin']),
     async (req: Request, res: Response) => {
       try {
         const value = routeParam(req.params.requestId);
