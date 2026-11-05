@@ -11,6 +11,7 @@ export interface Review {
   readonly businessId: BusinessId;
   readonly reviewerId: AccountId;
   readonly reviewerName: string;
+  readonly businessName?: string | null;
   readonly rating: number;
   readonly title: string;
   readonly body: string;
