@@ -127,20 +127,18 @@ test('customer can create a support request with canonical fields only', async (
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
-test('business and admin cannot use customer create route', async () => {
-  for (const role of ['business', 'admin'] as const) {
-    const { server, baseUrl } = await startServer(service({
-      createSupportRequest: async () => { throw new Error('must not be called'); },
-    }));
-    try {
-      const response = await fetch(`${baseUrl}/api/v1/support-requests`, {
-        method: 'POST',
-        headers: { authorization: `Bearer ${tokenFor({ userId: 42, role })}`, 'content-type': 'application/json' },
-        body: JSON.stringify({ category: 'technical', subject: 'Login issue', description: 'Unable to complete login.' }),
-      });
-      assert.equal(response.status, 403);
-    } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
-  }
+test('admin cannot use customer support create route', async () => {
+  const { server, baseUrl } = await startServer(service({
+    createSupportRequest: async () => { throw new Error('must not be called'); },
+  }));
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/support-requests`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${tokenFor({ userId: 9, role: 'admin' })}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ category: 'technical', subject: 'Login issue', description: 'Unable to complete login.' }),
+    });
+    assert.equal(response.status, 403);
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
 test('support request create rejects server-owned fields', async () => {
@@ -246,18 +244,21 @@ test('message reply dispatches to exact customer or admin operation', async () =
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
-test('business cannot reply to support request messages', async () => {
+test('Business account can create and reply through its authenticated support context', async () => {
+  let createdContext: AuthContext | undefined;
+  let replyContext: AuthContext | undefined;
   const { server, baseUrl } = await startServer(service({
-    replyAsCustomer: async () => { throw new Error('must not be called'); },
-    replyAsAdmin: async () => { throw new Error('must not be called'); },
+    createSupportRequest: async (context) => { createdContext = context; return requestFixture(); },
+    replyAsCustomer: async (context) => { replyContext = context; return messageFixture(); },
   }));
   try {
-    const response = await fetch(`${baseUrl}/api/v1/support-requests/10/messages`, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${tokenFor({ userId: 8, role: 'business' })}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ body: 'Reply' }),
-    });
-    assert.equal(response.status, 403);
+    const headers = { authorization: `Bearer ${tokenFor({ userId: 8, role: 'business' })}`, 'content-type': 'application/json' };
+    const created = await fetch(`${baseUrl}/api/v1/support-requests`, { method: 'POST', headers, body: JSON.stringify({ category: 'business', subject: 'Business support', description: 'Please help with this business workspace issue.', businessId: 77 }) });
+    assert.equal(created.status, 201);
+    const replied = await fetch(`${baseUrl}/api/v1/support-requests/10/messages`, { method: 'POST', headers, body: JSON.stringify({ body: 'Business account reply' }) });
+    assert.equal(replied.status, 201);
+    assert.deepEqual(createdContext, { userId: 8, role: 'business' });
+    assert.deepEqual(replyContext, { userId: 8, role: 'business' });
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
@@ -283,19 +284,19 @@ test('message reply rejects arbitrary fields and invalid ids', async () => {
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
-test('business role cannot read or list customer Support Requests or messages', async () => {
+test('business role can access support routes through account-scoped service context', async () => {
+  const calls: string[] = [];
   const { server, baseUrl } = await startServer(service({
-    getSupportRequest: async () => { throw new Error('must not be called'); },
-    listSupportRequests: async () => { throw new Error('must not be called'); },
-    getMessages: async () => { throw new Error('must not be called'); },
+    getSupportRequest: async (context) => { calls.push(`read:${context.userId}`); return requestFixture(); },
+    listSupportRequests: async (context) => { calls.push(`list:${context.userId}`); return [requestFixture()]; },
+    getMessages: async (context) => { calls.push(`messages:${context.userId}`); return [messageFixture()]; },
   }));
   try {
     const headers = { authorization: `Bearer ${tokenFor({ userId: 8, role: 'business' })}` };
     const read = await fetch(`${baseUrl}/api/v1/support-requests/10`, { headers });
     const list = await fetch(`${baseUrl}/api/v1/support-requests`, { headers });
     const messages = await fetch(`${baseUrl}/api/v1/support-requests/10/messages`, { headers });
-    assert.equal(read.status, 403);
-    assert.equal(list.status, 403);
-    assert.equal(messages.status, 403);
+    assert.equal(read.status, 200); assert.equal(list.status, 200); assert.equal(messages.status, 200);
+    assert.deepEqual(calls, ['read:8', 'list:8', 'messages:8']);
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });

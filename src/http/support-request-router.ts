@@ -135,7 +135,7 @@ export const registerSupportRequestRoutes = (
   app.get(
     '/api/v1/support-requests',
     authMiddleware,
-    requireSupportAccess('read', ['customer', 'admin']),
+    requireSupportAccess('read', ['customer', 'business', 'admin']),
     async (req: Request, res: Response) => {
       try {
         const context = req.authContext as AuthContext;
@@ -155,7 +155,7 @@ export const registerSupportRequestRoutes = (
   app.get(
     '/api/v1/support-requests/:requestId',
     authMiddleware,
-    requireSupportAccess('read', ['customer', 'admin']),
+    requireSupportAccess('read', ['customer', 'business', 'admin']),
     async (req: Request, res: Response) => {
       try {
         const value = routeParam(req.params.requestId);
@@ -182,7 +182,7 @@ export const registerSupportRequestRoutes = (
   app.post(
     '/api/v1/support-requests',
     authMiddleware,
-    requireSupportAccess('create', ['customer']),
+    requireSupportAccess('create', ['customer', 'business']),
     async (req: Request, res: Response) => {
       try {
         const input = parseCreateInput(req.body);
@@ -226,7 +226,7 @@ export const registerSupportRequestRoutes = (
   app.get(
     '/api/v1/support-requests/:requestId/messages',
     authMiddleware,
-    requireSupportAccess('readMessages', ['customer', 'admin']),
+    requireSupportAccess('readMessages', ['customer', 'business', 'admin']),
     async (req: Request, res: Response) => {
       try {
         const value = routeParam(req.params.requestId);
@@ -249,7 +249,7 @@ export const registerSupportRequestRoutes = (
     (req: Request, res: Response, next: () => void) => {
       const context = req.authContext as AuthContext | undefined;
       const operation = context?.role === 'admin' ? 'replyAsAdmin' : 'replyAsCustomer';
-      requireSupportAccess(operation, ['admin', 'customer'])(req, res, next);
+      requireSupportAccess(operation, ['admin', 'customer', 'business'])(req, res, next);
     },
     async (req: Request, res: Response) => {
       try {

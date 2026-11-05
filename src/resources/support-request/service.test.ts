@@ -38,9 +38,13 @@ test('Support Request service allows customer creation and normalizes text', asy
   assert.equal(received.description, 'Unable to complete login from the workspace.');
 });
 
-test('Support Request service rejects non-customer creation', async () => {
-  const service = new SupportRequestServiceImpl(repository());
-  await assert.rejects(service.createSupportRequest(business, { category: 'technical', subject: 'Login issue', description: 'Unable to complete login from the workspace.' }), /Insufficient role/);
+test('Support Request service allows Business account creation without weakening account context', async () => {
+  let receivedContext: AuthContext | undefined;
+  const service = new SupportRequestServiceImpl(repository({
+    createSupportRequest: async (context) => { receivedContext = context; return request; },
+  }));
+  await service.createSupportRequest(business, { category: 'technical', subject: 'Business workspace issue', description: 'Unable to complete a business workspace task.' });
+  assert.deepEqual(receivedContext, business);
 });
 
 test('Support Request service rejects invalid subject and description lengths', async () => {
@@ -69,6 +73,7 @@ test('Support Request service separates customer and admin reply authority', asy
     replyAsAdmin: async () => { adminCalled = true; return { ...message, senderKind: 'admin' }; },
   }));
   await service.replyAsCustomer(customer, 1, '  Customer reply  ');
+  await service.replyAsCustomer(business, 1, '  Business reply  ');
   await service.replyAsAdmin(admin, 1, '  Admin reply  ');
   assert.equal(customerCalled, true);
   assert.equal(adminCalled, true);
