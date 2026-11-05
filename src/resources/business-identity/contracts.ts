@@ -34,7 +34,7 @@ export interface BusinessIdentity {
   readonly website?: string | null;
   readonly avatarLetter?: string | null;
   readonly avatarColor?: string | null;
-  readonly yearsInBusiness?: number;
+  readonly yearsInBusiness?: number | null;
   readonly insuranceVerified: boolean;
   readonly jobsCompleted: number;
   readonly verificationStatus: BusinessVerificationStatus;
