@@ -21,6 +21,14 @@ const requireAccess = (operation: 'read' | 'create' | 'transition') =>
 const statusValues: readonly DirectoryReviewStatus[] = ['under_review','information_requested','rejected','approved','unverified'];
 
 export const registerDirectoryReviewRoutes = (app: Express, service: DirectoryReviewService, auth: RequestHandler = requireAuth): void => {
+  app.get('/api/v1/admin/directory-reviews/authority', auth, requireAccess('read'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const isFounderReviewer = await service.isFounderReviewer(context);
+      res.status(200).json({ isFounderReviewer });
+    } catch (error) { handleError(error, res); }
+  });
+
   app.post('/api/v1/businesses/:businessId/directory-review', auth, requireAccess('create'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
