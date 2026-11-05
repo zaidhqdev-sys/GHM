@@ -49,6 +49,17 @@ CREATE INDEX business_directory_review_event_business_idx
 CREATE INDEX business_directory_review_event_queue_idx
   ON ghm.business_directory_review_event (event_type, created_at, id);
 
+CREATE OR REPLACE FUNCTION ghm.prevent_directory_review_event_mutation()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, ghm AS $
+BEGIN
+  RAISE EXCEPTION 'Directory review events are append-only';
+END;
+$;
+ALTER FUNCTION ghm.prevent_directory_review_event_mutation() OWNER TO ghm_schema_owner;
+CREATE TRIGGER business_directory_review_event_immutable
+  BEFORE UPDATE OR DELETE ON ghm.business_directory_review_event
+  FOR EACH ROW EXECUTE FUNCTION ghm.prevent_directory_review_event_mutation();
+
 CREATE OR REPLACE FUNCTION ghm.is_directory_listing_founder_reviewer(p_account_id bigint)
 RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER
@@ -70,7 +81,8 @@ AS $$
 DECLARE
   v_business ghm.business%ROWTYPE;
   v_event text;
-  v_owner_count integer;
+  v_prior_status text;
+  v_reviewer_id bigint;
 BEGIN
   IF p_account_id IS NULL OR p_account_id <= 0 OR p_business_id IS NULL OR p_business_id <= 0 THEN
     RAISE EXCEPTION 'Directory review request is invalid';
@@ -92,26 +104,25 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM ghm.directory_listing_founder_reviewer) THEN
     RAISE EXCEPTION 'Founder directory reviewer authority is not configured';
   END IF;
-  IF v_business.verification_status = 'under_review' THEN
+  v_prior_status := v_business.verification_status;
+  IF v_prior_status = 'under_review' THEN
     RETURN QUERY SELECT v_business.id, v_business.verification_status, v_business.is_verified,
       v_business.directory_review_submitted_at, v_business.directory_review_last_reason, v_business.directory_review_last_event_type;
     RETURN;
   END IF;
-  IF v_business.verification_status NOT IN ('unverified','rejected','information_requested') THEN
-    RAISE EXCEPTION 'Business cannot be submitted for directory review from status %', v_business.verification_status;
+  IF v_prior_status NOT IN ('unverified','rejected','information_requested') THEN
+    RAISE EXCEPTION 'Business cannot be submitted for directory review from status %', v_prior_status;
   END IF;
-  v_event := CASE WHEN v_business.verification_status IN ('rejected','information_requested') THEN 'resubmitted' ELSE 'submitted' END;
+  v_event := CASE WHEN v_prior_status IN ('rejected','information_requested') THEN 'resubmitted' ELSE 'submitted' END;
   UPDATE ghm.business SET verification_status='under_review', is_verified=false,
     directory_review_submitted_at=clock_timestamp(), directory_review_last_reason=NULL,
     directory_review_last_event_type=v_event, updated_at=clock_timestamp()
     WHERE id=p_business_id RETURNING * INTO v_business;
   INSERT INTO ghm.business_directory_review_event (business_id,actor_account_id,event_type,from_status,to_status,metadata)
-    VALUES (p_business_id,p_account_id,v_event,
-      CASE WHEN v_event='submitted' THEN 'unverified' ELSE (SELECT verification_status FROM ghm.business WHERE id=p_business_id) END,
-      'under_review',jsonb_build_object('version',1));
-  FOR v_owner_count IN SELECT r.account_id FROM ghm.directory_listing_founder_reviewer r LOOP
+    VALUES (p_business_id,p_account_id,v_event,v_prior_status,'under_review',jsonb_build_object('version',1));
+  FOR v_reviewer_id IN SELECT r.account_id FROM ghm.directory_listing_founder_reviewer r LOOP
     INSERT INTO ghm.notification (user_id,type,title,body,metadata)
-      VALUES (v_owner_count,'verification',
+      VALUES (v_reviewer_id,'verification',
         CASE WHEN v_event='resubmitted' THEN 'Directory listing resubmitted' ELSE 'Directory listing awaiting review' END,
         v_business.name || CASE WHEN v_event='resubmitted' THEN ' was resubmitted for directory review.' ELSE ' is awaiting directory review.' END,
         jsonb_build_object('businessId',p_business_id,'event',v_event,'verificationStatus','under_review'));
@@ -234,7 +245,7 @@ BEGIN
   IF p_account_id IS NULL OR p_business_id IS NULL OR p_business_id <= 0 OR NOT EXISTS (
     SELECT 1 FROM ghm.business_membership bm JOIN ghm.business b ON b.id=bm.business_id
     WHERE bm.business_id=p_business_id AND bm.account_id=p_account_id AND bm.membership_status='active'
-      AND bm.membership_role IN ('owner','administrator') AND b.is_active=true
+      AND bm.membership_role IN ('owner','administrator')
   ) THEN
     RAISE EXCEPTION 'Business management permission required';
   END IF;
