@@ -4,6 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 const migration = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261105230000_create_founder_directory_review.sql'), 'utf8');
+// Static assertions protect the private Founder authority and publication boundary.
 const businessIdentity = fs.readFileSync(path.resolve(process.cwd(), 'src/resources/business-identity/public-repository.ts'), 'utf8');
 
 test('Founder allowlist is explicit, private and deliberately has no default reviewer', () => {
