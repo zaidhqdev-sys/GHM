@@ -1,5 +1,6 @@
 import type { AuthContext } from '../../auth/authorization';
 import { withAuthorizedTransaction, withTenantTransaction } from '../../db/authorized-transaction';
+import { resolveTenantContext } from '../../auth/tenant-resolver';
 import { pool } from '../../db/pool';
 import type { TransactionPool } from '../../db/transaction';
 import type { BusinessCapabilityEvidence, BusinessCapabilityEvidenceRepository, CreateBusinessCapabilityEvidenceInput, EvidenceDecision } from './contracts';
@@ -33,18 +34,20 @@ export class PostgresBusinessCapabilityEvidenceRepository implements BusinessCap
       );
       if (assertion.rowCount !== 1) throw new Error('Active Business Capability assertion not found');
       const businessId = Number(assertion.rows[0].business_id);
-      return withTenantTransaction(context, businessId, async tenantClient => {
-        const result = await tenantClient.query(
-          `INSERT INTO ghm.business_capability_evidence
-           (business_capability_id,evidence_type,title,description,issuer_name,reference_number,evidence_url,issued_on,expires_on,visibility,submitted_by)
-           VALUES ($1,$2,$3,NULLIF(btrim($4),''),NULLIF(btrim($5),''),NULLIF(btrim($6),''),NULLIF(btrim($7),''),$8,$9,$10,$11)
-           RETURNING id`,
-          [input.businessCapabilityId,input.evidenceType,input.title.trim(),input.description ?? null,input.issuerName ?? null,
-           input.referenceNumber ?? null,input.evidenceUrl ?? null,input.issuedOn ?? null,input.expiresOn ?? null,input.visibility ?? 'private',context.userId],
-        );
-        const selected = await tenantClient.query(`SELECT ${COLUMNS} ${JOIN} WHERE e.id = $1`, [result.rows[0].id]);
-        return mapEvidence(selected.rows[0]);
-      }, this.transactionPool);
+      const tenant = await resolveTenantContext(client, context, businessId);
+      if (tenant.membershipRole !== 'owner' && tenant.membershipRole !== 'administrator') {
+        throw new Error('Business management permission required');
+      }
+      const result = await client.query(
+        `INSERT INTO ghm.business_capability_evidence
+         (business_capability_id,evidence_type,title,description,issuer_name,reference_number,evidence_url,issued_on,expires_on,visibility,submitted_by)
+         VALUES ($1,$2,$3,NULLIF(btrim($4),''),NULLIF(btrim($5),''),NULLIF(btrim($6),''),NULLIF(btrim($7),''),$8,$9,$10,$11)
+         RETURNING id`,
+        [input.businessCapabilityId,input.evidenceType,input.title.trim(),input.description ?? null,input.issuerName ?? null,
+         input.referenceNumber ?? null,input.evidenceUrl ?? null,input.issuedOn ?? null,input.expiresOn ?? null,input.visibility ?? 'private',context.userId],
+      );
+      const selected = await client.query(`SELECT ${COLUMNS} ${JOIN} WHERE e.id = $1`, [result.rows[0].id]);
+      return mapEvidence(selected.rows[0]);
     }, this.transactionPool);
   }
 
