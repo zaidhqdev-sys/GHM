@@ -38,6 +38,7 @@ const mapReview = (row: any): Review => ({
   businessId: Number(row.business_id),
   reviewerId: Number(row.reviewer_id),
   reviewerName: row.reviewer_name,
+  ...(Object.hasOwn(row, 'business_name') ? { businessName: row.business_name ?? null } : {}),
   rating: Number(row.rating),
   title: row.title,
   body: row.body,
@@ -253,10 +254,13 @@ export class PostgresReviewRepository implements ReviewRepository {
       context,
       async client => {
         const result = await client.query(
-          `SELECT ${REVIEW_COLUMNS}
-           FROM ghm.review
-           WHERE moderation_status = 'pending'
-           ORDER BY created_at ASC, id ASC
+          `SELECT r.id, r.business_id, r.reviewer_id, r.reviewer_name, r.rating, r.title, r.body,
+                  r.moderation_status, r.moderation_reason, r.moderated_by, r.moderated_at,
+                  r.created_at, r.updated_at, b.name AS business_name
+           FROM ghm.review r
+           JOIN ghm.business b ON b.id = r.business_id
+           WHERE r.moderation_status = 'pending'
+           ORDER BY r.created_at ASC, r.id ASC
            LIMIT $1`,
           [safeLimit],
         );
