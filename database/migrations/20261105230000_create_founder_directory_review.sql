@@ -140,6 +140,7 @@ CREATE OR REPLACE FUNCTION ghm.list_businesses_for_directory_review(
 )
 RETURNS TABLE (
   id bigint, name text, slug text, description text, phone text, email text,
+  category text, province text, city text, physical_address text, whatsapp text, website text,
   verification_status text, is_verified boolean, is_active boolean,
   directory_review_submitted_at timestamptz, directory_review_last_reason text,
   directory_review_last_event_type text, owner_account_id bigint, owner_full_name text,
@@ -159,8 +160,10 @@ BEGIN
     RAISE EXCEPTION 'Directory review status filter is invalid';
   END IF;
   RETURN QUERY
-    SELECT b.id,b.name,b.slug,b.description,b.phone,b.email,b.verification_status,b.is_verified,b.is_active,
-      b.directory_review_submitted_at,b.directory_review_last_reason,b.directory_review_last_event_type,
+    SELECT b.id,b.name,b.slug,b.description,b.phone,b.email,
+      to_jsonb(b)->>'category',to_jsonb(b)->>'province',to_jsonb(b)->>'city',
+      to_jsonb(b)->>'physical_address',to_jsonb(b)->>'whatsapp',to_jsonb(b)->>'website',
+      b.verification_status,b.is_verified,b.is_active,b.directory_review_submitted_at,b.directory_review_last_reason,b.directory_review_last_event_type,
       owner_membership.account_id,owner_account.full_name,ri.registration_status,ri.registration_number,ri.legal_name,b.created_at
     FROM ghm.business b
     LEFT JOIN LATERAL (
