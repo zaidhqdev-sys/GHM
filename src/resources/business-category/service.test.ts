@@ -27,12 +27,18 @@ const assignment = {
 };
 
 class FakeRepository implements BusinessCategoryRepository {
+  async listPublicBusinessCategories(): Promise<typeof category[]> { return [category]; }
   async listBusinessCategories(): Promise<typeof category[]> { return [category]; }
   async getBusinessCategory(): Promise<typeof category | null> { return category; }
   async listBusinessCategoryAssignments(): Promise<typeof assignment[]> { return [assignment]; }
   async assignBusinessCategory(): Promise<typeof assignment> { return assignment; }
   async setPrimaryBusinessCategory(): Promise<typeof assignment> { return { ...assignment, isPrimary: true }; }
 }
+
+test('public category discovery returns active canonical taxonomy without user context', async () => {
+  const service = new BusinessCategoryServiceImpl(new FakeRepository());
+  assert.equal((await service.listPublicBusinessCategories())[0].slug, 'construction');
+});
 
 test('category service validates authentication and identifiers', async () => {
   const service = new BusinessCategoryServiceImpl(new FakeRepository());

@@ -25,6 +25,16 @@ export interface BusinessIdentity {
   readonly description: string | null;
   readonly phone: string | null;
   readonly email: string | null;
+  readonly province?: string | null;
+  readonly city?: string | null;
+  readonly physicalAddress?: string | null;
+  readonly latitude?: number | null;
+  readonly longitude?: number | null;
+  readonly whatsapp?: string | null;
+  readonly website?: string | null;
+  readonly avatarLetter?: string | null;
+  readonly avatarColor?: string | null;
+  readonly yearsInBusiness?: number | null;
   readonly insuranceVerified: boolean;
   readonly jobsCompleted: number;
   readonly verificationStatus: BusinessVerificationStatus;
@@ -78,6 +88,16 @@ export interface UpdateBusinessProfileInput {
   readonly description?: string | null;
   readonly phone?: string | null;
   readonly email?: string | null;
+  readonly province?: string | null;
+  readonly city?: string | null;
+  readonly physicalAddress?: string | null;
+  readonly latitude?: number | null;
+  readonly longitude?: number | null;
+  readonly whatsapp?: string | null;
+  readonly website?: string | null;
+  readonly avatarLetter?: string | null;
+  readonly avatarColor?: string | null;
+  readonly yearsInBusiness?: number;
 }
 
 export interface BusinessIdentityRepository {
@@ -121,6 +141,16 @@ export const BUSINESS_PROFILE_OWNER_FIELDS = Object.freeze([
   'description',
   'phone',
   'email',
+  'province',
+  'city',
+  'physicalAddress',
+  'latitude',
+  'longitude',
+  'whatsapp',
+  'website',
+  'avatarLetter',
+  'avatarColor',
+  'yearsInBusiness',
 ] as const);
 
 export const BUSINESS_PROFILE_PROTECTED_FIELDS = Object.freeze([

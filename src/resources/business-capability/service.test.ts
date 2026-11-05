@@ -19,6 +19,7 @@ const capability = (id: number, businessId: number, capabilityId = '11111111-111
 });
 
 class FakeRepository implements BusinessCapabilityRepository {
+  async listPublicBusinessCapabilities() { return []; }
   receivedContext: AuthContext | null = null;
   receivedCreate: CreateBusinessCapabilityInput | null = null;
   receivedTransition: TransitionBusinessCapabilityVerificationInput | null = null;

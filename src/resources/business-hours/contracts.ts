@@ -29,6 +29,7 @@ export interface ReplaceBusinessHoursInput {
 }
 
 export interface BusinessHoursRepository {
+  listPublicBusinessHours(businessId: BusinessId): Promise<BusinessHours[]>;
   getBusinessHours(context: AuthContext, businessId: BusinessId): Promise<BusinessHours[]>;
   getPublicBusinessHours(context: AuthContext, businessId: BusinessId): Promise<BusinessHours[]>;
   replaceBusinessHours(context: AuthContext, input: ReplaceBusinessHoursInput): Promise<BusinessHours[]>;

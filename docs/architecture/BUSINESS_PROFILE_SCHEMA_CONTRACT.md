@@ -85,3 +85,10 @@ SECURITY DEFINER, owned by `ghm_schema_owner`, EXECUTE to `ghm_runtime`.
 - Public HTTP product endpoint
 - Production/cutover/adapter/shadow
 - Reopening Trust or Saved Business
+
+
+## Approved additive public directory fields — 2026-11-05
+
+The earlier explicitly-not-added list remains authoritative except for the following separately authorized construction-only additions: `province`, `city`, `physical_address`, `latitude`, `longitude`, `whatsapp`, `website`. These are canonical owner-managed fields on `ghm.business`; coordinates are paired and range-checked. Public projection remains gated by active + verified + approved visibility. No owner IDs, provider IDs, private registration identity, verification evidence, moderation state, media URLs, supplier/tier/featured or analytics fields are introduced by this amendment.
+
+Construction migration: `20261105190000_extend_business_directory_location_contact.sql`. Not applied to any database.

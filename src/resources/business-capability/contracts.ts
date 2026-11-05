@@ -31,6 +31,17 @@ export interface BusinessCapability {
   readonly updatedAt: Date;
 }
 
+export interface PublicBusinessCapability {
+  readonly id: number;
+  readonly capabilityId: string;
+  readonly name: string;
+  readonly slug: string;
+  readonly proficiencyLevel: BusinessCapabilityProficiency | null;
+  readonly description: string | null;
+  readonly effectiveFrom: Date;
+  readonly effectiveUntil: Date | null;
+}
+
 export interface CreateBusinessCapabilityInput {
   readonly businessId: BusinessId;
   readonly capabilityId: CapabilityId;
@@ -49,6 +60,7 @@ export interface TransitionBusinessCapabilityVerificationInput {
 }
 
 export interface BusinessCapabilityRepository {
+  listPublicBusinessCapabilities(businessId: BusinessId): Promise<PublicBusinessCapability[]>;
   createBusinessCapability(context: AuthContext, input: CreateBusinessCapabilityInput): Promise<BusinessCapability>;
   getBusinessCapability(context: AuthContext, businessCapabilityId: BusinessCapabilityId): Promise<BusinessCapability | null>;
   listBusinessCapabilities(context: AuthContext, businessId: BusinessId): Promise<BusinessCapability[]>;
@@ -59,6 +71,7 @@ export interface BusinessCapabilityService extends BusinessCapabilityRepository 
 
 export const BUSINESS_CAPABILITY_OPERATIONS = Object.freeze({
   read: 'business_capability.read',
+  readPublic: 'business_capability.readPublic',
   create: 'business_capability.create',
   transition: 'business_capability.transition',
 });

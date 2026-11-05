@@ -26,7 +26,7 @@ test('directory service applies default pagination and normalizes blank query', 
   });
 
   const result = await service.search({ q: '   ', page: 1, pageSize: 20 });
-  assert.deepEqual(received, { q: undefined, category: undefined, page: 1, pageSize: 20 });
+  assert.deepEqual(received, { q: undefined, category: undefined, province: undefined, city: undefined, latitude: undefined, longitude: undefined, radiusKm: undefined, sort: 'rating', page: 1, pageSize: 20 });
   assert.equal(result.total, 0);
 });
 
@@ -65,4 +65,22 @@ test('directory service rejects non-string query values', async () => {
     () => service.search({ q: 123 as unknown as string, page: 1, pageSize: 20 }),
     /q must be a string/,
   );
+});
+
+
+test('directory service validates paired coordinates and radius requirements', async () => {
+  let called = false;
+  const service = new DirectoryServiceImpl({ search: async query => { called = true; return { items: [], page: query.page, pageSize: query.pageSize, total: 0 }; } });
+  await assert.rejects(() => service.search({ latitude: -29.85, page: 1, pageSize: 20 }), /latitude and longitude must be supplied together/);
+  await assert.rejects(() => service.search({ radiusKm: 10, page: 1, pageSize: 20 }), /radiusKm requires latitude and longitude/);
+  await assert.rejects(() => service.search({ sort: 'distance', page: 1, pageSize: 20 }), /distance sort requires latitude and longitude/);
+  await assert.rejects(() => service.search({ latitude: -29.85, longitude: 31.02, radiusKm: 501, page: 1, pageSize: 20 }), /radiusKm must be between 0 and 500/);
+  assert.equal(called, false);
+});
+
+test('directory service normalizes supported location and ordering filters', async () => {
+  let received: unknown;
+  const service = new DirectoryServiceImpl({ search: async query => { received = query; return { items: [], page: query.page, pageSize: query.pageSize, total: 0 }; } });
+  await service.search({ province: ' KwaZulu-Natal ', city: ' Durban ', latitude: -29.85, longitude: 31.02, radiusKm: 25, sort: 'distance', page: 1, pageSize: 20 });
+  assert.deepEqual(received, { q: undefined, category: undefined, province: 'KwaZulu-Natal', city: 'Durban', latitude: -29.85, longitude: 31.02, radiusKm: 25, sort: 'distance', page: 1, pageSize: 20 });
 });
