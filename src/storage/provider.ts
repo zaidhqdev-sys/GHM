@@ -33,6 +33,8 @@ export interface StorageProvider {
     contentType: string;
   }): Promise<void>;
 
+  getObject(key: string): Promise<Uint8Array>;
+
   headObject(key: string): Promise<StorageProviderObject>;
 
   deleteObject(key: string): Promise<void>;
