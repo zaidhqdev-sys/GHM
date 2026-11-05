@@ -53,7 +53,7 @@ export class SupportRequestServiceImpl implements SupportRequestService {
   }
 
   async replyAsCustomer(context: AuthContext, requestId: SupportRequestId, body: string): Promise<SupportRequestMessage> {
-    assertRole(context, 'customer');
+    assertRole(context, 'customer', 'business');
     return this.repository.replyAsCustomer(context, assertPositiveId(requestId, 'requestId'), assertText(body, 'body', 1, 4000));
   }
 
