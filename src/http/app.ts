@@ -659,7 +659,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
           res.status(400).json({ error: 'invalid_request' });
           return;
         }
-        const updated = await businessHoursService.replaceBusinessHours(context, { businessId, hours });
+        const validHours = hours.filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+        const updated = await businessHoursService.replaceBusinessHours(context, { businessId, hours: validHours });
         res.status(200).json({ hours: updated });
       } catch (error) {
         if (error instanceof Error && (
