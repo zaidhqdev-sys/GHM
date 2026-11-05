@@ -8,6 +8,7 @@ on:
   pull_request:
     branches:
       - main
+      - feat/ghm-capability-evidence-admin-20261105
 
 permissions:
   contents: read
