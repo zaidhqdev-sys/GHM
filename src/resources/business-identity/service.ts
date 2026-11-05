@@ -3,6 +3,7 @@ import type {
   ApplicationIdentity,
   BusinessIdentity,
   BusinessIdentityRepository,
+  ManagedBusinessContext,
   CreateBusinessInput,
   ResolveIdentityInput,
   UpdateBusinessProfileInput,
@@ -32,6 +33,18 @@ export class BusinessIdentityServiceImpl {
     return { account, memberships, activeMembership: membership, activeBusiness: business };
   }
 
+  async listManagedBusinesses(context: AuthContext): Promise<readonly ManagedBusinessContext[]> {
+    const memberships = await this.repository.getMembershipsForAccount(context);
+    const contexts = await Promise.all(memberships
+      .filter(membership => membership.status === 'active')
+      .map(async membership => {
+        const business = await this.repository.getBusinessById(context, membership.businessId);
+        if (!business || !business.isActive) return null;
+        return { membership, business };
+      }));
+    return contexts.filter((value): value is ManagedBusinessContext => value !== null);
+  }
+
   async getOwnProfile(context: AuthContext): Promise<AccountIdentity> { return this.repository.getAccount(context); }
   async updateOwnProfile(context: AuthContext, input: UpdateProfileInput): Promise<AccountIdentity> { return this.repository.updateAccount(context, input); }
 
@@ -55,8 +68,8 @@ export class BusinessIdentityServiceImpl {
 
   async getManagedBusiness(context: AuthContext, businessId: number): Promise<BusinessIdentity | null> {
     const memberships = await this.repository.getMembershipsForAccount(context);
-    const membership = memberships.find(c => c.businessId === businessId && c.status === 'active' && (c.role === 'owner' || c.role === 'administrator'));
-    if (!membership) throw new Error('Business management permission required');
+    const membership = memberships.find(c => c.businessId === businessId && c.status === 'active');
+    if (!membership) throw new Error('Business membership required');
     return this.repository.getBusinessById(context, businessId);
   }
 
