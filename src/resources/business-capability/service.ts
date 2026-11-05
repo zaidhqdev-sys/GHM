@@ -57,6 +57,24 @@ export class BusinessCapabilityServiceImpl implements BusinessCapabilityService 
     return this.repository.createBusinessCapability(context, validateCreate(context, input));
   }
 
+  async replaceBusinessCapabilities(context: AuthContext, businessId: number, assertions: readonly import('./contracts').ReplaceBusinessCapabilityAssertionInput[]) {
+    requireAuthenticatedContext(context);
+    requirePositiveId(businessId, 'businessId');
+    if (context.role !== 'business') throw new Error('Business account required');
+    if (!Array.isArray(assertions) || assertions.length > 50) throw new Error('Assertions must be an array of at most 50 items');
+    const seen = new Set<string>();
+    for (const item of assertions) {
+      if (!item || typeof item !== 'object' || typeof item.capabilityId !== 'string' || !UUID_RE.test(item.capabilityId)) throw new Error('Capability ID must be a valid UUID');
+      if (seen.has(item.capabilityId)) throw new Error('Duplicate Business Capability assertions are not allowed');
+      seen.add(item.capabilityId);
+      if (item.proficiencyLevel != null && !PROFICIENCY.has(item.proficiencyLevel)) throw new Error('Invalid proficiency level');
+      if (item.description != null && (typeof item.description !== 'string' || item.description.trim().length < 1 || item.description.trim().length > 1000)) throw new Error('Description must contain between 1 and 1000 characters');
+      if (item.sourceReference != null && (typeof item.sourceReference !== 'string' || item.sourceReference.trim().length < 1 || item.sourceReference.trim().length > 500)) throw new Error('Source reference must contain between 1 and 500 characters');
+      if (item.effectiveUntil != null && (typeof item.effectiveUntil !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}(?:T.*)?$/.test(item.effectiveUntil) || Number.isNaN(Date.parse(item.effectiveUntil)))) throw new Error('Invalid effective-until date');
+    }
+    return this.repository.replaceBusinessCapabilities(context, businessId, assertions);
+  }
+
   async getBusinessCapability(context: AuthContext, businessCapabilityId: BusinessCapabilityId): Promise<BusinessCapability | null> {
     requireAuthenticatedContext(context);
     requirePositiveId(businessCapabilityId, 'businessCapabilityId');
