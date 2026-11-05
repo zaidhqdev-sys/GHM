@@ -17,6 +17,9 @@ const u16be = (bytes: Uint8Array, offset: number): number =>
 const u24le = (bytes: Uint8Array, offset: number): number =>
   bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16);
 
+const u32be = (bytes: Uint8Array, offset: number): number =>
+  (((bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3]) >>> 0);
+
 const u32le = (bytes: Uint8Array, offset: number): number =>
   (bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0;
 
@@ -25,11 +28,11 @@ function dimensionsPng(bytes: Uint8Array): [number, number] {
   if (bytes.length < 33 || !signature.every((value, index) => bytes[index] === value)) {
     throw new Error("Business logo is not a valid PNG signature");
   }
-  if (u32le(bytes, 8) !== 13 || !ascii(bytes, 12, "IHDR")) throw new Error("Business logo PNG header is invalid");
+  if (u32be(bytes, 8) !== 13 || !ascii(bytes, 12, "IHDR")) throw new Error("Business logo PNG header is invalid");
   if (u32le(bytes, bytes.length - 12) !== 0 || !ascii(bytes, bytes.length - 8, "IEND")) {
     throw new Error("Business logo PNG is incomplete");
   }
-  return [u32le(bytes, 16), u32le(bytes, 20)];
+  return [u32be(bytes, 16), u32be(bytes, 20)];
 }
 
 function dimensionsJpeg(bytes: Uint8Array): [number, number] {
