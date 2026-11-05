@@ -1,8 +1,14 @@
 import type { Express, Request, Response, RequestHandler } from 'express';
-import type { AuthContext } from '../auth/authorization';
+import { canAccessResource, type AuthContext } from '../auth/authorization';
+import { isRegisteredOperation } from '../resources/registry';
 import { requireAuth } from '../auth/http';
 import type { BusinessCapabilityEvidenceService, CreateBusinessCapabilityEvidenceInput, EvidenceDecision, EvidenceType, EvidenceVisibility } from '../resources/business-capability-evidence/contracts';
 
+const requireEvidenceAccess = (operation: 'read' | 'create' | 'readPending' | 'transition') => (req: Request,res: Response,next: () => void) => {
+  const context = req.authContext as AuthContext | undefined;
+  if (!context || !isRegisteredOperation('business_capability_evidence',operation) || !canAccessResource(context,'business_capability_evidence')) { res.status(403).json({error:'forbidden'}); return; }
+  next();
+};
 const idParam = (value: string | string[]) => typeof value === 'string' && /^[1-9]\d*$/.test(value) && Number.isSafeInteger(Number(value)) ? Number(value) : null;
 const parseCreate = (body: unknown): CreateBusinessCapabilityEvidenceInput | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
@@ -27,7 +33,7 @@ const fail = (error: unknown, res: Response) => {
 export const registerBusinessCapabilityEvidenceRoutes = (
   app: Express, service: BusinessCapabilityEvidenceService, authMiddleware: RequestHandler = requireAuth,
 ) => {
-  app.post('/api/v1/business-capability-evidence', authMiddleware, async (req: Request,res: Response) => {
+  app.post('/api/v1/business-capability-evidence', authMiddleware, requireEvidenceAccess('create'), async (req: Request,res: Response) => {
     try {
       const input = parseCreate(req.body);
       if (!input) { res.status(400).json({error:'invalid_request'}); return; }
@@ -39,16 +45,18 @@ export const registerBusinessCapabilityEvidenceRoutes = (
     try {
       const context = req.authContext as AuthContext;
       if (context.role === 'admin') {
+        if (!isRegisteredOperation('business_capability_evidence','readPending') || !canAccessResource(context,'business_capability_evidence')) { res.status(403).json({error:'forbidden'}); return; }
         const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : 100;
         res.status(200).json({evidence: await service.listForVerification(context,limit)});
         return;
       }
+      if (!isRegisteredOperation('business_capability_evidence','read') || !canAccessResource(context,'business_capability_evidence')) { res.status(403).json({error:'forbidden'}); return; }
       const businessId = typeof req.query.businessId === 'string' ? idParam(req.query.businessId) : null;
       if (businessId === null) { res.status(400).json({error:'invalid_request'}); return; }
       res.status(200).json({evidence: await service.listForBusiness(context,businessId)});
     } catch(error) { fail(error,res); }
   });
-  app.patch('/api/v1/business-capability-evidence/:evidenceId/review', authMiddleware, async (req: Request,res: Response) => {
+  app.patch('/api/v1/business-capability-evidence/:evidenceId/review', authMiddleware, requireEvidenceAccess('transition'), async (req: Request,res: Response) => {
     try {
       const evidenceId = idParam(req.params.evidenceId);
       if (evidenceId === null || !req.body || typeof req.body !== 'object' || Array.isArray(req.body)) { res.status(400).json({error:'invalid_request'}); return; }
