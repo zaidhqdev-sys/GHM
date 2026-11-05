@@ -201,3 +201,10 @@ This contract does not authorize:
 - payment/realtime changes
 - migration of existing Connect Business records
 - modification of existing qualified Business Identity semantics
+
+
+## Approved additive extension — 2026-11-05
+
+The earlier no-schema-invention boundary remains in force except for this explicitly approved construction amendment: GHM may add canonical owner-managed location/contact columns to `ghm.business` (`province`, `city`, `physical_address`, `latitude`, `longitude`, `whatsapp`, `website`). The additive public projection may expose these fields only for active, verified, approved Businesses. No provider UUID, owner identity, membership, registration number, or moderation fields are exposed.
+
+Directory now has an explicit additive contract for province/city/geo filtering and public category discovery. Supplier, tier, featured, media, legal/registration and analytics fields remain deferred. This is construction only; no production migration, backfill, shadow routing or Connect cutover is authorized.
