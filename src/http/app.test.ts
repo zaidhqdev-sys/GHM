@@ -10,6 +10,8 @@ import { AccountIdentity, BusinessIdentityService } from '../resources/business-
 import { PublicBusiness, PublicBusinessService } from '../resources/business-identity/public-contracts';
 import { DirectoryResult, DirectoryService } from '../resources/directory/contracts';
 import type { BusinessCategoryService } from '../resources/business-category/contracts';
+import type { BusinessHoursService } from '../resources/business-hours/contracts';
+import type { BusinessCapabilityService } from '../resources/business-capability/contracts';
 
 const profile = (context: AuthContext): AccountIdentity => ({
   id: context.userId,
@@ -912,5 +914,37 @@ test('public business category discovery allows anonymous access and returns onl
     assert.equal(called, true);
     const body = await response.json() as { categories: Array<{ slug: string }> };
     assert.equal(body.categories[0].slug, 'electrical');
+  } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+});
+
+
+test('public business profile auxiliary endpoints expose only GHM public resources without authentication', async () => {
+  const businessHoursService = {
+    listPublicBusinessHours: async (businessId: number) => {
+      assert.equal(businessId, 77);
+      return [{ id: 1, businessId, dayOfWeek: 1, isClosed: false, openTime: '08:00', closeTime: '17:00', createdBy: null, createdAt: new Date('2026-10-01T00:00:00.000Z'), updatedAt: new Date('2026-10-01T00:00:00.000Z') }];
+    },
+  } as unknown as BusinessHoursService;
+  const businessCapabilityService = {
+    listPublicBusinessCapabilities: async (businessId: number) => {
+      assert.equal(businessId, 77);
+      return [{ id: 5, capabilityId: '550e8400-e29b-41d4-a716-446655440000', name: 'Electrical', slug: 'electrical', proficiencyLevel: 'advanced', description: null, effectiveFrom: new Date('2026-10-01T00:00:00.000Z'), effectiveUntil: null }];
+    },
+  } as unknown as BusinessCapabilityService;
+  const server = http.createServer(createApp({ businessHoursService, businessCapabilityService }));
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  try {
+    const hours = await fetch(`${baseUrl}/api/v1/public/businesses/77/hours`);
+    assert.equal(hours.status, 200);
+    const hoursBody = await hours.json() as { hours: Array<{ dayOfWeek: number }> };
+    assert.equal(hoursBody.hours[0].dayOfWeek, 1);
+
+    const capabilities = await fetch(`${baseUrl}/api/v1/public/businesses/77/capabilities`);
+    assert.equal(capabilities.status, 200);
+    const capabilityBody = await capabilities.json() as { capabilities: Array<{ slug: string }> };
+    assert.equal(capabilityBody.capabilities[0].slug, 'electrical');
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 });
