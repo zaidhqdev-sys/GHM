@@ -15,6 +15,7 @@ export interface DirectoryQuery {
 
 export interface PublicDirectoryBusiness extends PublicBusiness {
   readonly distanceKm?: number;
+  readonly category?: string | null;
 }
 
 export interface DirectoryResult {
