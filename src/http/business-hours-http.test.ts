@@ -162,3 +162,57 @@ test('Business Hours GET for business 265 reaches service without verification g
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });
+
+test('Business Hours PUT binds authenticated context and replaces the complete schedule', async () => {
+  let received: { context: AuthContext; input: { businessId: number; hours: Array<{dayOfWeek:number;isClosed:boolean;openTime:string|null;closeTime:string|null}> } } | undefined;
+  const service = stubHoursService({
+    replaceBusinessHours: async (context, input) => {
+      received = { context, input };
+      return [hoursFixture({ dayOfWeek: 1, openTime: '09:00:00', closeTime: '16:00:00' })];
+    },
+  });
+  const { server, baseUrl } = await startServer(service);
+  try {
+    const token = tokenFor({ userId: 468, role: 'business' });
+    const response = await fetch(`${baseUrl}/api/v1/businesses/265/hours`, {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ hours: [
+        { dayOfWeek: 1, isClosed: false, openTime: '09:00', closeTime: '16:00' },
+        { dayOfWeek: 0, isClosed: true, openTime: null, closeTime: null },
+      ] }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(received, {
+      context: { userId: 468, role: 'business' },
+      input: { businessId: 265, hours: [
+        { dayOfWeek: 1, isClosed: false, openTime: '09:00', closeTime: '16:00' },
+        { dayOfWeek: 0, isClosed: true, openTime: null, closeTime: null },
+      ] },
+    });
+    const body = await response.json() as { hours: Array<{ dayOfWeek:number; openTime:string; closeTime:string }> };
+    assert.equal(body.hours.length, 1);
+    assert.equal(body.hours[0].dayOfWeek, 1);
+    assert.equal(body.hours[0].openTime, '09:00:00');
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('Business Hours PUT rejects unknown request fields before service execution', async () => {
+  let called = false;
+  const service = stubHoursService({ replaceBusinessHours: async () => { called = true; return []; } });
+  const { server, baseUrl } = await startServer(service);
+  try {
+    const token = tokenFor({ userId: 468, role: 'business' });
+    const response = await fetch(`${baseUrl}/api/v1/businesses/265/hours`, {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ hours: [], isVerified: true }),
+    });
+    assert.equal(response.status, 400);
+    assert.equal(called, false);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
