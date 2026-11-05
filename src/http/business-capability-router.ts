@@ -156,7 +156,7 @@ export const registerBusinessCapabilityRoutes = (
         if (assertions.some(item => item === null)) { res.status(400).json({ error: 'invalid_request' }); return; }
         const capabilities = await service.replaceBusinessCapabilities(
           context, body.businessId as number,
-          assertions as import('../resources/business-capability/contracts').ReplaceBusinessCapabilityAssertionInput[],
+          assertions as unknown as import('../resources/business-capability/contracts').ReplaceBusinessCapabilityAssertionInput[],
         );
         res.status(200).json({ capabilities });
       } catch (error) { handleError(error, res); }
