@@ -9,6 +9,7 @@ import { PublicProject, PublicProjectService } from '../resources/project/public
 import { AccountIdentity, BusinessIdentityService } from '../resources/business-identity/contracts';
 import { PublicBusiness, PublicBusinessService } from '../resources/business-identity/public-contracts';
 import { DirectoryResult, DirectoryService } from '../resources/directory/contracts';
+import type { BusinessCategoryService } from '../resources/business-category/contracts';
 
 const profile = (context: AuthContext): AccountIdentity => ({
   id: context.userId,
@@ -890,5 +891,26 @@ test('public directory route passes canonical location and geo filters without a
     const response = await fetch(`${baseUrl}/api/v1/public/businesses?province=KwaZulu-Natal&city=Durban&latitude=-29.85&longitude=31.02&radiusKm=25&sort=distance`);
     assert.equal(response.status, 200);
     assert.deepEqual(received, { q: undefined, category: undefined, province: 'KwaZulu-Natal', city: 'Durban', latitude: -29.85, longitude: 31.02, radiusKm: 25, sort: 'distance', page: 1, pageSize: 20 });
+  } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+});
+
+
+test('public business category discovery allows anonymous access and returns only the active taxonomy', async () => {
+  let called = false;
+  const categories = [{ id: '550e8400-e29b-41d4-a716-446655440000', parentId: null, name: 'Electrical', slug: 'electrical', description: null, isActive: true, sortOrder: 1, createdAt: new Date('2026-09-30T00:00:00.000Z'), updatedAt: new Date('2026-09-30T00:00:00.000Z') }];
+  const businessCategoryService = {
+    listPublicBusinessCategories: async () => { called = true; return categories; },
+  } as unknown as BusinessCategoryService;
+  const server = http.createServer(createApp({ businessCategoryService }));
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/public/business-categories`, { headers: { authorization: 'Bearer invalid-token' } });
+    assert.equal(response.status, 200);
+    assert.equal(called, true);
+    const body = await response.json() as { categories: Array<{ slug: string }> };
+    assert.equal(body.categories[0].slug, 'electrical');
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 });
