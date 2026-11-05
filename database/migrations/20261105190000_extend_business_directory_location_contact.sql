@@ -141,7 +141,10 @@ BEGIN
     ELSIF jsonb_typeof(p_patch->'longitude') <> 'number' THEN RAISE EXCEPTION 'Longitude must be a number or null';
     ELSE next_longitude := (p_patch->>'longitude')::double precision; IF next_longitude NOT BETWEEN -180 AND 180 THEN RAISE EXCEPTION 'Longitude is out of range'; END IF; END IF;
   END IF;
-  IF (p_patch ? 'latitude' AND next_latitude IS NULL) <> (p_patch ? 'longitude' AND next_longitude IS NULL) THEN
+  IF (p_patch ? 'latitude') <> (p_patch ? 'longitude') THEN
+    RAISE EXCEPTION 'Latitude and longitude must be supplied together';
+  END IF;
+  IF p_patch ? 'latitude' AND ((next_latitude IS NULL) <> (next_longitude IS NULL)) THEN
     RAISE EXCEPTION 'Latitude and longitude must be supplied or cleared together';
   END IF;
 
