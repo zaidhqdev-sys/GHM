@@ -6,7 +6,7 @@ import type { DirectoryReviewDecision, DirectoryReviewService, DirectoryReviewSt
 
 const routeParam = (value: string | string[]): string | null => typeof value === 'string' ? value : null;
 const positiveId = (value: string): number | null => {
-  if (!/^[1-9]\\d*$/.test(value)) return null;
+  if (!/^[1-9]\d*$/.test(value)) return null;
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 };
@@ -41,7 +41,7 @@ export const registerDirectoryReviewRoutes = (app: Express, service: DirectoryRe
       const status = statusRaw === 'all' ? null : statusValues.includes(statusRaw as DirectoryReviewStatus) ? statusRaw as DirectoryReviewStatus : undefined;
       const limitRaw = typeof req.query.limit === 'string' ? req.query.limit : '20';
       const offsetRaw = typeof req.query.offset === 'string' ? req.query.offset : '0';
-      if (status === undefined || !/^\\d+$/.test(limitRaw) || !/^\\d+$/.test(offsetRaw)) { res.status(400).json({ error: 'invalid_request' }); return; }
+      if (status === undefined || !/^\d+$/.test(limitRaw) || !/^\d+$/.test(offsetRaw)) { res.status(400).json({ error: 'invalid_request' }); return; }
       const businesses = await service.list(context, { status, limit: Number(limitRaw), offset: Number(offsetRaw) });
       res.status(200).json({ businesses });
     } catch (error) { handleError(error, res); }
