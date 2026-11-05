@@ -112,3 +112,14 @@ This contract defines a bounded GHM Business profile domain and does not by itse
 ## Approved additive directory profile fields — 2026-11-05
 
 The existing `business.updateProfile` operation is extended by a separately versioned construction migration to permit owner/administrator-managed `province`, `city`, `physicalAddress`, `latitude`, `longitude`, `whatsapp`, and `website`. Membership authorization, same-transaction tenant resolution, protected Trust fields and least-privilege runtime table grants remain unchanged. Coordinates are paired and range checked; website is restricted to HTTP(S). These fields do not grant mutation rights over category assignments, verification, Trust inputs, commercial tier, featured state, media or analytics.
+
+
+## Public profile auxiliary read extension — 2026-11-05
+
+The public profile may compose the separately owned GHM resources through explicit public-read endpoints:
+- `GET /api/v1/public/businesses/:businessId/hours` returns hours only when the Business is active, verified and approved.
+- `GET /api/v1/public/businesses/:businessId/capabilities` returns only active, verified, currently effective capability assertions for an active, verified and approved Business. It excludes verifier identity, source references, moderation reasons and other internal assertion metadata.
+- Public reviews remain on the existing `GET /api/v1/public/reviews` boundary.
+- Public category taxonomy remains on `GET /api/v1/public/business-categories`.
+
+These endpoints compose existing resource ownership; they do not duplicate hours, capabilities, reviews or categories into Business. Construction and qualification are recorded in draft GHM PR #209; CI run `42085865501` passed on disposable PostgreSQL. No persistent migration or deployment is implied.
