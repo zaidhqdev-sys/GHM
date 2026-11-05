@@ -7,6 +7,13 @@ export interface PublicBusiness {
   readonly description: string | null;
   readonly phone: string | null;
   readonly email: string | null;
+  readonly province: string | null;
+  readonly city: string | null;
+  readonly physicalAddress: string | null;
+  readonly latitude: number | null;
+  readonly longitude: number | null;
+  readonly whatsapp: string | null;
+  readonly website: string | null;
   readonly rating: number;
   readonly reviewCount: number;
   readonly jobsCompleted: number;
