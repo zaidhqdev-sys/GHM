@@ -187,8 +187,8 @@ const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | n
   for (const key of ['latitude', 'longitude']) {
     if (Object.hasOwn(input, key) && input[key] !== null && (typeof input[key] !== 'number' || !Number.isFinite(input[key]))) return null;
   }
-  if (Object.hasOwn(input, 'avatarLetter') && input.avatarLetter !== null && typeof input.avatarLetter !== 'string') return null;
-  if (Object.hasOwn(input, 'avatarColor') && input.avatarColor !== null && typeof input.avatarColor !== 'string') return null;
+  if (Object.hasOwn(input, 'avatarLetter') && input.avatarLetter !== null && (typeof input.avatarLetter !== 'string' || input.avatarLetter.trim().length > 3)) return null;
+  if (Object.hasOwn(input, 'avatarColor') && input.avatarColor !== null && (typeof input.avatarColor !== 'string' || input.avatarColor.trim().length > 32)) return null;
   if (Object.hasOwn(input, 'yearsInBusiness') && (typeof input.yearsInBusiness !== 'number' || !Number.isInteger(input.yearsInBusiness) || input.yearsInBusiness < 0 || input.yearsInBusiness > 100)) return null;
   if (Object.hasOwn(input, 'latitude') !== Object.hasOwn(input, 'longitude')) return null;
   return {
