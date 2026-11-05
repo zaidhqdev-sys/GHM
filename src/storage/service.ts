@@ -1,4 +1,5 @@
 import { createBusinessLogoProviderKey } from "./key.js";
+import { validateBusinessLogoBytes } from "./business-logo-image.js";
 import type {
   StorageDownloadGrant,
   StorageProvider,
@@ -157,6 +158,9 @@ export function createStorageService(deps: {
       if (providerObject.byteSize !== record.byteSize || providerObject.contentType !== record.contentType) {
         throw new Error("storage provider metadata mismatch");
       }
+      const bytes = await deps.provider.getObject(record.providerKey);
+      if (bytes.byteLength !== record.byteSize) throw new Error("storage provider byte content mismatch");
+      validateBusinessLogoBytes(bytes, record.contentType);
       return deps.metadata.markAvailable(record.id, providerObject.checksum);
     },
 
