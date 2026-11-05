@@ -70,3 +70,9 @@ test('resource operations remain a fixed vocabulary', () => {
     }
   }
 });
+
+test('Founder directory review resource is available to authenticated roles but authority remains separately checked', () => {
+  assert.equal(canAccessResource(contexts.admin, 'directory_review'), true);
+  assert.equal(canAccessResource(contexts.customer, 'directory_review'), true);
+  assert.equal(canAccessResource(contexts.business, 'directory_review'), true);
+});
