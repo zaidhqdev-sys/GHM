@@ -2,6 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createStorageService } from "./service.js";
 
+function pngBytes(width = 100, height = 100) {
+  const bytes = new Uint8Array(100);
+  bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+  bytes.set([0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52], 8);
+  const view = new DataView(bytes.buffer);
+  view.setUint32(16, width, false);
+  view.setUint32(20, height, false);
+  bytes.set([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 88);
+  bytes.set([0, 0, 0, 0, 0x49, 0x45, 0x4e, 0x44, 0, 0, 0, 0], 88);
+  return bytes;
+}
+
 function deps() {
   const calls: string[] = [];
   const record: any = {
@@ -22,6 +34,7 @@ function deps() {
     record,
     provider: {
       async putObject() {},
+      async getObject() { calls.push("get-object"); return pngBytes(); },
       async headObject() {
         calls.push("head");
         return { key: record.providerKey, contentType: "image/png", byteSize: 100 };
@@ -96,7 +109,29 @@ test("storage service verifies provider state before making an object available"
   const service = createStorageService(d);
   const result = await service.completeUpload({ caller: { userId: "u1", businessId: "1" }, objectId: "object-1" });
   assert.equal(result.status, "available");
-  assert.deepEqual(d.calls, ["get", "manage", "head", "available"]);
+  assert.deepEqual(d.calls, ["get", "manage", "head", "get-object", "available"]);
+});
+
+test("storage service rejects spoofed image bytes before marking the object available", async () => {
+  const d = deps();
+  d.provider.getObject = async () => { d.calls.push("get-object"); const bytes = new Uint8Array(100); bytes.set(new TextEncoder().encode("<svg onload=alert(1)>")); return bytes; };
+  const service = createStorageService(d);
+  await assert.rejects(
+    service.completeUpload({ caller: { userId: "u1", businessId: "1" }, objectId: "object-1" }),
+    /PNG signature/i,
+  );
+  assert.deepEqual(d.calls, ["get", "manage", "head", "get-object"]);
+});
+
+test("storage service rejects images whose longest edge exceeds 2048 pixels", async () => {
+  const d = deps();
+  d.provider.getObject = async () => { d.calls.push("get-object"); return pngBytes(2049, 100); };
+  const service = createStorageService(d);
+  await assert.rejects(
+    service.completeUpload({ caller: { userId: "u1", businessId: "1" }, objectId: "object-1" }),
+    /2048 pixels/i,
+  );
+  assert.deepEqual(d.calls, ["get", "manage", "head", "get-object"]);
 });
 
 test("storage service rejects provider metadata mismatch", async () => {
