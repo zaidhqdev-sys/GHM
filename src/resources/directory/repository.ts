@@ -99,6 +99,7 @@ export class PostgresDirectoryRepository implements DirectoryRepository {
       const offsetIndex = add((query.page - 1) * query.pageSize);
       let orderBy = 'b.rating DESC, b.review_count DESC, b.id ASC';
       if (query.sort === 'newest') orderBy = 'b.created_at DESC, b.id ASC';
+      if (query.sort === 'reviews') orderBy = 'b.review_count DESC, b.rating DESC, b.id ASC';
       if (query.sort === 'distance' && distanceExpression) orderBy = `${distanceExpression} ASC, b.id ASC`;
 
       const selectDistance = distanceExpression ? `, ${distanceExpression} AS distance_km` : '';
