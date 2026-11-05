@@ -95,7 +95,7 @@ export const registerStorageRoutes = (
       if (!context) { res.status(401).json({ error: "unauthorized" }); return; }
       const businessId = positiveInteger(Number(req.params.businessId));
       const objectId = positiveInteger(Number(req.body?.objectId));
-      if (businessId === null || objectId === null || !/^[1-9]\\d*$/.test(String(req.params.businessId)) || !/^[1-9]\\d*$/.test(String(req.body?.objectId ?? ""))) {
+      if (businessId === null || objectId === null || !/^[1-9]\d*$/.test(String(req.params.businessId)) || !/^[1-9]\d*$/.test(String(req.body?.objectId ?? ""))) {
         res.status(400).json({ error: "invalid_request" });
         return;
       }
@@ -123,7 +123,7 @@ export const registerStorageRoutes = (
       const context = req.authContext as AuthContext | undefined;
       if (!context) { res.status(401).json({ error: "unauthorized" }); return; }
       const businessId = positiveInteger(Number(req.params.businessId));
-      if (businessId === null || !/^[1-9]\\d*$/.test(String(req.params.businessId))) {
+      if (businessId === null || !/^[1-9]\d*$/.test(String(req.params.businessId))) {
         res.status(400).json({ error: "invalid_request" });
         return;
       }
@@ -144,7 +144,7 @@ export const registerStorageRoutes = (
   app.get("/api/v1/public/businesses/:businessId/logo", async (req: Request, res: Response) => {
     try {
       const rawBusinessId = req.params.businessId;
-      const businessId = typeof rawBusinessId === "string" && /^[1-9]\\d*$/.test(rawBusinessId) ? Number(rawBusinessId) : null;
+      const businessId = typeof rawBusinessId === "string" && /^[1-9]\d*$/.test(rawBusinessId) ? Number(rawBusinessId) : null;
       if (businessId === null || !Number.isSafeInteger(businessId)) {
         res.status(400).json({ error: "invalid_request" });
         return;
