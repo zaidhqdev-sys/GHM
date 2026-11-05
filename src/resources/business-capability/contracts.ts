@@ -48,8 +48,17 @@ export interface TransitionBusinessCapabilityVerificationInput {
   readonly reason?: string | null;
 }
 
+export interface ReplaceBusinessCapabilityAssertionInput {
+  readonly capabilityId: CapabilityId;
+  readonly proficiencyLevel?: BusinessCapabilityProficiency | null;
+  readonly description?: string | null;
+  readonly sourceReference?: string | null;
+  readonly effectiveUntil?: string | null;
+}
+
 export interface BusinessCapabilityRepository {
   createBusinessCapability(context: AuthContext, input: CreateBusinessCapabilityInput): Promise<BusinessCapability>;
+  replaceBusinessCapabilities(context: AuthContext, businessId: BusinessId, assertions: readonly ReplaceBusinessCapabilityAssertionInput[]): Promise<BusinessCapability[]>;
   getBusinessCapability(context: AuthContext, businessCapabilityId: BusinessCapabilityId): Promise<BusinessCapability | null>;
   listBusinessCapabilities(context: AuthContext, businessId: BusinessId): Promise<BusinessCapability[]>;
   transitionBusinessCapabilityVerification(context: AuthContext, input: TransitionBusinessCapabilityVerificationInput): Promise<BusinessCapability>;
