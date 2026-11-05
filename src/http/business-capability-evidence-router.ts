@@ -2,7 +2,7 @@ import type { Express, Request, Response, RequestHandler } from 'express';
 import { canAccessResource, type AuthContext } from '../auth/authorization';
 import { isRegisteredOperation } from '../resources/registry';
 import { requireAuth } from '../auth/http';
-import type { BusinessCapabilityEvidenceService, CreateBusinessCapabilityEvidenceInput, EvidenceDecision, EvidenceType, EvidenceVisibility } from '../resources/business-capability-evidence/contracts';
+import type { BusinessCapabilityEvidenceService, CreateBusinessCapabilityEvidenceInput, EvidenceDecision } from '../resources/business-capability-evidence/contracts';
 
 const requireEvidenceAccess = (operation: 'read' | 'create' | 'readPending' | 'transition') => (req: Request,res: Response,next: () => void) => {
   const context = req.authContext as AuthContext | undefined;
