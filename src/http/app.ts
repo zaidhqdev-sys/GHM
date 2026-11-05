@@ -625,6 +625,59 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
+  app.put(
+    '/api/v1/businesses/:businessId/hours',
+    resourceAuthMiddleware,
+    requireRegisteredAccess('business_hours', 'replace'),
+    async (req: Request, res: Response) => {
+      try {
+        const context = req.authContext as AuthContext;
+        const businessIdValue = routeParam(req.params.businessId);
+        const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
+        const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body)
+          ? req.body as Record<string, unknown>
+          : null;
+        if (businessId === null || !body || Object.keys(body).length !== 1 || !Array.isArray(body.hours)) {
+          res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+        const hours = body.hours.map((entry) => {
+          if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+          const row = entry as Record<string, unknown>;
+          if (Object.keys(row).some(key => !['dayOfWeek','isClosed','openTime','closeTime'].includes(key))) return null;
+          if (!Number.isInteger(row.dayOfWeek) || typeof row.isClosed !== 'boolean') return null;
+          if (row.openTime !== undefined && row.openTime !== null && typeof row.openTime !== 'string') return null;
+          if (row.closeTime !== undefined && row.closeTime !== null && typeof row.closeTime !== 'string') return null;
+          return {
+            dayOfWeek: row.dayOfWeek as number,
+            isClosed: row.isClosed as boolean,
+            openTime: (row.openTime as string | null | undefined) ?? null,
+            closeTime: (row.closeTime as string | null | undefined) ?? null,
+          };
+        });
+        if (hours.some(entry => entry === null)) {
+          res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+        const updated = await businessHoursService.replaceBusinessHours(context, { businessId, hours });
+        res.status(200).json({ hours: updated });
+      } catch (error) {
+        if (error instanceof Error && (
+          error.message.includes('Business Hours') ||
+          error.message.includes('day') ||
+          error.message.includes('times') ||
+          error.message.includes('Duplicate') ||
+          error.message.includes('close after opening') ||
+          error.message.includes('maximum of seven')
+        )) {
+          res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+        handleError(error, res);
+      }
+    },
+  );
+
   app.get(
     '/api/v1/businesses/:businessId/hours',
     resourceAuthMiddleware,
