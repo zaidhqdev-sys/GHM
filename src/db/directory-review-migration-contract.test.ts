@@ -12,11 +12,11 @@ test('Founder allowlist is explicit, private and deliberately has no default rev
   assert.ok(migration.includes('REVOKE ALL ON TABLE ghm.directory_listing_founder_reviewer FROM PUBLIC, ghm_runtime'));
   assert.doesNotMatch(migration, /INSERT INTO ghm\.directory_listing_founder_reviewer/i);
   assert.ok(migration.includes('is_directory_listing_founder_reviewer'));
- assert.match(migration,/to_jsonb\\(b\\)->>'province'/);
- assert.match(migration,/to_jsonb\\(b\\)->>'city'/);
- assert.match(migration,/to_jsonb\\(b\\)->>'physical_address'/);
- assert.match(migration,/to_jsonb\\(b\\)->>'whatsapp'/);
- assert.match(migration,/to_jsonb\\(b\\)->>'website'/);
+ assert.ok(migration.includes("to_jsonb(b)->>'province'"));
+ assert.ok(migration.includes("to_jsonb(b)->>'city'"));
+ assert.ok(migration.includes("to_jsonb(b)->>'physical_address'"));
+ assert.ok(migration.includes("to_jsonb(b)->>'whatsapp'"));
+ assert.ok(migration.includes("to_jsonb(b)->>'website'"));
 });
 
 test('Founder decisions are server-authorized and review events cannot be mutated', () => {
