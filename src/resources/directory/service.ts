@@ -50,7 +50,7 @@ const normalizeRadius = (value: unknown): number | undefined => {
 
 const normalizeSort = (value: unknown): DirectoryQuery['sort'] => {
   if (value === undefined) return 'rating';
-  if (value !== 'rating' && value !== 'newest' && value !== 'distance') throw new Error('sort must be rating, newest, or distance');
+  if (value !== 'rating' && value !== 'reviews' && value !== 'newest' && value !== 'distance') throw new Error('sort must be rating, reviews, newest, or distance');
   return value;
 };
 
