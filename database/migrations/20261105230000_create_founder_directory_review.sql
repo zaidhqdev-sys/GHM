@@ -50,7 +50,7 @@ CREATE INDEX business_directory_review_event_queue_idx
   ON ghm.business_directory_review_event (event_type, created_at, id);
 
 CREATE OR REPLACE FUNCTION ghm.prevent_directory_review_event_mutation()
-RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, ghm AS $
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, ghm AS $directory_review$
 BEGIN
   RAISE EXCEPTION 'Directory review events are append-only';
 END;
@@ -64,11 +64,11 @@ CREATE OR REPLACE FUNCTION ghm.is_directory_listing_founder_reviewer(p_account_i
 RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path = pg_catalog, ghm
-AS $$
+AS $directory_review$
   SELECT p_account_id IS NOT NULL AND EXISTS (
     SELECT 1 FROM ghm.directory_listing_founder_reviewer r WHERE r.account_id = p_account_id
   );
-$$;
+$directory_review$;
 ALTER FUNCTION ghm.is_directory_listing_founder_reviewer(bigint) OWNER TO ghm_schema_owner;
 REVOKE ALL ON FUNCTION ghm.is_directory_listing_founder_reviewer(bigint) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ghm.is_directory_listing_founder_reviewer(bigint) TO ghm_runtime;
@@ -77,7 +77,7 @@ CREATE OR REPLACE FUNCTION ghm.submit_business_directory_review(p_account_id big
 RETURNS TABLE (business_id bigint, verification_status text, is_verified boolean, directory_review_submitted_at timestamptz, directory_review_last_reason text, directory_review_last_event_type text)
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, ghm
-AS $$
+AS $directory_review$
 DECLARE
   v_business ghm.business%ROWTYPE;
   v_event text;
@@ -130,7 +130,7 @@ BEGIN
   RETURN QUERY SELECT v_business.id, v_business.verification_status, v_business.is_verified,
     v_business.directory_review_submitted_at, v_business.directory_review_last_reason, v_business.directory_review_last_event_type;
 END;
-$$;
+$directory_review$;
 ALTER FUNCTION ghm.submit_business_directory_review(bigint,bigint) OWNER TO ghm_schema_owner;
 REVOKE ALL ON FUNCTION ghm.submit_business_directory_review(bigint,bigint) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ghm.submit_business_directory_review(bigint,bigint) TO ghm_runtime;
@@ -147,7 +147,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql STABLE SECURITY DEFINER
 SET search_path = pg_catalog, ghm
-AS $$
+AS $directory_review$
 BEGIN
   IF NOT ghm.is_directory_listing_founder_reviewer(p_account_id) THEN
     RAISE EXCEPTION 'Founder directory review authority required';
@@ -175,7 +175,7 @@ BEGIN
     ORDER BY b.directory_review_submitted_at ASC NULLS LAST,b.created_at ASC,b.id ASC
     LIMIT p_limit OFFSET p_offset;
 END;
-$$;
+$directory_review$;
 ALTER FUNCTION ghm.list_businesses_for_directory_review(bigint,text,integer,integer) OWNER TO ghm_schema_owner;
 REVOKE ALL ON FUNCTION ghm.list_businesses_for_directory_review(bigint,text,integer,integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ghm.list_businesses_for_directory_review(bigint,text,integer,integer) TO ghm_runtime;
@@ -186,7 +186,7 @@ CREATE OR REPLACE FUNCTION ghm.review_business_directory_listing(
 RETURNS TABLE (business_id bigint,verification_status text,is_verified boolean,directory_review_last_reason text,directory_review_last_event_type text)
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, ghm
-AS $$
+AS $directory_review$
 DECLARE
   v_business ghm.business%ROWTYPE;
   v_reason text := NULLIF(btrim(p_reason),'');
@@ -231,7 +231,7 @@ BEGIN
   RETURN QUERY SELECT v_business.id,v_business.verification_status,v_business.is_verified,
     v_business.directory_review_last_reason,v_business.directory_review_last_event_type;
 END;
-$$;
+$directory_review$;
 ALTER FUNCTION ghm.review_business_directory_listing(bigint,bigint,text,text) OWNER TO ghm_schema_owner;
 REVOKE ALL ON FUNCTION ghm.review_business_directory_listing(bigint,bigint,text,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ghm.review_business_directory_listing(bigint,bigint,text,text) TO ghm_runtime;
@@ -240,7 +240,7 @@ CREATE OR REPLACE FUNCTION ghm.get_business_directory_review_presentation(p_acco
 RETURNS TABLE (business_id bigint,verification_status text,is_verified boolean,directory_review_submitted_at timestamptz,directory_review_last_reason text,directory_review_last_event_type text)
 LANGUAGE plpgsql STABLE SECURITY DEFINER
 SET search_path = pg_catalog, ghm
-AS $$
+AS $directory_review$
 BEGIN
   IF p_account_id IS NULL OR p_business_id IS NULL OR p_business_id <= 0 OR NOT EXISTS (
     SELECT 1 FROM ghm.business_membership bm JOIN ghm.business b ON b.id=bm.business_id
@@ -253,7 +253,7 @@ BEGIN
     b.directory_review_last_reason,b.directory_review_last_event_type
     FROM ghm.business b WHERE b.id=p_business_id;
 END;
-$$;
+$directory_review$;
 ALTER FUNCTION ghm.get_business_directory_review_presentation(bigint,bigint) OWNER TO ghm_schema_owner;
 REVOKE ALL ON FUNCTION ghm.get_business_directory_review_presentation(bigint,bigint) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ghm.get_business_directory_review_presentation(bigint,bigint) TO ghm_runtime;
