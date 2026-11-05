@@ -5,7 +5,7 @@ import type { DirectoryQuery, DirectoryRepository, DirectoryResult, PublicDirect
 const DIRECTORY_COLUMNS = `
   b.id, b.name, b.slug, b.description, b.phone, b.email,
   b.province, b.city, b.physical_address, b.latitude, b.longitude,
-  b.whatsapp, b.website, b.rating, b.review_count, b.jobs_completed,
+  b.whatsapp, b.website, b.logo_storage_object_id, b.rating, b.review_count, b.jobs_completed,
   b.verification_status, b.is_verified, b.created_at, b.updated_at
 `;
 const PUBLIC_VISIBILITY = `b.is_active = true AND b.is_verified = true AND b.verification_status = 'approved'`;
@@ -18,7 +18,7 @@ interface DirectoryRow {
   id: string | number; name: string; slug: string; description: string | null;
   phone: string | null; email: string | null; province: string | null; city: string | null;
   physical_address: string | null; latitude: string | number | null; longitude: string | number | null;
-  whatsapp: string | null; website: string | null; rating: string | number;
+  whatsapp: string | null; website: string | null; logo_storage_object_id: string | number | null; rating: string | number;
   review_count: string | number; jobs_completed: string | number;
   verification_status: PublicDirectoryBusiness['verificationStatus']; is_verified: boolean;
   created_at: Date; updated_at: Date; distance_km?: string | number | null; category?: string | null;
@@ -33,7 +33,7 @@ const mapDirectoryBusiness = (row: DirectoryRow): PublicDirectoryBusiness => ({
   city: row.city ?? null, physicalAddress: row.physical_address ?? null,
   latitude: row.latitude === null ? null : Number(row.latitude),
   longitude: row.longitude === null ? null : Number(row.longitude),
-  whatsapp: row.whatsapp ?? null, website: row.website ?? null,
+  whatsapp: row.whatsapp ?? null, website: row.website ?? null, logoUrl: row.logo_storage_object_id === null || row.logo_storage_object_id === undefined ? null : `/api/v1/public/businesses/${Number(row.id)}/logo`,
   rating: Number(row.rating), reviewCount: Number(row.review_count),
   jobsCompleted: Number(row.jobs_completed), category: row.category ?? null, verificationStatus: row.verification_status,
   isVerified: row.is_verified === true, createdAt: row.created_at, updatedAt: row.updated_at,
