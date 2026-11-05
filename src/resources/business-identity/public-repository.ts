@@ -9,6 +9,13 @@ const PUBLIC_BUSINESS_COLUMNS = `
   description,
   phone,
   email,
+  province,
+  city,
+  physical_address,
+  latitude,
+  longitude,
+  whatsapp,
+  website,
   rating,
   review_count,
   jobs_completed,
@@ -25,6 +32,13 @@ interface PublicBusinessRow {
   description: string | null;
   phone: string | null;
   email: string | null;
+  province: string | null;
+  city: string | null;
+  physical_address: string | null;
+  latitude: string | number | null;
+  longitude: string | number | null;
+  whatsapp: string | null;
+  website: string | null;
   rating: string | number;
   review_count: string | number;
   jobs_completed: string | number;
@@ -41,6 +55,13 @@ const mapPublicBusiness = (row: PublicBusinessRow): PublicBusiness => ({
   description: row.description ?? null,
   phone: row.phone ?? null,
   email: row.email ?? null,
+  province: row.province ?? null,
+  city: row.city ?? null,
+  physicalAddress: row.physical_address ?? null,
+  latitude: row.latitude === null ? null : Number(row.latitude),
+  longitude: row.longitude === null ? null : Number(row.longitude),
+  whatsapp: row.whatsapp ?? null,
+  website: row.website ?? null,
   rating: Number(row.rating),
   reviewCount: Number(row.review_count),
   jobsCompleted: Number(row.jobs_completed),

@@ -349,3 +349,27 @@ This contract does not authorize:
 - modification of existing migration history
 
 Directory v1 is the qualified construction boundary. Any extension beyond v1 requires its own explicit contract and qualification; product cutover remains separately gated.
+
+
+## Approved additive extension — 2026-11-05 (construction branch)
+
+This amendment supersedes the Directory v1 deferred status for the fields and semantics explicitly listed here only. It does not reopen provider cutover or authorize production migration.
+
+### Added canonical Business fields
+- `province`, `city`, `physical_address`
+- `latitude`, `longitude` (nullable pair, WGS84 ranges)
+- `whatsapp`, `website`
+
+These are owner/administrator-managed through the existing tenant-authorized `business.updateProfile` operation. Coordinates must be supplied/cleared together; website must be HTTP(S). They are public only through the existing approved/active public Business visibility predicate.
+
+### Directory v1 additive filters
+- exact case-insensitive `province`
+- case-insensitive substring `city`
+- optional `latitude` + `longitude` and `radiusKm` (0–500 km)
+- sort allowlist: `rating`, `reviews`, `newest`, `distance`; distance requires coordinates
+- text query additionally searches canonical city as a public directory field
+- public active category discovery: `GET /api/v1/public/business-categories`
+
+Distance is calculated in PostgreSQL against canonical coordinates; count is computed after filters and before pagination. Stable tie-breaker is Business ID. Supplier, tier, featured, view-count ranking, logos/media and registration/legal fields remain deferred pending canonical ownership and separate authorization.
+
+Construction source: branch `feat/public-directory-categories-20261105`. Migration is construction-only and must not be applied to production without explicit authorization. Product cutover remains separately gated.

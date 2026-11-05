@@ -1,3 +1,4 @@
+import { pool } from '../../db/pool';
 import type { AuthContext } from '../../auth/authorization';
 import { withAuthorizedTransaction, withTenantTransaction } from '../../db/authorized-transaction';
 import type { TransactionPool } from '../../db/transaction';
@@ -24,7 +25,7 @@ const mapBusinessHours = (row: any): BusinessHours => ({
 const assertPublicBusiness = async (client: any, businessId: number): Promise<void> => {
   const result = await client.query(
     `SELECT 1 FROM ghm.business
-     WHERE id = $1 AND is_active = true AND verification_status = 'approved'`,
+     WHERE id = $1 AND is_active = true AND is_verified = true AND verification_status = 'approved'`,
     [businessId],
   );
   if (result.rowCount !== 1) throw new Error('Public Business not found');
@@ -40,6 +41,20 @@ const toDatabaseHours = (input: ReplaceBusinessHoursInput['hours']) =>
 
 export class PostgresBusinessHoursRepository implements BusinessHoursRepository {
   constructor(private readonly transactionPool?: TransactionPool) {}
+
+  async listPublicBusinessHours(businessId: number): Promise<BusinessHours[]> {
+    const client = await (this.transactionPool ?? pool).connect();
+    try {
+      await assertPublicBusiness(client, businessId);
+      const result = await client.query(
+        `SELECT ${COLUMNS} FROM ghm.business_hours WHERE business_id = $1 ORDER BY day_of_week ASC, id ASC`,
+        [businessId],
+      );
+      return result.rows.map(mapBusinessHours);
+    } finally {
+      client.release();
+    }
+  }
 
   async getBusinessHours(context: AuthContext, businessId: number): Promise<BusinessHours[]> {
     return withTenantTransaction(context, businessId, async client => {

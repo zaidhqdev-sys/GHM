@@ -173,7 +173,7 @@ const parseCreateBusinessInput = (body: unknown): { name: string } | null => {
 const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   const input = body as Record<string, unknown>;
-  const allowed = new Set(['name', 'slug', 'description', 'phone', 'email']);
+  const allowed = new Set(['name', 'slug', 'description', 'phone', 'email', 'province', 'city', 'physicalAddress', 'latitude', 'longitude', 'whatsapp', 'website', 'avatarLetter', 'avatarColor', 'yearsInBusiness']);
   const keys = Object.keys(input);
   if (keys.length === 0 || keys.some((key) => !allowed.has(key))) return null;
   if (Object.hasOwn(input, 'name') && (typeof input.name !== 'string' || !input.name.trim())) return null;
@@ -181,12 +181,32 @@ const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | n
   if (Object.hasOwn(input, 'description') && input.description !== null && typeof input.description !== 'string') return null;
   if (Object.hasOwn(input, 'phone') && input.phone !== null && typeof input.phone !== 'string') return null;
   if (Object.hasOwn(input, 'email') && input.email !== null && typeof input.email !== 'string') return null;
+  for (const key of ['province', 'city', 'physicalAddress', 'whatsapp', 'website']) {
+    if (Object.hasOwn(input, key) && input[key] !== null && typeof input[key] !== 'string') return null;
+  }
+  for (const key of ['latitude', 'longitude']) {
+    if (Object.hasOwn(input, key) && input[key] !== null && (typeof input[key] !== 'number' || !Number.isFinite(input[key]))) return null;
+  }
+  if (Object.hasOwn(input, 'avatarLetter') && input.avatarLetter !== null && (typeof input.avatarLetter !== 'string' || input.avatarLetter.trim().length > 3)) return null;
+  if (Object.hasOwn(input, 'avatarColor') && input.avatarColor !== null && (typeof input.avatarColor !== 'string' || input.avatarColor.trim().length > 32)) return null;
+  if (Object.hasOwn(input, 'yearsInBusiness') && (typeof input.yearsInBusiness !== 'number' || !Number.isInteger(input.yearsInBusiness) || input.yearsInBusiness < 0 || input.yearsInBusiness > 100)) return null;
+  if (Object.hasOwn(input, 'latitude') !== Object.hasOwn(input, 'longitude')) return null;
   return {
     ...(Object.hasOwn(input, 'name') ? { name: input.name as string } : {}),
     ...(Object.hasOwn(input, 'slug') ? { slug: input.slug as string } : {}),
     ...(Object.hasOwn(input, 'description') ? { description: input.description as string | null } : {}),
     ...(Object.hasOwn(input, 'phone') ? { phone: input.phone as string | null } : {}),
     ...(Object.hasOwn(input, 'email') ? { email: input.email as string | null } : {}),
+    ...(Object.hasOwn(input, 'province') ? { province: input.province as string | null } : {}),
+    ...(Object.hasOwn(input, 'city') ? { city: input.city as string | null } : {}),
+    ...(Object.hasOwn(input, 'physicalAddress') ? { physicalAddress: input.physicalAddress as string | null } : {}),
+    ...(Object.hasOwn(input, 'latitude') ? { latitude: input.latitude as number | null } : {}),
+    ...(Object.hasOwn(input, 'longitude') ? { longitude: input.longitude as number | null } : {}),
+    ...(Object.hasOwn(input, 'whatsapp') ? { whatsapp: input.whatsapp as string | null } : {}),
+    ...(Object.hasOwn(input, 'website') ? { website: input.website as string | null } : {}),
+    ...(Object.hasOwn(input, 'avatarLetter') ? { avatarLetter: input.avatarLetter as string | null } : {}),
+    ...(Object.hasOwn(input, 'avatarColor') ? { avatarColor: input.avatarColor as string | null } : {}),
+    ...(Object.hasOwn(input, 'yearsInBusiness') ? { yearsInBusiness: input.yearsInBusiness as number } : {}),
   };
 };
 
@@ -404,9 +424,72 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
+  app.get('/api/v1/public/business-categories', requireRegisteredPublicAccess('business_category', 'readPublic'), async (_req: Request, res: Response) => {
+    try {
+      const categories = await businessCategoryService.listPublicBusinessCategories();
+      res.status(200).json({ categories });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.get('/api/v1/businesses/:businessId/categories', resourceAuthMiddleware, requireRegisteredAccess('business_category_assignment', 'read'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const rawId = routeParam(req.params.businessId);
+      const businessId = rawId === null ? null : positiveIntegerId(rawId);
+      if (businessId === null) { res.status(400).json({ error: 'invalid_request' }); return; }
+      const assignments = await businessCategoryService.listBusinessCategoryAssignments(context, businessId);
+      res.status(200).json({ assignments });
+    } catch (error) { handleError(error, res); }
+  });
+
+  app.post('/api/v1/businesses/:businessId/categories', resourceAuthMiddleware, requireRegisteredAccess('business_category_assignment', 'create'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const rawId = routeParam(req.params.businessId);
+      const businessId = rawId === null ? null : positiveIntegerId(rawId);
+      const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body as Record<string, unknown> : null;
+      if (businessId === null || !body || Object.keys(body).length !== 1 || typeof body.categoryId !== 'string' ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.categoryId)) {
+        res.status(400).json({ error: 'invalid_request' }); return;
+      }
+      const assignment = await businessCategoryService.assignBusinessCategory(context, { businessId, categoryId: body.categoryId });
+      res.status(201).json({ assignment });
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Business management permission required')) {
+        res.status(403).json({ error: 'forbidden' }); return;
+      }
+      if (error instanceof Error && /Category|category|positive integer/.test(error.message)) {
+        res.status(400).json({ error: 'invalid_request' }); return;
+      }
+      handleError(error, res);
+    }
+  });
+
+  app.patch('/api/v1/businesses/:businessId/categories/:categoryId/primary', resourceAuthMiddleware, requireRegisteredAccess('business_category_assignment', 'update'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      const rawId = routeParam(req.params.businessId);
+      const businessId = rawId === null ? null : positiveIntegerId(rawId);
+      const categoryId = routeParam(req.params.categoryId);
+      if (businessId === null || categoryId === null ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(categoryId)) {
+        res.status(400).json({ error: 'invalid_request' }); return;
+      }
+      const assignment = await businessCategoryService.setPrimaryBusinessCategory(context, { businessId, categoryId });
+      res.status(200).json({ assignment });
+    } catch (error) {
+      if (error instanceof Error && /Category|category|positive integer|Business management permission/.test(error.message)) {
+        res.status(400).json({ error: 'invalid_request' }); return;
+      }
+      handleError(error, res);
+    }
+  });
+
   app.get('/api/v1/public/businesses', requireRegisteredPublicAccess('directory', 'read'), async (req: Request, res: Response) => {
     try {
-      const allowed = new Set(['q', 'category', 'page', 'pageSize']);
+      const allowed = new Set(['q', 'category', 'province', 'city', 'latitude', 'longitude', 'radiusKm', 'sort', 'page', 'pageSize']);
       const keys = Object.keys(req.query);
       if (keys.some((key) => !allowed.has(key))) {
         res.status(400).json({ error: 'invalid_request' });
@@ -429,12 +512,31 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
 
       const q = readStringQuery('q');
       const category = readStringQuery('category');
+      const province = readStringQuery('province');
+      const city = readStringQuery('city');
+      const sort = readStringQuery('sort');
+      const parseCoordinate = (key: string): number | undefined => {
+        const value = readStringQuery(key);
+        if (value === undefined) return undefined;
+        if (!/^-?(?:\d+\.?\d*|\.\d+)$/.test(value)) return undefined;
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : undefined;
+      };
+      const latitude = parseCoordinate('latitude');
+      const longitude = parseCoordinate('longitude');
+      const radiusKm = parseCoordinate('radiusKm');
       const pageValue = parsePositiveQueryInteger('page');
       const pageSizeValue = parsePositiveQueryInteger('pageSize');
 
       if (
         (req.query.q !== undefined && q === undefined) ||
         (req.query.category !== undefined && category === undefined) ||
+        (req.query.province !== undefined && province === undefined) ||
+        (req.query.city !== undefined && city === undefined) ||
+        (req.query.sort !== undefined && sort === undefined) ||
+        (req.query.latitude !== undefined && latitude === undefined) ||
+        (req.query.longitude !== undefined && longitude === undefined) ||
+        (req.query.radiusKm !== undefined && radiusKm === undefined) ||
         (req.query.page !== undefined && pageValue === undefined) ||
         (req.query.pageSize !== undefined && pageSizeValue === undefined)
       ) {
@@ -450,6 +552,12 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       const result = await directoryService.search({
         q,
         category,
+        province,
+        city,
+        latitude,
+        longitude,
+        radiusKm,
+        sort: sort as 'rating' | 'reviews' | 'newest' | 'distance' | undefined,
         page: pageValue ?? 1,
         pageSize: pageSizeValue ?? 20,
       });
@@ -462,6 +570,10 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
           error.message === 'category must be a string' ||
           error.message === 'category must not be blank' ||
           error.message === 'category must be a valid category id or slug' ||
+          error.message === 'province must be a string' || error.message === 'city must be a string' ||
+          error.message === 'latitude must be a valid coordinate' || error.message === 'longitude must be a valid coordinate' ||
+          error.message === 'radiusKm must be between 0 and 500' || error.message === 'sort must be rating, reviews, newest, or distance' ||
+          error.message === 'latitude and longitude must be supplied together' || error.message === 'radiusKm requires latitude and longitude' || error.message === 'distance sort requires latitude and longitude' ||
           error.message === 'page must be a positive integer' ||
           error.message === 'pageSize must be a positive integer' ||
           error.message === 'pageSize must be at most 50')
@@ -469,6 +581,31 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         res.status(400).json({ error: 'invalid_request' });
         return;
       }
+      handleError(error, res);
+    }
+  });
+
+  app.get('/api/v1/public/businesses/:businessId/hours', requireRegisteredPublicAccess('business_hours', 'readPublic'), async (req: Request, res: Response) => {
+    try {
+      const value = routeParam(req.params.businessId);
+      const businessId = value === null ? null : positiveIntegerId(value);
+      if (businessId === null) { res.status(400).json({ error: 'invalid_request' }); return; }
+      const hours = await businessHoursService.listPublicBusinessHours(businessId);
+      res.status(200).json({ hours });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Public Business not found') { res.status(404).json({ error: 'not_found' }); return; }
+      handleError(error, res);
+    }
+  });
+
+  app.get('/api/v1/public/businesses/:businessId/capabilities', requireRegisteredPublicAccess('business_capability', 'readPublic'), async (req: Request, res: Response) => {
+    try {
+      const value = routeParam(req.params.businessId);
+      const businessId = value === null ? null : positiveIntegerId(value);
+      if (businessId === null) { res.status(400).json({ error: 'invalid_request' }); return; }
+      const capabilities = await businessCapabilityService.listPublicBusinessCapabilities(businessId);
+      res.status(200).json({ capabilities });
+    } catch (error) {
       handleError(error, res);
     }
   });
@@ -561,6 +698,60 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       handleError(error, res);
     }
   });
+
+  app.put(
+    '/api/v1/businesses/:businessId/hours',
+    resourceAuthMiddleware,
+    requireRegisteredAccess('business_hours', 'replace'),
+    async (req: Request, res: Response) => {
+      try {
+        const context = req.authContext as AuthContext;
+        const businessIdValue = routeParam(req.params.businessId);
+        const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
+        const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body)
+          ? req.body as Record<string, unknown>
+          : null;
+        if (businessId === null || !body || Object.keys(body).length !== 1 || !Array.isArray(body.hours)) {
+          res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+        const hours = body.hours.map((entry) => {
+          if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+          const row = entry as Record<string, unknown>;
+          if (Object.keys(row).some(key => !['dayOfWeek','isClosed','openTime','closeTime'].includes(key))) return null;
+          if (!Number.isInteger(row.dayOfWeek) || typeof row.isClosed !== 'boolean') return null;
+          if (row.openTime !== undefined && row.openTime !== null && typeof row.openTime !== 'string') return null;
+          if (row.closeTime !== undefined && row.closeTime !== null && typeof row.closeTime !== 'string') return null;
+          return {
+            dayOfWeek: row.dayOfWeek as number,
+            isClosed: row.isClosed as boolean,
+            openTime: (row.openTime as string | null | undefined) ?? null,
+            closeTime: (row.closeTime as string | null | undefined) ?? null,
+          };
+        });
+        if (hours.some(entry => entry === null)) {
+          res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+        const validHours = hours.filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+        const updated = await businessHoursService.replaceBusinessHours(context, { businessId, hours: validHours });
+        res.status(200).json({ hours: updated });
+      } catch (error) {
+        if (error instanceof Error && (
+          error.message.includes('Business Hours') ||
+          error.message.includes('day') ||
+          error.message.includes('times') ||
+          error.message.includes('Duplicate') ||
+          error.message.includes('close after opening') ||
+          error.message.includes('maximum of seven')
+        )) {
+          res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+        handleError(error, res);
+      }
+    },
+  );
 
   app.get(
     '/api/v1/businesses/:businessId/hours',

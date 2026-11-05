@@ -44,6 +44,7 @@ const authorized = (
 });
 
 const service = (calls: string[]): BusinessCapabilityService => ({
+  listPublicBusinessCapabilities: async () => [],
   getBusinessCapability: async () => capability(1, 7),
   listBusinessCapabilities: async (_context, businessId) => {
     calls.push(`read:${businessId}`);

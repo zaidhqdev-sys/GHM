@@ -33,6 +33,10 @@ const validateAssignmentInput = (context: AuthContext, input: AssignBusinessCate
 export class BusinessCategoryServiceImpl implements BusinessCategoryService {
   constructor(private readonly repository: BusinessCategoryRepository) {}
 
+  listPublicBusinessCategories(): Promise<BusinessCategory[]> {
+    return this.repository.listPublicBusinessCategories();
+  }
+
   listBusinessCategories(context: AuthContext, filter: ListBusinessCategoriesFilter = {}): Promise<BusinessCategory[]> {
     requireAuthenticatedContext(context);
     if (typeof filter.activeOnly !== 'undefined' && typeof filter.activeOnly !== 'boolean') throw new Error('activeOnly must be boolean');

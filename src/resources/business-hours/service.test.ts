@@ -6,6 +6,7 @@ import type { BusinessHoursRepository } from './contracts';
 const context = { userId: 10, role: 'business' as const };
 
 const repository: BusinessHoursRepository = {
+  async listPublicBusinessHours() { return []; },
   async getBusinessHours() { return []; },
   async getPublicBusinessHours() { return []; },
   async replaceBusinessHours(_context, input) {

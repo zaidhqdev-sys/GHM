@@ -42,6 +42,7 @@ export interface SetPrimaryBusinessCategoryInput {
 }
 
 export interface BusinessCategoryRepository {
+  listPublicBusinessCategories(): Promise<BusinessCategory[]>;
   listBusinessCategories(context: AuthContext, filter?: ListBusinessCategoriesFilter): Promise<BusinessCategory[]>;
   getBusinessCategory(context: AuthContext, categoryId: BusinessCategoryId): Promise<BusinessCategory | null>;
   listBusinessCategoryAssignments(context: AuthContext, businessId: BusinessId): Promise<BusinessCategoryAssignment[]>;
@@ -52,6 +53,7 @@ export interface BusinessCategoryRepository {
 export interface BusinessCategoryService extends BusinessCategoryRepository {}
 
 export const BUSINESS_CATEGORY_OPERATIONS = Object.freeze({
+  READ_PUBLIC: 'business_category.readPublic',
   READ: 'business_category.read',
   ASSIGNMENT_READ: 'business_category_assignment.read',
   ASSIGN: 'business_category_assignment.create',

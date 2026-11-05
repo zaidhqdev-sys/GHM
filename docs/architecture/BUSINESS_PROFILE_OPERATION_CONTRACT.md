@@ -107,3 +107,19 @@ After profile mutation, Trust calculate (already QUALIFIED / CLOSED) may consume
 ## Connect product-parity boundary — 2026-10-13
 
 This contract defines a bounded GHM Business profile domain and does not by itself qualify the complete Connect business profile journey. The current Connect migration audit confirms the product also depends on directory projection/filtering, registration identity, owner preview for unpublished listings, categories, business hours, capabilities, saved-business state and engagement events. Map these as separate authorized contracts; do not widen this profile operation or public field projection to absorb them implicitly. The target remains GHM Internal Runtime with no Supabase runtime dependency. Product-facing route and end-to-end Connect parity remain separate gates.
+
+
+## Approved additive directory profile fields — 2026-11-05
+
+The existing `business.updateProfile` operation is extended by a separately versioned construction migration to permit owner/administrator-managed `province`, `city`, `physicalAddress`, `latitude`, `longitude`, `whatsapp`, and `website`. Membership authorization, same-transaction tenant resolution, protected Trust fields and least-privilege runtime table grants remain unchanged. Coordinates are paired and range checked; website is restricted to HTTP(S). These fields do not grant mutation rights over category assignments, verification, Trust inputs, commercial tier, featured state, media or analytics.
+
+
+## Public profile auxiliary read extension — 2026-11-05
+
+The public profile may compose the separately owned GHM resources through explicit public-read endpoints:
+- `GET /api/v1/public/businesses/:businessId/hours` returns hours only when the Business is active, verified and approved.
+- `GET /api/v1/public/businesses/:businessId/capabilities` returns only active, verified, currently effective capability assertions for an active, verified and approved Business. It excludes verifier identity, source references, moderation reasons and other internal assertion metadata.
+- Public reviews remain on the existing `GET /api/v1/public/reviews` boundary.
+- Public category taxonomy remains on `GET /api/v1/public/business-categories`.
+
+These endpoints compose existing resource ownership; they do not duplicate hours, capabilities, reviews or categories into Business. Construction and qualification are recorded in draft GHM PR #209; CI run `42085865501` passed on disposable PostgreSQL. No persistent migration or deployment is implied.

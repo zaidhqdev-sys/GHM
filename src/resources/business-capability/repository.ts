@@ -1,3 +1,4 @@
+import { pool } from '../../db/pool';
 import type { PoolClient } from 'pg';
 import type { AuthContext } from '../../auth/authorization';
 import { resolveTenantContext } from '../../auth/tenant-resolver';
@@ -29,6 +30,42 @@ const requireUuid = (value: unknown): string => {
 
 export class PostgresBusinessCapabilityRepository implements BusinessCapabilityRepository {
   constructor(private readonly transactionPool?: TransactionPool) {}
+
+  async listPublicBusinessCapabilities(businessId: number) {
+    const id = requirePositiveId(businessId, 'businessId');
+    const client = await (this.transactionPool ?? pool).connect();
+    try {
+      const result = await client.query(
+        `SELECT bc_assertion.id, bc_assertion.capability_id, c.name, c.slug,
+                bc_assertion.proficiency_level, bc_assertion.description,
+                bc_assertion.effective_from, bc_assertion.effective_until
+         FROM ghm.business_capability bc_assertion
+         JOIN ghm.business b ON b.id = bc_assertion.business_id
+         JOIN ghm.capability c ON c.id = bc_assertion.capability_id
+         WHERE bc_assertion.business_id = $1
+           AND b.is_active = true AND b.is_verified = true AND b.verification_status = 'approved'
+           AND bc_assertion.assertion_status = 'active'
+           AND bc_assertion.verification_status = 'verified'
+           AND c.lifecycle_status = 'active'
+           AND bc_assertion.effective_from <= now()
+           AND (bc_assertion.effective_until IS NULL OR bc_assertion.effective_until > now())
+         ORDER BY c.sort_order, c.name, bc_assertion.id`,
+        [id],
+      );
+      return result.rows.map((row: any) => ({
+        id: Number(row.id),
+        capabilityId: String(row.capability_id),
+        name: String(row.name),
+        slug: String(row.slug),
+        proficiencyLevel: row.proficiency_level,
+        description: row.description,
+        effectiveFrom: row.effective_from,
+        effectiveUntil: row.effective_until,
+      }));
+    } finally {
+      client.release();
+    }
+  }
 
   async createBusinessCapability(context: AuthContext, input: CreateBusinessCapabilityInput): Promise<BusinessCapability> {
     const businessId = requirePositiveId(input.businessId, 'businessId');

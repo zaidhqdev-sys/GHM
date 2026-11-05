@@ -49,6 +49,11 @@ const validateReplace = (context: AuthContext, input: ReplaceBusinessHoursInput)
 export class BusinessHoursServiceImpl implements BusinessHoursService {
   constructor(private readonly repository: BusinessHoursRepository) {}
 
+  async listPublicBusinessHours(businessId: number): Promise<BusinessHours[]> {
+    requirePositiveId(businessId, 'businessId');
+    return this.repository.listPublicBusinessHours(businessId);
+  }
+
   async getBusinessHours(context: AuthContext, businessId: number): Promise<BusinessHours[]> {
     requireAuthenticatedContext(context);
     requirePositiveId(businessId, 'businessId');
