@@ -114,7 +114,7 @@ export const registerStorageRoutes = (
           console.error(JSON.stringify({ event: "business_logo_cleanup_pending", businessId, objectId: previousObjectId }));
         }
       }
-      res.status(cleanupPending ? 202 : 200).json({ businessId, logoObjectId: objectId, cleanupPending });
+      res.status(cleanupPending ? 202 : 200).json({ businessId, logoObjectId: objectId, cleanupPending, cleanupObjectId: cleanupPending ? previousObjectId : null });
     } catch (error) { handleStorageError(error, res); }
   });
 
@@ -137,7 +137,7 @@ export const registerStorageRoutes = (
           console.error(JSON.stringify({ event: "business_logo_cleanup_pending", businessId, objectId: previousObjectId }));
         }
       }
-      res.status(cleanupPending ? 202 : 200).json({ businessId, logoObjectId: null, cleanupPending });
+      res.status(cleanupPending ? 202 : 200).json({ businessId, logoObjectId: null, cleanupPending, cleanupObjectId: cleanupPending ? previousObjectId : null });
     } catch (error) { handleStorageError(error, res); }
   });
 
