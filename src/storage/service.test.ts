@@ -114,7 +114,7 @@ test("storage service verifies provider state before making an object available"
 
 test("storage service rejects spoofed image bytes before marking the object available", async () => {
   const d = deps();
-  d.provider.getObject = async () => { d.calls.push("get-object"); return new TextEncoder().encode("<svg onload=alert(1)>"); };
+  d.provider.getObject = async () => { d.calls.push("get-object"); const bytes = new Uint8Array(100); bytes.set(new TextEncoder().encode("<svg onload=alert(1)>")); return bytes; };
   const service = createStorageService(d);
   await assert.rejects(
     service.completeUpload({ caller: { userId: "u1", businessId: "1" }, objectId: "object-1" }),
