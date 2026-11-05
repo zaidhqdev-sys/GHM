@@ -47,6 +47,8 @@ import { registerEnquiryRoutes } from './enquiry-router';
 import { registerCampaignRoutes } from './campaign-router';
 import { registerOpportunityRoutes } from './opportunity-router';
 import { registerAuthRoutes, type AuthRouterDependencies } from './auth-router';
+import { registerQuoteFlowLegalRoutes } from './quoteflow-legal-router';
+import { pool } from '../db/pool';
 import { registerSavedBusinessRoutes } from './saved-business-router';
 import { registerBusinessCapabilityRoutes } from './business-capability-router';
 import { registerTrustScoreRoutes } from './trust-score-router';
@@ -683,6 +685,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const passwordResetService =
     dependencies.passwordResetService
     ?? createPasswordResetService(authPersistence);
+  registerQuoteFlowLegalRoutes(app, pool, resourceAuthMiddleware);
   registerAuthRoutes(app, {
     authService: dependencies.authService,
     authPersistence,
