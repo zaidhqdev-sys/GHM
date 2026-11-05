@@ -5,10 +5,10 @@ on:
   push:
     branches:
       - main
-      - feat/ghm-business-logo-binding-20261106
   pull_request:
     branches:
       - main
+      - feat/ghm-capability-evidence-admin-20261105
 
 permissions:
   contents: read

@@ -49,6 +49,13 @@ import { registerOpportunityRoutes } from './opportunity-router';
 import { registerAuthRoutes, type AuthRouterDependencies } from './auth-router';
 import { registerSavedBusinessRoutes } from './saved-business-router';
 import { registerBusinessCapabilityRoutes } from './business-capability-router';
+import { PgCapabilityRepository } from '../resources/capability/repository';
+import { CapabilityServiceImpl } from '../resources/capability/service';
+import { registerCapabilityCatalogueRoutes } from './capability-catalogue-router';
+import { PostgresBusinessCapabilityEvidenceRepository } from '../resources/business-capability-evidence/repository';
+import { BusinessCapabilityEvidenceServiceImpl } from '../resources/business-capability-evidence/service';
+import type { BusinessCapabilityEvidenceService } from '../resources/business-capability-evidence/contracts';
+import { registerBusinessCapabilityEvidenceRoutes } from './business-capability-evidence-router';
 import { registerTrustScoreRoutes } from './trust-score-router';
 import { registerSupportRequestRoutes } from './support-request-router';
 import { registerReviewRoutes } from './review-router';
@@ -111,6 +118,7 @@ export interface AppDependencies {
   readonly opportunityService?: OpportunityService;
   readonly savedBusinessService?: SavedBusinessService;
   readonly businessCapabilityService?: BusinessCapabilityService;
+  readonly businessCapabilityEvidenceService?: BusinessCapabilityEvidenceService;
   readonly trustScoreService?: TrustScoreService;
   readonly supportRequestService?: SupportRequestService;
   readonly reviewService?: ReviewService;
@@ -366,6 +374,9 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const businessCapabilityService =
     dependencies.businessCapabilityService ??
     new BusinessCapabilityServiceImpl(new PostgresBusinessCapabilityRepository());
+  const businessCapabilityEvidenceService =
+    dependencies.businessCapabilityEvidenceService ??
+    new BusinessCapabilityEvidenceServiceImpl(new PostgresBusinessCapabilityEvidenceRepository());
   const trustScoreService =
     dependencies.trustScoreService ??
     new TrustScoreServiceImpl(new PostgresTrustScoreRepository());
@@ -873,6 +884,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerOpportunityRoutes(app, opportunityService, resourceAuthMiddleware);
   registerSavedBusinessRoutes(app, savedBusinessService, resourceAuthMiddleware);
   registerBusinessCapabilityRoutes(app, businessCapabilityService, resourceAuthMiddleware);
+  registerCapabilityCatalogueRoutes(app, new CapabilityServiceImpl(new PgCapabilityRepository()), resourceAuthMiddleware);
+  registerBusinessCapabilityEvidenceRoutes(app, businessCapabilityEvidenceService, resourceAuthMiddleware);
   registerTrustScoreRoutes(app, trustScoreService, resourceAuthMiddleware);
   registerSupportRequestRoutes(app, supportRequestService, resourceAuthMiddleware);
   registerReviewRoutes(app, reviewService, resourceAuthMiddleware);
