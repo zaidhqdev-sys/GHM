@@ -122,7 +122,7 @@ test("Business logo replacement binds the new available object before cleaning t
       body: JSON.stringify({ objectId: 21 }),
     });
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { businessId: 12, logoObjectId: 21, cleanupPending: false });
+    assert.deepEqual(await response.json(), { businessId: 12, logoObjectId: 21, cleanupPending: false, cleanupObjectId: null });
     assert.deepEqual(calls, ["bind:12:21", "delete:18"]);
   }, { authenticated: true, seam });
 });
@@ -141,7 +141,7 @@ test("Business logo clear removes the canonical reference before object cleanup"
   await withServer(async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/v1/businesses/12/logo`, { method: "DELETE" });
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { businessId: 12, logoObjectId: null, cleanupPending: false });
+    assert.deepEqual(await response.json(), { businessId: 12, logoObjectId: null, cleanupPending: false, cleanupObjectId: null });
     assert.deepEqual(calls, ["bind:12:null", "delete:21"]);
   }, { authenticated: true, seam });
 });
@@ -161,7 +161,7 @@ test("Business logo cleanup failure leaves the new canonical reference and repor
       body: JSON.stringify({ objectId: 21 }),
     });
     assert.equal(response.status, 202);
-    assert.deepEqual(await response.json(), { businessId: 12, logoObjectId: 21, cleanupPending: true });
+    assert.deepEqual(await response.json(), { businessId: 12, logoObjectId: 21, cleanupPending: true, cleanupObjectId: 18 });
   }, { authenticated: true, seam });
 });
 
