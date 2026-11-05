@@ -525,6 +525,31 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
+  app.get('/api/v1/public/businesses/:businessId/hours', requireRegisteredPublicAccess('business_hours', 'readPublic'), async (req: Request, res: Response) => {
+    try {
+      const value = routeParam(req.params.businessId);
+      const businessId = value === null ? null : positiveIntegerId(value);
+      if (businessId === null) { res.status(400).json({ error: 'invalid_request' }); return; }
+      const hours = await businessHoursService.listPublicBusinessHours(businessId);
+      res.status(200).json({ hours });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Public Business not found') { res.status(404).json({ error: 'not_found' }); return; }
+      handleError(error, res);
+    }
+  });
+
+  app.get('/api/v1/public/businesses/:businessId/capabilities', requireRegisteredPublicAccess('business_capability', 'readPublic'), async (req: Request, res: Response) => {
+    try {
+      const value = routeParam(req.params.businessId);
+      const businessId = value === null ? null : positiveIntegerId(value);
+      if (businessId === null) { res.status(400).json({ error: 'invalid_request' }); return; }
+      const capabilities = await businessCapabilityService.listPublicBusinessCapabilities(businessId);
+      res.status(200).json({ capabilities });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
   app.get('/api/v1/public/businesses/slug/:slug', requireRegisteredPublicAccess('business', 'readPublic'), async (req: Request, res: Response) => {
     try {
       const slugValue = routeParam(req.params.slug);
