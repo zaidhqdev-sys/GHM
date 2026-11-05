@@ -94,6 +94,7 @@ const handleError = (error: unknown, res: Response): void => {
   if (error instanceof Error) {
     if (
       error.message === 'Business management permission required' ||
+      error.message === 'Business tenant access denied' ||
       error.message === 'Business access required' ||
       error.message === 'Capability not found or not selectable'
     ) {
@@ -112,7 +113,9 @@ const handleError = (error: unknown, res: Response): void => {
       error.message === 'Source reference must contain between 1 and 500 characters' ||
       error.message === 'Invalid effective-from date' ||
       error.message === 'Invalid effective-until date' ||
-      error.message === 'Effective-until must be later than effective-from'
+      error.message === 'Effective-until must be later than effective-from' ||
+      error.message === 'Assertions must be an array of at most 50 items' ||
+      error.message === 'Duplicate Business Capability assertions are not allowed'
     ) {
       res.status(400).json({ error: 'invalid_request' });
       return;
@@ -130,6 +133,36 @@ export const registerBusinessCapabilityRoutes = (
   service: BusinessCapabilityService,
   authMiddleware: RequestHandler = requireAuth,
 ): void => {
+  app.put(
+    '/api/v1/business-capabilities',
+    authMiddleware,
+    requireCapabilityAccess('create'),
+    async (req: Request, res: Response) => {
+      try {
+        const context = req.authContext as AuthContext;
+        const body = req.body as Record<string, unknown> | null;
+        if (!body || typeof body !== 'object' || Array.isArray(body) ||
+            Object.keys(body).some(key => !['businessId', 'assertions'].includes(key)) ||
+            !Number.isSafeInteger(body.businessId) || (body.businessId as number) <= 0 ||
+            !Array.isArray(body.assertions)) {
+          res.status(400).json({ error: 'invalid_request' }); return;
+        }
+        const assertions = body.assertions.map((item: unknown) => {
+          if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+          const value = item as Record<string, unknown>;
+          if (Object.keys(value).some(key => !['capabilityId', 'proficiencyLevel', 'description', 'sourceReference', 'effectiveUntil'].includes(key))) return null;
+          return value;
+        });
+        if (assertions.some(item => item === null)) { res.status(400).json({ error: 'invalid_request' }); return; }
+        const capabilities = await service.replaceBusinessCapabilities(
+          context, body.businessId as number,
+          assertions as import('../resources/business-capability/contracts').ReplaceBusinessCapabilityAssertionInput[],
+        );
+        res.status(200).json({ capabilities });
+      } catch (error) { handleError(error, res); }
+    },
+  );
+
   app.get(
     '/api/v1/business-capabilities',
     authMiddleware,
