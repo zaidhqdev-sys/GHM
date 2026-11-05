@@ -22,6 +22,7 @@ const hoursFixture = (overrides: Partial<BusinessHours> = {}): BusinessHours => 
 });
 
 const stubHoursService = (overrides: Partial<BusinessHoursService> = {}): BusinessHoursService => ({
+  listPublicBusinessHours: async () => [],
   getBusinessHours: async () => {
     throw new Error('must not be called');
   },
