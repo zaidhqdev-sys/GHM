@@ -878,3 +878,64 @@ test('lazy auth service uses the app-injected auth persistence for reset session
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });
+
+
+test('authenticated business membership API lists only the caller\'s contexts and returns selected membership', async () => {
+  const membership = {
+    id: 91,
+    businessId: 201,
+    accountId: 42,
+    role: 'member',
+    status: 'active',
+    createdBy: 42,
+    createdAt: new Date('2026-09-10T00:00:00.000Z'),
+    updatedAt: new Date('2026-09-10T00:00:00.000Z'),
+  };
+  const business = {
+    id: 201,
+    name: 'Member Business',
+    slug: 'member-business',
+    description: null,
+    phone: null,
+    email: null,
+    insuranceVerified: false,
+    jobsCompleted: 0,
+    verificationStatus: 'approved',
+    isActive: true,
+    createdAt: new Date('2026-09-10T00:00:00.000Z'),
+    updatedAt: new Date('2026-09-10T00:00:00.000Z'),
+  };
+  const service = {
+    listManagedBusinesses: async (context: AuthContext) => {
+      assert.equal(context.userId, 42);
+      return [{ membership, business }];
+    },
+  } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(service);
+  const token = tokenFor({ userId: 42, role: 'business' });
+  try {
+    const listResponse = await fetch(`${baseUrl}/api/v1/businesses/memberships`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    assert.equal(listResponse.status, 200);
+    const listBody = await listResponse.json() as { memberships: Array<{ membership: { role: string }; business: { id: number } }> };
+    assert.equal(listBody.memberships.length, 1);
+    assert.equal(listBody.memberships[0].business.id, 201);
+    assert.equal(listBody.memberships[0].membership.role, 'member');
+
+    const selectedResponse = await fetch(`${baseUrl}/api/v1/businesses/201/managed`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    assert.equal(selectedResponse.status, 200);
+    const selectedBody = await selectedResponse.json() as { business: { id: number }; membership: { role: string } };
+    assert.equal(selectedBody.business.id, 201);
+    assert.equal(selectedBody.membership.role, 'member');
+
+    const deniedResponse = await fetch(`${baseUrl}/api/v1/businesses/202/managed`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    assert.equal(deniedResponse.status, 404);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
