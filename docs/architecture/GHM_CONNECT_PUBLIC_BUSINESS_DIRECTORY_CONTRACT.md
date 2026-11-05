@@ -208,3 +208,14 @@ This contract does not authorize:
 The earlier no-schema-invention boundary remains in force except for this explicitly approved construction amendment: GHM may add canonical owner-managed location/contact columns to `ghm.business` (`province`, `city`, `physical_address`, `latitude`, `longitude`, `whatsapp`, `website`). The additive public projection may expose these fields only for active, verified, approved Businesses. No provider UUID, owner identity, membership, registration number, or moderation fields are exposed.
 
 Directory now has an explicit additive contract for province/city/geo filtering and public category discovery. Supplier, tier, featured, media, legal/registration and analytics fields remain deferred. This is construction only; no production migration, backfill, shadow routing or Connect cutover is authorized.
+
+
+## Public profile auxiliary read extension — 2026-11-05
+
+The public profile may compose the separately owned GHM resources through explicit public-read endpoints:
+- `GET /api/v1/public/businesses/:businessId/hours` returns hours only when the Business is active, verified and approved.
+- `GET /api/v1/public/businesses/:businessId/capabilities` returns only active, verified, currently effective capability assertions for an active, verified and approved Business. It excludes verifier identity, source references, moderation reasons and other internal assertion metadata.
+- Public reviews remain on the existing `GET /api/v1/public/reviews` boundary.
+- Public category taxonomy remains on `GET /api/v1/public/business-categories`.
+
+These endpoints compose existing resource ownership; they do not duplicate hours, capabilities, reviews or categories into Business. Construction and qualification are recorded in draft GHM PR #209; CI run `42085865501` passed on disposable PostgreSQL. No persistent migration or deployment is implied.
