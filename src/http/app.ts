@@ -404,6 +404,15 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
+  app.get('/api/v1/public/business-categories', requireRegisteredPublicAccess('business_category', 'readPublic'), async (_req: Request, res: Response) => {
+    try {
+      const categories = await businessCategoryService.listPublicBusinessCategories();
+      res.status(200).json({ categories });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
   app.get('/api/v1/public/businesses', requireRegisteredPublicAccess('directory', 'read'), async (req: Request, res: Response) => {
     try {
       const allowed = new Set(['q', 'category', 'page', 'pageSize']);
