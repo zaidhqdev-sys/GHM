@@ -9,12 +9,12 @@ import { resolveTenantContext } from '../../auth/tenant-resolver';
 import type { TransactionPool } from '../../db/transaction';
 
 const ACCOUNT_SELECT = `SELECT id, full_name, phone, avatar_ref, role, created_at, updated_at FROM ghm.account_identity WHERE id = $1`;
-const BUSINESS_COLUMNS = `id, name, slug, description, phone, email, province, city, physical_address, latitude, longitude, whatsapp, website, insurance_verified, jobs_completed, verification_status, is_active, created_at, updated_at`;
+const BUSINESS_COLUMNS = `id, name, slug, description, phone, email, province, city, physical_address, latitude, longitude, whatsapp, website, avatar_letter, avatar_color, years_in_business, insurance_verified, jobs_completed, verification_status, is_active, created_at, updated_at`;
 const BUSINESS_SELECT = `SELECT ${BUSINESS_COLUMNS} FROM ghm.business WHERE id = $1`;
 const BUSINESS_BY_SLUG_SELECT = `SELECT ${BUSINESS_COLUMNS} FROM ghm.business WHERE slug = $1`;
 const MEMBERSHIPS_SELECT = `SELECT id, business_id, account_id, membership_role, membership_status, created_by, created_at, updated_at FROM ghm.business_membership WHERE account_id = $1 AND membership_status = 'active' ORDER BY created_at, id`;
 
-const ALLOWED_PROFILE_FIELDS = new Set(['name', 'slug', 'description', 'phone', 'email', 'province', 'city', 'physicalAddress', 'latitude', 'longitude', 'whatsapp', 'website']);
+const ALLOWED_PROFILE_FIELDS = new Set(['name', 'slug', 'description', 'phone', 'email', 'province', 'city', 'physicalAddress', 'latitude', 'longitude', 'whatsapp', 'website', 'avatarLetter', 'avatarColor', 'yearsInBusiness']);
 
 const mapAccount = (row: any): AccountIdentity => ({ id: Number(row.id), fullName: row.full_name, phone: row.phone, avatarRef: row.avatar_ref, role: row.role, createdAt: row.created_at, updatedAt: row.updated_at });
 const mapBusiness = (row: any): BusinessIdentity => ({
@@ -31,6 +31,9 @@ const mapBusiness = (row: any): BusinessIdentity => ({
   longitude: row.longitude === null || row.longitude === undefined ? null : Number(row.longitude),
   whatsapp: row.whatsapp ?? null,
   website: row.website ?? null,
+  avatarLetter: row.avatar_letter ?? null,
+  avatarColor: row.avatar_color ?? null,
+  yearsInBusiness: row.years_in_business === null || row.years_in_business === undefined ? null : Number(row.years_in_business),
   insuranceVerified: row.insurance_verified === true,
   jobsCompleted: Number(row.jobs_completed ?? 0),
   verificationStatus: row.verification_status,
@@ -99,6 +102,20 @@ const buildProfilePatch = (input: UpdateBusinessProfileInput): Record<string, un
       if (value !== null && (typeof value !== 'number' || !Number.isFinite(value))) throw new Error(`${key} must be a finite number or null`);
       if (value !== null && (key === 'latitude' ? value < -90 || value > 90 : value < -180 || value > 180)) throw new Error(`${key} is out of range`);
       patch[key] = value;
+      continue;
+    }
+    if (key === 'avatarLetter' || key === 'avatarColor') {
+      if (value === null) { patch[key === 'avatarLetter' ? 'avatar_letter' : 'avatar_color'] = null; continue; }
+      if (typeof value !== 'string') throw new Error(`${key} must be text or null`);
+      const normalized = value.trim();
+      const max = key === 'avatarLetter' ? 3 : 32;
+      if (normalized.length > max) throw new Error(`${key} exceeds its maximum length`);
+      patch[key === 'avatarLetter' ? 'avatar_letter' : 'avatar_color'] = normalized || null;
+      continue;
+    }
+    if (key === 'yearsInBusiness') {
+      if (!Number.isInteger(value) || (value as number) < 0 || (value as number) > 100) throw new Error('yearsInBusiness must be a whole number between 0 and 100');
+      patch.years_in_business = value;
       continue;
     }
     if (key === 'email') {
