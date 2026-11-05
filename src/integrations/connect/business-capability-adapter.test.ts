@@ -50,7 +50,6 @@ const service = (calls: string[]): BusinessCapabilityService => ({
     return [capability(1, businessId)];
   },
   createBusinessCapability: async () => capability(1, 7),
-  replaceBusinessCapabilities: async () => [],
   transitionBusinessCapabilityVerification: async () => capability(1, 7),
 });
 
