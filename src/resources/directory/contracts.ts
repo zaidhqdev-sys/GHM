@@ -8,7 +8,7 @@ export interface DirectoryQuery {
   readonly latitude?: number;
   readonly longitude?: number;
   readonly radiusKm?: number;
-  readonly sort?: 'rating' | 'newest' | 'distance';
+  readonly sort?: 'rating' | 'reviews' | 'newest' | 'distance';
   readonly page: number;
   readonly pageSize: number;
 }
