@@ -62,6 +62,21 @@ export class S3StorageProvider implements StorageProvider {
     }
   }
 
+  async getObject(key: string): Promise<Uint8Array> {
+    try {
+      const result = await this.client.send(new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+      }));
+      if (!result.Body) throw new StorageProviderError("INVALID_OBJECT", "provider object has no body");
+      const bytes = await result.Body.transformToByteArray();
+      return new Uint8Array(bytes);
+    } catch (error) {
+      if (error instanceof StorageProviderError) throw error;
+      throw this.mapError(error);
+    }
+  }
+
   async headObject(key: string): Promise<StorageProviderObject> {
     try {
       const result = await this.client.send(new HeadObjectCommand({
