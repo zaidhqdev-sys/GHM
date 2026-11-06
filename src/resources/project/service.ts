@@ -195,6 +195,8 @@ export class ProjectServiceImpl implements ProjectService {
   constructor(private readonly repository: ProjectRepository) {}
 
   async listOwnedProjects(context: AuthContext, limit: number, offset: number): Promise<ProjectPage> {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new Error('Invalid Project page limit');
+    if (!Number.isSafeInteger(offset) || offset < 0) throw new Error('Invalid Project page offset');
     return this.repository.listOwnedProjects(context, limit, offset);
   }
 
