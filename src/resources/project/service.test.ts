@@ -5,6 +5,7 @@ import type {
   CreateProjectInput,
   Project,
   ProjectRepository,
+  ProjectPage,
   UpdateProjectInput,
 } from './contracts';
 import { ProjectServiceImpl } from './service';
@@ -32,6 +33,11 @@ const project = (
 class FakeRepository implements ProjectRepository {
   projects = new Map<number, Project>();
   nextId = 1;
+
+  async listOwnedProjects(context: AuthContext, limit: number, offset: number): Promise<ProjectPage> {
+    const projects = [...this.projects.values()].filter(p => p.accountId === context.userId).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id - a.id);
+    return { projects: projects.slice(offset, offset + limit), total: projects.length, limit, offset };
+  }
 
   async createProject(
     context: AuthContext,
@@ -288,4 +294,25 @@ test('empty Project update is rejected', async () => {
     () => service.updateOwnedProject(context, 1, {}),
     /requires at least one field/,
   );
+});
+
+test('customer Project list is paginated and scoped to authenticated account', async () => {
+  const context: AuthContext = { userId: 10, role: 'customer' };
+  const { service, repository } = serviceFor(context);
+  repository.projects.set(1, project(1, 10));
+  repository.projects.set(2, project(2, 10));
+  repository.projects.set(3, project(3, 20));
+  const page = await service.listOwnedProjects(context, 1, 1);
+  assert.equal(page.total, 2);
+  assert.equal(page.limit, 1);
+  assert.equal(page.offset, 1);
+  assert.equal(page.projects.length, 1);
+  assert.equal(page.projects[0]?.accountId, 10);
+});
+
+test('customer Project list rejects invalid pagination', async () => {
+  const context: AuthContext = { userId: 10, role: 'customer' };
+  const { service } = serviceFor(context);
+  await assert.rejects(() => service.listOwnedProjects(context, 101, 0), /Invalid Project page limit/);
+  await assert.rejects(() => service.listOwnedProjects(context, 10, -1), /Invalid Project page offset/);
 });
