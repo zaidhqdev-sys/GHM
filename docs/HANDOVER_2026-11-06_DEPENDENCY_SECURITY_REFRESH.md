@@ -93,3 +93,13 @@ git log -5 --oneline --decorate
 ```
 
 Then inspect the PR and its CI checks. Keep the local untracked audit file; do not add it to the PR.
+
+## Pull-request publication follow-up — 2026-11-06 13:30 UTC
+
+- Pull request [#222](https://github.com/zaidhqdev-sys/GHM/pull/222) was created from `integration/ghm-dependency-security-refresh` into `main`.
+- PR head: `8ddbb4376b3ade89c7e852dd43e1c9865ca8304f`; base: `1f23d88b23a2f54c9d77742b4f47c980b3823e65`.
+- GitHub reports the PR open and mergeable; it is not merged.
+- The Cloudflare Pages GitHub integration automatically built the branch preview successfully: [branch preview](https://integration-ghm-dependency-s.ghm-cu1.pages.dev). This is a preview environment, not a production deployment or production cutover.
+- The GitHub Actions `quality` check was still in progress at the time of this follow-up. The local integration-branch validation remains 651 passed, 0 failed, 2 skipped, with 0 npm audit vulnerabilities; GitHub CI completion must be checked separately.
+- No merge, production deployment, database/schema/migration/data change, secret change, provider activation, or product cutover was performed.
+
