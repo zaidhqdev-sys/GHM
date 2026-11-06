@@ -74,7 +74,7 @@ test('Received enquiry list asserts active owner then scopes by business_id with
   const client = new FakeClient(1, [newer, older]);
   const repository = new PostgresEnquiryRepository(new FakePool(client));
 
-  const result = await repository.getReceivedEnquiries(ownerContext, 265);
+  const result = await repository.getReceivedEnquiries(ownerContext, 265, { limit: 20, offset: 40 });
 
   assert.equal(result.length, 2);
   assert.equal(result[0]?.id, 12);
@@ -91,7 +91,8 @@ test('Received enquiry list asserts active owner then scopes by business_id with
   assert.match(listQuery.text, /membership_role = 'owner'/);
   assert.match(listQuery.text, /membership_status = 'active'/);
   assert.match(listQuery.text, /ORDER BY e\.created_at DESC, e\.id DESC/);
-  assert.deepEqual(listQuery.values, [265, 468]);
+  assert.match(listQuery.text, /LIMIT \$3 OFFSET \$4/);
+  assert.deepEqual(listQuery.values, [265, 468, 20, 40]);
 });
 
 test('Received enquiry list returns empty array for active owner with no enquiries', async () => {

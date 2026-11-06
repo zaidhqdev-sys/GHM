@@ -246,7 +246,7 @@ test('Enquiry received list requires authentication', async () => {
   };
   const { server, baseUrl } = await startServer(service);
   try {
-    const response = await fetch(`${baseUrl}/api/v1/enquiries/received?businessId=265`);
+    const response = await fetch(`${baseUrl}/api/v1/enquiries/received?businessId=265&limit=20&offset=40`);
     assert.equal(response.status, 401);
     assert.deepEqual(await response.json(), { error: 'unauthorized' });
   } finally {
