@@ -255,6 +255,7 @@ test('protected profile route rejects an invalid JWT', async () => {
 const startProjectTestServer = async (
   projectService: ProjectService,
   publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async () => {
       throw new Error('public Project service must not be called');
     },
@@ -1008,5 +1009,44 @@ test('authenticated business membership API lists only the caller\'s contexts an
     assert.equal(deniedResponse.status, 404);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+
+test('public Project marketplace list applies filters and pagination without authentication', async () => {
+  let seen: unknown;
+  const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => {
+      seen = input;
+      return { projects: [publicProjectFixture()], total: 1, limit: input.limit, offset: input.offset };
+    },
+    getPublicProject: async () => null,
+  };
+  const projectService = {} as ProjectService;
+  const { server, baseUrl } = await startProjectTestServer(projectService, publicProjectService);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/public/projects?category=construction&province=KwaZulu-Natal&urgency=urgent&search=kitchen&limit=10&offset=20`);
+    assert.equal(response.status, 200);
+    const body = await response.json() as { total: number; projects: PublicProject[] };
+    assert.equal(body.total, 1);
+    assert.equal(body.projects[0]?.id, 101);
+    assert.deepEqual(seen, { category: 'construction', province: 'KwaZulu-Natal', urgency: 'urgent', search: 'kitchen', limit: 10, offset: 20 });
+  } finally {
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+});
+
+test('public Project marketplace list rejects invalid pagination', async () => {
+  const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
+    getPublicProject: async () => null,
+  };
+  const projectService = {} as ProjectService;
+  const { server, baseUrl } = await startProjectTestServer(projectService, publicProjectService);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/public/projects?limit=101`);
+    assert.equal(response.status, 400);
+  } finally {
+    await new Promise<void>(resolve => server.close(() => resolve()));
   }
 });
