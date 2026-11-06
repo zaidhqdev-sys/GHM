@@ -1026,7 +1026,6 @@ test('public Project marketplace list applies filters and pagination without aut
       seen = input;
       return { projects: [publicProjectFixture()], total: 1, limit: input.limit, offset: input.offset };
     },
-    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async () => null,
   };
   const projectService = {} as ProjectService;
