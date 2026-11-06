@@ -35,12 +35,12 @@ const parseCreateOpportunityInput = (body: unknown): CreateOpportunityInput | nu
     'opensAt', 'closesAt',
   ]);
   if (Object.keys(input).some(key => !allowed.has(key))) return null;
-  if (!Number.isSafeInteger(input.opportunityTypeId) || Number(input.opportunityTypeId) <= 0) return null;
+  if (typeof input.opportunityTypeId !== 'number' || !Number.isSafeInteger(input.opportunityTypeId) || input.opportunityTypeId <= 0) return null;
   if (typeof input.title !== 'string' || !input.title.trim()) return null;
   if (typeof input.description !== 'string' || !input.description.trim()) return null;
   for (const key of ['ownerBusinessId', 'countryId', 'currencyId']) {
     const value = input[key];
-    if (value !== undefined && value !== null && (!Number.isSafeInteger(value) || Number(value) <= 0)) return null;
+    if (value !== undefined && value !== null && (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0)) return null;
   }
   for (const key of ['budgetMin', 'budgetMax']) {
     const value = input[key];
