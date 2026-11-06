@@ -126,6 +126,34 @@ export const registerOpportunityRoutes = (
     },
   );
 
+
+  app.post(
+    '/api/v1/opportunities/:opportunityId/transition',
+    authMiddleware,
+    requireRegisteredOpportunityAccess('transition'),
+    async (req: Request, res: Response) => {
+      try {
+        const rawId = routeParam(req.params.opportunityId);
+        const opportunityId = rawId === null ? null : positiveIntegerId(rawId);
+        const body = req.body as Record<string, unknown> | null;
+        const allowed = new Set(['open', 'responding', 'evaluating', 'awarded', 'in_progress', 'completed', 'cancelled', 'archived']);
+        if (opportunityId === null || !body || typeof body !== 'object' || Array.isArray(body)
+          || Object.keys(body).length !== 1 || typeof body.nextStatus !== 'string' || !allowed.has(body.nextStatus)) {
+          res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+        const opportunity = await service.transitionOpportunity(
+          req.authContext as AuthContext,
+          opportunityId,
+          body.nextStatus as import('../resources/opportunity/contracts').OpportunityLifecycleStatus,
+        );
+        res.status(200).json({ opportunity });
+      } catch (error) {
+        handleOpportunityError(error, res);
+      }
+    },
+  );
+
   app.get(
     '/api/v1/opportunities/:opportunityId',
     authMiddleware,
