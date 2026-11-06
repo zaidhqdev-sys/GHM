@@ -7,6 +7,7 @@ export type ProjectUrgency = 'standard' | 'urgent' | 'emergency';
 export type ProjectStatus = 'open' | 'in_progress' | 'completed' | 'cancelled';
 
 export interface Project {
+  readonly quoteCount?: number;
   readonly id: ProjectId;
   readonly accountId: AccountId;
   readonly title: string;
@@ -44,7 +45,15 @@ export interface UpdateProjectInput {
   readonly urgency?: ProjectUrgency;
 }
 
+export interface ProjectPage {
+  readonly projects: readonly Project[];
+  readonly total: number;
+  readonly limit: number;
+  readonly offset: number;
+}
+
 export interface ProjectRepository {
+  listOwnedProjects(context: AuthContext, limit: number, offset: number): Promise<ProjectPage>;
   createProject(
     context: AuthContext,
     input: CreateProjectInput,
@@ -63,6 +72,7 @@ export interface ProjectRepository {
 }
 
 export interface ProjectService {
+  listOwnedProjects(context: AuthContext, limit: number, offset: number): Promise<ProjectPage>;
   createProject(
     context: AuthContext,
     input: CreateProjectInput,
