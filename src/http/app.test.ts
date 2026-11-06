@@ -5,6 +5,7 @@ import { createApp } from './app';
 import { httpTestAuth, tokenFor } from './test-resource-auth';
 import { AuthContext } from '../auth/authorization';
 import { Project, ProjectService } from '../resources/project/contracts';
+import { Opportunity, OpportunityService } from '../resources/opportunity/contracts';
 import { PublicProject, PublicProjectService } from '../resources/project/public-contracts';
 import { AccountIdentity, BusinessIdentityService } from '../resources/business-identity/contracts';
 import { PublicBusiness, PublicBusinessService } from '../resources/business-identity/public-contracts';
@@ -12,6 +13,40 @@ import { DirectoryResult, DirectoryService } from '../resources/directory/contra
 import type { BusinessCategoryService } from '../resources/business-category/contracts';
 import type { BusinessHoursService } from '../resources/business-hours/contracts';
 import type { BusinessCapabilityService } from '../resources/business-capability/contracts';
+
+
+const startOpportunityTestServer = async (opportunityService: OpportunityService) => {
+  const businessService = {} as BusinessIdentityService;
+  const server = http.createServer(createApp({
+    resourceAuthMiddleware: httpTestAuth,
+    businessIdentityService: businessService,
+    opportunityService,
+  }));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  return { server, baseUrl: `http://127.0.0.1:${address.port}` };
+};
+
+const opportunityFixture = (overrides: Partial<Opportunity> = {}): Opportunity => ({
+  id: 301,
+  opportunityTypeId: 4,
+  creatorAccountId: 55,
+  ownerBusinessId: 72,
+  countryId: 1,
+  currencyId: 1,
+  title: 'Residential roof repair',
+  description: 'Repair and waterproof a residential roof.',
+  lifecycleStatus: 'draft',
+  visibility: 'private',
+  budgetMin: 10000,
+  budgetMax: 25000,
+  opensAt: new Date('2026-11-10T00:00:00.000Z'),
+  closesAt: new Date('2026-12-10T00:00:00.000Z'),
+  createdAt: new Date('2026-11-06T00:00:00.000Z'),
+  updatedAt: new Date('2026-11-06T00:00:00.000Z'),
+  ...overrides,
+});
 
 const profile = (context: AuthContext): AccountIdentity => ({
   id: context.userId,
@@ -1013,6 +1048,112 @@ test('authenticated business membership API lists only the caller\'s contexts an
       headers: { authorization: `Bearer ${token}` },
     });
     assert.equal(deniedResponse.status, 404);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('Opportunity creation route passes authenticated context and validated input to service', async () => {
+  const expected = opportunityFixture();
+  const service: OpportunityService = {
+    createOpportunity: async (context, input) => {
+      assert.equal(context.userId, 55);
+      assert.equal(context.role, 'customer');
+      assert.equal(input.opportunityTypeId, 4);
+      assert.equal(input.ownerBusinessId, 72);
+      assert.ok(input.opensAt instanceof Date);
+      return expected;
+    },
+    getOpportunity: async () => null,
+    getOwnedOpportunity: async () => null,
+    updateOwnedOpportunity: async () => { throw new Error('not expected'); },
+    transitionOpportunity: async () => { throw new Error('not expected'); },
+  };
+  const { server, baseUrl } = await startOpportunityTestServer(service);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/opportunities`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${tokenFor({ userId: 55, role: 'customer' })}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        opportunityTypeId: 4, ownerBusinessId: 72, countryId: 1, currencyId: 1,
+        title: 'Residential roof repair', description: 'Repair and waterproof a residential roof.',
+        visibility: 'private', budgetMin: 10000, budgetMax: 25000,
+        opensAt: '2026-11-10T00:00:00.000Z', closesAt: '2026-12-10T00:00:00.000Z',
+      }),
+    });
+    assert.equal(response.status, 201);
+    const body = await response.json() as { opportunity: { id: number; lifecycleStatus: string } };
+    assert.equal(body.opportunity.id, expected.id);
+    assert.equal(body.opportunity.lifecycleStatus, 'draft');
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('Opportunity creation route rejects malformed input before service invocation', async () => {
+  let called = false;
+  const service = {
+    createOpportunity: async () => { called = true; throw new Error('must not be called'); },
+  } as unknown as OpportunityService;
+  const { server, baseUrl } = await startOpportunityTestServer(service);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/opportunities`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${tokenFor({ userId: 55, role: 'customer' })}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ opportunityTypeId: 0, title: '', description: 'x', unexpected: true }),
+    });
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: 'invalid_request' });
+    assert.equal(called, false);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+
+test('Opportunity transition route passes the authenticated account and requested lifecycle status', async () => {
+  const expected = opportunityFixture({ lifecycleStatus: 'open' });
+  const service: OpportunityService = {
+    createOpportunity: async () => { throw new Error('not expected'); },
+    getOpportunity: async () => null,
+    getOwnedOpportunity: async () => null,
+    updateOwnedOpportunity: async () => { throw new Error('not expected'); },
+    transitionOpportunity: async (context, id, status) => {
+      assert.equal(context.userId, 55);
+      assert.equal(id, expected.id);
+      assert.equal(status, 'open');
+      return expected;
+    },
+  };
+  const { server, baseUrl } = await startOpportunityTestServer(service);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/opportunities/${expected.id}/transition`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${tokenFor({ userId: 55, role: 'customer' })}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ nextStatus: 'open' }),
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json() as { opportunity: { lifecycleStatus: string } };
+    assert.equal(body.opportunity.lifecycleStatus, 'open');
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('Opportunity transition route rejects unsupported status and extra fields', async () => {
+  let called = false;
+  const service = {
+    transitionOpportunity: async () => { called = true; throw new Error('must not be called'); },
+  } as unknown as OpportunityService;
+  const { server, baseUrl } = await startOpportunityTestServer(service);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/opportunities/301/transition`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${tokenFor({ userId: 55, role: 'customer' })}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ nextStatus: 'published', ownerAccountId: 99 }),
+    });
+    assert.equal(response.status, 400);
+    assert.equal(called, false);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
