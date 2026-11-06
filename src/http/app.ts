@@ -863,6 +863,33 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
+
+  app.get('/api/v1/projects', resourceAuthMiddleware, requireRegisteredAccess('project', 'read'), async (req: Request, res: Response) => {
+    try {
+      const context = req.authContext as AuthContext;
+      if (context.role !== 'customer') {
+        res.status(403).json({ error: 'forbidden' });
+        return;
+      }
+      const rawLimit = req.query.limit;
+      const rawOffset = req.query.offset;
+      if ((rawLimit !== undefined && typeof rawLimit !== 'string') || (rawOffset !== undefined && typeof rawOffset !== 'string')) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const limit = rawLimit === undefined ? 50 : Number(rawLimit);
+      const offset = rawOffset === undefined ? 0 : Number(rawOffset);
+      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100 || !Number.isSafeInteger(offset) || offset < 0) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const page = await projectService.listOwnedProjects(context, limit, offset);
+      res.status(200).json(page);
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
   app.post('/api/v1/projects', resourceAuthMiddleware, requireRegisteredAccess('project', 'create'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
