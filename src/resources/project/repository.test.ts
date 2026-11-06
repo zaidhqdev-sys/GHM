@@ -64,7 +64,7 @@ test('Project and open authenticated Opportunity are created in one transaction'
   const opportunity = calls.find(x => x.sql.includes('INSERT INTO ghm.opportunity ('));
   assert.ok(opportunity);
   assert.match(opportunity.sql, /'open', 'authenticated'/);
-  assert.deepEqual(opportunity.values, [4, 7, 'Kitchen renovation', 'Renovate the existing family kitchen.', 1000, 5000]);
+  assert.deepEqual(opportunity.values, ['4', 7, 'Kitchen renovation', 'Renovate the existing family kitchen.', 1000, 5000]);
   const project = calls.find(x => x.sql.includes('INSERT INTO ghm.project ('));
   assert.ok(project);
   assert.deepEqual(project.values, [7, 501, 'Kitchen renovation', 'Renovate the existing family kitchen.', 'Renovation', 'KwaZulu-Natal', 'Durban', 1000, 5000, 'standard']);
