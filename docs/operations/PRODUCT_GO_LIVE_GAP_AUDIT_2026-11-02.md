@@ -77,3 +77,12 @@ The browser-auth implementation has advanced since this audit was first written:
 The legal capability (#201) and multi-Business API (#202) PRs remain draft and substantially behind/current-main incompatible; their earlier green CI is not exact-head qualification against the present mainline. Rebase as narrow changes, review, and rerun exact-head CI before considering either merge. The identity integration PR #142 remains a large divergent tracking candidate and must not be merged wholesale. The Render sandbox handover (#188) remains a separate reconciliation record; its historical DB observations are not current runtime proof.
 
 This refresh is documentation only. It does not configure environments, enable flags, run migrations, deploy runtimes, change production, or re-enable GHM internal-runtime auto-deploy.
+
+
+## Legal acceptance security re-review — 2026-11-06
+
+GHM PR #201 remains open but blocked; its historical CI pass predates the current mainline and is not current-base evidence. A source review found that its `SECURITY DEFINER` functions `ghm.quoteflow_legal_current_documents(p_account_id)` and `ghm.quoteflow_legal_accept(p_account_id, ...)` grant `ghm_runtime` execution while trusting a caller-supplied account ID. The HTTP router currently passes the verified `req.authContext.userId`, but the database function boundary does not independently bind that parameter to a trusted request identity. A caller with direct use of the runtime database role could invoke the functions for another active account, reading acceptance state or recording acceptance on its behalf.
+
+Before any merge consideration, the implementation needs a reviewed trust model and a database-level guard that binds function execution to the authenticated account (including a threat-model review of who can set any transaction-scoped identity assertion), plus negative database tests for cross-account reads and writes. Then rebase only this capability onto current main, inspect migration ordering/privileges and rerun exact-head CI. No migration or runtime operation is authorized by this finding. Legal copy still requires owner/legal approval; empty catalogue and all errors must remain fail-closed.
+
+This finding does not invalidate unrelated GHM mainline capabilities. It blocks only the proposed legal-acceptance branch until the database trust boundary is independently enforced and qualified.
