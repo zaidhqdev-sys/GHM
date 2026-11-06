@@ -261,3 +261,7 @@ A narrowly scoped dependency security refresh has been validated on a dedicated 
 
 See [the 2026-11-06 dependency security handover](HANDOVER_2026-11-06_DEPENDENCY_SECURITY_REFRESH.md) for the full command/history/validation record. This is a dependency-maintenance candidate only; it does not close or alter any product, operational, production-readiness, or cutover gate.
 
+## Dependency refresh PR publication follow-up — 2026-11-06
+
+PR [#222](https://github.com/zaidhqdev-sys/GHM/pull/222) is open from `integration/ghm-dependency-security-refresh` to `main`, with head `8ddbb4376b3ade89c7e852dd43e1c9865ca8304f` and base `1f23d88b23a2f54c9d77742b4f47c980b3823e65`. GitHub reports it as mergeable and not merged. Cloudflare Pages automatically completed a branch-preview build at [the integration preview URL](https://integration-ghm-dependency-s.ghm-cu1.pages.dev); this is not a production deployment. GitHub Actions `quality` was still running at the time recorded. Local validation remains 651 passed, 0 failed, 2 skipped, and `npm audit` 0 vulnerabilities. See the detailed handover for the exact publication and validation record.
+
