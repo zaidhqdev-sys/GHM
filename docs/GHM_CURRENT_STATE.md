@@ -247,3 +247,45 @@ Only two PRs remain open: #142 is a broad, divergent identity integration candid
 - These are merged source-code changes, **not an activated or qualified browser-auth runtime**. Connect's `VITE_GHM_WEB_AUTH_ENABLED` remains disabled by default. GHM's three browser-auth settings are not configured on a runtime. Do not claim HttpOnly browser-session protection is active.
 - Next gate is a separately approved isolated non-production setup: canonical Connect Preview origin, server-only BFF upstream to the approved GHM qualification runtime, GHM exact Origin and cookie configuration, and the Connect flag enabled only for that Preview build. Execute the documented browser E2E matrix (register/login, access-only response, cookie attributes, refresh rotation/replay, logout/revocation, Origin denial, preview alias, bearer forwarding without cookie leakage). Record evidence and revert the flag if any gate fails.
 - No environment variables were changed, no runtime deployed, no database migration/data mutation occurred, and no production configuration or cutover was authorized in this checkpoint. GHM internal-runtime auto-deploy remains disabled.
+
+## Local branch cleanup and current work ledger — 2026-11-06
+
+### Mainline and handover status
+
+- GHM main: `c1dc451e0b1d3e39bf0ea59fc0eac8377ed929c1`; quality CI and Cloudflare Pages passed after the #219 go-live audit refresh.
+- Connect main: `c140acac5cdc4038120da6eeff7f146814643e17`; quality CI passed after #58.
+- Browser-auth source is merged (#217 GHM, #57 Connect) and documented in the Connect handover. It is not runtime-qualified or activated. Keep the Connect flag off until isolated non-production setup and browser E2E pass.
+- GHM #220 has merged at `1f23d88b23a2f54c9d77742b4f47c980b3823e65`, recording the legal-acceptance database trust-boundary finding. Its exact-head quality and Cloudflare checks passed; post-merge main checks were running at last poll.
+- GHM #201 remains blocked pending independently enforced database identity binding and cross-account negative tests. #202 and #204 were closed as superseded. #207 remains a draft PayFast candidate; its description has been corrected to state internal-runtime auto-deploy is disabled. #142 remains a divergent integration candidate; #183 is a qualification branch stacked on it; #188 remains a separate historical Render/migration handover.
+- GHM branch inventory returned a full first page of 100 refs (pagination remains necessary); Connect returned 45 refs. These are remote branch counts, not local branch counts.
+
+### Safe local-only cleanup (run in the local GHM clone)
+
+First ensure the working tree is clean and no worktree has a candidate branch checked out. Then fetch current main and prune stale *remote-tracking* refs (this does not delete any GitHub branch):
+
+```bash
+git status --short
+git worktree list
+git fetch origin --prune
+git switch main
+git pull --ff-only origin main
+```
+
+Preview local branches already fully merged into current main:
+
+```bash
+git branch --format='%(refname:short)' --merged origin/main
+```
+
+Only after reviewing that list, delete those local merged branches safely (the `-d` flag refuses unmerged work):
+
+```bash
+git branch --format='%(refname:short)' --merged origin/main |
+  while IFS= read -r branch; do
+    [ -z "$branch" ] || [ "$branch" = "main" ] || git branch -d "$branch"
+  done
+```
+
+Repeat in the local Connect clone, substituting its `main`. Do not use `git branch -D`, `git push origin --delete`, wildcard deletion, or delete branches merely because they are old. Do not delete local branches checked out in worktrees. Keep all unmerged branches (including active PR candidates and qualification evidence) for explicit review. `git fetch --prune` only removes stale local remote-tracking references for remote refs that have already been deleted; it does not remove remote refs itself.
+
+This checkpoint does not execute commands on the user's machine and does not delete local or remote refs. No runtime, deployment, database, environment, feature-flag or production changes were made. GHM internal-runtime auto-deploy remains disabled.
