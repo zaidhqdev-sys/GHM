@@ -1103,3 +1103,52 @@ test('Opportunity creation route rejects malformed input before service invocati
   }
 });
 
+
+test('Opportunity transition route passes the authenticated account and requested lifecycle status', async () => {
+  const expected = opportunityFixture({ lifecycleStatus: 'open' });
+  const service: OpportunityService = {
+    createOpportunity: async () => { throw new Error('not expected'); },
+    getOpportunity: async () => null,
+    getOwnedOpportunity: async () => null,
+    updateOwnedOpportunity: async () => { throw new Error('not expected'); },
+    transitionOpportunity: async (context, id, status) => {
+      assert.equal(context.userId, 55);
+      assert.equal(id, expected.id);
+      assert.equal(status, 'open');
+      return expected;
+    },
+  };
+  const { server, baseUrl } = await startOpportunityTestServer(service);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/opportunities/${expected.id}/transition`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${tokenFor({ userId: 55, role: 'customer' })}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ nextStatus: 'open' }),
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json() as { opportunity: { lifecycleStatus: string } };
+    assert.equal(body.opportunity.lifecycleStatus, 'open');
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('Opportunity transition route rejects unsupported status and extra fields', async () => {
+  let called = false;
+  const service = {
+    transitionOpportunity: async () => { called = true; throw new Error('must not be called'); },
+  } as unknown as OpportunityService;
+  const { server, baseUrl } = await startOpportunityTestServer(service);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/opportunities/301/transition`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${tokenFor({ userId: 55, role: 'customer' })}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ nextStatus: 'published', ownerAccountId: 99 }),
+    });
+    assert.equal(response.status, 400);
+    assert.equal(called, false);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
