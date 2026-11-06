@@ -962,6 +962,42 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     projectQuotes: projectQuoteService,
   });
 
+  app.get('/api/v1/public/projects', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
+    try {
+      const keys = ['category', 'province', 'urgency', 'search', 'limit', 'offset'] as const;
+      const values: Record<string, string> = {};
+      for (const key of keys) {
+        const value = req.query[key];
+        if (value !== undefined && typeof value !== 'string') {
+          res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+        if (typeof value === 'string') values[key] = value;
+      }
+      const limit = values.limit === undefined ? 50 : Number(values.limit);
+      const offset = values.offset === undefined ? 0 : Number(values.offset);
+      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100 || !Number.isSafeInteger(offset) || offset < 0) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const page = await publicProjectService.listPublicProjects({
+        category: values.category,
+        province: values.province,
+        urgency: values.urgency as 'standard' | 'urgent' | 'emergency' | undefined,
+        search: values.search,
+        limit,
+        offset,
+      });
+      res.status(200).json(page);
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith('Invalid Project ')) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      handleError(error, res);
+    }
+  });
+
   app.get('/api/v1/public/projects/:projectId', requireRegisteredPublicAccess('project', 'readPublic'), async (req: Request, res: Response) => {
     try {
       const projectIdValue = routeParam(req.params.projectId);

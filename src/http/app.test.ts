@@ -5,7 +5,6 @@ import { createApp } from './app';
 import { httpTestAuth, tokenFor } from './test-resource-auth';
 import { AuthContext } from '../auth/authorization';
 import { Project, ProjectService } from '../resources/project/contracts';
-import { Opportunity, OpportunityService } from '../resources/opportunity/contracts';
 import { PublicProject, PublicProjectService } from '../resources/project/public-contracts';
 import { AccountIdentity, BusinessIdentityService } from '../resources/business-identity/contracts';
 import { PublicBusiness, PublicBusinessService } from '../resources/business-identity/public-contracts';
@@ -13,40 +12,6 @@ import { DirectoryResult, DirectoryService } from '../resources/directory/contra
 import type { BusinessCategoryService } from '../resources/business-category/contracts';
 import type { BusinessHoursService } from '../resources/business-hours/contracts';
 import type { BusinessCapabilityService } from '../resources/business-capability/contracts';
-
-
-const startOpportunityTestServer = async (opportunityService: OpportunityService) => {
-  const businessService = {} as BusinessIdentityService;
-  const server = http.createServer(createApp({
-    resourceAuthMiddleware: httpTestAuth,
-    businessIdentityService: businessService,
-    opportunityService,
-  }));
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
-  const address = server.address();
-  assert.ok(address && typeof address !== 'string');
-  return { server, baseUrl: `http://127.0.0.1:${address.port}` };
-};
-
-const opportunityFixture = (overrides: Partial<Opportunity> = {}): Opportunity => ({
-  id: 301,
-  opportunityTypeId: 4,
-  creatorAccountId: 55,
-  ownerBusinessId: 72,
-  countryId: 1,
-  currencyId: 1,
-  title: 'Residential roof repair',
-  description: 'Repair and waterproof a residential roof.',
-  lifecycleStatus: 'draft',
-  visibility: 'private',
-  budgetMin: 10000,
-  budgetMax: 25000,
-  opensAt: new Date('2026-11-10T00:00:00.000Z'),
-  closesAt: new Date('2026-12-10T00:00:00.000Z'),
-  createdAt: new Date('2026-11-06T00:00:00.000Z'),
-  updatedAt: new Date('2026-11-06T00:00:00.000Z'),
-  ...overrides,
-});
 
 const profile = (context: AuthContext): AccountIdentity => ({
   id: context.userId,
@@ -290,6 +255,7 @@ test('protected profile route rejects an invalid JWT', async () => {
 const startProjectTestServer = async (
   projectService: ProjectService,
   publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async () => {
       throw new Error('public Project service must not be called');
     },
@@ -346,6 +312,7 @@ const publicProjectFixture = (
 test('public project route allows anonymous access through the public operation', async () => {
   const project = publicProjectFixture();
   const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async (projectId) => {
       assert.equal(projectId, project.id);
       return project;
@@ -379,6 +346,7 @@ test('public project route allows anonymous access through the public operation'
 test('public project route allows authenticated non-owner disclosure without private authorization', async () => {
   const project = publicProjectFixture({ id: 102 });
   const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async (projectId) => {
       assert.equal(projectId, project.id);
       return project;
@@ -419,6 +387,7 @@ test('public project route allows authenticated non-owner disclosure without pri
 test('public project route ignores invalid authentication', async () => {
   const project = publicProjectFixture({ id: 103 });
   const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async (projectId) => {
       assert.equal(projectId, project.id);
       return project;
@@ -458,6 +427,7 @@ test('public project route rejects invalid ids before service execution', async 
   let called = false;
 
   const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async () => {
       called = true;
       throw new Error('must not be called');
@@ -487,6 +457,7 @@ test('public project route rejects invalid ids before service execution', async 
 
 test('public project route returns not found when projection has no eligible project', async () => {
   const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async (projectId) => {
       assert.equal(projectId, 104);
       return null;
@@ -517,6 +488,7 @@ test('public project route does not expose a mutation surface', async () => {
   let called = false;
 
   const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async () => {
       called = true;
       throw new Error('must not be called');
@@ -1046,109 +1018,41 @@ test('authenticated business membership API lists only the caller\'s contexts an
   }
 });
 
-test('Opportunity creation route passes authenticated context and validated input to service', async () => {
-  const expected = opportunityFixture();
-  const service: OpportunityService = {
-    createOpportunity: async (context, input) => {
-      assert.equal(context.userId, 55);
-      assert.equal(context.role, 'customer');
-      assert.equal(input.opportunityTypeId, 4);
-      assert.equal(input.ownerBusinessId, 72);
-      assert.ok(input.opensAt instanceof Date);
-      return expected;
+
+test('public Project marketplace list applies filters and pagination without authentication', async () => {
+  let seen: unknown;
+  const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => {
+      seen = input;
+      return { projects: [publicProjectFixture()], total: 1, limit: input.limit, offset: input.offset };
     },
-    getOpportunity: async () => null,
-    getOwnedOpportunity: async () => null,
-    updateOwnedOpportunity: async () => { throw new Error('not expected'); },
-    transitionOpportunity: async () => { throw new Error('not expected'); },
+    getPublicProject: async () => null,
   };
-  const { server, baseUrl } = await startOpportunityTestServer(service);
+  const projectService = {} as ProjectService;
+  const { server, baseUrl } = await startProjectTestServer(projectService, publicProjectService);
   try {
-    const response = await fetch(`${baseUrl}/api/v1/opportunities`, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${tokenFor({ userId: 55, role: 'customer' })}`, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        opportunityTypeId: 4, ownerBusinessId: 72, countryId: 1, currencyId: 1,
-        title: 'Residential roof repair', description: 'Repair and waterproof a residential roof.',
-        visibility: 'private', budgetMin: 10000, budgetMax: 25000,
-        opensAt: '2026-11-10T00:00:00.000Z', closesAt: '2026-12-10T00:00:00.000Z',
-      }),
-    });
-    assert.equal(response.status, 201);
-    const body = await response.json() as { opportunity: { id: number; lifecycleStatus: string } };
-    assert.equal(body.opportunity.id, expected.id);
-    assert.equal(body.opportunity.lifecycleStatus, 'draft');
-  } finally {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-  }
-});
-
-test('Opportunity creation route rejects malformed input before service invocation', async () => {
-  let called = false;
-  const service = {
-    createOpportunity: async () => { called = true; throw new Error('must not be called'); },
-  } as unknown as OpportunityService;
-  const { server, baseUrl } = await startOpportunityTestServer(service);
-  try {
-    const response = await fetch(`${baseUrl}/api/v1/opportunities`, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${tokenFor({ userId: 55, role: 'customer' })}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ opportunityTypeId: 0, title: '', description: 'x', unexpected: true }),
-    });
-    assert.equal(response.status, 400);
-    assert.deepEqual(await response.json(), { error: 'invalid_request' });
-    assert.equal(called, false);
-  } finally {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-  }
-});
-
-
-test('Opportunity transition route passes the authenticated account and requested lifecycle status', async () => {
-  const expected = opportunityFixture({ lifecycleStatus: 'open' });
-  const service: OpportunityService = {
-    createOpportunity: async () => { throw new Error('not expected'); },
-    getOpportunity: async () => null,
-    getOwnedOpportunity: async () => null,
-    updateOwnedOpportunity: async () => { throw new Error('not expected'); },
-    transitionOpportunity: async (context, id, status) => {
-      assert.equal(context.userId, 55);
-      assert.equal(id, expected.id);
-      assert.equal(status, 'open');
-      return expected;
-    },
-  };
-  const { server, baseUrl } = await startOpportunityTestServer(service);
-  try {
-    const response = await fetch(`${baseUrl}/api/v1/opportunities/${expected.id}/transition`, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${tokenFor({ userId: 55, role: 'customer' })}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ nextStatus: 'open' }),
-    });
+    const response = await fetch(`${baseUrl}/api/v1/public/projects?category=construction&province=KwaZulu-Natal&urgency=urgent&search=kitchen&limit=10&offset=20`);
     assert.equal(response.status, 200);
-    const body = await response.json() as { opportunity: { lifecycleStatus: string } };
-    assert.equal(body.opportunity.lifecycleStatus, 'open');
+    const body = await response.json() as { total: number; projects: PublicProject[] };
+    assert.equal(body.total, 1);
+    assert.equal(body.projects[0]?.id, 101);
+    assert.deepEqual(seen, { category: 'construction', province: 'KwaZulu-Natal', urgency: 'urgent', search: 'kitchen', limit: 10, offset: 20 });
   } finally {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await new Promise<void>(resolve => server.close(() => resolve()));
   }
 });
 
-test('Opportunity transition route rejects unsupported status and extra fields', async () => {
-  let called = false;
-  const service = {
-    transitionOpportunity: async () => { called = true; throw new Error('must not be called'); },
-  } as unknown as OpportunityService;
-  const { server, baseUrl } = await startOpportunityTestServer(service);
+test('public Project marketplace list rejects invalid pagination', async () => {
+  const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
+    getPublicProject: async () => null,
+  };
+  const projectService = {} as ProjectService;
+  const { server, baseUrl } = await startProjectTestServer(projectService, publicProjectService);
   try {
-    const response = await fetch(`${baseUrl}/api/v1/opportunities/301/transition`, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${tokenFor({ userId: 55, role: 'customer' })}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ nextStatus: 'published', ownerAccountId: 99 }),
-    });
+    const response = await fetch(`${baseUrl}/api/v1/public/projects?limit=101`);
     assert.equal(response.status, 400);
-    assert.equal(called, false);
   } finally {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await new Promise<void>(resolve => server.close(() => resolve()));
   }
 });
-

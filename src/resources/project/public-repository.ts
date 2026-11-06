@@ -3,6 +3,8 @@ import type { TransactionPool } from '../../db/transaction';
 import type {
   PublicProject,
   PublicProjectRepository,
+  PublicProjectSearchInput,
+  PublicProjectPage,
 } from './public-contracts';
 
 const PUBLIC_PROJECT_COLUMNS = `
@@ -52,6 +54,50 @@ const mapPublicProject = (row: PublicProjectRow): PublicProject => ({
 
 export class PostgresPublicProjectRepository implements PublicProjectRepository {
   constructor(private readonly transactionPool: TransactionPool = pool) {}
+
+
+  async listPublicProjects(input: PublicProjectSearchInput): Promise<PublicProjectPage> {
+    const client = await this.transactionPool.connect();
+    try {
+      const filters = [
+        input.category ?? null,
+        input.province ?? null,
+        input.urgency ?? null,
+        input.search?.trim() || null,
+      ];
+      const where = `
+        status = 'open'
+        AND ($1::text IS NULL OR lower(category) = lower($1))
+        AND ($2::text IS NULL OR lower(province) = lower($2))
+        AND ($3::text IS NULL OR urgency = $3)
+        AND ($4::text IS NULL OR
+          strpos(lower(title), lower($4)) > 0 OR
+          strpos(lower(description), lower($4)) > 0 OR
+          strpos(lower(city), lower($4)) > 0 OR
+          strpos(lower(category), lower($4)) > 0)
+      `;
+      const count = await client.query(
+        `SELECT count(*)::int AS total FROM ghm.project_public WHERE ${where}`,
+        filters,
+      );
+      const result = await client.query(
+        `SELECT ${PUBLIC_PROJECT_COLUMNS}
+         FROM ghm.project_public
+         WHERE ${where}
+         ORDER BY created_at DESC, id DESC
+         LIMIT $5 OFFSET $6`,
+        [...filters, input.limit, input.offset],
+      );
+      return {
+        projects: result.rows.map(mapPublicProject),
+        total: Number(count.rows[0]?.total ?? 0),
+        limit: input.limit,
+        offset: input.offset,
+      };
+    } finally {
+      client.release();
+    }
+  }
 
   async getPublicProject(projectId: number): Promise<PublicProject | null> {
     const client = await this.transactionPool.connect();
