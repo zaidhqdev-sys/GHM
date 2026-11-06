@@ -1,6 +1,6 @@
 # GHM Current State — Authoritative Documentation Reconciliation
 
-**Status:** CURRENT / AUTHORITATIVE DOCUMENTATION INDEX — reconciled 2026-10-13
+**Status:** CURRENT / AUTHORITATIVE DOCUMENTATION INDEX — mainline reconciled 2026-10-13; dependency-refresh candidate recorded 2026-11-06
 **Repository authority:** consolidated `main`
 **Reconciliation history:** the PR #125 baseline (`01bd40dabe0b0f02bb30d2f78267a0414d3d8356`) was followed by PR #126 (`aef8ecdeee241d31827f6fc42730f9a61f1ddea4`), PR #127 (`6afb428d452012d9860ca50c2b0066f0768b184c`), PR #128 (`671c41be0b2446dd5c56c709c4aa3cb2e15e7d81`), PR #129 (`9af7901b0baecbdc4b307f3a0a93e1643f006ca6`), and PR #130 (`14c805cfd749ed50493523972fdd0a7c359bbfce`), all merged on 2026-10-13. These SHAs identify historical reconciliation milestones, not live pointers to deployed Render code or database state. The earlier `1f2b10d0850095311614c5b5f9531eb8b7cce860` checksum-normalization commit is historical provenance. PR #130 subsequently merged into `main` as `14c805cfd749ed50493523972fdd0a7c359bbfce`; pre-merge checkpoint language retained below is historical only.
 
@@ -247,3 +247,21 @@ Only two PRs remain open: #142 is a broad, divergent identity integration candid
 - These are merged source-code changes, **not an activated or qualified browser-auth runtime**. Connect's `VITE_GHM_WEB_AUTH_ENABLED` remains disabled by default. GHM's three browser-auth settings are not configured on a runtime. Do not claim HttpOnly browser-session protection is active.
 - Next gate is a separately approved isolated non-production setup: canonical Connect Preview origin, server-only BFF upstream to the approved GHM qualification runtime, GHM exact Origin and cookie configuration, and the Connect flag enabled only for that Preview build. Execute the documented browser E2E matrix (register/login, access-only response, cookie attributes, refresh rotation/replay, logout/revocation, Origin denial, preview alias, bearer forwarding without cookie leakage). Record evidence and revert the flag if any gate fails.
 - No environment variables were changed, no runtime deployed, no database migration/data mutation occurred, and no production configuration or cutover was authorized in this checkpoint. GHM internal-runtime auto-deploy remains disabled.
+
+## Dependency security refresh candidate — 2026-11-06 (not yet merged)
+
+A narrowly scoped dependency security refresh has been validated on a dedicated branch based on the fetched mainline commit `1f23d88b`. The implementation commit is `e36a930b` on `integration/ghm-dependency-security-refresh`; it changes only `package.json` and `package-lock.json`.
+
+- The manifest Node engine minimum is `>=20.0.0`, matching the declared engine requirement of the installed AWS SDK packages.
+- The lockfile refresh updates `body-parser` 1.20.6 → 1.20.9, `express` 4.22.2 → 4.22.3, `proxy-addr` 2.0.7 → 2.0.8, and `qs` 6.15.3 → 6.16.2.
+- Validation on the integration branch: 651 tests passed, 0 failed, 2 skipped; `npm audit` reported 0 vulnerabilities.
+- The branch was pushed to `origin`. At the time of this note, PR creation/review is the next step; the change is **not merged to main and not deployed**.
+- The original construction branch and its separate remote-only documentation history were left untouched. Only the dependency commit was cherry-picked onto the new mainline-based integration branch.
+- No production secrets, runtime configuration, migrations, database state, or application data were changed.
+
+See [the 2026-11-06 dependency security handover](HANDOVER_2026-11-06_DEPENDENCY_SECURITY_REFRESH.md) for the full command/history/validation record. This is a dependency-maintenance candidate only; it does not close or alter any product, operational, production-readiness, or cutover gate.
+
+## Dependency refresh PR publication follow-up — 2026-11-06
+
+PR [#222](https://github.com/zaidhqdev-sys/GHM/pull/222) is open from `integration/ghm-dependency-security-refresh` to `main`, with head `8ddbb4376b3ade89c7e852dd43e1c9865ca8304f` and base `1f23d88b23a2f54c9d77742b4f47c980b3823e65`. GitHub reports it as mergeable and not merged. Cloudflare Pages automatically completed a branch-preview build at [the integration preview URL](https://integration-ghm-dependency-s.ghm-cu1.pages.dev); this is not a production deployment. GitHub Actions `quality` was still running at the time recorded. Local validation remains 651 passed, 0 failed, 2 skipped, and `npm audit` 0 vulnerabilities. See the detailed handover for the exact publication and validation record.
+
