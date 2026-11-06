@@ -255,7 +255,7 @@ Only two PRs remain open: #142 is a broad, divergent identity integration candid
 - GHM main: `c1dc451e0b1d3e39bf0ea59fc0eac8377ed929c1`; quality CI and Cloudflare Pages passed after the #219 go-live audit refresh.
 - Connect main: `c140acac5cdc4038120da6eeff7f146814643e17`; quality CI passed after #58.
 - Browser-auth source is merged (#217 GHM, #57 Connect) and documented in the Connect handover. It is not runtime-qualified or activated. Keep the Connect flag off until isolated non-production setup and browser E2E pass.
-- GHM #220 is the open documentation PR recording the legal-acceptance database trust-boundary finding. It is not merged as of this checkpoint; Cloudflare preview passed and quality CI was still running at last check.
+- GHM #220 has merged at `1f23d88b23a2f54c9d77742b4f47c980b3823e65`, recording the legal-acceptance database trust-boundary finding. Its exact-head quality and Cloudflare checks passed; post-merge main checks were running at last poll.
 - GHM #201 remains blocked pending independently enforced database identity binding and cross-account negative tests. #202 and #204 were closed as superseded. #207 remains a draft PayFast candidate; its description has been corrected to state internal-runtime auto-deploy is disabled. #142 remains a divergent integration candidate; #183 is a qualification branch stacked on it; #188 remains a separate historical Render/migration handover.
 - GHM branch inventory returned a full first page of 100 refs (pagination remains necessary); Connect returned 45 refs. These are remote branch counts, not local branch counts.
 
