@@ -31,6 +31,28 @@ const PROJECT_QUOTE_COLUMNS = `
   updated_at
 `;
 
+
+const PROJECT_QUOTE_WITH_BUSINESS_COLUMNS = `
+  pq.id,
+  pq.project_id,
+  pq.business_id,
+  pq.amount,
+  pq.labour_min,
+  pq.labour_max,
+  pq.materials_min,
+  pq.materials_max,
+  pq.total_min,
+  pq.total_max,
+  pq.duration_days,
+  pq.description,
+  pq.status,
+  pq.created_at,
+  pq.updated_at,
+  b.name AS business_name,
+  b.slug AS business_slug,
+  b.logo_storage_object_id AS business_logo_storage_object_id
+`;
+
 const assertPositiveId = (id: number, field: string): void => {
   if (!Number.isSafeInteger(id) || id <= 0) {
     throw new Error(`Invalid ${field}`);
@@ -188,6 +210,12 @@ const mapProjectQuote = (row: any): ProjectQuote => ({
   id: Number(row.id),
   projectId: Number(row.project_id),
   businessId: Number(row.business_id),
+  ...(typeof row.business_name === 'string' ? { business: {
+    id: Number(row.business_id),
+    name: row.business_name,
+    slug: row.business_slug,
+    logoUrl: row.business_logo_storage_object_id === null || row.business_logo_storage_object_id === undefined ? null : `/api/v1/public/businesses/${Number(row.business_id)}/logo`,
+  } } : {}),
   amount: Number(row.amount),
   labourMin:
     row.labour_min === null ? null : Number(row.labour_min),
@@ -247,8 +275,9 @@ const findReceivedQuotes = async (
   projectId: number,
 ): Promise<readonly ProjectQuote[]> => {
   const result = await client.query(
-    `SELECT ${PROJECT_QUOTE_COLUMNS}
+    `SELECT ${PROJECT_QUOTE_WITH_BUSINESS_COLUMNS}
      FROM ghm.project_quote pq
+     JOIN ghm.business b ON b.id = pq.business_id
      WHERE pq.project_id = $1
        AND EXISTS (
          SELECT 1
@@ -269,8 +298,9 @@ const findOwnQuotes = async (
   businessId: BusinessId,
 ): Promise<readonly ProjectQuote[]> => {
   const result = await client.query(
-    `SELECT ${PROJECT_QUOTE_COLUMNS}
+    `SELECT ${PROJECT_QUOTE_WITH_BUSINESS_COLUMNS}
      FROM ghm.project_quote pq
+     JOIN ghm.business b ON b.id = pq.business_id
      WHERE pq.business_id = $1
        AND EXISTS (
          SELECT 1

@@ -10,10 +10,18 @@ export type ProjectQuoteStatus =
   | 'rejected'
   | 'withdrawn';
 
+export interface ProjectQuoteBusinessSummary {
+  readonly id: BusinessId;
+  readonly name: string;
+  readonly slug: string;
+  readonly logoUrl: string | null;
+}
+
 export interface ProjectQuote {
   readonly id: ProjectQuoteId;
   readonly projectId: ProjectId;
   readonly businessId: BusinessId;
+  readonly business?: ProjectQuoteBusinessSummary;
   readonly amount: number;
   readonly labourMin: number | null;
   readonly labourMax: number | null;
