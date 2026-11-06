@@ -863,7 +863,6 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     }
   });
 
-
   app.get('/api/v1/projects', resourceAuthMiddleware, requireRegisteredAccess('project', 'read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
