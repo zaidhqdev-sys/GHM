@@ -219,7 +219,7 @@ test('Commercial payment preparation rejects invalid idempotency keys before ope
 
 test('Commercial payment preparation rejects idempotency reuse by another actor', async () => {
   const existing = {
-    id: 71, business_id: businessId, subscription_id: 21, price_id: 41, initiated_by: 8,
+    id: 71, business_id: businessId, subscription_id: 21, price_id: 41, initiated_by: 8, provider_code: 'payfast',
     attempt_status: 'pending_checkout', amount_minor_units: 19900, currency_id: 1,
     billing_interval: 'month', idempotency_key: 'idem-key-123', checkout_reference: null,
     expires_at: null, failure_code: null, failure_message: null,
@@ -244,7 +244,7 @@ test('Commercial payment preparation rejects idempotency reuse by another actor'
   );
 });
 
-test('Commercial payment preparation resolves price and persists a provider-neutral attempt atomically', async () => {
+test('Commercial payment preparation resolves price and persists a PayFast-bound attempt atomically', async () => {
   const preparedAt = new Date('2026-10-03T10:00:00.000Z');
   const calls: string[] = [];
   const params: unknown[][] = [];
@@ -262,7 +262,7 @@ test('Commercial payment preparation resolves price and persists a provider-neut
       }
       if (sql.includes('INSERT INTO ghm.commercial_payment_attempt')) {
         return { rowCount: 1, rows: [{
-          id: 71, business_id: businessId, subscription_id: 21, price_id: 41, initiated_by: userId,
+          id: 71, business_id: businessId, subscription_id: 21, price_id: 41, initiated_by: userId, provider_code: 'payfast',
           attempt_status: 'pending_checkout', amount_minor_units: 19900, currency_id: 1,
           billing_interval: 'month', idempotency_key: 'idem-key-123', checkout_reference: null,
           expires_at: new Date(preparedAt.getTime() + 15 * 60000), failure_code: null, failure_message: null,
@@ -286,6 +286,7 @@ test('Commercial payment preparation resolves price and persists a provider-neut
   );
   assert.equal(result.id, 71);
   assert.equal(result.lifecycleStatus, 'pending_checkout');
+  assert.equal(result.providerCode, 'payfast');
   assert.equal(result.priceId, 41);
   assert.equal(result.amountMinorUnits, 19900);
   assert.equal(result.currencyId, 1);
@@ -295,7 +296,10 @@ test('Commercial payment preparation resolves price and persists a provider-neut
   assert.match(priceSql, /price\.lifecycle_status = 'active'/);
   assert.match(priceSql, /price\.country_id = \$3::bigint/);
   assert.deepEqual(params[calls.indexOf(priceSql!)], [31, preparedAt, 1]);
-  assert.equal(calls.filter((sql) => sql.includes('INSERT INTO ghm.commercial_payment_attempt')).length, 1);
+  const attemptInsert = calls.find((sql) => sql.includes('INSERT INTO ghm.commercial_payment_attempt'));
+  assert.ok(attemptInsert);
+  assert.match(attemptInsert, /provider_code/);
+  assert.match(attemptInsert, /'payfast'/);
   assert.equal(calls.filter((sql) => sql.includes('INSERT INTO ghm.commercial_event')).length, 1);
   assert.equal(calls[0], 'BEGIN');
   assert.equal(calls.at(-1), 'COMMIT');
@@ -311,7 +315,7 @@ test('Commercial payment preparation rolls back when event persistence fails', a
       if (sql === 'SELECT now() AS prepared_at') return { rowCount: 1, rows: [{ prepared_at: new Date(1000) }] };
       if (sql.includes('FROM ghm.commercial_plan_price')) return { rowCount: 1, rows: [{ id: 41, amount_minor_units: 19900, currency_id: 1, billing_interval: 'month' }] };
       if (sql.includes('INSERT INTO ghm.commercial_payment_attempt')) return { rowCount: 1, rows: [{
-        id: 71, business_id: businessId, subscription_id: 21, price_id: 41, initiated_by: userId,
+        id: 71, business_id: businessId, subscription_id: 21, price_id: 41, initiated_by: userId, provider_code: 'payfast',
         attempt_status: 'pending_checkout', amount_minor_units: 19900, currency_id: 1,
         billing_interval: 'month', idempotency_key: 'idem-key-123', checkout_reference: null,
         expires_at: null, failure_code: null, failure_message: null,
@@ -329,5 +333,33 @@ test('Commercial payment preparation rolls back when event persistence fails', a
       { businessId, idempotencyKey: 'idem-key-123' },
     ),
     /payment event failure/,
+  );
+});
+
+
+test('Commercial payment preparation fails closed when idempotency replay finds an unreconciled provider', async () => {
+  const existing = {
+    id: 71, business_id: businessId, subscription_id: 21, price_id: 41, initiated_by: userId, provider_code: null,
+    attempt_status: 'pending_checkout', amount_minor_units: 19900, currency_id: 1,
+    billing_interval: 'month', idempotency_key: 'idem-key-123', checkout_reference: null,
+    expires_at: null, failure_code: null, failure_message: null,
+    created_at: new Date(1000), updated_at: new Date(1000),
+  };
+  const client = {
+    async query(sql: string): Promise<{ rowCount: number; rows: Record<string, unknown>[] }> {
+      if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rowCount: 0, rows: [] };
+      if (sql.includes('FROM ghm.business_membership')) return { rowCount: 1, rows: [] };
+      if (sql.includes('FROM ghm.commercial_payment_attempt')) return { rowCount: 1, rows: [existing] };
+      throw new Error(`Unexpected SQL in provider reconciliation test: ${sql}`);
+    },
+    release(): void {},
+  };
+  const pool: TransactionPool = { async connect(): Promise<PoolClient> { return client as unknown as PoolClient; } };
+  await assert.rejects(
+    () => new PostgresCommercialRepository(pool).prepareCommercialPayment(
+      context(),
+      { businessId, idempotencyKey: 'idem-key-123' },
+    ),
+    /provider reconciliation required/,
   );
 });

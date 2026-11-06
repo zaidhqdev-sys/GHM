@@ -35,6 +35,7 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgres://ghm_runtime:runtime-test-password@localhost:5432/ghm_disposable_test
       GHM_RUNTIME_DATABASE_URL: postgres://ghm_runtime:runtime-test-password@localhost:5432/ghm_disposable_test
+      GHM_PAYMENT_PROVIDER_DATABASE_URL: postgres://ghm_payment_provider:provider-test-password@localhost:5432/ghm_disposable_test
       GHM_MIGRATOR_DATABASE_URL: postgres://ghm_migrator:migrator-test-password@localhost:5432/ghm_disposable_test
       GHM_MIGRATION_DATABASE_NAME: ghm_disposable_test
       GHM_MIGRATION_DATABASE_HOST: localhost
@@ -70,7 +71,8 @@ jobs:
           CREATE ROLE ghm_migrator LOGIN NOINHERIT PASSWORD 'migrator-test-password';
           GRANT ghm_schema_owner TO ghm_migrator;
           CREATE ROLE ghm_runtime LOGIN NOINHERIT PASSWORD 'runtime-test-password';
-          GRANT CONNECT ON DATABASE ghm_disposable_test TO ghm_migrator, ghm_runtime;
+          CREATE ROLE ghm_payment_provider LOGIN NOINHERIT PASSWORD 'provider-test-password';
+          GRANT CONNECT ON DATABASE ghm_disposable_test TO ghm_migrator, ghm_runtime, ghm_payment_provider;
           GRANT CREATE ON DATABASE ghm_disposable_test TO ghm_schema_owner;
           GRANT USAGE, CREATE ON SCHEMA public TO ghm_schema_owner;
           SQL
@@ -112,6 +114,9 @@ jobs:
 
       - name: Test suite
         run: npm test
+
+      - name: Qualify commercial payment settlement identities against disposable PostgreSQL
+        run: npm run build && node scripts/qualify-commercial-payment-result-runtime.mjs
 
       - name: Migration audit policy tests
         run: npm run test:migration-audit-policy

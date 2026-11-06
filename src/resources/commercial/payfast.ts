@@ -35,9 +35,12 @@ const isIpv4 = (value: string): boolean => {
 };
 
 const isPayfastSourceIp = (sourceIp: string): boolean => {
-  if (!isIpv4(sourceIp)) return false;
-  if (PAYFAST_EXACT_IPV4.has(sourceIp)) return true;
-  const parts = sourceIp.split('.').map(Number);
+  // Node may expose an IPv4 peer as an IPv4-mapped IPv6 socket address when
+  // the listener is dual-stack (e.g. ::ffff:197.97.145.150).
+  const normalizedIp = sourceIp.replace(/^::ffff:/i, '');
+  if (!isIpv4(normalizedIp)) return false;
+  if (PAYFAST_EXACT_IPV4.has(normalizedIp)) return true;
+  const parts = normalizedIp.split('.').map(Number);
   return PAYFAST_IPV4_RANGES.some((range) =>
     parts[0] === range.network &&
     parts[1] === range.second &&
