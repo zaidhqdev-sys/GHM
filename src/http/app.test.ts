@@ -290,6 +290,7 @@ test('protected profile route rejects an invalid JWT', async () => {
 const startProjectTestServer = async (
   projectService: ProjectService,
   publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async () => {
       throw new Error('public Project service must not be called');
     },
@@ -346,6 +347,7 @@ const publicProjectFixture = (
 test('public project route allows anonymous access through the public operation', async () => {
   const project = publicProjectFixture();
   const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async (projectId) => {
       assert.equal(projectId, project.id);
       return project;
@@ -379,6 +381,7 @@ test('public project route allows anonymous access through the public operation'
 test('public project route allows authenticated non-owner disclosure without private authorization', async () => {
   const project = publicProjectFixture({ id: 102 });
   const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async (projectId) => {
       assert.equal(projectId, project.id);
       return project;
@@ -419,6 +422,7 @@ test('public project route allows authenticated non-owner disclosure without pri
 test('public project route ignores invalid authentication', async () => {
   const project = publicProjectFixture({ id: 103 });
   const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async (projectId) => {
       assert.equal(projectId, project.id);
       return project;
@@ -458,6 +462,7 @@ test('public project route rejects invalid ids before service execution', async 
   let called = false;
 
   const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async () => {
       called = true;
       throw new Error('must not be called');
@@ -487,6 +492,7 @@ test('public project route rejects invalid ids before service execution', async 
 
 test('public project route returns not found when projection has no eligible project', async () => {
   const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async (projectId) => {
       assert.equal(projectId, 104);
       return null;
@@ -517,6 +523,7 @@ test('public project route does not expose a mutation surface', async () => {
   let called = false;
 
   const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async () => {
       called = true;
       throw new Error('must not be called');
@@ -1152,3 +1159,41 @@ test('Opportunity transition route rejects unsupported status and extra fields',
   }
 });
 
+
+test('public Project marketplace list applies filters and pagination without authentication', async () => {
+  let seen: unknown;
+  const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => {
+      seen = input;
+      return { projects: [publicProjectFixture()], total: 1, limit: input.limit, offset: input.offset };
+    },
+    getPublicProject: async () => null,
+  };
+  const projectService = {} as ProjectService;
+  const { server, baseUrl } = await startProjectTestServer(projectService, publicProjectService);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/public/projects?category=construction&province=KwaZulu-Natal&urgency=urgent&search=kitchen&limit=10&offset=20`);
+    assert.equal(response.status, 200);
+    const body = await response.json() as { total: number; projects: PublicProject[] };
+    assert.equal(body.total, 1);
+    assert.equal(body.projects[0]?.id, 101);
+    assert.deepEqual(seen, { category: 'construction', province: 'KwaZulu-Natal', urgency: 'urgent', search: 'kitchen', limit: 10, offset: 20 });
+  } finally {
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+});
+
+test('public Project marketplace list rejects invalid pagination', async () => {
+  const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
+    getPublicProject: async () => null,
+  };
+  const projectService = {} as ProjectService;
+  const { server, baseUrl } = await startProjectTestServer(projectService, publicProjectService);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/public/projects?limit=101`);
+    assert.equal(response.status, 400);
+  } finally {
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+});

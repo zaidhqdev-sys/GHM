@@ -15,11 +15,29 @@ export interface PublicProject {
   readonly updatedAt: Date;
 }
 
+export interface PublicProjectSearchInput {
+  readonly category?: string;
+  readonly province?: string;
+  readonly urgency?: 'standard' | 'urgent' | 'emergency';
+  readonly search?: string;
+  readonly limit: number;
+  readonly offset: number;
+}
+
+export interface PublicProjectPage {
+  readonly projects: readonly PublicProject[];
+  readonly total: number;
+  readonly limit: number;
+  readonly offset: number;
+}
+
 export interface PublicProjectRepository {
+  listPublicProjects(input: PublicProjectSearchInput): Promise<PublicProjectPage>;
   getPublicProject(projectId: number): Promise<PublicProject | null>;
 }
 
 export interface PublicProjectService {
+  listPublicProjects(input: PublicProjectSearchInput): Promise<PublicProjectPage>;
   getPublicProject(projectId: number): Promise<PublicProject | null>;
 }
 
