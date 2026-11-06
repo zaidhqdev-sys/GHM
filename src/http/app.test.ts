@@ -312,6 +312,7 @@ const publicProjectFixture = (
 test('public project route allows anonymous access through the public operation', async () => {
   const project = publicProjectFixture();
   const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async (projectId) => {
       assert.equal(projectId, project.id);
       return project;
@@ -345,6 +346,7 @@ test('public project route allows anonymous access through the public operation'
 test('public project route allows authenticated non-owner disclosure without private authorization', async () => {
   const project = publicProjectFixture({ id: 102 });
   const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async (projectId) => {
       assert.equal(projectId, project.id);
       return project;
@@ -385,6 +387,7 @@ test('public project route allows authenticated non-owner disclosure without pri
 test('public project route ignores invalid authentication', async () => {
   const project = publicProjectFixture({ id: 103 });
   const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async (projectId) => {
       assert.equal(projectId, project.id);
       return project;
@@ -424,6 +427,7 @@ test('public project route rejects invalid ids before service execution', async 
   let called = false;
 
   const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async () => {
       called = true;
       throw new Error('must not be called');
@@ -453,6 +457,7 @@ test('public project route rejects invalid ids before service execution', async 
 
 test('public project route returns not found when projection has no eligible project', async () => {
   const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async (projectId) => {
       assert.equal(projectId, 104);
       return null;
@@ -483,6 +488,7 @@ test('public project route does not expose a mutation surface', async () => {
   let called = false;
 
   const publicProjectService: PublicProjectService = {
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async () => {
       called = true;
       throw new Error('must not be called');
@@ -1020,6 +1026,7 @@ test('public Project marketplace list applies filters and pagination without aut
       seen = input;
       return { projects: [publicProjectFixture()], total: 1, limit: input.limit, offset: input.offset };
     },
+    listPublicProjects: async input => ({ projects: [], total: 0, limit: input.limit, offset: input.offset }),
     getPublicProject: async () => null,
   };
   const projectService = {} as ProjectService;
