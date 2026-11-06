@@ -1,11 +1,13 @@
 import type { AuthContext } from '../../auth/authorization';
 import { assertRole } from '../../auth/authorization';
+import { DEFAULT_ENQUIRY_PAGE } from './contracts';
 import type {
   CreateEnquiryInput,
   Enquiry,
   EnquiryRepository,
   EnquiryService,
   EnquiryStatus,
+  EnquiryPageOptions,
   UpdateEnquiryStatusInput,
 } from './contracts';
 
@@ -87,10 +89,12 @@ export class EnquiryServiceImpl implements EnquiryService {
     assertRole(context, 'business');
     return this.repository.getReceivedEnquiry(context, enquiryId);
   }
-  async getReceivedEnquiries(context: AuthContext, businessId: number): Promise<readonly Enquiry[]> {
+  async getReceivedEnquiries(context: AuthContext, businessId: number, page: EnquiryPageOptions = DEFAULT_ENQUIRY_PAGE): Promise<readonly Enquiry[]> {
     assertRole(context, 'business');
     if (!Number.isSafeInteger(businessId) || businessId <= 0) throw new Error('Invalid businessId');
-    return this.repository.getReceivedEnquiries(context, businessId);
+    if (!Number.isSafeInteger(page.limit) || page.limit < 1 || page.limit > 100) throw new Error('Invalid enquiry limit');
+    if (!Number.isSafeInteger(page.offset) || page.offset < 0 || page.offset > 1000000) throw new Error('Invalid enquiry offset');
+    return this.repository.getReceivedEnquiries(context, businessId, page);
   }
   async updateReceivedEnquiryStatus(context: AuthContext, enquiryId: number, input: UpdateEnquiryStatusInput): Promise<Enquiry> {
     assertRole(context, 'business');

@@ -120,7 +120,15 @@ export const registerEnquiryRoutes = (app: Express, service: EnquiryService, aut
         res.status(400).json({ error: 'invalid_request' });
         return;
       }
-      const enquiries = await service.getReceivedEnquiries(context, businessId);
+      const rawLimit = queryValue(req.query.limit);
+      const rawOffset = queryValue(req.query.offset);
+      const limit = rawLimit === null ? 50 : positiveIntegerId(rawLimit);
+      const offset = rawOffset === null ? 0 : /^(0|[1-9]\\d*)$/.test(rawOffset) ? Number(rawOffset) : null;
+      if (limit === null || limit > 100 || offset === null || !Number.isSafeInteger(offset) || offset > 1000000) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      const enquiries = await service.getReceivedEnquiries(context, businessId, { limit, offset });
       res.status(200).json({ enquiries });
     } catch (error) {
       handleEnquiryError(error, res);

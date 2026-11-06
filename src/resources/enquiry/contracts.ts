@@ -47,11 +47,15 @@ export interface UpdateEnquiryStatusInput {
   readonly status: EnquiryStatus;
 }
 
+export interface EnquiryPageOptions { readonly limit: number; readonly offset: number; }
+
+export const DEFAULT_ENQUIRY_PAGE: EnquiryPageOptions = Object.freeze({ limit: 50, offset: 0 });
+
 export interface EnquiryRepository {
   createEnquiry(context: AuthContext, input: CreateEnquiryInput): Promise<Enquiry>;
   getOwnEnquiry(context: AuthContext, enquiryId: EnquiryId): Promise<Enquiry | null>;
   getReceivedEnquiry(context: AuthContext, enquiryId: EnquiryId): Promise<Enquiry | null>;
-  getReceivedEnquiries(context: AuthContext, businessId: BusinessId): Promise<readonly Enquiry[]>;
+  getReceivedEnquiries(context: AuthContext, businessId: BusinessId, page?: EnquiryPageOptions): Promise<readonly Enquiry[]>;
   updateReceivedEnquiryStatus(context: AuthContext, enquiryId: EnquiryId, input: UpdateEnquiryStatusInput): Promise<Enquiry>;
 }
 
@@ -59,7 +63,7 @@ export interface EnquiryService {
   createEnquiry(context: AuthContext, input: CreateEnquiryInput): Promise<Enquiry>;
   getOwnEnquiry(context: AuthContext, enquiryId: EnquiryId): Promise<Enquiry | null>;
   getReceivedEnquiry(context: AuthContext, enquiryId: EnquiryId): Promise<Enquiry | null>;
-  getReceivedEnquiries(context: AuthContext, businessId: BusinessId): Promise<readonly Enquiry[]>;
+  getReceivedEnquiries(context: AuthContext, businessId: BusinessId, page?: EnquiryPageOptions): Promise<readonly Enquiry[]>;
   updateReceivedEnquiryStatus(context: AuthContext, enquiryId: EnquiryId, input: UpdateEnquiryStatusInput): Promise<Enquiry>;
 }
 
