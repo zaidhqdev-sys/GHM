@@ -6,6 +6,7 @@ import type {
   CreateProjectInput,
   Project,
   ProjectRepository,
+  ProjectPage,
   UpdateProjectInput,
 } from './contracts';
 
@@ -27,6 +28,7 @@ const PROJECT_COLUMNS = `
 
 const mapProject = (row: any): Project => ({
   id: Number(row.id),
+  ...(row.quote_count !== undefined ? { quoteCount: Number(row.quote_count) } : {}),
   accountId: Number(row.account_id),
   title: row.title,
   description: row.description,
@@ -253,6 +255,41 @@ export const transitionOpenProjectToInProgress = async (
 };
 export class PostgresProjectRepository implements ProjectRepository {
   constructor(private readonly transactionPool?: TransactionPool) {}
+
+
+  async listOwnedProjects(
+    context: AuthContext,
+    limit: number,
+    offset: number,
+  ): Promise<ProjectPage> {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new Error('Invalid Project page limit');
+    if (!Number.isSafeInteger(offset) || offset < 0) throw new Error('Invalid Project page offset');
+    return withAuthorizedTransaction(
+      context,
+      async client => {
+        const count = await client.query(
+          'SELECT count(*)::int AS total FROM ghm.project WHERE account_id = $1',
+          [context.userId],
+        );
+        const result = await client.query(
+          `SELECT ${PROJECT_COLUMNS},
+             (SELECT count(*)::int FROM ghm.project_quote pq WHERE pq.project_id = ghm.project.id) AS quote_count
+           FROM ghm.project
+           WHERE account_id = $1
+           ORDER BY created_at DESC, id DESC
+           LIMIT $2 OFFSET $3`,
+          [context.userId, limit, offset],
+        );
+        return {
+          projects: result.rows.map(mapProject),
+          total: Number(count.rows[0]?.total ?? 0),
+          limit,
+          offset,
+        };
+      },
+      this.transactionPool,
+    );
+  }
 
   async createProject(
     context: AuthContext,
