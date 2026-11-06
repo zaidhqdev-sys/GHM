@@ -31,6 +31,7 @@ const authorized = (
 ): ConnectAuthorizedOperation => ({ capability, resource: 'project', operation, context });
 
 const service = (calls: string[]): ProjectService => ({
+  listOwnedProjects: async (_context, limit, offset) => ({ projects: [], total: 0, limit, offset }),
   createProject: async (_context, input) => { calls.push(`create:${input.title}`); return project(8); },
   getOwnedProject: async (_context, id) => { calls.push(`read:${id}`); return project(id); },
   updateOwnedProject: async (_context, id, input) => { calls.push(`update:${id}:${input.title ?? ''}`); return project(id); },

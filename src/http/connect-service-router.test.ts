@@ -169,6 +169,7 @@ const enquiryService = (calls: string[]): EnquiryService => ({
 });
 
 const projectService = (calls: string[]): ProjectService => ({
+  listOwnedProjects: async (_context, limit, offset) => ({ projects: [], total: 0, limit, offset }),
   createProject: async (_context, input) => {
     calls.push(`create:${input.title}`);
     return { id: 7, accountId: 42, ...input, budgetMin: input.budgetMin ?? null, budgetMax: input.budgetMax ?? null, urgency: input.urgency ?? 'standard', status: 'open', createdAt: new Date(), updatedAt: new Date() };

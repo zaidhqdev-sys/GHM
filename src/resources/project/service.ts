@@ -2,6 +2,7 @@ import type { AuthContext } from '../../auth/authorization';
 import type {
   CreateProjectInput,
   Project,
+  ProjectPage,
   ProjectRepository,
   ProjectService,
   UpdateProjectInput,
@@ -192,6 +193,10 @@ const validateUpdateInput = (
 
 export class ProjectServiceImpl implements ProjectService {
   constructor(private readonly repository: ProjectRepository) {}
+
+  async listOwnedProjects(context: AuthContext, limit: number, offset: number): Promise<ProjectPage> {
+    return this.repository.listOwnedProjects(context, limit, offset);
+  }
 
   async createProject(
     context: AuthContext,
