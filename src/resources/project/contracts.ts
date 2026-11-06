@@ -10,6 +10,7 @@ export interface Project {
   readonly quoteCount?: number;
   readonly id: ProjectId;
   readonly accountId: AccountId;
+  readonly opportunityId?: number | null;
   readonly title: string;
   readonly description: string;
   readonly category: string;
