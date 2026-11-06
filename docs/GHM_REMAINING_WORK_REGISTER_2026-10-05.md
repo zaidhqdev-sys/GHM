@@ -372,3 +372,7 @@ Integration validation passed: 651 tests passed, 0 failed, 2 skipped; `npm audit
 
 Full provenance, commands, and validation details: [2026-11-06 dependency security handover](HANDOVER_2026-11-06_DEPENDENCY_SECURITY_REFRESH.md).
 
+## Dependency security refresh PR status — 2026-11-06 follow-up
+
+PR [#222](https://github.com/zaidhqdev-sys/GHM/pull/222) is open and mergeable, targeting `main`; it is not merged. Cloudflare Pages automatically built the branch preview at [the integration preview URL](https://integration-ghm-dependency-s.ghm-cu1.pages.dev), which is not a production deployment. GitHub Actions `quality` was still in progress at the time recorded. Local integration validation: 651 passed, 0 failed, 2 skipped; `npm audit`: 0 vulnerabilities. Do not treat this PR or its preview as production approval or cutover authorization.
+
