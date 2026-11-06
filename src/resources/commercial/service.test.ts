@@ -86,6 +86,7 @@ class FakeRepository implements CommercialRepository {
       subscriptionId: 21,
       priceId: 41,
       initiatedByAccountId: context.userId,
+      providerCode: 'payfast',
       lifecycleStatus: 'pending_checkout',
       amountMinorUnits: 19900,
       currencyId: 1,

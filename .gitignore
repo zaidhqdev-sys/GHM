@@ -5,3 +5,6 @@ dist/
 minio.exe
 storage/
 *.exe
+
+# Local disposable PayFast qualification credentials
+payfast-qualification.env
