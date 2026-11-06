@@ -363,3 +363,12 @@ The qualification-database migration run completed with exit code 0 on 2026-10-2
 Qualified slices are no longer being held behind the broad integration candidate: PR #184 (storage API + scoped getter + disposable PostgreSQL tenant/lifecycle qualification), PR #152 (handover/evidence consolidation), PR #135 (non-overlapping Connect target-runtime contract corrections), and PR #187 (shared auth persistence regression fix) are merged to `main`; exact-head main CI passed for each merge. Live R2 provider qualification also passed, but this does not enable production storage.
 
 The remaining open PRs are #142 (broad divergent identity candidate, not mergeable) and #183 (candidate-specific reset HTTP harness stacked on #142). Do not merge the broad candidate wholesale; continue splitting independently qualified slices and keep governed non-production E2E, migration baseline review, recovery/backup, production enablement, and cutover as separate gates.
+
+## Dependency security refresh — 2026-11-06 (candidate; not merged)
+
+A dependency security refresh has been prepared on `integration/ghm-dependency-security-refresh`, based on mainline commit `1f23d88b`. Its implementation commit `e36a930b` changes only `package.json` and `package-lock.json`: the Node engine minimum is `>=20.0.0`, and the lockfile updates `body-parser` 1.20.6 → 1.20.9, `express` 4.22.2 → 4.22.3, `proxy-addr` 2.0.7 → 2.0.8, and `qs` 6.15.3 → 6.16.2.
+
+Integration validation passed: 651 tests passed, 0 failed, 2 skipped; `npm audit` reported 0 vulnerabilities. The branch was pushed to `origin`; PR review remains pending at the time of this entry. This candidate is not merged or deployed and does not change any existing product, production, migration, provider, or cutover gate. The original divergent construction branch and its remote-only documentation commit were intentionally left untouched.
+
+Full provenance, commands, and validation details: [2026-11-06 dependency security handover](HANDOVER_2026-11-06_DEPENDENCY_SECURITY_REFRESH.md).
+
