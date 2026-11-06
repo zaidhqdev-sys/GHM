@@ -12,6 +12,7 @@ import type {
 const PROJECT_COLUMNS = `
   id,
   account_id,
+  opportunity_id,
   title,
   description,
   category,
@@ -28,6 +29,7 @@ const PROJECT_COLUMNS = `
 const mapProject = (row: any): Project => ({
   id: Number(row.id),
   accountId: Number(row.account_id),
+  opportunityId: row.opportunity_id == null ? null : Number(row.opportunity_id),
   title: row.title,
   description: row.description,
   category: row.category,
@@ -263,30 +265,42 @@ export class PostgresProjectRepository implements ProjectRepository {
     return withAuthorizedTransaction(
       context,
       async client => {
+        const projectType = await client.query(
+          `SELECT id FROM ghm.opportunity_type
+           WHERE code = 'project' AND is_active = true
+           ORDER BY version DESC LIMIT 1`,
+        );
+        if (projectType.rowCount !== 1) {
+          throw new Error('Project Opportunity type not found or inactive');
+        }
+        const opportunityResult = await client.query(
+          `INSERT INTO ghm.opportunity (
+             opportunity_type_id, creator_account_id, title, description,
+             lifecycle_status, visibility, budget_min, budget_max
+           ) VALUES ($1, $2, $3, $4, 'open', 'authenticated', $5, $6)
+           RETURNING id`,
+          [projectType.rows[0].id, context.userId, normalized.title, normalized.description, normalized.budgetMin, normalized.budgetMax],
+        );
+        if (opportunityResult.rowCount !== 1) {
+          throw new Error('Project Opportunity creation failed');
+        }
+        const opportunityId = Number(opportunityResult.rows[0].id);
+        await client.query(
+          `INSERT INTO ghm.opportunity_participant
+           (opportunity_id, account_id, business_id, participation_role, participation_status, created_by)
+           VALUES ($1, $2, NULL, 'creator', 'active', $2)`,
+          [opportunityId, context.userId],
+        );
         const result = await client.query(
           `INSERT INTO ghm.project (
-             account_id,
-             title,
-             description,
-             category,
-             province,
-             city,
-             budget_min,
-             budget_max,
-             urgency
-           )
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             account_id, opportunity_id, title, description, category, province,
+             city, budget_min, budget_max, urgency
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
            RETURNING ${PROJECT_COLUMNS}`,
           [
-            context.userId,
-            normalized.title,
-            normalized.description,
-            normalized.category,
-            normalized.province,
-            normalized.city,
-            normalized.budgetMin,
-            normalized.budgetMax,
-            normalized.urgency,
+            context.userId, opportunityId, normalized.title, normalized.description,
+            normalized.category, normalized.province, normalized.city,
+            normalized.budgetMin, normalized.budgetMax, normalized.urgency,
           ],
         );
 
