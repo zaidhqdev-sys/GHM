@@ -92,3 +92,21 @@ test('rejects a tampered signature', () => {
     passphrase: 'secret',
   }), /signature invalid/);
 });
+
+
+test('accepts PayFast IPv4 peers represented as IPv4-mapped IPv6 socket addresses', () => {
+  const fields = {
+    merchant_id: '10000100',
+    m_payment_id: 'attempt-1',
+    amount_gross: '199.00',
+    payment_status: 'COMPLETE',
+  };
+  const signature = generatePayfastSignature(fields, 'secret');
+  assert.doesNotThrow(() => verifyPayfastItn({
+    fields: { ...fields, signature },
+    sourceIp: '::ffff:197.97.145.150',
+    expectedMerchantId: '10000100',
+    expectedAmountMinorUnits: 19900,
+    passphrase: 'secret',
+  }));
+});
