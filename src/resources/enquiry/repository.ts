@@ -2,7 +2,8 @@ import type { PoolClient } from 'pg';
 import type { AuthContext } from '../../auth/authorization';
 import { withAuthorizedTransaction } from '../../db/authorized-transaction';
 import type { TransactionPool } from '../../db/transaction';
-import type { CreateEnquiryInput, Enquiry, EnquiryId, EnquiryRepository, EnquiryPageOptions, DEFAULT_ENQUIRY_PAGE, UpdateEnquiryStatusInput } from './contracts';
+import { DEFAULT_ENQUIRY_PAGE } from './contracts';
+import type { CreateEnquiryInput, Enquiry, EnquiryId, EnquiryRepository, EnquiryPageOptions, UpdateEnquiryStatusInput } from './contracts';
 
 const ENQUIRY_COLUMNS = `id, business_id, customer_id, customer_name, customer_phone, customer_email, project, description, city, budget_min, budget_max, urgency, source, status, opportunity_id, created_at, updated_at`;
 

@@ -1,5 +1,6 @@
 import type { AuthContext } from '../../auth/authorization';
 import { assertRole } from '../../auth/authorization';
+import { DEFAULT_ENQUIRY_PAGE } from './contracts';
 import type {
   CreateEnquiryInput,
   Enquiry,
@@ -7,7 +8,6 @@ import type {
   EnquiryService,
   EnquiryStatus,
   EnquiryPageOptions,
-  DEFAULT_ENQUIRY_PAGE,
   UpdateEnquiryStatusInput,
 } from './contracts';
 
