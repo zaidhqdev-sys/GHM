@@ -9,6 +9,7 @@ export type ProjectStatus = 'open' | 'in_progress' | 'completed' | 'cancelled';
 export interface Project {
   readonly id: ProjectId;
   readonly accountId: AccountId;
+  readonly opportunityId?: number | null;
   readonly title: string;
   readonly description: string;
   readonly category: string;
