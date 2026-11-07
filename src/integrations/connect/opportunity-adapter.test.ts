@@ -24,6 +24,8 @@ const service = (calls: string[]): OpportunityService => ({
   getOwnedOpportunity: async (_context, id) => { calls.push(`owned:${id}`); return opportunity; },
   updateOwnedOpportunity: async (_context, id, input) => { calls.push(`update:${id}:${input.title ?? ''}`); return opportunity; },
   transitionOpportunity: async (_context, id, status) => { calls.push(`transition:${id}:${status}`); return { ...opportunity, lifecycleStatus: status }; },
+  listMarketplaceOpportunities: async () => ({ opportunities: [], total: 0, limit: 50, offset: 0 }),
+  listOpportunityTypes: async () => [],
 });
 
 test('opportunity read delegates to owned canonical service', async () => {
