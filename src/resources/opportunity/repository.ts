@@ -133,8 +133,8 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
     requirePositiveId(context.userId, 'accountId');
     const values: unknown[] = [context.userId];
     const filters = [`o.lifecycle_status IN ('open','responding')`, `(o.opens_at IS NULL OR o.opens_at <= now())`, `(o.closes_at IS NULL OR o.closes_at >= now())`, `(o.visibility IN ('authenticated','public') OR o.creator_account_id = $1 OR EXISTS (SELECT 1 FROM ghm.business_membership bm WHERE bm.business_id = o.owner_business_id AND bm.account_id = $1 AND bm.membership_status = 'active' AND bm.membership_role IN ('owner','administrator')))`];
-    if (input.opportunityTypeId !== undefined) { values.push(input.opportunityTypeId); filters.push(`o.opportunity_type_id = ${values.length}`); }
-    if (input.search) { values.push(input.search); filters.push(`(strpos(lower(o.title), lower(${values.length})) > 0 OR strpos(lower(o.description), lower(${values.length})) > 0)`); }
+    if (input.opportunityTypeId !== undefined) { values.push(input.opportunityTypeId); filters.push(`o.opportunity_type_id = $${values.length}`); }
+    if (input.search) { values.push(input.search); filters.push(`(strpos(lower(o.title), lower($${values.length})) > 0 OR strpos(lower(o.description), lower($${values.length})) > 0)`); }
     const where = filters.join(' AND ');
     return withAuthorizedTransaction(context, async client => {
       const count = await client.query(`SELECT count(*)::int AS total FROM ghm.opportunity o WHERE ${where}`, values);
