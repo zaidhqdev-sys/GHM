@@ -109,6 +109,9 @@ jobs:
       - name: Qualify storage getter on disposable PostgreSQL
         run: node scripts/qualify-storage-getter-postgres.mjs
 
+      - name: Qualify Opportunity marketplace SQL on disposable PostgreSQL
+        run: npm run qualify:opportunity-marketplace
+
       - name: Qualify storage lifecycle and tenant authorization on disposable PostgreSQL
         run: node scripts/qualify-storage-persistence.mjs
 
