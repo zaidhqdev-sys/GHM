@@ -162,7 +162,7 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
         LEFT JOIN ghm.currency cu ON cu.id = o.currency_id
         WHERE ${where}
         ORDER BY o.created_at DESC, o.id DESC
-        LIMIT ${pageValues.length - 1} OFFSET ${pageValues.length}
+        LIMIT $${pageValues.length - 1} OFFSET $${pageValues.length}
       `, pageValues);
       const opportunities = result.rows.map((row: any) => ({
         id: Number(row.id), opportunityTypeId: Number(row.opportunity_type_id),
