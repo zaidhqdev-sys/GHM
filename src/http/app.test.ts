@@ -1068,6 +1068,8 @@ test('Opportunity creation route passes authenticated context and validated inpu
     getOwnedOpportunity: async () => null,
     updateOwnedOpportunity: async () => { throw new Error('not expected'); },
     transitionOpportunity: async () => { throw new Error('not expected'); },
+    listMarketplaceOpportunities: async () => ({ opportunities: [], total: 0, limit: 50, offset: 0 }),
+    listOpportunityTypes: async () => [],
   };
   const { server, baseUrl } = await startOpportunityTestServer(service);
   try {
@@ -1124,6 +1126,8 @@ test('Opportunity transition route passes the authenticated account and requeste
       assert.equal(status, 'open');
       return expected;
     },
+    listMarketplaceOpportunities: async () => ({ opportunities: [], total: 0, limit: 50, offset: 0 }),
+    listOpportunityTypes: async () => [],
   };
   const { server, baseUrl } = await startOpportunityTestServer(service);
   try {
