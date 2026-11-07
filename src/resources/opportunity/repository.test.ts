@@ -100,7 +100,7 @@ test('Opportunity marketplace binds type and text filters to PostgreSQL placehol
   });
   assert.deepEqual(page, { opportunities: [], total: 4, limit: 10, offset: 20 });
   const count = queries.find(query => query.text.includes('count(*)::int'));
-  const listing = queries.find(query => query.text.includes('FROM ghm.opportunity o'));
+  const listing = queries.find(query => query.text.includes('SELECT o.id') && query.text.includes('FROM ghm.opportunity o'));
   assert.ok(count); assert.ok(listing);
   assert.match(count.text, /o\.opportunity_type_id = \$2/);
   assert.match(count.text, /strpos\(lower\(o\.title\), lower\(\$3\)\)/);
