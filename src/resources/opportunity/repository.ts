@@ -128,4 +128,70 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
   async getOwnedOpportunity(context: AuthContext, opportunityId: number): Promise<Opportunity | null> { requirePositiveId(opportunityId, 'opportunityId'); return withAuthorizedTransaction(context, client => findById(client, opportunityId, context, true), this.transactionPool); }
   async updateOwnedOpportunity(context: AuthContext, opportunityId: number, input: UpdateOpportunityInput): Promise<Opportunity> { requirePositiveId(opportunityId, 'opportunityId'); const entries = Object.entries(input).filter(([, value]) => value !== undefined); if (entries.length === 0) throw new Error('Opportunity update requires at least one field'); const allowed = new Set(['opportunityTypeId','ownerBusinessId','countryId','currencyId','title','description','visibility','budgetMin','budgetMax','opensAt','closesAt']); const unsupported = entries.find(([key]) => !allowed.has(key)); if (unsupported) throw new Error(`Unsupported Opportunity update field: ${unsupported[0]}`); if (Object.hasOwn(input, 'opportunityTypeId')) requirePositiveId(input.opportunityTypeId, 'opportunityTypeId'); if (Object.hasOwn(input, 'title')) requireText(input.title, 'title', 1, 200); if (Object.hasOwn(input, 'description')) requireText(input.description, 'description', 1, 10000); if (Object.hasOwn(input, 'visibility')) validateVisibility(input.visibility); return withAuthorizedTransaction(context, async client => { const current = await findById(client, opportunityId, context, true); if (!current) throw new Error('Opportunity not found or ownership required'); if (TERMINAL_STATUSES.has(current.lifecycleStatus)) throw new Error('Terminal Opportunities cannot be updated'); validateCombinedRange(current, input); if (Object.hasOwn(input, 'ownerBusinessId') && input.ownerBusinessId != null) { const membership = await client.query(`SELECT 1 FROM ghm.business_membership WHERE business_id = $1 AND account_id = $2 AND membership_status = 'active' AND membership_role IN ('owner','administrator') LIMIT 1`, [input.ownerBusinessId, context.userId]); if (membership.rowCount !== 1) throw new Error('Business management permission required'); } if (Object.hasOwn(input, 'opportunityTypeId')) { const type = await client.query(`SELECT 1 FROM ghm.opportunity_type WHERE id = $1 AND is_active = true`, [input.opportunityTypeId]); if (type.rowCount !== 1) throw new Error('Opportunity type not found or inactive'); } const nextVisibility = input.visibility ?? current.visibility; if (nextVisibility === 'public' && current.lifecycleStatus === 'draft') throw new Error('Public Opportunities require an explicit lifecycle transition'); const fields: string[] = []; const values: unknown[] = [opportunityId, context.userId]; let parameter = 3; const map: Record<string,string> = { opportunityTypeId:'opportunity_type_id', ownerBusinessId:'owner_business_id', countryId:'country_id', currencyId:'currency_id', title:'title', description:'description', visibility:'visibility', budgetMin:'budget_min', budgetMax:'budget_max', opensAt:'opens_at', closesAt:'closes_at' }; for (const [key,column] of Object.entries(map)) if (Object.hasOwn(input,key) && (input as any)[key] !== undefined) { fields.push(`${column} = $${parameter++}`); values.push((input as any)[key]); } fields.push('updated_at = now()'); const result = await client.query(`UPDATE ghm.opportunity SET ${fields.join(', ')} WHERE id = $1 AND creator_account_id = $2 RETURNING ${COLUMNS}`, values); if (result.rowCount !== 1) throw new Error('Opportunity update failed'); return mapOpportunity(result.rows[0]); }, this.transactionPool); }
   async transitionOpportunity(context: AuthContext, opportunityId: number, nextStatus: OpportunityLifecycleStatus): Promise<Opportunity> { requirePositiveId(opportunityId, 'opportunityId'); if (!Object.hasOwn(ALLOWED_TRANSITIONS, nextStatus)) throw new Error('Invalid Opportunity lifecycle status'); return withAuthorizedTransaction(context, async client => { const current = await findById(client, opportunityId, context, true); if (!current) throw new Error('Opportunity not found or ownership required'); if (!ALLOWED_TRANSITIONS[current.lifecycleStatus].includes(nextStatus)) throw new Error(`Invalid Opportunity lifecycle transition: ${current.lifecycleStatus} -> ${nextStatus}`); if (nextStatus === 'open' && current.visibility === 'public') throw new Error('Public Opportunities cannot be opened from draft'); const result = await client.query(`UPDATE ghm.opportunity SET lifecycle_status = $3, updated_at = now() WHERE id = $1 AND creator_account_id = $2 AND lifecycle_status = $4 RETURNING ${COLUMNS}`, [opportunityId, context.userId, nextStatus, current.lifecycleStatus]); if (result.rowCount !== 1) throw new Error('Opportunity lifecycle transition failed'); return mapOpportunity(result.rows[0]); }, this.transactionPool); }
+
+  async listMarketplaceOpportunities(context: AuthContext, input: import('./contracts').OpportunityMarketplaceInput): Promise<import('./contracts').OpportunityMarketplacePage> {
+    requirePositiveId(context.userId, 'accountId');
+    const values: unknown[] = [context.userId];
+    const filters = [`o.lifecycle_status IN ('open','responding')`, `(o.opens_at IS NULL OR o.opens_at <= now())`, `(o.closes_at IS NULL OR o.closes_at >= now())`, `(o.visibility IN ('authenticated','public') OR o.creator_account_id = $1 OR EXISTS (SELECT 1 FROM ghm.business_membership bm WHERE bm.business_id = o.owner_business_id AND bm.account_id = $1 AND bm.membership_status = 'active' AND bm.membership_role IN ('owner','administrator')))`];
+    if (input.opportunityTypeId !== undefined) { values.push(input.opportunityTypeId); filters.push(`o.opportunity_type_id = ${values.length}`); }
+    if (input.search) { values.push(input.search); filters.push(`(strpos(lower(o.title), lower(${values.length})) > 0 OR strpos(lower(o.description), lower(${values.length})) > 0)`); }
+    const where = filters.join(' AND ');
+    return withAuthorizedTransaction(context, async client => {
+      const count = await client.query(`SELECT count(*)::int AS total FROM ghm.opportunity o WHERE ${where}`, values);
+      const pageValues = [...values, input.limit, input.offset];
+      const result = await client.query(`
+        SELECT o.id, o.opportunity_type_id, o.country_id, o.currency_id, o.title, o.description,
+          o.lifecycle_status, o.visibility, o.budget_min, o.budget_max, o.opens_at, o.closes_at, o.created_at,
+          jsonb_build_object('id', ot.id, 'code', ot.code, 'name', ot.name) AS opportunity_types,
+          CASE WHEN co.id IS NULL THEN NULL ELSE jsonb_build_object('id', co.id, 'code', co.code, 'name', co.name) END AS countries,
+          CASE WHEN cu.id IS NULL THEN NULL ELSE jsonb_build_object('id', cu.id, 'code', cu.code, 'symbol', cu.symbol, 'name', cu.name) END AS currencies,
+          COALESCE((
+            SELECT jsonb_agg(jsonb_build_object(
+              'id', r.id, 'capabilityId', r.capability_id, 'importance', r.importance,
+              'minimumProficiencyLevel', r.minimum_proficiency_level, 'description', r.description,
+              'sortOrder', r.sort_order,
+              'capabilities', jsonb_build_object('id', cap.id, 'name', cap.name, 'slug', cap.slug)
+            ) ORDER BY CASE WHEN r.importance = 'required' THEN 0 ELSE 1 END, r.sort_order, r.id)
+            FROM ghm.opportunity_capability_requirement r
+            JOIN ghm.capability cap ON cap.id = r.capability_id
+            WHERE r.opportunity_id = o.id
+          ), '[]'::jsonb) AS opportunity_capability_requirements
+        FROM ghm.opportunity o
+        JOIN ghm.opportunity_type ot ON ot.id = o.opportunity_type_id
+        LEFT JOIN ghm.country co ON co.id = o.country_id
+        LEFT JOIN ghm.currency cu ON cu.id = o.currency_id
+        WHERE ${where}
+        ORDER BY o.created_at DESC, o.id DESC
+        LIMIT ${pageValues.length - 1} OFFSET ${pageValues.length}
+      `, pageValues);
+      const opportunities = result.rows.map((row: any) => ({
+        id: Number(row.id), opportunityTypeId: Number(row.opportunity_type_id),
+        countryId: row.country_id === null ? null : Number(row.country_id),
+        currencyId: row.currency_id === null ? null : Number(row.currency_id),
+        title: row.title, description: row.description, lifecycleStatus: row.lifecycle_status,
+        visibility: row.visibility, budgetMin: row.budget_min === null ? null : Number(row.budget_min),
+        budgetMax: row.budget_max === null ? null : Number(row.budget_max),
+        opensAt: row.opens_at, closesAt: row.closes_at, createdAt: row.created_at,
+        opportunityTypes: row.opportunity_types, countries: row.countries, currencies: row.currencies,
+        opportunityCapabilityRequirements: row.opportunity_capability_requirements,
+      }));
+      return { opportunities, total: Number(count.rows[0]?.total ?? 0), limit: input.limit, offset: input.offset };
+    }, this.transactionPool);
+  }
+
+  async listOpportunityTypes(context: AuthContext): Promise<readonly import('./contracts').OpportunityType[]> {
+    return withAuthorizedTransaction(context, async client => {
+      const result = await client.query(`
+        SELECT id, code, name, description, sort_order
+        FROM ghm.opportunity_type
+        WHERE is_active = true
+        ORDER BY sort_order, name, id
+      `);
+      return result.rows.map(row => ({
+        id: Number(row.id), code: row.code, name: row.name,
+        description: row.description, sortOrder: Number(row.sort_order),
+      }));
+    }, this.transactionPool);
+  }
+
 }
