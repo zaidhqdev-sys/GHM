@@ -67,6 +67,8 @@ const stubOpportunityService = (overrides: Partial<OpportunityService> = {}): Op
   transitionOpportunity: async () => {
     throw new Error('transitionOpportunity must not be called');
   },
+  listMarketplaceOpportunities: async () => { throw new Error('listMarketplaceOpportunities must not be called'); },
+  listOpportunityTypes: async () => { throw new Error('listOpportunityTypes must not be called'); },
   ...overrides,
 });
 
@@ -255,4 +257,53 @@ test('Opportunity GET does not inspect JWT claims beyond requireAuth AuthContext
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
+});
+
+test('Opportunity marketplace route validates pagination and delegates authenticated filters', async () => {
+  let received: unknown;
+  const service = stubOpportunityService({
+    listMarketplaceOpportunities: async (context, input) => {
+      received = { context, input };
+      return { opportunities: [], total: 7, limit: 10, offset: 20 };
+    },
+  });
+  const { server, baseUrl } = await startServer(service);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/opportunities?search=roofing&opportunityTypeId=3&limit=10&offset=20`, {
+      headers: { authorization: `Bearer ${tokenFor({ userId: 468, role: 'customer' })}` },
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(received, { context: { userId: 468, role: 'customer' }, input: { search: 'roofing', opportunityTypeId: 3, limit: 10, offset: 20 } });
+    assert.deepEqual(await response.json(), { opportunities: [], total: 7, limit: 10, offset: 20 });
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+test('Opportunity marketplace route rejects unsupported query fields and invalid pagination', async () => {
+  let called = false;
+  const service = stubOpportunityService({
+    listMarketplaceOpportunities: async () => { called = true; return { opportunities: [], total: 0, limit: 50, offset: 0 }; },
+  });
+  const { server, baseUrl } = await startServer(service);
+  try {
+    const token = tokenFor({ userId: 468, role: 'customer' });
+    for (const query of ['limit=101', 'offset=-1', 'unexpected=1', 'opportunityTypeId=0']) {
+      const response = await fetch(`${baseUrl}/api/v1/opportunities?${query}`, { headers: { authorization: `Bearer ${token}` } });
+      assert.equal(response.status, 400);
+    }
+    assert.equal(called, false);
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+test('Opportunity Type catalogue route returns only the service catalogue', async () => {
+  const service = stubOpportunityService({
+    listOpportunityTypes: async () => [{ id: 3, code: 'tender', name: 'Tender', description: null, sortOrder: 4 }],
+  });
+  const { server, baseUrl } = await startServer(service);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/opportunity-types`, {
+      headers: { authorization: `Bearer ${tokenFor({ userId: 468, role: 'customer' })}` },
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { opportunityTypes: [{ id: 3, code: 'tender', name: 'Tender', description: null, sortOrder: 4 }] });
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });

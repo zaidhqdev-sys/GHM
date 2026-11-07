@@ -163,6 +163,46 @@ export const registerOpportunityRoutes = (
   authMiddleware: RequestHandler = requireAuth,
 ): void => {
 
+
+  app.get('/api/v1/opportunities', authMiddleware, requireRegisteredOpportunityAccess('read'), async (req: Request, res: Response) => {
+    try {
+      const allowed = new Set(['search', 'opportunityTypeId', 'limit', 'offset']);
+      if (Object.keys(req.query).some(key => !allowed.has(key))) { res.status(400).json({ error: 'invalid_request' }); return; }
+      const readString = (key: string): string | undefined => {
+        const value = req.query[key];
+        return typeof value === 'string' ? value : undefined;
+      };
+      for (const key of Object.keys(req.query)) if (typeof req.query[key] !== 'string') { res.status(400).json({ error: 'invalid_request' }); return; }
+      const limit = readString('limit') === undefined ? 50 : Number(readString('limit'));
+      const offset = readString('offset') === undefined ? 0 : Number(readString('offset'));
+      const rawType = readString('opportunityTypeId');
+      const opportunityTypeId = rawType === undefined ? undefined : Number(rawType);
+      const search = readString('search');
+      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100 || !Number.isSafeInteger(offset) || offset < 0 ||
+          (opportunityTypeId !== undefined && (!Number.isSafeInteger(opportunityTypeId) || opportunityTypeId <= 0)) ||
+          (search !== undefined && search.trim().length > 120)) {
+        res.status(400).json({ error: 'invalid_request' }); return;
+      }
+      const page = await service.listMarketplaceOpportunities(req.authContext as AuthContext, {
+        ...(search !== undefined ? { search } : {}),
+        ...(opportunityTypeId !== undefined ? { opportunityTypeId } : {}),
+        limit, offset,
+      });
+      res.status(200).json(page);
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith('Invalid Opportunity')) { res.status(400).json({ error: 'invalid_request' }); return; }
+      handleOpportunityError(error, res);
+    }
+  });
+
+  app.get('/api/v1/opportunity-types', authMiddleware, requireRegisteredOpportunityAccess('read'), async (req: Request, res: Response) => {
+    try {
+      if (Object.keys(req.query).length > 0) { res.status(400).json({ error: 'invalid_request' }); return; }
+      const opportunityTypes = await service.listOpportunityTypes(req.authContext as AuthContext);
+      res.status(200).json({ opportunityTypes });
+    } catch (error) { handleOpportunityError(error, res); }
+  });
+
   app.post(
     '/api/v1/opportunities',
     authMiddleware,

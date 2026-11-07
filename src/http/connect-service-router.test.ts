@@ -193,6 +193,8 @@ const opportunityService = (calls: string[]): OpportunityService => ({
   getOwnedOpportunity: async (_context, id) => { calls.push(`owned:${id}`); return null; },
   updateOwnedOpportunity: async (_context, id, input) => { calls.push(`update:${id}:${input.title ?? ''}`); return { id, opportunityTypeId: 1, creatorAccountId: 42, ownerBusinessId: null, countryId: null, currencyId: null, title: input.title ?? 'Updated', description: input.description ?? 'Updated', lifecycleStatus: 'draft', visibility: input.visibility ?? 'private', budgetMin: input.budgetMin ?? null, budgetMax: input.budgetMax ?? null, opensAt: input.opensAt ?? null, closesAt: input.closesAt ?? null, createdAt: new Date(), updatedAt: new Date() }; },
   transitionOpportunity: async (_context, id, status) => { calls.push(`transition:${id}:${status}`); return { id, opportunityTypeId: 1, creatorAccountId: 42, ownerBusinessId: null, countryId: null, currencyId: null, title: 'Website', description: 'Build website', lifecycleStatus: status, visibility: 'private', budgetMin: null, budgetMax: null, opensAt: null, closesAt: null, createdAt: new Date(), updatedAt: new Date() }; },
+  listMarketplaceOpportunities: async () => ({ opportunities: [], total: 0, limit: 50, offset: 0 }),
+  listOpportunityTypes: async () => [],
 });
 
 

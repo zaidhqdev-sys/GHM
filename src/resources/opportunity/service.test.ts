@@ -65,6 +65,9 @@ class FakeRepository implements OpportunityRepository {
       lifecycleStatus: nextStatus,
     };
   }
+
+  async listMarketplaceOpportunities(_context: AuthContext, input: any) { return { opportunities: [], total: 0, limit: input.limit, offset: input.offset }; }
+  async listOpportunityTypes() { return []; }
 }
 
 test('Opportunity creation requires an input object', async () => {

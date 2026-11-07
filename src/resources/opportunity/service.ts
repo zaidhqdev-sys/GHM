@@ -28,4 +28,15 @@ export class OpportunityServiceImpl implements OpportunityService {
   async transitionOpportunity(context: AuthContext, opportunityId: number, nextStatus: OpportunityLifecycleStatus): Promise<Opportunity> {
     return this.repository.transitionOpportunity(context, opportunityId, nextStatus);
   }
+  async listMarketplaceOpportunities(context: AuthContext, input: import('./contracts').OpportunityMarketplaceInput): Promise<import('./contracts').OpportunityMarketplacePage> {
+    if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 100) throw new Error('Invalid Opportunity page limit');
+    if (!Number.isSafeInteger(input.offset) || input.offset < 0) throw new Error('Invalid Opportunity page offset');
+    if (input.search !== undefined && (typeof input.search !== 'string' || input.search.trim().length > 120)) throw new Error('Invalid Opportunity search filter');
+    if (input.opportunityTypeId !== undefined && (!Number.isSafeInteger(input.opportunityTypeId) || input.opportunityTypeId <= 0)) throw new Error('Invalid Opportunity type filter');
+    return this.repository.listMarketplaceOpportunities(context, { ...input, ...(input.search !== undefined ? { search: input.search.normalize('NFKC').trim().slice(0,120) || undefined } : {}) });
+  }
+
+  async listOpportunityTypes(context: AuthContext): Promise<readonly import('./contracts').OpportunityType[]> {
+    return this.repository.listOpportunityTypes(context);
+  }
 }
