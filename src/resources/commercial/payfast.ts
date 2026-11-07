@@ -81,7 +81,18 @@ const parseAmountMinorUnits = (value: string): number | null => {
 
 const parseOccurredAt = (value: string | undefined): Date | null => {
   if (!value) return null;
-  const parsed = new Date(value);
+
+  const normalized = value.trim().replace(' ', 'T');
+  const hasTimeComponent = /^\d{4}-\d{2}-\d{2}T/.test(normalized);
+  const hasExplicitTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(normalized);
+
+  // ITN payment_date values without an offset are treated as UTC so the
+  // recorded instant does not depend on the host machine's local timezone.
+  const dateValue = hasTimeComponent && !hasExplicitTimezone
+    ? `${normalized}Z`
+    : normalized;
+
+  const parsed = new Date(dateValue);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
