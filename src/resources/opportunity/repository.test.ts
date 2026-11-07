@@ -80,3 +80,32 @@ test('Opportunity creation rolls back when owner participation cannot be establi
   await assert.rejects(() => repository.createOpportunity(context, { opportunityTypeId: 1, ownerBusinessId: 23, title: 'Rollback owner opportunity', description: 'The owner participant write must be atomic.' }), /participant insert failed/);
   assert.equal(client.committed, false); assert.equal(client.rolledBack, true);
 });
+
+test('Opportunity marketplace binds type and text filters to PostgreSQL placeholders', async () => {
+  const queries: Array<{ text: string; values?: unknown[] }> = [];
+  const client = {
+    async query(text: string, values?: unknown[]) {
+      queries.push({ text, values });
+      if (text === 'BEGIN' || text === 'COMMIT' || text === 'ROLLBACK') return { rowCount: 0, rows: [] };
+      if (text.includes('count(*)::int')) return { rowCount: 1, rows: [{ total: 4 }] };
+      if (text.includes('FROM ghm.opportunity o')) return { rowCount: 0, rows: [] };
+      throw new Error(`Unexpected query: ${text}`);
+    },
+    async release() {},
+  };
+  const pool: TransactionPool = { async connect() { return client as unknown as PoolClient; } };
+  const repository = new PostgresOpportunityRepository(pool);
+  const page = await repository.listMarketplaceOpportunities(context, {
+    search: 'roofing', opportunityTypeId: 3, limit: 10, offset: 20,
+  });
+  assert.deepEqual(page, { opportunities: [], total: 4, limit: 10, offset: 20 });
+  const count = queries.find(query => query.text.includes('count(*)::int'));
+  const listing = queries.find(query => query.text.includes('FROM ghm.opportunity o'));
+  assert.ok(count); assert.ok(listing);
+  assert.match(count.text, /o\.opportunity_type_id = \$2/);
+  assert.match(count.text, /strpos\(lower\(o\.title\), lower\(\$3\)\)/);
+  assert.match(count.text, /strpos\(lower\(o\.description\), lower\(\$3\)\)/);
+  assert.deepEqual(count.values, [7, 3, 'roofing']);
+  assert.match(listing.text, /LIMIT \$4 OFFSET \$5/);
+  assert.deepEqual(listing.values, [7, 3, 'roofing', 10, 20]);
+});
