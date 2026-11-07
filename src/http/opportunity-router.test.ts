@@ -67,6 +67,8 @@ const stubOpportunityService = (overrides: Partial<OpportunityService> = {}): Op
   transitionOpportunity: async () => {
     throw new Error('transitionOpportunity must not be called');
   },
+  listMarketplaceOpportunities: async () => { throw new Error('listMarketplaceOpportunities must not be called'); },
+  listOpportunityTypes: async () => { throw new Error('listOpportunityTypes must not be called'); },
   ...overrides,
 });
 
