@@ -322,3 +322,7 @@ A scheduled monthly audit identified that current main still resolves web Vite 6
 
 **Final scheduled dependency-audit validation:** CI run #2210 (`42492162087`) passed both web and existing backend quality jobs. Web build passed, 23/23 tests passed, `npm audit --audit-level=moderate` reported 0 vulnerabilities, and resolved dependency-tree verification passed (Vite 6.4.5, Vitest/@vitest/mocker 4.1.12, esbuild 0.25.12, source-map-js 1.2.2). PR [#238](https://github.com/zaidhqdev-sys/GHM/pull/238) is technically validated and ready for review, but remains Draft/unmerged; no deploy or production change. The workstream is separate from the still-paused PostgreSQL listener diagnosis. Owner's previously requested PowerShell output is the next input for runtime reconciliation.
 
+### Local PostgreSQL instance diagnosis — 2026-11-08
+
+The earlier local password-reset attempt targeted the wrong server because `psql` defaulted to port 5432. Diagnostics establish PostgreSQL 17 listens on 5432 (PID 6696) and PostgreSQL 18, the intended qualification server, listens on 5433 (PID 32144). Both are running. The original PostgreSQL 18 HBA file is restored and SHA256-verified against its backup. Do not edit either HBA file until the next port-explicit test to `127.0.0.1:5433`. Runtime reconciliation remains isolated from scheduled audit PR #238. No production changes.
+
