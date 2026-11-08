@@ -283,3 +283,9 @@ PR [#222](https://github.com/zaidhqdev-sys/GHM/pull/222) is open from `integrati
 The native Windows PostgreSQL 18 qualification instance is confirmed at `127.0.0.1:5433`, database `ghm_payfast_qualification`. Password authentication was restored and the original `pg_hba.conf` verified restored by SHA256. The existing database is 13 MB and contains 56 `ghm` tables; statistics estimate 92 migration-ledger rows and small reference-data rows, but exact counts/checksums and role grants remain to be audited. PostgreSQL 17 on port 5432 must remain untouched. No migration or qualification script has yet been run in this checkpoint.
 
 Resume from [the detailed 2026-11-08 handover, Section 21](HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md) and [the native Windows PayFast qualification procedure](payfast-local-qualification.md). Do not drop/recreate the local database or run migrations until its ledger, role graph and all connection targets have been checked. Render, production and deployment remain outside this local task.
+
+## Local PayFast qualification — exact pre-audit state (2026-11-08)
+
+The native Windows PostgreSQL 18 database ghm_payfast_qualification on 127.0.0.1:5433 has an exact 92-row migration ledger (latest 20261104130000 isolate_payfast_settlement_identity) and exact reference-data counts of 1 country, 1 currency, and 11 opportunity types. ghm_migrator has explicit SET-only membership in NOLOGIN ghm_schema_owner; runtime and payment-provider have no reported path to schema-owner authority. These facts come from a successful read-only inspection and do not establish checksum reconciliation or complete ownership/grants.
+
+Resume at the detailed local PostgreSQL handover, Section 22, and the local PayFast qualification procedure. Next gate is the read-only forensic migration audit explicitly pointed at this local database. No migration, seed, reset, hosted change, or deployment is authorized by this checkpoint.
