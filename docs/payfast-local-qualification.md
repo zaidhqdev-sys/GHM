@@ -215,3 +215,12 @@ prove hosted network isolation, Render process configuration, proxy trust,
 PayFast source-IP freshness, hosted secret provisioning, or live payment
 delivery. Those remain deployment gates and are deliberately deferred until
 there is an affordable and explicitly authorized deployment plan.
+
+## Native Windows PostgreSQL 18 session note — 2026-11-08
+
+The operator has recovered local administrator password authentication for the native PostgreSQL 18 cluster on `127.0.0.1:5433`. The original `pg_hba.conf` was restored from the verified backup and its SHA256 matched the original; PostgreSQL 18 was restarted and a password-authenticated query succeeded, reporting PostgreSQL 18.6 / port 5433 / user `postgres`. The temporary trust rule is not intended to remain active. Do not repeat recovery unless a new failure is evidenced.
+
+The existing database `ghm_payfast_qualification` was found at 13 MB. A read-only catalog/statistics query listed 56 tables under schema `ghm`; `ghm_schema_migrations` estimated 92 rows, `country` 1, `currency` 1, and `opportunity_type` 11; other listed tables estimated 0. These are planner/statistics estimates, not exact counts, and do not yet establish migration checksum consistency or full qualification readiness.
+
+**Resume rule:** before running `npm run migrate` or any qualification script, inspect the local migration ledger/checksums and role/grant graph, verify all three role-specific URLs target only `127.0.0.1:5433/ghm_payfast_qualification`, and use the repository's guarded forensic audit. Do not drop/recreate the existing database or assume it is empty. PostgreSQL 17 on port 5432, Render and production remain outside this local qualification task.
+
