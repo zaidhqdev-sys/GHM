@@ -357,3 +357,42 @@ This reconstruction uses the messages and repository/tool evidence retained in t
 - Latest PR #234 head: `6b640c285cdc1bde3617eebe17c30a2a9639c851`.
 - Latest Cloudflare Pages check for that head was still building at the time of inspection. Refresh exact-head checks before considering the documentation PR ready.
 - GitHub PR metadata reported `mergeable=false` at this inspection; the reason was not established. Do not merge or try to resolve it by rebasing/rewriting without reviewing the exact diff and base status.
+
+
+## 15. Follow-on qualification checkpoint — 2026-11-08 13:07 UTC
+
+This section records additional work performed after the completed-work ledger was added. It supersedes earlier statements that PR #232's disposable PostgreSQL migration qualification was still outstanding.
+
+### PR #232 — disposable PostgreSQL migration qualification is now verified
+
+- PR #232 remains open, non-draft, mergeable, based on the exact current production source checkpoint `0e2c7c2181d457265a671a6f857140dd17faee97`.
+- Exact head remains `c71ea86d72958ca8fa489100955ee36f3823ff45`.
+- Exact-head GitHub Actions quality run #2135 (`42415152336`) passed.
+- Inspected the workflow definition at that exact head. It provisions a fresh PostgreSQL 18 service database, creates isolated `ghm_schema_owner`, `ghm_migrator`, `ghm_runtime` and `ghm_payment_provider` roles, runs `npm run build`, then executes `npm run migrate` under the migration connection before running the full test suite and additional database/runtime qualifications.
+- Inspected the completed job steps: “Apply all migrations to disposable PostgreSQL” and “Test suite” both succeeded. This run checked out the PR head, so the proposed `20261107211500_reconcile_business_profile_and_founder_authority.sql` was part of the migration set applied in the disposable database.
+- This is materially stronger than the source-only contract test and satisfies the PR's disposable PostgreSQL migration qualification gate. It does **not** prove production schema/ledger alignment or authorize production migration.
+
+### Production schema catalog — read-only recheck
+
+A new read-only catalog query against production `ghm-db` (`ghm_db`) returned only the existing `ghm.ghm_schema_migrations` ledger object (owned by `ghm_schema_owner`) from the requested object set. It returned no matching rows for:
+- `ghm.business.latitude`
+- `ghm.business.longitude`
+- `ghm.business.logo_storage_object_id`
+- `ghm.directory_listing_founder_reviewer`
+- `ghm.is_directory_listing_founder_reviewer(bigint)`
+
+This corroborates that the reconciliation objects targeted by PR #232 are currently absent in the production catalog. The query was read-only. It did not inspect migration-ledger rows because the previously recorded permission denial remains in force.
+
+### PR #232 disposition and remaining production gates
+
+- The PR's disposable PostgreSQL qualification is now **PASS**; do not repeat it unless the PR head or migration changes.
+- The production catalog absence is confirmed, but the protected migration ledger contents/checksums and full pending migration set remain unverified.
+- The historical PayFast role graph concern, approved migration-owner execution path, production backup/restore evidence and explicit production change approval remain separate safety gates.
+- No PR was merged, no production migration run, no Render deployment triggered, no grant changed, and no reviewer identity seeded in this checkpoint.
+- Do not describe PR #232 as production-applied. Do not merge or apply it solely because disposable CI passed; follow the repository's approval policy and obtain the required production change authorization.
+
+### PR #234 documentation status
+
+- Latest head at this checkpoint: `0d2ef375d25e17a84566d9d1c5dfe9ee1b828c81`.
+- GitHub compare against `main` reports 11 commits ahead, zero behind; the PR is reported mergeable with clean merge state.
+- Its Cloudflare Pages check was still in progress at the last check. A GitHub workflow-run endpoint returned 404, so do not infer that check passed from the absence of a failure.
