@@ -691,3 +691,19 @@ A read-only Node script enumerated all reachable Git objects from `git rev-list 
 This extends the earlier filename-following history comparison: not only do the six specifically traced historical blobs differ, but neither live checksum is reproducible from any of the 132 reachable SQL blobs in this local checkout. Scope limitation: this does not cover unreachable Git objects, remote branches/tags absent from the checkout, external/generated migration artifacts, CI/deployment artifacts, operator workspaces, or database-side records beyond the ledger checksum itself. Do not claim the original applied SQL has been identified.
 
 Disposition remains **INVESTIGATE / NO-GO for migration execution or ledger repair**. Next evidence source should be independent deployment/application provenance: migration runner logs, archived build/release artifacts, CI artifacts, backups/archives of the migration source, or operator records identifying the exact SQL applied at 2026-11-04 15:20:57 +02. Compare candidate artifact bytes against both ledger checksums before any remediation decision. Keep migrations, schema, ledger, and exception manifests unchanged. The scan was read-only; no database, hosted service, deployment, or PostgreSQL 17/5432 changes occurred.
+
+
+## PayFast checksum provenance — CI checkout blob comparison (2026-11-08 22:15 UTC)
+
+The operator fetched and verified GitHub Actions checkout commit `a1a046d17d04854bfc8259efaa02100b1ae09304` from workflow run [41836364443](https://github.com/zaidhqdev-sys/GHM/actions/runs/41836364443), branch `security/payfast-callback-isolation-20261104`. The commit is now present in the local Git object database; no branch switch or working-tree change was required. The run log confirms `npm run migrate` against its disposable GitHub Actions PostgreSQL service, but does not print migration checksum values. The local qualification ledger timestamps are approximately six minutes after that CI migration step began; timing alone is correlation, not proof that this CI run populated the local qualification DB.
+
+The exact SQL blobs at the CI checkout were hashed locally:
+
+| Ledger version | CI checkout path | Bytes | Raw and LF-normalized SHA-256 | Live ledger SHA-256 | Result |
+|---|---|---:|---|---|---|
+| `20261104120000` | `database/migrations/20261007120000_create_commercial_payment_result_boundary.sql` | 8,369 | `778817028e5377744140b6cec31fccc6fbb84bcf9c47e20c4997b8056ba608b9` | `da74451edd20fc331f9c13e26812f3ea1becf8bd0dffe5a62434f90478dca3ff` | No match |
+| `20261104130000` | `database/migrations/20261104130000_isolate_payfast_settlement_identity.sql` | 3,499 | `b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f` | `b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f` | Exact match |
+
+The first CI blob's hash equals the earlier `edd136a` historical blob hash, but not the live ledger checksum. The second CI blob is an exact byte-level checksum match to the live ledger row. This establishes a source-blob match for the second migration in the CI checkout; it does not, by itself, establish which database received that run or prove the CI job caused the local qualification ledger row. The workflow used a disposable CI PostgreSQL service, and its logs do not expose the computed checksum or a connection to the local machine.
+
+Updated disposition: the second migration's checksum source is identified in this CI checkout, while the first migration remains unexplained. The overall audit remains **INVESTIGATE** because the first mismatch and other audit findings remain open. Next evidence should focus on the first migration's exact applied bytes and the provenance/connection context of the local ledger. No migration, ledger, schema, exception-manifest, hosted DB, Render, production, or PostgreSQL 17/5432 changes were made; the local comparison was read-only apart from fetching Git objects.
