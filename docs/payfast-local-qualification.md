@@ -277,3 +277,13 @@ The other eight full raw hashes (for the eight migrations absent from the ledger
 Read-only `git log --all --follow` confirms all ten files are in local Git history. Notable introducing/modifying commits include: both PayFast migrations together at `e7a51d7` (2026-11-06); directory location/contact migration history `1557c24`, `38e1539`, `0b3362d`, `5f24acc`; capability evidence `452f3df`; capability assertion replacement `724dba9`; founder review lifecycle `39ced6f` plus subsequent fixes; logo binding `49dd7da`; Project-Opportunity link `28e5ca5`; business/founder authority reconciliation `1fe1db1`; business profile contract reconciliation history `cc18518`, `4a071de`, `3c51c66`, `2e452f3`. The local checkout remains branch `fix/business-profile-compat-contract-20261108`, HEAD `d9151d936fa3edcde1bb5a5c050811a37db27166`, clean; do not switch branches during this investigation.
 
 Next read-only step: inspect the exact SQL blobs at relevant introducing and follow-up commits, including the full history for the two PayFast migrations and the missing eight; then compare those versions with ledger checksums and the live catalog. File existence and current raw hashes do not prove application. The audit verdict remains INVESTIGATE. Do not run migrations, edit ledger rows or exception manifests, seed/reset/recreate the DB, or touch PostgreSQL 17/5432, hosted DBs, Render, or production.
+
+
+## Exact PayFast ledger rows verified under schema-owner role — 2026-11-08 20:01 UTC
+
+A read-only query was rerun successfully with `BEGIN READ ONLY; SET LOCAL ROLE ghm_schema_owner; ...; ROLLBACK;` through the local PostgreSQL 18 client at `127.0.0.1:5433`. The session identity was `current_user=ghm_schema_owner` and `session_user=ghm_migrator` in `ghm_payfast_qualification`.
+
+- `20261104120000 bind_commercial_payment_attempt_provider`: live checksum `da74451edd20fc331f9c13e26812f3ea1becf8bd0dffe5a62434f90478dca3ff`; applied at `2026-11-04 15:20:57.625187+02`.
+- `20261104130000 isolate_payfast_settlement_identity`: live checksum `b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f`; applied at `2026-11-04 15:20:57.629981+02`.
+
+These exact ledger values confirm the audit's two unexplained checksum mismatches. The raw current file hashes match the audit's legacy-CRLF hashes, but neither matches the live ledger. No writes were performed. Next step remains exact historical blob/checksum provenance analysis. Audit disposition remains INVESTIGATE; do not migrate, repair ledger checksums, edit manifests, seed/reset, or touch PostgreSQL 17/5432 or hosted/production resources.
