@@ -23,3 +23,11 @@ test('evidence transition still requires admin authority and forbids self-verifi
   assert.match(migration, /REVOKE ALL ON FUNCTION ghm\.transition_business_capability_evidence/);
   assert.match(migration, /GRANT EXECUTE ON FUNCTION ghm\.transition_business_capability_evidence[^;]* TO ghm_runtime/);
 });
+
+test('evidence decisions lock the parent assertion before aggregating concurrent review state', () => {
+  const lock = migration.indexOf('FROM ghm.business_capability');
+  const updateEvidence = migration.indexOf('UPDATE ghm.business_capability_evidence');
+  const aggregate = migration.indexOf('INTO v_verified_count, v_pending_count');
+  assert.ok(lock >= 0 && lock < updateEvidence && updateEvidence < aggregate);
+  assert.match(migration, /FOR UPDATE;[\s\S]*Business Capability assertion not found/);
+});
