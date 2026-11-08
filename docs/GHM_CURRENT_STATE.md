@@ -295,3 +295,6 @@ Draft PR [#237](https://github.com/zaidhqdev-sys/GHM/pull/237) now contains the 
 
 
 **Next qualification gate:** CI #2188 (`42488518261`) passed on current PR head. Remaining: restore a schema-only dump of Render `ghm_db`'s `ghm` schema into throwaway local PostgreSQL 18, preserving production-only legacy columns but excluding all production rows, apply the PR migration locally, and run the function-level qualification script. Use approved migrator URL with `pg_dump --schema-only --schema=ghm --no-owner --no-acl --role=ghm_schema_owner`; never run restore/migration/test commands against Render. If schema dump permission fails, stop; do not mutate Render grants. Detailed runbook/checkpoint in dated handover.
+
+
+**Schema clone workstation checkpoint (14:19 UTC):** PR branch cloned at `C:\Users\zaidh\AppData\Local\Temp\GHM-profile-clone-43533b1379824738b87a8bf7d8754b26`, SHA `d9151d936fa3edcde1bb5a5c050811a37db27166`. Setup stopped because `psql` is not on PowerShell PATH. No local DB/roles, Render connection, schema dump, restore, or production changes occurred. Locate/install PostgreSQL 18 client and local server before continuing; detailed record in dated handover.
