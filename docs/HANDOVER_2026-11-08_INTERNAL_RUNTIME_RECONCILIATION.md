@@ -447,3 +447,21 @@ Checked PayFast's official developer documentation while reviewing draft PR #233
 - The separate PayFast API documentation specifies an optional offset/default GMT+2 for its API request `timestamp` field: https://developers.payfast.co.za/api. This is a different field and protocol; it is not evidence of the timezone convention for ITN `payment_date`.
 - Therefore the official documentation inspected does **not** confirm that timezone-less ITN `payment_date` values should be interpreted as UTC. It also does not confirm that they should be interpreted as GMT+2.
 - PR #233's deterministic UTC behavior may be technically deterministic, but its provider compatibility assumption remains unverified. Keep PR #233 draft and do not enable live processing based on this search. Obtain written PayFast support confirmation or a provider-generated ITN sample with a known transaction instant before deciding the interpretation.
+
+
+## 18. PR #232 merged — 2026-11-08 13:11 UTC
+
+<badge>Source change merged; production migration/deployment NOT performed</badge>
+
+The user explicitly authorized merging PR #232 into `main` only, with Render auto-deploy left disabled and no production migration or deployment.
+
+- Pre-merge revalidation: PR #232 open, non-draft, mergeable/clean; base exactly `0e2c7c2181d457265a671a6f857140dd17faee97`; head exactly `c71ea86d72958ca8fa489100955ee36f3823ff45`.
+- Exact-head quality check #2135 passed, including disposable PostgreSQL 18 migration application and full test suite. Cloudflare Pages check passed.
+- Merge completed using GitHub merge commit strategy, with expected head SHA guard.
+- Merge commit: `69bb0c832273c49552fe6f6f97d2e56e21c60222`.
+- New GHM main SHA: `69bb0c832273c49552fe6f6f97d2e56e21c60222`.
+- PR #232 is closed/merged.
+- Immediate Render deploy inventory check confirms `GHM-Internal-Runtime` is **still live on the previous SHA** `0e2c7c2181d457265a671a6f857140dd17faee97`, deployment `dep-dbnp1nou01pc73dbrki0`. No deployment for the merge commit exists. Auto-deploy remains disabled.
+- No production SQL was executed, no database state changed, no reviewer identities were seeded, no feature flags or Render settings were changed.
+
+**Interpretation:** the reconciliation migration is now part of source `main`, but it has not been applied to production. The runtime is intentionally still at the prior SHA. Do not call this migration deployed/applied or treat the schema as reconciled. Before a production rollout, first obtain the supported `ghm_migrator` → `ghm_schema_owner` path, run the forensic migration audit over the complete repository migration set, review all pending migrations/checksums and exceptions, and obtain explicit production migration/deployment approval. Then preserve the user's one-release-at-a-time verification policy. Do not enable auto-deploy.
