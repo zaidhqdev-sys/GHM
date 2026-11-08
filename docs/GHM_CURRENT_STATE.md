@@ -292,3 +292,8 @@ PR #232's exact-head CI #2135 has now been inspected beyond the green badge: its
 ## Production migration authority and runtime checkpoint — 2026-11-08
 
 Further catalog review confirmed PR #232's referenced base tables and bigint FK targets exist in production. The proposed Business projection columns and founder-reviewer objects remain absent. Reviewed the migration runner and forensic audit: production migration requires the `ghm_migrator` session to SET ROLE `ghm_schema_owner`, verify the target DB, and reconcile every migration ledger version/checksum before applying all pending migrations. The read-only query identity cannot satisfy that gate. No migration or deployment was run. `GHM-Internal-Runtime` remains on live SHA `0e2c7c2`, auto-deploy off. See Sections 15–16 of the dated handover.
+
+
+## PayFast ITN timestamp documentation check — 2026-11-08
+
+Official PayFast ITN docs do not define the timezone for `payment_date`. The separate API request `timestamp` documentation's optional GMT+2 default is a different field/protocol and cannot be applied to ITN `payment_date`. PR #233 therefore remains draft pending written provider confirmation or an ITN sample with a known instant. See Section 17 of the integrated handover.
