@@ -313,3 +313,8 @@ Draft PR [#237](https://github.com/zaidhqdev-sys/GHM/pull/237) now contains the 
 
 
 **Local PostgreSQL listener checkpoint (14:41 UTC):** exact original PostgreSQL 18 pg_hba.conf backup restored and SHA-256 verified equal (0C8DC6E6E57399790417A6E13A8E1B5E27AA19708A2122148FBFE3BDCECD42). Both PG17 and PG18 Windows services report Running, but Windows found no TCP listener on port 5432 at the time of inspection. Diagnose actual postgres.exe processes, listening ports, configured port/listen_addresses, and recent server logs before another authentication attempt. No HBA changes remain, no password reset/DB setup, Render access, dump, migration, or production changes. See detailed handover.
+
+## Separate scheduled web dependency security audit — 2026-11-08
+
+A scheduled monthly audit identified that current main still resolves web Vite 6.4.3 and Vitest 2.1.9. A separate remediation branch `security/web-dependency-remediation-20261108` and Draft PR [#238](https://github.com/zaidhqdev-sys/GHM/pull/238) were created from main. Scope is limited to web Vite/Vitest security upgrades, Node engine alignment, and dedicated web CI (lockfile regeneration, install, build, tests, npm audit). Lockfile artifact and CI/audit results remain pending; PR must remain Draft/unmerged until reviewed. No backend dependency changes, Argon2 upgrade, production changes, migrations, secrets, database operations, or deployments. This workstream is explicitly separate from the PostgreSQL/runtime reconciliation and does not unblock or alter its gates. The PG18 listener-diagnostics output requested from the owner is still pending.
+
