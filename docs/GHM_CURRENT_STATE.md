@@ -265,3 +265,8 @@ See [the 2026-11-06 dependency security handover](HANDOVER_2026-11-06_DEPENDENCY
 
 PR [#222](https://github.com/zaidhqdev-sys/GHM/pull/222) is open from `integration/ghm-dependency-security-refresh` to `main`, with head `8ddbb4376b3ade89c7e852dd43e1c9865ca8304f` and base `1f23d88b23a2f54c9d77742b4f47c980b3823e65`. GitHub reports it as mergeable and not merged. Cloudflare Pages automatically completed a branch-preview build at [the integration preview URL](https://integration-ghm-dependency-s.ghm-cu1.pages.dev); this is not a production deployment. GitHub Actions `quality` was still running at the time recorded. Local validation remains 651 passed, 0 failed, 2 skipped, and `npm audit` 0 vulnerabilities. See the detailed handover for the exact publication and validation record.
 
+
+
+## Operational handover — 2026-11-08
+
+The November 7–8 internal runtime deployment and follow-up evidence were reconstructed retrospectively in [HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md](HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md). That dated record is the operational source for the deployed Render SHA, intentionally disabled auto-deploy, PR #232/#233 status, observed runtime errors, database evidence limits, explicit non-changes, and forward-only release gates. It does not authorize a merge, migration, deployment, or infrastructure change. Update the handover after every material action; do not treat its retrospective creation as contemporaneous recordkeeping.
