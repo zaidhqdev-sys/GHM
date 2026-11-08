@@ -311,3 +311,12 @@ A catalog-only, read-only comparison against Render `ghm_db` confirms the live s
 
 
 **Further privilege confirmation:** `ghm_payment_provider` exists as LOGIN but its PayFast-specific settlement functions are absent. The generic `commercial_apply_payment_result` function remains executable by `ghm_runtime` (effective privilege check true; provider false). The source isolation migration is security-sensitive and requires a reviewed role/grant plan with the database role administrator; do not apply it in isolation. PR #236 is still open/unmerged; the workflow-run lookup for head `72250a9786dd2d3259a92091402a2a0d9b5b5cac` returned no runs, so CI is not established as passing. Detailed record in the dated handover.
+
+
+## Forward-only reconciliation plan (planning only)
+
+The proposed staged plan is documented in Section 25 of the dated handover. It explicitly avoids replaying the nine historical migrations unchanged: reconcile Business profile/function first; combine provider binding and PayFast privilege isolation as one controlled security slice; then capability evidence/assertions; founder directory review; logo storage binding; Project–Opportunity link; and final residual profile/founder reconciliation. Each step requires its own reviewed PR, restored-clone test, backup/restore evidence, explicit authorization, one-at-a-time migration, and immediate ledger/schema/ACL/runtime verification. No production mutation is authorized by this plan.
+
+Read-only aggregate preflight: 16 Business rows, 0 Projects; no observed current rows violating the checked Business year/avatar-color/WhatsApp/website/province/city/address shape checks. Storage-object count could not be read because the connector identity was denied SELECT; no privilege bypass or grant was attempted. The full per-slice prerequisites, test cases, blockers, and recovery discipline are in the dated handover.
+
+**Current gate remains NO-GO for production mutation:** no backup/restore evidence, provider credential/process E2E, complete Business function/caller review, storage inventory, feature semantic qualification, or explicit production mutation authorization has been supplied. No deployment or migration occurred; auto-deploy remains off.
