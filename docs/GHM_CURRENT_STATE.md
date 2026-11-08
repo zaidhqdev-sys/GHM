@@ -342,3 +342,14 @@ Exact rows:
 - `20261104130000 isolate_payfast_settlement_identity` — checksum `b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f`; applied `2026-11-04 15:20:57.629981+02`.
 
 These match the forensic audit's live values and remain unexplained by current repository canonical or legacy-CRLF hashes. The local audit verdict remains INVESTIGATE. Resume with read-only historical Git blob/checksum tracing. No migration, ledger update, manifest edit, seed/reset, production/hosted change, Render action, or PostgreSQL 17/5432 operation is authorized or was performed.
+
+
+## PayFast local qualification — unresolved historical migration checksums (2026-11-08 22:05 UTC)
+
+The read-only local PostgreSQL 18 forensic audit remains **INVESTIGATE**. Git history tracing correctly followed the rename of `20261104120000_bind_commercial_payment_attempt_provider.sql` back to `20261007120000_create_commercial_payment_result_boundary.sql` and hashed five historical blobs. The second PayFast migration was added as a new file in the same commit and its sole traced blob was hashed. None of these six blobs matches either live ledger checksum, raw or LF-normalized.
+
+Live values remain:
+- `20261104120000`: `da74451edd20fc331f9c13e26812f3ea1becf8bd0dffe5a62434f90478dca3ff`.
+- `20261104130000`: `b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f`.
+
+The discrepancy is not a simple CRLF issue. Search all reachable Git objects/history for the exact live hashes and seek an archived/deployed migration artifact or deployment log before classifying provenance. Keep all migrations and the ledger unchanged; do not run migrations or alter exception manifests. The qualification audit is not PASS and no migration application is authorized. PostgreSQL 17/5432, hosted databases, Render and production remain untouched. Detailed hashes and path history: [internal runtime reconciliation handover](HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md) and [local PayFast qualification procedure](payfast-local-qualification.md).
