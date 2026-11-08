@@ -569,3 +569,57 @@ The fresh read-only Render catalog query in Section 20 is consistent with the ru
 6. Only after these gates, prepare a complete pending-migration review and request explicit authorization for a production migration. Migration, deployment and role remediation are separate approvals.
 
 **No action in this section changed Render, PostgreSQL, GitHub application code, secrets, feature flags, or the live runtime.**
+
+
+## 22. Fresh Render production read-only audit checkpoint — 2026-11-08 13:23 UTC
+
+### Render service and deploy boundary rechecked
+
+Fresh Render service metadata for `GHM-Internal-Runtime` confirms:
+- Service `srv-damupsek1f9s73eq8kkg`, branch `main`.
+- `autoDeploy=no`, `autoDeployTrigger=off`.
+- Build `npm ci && npm run build`; start `npm start`; health path `/healthz`.
+- Latest deployment remains `dep-dbnp1nou01pc73dbrki0`, live on `0e2c7c2181d457265a671a6f857140dd17faee97`, created 2026-11-07 20:58:08 UTC and finished 20:58:31 UTC.
+- No deployment of documentation commits `458f3d7` or the docs follow-up was triggered.
+
+### Actual Render `ghm-db` query identity
+
+A fresh read-only query against Render Postgres resource `dpg-dag0sdtbedkc7389vi2g-a` (`ghm_db`) returned:
+- `session_user = ghm_app_user`
+- `current_user = ghm_db_user`
+- `transaction_read_only = on`
+
+This is important: the connector's query session is not running as `ghm_migrator`. It has assumed `ghm_db_user` from the application login. This is not the approved dedicated migration identity and cannot be used to claim a forensic migration audit.
+
+### Live migration-ledger access
+
+Catalog inspection of `ghm.ghm_schema_migrations` confirms:
+- Owner: `ghm_schema_owner`.
+- Current query role `ghm_db_user` does not have SELECT privilege (`has_table_privilege(..., 'SELECT') = false`).
+
+The actual migration ledger therefore remains unreadable through the current Render read-only query connection. The prior permission-denied result is consistent with the ownership and ACL catalog evidence. No attempt was made to bypass the boundary or alter grants.
+
+### Fresh role membership edges
+
+Read-only `pg_auth_members` inspection reconfirmed:
+- `ghm_app_user` → `ghm_db_user`: SET true, INHERIT true, ADMIN false; grantor `postgres`.
+- `ghm_db_user` → `ghm_migrator`: SET false, INHERIT false, ADMIN true; grantor `postgres`.
+- `ghm_db_user` → `ghm_schema_owner`: SET false, INHERIT false, ADMIN true; grantor `postgres`.
+- `ghm_db_user` → `ghm_payment_provider`: SET false, INHERIT false, ADMIN true; grantor `postgres`.
+- `ghm_db_user` → `ghm_runtime`: one SET/INHERIT-capable edge granted by `ghm_db_user`, plus a separate ADMIN edge granted by `postgres`.
+- `ghm_migrator` → `ghm_schema_owner`: SET true, INHERIT false, ADMIN false; grantor `ghm_db_user`.
+
+This shows the intended `ghm_migrator` → `ghm_schema_owner` SET path exists in the catalog, but the query connection cannot become `ghm_migrator`: its `ghm_db_user` membership has SET=false. The role path's existence is not proof of credential availability or approval.
+
+### Precise remaining blocker
+
+The Render connector exposes a read-only query operation under its configured database login, but no supported operation to retrieve the service's environment-variable names/values or execute the repository Node audit script under a separate migration connection. Do not attempt to retrieve or expose secret values.
+
+Therefore the next evidence must come from the owner-approved migration execution context:
+1. Confirm privately in Render that `GHM_MIGRATOR_DATABASE_URL` is configured for the intended approved execution context (do not paste or reveal its value).
+2. Run `scripts/forensic-migration-reconciliation.mjs` in that context with `GHM_MIGRATION_AUDIT_DATABASE=ghm_db`, ensuring its output proves `current_user=ghm_migrator`, `session_user=ghm_migrator`, then `SET ROLE ghm_schema_owner`.
+3. Capture the script's full PASS/INVESTIGATE verdict and every migration count/mismatch category. It performs a READ ONLY transaction and rollback; it does not apply migrations.
+4. Separately verify the deployed runtime's actual DB identity and dependency path.
+5. Escalate the bootstrap memberships granted by `postgres` to the database provider/owner for a separately approved remediation plan. Do not revoke or alter them using `ghm_db_user`.
+
+No production database mutation, deployment, environment update, role/grant change or secret access occurred in this checkpoint.
