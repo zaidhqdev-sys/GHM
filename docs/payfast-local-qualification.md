@@ -310,3 +310,15 @@ A read-only scan inspected all **132 unique reachable SQL blob objects** in the 
 Together with the earlier historical path/rename trace, this shows the live checksums are not reproduced by any reachable SQL blob in this checkout. It does not rule out external/generated SQL, unreachable Git objects, artifacts or source from another workspace/remote not present locally, or archived CI/deployment artifacts.
 
 Audit remains **INVESTIGATE**. Next step is to seek independent evidence of the exact applied migration artifact (migration runner logs, deployment/CI artifacts, backups, or operator archives) and hash those exact bytes. Do not modify the ledger/checksum, migration files, exception manifests, schema, or run migrations pending provenance resolution. The object scan was read-only; PostgreSQL 17/5432 and all hosted/production resources remain untouched.
+
+
+## 2026-11-08 22:15 UTC — CI checkout identifies one exact migration blob
+
+The operator fetched and verified CI commit `a1a046d17d04854bfc8259efaa02100b1ae09304` from workflow run [41836364443](https://github.com/zaidhqdev-sys/GHM/actions/runs/41836364443), branch `security/payfast-callback-isolation-20261104`. Hashes of the exact SQL blobs at that commit:
+
+- `20261104120000`, path `database/migrations/20261007120000_create_commercial_payment_result_boundary.sql`, 8,369 bytes: raw/LF SHA-256 `778817028e5377744140b6cec31fccc6fbb84bcf9c47e20c4997b8056ba608b9`; does **not** match live ledger `da74451edd20fc331f9c13e26812f3ea1becf8bd0dffe5a62434f90478dca3ff`. This is the same hash as the previously traced `edd136a` blob.
+- `20261104130000`, path `database/migrations/20261104130000_isolate_payfast_settlement_identity.sql`, 3,499 bytes: raw/LF SHA-256 `b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f`; **exactly matches** live ledger `b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f`.
+
+The CI job log confirms `npm run migrate` ran against its disposable GitHub Actions PostgreSQL service, but does not print checksums. The local ledger's `applied_at` values are about six minutes after the CI migration step began; this timing is not proof that the CI job populated the local qualification database. The exact second-blob match identifies a matching source version in the CI checkout, not the database to which the workflow connected. The first mismatch remains unresolved.
+
+Overall forensic audit remains **INVESTIGATE**. Continue with independent provenance for the first migration and connection/run evidence; do not repair ledger checksums, alter exception manifests, run migrations, seed/reset/recreate the DB, or change schema. No database mutation or hosted/production/Render change occurred; PostgreSQL 17/5432 remains untouched. Fetching the commit added Git objects only and did not switch branches.
