@@ -394,3 +394,16 @@ Changes on the draft branch:
 PR #239 is draft and must not be merged or applied yet. At this checkpoint Cloudflare Pages check passed and GitHub Actions `quality` was still running on head `e1e53bbc02603d075bdf9406e29dc6e83c9c104e` (after the documentation status update). Required evidence still outstanding: exact-head CI success, disposable PostgreSQL 18 empty-install qualification, seeded historical-table qualification including data/owner/RLS/ACL preservation, and a fresh read-only audit of the local qualification database. The complete pending migration set also requires release-readiness review.
 
 No database or ledger was changed; no migration command was run; no production/Render resource or deployment was touched. This implementation is repository-only and remains a draft for review.
+
+## 17. Migration provenance PR #239 exact-head qualification — 2026-11-09
+
+The implementation PR has now passed its full exact-head GitHub Actions quality run before a subsequent documentation-only appendix commit:
+- Qualifying implementation head: `77dca310ad4945b28ef919805a3a47797043e2de`.
+- GitHub Actions quality run #2222 (`42532985591`): **success**.
+- Cloudflare Pages check on that head: **success** (preview build only).
+- Build and full disposable PostgreSQL 18 migration application passed.
+- Added CI qualification resets both registration identity functions to the exact historical pre-active-Business definitions from commit parent `5944e594813a1c13c90ca2df0be5b4d808565c32`, then executes the new forward migration with the table already present. It asserts both functions contain `b.is_active = true`, RLS enabled, owner `ghm_schema_owner`, runtime direct table SELECT denied, and runtime function execution granted. The transaction is rolled back after the assertions.
+- CI log: `PASS: historical functions were upgraded on the pre-existing table; authorization, RLS, owner, and ACL checks passed; transaction rolled back.`
+- Full test suite, commercial payment qualification, migration audit policy tests, and runtime boundary verification all passed.
+
+PR #239 remains draft and unmerged. The later appendix-only update on the PR branch triggers another CI run; confirm that exact final head's checks before any readiness change. The owner-local read-only audit still has to be rerun after branch checkout, and the complete pending migration set needs review. No database/ledger or hosted resource was changed; no migration was run against the owner's local or production database.
