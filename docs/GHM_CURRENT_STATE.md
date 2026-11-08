@@ -297,3 +297,8 @@ Further catalog review confirmed PR #232's referenced base tables and bigint FK 
 ## PayFast ITN timestamp documentation check — 2026-11-08
 
 Official PayFast ITN docs do not define the timezone for `payment_date`. The separate API request `timestamp` documentation's optional GMT+2 default is a different field/protocol and cannot be applied to ITN `payment_date`. PR #233 therefore remains draft pending written provider confirmation or an ITN sample with a known instant. See Section 17 of the integrated handover.
+
+
+## PR #232 merge checkpoint — 2026-11-08 13:11 UTC
+
+PR #232 merged after exact-head CI and disposable PostgreSQL 18 migration qualification passed. Merge commit and new main SHA: `69bb0c832273c49552fe6f6f97d2e56e21c60222`. This was source-only: Render auto-deploy remains disabled and `GHM-Internal-Runtime` remains live on prior SHA `0e2c7c2` (deployment `dep-dbnp1nou01pc73dbrki0`). No production migration/deployment occurred. Production migration remains gated on approved `ghm_migrator` → `ghm_schema_owner` access, full forensic ledger reconciliation and explicit owner approval. See Section 18 of the dated handover.
