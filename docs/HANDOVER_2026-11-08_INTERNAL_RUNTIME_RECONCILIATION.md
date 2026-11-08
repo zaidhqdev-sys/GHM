@@ -690,3 +690,18 @@ Following the owner-run migrator reconciliation, the operator compared the inten
 **PayFast-specific safety note:** production catalog shows `ghm_payment_provider` is a LOGIN role, but the dedicated PayFast read/apply functions are absent and `ghm_runtime` still has EXECUTE on the generic payment-result function. The source isolation migration would revoke that generic runtime grant and create the restricted PayFast entry points. This is a confirmed outstanding security gap, not a reason to apply that migration without its complete reviewed prerequisite and privilege plan.
 
 **No changes:** these queries were read-only. No data rows were inspected or changed, no migration or ledger entry was written, no role/grant/ACL changed, no deployment/restart/environment change occurred, and Render auto-deploy remains intentionally disabled.
+
+
+### Follow-up permission/catalog checks — 2026-11-08
+
+Additional read-only catalog checks confirm:
+- `ghm_payment_provider` is LOGIN-capable. Its membership edge from `ghm_db_user` is `SET=false`, `INHERIT=false`, `ADMIN=true`; this is not itself proof that provider settlement permissions are safely provisioned.
+- `ghm_runtime` has a SET/INHERIT-capable membership edge from `ghm_db_user` and a separate ADMIN edge from `ghm_db_user` (`SET=false`, `INHERIT=false`, `ADMIN=true`). The pre-existing privileged role graph remains a separate least-privilege remediation concern.
+- `ghm_migrator` has a SET-capable, non-inheriting membership in `ghm_schema_owner`, consistent with the successful audited `SET ROLE ghm_schema_owner` path.
+- The existing `ghm.commercial_apply_payment_result` function is owned by `ghm_schema_owner`, and its ACL grants EXECUTE to `ghm_runtime`; effective privilege check returned `runtime_execute=true`, `provider_execute=false`. The PayFast-specific functions are absent. This independently confirms the intended provider isolation migration has not been installed and ordinary runtime still has the generic payment settlement entry point.
+- The source migration's provider wrapper would revoke the runtime grant from the generic function and add the PayFast-only entry points; this is security-sensitive and must be part of an approved, ordered change with role/grant owner participation, not applied in isolation.
+- A read-only catalog query found no non-internal triggers on the inspected Business, Business Capability, payment attempt, or Project tables other than the existing payment-attempt updated-at trigger. This is only an observation about those inspected tables, not a full dependency proof.
+
+One attempted privilege probe using literal role name `PUBLIC` returned a PostgreSQL error because PUBLIC is a pseudo-role, not a catalog role; the query was corrected to use effective checks for the two actual login roles. No state changed.
+
+PR #236 remains open and unmerged. A workflow-run lookup for its then-current head `72250a9786dd2d3259a92091402a2a0d9b5b5cac` returned no PR-triggered workflow runs; do not interpret this as a passing CI result. No merge or deployment was performed.
