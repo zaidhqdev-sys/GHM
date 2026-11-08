@@ -106,6 +106,9 @@ jobs:
           FROM fixture_business CROSS JOIN fixture_account;
           SQL
 
+      - name: Qualify Business profile SQL contract on disposable PostgreSQL
+        run: npm run qualify:business-profile-contract
+
       - name: Qualify storage getter on disposable PostgreSQL
         run: node scripts/qualify-storage-getter-postgres.mjs
 
