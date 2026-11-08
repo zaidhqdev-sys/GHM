@@ -525,3 +525,58 @@ The role catalog also confirms that the intended migration role path exists stru
 - No callback/payment activation.
 - No Render deploy or auto-deploy change.
 - Keep the production migration gate BLOCKED until the role graph is reviewed/remediated, the full ledger audit passes under the intended migration identity, and explicit owner approval is recorded.
+
+
+## 21. Native Windows PostgreSQL 18 PayFast qualification — 2026-11-08 15:12 UTC
+
+This is the live-session continuation of the native Windows qualification path documented in `docs/payfast-local-qualification.md`. The following facts are based on the operator's PowerShell output supplied in the 2026-11-08 session; no local machine was accessed directly by this documentation update.
+
+### Local PostgreSQL instance identification and authentication recovery
+
+- The machine has two separate PostgreSQL clusters:
+  - PostgreSQL 17 on port `5432` (PID previously observed as `6696`).
+  - PostgreSQL 18 on port `5433`, data directory `C:\\Program Files\\PostgreSQL\\18\\data` (PID previously observed as `32144`).
+- The qualification database is on PostgreSQL 18 / port `5433`. All qualification commands must specify `-h 127.0.0.1 -p 5433`; omitting the port defaults to PostgreSQL 17 and is the cause of the earlier wrong-instance password attempt.
+- The operator verified that the original `pg_hba.conf` and `$env:TEMP\\pg_hba.conf.postgres18.original` backup have matching SHA256 hashes. The full expected hash recorded in the operator transcript is `0C8DC6E6E57399790417A6E13A8E1B5E27AA19708A2122148FBFE3BDCECD42`.
+- A temporary, narrowly scoped `host postgres postgres 127.0.0.1/32 trust` rule was prepended, PostgreSQL 18 was restarted, and `pg_isready -h 127.0.0.1 -p 5433` reported `accepting connections`.
+- The first interactive `\\password postgres` attempt reported `Passwords didn't match`; the operator repeated the command and exited normally after the second attempt. The password itself was not shared and must never be recorded here.
+- The original HBA backup was copied back over the active file. The post-restore SHA256 matched the original hash, PostgreSQL 18 was restarted, and a password-authenticated `psql` query succeeded, reporting PostgreSQL 18.6, port 5433, user `postgres`.
+- **Current confirmed state:** temporary trust rule removed by restoring the original HBA file; password authentication works against PostgreSQL 18 / 5433. Do not repeat password recovery or edit `pg_hba.conf` unless a new, evidenced failure requires it.
+- PostgreSQL 17 / 5432 was not intentionally changed. No Render, production database, deployment, or hosted environment was touched.
+
+### Qualification database inventory and schema inspection
+
+Read-only inventory on PostgreSQL 18 returned:
+
+| Database | Size |
+|---|---:|
+| `ghm_payfast_qualification` | 13 MB |
+| `postgres` | 8,014 kB |
+
+A read-only query against `ghm_payfast_qualification` / schema `ghm` returned 56 user tables. The output showed:
+- `ghm.ghm_schema_migrations`: estimated 92 rows.
+- `ghm.country`: estimated 1 row.
+- `ghm.currency`: estimated 1 row.
+- `ghm.opportunity_type`: estimated 11 rows.
+- All other listed tables: estimated 0 rows.
+
+These are `pg_stat_user_tables.n_live_tup` estimates, not exact counts. The database is therefore not accurately described as entirely empty: it has the application table structure, a migration ledger estimate of 92, and small reference-data estimates. The full schema/data completeness and migration checksum state have **not** yet been verified. Table sizes in the operator output are mostly 16–144 kB, with `ghm.business` 112 kB; database total is 13 MB.
+
+The first inspection SQL attempt failed because it referenced nonexistent column `tablename` on `pg_stat_user_tables`. This was a harmless read-only query error. The corrected query used `relname AS tablename` and `pg_total_relation_size(relid)`, and succeeded. The operator pasted the successful output twice; this is one logical inspection result, not two separate database changes.
+
+### Immediate next actions
+
+1. Continue using only PostgreSQL 18 / `127.0.0.1:5433` for this qualification database.
+2. Inspect the qualification migration ledger rows, versions and checksums, and compare them with the exact checked-out repository migration set using the repository's approved forensic reconciliation tooling. First confirm the current checkout/ref and ensure the audit is pointed only at `ghm_payfast_qualification`.
+3. Inspect actual exact row counts for the four non-empty estimated tables and identify required seeded/reference data versus qualification fixtures. Do not assume statistics are exact.
+4. Verify the qualification role graph (`ghm_schema_owner`, `ghm_migrator`, `ghm_runtime`, `ghm_payment_provider`), ownership, grants and connection target before running any application qualification commands.
+5. Only after ledger, role and target checks pass, run the documented build/migration/qualification sequence from `docs/payfast-local-qualification.md`, using distinct local role URLs and explicit expected database/host guards.
+6. Do not drop/recreate the existing 13 MB database or rerun migrations blindly. Preserve it until its contents and migration state are understood.
+
+### Safety boundary reaffirmed
+
+- Local target: PostgreSQL 18, port 5433, database `ghm_payfast_qualification`.
+- Separate local instance: PostgreSQL 17, port 5432; leave untouched.
+- No Render service, production database, production migration, payment callback, deployment, environment variable, role grant, or hosted credential was changed in this checkpoint.
+- Never paste database passwords, connection URLs containing passwords, or provider secrets into chat or documentation.
+
