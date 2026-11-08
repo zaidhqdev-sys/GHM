@@ -287,3 +287,8 @@ The integrated handover now includes Section 14, a retrospective ledger of the i
 ## Follow-on qualification checkpoint — 2026-11-08
 
 PR #232's exact-head CI #2135 has now been inspected beyond the green badge: its workflow provisions disposable PostgreSQL 18, runs `npm run migrate` against that disposable database, and the migration-application and full test-suite steps both passed on PR head `c71ea86`. A fresh read-only production catalog query also confirmed that the three Business projection columns and founder-reviewer table/function targeted by PR #232 are absent. This qualifies the migration on disposable PostgreSQL, not on production; the protected migration ledger remains unreadable, and no production migration or deployment was performed. See Section 15 of the dated handover. Do not repeat this disposable qualification unless PR #232's head or migration changes.
+
+
+## Production migration authority and runtime checkpoint — 2026-11-08
+
+Further catalog review confirmed PR #232's referenced base tables and bigint FK targets exist in production. The proposed Business projection columns and founder-reviewer objects remain absent. Reviewed the migration runner and forensic audit: production migration requires the `ghm_migrator` session to SET ROLE `ghm_schema_owner`, verify the target DB, and reconcile every migration ledger version/checksum before applying all pending migrations. The read-only query identity cannot satisfy that gate. No migration or deployment was run. `GHM-Internal-Runtime` remains on live SHA `0e2c7c2`, auto-deploy off. See Sections 15–16 of the dated handover.
