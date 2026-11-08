@@ -265,3 +265,14 @@ See [the 2026-11-06 dependency security handover](HANDOVER_2026-11-06_DEPENDENCY
 
 PR [#222](https://github.com/zaidhqdev-sys/GHM/pull/222) is open from `integration/ghm-dependency-security-refresh` to `main`, with head `8ddbb4376b3ade89c7e852dd43e1c9865ca8304f` and base `1f23d88b23a2f54c9d77742b4f47c980b3823e65`. GitHub reports it as mergeable and not merged. Cloudflare Pages automatically completed a branch-preview build at [the integration preview URL](https://integration-ghm-dependency-s.ghm-cu1.pages.dev); this is not a production deployment. GitHub Actions `quality` was still running at the time recorded. Local validation remains 651 passed, 0 failed, 2 skipped, and `npm audit` 0 vulnerabilities. See the detailed handover for the exact publication and validation record.
 
+
+
+## 2026-11-08 post-merge runtime and migration checkpoint
+
+- GHM main is `69bb0c832273c49552fe6f6f97d2e56e21c60222`; exact-main quality and Cloudflare checks passed.
+- PR #232 is merged. Its schema reconciliation migration is in source main, but has NOT been applied to production.
+- `GHM-Internal-Runtime` remains live on `0e2c7c2`, Render auto-deploy disabled. No new deploy or migration was triggered.
+- Production migration remains blocked: protected migration ledger has not been reconciled; the production role graph has a material privilege-boundary issue. Read-only catalog shows `ghm_app_user` can SET ROLE `ghm_db_user`; `ghm_db_user` has CREATEDB/CREATEROLE and ADMIN OPTION on `ghm_migrator`, `ghm_schema_owner`, `ghm_payment_provider` and `ghm_runtime`. Although `ghm_migrator` can SET ROLE `ghm_schema_owner` structurally, no approved credential path or successful ledger audit has been verified. No role change was made.
+- Do not apply migration, alter grants, activate PayFast callbacks or deploy until the role graph is reviewed/remediated, the complete forensic migration audit passes under the approved migration identity, and owner authorization is recorded.
+- Integrated detailed record: [HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md](HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md), Sections 18–20.
+- The previous documentation PR #234 is stale relative to the new mainline. A fresh documentation-only branch `docs/handover-2026-11-08-mainline-reconciled` has been cut from the current main commit; do not merge PR #234 as-is.
