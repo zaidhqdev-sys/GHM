@@ -300,3 +300,13 @@ Read-only Git history tracing established:
 No traced blob matched the corresponding live ledger checksum, whether raw or LF-normalized. First migration live checksum: `da74451edd20fc331f9c13e26812f3ea1becf8bd0dffe5a62434f90478dca3ff`; second: `b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f`. The traced current Git blobs instead hash to `3f284b7afb1bc83c42331b0346e2853f448948ad9a2f9e92c162c303fb92d3d8` and `230657b714cc8bfa23e69be9a0c8ff0a4d110b3a7435047e33683a77f3863a22`, respectively. Earlier first-migration versions also differ (full values are in the internal runtime reconciliation handover).
 
 This is not explained by line endings. It remains possible that the applied SQL came from another Git object, an external/generated artifact, or a deployment-time source not yet found. Next: search all reachable Git objects/history for the exact live checksums and inspect any archived migration artifact/deployment evidence. Do not change ledger checksums, edit exception manifests, rerun either migration, apply pending migrations, or mutate the database. PostgreSQL 17/5432, hosted databases, Render, and production remain out of scope and untouched.
+
+## 2026-11-08 22:07 UTC — reachable SQL Git-object search
+
+A read-only scan inspected all **132 unique reachable SQL blob objects** in the local Git object graph. It computed raw and LF-normalized SHA-256 for every blob. There were **zero matches** for either live PayFast ledger checksum:
+- `20261104120000`: `da74451edd20fc331f9c13e26812f3ea1becf8bd0dffe5a62434f90478dca3ff`.
+- `20261104130000`: `b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f`.
+
+Together with the earlier historical path/rename trace, this shows the live checksums are not reproduced by any reachable SQL blob in this checkout. It does not rule out external/generated SQL, unreachable Git objects, artifacts or source from another workspace/remote not present locally, or archived CI/deployment artifacts.
+
+Audit remains **INVESTIGATE**. Next step is to seek independent evidence of the exact applied migration artifact (migration runner logs, deployment/CI artifacts, backups, or operator archives) and hash those exact bytes. Do not modify the ledger/checksum, migration files, exception manifests, schema, or run migrations pending provenance resolution. The object scan was read-only; PostgreSQL 17/5432 and all hosted/production resources remain untouched.
