@@ -126,3 +126,11 @@ These are source-review findings, not proof of runtime exploitation or data expo
 ### Forward correction for the Business profile patch persistence gap
 
 The earlier migration is intentionally left byte-for-byte unchanged. A new forward migration, `20261109100000_persist_business_profile_presentation_fields.sql`, now replaces `ghm.update_business_profile` with the same validation/authorization contract plus the missing assignments for `avatar_letter`, `avatar_color`, and `years_in_business`. The static migration contract test now asserts those assignments exist in the forward migration. This fix is staged in PR #239 and requires the same exact-head CI and PostgreSQL 18 qualification as the other changes.
+
+### Owner-local read-only audit and exact PayFast provenance follow-up
+
+The owner ran the read-only audit on the prior PR head `00a4e4239db6c9a0f6181ef7efa7300f1091d980`. Authority passed against `ghm_payfast_qualification`; the audit was read-only under `ghm_migrator` with explicit `SET ROLE ghm_schema_owner`. It reported 9 pending repository migrations, 11 verified retained-history rows, zero unrecognized extras, zero invalid retained history, and two unexplained PayFast mismatches. The two live PayFast checksums were independently verified against exact source SQL at commit `a1a046d17d04854bfc8259efaa02100b1ae09304`. This PR now registers the exact values:
+- `20261104120000`: `da74451edd20fc331f9c13e26812f3ea1becf8bd0dffe5a62434f90478dca3ff`
+- `20261104130000`: `b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f`
+
+A regression test pins both entries. This is exact per-version provenance; no broad exception or checksum relaxation. Exact-head CI and a second owner-local read-only audit remain required to confirm the final verdict. The nine missing rows are pending repository migrations and must not be applied until reviewed/approved.
