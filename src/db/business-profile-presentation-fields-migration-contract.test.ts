@@ -31,3 +31,38 @@ test('business tenure remains self-declared and is not a verified trust signal',
  assert.ok(repository.includes('yearsInBusiness: row.years_in_business'));
  assert.doesNotMatch(repository,/yearsInBusiness:[^\n]*insuranceVerified/);
 });
+
+const reconciled=fs.readFileSync(path.resolve(process.cwd(),'database/migrations/20261108200000_reconcile_business_profile_contract.sql'),'utf8');
+
+test('forward-only Business profile reconciliation adds only missing coordinates idempotently',()=>{
+ assert.match(reconciled,/ADD COLUMN IF NOT EXISTS latitude double precision/);
+ assert.match(reconciled,/ADD COLUMN IF NOT EXISTS longitude double precision/);
+ assert.match(reconciled,/business_coordinates_pair_check/);
+ assert.doesNotMatch(reconciled,/ADD COLUMN IF NOT EXISTS (province|city|physical_address|whatsapp|website|avatar_letter|avatar_color|years_in_business)/);
+});
+
+test('profile function accepts both current snake_case and historical camelCase keys',()=>{
+ for(const [snake,camel] of [['physical_address','physicalAddress'],['avatar_letter','avatarLetter'],['avatar_color','avatarColor'],['years_in_business','yearsInBusiness']]){
+  assert.ok(reconciled.includes(snake),`missing current repository key ${snake}`);
+  assert.ok(reconciled.includes(camel),`missing historical API key ${camel}`);
+ }
+ assert.match(reconciled,/Conflicting Business profile aliases/);
+ assert.match(reconciled,/v_patch->v_alias IS DISTINCT FROM v_patch->v_key/);
+});
+
+test('profile reconciliation preserves legacy category and supplier fields and authorization',()=>{
+ assert.match(reconciled,/'category'/);
+ assert.match(reconciled,/'isSupplier'/);
+ assert.match(reconciled,/membership_role IN \('owner', 'administrator'\)/);
+ assert.match(reconciled,/SECURITY DEFINER/);
+ assert.match(reconciled,/SET search_path = pg_catalog, ghm/);
+ assert.match(reconciled,/GRANT EXECUTE ON FUNCTION ghm\.update_business_profile\(bigint, bigint, jsonb\) TO ghm_runtime/);
+ assert.match(reconciled,/REVOKE ALL ON FUNCTION ghm\.update_business_profile\(bigint, bigint, jsonb\) FROM PUBLIC/);
+});
+
+test('profile reconciliation preserves live DB validation limits rather than tightening data contracts',()=>{
+ assert.match(reconciled,/NOT BETWEEN 0 AND 500/);
+ assert.match(reconciled,/length\(btrim\(v_patch->>'province'\)\) NOT BETWEEN 1 AND 100/);
+ assert.match(reconciled,/avatarColor.*six-digit hex color/s);
+ assert.match(reconciled,/Latitude and longitude must be supplied together/);
+});
