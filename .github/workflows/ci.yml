@@ -86,6 +86,9 @@ jobs:
       - name: Apply all migrations to disposable PostgreSQL
         run: npm run migrate
 
+      - name: Qualify Business registration forward migration against existing table
+        run: node scripts/qualify-business-registration-forward-migration.mjs
+
       - name: Seed disposable storage qualification fixture
         env:
           PGPASSWORD: postgres
