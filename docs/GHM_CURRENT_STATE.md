@@ -286,3 +286,6 @@ A separate source-only branch `fix/business-profile-compat-contract-20261108` is
 
 
 Draft PR [#237](https://github.com/zaidhqdev-sys/GHM/pull/237) now contains the unqualified Business profile reconciliation proposal. It remains draft/unmerged and is not authorized for production application. Its current CI status must be checked before any promotion.
+
+
+**Draft PR #237 CI:** run #2179 / `42487901236` passed on source head `9591ba604069b446613f0a6a4af6eacecf6bc259`. Build, all migrations on disposable PostgreSQL, configured tests, and runtime-boundary checks passed. This is not a restored production clone or Render `ghm_db` qualification. Targeted execution tests of both profile-key alias forms and conflicting-alias rejection remain outstanding; PR remains Draft/unmerged. See dated handover.
