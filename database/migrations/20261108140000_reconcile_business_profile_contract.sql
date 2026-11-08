@@ -63,7 +63,7 @@ DECLARE
   v_key text;
   i integer;
   v_alias text;
-  v_value jsonb;
+  v_set_extra text := '';
   v_allowed_keys text[] := ARRAY[
     'name', 'slug', 'description', 'phone', 'email', 'category',
     'province', 'city', 'physicalAddress', 'whatsapp', 'website',
@@ -223,28 +223,52 @@ BEGIN
     RAISE EXCEPTION 'Avatar color must be a six-digit hex color';
   END IF;
 
-  UPDATE ghm.business
-  SET
-    name = CASE WHEN v_patch ? 'name' THEN btrim(v_patch->>'name') ELSE name END,
-    slug = CASE WHEN v_patch ? 'slug' THEN btrim(v_patch->>'slug') ELSE slug END,
-    description = CASE WHEN v_patch ? 'description' THEN nullif(v_patch->>'description', '') ELSE description END,
-    phone = CASE WHEN v_patch ? 'phone' THEN nullif(btrim(v_patch->>'phone'), '') ELSE phone END,
-    email = CASE WHEN v_patch ? 'email' THEN nullif(btrim(v_patch->>'email'), '') ELSE email END,
-    category = CASE WHEN v_patch ? 'category' THEN v_patch->>'category' ELSE category END,
-    province = CASE WHEN v_patch ? 'province' THEN nullif(btrim(v_patch->>'province'), '') ELSE province END,
-    city = CASE WHEN v_patch ? 'city' THEN nullif(btrim(v_patch->>'city'), '') ELSE city END,
-    physical_address = CASE WHEN v_patch ? 'physicalAddress' THEN nullif(btrim(v_patch->>'physicalAddress'), '') ELSE physical_address END,
-    latitude = CASE WHEN v_patch ? 'latitude' THEN (v_patch->>'latitude')::double precision ELSE latitude END,
-    longitude = CASE WHEN v_patch ? 'longitude' THEN (v_patch->>'longitude')::double precision ELSE longitude END,
-    whatsapp = CASE WHEN v_patch ? 'whatsapp' THEN nullif(btrim(v_patch->>'whatsapp'), '') ELSE whatsapp END,
-    website = CASE WHEN v_patch ? 'website' THEN nullif(btrim(v_patch->>'website'), '') ELSE website END,
-    is_supplier = CASE WHEN v_patch ? 'isSupplier' THEN (v_patch->>'isSupplier')::boolean ELSE is_supplier END,
-    avatar_letter = CASE WHEN v_patch ? 'avatarLetter' THEN nullif(btrim(v_patch->>'avatarLetter'), '') ELSE avatar_letter END,
-    avatar_color = CASE WHEN v_patch ? 'avatarColor' THEN nullif(btrim(v_patch->>'avatarColor'), '') ELSE avatar_color END,
-    years_in_business = CASE WHEN v_patch ? 'yearsInBusiness' THEN (v_patch->>'yearsInBusiness')::integer ELSE years_in_business END,
-    updated_at = now()
-  WHERE id = p_business_id
-  RETURNING * INTO v_updated;
+  IF v_patch ? 'category' THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_attribute
+      WHERE attrelid = 'ghm.business'::regclass
+        AND attname = 'category' AND attnum > 0 AND NOT attisdropped
+    ) THEN
+      RAISE EXCEPTION 'Category profile field is not present in this Business schema';
+    END IF;
+    v_set_extra := v_set_extra || ', category = CASE WHEN $1 ? ''category'' THEN $1->>''category'' ELSE category END';
+  END IF;
+  IF v_patch ? 'isSupplier' THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_attribute
+      WHERE attrelid = 'ghm.business'::regclass
+        AND attname = 'is_supplier' AND attnum > 0 AND NOT attisdropped
+    ) THEN
+      RAISE EXCEPTION 'Supplier profile field is not present in this Business schema';
+    END IF;
+    v_set_extra := v_set_extra || ', is_supplier = CASE WHEN $1 ? ''isSupplier'' THEN ($1->>''isSupplier'')::boolean ELSE is_supplier END';
+  END IF;
+
+  EXECUTE format($statement$
+    UPDATE ghm.business
+    SET
+      name = CASE WHEN $1 ? 'name' THEN btrim($1->>'name') ELSE name END,
+      slug = CASE WHEN $1 ? 'slug' THEN btrim($1->>'slug') ELSE slug END,
+      description = CASE WHEN $1 ? 'description' THEN nullif($1->>'description', '') ELSE description END,
+      phone = CASE WHEN $1 ? 'phone' THEN nullif(btrim($1->>'phone'), '') ELSE phone END,
+      email = CASE WHEN $1 ? 'email' THEN nullif(btrim($1->>'email'), '') ELSE email END,
+      province = CASE WHEN $1 ? 'province' THEN nullif(btrim($1->>'province'), '') ELSE province END,
+      city = CASE WHEN $1 ? 'city' THEN nullif(btrim($1->>'city'), '') ELSE city END,
+      physical_address = CASE WHEN $1 ? 'physicalAddress' THEN nullif(btrim($1->>'physicalAddress'), '') ELSE physical_address END,
+      latitude = CASE WHEN $1 ? 'latitude' THEN ($1->>'latitude')::double precision ELSE latitude END,
+      longitude = CASE WHEN $1 ? 'longitude' THEN ($1->>'longitude')::double precision ELSE longitude END,
+      whatsapp = CASE WHEN $1 ? 'whatsapp' THEN nullif(btrim($1->>'whatsapp'), '') ELSE whatsapp END,
+      website = CASE WHEN $1 ? 'website' THEN nullif(btrim($1->>'website'), '') ELSE website END,
+      avatar_letter = CASE WHEN $1 ? 'avatarLetter' THEN nullif(btrim($1->>'avatarLetter'), '') ELSE avatar_letter END,
+      avatar_color = CASE WHEN $1 ? 'avatarColor' THEN nullif(btrim($1->>'avatarColor'), '') ELSE avatar_color END,
+      years_in_business = CASE WHEN $1 ? 'yearsInBusiness' THEN ($1->>'yearsInBusiness')::integer ELSE years_in_business END,
+      updated_at = now()
+      %s
+    WHERE id = $2
+    RETURNING *
+  $statement$, v_set_extra)
+  USING v_patch, p_business_id
+  INTO v_updated;
 
   RETURN v_updated;
 END;
