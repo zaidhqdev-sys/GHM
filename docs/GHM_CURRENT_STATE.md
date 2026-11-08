@@ -293,3 +293,12 @@ The PostgreSQL role-separation runbook is a construction record: its `ghm_migrat
 - No supported connector action exposes service environment-variable metadata or runs the repository audit script under a separate migration credential. Do not retrieve or expose secrets.
 - Next: owner verifies privately that `GHM_MIGRATOR_DATABASE_URL` is configured in the approved execution context, then runs `scripts/forensic-migration-reconciliation.mjs` read-only against `ghm_db`; separately verify deployed runtime identity and escalate bootstrap membership remediation. No grants or roles changed.
 - Detailed evidence in Section 22 of the dated handover.
+
+
+## 2026-11-08 owner-run production migration audit — 13:29 UTC
+
+The owner completed the read-only forensic migration reconciliation from a fresh temporary clone of GHM main at `458f3d7019c5732b22316c906307a69fd5a34a66`; the existing `C:\\GHM-main` checkout was not touched. Clone path: `C:\\Users\\zaidh\\AppData\\Local\\Temp\\GHM-migration-audit-61e0a61b314e411d89ddb39d8b6e33d2`. `npm ci` succeeded (166 packages; 0 vulnerabilities; argon2 install-script approval warning). The hidden owner-supplied migration URL successfully connected to Render `ghm_db` as `ghm_migrator`, switched to `ghm_schema_owner`, and ran in a read-only transaction.
+
+**Verdict: INVESTIGATE (exit 2), not PASS.** 89 repository migrations / 89 live ledger rows; 9 canonical matches, 62 supported legacy-CRLF matches, 9 approved historical matches; 9 repository migrations missing from the ledger; 9 extra ledger entries, all recognized as approved retained history; 0 unexplained checksum mismatches; 0 name mismatches; 0 unrecognized extras; 0 orphaned exceptions; 7 redundant historical exceptions; **1 invalid retained-history record**. The 9 missing versions and exact interpretation are recorded in Sections 23 of the dated handover. Investigate the invalid retained-history record (including the `20261019210000` audit row) and establish why the 9 migrations are absent before any migration or ledger action. Do not blindly apply them or rewrite the ledger.
+
+The connection/role-switch uncertainty is now closed by direct execution evidence. Migration readiness remains blocked by the reconciliation verdict. Script completed read-only and rolled back; no DDL, migration, ledger write, role/grant change, secret disclosure, environment change, deploy, restart, or auto-deploy change occurred. Detailed sanitized evidence: [HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md](HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md).
