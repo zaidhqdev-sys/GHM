@@ -628,3 +628,11 @@ Security version checks: Vitest 4.1.12 is the release that includes the manual-m
 
 PR #238 is Draft/unmerged. At this checkpoint the GitHub workflow-run lookup had not yet returned a run; lockfile regeneration, artifact review, web build/tests and registry-backed audit remain pending. Do not treat the PR as complete until the generated lockfile is committed and CI/audit results are reviewed. Do not merge or deploy without separate approval. No production, PostgreSQL, Render, runtime deployment, environment, secret, or database state was changed by this audit work.
 
+### Dependency audit remediation CI follow-up — 2026-11-08 14:55 UTC
+
+The first web CI run #2203 identified one additional high-severity transitive advisory, GHSA-68fv-2mgg-jv7q in `source-map-js` 1.2.1 (fixed in 1.2.2). Added a web-only npm override for `source-map-js ^1.2.2`. The next run #2207 confirmed npm audit was clear, but its lockfile-commit step attempted to push from GitHub's PR merge ref and was rejected as non-fast-forward. No branch history was overwritten.
+
+Corrected the workflow to check out the PR head for lockfile generation/commit. Run #2208 (`42492041528`) then passed: regenerated lockfile committed to the dedicated audit branch; Vite 6.4.5, Vitest 4.1.12, @vitest/mocker 4.1.12, esbuild 0.25.12, source-map-js 1.2.2; web build passed; 23/23 tests passed; npm audit reported 0 vulnerabilities; existing backend quality job also passed all steps including disposable PostgreSQL qualification and full configured tests. The workflow's branch-write permission/commit step was then removed; final workflow is read-only (global contents:read) and includes explicit resolved-tree verification.
+
+PR [#238](https://github.com/zaidhqdev-sys/GHM/pull/238) remains Draft/unmerged, branch `security/web-dependency-remediation-20261108`, current head `22105b2cc4e7a0023673a6225a843bfb8f35272c`. Final CI run #2210 (`42492162087`) was queued at this checkpoint against the committed lockfile and read-only workflow. Wait for and inspect that run before calling this branch reviewed/complete. No merge/deploy or production/runtime/DB changes. This separate workstream does not alter the paused PostgreSQL 18 listener diagnosis; owner still needs to return the output of the previously supplied diagnostics command.
+
