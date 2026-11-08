@@ -379,3 +379,18 @@ Main's `config/historical-migration-provenance-exceptions.json` has no `20261019
 ## 15. Clarification of migration audit `missing_count` — 2026-11-08 22:44 UTC
 
 Correction to prior handover shorthand: the forensic script's `missing` array means **repository migration files whose versions do not exist in the live database ledger** (pending/unapplied repository migrations). It does not mean migration files are missing from the repository. The eight versions listed in the local audit are repository-present and ledger-absent. Seven of those files are present on main: `20261105190000_extend_business_directory_location_contact`, `20261105213000_create_business_capability_evidence`, `20261105220000_replace_business_capability_assertions`, `20261105230000_create_founder_directory_review`, `20261106090000_business_logo_storage_binding`, `20261106200000_link_project_to_opportunity`, and `20261107211500_reconcile_business_profile_and_founder_authority`. The eighth, `20261108140000_reconcile_business_profile_contract`, exists on `fix/business-profile-compat-contract-20261108` but is not present on main. Several of the SQL files explicitly state construction-only/no production migration or cutover authorization; their presence and ledger-absent status do not authorize execution. Treat this metric as eight pending repository migrations, not eight missing source files. This correction does not change the audit verdict or permit migration execution. The independent `20261019210000` same-version checksum collision still blocks the current migration runner on the observed local database; its runner transaction would roll back on error. No database or migration source was changed.
+
+## 16. Migration provenance remediation implementation staged — 2026-11-09
+
+A draft code PR is now open for review: [PR #239 — Reconcile historical migration provenance and business identity version collision](https://github.com/zaidhqdev-sys/GHM/pull/239), branch `fix/migration-provenance-reconciliation-20261109`.
+
+Changes on the draft branch:
+- Retires the later Business registration SQL body from the already-applied historical version `20261019210000`, leaving its exact applied checksum in retained-history metadata.
+- Reintroduces the table contract and active-Business authorization functions in new forward migration `20261108150000_reconcile_business_registration_identity_authorization.sql`. It uses `CREATE TABLE IF NOT EXISTS`, validates the expected seven columns/types and four declaration constraints for an existing table, verifies RLS, restores owner/revokes, and replaces the read/update functions.
+- Updates the static migration contract test to point at the new version.
+- Corrects QuoteFlow `20261020130000` retained checksum to live-applied `3c09cc7...` and source blob `21731433...`; adds identity-authority `20261031100000` checksum `a6692f47...` with exact commit/blob provenance.
+- Does not alter `config/historical-migration-provenance-exceptions.json`.
+
+PR #239 is draft and must not be merged or applied yet. At this checkpoint Cloudflare Pages check passed and GitHub Actions `quality` was still running on head `e1e53bbc02603d075bdf9406e29dc6e83c9c104e` (after the documentation status update). Required evidence still outstanding: exact-head CI success, disposable PostgreSQL 18 empty-install qualification, seeded historical-table qualification including data/owner/RLS/ACL preservation, and a fresh read-only audit of the local qualification database. The complete pending migration set also requires release-readiness review.
+
+No database or ledger was changed; no migration command was run; no production/Render resource or deployment was touched. This implementation is repository-only and remains a draft for review.
