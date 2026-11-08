@@ -99,3 +99,11 @@ Implementation is staged on branch `fix/migration-provenance-reconciliation-2026
 
 ### Explicit boundary
 No database connection, migration command, ledger write, production change, Render operation, deployment, or manifest exception was performed. This PR is a code/provenance proposal for review only. It is not approval to run migrations or deploy.
+
+### Exact-head CI qualification — PASS
+- PR #239 head: `77dca310ad4945b28ef919805a3a47797043e2de`.
+- GitHub Actions quality run #2222 (`42532985591`) passed: build, full disposable PostgreSQL 18 migration run, historical-function upgrade on the already-existing registration table, complete application test suite, commercial payment qualification, migration audit policy tests, and runtime-boundary verification.
+- The new CI fixture first restores the exact pre-active-Business function definitions from historical commit parent `5944e594813a1c13c90ca2df0be5b4d808565c32`, then runs the new migration in a transaction. Assertions verify both functions contain `b.is_active = true`, table RLS is enabled, owner is `ghm_schema_owner`, direct runtime SELECT remains revoked, and runtime function EXECUTE remains granted. Transaction is rolled back after assertions.
+- CI log explicitly reports: `PASS: historical functions were upgraded on the pre-existing table; authorization, RLS, owner, and ACL checks passed; transaction rolled back.`
+- Cloudflare Pages check for this exact head passed. This is a preview build, not a production deployment.
+- Still outstanding: local read-only migration audit against the owner's qualified database after branch checkout, and human review/approval of all pending migrations. PR remains draft and unmerged.
