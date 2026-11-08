@@ -612,3 +612,19 @@ Owner inserted a temporary HBA rule intended to match only database postgres, ro
 ### Original HBA restored; listener diagnosis required — 2026-11-08 14:41 UTC
 
 Owner restored C:\Program Files\PostgreSQL\18\data\pg_hba.conf from %TEMP%\pg_hba.conf.postgres18.original and restarted postgresql-x64-18. SHA-256 hashes match exactly: 0C8DC6E6E57399790417A6E13A8E1B5E27AA19708A2122148FBFE3BDCECD42. Both Windows services postgresql-x64-17 and postgresql-x64-18 report Running; service command lines identify their respective data directories. However Get-NetTCPConnection reports no LISTENING TCP socket on port 5432, and process lookup therefore received a null PID. Earlier psql reported a password-authentication response from 127.0.0.1:5432, so current observations may reflect a startup/listener state change or interleaved terminal commands. Do not edit HBA or retry passwords. Next inspect postgres.exe processes and command lines, all listening TCP ports/PIDs, effective port/listen_addresses settings in each data directory, and recent PostgreSQL logs/service events. Determine actual active instance and port before further local auth recovery. No local password reset/DB setup, Render connection/dump, restore, migration, or production changes.
+
+### Separate scheduled dependency audit workstream — 2026-11-08 14:47–14:52 UTC
+
+Owner authorized the scheduled monthly dependency-audit remediation, explicitly requiring it to remain separate from the active PostgreSQL/runtime reconciliation. This work was performed on its own branch and draft PR; the PostgreSQL listener diagnosis remains paused awaiting the owner's output from the previously supplied PowerShell diagnostics command.
+
+Verified repository main at commit `458f3d7019c5732b22316c906307a69fd5a34a66`. Compared current `web/package.json` and `web/package-lock.json` against the 2026-11-06 audit snapshot: web manifest still declared Vite `^6.0.3`, Vitest `^2.1.8`, Node `>=18`; lock resolved Vite `6.4.3`, Vitest/`vite-node` `2.1.9`, and direct esbuild `0.25.12`. Root backend manifest/lock were not changed. The audit's Vitest/Vite security findings therefore remained relevant to current main.
+
+Created isolated branch `security/web-dependency-remediation-20261108` directly from main and draft PR [#238](https://github.com/zaidhqdev-sys/GHM/pull/238), head `77f12ce99f47d6a6b6959278452ad53de212d273`. Changes so far:
+- `web/package.json`: Vite `^6.4.5`, Vitest `^4.1.12`, Node engine `^20.0.0 || ^22.0.0 || >=24.0.0`.
+- `.github/workflows/ci.yml`: separate web CI job on Node 20 to regenerate lockfile, install, build, test, run `npm audit --audit-level=moderate`, and upload generated lockfile as artifact for review.
+- React, backend/root dependencies, Argon2, framework majors, production configuration, secrets, databases, migrations and deployments are intentionally out of scope.
+
+Security version checks: Vitest 4.1.12 is the release that includes the manual-mock hardening and avoids the Windows backslash bypass introduced in the 4.1.11 line; Vite 6.4.5 fixes the later `server.fs.deny` query bypass affecting 6.4.4. References: Vitest release/advisories and Vite release/advisory records (GHSA-xp26-3454-mjgp, GHSA-qxg6-89mg-rqv8, GHSA-8g5g-mxqh-grgj).
+
+PR #238 is Draft/unmerged. At this checkpoint the GitHub workflow-run lookup had not yet returned a run; lockfile regeneration, artifact review, web build/tests and registry-backed audit remain pending. Do not treat the PR as complete until the generated lockfile is committed and CI/audit results are reviewed. Do not merge or deploy without separate approval. No production, PostgreSQL, Render, runtime deployment, environment, secret, or database state was changed by this audit work.
+
