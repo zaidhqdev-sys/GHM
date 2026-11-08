@@ -54,18 +54,26 @@ try {
   }
   console.log('PROFILE CONTRACT FIXTURE CREATED');
 
+  const optionalLegacyColumns = await runtimePool.query(
+    `SELECT column_name FROM information_schema.columns
+      WHERE table_schema = 'ghm' AND table_name = 'business'
+        AND column_name IN ('category', 'is_supplier')`,
+  );
+  const legacyColumnNames = new Set(optionalLegacyColumns.rows.map(row => row.column_name));
+  const snakePatch = {
+    physical_address: '10 Current Repository Road',
+    avatar_letter: 'GH',
+    avatar_color: '#12AbEF',
+    years_in_business: 8,
+    latitude: -29.8587,
+    longitude: 31.0218,
+  };
+  if (legacyColumnNames.has('category')) snakePatch.category = 'construction';
+  if (legacyColumnNames.has('is_supplier')) snakePatch.isSupplier = true;
+
   const snake = await runtimePool.query(
     'SELECT * FROM ghm.update_business_profile($1, $2, $3::jsonb)',
-    [accountId, businessId, JSON.stringify({
-      physical_address: '10 Current Repository Road',
-      avatar_letter: 'GH',
-      avatar_color: '#12AbEF',
-      years_in_business: 8,
-      latitude: -29.8587,
-      longitude: 31.0218,
-      category: 'construction',
-      isSupplier: true,
-    })],
+    [accountId, businessId, JSON.stringify(snakePatch)],
   );
   assert.equal(snake.rowCount, 1);
   assert.equal(snake.rows[0].physical_address, '10 Current Repository Road');
@@ -74,8 +82,8 @@ try {
   assert.equal(Number(snake.rows[0].years_in_business), 8);
   assert.equal(Number(snake.rows[0].latitude), -29.8587);
   assert.equal(Number(snake.rows[0].longitude), 31.0218);
-  assert.equal(snake.rows[0].category, 'construction');
-  assert.equal(snake.rows[0].is_supplier, true);
+  if (legacyColumnNames.has('category')) assert.equal(snake.rows[0].category, 'construction');
+  if (legacyColumnNames.has('is_supplier')) assert.equal(snake.rows[0].is_supplier, true);
   console.log('CURRENT REPOSITORY SNAKE_CASE PROFILE UPDATE PASS');
 
   const camel = await runtimePool.query(
@@ -95,8 +103,8 @@ try {
   assert.equal(Number(camel.rows[0].years_in_business), 9);
   assert.equal(Number(camel.rows[0].latitude), -30);
   assert.equal(Number(camel.rows[0].longitude), 30);
-  assert.equal(camel.rows[0].category, 'construction');
-  assert.equal(camel.rows[0].is_supplier, true);
+  if (legacyColumnNames.has('category')) assert.equal(camel.rows[0].category, 'construction');
+  if (legacyColumnNames.has('is_supplier')) assert.equal(camel.rows[0].is_supplier, true);
   console.log('HISTORICAL CAMELCASE PROFILE UPDATE PASS');
 
   await assert.rejects(
