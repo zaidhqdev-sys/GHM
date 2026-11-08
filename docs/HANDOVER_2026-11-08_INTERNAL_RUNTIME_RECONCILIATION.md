@@ -525,3 +525,47 @@ The role catalog also confirms that the intended migration role path exists stru
 - No callback/payment activation.
 - No Render deploy or auto-deploy change.
 - Keep the production migration gate BLOCKED until the role graph is reviewed/remediated, the full ledger audit passes under the intended migration identity, and explicit owner approval is recorded.
+
+
+## 21. Deployment decision and migration-runbook reconciliation — 2026-11-08 13:20 UTC
+
+### Does documentation merge `458f3d7` need to be deployed?
+
+**No. Do not deploy `458f3d7` to `GHM-Internal-Runtime`.**
+
+- `458f3d7019c5732b22316c906307a69fd5a34a66` is the documentation-only merge of PR #235.
+- It changes the handover and current-state documentation; it is not an application/runtime release.
+- The permanent handover is already present in GitHub `main`; deploying it is unnecessary to preserve the record.
+- Keep `GHM-Internal-Runtime` on its currently approved live deployment until a separately reviewed application release is selected and explicitly authorized. Keep Render auto-deploy disabled.
+- No deployment was triggered in response to the user's "proceed" instruction. This instruction did not authorize a runtime deployment; the question was whether the user needed to deploy the docs commit, and the correct answer is no.
+
+### Important distinction discovered in the PostgreSQL role-separation runbook
+
+Reviewed current `main` versions of:
+- `docs/architecture/POSTGRES_ROLE_SEPARATION_RUNBOOK.md`
+- `docs/architecture/GHM_LEGACY_ROLE_REMEDIATION_AUDIT.md`
+- `scripts/forensic-migration-reconciliation.mjs`
+- `scripts/audit-legacy-role-remediation.mjs`
+
+The runbook is explicitly a **construction record**. It says the dedicated `ghm_migrator` → `ghm_schema_owner` path and forensic ledger reconciliation were qualified on the construction PostgreSQL database, and explicitly states production Supabase was unchanged. It also says bootstrap cleanup remains open and the legacy `ghm_app_user` → `ghm_db_user` authority path remains.
+
+This historic construction qualification must not be mistaken for qualification of the current Render `ghm-db` target. It does not establish that the production/internal Render database has the approved `GHM_MIGRATOR_DATABASE_URL`, the same verified role graph, or a reconciled live migration ledger.
+
+The forensic script itself is deliberately read-only: it opens `BEGIN READ ONLY`, verifies `current_user=ghm_migrator`, `session_user=ghm_migrator`, expected database `ghm_db`, then performs `SET ROLE ghm_schema_owner` and compares every repository migration against the live ledger plus retained-history and checksum exceptions. Its verdict is false if authority, missing migrations, unrecognized extras, name/checksum mismatches, orphaned exceptions or invalid retained history are found. It is an audit, not a migration executor.
+
+The legacy-role audit script is also explicitly non-mutating. It inventories role attributes, direct/transitive membership, object ownership and privileges, and emits `DO_NOT_MUTATE_LEGACY_ROLES_FROM_THIS_AUDIT`. Its documented remediation prerequisites include proving runtime/migration/recovery dependencies, preserving legacy users, inventorying ownership, approving a canonical least-privilege target, and only then planning a separately authorized mutation slice.
+
+### Reconciled production role finding
+
+The fresh read-only Render catalog query in Section 20 is consistent with the runbook's documented unresolved bootstrap memberships and legacy path. It is a real authority concern, but not an invitation to revoke anything. The runbook explains why `ghm_db_user` cannot clean up bootstrap memberships granted by `postgres`; an independent provider/bootstrap authority path is needed. Do not improvise revokes through the current query connector.
+
+### Next safe sequence
+
+1. Keep `458f3d7` in GitHub only; no deployment required.
+2. Confirm the intended migration credential path exists for the actual Render `ghm-db` resource without exposing secret values. Do not infer it from the construction runbook or role existence alone.
+3. Obtain owner/provider confirmation of the correct authority path and review the legacy-role remediation plan. No role mutation is authorized.
+4. Run the repository's read-only forensic reconciliation script against the actual Render `ghm-db` using the approved migration identity, with expected database `ghm_db`. Capture identity, ledger counts, exact/legacy checksum matches, retained history, exceptions, missing/extra migrations and final verdict. Do not proceed if any unexplained mismatch exists.
+5. Separately prove which runtime identity the deployed service actually uses and whether it depends on the legacy role path. Do not infer runtime identity from the query connector's login.
+6. Only after these gates, prepare a complete pending-migration review and request explicit authorization for a production migration. Migration, deployment and role remediation are separate approvals.
+
+**No action in this section changed Render, PostgreSQL, GitHub application code, secrets, feature flags, or the live runtime.**
