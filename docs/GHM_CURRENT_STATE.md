@@ -289,3 +289,6 @@ Draft PR [#237](https://github.com/zaidhqdev-sys/GHM/pull/237) now contains the 
 
 
 **Draft PR #237 CI:** run #2179 / `42487901236` passed on source head `9591ba604069b446613f0a6a4af6eacecf6bc259`. Build, all migrations on disposable PostgreSQL, configured tests, and runtime-boundary checks passed. This is not a restored production clone or Render `ghm_db` qualification. Targeted execution tests of both profile-key alias forms and conflicting-alias rejection remain outstanding; PR remains Draft/unmerged. See dated handover.
+
+
+**Business profile function-level qualification:** CI run #2186 (`42488340666`) passed with a new disposable-PostgreSQL test invoking the function as `ghm_runtime`. It covers current snake_case and historical camelCase aliases, conflicting alias rejection, coordinate pairing, and owner authorization. The first run #2184 exposed that CI's canonical migration schema lacks production-only legacy `category`/`is_supplier` columns; migration was corrected to handle these columns conditionally and reject explicit requests when absent. The conditional production-only legacy branch remains to be tested on a restored production-like clone. PR #237 remains Draft/unmerged; no Render mutation or deployment occurred. See dated handover.
