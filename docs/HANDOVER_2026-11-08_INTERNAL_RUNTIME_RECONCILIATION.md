@@ -592,3 +592,8 @@ Owner created the dedicated temporary PR clone successfully at `C:\Users\zaidh\A
 ### PostgreSQL 17/18 installations discovered — 2026-11-08 14:24 UTC
 
 Owner workstation reports PostgreSQL Windows services `postgresql-x64-17` and `postgresql-x64-18` both Running, with installations at `C:\Program Files\PostgreSQL\17` and `C:\Program Files\PostgreSQL\18`. Neither `psql`, `pg_dump`, nor `pg_restore` is on PATH; Docker command not found. No local setup or Render dump attempted. Next: use PostgreSQL 18 `bin\psql.exe`, `pg_dump.exe`, and `pg_restore.exe` by absolute path after verifying they exist; target only the already-running local PostgreSQL 18 service. Do not touch PostgreSQL 17 or production.
+
+
+### Local PostgreSQL 18 admin authentication blocker — 2026-11-08 14:28 UTC
+
+PostgreSQL 18.6 client tools verified present at C:\Program Files\PostgreSQL\18\bin (psql, pg_dump, pg_restore). Local service was previously reported Running. Connection attempt psql -U postgres -d postgres reached localhost IPv6 (::1) port 5432 but failed with password authentication for local role postgres. This is the local Windows PostgreSQL 18 role password, not a Render credential. No password is stored/retrievable from the installation; do not ask owner to paste any password. Next inspect PostgreSQL 18 service command line/data directory and only the active non-commented local host rules in its pg_hba.conf; then select a controlled local-only recovery route if required. No password reset, auth-file edit, database/role creation, Render connection, schema dump, restore, or production change has occurred.
