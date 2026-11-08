@@ -453,3 +453,11 @@ Review of the eight post-2026-11-04 pending migrations found concrete release bl
 - `20261106200000` adds nullable Project→Opportunity linkage; verify app transaction behavior and legacy paths.
 
 The remediation proposal on PR #239 now records these findings. PR remains draft. Do not merge or run migrations until these blockers are addressed, full tests pass, the local read-only audit is rerun, and the pending migration set is reviewed. No owner-local/production database or ledger was changed.
+
+## 20. Profile patch forward fix and evidence-read review refinement — 2026-11-09
+
+The release review identified that migration `20261105190000` accepted/validated `avatar_letter`, `avatar_color`, and `years_in_business` but omitted their assignments from the `UPDATE`. A forward-only correction is now staged in PR #239 as `20261109100000_persist_business_profile_presentation_fields.sql`; the earlier migration remains unchanged. The profile migration contract test now asserts all three assignments in the forward migration.
+
+The capability evidence finding is refined: normal application reads are tenant-scoped because `listForBusiness` calls `withTenantTransaction` (active Business membership checked by `resolveTenantContext`) and filters on the requested Business ID. Therefore the source review does **not** establish cross-tenant exposure through the normal route. Defense-in-depth/product-contract gaps remain: `ghm_runtime` has table-wide SQL SELECT, table RLS is not enabled, and the `visibility` field is not used by the current list query or a public/authenticated discovery path. Define intended visibility behavior and decide on DB-level isolation before broadening reads.
+
+Project creation source review confirmed Opportunity, participant, and Project inserts occur in one authorized transaction. Founder reviewer allowlist remains intentionally empty pending separately approved mapping. PR #239 remains draft; the new forward profile migration and test require exact-head CI/PG18 validation, and local read-only audit remains outstanding. No persistent database was touched.
