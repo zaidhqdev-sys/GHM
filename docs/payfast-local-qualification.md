@@ -287,3 +287,16 @@ A read-only query was rerun successfully with `BEGIN READ ONLY; SET LOCAL ROLE g
 - `20261104130000 isolate_payfast_settlement_identity`: live checksum `b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f`; applied at `2026-11-04 15:20:57.629981+02`.
 
 These exact ledger values confirm the audit's two unexplained checksum mismatches. The raw current file hashes match the audit's legacy-CRLF hashes, but neither matches the live ledger. No writes were performed. Next step remains exact historical blob/checksum provenance analysis. Audit disposition remains INVESTIGATE; do not migrate, repair ledger checksums, edit manifests, seed/reset, or touch PostgreSQL 17/5432 or hosted/production resources.
+
+
+## 2026-11-08 22:05 UTC — PayFast migration checksum history investigation
+
+The local PostgreSQL 18 qualification audit remains **INVESTIGATE** because the two live ledger checksums for the PayFast migrations do not match repository canonical or legacy-CRLF checksums.
+
+Read-only Git history tracing established:
+- `20261104120000_bind_commercial_payment_attempt_provider.sql` was renamed in commit `e7a51d7` from `20261007120000_create_commercial_payment_result_boundary.sql`. Five versions were hashed across commits `e7a51d7`, `edd136a`, `52fe215`, `5537573`, and `7196f94`.
+- `20261104130000_isolate_payfast_settlement_identity.sql` was newly added in `e7a51d7`; one Git blob was hashed.
+
+No traced blob matched the corresponding live ledger checksum, whether raw or LF-normalized. First migration live checksum: `da74451edd20fc331f9c13e26812f3ea1becf8bd0dffe5a62434f90478dca3ff`; second: `b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f`. The traced current Git blobs instead hash to `3f284b7afb1bc83c42331b0346e2853f448948ad9a2f9e92c162c303fb92d3d8` and `230657b714cc8bfa23e69be9a0c8ff0a4d110b3a7435047e33683a77f3863a22`, respectively. Earlier first-migration versions also differ (full values are in the internal runtime reconciliation handover).
+
+This is not explained by line endings. It remains possible that the applied SQL came from another Git object, an external/generated artifact, or a deployment-time source not yet found. Next: search all reachable Git objects/history for the exact live checksums and inspect any archived migration artifact/deployment evidence. Do not change ledger checksums, edit exception manifests, rerun either migration, apply pending migrations, or mutate the database. PostgreSQL 17/5432, hosted databases, Render, and production remain out of scope and untouched.
