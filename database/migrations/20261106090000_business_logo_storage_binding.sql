@@ -1,5 +1,3 @@
-BEGIN;
-
 ALTER TABLE ghm.business
   ADD COLUMN logo_storage_object_id bigint
     REFERENCES ghm.storage_object(id) ON DELETE SET NULL;
@@ -119,4 +117,3 @@ REVOKE ALL ON FUNCTION ghm.storage_get_public_business_logo(bigint) FROM ghm_mig
 GRANT EXECUTE ON FUNCTION ghm.storage_get_public_business_logo(bigint) TO ghm_runtime;
 GRANT EXECUTE ON FUNCTION ghm.storage_get_public_business_logo(bigint) TO ghm_schema_owner;
 
-COMMIT;
