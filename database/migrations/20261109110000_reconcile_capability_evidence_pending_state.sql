@@ -36,6 +36,13 @@ BEGIN
     RAISE EXCEPTION 'Evidence is not in a reviewable state';
   END IF;
 
+  -- Serialize all evidence decisions for this assertion before aggregating its state.
+  PERFORM 1
+    FROM ghm.business_capability
+   WHERE id = v_evidence.business_capability_id
+   FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Business Capability assertion not found'; END IF;
+
   UPDATE ghm.business_capability_evidence
      SET verification_status = p_decision,
          verified_by = p_verifier_id,
