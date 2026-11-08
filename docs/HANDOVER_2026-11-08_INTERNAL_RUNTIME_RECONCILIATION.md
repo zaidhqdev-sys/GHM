@@ -525,3 +525,27 @@ The role catalog also confirms that the intended migration role path exists stru
 - No callback/payment activation.
 - No Render deploy or auto-deploy change.
 - Keep the production migration gate BLOCKED until the role graph is reviewed/remediated, the full ledger audit passes under the intended migration identity, and explicit owner approval is recorded.
+
+
+### Owner-run clone and production audit log — 2026-11-08 13:29 UTC
+
+The operator ran the previously supplied PowerShell procedure from the prompt `PS C:\GHM-main>`, using a separate temporary clone and leaving `C:\GHM-main` untouched.
+
+- Temporary clone: `C:\Users\zaidh\AppData\Local\Temp\GHM-migration-audit-61e0a61b314e411d89ddb39d8b6e33d2`.
+- Clone source: `https://github.com/zaidhqdev-sys/GHM.git`, branch `main`.
+- Exact audited commit: `458f3d7019c5732b22316c906307a69fd5a34a66`.
+- `npm ci`: completed; 166 packages added, 167 audited, 0 vulnerabilities. npm emitted an allow-scripts warning for `argon2@0.41.1`; operator did not approve scripts.
+- Operator entered the approved `GHM_MIGRATOR_DATABASE_URL` via hidden secure prompt; no credential or connection string is stored in this handover.
+- Forensic audit: identity PASS (`session_user=ghm_migrator`, `current_user=ghm_schema_owner` after SET ROLE, database `ghm_db`, transaction read-only). Ledger: 89 repository migrations, 89 live entries, 9 missing, 9 retained extras, 0 unexplained checksum mismatches, 0 name mismatches, 0 unrecognized extras; verdict `INVESTIGATE`, exit code 2. Nine missing versions and retained-history classifications are detailed in the preceding audit section.
+- User returned the complete audit JSON in chat. The complete JSON is not duplicated here; sanitized evidence/counts only are retained. The temporary clone remains on the operator's machine at the path above; do not delete it until evidence retention is confirmed.
+
+### Business profile compatibility reconciliation draft — 2026-11-08 13:55 UTC
+
+A new source-only branch `fix/business-profile-compat-contract-20261108` was created from current `main` (`458f3d7019c5732b22316c906307a69fd5a34a66`). It contains a draft forward-only migration:
+
+- `database/migrations/20261108200000_reconcile_business_profile_contract.sql`
+- Contract coverage appended to `src/db/business-profile-presentation-fields-migration-contract.test.ts` (already part of the package test command).
+
+The migration adds only missing latitude/longitude columns and idempotent range/pair constraints; it does not re-add columns already present. It replaces `ghm.update_business_profile(bigint,bigint,jsonb)` while preserving SECURITY DEFINER, fixed search_path, active owner/administrator membership authorization, PUBLIC revoke, and runtime EXECUTE grant. It retains legacy `category` and `isSupplier` support, accepts the current repository's snake_case keys (`physical_address`, `avatar_letter`, `avatar_color`, `years_in_business`) and historical camelCase equivalents, and rejects conflicting duplicate aliases. It retains observed live DB limits (years 0–500, province 1–100, existing six-digit hex avatar color) rather than silently tightening the live contract. Application repository validation remains narrower in some fields (notably years 0–100); this mismatch is deliberately not changed by this SQL migration and remains to be documented/tested.
+
+**Important qualification status:** this is an unexecuted source draft, not a production-ready or authorized migration. The migration has not yet been parsed/executed against a restored production-like database, and the full application runtime qualification has not been run against a safe test DB. Contract tests have been authored but not yet run in this environment. The SQL's alias/validation behavior, grants, ownership, and concurrent update behavior still require isolated PostgreSQL qualification and review. No PR has been opened yet at the time of this note. No production migration, deployment, data write, role change, or environment change occurred.
