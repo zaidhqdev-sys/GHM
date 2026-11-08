@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import {
   migrationChecksum,
   legacyCrlfMigrationChecksum,
@@ -71,4 +74,11 @@ test('retained historical migration cannot hide a missing row or a repository mi
     version: '20261016100000', registered, live: { name: registered.name, checksum: registered.checksum },
     repository: { name: registered.name },
   }).status, 'REPOSITORY_MIGRATION_PRESENT');
+});
+
+test('PayFast applied migration checksums are registered as exact historical provenance', () => {
+  const manifestPath = fileURLToPath(new URL('../config/historical-migration-provenance-exceptions.json', import.meta.url));
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  assert.equal(manifest['20261104120000'], 'da74451edd20fc331f9c13e26812f3ea1becf8bd0dffe5a62434f90478dca3ff');
+  assert.equal(manifest['20261104130000'], 'b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f');
 });
