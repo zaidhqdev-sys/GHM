@@ -8,7 +8,7 @@
 
 - `GHM-Internal-Runtime` (`srv-damupsek1f9s73eq8kkg`) is the sole deployment target for this runtime rollout.
 - Render auto-deploy for that service must remain **disabled** (`autoDeploy=no`, trigger `off`). It is intentional. Never enable it.
-- `ghm-payfast-sandbox-runtime` is a separate service and is not a deployment target or readiness indicator. Its associated free-tier PayFast sandbox database has expired/suspended; do not use it for this rollout.
+- `ghm-payfast-sandbox-runtime` is a separate service and is not a deployment target or readiness indicator. The service itself was listed as not suspended (branch `main`, auto-deploy enabled); its associated free-tier PayFast sandbox database `ghm-payfast-sandbox-db` is suspended by billing and past its recorded expiry. Do not use either as the internal-runtime target/readiness indicator.
 - No cherry-picking, no rewriting/updating the user's local checkout, no bulk deploys.
 - Any future release rollout must be one coherent release at a time, with the exact candidate identified, deployed only after authorization, and verified before proceeding to the next release.
 - Do not treat a successful build/startup as proof of full application health, migration completion, or production readiness.
@@ -219,10 +219,63 @@ The isolated browser-auth qualification runtime is a distinct, owner-approved no
 
 The owner-provided prior-session report is now incorporated into this handover. This documentation reconciliation did not select a workspace, inspect or change Connect/Vercel settings, create a Preview, set any environment variable, enable a feature flag, send browser-auth requests, activate browser-auth, or perform E2E tests. All qualification gates remain open. No production action or cutover is authorized.
 
-## 11. Publication and review trail
 
-- Retrospective handover created on branch docs/handover-2026-11-08-runtime-reconciliation from main at 0e2c7c2181d457265a671a6f857140dd17faee97.
-- Documentation PR: [#234](https://github.com/zaidhqdev-sys/GHM/pull/234), opened 2026-11-08; open and unmerged at last check.
-- PR changes are limited to this handover and the current-state index. Review/CI status must be checked on the PR before merge; no merge is authorized by this handover.
-- This record was published after the November 7–8 events. It repairs the missing written record but cannot retroactively make the original operational updates contemporaneous.
-- The Connect browser-auth qualification context above was added after the owner supplied the previous-session handover on 2026-11-08. The source report's Vercel/Connect checkpoint data remain historical until independently refreshed.
+
+## 12. Fresh read-only monitoring checkpoint — 2026-11-08 12:56 UTC
+
+This section supersedes historical statements where it records a fresh observation. It does not change any qualification or release authorization.
+
+### Repository mainlines and exact-main CI
+
+- GHM `main` remains `0e2c7c2181d457265a671a6f857140dd17faee97`.
+  - Exact-main GitHub Actions quality check passed: [run #42412396674](https://github.com/zaidhqdev-sys/GHM/actions/runs/42412396674), head SHA `0e2c7c2`.
+  - Cloudflare Pages main check completed successfully; this is a Pages build/preview check, not a Render runtime health test.
+- Connect `main` remains `1e92f85cdd99dea2070ede58a875cec45d5f2047`.
+  - Exact-main quality check passed: [run #42410073826](https://github.com/zaidhqdev-sys/zaid-connect/actions/runs/42410073826), exact head SHA `1e92f85`.
+  - Latest Vercel production deployment is READY: `dpl_7Z7UZpoy4uDvjGhr3bnwL4wUJ1s9`, source commit `1e92f85`, URL `zaid-connect-kd5l0ikk3-zaid-technologies.vercel.app`. This verifies deployment status and source identity, not browser-auth qualification.
+- **Correction to the previous handover's CI labels:** GHM run #42412230730 was triggered for PR #231's release branch head `aacd15a`, not exact GHM main. Connect run #42409999838 was triggered for feature branch head `e054be0`, not exact Connect main. The exact-main runs are #42412396674 and #42410073826 respectively.
+
+### Browser-auth implementation and live Preview evidence
+
+- GHM PR #217 remains merged at `96575838319cc319e328443289bee379c9947ac2`; its exact implementation-head CI #42136280518 passed on `9f90155`.
+- Connect PR #57 remains merged at `929bb12ef15ceb17099d8a650bbe403a0fdb3b9a`; its exact implementation-head CI #42137215055 passed on `5024565`.
+- The current Connect production deployment is on main, but its default feature gate remains off unless explicitly enabled. No browser-auth activation or cutover was performed.
+- The only matching browser-auth branch Preview deployment found in the 100 most recent Vercel deployment records was `dpl_Gpn21dsc6pr7RohTajxJzyqpM3uo`, READY at alias `zaid-connect-git-feat-connect-http-onl-544a9b-zaid-technologies.vercel.app`, built from stale commit `ff211017f5f1ce3d97ccea83179ebae91fc5bdd1`. It does **not** match merged PR #57 head `5024565c3151a52100ef9ae941a1bb7d19324077`; it cannot qualify that implementation. No deployment for the merged PR #57 head was found in that query.
+- Vercel project environment metadata was inspected without decrypting values. `CONNECT_WEB_ORIGIN` and `GHM_INTERNAL_RUNTIME_URL` are present only as Preview-scoped variables on obsolete branch `construction/ghm-identity-adapter-only-20261016`. No variables are present for the dedicated auth branch `feat/connect-http-only-browser-auth-proxy-20261106`. `VITE_GHM_WEB_AUTH_ENABLED` is absent from the listed project environment metadata. Production entries returned were Supabase config only. No values were decrypted or disclosed.
+- The old Preview's previous 403 alias result remains historical; no successful live alias/browser E2E check was obtained in this checkpoint. The Vercel project has SSO protection enabled for deployments except custom domains; this can affect Preview access and must be included in the approved access plan.
+- Browser-auth qualification remains **NOT YET QUALIFIED**. Native bearer auth remains default/active. No GHM browser-auth settings, Connect Preview variables, Vite feature flag, or runtime endpoint were changed.
+
+### Render runtime candidate discovery — not an approval
+
+Fresh Render inventory in the ZAID Technologies workspace returned these relevant resources:
+
+| Service/resource | Fresh observation | Disposition |
+|---|---|---|
+| `GHM-Internal-Runtime` | `main`; auto-deploy `no/off`; URL `https://ghm-internal-runtime.onrender.com` | Sole internal-runtime rollout target; keep auto-deploy disabled |
+| `ghm-identity-qualification` | Branch `integration/ghm-identity-merge-candidate-20261018`; auto-deploy `yes/checksPass`; latest live deploy `dep-dblk9pvb9u1s73bkaaag` from `ee91f42503e064571d57e87ed0d5cd1e9d5badd5` on Nov 4; no health-check path configured | A separate qualification candidate exists, but it has **not** been owner-approved as the browser-auth runtime. Do not select or change it by inference |
+| `ghm-identity-qualification-20261018` DB | Available, separate qualification database | Not production; do not assume its service/DB pairing is approved for browser-auth |
+| `ghm-payfast-sandbox-runtime` | Branch `main`; service not suspended; auto-deploy `yes/commit` | Separate PayFast sandbox service; not a target/readiness signal |
+| `ghm-payfast-sandbox-db` | Suspended by billing; recorded expiry `2026-11-08T01:17:15Z` | Do not query, revive, or use for this qualification |
+
+The obsolete Vercel Preview branch variables point `GHM_INTERNAL_RUNTIME_URL` at `https://ghm-identity-qualification.onrender.com`. This explains which old sandbox endpoint was configured on that obsolete branch; it does **not** constitute current owner approval. The Render inspection did not expose environment variable names/values for the candidate service, and no service settings were changed. The existing `ghm-identity-qualification` service has auto-deploy enabled on its candidate branch; do not repurpose or change it without explicit approval.
+
+### PR and handover checks
+
+- GHM PR #232 remains open, non-draft, mergeable; exact-head CI #2135 passed on `c71ea86`. No migration or production application authorized.
+- GHM PR #233 remains open and draft; exact-head CI #2136 passed on `ea028a2`, but the PR body still records local build/test not run and PayFast timestamp semantics awaiting provider confirmation. Keep draft.
+- GHM PR #234 (this handover) remains open and unmerged. Its current head at this checkpoint is `133a5515d5b2f2174eadd6435e08e60eb1ad6987`; exact-head quality run #42482443120 passed and Cloudflare Pages preview succeeded at [the handover branch preview](https://docs-handover-2026-11-08-run.ghm-cu1.pages.dev). These checks qualify the documentation change only, not any runtime.
+- GHM PR #221 remains open and is based on stale main checkpoint `c1dc451`; do not assume its cleanup instructions reflect current refs without refresh.
+- Connect PR #59 remains open, based on stale main checkpoint `c140aca`; its modified handover is historical and needs reconciliation before being treated as current.
+- Connect PR #33 remains a separate draft PayFast sandbox bridge with its own explicit blockers; it is not browser-auth qualification.
+
+### No-change confirmation
+
+All checks in this section were read-only. No PR was merged, no branch deleted, no Render/Vercel setting or environment variable changed, no feature flag enabled, no deployment/restart triggered, no DB queried for writes, no migration run, no credential decrypted, and no browser-auth request or E2E flow executed. The user's local checkout was not accessed or modified.
+
+## 13. Publication and review trail
+
+- Retrospective handover branch: `docs/handover-2026-11-08-runtime-reconciliation`, based on GHM `main` `0e2c7c2181d457265a671a6f857140dd17faee97`.
+- Documentation PR: [#234](https://github.com/zaidhqdev-sys/GHM/pull/234), open and unmerged at this checkpoint.
+- Exact PR head `133a5515d5b2f2174eadd6435e08e60eb1ad6987`: GitHub Actions quality check #42482443120 and Cloudflare Pages check both completed successfully.
+- The integrated Connect browser-auth section was added after the owner supplied the previous-session handover; Section 12 now records fresh read-only cross-repository/Render/Vercel monitoring.
+- This record is retrospective. Future monitoring sessions must append dated evidence as each material action occurs; do not rewrite history or label unverified gates as passed.
