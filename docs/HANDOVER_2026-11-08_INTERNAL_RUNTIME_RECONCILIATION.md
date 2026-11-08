@@ -279,3 +279,72 @@ All checks in this section were read-only. No PR was merged, no branch deleted, 
 - Exact PR head `133a5515d5b2f2174eadd6435e08e60eb1ad6987`: GitHub Actions quality check #42482443120 and Cloudflare Pages check both completed successfully.
 - The integrated Connect browser-auth section was added after the owner supplied the previous-session handover; Section 12 now records fresh read-only cross-repository/Render/Vercel monitoring.
 - This record is retrospective. Future monitoring sessions must append dated evidence as each material action occurs; do not rewrite history or label unverified gates as passed.
+
+
+## 14. Retrospective activity ledger — work completed before the handover gap was discovered
+
+This section reconstructs the work performed in the current chat before the owner identified that the handover had not been kept current. It is deliberately an activity ledger, not a claim that every underlying feature is production-qualified. It combines the available conversation record, repository/PR history and read-only connector observations. Where an exact command transcript or contemporaneous timestamp is unavailable, the item is described at the level supported by the evidence.
+
+### A. Internal runtime rollout and deployment investigation
+
+The following work was already performed and should **not be repeated from scratch**:
+
+1. Identified and reaffirmed `GHM-Internal-Runtime` (`srv-damupsek1f9s73eq8kkg`) as the sole target for the internal runtime rollout. Re-read its Render configuration: main branch, build `npm ci && npm run build`, start `npm start`, health path `/healthz`, Frankfurt, one instance, and auto-deploy disabled. The owner explicitly requires auto-deploy to stay disabled.
+2. Inspected Render deployment history and service events for November 7. Recorded the successive mainline deploy pointers `21a64d8` (PR #208), `80de663` (PR #210), `d6d3519` (PR #212), then `0e2c7c2` manually and again through the service-updated event. The current live deploy is `dep-dbnp1nou01pc73dbrki0` at `0e2c7c2181d457265a671a6f857140dd17faee97`; the earlier same-SHA manual deploy was `dep-dbnorgu7bikc73d51ie0`. The history does not contain proof of a per-PR verification gate between every deployment.
+3. Compared the prior recorded live checkpoint `d6d35194bfa05c9395acc8622ed620d48222d318` to current main and identified an accumulated 201-commit difference. Separately reconciled the owner's supplied local baseline `1f23d88b23a2f54c9d77742b4f47c980b3823e65` to main as nine tail commits. Explicitly recorded that the nine-commit list is not the full 201-commit delta.
+4. Identified the nine commits after the supplied local baseline: `520f698` dependency advisories; `2cfdbce` authorized Opportunity create API; `bdf76f9` Business summary in Project Quote reads; `28e5ca5` atomic customer Project + linked Opportunity; `0465c89` paginated customer Project list; `42eb752` public Project marketplace search; `e7a51d7` PayFast settlement identity isolation; `b788386` authenticated Opportunity marketplace reads; `0e2c7c2` dependency baseline refresh. This is a reconciliation reference only, not an instruction to cherry-pick or replay commits.
+5. Reviewed startup evidence. Render logs showed `npm start`, `node dist/server.js`, and “GHM Core Engine listening on port 10000”. Correctly limited the conclusion to successful process/listener startup and a startup DB `SELECT 1`; did not claim all routes healthy or migrations complete.
+6. Reviewed application logs and request logs for the internal runtime. Recorded seven generic `http_request_failed` entries between 20:59 and 21:02 UTC on November 7, each with only `error.name = error`; the logger suppresses the underlying message/stack/route. The subsequent request-log query returned no entries, which was not treated as proof of no traffic or health. External `/healthz`/ `/readyz` confirmation remained unavailable; no outage conclusion was inferred.
+7. Preserved the user's explicit correction that the PayFast sandbox service is separate. Later fresh inventory distinguished the service (not suspended, auto-deploy enabled) from its associated expired/suspended PayFast sandbox DB. Neither is the internal-runtime deployment target or readiness signal.
+
+### B. GitHub release, PR and code-history work already reviewed
+
+1. Reviewed merged dependency-security PR #231 and its relationship to the earlier #222 construction work. PR #231 merged as `0e2c7c2`; it is a package/dependency refresh, not a reason to replay the full accumulated history.
+2. Reviewed merged PR #230 (authenticated paginated Opportunity marketplace read APIs; commit `b788386`) and the earlier merged PRs #228 (atomic Project + Opportunity creation), #229 (PayFast settlement identity reconciliation) and #231. These are already on main; do not recreate or cherry-pick their changes.
+3. Reviewed open PR #232 (Business profile/founder authority schema reconciliation): exact head `c71ea86d72958ca8fa489100955ee36f3823ff45`, CI #2135 passed and Cloudflare preview succeeded. Its migration remains proposed only; no production migration/deploy or reviewer identity seed was performed. Disposable PostgreSQL qualification and exact production schema/ledger review remain gates.
+4. Reviewed open draft PR #233 (PayFast ITN timezone-deterministic payment-date parsing): exact head `ea028a20967b686e90ea0fbe451a8e4b9dee57ef`, CI #2136 passed and Cloudflare preview succeeded. Its authoring notes still require local build/test and authoritative confirmation of the provider's timezone-less timestamp convention. Keep it draft; do not enable payment processing based on CI.
+5. Reviewed existing documentation/reconciliation PR #221 and its stale base divergence. It is not a substitute for this dated handover; refresh against current main before relying on it.
+6. Reviewed prior PayFast production and role-provisioning handovers. The recorded production NO-GO gates remain applicable: least-privilege role graph, provider-role administration, migration ledger and full pending set, backup/restore, network plan, callback cutover approval. Do not repeat role provisioning or attempt privilege changes.
+
+### C. Production database inspection already completed
+
+1. Queried Render database inventory read-only and distinguished production `ghm-db`, the separate identity qualification database, and the expired PayFast sandbox database.
+2. Queried the production database read-only. Confirmed database `ghm_db`, effective query identity `ghm_db_user`, schema-qualified migration ledger `ghm.ghm_schema_migrations`, absence of `public.ghm_schema_migrations`, and presence of roles `ghm_schema_owner`, `ghm_payment_provider`, and `ghm_migrator`.
+3. Attempted only the permitted ledger SELECT. PostgreSQL denied access to the protected table; catalog evidence showed owner `ghm_schema_owner`. The read-only connector could not assume that role in its single-statement session. No grants or memberships were changed and no privilege workaround was attempted.
+4. Established that startup `SELECT 1` is not evidence that all migrations are applied. The exact production migration ledger rows/checksums and applied count remain unverified until an owner-approved migration-owner audit path is available.
+5. Recorded the November 5 PayFast role graph concerns from the existing handover. No attempt was made to repeat the failed revocation or change production role attributes/grants.
+
+### D. Existing handover and architecture material reviewed
+
+The current chat reviewed or used the following committed references as context: `docs/HANDOVER_2026-11-06_DEPENDENCY_SECURITY_REFRESH.md`, `docs/HANDOVER_2026-11-04_PAYFAST_PRODUCTION.md`, `docs/operations/payfast-production-role-provisioning-session-handover-2026-11-05.md`, `docs/operations/handover-production-db-and-render-2026-10-24.md`, `docs/GHM_CURRENT_STATE.md`, `docs/GHM_REMAINING_WORK_REGISTER_2026-10-05.md`, and `docs/architecture/RUNTIME_RECONCILIATION_GATE.md`. Some older files contain historical Render auto-deploy settings; the fresh November 8 service inspection supersedes those for the current service setting. Do not reread all history as if no review had occurred; use the specific unresolved gates below and refresh only evidence that can have changed.
+
+### E. Browser-auth qualification handover received and integrated
+
+The owner supplied a complete previous-session handover for GHM ↔ Connect HttpOnly Browser-Auth Qualification. Its merged implementation history, qualification gates, native bearer-auth default, Preview mismatch and no-change rules are incorporated in Section 10. Fresh cross-repository/Vercel/Render checks are recorded in Section 12. This is an independent workstream from the internal-runtime release.
+
+### F. Work completed in this repair pass
+
+1. Created the retrospective integrated handover on branch `docs/handover-2026-11-08-runtime-reconciliation`.
+2. Added the browser-auth prior-session report and updated the GHM current-state index.
+3. Rechecked both repositories' main SHAs and exact-main CI; corrected misattributed workflow run numbers.
+4. Rechecked Connect Vercel deployment history and branch-scoped environment metadata without decrypting values; identified the stale browser-auth Preview SHA and obsolete-branch-only variables.
+5. Rechecked Render workspace resources and distinguished the unapproved identity qualification candidate from the approved internal runtime and PayFast sandbox.
+6. Refreshed the handover and PR description with the monitoring findings. Latest PR #234 head at this checkpoint is `ad6950b125bc4a06c2a5675a10c6a642991a4b17`; its quality check #42482817525 and Cloudflare Pages preview both passed. This validates the documentation PR head only.
+
+### G. Resume checklist — do not repeat completed investigations
+
+Start from this list and refresh only items that can change:
+
+- [ ] Check whether PR #234 has been reviewed/merged since this checkpoint; do not merge it without the owner's explicit direction.
+- [ ] If PR #234 is still open, use its current branch/head and this handover; do not recreate a second handover PR.
+- [ ] For internal runtime, inspect only new Render deploys/events/logs since `dep-dbnp1nou01pc73dbrki0`, and verify current auto-deploy remains off. Do not replay older deployments or repeat the full 201-commit comparison unless main/live SHA changed.
+- [ ] Obtain owner-approved access for the protected production migration ledger; until then, do not repeat the denied SELECT or change grants.
+- [ ] For PR #232, complete only the outstanding exact-schema/ledger comparison and disposable PostgreSQL qualification; do not re-author its already proposed migration.
+- [ ] For PR #233, obtain authoritative PayFast timestamp semantics and complete its stated local validation; do not treat prior CI/preview as sufficient.
+- [ ] For browser-auth, first obtain explicit approval of the isolated runtime and canonical Preview target. Do not copy obsolete branch variables, repurpose `ghm-identity-qualification`, create a new Preview or enable the flag until authorized.
+- [ ] Once authorized, deploy the merged Connect PR #57 commit to the dedicated Preview and run the outstanding live browser E2E matrix. The existing stale Preview and source tests do not satisfy this.
+- [ ] Keep PayFast production settlement/callback NO-GO gates separate from browser-auth and internal-runtime work.
+
+### H. Completeness and provenance limitation
+
+This reconstruction uses the messages and repository/tool evidence retained in the current chat context. It cannot recover any chat messages or external actions not present in that context. It records what can be substantiated and deliberately avoids inventing missing command transcripts, user approvals, live tests, or deployment verifications. If the owner identifies a specific omitted activity, append it as a dated correction rather than rewriting this record as if it had been contemporaneous.
