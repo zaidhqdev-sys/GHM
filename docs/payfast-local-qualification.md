@@ -224,3 +224,14 @@ The existing database `ghm_payfast_qualification` was found at 13 MB. A read-onl
 
 **Resume rule:** before running `npm run migrate` or any qualification script, inspect the local migration ledger/checksums and role/grant graph, verify all three role-specific URLs target only `127.0.0.1:5433/ghm_payfast_qualification`, and use the repository's guarded forensic audit. Do not drop/recreate the existing database or assume it is empty. PostgreSQL 17 on port 5432, Render and production remain outside this local qualification task.
 
+
+## Exact ledger and role checkpoint — 2026-11-08 15:53 UTC
+
+A successful read-only psql inspection against 127.0.0.1:5433/ghm_payfast_qualification as local administrator established:
+
+- 92 exact rows in ghm.ghm_schema_migrations; latest version 20261104130000 (isolate_payfast_settlement_identity).
+- Exact reference-data counts: country=1, currency=1, opportunity_type=11.
+- ghm_schema_owner is NOLOGIN. ghm_migrator is LOGIN/NOINHERIT and has SET (not INHERIT or ADMIN) membership in ghm_schema_owner. ghm_runtime and ghm_payment_provider are LOGIN/NOINHERIT and have no reported membership path to schema owner.
+- No mutations were performed.
+
+This establishes the role-transition prerequisite structurally, not the migration checksum result. Next run only the repository's read-only forensic migration audit, explicitly targeting ghm_payfast_qualification and the local ghm_migrator identity on port 5433. Inspect/verify the connection target without printing credentials. Do not run npm run migrate, seed, reset, or qualification scripts until the forensic audit verdict and object ownership/grants are reviewed. Keep PostgreSQL 17 on port 5432, Render and production untouched.
