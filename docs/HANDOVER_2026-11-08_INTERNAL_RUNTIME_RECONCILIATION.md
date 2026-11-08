@@ -623,3 +623,47 @@ Therefore the next evidence must come from the owner-approved migration executio
 5. Escalate the bootstrap memberships granted by `postgres` to the database provider/owner for a separately approved remediation plan. Do not revoke or alter them using `ghm_db_user`.
 
 No production database mutation, deployment, environment update, role/grant change or secret access occurred in this checkpoint.
+
+
+### Owner-run Render ghm-db forensic migration reconciliation — 2026-11-08 13:29 UTC
+
+**Execution record (completed):** The owner ran the repository's read-only forensic reconciliation script from a fresh temporary clone, without touching the existing `C:\\GHM-main` checkout.
+
+- Temporary clone: `C:\\Users\\zaidh\\AppData\\Local\\Temp\\GHM-migration-audit-61e0a61b314e411d89ddb39d8b6e33d2` (owner-provided terminal output).
+- Clone command targeted `zaidhqdev-sys/GHM`, branch `main`; exact audited source SHA: `458f3d7019c5732b22316c906307a69fd5a34a66`.
+- `npm ci` completed: 166 packages added; npm reported 0 vulnerabilities. npm emitted an `allow-scripts` warning that the `argon2@0.41.1` install script had not been approved; no approval command was run as part of this audit.
+- Owner supplied `GHM_MIGRATOR_DATABASE_URL` through PowerShell's hidden SecureString prompt. The URL/credential is intentionally not recorded. The script targeted `ghm_db` with `DATABASE_SSL=true`.
+- Script: `scripts/forensic-migration-reconciliation.mjs`. It completed its read-only transaction and returned exit code **2**, verdict **INVESTIGATE**. This is a completed audit, not a PASS and not permission to migrate.
+
+**Database authority gate — PASS:**
+- Expected database `ghm_db`; actual `current_database=ghm_db`.
+- `session_user=ghm_migrator`, `current_user=ghm_migrator` before role switch.
+- `can_set_schema_owner=true`; after `SET ROLE`, `current_user=ghm_schema_owner`, while `session_user` remains `ghm_migrator`.
+- `read_only_transaction=true`. Script rolls back; no migration, DDL, ledger write, role/grant change, or application data mutation was performed.
+
+**Migration reconciliation results:**
+
+| Measure | Result |
+|---|---:|
+| Repository migrations | 89 |
+| Live ledger entries | 89 |
+| Canonical checksum matches | 9 |
+| Supported legacy-CRLF checksum matches | 62 |
+| Approved historical checksum matches | 9 |
+| Repository migrations missing from live ledger | 9 |
+| Extra live ledger entries | 9 |
+| Unexplained checksum mismatches | 0 |
+| Name mismatches | 0 |
+| Unrecognized extra ledger entries | 0 |
+| Approved retained historical entries | 9 |
+| Orphaned historical exceptions | 0 |
+| Redundant historical exceptions | 7 |
+| Invalid retained-history records | 1 |
+
+The nine missing repository migrations are versions `20261104120000` (`bind_commercial_payment_attempt_provider`), `20261104130000` (`isolate_payfast_settlement_identity`), `20261105190000` (`extend_business_directory_location_contact`), `20261105213000` (`create_business_capability_evidence`), `20261105220000` (`replace_business_capability_assertions`), `20261105230000` (`create_founder_directory_review`), `20261106090000` (`business_logo_storage_binding`), `20261106200000` (`link_project_to_opportunity`), and `20261107211500` (`reconcile_business_profile_and_founder_authority`). The nine extra ledger entries are retained historical versions `20261016100000`, `20261016120000`, `20261016170000`, `20261016180000`, `20261016190000`, `20261018210000`, `20261019190000`, `20261020130000`, and `20261020140000`; the script recognized all nine as approved retained history, but one retained-history audit record is invalid and must be investigated.
+
+The nine approved historical checksum matches are `20260911030000`, `20260911210000`, `20260911211500`, `20260912030000`, `20260914120000`, `20260914130000`, `20260914220000`, `20260915193000`, and `20261005211000`. Seven historical exceptions are redundant because their registered hashes already match current repository bytes; do not delete or rewrite exception records without a separately reviewed reconciliation.
+
+**Interpretation / required next work:** The approved migration URL is now demonstrated to connect to the actual Render `ghm_db` as `ghm_migrator` and assume `ghm_schema_owner` successfully. This closes the prior uncertainty about whether the dedicated migration execution path exists and works. It does **not** close the ledger reconciliation: 9 source migrations are not recorded as applied, and the audit reports 1 invalid retained-history record. Do not infer that those nine migrations should simply be applied; first investigate whether they are genuinely unapplied, represented by equivalent historical schema state, or otherwise require a formally reviewed ledger/source reconciliation. Inspect the exact retained-history audit entry for version `20261019210000` (reported as `REPOSITORY_MIGRATION_PRESENT`), determine why the aggregate `invalid_retained_history_count` is 1, and reconcile the 7 redundant exception registrations in a reviewed source change if appropriate. Preserve the complete raw audit output in the operator's secure local evidence; only this sanitized summary is committed.
+
+**Execution boundary:** No secret value, database URL, token, or password was printed into the handover. No migration was executed. No role/grant or environment change was made. No Render deployment, restart, or auto-deploy change occurred. Render auto-deploy remains intentionally disabled. The temporary clone is separate from `C:\\GHM-main`; it is not a deployment checkout. Do not delete it until the owner has finished retaining any desired local audit artifacts.
