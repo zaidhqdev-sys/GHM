@@ -418,3 +418,14 @@ The documentation-only appendix commit on the migration remediation PR has also 
 - CI log from the historical-table upgrade step: `PASS: historical functions were upgraded on the pre-existing table; authorization, RLS, owner, and ACL checks passed; transaction rolled back.`
 
 PR #239 remains draft and unmerged. The only outstanding validation not covered by CI is a fresh read-only audit against the owner's qualified local database after checking out the branch, plus owner review of all pending migrations. No local/production database, ledger, Render service, or deployment was touched.
+
+## 19. Pending migration source review blockers — 2026-11-09
+
+Review of the eight post-2026-11-04 pending migrations found concrete release blockers; source review only, not runtime exploitation proof:
+- `20261105190000_extend_business_directory_location_contact.sql` validates `avatar_letter`, `avatar_color`, and `years_in_business` patch keys but omits all three from the final `UPDATE ghm.business SET`, so those accepted fields are not persisted. Because this migration may have been applied elsewhere, do not silently rewrite it; determine environment application status and use a forward correction if needed.
+- `20261105213000_create_business_capability_evidence.sql` grants table-wide direct `SELECT` to `ghm_runtime` while defining a `visibility` field, but this migration does not enable RLS or define tenant/visibility-filtered read access. Define intended visibility and Business membership policy, then replace broad read access with tested bounded access.
+- `20261105230000_create_founder_directory_review.sql` intentionally leaves the founder reviewer allowlist empty; a separately approved reviewer mapping is still required before the workflow can operate.
+- Logo storage binding is touched by both `20261106090000` and `20261107211500`; qualify fresh and partially reconciled states in timestamp order.
+- `20261106200000` adds nullable Project→Opportunity linkage; verify app transaction behavior and legacy paths.
+
+The remediation proposal on PR #239 now records these findings. PR remains draft. Do not merge or run migrations until these blockers are addressed, full tests pass, the local read-only audit is rerun, and the pending migration set is reviewed. No owner-local/production database or ledger was changed.
