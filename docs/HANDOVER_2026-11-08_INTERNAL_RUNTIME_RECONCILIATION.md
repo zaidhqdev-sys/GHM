@@ -437,3 +437,13 @@ Fresh Render read at 13:10 UTC reconfirmed:
 - GitHub reports mergeable; Cloudflare Pages check passed.
 - Exact-head GitHub Actions quality check #42483424044 was still in progress at the last inspection.
 - PR #234 remains open and unmerged. It is documentation-only and does not alter the runtime or production database.
+
+
+## 17. PayFast timestamp semantics check — 2026-11-08 13:12 UTC
+
+Checked PayFast's official developer documentation while reviewing draft PR #233:
+
+- The official ITN documentation lists the transaction-notification fields and sample payload, but does not define a timezone or UTC interpretation for the `payment_date` field: https://developers.payfast.co.za/docs/itn-instant-transaction-notification/
+- The separate PayFast API documentation specifies an optional offset/default GMT+2 for its API request `timestamp` field: https://developers.payfast.co.za/api. This is a different field and protocol; it is not evidence of the timezone convention for ITN `payment_date`.
+- Therefore the official documentation inspected does **not** confirm that timezone-less ITN `payment_date` values should be interpreted as UTC. It also does not confirm that they should be interpreted as GMT+2.
+- PR #233's deterministic UTC behavior may be technically deterministic, but its provider compatibility assumption remains unverified. Keep PR #233 draft and do not enable live processing based on this search. Obtain written PayFast support confirmation or a provider-generated ITN sample with a known transaction instant before deciding the interpretation.
