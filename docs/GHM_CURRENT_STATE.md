@@ -353,3 +353,13 @@ Live values remain:
 - `20261104130000`: `b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f`.
 
 The discrepancy is not a simple CRLF issue. Search all reachable Git objects/history for the exact live hashes and seek an archived/deployed migration artifact or deployment log before classifying provenance. Keep all migrations and the ledger unchanged; do not run migrations or alter exception manifests. The qualification audit is not PASS and no migration application is authorized. PostgreSQL 17/5432, hosted databases, Render and production remain untouched. Detailed hashes and path history: [internal runtime reconciliation handover](HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md) and [local PayFast qualification procedure](payfast-local-qualification.md).
+
+## PayFast local qualification — reachable Git SQL scan still finds no checksum provenance (2026-11-08 22:07 UTC)
+
+A read-only scan checked all 132 unique reachable SQL blobs in the local Git object graph, computing raw and LF-normalized SHA-256. Neither live ledger checksum matched any scanned blob:
+- `20261104120000`: `da74451edd20fc331f9c13e26812f3ea1becf8bd0dffe5a62434f90478dca3ff`.
+- `20261104130000`: `b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f`.
+
+This is broader than the historical filename trace, but applies only to reachable SQL objects present in the local checkout. External/generated migration artifacts, unreachable objects, other workspaces/remotes, and archived CI/deployment artifacts remain possible provenance sources.
+
+Keep the forensic verdict **INVESTIGATE**. Obtain independent migration-runner/deployment/CI/archive evidence for the exact SQL applied at the recorded ledger timestamps, then hash and compare the original bytes. No migration execution, ledger repair, schema mutation, manifest edit, seed/reset, hosted DB or Render change is authorized. PostgreSQL 17/5432 remains untouched.
