@@ -177,3 +177,11 @@ No production migration, DDL, role/grant change, credential read, database write
 - Existing current-state index, remaining-work register, and runtime reconciliation gate.
 
 **Confidence discipline:** Facts explicitly labeled “observed” come from the source queries above or previously recorded operator evidence. PR descriptions are attributed to the PR, not treated as proof of production state. Any item labeled unverified remains a gate, not an assumption.
+
+
+## 10. Publication and review trail
+
+- Retrospective handover created on branch `docs/handover-2026-11-08-runtime-reconciliation` from `main` at `0e2c7c2181d457265a671a6f857140dd17faee97`.
+- Documentation PR: [#234](https://github.com/zaidhqdev-sys/GHM/pull/234), opened 2026-11-08 12:51 UTC; open and unmerged at creation.
+- PR changes are limited to this handover and the current-state index. Review/CI status must be checked on the PR before merge; no merge is authorized by this handover.
+- This record was published after the November 7–8 events. It repairs the missing written record but cannot retroactively make the original operational updates contemporaneous.
