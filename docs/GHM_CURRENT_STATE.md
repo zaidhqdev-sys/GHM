@@ -307,3 +307,6 @@ Draft PR [#237](https://github.com/zaidhqdev-sys/GHM/pull/237) now contains the 
 
 
 **PostgreSQL 18 auth discovery (14:30 UTC):** data directory C:\Program Files\PostgreSQL\18\data; Windows service runs as NetworkService. All local and loopback host rules currently require SCRAM-SHA-256. No local config/password changes, DB setup, Render access, or dump attempted. If local admin recovery is required, narrowly scope a temporary IPv4 loopback trust rule for role postgres only, set a new local password, remove the rule and restore exact original config. Detailed record in dated handover.
+
+
+**Local PostgreSQL 18 recovery attempt (14:37 UTC):** temporary narrowly scoped HBA rule was added and PostgreSQL 18 service restarted, but psql to 127.0.0.1:5432 still failed with password authentication. Do not broaden trust or retry credentials. Restore the exact saved pg_hba.conf backup and restart PostgreSQL 18 first; verify hash equality. Then identify listener PID/port and confirm service data directory and active HBA path. A PostgreSQL 17/18 port collision or alternate listener is only a possibility pending diagnostics. No local password reset or DB setup, Render dump, migration, or production changes. Detailed handover updated.
