@@ -298,3 +298,6 @@ Draft PR [#237](https://github.com/zaidhqdev-sys/GHM/pull/237) now contains the 
 
 
 **Schema clone workstation checkpoint (14:19 UTC):** PR branch cloned at `C:\Users\zaidh\AppData\Local\Temp\GHM-profile-clone-43533b1379824738b87a8bf7d8754b26`, SHA `d9151d936fa3edcde1bb5a5c050811a37db27166`. Setup stopped because `psql` is not on PowerShell PATH. No local DB/roles, Render connection, schema dump, restore, or production changes occurred. Locate/install PostgreSQL 18 client and local server before continuing; detailed record in dated handover.
+
+
+**Local PostgreSQL tools discovery (14:24 UTC):** Windows services `postgresql-x64-17` and `postgresql-x64-18` are Running; installations exist at `C:\Program Files\PostgreSQL\17` and `18`. PostgreSQL commands are not on PATH and Docker is unavailable. Use PostgreSQL 18 binaries by absolute path; leave v17 untouched. No database setup or Render access has occurred. See dated handover.
