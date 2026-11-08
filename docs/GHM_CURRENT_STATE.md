@@ -363,3 +363,10 @@ A read-only scan checked all 132 unique reachable SQL blobs in the local Git obj
 This is broader than the historical filename trace, but applies only to reachable SQL objects present in the local checkout. External/generated migration artifacts, unreachable objects, other workspaces/remotes, and archived CI/deployment artifacts remain possible provenance sources.
 
 Keep the forensic verdict **INVESTIGATE**. Obtain independent migration-runner/deployment/CI/archive evidence for the exact SQL applied at the recorded ledger timestamps, then hash and compare the original bytes. No migration execution, ledger repair, schema mutation, manifest edit, seed/reset, hosted DB or Render change is authorized. PostgreSQL 17/5432 remains untouched.
+
+
+## PayFast forensic audit — CI blob provenance checkpoint (2026-11-08 22:15 UTC)
+
+A read-only hash comparison against GitHub Actions checkout commit `a1a046d17d04854bfc8259efaa02100b1ae09304` (run [41836364443](https://github.com/zaidhqdev-sys/GHM/actions/runs/41836364443)) found an exact source-blob match for live ledger migration `20261104130000`: CI file SHA-256 `b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f`, identical to the live checksum. The CI checkout's first migration blob (`20261104120000`) hashes to `778817028e5377744140b6cec31fccc6fbb84bcf9c47e20c4997b8056ba608b9`, not its live ledger checksum `da74451edd20fc331f9c13e26812f3ea1becf8bd0dffe5a62434f90478dca3ff`.
+
+The CI log confirms migrations ran against a disposable GitHub Actions PostgreSQL service but does not print checksums or prove a connection to the local qualification database. The timestamp proximity is not proof of causation. One checksum's source blob is identified; the other remains unexplained. Overall audit verdict stays **INVESTIGATE**. Do not run migrations, repair ledger rows, alter exception manifests, or touch hosted/production resources or PostgreSQL 17/5432. See the detailed [internal runtime reconciliation handover](HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md) and [PayFast local qualification record](payfast-local-qualification.md).
