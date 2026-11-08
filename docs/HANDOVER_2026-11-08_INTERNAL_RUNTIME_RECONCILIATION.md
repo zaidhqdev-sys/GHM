@@ -653,3 +653,31 @@ The operator successfully queried the two PayFast migration ledger rows through 
 | 20261104130000 | isolate_payfast_settlement_identity | `b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f` | 2026-11-04 15:20:57.629981+02 |
 
 This confirms the exact live values previously surfaced by the forensic audit and verifies that the read-only role-switch path can read the protected ledger. The current repository canonical and legacy-CRLF hashes still do not match either live value. Historical SQL shown from commit `e7a51d7` establishes intended function/role boundaries but is not proof of the exact bytes applied. Continue read-only Git blob/provenance analysis; do not alter the ledger or exception manifests and do not run migrations. PostgreSQL 17/5432, hosted databases, Render and production remain untouched.
+
+
+## PayFast ledger checksum provenance — historical Git blob comparison (2026-11-08 22:05 UTC)
+
+The operator traced the two mismatched migration files with read-only `git log --all --follow --name-status` and then SHA-256 hashed each relevant historical Git blob. This corrects the earlier investigation script's assumption that the current filename existed at every historical commit.
+
+### Rename/path history
+
+- `20261104120000_bind_commercial_payment_attempt_provider.sql` was renamed from `database/migrations/20261007120000_create_commercial_payment_result_boundary.sql` in commit `e7a51d71e1de0dc5bf811851c67110e641603edd` (2026-11-06). Its earlier versions were present at `edd136aea256f7b1d92b610f114d75a4d8856611`, `52fe2152c0856328d4c3088800301adabd6e9430`, `5537573939789e89dda786450a833df61829e5f5`, and `7196f94342a294dc39b0d45a255118fd28095169`.
+- `20261104130000_isolate_payfast_settlement_identity.sql` was added as a new file in `e7a51d71e1de0dc5bf811851c67110e641603edd`; the traced history shows no earlier path.
+
+### Historical blob SHA-256 results
+
+For `20261104120000`, the raw and LF-normalized SHA-256 values were identical for each Git blob (all were LF content):
+- `e7a51d71e1de`, renamed/current path, 8,949 bytes: `3f284b7afb1bc83c42331b0346e2853f448948ad9a2f9e92c162c303fb92d3d8`.
+- `edd136aea256`, prior path, 8,369 bytes: `778817028e5377744140b6cec31fccc6fbb84bcf9c47e20c4997b8056ba608b9`.
+- `52fe2152c085`, prior path, 8,408 bytes: `e57d66004dcf64b9e838ded7b955030584ea1eb0f3a56fa94c9a2098c7b5f1c6`.
+- `553757393978`, prior path, 8,408 bytes: `890bb8eaf5f0d309dfd4e1408b144c37f0943e942f440db7546d65bcb6668c8c`.
+- `7196f94342a2`, prior path, 8,308 bytes: `f2225eb4df397569724ecb1f13b6bb97278373989d1ce3e2de788074591cc1bc`.
+
+For `20261104130000`:
+- `e7a51d71e1de`, 3,534 bytes: raw and LF-normalized SHA-256 `230657b714cc8bfa23e69be9a0c8ff0a4d110b3a7435047e33683a77f3863a22`.
+
+**None of the five traced versions of the first migration or the one traced version of the second matches its live ledger checksum**, either raw or LF-normalized:
+- First live ledger checksum: `da74451edd20fc331f9c13e26812f3ea1becf8bd0dffe5a62434f90478dca3ff`.
+- Second live ledger checksum: `b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f`.
+
+This rules out a simple CRLF normalization explanation and rules out the specific Git blobs enumerated above as the exact checksum source. It does **not** prove no other historical object, external migration artifact, generated SQL, or deployment-time source existed. The audit remains **INVESTIGATE**. Next provenance step: search all reachable Git objects/history for either exact live SHA-256 and locate any archived/deployed migration artifact or deployment log that identifies the exact applied SQL bytes. Do not alter the migration ledger, exception manifests, migration files, database schema, or rerun either migration. All investigation to this point was read-only; no hosted/production DB, Render service, or PostgreSQL 17/5432 was touched.
