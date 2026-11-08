@@ -304,3 +304,6 @@ Draft PR [#237](https://github.com/zaidhqdev-sys/GHM/pull/237) now contains the 
 
 
 **Local PostgreSQL auth checkpoint (14:28 UTC):** PostgreSQL 18.6 client tools are available. Local postgres role login reached localhost ::1:5432 but failed password authentication. This is separate from Render credentials; no password can be retrieved from the installation. Next inspect the PostgreSQL 18 service data directory and active local pg_hba.conf rules before deciding on a controlled local-only recovery. No auth config or passwords changed, and no Render connection/dump attempted. See dated handover.
+
+
+**PostgreSQL 18 auth discovery (14:30 UTC):** data directory C:\Program Files\PostgreSQL\18\data; Windows service runs as NetworkService. All local and loopback host rules currently require SCRAM-SHA-256. No local config/password changes, DB setup, Render access, or dump attempted. If local admin recovery is required, narrowly scope a temporary IPv4 loopback trust rule for role postgres only, set a new local password, remove the rule and restore exact original config. Detailed record in dated handover.
