@@ -35,18 +35,6 @@
     "source": "integration/ghm-identity-merge-candidate-20261018",
     "reason": "Applied to the shared sandbox from the historical identity integration candidate; checksum verified against the candidate migration."
   },
-  "20261020130000": {
-    "name": "create_quoteflow_migration_business_provisioning",
-    "checksum": "a453171e85f6717476258c6d2d59a39b663be89826316036e6b9891cadfb13e9",
-    "source": "historical applied migration blob 620efa57ac35d494f1aa506f26a7ad810c821d9a",
-    "reason": "Preserves the original applied checksum. The later unverified-state correction is a separate additive migration (20261020140000); do not rewrite the applied ledger checksum."
-  },
-  "20261020140000": {
-    "name": "reconcile_quoteflow_provisioning_verification_status",
-    "checksum": "922295b2a94dfed4cc6441569b0b911f99e7bf4aed81d1f1938a481dc7e9c465",
-    "source": "integration/ghm-identity-merge-candidate-20261018",
-    "reason": "Applied to the shared sandbox from the historical identity/QuoteFlow integration history; checksum verified against the candidate migration."
-  },
   "20261019190000": {
     "name": "create_business_engagement_events",
     "checksum": "293d0fe2e1ffeff0918761ac45562b2299237ee4a58a3f10ef42349437d82019",
@@ -58,5 +46,23 @@
     "checksum": "4115cd79560e7ac7f11cae52734970a5ab9f0ba5100c34ceb2df5fe467327324",
     "source": "historical applied migration blob 7681736389b13c82a81f7a6419826204ef584676",
     "reason": "Production ledger applied this exact historical SQL checksum on 2026-10-28; raw Git blob SHA-256 was independently verified against pre-application commits 76817363 and 01eae6c7. The migration is retained as historical ledger provenance, not reintroduced as a pending migration on the focused mainline release."
+  },
+  "20261020130000": {
+    "name": "create_quoteflow_migration_business_provisioning",
+    "checksum": "3c09cc7ecb8f566f0d359832ad91cc7b644570220236713c02a0763a0521345b",
+    "source": "commit parent 7fb1bbe07fc64ede652ae589ab72bdc96f23d906; exact SQL blob 21731433c2a998fff8d86d628d3589f8768dd618",
+    "reason": "Live migration ledger checksum exactly matches the original applied SQL bytes (unverified verification status). The later pending-state correction changed the source bytes and is not the checksum applied under this version; preserve the live ledger checksum as historical provenance."
+  },
+  "20261020140000": {
+    "name": "reconcile_quoteflow_provisioning_verification_status",
+    "checksum": "922295b2a94dfed4cc6441569b0b911f99e7bf4aed81d1f1938a481dc7e9c465",
+    "source": "integration/ghm-identity-merge-candidate-20261018",
+    "reason": "Applied to the shared sandbox from the historical identity/QuoteFlow integration history; checksum verified against the candidate migration."
+  },
+  "20261031100000": {
+    "name": "restrict_identity_authority_reader",
+    "checksum": "a6692f473f05647aa8b829a1b9263f69376f2e647b124a013543d8ec7d9186bf",
+    "source": "branch reconciliation/ghm-identity-mainline-restored-20261031; commit d166df2df9fe4a3e00da50935f118ef5322d05ae; blob e34dd0700885b182c79b1f09f2af5d94281849c2",
+    "reason": "Live migration ledger checksum exactly matches the six-line SQL source on the restored reconciliation branch. The historical migration is retained as provenance, not reintroduced as a pending migration."
   }
 }
