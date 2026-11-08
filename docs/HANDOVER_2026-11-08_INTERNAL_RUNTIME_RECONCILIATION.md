@@ -836,6 +836,8 @@ Current PR head `00a4e4239db6c9a0f6181ef7efa7300f1091d980` passed GitHub Actions
 
 The profile-field persistence gap is addressed in new forward migration `20261109100000_persist_business_profile_presentation_fields.sql`; earlier migration bytes are unchanged. Capability evidence note was refined: normal application listing verifies active Business membership and filters by Business ID, so there is no demonstrated cross-tenant exposure through the normal route; broad runtime SQL SELECT/no RLS and unused visibility semantics remain defense-in-depth/product-contract gaps. Project create path was confirmed to insert Opportunity, participant, and Project in one authorized transaction.
 
+Capability assertion replacement has a separate concurrency gap: `ghm.replace_business_capability_assertions` checks owner/administrator membership and performs its withdrawal/upsert work in one function call, but does not lock a shared Business row before reading/replacing the active set. Two concurrent calls for the same Business with disjoint assertion sets can both insert their rows and leave a combined active set. Before release, serialize replacements on the Business row (or an equivalent per-Business lock) and add a two-session integration test proving last-serialized replacement semantics.
+
 PR #239 remains draft. Outstanding: owner's local read-only migration audit against this branch and human review of the full pending migration set. No persistent database/ledger or hosted resource was changed.
 
 ## 22. Owner-local read-only audit and PayFast checksum registration — 2026-11-09
