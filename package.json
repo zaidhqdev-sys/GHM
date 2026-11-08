@@ -65,7 +65,8 @@
     "qualify:storage-live-provider": "npm run build && node scripts/qualify-storage-live-provider.mjs",
     "qualify:founder-system-admin-bootstrap": "node scripts/qualify-founder-system-admin-bootstrap.mjs",
     "test:migration-audit-policy": "node --test scripts/migration-audit-checksum.test.mjs",
-    "start:payfast-callback": "node dist/payfast-callback-server.js"
+    "start:payfast-callback": "node dist/payfast-callback-server.js",
+    "qualify:business-profile-contract": "node scripts/qualify-business-profile-contract-postgres.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",
