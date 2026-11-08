@@ -121,3 +121,8 @@ Additional review notes:
 - `20261106200000_link_project_to_opportunity.sql` adds a nullable FK and unique partial index; verify the application transaction creates/links the canonical project Opportunity atomically and that no legacy project path bypasses it.
 
 These are source-review findings, not proof of runtime exploitation or data exposure in a deployed database. The migration set remains **not release-ready** pending fixes, focused tests, full CI, and a fresh read-only local audit. No migration was run against the owner's local or production database.
+
+
+### Forward correction for the Business profile patch persistence gap
+
+The earlier migration is intentionally left byte-for-byte unchanged. A new forward migration, `20261109100000_persist_business_profile_presentation_fields.sql`, now replaces `ghm.update_business_profile` with the same validation/authorization contract plus the missing assignments for `avatar_letter`, `avatar_color`, and `years_in_business`. The static migration contract test now asserts those assignments exist in the forward migration. This fix is staged in PR #239 and requires the same exact-head CI and PostgreSQL 18 qualification as the other changes.
