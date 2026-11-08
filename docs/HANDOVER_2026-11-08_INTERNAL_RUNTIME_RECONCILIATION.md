@@ -276,7 +276,7 @@ All checks in this section were read-only. No PR was merged, no branch deleted, 
 
 - Retrospective handover branch: `docs/handover-2026-11-08-runtime-reconciliation`, based on GHM `main` `0e2c7c2181d457265a671a6f857140dd17faee97`.
 - Documentation PR: [#234](https://github.com/zaidhqdev-sys/GHM/pull/234), open and unmerged at this checkpoint.
-- Exact PR head `133a5515d5b2f2174eadd6435e08e60eb1ad6987`: GitHub Actions quality check #42482443120 and Cloudflare Pages check both completed successfully.
+- Earlier PR head `ad6950b125bc4a06c2a5675a10c6a642991a4b17`: GitHub Actions quality check #42482817525 and Cloudflare Pages check both completed successfully. That head was superseded by the completed-work ledger update.
 - The integrated Connect browser-auth section was added after the owner supplied the previous-session handover; Section 12 now records fresh read-only cross-repository/Render/Vercel monitoring.
 - This record is retrospective. Future monitoring sessions must append dated evidence as each material action occurs; do not rewrite history or label unverified gates as passed.
 
@@ -348,3 +348,12 @@ Start from this list and refresh only items that can change:
 ### H. Completeness and provenance limitation
 
 This reconstruction uses the messages and repository/tool evidence retained in the current chat context. It cannot recover any chat messages or external actions not present in that context. It records what can be substantiated and deliberately avoids inventing missing command transcripts, user approvals, live tests, or deployment verifications. If the owner identifies a specific omitted activity, append it as a dated correction rather than rewriting this record as if it had been contemporaneous.
+
+
+### Publication update — 2026-11-08 13:02 UTC
+
+- Added Section 14, “Retrospective activity ledger”, covering the work completed before the handover gap was discovered and a resume checklist to prevent duplicate work.
+- Updated `docs/GHM_CURRENT_STATE.md` to index the completed-work ledger.
+- Latest PR #234 head: `6b640c285cdc1bde3617eebe17c30a2a9639c851`.
+- Latest Cloudflare Pages check for that head was still building at the time of inspection. Refresh exact-head checks before considering the documentation PR ready.
+- GitHub PR metadata reported `mergeable=false` at this inspection; the reason was not established. Do not merge or try to resolve it by rebasing/rewriting without reviewing the exact diff and base status.
