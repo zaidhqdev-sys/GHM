@@ -276,3 +276,10 @@ PR [#222](https://github.com/zaidhqdev-sys/GHM/pull/222) is open from `integrati
 - Do not apply migration, alter grants, activate PayFast callbacks or deploy until the role graph is reviewed/remediated, the complete forensic migration audit passes under the approved migration identity, and owner authorization is recorded.
 - Integrated detailed record: [HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md](HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md), Sections 18–20.
 - The previous documentation PR #234 is stale relative to the new mainline. A fresh documentation-only branch `docs/handover-2026-11-08-mainline-reconciled` has been cut from the current main commit; do not merge PR #234 as-is.
+
+
+## Owner audit and Business profile draft — 2026-11-08
+
+Owner-run isolated clone audit logged in dated handover: temp clone `C:\Users\zaidh\AppData\Local\Temp\GHM-migration-audit-61e0a61b314e411d89ddb39d8b6e33d2`, audited SHA `458f3d7019c5732b22316c906307a69fd5a34a66`; npm ci completed with 0 vulnerabilities and an unapproved argon2 install-script warning. Dedicated migrator audit passed identity/read-only authority but returned INVESTIGATE (9 missing, 9 retained extras, 0 unexplained mismatches), exit 2. Secret URL not retained.
+
+A separate source-only branch `fix/business-profile-compat-contract-20261108` is drafting `20261108200000_reconcile_business_profile_contract.sql` plus contract tests. It adds only missing coordinates and preserves both legacy camelCase and current repository snake_case keys, category/isSupplier, owner/admin auth, SECURITY DEFINER, and observed database limits. It has **not** been run or qualified against PostgreSQL and is not approved for production. Detailed status and limitations are in the dated handover. No production changes or deployment occurred.
