@@ -4,6 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 const migration=fs.readFileSync(path.resolve(process.cwd(),'database/migrations/20261105190000_extend_business_directory_location_contact.sql'),'utf8');
+const forwardMigration=fs.readFileSync(path.resolve(process.cwd(),'database/migrations/20261109100000_persist_business_profile_presentation_fields.sql'),'utf8');
 const repository=fs.readFileSync(path.resolve(process.cwd(),'src/resources/business-identity/repository.ts'),'utf8');
 const contracts=fs.readFileSync(path.resolve(process.cwd(),'src/resources/business-identity/contracts.ts'),'utf8');
 
@@ -16,6 +17,9 @@ test('owner-editable avatar and business tenure fields are stored in canonical G
  assert.ok(contracts.includes('avatarLetter'));
  assert.ok(contracts.includes('avatarColor'));
  assert.ok(contracts.includes('yearsInBusiness'));
+ for(const field of ['avatar_letter','avatar_color','years_in_business']) {
+  assert.match(forwardMigration,new RegExp(`${field}\\s*=\\s*CASE WHEN p_patch \\? '${field}'`));
+ }
 });
 
 test('avatar and tenure updates are explicitly allowlisted and bounded',()=>{
