@@ -322,3 +322,20 @@ The operator fetched and verified CI commit `a1a046d17d04854bfc8259efaa02100b1ae
 The CI job log confirms `npm run migrate` ran against its disposable GitHub Actions PostgreSQL service, but does not print checksums. The local ledger's `applied_at` values are about six minutes after the CI migration step began; this timing is not proof that the CI job populated the local qualification database. The exact second-blob match identifies a matching source version in the CI checkout, not the database to which the workflow connected. The first mismatch remains unresolved.
 
 Overall forensic audit remains **INVESTIGATE**. Continue with independent provenance for the first migration and connection/run evidence; do not repair ledger checksums, alter exception manifests, run migrations, seed/reset/recreate the DB, or change schema. No database mutation or hosted/production/Render change occurred; PostgreSQL 17/5432 remains untouched. Fetching the commit added Git objects only and did not switch branches.
+
+
+## 2026-11-08 22:20 UTC — both PayFast ledger checksums matched to exact historical files
+
+**Correction to the earlier 22:05–22:15 notes:** both live PayFast ledger checksums match exact versioned SQL files at implementation commit `a1a046d17d04854bfc8259efaa02100b1ae09304` (PR #206 / CI run [41836364443](https://github.com/zaidhqdev-sys/GHM/actions/runs/41836364443)). The earlier comparison for the first migration hashed the separate old-path file `20261007120000_create_commercial_payment_result_boundary.sql`, rather than the versioned file matching the live ledger's `20261104120000` prefix.
+
+Exact source hashes at `a1a046d`:
+- `20261104120000_bind_commercial_payment_attempt_provider.sql` (Git blob `d78677cd88e7a3a9d0ebc66ecf6df2a7d5f34d10`, 8,950 characters): SHA-256 `da74451edd20fc331f9c13e26812f3ea1becf8bd0dffe5a62434f90478dca3ff`, exactly equal to the live ledger checksum.
+- `20261104130000_isolate_payfast_settlement_identity.sql` (Git blob `25c38258e4d91e9364d11b76585ac9936667b756`, 3,499 characters): SHA-256 `b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f`, exactly equal to the live ledger checksum.
+
+The separate old-path `20261007120000_create_commercial_payment_result_boundary.sql` in that same tree hashes to `778817028e5377744140b6cec31fccc6fbb84bcf9c47e20c4997b8056ba608b9`; it is a different migration path/version and must not be compared as the source for ledger version `20261104120000`. The migration runner derives version from the 14-digit filename prefix and hashes the original source (normalizing LF/CRLF), so both exact paths correctly map to the live rows.
+
+PR #206's local qualification note reports that `npm run migrate` completed on the same native Windows PostgreSQL 18 target `127.0.0.1:5433/ghm_payfast_qualification`, recording 92 migrations. This is a maintainer-reported PR record, not a preserved raw terminal log. CI run 41836364443 used a separate disposable GitHub Actions PostgreSQL service; it did not populate the local database. The two exact source matches explain the checksum bytes, while the PR's local-run record supplies corroborating context for the local qualification history.
+
+The previous 132-blob scan enumerated refs with `git rev-list --objects --all`; the fetched implementation commit was held in `FETCH_HEAD` and was not guaranteed to be included. The scan's scope was therefore narrower than the full set of fetched objects. Do not repeat the earlier claim that no fetched PR source matches the live checksums.
+
+The two PayFast source mismatches are now explained at the historical-file level. Overall audit remains **INVESTIGATE** due the eight migrations absent from the ledger, two unrecognized extra rows, and retained-history validation findings. Do not edit the exception manifest or ledger, run migrations, seed/reset/recreate the DB, or touch PostgreSQL 17/5432, hosted DBs, Render, or production. No database mutation occurred during this source comparison.
