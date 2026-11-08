@@ -134,3 +134,15 @@ The owner ran the read-only audit on the prior PR head `00a4e4239db6c9a0f6181ef7
 - `20261104130000`: `b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f`
 
 A regression test pins both entries. This is exact per-version provenance; no broad exception or checksum relaxation. Exact-head CI and a second owner-local read-only audit remain required to confirm the final verdict. The nine missing rows are pending repository migrations and must not be applied until reviewed/approved.
+
+### Follow-up review of pending migrations — 2026-11-09
+
+Two migration files contained top-level `BEGIN;`/`COMMIT;` despite the migration runner already providing one transaction per migration. Those statements have been removed from `20261106090000_business_logo_storage_binding.sql` and `20261107211500_reconcile_business_profile_and_founder_authority.sql`. A new contract test checks every currently pending migration for top-level transaction control and confirms the runner owns transaction boundaries.
+
+The evidence decision function previously derived parent Capability state from verified evidence count and only the most recent decision; rejecting one item could therefore mark the parent rejected while other evidence remained pending. Forward migration `20261109110000_reconcile_capability_evidence_pending_state.sql` now aggregates pending and unexpired verified evidence, restores parent pending metadata when pending evidence remains, and locks the parent assertion before aggregation to serialize concurrent decisions. Regression tests pin these behaviors.
+
+Remaining release decisions:
+- `expires_on` is stored but no expiry worker/transition currently exists. Decide how evidence expiry should affect the parent verification state and public Capability projection.
+- Evidence table runtime SELECT is table-wide and there is no RLS; normal application list reads are tenant-scoped, but `visibility` is not currently enforced. Resolve visibility semantics/DB defense-in-depth before cross-Business or public evidence reads.
+- Founder reviewer allowlist is intentionally empty. Reviewer queue returns private registration number/legal name; confirm that designated reviewers are authorized for that data before seeding the allowlist.
+- Project-to-Opportunity FK is nullable and the migration does not backfill existing Projects. Confirm existing row count and whether historical rows require an Opportunity/participant backfill.
