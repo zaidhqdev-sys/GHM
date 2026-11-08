@@ -276,3 +276,10 @@ PR [#222](https://github.com/zaidhqdev-sys/GHM/pull/222) is open from `integrati
 - Do not apply migration, alter grants, activate PayFast callbacks or deploy until the role graph is reviewed/remediated, the complete forensic migration audit passes under the approved migration identity, and owner authorization is recorded.
 - Integrated detailed record: [HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md](HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md), Sections 18–20.
 - The previous documentation PR #234 is stale relative to the new mainline. A fresh documentation-only branch `docs/handover-2026-11-08-mainline-reconciled` has been cut from the current main commit; do not merge PR #234 as-is.
+
+
+## Deployment decision — documentation commit 458f3d7 (2026-11-08)
+
+Do **not** deploy `458f3d7019c5732b22316c906307a69fd5a34a66` to `GHM-Internal-Runtime`. It is the documentation-only merge of PR #235; the handover is already preserved in GitHub main. Keep the runtime on its current approved live deployment and keep auto-deploy disabled.
+
+The PostgreSQL role-separation runbook is a construction record: its `ghm_migrator` → `ghm_schema_owner` and forensic-ledger qualification applies to the construction database and explicitly says production Supabase was unchanged. It does not qualify the Render `ghm-db` target. Before any production migration, verify the approved migration credential path against the actual Render database, run the repository's read-only forensic migration reconciliation under that identity, prove runtime identity/dependencies, and resolve the bootstrap legacy-role authority review. No role mutation or migration is authorized. Details in Section 21 of the dated handover.
