@@ -1,6 +1,6 @@
 # Proposed migration provenance remediation
 
-**Status:** Proposal only — not approved or applied  
+**Status:** Implementation staged in draft PR #239 — not merged or applied  
 **Prepared:** 2026-11-08  
 **Repository:** `zaidhqdev-sys/GHM`  
 **Current audit verdict:** `INVESTIGATE`
@@ -77,7 +77,7 @@ The migration revokes runtime execution on `ghm.auth_read_connect_identity_autho
 
 ## Explicit non-actions and safety gate
 
-This proposal does not edit `database/migrations`, either provenance manifest, the local database, any migration ledger, or any hosted environment. It does not authorize `npm run migrate`, a ledger rewrite, a production deployment, or a Render workspace selection. Any implementation and any database execution require separate review and explicit authorization.
+The original proposal was advisory only. The implementation now staged in draft PR #239 changes repository migration source and the retained-history registry on its review branch; it does not change the exception manifest, local/hosted database, migration ledger, or any hosted environment. It does not authorize `npm run migrate`, a ledger rewrite, production deployment, or Render workspace selection. Merge and any database execution require separate review and explicit authorization.
 
 ## Implementation checkpoint — 2026-11-09
 
