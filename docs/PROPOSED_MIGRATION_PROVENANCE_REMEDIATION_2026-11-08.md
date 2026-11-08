@@ -107,3 +107,17 @@ No database connection, migration command, ledger write, production change, Rend
 - CI log explicitly reports: `PASS: historical functions were upgraded on the pre-existing table; authorization, RLS, owner, and ACL checks passed; transaction rolled back.`
 - Cloudflare Pages check for this exact head passed. This is a preview build, not a production deployment.
 - Still outstanding: local read-only migration audit against the owner's qualified database after branch checkout, and human review/approval of all pending migrations. PR remains draft and unmerged.
+
+## Pending migration release-readiness review — 2026-11-09
+
+A source review of the pending mainline migration set found two concrete blockers that must be resolved before migration execution or release:
+
+1. **Business profile patch persistence gap** — `20261105190000_extend_business_directory_location_contact.sql` accepts and validates `avatar_letter`, `avatar_color`, and `years_in_business` in `ghm.update_business_profile`, but its final `UPDATE ghm.business SET` omits all three columns. Calls can succeed without persisting those values. Do not silently edit the historical migration in place: establish whether any other environment has applied it, then prefer a separately versioned forward correction if it may have been applied.
+2. **Capability evidence read isolation gap** — `20261105213000_create_business_capability_evidence.sql` grants `ghm_runtime` direct table-wide `SELECT`, while the table has a `visibility` field but does not enable RLS or define tenant-scoped read access in this migration. The table stores evidence URLs, descriptions, issuer/reference details and verification state. Define and test the intended private/authenticated/public visibility and Business tenant boundary before granting reads.
+
+Additional review notes:
+- `20261105230000_create_founder_directory_review.sql` deliberately creates an empty founder reviewer allowlist. No reviewer identity should be seeded implicitly; a separately authorized reviewer mapping remains required before the workflow can be used.
+- `20261106090000_business_logo_storage_binding.sql` and `20261107211500_reconcile_business_profile_and_founder_authority.sql` both touch the logo binding. The latter uses `IF NOT EXISTS` for the column/index, but the former is non-idempotent. Preserve timestamp order and qualify both fresh and partially reconciled schema states.
+- `20261106200000_link_project_to_opportunity.sql` adds a nullable FK and unique partial index; verify the application transaction creates/links the canonical project Opportunity atomically and that no legacy project path bypasses it.
+
+These are source-review findings, not proof of runtime exploitation or data exposure in a deployed database. The migration set remains **not release-ready** pending fixes, focused tests, full CI, and a fresh read-only local audit. No migration was run against the owner's local or production database.
