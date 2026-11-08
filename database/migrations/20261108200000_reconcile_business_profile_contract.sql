@@ -61,6 +61,7 @@ AS $function$
 DECLARE
   v_patch jsonb;
   v_key text;
+  i integer;
   v_alias text;
   v_value jsonb;
   v_allowed_keys text[] := ARRAY[
