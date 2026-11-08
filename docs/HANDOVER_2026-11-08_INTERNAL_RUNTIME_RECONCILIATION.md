@@ -396,3 +396,44 @@ This corroborates that the reconciliation objects targeted by PR #232 are curren
 - Latest head at this checkpoint: `0d2ef375d25e17a84566d9d1c5dfe9ee1b828c81`.
 - GitHub compare against `main` reports 11 commits ahead, zero behind; the PR is reported mergeable with clean merge state.
 - Its Cloudflare Pages check was still in progress at the last check. A GitHub workflow-run endpoint returned 404, so do not infer that check passed from the absence of a failure.
+
+
+## 16. Further production precondition and deployment checkpoint — 2026-11-08 13:10 UTC
+
+### PR #232 migration dependencies checked against production catalog
+
+A follow-up read-only catalog query confirmed the migration's referenced base relations and key types exist:
+
+- `ghm.business` exists; `ghm.business.id` is bigint.
+- `ghm.storage_object` exists; `ghm.storage_object.id` is bigint, matching the proposed `logo_storage_object_id bigint` foreign key.
+- `ghm.account_identity` exists; `ghm.account_identity.id` is bigint, matching the proposed reviewer table foreign keys.
+- Existing Business and storage-object constraints were returned by PostgreSQL and catalogued; the three target Business columns and founder-reviewer table/function remain absent as recorded in Section 15.
+
+This reduces uncertainty about the migration's base-table/FK prerequisites. It does not prove all migration preconditions or ledger history; full production execution remains gated by migration-owner access and ledger reconciliation.
+
+### Migration runner authority — why production execution is still blocked
+
+Reviewed `src/db/migrate.ts` and `scripts/forensic-migration-reconciliation.mjs` on current `main`:
+
+- The migration runner requires `GHM_MIGRATOR_DATABASE_URL`, then executes `SET ROLE ghm_schema_owner`.
+- It explicitly verifies `current_user = ghm_schema_owner`, `session_user = ghm_migrator`, and the approved database name before proceeding.
+- It takes an advisory transaction lock, reads every applied migration version/checksum, checks checksum compatibility, and applies every pending repository migration in timestamp order within a transaction.
+- The forensic audit independently requires a read-only transaction, verifies the same migrator/schema-owner authority chain, and compares the full repository migration set against the production ledger, including missing, extra, checksum/name mismatches, and registered historical exceptions.
+
+The Render query connector's production session was `ghm_db_user` and could not read the owner-protected ledger. It is not the supported migration execution identity. Do not attempt `npm run migrate`, hand-run the new SQL, grant extra ledger permissions, or bypass the role checks from the application identity. Obtain the approved `ghm_migrator`/schema-owner path and complete the forensic audit first. The full pending migration set may contain more than PR #232's migration; never assume running this one file is sufficient.
+
+### Internal runtime — current pointer reconfirmed
+
+Fresh Render read at 13:10 UTC reconfirmed:
+
+- `GHM-Internal-Runtime` remains on branch `main`, auto-deploy `no/off`, service not suspended.
+- Latest live deployment remains `dep-dbnp1nou01pc73dbrki0` at `0e2c7c2181d457265a671a6f857140dd17faee97`.
+- No new deploy has appeared after the November 7 deployment. The older same-SHA manual deploy remains deactivated.
+- No deploy was triggered by this checkpoint.
+
+### Documentation PR #234 current checks
+
+- Latest head: `b2eeb1e475b2b0fc54d85e133517d8c530a2a432`.
+- GitHub reports mergeable; Cloudflare Pages check passed.
+- Exact-head GitHub Actions quality check #42483424044 was still in progress at the last inspection.
+- PR #234 remains open and unmerged. It is documentation-only and does not alter the runtime or production database.
