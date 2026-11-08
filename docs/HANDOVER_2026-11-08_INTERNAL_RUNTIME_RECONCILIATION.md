@@ -752,3 +752,18 @@ For each approved slice, prepare a source migration and tests in a dedicated PR;
 **Rollback/recovery:** Prefer forward corrective migrations for committed schema changes. A transaction rollback is only available before commit and does not reverse external callback side effects. Before any payment privilege cutover, keep callback traffic disabled and have provider-side retry/idempotency and restore plan confirmed. For schema changes involving columns/functions/constraints, capture definitions and test restore on a clone; do not drop data or reverse ownership as an ad hoc rollback. The exact rollback for each slice must be reviewed before execution.
 
 **Current blockers:** no explicit authorization to mutate production; backup/restore evidence not yet supplied; current Business function body/callers not fully reviewed; provider credential/process identity and callback E2E not qualified; storage-object inventory inaccessible through the current read-only connector; capability and directory review semantics/tests need review; deployment compatibility and production release plan not qualified. All nine missing ledger versions remain **not authorized to apply**. Render auto-deploy remains disabled; the live runtime is not to be deployed as part of these documentation/planning steps.
+
+
+### Detailed current Business profile function review — 2026-11-08
+
+The live `ghm.update_business_profile(bigint,bigint,jsonb)` definition was fetched directly from PostgreSQL via `pg_get_functiondef` in a read-only query. It is SECURITY DEFINER with fixed `search_path = pg_catalog, ghm`. It requires positive account/business IDs, a non-empty JSON object, rejects unknown keys, and checks an active owner/administrator membership before updating the Business. It currently accepts the camelCase/legacy contract:
+
+`name`, `slug`, `description`, `phone`, `email`, `category`, `province`, `city`, `physicalAddress`, `whatsapp`, `website`, `isSupplier`, `yearsInBusiness`.
+
+It also writes `is_supplier` and `category`; source migration `20261105190000` instead proposes snake_case `physical_address`, adds latitude/longitude and avatar fields, and does not include the existing category/isSupplier patch fields. Replacing it naively would be a breaking API contract even if the DDL succeeded. The live function validates years-in-business up to 500, while the source migration constraint limits stored values to 100; the aggregate preflight observed no existing values above 100 but that does not justify silently narrowing the API contract. The live province limit is 100 while the source migration constraint uses 120. The existing avatar_color check is stricter (hex) than the source's generic 1–32 character check. These differences must be resolved explicitly with API callers and product requirements before authoring a replacement. Preserve the active membership authorization check and SECURITY DEFINER fixed search_path.
+
+The source migration's replacement function also needs full caller/contract review: decide whether to support both camelCase and snake_case keys during a compatibility window, preserve `category`/`isSupplier`, and define the supported years limit consistently. No function replacement or DDL was performed.
+
+### Query access boundary encountered
+
+The first data aggregate attempted a SELECT count from `ghm.storage_object` and was rejected with PostgreSQL SQLSTATE 42501. It was rerun against permitted `ghm.business` and `ghm.project` only. No grants, role switches, or privilege bypass were attempted. Storage-object inventory remains a required preflight using an approved owner-authorized evidence path.
