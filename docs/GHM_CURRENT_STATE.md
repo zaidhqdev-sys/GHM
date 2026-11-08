@@ -283,3 +283,13 @@ PR [#222](https://github.com/zaidhqdev-sys/GHM/pull/222) is open from `integrati
 Do **not** deploy `458f3d7019c5732b22316c906307a69fd5a34a66` to `GHM-Internal-Runtime`. It is the documentation-only merge of PR #235; the handover is already preserved in GitHub main. Keep the runtime on its current approved live deployment and keep auto-deploy disabled.
 
 The PostgreSQL role-separation runbook is a construction record: its `ghm_migrator` → `ghm_schema_owner` and forensic-ledger qualification applies to the construction database and explicitly says production Supabase was unchanged. It does not qualify the Render `ghm-db` target. Before any production migration, verify the approved migration credential path against the actual Render database, run the repository's read-only forensic migration reconciliation under that identity, prove runtime identity/dependencies, and resolve the bootstrap legacy-role authority review. No role mutation or migration is authorized. Details in Section 21 of the dated handover.
+
+
+### Fresh Render database identity and ledger audit — 2026-11-08 13:23 UTC
+
+- Read-only Render `ghm-db` query identity: `session_user=ghm_app_user`, `current_user=ghm_db_user`; this is not the dedicated migration identity.
+- `ghm.ghm_schema_migrations` is owned by `ghm_schema_owner`; `ghm_db_user` has no SELECT privilege. Ledger remains unreadable through the available connector.
+- Role catalog confirms the `ghm_migrator` → `ghm_schema_owner` SET path exists, but the query connection cannot become `ghm_migrator`. Bootstrap ADMIN memberships from `postgres` remain unresolved.
+- No supported connector action exposes service environment-variable metadata or runs the repository audit script under a separate migration credential. Do not retrieve or expose secrets.
+- Next: owner verifies privately that `GHM_MIGRATOR_DATABASE_URL` is configured in the approved execution context, then runs `scripts/forensic-migration-reconciliation.mjs` read-only against `ghm_db`; separately verify deployed runtime identity and escalate bootstrap membership remediation. No grants or roles changed.
+- Detailed evidence in Section 22 of the dated handover.
