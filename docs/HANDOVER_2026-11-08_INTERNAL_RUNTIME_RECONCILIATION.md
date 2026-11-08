@@ -179,9 +179,50 @@ No production migration, DDL, role/grant change, credential read, database write
 **Confidence discipline:** Facts explicitly labeled “observed” come from the source queries above or previously recorded operator evidence. PR descriptions are attributed to the PR, not treated as proof of production state. Any item labeled unverified remains a gate, not an assumption.
 
 
-## 10. Publication and review trail
 
-- Retrospective handover created on branch `docs/handover-2026-11-08-runtime-reconciliation` from `main` at `0e2c7c2181d457265a671a6f857140dd17faee97`.
-- Documentation PR: [#234](https://github.com/zaidhqdev-sys/GHM/pull/234), opened 2026-11-08 12:51 UTC; open and unmerged at creation.
+## 10. Connect HttpOnly browser-auth qualification — integrated handover context
+
+The owner supplied the prior-session handover titled “GHM ↔ Connect HttpOnly Browser-Auth Qualification” (handover date 2026-11-08; monitoring period 2026-11-06 through 2026-11-08; last monitoring checkpoint approximately 09:45 SAST / 07:45 UTC). This is a separate but related workstream and must remain visible in the operational handover. The supplied report's repository, CI, Vercel and environment observations are **historical snapshots from that session**, not live checks made during this reconstruction.
+
+### Status to carry forward
+
+**NOT YET QUALIFIED**
+
+- GHM browser-auth implementation PR #217 is merged; recorded merge SHA: 96575838319cc319e328443289bee379c9947ac2. The report records exact-head CI #42136280518 passed.
+- Connect HttpOnly browser-auth BFF/proxy PR #57 is merged; recorded merge SHA: 929bb12ef15ceb17099d8a650bbe403a0fdb3b9a. The report records exact-head CI #42137215055 passed.
+- Additional Connect capability PRs #65 and #66 are merged, but their separate feature flags do not activate browser-auth.
+- The supplied report records GHM main checkpoint 0e2c7c2181d457265a671a6f857140dd17faee97 and Connect main checkpoint 1e92f85cdd99dea2070ede58a875cec45d5f2047. Those are historical pointers from the supplied handover, not revalidated Connect state.
+- Existing native bearer-token authentication remains the active/default transport. Browser-auth must remain disabled until all isolated non-production qualification gates pass.
+
+### Qualification gates — all remain open unless freshly evidenced
+
+1. **Isolated GHM runtime:** owner must identify and approve the isolated non-production Render workspace/service. The supplied report explicitly says the intended workspace was not selected and live Render environment settings were not verified in that monitoring run. Do not guess or repurpose production.
+2. **GHM browser-auth configuration:** configure only on the approved isolated runtime after approval: GHM_WEB_AUTH_ALLOWED_ORIGINS = exact approved Connect Preview origin(s); GHM_WEB_AUTH_COOKIE_PATH = /api/ghm; GHM_WEB_AUTH_COOKIE_MAX_AGE_SECONDS = reviewed value in the code's bounded range (60–2,592,000 seconds). Missing/invalid settings must continue to fail closed (503). No values were changed by this handover work.
+3. **Connect Preview branch configuration:** on the dedicated qualification branch only, set CONNECT_WEB_ORIGIN to the exact approved Preview origin and GHM_INTERNAL_RUNTIME_URL to the isolated GHM runtime URL. The supplied prior-session report found these only on obsolete branch construction/ghm-identity-adapter-only-20261016, not on the auth branch, docs branch, or main. Treat that as historical and recheck before acting; do not copy obsolete settings.
+4. **Preview-only feature flag:** VITE_GHM_WEB_AUTH_ENABLED=true only for the dedicated isolated qualification Preview build, and only after gates 1–3 pass. Never enable globally or on production.
+5. **Actual Preview identity:** verify the exact merged Connect commit, current deployment ID, generated canonical Preview alias and upstream target. The supplied report's old Preview was READY but built from ff211017f5f1ce3d97ccea83179ebae91fc5bdd1, not merged PR #57 head 5024565c3151a52100ef9ae941a1bb7d19324077; therefore it did not qualify the merged implementation. The prior alias check returned 403. These observations need fresh verification.
+6. **Live browser E2E:** execute the full lifecycle against the approved isolated runtime and exact Preview alias: register, login, access-token-only response (no refresh token in JSON), HttpOnly/Secure/SameSite/Path cookie attributes, refresh rotation, replay rejection, logout/server-side revocation and cookie clearing, Origin denial, bearer forwarding, and proof refresh-cookie is not forwarded to ordinary governed APIs. Include real HTTPS behavior and inspect actual browser responses/cookies. Mock/source tests alone are insufficient.
+7. **Evidence and disposition:** capture exact repo SHAs, workflow runs, Render service/deploy IDs, Vercel deployment ID/alias, safe redacted HTTP/browser evidence and per-test outcomes. Do not call the integration qualified until every required test passes. If any gate fails, keep native bearer auth active and browser-auth disabled.
+
+### Security and contract references
+
+- GHM cookie contract: [GHM_BROWSER_AUTH_COOKIE_CONTRACT_2026-10-28.md](architecture/GHM_BROWSER_AUTH_COOKIE_CONTRACT_2026-10-28.md). This contract records browser endpoints under /api/v1/auth/web/*, exact Origin allowlisting, host-only HttpOnly cookie, Secure in production, SameSite=Lax, /api/ghm path, bounded explicit lifetime, rotation/revocation, no refresh token in JSON/storage, and no change to native bearer routes.
+- GHM browser-auth implementation: [PR #217](https://github.com/zaidhqdev-sys/GHM/pull/217).
+- Connect proxy implementation: [PR #57](https://github.com/zaidhqdev-sys/zaid-connect/pull/57).
+- Connect migration handover referenced by the supplied report: [GHM_BACKEND_MIGRATION_HANDOVER_2026-10-13.md](https://github.com/zaidhqdev-sys/zaid-connect/blob/main/docs/06_Implementation/GHM_BACKEND_MIGRATION_HANDOVER_2026-10-13.md).
+
+### Operational separation — do not conflate runtimes
+
+The isolated browser-auth qualification runtime is a distinct, owner-approved non-production target that has not yet been identified in the supplied report. It is **not automatically** GHM-Internal-Runtime, and it is not ghm-payfast-sandbox-runtime. The current internal-runtime deployment findings in Sections 2–9 describe the service used for the internal runtime rollout; they do not establish that this service is approved or configured for browser-auth qualification. Do not point Connect Preview at it or enable browser-auth there without explicit owner authorization and a separately approved qualification plan. The PayFast sandbox runtime/database remains unrelated and must not be repurposed.
+
+### Current-session actions and no-change boundary
+
+The owner-provided prior-session report is now incorporated into this handover. This documentation reconciliation did not select a workspace, inspect or change Connect/Vercel settings, create a Preview, set any environment variable, enable a feature flag, send browser-auth requests, activate browser-auth, or perform E2E tests. All qualification gates remain open. No production action or cutover is authorized.
+
+## 11. Publication and review trail
+
+- Retrospective handover created on branch docs/handover-2026-11-08-runtime-reconciliation from main at 0e2c7c2181d457265a671a6f857140dd17faee97.
+- Documentation PR: [#234](https://github.com/zaidhqdev-sys/GHM/pull/234), opened 2026-11-08; open and unmerged at last check.
 - PR changes are limited to this handover and the current-state index. Review/CI status must be checked on the PR before merge; no merge is authorized by this handover.
 - This record was published after the November 7–8 events. It repairs the missing written record but cannot retroactively make the original operational updates contemporaneous.
+- The Connect browser-auth qualification context above was added after the owner supplied the previous-session handover on 2026-11-08. The source report's Vercel/Connect checkpoint data remain historical until independently refreshed.
