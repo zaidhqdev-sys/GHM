@@ -301,3 +301,6 @@ Draft PR [#237](https://github.com/zaidhqdev-sys/GHM/pull/237) now contains the 
 
 
 **Local PostgreSQL tools discovery (14:24 UTC):** Windows services `postgresql-x64-17` and `postgresql-x64-18` are Running; installations exist at `C:\Program Files\PostgreSQL\17` and `18`. PostgreSQL commands are not on PATH and Docker is unavailable. Use PostgreSQL 18 binaries by absolute path; leave v17 untouched. No database setup or Render access has occurred. See dated handover.
+
+
+**Local PostgreSQL auth checkpoint (14:28 UTC):** PostgreSQL 18.6 client tools are available. Local postgres role login reached localhost ::1:5432 but failed password authentication. This is separate from Render credentials; no password can be retrieved from the installation. Next inspect the PostgreSQL 18 service data directory and active local pg_hba.conf rules before deciding on a controlled local-only recovery. No auth config or passwords changed, and no Render connection/dump attempted. See dated handover.
