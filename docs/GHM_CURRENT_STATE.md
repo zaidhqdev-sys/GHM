@@ -431,3 +431,14 @@ The implementation PR has now passed its full exact-head GitHub Actions quality 
 - Full test suite, commercial payment qualification, migration audit policy tests, and runtime boundary verification all passed.
 
 PR #239 remains draft and unmerged. The later appendix-only update on the PR branch triggers another CI run; confirm that exact final head's checks before any readiness change. The owner-local read-only audit still has to be rerun after branch checkout, and the complete pending migration set needs review. No database/ledger or hosted resource was changed; no migration was run against the owner's local or production database.
+
+## 18. PR #239 final-head CI recheck — 2026-11-09
+
+The documentation-only appendix commit on the migration remediation PR has also passed exact-head CI:
+- PR #239 final head: `8ba633bbf690cddbc6d3a2b281a36fcf32c6d7ab`.
+- GitHub Actions quality run #2223 (`42533143356`): success.
+- Cloudflare Pages check: success (preview build only).
+- The qualifying implementation code head remains `77dca310ad4945b28ef919805a3a47797043e2de`; its full CI run #2222 also passed, including disposable PostgreSQL 18 fresh migration, historical function fixture upgrade on an existing table, full test suite, commercial-payment DB qualification, migration audit policy tests, and runtime boundary verification.
+- CI log from the historical-table upgrade step: `PASS: historical functions were upgraded on the pre-existing table; authorization, RLS, owner, and ACL checks passed; transaction rolled back.`
+
+PR #239 remains draft and unmerged. The only outstanding validation not covered by CI is a fresh read-only audit against the owner's qualified local database after checking out the branch, plus owner review of all pending migrations. No local/production database, ledger, Render service, or deployment was touched.
