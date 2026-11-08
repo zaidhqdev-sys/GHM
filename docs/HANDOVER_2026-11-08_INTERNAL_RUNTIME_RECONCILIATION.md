@@ -705,3 +705,50 @@ Additional read-only catalog checks confirm:
 One attempted privilege probe using literal role name `PUBLIC` returned a PostgreSQL error because PUBLIC is a pseudo-role, not a catalog role; the query was corrected to use effective checks for the two actual login roles. No state changed.
 
 PR #236 remains open and unmerged. A workflow-run lookup for its then-current head `72250a9786dd2d3259a92091402a2a0d9b5b5cac` returned no PR-triggered workflow runs; do not interpret this as a passing CI result. No merge or deployment was performed.
+
+
+### Forward-only reconciliation plan and data preflight — 2026-11-08
+
+This is the proposed engineering sequence based on the source migrations and live catalog evidence. It is a plan only; it is not migration authorization.
+
+#### Read-only data preflight (completed)
+
+A read-only aggregate query against `ghm.business` and `ghm.project` returned:
+
+- Business rows: **16**.
+- Business `years_in_business > 100`: **0**.
+- Existing non-null `avatar_color` values not matching six-digit hex: **0**.
+- Existing non-null WhatsApp values shorter than 7 chars: **0**.
+- Existing non-null website values shorter than 8 chars: **0**.
+- Existing non-null province/city/address values that are empty after trim: **0** for each.
+- Project rows: **0**.
+
+An initial combined aggregate query also attempted to count `ghm.storage_object` rows, but the read-only connector identity was denied SELECT on that table; the entire query failed and yielded no counts. The query was rerun without that table and succeeded. This is an observed permission boundary; do not try to bypass it or grant access. No row-level values were retrieved.
+
+The aggregate checks show no current rows violating the noted Business field shape checks, but they do not prove that tightening constraints is behaviorally safe for future writes or that other fields/functions are equivalent. No count was possible for storage objects, payment rows, or other restricted relations through this connector.
+
+#### Proposed execution order (each step is a separate reviewed/authorized slice)
+
+**Gate 0 — baseline and recovery package.** Before any DDL: capture a fresh provider-supported backup/PITR point and test/confirm restore procedure; retain the complete raw forensic audit locally; capture current schema definitions, function bodies, grants/default ACLs, role memberships, migration ledger and checksums using the approved migrator identity; verify app runtime and callback services' exact deployed revisions/configuration; confirm a maintenance/traffic plan. The migration audit's read-only identity proof is now positive, but backup/restore readiness and deployment compatibility remain unverified.
+
+**Gate 1 — reconcile Business profile, not replay the historical migration.** Do not run `20261105190000_extend_business_directory_location_contact.sql` unchanged: most columns already exist, and the older `update_business_profile(bigint,bigint,jsonb)` differs from the source patch contract. Design a new forward-only migration from the measured live baseline that adds only missing `latitude`/`longitude`, applies pair/range checks after explicit preflight, reconciles existing constraints without silently weakening them, and replaces `update_business_profile` only after reviewing its complete current body, all callers, key naming conventions, owner authorization checks, and ACL. Preserve current behavior not explicitly superseded. The aggregate preflight found 16 business rows and no observed violations of the checked current field constraints, but a full semantic and caller test is still required.
+
+**Gate 2 — payment provider binding and PayFast isolation as one controlled security slice.** First design the `provider_code` column/check and update of `commercial_apply_payment_result`; then in the same controlled release boundary remove ordinary runtime EXECUTE and install only provider-scoped `commercial_get_payfast_attempt` and `commercial_apply_payfast_payment_result`. The live generic function currently has EXECUTE for `ghm_runtime`, provider-specific functions are absent, and the provider role exists as LOGIN. Before this slice: confirm the provider credential is provisioned privately, callback process connects as exactly `ghm_payment_provider`, no app runtime code calls the generic settlement function, and integration tests cover ZAR-only, provider match, idempotency, replay/hash conflict, event status, failed/pending/succeeded outcomes, and privilege-denial from runtime. The existing generic function must not be left exposed to runtime after cutover. No callback traffic or PayFast settlement until end-to-end qualification and explicit approval.
+
+**Gate 3 — capability evidence and replacement.** Apply a reviewed forward-only creation of `business_capability_evidence` and transition function, then the assertion replacement function only after validating expected capability assertion semantics, status transitions, audit/event behavior, ownership, RLS, and exact EXECUTE grants. The parent `business_capability` table exists; evidence table and both observed functions do not. Test unauthorized business accounts, authorized owner/admin, malformed JSON, duplicate/replayed transitions, and audit completeness.
+
+**Gate 4 — founder directory review authority and workflow.** Build the actual `directory_listing_founder_reviewer` authority table and review-event/workflow functions; do not repurpose `connect_founder_directory_reviewer`, which is a distinct mapping. Establish the approved process for seeding reviewer identities (migration creates no reviewer identities), founder/admin authorization, RLS and grants, review state transitions, audit immutability, and public directory visibility. Test non-reviewer denial and reviewer decisions before any production listing state is affected.
+
+**Gate 5 — Business logo storage binding.** Confirm storage-object ownership/tenant/resource/status invariants and private provider/storage semantics with the object owner; connector SELECT on `ghm.storage_object` is currently denied, so use an authorized audited path rather than broadening read access. Add the Business FK/index and set/public-logo functions only after confirming existing storage rows, uniqueness, deletion behavior, and object lifecycle. Test cross-business object rejection, unavailable/private object rejection, owner/admin authorization, and public visibility only for active, verified, approved businesses.
+
+**Gate 6 — Project–Opportunity link.** The live `ghm.project` table lacks `opportunity_id`, and the current table has 0 rows. Before adding the FK and partial unique index, verify canonical Opportunity identity/type/status rules and the application transaction that creates Project and Opportunity atomically. Test rollback on either insert failure, uniqueness, FK restrict behavior, and no orphan Opportunity/Project. Because the table is currently empty, there is no existing row backfill, but application behavior and concurrent writes still require qualification.
+
+**Gate 7 — final business/founder authority reconciliation.** Treat `20261107211500_reconcile_business_profile_and_founder_authority.sql` as a partial idempotent source reference only. Its latitude/longitude/logo and founder-authority additions overlap the proposed earlier slices. Do not run it as-is after those slices; create a new forward-only reconciliation migration if any residual catalog differences remain. Confirm no duplicate constraints/indexes/functions or competing authority tables.
+
+#### Per-slice release/verification discipline
+
+For each approved slice, prepare a source migration and tests in a dedicated PR; review exact SQL and source checksum; run it against a production-like restored clone first; capture pre/post catalog and privilege snapshots; apply only that single migration using `GHM_MIGRATOR_DATABASE_URL` and explicit `SET ROLE ghm_schema_owner`; immediately verify ledger checksum, expected schema/function definitions, owner/ACL/RLS, positive and negative runtime/provider probes, and application health. Stop on any discrepancy. Do not proceed to the next slice until evidence is recorded and the owner approves. Do not stamp a migration ledger entry without its corresponding reviewed schema change.
+
+**Rollback/recovery:** Prefer forward corrective migrations for committed schema changes. A transaction rollback is only available before commit and does not reverse external callback side effects. Before any payment privilege cutover, keep callback traffic disabled and have provider-side retry/idempotency and restore plan confirmed. For schema changes involving columns/functions/constraints, capture definitions and test restore on a clone; do not drop data or reverse ownership as an ad hoc rollback. The exact rollback for each slice must be reviewed before execution.
+
+**Current blockers:** no explicit authorization to mutate production; backup/restore evidence not yet supplied; current Business function body/callers not fully reviewed; provider credential/process identity and callback E2E not qualified; storage-object inventory inaccessible through the current read-only connector; capability and directory review semantics/tests need review; deployment compatibility and production release plan not qualified. All nine missing ledger versions remain **not authorized to apply**. Render auto-deploy remains disabled; the live runtime is not to be deployed as part of these documentation/planning steps.
