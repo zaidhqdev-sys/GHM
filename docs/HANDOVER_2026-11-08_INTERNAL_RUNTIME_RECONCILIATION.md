@@ -681,3 +681,13 @@ For `20261104130000`:
 - Second live ledger checksum: `b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f`.
 
 This rules out a simple CRLF normalization explanation and rules out the specific Git blobs enumerated above as the exact checksum source. It does **not** prove no other historical object, external migration artifact, generated SQL, or deployment-time source existed. The audit remains **INVESTIGATE**. Next provenance step: search all reachable Git objects/history for either exact live SHA-256 and locate any archived/deployed migration artifact or deployment log that identifies the exact applied SQL bytes. Do not alter the migration ledger, exception manifests, migration files, database schema, or rerun either migration. All investigation to this point was read-only; no hosted/production DB, Render service, or PostgreSQL 17/5432 was touched.
+
+## Reachable Git SQL-object checksum search — no matches (2026-11-08 22:07 UTC)
+
+A read-only Node script enumerated all reachable Git objects from `git rev-list --objects --all`, selected every object referenced by a `.sql` path, and hashed each unique blob using both raw SHA-256 and CRLF/CR-to-LF normalized SHA-256. It inspected **132 unique SQL blob objects**. Neither target live ledger checksum appeared in any blob in either form:
+- `20261104120000`: `da74451edd20fc331f9c13e26812f3ea1becf8bd0dffe5a62434f90478dca3ff`.
+- `20261104130000`: `b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f`.
+
+This extends the earlier filename-following history comparison: not only do the six specifically traced historical blobs differ, but neither live checksum is reproducible from any of the 132 reachable SQL blobs in this local checkout. Scope limitation: this does not cover unreachable Git objects, remote branches/tags absent from the checkout, external/generated migration artifacts, CI/deployment artifacts, operator workspaces, or database-side records beyond the ledger checksum itself. Do not claim the original applied SQL has been identified.
+
+Disposition remains **INVESTIGATE / NO-GO for migration execution or ledger repair**. Next evidence source should be independent deployment/application provenance: migration runner logs, archived build/release artifacts, CI artifacts, backups/archives of the migration source, or operator records identifying the exact SQL applied at 2026-11-04 15:20:57 +02. Compare candidate artifact bytes against both ledger checksums before any remediation decision. Keep migrations, schema, ledger, and exception manifests unchanged. The scan was read-only; no database, hosted service, deployment, or PostgreSQL 17/5432 changes occurred.
