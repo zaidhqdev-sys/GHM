@@ -543,7 +543,7 @@ The operator ran the previously supplied PowerShell procedure from the prompt `P
 
 A new source-only branch `fix/business-profile-compat-contract-20261108` was created from current `main` (`458f3d7019c5732b22316c906307a69fd5a34a66`). It contains a draft forward-only migration:
 
-- `database/migrations/20261108200000_reconcile_business_profile_contract.sql`
+- `database/migrations/20261108140000_reconcile_business_profile_contract.sql`
 - Contract coverage appended to `src/db/business-profile-presentation-fields-migration-contract.test.ts` (already part of the package test command).
 
 The migration adds only missing latitude/longitude columns and idempotent range/pair constraints; it does not re-add columns already present. It replaces `ghm.update_business_profile(bigint,bigint,jsonb)` while preserving SECURITY DEFINER, fixed search_path, active owner/administrator membership authorization, PUBLIC revoke, and runtime EXECUTE grant. It retains legacy `category` and `isSupplier` support, accepts the current repository's snake_case keys (`physical_address`, `avatar_letter`, `avatar_color`, `years_in_business`) and historical camelCase equivalents, and rejects conflicting duplicate aliases. It retains observed live DB limits (years 0–500, province 1–100, existing six-digit hex avatar color) rather than silently tightening the live contract. Application repository validation remains narrower in some fields (notably years 0–100); this mismatch is deliberately not changed by this SQL migration and remains to be documented/tested.
