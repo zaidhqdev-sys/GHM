@@ -580,3 +580,22 @@ The first inspection SQL attempt failed because it referenced nonexistent column
 - No Render service, production database, production migration, payment callback, deployment, environment variable, role grant, or hosted credential was changed in this checkpoint.
 - Never paste database passwords, connection URLs containing passwords, or provider secrets into chat or documentation.
 
+
+## 22. Native Windows PostgreSQL 18 forensic pre-audit checkpoint — 2026-11-08 15:53 UTC
+
+The operator ran the requested read-only inspection against 127.0.0.1:5433/ghm_payfast_qualification as postgres, with ON_ERROR_STOP=1. The command completed successfully.
+
+### Exact observations
+
+- Identity/target: current_database() = ghm_payfast_qualification, port 5433, user postgres.
+- Exact ledger query returned 92 rows. The newest recorded row is version 20261104130000, name isolate_payfast_settlement_identity, applied at 2026-11-04 15:20:57.629981+02. The full rowset was supplied in the session transcript; this count is exact, unlike the earlier pg_stat_user_tables.n_live_tup estimate.
+- Exact reference-data counts: ghm.country = 1, ghm.currency = 1, ghm.opportunity_type = 11.
+- All four qualification roles exist. ghm_schema_owner is NOLOGIN and INHERIT; ghm_migrator, ghm_runtime, and ghm_payment_provider are LOGIN, non-superuser, and have no CREATEDB/CREATEROLE capability. The three login roles are NOINHERIT.
+- The only relevant role membership returned is ghm_schema_owner granted to ghm_migrator, with admin_option=false, inherit_option=false, set_option=true. This is consistent with the forensic audit's explicit SET ROLE ghm_schema_owner transition. No membership path from runtime or payment-provider to schema owner was returned.
+- No schema, data, ledger, role, grant, password, or configuration change was made by this inspection.
+
+### Interpretation and next gate
+
+The database has a populated 92-row ledger and a structurally appropriate migrator-to-owner SET ROLE path. This does not yet prove repository checksum reconciliation, provenance exception validity, complete object ownership/grants, or PayFast qualification. The next action is to run npm run audit:migrations in read-only mode with GHM_MIGRATION_AUDIT_DATABASE=ghm_payfast_qualification and a verified local GHM_MIGRATOR_DATABASE_URL targeting only port 5433. Do not run npm run migrate, seed, reset, or qualification scripts until that audit and the remaining target/ownership checks are reviewed.
+
+PostgreSQL 17 on port 5432 remains outside scope. Render, production, deployment, hosted credentials, and PayFast live/sandbox services remain untouched.
