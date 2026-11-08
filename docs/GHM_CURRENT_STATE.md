@@ -310,3 +310,6 @@ Draft PR [#237](https://github.com/zaidhqdev-sys/GHM/pull/237) now contains the 
 
 
 **Local PostgreSQL 18 recovery attempt (14:37 UTC):** temporary narrowly scoped HBA rule was added and PostgreSQL 18 service restarted, but psql to 127.0.0.1:5432 still failed with password authentication. Do not broaden trust or retry credentials. Restore the exact saved pg_hba.conf backup and restart PostgreSQL 18 first; verify hash equality. Then identify listener PID/port and confirm service data directory and active HBA path. A PostgreSQL 17/18 port collision or alternate listener is only a possibility pending diagnostics. No local password reset or DB setup, Render dump, migration, or production changes. Detailed handover updated.
+
+
+**Local PostgreSQL listener checkpoint (14:41 UTC):** exact original PostgreSQL 18 pg_hba.conf backup restored and SHA-256 verified equal (0C8DC6E6E57399790417A6E13A8E1B5E27AA19708A2122148FBFE3BDCECD42). Both PG17 and PG18 Windows services report Running, but Windows found no TCP listener on port 5432 at the time of inspection. Diagnose actual postgres.exe processes, listening ports, configured port/listen_addresses, and recent server logs before another authentication attempt. No HBA changes remain, no password reset/DB setup, Render access, dump, migration, or production changes. See detailed handover.
