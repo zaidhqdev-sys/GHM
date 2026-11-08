@@ -587,3 +587,8 @@ No Render DB data was exported or modified by this assistant. No production migr
 ### Owner workstation clone setup blocked — 2026-11-08 14:19 UTC
 
 Owner created the dedicated temporary PR clone successfully at `C:\Users\zaidh\AppData\Local\Temp\GHM-profile-clone-43533b1379824738b87a8bf7d8754b26`, exact source SHA `d9151d936fa3edcde1bb5a5c050811a37db27166`. This is the PR branch clone, not `C:\GHM-main`. Local PostgreSQL role/database setup did not execute because PowerShell could not resolve `psql` (`psql : The term 'psql' is not recognized`). No local roles/database were created by that command; no `pg_dump`, Render connection, schema export, restore, migration, or qualification was attempted. Next step is locate an existing PostgreSQL installation/client tools or install PostgreSQL 18 command-line tools/server; verify both `psql.exe` and `pg_dump.exe` before retrying. Do not proceed to Render dump until local tooling is confirmed. No production changes.
+
+
+### PostgreSQL 17/18 installations discovered — 2026-11-08 14:24 UTC
+
+Owner workstation reports PostgreSQL Windows services `postgresql-x64-17` and `postgresql-x64-18` both Running, with installations at `C:\Program Files\PostgreSQL\17` and `C:\Program Files\PostgreSQL\18`. Neither `psql`, `pg_dump`, nor `pg_restore` is on PATH; Docker command not found. No local setup or Render dump attempted. Next: use PostgreSQL 18 `bin\psql.exe`, `pg_dump.exe`, and `pg_restore.exe` by absolute path after verifying they exist; target only the already-running local PostgreSQL 18 service. Do not touch PostgreSQL 17 or production.
