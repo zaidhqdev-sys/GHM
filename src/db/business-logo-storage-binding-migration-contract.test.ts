@@ -72,3 +72,10 @@ test("storage completion inspects image bytes and enforces signature and pixel l
   assert.match(imageValidator, /MAX_BYTES = 2 \* 1024 \* 1024/);
   assert.match(imageValidator, /MAX_EDGE = 2048/);
 });
+
+test("logo binding migration leaves transaction boundaries to the migration runner", () => {
+  const migrationRunner = fs.readFileSync("src/db/migrate.ts", "utf8");
+  assert.match(migrationRunner, /await client\.query\('BEGIN'\)/);
+  assert.match(migrationRunner, /await client\.query\('COMMIT'\)/);
+  assert.doesNotMatch(migration, /^\s*(BEGIN|COMMIT|ROLLBACK)\s*;/im);
+});
