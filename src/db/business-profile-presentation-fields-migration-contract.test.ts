@@ -32,7 +32,7 @@ test('business tenure remains self-declared and is not a verified trust signal',
  assert.doesNotMatch(repository,/yearsInBusiness:[^\n]*insuranceVerified/);
 });
 
-const reconciled=fs.readFileSync(path.resolve(process.cwd(),'database/migrations/20261108200000_reconcile_business_profile_contract.sql'),'utf8');
+const reconciled=fs.readFileSync(path.resolve(process.cwd(),'database/migrations/20261108140000_reconcile_business_profile_contract.sql'),'utf8');
 
 test('forward-only Business profile reconciliation adds only missing coordinates idempotently',()=>{
  assert.match(reconciled,/ADD COLUMN IF NOT EXISTS latitude double precision/);
