@@ -349,3 +349,13 @@ The `20261019210000` retained-history entry points to historical blob `768173638
 For QuoteFlow version `20261020130000`, commit `5229b37700f2e21ac4caf2d4c5547bb929ab2de8` changes the migration's two verification-status literals from `unverified` to `pending`. This is useful provenance, but the full file has not yet been proven to hash to live checksum `3c09cc7ecb8f566f0d359832ad91cc7b644570220236713c02a0763a0521345b`; registry checksum `a453171e85f6717476258c6d2d59a39b663be89826316036e6b9891cadfb13e` still differs. Do not approve the retained-history entry without exact-byte verification.
 
 Audit verdict remains **INVESTIGATE**. No database, migration, ledger, registry, exception manifest, hosted resource, or deployment was changed; PostgreSQL 17/5432 remains untouched.
+
+## 2026-11-08 22:35 UTC — QuoteFlow applied migration bytes identified
+
+The live ledger checksum for `20261020130000_create_quoteflow_migration_business_provisioning` is now matched to exact historical SQL bytes. Parent commit `7fb1bbe07fc64ede652ae589ab72bdc96f23d906` (2026-10-26 20:30:50 UTC) contains blob `21731433c2a998fff8d86d628d3589f8768dd618`; SHA-256 of the complete 9,066-character file is `3c09cc7ecb8f566f0d359832ad91cc7b644570220236713c02a0763a0521345b`, exactly equal to the live ledger.
+
+Commit `5229b37700f2e21ac4caf2d4c5547bb929ab2de8` changed `unverified` to `pending` in two places. Its resulting blob `620efa57ac35d494f1aa506f26a7ad810c821d9a` hashes to `a453171e85f6717476258c6d2d59a39b663be89826316036e6b9891cadfb13e9`, which is the current retained-history registry checksum but not the live ledger checksum. The registry's claim that this `pending` version is the original applied checksum is contradicted by the exact `unverified` source match.
+
+The additive `20261020140000_reconcile_quoteflow_provisioning_verification_status.sql` at the same parent says the original migration had already been applied and that the schema check accepts `unverified`, not `pending`; its function continues to create `unverified` Businesses. That corroborates the exact live source match. `5229b37` therefore did not restore the applied bytes; it changed the historical migration after the fact.
+
+Do not edit the ledger, migration, or retained-history registry during this audit. Source provenance is identified, but registry correction requires a separate reviewed decision. Overall verdict remains **INVESTIGATE**; other extra/missing migrations and `20261019210000` retained-history validation remain open. No database or repository migration/manifest was changed.
