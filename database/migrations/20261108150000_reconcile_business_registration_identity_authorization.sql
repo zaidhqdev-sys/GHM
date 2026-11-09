@@ -100,40 +100,60 @@ BEGIN
     RAISE EXCEPTION 'Existing business_registration_identity table has an incompatible primary key';
   END IF;
 
-  SELECT c.confrelid, c.confdeltype, c.confupdtype, a.attname AS source_column,
-         target.relname AS target_table, target_attribute.attname AS target_column
+  SELECT
+         array_agg(source_attribute.attname ORDER BY source_key.ordinality) AS source_columns,
+         array_agg(target_attribute.attname ORDER BY source_key.ordinality) AS target_columns,
+         target_namespace.nspname AS target_schema,
+         target.relname AS target_table,
+         c.confdeltype,
+         c.confupdtype
     INTO business_fk
     FROM pg_catalog.pg_constraint c
     JOIN pg_catalog.pg_class target ON target.oid = c.confrelid
-    CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS k(attnum, ordinality)
-    JOIN pg_catalog.pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k.attnum
-    CROSS JOIN LATERAL unnest(c.confkey) WITH ORDINALITY AS fk(attnum, ordinality)
+    JOIN pg_catalog.pg_namespace target_namespace ON target_namespace.oid = target.relnamespace
+    CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS source_key(attnum, ordinality)
+    JOIN LATERAL unnest(c.confkey) WITH ORDINALITY AS target_key(attnum, ordinality)
+      ON target_key.ordinality = source_key.ordinality
+    JOIN pg_catalog.pg_attribute source_attribute
+      ON source_attribute.attrelid = c.conrelid AND source_attribute.attnum = source_key.attnum
     JOIN pg_catalog.pg_attribute target_attribute
-      ON target_attribute.attrelid = c.confrelid AND target_attribute.attnum = fk.attnum
+      ON target_attribute.attrelid = c.confrelid AND target_attribute.attnum = target_key.attnum
    WHERE c.conrelid = 'ghm.business_registration_identity'::regclass
      AND c.contype = 'f'
-     AND c.conname = 'business_registration_identity_business_id_fkey';
-  IF NOT FOUND OR business_fk.source_column <> 'business_id'
-     OR business_fk.target_table <> 'business' OR business_fk.target_column <> 'id'
+     AND c.conname = 'business_registration_identity_business_id_fkey'
+   GROUP BY target_namespace.nspname, target.relname, c.confdeltype, c.confupdtype;
+  IF NOT FOUND OR business_fk.source_columns IS DISTINCT FROM ARRAY['business_id']::text[]
+     OR business_fk.target_schema <> 'ghm' OR business_fk.target_table <> 'business'
+     OR business_fk.target_columns IS DISTINCT FROM ARRAY['id']::text[]
      OR business_fk.confdeltype <> 'c' OR business_fk.confupdtype <> 'a' THEN
     RAISE EXCEPTION 'Existing business_registration_identity table has an incompatible Business foreign key';
   END IF;
 
-  SELECT c.confdeltype, c.confupdtype, a.attname AS source_column,
-         target.relname AS target_table, target_attribute.attname AS target_column
+  SELECT
+         array_agg(source_attribute.attname ORDER BY source_key.ordinality) AS source_columns,
+         array_agg(target_attribute.attname ORDER BY source_key.ordinality) AS target_columns,
+         target_namespace.nspname AS target_schema,
+         target.relname AS target_table,
+         c.confdeltype,
+         c.confupdtype
     INTO account_fk
     FROM pg_catalog.pg_constraint c
     JOIN pg_catalog.pg_class target ON target.oid = c.confrelid
-    CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS k(attnum, ordinality)
-    JOIN pg_catalog.pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k.attnum
-    CROSS JOIN LATERAL unnest(c.confkey) WITH ORDINALITY AS fk(attnum, ordinality)
+    JOIN pg_catalog.pg_namespace target_namespace ON target_namespace.oid = target.relnamespace
+    CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS source_key(attnum, ordinality)
+    JOIN LATERAL unnest(c.confkey) WITH ORDINALITY AS target_key(attnum, ordinality)
+      ON target_key.ordinality = source_key.ordinality
+    JOIN pg_catalog.pg_attribute source_attribute
+      ON source_attribute.attrelid = c.conrelid AND source_attribute.attnum = source_key.attnum
     JOIN pg_catalog.pg_attribute target_attribute
-      ON target_attribute.attrelid = c.confrelid AND target_attribute.attnum = fk.attnum
+      ON target_attribute.attrelid = c.confrelid AND target_attribute.attnum = target_key.attnum
    WHERE c.conrelid = 'ghm.business_registration_identity'::regclass
      AND c.contype = 'f'
-     AND c.conname = 'business_registration_identity_updated_by_account_id_fkey';
-  IF NOT FOUND OR account_fk.source_column <> 'updated_by_account_id'
-     OR account_fk.target_table <> 'account_identity' OR account_fk.target_column <> 'id'
+     AND c.conname = 'business_registration_identity_updated_by_account_id_fkey'
+   GROUP BY target_namespace.nspname, target.relname, c.confdeltype, c.confupdtype;
+  IF NOT FOUND OR account_fk.source_columns IS DISTINCT FROM ARRAY['updated_by_account_id']::text[]
+     OR account_fk.target_schema <> 'ghm' OR account_fk.target_table <> 'account_identity'
+     OR account_fk.target_columns IS DISTINCT FROM ARRAY['id']::text[]
      OR account_fk.confdeltype <> 'r' OR account_fk.confupdtype <> 'a' THEN
     RAISE EXCEPTION 'Existing business_registration_identity table has an incompatible account foreign key';
   END IF;
