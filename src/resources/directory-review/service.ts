@@ -12,11 +12,6 @@ const validDecisions: readonly DirectoryReviewDecision[] = ['approve','reject','
 export class DirectoryReviewServiceImpl implements DirectoryReviewService {
   constructor(private readonly repository: DirectoryReviewRepository) {}
 
-  async isFounderReviewer(context: AuthContext): Promise<boolean> {
-    requireAuthenticatedContext(context);
-    return this.repository.isFounderReviewer(context);
-  }
-
   async submit(context: AuthContext, businessId: number): Promise<DirectoryReviewPresentation> {
     requireAuthenticatedContext(context);
     return this.repository.submit(context, positiveId(businessId));
