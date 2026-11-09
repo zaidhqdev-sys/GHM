@@ -4,6 +4,8 @@ import path from 'node:path';
 import test from 'node:test';
 
 const migration = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261105230000_create_founder_directory_review.sql'), 'utf8');
+const reconciliationMigration = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261107211500_reconcile_business_profile_and_founder_authority.sql'), 'utf8');
+const migrationRunner = fs.readFileSync(path.resolve(process.cwd(), 'src/db/migrate.ts'), 'utf8');
 // Static assertions protect the private Founder authority and publication boundary.
 const businessIdentity = fs.readFileSync(path.resolve(process.cwd(), 'src/resources/business-identity/public-repository.ts'), 'utf8');
 
@@ -38,4 +40,10 @@ test('owner submission requires a declared private registration identity and doe
   const submit = migration.slice(migration.indexOf('CREATE OR REPLACE FUNCTION ghm.submit_business_directory_review'), migration.indexOf('CREATE OR REPLACE FUNCTION ghm.list_businesses_for_directory_review'));
   assert.match(submit, /verification_status='under_review', is_verified=false/);
   assert.match(submit, /v_prior_status/);
+});
+
+test('reconciliation migration leaves transaction boundaries to the migration runner', () => {
+  assert.match(migrationRunner, /await client\.query\('BEGIN'\)/);
+  assert.match(migrationRunner, /await client\.query\('COMMIT'\)/);
+  assert.doesNotMatch(reconciliationMigration, /^\s*(BEGIN|COMMIT|ROLLBACK)\s*;/im);
 });

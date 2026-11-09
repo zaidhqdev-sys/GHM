@@ -8,7 +8,7 @@ const identityRepository = fs.readFileSync("src/resources/business-identity/repo
 const publicRepository = fs.readFileSync("src/resources/business-identity/public-repository.ts", "utf8");
 
 test("Business logo reference is stored on the canonical GHM Business row", () => {
-  assert.match(migration, /ADD COLUMN logo_storage_object_id bigint/);
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS logo_storage_object_id bigint/);
   assert.match(migration, /REFERENCES ghm\.storage_object\(id\) ON DELETE SET NULL/);
   assert.match(migration, /business_logo_storage_object_unique/);
   assert.match(identityRepository, /logo_storage_object_id/);
@@ -71,4 +71,11 @@ test("storage completion inspects image bytes and enforces signature and pixel l
   assert.match(imageValidator, /image\/webp/);
   assert.match(imageValidator, /MAX_BYTES = 2 \* 1024 \* 1024/);
   assert.match(imageValidator, /MAX_EDGE = 2048/);
+});
+
+test("logo binding migration leaves transaction boundaries to the migration runner", () => {
+  const migrationRunner = fs.readFileSync("src/db/migrate.ts", "utf8");
+  assert.match(migrationRunner, /await client\.query\('BEGIN'\)/);
+  assert.match(migrationRunner, /await client\.query\('COMMIT'\)/);
+  assert.doesNotMatch(migration, /^\s*(BEGIN|COMMIT|ROLLBACK)\s*;/im);
 });

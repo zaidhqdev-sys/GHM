@@ -7,6 +7,7 @@ import {
   classifyRetainedHistoricalMigration,
   migrationChecksum,
   legacyCrlfMigrationChecksum,
+  resolveMigrationAuditTarget,
 } from './migration-audit-checksum.mjs';
 
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
@@ -14,8 +15,10 @@ if (!databaseUrl) throw new Error('Missing required environment variable: GHM_MI
 
 const expectedDatabase = process.env.GHM_MIGRATION_AUDIT_DATABASE?.trim() || 'ghm_db';
 const migrationsDir = path.resolve(process.cwd(), 'database', 'migrations');
-const exceptionsPath = path.resolve(process.cwd(), 'config', 'historical-migration-provenance-exceptions.json');
-const retainedPath = path.resolve(process.cwd(), 'config', 'retained-historical-migrations.json');
+const auditTarget = resolveMigrationAuditTarget(expectedDatabase, process.env.GHM_MIGRATION_AUDIT_TARGET?.trim() || undefined);
+const exceptionsPath = path.resolve(process.cwd(), auditTarget.exceptionsPath);
+const retainedPath = path.resolve(process.cwd(), auditTarget.retainedPath);
+const allowPending = process.argv.includes('--allow-pending');
 const migrationPattern = /^(\d{14})_([a-z0-9][a-z0-9_-]*)\.sql$/;
 const sha256Pattern = /^[a-f0-9]{64}$/;
 
@@ -24,6 +27,7 @@ const client = new Client({
   ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
 });
 const fail = (message) => { throw new Error(message); };
+if (allowPending && auditTarget.target !== 'production') fail('Pending-migration allowance is restricted to the explicitly audited production pre-deploy target');
 
 const main = async () => {
   await client.connect();
@@ -64,6 +68,15 @@ const main = async () => {
     for (const [version, checksum] of Object.entries(exceptions)) {
       if (!/^\d{14}$/.test(version)) fail(`Invalid historical provenance exception version: ${version}`);
       if (typeof checksum !== 'string' || !sha256Pattern.test(checksum)) fail(`Invalid historical provenance exception checksum for ${version}`);
+    }
+
+    let pendingAllowlist = [];
+    if (allowPending) {
+      pendingAllowlist = JSON.parse(await fs.readFile(path.resolve(process.cwd(), auditTarget.pendingPath), 'utf8'));
+      if (!Array.isArray(pendingAllowlist) || pendingAllowlist.some((item) =>
+        !item || typeof item.version !== 'string' || !/^\d{14}$/.test(item.version) ||
+        typeof item.name !== 'string' || !item.name
+      )) fail('Production pending migration allowlist must be an array of version/name records');
     }
 
     const retained = JSON.parse(await fs.readFile(retainedPath, 'utf8'));
@@ -159,8 +172,14 @@ const main = async () => {
     const orphanedExceptions = exceptionAudit.filter((item) => item.status === 'ORPHANED');
     const redundantExceptions = exceptionAudit.filter((item) => item.status === 'REDUNDANT');
 
+    const actualPending = missing.map(({ version, name }) => ({ version, name })).sort((a, b) => a.version.localeCompare(b.version));
+    const expectedPending = [...pendingAllowlist].sort((a, b) => a.version.localeCompare(b.version));
+    const pendingAllowlistMatches = !allowPending
+      ? missing.length === 0
+      : JSON.stringify(actualPending) === JSON.stringify(expectedPending);
+
     const verdict =
-      authorityPass && missing.length === 0 && unrecognizedExtra.length === 0 &&
+      authorityPass && pendingAllowlistMatches && unrecognizedExtra.length === 0 &&
       unexplainedMismatches.length === 0 && nameMismatches.length === 0 &&
       orphanedExceptions.length === 0 && invalidRetained.length === 0;
 
@@ -170,6 +189,8 @@ const main = async () => {
         before: beforeIdentity, after: afterIdentity,
       },
       migrations: {
+        target: auditTarget.target, pending_migrations_allowed: allowPending,
+        pending_allowlist_match: pendingAllowlistMatches, expected_pending_migrations: expectedPending,
         repository_count: repository.length, live_ledger_count: ledger.rows.length,
         canonical_match_count: exactMatches.length,
         supported_legacy_crlf_match_count: legacyLineEndingMatches.length,
@@ -184,10 +205,11 @@ const main = async () => {
         approved_historical_matches: approvedHistoricalMatches, missing,
         unexplained_mismatches: unexplainedMismatches, name_mismatches: nameMismatches,
         extra, approved_retained_historical: approvedRetainedHistorical,
-        unrecognized_extra: unrecognizedExtra, retained_history_audit: retainedAudit,
+        unrecognized_extra: unrecognizedExtra, pending_migrations: missing,
+        pending_allowlist_mismatch_count: pendingAllowlistMatches ? 0 : 1, retained_history_audit: retainedAudit,
         historical_exception_audit: exceptionAudit,
       },
-      verdict: verdict ? 'PASS' : 'INVESTIGATE',
+      verdict: verdict ? (missing.length && allowPending ? 'PASS_WITH_PENDING' : 'PASS') : 'INVESTIGATE',
     }, null, 2));
     if (!verdict) process.exitCode = 2;
   } finally {

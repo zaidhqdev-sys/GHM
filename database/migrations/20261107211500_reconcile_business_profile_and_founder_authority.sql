@@ -2,7 +2,6 @@
 -- Safe to apply when some profile fields already exist. This migration does not
 -- seed reviewer identities or change any Business verification state.
 
-BEGIN;
 
 ALTER TABLE ghm.business
   ADD COLUMN IF NOT EXISTS latitude double precision,
@@ -86,4 +85,3 @@ ALTER FUNCTION ghm.is_directory_listing_founder_reviewer(bigint)
 REVOKE ALL ON FUNCTION ghm.is_directory_listing_founder_reviewer(bigint) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ghm.is_directory_listing_founder_reviewer(bigint) TO ghm_runtime;
 
-COMMIT;

@@ -9,11 +9,11 @@ if (!runtimeUrl || !migratorUrl || runtimeUrl === migratorUrl) throw new Error('
 const { BusinessCapabilityServiceImpl } = await import('../dist/resources/business-capability/service.js');
 const { PostgresBusinessCapabilityRepository } = await import('../dist/resources/business-capability/repository.js');
 
-const ssl = { rejectUnauthorized: false };
+const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false;
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
 const cleanupPool = new Pool({ connectionString: migratorUrl, ssl });
 const marker = `ghm-business-capability-lifecycle-${randomUUID()}`;
-const ids = { accounts: [], businesses: [], capabilities: [], businessCapabilities: [] };
+const ids = { accounts: [], businesses: [], capabilities: [], businessCapabilities: [], evidenceIds: [] };
 
 const expectReject = async (work, label, text) => {
   try { await work(); }
@@ -30,6 +30,8 @@ const cleanup = async () => {
   try {
     await client.query('BEGIN');
     await client.query('SET LOCAL ROLE ghm_schema_owner');
+    if (ids.evidenceIds.length) await client.query('DELETE FROM ghm.business_capability_evidence WHERE id = ANY($1::bigint[])', [ids.evidenceIds]);
+    if (ids.businesses.length) await client.query('DELETE FROM ghm.business_capability WHERE business_id = ANY($1::bigint[])', [ids.businesses]);
     if (ids.businessCapabilities.length) await client.query('DELETE FROM ghm.business_capability WHERE id = ANY($1::bigint[])', [ids.businessCapabilities]);
     if (ids.businesses.length) await client.query('DELETE FROM ghm.business WHERE id = ANY($1::bigint[])', [ids.businesses]);
     if (ids.capabilities.length) await client.query('DELETE FROM ghm.capability WHERE id = ANY($1::uuid[])', [ids.capabilities]);
@@ -70,16 +72,20 @@ try {
     );
 
     const capabilityId = randomUUID();
-    ids.capabilities.push(capabilityId);
+    const alternateCapabilityId = randomUUID();
+    ids.capabilities.push(capabilityId, alternateCapabilityId);
     await client.query(
       `INSERT INTO ghm.capability (id, name, slug, lifecycle_status, taxonomy_version, source_authority, is_selectable)
-       VALUES ($1, $2, $3, 'active', 1, 'GHM qualification', true)`,
-      [capabilityId, `${marker} capability`, `${marker}-capability`],
+       VALUES ($1, $2, $3, 'active', 1, 'GHM qualification', true),
+              ($4, $5, $6, 'active', 1, 'GHM qualification', true)`,
+      [capabilityId, `${marker} capability`, `${marker}-capability`, alternateCapabilityId, `${marker} alternate capability`, `${marker}-alternate-capability`],
     );
     await client.query('COMMIT');
-    fixture = { ownerId, verifierId, customerId, businessId, capabilityId };
+    fixture = { ownerId, verifierId, customerId, businessId, capabilityId, alternateCapabilityId };
   } catch (error) { await client.query('ROLLBACK').catch(() => {}); throw error; }
   finally { client.release(); }
+
+  const { businessId, ownerId, verifierId, capabilityId, alternateCapabilityId } = fixture;
 
   const repository = new PostgresBusinessCapabilityRepository(runtimePool);
   const service = new BusinessCapabilityServiceImpl(repository);
@@ -150,6 +156,128 @@ try {
     'permission denied',
   );
 
+  // Exercise the migration's Business-row lock with two independent runtime sessions.
+  // The final active assertion set must be exactly one submitted replacement set, never a mix.
+  const replacementA = [{ capabilityId, proficiencyLevel: 'advanced', description: 'replacement A', sourceReference: 'qualification-A' }];
+  const replacementB = [{ capabilityId: alternateCapabilityId, proficiencyLevel: 'expert', description: 'replacement B', sourceReference: 'qualification-B' }];
+  const concurrentReplacement = await Promise.allSettled([
+    runtimePool.query('SELECT * FROM ghm.replace_business_capability_assertions($1, $2, $3::jsonb)', [businessId, ownerId, JSON.stringify(replacementA)]),
+    runtimePool.query('SELECT * FROM ghm.replace_business_capability_assertions($1, $2, $3::jsonb)', [businessId, ownerId, JSON.stringify(replacementB)]),
+  ]);
+  const replacementFailures = concurrentReplacement.filter(result => result.status === 'rejected');
+  if (replacementFailures.length) throw new Error(`Concurrent assertion replacement failed: ${replacementFailures.map(result => result.reason?.message).join('; ')}`);
+  const activeAfterReplacement = await runtimePool.query(
+    `SELECT capability_id, description, source_reference
+       FROM ghm.business_capability
+      WHERE business_id = $1 AND assertion_status = 'active'`,
+    [businessId],
+  );
+  const activeIds = activeAfterReplacement.rows.map(row => row.capability_id);
+  const finalSetIsA = activeIds.length === 1 && activeIds[0] === capabilityId
+    && activeAfterReplacement.rows[0].description === 'replacement A'
+    && activeAfterReplacement.rows[0].source_reference === 'qualification-A';
+  const finalSetIsB = activeIds.length === 1 && activeIds[0] === alternateCapabilityId
+    && activeAfterReplacement.rows[0].description === 'replacement B'
+    && activeAfterReplacement.rows[0].source_reference === 'qualification-B';
+  if (!finalSetIsA && !finalSetIsB) throw new Error(`Concurrent replacements produced a mixed or partial set: ${JSON.stringify(activeAfterReplacement.rows)}`);
+  console.log(`TWO-SESSION ASSERTION REPLACEMENT SERIALIZATION PASS: final set=${finalSetIsA ? 'A' : 'B'}`);
+
+  // Runtime evidence submission must use the database's pending default.
+  const statusPrivilege = await runtimePool.query(
+    "SELECT has_column_privilege(current_user, 'ghm.business_capability_evidence', 'verification_status', 'INSERT') AS allowed"
+  );
+  if (statusPrivilege.rows[0].allowed !== false) throw new Error('Runtime may explicitly set evidence verification_status');
+  await runtimePool.query(
+    `INSERT INTO ghm.business_capability_evidence
+       (business_capability_id, evidence_type, title, submitted_by, visibility)
+     VALUES ($1, 'certification', 'Runtime submission qualification', $2, 'private')`,
+    [created.id, fixture.ownerId],
+  );
+  const evidenceStatusClient = await cleanupPool.connect();
+  let submittedEvidenceId;
+  let submittedEvidenceStatus;
+  try {
+    await evidenceStatusClient.query('BEGIN');
+    await evidenceStatusClient.query('SET LOCAL ROLE ghm_schema_owner');
+    const status = await evidenceStatusClient.query(
+      `SELECT id, verification_status
+         FROM ghm.business_capability_evidence
+        WHERE business_capability_id = $1
+          AND submitted_by = $2
+          AND title = 'Runtime submission qualification'
+        ORDER BY id DESC
+        LIMIT 1`,
+      [created.id, fixture.ownerId],
+    );
+    submittedEvidenceId = Number(status.rows[0]?.id);
+    submittedEvidenceStatus = status.rows[0]?.verification_status;
+    await evidenceStatusClient.query('COMMIT');
+  } catch (error) {
+    await evidenceStatusClient.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    evidenceStatusClient.release();
+  }
+  if (!submittedEvidenceId || submittedEvidenceStatus !== 'pending') throw new Error('Runtime evidence did not default to pending');
+  console.log('RUNTIME EVIDENCE STATUS PRIVILEGE PASS');
+  ids.evidenceIds.push(submittedEvidenceId);
+  const removeSubmission = await cleanupPool.connect();
+  try {
+    await removeSubmission.query('BEGIN');
+    await removeSubmission.query('SET LOCAL ROLE ghm_schema_owner');
+    await removeSubmission.query('DELETE FROM ghm.business_capability_evidence WHERE id = $1', [submittedEvidenceId]);
+    await removeSubmission.query('COMMIT');
+    ids.evidenceIds.pop();
+  } catch (error) {
+    await removeSubmission.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    removeSubmission.release();
+  }
+  // Two evidence rows exercise aggregate parent state across separate decisions.
+  const evidenceClient = await cleanupPool.connect();
+  try {
+    await evidenceClient.query('BEGIN');
+    await evidenceClient.query('SET LOCAL ROLE ghm_schema_owner');
+    const evidenceRows = await evidenceClient.query(
+      `INSERT INTO ghm.business_capability_evidence
+         (business_capability_id, evidence_type, title, submitted_by, visibility)
+       VALUES ($1, 'certification', 'Qualification evidence A', $2, 'private'),
+              ($1, 'licence', 'Qualification evidence B', $2, 'private')
+       RETURNING id`,
+      [created.id, fixture.ownerId],
+    );
+    ids.evidenceIds.push(...evidenceRows.rows.map(row => Number(row.id)));
+    await evidenceClient.query('COMMIT');
+  } catch (error) { await evidenceClient.query('ROLLBACK').catch(() => {}); throw error; }
+  finally { evidenceClient.release(); }
+
+  await runtimePool.query(
+    'SELECT ghm.transition_business_capability_evidence($1, $2, $3, $4)',
+    [ids.evidenceIds[0], 'rejected', fixture.verifierId, 'Qualification rejection fixture'],
+  );
+  const afterFirstEvidenceDecision = await runtimePool.query(
+    'SELECT verification_status FROM ghm.business_capability WHERE id = $1', [created.id],
+  );
+  if (afterFirstEvidenceDecision.rows[0]?.verification_status !== 'pending') {
+    throw new Error(`Parent assertion left pending while another evidence item remained pending: ${JSON.stringify(afterFirstEvidenceDecision.rows[0])}`);
+  }
+  console.log('MULTI-ROW EVIDENCE AGGREGATION PASS: rejected item does not reject parent while another remains pending');
+
+  await runtimePool.query(
+    'SELECT ghm.transition_business_capability_evidence($1, $2, $3, $4)',
+    [ids.evidenceIds[1], 'verified', fixture.verifierId, null],
+  );
+  const afterFinalEvidenceDecision = await runtimePool.query(
+    'SELECT verification_status, verified_by, verified_at FROM ghm.business_capability WHERE id = $1', [created.id],
+  );
+  if (afterFinalEvidenceDecision.rows[0]?.verification_status !== 'verified'
+      || Number(afterFinalEvidenceDecision.rows[0]?.verified_by) !== fixture.verifierId
+      || !afterFinalEvidenceDecision.rows[0]?.verified_at) {
+    throw new Error(`Parent assertion did not become verified after remaining evidence was verified: ${JSON.stringify(afterFinalEvidenceDecision.rows[0])}`);
+  }
+  console.log('MULTI-ROW EVIDENCE FINAL VERIFICATION PASS');
+
   const privilege = await runtimePool.query(
     `SELECT has_table_privilege(current_user, 'ghm.business_capability', 'UPDATE') AS can_update,
             has_table_privilege(current_user, 'ghm.business_capability', 'DELETE') AS can_delete,
@@ -160,8 +288,8 @@ try {
   console.log('RUNTIME PRIVILEGE BOUNDARY PASS: UPDATE=no DELETE=no TRANSITION=execute');
 
   const final = await service.getBusinessCapability(owner, created.id);
-  if (!final || final.description !== created.description || final.verificationStatus !== 'pending') throw new Error('Final persisted state reconciliation failed');
-  console.log('PERSISTED ASSERTION IMMUTABILITY RECONCILIATION PASS');
+  if (!final || final.verificationStatus !== 'verified') throw new Error(`Final persisted evidence state reconciliation failed: ${JSON.stringify(final)}`);
+  console.log('PERSISTED EVIDENCE STATE RECONCILIATION PASS');
   console.log('GHM BUSINESS CAPABILITY LIFECYCLE RUNTIME QUALIFICATION: PASS');
 } finally {
   await cleanup();

@@ -1,55 +1,3 @@
--- Store self-declared Business registration identity separately from public Business projections.
--- No registration facts are independently verified by this resource.
-CREATE TABLE ghm.business_registration_identity (
-  business_id bigint PRIMARY KEY
-    REFERENCES ghm.business(id)
-    ON DELETE CASCADE,
-  registration_status text NULL,
-  registration_number text NULL,
-  legal_name text NULL,
-  updated_by_account_id bigint NULL
-    REFERENCES ghm.account_identity(id)
-    ON DELETE RESTRICT,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-
-  CONSTRAINT business_registration_identity_status_check
-    CHECK (registration_status IS NULL OR registration_status IN ('registered', 'unregistered')),
-  CONSTRAINT business_registration_identity_registration_number_length_check
-    CHECK (registration_number IS NULL OR length(btrim(registration_number)) BETWEEN 1 AND 120),
-  CONSTRAINT business_registration_identity_legal_name_length_check
-    CHECK (legal_name IS NULL OR length(btrim(legal_name)) BETWEEN 1 AND 200),
-  CONSTRAINT business_registration_identity_declaration_shape_check
-    CHECK (
-      (registration_status IS NULL AND registration_number IS NULL AND legal_name IS NULL)
-      OR (
-        registration_status = 'registered'
-        AND registration_number IS NOT NULL
-        AND legal_name IS NOT NULL
-        AND length(btrim(registration_number)) BETWEEN 1 AND 120
-        AND length(btrim(legal_name)) BETWEEN 1 AND 200
-      )
-      OR (
-        registration_status = 'unregistered'
-        AND registration_number IS NULL
-        AND legal_name IS NULL
-      )
-    )
-);
-
-COMMENT ON TABLE ghm.business_registration_identity IS
-  'Private self-declared Business registration identity. Not independent proof of registration and never part of public Business projections.';
-COMMENT ON COLUMN ghm.business_registration_identity.registration_number IS
-  'Private self-declared registration number. Do not expose in public directory or ordinary Business identity projections.';
-COMMENT ON COLUMN ghm.business_registration_identity.legal_name IS
-  'Private self-declared legal name. Do not expose in public directory or ordinary Business identity projections.';
-
-ALTER TABLE ghm.business_registration_identity ENABLE ROW LEVEL SECURITY;
-ALTER TABLE ghm.business_registration_identity OWNER TO ghm_schema_owner;
-
-REVOKE ALL ON TABLE ghm.business_registration_identity FROM PUBLIC;
-REVOKE ALL ON TABLE ghm.business_registration_identity FROM ghm_runtime;
-
 CREATE OR REPLACE FUNCTION ghm.read_business_registration_identity(
   p_account_id bigint,
   p_business_id bigint
@@ -75,7 +23,6 @@ BEGIN
     FROM ghm.business b
     JOIN ghm.business_membership bm ON bm.business_id = b.id
     WHERE b.id = p_business_id
-      AND b.is_active = true
       AND bm.account_id = p_account_id
       AND bm.membership_status = 'active'
       AND bm.membership_role IN ('owner', 'administrator')
@@ -125,7 +72,6 @@ BEGIN
     FROM ghm.business b
     JOIN ghm.business_membership bm ON bm.business_id = b.id
     WHERE b.id = p_business_id
-      AND b.is_active = true
       AND bm.account_id = p_account_id
       AND bm.membership_status = 'active'
       AND bm.membership_role IN ('owner', 'administrator')

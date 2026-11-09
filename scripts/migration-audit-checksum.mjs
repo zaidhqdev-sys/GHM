@@ -42,3 +42,27 @@ export const classifyHistoricalException = ({ version, registeredChecksum, live,
     reason: 'historical_hash_is_provenance_not_a_required_current_ledger_hash',
   };
 };
+
+const migrationAuditTargets = {
+  production: {
+    databases: ['ghm_db'],
+    exceptionsPath: 'config/historical-migration-provenance-exceptions.production.json',
+    retainedPath: 'config/retained-historical-migrations.production.json',
+    pendingPath: 'config/pending-migrations.production.json',
+  },
+  qualification: {
+    databases: ['ghm_payfast_qualification', 'ghm_disposable_test'],
+    exceptionsPath: 'config/historical-migration-provenance-exceptions.qualification.json',
+    retainedPath: 'config/retained-historical-migrations.qualification.json',
+  },
+};
+
+export const resolveMigrationAuditTarget = (database, requestedTarget) => {
+  const inferredTarget = database === 'ghm_db' ? 'production'
+    : ['ghm_payfast_qualification', 'ghm_disposable_test'].includes(database) ? 'qualification' : null;
+  const target = requestedTarget || inferredTarget;
+  const config = migrationAuditTargets[target];
+  if (!config) throw new Error('Unsupported migration audit target/database: target=' + (requestedTarget || 'auto') + ', database=' + database);
+  if (!config.databases.includes(database)) throw new Error('Migration audit target ' + target + ' is not valid for database ' + database);
+  return { target, ...config };
+};

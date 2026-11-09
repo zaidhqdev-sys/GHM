@@ -1,10 +1,8 @@
-BEGIN;
-
 ALTER TABLE ghm.business
-  ADD COLUMN logo_storage_object_id bigint
+  ADD COLUMN IF NOT EXISTS logo_storage_object_id bigint
     REFERENCES ghm.storage_object(id) ON DELETE SET NULL;
 
-CREATE UNIQUE INDEX business_logo_storage_object_unique
+CREATE UNIQUE INDEX IF NOT EXISTS business_logo_storage_object_unique
   ON ghm.business (logo_storage_object_id)
   WHERE logo_storage_object_id IS NOT NULL;
 
@@ -119,4 +117,3 @@ REVOKE ALL ON FUNCTION ghm.storage_get_public_business_logo(bigint) FROM ghm_mig
 GRANT EXECUTE ON FUNCTION ghm.storage_get_public_business_logo(bigint) TO ghm_runtime;
 GRANT EXECUTE ON FUNCTION ghm.storage_get_public_business_logo(bigint) TO ghm_schema_owner;
 
-COMMIT;

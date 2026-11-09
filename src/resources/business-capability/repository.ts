@@ -49,6 +49,8 @@ export class PostgresBusinessCapabilityRepository implements BusinessCapabilityR
            AND c.lifecycle_status = 'active'
            AND bc_assertion.effective_from <= now()
            AND (bc_assertion.effective_until IS NULL OR bc_assertion.effective_until > now())
+           -- The SECURITY DEFINER predicate exposes only public eligibility, never evidence rows.
+           AND ghm.is_business_capability_publicly_evidence_eligible(bc_assertion.id)
          ORDER BY c.sort_order, c.name, bc_assertion.id`,
         [id],
       );

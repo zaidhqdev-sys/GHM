@@ -3,34 +3,73 @@
 -- Canonical owner remains ghm.business / Business Identity.
 
 ALTER TABLE ghm.business
-  ADD COLUMN province text,
-  ADD COLUMN city text,
-  ADD COLUMN physical_address text,
-  ADD COLUMN latitude double precision,
-  ADD COLUMN longitude double precision,
-  ADD COLUMN whatsapp text,
-  ADD COLUMN website text,
-  ADD COLUMN avatar_letter text,
-  ADD COLUMN avatar_color text,
-  ADD COLUMN years_in_business integer;
+  ADD COLUMN IF NOT EXISTS province text,
+  ADD COLUMN IF NOT EXISTS city text,
+  ADD COLUMN IF NOT EXISTS physical_address text,
+  ADD COLUMN IF NOT EXISTS latitude double precision,
+  ADD COLUMN IF NOT EXISTS longitude double precision,
+  ADD COLUMN IF NOT EXISTS whatsapp text,
+  ADD COLUMN IF NOT EXISTS website text,
+  ADD COLUMN IF NOT EXISTS avatar_letter text,
+  ADD COLUMN IF NOT EXISTS avatar_color text,
+  ADD COLUMN IF NOT EXISTS years_in_business integer;
 
-ALTER TABLE ghm.business
-  ADD CONSTRAINT business_province_length_check CHECK (province IS NULL OR length(btrim(province)) BETWEEN 1 AND 120),
-  ADD CONSTRAINT business_city_length_check CHECK (city IS NULL OR length(btrim(city)) BETWEEN 1 AND 120),
-  ADD CONSTRAINT business_physical_address_length_check CHECK (physical_address IS NULL OR length(btrim(physical_address)) BETWEEN 1 AND 500),
-  ADD CONSTRAINT business_latitude_range_check CHECK (latitude IS NULL OR latitude BETWEEN -90 AND 90),
-  ADD CONSTRAINT business_longitude_range_check CHECK (longitude IS NULL OR longitude BETWEEN -180 AND 180),
-  ADD CONSTRAINT business_coordinates_pair_check CHECK ((latitude IS NULL) = (longitude IS NULL)),
-  ADD CONSTRAINT business_whatsapp_length_check CHECK (whatsapp IS NULL OR length(btrim(whatsapp)) BETWEEN 7 AND 32),
-  ADD CONSTRAINT business_website_length_check CHECK (website IS NULL OR length(btrim(website)) BETWEEN 8 AND 2048),
-  ADD CONSTRAINT business_avatar_letter_length_check CHECK (avatar_letter IS NULL OR length(btrim(avatar_letter)) BETWEEN 1 AND 3),
-  ADD CONSTRAINT business_avatar_color_length_check CHECK (avatar_color IS NULL OR length(btrim(avatar_color)) BETWEEN 1 AND 32),
-  ADD CONSTRAINT business_years_in_business_range_check CHECK (years_in_business IS NULL OR years_in_business BETWEEN 0 AND 100);
+-- Existing Business schemas may already enforce these fields under the
+-- established business_directory_* constraint names. Reuse those contracts
+-- instead of adding weaker or conflicting duplicate checks.
+DO $constraints$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'ghm.business'::regclass AND conname IN ('business_province_length_check', 'business_directory_province_check')) THEN
+    ALTER TABLE ghm.business ADD CONSTRAINT business_province_length_check
+      CHECK (province IS NULL OR length(btrim(province)) BETWEEN 1 AND 100);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'ghm.business'::regclass AND conname IN ('business_city_length_check', 'business_directory_city_check')) THEN
+    ALTER TABLE ghm.business ADD CONSTRAINT business_city_length_check
+      CHECK (city IS NULL OR length(btrim(city)) BETWEEN 1 AND 120);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'ghm.business'::regclass AND conname IN ('business_physical_address_length_check', 'business_directory_address_check')) THEN
+    ALTER TABLE ghm.business ADD CONSTRAINT business_physical_address_length_check
+      CHECK (physical_address IS NULL OR length(btrim(physical_address)) BETWEEN 1 AND 500);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'ghm.business'::regclass AND conname = 'business_latitude_range_check') THEN
+    ALTER TABLE ghm.business ADD CONSTRAINT business_latitude_range_check
+      CHECK (latitude IS NULL OR latitude BETWEEN -90 AND 90);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'ghm.business'::regclass AND conname = 'business_longitude_range_check') THEN
+    ALTER TABLE ghm.business ADD CONSTRAINT business_longitude_range_check
+      CHECK (longitude IS NULL OR longitude BETWEEN -180 AND 180);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'ghm.business'::regclass AND conname = 'business_coordinates_pair_check') THEN
+    ALTER TABLE ghm.business ADD CONSTRAINT business_coordinates_pair_check
+      CHECK ((latitude IS NULL) = (longitude IS NULL));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'ghm.business'::regclass AND conname IN ('business_whatsapp_length_check', 'business_directory_whatsapp_check')) THEN
+    ALTER TABLE ghm.business ADD CONSTRAINT business_whatsapp_length_check
+      CHECK (whatsapp IS NULL OR length(btrim(whatsapp)) BETWEEN 7 AND 32);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'ghm.business'::regclass AND conname IN ('business_website_length_check', 'business_directory_website_check')) THEN
+    ALTER TABLE ghm.business ADD CONSTRAINT business_website_length_check
+      CHECK (website IS NULL OR length(btrim(website)) BETWEEN 8 AND 2048);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'ghm.business'::regclass AND conname IN ('business_avatar_letter_length_check', 'business_directory_avatar_letter_check')) THEN
+    ALTER TABLE ghm.business ADD CONSTRAINT business_avatar_letter_length_check
+      CHECK (avatar_letter IS NULL OR length(btrim(avatar_letter)) BETWEEN 1 AND 3);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'ghm.business'::regclass AND conname IN ('business_avatar_color_length_check', 'business_directory_avatar_color_check')) THEN
+    ALTER TABLE ghm.business ADD CONSTRAINT business_avatar_color_length_check
+      CHECK (avatar_color IS NULL OR avatar_color ~ '^#[0-9A-Fa-f]{6}$');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'ghm.business'::regclass AND conname IN ('business_years_in_business_range_check', 'business_directory_years_in_business_check')) THEN
+    ALTER TABLE ghm.business ADD CONSTRAINT business_years_in_business_range_check
+      CHECK (years_in_business IS NULL OR years_in_business BETWEEN 0 AND 500);
+  END IF;
+END;
+$constraints$;
 
-CREATE INDEX business_public_directory_location_idx
+CREATE INDEX IF NOT EXISTS business_public_directory_location_idx
   ON ghm.business (province, city, id)
   WHERE is_active = true AND is_verified = true AND verification_status = 'approved';
-CREATE INDEX business_public_directory_geo_idx
+CREATE INDEX IF NOT EXISTS business_public_directory_geo_idx
   ON ghm.business (latitude, longitude, id)
   WHERE is_active = true AND is_verified = true AND verification_status = 'approved'
     AND latitude IS NOT NULL AND longitude IS NOT NULL;
@@ -121,7 +160,7 @@ BEGIN
   IF p_patch ? 'province' THEN
     IF p_patch->'province' = 'null'::jsonb THEN next_province := NULL;
     ELSIF jsonb_typeof(p_patch->'province') <> 'string' THEN RAISE EXCEPTION 'Province must be text or null';
-    ELSE next_province := nullif(btrim(p_patch->>'province'), ''); IF next_province IS NOT NULL AND length(next_province) > 120 THEN RAISE EXCEPTION 'Province must be 120 characters or fewer'; END IF; END IF;
+    ELSE next_province := nullif(btrim(p_patch->>'province'), ''); IF next_province IS NOT NULL AND length(next_province) > 100 THEN RAISE EXCEPTION 'Province must be 100 characters or fewer'; END IF; END IF;
   END IF;
   IF p_patch ? 'city' THEN
     IF p_patch->'city' = 'null'::jsonb THEN next_city := NULL;
@@ -168,12 +207,12 @@ BEGIN
   IF p_patch ? 'avatar_color' THEN
     IF p_patch->'avatar_color' = 'null'::jsonb THEN next_avatar_color := NULL;
     ELSIF jsonb_typeof(p_patch->'avatar_color') <> 'string' THEN RAISE EXCEPTION 'Avatar color must be text or null';
-    ELSE next_avatar_color := nullif(btrim(p_patch->>'avatar_color'), ''); IF next_avatar_color IS NOT NULL AND length(next_avatar_color) > 32 THEN RAISE EXCEPTION 'Avatar color must be 32 characters or fewer'; END IF; END IF;
+    ELSE next_avatar_color := nullif(btrim(p_patch->>'avatar_color'), ''); IF next_avatar_color IS NOT NULL AND next_avatar_color !~ '^#[0-9A-Fa-f]{6}$' THEN RAISE EXCEPTION 'Avatar color must be a six-digit hexadecimal color'; END IF; END IF;
   END IF;
   IF p_patch ? 'years_in_business' THEN
     IF jsonb_typeof(p_patch->'years_in_business') <> 'number' OR (p_patch->>'years_in_business') !~ '^[0-9]+$' THEN RAISE EXCEPTION 'Years in business must be a whole number'; END IF;
     next_years_in_business := (p_patch->>'years_in_business')::integer;
-    IF next_years_in_business NOT BETWEEN 0 AND 100 THEN RAISE EXCEPTION 'Years in business must be between 0 and 100'; END IF;
+    IF next_years_in_business NOT BETWEEN 0 AND 500 THEN RAISE EXCEPTION 'Years in business must be between 0 and 500'; END IF;
   END IF;
 
   UPDATE ghm.business SET
