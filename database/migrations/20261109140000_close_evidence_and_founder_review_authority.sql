@@ -40,10 +40,9 @@ REVOKE ALL ON FUNCTION ghm.is_business_capability_publicly_evidence_eligible(big
 GRANT EXECUTE ON FUNCTION ghm.is_business_capability_publicly_evidence_eligible(bigint)
   TO ghm_runtime;
 
--- The allowlist is the sole source of founder-review authority. Clear any prior
--- entries so this release grants no person implicit or inherited review access.
-DELETE FROM ghm.directory_listing_founder_reviewer;
-
+-- Disable founder directory review completely for this release. Preserve any
+-- historical allowlist rows, but no account (including a system administrator)
+-- receives review authority and the runtime cannot invoke review operations.
 CREATE OR REPLACE FUNCTION ghm.is_directory_listing_founder_reviewer(p_account_id bigint)
 RETURNS boolean
 LANGUAGE sql
@@ -51,20 +50,21 @@ STABLE
 SECURITY DEFINER
 SET search_path = pg_catalog, ghm
 AS $function$
-  SELECT p_account_id IS NOT NULL AND EXISTS (
-    SELECT 1
-      FROM ghm.directory_listing_founder_reviewer r
-     WHERE r.account_id = p_account_id
-  );
+  SELECT false;
 $function$;
 ALTER FUNCTION ghm.is_directory_listing_founder_reviewer(bigint)
   OWNER TO ghm_schema_owner;
 ALTER FUNCTION ghm.is_directory_listing_founder_reviewer(bigint)
   SET search_path = pg_catalog, ghm;
 REVOKE ALL ON FUNCTION ghm.is_directory_listing_founder_reviewer(bigint)
-  FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION ghm.is_directory_listing_founder_reviewer(bigint)
-  TO ghm_runtime;
+  FROM PUBLIC, ghm_runtime;
+
+REVOKE ALL ON FUNCTION ghm.submit_business_directory_review(bigint, bigint)
+  FROM PUBLIC, ghm_runtime;
+REVOKE ALL ON FUNCTION ghm.list_businesses_for_directory_review(bigint, text, integer, integer)
+  FROM PUBLIC, ghm_runtime;
+REVOKE ALL ON FUNCTION ghm.review_business_directory_listing(bigint, bigint, text, text)
+  FROM PUBLIC, ghm_runtime;
 
 CREATE OR REPLACE FUNCTION ghm.reject_expired_capability_evidence_verification()
 RETURNS trigger

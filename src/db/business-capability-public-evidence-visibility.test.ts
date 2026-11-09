@@ -33,7 +33,7 @@ test('founder review is disabled without inferred system-administrator authority
   assert.match(migration, /DELETE FROM ghm\\.directory_listing_founder_reviewer/);
   const helper = migration.slice(migration.indexOf('CREATE OR REPLACE FUNCTION ghm.is_directory_listing_founder_reviewer'), migration.indexOf('CREATE OR REPLACE FUNCTION ghm.reject_expired_capability_evidence_verification'));
   assert.match(helper, /FROM ghm\\.directory_listing_founder_reviewer/);
-  assert.doesNotMatch(helper, /founder_system_admin_bootstrap_state|is_system_admin/);
+  assert.doesNotMatch(helper, /directory_listing_founder_reviewer|founder_system_admin_bootstrap_state|is_system_admin/);
 });
 
 test('expired evidence cannot be verified or have its verified expiry moved into the past', () => {
