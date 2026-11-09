@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import type { AuthContext } from '../../auth/authorization';
 import test from 'node:test';
 import type { DirectoryReviewBusiness, DirectoryReviewDecision, DirectoryReviewPresentation, DirectoryReviewRepository, DirectoryReviewStatus } from './contracts';
 import { DirectoryReviewServiceImpl } from './service';
