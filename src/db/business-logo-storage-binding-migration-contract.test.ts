@@ -8,7 +8,7 @@ const identityRepository = fs.readFileSync("src/resources/business-identity/repo
 const publicRepository = fs.readFileSync("src/resources/business-identity/public-repository.ts", "utf8");
 
 test("Business logo reference is stored on the canonical GHM Business row", () => {
-  assert.match(migration, /ADD COLUMN logo_storage_object_id bigint/);
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS logo_storage_object_id bigint/);
   assert.match(migration, /REFERENCES ghm\.storage_object\(id\) ON DELETE SET NULL/);
   assert.match(migration, /business_logo_storage_object_unique/);
   assert.match(identityRepository, /logo_storage_object_id/);
