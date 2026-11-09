@@ -1,6 +1,5 @@
 -- Close the evidence read boundary and remove implicit founder review authority.
--- No reviewer accounts are seeded or mapped. Founder directory review remains disabled
--- until an explicitly authorized allowlist is populated in a separately approved change.
+-- Founder directory review is fully disabled; no reviewer accounts are mapped.
 -- Evidence expiry is display eligibility only; expired evidence cannot be newly verified.
 
 REVOKE SELECT ON TABLE ghm.business_capability_evidence FROM ghm_runtime;
