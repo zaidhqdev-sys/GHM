@@ -88,7 +88,7 @@ BEGIN
     RAISE EXCEPTION 'Existing business_registration_identity table has incompatible column types, nullability, or defaults';
   END IF;
 
-  SELECT array_agg(a.attname ORDER BY k.ordinality)
+  SELECT array_agg(a.attname::text ORDER BY k.ordinality)
     INTO primary_key_columns
     FROM pg_catalog.pg_constraint c
     CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS k(attnum, ordinality)
@@ -101,8 +101,8 @@ BEGIN
   END IF;
 
   SELECT
-         array_agg(source_attribute.attname ORDER BY source_key.ordinality) AS source_columns,
-         array_agg(target_attribute.attname ORDER BY source_key.ordinality) AS target_columns,
+         array_agg(source_attribute.attname::text ORDER BY source_key.ordinality) AS source_columns,
+         array_agg(target_attribute.attname::text ORDER BY source_key.ordinality) AS target_columns,
          target_namespace.nspname AS target_schema,
          target.relname AS target_table,
          c.confdeltype,
@@ -130,8 +130,8 @@ BEGIN
   END IF;
 
   SELECT
-         array_agg(source_attribute.attname ORDER BY source_key.ordinality) AS source_columns,
-         array_agg(target_attribute.attname ORDER BY source_key.ordinality) AS target_columns,
+         array_agg(source_attribute.attname::text ORDER BY source_key.ordinality) AS source_columns,
+         array_agg(target_attribute.attname::text ORDER BY source_key.ordinality) AS target_columns,
          target_namespace.nspname AS target_schema,
          target.relname AS target_table,
          c.confdeltype,
