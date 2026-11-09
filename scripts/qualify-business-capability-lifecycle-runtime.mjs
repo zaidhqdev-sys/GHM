@@ -9,7 +9,7 @@ if (!runtimeUrl || !migratorUrl || runtimeUrl === migratorUrl) throw new Error('
 const { BusinessCapabilityServiceImpl } = await import('../dist/resources/business-capability/service.js');
 const { PostgresBusinessCapabilityRepository } = await import('../dist/resources/business-capability/repository.js');
 
-const ssl = { rejectUnauthorized: false };
+const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false;
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
 const cleanupPool = new Pool({ connectionString: migratorUrl, ssl });
 const marker = `ghm-business-capability-lifecycle-${randomUUID()}`;
@@ -30,8 +30,8 @@ const cleanup = async () => {
   try {
     await client.query('BEGIN');
     await client.query('SET LOCAL ROLE ghm_schema_owner');
-    if (ids.businesses.length) await client.query('DELETE FROM ghm.business_capability WHERE business_id = ANY($1::bigint[])', [ids.businesses]);
     if (ids.evidenceIds.length) await client.query('DELETE FROM ghm.business_capability_evidence WHERE id = ANY($1::bigint[])', [ids.evidenceIds]);
+    if (ids.businesses.length) await client.query('DELETE FROM ghm.business_capability WHERE business_id = ANY($1::bigint[])', [ids.businesses]);
     if (ids.businessCapabilities.length) await client.query('DELETE FROM ghm.business_capability WHERE id = ANY($1::bigint[])', [ids.businessCapabilities]);
     if (ids.businesses.length) await client.query('DELETE FROM ghm.business WHERE id = ANY($1::bigint[])', [ids.businesses]);
     if (ids.capabilities.length) await client.query('DELETE FROM ghm.capability WHERE id = ANY($1::uuid[])', [ids.capabilities]);
