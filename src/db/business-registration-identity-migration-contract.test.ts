@@ -14,7 +14,13 @@ const publicContracts = fs.readFileSync(path.resolve(process.cwd(), 'src/resourc
 test('registration identity is stored separately and constrained as a self-declared private projection', () => {
   assert.match(migration, /CREATE TABLE IF NOT EXISTS ghm\.business_registration_identity/);
   assert.match(migration, /Existing business_registration_identity table has an incompatible column shape/);
-  assert.match(migration, /Existing business_registration_identity table is missing expected declaration constraints/);
+  assert.match(migration, /Existing business_registration_identity table is missing expected validated constraints/);
+  assert.match(migration, /incompatible primary key/);
+  assert.match(migration, /incompatible Business foreign key/);
+  assert.match(migration, /incompatible account foreign key/);
+  assert.match(migration, /incompatible column types, nullability, or defaults/);
+  assert.match(migration, /pg_get_constraintdef/);
+  assert.match(migration, /business_registration_identity_declaration_shape_check/);
   assert.match(migration, /registration_status IS NULL OR registration_status IN \('registered', 'unregistered'\)/);
   assert.match(migration, /length\(btrim\(registration_number\)\) BETWEEN 1 AND 120/);
   assert.match(migration, /length\(btrim\(legal_name\)\) BETWEEN 1 AND 200/);
