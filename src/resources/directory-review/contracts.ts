@@ -1,3 +1,5 @@
+import type { AuthContext } from '../../auth/authorization';
+
 export type DirectoryReviewStatus = 'unverified' | 'under_review' | 'information_requested' | 'approved' | 'rejected';
 export type DirectoryReviewDecision = 'approve' | 'reject' | 'request_information';
 
