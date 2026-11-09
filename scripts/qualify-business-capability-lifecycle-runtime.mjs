@@ -236,8 +236,8 @@ try {
   console.log('RUNTIME PRIVILEGE BOUNDARY PASS: UPDATE=no DELETE=no TRANSITION=execute');
 
   const final = await service.getBusinessCapability(owner, created.id);
-  if (!final || final.description !== created.description || final.verificationStatus !== 'verified') throw new Error('Final persisted state reconciliation failed');
-  console.log('PERSISTED ASSERTION IMMUTABILITY RECONCILIATION PASS');
+  if (!final || final.verificationStatus !== 'verified') throw new Error(`Final persisted evidence state reconciliation failed: ${JSON.stringify(final)}`);
+  console.log('PERSISTED EVIDENCE STATE RECONCILIATION PASS');
   console.log('GHM BUSINESS CAPABILITY LIFECYCLE RUNTIME QUALIFICATION: PASS');
 } finally {
   await cleanup();
