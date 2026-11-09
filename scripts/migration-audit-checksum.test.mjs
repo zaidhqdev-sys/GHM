@@ -87,8 +87,9 @@ test('PayFast applied migration checksums are registered as exact historical pro
 
 test('production pending allowance is pinned to the reviewed pending migration set', () => {
   const pending = JSON.parse(readFileSync(new URL('../config/pending-migrations.production.json', import.meta.url), 'utf8'));
-  assert.equal(pending.length, 15);
+  assert.equal(pending.length, 16);
   assert.ok(pending.some((item) => item.version === '20261109140000' && item.name === 'close_evidence_and_founder_review_authority'));
+  assert.ok(pending.some((item) => item.version === '20261109210000' && item.name === 'deactivate_unrecognized_public_directory_records'));
 });
 
 test('production and qualification audit targets resolve to separate provenance manifests', () => {
@@ -128,6 +129,7 @@ test('PayFast historical exceptions are qualification-only', () => {
 
 test('production pending allowance is pinned to the reviewed pending migration set', () => {
   const pending = JSON.parse(readFileSync(new URL('../config/pending-migrations.production.json', import.meta.url), 'utf8'));
-  assert.equal(pending.length, 15);
+  assert.equal(pending.length, 16);
   assert.ok(pending.some((item) => item.version === '20261109140000' && item.name === 'close_evidence_and_founder_review_authority'));
+  assert.ok(pending.some((item) => item.version === '20261109210000' && item.name === 'deactivate_unrecognized_public_directory_records'));
 });

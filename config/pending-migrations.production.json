@@ -1,62 +1,18 @@
 [
-  {
-    "version": "20261104120000",
-    "name": "bind_commercial_payment_attempt_provider"
-  },
-  {
-    "version": "20261104130000",
-    "name": "isolate_payfast_settlement_identity"
-  },
-  {
-    "version": "20261105190000",
-    "name": "extend_business_directory_location_contact"
-  },
-  {
-    "version": "20261105213000",
-    "name": "create_business_capability_evidence"
-  },
-  {
-    "version": "20261105220000",
-    "name": "replace_business_capability_assertions"
-  },
-  {
-    "version": "20261105230000",
-    "name": "create_founder_directory_review"
-  },
-  {
-    "version": "20261106090000",
-    "name": "business_logo_storage_binding"
-  },
-  {
-    "version": "20261106200000",
-    "name": "link_project_to_opportunity"
-  },
-  {
-    "version": "20261107211500",
-    "name": "reconcile_business_profile_and_founder_authority"
-  },
-  {
-    "version": "20261108150000",
-    "name": "reconcile_business_registration_identity_authorization"
-  },
-  {
-    "version": "20261109100000",
-    "name": "persist_business_profile_presentation_fields"
-  },
-  {
-    "version": "20261109110000",
-    "name": "reconcile_capability_evidence_pending_state"
-  },
-  {
-    "version": "20261109120000",
-    "name": "serialize_business_capability_assertion_replacement"
-  },
-  {
-    "version": "20261109130000",
-    "name": "harden_evidence_and_founder_review_authority"
-  },
-  {
-    "version": "20261109140000",
-    "name": "close_evidence_and_founder_review_authority"
-  }
+  {"version":"20261104120000","name":"bind_commercial_payment_attempt_provider"},
+  {"version":"20261104130000","name":"isolate_payfast_settlement_identity"},
+  {"version":"20261105190000","name":"extend_business_directory_location_contact"},
+  {"version":"20261105213000","name":"create_business_capability_evidence"},
+  {"version":"20261105220000","name":"replace_business_capability_assertions"},
+  {"version":"20261105230000","name":"create_founder_directory_review"},
+  {"version":"20261106090000","name":"business_logo_storage_binding"},
+  {"version":"20261106200000","name":"link_project_to_opportunity"},
+  {"version":"20261107211500","name":"reconcile_business_profile_and_founder_authority"},
+  {"version":"20261108150000","name":"reconcile_business_registration_identity_authorization"},
+  {"version":"20261109100000","name":"persist_business_profile_presentation_fields"},
+  {"version":"20261109110000","name":"reconcile_capability_evidence_pending_state"},
+  {"version":"20261109120000","name":"serialize_business_capability_assertion_replacement"},
+  {"version":"20261109130000","name":"harden_evidence_and_founder_review_authority"},
+  {"version":"20261109140000","name":"close_evidence_and_founder_review_authority"},
+  {"version":"20261109210000","name":"deactivate_unrecognized_public_directory_records"}
 ]
