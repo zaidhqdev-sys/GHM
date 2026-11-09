@@ -182,6 +182,20 @@ try {
   if (!finalSetIsA && !finalSetIsB) throw new Error(`Concurrent replacements produced a mixed or partial set: ${JSON.stringify(activeAfterReplacement.rows)}`);
   console.log(`TWO-SESSION ASSERTION REPLACEMENT SERIALIZATION PASS: final set=${finalSetIsA ? 'A' : 'B'}`);
 
+  // Runtime evidence submission must use the database's pending default.
+  const statusPrivilege = await runtimePool.query(
+    "SELECT has_column_privilege(current_user, 'ghm.business_capability_evidence', 'verification_status', 'INSERT') AS allowed"
+  );
+  if (statusPrivilege.rows[0].allowed !== false) throw new Error('Runtime may explicitly set evidence verification_status');
+  const submittedEvidence = await runtimePool.query(
+    `INSERT INTO ghm.business_capability_evidence
+       (business_capability_id, evidence_type, title, submitted_by, visibility)
+     VALUES ($1, 'certification', 'Runtime submission qualification', $2, 'private')
+     RETURNING id, verification_status`,
+    [created.id, fixture.ownerId],
+  );
+  if (submittedEvidence.rows[0].verification_status !== 'pending') throw new Error('Runtime evidence did not default to pending');
+  console.log('RUNTIME EVIDENCE STATUS PRIVILEGE PASS');
   // Two evidence rows exercise aggregate parent state across separate decisions.
   const evidenceClient = await cleanupPool.connect();
   try {
