@@ -191,12 +191,30 @@ try {
     `INSERT INTO ghm.business_capability_evidence
        (business_capability_id, evidence_type, title, submitted_by, visibility)
      VALUES ($1, 'certification', 'Runtime submission qualification', $2, 'private')
-     RETURNING id, verification_status`,
+     RETURNING id`,
     [created.id, fixture.ownerId],
   );
-  if (submittedEvidence.rows[0].verification_status !== 'pending') throw new Error('Runtime evidence did not default to pending');
+  const submittedEvidenceId = Number(submittedEvidence.rows[0].id);
+  const evidenceStatusClient = await cleanupPool.connect();
+  let submittedEvidenceStatus: string;
+  try {
+    await evidenceStatusClient.query('BEGIN');
+    await evidenceStatusClient.query('SET LOCAL ROLE ghm_schema_owner');
+    const status = await evidenceStatusClient.query(
+      'SELECT verification_status FROM ghm.business_capability_evidence WHERE id = $1',
+      [submittedEvidenceId],
+    );
+    submittedEvidenceStatus = status.rows[0]?.verification_status;
+    await evidenceStatusClient.query('COMMIT');
+  } catch (error) {
+    await evidenceStatusClient.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    evidenceStatusClient.release();
+  }
+  if (submittedEvidenceStatus !== 'pending') throw new Error('Runtime evidence did not default to pending');
   console.log('RUNTIME EVIDENCE STATUS PRIVILEGE PASS');
-  ids.evidenceIds.push(Number(submittedEvidence.rows[0].id));
+  ids.evidenceIds.push(submittedEvidenceId);
   const removeSubmission = await cleanupPool.connect();
   try {
     await removeSubmission.query('BEGIN');
