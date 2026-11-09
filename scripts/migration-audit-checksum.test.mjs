@@ -82,3 +82,10 @@ test('PayFast applied migration checksums are registered as exact historical pro
   assert.equal(manifest['20261104120000'], 'da74451edd20fc331f9c13e26812f3ea1becf8bd0dffe5a62434f90478dca3ff');
   assert.equal(manifest['20261104130000'], 'b7e1ace82904436845586ec09b813fe8d84e19ac2a743d1714937871b5e4f10f');
 });
+
+
+test('production pending allowance is pinned to the reviewed pending migration set', () => {
+  const pending = JSON.parse(readFileSync(new URL('../config/pending-migrations.production.json', import.meta.url), 'utf8'));
+  assert.equal(pending.length, 15);
+  assert.ok(pending.some((item) => item.version === '20261109140000' && item.name === 'close_evidence_and_founder_review_authority'));
+});

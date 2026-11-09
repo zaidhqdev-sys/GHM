@@ -2,7 +2,16 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 
-const PROVENANCE_PATH = path.resolve("config", "historical-migration-provenance-exceptions.json");
+const auditDatabase = process.env.GHM_MIGRATION_AUDIT_DATABASE?.trim() || "ghm_db";
+const requestedTarget = process.env.GHM_MIGRATION_AUDIT_TARGET?.trim();
+const inferredTarget = auditDatabase === "ghm_db" ? "production"
+  : ["ghm_payfast_qualification", "ghm_disposable_test"].includes(auditDatabase) ? "qualification" : null;
+const target = requestedTarget || inferredTarget;
+if (!target || (target === "production" && auditDatabase !== "ghm_db") ||
+    (target === "qualification" && !["ghm_payfast_qualification", "ghm_disposable_test"].includes(auditDatabase))) {
+  throw new Error("Unsupported migration audit target/database: target=" + (requestedTarget || "auto") + ", database=" + auditDatabase);
+}
+const PROVENANCE_PATH = path.resolve("config", "historical-migration-provenance-exceptions." + target + ".json");
 const EXPECTED = new Map(Object.entries(JSON.parse(fs.readFileSync(PROVENANCE_PATH, "utf8"))));
 
 const migrationDir = path.resolve("database", "migrations");

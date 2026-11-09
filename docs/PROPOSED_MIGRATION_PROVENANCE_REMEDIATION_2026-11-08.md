@@ -146,3 +146,10 @@ Remaining release decisions:
 - Evidence table runtime SELECT is table-wide and there is no RLS; normal application list reads are tenant-scoped, but `visibility` is not currently enforced. Resolve visibility semantics/DB defense-in-depth before cross-Business or public evidence reads.
 - Founder reviewer allowlist is intentionally empty. Reviewer queue returns private registration number/legal name; confirm that designated reviewers are authorized for that data before seeding the allowlist.
 - Project-to-Opportunity FK is nullable and the migration does not backfill existing Projects. Confirm existing row count and whether historical rows require an Opportunity/participant backfill.
+
+
+### Production versus qualification QuoteFlow provenance — 2026-11-09
+
+The QuoteFlow checksum correction described earlier in this document (`3c09cc7...`, source blob `217314...`) is qualification-database provenance only. The production read-only audit on 2026-11-09 found a different live checksum for the same version: `a453171e...`, matching the pending-state SQL blob `620efa...`. The two values are not interchangeable and must not be collapsed into one global retained-history entry. PR #239 now records separate production and qualification manifests. Production also has no live ledger row for `20261031100000` or the two PayFast exception versions, so those entries are retained only in the qualification target manifest.
+
+The latest production audit was on the earlier head `63db9dde...` and showed 14 pending migrations. The current PR adds `20261109140000_close_evidence_and_founder_review_authority`, so the final-head production pending allowlist contains 15 version/name pairs. `npm run audit:migrations:predeploy` accepts only that exact reviewed set; any drift in the pending set remains blocking. The audit is still read-only and does not apply migrations.
