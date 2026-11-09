@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
 import type { AuthContext } from '../../auth/authorization';
+import test from 'node:test';
 import type { DirectoryReviewBusiness, DirectoryReviewDecision, DirectoryReviewPresentation, DirectoryReviewRepository, DirectoryReviewStatus } from './contracts';
 import { DirectoryReviewServiceImpl } from './service';
 
@@ -12,7 +12,6 @@ const presentation: DirectoryReviewPresentation = {
 };
 class FakeRepository implements DirectoryReviewRepository {
   calls: unknown[] = [];
-  async isFounderReviewer(_context: AuthContext) { this.calls.push('reviewer'); return false; }
   async submit(c: AuthContext, id: number) { this.calls.push({ method: 'submit', userId: c.userId, id }); return presentation; }
   async list(c: AuthContext, options: {status: DirectoryReviewStatus|null;limit:number;offset:number}) { this.calls.push({method:'list',userId:c.userId,options}); return [] as DirectoryReviewBusiness[]; }
   async review(c: AuthContext, id: number, decision: DirectoryReviewDecision, reason: string|null) { this.calls.push({method:'review',userId:c.userId,id,decision,reason}); return presentation; }
@@ -26,13 +25,6 @@ test('directory review binds authenticated account and validates canonical busin
   assert.deepEqual(repo.calls[0], {method:'submit',userId:42,id:55});
   await assert.rejects(() => service.submit(context, 0), /positive integer/i);
   await assert.rejects(() => service.getPresentation(context, '55' as unknown as number), /positive integer/i);
-});
-
-test('Founder authority lookup is a separate capability, not inferred from admin role', async () => {
-  const repo = new FakeRepository();
-  const service = new DirectoryReviewServiceImpl(repo);
-  assert.equal(await service.isFounderReviewer({userId:1,role:'admin'}), false);
-  assert.deepEqual(repo.calls, ['reviewer']);
 });
 
 test('directory review queue validates status, limit and offset', async () => {

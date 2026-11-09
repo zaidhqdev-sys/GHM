@@ -23,9 +23,9 @@ const statusValues: readonly DirectoryReviewStatus[] = ['under_review','informat
 export const registerDirectoryReviewRoutes = (app: Express, service: DirectoryReviewService, auth: RequestHandler = requireAuth): void => {
   app.get('/api/v1/admin/directory-reviews/authority', auth, requireAccess('read'), async (req: Request, res: Response) => {
     try {
-      const context = req.authContext as AuthContext;
-      const isFounderReviewer = await service.isFounderReviewer(context);
-      res.status(200).json({ isFounderReviewer });
+      // Founder review authority is deliberately disabled in production. Keep this
+      // authenticated capability probe independent of the revoked database function.
+      res.status(200).json({ isFounderReviewer: false });
     } catch (error) { handleError(error, res); }
   });
 

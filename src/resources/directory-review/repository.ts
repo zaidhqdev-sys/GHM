@@ -26,13 +26,6 @@ const mapBusiness = (row: any): DirectoryReviewBusiness => ({
 export class PostgresDirectoryReviewRepository implements DirectoryReviewRepository {
   constructor(private readonly transactionPool?: TransactionPool) {}
 
-  async isFounderReviewer(context: AuthContext): Promise<boolean> {
-    return withAuthorizedTransaction(context, async client => {
-      const result = await client.query('SELECT ghm.is_directory_listing_founder_reviewer($1) AS allowed', [context.userId]);
-      return result.rows[0]?.allowed === true;
-    }, this.transactionPool);
-  }
-
   async submit(context: AuthContext, businessId: number): Promise<DirectoryReviewPresentation> {
     return withTenantTransaction(context, businessId, async client => {
       const result = await client.query(
