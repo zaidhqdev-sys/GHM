@@ -225,7 +225,7 @@ try {
   try {
     await removeSubmission.query('BEGIN');
     await removeSubmission.query('SET LOCAL ROLE ghm_schema_owner');
-    await removeSubmission.query('DELETE FROM ghm.business_capability_evidence WHERE id = $1', [submittedEvidence.rows[0].id]);
+    await removeSubmission.query('DELETE FROM ghm.business_capability_evidence WHERE id = $1', [submittedEvidenceId]);
     await removeSubmission.query('COMMIT');
     ids.evidenceIds.pop();
   } catch (error) {
