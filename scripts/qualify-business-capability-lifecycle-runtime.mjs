@@ -30,6 +30,7 @@ const cleanup = async () => {
   try {
     await client.query('BEGIN');
     await client.query('SET LOCAL ROLE ghm_schema_owner');
+    if (ids.businesses.length) await client.query('DELETE FROM ghm.business_capability WHERE business_id = ANY($1::bigint[])', [ids.businesses]);
     if (ids.businessCapabilities.length) await client.query('DELETE FROM ghm.business_capability WHERE id = ANY($1::bigint[])', [ids.businessCapabilities]);
     if (ids.businesses.length) await client.query('DELETE FROM ghm.business WHERE id = ANY($1::bigint[])', [ids.businesses]);
     if (ids.capabilities.length) await client.query('DELETE FROM ghm.capability WHERE id = ANY($1::uuid[])', [ids.capabilities]);
@@ -70,14 +71,16 @@ try {
     );
 
     const capabilityId = randomUUID();
-    ids.capabilities.push(capabilityId);
+    const alternateCapabilityId = randomUUID();
+    ids.capabilities.push(capabilityId, alternateCapabilityId);
     await client.query(
       `INSERT INTO ghm.capability (id, name, slug, lifecycle_status, taxonomy_version, source_authority, is_selectable)
-       VALUES ($1, $2, $3, 'active', 1, 'GHM qualification', true)`,
-      [capabilityId, `${marker} capability`, `${marker}-capability`],
+       VALUES ($1, $2, $3, 'active', 1, 'GHM qualification', true),
+              ($4, $5, $6, 'active', 1, 'GHM qualification', true)`,
+      [capabilityId, `${marker} capability`, `${marker}-capability`, alternateCapabilityId, `${marker} alternate capability`, `${marker}-alternate-capability`],
     );
     await client.query('COMMIT');
-    fixture = { ownerId, verifierId, customerId, businessId, capabilityId };
+    fixture = { ownerId, verifierId, customerId, businessId, capabilityId, alternateCapabilityId };
   } catch (error) { await client.query('ROLLBACK').catch(() => {}); throw error; }
   finally { client.release(); }
 
@@ -149,6 +152,32 @@ try {
     'RUNTIME DELETE DENIAL PASS',
     'permission denied',
   );
+
+  // Exercise the migration's Business-row lock with two independent runtime sessions.
+  // The final active assertion set must be exactly one submitted replacement set, never a mix.
+  const replacementA = [{ capabilityId, proficiencyLevel: 'advanced', description: 'replacement A', sourceReference: 'qualification-A' }];
+  const replacementB = [{ capabilityId: alternateCapabilityId, proficiencyLevel: 'expert', description: 'replacement B', sourceReference: 'qualification-B' }];
+  const concurrentReplacement = await Promise.allSettled([
+    runtimePool.query('SELECT * FROM ghm.replace_business_capability_assertions($1, $2, $3::jsonb)', [businessId, ownerId, JSON.stringify(replacementA)]),
+    runtimePool.query('SELECT * FROM ghm.replace_business_capability_assertions($1, $2, $3::jsonb)', [businessId, ownerId, JSON.stringify(replacementB)]),
+  ]);
+  const replacementFailures = concurrentReplacement.filter(result => result.status === 'rejected');
+  if (replacementFailures.length) throw new Error(`Concurrent assertion replacement failed: ${replacementFailures.map(result => result.reason?.message).join('; ')}`);
+  const activeAfterReplacement = await runtimePool.query(
+    `SELECT capability_id, description, source_reference
+       FROM ghm.business_capability
+      WHERE business_id = $1 AND assertion_status = 'active'`,
+    [businessId],
+  );
+  const activeIds = activeAfterReplacement.rows.map(row => row.capability_id);
+  const finalSetIsA = activeIds.length === 1 && activeIds[0] === capabilityId
+    && activeAfterReplacement.rows[0].description === 'replacement A'
+    && activeAfterReplacement.rows[0].source_reference === 'qualification-A';
+  const finalSetIsB = activeIds.length === 1 && activeIds[0] === alternateCapabilityId
+    && activeAfterReplacement.rows[0].description === 'replacement B'
+    && activeAfterReplacement.rows[0].source_reference === 'qualification-B';
+  if (!finalSetIsA && !finalSetIsB) throw new Error(`Concurrent replacements produced a mixed or partial set: ${JSON.stringify(activeAfterReplacement.rows)}`);
+  console.log(`TWO-SESSION ASSERTION REPLACEMENT SERIALIZATION PASS: final set=${finalSetIsA ? 'A' : 'B'}`);
 
   const privilege = await runtimePool.query(
     `SELECT has_table_privilege(current_user, 'ghm.business_capability', 'UPDATE') AS can_update,
