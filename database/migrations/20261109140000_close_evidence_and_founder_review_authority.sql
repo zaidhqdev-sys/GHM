@@ -85,7 +85,7 @@ ALTER FUNCTION ghm.reject_expired_capability_evidence_verification()
 DROP TRIGGER IF EXISTS business_capability_evidence_reject_expired_verification
   ON ghm.business_capability_evidence;
 CREATE TRIGGER business_capability_evidence_reject_expired_verification
-  BEFORE INSERT OR UPDATE OF verification_status
+  BEFORE INSERT OR UPDATE OF verification_status, expires_on
   ON ghm.business_capability_evidence
   FOR EACH ROW
   EXECUTE FUNCTION ghm.reject_expired_capability_evidence_verification();
