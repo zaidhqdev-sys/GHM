@@ -187,23 +187,29 @@ try {
     "SELECT has_column_privilege(current_user, 'ghm.business_capability_evidence', 'verification_status', 'INSERT') AS allowed"
   );
   if (statusPrivilege.rows[0].allowed !== false) throw new Error('Runtime may explicitly set evidence verification_status');
-  const submittedEvidence = await runtimePool.query(
+  await runtimePool.query(
     `INSERT INTO ghm.business_capability_evidence
        (business_capability_id, evidence_type, title, submitted_by, visibility)
-     VALUES ($1, 'certification', 'Runtime submission qualification', $2, 'private')
-     RETURNING id`,
+     VALUES ($1, 'certification', 'Runtime submission qualification', $2, 'private')`,
     [created.id, fixture.ownerId],
   );
-  const submittedEvidenceId = Number(submittedEvidence.rows[0].id);
   const evidenceStatusClient = await cleanupPool.connect();
-  let submittedEvidenceStatus: string;
+  let submittedEvidenceId;
+  let submittedEvidenceStatus;
   try {
     await evidenceStatusClient.query('BEGIN');
     await evidenceStatusClient.query('SET LOCAL ROLE ghm_schema_owner');
     const status = await evidenceStatusClient.query(
-      'SELECT verification_status FROM ghm.business_capability_evidence WHERE id = $1',
-      [submittedEvidenceId],
+      `SELECT id, verification_status
+         FROM ghm.business_capability_evidence
+        WHERE business_capability_id = $1
+          AND submitted_by = $2
+          AND title = 'Runtime submission qualification'
+        ORDER BY id DESC
+        LIMIT 1`,
+      [created.id, fixture.ownerId],
     );
+    submittedEvidenceId = Number(status.rows[0]?.id);
     submittedEvidenceStatus = status.rows[0]?.verification_status;
     await evidenceStatusClient.query('COMMIT');
   } catch (error) {
@@ -212,7 +218,7 @@ try {
   } finally {
     evidenceStatusClient.release();
   }
-  if (submittedEvidenceStatus !== 'pending') throw new Error('Runtime evidence did not default to pending');
+  if (!submittedEvidenceId || submittedEvidenceStatus !== 'pending') throw new Error('Runtime evidence did not default to pending');
   console.log('RUNTIME EVIDENCE STATUS PRIVILEGE PASS');
   ids.evidenceIds.push(submittedEvidenceId);
   const removeSubmission = await cleanupPool.connect();
