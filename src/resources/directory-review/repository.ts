@@ -1,3 +1,4 @@
+import type { AuthContext } from '../../auth/authorization';
 import { withAuthorizedTransaction, withTenantTransaction } from '../../db/authorized-transaction';
 import type { TransactionPool } from '../../db/transaction';
 import type { DirectoryReviewBusiness, DirectoryReviewDecision, DirectoryReviewPresentation, DirectoryReviewRepository, DirectoryReviewStatus } from './contracts';
