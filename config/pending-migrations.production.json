@@ -58,5 +58,9 @@
   {
     "version": "20261109140000",
     "name": "close_evidence_and_founder_review_authority"
+  },
+  {
+    "version": "20261109210000",
+    "name": "deactivate_unrecognized_public_directory_records"
   }
 ]
