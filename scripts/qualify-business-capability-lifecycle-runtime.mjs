@@ -85,6 +85,8 @@ try {
   } catch (error) { await client.query('ROLLBACK').catch(() => {}); throw error; }
   finally { client.release(); }
 
+  const { businessId, ownerId, verifierId, capabilityId, alternateCapabilityId } = fixture;
+
   const repository = new PostgresBusinessCapabilityRepository(runtimePool);
   const service = new BusinessCapabilityServiceImpl(repository);
   const owner = { userId: fixture.ownerId, role: 'business' };
