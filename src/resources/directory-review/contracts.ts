@@ -1,5 +1,3 @@
-import type { AuthContext } from '../../auth/authorization';
-
 export type DirectoryReviewStatus = 'unverified' | 'under_review' | 'information_requested' | 'approved' | 'rejected';
 export type DirectoryReviewDecision = 'approve' | 'reject' | 'request_information';
 
@@ -34,7 +32,6 @@ export interface DirectoryReviewPresentation {
 }
 
 export interface DirectoryReviewRepository {
-  isFounderReviewer(context: AuthContext): Promise<boolean>;
   submit(context: AuthContext, businessId: number): Promise<DirectoryReviewPresentation>;
   list(context: AuthContext, options: { status: DirectoryReviewStatus | null; limit: number; offset: number }): Promise<DirectoryReviewBusiness[]>;
   review(context: AuthContext, businessId: number, decision: DirectoryReviewDecision, reason: string | null): Promise<DirectoryReviewPresentation>;
