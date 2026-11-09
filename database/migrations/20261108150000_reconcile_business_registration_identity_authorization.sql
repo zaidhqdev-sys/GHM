@@ -48,52 +48,157 @@ ALTER TABLE ghm.business_registration_identity ENABLE ROW LEVEL SECURITY;
 
 DO $migration$
 DECLARE
-  expected_columns integer;
+  actual_columns integer;
   expected_constraints integer;
+  primary_key_columns text[];
+  business_fk record;
+  account_fk record;
+  constraint_definition text;
 BEGIN
-  SELECT count(*) INTO expected_columns
+  -- IF NOT EXISTS must not silently adopt a table with a merely similar shape.
+  SELECT count(*) INTO actual_columns
     FROM information_schema.columns
    WHERE table_schema = 'ghm'
-     AND table_name = 'business_registration_identity'
-     AND column_name IN (
-       'business_id', 'registration_status', 'registration_number',
-       'legal_name', 'updated_by_account_id', 'created_at', 'updated_at'
-     );
-  IF expected_columns <> 7 THEN
+     AND table_name = 'business_registration_identity';
+  IF actual_columns <> 7 THEN
     RAISE EXCEPTION 'Existing business_registration_identity table has an incompatible column shape';
   END IF;
 
   IF EXISTS (
     SELECT 1
       FROM (VALUES
-        ('business_id', 'bigint'),
-        ('registration_status', 'text'),
-        ('registration_number', 'text'),
-        ('legal_name', 'text'),
-        ('updated_by_account_id', 'bigint'),
-        ('created_at', 'timestamp with time zone'),
-        ('updated_at', 'timestamp with time zone')
-      ) AS expected(column_name, data_type)
+        ('business_id', 'bigint', true, NULL::text),
+        ('registration_status', 'text', false, NULL::text),
+        ('registration_number', 'text', false, NULL::text),
+        ('legal_name', 'text', false, NULL::text),
+        ('updated_by_account_id', 'bigint', false, NULL::text),
+        ('created_at', 'timestamp with time zone', true, 'now()'),
+        ('updated_at', 'timestamp with time zone', true, 'now()')
+      ) AS expected(column_name, data_type, is_required, default_prefix)
       LEFT JOIN information_schema.columns actual
         ON actual.table_schema = 'ghm'
        AND actual.table_name = 'business_registration_identity'
        AND actual.column_name = expected.column_name
-     WHERE actual.column_name IS NULL OR actual.data_type <> expected.data_type
+     WHERE actual.column_name IS NULL
+        OR actual.data_type <> expected.data_type
+        OR actual.is_nullable <> CASE WHEN expected.is_required THEN 'NO' ELSE 'YES' END
+        OR (expected.default_prefix IS NULL AND actual.column_default IS NOT NULL)
+        OR (expected.default_prefix IS NOT NULL AND actual.column_default NOT LIKE expected.default_prefix || '%')
   ) THEN
-    RAISE EXCEPTION 'Existing business_registration_identity table has incompatible column types';
+    RAISE EXCEPTION 'Existing business_registration_identity table has incompatible column types, nullability, or defaults';
+  END IF;
+
+  SELECT array_agg(a.attname ORDER BY k.ordinality)
+    INTO primary_key_columns
+    FROM pg_catalog.pg_constraint c
+    CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS k(attnum, ordinality)
+    JOIN pg_catalog.pg_attribute a
+      ON a.attrelid = c.conrelid AND a.attnum = k.attnum
+   WHERE c.conrelid = 'ghm.business_registration_identity'::regclass
+     AND c.contype = 'p';
+  IF primary_key_columns IS DISTINCT FROM ARRAY['business_id']::text[] THEN
+    RAISE EXCEPTION 'Existing business_registration_identity table has an incompatible primary key';
+  END IF;
+
+  SELECT c.confrelid, c.confdeltype, c.confupdtype, a.attname AS source_column,
+         target.relname AS target_table, target_attribute.attname AS target_column
+    INTO business_fk
+    FROM pg_catalog.pg_constraint c
+    JOIN pg_catalog.pg_class target ON target.oid = c.confrelid
+    CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS k(attnum, ordinality)
+    JOIN pg_catalog.pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k.attnum
+    CROSS JOIN LATERAL unnest(c.confkey) WITH ORDINALITY AS fk(attnum, ordinality)
+    JOIN pg_catalog.pg_attribute target_attribute
+      ON target_attribute.attrelid = c.confrelid AND target_attribute.attnum = fk.attnum
+   WHERE c.conrelid = 'ghm.business_registration_identity'::regclass
+     AND c.contype = 'f'
+     AND c.conname = 'business_registration_identity_business_id_fkey';
+  IF NOT FOUND OR business_fk.source_column <> 'business_id'
+     OR business_fk.target_table <> 'business' OR business_fk.target_column <> 'id'
+     OR business_fk.confdeltype <> 'c' OR business_fk.confupdtype <> 'a' THEN
+    RAISE EXCEPTION 'Existing business_registration_identity table has an incompatible Business foreign key';
+  END IF;
+
+  SELECT c.confdeltype, c.confupdtype, a.attname AS source_column,
+         target.relname AS target_table, target_attribute.attname AS target_column
+    INTO account_fk
+    FROM pg_catalog.pg_constraint c
+    JOIN pg_catalog.pg_class target ON target.oid = c.confrelid
+    CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS k(attnum, ordinality)
+    JOIN pg_catalog.pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k.attnum
+    CROSS JOIN LATERAL unnest(c.confkey) WITH ORDINALITY AS fk(attnum, ordinality)
+    JOIN pg_catalog.pg_attribute target_attribute
+      ON target_attribute.attrelid = c.confrelid AND target_attribute.attnum = fk.attnum
+   WHERE c.conrelid = 'ghm.business_registration_identity'::regclass
+     AND c.contype = 'f'
+     AND c.conname = 'business_registration_identity_updated_by_account_id_fkey';
+  IF NOT FOUND OR account_fk.source_column <> 'updated_by_account_id'
+     OR account_fk.target_table <> 'account_identity' OR account_fk.target_column <> 'id'
+     OR account_fk.confdeltype <> 'r' OR account_fk.confupdtype <> 'a' THEN
+    RAISE EXCEPTION 'Existing business_registration_identity table has an incompatible account foreign key';
   END IF;
 
   SELECT count(*) INTO expected_constraints
     FROM pg_catalog.pg_constraint
    WHERE conrelid = 'ghm.business_registration_identity'::regclass
-     AND conname IN (
-       'business_registration_identity_status_check',
-       'business_registration_identity_registration_number_length_check',
-       'business_registration_identity_legal_name_length_check',
-       'business_registration_identity_declaration_shape_check'
+     AND convalidated
+     AND (
+       (contype = 'c' AND conname IN (
+         'business_registration_identity_status_check',
+         'business_registration_identity_registration_number_length_check',
+         'business_registration_identity_legal_name_length_check',
+         'business_registration_identity_declaration_shape_check'
+       ))
+       OR (contype = 'p' AND conname = 'business_registration_identity_pkey')
+       OR (contype = 'f' AND conname IN (
+         'business_registration_identity_business_id_fkey',
+         'business_registration_identity_updated_by_account_id_fkey'
+       ))
      );
-  IF expected_constraints <> 4 THEN
-    RAISE EXCEPTION 'Existing business_registration_identity table is missing expected declaration constraints';
+  IF expected_constraints <> 7 THEN
+    RAISE EXCEPTION 'Existing business_registration_identity table is missing expected validated constraints';
+  END IF;
+
+  SELECT pg_catalog.pg_get_constraintdef(oid) INTO constraint_definition
+    FROM pg_catalog.pg_constraint
+   WHERE conrelid = 'ghm.business_registration_identity'::regclass
+     AND conname = 'business_registration_identity_status_check'
+     AND contype = 'c';
+  IF constraint_definition IS NULL
+     OR constraint_definition NOT LIKE '%registered%'
+     OR constraint_definition NOT LIKE '%unregistered%' THEN
+    RAISE EXCEPTION 'Existing business_registration_identity table has an incompatible status constraint';
+  END IF;
+
+  SELECT pg_catalog.pg_get_constraintdef(oid) INTO constraint_definition
+    FROM pg_catalog.pg_constraint
+   WHERE conrelid = 'ghm.business_registration_identity'::regclass
+     AND conname = 'business_registration_identity_registration_number_length_check'
+     AND contype = 'c';
+  IF constraint_definition IS NULL OR constraint_definition NOT LIKE '%120%' THEN
+    RAISE EXCEPTION 'Existing business_registration_identity table has an incompatible registration-number constraint';
+  END IF;
+
+  SELECT pg_catalog.pg_get_constraintdef(oid) INTO constraint_definition
+    FROM pg_catalog.pg_constraint
+   WHERE conrelid = 'ghm.business_registration_identity'::regclass
+     AND conname = 'business_registration_identity_legal_name_length_check'
+     AND contype = 'c';
+  IF constraint_definition IS NULL OR constraint_definition NOT LIKE '%200%' THEN
+    RAISE EXCEPTION 'Existing business_registration_identity table has an incompatible legal-name constraint';
+  END IF;
+
+  SELECT pg_catalog.pg_get_constraintdef(oid) INTO constraint_definition
+    FROM pg_catalog.pg_constraint
+   WHERE conrelid = 'ghm.business_registration_identity'::regclass
+     AND conname = 'business_registration_identity_declaration_shape_check'
+     AND contype = 'c';
+  IF constraint_definition IS NULL
+     OR constraint_definition NOT LIKE '%registered%'
+     OR constraint_definition NOT LIKE '%unregistered%'
+     OR constraint_definition NOT LIKE '%registration_number%'
+     OR constraint_definition NOT LIKE '%legal_name%' THEN
+    RAISE EXCEPTION 'Existing business_registration_identity table has an incompatible declaration-shape constraint';
   END IF;
 
   IF NOT (
