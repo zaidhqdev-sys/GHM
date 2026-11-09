@@ -10,7 +10,7 @@ const contracts=fs.readFileSync(path.resolve(process.cwd(),'src/resources/busine
 
 test('owner-editable avatar and business tenure fields are stored in canonical GHM Business',()=>{
  for(const field of ['avatar_letter','avatar_color','years_in_business']) {
-  assert.ok(migration.includes(`ADD COLUMN ${field}`));
+  assert.ok(migration.includes(`ADD COLUMN IF NOT EXISTS ${field}`));
   assert.ok(migration.includes(field));
   assert.ok(repository.includes(field));
  }
@@ -25,7 +25,21 @@ test('owner-editable avatar and business tenure fields are stored in canonical G
 test('avatar and tenure updates are explicitly allowlisted and bounded',()=>{
  assert.ok(migration.includes("'avatar_letter', 'avatar_color', 'years_in_business'"));
  assert.ok(migration.includes('Avatar letter must be 3 characters or fewer'));
- assert.ok(migration.includes('Avatar color must be 32 characters or fewer'));
+ assert.ok(migration.includes("avatar_color ~ '^#[0-9A-Fa-f]{6}
+ assert.ok(migration.includes('years_in_business BETWEEN 0 AND 500'));
+ assert.ok(migration.includes('province IS NULL OR length(btrim(province)) BETWEEN 1 AND 100'));
+ assert.ok(forwardMigration.includes('Province must be 100 characters or fewer'));
+ assert.ok(forwardMigration.includes('Avatar color must be a six-digit hexadecimal color'));
+ assert.ok(forwardMigration.includes('Years in business must be between 0 and 500'));
+ assert.ok(repository.includes("'avatarLetter', 'avatarColor', 'yearsInBusiness'"));
+});
+
+test('business tenure remains self-declared and is not a verified trust signal',()=>{
+ assert.ok(migration.includes('Owner-declared years in business; not independently verified.'));
+ assert.ok(repository.includes('yearsInBusiness: row.years_in_business'));
+ assert.doesNotMatch(repository,/yearsInBusiness:[^\n]*insuranceVerified/);
+});
+"));
  assert.ok(migration.includes('Years in business must be between 0 and 100'));
  assert.ok(repository.includes("'avatarLetter', 'avatarColor', 'yearsInBusiness'"));
 });
@@ -34,4 +48,16 @@ test('business tenure remains self-declared and is not a verified trust signal',
  assert.ok(migration.includes('Owner-declared years in business; not independently verified.'));
  assert.ok(repository.includes('yearsInBusiness: row.years_in_business'));
  assert.doesNotMatch(repository,/yearsInBusiness:[^\n]*insuranceVerified/);
+});
+
+
+test('directory migration reuses pre-existing canonical Business constraints and indexes',()=>{
+ assert.match(migration,/ADD COLUMN IF NOT EXISTS province text/);
+ assert.match(migration,/business_directory_province_check/);
+ assert.match(migration,/business_directory_city_check/);
+ assert.match(migration,/business_directory_address_check/);
+ assert.match(migration,/business_directory_avatar_color_check/);
+ assert.match(migration,/business_directory_years_in_business_check/);
+ assert.match(migration,/CREATE INDEX IF NOT EXISTS business_public_directory_location_idx/);
+ assert.match(migration,/CREATE INDEX IF NOT EXISTS business_public_directory_geo_idx/);
 });
