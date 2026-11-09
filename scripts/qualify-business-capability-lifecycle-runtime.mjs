@@ -196,6 +196,20 @@ try {
   );
   if (submittedEvidence.rows[0].verification_status !== 'pending') throw new Error('Runtime evidence did not default to pending');
   console.log('RUNTIME EVIDENCE STATUS PRIVILEGE PASS');
+  ids.evidenceIds.push(Number(submittedEvidence.rows[0].id));
+  const removeSubmission = await cleanupPool.connect();
+  try {
+    await removeSubmission.query('BEGIN');
+    await removeSubmission.query('SET LOCAL ROLE ghm_schema_owner');
+    await removeSubmission.query('DELETE FROM ghm.business_capability_evidence WHERE id = $1', [submittedEvidence.rows[0].id]);
+    await removeSubmission.query('COMMIT');
+    ids.evidenceIds.pop();
+  } catch (error) {
+    await removeSubmission.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    removeSubmission.release();
+  }
   // Two evidence rows exercise aggregate parent state across separate decisions.
   const evidenceClient = await cleanupPool.connect();
   try {
