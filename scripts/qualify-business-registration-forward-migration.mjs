@@ -78,7 +78,34 @@ try {
     await client.query('ROLLBACK');
     throw error;
   }
-  process.stdout.write('PASS: historical functions were upgraded on the pre-existing table; authorization, RLS, owner, and ACL checks passed; transaction rolled back.\\n');
+
+  // Prove the guard rejects a pre-existing table whose constraint name is
+  // present but whose definition is not the required declaration contract.
+  await client.query('BEGIN');
+  try {
+    await client.query(`
+      ALTER TABLE ghm.business_registration_identity
+        DROP CONSTRAINT business_registration_identity_registration_number_length_check;
+      ALTER TABLE ghm.business_registration_identity
+        ADD CONSTRAINT business_registration_identity_registration_number_length_check CHECK (true);
+    `);
+    let rejected = false;
+    try {
+      await client.query(migrationSql);
+    } catch (error) {
+      if (!String(error.message).includes('incompatible registration-number constraint')) throw error;
+      rejected = true;
+    }
+    if (!rejected) {
+      throw new Error('Forward migration accepted a same-named but incompatible registration-number constraint');
+    }
+    await client.query('ROLLBACK');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  }
+
+  process.stdout.write('PASS: historical functions upgraded on the pre-existing table; full schema/security contract passed; same-named incompatible constraint was rejected; transactions rolled back.\\n');
 } finally {
   await client.end();
 }
