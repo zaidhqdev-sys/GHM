@@ -49,23 +49,8 @@ export class PostgresBusinessCapabilityRepository implements BusinessCapabilityR
            AND c.lifecycle_status = 'active'
            AND bc_assertion.effective_from <= now()
            AND (bc_assertion.effective_until IS NULL OR bc_assertion.effective_until > now())
-           -- Expiry is display-only: suppress an evidence-backed assertion when it
-           -- has no currently valid verified evidence. Do not mutate its audit state.
-           -- Assertions with no evidence retain the existing verification pathway.
-           AND (
-             NOT EXISTS (
-               SELECT 1
-                 FROM ghm.business_capability_evidence evidence
-                WHERE evidence.business_capability_id = bc_assertion.id
-             )
-             OR EXISTS (
-               SELECT 1
-                 FROM ghm.business_capability_evidence evidence
-                WHERE evidence.business_capability_id = bc_assertion.id
-                  AND evidence.verification_status = 'verified'
-                  AND (evidence.expires_on IS NULL OR evidence.expires_on >= current_date)
-             )
-           )
+           -- The SECURITY DEFINER predicate exposes only public eligibility, never evidence rows.
+           AND ghm.is_business_capability_publicly_evidence_eligible(bc_assertion.id)
          ORDER BY c.sort_order, c.name, bc_assertion.id`,
         [id],
       );
