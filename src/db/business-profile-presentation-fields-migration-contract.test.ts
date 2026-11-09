@@ -37,7 +37,7 @@ test('avatar and tenure updates match canonical Business constraints', () => {
 test('business tenure remains self-declared and is not a verified trust signal', () => {
   assert.ok(migration.includes('Owner-declared years in business; not independently verified.'));
   assert.ok(repository.includes('yearsInBusiness: row.years_in_business'));
-  assert.doesNotMatch(repository, /yearsInBusiness:[^\\n]*insuranceVerified/);
+  assert.doesNotMatch(repository, /yearsInBusiness:[^\n]*insuranceVerified/);
 });
 
 test('directory migration reuses pre-existing canonical Business constraints and indexes', () => {
