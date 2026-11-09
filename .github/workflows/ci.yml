@@ -121,6 +121,9 @@ jobs:
       - name: Test suite
         run: npm test
 
+      - name: Qualify Business Capability lifecycle and two-session assertion replacement on disposable PostgreSQL
+        run: npm run qualify:business-capability-lifecycle-runtime
+
       - name: Qualify commercial payment settlement identities against disposable PostgreSQL
         run: npm run build && node scripts/qualify-commercial-payment-result-runtime.mjs
 
