@@ -181,6 +181,21 @@ export const createActorGatewayApp = (dependencies: ActorGatewayDependencies): E
       res.status(400).json({ error: 'invalid_request' });
       return;
     }
+    const registrationNumber = body.registrationNumber as string | null;
+    const legalName = body.legalName as string | null;
+    if (body.registrationStatus === 'registered') {
+      const normalizedNumber = (registrationNumber ?? '').trim();
+      const normalizedLegalName = (legalName ?? '').trim();
+      if (normalizedNumber.length < 1 || normalizedNumber.length > 120 || normalizedLegalName.length < 1 || normalizedLegalName.length > 200) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      body.registrationNumber = normalizedNumber;
+      body.legalName = normalizedLegalName;
+    } else if (registrationNumber !== null || legalName !== null) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
     if (!dependencies.businessRegistrationIdentityReader) {
       res.status(503).json({ error: 'service_unavailable' });
       return;
