@@ -47,3 +47,12 @@ Current GHM main does not publish an authoritative `isFeatured` field or a gover
 3. Review production-like migration compatibility for existing legacy `is_supplier` values; do not mutate production as part of this code PR.
 4. Define a governed featured-listing contract and source-of-truth/data disposition.
 5. Continue the remaining Supabase removal register: Analytics, Relationships/Outcomes, Onboarding, Commercial/Admin, AI, notification/push, central facade/SDK/config and all other active callers.
+
+
+## CI iteration log — 2026-11-10 01:06 UTC
+
+- First exact-head CI run #2297 (ID `42732406656`) completed: TypeScript build and all migrations on disposable PostgreSQL passed; the full test suite failed on three stale deep-equality expectations after adding the optional `businessType` query property.
+- Failures were limited to two public Directory HTTP test expectations and one Directory service normalization expectation; no migration, build, or supplier classification assertion failed.
+- Updated those tests to assert `businessType: undefined` when no filter is supplied.
+- Follow-up exact-head CI run #2299 (ID `42732701547`) was in progress after these corrections. Check its final status before treating the branch as qualified.
+- The Connect PR quality run #172 failed only because the new Marketplace adapter test expected page size 75 while the adapter correctly caps requests at GHM's 50-item public Directory maximum. Corrected the test to expect 50; a fresh Connect exact-head run is pending.
