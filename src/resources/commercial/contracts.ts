@@ -272,6 +272,7 @@ export interface CommercialRepository {
 
 export interface CommercialService {
   getCommercialAccess(context: AuthContext, businessId: BusinessId): Promise<CommercialAccess>;
+  getCommercialOffer(context: AuthContext, businessId: BusinessId, planCode: string): Promise<CommercialOffer | null>;
   getCommercialSubscription(context: AuthContext, businessId: BusinessId): Promise<CommercialSubscription | null>;
   activateCommercialTrial(context: AuthContext, input: ActivateCommercialTrialInput): Promise<CommercialTrial>;
   prepareCommercialPayment(context: AuthContext, input: PrepareCommercialPaymentInput): Promise<CommercialPaymentAttempt>;
