@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { AuthContext } from '../../auth/authorization';
 import type {
-  CommercialAccess,\n  CommercialOffer,
+  CommercialAccess,
+  CommercialOffer,
   CommercialPaymentAttempt,
   CommercialRepository,
   CommercialSubscription,
@@ -47,7 +48,8 @@ const subscription = (): CommercialSubscription => ({
 
 class FakeRepository implements CommercialRepository {
   accessCalls: Array<{ context: AuthContext; businessId: number }> = [];
-  subscriptionCalls: Array<{ context: AuthContext; businessId: number }> = [];\n  offerCalls: Array<{ context: AuthContext; businessId: number; planCode: string }> = [];
+  subscriptionCalls: Array<{ context: AuthContext; businessId: number }> = [];
+  offerCalls: Array<{ context: AuthContext; businessId: number; planCode: string }> = [];
   trialCalls: Array<{ context: AuthContext; input: ActivateCommercialTrialInput }> = [];
   paymentCalls: Array<{ context: AuthContext; input: PrepareCommercialPaymentInput }> = [];
   cancellationCalls: Array<{ context: AuthContext; input: ScheduleCommercialCancellationInput }> = [];
