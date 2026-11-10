@@ -857,3 +857,11 @@ The #251 proposal is advanced at commit `eaa646ab265afc599b431c9cba2bfd77efb33b3
 - This is an architecture proposal; exact DB grants and semantics of `ghm.auth_validate_session` have not yet been reviewed. No implementation is authorized.
 
 Latest proposal CI must be refreshed. Prior exact proposal head `396c1e7a2809e4c00ec716b216ed68c9ba43a3d1` passed CI #2370 (run ID `42765005024`); that result does not validate commit `eaa646ab265afc599b431c9cba2bfd77efb33b3c`.
+
+
+### Exact-head CI refresh — session-binding proposal (2026-11-10 05:56 UTC)
+
+- Latest proposal head `eaa646ab265afc599b431c9cba2bfd77efb33b3c`; CI run #2372 (ID `42765458688`) completed successfully. Both `quality` and `web-quality` passed, including disposable PostgreSQL and repository security checks. This is generic repository CI only, not qualification of an unimplemented issuer/gateway.
+- GHM handover commit before this CI note: `900291388cfe658b51f18e2080c866e33c9fad87`; its CI #2373 (ID `42765499545`) was still running at the last check.
+- Connect handover commit before this CI note: `59510a72f532d84e4329290b334a5f7dda775530`; its Connect quality #272 (ID `42765507407`) was still running at the last check.
+- Current PR #251 remains draft/unmerged. Keep it that way. New proposal details and session binding are recorded above; exact auth_validate_session grants/semantics still require code/schema review. Do not infer production secret mounts from source.
