@@ -12,8 +12,9 @@ export const registerBusinessAnalyticsRoutes = (app: Express, service: BusinessA
   }, async (req: Request, res: Response) => {
     const businessId = typeof req.params.businessId === 'string' && /^[1-9]\d*$/.test(req.params.businessId) ? Number(req.params.businessId) : NaN;
     const rawDays = req.query.days ?? '30';
-    const days = typeof rawDays === 'string' && ['7','30','90'].includes(rawDays) ? Number(rawDays) as 7 | 30 | 90 : NaN;
-    if (!Number.isSafeInteger(businessId) || ![7,30,90].includes(days)) { res.status(400).json({ error: 'invalid_request' }); return; }
+    const parsedDays = typeof rawDays === 'string' && ['7','30','90'].includes(rawDays) ? Number(rawDays) : NaN;
+    if (!Number.isSafeInteger(businessId) || ![7,30,90].includes(parsedDays)) { res.status(400).json({ error: 'invalid_request' }); return; }
+    const days = parsedDays as 7 | 30 | 90;
     try { res.status(200).json({ analytics: await service.getDashboard(req.authContext as AuthContext, businessId, days) }); }
     catch (error) {
       if (error instanceof Error && error.message === 'Business analytics access required') { res.status(403).json({ error: 'forbidden' }); return; }
