@@ -248,3 +248,6 @@ PR #266 adds a gateway-only SECURITY DEFINER write wrapper guarded by `ghm.asser
 Disposable PostgreSQL qualification covers positive write, disabled actor denial, cross-business denial and ordinary runtime cannot execute the gateway write. HTTP/API tests cover actor binding, payload validation, token forwarding and no fallback. At handover PR #266 is open and CI pending. No production service, URL, credential, role/grant, migration execution or deployment has changed. Legacy runtime write grant remains until separate rollout approval and successful end-to-end verification.
 
 Next: exact-head CI, then plan gateway/API service deployment order and end-to-end verification. Auth issuer isolation and remaining feature RPCs are separate milestones.
+
+
+PR #266 qualification note: the first disposable PostgreSQL run exposed an ambiguous output-column reference in the new write wrapper. The wrapper now explicitly qualifies each returned column through the delegated function alias; the exact-head CI run must be repeated before merge. This was caught before any production migration or deployment.
