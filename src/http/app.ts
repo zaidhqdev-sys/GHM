@@ -213,7 +213,7 @@ const parseCreateBusinessInput = (body: unknown): { name: string } | null => {
 const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   const input = body as Record<string, unknown>;
-  const allowed = new Set(['name', 'slug', 'description', 'phone', 'email', 'province', 'city', 'physicalAddress', 'latitude', 'longitude', 'whatsapp', 'website', 'avatarLetter', 'avatarColor', 'yearsInBusiness']);
+  const allowed = new Set(['name', 'slug', 'description', 'phone', 'email', 'province', 'city', 'physicalAddress', 'latitude', 'longitude', 'whatsapp', 'website', 'avatarLetter', 'avatarColor', 'yearsInBusiness', 'isSupplier']);
   const keys = Object.keys(input);
   if (keys.length === 0 || keys.some((key) => !allowed.has(key))) return null;
   if (Object.hasOwn(input, 'name') && (typeof input.name !== 'string' || !input.name.trim())) return null;
@@ -230,6 +230,7 @@ const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | n
   if (Object.hasOwn(input, 'avatarLetter') && input.avatarLetter !== null && (typeof input.avatarLetter !== 'string' || input.avatarLetter.trim().length > 3)) return null;
   if (Object.hasOwn(input, 'avatarColor') && input.avatarColor !== null && (typeof input.avatarColor !== 'string' || input.avatarColor.trim().length > 32)) return null;
   if (Object.hasOwn(input, 'yearsInBusiness') && (typeof input.yearsInBusiness !== 'number' || !Number.isInteger(input.yearsInBusiness) || input.yearsInBusiness < 0 || input.yearsInBusiness > 100)) return null;
+  if (Object.hasOwn(input, 'isSupplier') && typeof input.isSupplier !== 'boolean') return null;
   if (Object.hasOwn(input, 'latitude') !== Object.hasOwn(input, 'longitude')) return null;
   return {
     ...(Object.hasOwn(input, 'name') ? { name: input.name as string } : {}),
@@ -247,6 +248,7 @@ const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | n
     ...(Object.hasOwn(input, 'avatarLetter') ? { avatarLetter: input.avatarLetter as string | null } : {}),
     ...(Object.hasOwn(input, 'avatarColor') ? { avatarColor: input.avatarColor as string | null } : {}),
     ...(Object.hasOwn(input, 'yearsInBusiness') ? { yearsInBusiness: input.yearsInBusiness as number } : {}),
+    ...(Object.hasOwn(input, 'isSupplier') ? { isSupplier: input.isSupplier as boolean } : {}),
   };
 };
 
