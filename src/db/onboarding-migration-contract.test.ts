@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const migration = readFileSync(new URL('../../database/migrations/20261110100000_create_account_onboarding_progress.sql', import.meta.url), 'utf8');
+const migration = readFileSync('database/migrations/20261110100000_create_account_onboarding_progress.sql', 'utf8');
 
 test('onboarding persistence is account-owned and lifecycle constrained', () => {
   assert.match(migration, /account_id bigint NOT NULL REFERENCES ghm\.account_identity\(id\)/);
