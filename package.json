@@ -71,7 +71,8 @@
     "start:actor-gateway": "node dist/actor-gateway/server.js",
     "qualify:capability-catalogue-governance": "npm run build && node scripts/qualify-capability-catalogue-governance.mjs",
     "qualify:business-supplier-classification": "node scripts/qualify-business-supplier-classification-postgres.mjs",
-    "qualify:business-profile-contract": "node scripts/qualify-business-profile-contract-postgres.mjs"
+    "qualify:business-profile-contract": "node scripts/qualify-business-profile-contract-postgres.mjs",
+    "qualify:capability-governance-cutover": "npm run build && node scripts/qualify-capability-governance-cutover-postgres.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",
