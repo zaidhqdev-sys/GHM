@@ -236,7 +236,6 @@ export const createActorGatewayApp = (dependencies: ActorGatewayDependencies): E
     }
   });
 
-
   const capabilityRouteActor = (req: Request, res: Response): number | null => {
     const authorization = req.header('authorization');
     if (!authorization?.startsWith('Bearer ')) { res.status(401).json({ error: 'unauthorized' }); return null; }
