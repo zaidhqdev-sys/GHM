@@ -162,6 +162,8 @@ test('Capability governance validates draft fields and lifecycle targets', async
   await assert.rejects(() => service.createDraft(adminContext, { name: '', slug: 'bad slug' }), /Capability name/);
   await assert.rejects(() => service.createDraft(adminContext, { name: 'Build', slug: 'Bad Slug' }), /slug/);
   await assert.rejects(() => service.createDraft(adminContext, { name: 'Build', slug: 'build', sortOrder: -1 }), /sort order/);
+  const id = '55555555-5555-4555-8555-555555555555';
+  await assert.rejects(() => service.updateDraft(adminContext, id, { name: 'Build', slug: 'build', parentId: id }), /parent Capability ID/);
   await assert.rejects(() => service.transition(adminContext, '55555555-5555-4555-8555-555555555555', 'draft'), /lifecycle target/);
 });
 
