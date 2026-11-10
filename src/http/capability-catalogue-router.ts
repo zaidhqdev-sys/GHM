@@ -68,7 +68,7 @@ const handleError = (error: unknown, res: Response): void => {
     res.status(400).json({ error: 'invalid_request' });
     return;
   }
-  if (/not found|version changed|Invalid Capability lifecycle transition|replacement must|cannot identify a replacement|duplicate key/i.test(message)) {
+  if (/not found|version changed|Invalid Capability lifecycle transition|replacement must|cannot identify a replacement|duplicate key|cannot be retired while|hierarchy cycle/i.test(message)) {
     res.status(409).json({ error: 'conflict' });
     return;
   }
