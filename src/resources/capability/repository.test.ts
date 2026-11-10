@@ -3,7 +3,7 @@ import test from 'node:test';
 import type { PoolClient } from 'pg';
 import type { AuthContext } from '../../auth/authorization';
 import type { TransactionPool } from '../../db/transaction';
-import { PostgresCapabilityRepository } from './repository';
+import { PgCapabilityRepository } from './repository';
 
 const context: AuthContext = { userId: 99, role: 'admin' };
 const row = {
@@ -36,7 +36,7 @@ const createPool = () => {
 
 test('capability governance catalogue reads use canonical GHM rows', async () => {
   const { pool, calls } = createPool();
-  const rows = await new PostgresCapabilityRepository(pool).listGoverned(context);
+  const rows = await new PgCapabilityRepository(pool).listGoverned(context);
   assert.equal(rows[0].id, row.id);
   assert.equal(rows[0].lifecycleStatus, 'draft');
   assert.match(calls[1], /FROM ghm\.capability/);
@@ -44,7 +44,7 @@ test('capability governance catalogue reads use canonical GHM rows', async () =>
 
 test('capability draft creation invokes the protected database governance function', async () => {
   const { pool, calls, params } = createPool();
-  const result = await new PostgresCapabilityRepository(pool).createDraft(context, {
+  const result = await new PgCapabilityRepository(pool).createDraft(context, {
     name: 'Building', slug: 'building', description: 'Built environment',
     parentId: null, sortOrder: 5, sourceReference: 'policy-42',
   });
@@ -56,7 +56,7 @@ test('capability draft creation invokes the protected database governance functi
 
 test('capability draft update and lifecycle transition pass actor and version to protected functions', async () => {
   const { pool, calls, params } = createPool();
-  const repository = new PostgresCapabilityRepository(pool);
+  const repository = new PgCapabilityRepository(pool);
   await repository.updateDraft(context, row.id, { name: 'Building', slug: 'building', sortOrder: 5 });
   await repository.transition(context, row.id, 'active');
   assert.match(calls[1], /ghm\.update_capability_draft/);
