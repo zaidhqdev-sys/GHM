@@ -606,7 +606,8 @@ export class PostgresCommercialRepository implements CommercialRepository {
              MAX(price.id) FILTER (WHERE price.price_kind = 'founding') AS founding_price_id,
              MAX(price.amount_minor_units) FILTER (WHERE price.price_kind = 'founding') AS founding_amount_minor_units,
              MAX(price.id) FILTER (WHERE price.price_kind = 'standard') AS standard_price_id,
-             MAX(price.amount_minor_units) FILTER (WHERE price.price_kind = 'standard') AS standard_amount_minor_units,\n             COUNT(DISTINCT price.id) FILTER (WHERE price.price_kind = 'standard') AS standard_price_count,
+             MAX(price.amount_minor_units) FILTER (WHERE price.price_kind = 'standard') AS standard_amount_minor_units,
+             COUNT(DISTINCT price.id) FILTER (WHERE price.price_kind = 'standard') AS standard_price_count,
              COUNT(DISTINCT allocation.id)::integer AS founding_allocated,
              EXISTS (
                SELECT 1 FROM ghm.commercial_trial trial
