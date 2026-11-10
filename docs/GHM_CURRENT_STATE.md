@@ -283,3 +283,12 @@ PR [#222](https://github.com/zaidhqdev-sys/GHM/pull/222) is open from `integrati
 The active engineering handover is [HANDOVER_2026-11-10_CORE_RELEASE_READINESS.md](HANDOVER_2026-11-10_CORE_RELEASE_READINESS.md). It records the verified main/runtime baseline, founder scope decisions, the shared token-issuer/database actor-authentication prerequisite, affected PR gates, merge/deployment policy, and the next non-deferred work sequence.
 
 Owner scope decisions recorded 2026-11-10: pause all PayFast work until working sandbox access is restored; defer approved legal-document/QuoteFlow legal-acceptance work until core systems are running smoothly and the owner resumes it. Existing implementation and historical evidence are preserved. Neither item is a current workstream or release prerequisite.
+
+
+## Release queue checkpoint — 2026-11-10 19:52 UTC
+
+- PR #253 merged as `8bb3a764275703d26be93385854290d5672995e3`; exact-head quality, web-quality and Cloudflare Pages checks passed.
+- PR #254 merged as `c5238f3d45d05009e2b28d5fa38ebd8ee61a0a33`; exact-head quality, web-quality and Cloudflare Pages checks passed. It adds the source/DDL actor-auth surface inventory at [GHM_ACTOR_AUTH_SURFACE_INVENTORY_2026-11-10.md](security/GHM_ACTOR_AUTH_SURFACE_INVENTORY_2026-11-10.md).
+- PR #236 was closed as superseded, not merged. A fresh comparison against main showed only two remaining changed files, both stale handover documents; its substantive code/migration changes are already present on main. Its remaining documentation incorrectly said Render auto-deploy was enabled, while the verified live service setting is disabled.
+- The shared actor-authentication blocker now explicitly includes #244's direct engagement-event INSERT attribution surface as well as the SECURITY DEFINER RPCs and auth/session mutation functions. See the inventory and draft architecture proposal PR #251.
+- No production migration/query/write, role/grant/secret change, new service provisioning, or runtime deployment was performed in this checkpoint.
