@@ -26,6 +26,7 @@ export const registerBusinessEngagementRoutes = (app: Express, service: Business
     catch (error) {
       if (error instanceof Error && ['businessId must be a positive integer','Unsupported engagement event type','Invalid engagement source','Invalid engagement context'].includes(error.message)) { res.status(400).json({ error: 'invalid_request' }); return; }
       if (error instanceof Error && error.message === 'Business not found') { res.status(404).json({ error: 'not_found' }); return; }
+      if (error instanceof Error && error.message === 'Engagement rate limit exceeded') { res.status(429).json({ error: 'rate_limited' }); return; }
       next(error);
     }
   });
