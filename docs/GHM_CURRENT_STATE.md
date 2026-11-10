@@ -283,3 +283,10 @@ PR [#222](https://github.com/zaidhqdev-sys/GHM/pull/222) is open from `integrati
 Draft PR #270 moves supplier-classification writes off the shared `ghm_runtime` database principal and behind the isolated Actor Gateway. It revokes runtime EXECUTE on the original SECURITY DEFINER RPC, introduces a gateway-only wrapper guarded by `ghm.assert_actor_gateway`, verifies the GHM ES256 token in the gateway, and derives the account ID from the signed subject. Resource API supplier writes fail closed if gateway routing is unavailable; no legacy fallback remains in the HTTP path.
 
 The disposable PostgreSQL qualification now provisions distinct runtime, migrator and gateway roles and tests the direct-RPC denial and gateway-only path. Exact-head CI remains pending. This is a draft branch stacked on supplier PR #243; neither PR is approved for merge or production rollout yet. No production migration, role/grant change, service, environment variable or deployment was created. PayFast remains paused pending sandbox access; legal-document work remains parked.
+
+
+## Supplier actor gateway exact-head CI — PASS on prior code head (2026-11-10)
+
+The supplier-classification gateway implementation passed full CI on code head `3c41699811f730f25534dfb374dd5e9191b9188d` (workflow run #42906441750): build, full migrations on disposable PostgreSQL 18, supplier-classification direct-runtime-denial/gateway-owner/member-denial qualification, full tests, existing security and commercial qualifications, migration audit, runtime boundary, web-quality and Cloudflare Pages.
+
+A handover-only commit was added after that run, so exact-head checks must be reconfirmed on the new PR head before claiming final CI is green. No production migration, role/grant change, service provisioning, environment update or deployment occurred.
