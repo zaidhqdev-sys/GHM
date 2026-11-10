@@ -182,16 +182,7 @@ export class PostgresBusinessIdentityRepository implements BusinessIdentityRepos
       this.transactionPool,
     );
   }
-  async updateBusiness(context: AuthContext, businessId: BusinessId, input: UpdateBusinessProfileInput) {
-    const patch = buildProfilePatch(input);
-    return withTenantTransaction(context, businessId, async (client, _context, tenant) => {
-      if (tenant.membershipRole !== 'owner' && tenant.membershipRole !== 'administrator') throw new Error('Business management permission required');
-      const result = await client.query(
-        `SELECT * FROM ghm.update_business_profile($1, $2, $3::jsonb)`,
-        [context.userId, tenant.businessId, JSON.stringify(patch)],
-      );
-      if (result.rowCount !== 1) throw new Error('Business not found');
-      return mapBusiness(result.rows[0]);
-    }, this.transactionPool);
+  async updateBusiness(_context: AuthContext, _businessId: BusinessId, _input: UpdateBusinessProfileInput): Promise<BusinessIdentity> {
+    throw new Error('Business profile must be updated through the authenticated actor gateway');
   }
 }
