@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - feat/ghm-business-analytics-engagement-20261110
   pull_request:
     branches:
       - main
@@ -90,6 +91,9 @@ jobs:
 
       - name: Qualify GHM supplier classification and membership authorization on disposable PostgreSQL
         run: npm run qualify:business-supplier-classification
+
+      - name: Qualify GHM Business Analytics and engagement on disposable PostgreSQL
+        run: npm run qualify:business-analytics-engagement
 
       - name: Qualify Business registration forward migration against existing table
         run: node scripts/qualify-business-registration-forward-migration.mjs
