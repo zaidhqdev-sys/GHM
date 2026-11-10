@@ -208,3 +208,14 @@ Tests must connect using the actual `ghm_runtime`, issuer and gateway roles. Sup
 ## 10. Scope
 
 This plan is isolated design and qualification only. It does not create Render services, set production environment variables, rotate production keys, alter production grants, run active-database queries/migrations, change payment configuration, or deploy. PayFast and legal-document work remain parked as directed.
+
+
+## 11. Implemented foundation and selected DB principal model — 2026-11-10
+
+PR #257 merged the public-only ES256 verifier and public-only key loader. A compatibility issue was found during implementation: the prior signer used `noTimestamp: true`, which removed `iat` despite the intended contract. New tokens now emit `iat`; the verifier accepts legacy tokens without `iat` only while their expiry is within the existing 900-second lifetime plus 60-second skew. The test suite covers both formats.
+
+PR #259 merged an additive database principal guard and disposable PostgreSQL qualification. The first selected DB actor model is a dedicated `ghm_actor_gateway` LOGIN NOINHERIT role with no role memberships/elevated attributes. The SECURITY DEFINER helper `ghm.assert_actor_gateway(bigint)` verifies `session_user`, active account state and positive account ID. Only this role can execute the helper; ordinary `ghm_runtime` cannot execute it, assume the role or read account/auth tables. The gateway verifies the JWT and derives actor ID from `sub`, then calls closed typed operations. This explicitly trusts the isolated gateway service as the actor assertion boundary; gateway compromise is therefore an actor-auth compromise.
+
+The helper is not yet wired into feature RPCs and the migration does not revoke current runtime grants. Role provisioning remains out-of-band and must precede migration application; the migration fails closed if the role is absent or unsafe. CI provisions only a disposable test role and passed the complete migration chain, principal qualification, full suite, migration audit, runtime boundary, web-quality and Cloudflare checks.
+
+Next: implement the gateway service and typed registry, migrate one representative low-risk read operation, then expand the shared actor gate across all inventoried RPCs and the analytics event insert. Production grants/credentials, migrations, provisioning and deployments remain separately authorized.
