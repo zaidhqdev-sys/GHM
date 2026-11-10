@@ -156,3 +156,23 @@ Approval is limited to isolated implementation and disposable qualification. It 
 The first code slice is PR #257, public-only ES256 access-token verification. It adds a verifier and public-only key loader that can validate the current GHM token contract without loading a private key, enforces the 900-second maximum token lifetime and future-issued bound, and adds tests. This does not yet remove private signing material from the existing resource API or implement the issuer/gateway services. Exact-head CI is pending at this checkpoint.
 
 PR #251 remains draft/reference material; ADR-001 supersedes its undecided topology language. PayFast and legal-acceptance work remain paused/deferred per owner direction. No production DB access/mutation, grant, credential, service provisioning, Render configuration or runtime deployment occurred.
+
+
+## 10. Public-only verifier and database gateway principal qualification — 2026-11-10 20:16 UTC
+
+### Merged implementation slices
+
+- PR #257 merged as `e49beff5d87e708906c2077219c839dc7ee9914a`. New `createAccessJwtVerifier` and `loadEs256VerificationKeys` allow a service to verify ES256 access tokens using public key material only. The signer now emits the intended `iat` claim because the previous `noTimestamp: true` option removed it. The verifier accepts legacy tokens without `iat` only if their expiry remains within the 900-second lifetime plus 60-second clock skew. Exact-head quality, web-quality and Cloudflare Pages passed.
+- PR #259 merged as `a2da35a6c8f2ffc8e0c8b48728b36c8bc3c7b940`. It adds the additive SECURITY DEFINER helper `ghm.assert_actor_gateway(bigint)`, a restricted gateway login check and disposable PostgreSQL qualification. Exact-head quality, web-quality and Cloudflare Pages passed, including the full disposable migration chain, new principal qualification, full test suite, migration audit and runtime boundary checks.
+
+### Selected database principal model
+
+For the first gateway implementation, the database trusts one isolated actor-assertion service principal: `ghm_actor_gateway`. It must be LOGIN NOINHERIT, non-superuser, non-privileged, and have no role memberships. The helper uses `session_user` (not `current_user`, which changes inside SECURITY DEFINER) to verify the actual login. Only the gateway role can execute it; the ordinary `ghm_runtime` role cannot execute it, assume the gateway role, or read account/auth tables directly. The gateway verifies the ES256 JWT independently, derives actor ID from `sub`, and supplies it to typed protected operations. A gateway compromise is an actor-assertion compromise; keep the gateway isolated and tightly audited.
+
+This deliberately avoids caller-writable GUCs, temp tables and custom SQL crypto. The new migration is additive and is not yet called by feature RPCs. It does not revoke existing runtime privileges. The gateway role is provisioned out-of-band before migration application; the migration refuses to proceed if it is absent or unsafe. CI creates only a disposable test role and database.
+
+### Next implementation gate
+
+Build the separate gateway service with public-only key loading and a closed typed operation registry. Route one representative low-risk read operation through it. Update the corresponding DB function to call `ghm.assert_actor_gateway`, then prove legitimate success and spoof denial using actual disposable `ghm_runtime` and `ghm_actor_gateway` logins. Extend consistently to registration identity, Business profile, supplier classification, capability governance and engagement-event attribution. Do not revoke production runtime privileges, provision production role/credentials, or deploy until all callers are migrated and the full adversarial suite passes.
+
+No production database access/mutation, grant, credential, Render service, environment setting or deployment occurred in these implementation slices.
