@@ -8,6 +8,7 @@ const forwardMigration = fs.readFileSync(path.resolve(process.cwd(), 'database/m
 const repository = fs.readFileSync(path.resolve(process.cwd(), 'src/resources/business-identity/repository.ts'), 'utf8');
 const contracts = fs.readFileSync(path.resolve(process.cwd(), 'src/resources/business-identity/contracts.ts'), 'utf8');
 const gatewayCutover = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261110270000_gateway_business_profile_update.sql'), 'utf8');
+const legacyCompatibility = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261110265000_reconcile_business_profile_legacy_contract.sql'), 'utf8');
 
 test('owner-editable avatar and business tenure fields are stored in canonical GHM Business', () => {
   for (const field of ['avatar_letter', 'avatar_color', 'years_in_business']) {
@@ -58,4 +59,15 @@ test('Business profile writes are restricted to the isolated actor gateway', () 
   assert.match(gatewayCutover, /REVOKE ALL ON FUNCTION ghm\.gateway_update_business_profile\(bigint, bigint, jsonb\) FROM ghm_runtime/);
   assert.doesNotMatch(repository, /ghm\.update_business_profile/);
   assert.match(repository, /must be updated through the authenticated actor gateway/);
+});
+
+test('Business profile forward reconciliation preserves legacy API fields and snake/camel aliases', () => {
+  assert.match(legacyCompatibility, /'category'/);
+  assert.match(legacyCompatibility, /'isSupplier'/);
+  assert.match(legacyCompatibility, /membership_role IN \\('owner', 'administrator'\\)/);
+  assert.match(legacyCompatibility, /Conflicting Business profile aliases/);
+  assert.match(legacyCompatibility, /v_patch->v_alias IS DISTINCT FROM v_patch->v_key/);
+  assert.match(legacyCompatibility, /physical_address/);
+  assert.match(legacyCompatibility, /avatar_letter/);
+  assert.match(legacyCompatibility, /years_in_business/);
 });
