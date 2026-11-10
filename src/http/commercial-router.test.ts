@@ -106,7 +106,7 @@ test('commercial subscription read returns null when no subscription exists', as
   } as unknown as CommercialService;
   const { server, baseUrl } = await start(service);
   try {
-    const headers = { authorization: `Bearer ${tokenFor({ userId: 42, role: 'customer' })}` };
+    const headers = { authorization: `Bearer ${tokenFor({ userId: 42, role: 'business' })}` };
     const response = await fetch(`${baseUrl}/api/v1/commercial/subscription/55`, { headers });
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { result: null });
