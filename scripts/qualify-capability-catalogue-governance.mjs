@@ -220,16 +220,29 @@ try {
     'permission denied',
   );
 
+  await expectReject(
+    () => runtimePool.query(
+      'SELECT * FROM ghm.gateway_create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8)',
+      [adminId, `${marker} Gateway Spoof`, `${marker}-gateway-spoof`, null, null, 0, null, 1],
+    ),
+    'RUNTIME GATEWAY PRINCIPAL FUNCTION DENIAL PASS',
+    'permission denied',
+  );
+
   const privilege = await runtimePool.query(
     `SELECT has_table_privilege(current_user, 'ghm.capability', 'INSERT') AS can_insert,
             has_table_privilege(current_user, 'ghm.capability', 'UPDATE') AS can_update,
             has_table_privilege(current_user, 'ghm.capability', 'DELETE') AS can_delete,
             has_function_privilege(current_user, 'ghm.create_capability_draft(bigint,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS can_create,
             has_function_privilege(current_user, 'ghm.update_capability_draft(bigint,uuid,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS can_update_draft,
-            has_function_privilege(current_user, 'ghm.transition_capability_lifecycle(bigint,uuid,text,uuid,integer)', 'EXECUTE') AS can_transition`,
+            has_function_privilege(current_user, 'ghm.transition_capability_lifecycle(bigint,uuid,text,uuid,integer)', 'EXECUTE') AS can_transition,
+            has_function_privilege(current_user, 'ghm.gateway_list_capabilities(bigint)', 'EXECUTE') AS can_gateway_list,
+            has_function_privilege(current_user, 'ghm.gateway_create_capability_draft(bigint,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS can_gateway_create,
+            has_function_privilege(current_user, 'ghm.gateway_update_capability_draft(bigint,uuid,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS can_gateway_update,
+            has_function_privilege(current_user, 'ghm.gateway_transition_capability_lifecycle(bigint,uuid,text,uuid,integer)', 'EXECUTE') AS can_gateway_transition`,
   );
   const p = privilege.rows[0];
-  if (p.can_insert || p.can_update || p.can_delete || !p.can_create || !p.can_update_draft || !p.can_transition) {
+  if (p.can_insert || p.can_update || p.can_delete || !p.can_create || !p.can_update_draft || !p.can_transition || p.can_gateway_list || p.can_gateway_create || p.can_gateway_update || p.can_gateway_transition) {
     throw new Error(`Unexpected capability catalogue runtime privileges: ${JSON.stringify(p)}`);
   }
   console.log('RUNTIME CAPABILITY GOVERNANCE PRIVILEGE BOUNDARY PASS');
