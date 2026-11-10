@@ -80,6 +80,12 @@ try {
   );
   console.log('RUNTIME GATEWAY-ONLY RPC DENIAL PASS');
 
+  await assert.rejects(
+    () => runtimePool.query('SET ROLE ghm_actor_gateway'),
+    /permission denied to set role/,
+  );
+  console.log('RUNTIME CANNOT ASSUME ACTOR GATEWAY ROLE PASS');
+
   const supplier = await gatewayPool.query(
     'SELECT * FROM ghm.gateway_update_business_supplier_classification($1, $2, $3)',
     [accountId, businessId, true],
