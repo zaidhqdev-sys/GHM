@@ -3,9 +3,10 @@ import { Pool } from 'pg';
 import 'dotenv/config';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
+const gatewayUrl = process.env.GHM_ACTOR_GATEWAY_DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
-if (!runtimeUrl || !migratorUrl || runtimeUrl === migratorUrl) {
-  throw new Error('Dedicated runtime and migrator connections are required');
+if (!runtimeUrl || !gatewayUrl || !migratorUrl || new Set([runtimeUrl, gatewayUrl, migratorUrl]).size !== 3) {
+  throw new Error('Dedicated runtime, actor gateway and migrator connections are required');
 }
 
 const { CapabilityServiceImpl } = await import('../dist/resources/capability/service.js');
@@ -13,6 +14,7 @@ const { PgCapabilityRepository } = await import('../dist/resources/capability/re
 
 const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false;
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
+const gatewayPool = new Pool({ connectionString: gatewayUrl, ssl });
 const cleanupPool = new Pool({ connectionString: migratorUrl, ssl });
 const marker = `ghm-capability-governance-${randomUUID()}`;
 const accountIds = [];
@@ -76,6 +78,17 @@ try {
   const service = new CapabilityServiceImpl(new PgCapabilityRepository(runtimePool));
 
   await expectReject(() => service.listGoverned(business), 'SERVICE NON-ADMIN READ DENIAL PASS', 'Insufficient role');
+  await expectReject(() => gatewayPool.query('SET ROLE ghm_runtime'), 'GATEWAY CANNOT ASSUME RUNTIME ROLE PASS', 'permission denied');
+  await expectReject(() => runtimePool.query('SET ROLE ghm_actor_gateway'), 'RUNTIME CANNOT ASSUME GATEWAY ROLE PASS', 'permission denied');
+
+  const gatewayList = await gatewayPool.query('SELECT * FROM ghm.gateway_list_capabilities($1)', [adminId]);
+  if (!Array.isArray(gatewayList.rows)) throw new Error('Gateway capability listing did not return rows');
+  console.log('GATEWAY ADMIN LIST POSITIVE PASS');
+  await expectReject(
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_list_capabilities($1)', [businessId]),
+    'GATEWAY NON-ADMIN LIST DENIAL PASS',
+    'System administrator permission required',
+  );
 
   const replacement = await service.createDraft(admin, {
     name: `${marker} Replacement`, slug: `${marker}-replacement`,
@@ -250,5 +263,6 @@ try {
 } finally {
   await cleanup();
   await runtimePool.end();
+  await gatewayPool.end();
   await cleanupPool.end();
 }
