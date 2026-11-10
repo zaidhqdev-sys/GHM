@@ -415,3 +415,15 @@ test('Commercial offer fails closed when the plan has no eligible South African 
   assert.equal(result.standardPrice, null);
   assert.equal(result.foundingAvailable, false);
 });
+
+test('Commercial offer does not disclose plan or price data without active Business membership', async () => {
+  const { pool, calls } = createFakePool({
+    membership: false,
+    offerRow: { plan_code: 'business_pro' },
+  });
+  await assert.rejects(
+    () => new PostgresCommercialRepository(pool).getCommercialOffer(context(), businessId, 'business_pro'),
+    /Business read permission required/,
+  );
+  assert.equal(calls.some(sql => sql.includes('FROM ghm.commercial_plan plan')), false);
+});
