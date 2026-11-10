@@ -98,6 +98,9 @@ jobs:
       - name: Apply all migrations to disposable PostgreSQL
         run: npm run migrate
 
+      - name: Qualify isolated actor gateway database principal
+        run: npm run qualify:actor-gateway-principal
+
       - name: Qualify Business registration forward migration against existing table
         run: node scripts/qualify-business-registration-forward-migration.mjs
 
