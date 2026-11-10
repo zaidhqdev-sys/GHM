@@ -321,3 +321,14 @@ Owner scope decisions recorded 2026-11-10: pause all PayFast work until working 
 - CI passed exact head across quality, web-quality and Cloudflare Pages. Quality included complete disposable migration chain, gateway role/function qualification, HTTP app tests, full suite, migration audit and runtime boundary checks.
 - This is a self-read proof slice only. Existing resource API still retains current auth signing and existing runtime DB privileges; issuer isolation and migration of feature RPCs remain unfinished. No Render service, production environment variable, credential, role, grant or deployment was changed.
 - Next: route one existing actor-sensitive low-risk feature operation through the gateway and make its DB function require `assert_actor_gateway`; then expand to all inventoried RPCs and engagement-event writes. Only after full caller migration should production privilege changes be planned separately.
+
+
+## Resource API → Actor Gateway registration read integration (PR #265) — 2026-11-10
+
+- PR #265 adds an HTTPS-only typed HTTP client from the existing resource API to the isolated Actor Gateway registration identity read.
+- When optional `GHM_ACTOR_GATEWAY_URL` is configured, the existing GET route forwards the original bearer access token to the gateway. The resource API continues its existing authentication and operation authorization; the gateway independently verifies the token and rechecks actor/business membership.
+- Gateway errors fail closed (404 for access denial/not-found, 503 for unavailable/invalid gateway responses); no legacy database fallback occurs in gateway mode. When the variable is absent, current legacy behavior remains for controlled rollout.
+- Added tests for original token forwarding, no legacy call in gateway mode, gateway outage without fallback, HTTPS-only origin, typed response validation and config validation; included gateway-client tests in the full suite.
+- PR #265 is open and CI is pending at this handover update. No production gateway URL, service, credential, environment variable, role, grant, migration execution or deployment has been changed.
+- Do not configure production until the separate gateway service is deployed with gateway-only DB credentials and public ES256 verification keys, and end-to-end HTTP/database qualification passes. Do not revoke legacy runtime read grant until the API is demonstrably using the gateway in the approved deployment sequence.
+- Next: exact-head CI, then extend disposable PostgreSQL qualification through the HTTP boundary and plan the separately approved Render gateway service setup. Registration writes and other feature RPCs remain un-migrated.

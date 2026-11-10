@@ -83,3 +83,19 @@ test('legacy TRUST_PROXY=true is narrowed to one trusted hop', () => {
   const loaded = JSON.parse(result.stdout.trim());
   assert.equal(loaded.trustProxy, 1);
 });
+
+
+test('actor gateway origin is optional and accepts HTTPS origins', () => {
+  const result = loadConfig({ ...baseEnv, GHM_ACTOR_GATEWAY_URL: 'https://gateway.example.test' });
+  assert.equal(result.status, 0, result.stderr);
+  const loaded = JSON.parse(result.stdout.trim());
+  assert.equal(loaded.actorGatewayUrl, 'https://gateway.example.test');
+});
+
+test('actor gateway origin rejects insecure non-local HTTP and URL paths', () => {
+  for (const value of ['http://gateway.example.test', 'https://gateway.example.test/path', 'not-a-url']) {
+    const result = loadConfig({ ...baseEnv, GHM_ACTOR_GATEWAY_URL: value });
+    assert.notEqual(result.status, 0, `expected GHM_ACTOR_GATEWAY_URL=${value} to fail`);
+    assert.match(result.stderr + result.stdout, /GHM_ACTOR_GATEWAY_URL/);
+  }
+});
