@@ -53,3 +53,12 @@ The legacy Connect metric label “leads” maps to canonical GHM Enquiries. “
 ## Current release boundary
 
 No production migration, provider activation, environment change, deployment, merge or cutover. This is a draft backend implementation stacked on GHM Marketplace PR #243; merge order and final base must respect that dependency.
+
+
+## CI iteration log — 2026-11-10
+
+- Initial PR CI run #2308 (run ID `42736810915`) stopped at TypeScript build before migrations/tests.
+- Error 1: migration contract test used `import.meta.url`, unsupported by the repository's CommonJS TypeScript build. Fixed by resolving the migration path from `process.cwd()`.
+- Error 2: route validation did not narrow `number` to the supported period union `7 | 30 | 90`. Fixed by narrowing after the allowlist check.
+- Follow-up branch head: `f8552589a88a33543df26b1f005144c0361bbac1`.
+- Exact-head CI rerun is pending. No migration was applied in the failed run; no production changes.
