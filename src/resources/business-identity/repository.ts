@@ -56,6 +56,34 @@ const normalizeName = (name: string) => { const normalized = name.trim(); if (!n
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+export const createBusinessSlug = (name: string): string => {
+  const slug = name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+  if (!slug) throw new Error('Business name cannot produce a valid slug');
+  return slug;
+};
+
+export const createBusinessInTransaction = async (
+  client: PoolClient,
+  context: AuthContext,
+  input: CreateBusinessInput,
+  slug: string,
+): Promise<BusinessIdentity> => {
+  await requireAccount(client, context, true);
+  const businessResult = await client.query(
+    `INSERT INTO ghm.business (name, slug, verification_status, is_active)
+     VALUES ($1, $2, 'unverified', true)
+     RETURNING ${BUSINESS_COLUMNS}`,
+    [normalizeName(input.name), slug],
+  );
+  const business = mapBusiness(businessResult.rows[0]);
+  await client.query(
+    `INSERT INTO ghm.business_membership (business_id, account_id, membership_role, membership_status, created_by)
+     VALUES ($1, $2, 'owner', 'active', $2)`,
+    [business.id, context.userId],
+  );
+  return business;
+};
+
 export class PostgresBusinessIdentityRepository implements BusinessIdentityRepository {
   constructor(private readonly transactionPool?: TransactionPool) {}
   async getAccount(context: AuthContext) { return withAuthorizedTransaction(context, c => requireAccount(c, context), this.transactionPool); }
