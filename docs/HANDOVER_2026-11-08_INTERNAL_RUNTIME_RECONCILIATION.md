@@ -865,3 +865,22 @@ Latest proposal CI must be refreshed. Prior exact proposal head `396c1e7a2809e4c
 - GHM handover commit before this CI note: `900291388cfe658b51f18e2080c866e33c9fad87`; its CI #2373 (ID `42765499545`) was still running at the last check.
 - Connect handover commit before this CI note: `59510a72f532d84e4329290b334a5f7dda775530`; its Connect quality #272 (ID `42765507407`) was still running at the last check.
 - Current PR #251 remains draft/unmerged. Keep it that way. New proposal details and session binding are recorded above; exact auth_validate_session grants/semantics still require code/schema review. Do not infer production secret mounts from source.
+
+
+## 2026-11-10 06:04 UTC — reconcile actor-auth proposal with approved auth contracts
+
+Important correction to the 05:56 checkpoint: do not treat signed `sid` plus per-request online session validation as approved policy. The governing GHM Authentication Session and Cryptographic contracts explicitly select 15-minute access JWTs and state that already-issued access tokens expire naturally after logout/session revocation; revocation is authoritative for future refresh. No signed `sid` claim or per-request access-token revocation was selected. This is a possible stronger policy, but it requires a separate explicit decision before implementation. The revised proposal preserves the approved residual-access window (remaining 15-minute token lifetime plus verifier clock tolerance) unless amended.
+
+New exact source review of `database/migrations/20260921130000_create_auth_runtime_functions.sql` establishes:
+- `ghm.auth_validate_session(bigint)` is SECURITY DEFINER, owned by `ghm_schema_owner`, fixed `search_path=pg_catalog,ghm`, revoked from PUBLIC, but currently GRANTED EXECUTE to `ghm_runtime`.
+- It returns one row for missing/existing session and reports account/session status, absolute expiry, 30-day inactivity, usability and rejection reason. It is read-only; it does not update `last_seen_at`.
+- Same migration grants direct SELECT on `ghm.authentication_session` to `ghm_runtime`, while revoking direct INSERT/UPDATE/DELETE. Session and refresh credential data must be distinguished: the migration separately revokes all direct runtime access to password, refresh, recovery secret tables.
+- `AuthPersistence.validateSession` wraps this function, but current `src/auth/ghm-auth-service.ts` does not call it; no evidence that current bearer requests are checked against session state.
+- Function evaluates PostgreSQL `now()` (transaction-start timestamp). A future per-request online check would need a fresh short transaction and primary/current-state semantics; long-running transaction validation could be stale.
+- Existing migration's grants prove the checked-in intended DDL, not effective production privileges, role membership inheritance, or actual service credential separation.
+
+Revised canonical proposal commit: `18162fed75995e6cfd716843e07c2959f87e426e` on PR #251 branch. It explicitly separates approved current behavior from optional `sid` hardening and records the actual `auth_validate_session` grants. Prior head `eaa646ab265afc599b431c9cba2bfd77efb33b3c` passed generic CI #2372 (ID `42765458688`); that run does NOT validate this newer commit. Refresh exact-head CI.
+
+The source-level key-custody finding remains: current auth service loads the ES256 private key and exposes a signer over account ID. The selected target remains GHM-owned issuance; a separately isolated GHM identity/issuer component may preserve that ownership, but separating it from the ordinary API is an architecture refinement requiring explicit approval. A generic arbitrary-payload signing proxy is not isolation. Do not claim production secret mounts or change secret values.
+
+No code, production secrets, DB grants/roles, migrations, deployments, payments, or commercial settings were changed. PR #251 remains draft. Do not mark the signed `sid` approach as approved or ask to re-decide already selected 15-minute TTL/refresh/session values. Resume from PR #251 commit `18162fed75995e6cfd716843e07c2959f87e426e` and verify exact-head CI.
