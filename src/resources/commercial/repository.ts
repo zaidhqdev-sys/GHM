@@ -586,7 +586,7 @@ export class PostgresCommercialRepository implements CommercialRepository {
     return withAuthorizedTransaction(
       context,
       async (client) => {
-        await assertBusinessReadAccess(client, context, businessId);
+        await assertBusinessManagementAccess(client, context, businessId);
         return getCurrentSubscription(client, businessId);
       },
       this.transactionPool,
