@@ -289,3 +289,11 @@ No production migration, role/grant change, service provisioning, environment up
 ## Capability gateway database qualification expansion — 2026-11-10
 
 Draft PR #269 now provisions a dedicated actor-gateway database login in CI and tests the gateway principal separately from runtime and migrator. Qualification covers gateway-only wrapper access, admin success/non-admin denial, all four capability governance operations, and mutual role-assumption denial. The original capability SECURITY DEFINER RPCs still retain runtime EXECUTE grants pending a separately approved post-deployment cutover; no production grant changes were made.
+
+## Capability Actor Gateway integration qualification — 2026-11-10
+
+Draft PR #272 targets `main` so the full stacked capability governance chain (#250 -> #268 -> #269) is evaluated by the configured mainline CI workflow. It is a qualification/integration PR only and must remain draft/unmerged.
+
+The CI workflow now provisions a separate `ghm_actor_gateway` login and `GHM_ACTOR_GATEWAY_DATABASE_URL`. Capability PostgreSQL qualification requires distinct runtime, gateway and migrator credentials; verifies neither runtime nor gateway can assume the other's role; checks admin gateway list/create/update/transition operations and non-admin denial; and confirms runtime cannot execute the gateway-only wrappers.
+
+The legacy three capability SECURITY DEFINER functions still retain `ghm_runtime` EXECUTE grants. That security gate remains open pending deployment/configuration of `GHM_ACTOR_GATEWAY_URL` and a separately qualified cutover. No production action is authorized or performed.
