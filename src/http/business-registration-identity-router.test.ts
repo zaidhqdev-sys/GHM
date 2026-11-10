@@ -163,6 +163,7 @@ test('registration identity read forwards the original bearer token to the gatew
       receivedBusinessId = businessId;
       return identity;
     },
+    async updateRegistrationIdentity() { throw new Error('write not used in read test'); },
   };
   const { server, baseUrl } = await startServer(service, gateway);
   try {
@@ -185,11 +186,77 @@ test('registration identity read fails closed on gateway errors without legacy f
   } as unknown as BusinessRegistrationIdentityService;
   const gateway: BusinessRegistrationIdentityGatewayClient = {
     async readRegistrationIdentity() { throw new Error('gateway unavailable'); },
+    async updateRegistrationIdentity() { throw new Error('write not used in read test'); },
   };
   const { server, baseUrl } = await startServer(service, gateway);
   try {
     const response = await fetch(`${baseUrl}/api/v1/businesses/55/registration-identity`, {
       headers: { authorization: `Bearer ${tokenFor({ userId: 42, role: 'business' })}` },
+    });
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { error: 'service_unavailable' });
+    assert.equal(legacyCalled, false);
+  } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+});
+
+
+test('registration identity update forwards the original bearer token and canonical input to the gateway', async () => {
+  let receivedToken = '';
+  let receivedInput: UpdateBusinessRegistrationIdentityInput | undefined;
+  let legacyCalled = false;
+  const service = {
+    updateRegistrationIdentity: async () => { legacyCalled = true; throw new Error('legacy path must not be called'); },
+  } as unknown as BusinessRegistrationIdentityService;
+  const gateway: BusinessRegistrationIdentityGatewayClient = {
+    async readRegistrationIdentity() { return identity; },
+    async updateRegistrationIdentity(accessToken, input) {
+      receivedToken = accessToken;
+      receivedInput = input;
+      return identity;
+    },
+  };
+  const { server, baseUrl } = await startServer(service, gateway);
+  try {
+    const accessToken = tokenFor({ userId: 42, role: 'business' });
+    const response = await fetch(`${baseUrl}/api/v1/businesses/55/registration-identity`, {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        registrationStatus: 'registered',
+        registrationNumber: '2020/123456/07',
+        legalName: 'Example (Pty) Ltd',
+      }),
+    });
+    assert.equal(response.status, 200);
+    assert.equal(receivedToken, accessToken);
+    assert.deepEqual(receivedInput, {
+      businessId: 55,
+      registrationStatus: 'registered',
+      registrationNumber: '2020/123456/07',
+      legalName: 'Example (Pty) Ltd',
+    });
+    assert.equal(legacyCalled, false);
+  } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+});
+
+test('registration identity update fails closed on gateway outage without legacy write fallback', async () => {
+  let legacyCalled = false;
+  const service = {
+    updateRegistrationIdentity: async () => { legacyCalled = true; return identity; },
+  } as unknown as BusinessRegistrationIdentityService;
+  const gateway: BusinessRegistrationIdentityGatewayClient = {
+    async readRegistrationIdentity() { return identity; },
+    async updateRegistrationIdentity() { throw new Error('gateway unavailable'); },
+  };
+  const { server, baseUrl } = await startServer(service, gateway);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/businesses/55/registration-identity`, {
+      method: 'PUT',
+      headers: {
+        authorization: `Bearer ${tokenFor({ userId: 42, role: 'business' })}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ registrationStatus: null, registrationNumber: null, legalName: null }),
     });
     assert.equal(response.status, 503);
     assert.deepEqual(await response.json(), { error: 'service_unavailable' });
