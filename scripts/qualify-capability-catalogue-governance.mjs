@@ -90,6 +90,29 @@ try {
     'System administrator permission required',
   );
 
+  const gatewayCreated = await gatewayPool.query(
+    'SELECT * FROM ghm.gateway_create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8)',
+    [adminId, `${marker} Gateway Draft`, `${marker}-gateway-draft`, 'Gateway qualification', null, 10, 'gateway-qualification', 1],
+  );
+  const gatewayDraft = gatewayCreated.rows[0];
+  if (!gatewayDraft?.id || gatewayDraft.lifecycle_status !== 'draft') throw new Error('Gateway draft creation failed');
+  capabilityIds.push(gatewayDraft.id);
+  console.log('GATEWAY ADMIN DRAFT CREATE POSITIVE PASS');
+
+  const gatewayUpdated = await gatewayPool.query(
+    'SELECT * FROM ghm.gateway_update_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+    [adminId, gatewayDraft.id, `${marker} Gateway Draft Updated`, `${marker}-gateway-draft`, 'Updated by gateway', null, 20, 'gateway-qualification-updated', 1],
+  );
+  if (gatewayUpdated.rows[0]?.name !== `${marker} Gateway Draft Updated`) throw new Error('Gateway draft update failed');
+  console.log('GATEWAY ADMIN DRAFT UPDATE POSITIVE PASS');
+
+  const gatewayTransition = await gatewayPool.query(
+    'SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5)',
+    [adminId, gatewayDraft.id, 'active', null, 1],
+  );
+  if (gatewayTransition.rows[0]?.lifecycle_status !== 'active') throw new Error('Gateway lifecycle transition failed');
+  console.log('GATEWAY ADMIN LIFECYCLE TRANSITION POSITIVE PASS');
+
   const replacement = await service.createDraft(admin, {
     name: `${marker} Replacement`, slug: `${marker}-replacement`,
     sourceReference: 'runtime-qualification',
