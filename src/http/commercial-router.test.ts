@@ -116,6 +116,22 @@ test('commercial subscription read returns null when no subscription exists', as
   }
 });
 
+test('commercial subscription details require owner or administrator membership', async () => {
+  const service = {
+    getCommercialAccess: async () => access,
+    getCommercialSubscription: async () => { throw new Error('Business management permission required'); },
+  } as unknown as CommercialService;
+  const { server, baseUrl } = await start(service);
+  try {
+    const headers = { authorization: `Bearer ${tokenFor({ userId: 42, role: 'business' })}` };
+    const response = await fetch(`${baseUrl}/api/v1/commercial/subscription/55`, { headers });
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { error: 'forbidden' });
+  } finally {
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+});
+
 test('commercial reads do not disclose Businesses without active membership', async () => {
   const service = {
     getCommercialAccess: async () => { throw new Error('Business read permission required'); },
