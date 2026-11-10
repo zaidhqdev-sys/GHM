@@ -136,3 +136,12 @@ This is disposable CI evidence only. It does not provision the production gatewa
 After the handover updates, the latest PR #270 head `8f3244cdb8e513b668ddc12a7bb8e5936ed4ef81` also passed full CI run #42906759456. All three required checks are green: quality, web-quality and Cloudflare Pages. The quality job again passed the build, full disposable migration chain, supplier classification runtime/gateway privilege qualification, full tests, migration audit and runtime boundary.
 
 The PR remains draft. This CI result does not authorize production deployment, role provisioning, migration/grant changes, or Connect activation.
+
+## Runtime-to-gateway role escalation regression — 2026-11-10
+
+Added in commit `1133fc0c92d001fe63ee9cd38810d945292c5fda`:
+
+- The disposable PostgreSQL supplier qualification now explicitly attempts `SET ROLE ghm_actor_gateway` using the `ghm_runtime` connection and requires PostgreSQL to deny it.
+- This supplements the existing checks that runtime cannot execute either supplier RPC and that the gateway login can perform only membership-authorized operations.
+- Exact-head CI for this new commit has not yet been observed. Do not treat the new regression assertion as passing until a workflow run for this exact head completes successfully.
+- This test protects the stated role-separation boundary. It does not make the gateway DB credential safe to distribute: anyone who obtains the dedicated gateway credential can call the gateway-only wrapper directly. Keep that credential exclusive to the isolated gateway service, and protect it as a privileged secret.
