@@ -342,3 +342,32 @@ test('actor gateway registration identity write hides membership denial as not f
     assert.deepEqual(await response.json(), { error: 'not_found' });
   }, businessReader);
 });
+
+
+test('actor gateway capability administration derives the actor only from verified token subject', async () => {
+  const received: Array<{operation:string;accountId:number}> = [];
+  const capability = {
+    id:'11111111-1111-4111-8111-111111111111',parentId:null,name:'Example',slug:'example',description:null,
+    sortOrder:0,lifecycleStatus:'draft' as const,taxonomyVersion:1,effectiveFrom:null,effectiveTo:null,
+    sourceAuthority:'GHM System Administration',sourceReference:null,replacedByCapabilityId:null,isSelectable:false,
+    createdAt:new Date('2026-11-10T20:00:00.000Z'),updatedAt:new Date('2026-11-10T20:00:00.000Z'),
+  };
+  const capabilityReader = {
+    async list(accountId:number){received.push({operation:'list',accountId});return [capability];},
+    async createDraft(accountId:number,input:unknown){received.push({operation:'create',accountId});return capability;},
+    async updateDraft(accountId:number,id:string,input:unknown){received.push({operation:'update',accountId});return capability;},
+    async transition(accountId:number,id:string,status:string,replacementId?:string|null){received.push({operation:'transition',accountId});return capability;},
+  };
+  const identityReader: ActorIdentityReader = {
+    async readOwnIdentity(accountId:number):Promise<ActorIdentity>{return {accountId,role:'admin',fullName:'Verified Admin'};},
+  };
+  await withServer(identityReader, async baseUrl => {
+    const response=await fetch(`${baseUrl}/v1/admin/capabilities?accountId=999`,{headers:{authorization:`Bearer ${sign(42)}`}});
+    assert.equal(response.status,200);
+    const payload=await response.json() as {capabilities:Array<{id:string}>};
+    assert.equal(payload.capabilities[0].id,capability.id);
+    const missing=await fetch(`${baseUrl}/v1/admin/capabilities`);
+    assert.equal(missing.status,401);
+  }, undefined, capabilityReader as never);
+  assert.deepEqual(received,[{operation:'list',accountId:42}]);
+});
