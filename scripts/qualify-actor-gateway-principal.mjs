@@ -18,7 +18,7 @@ const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } 
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
 const gatewayPool = new Pool({ connectionString: gatewayUrl, ssl });
 const cleanupPool = new Pool({ connectionString: migratorUrl, ssl });
-const fixture = { marker: `ghm-actor-gateway-${randomUUID()}`, accountIds: [] };
+const fixture = { marker: `ghm-actor-gateway-${randomUUID()}`, accountIds: [], businessIds: [] };
 
 const identity = async (pool, expectedUser) => {
   const { rows } = await pool.query(`
@@ -57,6 +57,40 @@ const createFixtureAccount = async (fullName, status = 'active') => {
   }
 };
 
+const createFixtureBusiness = async (accountId, suffix) => {
+  const client = await cleanupPool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SET LOCAL ROLE ghm_schema_owner');
+    const { rows } = await client.query(
+      `INSERT INTO ghm.business (name, slug, verification_status, is_active)
+       VALUES ($1, $2, 'unverified', true)
+       RETURNING id`,
+      [`${fixture.marker}-${suffix}`, `${fixture.marker}-${suffix}`],
+    );
+    const businessId = Number(rows[0].id);
+    await client.query(
+      `INSERT INTO ghm.business_membership (business_id, account_id, membership_role, membership_status)
+       VALUES ($1, $2, 'owner', 'active')`,
+      [businessId, accountId],
+    );
+    await client.query(
+      `INSERT INTO ghm.business_registration_identity
+         (business_id, registration_status, registration_number, legal_name, updated_by_account_id)
+       VALUES ($1, 'registered', $2, $3, $4)`,
+      [businessId, `REG-${suffix}`, `${fixture.marker} ${suffix} legal entity`, accountId],
+    );
+    await client.query('COMMIT');
+    fixture.businessIds.push(businessId);
+    return businessId;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 const expectSqlState = async (work, code, label) => {
   try {
     await work();
@@ -78,6 +112,9 @@ try {
 
   const activeAccountId = await createFixtureAccount(`${fixture.marker}-active`);
   const disabledAccountId = await createFixtureAccount(`${fixture.marker}-disabled`, 'disabled');
+  const otherOwnerAccountId = await createFixtureAccount(`${fixture.marker}-other-owner`);
+  const businessId = await createFixtureBusiness(activeAccountId, 'primary');
+  const otherBusinessId = await createFixtureBusiness(otherOwnerAccountId, 'other-owner');
 
   const roleState = await gatewayPool.query(`
     SELECT r.rolcanlogin,
@@ -164,10 +201,38 @@ try {
   });
   console.log('TYPED GATEWAY SELF-IDENTITY READ: PASS');
 
+  const registrationIdentity = await gatewayPool.query(
+    'SELECT * FROM ghm.gateway_read_business_registration_identity($1, $2)',
+    [activeAccountId, businessId],
+  );
+  assert.equal(registrationIdentity.rowCount, 1);
+  assert.deepEqual({
+    business_id: Number(registrationIdentity.rows[0].business_id),
+    registration_status: registrationIdentity.rows[0].registration_status,
+    registration_number: registrationIdentity.rows[0].registration_number,
+    legal_name: registrationIdentity.rows[0].legal_name,
+  }, {
+    business_id: businessId,
+    registration_status: 'registered',
+    registration_number: 'REG-primary',
+    legal_name: `${fixture.marker} primary legal entity`,
+  });
+  console.log('TYPED GATEWAY BUSINESS REGISTRATION IDENTITY READ: PASS');
+
   await expectSqlState(
     () => gatewayPool.query('SELECT ghm.assert_actor_gateway($1)', [disabledAccountId]),
     '42501',
     'DISABLED ACTOR DENIED',
+  );
+  await expectSqlState(
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_read_business_registration_identity($1, $2)', [disabledAccountId, businessId]),
+    '42501',
+    'DISABLED ACTOR CANNOT READ REGISTRATION IDENTITY',
+  );
+  await expectSqlState(
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_read_business_registration_identity($1, $2)', [activeAccountId, otherBusinessId]),
+    'P0001',
+    'CROSS-BUSINESS REGISTRATION IDENTITY READ DENIED',
   );
   await expectSqlState(
     () => gatewayPool.query('SELECT ghm.assert_actor_gateway(0)'),
@@ -182,7 +247,12 @@ try {
   await expectSqlState(
     () => runtimePool.query('SELECT * FROM ghm.gateway_get_actor_identity($1)', [activeAccountId]),
     '42501',
-    'ORDINARY RUNTIME CANNOT EXECUTE TYPED GATEWAY OPERATION',
+    'ORDINARY RUNTIME CANNOT EXECUTE TYPED GATEWAY SELF-READ',
+  );
+  await expectSqlState(
+    () => runtimePool.query('SELECT * FROM ghm.gateway_read_business_registration_identity($1, $2)', [activeAccountId, businessId]),
+    '42501',
+    'ORDINARY RUNTIME CANNOT EXECUTE REGISTRATION IDENTITY GATEWAY READ',
   );
   await expectSqlState(
     () => runtimePool.query('SET ROLE ghm_actor_gateway'),
@@ -205,6 +275,10 @@ try {
   try {
     await cleanupPool.query('BEGIN');
     await cleanupPool.query('SET LOCAL ROLE ghm_schema_owner');
+    await cleanupPool.query(
+      'DELETE FROM ghm.business WHERE id = ANY($1::bigint[])',
+      [fixture.businessIds],
+    );
     await cleanupPool.query(
       'DELETE FROM ghm.account_identity WHERE id = ANY($1::bigint[])',
       [fixture.accountIds],
