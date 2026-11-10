@@ -41,6 +41,37 @@ Introduce a narrowly scoped database gateway as the only component allowed to us
 
 **Critical trust-chain rule:** Do not let the ordinary API runtime mint actor assertions or hold their signing key. If it can choose an account ID and produce an assertion the gateway trusts, compromise of that runtime recreates the impersonation vulnerability one layer earlier. Prefer gateway-side verification of the original bearer token; otherwise isolate attestation in a separately credentialed, narrowly scoped identity service that derives identity from the original token rather than trusting API-supplied identity fields.
 
+### Authentication SECURITY DEFINER privileges are currently shared with ordinary runtime
+
+The same checked-in migration `database/migrations/20260921130000_create_auth_runtime_functions.sql` shows the database privilege boundary is also shared. It revokes these functions from `PUBLIC` but grants `EXECUTE` directly to `ghm_runtime`:
+
+- `ghm.auth_set_password(...)`
+- `ghm.auth_lookup_password_by_normalized_email(text)`
+- `ghm.auth_create_session_with_refresh(bigint, bytea)`
+- `ghm.auth_validate_session(bigint)`
+- `ghm.auth_rotate_refresh(bytea, bytea)`
+- `ghm.auth_revoke_session(bigint, text)`
+- `ghm.auth_revoke_all_sessions_for_account(bigint, text)`
+- `ghm.auth_change_password(...)`
+- `ghm.auth_disable_account(bigint)`
+- `ghm.auth_issue_recovery(bigint, bytea, timestamptz)`
+- `ghm.auth_redeem_recovery(bytea)`
+- `ghm.auth_lookup_external_identity(text, text)`
+- `ghm.auth_bootstrap_external_identity(...)`
+
+The migration also grants direct `SELECT` on `ghm.authentication_session` to `ghm_runtime`; direct session DML is revoked. It revokes all direct access to password, refresh-token, and recovery-secret tables, which is good but does not remove the SECURITY DEFINER execution surface.
+
+**Concrete implication:** `auth_create_session_with_refresh(p_account_id, p_refresh_token_hash)` checks that the target account exists and is active, then creates a session and refresh row for that supplied account ID. It does not itself verify a password, recovery credential, or pre-existing authenticated actor. The ordinary runtime is intentionally granted this function for the current application auth service. A compromised runtime that also has the current refresh-token pepper and signing capability can bypass the application credential-check flow and mint credentials for an arbitrary active account. This is a source-level privilege capability finding, not evidence that any production account was accessed or impersonated.
+
+**Required role separation for any isolated issuer design:**
+
+1. Introduce a distinct GHM-owned authentication-issuer DB login/role and keep it separate from ordinary `ghm_runtime`. The issuer role may execute only the credential/session operations it needs. The ordinary API/resource runtime must not be a member of this role, inherit its privileges, or possess its connection secret.
+2. Move the relevant `auth_*` SECURITY DEFINER grants from `ghm_runtime` to the issuer role after enumerating actual callers and preserving intended auth API behavior. Do not blindly revoke grants before the isolated issuer is deployed and qualified.
+3. Keep database session-validation permission separate from issuer mutation permission. If the optional online `sid` policy is explicitly selected, expose a narrowly scoped validation-only operation to the gateway; do not grant the gateway password, refresh-token, recovery, session-creation, or revocation mutation powers.
+4. Ensure the ordinary runtime cannot access the refresh-token pepper, JWT signing key, issuer DB login, or generic remote operations that let it create sessions/sign arbitrary subjects. These capabilities must move together; isolating only the ES256 key is insufficient while ordinary runtime can create sessions and refresh credentials.
+5. Test with the actual ordinary runtime login: attempt direct function calls to create a session for a different active account, rotate/revoke another account's session, change password, issue/redeem recovery, and bootstrap/link identity. Verify denial. Separately test the issuer role's legitimate operations and least privilege. Audit effective privileges including PUBLIC, inherited roles, default privileges, SECURITY DEFINER ownership, and connection pool configuration.
+6. This is a substantial auth runtime topology/credential change. Existing contracts select GHM as issuer; a separately isolated GHM issuer can preserve that ownership, but introducing a new DB principal/service boundary and changing grants requires explicit architecture/implementation approval. No production grants or credentials are changed by this proposal.
+
 ### Existing bearer-token issuer is part of the trust boundary (confirmed in current main)
 
 Review of current-main source on 2026-11-10 found an additional prerequisite that changes the gateway recommendation:
