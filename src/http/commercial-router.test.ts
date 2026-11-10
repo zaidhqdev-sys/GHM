@@ -110,7 +110,7 @@ test('commercial subscription read returns null when no subscription exists', as
     const response = await fetch(`${baseUrl}/api/v1/commercial/subscription/55`, { headers });
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { result: null });
-    assert.deepEqual(received, [{ userId: 42, role: 'customer' }, 55]);
+    assert.deepEqual(received, [{ userId: 42, role: 'business' }, 55]);
   } finally {
     await new Promise<void>(resolve => server.close(() => resolve()));
   }
