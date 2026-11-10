@@ -68,3 +68,6 @@ Individual feature evidence:
 ## Release controls
 
 Keep #250, #268, #269, #270, #271 and #272 draft/unmerged until their own gates are satisfied. No production migration, grant change, role provisioning, Render service/environment change, deployment, data mutation or catalogue activation occurred in this integration work. PayFast remains paused; legal-document work remains parked.
+
+## Latest combined branch checkpoint
+The supplier and Business profile route wiring has been manually consolidated into the capability integration branch. The combined gateway app and server register all three feature readers; resource API writes route supplier classification and Business profile updates through their gateway clients; legacy profile repository writes fail closed. The exact combined-head CI run is still the authoritative validation gate.
