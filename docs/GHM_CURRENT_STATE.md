@@ -341,3 +341,8 @@ Draft PR #271 addresses this by:
 - Extending disposable PostgreSQL qualification to verify runtime direct-RPC denial, gateway owner success and member denial.
 
 PR #271 is stacked on draft PR #237. Exact-head CI is pending. No production role provisioning, migration, grant change, service deployment, environment change or data mutation occurred. PayFast remains paused pending sandbox access; legal-document work remains parked.
+
+
+## Business profile Actor Gateway CI evidence — 2026-11-10
+
+PR #271 implementation head `eeae30c0a39fe9baa6d62a9c358708a732c5849c` passed workflow run #42908435391: build, migrations, Business profile gateway PostgreSQL qualification (runtime direct RPC denial, gateway-only access, owner success/member denial), full tests, migration audit, runtime boundary and Cloudflare Pages. The detailed handover records the results. A subsequent handover-only commit requires exact-head CI to be reconfirmed before merge consideration. No production action occurred.
