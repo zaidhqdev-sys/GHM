@@ -219,3 +219,14 @@ PR #259 merged an additive database principal guard and disposable PostgreSQL qu
 The helper is not yet wired into feature RPCs and the migration does not revoke current runtime grants. Role provisioning remains out-of-band and must precede migration application; the migration fails closed if the role is absent or unsafe. CI provisions only a disposable test role and passed the complete migration chain, principal qualification, full suite, migration audit, runtime boundary, web-quality and Cloudflare checks.
 
 Next: implement the gateway service and typed registry, migrate one representative low-risk read operation, then expand the shared actor gate across all inventoried RPCs and the analytics event insert. Production grants/credentials, migrations, provisioning and deployments remain separately authorized.
+
+
+## 12. First gateway vertical slice merged — 2026-11-10
+
+PR #261 merged a separate `src/actor-gateway/server.ts` entrypoint with public-only ES256 verification material and dedicated `GHM_ACTOR_GATEWAY_DATABASE_URL`. It exposes only typed `GET /v1/actor/me`; actor ID is derived from verified JWT `sub`, and the Postgres reader invokes `ghm.gateway_get_actor_identity(bigint)` inside a transaction. That SECURITY DEFINER function calls `ghm.assert_actor_gateway` and returns only the verified actor's own active identity. The route has no caller-selected actor input or generic SQL/RPC surface.
+
+Exact-head CI passed quality, web-quality and Cloudflare Pages, including full disposable migration chain, gateway principal and typed-operation qualification, HTTP tests, full suite, migration audit and runtime boundary verification.
+
+This is a self-read proof slice only. The ordinary resource API still retains its existing token-signing capability and current `ghm_runtime` privileges remain unchanged. Feature RPCs and analytics-event writes are not yet migrated. No production gateway service, environment variable, credential, role, grant, migration or deployment was changed.
+
+Next milestone: migrate one existing actor-sensitive feature read to the gateway and require `ghm.assert_actor_gateway` inside its database function; qualify legitimate and forged cross-actor cases with actual disposable roles. Expand only after the representative operation is proven.

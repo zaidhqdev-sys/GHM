@@ -176,3 +176,14 @@ This deliberately avoids caller-writable GUCs, temp tables and custom SQL crypto
 Build the separate gateway service with public-only key loading and a closed typed operation registry. Route one representative low-risk read operation through it. Update the corresponding DB function to call `ghm.assert_actor_gateway`, then prove legitimate success and spoof denial using actual disposable `ghm_runtime` and `ghm_actor_gateway` logins. Extend consistently to registration identity, Business profile, supplier classification, capability governance and engagement-event attribution. Do not revoke production runtime privileges, provision production role/credentials, or deploy until all callers are migrated and the full adversarial suite passes.
 
 No production database access/mutation, grant, credential, Render service, environment setting or deployment occurred in these implementation slices.
+
+
+## 11. First actor-gateway vertical slice — 2026-11-10 20:23 UTC
+
+PR #261 merged as `1250ec141b540d59eecd80eb2e6a57e02b2bc633`. It adds a separate Actor Gateway server entrypoint using public-only ES256 key material and the dedicated `GHM_ACTOR_GATEWAY_DATABASE_URL`; a typed `GET /v1/actor/me` route; a Postgres reader that runs `ghm.gateway_get_actor_identity(bigint)` in a transaction; and a SECURITY DEFINER function that calls `ghm.assert_actor_gateway` and returns only the verified actor's own active identity. The route derives actor ID exclusively from the independently verified JWT `sub`, accepts no caller-selected account ID and exposes no generic SQL/RPC endpoint.
+
+Exact-head quality, web-quality and Cloudflare Pages passed. The quality job included the full disposable migration chain, distinct runtime/gateway/migrator role qualification, typed self-read database qualification, gateway HTTP tests (missing/invalid token, verified-sub binding, denied actor, DB outage, process health), full suite, migration audit and runtime boundary verification.
+
+This is the first vertical slice, not full actor-auth cutover. The ordinary resource API still holds its existing signing capability and current `ghm_runtime` grants remain in place. The helper is wired only into the new self-read function; registration identity, Business profile, supplier, capability and engagement-event functions still need to be migrated. No production Render service, environment variable, role, credential, grant, database migration or deployment was changed.
+
+Next: migrate one existing actor-sensitive feature read through the gateway; update the underlying DB function to call `assert_actor_gateway`; add adversarial cross-actor tests using the actual disposable logins; then extend consistently across all inventoried operations. Only after all callers are migrated and qualification passes should production privilege transition be planned and separately approved.
