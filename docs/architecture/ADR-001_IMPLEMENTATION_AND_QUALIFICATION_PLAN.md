@@ -230,3 +230,14 @@ Exact-head CI passed quality, web-quality and Cloudflare Pages, including full d
 This is a self-read proof slice only. The ordinary resource API still retains its existing token-signing capability and current `ghm_runtime` privileges remain unchanged. Feature RPCs and analytics-event writes are not yet migrated. No production gateway service, environment variable, credential, role, grant, migration or deployment was changed.
 
 Next milestone: migrate one existing actor-sensitive feature read to the gateway and require `ghm.assert_actor_gateway` inside its database function; qualify legitimate and forged cross-actor cases with actual disposable roles. Expand only after the representative operation is proven.
+
+
+## 13. Gateway Business registration identity read — 2026-11-10
+
+PR #263 adds `ghm.gateway_read_business_registration_identity(bigint,bigint)`, a SECURITY DEFINER wrapper that checks `ghm.assert_actor_gateway` and then delegates to the existing membership-checked private read. Only `ghm_actor_gateway` can execute it. The gateway exposes `GET /v1/businesses/:businessId/registration-identity`; actor ID is derived only from the independently verified JWT subject and business ID from a validated path parameter. The route returns 404 for membership denial.
+
+Exact-head CI passed quality, web-quality and Cloudflare Pages, including full disposable migration chain, legitimate owner read, disabled actor denial, cross-business denial, ordinary-runtime execution denial, full suite, migration audit and runtime boundary checks.
+
+This is additive, not yet a resource-API cutover. The existing resource API still uses the legacy `ghm.read_business_registration_identity` runtime function and its grant remains unchanged. The new gateway route is ready for a separately tested API client integration. Do not revoke legacy runtime EXECUTE until API-to-gateway pass-through, deployment ordering and end-to-end tests pass. The write RPC and other feature RPCs remain un-migrated.
+
+Next: add a fail-closed resource-API gateway client, route the existing GET endpoint through it, qualify end-to-end bearer-token pass-through and membership denial, then plan legacy grant revocation separately.

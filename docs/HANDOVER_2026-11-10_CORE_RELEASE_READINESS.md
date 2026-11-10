@@ -187,3 +187,14 @@ Exact-head quality, web-quality and Cloudflare Pages passed. The quality job inc
 This is the first vertical slice, not full actor-auth cutover. The ordinary resource API still holds its existing signing capability and current `ghm_runtime` grants remain in place. The helper is wired only into the new self-read function; registration identity, Business profile, supplier, capability and engagement-event functions still need to be migrated. No production Render service, environment variable, role, credential, grant, database migration or deployment was changed.
 
 Next: migrate one existing actor-sensitive feature read through the gateway; update the underlying DB function to call `assert_actor_gateway`; add adversarial cross-actor tests using the actual disposable logins; then extend consistently across all inventoried operations. Only after all callers are migrated and qualification passes should production privilege transition be planned and separately approved.
+
+
+## 12. Gateway Business registration identity read — 2026-11-10 20:27 UTC
+
+PR #263 merged as `d521fab2030e20176541e0709245a5aedb52236e`. It adds a gateway-only `ghm.gateway_read_business_registration_identity(bigint,bigint)` SECURITY DEFINER wrapper. The wrapper calls `ghm.assert_actor_gateway` before delegating to the existing membership-checked private registration identity read. Only `ghm_actor_gateway` can execute the wrapper; `ghm_runtime` cannot.
+
+The Actor Gateway now exposes typed `GET /v1/businesses/:businessId/registration-identity`. The actor ID comes only from the independently verified JWT subject; the business ID comes from a validated path parameter. The SQL layer rechecks active account and owner/administrator membership. Membership denial is returned as not found. CI passed exact-head quality, web-quality and Cloudflare Pages, including full disposable migrations, positive owner read, disabled actor denial, cross-business denial, runtime execution denial, full suite, migration audit and runtime boundary verification.
+
+This is additive and not yet a resource-API cutover. The existing resource API still reads via the legacy `ghm.read_business_registration_identity` function and its `ghm_runtime` EXECUTE grant remains. Do not revoke it until the resource API is wired to the gateway, both services are deployed in the approved order, and end-to-end tests pass. The registration identity update RPC remains un-migrated. No production service, credential, role, grant, migration, or deployment changed.
+
+Next: implement a fail-closed HTTP client in the resource API and route its existing GET endpoint through the gateway; qualify end-to-end token pass-through and membership denial. Then separately plan the legacy read grant revocation and proceed to update/write operations.

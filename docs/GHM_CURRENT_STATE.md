@@ -321,3 +321,13 @@ Owner scope decisions recorded 2026-11-10: pause all PayFast work until working 
 - CI passed exact head across quality, web-quality and Cloudflare Pages. Quality included complete disposable migration chain, gateway role/function qualification, HTTP app tests, full suite, migration audit and runtime boundary checks.
 - This is a self-read proof slice only. Existing resource API still retains current auth signing and existing runtime DB privileges; issuer isolation and migration of feature RPCs remain unfinished. No Render service, production environment variable, credential, role, grant or deployment was changed.
 - Next: route one existing actor-sensitive low-risk feature operation through the gateway and make its DB function require `assert_actor_gateway`; then expand to all inventoried RPCs and engagement-event writes. Only after full caller migration should production privilege changes be planned separately.
+
+
+## Gateway Business registration identity read — 2026-11-10 20:27 UTC
+
+- PR #263 merged as `d521fab2030e20176541e0709245a5aedb52236e`.
+- Added gateway-only SECURITY DEFINER wrapper `ghm.gateway_read_business_registration_identity(bigint,bigint)`, which checks `ghm.assert_actor_gateway` then reuses the existing active owner/administrator membership check for private registration identity.
+- Added typed gateway route `GET /v1/businesses/:businessId/registration-identity` and a Postgres reader; account ID is derived from verified token `sub`, business ID from validated path, and membership denial is hidden as 404.
+- Disposable PostgreSQL qualification now proves legitimate owner read, disabled actor denial, cross-business denial, and ordinary runtime cannot execute the wrapper. Exact-head quality, web-quality and Cloudflare Pages passed, including full migration chain, full tests, migration audit and runtime boundary checks.
+- The existing resource API is not yet wired to this gateway route, and the legacy `ghm.read_business_registration_identity` runtime grant remains unchanged. This is additive, not a cutover. No production service/credential/role/grant/migration/deployment action occurred.
+- Next: add a fail-closed resource-API client to the gateway and route the existing GET through it; test deployment ordering and API/gateway compatibility. Only after that should a separate migration revoke the legacy runtime EXECUTE grant. The registration identity update RPC and other feature RPCs remain gated.
