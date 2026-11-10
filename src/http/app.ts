@@ -16,7 +16,7 @@ import { ProjectServiceImpl } from '../resources/project/service';
 import { CreateProjectInput, ProjectService, UpdateProjectInput } from '../resources/project/contracts';
 import { isRegisteredOperation, ResourceOperation } from '../resources/registry';
 import { config } from '../config';
-import { HttpSupplierClassificationGatewayClient, SupplierClassificationGatewayError } from './supplier-classification-gateway-client';
+import { HttpSupplierClassificationGatewayClient, SupplierClassificationGatewayError, type SupplierClassificationGatewayClient } from './supplier-classification-gateway-client';
 import { PostgresPublicProjectRepository } from '../resources/project/public-repository';
 import { PublicProjectServiceImpl } from '../resources/project/public-service';
 import { PublicProjectService } from '../resources/project/public-contracts';
@@ -164,6 +164,7 @@ export interface AppDependencies {
   readonly quoteFlowMigrationResetRecoveryService?: QuoteFlowMigrationResetRecoveryService;
   readonly quoteFlowMigrationResetCompletionService?: QuoteFlowMigrationResetCompletionService;
   readonly resourceAuthMiddleware?: import('express').RequestHandler;
+  readonly supplierClassificationGatewayClient?: SupplierClassificationGatewayClient;
   readonly connectService?: Omit<ConnectServiceHttpDependencies, 'savedBusinesses'>;
 }
 
@@ -379,7 +380,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const app = express();
   const resourceAuthMiddleware = dependencies.resourceAuthMiddleware ?? requireAuth;
   const service = dependencies.businessIdentityService ?? new BusinessIdentityServiceImpl(new PostgresBusinessIdentityRepository());
-  const supplierClassificationGatewayClient = config.actorGatewayUrl ? new HttpSupplierClassificationGatewayClient(config.actorGatewayUrl) : undefined;
+  const supplierClassificationGatewayClient = dependencies.supplierClassificationGatewayClient ?? (config.actorGatewayUrl ? new HttpSupplierClassificationGatewayClient(config.actorGatewayUrl) : undefined);
   const publicBusinessService = dependencies.publicBusinessService ?? new PublicBusinessServiceImpl(new PostgresPublicBusinessRepository());
   const businessHoursService =
     dependencies.businessHoursService
