@@ -47,7 +47,6 @@ export const createAccessJwtService = (keys: LoadedEs256Keys = loadEs256Keys()):
       return jwt.sign(payload, keys.active.privateKeyPem, {
         algorithm: 'ES256',
         keyid: keys.active.kid,
-        noTimestamp: true,
       });
     },
 
