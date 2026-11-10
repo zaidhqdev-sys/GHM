@@ -183,9 +183,11 @@ export class PostgresBusinessIdentityRepository implements BusinessIdentityRepos
     );
   }
   async updateBusiness(context: AuthContext, businessId: BusinessId, input: UpdateBusinessProfileInput) {
-    const { isSupplier, ...profileInput } = input;
-    const patch = buildProfilePatch(profileInput);
-    if (Object.keys(patch).length === 0 && isSupplier === undefined) throw new Error('Business update requires at least one field');
+    if (input.isSupplier !== undefined) {
+      throw new Error('Supplier classification must be updated through the authenticated actor gateway');
+    }
+    const patch = buildProfilePatch(input);
+    if (Object.keys(patch).length === 0) throw new Error('Business update requires at least one field');
     return withTenantTransaction(context, businessId, async (client, _context, tenant) => {
       if (tenant.membershipRole !== 'owner' && tenant.membershipRole !== 'administrator') throw new Error('Business management permission required');
       let result;
@@ -193,13 +195,6 @@ export class PostgresBusinessIdentityRepository implements BusinessIdentityRepos
         result = await client.query(
           `SELECT * FROM ghm.update_business_profile($1, $2, $3::jsonb)`,
           [context.userId, tenant.businessId, JSON.stringify(patch)],
-        );
-        if (result.rowCount !== 1) throw new Error('Business not found');
-      }
-      if (isSupplier !== undefined) {
-        result = await client.query(
-          `SELECT * FROM ghm.update_business_supplier_classification($1, $2, $3)`,
-          [context.userId, tenant.businessId, isSupplier],
         );
         if (result.rowCount !== 1) throw new Error('Business not found');
       }
