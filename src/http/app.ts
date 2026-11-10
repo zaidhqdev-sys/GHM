@@ -924,7 +924,6 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         return;
       }
       res.status(200).json({ business });
-      res.status(200).json({ business });
     } catch (error) {
       if (error instanceof SupplierClassificationGatewayError || error instanceof BusinessProfileGatewayError) {
         if (error.status === 401 || error.status === 403) { res.status(403).json({ error: 'forbidden' }); return; }
