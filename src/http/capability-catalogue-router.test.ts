@@ -3,7 +3,7 @@ import http from 'node:http';
 import test from 'node:test';
 import { createApp } from './app';
 import { httpTestAuth, tokenFor } from './test-resource-auth';
-import type { Capability, CapabilityDraftInput, CapabilityLifecycle, CapabilityService } from '../resources/capability/contracts';
+import type { Capability, CapabilityService } from '../resources/capability/contracts';
 
 const capability: Capability = {
   id: '11111111-1111-4111-8111-111111111111', parentId: null,
