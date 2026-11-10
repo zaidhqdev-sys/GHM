@@ -138,3 +138,9 @@ The branch is 137 commits ahead and 0 behind main. GitHub reports PR #272 mergea
 1. Capability's original three SECURITY DEFINER functions still grant EXECUTE to ghm_runtime. The gateway URL is optional for capability API routing. Do not revoke legacy grants until the gateway is deployed/configured and route verification has passed; then add a separately qualified capability cutover migration and direct runtime-denial tests.
 2. Supplier classification, Business profile and registration identity gateway paths still require controlled deployment and end-to-end verification before their legacy access is cut over.
 3. No production migration, role/grant change, Render service/environment change, deployment, data mutation or catalogue activation occurred. PayFast remains paused; legal-document work remains parked.
+
+## Final documentation checkpoint
+
+After the main-base reconciliation and route integration, exact-head CI run #42919101125 passed on commit 48cde68566196903b44655c71dc5e2a800e5fc17. Both quality and web-quality completed successfully, and Cloudflare Pages passed. This run included the actor-gateway-principal qualification, registration identity migration qualification, capability/supplier/profile PostgreSQL security qualifications, full test suite, migration audit and runtime boundary verification.
+
+PR #272 is mergeable/clean, 137 commits ahead and 0 behind main, and remains ready for review but intentionally unmerged. The exact capability legacy-RPC grant blocker remains open.

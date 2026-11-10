@@ -365,7 +365,7 @@ Draft integration PR #272 consolidates the capability governance stack (#250/#26
 
 The migration chain includes the dedicated gateway principal and identity/registration wrappers, capability governance wrappers, supplier-classification cutover, Business profile compatibility reconciliation at 20261110265000, and Business profile gateway cutover at 20261110270000. The compatibility reconciliation is deliberately ordered after 20261109100000 because that earlier presentation migration replaced the legacy profile function and dropped category/supplier/alias compatibility.
 
-The combined branch's previous exact-head CI run #42917315263 passed build, all migrations, full tests, capability/supplier/profile PostgreSQL authorization qualifications, runtime boundary verification, and web quality. The latest main-base reconciliation has additional changes and requires a fresh exact-head CI run before merge.
+The main-base reconciled branch passed exact-head CI run #42919101125 on commit 48cde68566196903b44655c71dc5e2a800e5fc17: build, all migrations, full tests, actor-gateway-principal qualification, capability/supplier/profile PostgreSQL authorization qualifications, registration identity qualification, migration audit, runtime boundary verification, web-quality and Cloudflare Pages.
 
 Capability governance remains staged: its original three SECURITY DEFINER RPCs still grant EXECUTE to ghm_runtime. Do not revoke those grants until the Actor Gateway is deployed/configured and capability routes are verified. A separate capability cutover migration with direct runtime-denial tests remains required.
 
