@@ -53,9 +53,9 @@ test('directory migration reuses pre-existing canonical Business constraints and
 });
 
 test('Business profile writes are restricted to the isolated actor gateway', () => {
-  assert.match(gatewayCutover, /REVOKE ALL ON FUNCTION ghm\\.update_business_profile\\(bigint, bigint, jsonb\\) FROM ghm_runtime/);
-  assert.match(gatewayCutover, /GRANT EXECUTE ON FUNCTION ghm\\.gateway_update_business_profile\\(bigint, bigint, jsonb\\) TO ghm_actor_gateway/);
-  assert.match(gatewayCutover, /REVOKE ALL ON FUNCTION ghm\\.gateway_update_business_profile\\(bigint, bigint, jsonb\\) FROM ghm_runtime/);
-  assert.doesNotMatch(repository, /ghm\\.update_business_profile/);
+  assert.match(gatewayCutover, /REVOKE ALL ON FUNCTION ghm\.update_business_profile\\(bigint, bigint, jsonb\\) FROM ghm_runtime/);
+  assert.match(gatewayCutover, /GRANT EXECUTE ON FUNCTION ghm\.gateway_update_business_profile\\(bigint, bigint, jsonb\\) TO ghm_actor_gateway/);
+  assert.match(gatewayCutover, /REVOKE ALL ON FUNCTION ghm\.gateway_update_business_profile\\(bigint, bigint, jsonb\\) FROM ghm_runtime/);
+  assert.doesNotMatch(repository, /ghm\.update_business_profile/);
   assert.match(repository, /must be updated through the authenticated actor gateway/);
 });
