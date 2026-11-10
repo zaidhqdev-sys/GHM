@@ -79,3 +79,12 @@ No production migration, provider activation, environment change, deployment, me
 - Corrected the engagement repository rate-limit unit-test fake to acknowledge the advisory-lock query before returning the simulated account event count.
 - Latest code/test commit before this handover update: `db923f17d8e155e571c8c94c8c2d3baef386fbe1`.
 - Exact-head GHM CI remains the qualification authority; no pass is claimed from mocked unit tests alone.
+
+
+## Exact-head backend qualification — PASS
+
+- GHM CI run #2316 (ID `42737787519`) passed on PR #244 head `d5e46a82dcc1e575e5d03bf4f7292d4434d8764f`.
+- All workflow steps passed: TypeScript build, full disposable PostgreSQL migration chain, supplier-classification qualification, Business Analytics/engagement PostgreSQL qualification, existing storage/Opportunity/business capability/commercial qualifications, full test suite, migration audit policy tests and runtime-boundary verification.
+- The Business Analytics/engagement qualification passed the authenticated event insert, self-engagement denial, 60/minute account-wide rate limit, entitlement fail-closed behavior and fixture cleanup.
+- This is CI against disposable PostgreSQL only. It does not apply production migrations, reconcile commercial entitlements, merge PR #243/#244, deploy GHM, or authorize Connect cutover.
+- PR #244 remains stacked on PR #243 and should remain draft until its base dependency is approved/merged and the stack is rebased/qualified against the integration head.
