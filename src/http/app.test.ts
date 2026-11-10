@@ -121,7 +121,7 @@ test('public directory route allows anonymous access and returns the directory r
   try {
     const response = await fetch(`${baseUrl}/api/v1/public/businesses?q=build&category=construction&page=1&pageSize=20`);
     assert.equal(response.status, 200);
-    assert.deepEqual(received, { q: 'build', category: 'construction', province: undefined, city: undefined, latitude: undefined, longitude: undefined, radiusKm: undefined, sort: undefined, page: 1, pageSize: 20 });
+    assert.deepEqual(received, { q: 'build', category: 'construction', province: undefined, city: undefined, latitude: undefined, longitude: undefined, radiusKm: undefined, businessType: undefined, sort: undefined, page: 1, pageSize: 20 });
     const body = await response.json() as DirectoryResult & { items: Array<PublicBusiness & { createdAt: string; updatedAt: string }> };
     assert.equal(body.items[0].id, 301);
     assert.equal(body.page, 1);
