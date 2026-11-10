@@ -346,3 +346,6 @@ PR #271 is stacked on draft PR #237. Exact-head CI is pending. No production rol
 ## Business profile Actor Gateway CI evidence — 2026-11-10
 
 PR #271 implementation head `eeae30c0a39fe9baa6d62a9c358708a732c5849c` passed workflow run #42908435391: build, migrations, Business profile gateway PostgreSQL qualification (runtime direct RPC denial, gateway-only access, owner success/member denial), full tests, migration audit, runtime boundary and Cloudflare Pages. The detailed handover records the results. A subsequent handover-only commit requires exact-head CI to be reconfirmed before merge consideration. No production action occurred.
+
+
+Business profile compatibility follow-up: the disposable PostgreSQL qualification now simulates production-only legacy `category` and `is_supplier` columns, exercises the conditional update path, and passed on implementation head `09fd30d24b4eee1031f4437f353e2f71ee8469c9` in run #42908980806. A restored active-database clone review is still required before production application. The next handover-only commit requires exact-head CI to be reconfirmed.
