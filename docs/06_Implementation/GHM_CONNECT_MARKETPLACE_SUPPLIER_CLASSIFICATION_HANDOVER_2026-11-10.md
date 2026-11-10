@@ -114,3 +114,18 @@ The security branch adds the following remediation:
 4. Verify gateway owner success, member denial, and direct `ghm_runtime` RPC denial against a production-like environment before any Connect cutover.
 
 No production role was provisioned, no production migration or grant change was applied, no gateway service or environment variable was created, and no deployment or Connect activation occurred. Exact-head CI for PR #270 is pending. Keep PR #243 and PR #270 draft/unmerged until the new qualification passes and the active-database compatibility review is complete.
+
+
+## Exact-head security qualification — PASS (2026-11-10)
+
+PR #270 head `3c41699811f730f25534dfb374dd5e9191b9188d` passed GitHub Actions CI run #42906441750 (workflow run ID `42906441750`).
+
+All checks passed:
+- TypeScript build.
+- Complete ordered migration chain on disposable PostgreSQL 18, including the Actor Gateway principal guard and supplier-classification cutover.
+- Supplier classification PostgreSQL qualification using distinct `ghm_runtime`, `ghm_migrator`, and `ghm_actor_gateway` logins. Runtime direct execution of both the legacy function and gateway-only wrapper is denied; gateway owner updates pass; member updates and null classification are denied.
+- Full TypeScript test suite, including Actor Gateway token-subject binding, supplier API routing, client forwarding/fail-closed behavior, config validation, and migration contract tests.
+- Existing Business Capability lifecycle, commercial settlement identity, migration audit policy, and runtime-boundary qualifications.
+- Web quality and Cloudflare Pages.
+
+This is disposable CI evidence only. It does not provision the production gateway role, deploy the gateway or resource API, apply the migration to the active database, or authorize Connect cutover. PR #270 and dependency PR #243 remain draft pending architecture review, production-like compatibility review, and separately authorized deployment/migration sequencing.
