@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import test from 'node:test';
 import { createApp } from './app';
+import type { SupplierClassificationGatewayClient } from './supplier-classification-gateway-client';
 import { httpTestAuth, tokenFor } from './test-resource-auth';
 import { AuthContext } from '../auth/authorization';
 import { Project, ProjectService } from '../resources/project/contracts';
@@ -58,8 +59,8 @@ const profile = (context: AuthContext): AccountIdentity => ({
   updatedAt: new Date('2026-09-10T00:00:00.000Z'),
 });
 
-const startTestServer = async (service: BusinessIdentityService) => {
-  const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth, businessIdentityService: service }));
+const startTestServer = async (service: BusinessIdentityService, supplierClassificationGatewayClient?: SupplierClassificationGatewayClient) => {
+  const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth, businessIdentityService: service, supplierClassificationGatewayClient }));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
@@ -1203,16 +1204,20 @@ test('public Project marketplace list rejects invalid pagination', async () => {
 });
 
 
-test('managed Business profile accepts only a boolean supplier classification and delegates to GHM', async () => {
+test('managed Business supplier classification is routed through the authenticated actor gateway', async () => {
   let received: unknown;
   const updated = { id: 201, name: 'Supplier Business', isSupplier: true } as BusinessIdentity;
   const businessIdentityService = {
-    updateBusiness: async (context: AuthContext, businessId: number, input: unknown) => {
-      received = { context, businessId, input };
-      return updated;
-    },
+    getBusiness: async (_context: AuthContext, businessId: number) => businessId === 201 ? updated : null,
+    updateBusiness: async () => { throw new Error('supplier classification must not use the legacy repository path'); },
   } as unknown as BusinessIdentityService;
-  const { server, baseUrl } = await startTestServer(businessIdentityService);
+  const gateway: SupplierClassificationGatewayClient = {
+    async update(accessToken, businessId, isSupplier) {
+      received = { accessToken, businessId, isSupplier };
+      return { businessId, isSupplier };
+    },
+  };
+  const { server, baseUrl } = await startTestServer(businessIdentityService, gateway);
   try {
     const token = tokenFor({ userId: 42, role: 'business' });
     const response = await fetch(`${baseUrl}/api/v1/businesses/201`, {
@@ -1221,7 +1226,7 @@ test('managed Business profile accepts only a boolean supplier classification an
       body: JSON.stringify({ isSupplier: true }),
     });
     assert.equal(response.status, 200);
-    assert.deepEqual(received, { context: { userId: 42, role: 'business' }, businessId: 201, input: { isSupplier: true } });
+    assert.deepEqual(received, { accessToken: token, businessId: 201, isSupplier: true });
     assert.equal((await response.json() as { business: BusinessIdentity }).business.isSupplier, true);
 
     const invalid = await fetch(`${baseUrl}/api/v1/businesses/201`, {
@@ -1230,6 +1235,13 @@ test('managed Business profile accepts only a boolean supplier classification an
       body: JSON.stringify({ isSupplier: 'yes' }),
     });
     assert.equal(invalid.status, 400);
+
+    const mixed = await fetch(`${baseUrl}/api/v1/businesses/201`, {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Changed', isSupplier: false }),
+    });
+    assert.equal(mixed.status, 400);
   } finally {
     await new Promise<void>(resolve => server.close(() => resolve()));
   }
