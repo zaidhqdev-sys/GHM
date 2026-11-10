@@ -602,11 +602,11 @@ export class PostgresCommercialRepository implements CommercialRepository {
              clock.evaluated_at,
              country.id AS country_id,
              currency.code AS currency_code,
-             BOOL_OR(price.id IS NOT NULL) FILTER (WHERE price.price_kind = 'founding') AS has_founding_price,
+             COUNT(DISTINCT price.id) FILTER (WHERE price.price_kind = 'founding') AS founding_price_count,
              MAX(price.id) FILTER (WHERE price.price_kind = 'founding') AS founding_price_id,
              MAX(price.amount_minor_units) FILTER (WHERE price.price_kind = 'founding') AS founding_amount_minor_units,
              MAX(price.id) FILTER (WHERE price.price_kind = 'standard') AS standard_price_id,
-             MAX(price.amount_minor_units) FILTER (WHERE price.price_kind = 'standard') AS standard_amount_minor_units,
+             MAX(price.amount_minor_units) FILTER (WHERE price.price_kind = 'standard') AS standard_amount_minor_units,\n             COUNT(DISTINCT price.id) FILTER (WHERE price.price_kind = 'standard') AS standard_price_count,
              COUNT(DISTINCT allocation.id)::integer AS founding_allocated,
              EXISTS (
                SELECT 1 FROM ghm.commercial_trial trial
@@ -649,7 +649,7 @@ export class PostgresCommercialRepository implements CommercialRepository {
         const foundingLimit = row.founding_limit === null ? null : Number(row.founding_limit);
         const foundingAllocated = Number(row.founding_allocated ?? 0);
         const currencyCode = row.currency_code ?? 'ZAR';
-        const foundingPrice = row.founding_price_id === null || row.founding_price_id === undefined
+        const foundingPrice = Number(row.founding_price_count ?? 0) !== 1 || row.founding_price_id === null || row.founding_price_id === undefined
           ? null
           : {
               priceId: Number(row.founding_price_id),
@@ -657,7 +657,7 @@ export class PostgresCommercialRepository implements CommercialRepository {
               currencyCode,
               billingInterval: 'month' as const,
             };
-        const standardPrice = row.standard_price_id === null || row.standard_price_id === undefined
+        const standardPrice = Number(row.standard_price_count ?? 0) !== 1 || row.standard_price_id === null || row.standard_price_id === undefined
           ? null
           : {
               priceId: Number(row.standard_price_id),
