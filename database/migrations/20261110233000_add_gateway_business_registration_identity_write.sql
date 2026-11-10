@@ -23,14 +23,18 @@ BEGIN
   PERFORM ghm.assert_actor_gateway(p_actor_account_id);
 
   RETURN QUERY
-    SELECT *
+    SELECT updated.business_id,
+           updated.registration_status,
+           updated.registration_number,
+           updated.legal_name,
+           updated.updated_at
       FROM ghm.update_business_registration_identity(
         p_actor_account_id,
         p_business_id,
         p_registration_status,
         p_registration_number,
         p_legal_name
-      );
+      ) AS updated;
 END;
 $$;
 
