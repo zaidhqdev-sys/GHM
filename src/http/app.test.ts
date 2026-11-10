@@ -7,7 +7,7 @@ import { AuthContext } from '../auth/authorization';
 import { Project, ProjectService } from '../resources/project/contracts';
 import { Opportunity, OpportunityService } from '../resources/opportunity/contracts';
 import { PublicProject, PublicProjectService } from '../resources/project/public-contracts';
-import { AccountIdentity, BusinessIdentityService } from '../resources/business-identity/contracts';
+import { AccountIdentity, BusinessIdentity, BusinessIdentityService } from '../resources/business-identity/contracts';
 import { PublicBusiness, PublicBusinessService } from '../resources/business-identity/public-contracts';
 import { DirectoryResult, DirectoryService } from '../resources/directory/contracts';
 import type { BusinessCategoryService } from '../resources/business-category/contracts';
@@ -1197,6 +1197,39 @@ test('public Project marketplace list rejects invalid pagination', async () => {
   try {
     const response = await fetch(`${baseUrl}/api/v1/public/projects?limit=101`);
     assert.equal(response.status, 400);
+  } finally {
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+});
+
+
+test('managed Business profile accepts only a boolean supplier classification and delegates to GHM', async () => {
+  let received: unknown;
+  const updated = { id: 201, name: 'Supplier Business', isSupplier: true } as BusinessIdentity;
+  const businessIdentityService = {
+    updateBusiness: async (context: AuthContext, businessId: number, input: unknown) => {
+      received = { context, businessId, input };
+      return updated;
+    },
+  } as unknown as BusinessIdentityService;
+  const { server, baseUrl } = await startTestServer(businessIdentityService);
+  try {
+    const token = tokenFor({ userId: 42, role: 'business' });
+    const response = await fetch(`${baseUrl}/api/v1/businesses/201`, {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ isSupplier: true }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(received, { context: { userId: 42, role: 'business' }, businessId: 201, input: { isSupplier: true } });
+    assert.equal((await response.json() as { business: BusinessIdentity }).business.isSupplier, true);
+
+    const invalid = await fetch(`${baseUrl}/api/v1/businesses/201`, {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ isSupplier: 'yes' }),
+    });
+    assert.equal(invalid.status, 400);
   } finally {
     await new Promise<void>(resolve => server.close(() => resolve()));
   }
