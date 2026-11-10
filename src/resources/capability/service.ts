@@ -2,7 +2,8 @@
 import type {
   Capability,
   CapabilityId,
-  CapabilityRepository,\n  CapabilityDraftInput,\n  CapabilityLifecycle,
+  CapabilityRepository,
+  CapabilityDraftInput,\n  CapabilityLifecycle,
   CapabilityService,
 } from './contracts.js';
 
