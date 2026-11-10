@@ -121,6 +121,53 @@ try {
   capabilityIds.push(capabilityId);
   console.log('GATEWAY CAPABILITY DRAFT CREATION REMAINS AVAILABLE AFTER CUTOVER PASS');
 
+  await expectDenied(
+    () => runtimePool.query(
+      'SELECT * FROM ghm.update_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+      [adminId, capabilityId, `${marker} Runtime Update Forbidden`, `${marker}-runtime-update-forbidden`, null, null, 0, null, 1],
+    ),
+    'RUNTIME DIRECT LEGACY CAPABILITY UPDATE DENIAL',
+  );
+  await expectDenied(
+    () => runtimePool.query(
+      'SELECT * FROM ghm.transition_capability_lifecycle($1,$2,$3,$4,$5)',
+      [adminId, capabilityId, 'active', null, 1],
+    ),
+    'RUNTIME DIRECT LEGACY CAPABILITY TRANSITION DENIAL',
+  );
+  await expectDenied(
+    () => gatewayPool.query(
+      'SELECT * FROM ghm.update_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+      [adminId, capabilityId, `${marker} Gateway Direct Update Forbidden`, `${marker}-gateway-direct-update-forbidden`, null, null, 0, null, 1],
+    ),
+    'GATEWAY DIRECT LEGACY CAPABILITY UPDATE DENIAL',
+  );
+  await expectDenied(
+    () => gatewayPool.query(
+      'SELECT * FROM ghm.transition_capability_lifecycle($1,$2,$3,$4,$5)',
+      [adminId, capabilityId, 'active', null, 1],
+    ),
+    'GATEWAY DIRECT LEGACY CAPABILITY TRANSITION DENIAL',
+  );
+
+  const gatewayUpdated = await gatewayPool.query(
+    'SELECT * FROM ghm.gateway_update_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+    [adminId, capabilityId, `${marker} Gateway Draft Updated`, `${marker}-gateway-draft`, null, null, 0, null, 1],
+  );
+  if (gatewayUpdated.rows[0]?.name !== `${marker} Gateway Draft Updated`) {
+    throw new Error('Gateway update wrapper failed after legacy RPC revocation');
+  }
+  console.log('GATEWAY CAPABILITY UPDATE REMAINS AVAILABLE AFTER CUTOVER PASS');
+
+  const gatewayTransition = await gatewayPool.query(
+    'SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5)',
+    [adminId, capabilityId, 'active', null, 1],
+  );
+  if (gatewayTransition.rows[0]?.lifecycle_status !== 'active') {
+    throw new Error('Gateway transition wrapper failed after legacy RPC revocation');
+  }
+  console.log('GATEWAY CAPABILITY TRANSITION REMAINS AVAILABLE AFTER CUTOVER PASS');
+
   const privileges = await runtimePool.query(
     `SELECT
        has_function_privilege(current_user, 'ghm.create_capability_draft(bigint,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS runtime_can_create,
