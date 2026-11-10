@@ -61,6 +61,20 @@ BEGIN
     RAISE EXCEPTION 'Published Capability slug is immutable';
   END IF;
 
+  IF TG_OP = 'UPDATE'
+     AND (OLD.lifecycle_status IS DISTINCT FROM NEW.lifecycle_status
+          OR OLD.taxonomy_version IS DISTINCT FROM NEW.taxonomy_version)
+     AND EXISTS (
+       SELECT 1
+         FROM ghm.capability dependent
+        WHERE dependent.replaced_by_capability_id = OLD.id
+          AND dependent.id <> OLD.id
+          AND (NEW.lifecycle_status <> 'active'
+               OR dependent.taxonomy_version <> NEW.taxonomy_version)
+     ) THEN
+    RAISE EXCEPTION 'Capability cannot leave active state or change taxonomy version while referenced as a replacement';
+  END IF;
+
   RETURN NEW;
 END;
 $$;
