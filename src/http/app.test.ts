@@ -1208,7 +1208,7 @@ test('managed Business supplier classification is routed through the authenticat
   let received: unknown;
   const updated = { id: 201, name: 'Supplier Business', isSupplier: true } as BusinessIdentity;
   const businessIdentityService = {
-    getBusiness: async (_context: AuthContext, businessId: number) => businessId === 201 ? updated : null,
+    getManagedBusiness: async (_context: AuthContext, businessId: number) => businessId === 201 ? updated : null,
     updateBusiness: async () => { throw new Error('supplier classification must not use the legacy repository path'); },
   } as unknown as BusinessIdentityService;
   const gateway: SupplierClassificationGatewayClient = {
