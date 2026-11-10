@@ -153,7 +153,11 @@ try {
     [activeAccountId],
   );
   assert.equal(ownIdentity.rowCount, 1);
-  assert.deepEqual(ownIdentity.rows[0], {
+  assert.deepEqual({
+    account_id: Number(ownIdentity.rows[0].account_id),
+    account_role: ownIdentity.rows[0].account_role,
+    full_name: ownIdentity.rows[0].full_name,
+  }, {
     account_id: activeAccountId,
     account_role: 'business',
     full_name: `${fixture.marker}-active`,
