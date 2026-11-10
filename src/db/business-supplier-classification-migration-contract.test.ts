@@ -4,6 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 const migration = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261110010000_add_business_supplier_classification.sql'), 'utf8');
+const gatewayMigration = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261110260000_gateway_supplier_classification_cutover.sql'), 'utf8');
 const repository = fs.readFileSync(path.resolve(process.cwd(), 'src/resources/business-identity/repository.ts'), 'utf8');
 const identityContracts = fs.readFileSync(path.resolve(process.cwd(), 'src/resources/business-identity/contracts.ts'), 'utf8');
 const publicRepository = fs.readFileSync(path.resolve(process.cwd(), 'src/resources/business-identity/public-repository.ts'), 'utf8');
@@ -25,9 +26,12 @@ test('supplier classification writes require active owner or administrator membe
   assert.match(migration, /membership_role IN \('owner', 'administrator'\)/);
   assert.match(migration, /SET search_path = pg_catalog, ghm/);
   assert.match(migration, /REVOKE ALL ON FUNCTION ghm\.update_business_supplier_classification\(bigint, bigint, boolean\) FROM PUBLIC/);
-  assert.match(migration, /GRANT EXECUTE ON FUNCTION ghm\.update_business_supplier_classification\(bigint, bigint, boolean\) TO ghm_runtime/);
-  assert.match(repository, /ghm\.update_business_supplier_classification/);
-  assert.match(http, /Object\.hasOwn\(input, 'isSupplier'\).*typeof input\.isSupplier !== 'boolean'/);
+  assert.match(gatewayMigration, /REVOKE ALL ON FUNCTION ghm\.update_business_supplier_classification\(bigint, bigint, boolean\) FROM ghm_runtime/);
+  assert.match(gatewayMigration, /GRANT EXECUTE ON FUNCTION ghm\.gateway_update_business_supplier_classification\(bigint, bigint, boolean\) TO ghm_actor_gateway/);
+  assert.match(gatewayMigration, /REVOKE ALL ON FUNCTION ghm\.gateway_update_business_supplier_classification\(bigint, bigint, boolean\) FROM ghm_runtime/);
+  assert.doesNotMatch(repository, /ghm\.update_business_supplier_classification/);
+  assert.match(repository, /must be updated through the authenticated actor gateway/);
+  assert.match(http, /supplierClassificationGatewayClient\.update/);
 });
 
 test('public profile and directory expose only the canonical supplier boolean', () => {
