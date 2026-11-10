@@ -158,6 +158,7 @@ test('actor gateway registration identity read derives account ID from token and
         updatedAt: new Date('2026-11-10T20:00:00.000Z'),
       };
     },
+    async updateRegistrationIdentity() { throw new Error('not used in read test'); },
   };
   await withServer(reader, async (baseUrl) => {
     const response = await fetch(`${baseUrl}/v1/businesses/77/registration-identity?accountId=999`, {
@@ -195,6 +196,7 @@ test('actor gateway registration identity read rejects invalid business IDs befo
         updatedAt: null,
       };
     },
+    async updateRegistrationIdentity() { throw new Error('not used in read test'); },
   };
   await withServer(reader, async (baseUrl) => {
     const response = await fetch(`${baseUrl}/v1/businesses/0/registration-identity`, {
@@ -216,6 +218,7 @@ test('actor gateway hides registration identity membership denials as not found'
     async readRegistrationIdentity() {
       throw Object.assign(new Error('Business management permission required'), { code: '42501' });
     },
+    async updateRegistrationIdentity() { throw new Error('not used in read test'); },
   };
   await withServer(reader, async (baseUrl) => {
     const response = await fetch(`${baseUrl}/v1/businesses/77/registration-identity`, {
