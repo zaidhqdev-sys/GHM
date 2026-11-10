@@ -7,13 +7,17 @@ DECLARE
   gateway_oid oid;
   gateway_role pg_roles%ROWTYPE;
 BEGIN
-  SELECT oid, * INTO gateway_oid, gateway_role
+  SELECT oid INTO gateway_oid
     FROM pg_roles
    WHERE rolname = 'ghm_actor_gateway';
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'ghm_actor_gateway must be provisioned before applying this migration';
   END IF;
+
+  SELECT * INTO gateway_role
+    FROM pg_roles
+   WHERE rolname = 'ghm_actor_gateway';
 
   IF NOT gateway_role.rolcanlogin
      OR gateway_role.rolinherit
