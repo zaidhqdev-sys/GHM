@@ -27,13 +27,15 @@ Introduce a narrowly scoped database gateway as the only component allowed to us
 
 ### Request flow
 
-1. The API authenticates the existing ES256 bearer token and resolves its subject to an active GHM account, as it does today.
-2. The API sends a short-lived, authenticated actor envelope to the database gateway over an authenticated service channel. The envelope is audience- and purpose-scoped and carries the verified account ID, request ID, issued-at and expiry values. The gateway must not accept a raw account ID from an untrusted caller.
-3. The gateway independently authenticates the calling API service and validates the actor envelope, including expiry, audience, request binding, and replay policy. Trust material is unavailable to ghm_runtime and end users.
+1. The user presents the existing ES256 bearer token to the API. The API may perform its normal authentication for application routes, but its AuthContext and account ID are not an authority that the database gateway accepts as actor proof.
+2. The gateway independently validates the original bearer token against the authoritative issuer keys and claim policy, then resolves the token subject to the canonical GHM account identity. It must verify current account status itself or obtain that status from a trusted authoritative source with a documented freshness bound. The gateway must not accept an account ID asserted by the ordinary API runtime.
+3. If direct token validation by the gateway is not selected, use a separate identity-attestation service that independently validates the original bearer token and canonical account mapping, then signs a short-lived, audience- and purpose-scoped actor assertion. The signing key must be unavailable to the ordinary API runtime and ghm_runtime. The gateway validates the assertion's issuer, signature, audience, purpose, request binding, issued-at/expiry, key ID, and replay policy. A service-authenticated API connection alone does not make an API-supplied account ID trustworthy.
 4. The gateway opens a transaction using a distinct database login role whose credentials are unavailable to the ordinary API runtime and users.
 5. Through a narrowly granted function, the gateway establishes actor context in a protected database-owned transaction context. The context is bound to the current backend and transaction, not represented by a caller-writable GUC or temp table. Only the gateway login can establish it.
-6. Protected RPCs derive the actor from that database-owned context; they do not accept an actor ID parameter. They still query current account status and current tenant membership/role.
+6. Protected RPCs derive the actor from that database-owned context; they do not accept an actor ID parameter. They still query current account status and current tenant membership/role at operation time.
 7. The gateway commits or rolls back and clears context atomically. Connection pooling must never permit context reuse across transactions.
+
+**Critical trust-chain rule:** Do not let the ordinary API runtime mint actor assertions or hold their signing key. If it can choose an account ID and produce an assertion the gateway trusts, compromise of that runtime recreates the impersonation vulnerability one layer earlier. Prefer gateway-side verification of the original bearer token; otherwise isolate attestation in a separately credentialed, narrowly scoped identity service that derives identity from the original token rather than trusting API-supplied identity fields.
 
 ### Privilege model
 
