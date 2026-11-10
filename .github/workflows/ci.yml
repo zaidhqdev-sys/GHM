@@ -9,6 +9,8 @@ on:
     branches:
       - main
       - feat/ghm-capability-evidence-admin-20261105
+      - feat/ghm-business-analytics-engagement-20261110
+      - feat/connect-marketplace-supplier-contract-ghm-20261110
 
 permissions:
   contents: read
@@ -85,6 +87,9 @@ jobs:
 
       - name: Apply all migrations to disposable PostgreSQL
         run: npm run migrate
+
+      - name: Qualify GHM supplier classification and membership authorization on disposable PostgreSQL
+        run: npm run qualify:business-supplier-classification
 
       - name: Qualify Business registration forward migration against existing table
         run: node scripts/qualify-business-registration-forward-migration.mjs

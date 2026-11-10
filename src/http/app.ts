@@ -206,7 +206,7 @@ const parseCreateBusinessInput = (body: unknown): { name: string } | null => {
 const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   const input = body as Record<string, unknown>;
-  const allowed = new Set(['name', 'slug', 'description', 'phone', 'email', 'province', 'city', 'physicalAddress', 'latitude', 'longitude', 'whatsapp', 'website', 'avatarLetter', 'avatarColor', 'yearsInBusiness']);
+  const allowed = new Set(['name', 'slug', 'description', 'phone', 'email', 'province', 'city', 'physicalAddress', 'latitude', 'longitude', 'whatsapp', 'website', 'avatarLetter', 'avatarColor', 'yearsInBusiness', 'isSupplier']);
   const keys = Object.keys(input);
   if (keys.length === 0 || keys.some((key) => !allowed.has(key))) return null;
   if (Object.hasOwn(input, 'name') && (typeof input.name !== 'string' || !input.name.trim())) return null;
@@ -223,6 +223,7 @@ const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | n
   if (Object.hasOwn(input, 'avatarLetter') && input.avatarLetter !== null && (typeof input.avatarLetter !== 'string' || input.avatarLetter.trim().length > 3)) return null;
   if (Object.hasOwn(input, 'avatarColor') && input.avatarColor !== null && (typeof input.avatarColor !== 'string' || input.avatarColor.trim().length > 32)) return null;
   if (Object.hasOwn(input, 'yearsInBusiness') && (typeof input.yearsInBusiness !== 'number' || !Number.isInteger(input.yearsInBusiness) || input.yearsInBusiness < 0 || input.yearsInBusiness > 100)) return null;
+  if (Object.hasOwn(input, 'isSupplier') && typeof input.isSupplier !== 'boolean') return null;
   if (Object.hasOwn(input, 'latitude') !== Object.hasOwn(input, 'longitude')) return null;
   return {
     ...(Object.hasOwn(input, 'name') ? { name: input.name as string } : {}),
@@ -240,6 +241,7 @@ const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | n
     ...(Object.hasOwn(input, 'avatarLetter') ? { avatarLetter: input.avatarLetter as string | null } : {}),
     ...(Object.hasOwn(input, 'avatarColor') ? { avatarColor: input.avatarColor as string | null } : {}),
     ...(Object.hasOwn(input, 'yearsInBusiness') ? { yearsInBusiness: input.yearsInBusiness as number } : {}),
+    ...(Object.hasOwn(input, 'isSupplier') ? { isSupplier: input.isSupplier as boolean } : {}),
   };
 };
 
@@ -530,7 +532,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
 
   app.get('/api/v1/public/businesses', requireRegisteredPublicAccess('directory', 'read'), async (req: Request, res: Response) => {
     try {
-      const allowed = new Set(['q', 'category', 'province', 'city', 'latitude', 'longitude', 'radiusKm', 'sort', 'page', 'pageSize']);
+      const allowed = new Set(['q', 'category', 'province', 'city', 'latitude', 'longitude', 'radiusKm', 'businessType', 'sort', 'page', 'pageSize']);
       const keys = Object.keys(req.query);
       if (keys.some((key) => !allowed.has(key))) {
         res.status(400).json({ error: 'invalid_request' });
@@ -556,6 +558,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
       const province = readStringQuery('province');
       const city = readStringQuery('city');
       const sort = readStringQuery('sort');
+      const businessType = readStringQuery('businessType');
       const parseCoordinate = (key: string): number | undefined => {
         const value = readStringQuery(key);
         if (value === undefined) return undefined;
@@ -575,6 +578,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         (req.query.province !== undefined && province === undefined) ||
         (req.query.city !== undefined && city === undefined) ||
         (req.query.sort !== undefined && sort === undefined) ||
+        (req.query.businessType !== undefined && businessType !== 'suppliers' && businessType !== 'contractors') ||
         (req.query.latitude !== undefined && latitude === undefined) ||
         (req.query.longitude !== undefined && longitude === undefined) ||
         (req.query.radiusKm !== undefined && radiusKm === undefined) ||
@@ -598,6 +602,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         latitude,
         longitude,
         radiusKm,
+        businessType: businessType as 'suppliers' | 'contractors' | undefined,
         sort: sort as 'rating' | 'reviews' | 'newest' | 'distance' | undefined,
         page: pageValue ?? 1,
         pageSize: pageSizeValue ?? 20,
@@ -617,7 +622,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
           error.message === 'latitude and longitude must be supplied together' || error.message === 'radiusKm requires latitude and longitude' || error.message === 'distance sort requires latitude and longitude' ||
           error.message === 'page must be a positive integer' ||
           error.message === 'pageSize must be a positive integer' ||
-          error.message === 'pageSize must be at most 50')
+          error.message === 'pageSize must be at most 50' || error.message === 'businessType must be suppliers or contractors')
       ) {
         res.status(400).json({ error: 'invalid_request' });
         return;
