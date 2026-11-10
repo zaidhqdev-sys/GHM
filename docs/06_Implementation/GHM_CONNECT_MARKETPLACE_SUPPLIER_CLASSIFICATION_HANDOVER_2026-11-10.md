@@ -56,3 +56,13 @@ Current GHM main does not publish an authoritative `isFeatured` field or a gover
 - Updated those tests to assert `businessType: undefined` when no filter is supplied.
 - Follow-up exact-head CI run #2299 (ID `42732701547`) was in progress after these corrections. Check its final status before treating the branch as qualified.
 - The Connect PR quality run #172 failed only because the new Marketplace adapter test expected page size 75 while the adapter correctly caps requests at GHM's 50-item public Directory maximum. Corrected the test to expect 50; a fresh Connect exact-head run is pending.
+
+
+## Second CI iteration and PostgreSQL qualification — 2026-11-10 01:10 UTC
+
+- Follow-up run #2299 (ID `42732701547`) applied migrations and built successfully but the full suite still had one stale assertion: the anonymous directory-default HTTP test did not include `businessType: undefined` in its expected service input.
+- Corrected the final expectation in commit `da30cedac7649c3c69238bc7f884eccc4d36b997`.
+- Added `scripts/qualify-business-supplier-classification-postgres.mjs`: uses separate `ghm_runtime` and `ghm_migrator` identities, creates disposable owner/member fixtures, verifies default contractor value, owner supplier/contractor updates, member denial, null rejection, and cleanup.
+- Added npm script `qualify:business-supplier-classification` and CI step immediately after disposable migration application.
+- Qualification script is restricted to `NODE_ENV=test` and checks exact disposable database identity. It is not a production migration or production qualification.
+- New exact-head CI after the final test and qualification wiring commits is pending; verify its final result before claiming pass.
