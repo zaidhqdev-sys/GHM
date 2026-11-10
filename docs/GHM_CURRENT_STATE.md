@@ -276,3 +276,12 @@ PR [#222](https://github.com/zaidhqdev-sys/GHM/pull/222) is open from `integrati
 - Do not apply migration, alter grants, activate PayFast callbacks or deploy until the role graph is reviewed/remediated, the complete forensic migration audit passes under the approved migration identity, and owner authorization is recorded.
 - Integrated detailed record: [HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md](HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md), Sections 18–20.
 - The previous documentation PR #234 is stale relative to the new mainline. A fresh documentation-only branch `docs/handover-2026-11-08-mainline-reconciled` has been cut from the current main commit; do not merge PR #234 as-is.
+
+
+## Capability governance gateway path — 2026-11-10
+
+Draft PR #269 adds gateway-backed list/create/update/transition operations for admin capability governance. Actor identity is derived by the isolated gateway from the verified ES256 token subject. Gateway-only SQL wrappers check active admin status and grant EXECUTE to `ghm_actor_gateway`, not `ghm_runtime`. Resource API admin routes can use the gateway through `GHM_ACTOR_GATEWAY_URL`; gateway failures do not fall back to the legacy path.
+
+This is a staged integration only. The original three capability SECURITY DEFINER RPCs still retain their legacy `ghm_runtime` EXECUTE grants in PR #250. A separate cutover migration must revoke those grants after the resource API is configured for the gateway, with disposable PostgreSQL denial tests for each direct RPC. Until that gate closes, keep #250, #268 and #269 draft/unmerged and do not enable catalogue governance in production.
+
+No production migration, role/grant change, service provisioning, environment update or deployment occurred. PayFast remains paused pending sandbox access; legal-document approval remains parked.
