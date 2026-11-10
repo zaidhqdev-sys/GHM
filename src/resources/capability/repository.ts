@@ -5,7 +5,8 @@ import type { TransactionPool } from '../../db/transaction.js';
 import type {
   Capability,
   CapabilityId,
-  CapabilityRepository,\n  CapabilityDraftInput,\n  CapabilityLifecycle,
+  CapabilityRepository,
+  CapabilityDraftInput,\n  CapabilityLifecycle,
 } from './contracts.js';
 
 const CAPABILITY_COLUMNS = `
