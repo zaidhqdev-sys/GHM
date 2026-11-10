@@ -342,3 +342,6 @@ Owner scope decisions recorded 2026-11-10: pause all PayFast work until working 
 - Disposable PostgreSQL qualification is extended for successful update, disabled actor denial, cross-business write denial and ordinary runtime cannot execute gateway write. HTTP tests cover actor binding, malformed payload and membership denial; API tests cover token pass-through and no legacy fallback.
 - PR #266 open; exact-head CI pending. No production URL, credentials, Render service, database role/grant change, migration execution or deployment has occurred. Legacy `ghm_runtime` write EXECUTE remains until separately reviewed post-rollout cutover.
 - Next: exact-head CI; then complete end-to-end gateway/API deployment plan. Issuer isolation and remaining feature RPCs remain separate milestones.
+
+
+PR #266 qualification note: the first disposable PostgreSQL run exposed an ambiguous output-column reference in the new write wrapper. The wrapper now explicitly qualifies each returned column through the delegated function alias; the exact-head CI run must be repeated before merge. This was caught before any production migration or deployment.
