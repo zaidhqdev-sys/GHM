@@ -14,6 +14,11 @@ export class PostgresBusinessEngagementRepository implements BusinessEngagementR
            FROM ghm.business b
           WHERE b.id = $1 AND b.is_active = true
             AND b.is_verified = true AND b.verification_status = 'approved'
+            AND NOT EXISTS (
+              SELECT 1 FROM ghm.business_membership bm
+              WHERE bm.business_id = b.id AND bm.account_id = $2
+                AND bm.membership_status = 'active'
+            )
          RETURNING id, business_id, account_id, event_type, event_context, source, created_at`,
         [input.businessId, context.userId, input.eventType, JSON.stringify(input.context ?? {}), input.source ?? 'web'],
       );
