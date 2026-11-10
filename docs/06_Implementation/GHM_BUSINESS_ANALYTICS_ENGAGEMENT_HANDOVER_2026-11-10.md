@@ -62,3 +62,13 @@ No production migration, provider activation, environment change, deployment, me
 - Error 2: route validation did not narrow `number` to the supported period union `7 | 30 | 90`. Fixed by narrowing after the allowlist check.
 - Follow-up branch head: `f8552589a88a33543df26b1f005144c0361bbac1`.
 - Exact-head CI rerun is pending. No migration was applied in the failed run; no production changes.
+
+
+## Disposable PostgreSQL qualification added
+
+- Added `scripts/qualify-business-analytics-engagement-postgres.mjs`, restricted to `NODE_ENV=test` and exact disposable database identity.
+- Uses separate `ghm_runtime` and `ghm_migrator` identities.
+- Exercises an authenticated viewer event write, rejects self-engagement from an active Business owner, verifies the 60/minute account-wide event limit, and verifies Analytics fails closed when the Business has no active `business.analytics` entitlement.
+- Wired as `npm run qualify:business-analytics-engagement` immediately after migration application in CI.
+- This is a disposable PostgreSQL qualification only. No production DB has been accessed or mutated.
+- Latest branch commit at this documentation update: workflow also runs on feature-branch pushes, so future exact-head validation does not depend on a stacked-PR target filter.
