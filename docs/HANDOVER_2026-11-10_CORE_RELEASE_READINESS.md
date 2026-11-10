@@ -187,3 +187,14 @@ Exact-head quality, web-quality and Cloudflare Pages passed. The quality job inc
 This is the first vertical slice, not full actor-auth cutover. The ordinary resource API still holds its existing signing capability and current `ghm_runtime` grants remain in place. The helper is wired only into the new self-read function; registration identity, Business profile, supplier, capability and engagement-event functions still need to be migrated. No production Render service, environment variable, role, credential, grant, database migration or deployment was changed.
 
 Next: migrate one existing actor-sensitive feature read through the gateway; update the underlying DB function to call `assert_actor_gateway`; add adversarial cross-actor tests using the actual disposable logins; then extend consistently across all inventoried operations. Only after all callers are migrated and qualification passes should production privilege transition be planned and separately approved.
+
+
+## 13. Resource API → Actor Gateway registration read integration (PR #265) — 2026-11-10
+
+PR #265 adds an HTTPS-only typed HTTP client from the resource API to the Actor Gateway's `GET /v1/businesses/:businessId/registration-identity`. If `GHM_ACTOR_GATEWAY_URL` is set, the existing Business registration identity GET forwards the original Authorization bearer token. Existing resource API authentication and operation authorization still run first; the gateway independently verifies the ES256 token and checks actor status and business membership again.
+
+Gateway denial/not-found is mapped to 404 and gateway/network/invalid-response errors to 503. Critically, gateway mode never falls back to the legacy DB repository. If the optional URL is unset, existing behavior remains, enabling a controlled rollout. The client enforces HTTPS outside localhost and validates the typed response. Tests cover bearer pass-through, no legacy call/fallback, gateway failure, malformed/mismatched payload, HTTPS and config validation.
+
+At this handover update PR #265 is open and exact-head CI is pending. No production gateway URL, Render service, credential, role, grant, migration execution or deployment has been changed. Keep production URL unset until a separate gateway service has been provisioned with gateway-only database credentials and public ES256 keys and end-to-end qualification is complete. Do not revoke the legacy runtime read grant before successful API-to-gateway deployment and verification.
+
+Next: pass exact-head CI, extend disposable PostgreSQL qualification through the HTTP boundary, then prepare a separately approved Render gateway service and deployment plan. The registration update/write RPC and remaining feature RPCs are not yet migrated.
