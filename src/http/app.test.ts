@@ -7,7 +7,7 @@ import { AuthContext } from '../auth/authorization';
 import { Project, ProjectService } from '../resources/project/contracts';
 import { Opportunity, OpportunityService } from '../resources/opportunity/contracts';
 import { PublicProject, PublicProjectService } from '../resources/project/public-contracts';
-import { AccountIdentity, BusinessIdentityService } from '../resources/business-identity/contracts';
+import { AccountIdentity, BusinessIdentity, BusinessIdentityService } from '../resources/business-identity/contracts';
 import { PublicBusiness, PublicBusinessService } from '../resources/business-identity/public-contracts';
 import { DirectoryResult, DirectoryService } from '../resources/directory/contracts';
 import type { BusinessCategoryService } from '../resources/business-category/contracts';
