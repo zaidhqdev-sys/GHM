@@ -148,6 +148,22 @@ try {
   assert.equal(Number(accepted.rows[0].actor_account_id), activeAccountId);
   console.log('GATEWAY ACCEPTS ACTIVE TOKEN-SUBJECT CANDIDATE: PASS');
 
+  const ownIdentity = await gatewayPool.query(
+    'SELECT account_id, account_role, full_name FROM ghm.gateway_get_actor_identity($1)',
+    [activeAccountId],
+  );
+  assert.equal(ownIdentity.rowCount, 1);
+  assert.deepEqual({
+    account_id: Number(ownIdentity.rows[0].account_id),
+    account_role: ownIdentity.rows[0].account_role,
+    full_name: ownIdentity.rows[0].full_name,
+  }, {
+    account_id: activeAccountId,
+    account_role: 'business',
+    full_name: `${fixture.marker}-active`,
+  });
+  console.log('TYPED GATEWAY SELF-IDENTITY READ: PASS');
+
   await expectSqlState(
     () => gatewayPool.query('SELECT ghm.assert_actor_gateway($1)', [disabledAccountId]),
     '42501',
@@ -162,6 +178,11 @@ try {
     () => runtimePool.query('SELECT ghm.assert_actor_gateway($1)', [activeAccountId]),
     '42501',
     'ORDINARY RUNTIME CANNOT EXECUTE GATEWAY FUNCTION',
+  );
+  await expectSqlState(
+    () => runtimePool.query('SELECT * FROM ghm.gateway_get_actor_identity($1)', [activeAccountId]),
+    '42501',
+    'ORDINARY RUNTIME CANNOT EXECUTE TYPED GATEWAY OPERATION',
   );
   await expectSqlState(
     () => runtimePool.query('SET ROLE ghm_actor_gateway'),
