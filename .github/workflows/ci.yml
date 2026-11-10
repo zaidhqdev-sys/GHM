@@ -9,6 +9,7 @@ on:
     branches:
       - main
       - feat/ghm-capability-evidence-admin-20261105
+      - feat/ghm-business-analytics-engagement-20261110
 
 permissions:
   contents: read
