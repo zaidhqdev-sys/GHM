@@ -2,12 +2,13 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import test from 'node:test';
 import { createApp } from './app';
+import type { SupplierClassificationGatewayClient } from './supplier-classification-gateway-client';
 import { httpTestAuth, tokenFor } from './test-resource-auth';
 import { AuthContext } from '../auth/authorization';
 import { Project, ProjectService } from '../resources/project/contracts';
 import { Opportunity, OpportunityService } from '../resources/opportunity/contracts';
 import { PublicProject, PublicProjectService } from '../resources/project/public-contracts';
-import { AccountIdentity, BusinessIdentityService } from '../resources/business-identity/contracts';
+import { AccountIdentity, BusinessIdentity, BusinessIdentityService } from '../resources/business-identity/contracts';
 import { PublicBusiness, PublicBusinessService } from '../resources/business-identity/public-contracts';
 import { DirectoryResult, DirectoryService } from '../resources/directory/contracts';
 import type { BusinessCategoryService } from '../resources/business-category/contracts';
@@ -58,8 +59,8 @@ const profile = (context: AuthContext): AccountIdentity => ({
   updatedAt: new Date('2026-09-10T00:00:00.000Z'),
 });
 
-const startTestServer = async (service: BusinessIdentityService) => {
-  const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth, businessIdentityService: service }));
+const startTestServer = async (service: BusinessIdentityService, supplierClassificationGatewayClient?: SupplierClassificationGatewayClient) => {
+  const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth, businessIdentityService: service, supplierClassificationGatewayClient }));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
@@ -121,7 +122,7 @@ test('public directory route allows anonymous access and returns the directory r
   try {
     const response = await fetch(`${baseUrl}/api/v1/public/businesses?q=build&category=construction&page=1&pageSize=20`);
     assert.equal(response.status, 200);
-    assert.deepEqual(received, { q: 'build', category: 'construction', province: undefined, city: undefined, latitude: undefined, longitude: undefined, radiusKm: undefined, sort: undefined, page: 1, pageSize: 20 });
+    assert.deepEqual(received, { q: 'build', category: 'construction', province: undefined, city: undefined, latitude: undefined, longitude: undefined, radiusKm: undefined, businessType: undefined, sort: undefined, page: 1, pageSize: 20 });
     const body = await response.json() as DirectoryResult & { items: Array<PublicBusiness & { createdAt: string; updatedAt: string }> };
     assert.equal(body.items[0].id, 301);
     assert.equal(body.page, 1);
@@ -144,7 +145,7 @@ test('public directory route applies pagination defaults and ignores authenticat
       headers: { authorization: 'Bearer invalid-token' },
     });
     assert.equal(response.status, 200);
-    assert.deepEqual(received, { q: undefined, category: undefined, province: undefined, city: undefined, latitude: undefined, longitude: undefined, radiusKm: undefined, sort: undefined, page: 1, pageSize: 20 });
+    assert.deepEqual(received, { q: undefined, category: undefined, province: undefined, city: undefined, latitude: undefined, longitude: undefined, radiusKm: undefined, businessType: undefined, sort: undefined, page: 1, pageSize: 20 });
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
@@ -932,9 +933,9 @@ test('public directory route passes canonical location and geo filters without a
   };
   const { server, baseUrl } = await startDirectoryTestServer(directoryService);
   try {
-    const response = await fetch(`${baseUrl}/api/v1/public/businesses?province=KwaZulu-Natal&city=Durban&latitude=-29.85&longitude=31.02&radiusKm=25&sort=distance`);
+    const response = await fetch(`${baseUrl}/api/v1/public/businesses?province=KwaZulu-Natal&city=Durban&latitude=-29.85&longitude=31.02&radiusKm=25&businessType=suppliers&sort=distance`);
     assert.equal(response.status, 200);
-    assert.deepEqual(received, { q: undefined, category: undefined, province: 'KwaZulu-Natal', city: 'Durban', latitude: -29.85, longitude: 31.02, radiusKm: 25, sort: 'distance', page: 1, pageSize: 20 });
+    assert.deepEqual(received, { q: undefined, category: undefined, province: 'KwaZulu-Natal', city: 'Durban', latitude: -29.85, longitude: 31.02, radiusKm: 25, businessType: 'suppliers', sort: 'distance', page: 1, pageSize: 20 });
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 });
 
@@ -1197,6 +1198,50 @@ test('public Project marketplace list rejects invalid pagination', async () => {
   try {
     const response = await fetch(`${baseUrl}/api/v1/public/projects?limit=101`);
     assert.equal(response.status, 400);
+  } finally {
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+});
+
+
+test('managed Business supplier classification is routed through the authenticated actor gateway', async () => {
+  let received: unknown;
+  const updated = { id: 201, name: 'Supplier Business', isSupplier: true } as BusinessIdentity;
+  const businessIdentityService = {
+    getManagedBusiness: async (_context: AuthContext, businessId: number) => businessId === 201 ? updated : null,
+    updateBusiness: async () => { throw new Error('supplier classification must not use the legacy repository path'); },
+  } as unknown as BusinessIdentityService;
+  const gateway: SupplierClassificationGatewayClient = {
+    async update(accessToken, businessId, isSupplier) {
+      received = { accessToken, businessId, isSupplier };
+      return { businessId, isSupplier };
+    },
+  };
+  const { server, baseUrl } = await startTestServer(businessIdentityService, gateway);
+  try {
+    const token = tokenFor({ userId: 42, role: 'business' });
+    const response = await fetch(`${baseUrl}/api/v1/businesses/201`, {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ isSupplier: true }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(received, { accessToken: token, businessId: 201, isSupplier: true });
+    assert.equal((await response.json() as { business: BusinessIdentity }).business.isSupplier, true);
+
+    const invalid = await fetch(`${baseUrl}/api/v1/businesses/201`, {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ isSupplier: 'yes' }),
+    });
+    assert.equal(invalid.status, 400);
+
+    const mixed = await fetch(`${baseUrl}/api/v1/businesses/201`, {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Changed', isSupplier: false }),
+    });
+    assert.equal(mixed.status, 400);
   } finally {
     await new Promise<void>(resolve => server.close(() => resolve()));
   }
