@@ -239,3 +239,12 @@ PR #265 introduces an HTTPS-only typed HTTP client and optional `GHM_ACTOR_GATEW
 Tests cover bearer forwarding, gateway mode avoiding legacy service calls, no fallback on gateway outage, response validation, HTTPS-only configuration and config validation. At handover time PR #265 is open and CI is pending. No production URL, service, credential, role/grant, migration execution or deployment changed.
 
 Production rollout remains blocked on a separately provisioned gateway service using only gateway DB credentials and public ES256 verification keys, plus end-to-end HTTP/database qualification. Legacy runtime read grant must remain until the resource API is deployed and verified against the gateway. Next: exact-head CI, extend disposable database qualification through HTTP, then separately approve Render service provisioning and deployment ordering.
+
+
+## 15. Business registration identity write gateway slice (PR #266) — 2026-11-10
+
+PR #266 adds a gateway-only SECURITY DEFINER write wrapper guarded by `ghm.assert_actor_gateway`, with EXECUTE only for `ghm_actor_gateway`. It extends the typed gateway Postgres reader and PUT route, deriving actor ID only from independently verified JWT `sub` and accepting only the canonical registration declaration fields. The resource API client forwards the original bearer token for both registration GET and PUT when `GHM_ACTOR_GATEWAY_URL` is configured; gateway failures fail closed and never fall back to legacy SQL. Unset URL preserves legacy behavior for controlled rollout.
+
+Disposable PostgreSQL qualification covers positive write, disabled actor denial, cross-business denial and ordinary runtime cannot execute the gateway write. HTTP/API tests cover actor binding, payload validation, token forwarding and no fallback. At handover PR #266 is open and CI pending. No production service, URL, credential, role/grant, migration execution or deployment has changed. Legacy runtime write grant remains until separate rollout approval and successful end-to-end verification.
+
+Next: exact-head CI, then plan gateway/API service deployment order and end-to-end verification. Auth issuer isolation and remaining feature RPCs are separate milestones.
