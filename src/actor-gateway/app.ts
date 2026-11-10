@@ -6,12 +6,14 @@ import {
 import type { ActorIdentityReader } from './actor-identity-reader';
 import type { BusinessRegistrationIdentityReader } from './business-registration-identity-reader';
 import type { CapabilityGovernanceReader, GatewayCapabilityDraftInput } from './capability-governance-reader';
+import type { SupplierClassificationReader } from './supplier-classification-reader';
 
 export interface ActorGatewayDependencies {
   verifier: AccessJwtVerifier;
   actorIdentityReader: ActorIdentityReader;
   businessRegistrationIdentityReader?: BusinessRegistrationIdentityReader;
   capabilityGovernanceReader?: CapabilityGovernanceReader;
+  supplierClassificationReader?: SupplierClassificationReader;
 }
 
 const isSqlState = (error: unknown, code: string): boolean =>
@@ -299,6 +301,68 @@ export const createActorGatewayApp = (dependencies: ActorGatewayDependencies): E
     if(!capabilityReader){res.status(503).json({error:'service_unavailable'});return;}
     try { const capability=await capabilityReader.transition(actor,id,b.targetStatus as 'active'|'deprecated'|'retired',b.replacedByCapabilityId as string|null|undefined); res.status(200).json({capability:capabilityDto(capability)}); }
     catch(error){capabilityFailure(error,res);}
+  });
+
+  app.put('/v1/businesses/:businessId/supplier-classification', async (req: Request, res: Response) => {
+    const authorization = req.header('authorization');
+    if (!authorization?.startsWith('Bearer ')) {
+      res.status(401).json({ error: 'unauthorized' });
+      return;
+    }
+    const token = authorization.slice('Bearer '.length).trim();
+    if (!token) {
+      res.status(401).json({ error: 'unauthorized' });
+      return;
+    }
+
+    let accountId: number;
+    try {
+      accountId = dependencies.verifier.verify(token).accountId;
+    } catch {
+      res.status(401).json({ error: 'unauthorized' });
+      return;
+    }
+
+    const rawBusinessId = req.params.businessId;
+    if (typeof rawBusinessId !== 'string' || !/^[1-9][0-9]*$/.test(rawBusinessId)) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    const businessId = Number(rawBusinessId);
+    if (!Number.isSafeInteger(businessId) || businessId <= 0 ||
+        !req.body || typeof req.body !== 'object' || Array.isArray(req.body) ||
+        Object.keys(req.body).length !== 1 || typeof req.body.isSupplier !== 'boolean') {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    if (!dependencies.supplierClassificationReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+
+    try {
+      const supplierClassification = await dependencies.supplierClassificationReader.updateSupplierClassification(
+        accountId,
+        businessId,
+        req.body.isSupplier,
+      );
+      res.status(200).json({ supplierClassification });
+    } catch (error) {
+      if (isSqlState(error, '42501') || isSqlState(error, 'P0001')) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      if (isSqlState(error, '22023') || isSqlState(error, '23514')) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      console.error(JSON.stringify({
+        event: 'actor_gateway_operation_failed',
+        operation: 'business.supplierClassification.update',
+        error: { name: error instanceof Error ? error.name : 'UnknownError' },
+      }));
+      res.status(503).json({ error: 'service_unavailable' });
+    }
   });
 
   return app;
