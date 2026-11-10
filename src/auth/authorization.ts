@@ -31,7 +31,8 @@ export type Resource =
   | 'trust_score'
   | 'campaign'
   | 'directory'
-  | 'commercial'\n  | 'onboarding';
+  | 'commercial'
+  | 'onboarding';
 
 const roleResources: Record<GhmRole, readonly Resource[]> = {
   admin: ['profile', 'business', 'business_capability', 'business_capability_evidence', 'business_registration_identity', 'directory_review', 'business_category', 'business_category_assignment', 'business_offering', 'business_hours', 'project', 'project_quote', 'opportunity_requirements', 'customer', 'enquiry', 'quote', 'notification', 'support_request', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'trust_score', 'campaign', 'directory', 'commercial', 'onboarding'],
