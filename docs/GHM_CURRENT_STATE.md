@@ -278,32 +278,95 @@ PR [#222](https://github.com/zaidhqdev-sys/GHM/pull/222) is open from `integrati
 - The previous documentation PR #234 is stale relative to the new mainline. A fresh documentation-only branch `docs/handover-2026-11-08-mainline-reconciled` has been cut from the current main commit; do not merge PR #234 as-is.
 
 
-## Capability governance gateway path — 2026-11-10
+## Core release-readiness handover — 2026-11-10
 
-Draft PR #269 adds gateway-backed list/create/update/transition operations for admin capability governance. Actor identity is derived by the isolated gateway from the verified ES256 token subject. Gateway-only SQL wrappers check active admin status and grant EXECUTE to `ghm_actor_gateway`, not `ghm_runtime`. Resource API admin routes can use the gateway through `GHM_ACTOR_GATEWAY_URL`; gateway failures do not fall back to the legacy path.
+The active engineering handover is [HANDOVER_2026-11-10_CORE_RELEASE_READINESS.md](HANDOVER_2026-11-10_CORE_RELEASE_READINESS.md). It records the verified main/runtime baseline, founder scope decisions, the shared token-issuer/database actor-authentication prerequisite, affected PR gates, merge/deployment policy, and the next non-deferred work sequence.
 
-This is a staged integration only. The original three capability SECURITY DEFINER RPCs still retain their legacy `ghm_runtime` EXECUTE grants in PR #250. A separate cutover migration must revoke those grants after the resource API is configured for the gateway, with disposable PostgreSQL denial tests for each direct RPC. Until that gate closes, keep #250, #268 and #269 draft/unmerged and do not enable catalogue governance in production.
+Owner scope decisions recorded 2026-11-10: pause all PayFast work until working sandbox access is restored; defer approved legal-document/QuoteFlow legal-acceptance work until core systems are running smoothly and the owner resumes it. Existing implementation and historical evidence are preserved. Neither item is a current workstream or release prerequisite.
 
-No production migration, role/grant change, service provisioning, environment update or deployment occurred. PayFast remains paused pending sandbox access; legal-document approval remains parked.
 
-## Capability gateway database qualification expansion — 2026-11-10
+## Release queue checkpoint — 2026-11-10 19:52 UTC
 
-Draft PR #269 now provisions a dedicated actor-gateway database login in CI and tests the gateway principal separately from runtime and migrator. Qualification covers gateway-only wrapper access, admin success/non-admin denial, all four capability governance operations, and mutual role-assumption denial. The original capability SECURITY DEFINER RPCs still retain runtime EXECUTE grants pending a separately approved post-deployment cutover; no production grant changes were made.
+- PR #253 merged as `8bb3a764275703d26be93385854290d5672995e3`; exact-head quality, web-quality and Cloudflare Pages checks passed.
+- PR #254 merged as `c5238f3d45d05009e2b28d5fa38ebd8ee61a0a33`; exact-head quality, web-quality and Cloudflare Pages checks passed. It adds the source/DDL actor-auth surface inventory at [GHM_ACTOR_AUTH_SURFACE_INVENTORY_2026-11-10.md](security/GHM_ACTOR_AUTH_SURFACE_INVENTORY_2026-11-10.md).
+- PR #236 was closed as superseded, not merged. A fresh comparison against main showed only two remaining changed files, both stale handover documents; its substantive code/migration changes are already present on main. Its remaining documentation incorrectly said Render auto-deploy was enabled, while the verified live service setting is disabled.
+- The shared actor-authentication blocker now explicitly includes #244's direct engagement-event INSERT attribution surface as well as the SECURITY DEFINER RPCs and auth/session mutation functions. See the inventory and draft architecture proposal PR #251.
+- No production migration/query/write, role/grant/secret change, new service provisioning, or runtime deployment was performed in this checkpoint.
 
-## Capability Actor Gateway integration qualification — 2026-11-10
 
-Draft PR #272 targets `main` so the full stacked capability governance chain (#250 -> #268 -> #269) is evaluated by the configured mainline CI workflow. It is a qualification/integration PR only and must remain draft/unmerged.
+## ADR-001 approval and first implementation slice — 2026-11-10 20:03 UTC
 
-The CI workflow now provisions a separate `ghm_actor_gateway` login and `GHM_ACTOR_GATEWAY_DATABASE_URL`. Capability PostgreSQL qualification requires distinct runtime, gateway and migrator credentials; verifies neither runtime nor gateway can assume the other's role; checks admin gateway list/create/update/transition operations and non-admin denial; and confirms runtime cannot execute the gateway-only wrappers.
+- Owner approved the isolated GHM authentication issuer + separately credentialed typed database actor gateway architecture on 2026-11-10.
+- ADR-001 and implementation/qualification plan merged through PR #256 at `d40fd88d34e4d6f8242b5b6e1485c2498a1fd7b9`. The approval covers isolated implementation and disposable qualification only. It does not authorize production credentials, grants, migrations, service provisioning or deployment.
+- First implementation slice is PR #257: public-key-only ES256 access-token verification and public-only key loading. It preserves ES256, `iss=ghm-auth`, `aud=ghm-api`, `kid`, 900-second lifetime, opaque refresh contract, and does not expose private signing material to the verifier. CI is pending at checkpoint.
+- Exact DB actor-context proof mechanism remains a design spike; plain caller-writable GUC/temp-table/account-ID argument is prohibited. Must test the actual `ghm_runtime` login, gateway login, issuer login, replay, transaction pooling, rollback, cancellation and connection reuse on disposable PostgreSQL.
+- PR #251 remains draft/reference material and links to ADR-001; it is no longer the undecided architecture source.
+- No production DB access/mutation, grant, credential, service provisioning, Render configuration or runtime deployment was performed.
 
-The legacy three capability SECURITY DEFINER functions still retain `ghm_runtime` EXECUTE grants. That security gate remains open pending deployment/configuration of `GHM_ACTOR_GATEWAY_URL` and a separately qualified cutover. No production action is authorized or performed.
 
-## Unified Actor Gateway security integration — 2026-11-10
+## Actor gateway principal guard and public-only JWT verifier — 2026-11-10 20:16 UTC
 
-Draft integration PR #272 now consolidates the capability (#250/#268/#269), supplier-classification (#243/#270), and Business profile (#237/#271) gateway work for a single migration-chain and CI qualification. Shared gateway principal/identity/registration migrations are deduplicated. The combined process wires actor identity, registration identity, capability governance, supplier classification and Business profile readers.
+- PR #257 merged as `e49beff5d87e708906c2077219c839dc7ee9914a`: public-key-only ES256 verifier and public-only key loader. The signer now emits the intended `iat` claim (the previous `noTimestamp: true` option removed it); legacy no-`iat` access tokens remain accepted only within the 900-second lifetime plus 60-second skew window. Full quality, web-quality and Cloudflare Pages passed.
+- PR #259 merged as `a2da35a6c8f2ffc8e0c8b48728b36c8bc3c7b940`: additive `ghm.assert_actor_gateway(bigint)` primitive and disposable PostgreSQL principal qualification. Full quality, web-quality and Cloudflare Pages passed, including the full migration chain, the new gateway principal test, full unit/integration test suite, migration audit and runtime boundary verification.
+- Chosen DB trust mechanism for the first implementation: dedicated `ghm_actor_gateway` LOGIN NOINHERIT principal with no role memberships or elevated attributes; protected SECURITY DEFINER operations verify `session_user='ghm_actor_gateway'` via the helper. The gateway independently verifies ES256 bearer JWTs and derives the actor ID from `sub`; it passes that ID only through a closed typed operation map. No caller-writable GUC, temp table or DB-side JWT crypto is used. A compromise of the gateway process/credential is within the trusted gateway threat boundary and must be mitigated by service isolation, network restrictions, credential custody/rotation, and audit.
+- The new migration is additive and not yet wired into feature RPCs; it does not revoke any current `ghm_runtime` privileges. The new role must be provisioned out-of-band before applying the migration; migration fails closed if absent/unsafe. No production role, credential, grant or migration action has occurred.
+- Next: build isolated gateway service and typed operation registry; migrate one representative read RPC; add DB-side `assert_actor_gateway` checks to actor-sensitive functions and direct engagement-event write path; then adversarially qualify spoof/positive cases before any runtime privilege transition.
 
-Supplier and Business profile gateway cutover migrations are present in the integration branch but are not production-applied. Capability governance remains staged: its original three SECURITY DEFINER RPCs still grant EXECUTE to ghm_runtime, and revocation remains blocked until GHM_ACTOR_GATEWAY_URL is deployed/configured and route verification is complete. A separate capability cutover with direct runtime-denial tests is required.
 
-Individual feature evidence: supplier PR #270 exact head passed run #42911426091; Business profile PR #271 exact head passed run #42909483456. The combined branch has not yet passed exact-head CI. See [HANDOVER_2026-11-10_ACTOR_GATEWAY_INTEGRATION.md](HANDOVER_2026-11-10_ACTOR_GATEWAY_INTEGRATION.md).
+## Actor gateway first vertical slice merged — 2026-11-10 20:23 UTC
 
-No production migration, grant/role change, Render service/environment update, deployment, data mutation or catalogue activation occurred. PayFast remains paused; legal-document work remains parked.
+- PR #261 merged as `1250ec141b540d59eecd80eb2e6a57e02b2bc633`.
+- Added separate `src/actor-gateway/server.ts` entrypoint, public-only ES256 verifier, isolated `GHM_ACTOR_GATEWAY_DATABASE_URL`, typed `GET /v1/actor/me` operation, and Postgres reader calling only `ghm.gateway_get_actor_identity(bigint)` inside a transaction.
+- SQL function invokes `ghm.assert_actor_gateway`, returns only the verified actor's own active identity, and grants EXECUTE only to `ghm_actor_gateway`; no generic SQL/RPC endpoint or caller-selected account ID exists.
+- CI passed exact head across quality, web-quality and Cloudflare Pages. Quality included complete disposable migration chain, gateway role/function qualification, HTTP app tests, full suite, migration audit and runtime boundary checks.
+- This is a self-read proof slice only. Existing resource API still retains current auth signing and existing runtime DB privileges; issuer isolation and migration of feature RPCs remain unfinished. No Render service, production environment variable, credential, role, grant or deployment was changed.
+- Next: route one existing actor-sensitive low-risk feature operation through the gateway and make its DB function require `assert_actor_gateway`; then expand to all inventoried RPCs and engagement-event writes. Only after full caller migration should production privilege changes be planned separately.
+
+
+## Resource API → Actor Gateway registration read integration (PR #265) — 2026-11-10
+
+- PR #265 adds an HTTPS-only typed HTTP client from the existing resource API to the isolated Actor Gateway registration identity read.
+- When optional `GHM_ACTOR_GATEWAY_URL` is configured, the existing GET route forwards the original bearer access token to the gateway. The resource API continues its existing authentication and operation authorization; the gateway independently verifies the token and rechecks actor/business membership.
+- Gateway errors fail closed (404 for access denial/not-found, 503 for unavailable/invalid gateway responses); no legacy database fallback occurs in gateway mode. When the variable is absent, current legacy behavior remains for controlled rollout.
+- Added tests for original token forwarding, no legacy call in gateway mode, gateway outage without fallback, HTTPS-only origin, typed response validation and config validation; included gateway-client tests in the full suite.
+- PR #265 is open and CI is pending at this handover update. No production gateway URL, service, credential, environment variable, role, grant, migration execution or deployment has been changed.
+- Do not configure production until the separate gateway service is deployed with gateway-only DB credentials and public ES256 verification keys, and end-to-end HTTP/database qualification passes. Do not revoke legacy runtime read grant until the API is demonstrably using the gateway in the approved deployment sequence.
+- Next: exact-head CI, then extend disposable PostgreSQL qualification through the HTTP boundary and plan the separately approved Render gateway service setup. Registration writes and other feature RPCs remain un-migrated.
+
+
+## Business registration identity write gateway slice (PR #266) — 2026-11-10
+
+- PR #266 adds `ghm.gateway_update_business_registration_identity(bigint,bigint,text,text,text)`, guarded by `ghm.assert_actor_gateway` and EXECUTE granted only to `ghm_actor_gateway`.
+- Adds typed gateway PUT route and Postgres writer. Actor ID is derived only from the verified JWT subject; only the three declared registration fields are accepted.
+- Resource API gateway client now supports PUT and forwards the original bearer token. With `GHM_ACTOR_GATEWAY_URL` configured, existing registration GET and PUT both route through gateway. With URL unset, legacy path remains for controlled rollout. Gateway-mode errors fail closed without fallback.
+- Disposable PostgreSQL qualification is extended for successful update, disabled actor denial, cross-business write denial and ordinary runtime cannot execute gateway write. HTTP tests cover actor binding, malformed payload and membership denial; API tests cover token pass-through and no legacy fallback.
+- PR #266 open; exact-head CI pending. No production URL, credentials, Render service, database role/grant change, migration execution or deployment has occurred. Legacy `ghm_runtime` write EXECUTE remains until separately reviewed post-rollout cutover.
+- Next: exact-head CI; then complete end-to-end gateway/API deployment plan. Issuer isolation and remaining feature RPCs remain separate milestones.
+
+
+PR #266 qualification note: the first disposable PostgreSQL run exposed an ambiguous output-column reference in the new write wrapper. The wrapper now explicitly qualifies each returned column through the delegated function alias; the exact-head CI run must be repeated before merge. This was caught before any production migration or deployment.
+
+
+PR #266 qualification correction: follow-up logs pinpointed the ambiguity inside the pre-existing `ghm.update_business_registration_identity` implementation (`ON CONFLICT (business_id)` conflicts with its RETURNS TABLE output variable), not the gateway wrapper. The additive migration now replaces that function using the named `business_registration_identity_pkey` constraint, preserves its existing `ghm_runtime` EXECUTE grant, and keeps the gateway-only wrapper grant isolated. This fix and the positive/negative write qualification must pass on the final exact head before merge.
+
+
+## Registration identity gateway GET + PUT merged — 2026-11-10
+
+- PR #266 merged as `a2c734348c3132396121c74d232eafb2794541d1`.
+- Gateway-only registration identity read and write operations are now both exposed as typed HTTP endpoints. The resource API's existing GET and PUT route can use the gateway when `GHM_ACTOR_GATEWAY_URL` is configured, forwarding the original bearer token and failing closed without legacy fallback.
+- The new write wrapper checks `ghm.assert_actor_gateway`, delegates to the membership-checked update function, and grants EXECUTE only to `ghm_actor_gateway`. The additive migration also fixes the pre-existing upsert ambiguity by using the named `business_registration_identity_pkey` conflict constraint; the original `ghm_runtime` EXECUTE grant is preserved pending cutover.
+- Exact-head CI passed quality, web-quality and Cloudflare Pages. Quality included build, full test suite, full disposable migration chain, gateway principal qualification, positive/negative gateway write/read tests, migration audit and runtime boundary verification.
+- No production URL, Render gateway service, credentials, role/grant cutover or deployment changed. The legacy runtime write grant remains until gateway deployment and end-to-end verification are separately completed.
+- Next: provision isolated gateway service only after dedicated gateway DB credentials and public ES256 verification keys are securely available; deploy gateway before setting resource API URL; verify end-to-end GET/PUT and only then plan legacy grant revocation separately. Continue actor-bound migration for other RPCs.
+
+## Unified Actor Gateway security integration — 2026-11-11
+
+Draft integration PR #272 consolidates the capability governance stack (#250/#268/#269), supplier-classification stack (#243/#270), and Business profile stack (#237/#271). It now preserves the latest main-branch Actor Gateway foundation, including registration identity read/write and HTTP routing through the gateway client, while wiring capability governance, supplier classification and Business profile readers into the same gateway process.
+
+The migration chain includes the dedicated gateway principal and identity/registration wrappers, capability governance wrappers, supplier-classification cutover, Business profile compatibility reconciliation at 20261110265000, and Business profile gateway cutover at 20261110270000. The compatibility reconciliation is deliberately ordered after 20261109100000 because that earlier presentation migration replaced the legacy profile function and dropped category/supplier/alias compatibility.
+
+The combined branch's previous exact-head CI run #42917315263 passed build, all migrations, full tests, capability/supplier/profile PostgreSQL authorization qualifications, runtime boundary verification, and web quality. The latest main-base reconciliation has additional changes and requires a fresh exact-head CI run before merge.
+
+Capability governance remains staged: its original three SECURITY DEFINER RPCs still grant EXECUTE to ghm_runtime. Do not revoke those grants until the Actor Gateway is deployed/configured and capability routes are verified. A separate capability cutover migration with direct runtime-denial tests remains required.
+
+No production migrations, grant/role changes, Render service/environment changes, deployments, data mutations or catalogue activation occurred. PayFast remains paused; legal-document work remains parked. See [HANDOVER_2026-11-10_ACTOR_GATEWAY_INTEGRATION.md](HANDOVER_2026-11-10_ACTOR_GATEWAY_INTEGRATION.md).
