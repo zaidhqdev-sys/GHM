@@ -9,8 +9,6 @@ import { loadEs256Keys, verificationKeyMap, type LoadedEs256Keys } from './es256
 import type { AccessJwtClaims, AccessJwtVerifyResult } from './types';
 import {
   AccessJwtError,
-  ACCESS_JWT_AUD,
-  ACCESS_JWT_CLOCK_SKEW_SECONDS,
   ACCESS_JWT_ISS,
   ACCESS_JWT_TTL_SECONDS,
   createAccessJwtVerifier,
