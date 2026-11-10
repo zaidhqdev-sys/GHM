@@ -94,6 +94,7 @@ export const verificationKeyMap = (keys: LoadedEs256Keys): Map<string, string> =
   return map;
 };
 
+
 export interface LoadedEs256VerificationKeys {
   active: { publicKeyPem: string; kid: string };
   previous: { publicKeyPem: string; kid: string } | null;
