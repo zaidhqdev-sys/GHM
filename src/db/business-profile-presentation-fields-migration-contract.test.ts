@@ -64,7 +64,7 @@ test('Business profile writes are restricted to the isolated actor gateway', () 
 test('Business profile forward reconciliation preserves legacy API fields and snake/camel aliases', () => {
   assert.match(legacyCompatibility, /'category'/);
   assert.match(legacyCompatibility, /'isSupplier'/);
-  assert.match(legacyCompatibility, /membership_role IN \\('owner', 'administrator'\\)/);
+  assert.match(legacyCompatibility, /membership_role IN \('owner', 'administrator'\)/);
   assert.match(legacyCompatibility, /Conflicting Business profile aliases/);
   assert.match(legacyCompatibility, /v_patch->v_alias IS DISTINCT FROM v_patch->v_key/);
   assert.match(legacyCompatibility, /physical_address/);
