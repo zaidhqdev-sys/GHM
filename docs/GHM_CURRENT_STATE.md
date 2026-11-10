@@ -276,3 +276,10 @@ PR [#222](https://github.com/zaidhqdev-sys/GHM/pull/222) is open from `integrati
 - Do not apply migration, alter grants, activate PayFast callbacks or deploy until the role graph is reviewed/remediated, the complete forensic migration audit passes under the approved migration identity, and owner authorization is recorded.
 - Integrated detailed record: [HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md](HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md), Sections 18–20.
 - The previous documentation PR #234 is stale relative to the new mainline. A fresh documentation-only branch `docs/handover-2026-11-08-mainline-reconciled` has been cut from the current main commit; do not merge PR #234 as-is.
+
+
+## Supplier classification actor-boundary remediation — 2026-11-10
+
+Draft PR #270 moves supplier-classification writes off the shared `ghm_runtime` database principal and behind the isolated Actor Gateway. It revokes runtime EXECUTE on the original SECURITY DEFINER RPC, introduces a gateway-only wrapper guarded by `ghm.assert_actor_gateway`, verifies the GHM ES256 token in the gateway, and derives the account ID from the signed subject. Resource API supplier writes fail closed if gateway routing is unavailable; no legacy fallback remains in the HTTP path.
+
+The disposable PostgreSQL qualification now provisions distinct runtime, migrator and gateway roles and tests the direct-RPC denial and gateway-only path. Exact-head CI remains pending. This is a draft branch stacked on supplier PR #243; neither PR is approved for merge or production rollout yet. No production migration, role/grant change, service, environment variable or deployment was created. PayFast remains paused pending sandbox access; legal-document work remains parked.
