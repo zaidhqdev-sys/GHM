@@ -143,9 +143,37 @@ export const registerBusinessRegistrationIdentityRoutes = (
           res.status(400).json({ error: 'invalid_request' });
           return;
         }
+        if (gatewayClient) {
+          const authorization = req.header('authorization');
+          if (!authorization?.startsWith('Bearer ') || !authorization.slice('Bearer '.length).trim()) {
+            res.status(401).json({ error: 'unauthorized' });
+            return;
+          }
+          const accessToken = authorization.slice('Bearer '.length).trim();
+          const registrationIdentity = await gatewayClient.updateRegistrationIdentity(accessToken, input);
+          res.status(200).json({ registrationIdentity });
+          return;
+        }
         const registrationIdentity = await service.updateRegistrationIdentity(context, input);
         res.status(200).json({ registrationIdentity });
       } catch (error) {
+        if (error instanceof BusinessRegistrationIdentityGatewayError) {
+          if (error.status === 401 || error.status === 403 || error.status === 404) {
+            res.status(404).json({ error: 'not_found' });
+            return;
+          }
+          if (error.status === 400) {
+            res.status(400).json({ error: 'invalid_request' });
+            return;
+          }
+          res.status(503).json({ error: 'service_unavailable' });
+          return;
+        }
+        if (gatewayClient) {
+          console.error(JSON.stringify({ event: 'actor_gateway_request_failed', operation: 'business.registrationIdentity.update', error: { name: error instanceof Error ? error.name : 'UnknownError' } }));
+          res.status(503).json({ error: 'service_unavailable' });
+          return;
+        }
         handleError(error, res);
       }
     },
