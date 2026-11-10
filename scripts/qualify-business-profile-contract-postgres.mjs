@@ -96,11 +96,18 @@ try {
   );
   console.log('RUNTIME GATEWAY-ONLY BUSINESS PROFILE RPC DENIAL PASS');
 
-  const optionalLegacyColumns = await gatewayPool.query(
-    `SELECT column_name FROM information_schema.columns
-      WHERE table_schema = 'ghm' AND table_name = 'business'
-        AND column_name IN ('category', 'is_supplier')`,
-  );
+  const catalog = await migratorPool.connect();
+  let optionalLegacyColumns;
+  try {
+    await catalog.query('SET ROLE ghm_schema_owner');
+    optionalLegacyColumns = await catalog.query(
+      `SELECT column_name FROM information_schema.columns
+        WHERE table_schema = 'ghm' AND table_name = 'business'
+          AND column_name IN ('category', 'is_supplier')`,
+    );
+  } finally {
+    catalog.release();
+  }
   const legacyColumnNames = new Set(optionalLegacyColumns.rows.map(row => row.column_name));
   assert.equal(legacyColumnNames.has('category'), true);
   assert.equal(legacyColumnNames.has('is_supplier'), true);
