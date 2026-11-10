@@ -43,3 +43,13 @@ The capability governance API now has a gateway-backed implementation path:
 **Important remaining cutover gate:** the legacy `ghm_runtime` EXECUTE grants on the original three SECURITY DEFINER capability functions are intentionally still present in the existing #250 migration. Therefore this work adds a safe gateway path but does not yet eliminate direct actor-ID spoofing through those legacy RPCs. Do not merge/enable capability governance until a separately reviewed cutover migration revokes those legacy runtime grants after the API is deployed with `GHM_ACTOR_GATEWAY_URL` set, and exact-head disposable PostgreSQL tests prove direct `ghm_runtime` invocation is denied for all three original RPCs while gateway operations pass.
 
 No production migration, role/grant mutation, gateway service, environment variable, deployment or catalogue activation was performed. Exact-head CI is pending.
+
+## Gateway principal qualification expansion — 2026-11-10
+
+- CI now provisions a dedicated `ghm_actor_gateway` login with `LOGIN NOINHERIT`, an isolated credential, and a separate `GHM_ACTOR_GATEWAY_DATABASE_URL`; it is not granted membership in `ghm_runtime` or vice versa.
+- Capability PostgreSQL qualification now requires three distinct runtime, gateway and migrator connection URLs.
+- Added assertions that runtime cannot `SET ROLE ghm_actor_gateway` and gateway cannot `SET ROLE ghm_runtime`.
+- Added real database positive tests for gateway capability listing, draft creation, draft update and lifecycle transition, plus non-admin gateway listing denial.
+- Added checks that runtime cannot execute the gateway-only capability wrappers. The legacy capability RPCs still retain runtime EXECUTE grants; this is deliberately not described as a completed cutover.
+- CI will run against the updated capability branch. No passing status is claimed until exact-head workflow completion.
+- Production cutover remains separate: deploy/configure the API with `GHM_ACTOR_GATEWAY_URL`, verify routing, then separately revoke the three legacy runtime grants with direct SQL denial tests. Do not apply that migration or alter production grants here.
