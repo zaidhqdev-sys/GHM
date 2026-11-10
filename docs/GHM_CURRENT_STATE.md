@@ -285,3 +285,7 @@ Draft PR #269 adds gateway-backed list/create/update/transition operations for a
 This is a staged integration only. The original three capability SECURITY DEFINER RPCs still retain their legacy `ghm_runtime` EXECUTE grants in PR #250. A separate cutover migration must revoke those grants after the resource API is configured for the gateway, with disposable PostgreSQL denial tests for each direct RPC. Until that gate closes, keep #250, #268 and #269 draft/unmerged and do not enable catalogue governance in production.
 
 No production migration, role/grant change, service provisioning, environment update or deployment occurred. PayFast remains paused pending sandbox access; legal-document approval remains parked.
+
+## Capability gateway database qualification expansion — 2026-11-10
+
+Draft PR #269 now provisions a dedicated actor-gateway database login in CI and tests the gateway principal separately from runtime and migrator. Qualification covers gateway-only wrapper access, admin success/non-admin denial, all four capability governance operations, and mutual role-assumption denial. The original capability SECURITY DEFINER RPCs still retain runtime EXECUTE grants pending a separately approved post-deployment cutover; no production grant changes were made.
