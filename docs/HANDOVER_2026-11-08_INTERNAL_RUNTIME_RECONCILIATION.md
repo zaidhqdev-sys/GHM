@@ -767,3 +767,18 @@ The source migration's replacement function also needs full caller/contract revi
 ### Query access boundary encountered
 
 The first data aggregate attempted a SELECT count from `ghm.storage_object` and was rejected with PostgreSQL SQLSTATE 42501. It was rerun against permitted `ghm.business` and `ghm.project` only. No grants, role switches, or privilege bypass were attempted. Storage-object inventory remains a required preflight using an approved owner-authorized evidence path.
+
+
+## 27. Active GHM runtime and database — owner correction (2026-11-10 04:20 UTC)
+
+The owner clarified the current environment boundary:
+
+- **Active path:** GHM-Internal-Runtime and the active GHM database.
+- **Retired sandbox path:** ghm-identity-qualification, ghm-payfast-sandbox-runtime, and ghm-payfast-callback-sandbox all belonged to the sandbox environment. The sandbox database is suspended/expired and is not in use.
+- Do not treat any of those sandbox services or the sandbox database as current production dependencies, migration targets, or release prerequisites.
+
+A fresh Render service listing at 2026-11-10 04:20 UTC showed GHM-Internal-Runtime attached to branch `main`, with auto-deploy set to `yes` and trigger `checksPass` (After CI Checks Pass). The service record was updated at 04:20:10 UTC. The owner states that they changed this setting. No Render setting change or deployment was performed as part of this review.
+
+This section supersedes earlier statements in this handover that described Internal Runtime auto-deploy as disabled or presented the sandbox services as operational dependencies. Earlier observations remain historical snapshots of the environment at their recorded timestamps; they are not current configuration.
+
+**Release boundary unchanged:** this clarification does not authorize a deployment, production database migration, role/grant change, payment-provider activation, PayFast callback activation, or commercial cutover. Those actions still require their own explicit authorization and technical gates.
