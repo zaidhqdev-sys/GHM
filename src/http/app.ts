@@ -897,7 +897,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
           return;
         }
         await supplierClassificationGatewayClient.update(authorization.slice(7).trim(), businessId, input.isSupplier);
-        const business = await service.getBusiness(context, businessId);
+        const business = await service.getManagedBusiness(context, businessId);
         if (!business) {
           res.status(404).json({ error: 'not_found' });
           return;
