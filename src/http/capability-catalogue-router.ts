@@ -130,7 +130,7 @@ export const registerCapabilityCatalogueRoutes = (
       const token = gatewayClient ? gatewayToken(req,res) : null; if(gatewayClient && !token)return;
       const capability = gatewayClient ? await gatewayClient.createDraft(token!,input) : await service.createDraft(req.authContext as AuthContext, input);
       res.status(201).json({ capability: toCapabilityDto(capability) });
-    } catch (error) { handleError(error, res); }
+    } catch (error) { if(gatewayClient) gatewayError(error,res); else handleError(error, res); }
   });
 
   app.patch('/api/v1/admin/capabilities/:capabilityId/draft', authMiddleware, requireCatalogueAdmin('update'), async (req: Request, res: Response) => {
@@ -141,7 +141,7 @@ export const registerCapabilityCatalogueRoutes = (
       const token = gatewayClient ? gatewayToken(req,res) : null; if(gatewayClient && !token)return;
       const capability = gatewayClient ? await gatewayClient.updateDraft(token!,req.params.capabilityId,input) : await service.updateDraft(req.authContext as AuthContext, req.params.capabilityId, input);
       res.status(200).json({ capability: toCapabilityDto(capability) });
-    } catch (error) { handleError(error, res); }
+    } catch (error) { if(gatewayClient) gatewayError(error,res); else handleError(error, res); }
   });
 
   app.post('/api/v1/admin/capabilities/:capabilityId/transition', authMiddleware, requireCatalogueAdmin('transition'), async (req: Request, res: Response) => {
@@ -165,6 +165,6 @@ export const registerCapabilityCatalogueRoutes = (
         body.replacedByCapabilityId as string | null | undefined,
       );
       res.status(200).json({ capability: toCapabilityDto(capability) });
-    } catch (error) { handleError(error, res); }
+    } catch (error) { if(gatewayClient) gatewayError(error,res); else handleError(error, res); }
   });
 };
