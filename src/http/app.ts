@@ -48,6 +48,10 @@ import { registerCampaignRoutes } from './campaign-router';
 import { registerOpportunityRoutes } from './opportunity-router';
 import { registerAuthRoutes, type AuthRouterDependencies } from './auth-router';
 import { registerSavedBusinessRoutes } from './saved-business-router';
+import { PostgresOnboardingProgressRepository } from '../resources/onboarding/repository';
+import { DefaultOnboardingProgressService } from '../resources/onboarding/service';
+import type { OnboardingProgressService } from '../resources/onboarding/contracts';
+import { registerOnboardingRoutes } from './onboarding-router';
 import { registerBusinessCapabilityRoutes } from './business-capability-router';
 import { PgCapabilityRepository } from '../resources/capability/repository';
 import { CapabilityServiceImpl } from '../resources/capability/service';
@@ -129,6 +133,7 @@ export interface AppDependencies {
   readonly campaignService?: CampaignService;
   readonly opportunityService?: OpportunityService;
   readonly savedBusinessService?: SavedBusinessService;
+  readonly onboardingService?: OnboardingProgressService;
   readonly businessCapabilityService?: BusinessCapabilityService;
   readonly businessCapabilityEvidenceService?: BusinessCapabilityEvidenceService;
   readonly businessRegistrationIdentityService?: BusinessRegistrationIdentityService;
@@ -386,6 +391,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const savedBusinessService =
     dependencies.savedBusinessService ??
     new SavedBusinessServiceImpl(new PostgresSavedBusinessRepository());
+  const onboardingService = dependencies.onboardingService ?? new DefaultOnboardingProgressService(new PostgresOnboardingProgressRepository());
   const businessCapabilityService =
     dependencies.businessCapabilityService ??
     new BusinessCapabilityServiceImpl(new PostgresBusinessCapabilityRepository());
@@ -927,6 +933,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerCampaignRoutes(app, campaignService, resourceAuthMiddleware);
   registerOpportunityRoutes(app, opportunityService, resourceAuthMiddleware);
   registerSavedBusinessRoutes(app, savedBusinessService, resourceAuthMiddleware);
+  registerOnboardingRoutes(app, onboardingService, resourceAuthMiddleware);
   registerBusinessCapabilityRoutes(app, businessCapabilityService, resourceAuthMiddleware);
   registerCapabilityCatalogueRoutes(app, new CapabilityServiceImpl(new PgCapabilityRepository()), resourceAuthMiddleware);
   registerBusinessCapabilityEvidenceRoutes(app, businessCapabilityEvidenceService, resourceAuthMiddleware);
