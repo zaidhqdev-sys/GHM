@@ -213,3 +213,16 @@ PR #266 qualification note: the first disposable PostgreSQL run exposed an ambig
 
 
 PR #266 qualification correction: follow-up logs pinpointed the ambiguity inside the pre-existing `ghm.update_business_registration_identity` implementation (`ON CONFLICT (business_id)` conflicts with its RETURNS TABLE output variable), not the gateway wrapper. The additive migration now replaces that function using the named `business_registration_identity_pkey` constraint, preserves its existing `ghm_runtime` EXECUTE grant, and keeps the gateway-only wrapper grant isolated. This fix and the positive/negative write qualification must pass on the final exact head before merge.
+
+
+## 15. Registration identity gateway GET + PUT merged — 2026-11-10
+
+PR #266 merged as `a2c734348c3132396121c74d232eafb2794541d1`. The Actor Gateway now has typed GET and PUT operations for Business registration identity. Both derive actor identity exclusively from independently verified ES256 token `sub` and enforce active account and owner/administrator business membership in PostgreSQL.
+
+The resource API's existing registration identity GET and PUT routes can use the gateway when `GHM_ACTOR_GATEWAY_URL` is configured. It forwards the original bearer token over HTTPS. In gateway mode, errors fail closed and never fall back to legacy database access. If the URL is unset, current legacy behavior remains for controlled rollout.
+
+The gateway-only write wrapper calls `ghm.assert_actor_gateway`, delegates to the membership-checked update function and grants EXECUTE only to `ghm_actor_gateway`. The additive migration also fixes a pre-existing PostgreSQL ambiguity in the update function's `ON CONFLICT (business_id)` clause by using the named `business_registration_identity_pkey` constraint. The existing `ghm_runtime` EXECUTE grant is preserved; no legacy grant was revoked.
+
+Exact-head quality, web-quality and Cloudflare Pages passed. Quality included build, full suite, full disposable migration chain, gateway role and typed read/write qualification (including positive, disabled actor, cross-business and ordinary-runtime denial cases), migration audit and runtime boundary checks. No production gateway URL, Render service, credential, role/grant cutover, migration execution or deployment occurred.
+
+Next: securely provision the isolated gateway service with its own database login and public ES256 verification keys; deploy it before configuring the resource API URL; verify end-to-end GET/PUT; then separately review legacy grant revocation. Continue migrating other feature RPCs to actor-bound gateway operations.
