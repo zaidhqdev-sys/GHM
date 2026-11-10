@@ -895,3 +895,11 @@ Critical example: `ghm.auth_create_session_with_refresh(p_account_id, p_refresh_
 Proposal advanced at PR #251 head `47419f4f7986868415ef3383ccd5504b8d02218a`. It requires a distinct GHM-owned auth-issuer DB principal, migration of auth mutation EXECUTE grants away from `ghm_runtime` after caller inventory, separate validation-only gateway permission if online `sid` is ever approved, and adversarial direct SQL tests. Do not blindly revoke existing grants before isolated issuer is deployed and qualified. Existing GHM issuer ownership is preserved; a separate service/DB principal is an architecture refinement requiring explicit approval.
 
 This is checked-in migration evidence only, not effective production role membership or service credential inventory. No production DB role/grant, credential, secret, migration, deployment or payment setting changed. Latest proposal CI #2375 (run ID `42766389494`) was in progress at last observation; prior head `18162fed75995e6cfd716843e07c2959f87e426e` is not the latest validated proposal head.
+
+
+### Exact-head CI result — auth DB privilege proposal (2026-11-10 06:04 UTC)
+
+- Latest proposal head `47419f4f7986868415ef3383ccd5504b8d02218a`; CI #2377 (run ID `42766570714`) completed successfully. Both `quality` and `web-quality` passed. Generic repository CI is not adversarial actor-boundary qualification.
+- GHM handover commit `e72851f190d0fc32c13bc69d0896827130e8c70c`; its CI #2378 (run ID `42766611964`) was still running at last observation.
+- Connect handover commit `90c34936db133c61dcb5113e6f7645cd7e4d79b6`; Connect quality #275 (run ID `42766621983`) was still running at last observation.
+- PR #251 remains draft/unmerged. No production roles/grants, credentials, secrets, migrations or deployments changed.
