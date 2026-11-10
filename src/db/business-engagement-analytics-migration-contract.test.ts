@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import test from 'node:test';
 
-const migration = new URL('../../database/migrations/20261110020000_create_business_engagement_analytics.sql', import.meta.url);
+const migration = resolve(process.cwd(), 'database/migrations/20261110020000_create_business_engagement_analytics.sql');
 test('engagement event storage is bounded, append-only and runtime least-privilege', async () => {
   const sql = await readFile(migration, 'utf8');
   assert.match(sql, /CREATE TABLE ghm\.business_engagement_event/);
