@@ -6,6 +6,7 @@ test('requires owner/admin membership and active business.analytics entitlement 
   const queries: Array<{ sql: string; values?: unknown[] }> = [];
   const client = {
     query: async (sql: string, values?: unknown[]) => {
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(sql)) return { rowCount: 0, rows: [] };
       queries.push({ sql, values });
       if (queries.length === 1) return { rowCount: 1, rows: [{}] };
       return { rowCount: 1, rows: [{ dashboard: { business_id: 55, period_days: 30 } }] };
@@ -26,7 +27,7 @@ test('requires owner/admin membership and active business.analytics entitlement 
 test('does not query analytics data when entitlement or membership is absent', async () => {
   let calls = 0;
   const client = {
-    query: async () => { calls += 1; return { rowCount: 0, rows: [] }; },
+    query: async (sql: string) => { if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(sql)) return { rowCount: 0, rows: [] }; calls += 1; return { rowCount: 0, rows: [] }; },
     release: () => {},
   };
   const repository = new PostgresBusinessAnalyticsRepository({ connect: async () => client } as any);
