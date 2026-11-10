@@ -111,6 +111,10 @@ import type { BusinessOfferingService } from '../resources/business-offering/con
 import { registerBusinessOfferingRoutes } from './business-offering-router';
 import { registerConnectServiceRoutes, type ConnectServiceHttpDependencies } from './connect-service-router';
 import { registerCommercialInternalRoutes } from './commercial-internal-router';
+import { DefaultCommercialService } from '../resources/commercial/service';
+import { PostgresCommercialRepository } from '../resources/commercial/repository';
+import type { CommercialService } from '../resources/commercial/contracts';
+import { registerCommercialRoutes } from './commercial-router';
 import { registerStorageRoutes } from './storage-router';
 import { createStorageProvider } from '../storage/factory';
 
@@ -141,6 +145,7 @@ export interface AppDependencies {
   readonly businessCategoryService?: BusinessCategoryService;
   readonly businessOfferingService?: BusinessOfferingService;
   readonly directoryService?: DirectoryService;
+  readonly commercialService?: CommercialService;
   readonly authService?: GhmAuthService;
   readonly authPersistence?: AuthPersistence;
   readonly passwordRecoveryService?: PasswordRecoveryService;
@@ -412,6 +417,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const notificationService = dependencies.notificationService ?? new NotificationServiceImpl(new PostgresNotificationRepository());
   const businessCategoryService = dependencies.businessCategoryService ?? new BusinessCategoryServiceImpl(new PostgresBusinessCategoryRepository());
   const directoryService = dependencies.directoryService ?? new DirectoryServiceImpl(new PostgresDirectoryRepository());
+  const commercialService = dependencies.commercialService ?? new DefaultCommercialService(new PostgresCommercialRepository());
   const businessOfferingService = dependencies.businessOfferingService ?? new BusinessOfferingServiceImpl(new PostgresBusinessOfferingRepository());
   app.disable('x-powered-by');
   app.disable('etag');
@@ -937,6 +943,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerNotificationRoutes(app, notificationService, resourceAuthMiddleware);
   registerBusinessCategoryRoutes(app, businessCategoryService, resourceAuthMiddleware);
   registerBusinessOfferingRoutes(app, businessOfferingService, resourceAuthMiddleware);
+  registerCommercialRoutes(app, commercialService, resourceAuthMiddleware);
   const authPersistence = dependencies.authPersistence ?? new PostgresAuthPersistence();
   const passwordResetService =
     dependencies.passwordResetService

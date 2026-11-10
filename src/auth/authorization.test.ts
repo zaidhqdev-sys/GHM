@@ -32,8 +32,8 @@ test('Commercial is a coarse authorized resource for every authenticated GHM rol
   assert.equal(canAccessResource(contexts.business, 'commercial'), true);
 });
 
-test('Commercial domain operations remain outside the generic HTTP resource vocabulary', () => {
-  assert.equal(isRegisteredOperation('commercial', 'read'), false);
+test('Commercial exposes only the explicitly registered read operation', () => {
+  assert.equal(isRegisteredOperation('commercial', 'read'), true);
   assert.equal(isRegisteredOperation('commercial', 'create'), false);
   assert.equal(isRegisteredOperation('commercial', 'update'), false);
 });
