@@ -292,3 +292,13 @@ Owner scope decisions recorded 2026-11-10: pause all PayFast work until working 
 - PR #236 was closed as superseded, not merged. A fresh comparison against main showed only two remaining changed files, both stale handover documents; its substantive code/migration changes are already present on main. Its remaining documentation incorrectly said Render auto-deploy was enabled, while the verified live service setting is disabled.
 - The shared actor-authentication blocker now explicitly includes #244's direct engagement-event INSERT attribution surface as well as the SECURITY DEFINER RPCs and auth/session mutation functions. See the inventory and draft architecture proposal PR #251.
 - No production migration/query/write, role/grant/secret change, new service provisioning, or runtime deployment was performed in this checkpoint.
+
+
+## ADR-001 approval and first implementation slice — 2026-11-10 20:03 UTC
+
+- Owner approved the isolated GHM authentication issuer + separately credentialed typed database actor gateway architecture on 2026-11-10.
+- ADR-001 and implementation/qualification plan merged through PR #256 at `d40fd88d34e4d6f8242b5b6e1485c2498a1fd7b9`. The approval covers isolated implementation and disposable qualification only. It does not authorize production credentials, grants, migrations, service provisioning or deployment.
+- First implementation slice is PR #257: public-key-only ES256 access-token verification and public-only key loading. It preserves ES256, `iss=ghm-auth`, `aud=ghm-api`, `kid`, 900-second lifetime, opaque refresh contract, and does not expose private signing material to the verifier. CI is pending at checkpoint.
+- Exact DB actor-context proof mechanism remains a design spike; plain caller-writable GUC/temp-table/account-ID argument is prohibited. Must test the actual `ghm_runtime` login, gateway login, issuer login, replay, transaction pooling, rollback, cancellation and connection reuse on disposable PostgreSQL.
+- PR #251 remains draft/reference material and links to ADR-001; it is no longer the undecided architecture source.
+- No production DB access/mutation, grant, credential, service provisioning, Render configuration or runtime deployment was performed.

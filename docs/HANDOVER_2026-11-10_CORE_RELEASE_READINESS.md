@@ -143,3 +143,16 @@ At this checkpoint, no PR has been merged as part of this work, no code/migratio
 - Actor-auth inventory expands the shared gate to include #244's direct engagement-event INSERT attribution surface, not only SECURITY DEFINER functions. It also lists ordinary-runtime auth/session mutation grants that must be isolated with the issuer signing boundary.
 - Current main after these documentation merges: `c5238f3d45d05009e2b28d5fa38ebd8ee61a0a33`.
 - No production migration/query/write, DB role/grant change, secret change, service provisioning, payment activation, Render setting change, or runtime deployment occurred.
+
+
+## 9. ADR-001 approval and first isolated implementation — 2026-11-10 20:03 UTC
+
+The owner approved the isolated issuer + separately credentialed typed database gateway direction on 2026-11-10. The approved ADR and implementation/qualification plan are in PR #256, merged as `d40fd88d34e4d6f8242b5b6e1485c2498a1fd7b9`:
+- `docs/architecture/ADR-001-isolated-auth-issuer-and-db-actor-gateway.md`
+- `docs/architecture/ADR-001_IMPLEMENTATION_AND_QUALIFICATION_PLAN.md`
+
+Approval is limited to isolated implementation and disposable qualification. It does not authorize production service provisioning, credentials, environment changes, database grants/migrations/data changes, or deployments. The exact DB transaction-context proof mechanism remains an implementation spike; caller-writable GUCs, temp tables and plain account-ID arguments are explicitly rejected.
+
+The first code slice is PR #257, public-only ES256 access-token verification. It adds a verifier and public-only key loader that can validate the current GHM token contract without loading a private key, enforces the 900-second maximum token lifetime and future-issued bound, and adds tests. This does not yet remove private signing material from the existing resource API or implement the issuer/gateway services. Exact-head CI is pending at this checkpoint.
+
+PR #251 remains draft/reference material; ADR-001 supersedes its undecided topology language. PayFast and legal-acceptance work remain paused/deferred per owner direction. No production DB access/mutation, grant, credential, service provisioning, Render configuration or runtime deployment occurred.
