@@ -133,3 +133,13 @@ Park entirely until the owner resumes approved legal-document work after core sy
 ## 7. Session checkpoint
 
 At this checkpoint, no PR has been merged as part of this work, no code/migration has been changed, no production database has been queried or modified, no credentials or grants have been changed, and no Render deployment/setting has been changed. This branch is documentation-only and records the owner scope decisions and technical handover for the next implementation session.
+
+
+## 8. Release queue checkpoint — 2026-11-10 19:52 UTC
+
+- PR #253 (core release-readiness handover) merged into main as `8bb3a764275703d26be93385854290d5672995e3`; exact-head quality, web-quality and Cloudflare Pages passed.
+- PR #254 (actor-auth surface inventory) merged into main as `c5238f3d45d05009e2b28d5fa38ebd8ee61a0a33`; exact-head quality, web-quality and Cloudflare Pages passed. The inventory is `docs/security/GHM_ACTOR_AUTH_SURFACE_INVENTORY_2026-11-10.md`.
+- PR #236 was closed as superseded, not merged. Comparing its head with current main showed only the two historical handover documents remained different; substantive implementation/migration files were already in main. The residual docs included a false statement that Render auto-deploy was enabled, contrary to the verified live service configuration. The current handover supersedes those stale docs.
+- Actor-auth inventory expands the shared gate to include #244's direct engagement-event INSERT attribution surface, not only SECURITY DEFINER functions. It also lists ordinary-runtime auth/session mutation grants that must be isolated with the issuer signing boundary.
+- Current main after these documentation merges: `c5238f3d45d05009e2b28d5fa38ebd8ee61a0a33`.
+- No production migration/query/write, DB role/grant change, secret change, service provisioning, payment activation, Render setting change, or runtime deployment occurred.
