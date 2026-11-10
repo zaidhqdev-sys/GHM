@@ -648,3 +648,18 @@ Owner returned full Windows diagnostics. Root cause of the earlier failed local 
 
 PG18 is confirmed listening on `::`:5433; its config has `listen_addresses='*'`, `port=5433`, logging collector on. PG17 config has `port=5432`. The exact original PG18 `pg_hba.conf` was restored and its SHA256 matched the saved backup (`0C8DC6E6E57399790417A6E13A8E1B5E27AA19708A2122148FBFE3BDCECD42`). No more HBA changes yet. Next action is a port-explicit connection check against PG18 at 127.0.0.1:5433; any recovery rule, if still needed, must be scoped to that exact server and reverted/verified immediately. Do not touch PG17 or its HBA. No Render/production state touched.
 
+
+
+## Business profile actor-boundary remediation — draft PR #271 (2026-11-10)
+
+A follow-up security review found that `ghm.update_business_profile(p_account_id, p_business_id, p_patch)` is a SECURITY DEFINER function executable by `ghm_runtime` and authorizes using a caller-supplied account ID. The current qualification's nonexistent-account denial case did not test impersonation of another active owner/admin.
+
+Draft PR #271 addresses this by:
+- Adding `ghm.gateway_update_business_profile`, guarded by `ghm.assert_actor_gateway`, and granting it only to `ghm_actor_gateway`.
+- Revoking PUBLIC and `ghm_runtime` execution on the original profile RPC.
+- Verifying the GHM ES256 access token in the Actor Gateway and deriving the actor ID only from the signed token subject.
+- Routing all Business profile PATCH writes through the gateway client. The old repository SQL path now fails closed; absent gateway configuration returns 503 rather than falling back.
+- Preserving the existing SQL validation and alias/legacy-column compatibility contract.
+- Extending disposable PostgreSQL qualification to verify runtime direct-RPC denial, gateway owner success and member denial.
+
+PR #271 is stacked on draft PR #237. Exact-head CI is pending. No production role provisioning, migration, grant change, service deployment, environment change or data mutation occurred. PayFast remains paused pending sandbox access; legal-document work remains parked.
