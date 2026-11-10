@@ -82,11 +82,14 @@ export const createAccessJwtVerifier = (
         throw new AccessJwtError('Access token lifetime is invalid');
       }
       if (
-        !Number.isSafeInteger(issuedAt) ||
-        (issuedAt as number) < 0 ||
-        (expiresAt as number) <= (issuedAt as number) ||
-        (expiresAt as number) - (issuedAt as number) > ACCESS_JWT_TTL_SECONDS ||
-        (issuedAt as number) > nowSeconds + ACCESS_JWT_CLOCK_SKEW_SECONDS
+        issuedAt !== undefined &&
+        (
+          !Number.isSafeInteger(issuedAt) ||
+          (issuedAt as number) < 0 ||
+          (expiresAt as number) <= (issuedAt as number) ||
+          (expiresAt as number) - (issuedAt as number) > ACCESS_JWT_TTL_SECONDS ||
+          (issuedAt as number) > nowSeconds + ACCESS_JWT_CLOCK_SKEW_SECONDS
+        )
       ) {
         throw new AccessJwtError('Access token lifetime is invalid');
       }
@@ -98,7 +101,7 @@ export const createAccessJwtVerifier = (
           sub: decoded.sub,
           iss: ACCESS_JWT_ISS,
           aud: ACCESS_JWT_AUD,
-          iat: issuedAt as number,
+          ...(typeof issuedAt === 'number' ? { iat: issuedAt } : {}),
           exp: expiresAt as number,
         },
       };
