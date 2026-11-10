@@ -214,12 +214,20 @@ const readCommercialAccess = async (
     };
   }
 
+  // Evaluate against the database clock so period boundaries are consistent
+  // with the subscription rows and do not depend on API host clock skew.
+  const clockResult = await client.query('SELECT now() AS evaluated_at');
+  const evaluatedAt = clockResult.rows[0].evaluated_at as Date;
   const effectiveEntitlementStatuses = new Set([
     'trialing',
     'active',
     'grace_period',
     'cancel_at_period_end',
   ]);
+  const periodWindowOpen = subscription.currentPeriodStart !== null
+    && subscription.currentPeriodEnd !== null
+    && subscription.currentPeriodStart <= evaluatedAt
+    && evaluatedAt < subscription.currentPeriodEnd;
 
   return {
     businessId,
@@ -229,10 +237,10 @@ const readCommercialAccess = async (
     currentPeriodEnd: subscription.currentPeriodEnd,
     cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
     foundingProtectedUntil: subscription.foundingProtectedUntil,
-    entitlements: effectiveEntitlementStatuses.has(subscription.lifecycleStatus)
+    entitlements: effectiveEntitlementStatuses.has(subscription.lifecycleStatus) && periodWindowOpen
       ? await getEntitlements(client, subscription.planVersionId)
       : [],
-    evaluatedAt: new Date(),
+    evaluatedAt,
   };
 };
 
