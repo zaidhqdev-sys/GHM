@@ -376,8 +376,8 @@ test('Commercial offer resolves South African prices, trial eligibility and foun
     offerRow: {
       plan_code: 'business_pro', plan_name: 'Business Pro', plan_version_id: 31,
       trial_days: 14, founding_limit: 100, evaluated_at: evaluatedAt,
-      currency_code: 'ZAR', founding_price_id: 41, founding_amount_minor_units: 19900,
-      standard_price_id: 42, standard_amount_minor_units: 29900,
+      currency_code: 'ZAR', founding_price_count: 1, founding_price_id: 41, founding_amount_minor_units: 19900,
+      standard_price_count: 1, standard_price_id: 42, standard_amount_minor_units: 29900,
       founding_allocated: 4, trial_used: false,
     },
   });
