@@ -1,7 +1,8 @@
 ﻿import type { AuthContext } from '../../auth/authorization';
 import type {
   BusinessId,
-  CommercialAccess,\n  CommercialOffer,
+  CommercialAccess,
+  CommercialOffer,
   CommercialPaymentAttempt,
   CommercialRepository,
   CommercialService,
