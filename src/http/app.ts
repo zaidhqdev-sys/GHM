@@ -48,6 +48,14 @@ import { registerCampaignRoutes } from './campaign-router';
 import { registerOpportunityRoutes } from './opportunity-router';
 import { registerAuthRoutes, type AuthRouterDependencies } from './auth-router';
 import { registerSavedBusinessRoutes } from './saved-business-router';
+import { PostgresOnboardingProgressRepository } from '../resources/onboarding/repository';
+import { DefaultOnboardingProgressService } from '../resources/onboarding/service';
+import type { OnboardingProgressService } from '../resources/onboarding/contracts';
+import { registerOnboardingRoutes } from './onboarding-router';
+import { PostgresRelationshipsOutcomesRepository } from '../resources/relationships-outcomes/repository';
+import { DefaultRelationshipsOutcomesService } from '../resources/relationships-outcomes/service';
+import type { RelationshipsOutcomesService } from '../resources/relationships-outcomes/contracts';
+import { registerRelationshipsOutcomesRoutes } from './relationships-outcomes-router';
 import { registerBusinessCapabilityRoutes } from './business-capability-router';
 import { PgCapabilityRepository } from '../resources/capability/repository';
 import { CapabilityServiceImpl } from '../resources/capability/service';
@@ -111,6 +119,10 @@ import type { BusinessOfferingService } from '../resources/business-offering/con
 import { registerBusinessOfferingRoutes } from './business-offering-router';
 import { registerConnectServiceRoutes, type ConnectServiceHttpDependencies } from './connect-service-router';
 import { registerCommercialInternalRoutes } from './commercial-internal-router';
+import { DefaultCommercialService } from '../resources/commercial/service';
+import { PostgresCommercialRepository } from '../resources/commercial/repository';
+import type { CommercialService } from '../resources/commercial/contracts';
+import { registerCommercialRoutes } from './commercial-router';
 import { registerStorageRoutes } from './storage-router';
 import { createStorageProvider } from '../storage/factory';
 
@@ -125,6 +137,8 @@ export interface AppDependencies {
   readonly campaignService?: CampaignService;
   readonly opportunityService?: OpportunityService;
   readonly savedBusinessService?: SavedBusinessService;
+  readonly onboardingService?: OnboardingProgressService;
+  readonly relationshipsOutcomesService?: RelationshipsOutcomesService;
   readonly businessCapabilityService?: BusinessCapabilityService;
   readonly businessCapabilityEvidenceService?: BusinessCapabilityEvidenceService;
   readonly businessRegistrationIdentityService?: BusinessRegistrationIdentityService;
@@ -141,6 +155,7 @@ export interface AppDependencies {
   readonly businessCategoryService?: BusinessCategoryService;
   readonly businessOfferingService?: BusinessOfferingService;
   readonly directoryService?: DirectoryService;
+  readonly commercialService?: CommercialService;
   readonly authService?: GhmAuthService;
   readonly authPersistence?: AuthPersistence;
   readonly passwordRecoveryService?: PasswordRecoveryService;
@@ -383,6 +398,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const savedBusinessService =
     dependencies.savedBusinessService ??
     new SavedBusinessServiceImpl(new PostgresSavedBusinessRepository());
+  const onboardingService = dependencies.onboardingService ?? new DefaultOnboardingProgressService(new PostgresOnboardingProgressRepository());
+  const relationshipsOutcomesService = dependencies.relationshipsOutcomesService ?? new DefaultRelationshipsOutcomesService(new PostgresRelationshipsOutcomesRepository());
   const businessCapabilityService =
     dependencies.businessCapabilityService ??
     new BusinessCapabilityServiceImpl(new PostgresBusinessCapabilityRepository());
@@ -414,6 +431,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const notificationService = dependencies.notificationService ?? new NotificationServiceImpl(new PostgresNotificationRepository());
   const businessCategoryService = dependencies.businessCategoryService ?? new BusinessCategoryServiceImpl(new PostgresBusinessCategoryRepository());
   const directoryService = dependencies.directoryService ?? new DirectoryServiceImpl(new PostgresDirectoryRepository());
+  const commercialService = dependencies.commercialService ?? new DefaultCommercialService(new PostgresCommercialRepository());
   const businessOfferingService = dependencies.businessOfferingService ?? new BusinessOfferingServiceImpl(new PostgresBusinessOfferingRepository());
   app.disable('x-powered-by');
   app.disable('etag');
@@ -926,6 +944,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerCampaignRoutes(app, campaignService, resourceAuthMiddleware);
   registerOpportunityRoutes(app, opportunityService, resourceAuthMiddleware);
   registerSavedBusinessRoutes(app, savedBusinessService, resourceAuthMiddleware);
+  registerOnboardingRoutes(app, onboardingService, resourceAuthMiddleware);
+  registerRelationshipsOutcomesRoutes(app, relationshipsOutcomesService, resourceAuthMiddleware);
   registerBusinessCapabilityRoutes(app, businessCapabilityService, resourceAuthMiddleware);
   registerCapabilityCatalogueRoutes(app, new CapabilityServiceImpl(new PgCapabilityRepository()), resourceAuthMiddleware);
   registerBusinessCapabilityEvidenceRoutes(app, businessCapabilityEvidenceService, resourceAuthMiddleware);
@@ -942,6 +962,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerNotificationRoutes(app, notificationService, resourceAuthMiddleware);
   registerBusinessCategoryRoutes(app, businessCategoryService, resourceAuthMiddleware);
   registerBusinessOfferingRoutes(app, businessOfferingService, resourceAuthMiddleware);
+  registerCommercialRoutes(app, commercialService, resourceAuthMiddleware);
   const authPersistence = dependencies.authPersistence ?? new PostgresAuthPersistence();
   const passwordResetService =
     dependencies.passwordResetService
