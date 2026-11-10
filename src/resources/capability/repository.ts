@@ -6,7 +6,8 @@ import type {
   Capability,
   CapabilityId,
   CapabilityRepository,
-  CapabilityDraftInput,\n  CapabilityLifecycle,
+  CapabilityDraftInput,
+  CapabilityLifecycle,
 } from './contracts.js';
 
 const CAPABILITY_COLUMNS = `
