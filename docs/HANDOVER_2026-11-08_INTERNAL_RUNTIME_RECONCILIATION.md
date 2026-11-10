@@ -525,3 +525,14 @@ The role catalog also confirms that the intended migration role path exists stru
 - No callback/payment activation.
 - No Render deploy or auto-deploy change.
 - Keep the production migration gate BLOCKED until the role graph is reviewed/remediated, the full ledger audit passes under the intended migration identity, and explicit owner approval is recorded.
+
+
+## 21. Core release-readiness and owner scope checkpoint — 2026-11-10
+
+The current active handover is now `docs/HANDOVER_2026-11-10_CORE_RELEASE_READINESS.md`. It supersedes no historical evidence; it consolidates the current baseline, owner scope decisions, shared actor-authentication/security sequence, affected PR gates, and merge/deployment rules.
+
+Owner direction: PayFast work is paused until the provider restores its sandbox and working access is available for end-to-end testing. Do not spend current work on PayFast implementation, testing, activation, callbacks, credentials or rollout; preserve existing code and evidence. QuoteFlow legal-document/legal-acceptance work is deferred until core systems operate smoothly and the owner resumes it. Continue all other non-deferred GHM core, platform security, database compatibility, supplier/capability, analytics, operational-readiness and documentation work subject to technical gates.
+
+The current shared actor-auth finding is confirmed in source: ordinary API token verification and `AuthContext` do not establish a DB-verifiable end-user identity; actor-sensitive `SECURITY DEFINER` functions trust ordinary account-ID arguments; and the ordinary application process currently has token-signing capability. The trust-chain design must therefore isolate GHM token issuance as well as the database actor context. A gateway that merely verifies current tokens is insufficient while ordinary API processes can mint arbitrary-subject tokens. The detailed acceptance contract and sequencing are in the 2026-11-10 handover and draft architecture PR #251.
+
+No PR merge, production migration/query/write, database role/grant change, secret change, payment activation, Render setting change, or deployment was performed for this checkpoint. The documentation-only branch is based on main SHA `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`.
