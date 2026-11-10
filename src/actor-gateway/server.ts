@@ -7,6 +7,7 @@ import {
 } from '../auth/foundation/es256-keys';
 import { createActorGatewayApp } from './app';
 import { PostgresActorIdentityReader } from './actor-identity-reader';
+import { PostgresBusinessRegistrationIdentityReader } from './business-registration-identity-reader';
 
 const required = (name: string): string => {
   const value = process.env[name]?.trim();
@@ -38,6 +39,7 @@ const pool = new Pool({
 const app = createActorGatewayApp({
   verifier,
   actorIdentityReader: new PostgresActorIdentityReader(pool),
+  businessRegistrationIdentityReader: new PostgresBusinessRegistrationIdentityReader(pool),
 });
 const server = http.createServer(app);
 server.requestTimeout = 10_000;
