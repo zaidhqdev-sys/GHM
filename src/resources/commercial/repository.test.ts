@@ -480,3 +480,24 @@ test('Commercial offer fails closed when effective price rows are ambiguous', as
   assert.equal(result.standardPrice, null);
   assert.equal(result.foundingAvailable, false);
 });
+
+
+test('Commercial access grants entitlements at the inclusive period start', async () => {
+  const { pool, calls } = createFakePool({
+    subscriptionRow: { ...subscriptionRow, current_period_start: new Date(1500) },
+    evaluatedAt: new Date(1500),
+  });
+  const result = await new PostgresCommercialRepository(pool).getCommercialAccess(context(), businessId);
+  assert.deepEqual(result.entitlements, [{ code: 'quote_management', accessLevel: 'enabled', metadata: { source: 'commercial-plan-version' } }]);
+  assert.equal(calls.some(sql => sql.includes('FROM ghm.commercial_plan_entitlement')), true);
+});
+
+test('Commercial access does not grant entitlements at the exclusive period end', async () => {
+  const { pool, calls } = createFakePool({
+    subscriptionRow: { ...subscriptionRow, current_period_end: new Date(1500) },
+    evaluatedAt: new Date(1500),
+  });
+  const result = await new PostgresCommercialRepository(pool).getCommercialAccess(context(), businessId);
+  assert.deepEqual(result.entitlements, []);
+  assert.equal(calls.some(sql => sql.includes('FROM ghm.commercial_plan_entitlement')), false);
+});
