@@ -51,7 +51,8 @@ export const resourceRegistry: readonly ResourceDefinition[] = [
   { resource: 'saved_business', operations: ['read', 'create', 'delete'] },
   { resource: 'trust_score', operations: ['read', 'readPublic', 'calculate'] },
   { resource: 'campaign', operations: ['read', 'create', 'update'] },
-  { resource: 'commercial', operations: ['read'] },\n  { resource: 'onboarding', operations: ['read', 'create', 'update'] },
+  { resource: 'commercial', operations: ['read'] },
+  { resource: 'onboarding', operations: ['read', 'create', 'update'] },
 ];
 
 export const isRegisteredOperation = (resource: Resource, operation: ResourceOperation): boolean =>
