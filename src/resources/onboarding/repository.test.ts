@@ -6,7 +6,7 @@ import type { TransactionPool } from '../../db/transaction';
 import { PostgresOnboardingProgressRepository } from './repository';
 
 const context: AuthContext = { userId: 77, role: 'customer' };
-const row = {
+const row: { id: number; account_id: number; journey_id: string; step_id: string; status: string; first_started_at: Date; completed_at: Date | null; dismissed_at: Date | null; created_at: Date; updated_at: Date } = {
   id: 1, account_id: 77, journey_id: 'business_setup_v1', step_id: 'profile', status: 'pending',
   first_started_at: new Date(1000), completed_at: null, dismissed_at: null,
   created_at: new Date(1000), updated_at: new Date(1000),
