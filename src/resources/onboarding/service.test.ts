@@ -13,10 +13,10 @@ const row: OnboardingProgress = {
 
 class FakeRepository implements OnboardingProgressRepository {
   calls: unknown[][] = [];
-  async getProgress(...args: [AuthContext, string? | null]): Promise<OnboardingProgress[]> { this.calls.push(args); return [row]; }
-  async start(...args: [AuthContext, string, string]): Promise<OnboardingProgress> { this.calls.push(args); return row; }
-  async complete(...args: [AuthContext, string, string]): Promise<OnboardingProgress> { this.calls.push(args); return { ...row, status: 'completed', completedAt: new Date(2000) }; }
-  async dismiss(...args: [AuthContext, string, string]): Promise<OnboardingProgress> { this.calls.push(args); return { ...row, status: 'dismissed', dismissedAt: new Date(2000) }; }
+  async getProgress(context: AuthContext, journeyId?: string | null): Promise<OnboardingProgress[]> { this.calls.push([context, journeyId]); return [row]; }
+  async start(context: AuthContext, journeyId: string, stepId: string): Promise<OnboardingProgress> { this.calls.push([context, journeyId, stepId]); return row; }
+  async complete(context: AuthContext, journeyId: string, stepId: string): Promise<OnboardingProgress> { this.calls.push([context, journeyId, stepId]); return { ...row, status: 'completed', completedAt: new Date(2000) }; }
+  async dismiss(context: AuthContext, journeyId: string, stepId: string): Promise<OnboardingProgress> { this.calls.push([context, journeyId, stepId]); return { ...row, status: 'dismissed', dismissedAt: new Date(2000) }; }
 }
 
 test('onboarding service validates stable journey and step identifiers before repository access', async () => {
