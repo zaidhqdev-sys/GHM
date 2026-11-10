@@ -9,6 +9,7 @@ on:
     branches:
       - main
       - feat/ghm-capability-evidence-admin-20261105
+      - feat/connect-marketplace-supplier-contract-ghm-20261110
 
 permissions:
   contents: read
