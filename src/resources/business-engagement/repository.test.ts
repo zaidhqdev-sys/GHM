@@ -21,3 +21,20 @@ test('binds actor from verified auth context and only records publicly eligible 
   assert.match(received?.sql ?? '', /is_verified = true/);
   assert.match(received?.sql ?? '', /NOT EXISTS/);
 });
+
+
+test('enforces per-account engagement write rate limit inside the transaction', async () => {
+  const statements: string[] = [];
+  const client = {
+    query: async (sql: string) => {
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(sql)) return { rowCount: 0, rows: [] };
+      statements.push(sql);
+      if (sql.includes('count(*)::int AS total')) return { rowCount: 1, rows: [{ total: 60 }] };
+      throw new Error('event insert must not be reached');
+    },
+    release: () => {},
+  };
+  const repository = new PostgresBusinessEngagementRepository({ connect: async () => client } as any);
+  await assert.rejects(() => repository.record({ userId: 42, role: 'customer' }, { businessId: 55, eventType: 'profile_view' }), /Engagement rate limit exceeded/);
+  assert.equal(statements.some(sql => sql.includes('INSERT INTO ghm.business_engagement_event')), false);
+});
