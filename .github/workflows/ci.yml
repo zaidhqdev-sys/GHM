@@ -129,6 +129,9 @@ jobs:
       - name: Qualify system-admin Capability catalogue governance on disposable PostgreSQL
         run: npm run qualify:capability-catalogue-governance
 
+      - name: Qualify GHM supplier classification and membership authorization on disposable PostgreSQL
+        run: npm run qualify:business-supplier-classification
+
       - name: Qualify commercial payment settlement identities against disposable PostgreSQL
         run: npm run build && node scripts/qualify-commercial-payment-result-runtime.mjs
 
