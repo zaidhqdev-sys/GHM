@@ -428,3 +428,22 @@ test('Commercial offer does not disclose plan or price data without active Busin
   );
   assert.equal(calls.some(sql => sql.includes('FROM ghm.commercial_plan plan')), false);
 });
+
+test('Commercial offer fails closed when effective price rows are ambiguous', async () => {
+  const { pool } = createFakePool({
+    subscriptionRow: null,
+    offerRow: {
+      plan_code: 'business_pro', plan_name: 'Business Pro', plan_version_id: 31,
+      trial_days: 14, founding_limit: 100, evaluated_at: new Date(1000),
+      currency_code: 'ZAR', founding_price_count: 2, founding_price_id: 42,
+      founding_amount_minor_units: 19900, standard_price_count: 2,
+      standard_price_id: 44, standard_amount_minor_units: 29900,
+      founding_allocated: 0, trial_used: false,
+    },
+  });
+  const result = await new PostgresCommercialRepository(pool).getCommercialOffer(context(), businessId, 'business_pro');
+  assert.ok(result);
+  assert.equal(result.foundingPrice, null);
+  assert.equal(result.standardPrice, null);
+  assert.equal(result.foundingAvailable, false);
+});
