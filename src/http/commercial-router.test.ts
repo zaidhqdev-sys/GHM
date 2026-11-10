@@ -147,3 +147,40 @@ test('commercial reads do not disclose Businesses without active membership', as
     await new Promise<void>(resolve => server.close(() => resolve()));
   }
 });
+
+test('commercial offer read requires authentication and a stable explicit plan code', async () => {
+  let calls = 0;
+  const offer = {
+    businessId: 55, planCode: 'business_pro', planName: 'Business Pro', planVersionId: 3,
+    trialDays: 14, trialUsed: false, trialEligible: true, foundingLimit: 100,
+    foundingAllocated: 2, foundingAvailable: true,
+    foundingPrice: { priceId: 4, amountMinorUnits: 19900, currencyCode: 'ZAR', billingInterval: 'month' },
+    standardPrice: { priceId: 5, amountMinorUnits: 29900, currencyCode: 'ZAR', billingInterval: 'month' },
+    access, evaluatedAt: new Date('2026-11-10T00:00:00.000Z'),
+  };
+  const service = {
+    getCommercialAccess: async () => access,
+    getCommercialSubscription: async () => subscription,
+    getCommercialOffer: async (...args: unknown[]) => { calls += 1; assert.deepEqual(args, [{ userId: 42, role: 'business' }, 55, 'business_pro']); return offer; },
+  } as unknown as CommercialService;
+  const { server, baseUrl } = await start(service);
+  try {
+    assert.equal((await fetch(`${baseUrl}/api/v1/commercial/offer/55?planCode=business_pro`)).status, 401);
+    const headers = { authorization: `Bearer ${tokenFor({ userId: 42, role: 'business' })}` };
+    for (const url of [
+      '/api/v1/commercial/offer/0?planCode=business_pro',
+      '/api/v1/commercial/offer/55',
+      '/api/v1/commercial/offer/55?planCode=Business-Pro',
+      '/api/v1/commercial/offer/55?planCode=business_pro&other=x',
+    ]) assert.equal((await fetch(`${baseUrl}${url}`, { headers })).status, 400);
+    assert.equal(calls, 0);
+    const response = await fetch(`${baseUrl}/api/v1/commercial/offer/55?planCode=business_pro`, { headers });
+    assert.equal(response.status, 200);
+    const body = await response.json() as { result: { foundingPrice: { amountMinorUnits: number }; trialEligible: boolean } };
+    assert.equal(body.result.foundingPrice.amountMinorUnits, 19900);
+    assert.equal(body.result.trialEligible, true);
+    assert.equal(calls, 1);
+  } finally {
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+});

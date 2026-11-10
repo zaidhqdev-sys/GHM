@@ -29,6 +29,7 @@ const createFakePool = (options: {
   trialRow?: Record<string, unknown>;
   subscriptionId?: number;
   failEvent?: boolean;
+  offerRow?: Record<string, unknown> | null;
 } = {}): { pool: TransactionPool; calls: string[]; params: unknown[][] } => {
   const calls: string[] = [];
   const params: unknown[][] = [];
@@ -43,6 +44,9 @@ const createFakePool = (options: {
       }
       if (sql.includes('FROM ghm.business_membership') && sql.includes("membership_status = 'active'")) {
         return { rowCount: options.membership === false ? 0 : 1, rows: [] };
+      }
+      if (sql.includes('FROM ghm.commercial_plan plan')) {
+        return { rowCount: options.offerRow ? 1 : 0, rows: options.offerRow ? [options.offerRow] : [] };
       }
       if (sql.includes('FROM ghm.commercial_subscription')) {
         const row = options.subscriptionRow === undefined ? subscriptionRow : options.subscriptionRow;
@@ -363,4 +367,83 @@ test('Commercial payment preparation fails closed when idempotency replay finds 
     ),
     /provider reconciliation required/,
   );
+});
+
+test('Commercial offer resolves South African prices, trial eligibility and founding availability from canonical rows', async () => {
+  const evaluatedAt = new Date('2026-11-10T00:00:00.000Z');
+  const { pool, calls, params } = createFakePool({
+    subscriptionRow: null,
+    offerRow: {
+      plan_code: 'business_pro', plan_name: 'Business Pro', plan_version_id: 31,
+      trial_days: 14, founding_limit: 100, evaluated_at: evaluatedAt,
+      currency_code: 'ZAR', founding_price_count: 1, founding_price_id: 41, founding_amount_minor_units: 19900,
+      standard_price_count: 1, standard_price_id: 42, standard_amount_minor_units: 29900,
+      founding_allocated: 4, trial_used: false,
+    },
+  });
+  const result = await new PostgresCommercialRepository(pool).getCommercialOffer(context(), businessId, 'business_pro');
+  assert.ok(result);
+  assert.equal(result.businessId, businessId);
+  assert.equal(result.planVersionId, 31);
+  assert.equal(result.trialEligible, true);
+  assert.equal(result.trialDays, 14);
+  assert.equal(result.foundingAvailable, true);
+  assert.equal(result.foundingAllocated, 4);
+  assert.deepEqual(result.foundingPrice, { priceId: 41, amountMinorUnits: 19900, currencyCode: 'ZAR', billingInterval: 'month' });
+  assert.deepEqual(result.standardPrice, { priceId: 42, amountMinorUnits: 29900, currencyCode: 'ZAR', billingInterval: 'month' });
+  const offerSql = calls.find(sql => sql.includes('FROM ghm.commercial_plan plan'));
+  assert.ok(offerSql);
+  assert.match(offerSql, /country\.code = 'ZA'/);
+  assert.match(offerSql, /currency\.code = 'ZAR'/);
+  assert.match(offerSql, /commercial_founding_allocation/);
+  assert.deepEqual(params[calls.indexOf(offerSql!)], ['business_pro', businessId]);
+});
+
+test('Commercial offer fails closed when the plan has no eligible South African price rows', async () => {
+  const { pool } = createFakePool({
+    subscriptionRow: null,
+    offerRow: {
+      plan_code: 'business_pro', plan_name: 'Business Pro', plan_version_id: 31,
+      trial_days: 14, founding_limit: 100, evaluated_at: new Date(1000),
+      currency_code: null, founding_price_id: null, founding_amount_minor_units: null,
+      standard_price_id: null, standard_amount_minor_units: null,
+      founding_allocated: 0, trial_used: false,
+    },
+  });
+  const result = await new PostgresCommercialRepository(pool).getCommercialOffer(context(), businessId, 'business_pro');
+  assert.ok(result);
+  assert.equal(result.foundingPrice, null);
+  assert.equal(result.standardPrice, null);
+  assert.equal(result.foundingAvailable, false);
+});
+
+test('Commercial offer does not disclose plan or price data without active Business membership', async () => {
+  const { pool, calls } = createFakePool({
+    membership: false,
+    offerRow: { plan_code: 'business_pro' },
+  });
+  await assert.rejects(
+    () => new PostgresCommercialRepository(pool).getCommercialOffer(context(), businessId, 'business_pro'),
+    /Business read permission required/,
+  );
+  assert.equal(calls.some(sql => sql.includes('FROM ghm.commercial_plan plan')), false);
+});
+
+test('Commercial offer fails closed when effective price rows are ambiguous', async () => {
+  const { pool } = createFakePool({
+    subscriptionRow: null,
+    offerRow: {
+      plan_code: 'business_pro', plan_name: 'Business Pro', plan_version_id: 31,
+      trial_days: 14, founding_limit: 100, evaluated_at: new Date(1000),
+      currency_code: 'ZAR', founding_price_count: 2, founding_price_id: 42,
+      founding_amount_minor_units: 19900, standard_price_count: 2,
+      standard_price_id: 44, standard_amount_minor_units: 29900,
+      founding_allocated: 0, trial_used: false,
+    },
+  });
+  const result = await new PostgresCommercialRepository(pool).getCommercialOffer(context(), businessId, 'business_pro');
+  assert.ok(result);
+  assert.equal(result.foundingPrice, null);
+  assert.equal(result.standardPrice, null);
+  assert.equal(result.foundingAvailable, false);
 });

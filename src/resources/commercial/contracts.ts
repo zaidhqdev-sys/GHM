@@ -130,6 +130,30 @@ export interface CommercialAccess {
   readonly evaluatedAt: Date;
 }
 
+export interface CommercialOfferPrice {
+  readonly priceId: CommercialPlanPriceId;
+  readonly amountMinorUnits: number;
+  readonly currencyCode: string;
+  readonly billingInterval: 'month';
+}
+
+export interface CommercialOffer {
+  readonly businessId: BusinessId;
+  readonly planCode: string;
+  readonly planName: string;
+  readonly planVersionId: CommercialPlanVersionId;
+  readonly trialDays: number;
+  readonly trialUsed: boolean;
+  readonly trialEligible: boolean;
+  readonly foundingLimit: number | null;
+  readonly foundingAllocated: number;
+  readonly foundingAvailable: boolean;
+  readonly foundingPrice: CommercialOfferPrice | null;
+  readonly standardPrice: CommercialOfferPrice | null;
+  readonly access: CommercialAccess;
+  readonly evaluatedAt: Date;
+}
+
 export interface CommercialPaymentAttempt {
   readonly id: CommercialPaymentAttemptId;
   readonly businessId: BusinessId;
@@ -239,6 +263,7 @@ export interface ApplyCommercialPaymentResultInput {
 
 export interface CommercialRepository {
   getCommercialAccess(context: AuthContext, businessId: BusinessId): Promise<CommercialAccess>;
+  getCommercialOffer(context: AuthContext, businessId: BusinessId, planCode: string): Promise<CommercialOffer | null>;
   getCommercialSubscription(context: AuthContext, businessId: BusinessId): Promise<CommercialSubscription | null>;
   activateCommercialTrial(context: AuthContext, input: ActivateCommercialTrialInput): Promise<CommercialTrial>;
   prepareCommercialPayment(context: AuthContext, input: PrepareCommercialPaymentInput): Promise<CommercialPaymentAttempt>;
@@ -247,6 +272,7 @@ export interface CommercialRepository {
 
 export interface CommercialService {
   getCommercialAccess(context: AuthContext, businessId: BusinessId): Promise<CommercialAccess>;
+  getCommercialOffer(context: AuthContext, businessId: BusinessId, planCode: string): Promise<CommercialOffer | null>;
   getCommercialSubscription(context: AuthContext, businessId: BusinessId): Promise<CommercialSubscription | null>;
   activateCommercialTrial(context: AuthContext, input: ActivateCommercialTrialInput): Promise<CommercialTrial>;
   prepareCommercialPayment(context: AuthContext, input: PrepareCommercialPaymentInput): Promise<CommercialPaymentAttempt>;
