@@ -810,7 +810,7 @@ This section records the shared database actor-binding work so a resumed session
 ### Dependent PR disposition — do not repeat comments; review existing threads
 
 The following exact-head PRs remain open/unmerged and blocked by the shared actor-binding requirement, despite earlier exact-head CI passes:
-- #236 head `6feb03117530209a849be6025579cc0c2e13e92b` (ready for review, not draft): registration identity SECURITY DEFINER RPCs trust supplied `p_account_id`; no two-active-owner forged-ID runtime qualification.
+- #236 branch `docs/record-no-deploy-handover-20261108` (this handover update advances its head; refresh live PR metadata and exact-head CI before review): registration identity SECURITY DEFINER RPCs trust supplied `p_account_id`; no two-active-owner forged-ID runtime qualification.
 - #237 head `c52c8bff830e00f0b6223532124da7aeaed5a9f1` (draft): business profile RPC's negative test uses nonexistent ID, not another active owner.
 - #243 head `1246ed74a81b3fc607e6f65f3cd8036bc081ab1b` (draft): supplier classification RPC's qualification lacks forged different-active-owner ID case.
 - #244 head `f418407bface1146e4cf0147424fb91bff81328a` (draft, GitHub mergeable=false): analytics grants permit direct runtime event access without DB actor binding; direct cross-business reads/writes and event actor spoofing are not covered by the app-level tests.
