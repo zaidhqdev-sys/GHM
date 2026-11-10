@@ -7,6 +7,17 @@ export class PostgresBusinessEngagementRepository implements BusinessEngagementR
   constructor(private readonly transactionPool?: TransactionPool) {}
   async record(context: AuthContext, input: RecordBusinessEngagementInput): Promise<BusinessEngagementEvent> {
     return withAuthorizedTransaction(context, async client => {
+      await client.query(
+        'SELECT pg_advisory_xact_lock(hashtextextended($1::text || \' : \' || $2::text, 0))',
+        [input.businessId, context.userId],
+      );
+      const rate = await client.query(
+        `SELECT count(*)::int AS total
+           FROM ghm.business_engagement_event
+          WHERE account_id = $1 AND created_at >= now() - interval '1 minute'`,
+        [context.userId],
+      );
+      if (Number(rate.rows[0]?.total ?? 0) >= 60) throw new Error('Engagement rate limit exceeded');
       const result = await client.query(
         `INSERT INTO ghm.business_engagement_event
           (business_id, account_id, event_type, event_context, source)
