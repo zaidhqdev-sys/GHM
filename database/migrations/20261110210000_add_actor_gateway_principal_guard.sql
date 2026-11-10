@@ -7,13 +7,11 @@ DECLARE
   gateway_oid oid;
   gateway_role pg_roles%ROWTYPE;
 BEGIN
-  SELECT oid INTO gateway_oid
-    FROM pg_roles
-   WHERE rolname = 'ghm_actor_gateway';
-
-  IF NOT FOUND THEN
+  IF to_regrole('ghm_actor_gateway') IS NULL THEN
     RAISE EXCEPTION 'ghm_actor_gateway must be provisioned before applying this migration';
   END IF;
+
+  gateway_oid := to_regrole('ghm_actor_gateway')::oid;
 
   SELECT * INTO gateway_role
     FROM pg_roles
