@@ -251,3 +251,6 @@ Next: exact-head CI, then plan gateway/API service deployment order and end-to-e
 
 
 PR #266 qualification note: the first disposable PostgreSQL run exposed an ambiguous output-column reference in the new write wrapper. The wrapper now explicitly qualifies each returned column through the delegated function alias; the exact-head CI run must be repeated before merge. This was caught before any production migration or deployment.
+
+
+PR #266 qualification correction: follow-up logs pinpointed the ambiguity inside the pre-existing `ghm.update_business_registration_identity` implementation (`ON CONFLICT (business_id)` conflicts with its RETURNS TABLE output variable), not the gateway wrapper. The additive migration now replaces that function using the named `business_registration_identity_pkey` constraint, preserves its existing `ghm_runtime` EXECUTE grant, and keeps the gateway-only wrapper grant isolated. This fix and the positive/negative write qualification must pass on the final exact head before merge.
