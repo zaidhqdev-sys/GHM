@@ -28,7 +28,8 @@ const createFakePool = (options: {
   activatedAt?: Date;
   trialRow?: Record<string, unknown>;
   subscriptionId?: number;
-  failEvent?: boolean;\n  offerRow?: Record<string, unknown> | null;
+  failEvent?: boolean;
+  offerRow?: Record<string, unknown> | null;
 } = {}): { pool: TransactionPool; calls: string[]; params: unknown[][] } => {
   const calls: string[] = [];
   const params: unknown[][] = [];
