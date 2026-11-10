@@ -72,6 +72,7 @@ import { PostgresBusinessRegistrationIdentityRepository } from '../resources/bus
 import { BusinessRegistrationIdentityServiceImpl } from '../resources/business-registration-identity/service';
 import type { BusinessRegistrationIdentityService } from '../resources/business-registration-identity/contracts';
 import { registerBusinessRegistrationIdentityRoutes } from './business-registration-identity-router';
+import { HttpBusinessRegistrationIdentityGatewayClient, type BusinessRegistrationIdentityGatewayClient } from './business-registration-identity-gateway-client';
 import { PostgresDirectoryReviewRepository } from '../resources/directory-review/repository';
 import { DirectoryReviewServiceImpl } from '../resources/directory-review/service';
 import type { DirectoryReviewService } from '../resources/directory-review/contracts';
@@ -168,6 +169,7 @@ export interface AppDependencies {
   readonly quoteFlowMigrationResetRecoveryService?: QuoteFlowMigrationResetRecoveryService;
   readonly quoteFlowMigrationResetCompletionService?: QuoteFlowMigrationResetCompletionService;
   readonly resourceAuthMiddleware?: import('express').RequestHandler;
+  readonly businessRegistrationIdentityGatewayClient?: BusinessRegistrationIdentityGatewayClient;
   readonly supplierClassificationGatewayClient?: SupplierClassificationGatewayClient;
   readonly businessProfileGatewayClient?: BusinessProfileGatewayClient;
   readonly connectService?: Omit<ConnectServiceHttpDependencies, 'savedBusinesses'>;
@@ -1002,7 +1004,9 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerBusinessCapabilityRoutes(app, businessCapabilityService, resourceAuthMiddleware);
   registerCapabilityCatalogueRoutes(app, capabilityService, resourceAuthMiddleware, capabilityGovernanceGatewayClient);
   registerBusinessCapabilityEvidenceRoutes(app, businessCapabilityEvidenceService, resourceAuthMiddleware);
-  registerBusinessRegistrationIdentityRoutes(app, businessRegistrationIdentityService, resourceAuthMiddleware);
+  const businessRegistrationIdentityGatewayClient = dependencies.businessRegistrationIdentityGatewayClient
+    ?? (config.actorGatewayUrl ? new HttpBusinessRegistrationIdentityGatewayClient(config.actorGatewayUrl) : undefined);
+  registerBusinessRegistrationIdentityRoutes(app, businessRegistrationIdentityService, resourceAuthMiddleware, businessRegistrationIdentityGatewayClient);
   registerDirectoryReviewRoutes(app, directoryReviewService, resourceAuthMiddleware);
   registerTrustScoreRoutes(app, trustScoreService, resourceAuthMiddleware);
   registerSupportRequestRoutes(app, supportRequestService, resourceAuthMiddleware);
