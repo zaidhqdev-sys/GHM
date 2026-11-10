@@ -280,7 +280,8 @@ test('public-only access JWT verifier accepts a valid token without private key 
   const verified = verifier.verify(token, now);
   assert.equal(verified.accountId, 42);
   assert.equal(verified.kid, 'ghm-es256-public-only-1');
-  assert.equal(verified.claims.exp - verified.claims.iat, 900);
+  assert.equal(verified.claims.iat, now);
+  assert.equal(verified.claims.exp, now + 900);
 });
 
 test('public-only access JWT verifier rejects excessive lifetime and future-issued tokens', () => {
