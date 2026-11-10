@@ -28,3 +28,18 @@ PR #250's three SECURITY DEFINER functions still authorize using caller-supplied
 3. Change capability governance SQL functions to require `ghm.assert_actor_gateway` and grant EXECUTE only to `ghm_actor_gateway` after the HTTP caller is migrated.
 4. Add actual disposable `ghm_runtime` spoof-denial tests for all three functions, positive gateway tests, and repeat full CI.
 5. Reconcile #243 supplier-classification actor binding and compatibility separately; keep #244 stacked until dependencies and entitlement/metric semantics are resolved.
+
+
+## Actor Gateway implementation follow-up (draft PR #269) — 2026-11-10
+
+The capability governance API now has a gateway-backed implementation path:
+- Added gateway-only PostgreSQL wrappers for list, create-draft, update-draft and lifecycle transition. Each calls `ghm.assert_actor_gateway` and verifies that the token-derived active account is an administrator/system administrator.
+- Gateway wrappers are executable by `ghm_actor_gateway` only; `ghm_runtime` is explicitly denied access to these new wrappers.
+- Added typed gateway reader and HTTP endpoints. The gateway derives actor identity from verified ES256 JWT `sub`; no actor ID is accepted from the request body or query.
+- Added an API client and optional `GHM_ACTOR_GATEWAY_URL` routing for all four admin operations. Gateway errors fail closed without a fallback. The environment variable is optional for staged rollout; until configured, the pre-existing runtime path remains active.
+- Brought the previously merged Actor Gateway foundation migrations and runtime files into this stacked branch, followed by capability invariant migration #24000 and gateway capability migration #25000.
+- Added HTTP-level test coverage for token-subject binding and a client test for bearer-token forwarding/fail-closed behavior. The capability disposable PostgreSQL qualification now verifies that `ghm_runtime` cannot execute the new gateway-only wrappers.
+
+**Important remaining cutover gate:** the legacy `ghm_runtime` EXECUTE grants on the original three SECURITY DEFINER capability functions are intentionally still present in the existing #250 migration. Therefore this work adds a safe gateway path but does not yet eliminate direct actor-ID spoofing through those legacy RPCs. Do not merge/enable capability governance until a separately reviewed cutover migration revokes those legacy runtime grants after the API is deployed with `GHM_ACTOR_GATEWAY_URL` set, and exact-head disposable PostgreSQL tests prove direct `ghm_runtime` invocation is denied for all three original RPCs while gateway operations pass.
+
+No production migration, role/grant mutation, gateway service, environment variable, deployment or catalogue activation was performed. Exact-head CI is pending.
