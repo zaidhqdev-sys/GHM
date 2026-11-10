@@ -293,3 +293,12 @@ A handover-only commit was added after that run, so exact-head checks must be re
 
 
 Latest exact-head confirmation: PR #270 head `8f3244cdb8e513b668ddc12a7bb8e5936ed4ef81` passed full CI run #42906759456, including quality, web-quality and Cloudflare Pages. The latest detailed evidence is recorded in the supplier classification handover. The subsequent handover-only commit requires the final exact-head CI rerun before merge consideration. No production actions were taken.
+
+## Supplier gateway role-escalation regression follow-up — 2026-11-10
+
+- Added an explicit disposable PostgreSQL test in code commit `1133fc0c92d001fe63ee9cd38810d945292c5fda`: a connection authenticated as `ghm_runtime` must be unable to `SET ROLE ghm_actor_gateway`.
+- Updated the detailed supplier handover and PR #270 body to record the new assertion and the credential threat model.
+- CI run [#42911331563](https://github.com/zaidhqdev-sys/GHM/actions/runs/42911331563) was observed running for code commit `1133fc0c92d001fe63ee9cd38810d945292c5fda`; web-quality completed successfully and the quality job was still initializing at the last check. Exact-head outcome is not yet known.
+- The subsequent handover-only commit is `e812dea1b4f312b91421e4cd857e480e4c842b45`. It does not change executable code; CI evidence must be reported against the tested code commit, not mislabelled as a run on the documentation commit.
+- Important limitation: the gateway database credential is itself privileged. The role guard prevents the shared runtime login from assuming it, but anyone who obtains the gateway credential can call gateway-only SQL wrappers. Keep it exclusive to the isolated gateway service.
+- PR #270 remains draft and unmerged. No production role, migration, grant, service, environment, deployment or Connect cutover was changed.
