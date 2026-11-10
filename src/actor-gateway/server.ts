@@ -10,6 +10,7 @@ import { PostgresActorIdentityReader } from './actor-identity-reader';
 import { PostgresBusinessRegistrationIdentityReader } from './business-registration-identity-reader';
 import { PostgresCapabilityGovernanceReader } from './capability-governance-reader';
 import { PostgresSupplierClassificationReader } from './supplier-classification-reader';
+import { PostgresBusinessProfileReader } from './business-profile-reader';
 
 const required = (name: string): string => {
   const value = process.env[name]?.trim();
@@ -44,6 +45,7 @@ const app = createActorGatewayApp({
   businessRegistrationIdentityReader: new PostgresBusinessRegistrationIdentityReader(pool),
   capabilityGovernanceReader: new PostgresCapabilityGovernanceReader(pool),
   supplierClassificationReader: new PostgresSupplierClassificationReader(pool),
+  businessProfileReader: new PostgresBusinessProfileReader(pool),
 });
 const server = http.createServer(app);
 server.requestTimeout = 10_000;
