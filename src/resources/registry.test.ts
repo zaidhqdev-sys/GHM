@@ -3,7 +3,7 @@ import test from 'node:test';
 import { isRegisteredOperation, resourceRegistry } from './registry';
 
 test('resource registry contains only explicit governed resources', () => {
-  assert.deepEqual(resourceRegistry.map((definition) => definition.resource), ['profile', 'business', 'directory', 'business_capability', 'business_capability_evidence', 'business_registration_identity', 'directory_review', 'business_category', 'business_category_assignment', 'business_offering', 'business_hours', 'project', 'project_quote', 'opportunity_requirements', 'customer', 'quote', 'notification', 'support_request', 'enquiry', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'trust_score', 'campaign', 'commercial', 'onboarding']);
+  assert.deepEqual(resourceRegistry.map((definition) => definition.resource), ['profile', 'business', 'directory', 'business_capability', 'business_capability_evidence', 'business_registration_identity', 'directory_review', 'business_category', 'business_category_assignment', 'business_offering', 'business_hours', 'project', 'project_quote', 'opportunity_requirements', 'customer', 'quote', 'notification', 'support_request', 'enquiry', 'review', 'opportunity', 'opportunity_participant', 'saved_business', 'trust_score', 'campaign', 'commercial', 'onboarding', 'business_relationship', 'outcome']);
 });
 
 test('registered operations are accepted', () => {
@@ -77,6 +77,8 @@ test('registered operations are accepted', () => {
   assert.equal(isRegisteredOperation('onboarding', 'read'), true);
   assert.equal(isRegisteredOperation('onboarding', 'create'), true);
   assert.equal(isRegisteredOperation('onboarding', 'update'), true);
+  assert.equal(isRegisteredOperation('business_relationship', 'read'), true);
+  assert.equal(isRegisteredOperation('outcome', 'read'), true);
 });
 
 test('unregistered operations are rejected', () => {
@@ -111,4 +113,6 @@ test('unregistered operations are rejected', () => {
   assert.equal(isRegisteredOperation('directory', 'create'), false);
   assert.equal(isRegisteredOperation('commercial', 'create'), false);
   assert.equal(isRegisteredOperation('onboarding', 'delete'), false);
+  assert.equal(isRegisteredOperation('business_relationship', 'create'), false);
+  assert.equal(isRegisteredOperation('outcome', 'update'), false);
 });

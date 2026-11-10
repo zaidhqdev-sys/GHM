@@ -53,6 +53,8 @@ export const resourceRegistry: readonly ResourceDefinition[] = [
   { resource: 'campaign', operations: ['read', 'create', 'update'] },
   { resource: 'commercial', operations: ['read'] },
   { resource: 'onboarding', operations: ['read', 'create', 'update'] },
+  { resource: 'business_relationship', operations: ['read'] },
+  { resource: 'outcome', operations: ['read'] },
 ];
 
 export const isRegisteredOperation = (resource: Resource, operation: ResourceOperation): boolean =>

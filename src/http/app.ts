@@ -52,6 +52,10 @@ import { PostgresOnboardingProgressRepository } from '../resources/onboarding/re
 import { DefaultOnboardingProgressService } from '../resources/onboarding/service';
 import type { OnboardingProgressService } from '../resources/onboarding/contracts';
 import { registerOnboardingRoutes } from './onboarding-router';
+import { PostgresRelationshipsOutcomesRepository } from '../resources/relationships-outcomes/repository';
+import { DefaultRelationshipsOutcomesService } from '../resources/relationships-outcomes/service';
+import type { RelationshipsOutcomesService } from '../resources/relationships-outcomes/contracts';
+import { registerRelationshipsOutcomesRoutes } from './relationships-outcomes-router';
 import { registerBusinessCapabilityRoutes } from './business-capability-router';
 import { PgCapabilityRepository } from '../resources/capability/repository';
 import { CapabilityServiceImpl } from '../resources/capability/service';
@@ -134,6 +138,7 @@ export interface AppDependencies {
   readonly opportunityService?: OpportunityService;
   readonly savedBusinessService?: SavedBusinessService;
   readonly onboardingService?: OnboardingProgressService;
+  readonly relationshipsOutcomesService?: RelationshipsOutcomesService;
   readonly businessCapabilityService?: BusinessCapabilityService;
   readonly businessCapabilityEvidenceService?: BusinessCapabilityEvidenceService;
   readonly businessRegistrationIdentityService?: BusinessRegistrationIdentityService;
@@ -392,6 +397,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     dependencies.savedBusinessService ??
     new SavedBusinessServiceImpl(new PostgresSavedBusinessRepository());
   const onboardingService = dependencies.onboardingService ?? new DefaultOnboardingProgressService(new PostgresOnboardingProgressRepository());
+  const relationshipsOutcomesService = dependencies.relationshipsOutcomesService ?? new DefaultRelationshipsOutcomesService(new PostgresRelationshipsOutcomesRepository());
   const businessCapabilityService =
     dependencies.businessCapabilityService ??
     new BusinessCapabilityServiceImpl(new PostgresBusinessCapabilityRepository());
@@ -934,6 +940,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerOpportunityRoutes(app, opportunityService, resourceAuthMiddleware);
   registerSavedBusinessRoutes(app, savedBusinessService, resourceAuthMiddleware);
   registerOnboardingRoutes(app, onboardingService, resourceAuthMiddleware);
+  registerRelationshipsOutcomesRoutes(app, relationshipsOutcomesService, resourceAuthMiddleware);
   registerBusinessCapabilityRoutes(app, businessCapabilityService, resourceAuthMiddleware);
   registerCapabilityCatalogueRoutes(app, new CapabilityServiceImpl(new PgCapabilityRepository()), resourceAuthMiddleware);
   registerBusinessCapabilityEvidenceRoutes(app, businessCapabilityEvidenceService, resourceAuthMiddleware);
