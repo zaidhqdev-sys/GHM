@@ -782,3 +782,45 @@ A fresh Render service listing at 2026-11-10 04:20 UTC showed GHM-Internal-Runti
 This section supersedes earlier statements in this handover that described Internal Runtime auto-deploy as disabled or presented the sandbox services as operational dependencies. Earlier observations remain historical snapshots of the environment at their recorded timestamps; they are not current configuration.
 
 **Release boundary unchanged:** this clarification does not authorize a deployment, production database migration, role/grant change, payment-provider activation, PayFast callback activation, or commercial cutover. Those actions still require their own explicit authorization and technical gates.
+
+
+## Actor-authentication boundary checkpoint — 2026-11-10 05:46 UTC
+
+This section records the shared database actor-binding work so a resumed session does not repeat the investigation.
+
+### Canonical design proposal
+
+- GHM PR #251: https://github.com/zaidhqdev-sys/GHM/pull/251
+- Branch: `docs/ghm-database-actor-boundary-proposal-20261110`
+- Latest head: `9a950e9cd0eab0bf19c042c050bfe34b98dfde86`
+- File: `docs/architecture/GHM_DATABASE_ACTOR_AUTHENTICATION_BOUNDARY_PROPOSAL_2026-11-10.md`
+- PR remains open, draft, unmerged. It is a documentation-only proposal, not an approved architecture or implementation authorization.
+- Exact-head GitHub Actions CI run #2367 (ID `42764071752`) passed. Both `quality` and `web-quality` jobs completed successfully, including build, full test suite, disposable PostgreSQL migrations/qualifications, migration audit policy tests, and runtime-boundary verification. This generic CI does not qualify the proposed gateway or clear downstream actor-binding gates.
+- Earlier exact-head CI #2366 passed on predecessor `d8e51ec923d4d837f5144c5778d04f1788869a4e`; superseded by #2367.
+
+### Confirmed trust gap and proposal content
+
+- Existing ES256 bearer JWT verification and account resolution happen in the Node application. The ordinary pooled database connection uses shared `ghm_runtime`; actor-sensitive SECURITY DEFINER functions accept caller-supplied account IDs.
+- The proposal prefers a separately credentialed authenticated database gateway that validates the original bearer token itself, resolves canonical GHM identity, checks current status, opens a distinct DB session, and establishes protected transaction-bound actor context.
+- The ordinary API runtime must not mint trusted actor assertions or hold the signing key. A service-authenticated API connection plus API-supplied account ID is not actor proof.
+- Proposal now explicitly documents gateway compromise as a trusted-computing-base risk; token replay/revocation; authenticated transport and token redaction; typed allow-listed parameterized operations (no arbitrary SQL); separation from schema/migration ownership; effective privilege review including inherited/PUBLIC grants; and fail-closed behavior without fallback to caller-supplied actor IDs.
+- Caller-set GUC/temp table/application AuthContext are not trusted actor proof. The database-context-table candidate remains unselected pending PostgreSQL semantics and lifecycle proof. ES256 verification inside PostgreSQL is not assumed; extension/algorithm availability would need evidence.
+- No production roles/grants/credentials/secrets, extensions, database, migrations, deployment, payment, or commercial settings were changed.
+
+### Dependent PR disposition — do not repeat comments; review existing threads
+
+The following exact-head PRs remain open/unmerged and blocked by the shared actor-binding requirement, despite earlier exact-head CI passes:
+- #236 head `6feb03117530209a849be6025579cc0c2e13e92b` (ready for review, not draft): registration identity SECURITY DEFINER RPCs trust supplied `p_account_id`; no two-active-owner forged-ID runtime qualification.
+- #237 head `c52c8bff830e00f0b6223532124da7aeaed5a9f1` (draft): business profile RPC's negative test uses nonexistent ID, not another active owner.
+- #243 head `1246ed74a81b3fc607e6f65f3cd8036bc081ab1b` (draft): supplier classification RPC's qualification lacks forged different-active-owner ID case.
+- #244 head `f418407bface1146e4cf0147424fb91bff81328a` (draft, GitHub mergeable=false): analytics grants permit direct runtime event access without DB actor binding; direct cross-business reads/writes and event actor spoofing are not covered by the app-level tests.
+- #250 head `feb720eb8f2283bb6ae7325a51c4b88e57b28da7` (draft): capability governance direct RPC qualification lacks forged different-active-admin case.
+Existing detailed review comments are already present on these PRs. Do not post duplicate comments; read their latest threads before any further review.
+
+### Exact resume instructions
+
+1. Check current main, PR #251 head/CI and dependent PR heads/status; do not rely on these historical pointers without refresh.
+2. Continue design review on #251 only if it adds a concrete, non-duplicative trust-boundary decision. Keep draft pending architecture review.
+3. Before implementation, choose gateway ownership/protocol, separate DB role and credential custody, non-forgeable transaction context, revocation/replay/idempotency semantics, operational fail-closed behavior, and audit/incident ownership.
+4. Build shared disposable-PostgreSQL adversarial tests using the actual `ghm_runtime` login, two active actors/businesses, forged actor IDs, direct table grants, GUC/temp/SET ROLE/pool reuse, revoked/disabled actors, and positive gateway-mediated operations. Apply to all five dependent PRs.
+5. Do not merge dependent PRs or change production DB roles/grants, secrets, extensions, migrations, or deployments without separate explicit authorization.
