@@ -8,6 +8,7 @@ import { ACCESS_JWT_AUD, ACCESS_JWT_ISS } from '../auth/foundation/access-jwt-ve
 import { createActorGatewayApp } from './app';
 import type { ActorIdentity, ActorIdentityReader } from './actor-identity-reader';
 import type { BusinessRegistrationIdentityReader } from './business-registration-identity-reader';
+import type { SupplierClassificationReader } from './supplier-classification-reader';
 
 const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
 const privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
@@ -35,11 +36,13 @@ const withServer = async (
   reader: ActorIdentityReader,
   work: (baseUrl: string) => Promise<void>,
   businessRegistrationIdentityReader?: BusinessRegistrationIdentityReader,
+  supplierClassificationReader?: SupplierClassificationReader,
 ): Promise<void> => {
   const server = http.createServer(createActorGatewayApp({
     verifier,
     actorIdentityReader: reader,
     businessRegistrationIdentityReader,
+    supplierClassificationReader,
   }));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
@@ -341,4 +344,58 @@ test('actor gateway registration identity write hides membership denial as not f
     assert.equal(response.status, 404);
     assert.deepEqual(await response.json(), { error: 'not_found' });
   }, businessReader);
+});
+
+
+test('supplier classification gateway derives actor from verified token subject', async () => {
+  const calls: Array<{ accountId: number; businessId: number; isSupplier: boolean }> = [];
+  const reader: SupplierClassificationReader = {
+    async updateSupplierClassification(accountId, businessId, isSupplier) {
+      calls.push({ accountId, businessId, isSupplier });
+      return { businessId, isSupplier };
+    },
+  };
+  await withServer({
+    async readOwnIdentity(accountId): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  }, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/businesses/73/supplier-classification?accountId=999`, {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ isSupplier: true }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { supplierClassification: { businessId: 73, isSupplier: true } });
+    const invalid = await fetch(`${baseUrl}/v1/businesses/73/supplier-classification`, {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ isSupplier: false, accountId: 999 }),
+    });
+    assert.equal(invalid.status, 400);
+  }, undefined, reader);
+  assert.deepEqual(calls, [{ accountId: 42, businessId: 73, isSupplier: true }]);
+});
+
+test('supplier classification gateway rejects missing bearer token before database access', async () => {
+  let calls = 0;
+  const reader: SupplierClassificationReader = {
+    async updateSupplierClassification() {
+      calls += 1;
+      return { businessId: 73, isSupplier: true };
+    },
+  };
+  await withServer({
+    async readOwnIdentity(accountId): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: null };
+    },
+  }, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/businesses/73/supplier-classification`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ isSupplier: true }),
+    });
+    assert.equal(response.status, 401);
+  }, undefined, reader);
+  assert.equal(calls, 0);
 });
