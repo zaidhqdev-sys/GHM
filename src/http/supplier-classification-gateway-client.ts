@@ -1,5 +1,3 @@
-import type { BusinessIdentity } from '../resources/business-identity/contracts';
-
 export class SupplierClassificationGatewayError extends Error {
   constructor(readonly status: number) {
     super('Actor gateway request failed');
