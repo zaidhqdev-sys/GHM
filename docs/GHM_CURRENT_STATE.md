@@ -349,3 +349,6 @@ PR #271 implementation head `eeae30c0a39fe9baa6d62a9c358708a732c5849c` passed wo
 
 
 Business profile compatibility follow-up: the disposable PostgreSQL qualification now simulates production-only legacy `category` and `is_supplier` columns, exercises the conditional update path, and passed on implementation head `09fd30d24b4eee1031f4437f353e2f71ee8469c9` in run #42908980806. A restored active-database clone review is still required before production application. The next handover-only commit requires exact-head CI to be reconfirmed.
+
+
+Final exact-head confirmation for PR #271: after the handover updates, head `ae8bbb661622292c4ffedd4056c524986523279d` passed CI run #42909236967 (quality and Cloudflare Pages). The restored active-database clone review remains outstanding; no production role, migration, service or deployment changes occurred.
