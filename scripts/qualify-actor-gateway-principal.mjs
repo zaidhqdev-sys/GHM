@@ -219,6 +219,24 @@ try {
   });
   console.log('TYPED GATEWAY BUSINESS REGISTRATION IDENTITY READ: PASS');
 
+  const updatedRegistrationIdentity = await gatewayPool.query(
+    'SELECT * FROM ghm.gateway_update_business_registration_identity($1, $2, $3, $4, $5)',
+    [activeAccountId, businessId, 'registered', 'REG-primary-updated', `${fixture.marker} updated legal entity`],
+  );
+  assert.equal(updatedRegistrationIdentity.rowCount, 1);
+  assert.deepEqual({
+    business_id: Number(updatedRegistrationIdentity.rows[0].business_id),
+    registration_status: updatedRegistrationIdentity.rows[0].registration_status,
+    registration_number: updatedRegistrationIdentity.rows[0].registration_number,
+    legal_name: updatedRegistrationIdentity.rows[0].legal_name,
+  }, {
+    business_id: businessId,
+    registration_status: 'registered',
+    registration_number: 'REG-primary-updated',
+    legal_name: `${fixture.marker} updated legal entity`,
+  });
+  console.log('TYPED GATEWAY BUSINESS REGISTRATION IDENTITY WRITE: PASS');
+
   await expectSqlState(
     () => gatewayPool.query('SELECT ghm.assert_actor_gateway($1)', [disabledAccountId]),
     '42501',
@@ -230,9 +248,19 @@ try {
     'DISABLED ACTOR CANNOT READ REGISTRATION IDENTITY',
   );
   await expectSqlState(
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_update_business_registration_identity($1, $2, $3, $4, $5)', [disabledAccountId, businessId, 'registered', 'REG-X', 'Spoofed Entity']),
+    '42501',
+    'DISABLED ACTOR CANNOT WRITE REGISTRATION IDENTITY',
+  );
+  await expectSqlState(
     () => gatewayPool.query('SELECT * FROM ghm.gateway_read_business_registration_identity($1, $2)', [activeAccountId, otherBusinessId]),
     'P0001',
     'CROSS-BUSINESS REGISTRATION IDENTITY READ DENIED',
+  );
+  await expectSqlState(
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_update_business_registration_identity($1, $2, $3, $4, $5)', [activeAccountId, otherBusinessId, 'registered', 'REG-X', 'Spoofed Entity']),
+    'P0001',
+    'CROSS-BUSINESS REGISTRATION IDENTITY WRITE DENIED',
   );
   await expectSqlState(
     () => gatewayPool.query('SELECT ghm.assert_actor_gateway(0)'),
@@ -253,6 +281,11 @@ try {
     () => runtimePool.query('SELECT * FROM ghm.gateway_read_business_registration_identity($1, $2)', [activeAccountId, businessId]),
     '42501',
     'ORDINARY RUNTIME CANNOT EXECUTE REGISTRATION IDENTITY GATEWAY READ',
+  );
+  await expectSqlState(
+    () => runtimePool.query('SELECT * FROM ghm.gateway_update_business_registration_identity($1, $2, $3, $4, $5)', [activeAccountId, businessId, 'registered', 'REG-X', 'Spoofed Entity']),
+    '42501',
+    'ORDINARY RUNTIME CANNOT EXECUTE REGISTRATION IDENTITY GATEWAY WRITE',
   );
   await expectSqlState(
     () => runtimePool.query('SET ROLE ghm_actor_gateway'),

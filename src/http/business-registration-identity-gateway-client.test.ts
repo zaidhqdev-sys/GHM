@@ -61,3 +61,41 @@ test('gateway client rejects malformed or mismatched response payloads', async (
 test('gateway client requires HTTPS outside localhost', () => {
   assert.throws(() => new HttpBusinessRegistrationIdentityGatewayClient('http://gateway.example.test'), /HTTPS/);
 });
+
+
+test('gateway client forwards typed registration identity writes with original bearer token', async () => {
+  let method = '';
+  let authorization = '';
+  let body: unknown;
+  const client = new HttpBusinessRegistrationIdentityGatewayClient(
+    'https://gateway.example.test',
+    1000,
+    async (_input, init) => {
+      method = init?.method ?? '';
+      authorization = new Headers(init?.headers).get('authorization') ?? '';
+      body = JSON.parse(String(init?.body));
+      return new Response(JSON.stringify({
+        registrationIdentity: {
+          businessId: 55,
+          registrationStatus: 'registered',
+          registrationNumber: 'REG-55',
+          legalName: 'Example Pty Ltd',
+          updatedAt: '2026-11-10T20:00:00.000Z',
+        },
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    },
+  );
+  await client.updateRegistrationIdentity('signed-access-token', {
+    businessId: 55,
+    registrationStatus: 'registered',
+    registrationNumber: 'REG-55',
+    legalName: 'Example Pty Ltd',
+  });
+  assert.equal(method, 'PUT');
+  assert.equal(authorization, 'Bearer signed-access-token');
+  assert.deepEqual(body, {
+    registrationStatus: 'registered',
+    registrationNumber: 'REG-55',
+    legalName: 'Example Pty Ltd',
+  });
+});

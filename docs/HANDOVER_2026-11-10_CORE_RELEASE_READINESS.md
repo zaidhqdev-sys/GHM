@@ -198,3 +198,18 @@ Gateway denial/not-found is mapped to 404 and gateway/network/invalid-response e
 At this handover update PR #265 is open and exact-head CI is pending. No production gateway URL, Render service, credential, role, grant, migration execution or deployment has been changed. Keep production URL unset until a separate gateway service has been provisioned with gateway-only database credentials and public ES256 keys and end-to-end qualification is complete. Do not revoke the legacy runtime read grant before successful API-to-gateway deployment and verification.
 
 Next: pass exact-head CI, extend disposable PostgreSQL qualification through the HTTP boundary, then prepare a separately approved Render gateway service and deployment plan. The registration update/write RPC and remaining feature RPCs are not yet migrated.
+
+
+## 14. Business registration identity write gateway slice (PR #266) — 2026-11-10
+
+PR #266 adds `ghm.gateway_update_business_registration_identity(bigint,bigint,text,text,text)`, a SECURITY DEFINER wrapper that first calls `ghm.assert_actor_gateway` then delegates to the existing membership-checked update function. Only `ghm_actor_gateway` can execute it; the ordinary runtime role is explicitly denied. The Actor Gateway exposes typed PUT at `/v1/businesses/:businessId/registration-identity`, derives actor ID only from independently verified JWT `sub`, and validates the canonical three-field declaration.
+
+The resource API gateway client now supports PUT and forwards the original bearer token. When `GHM_ACTOR_GATEWAY_URL` is configured, both registration identity GET and PUT use the gateway; when unset, legacy behavior remains for controlled rollout. In gateway mode, access denial/not-found and service failure are mapped safely and no legacy DB fallback occurs. Disposable PostgreSQL qualification covers successful write, disabled actor denial, cross-business write denial and ordinary runtime EXECUTE denial. HTTP/API tests cover token binding, malformed payloads, membership denial, token forwarding and no fallback.
+
+At handover time PR #266 is open and exact-head CI pending. No production URL, Render service, credential, database role/grant, migration execution or deployment has changed. The legacy `ghm_runtime` write EXECUTE grant remains until a separately reviewed rollout and cutover. Next: exact-head CI, then prepare gateway/API service deployment order and end-to-end verification. Auth issuer isolation and other feature RPCs remain future milestones.
+
+
+PR #266 qualification note: the first disposable PostgreSQL run exposed an ambiguous output-column reference in the new write wrapper. The wrapper now explicitly qualifies each returned column through the delegated function alias; the exact-head CI run must be repeated before merge. This was caught before any production migration or deployment.
+
+
+PR #266 qualification correction: follow-up logs pinpointed the ambiguity inside the pre-existing `ghm.update_business_registration_identity` implementation (`ON CONFLICT (business_id)` conflicts with its RETURNS TABLE output variable), not the gateway wrapper. The additive migration now replaces that function using the named `business_registration_identity_pkey` constraint, preserves its existing `ghm_runtime` EXECUTE grant, and keeps the gateway-only wrapper grant isolated. This fix and the positive/negative write qualification must pass on the final exact head before merge.

@@ -158,6 +158,7 @@ test('actor gateway registration identity read derives account ID from token and
         updatedAt: new Date('2026-11-10T20:00:00.000Z'),
       };
     },
+    async updateRegistrationIdentity() { throw new Error('not used in read test'); },
   };
   await withServer(reader, async (baseUrl) => {
     const response = await fetch(`${baseUrl}/v1/businesses/77/registration-identity?accountId=999`, {
@@ -195,6 +196,7 @@ test('actor gateway registration identity read rejects invalid business IDs befo
         updatedAt: null,
       };
     },
+    async updateRegistrationIdentity() { throw new Error('not used in read test'); },
   };
   await withServer(reader, async (baseUrl) => {
     const response = await fetch(`${baseUrl}/v1/businesses/0/registration-identity`, {
@@ -216,10 +218,125 @@ test('actor gateway hides registration identity membership denials as not found'
     async readRegistrationIdentity() {
       throw Object.assign(new Error('Business management permission required'), { code: '42501' });
     },
+    async updateRegistrationIdentity() { throw new Error('not used in read test'); },
   };
   await withServer(reader, async (baseUrl) => {
     const response = await fetch(`${baseUrl}/v1/businesses/77/registration-identity`, {
       headers: { authorization: `Bearer ${sign(42)}` },
+    });
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), { error: 'not_found' });
+  }, businessReader);
+});
+
+
+test('actor gateway registration identity write binds actor to verified token and validates the typed payload', async () => {
+  const received: Array<{ accountId: number; input: { businessId: number; registrationStatus: 'registered' | 'unregistered' | null; registrationNumber: string | null; legalName: string | null } }> = [];
+  const identityReader: ActorIdentityReader = {
+    async readOwnIdentity(accountId: number): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  };
+  const businessReader: BusinessRegistrationIdentityReader = {
+    async readRegistrationIdentity(accountId: number, businessId: number) {
+      return { businessId, registrationStatus: null, registrationNumber: null, legalName: null, updatedAt: null };
+    },
+    async updateRegistrationIdentity(accountId, input) {
+      received.push({ accountId, input });
+      return {
+        businessId: input.businessId,
+        registrationStatus: input.registrationStatus,
+        registrationNumber: input.registrationNumber,
+        legalName: input.legalName,
+        updatedAt: new Date('2026-11-10T20:00:00.000Z'),
+      };
+    },
+  };
+  await withServer(identityReader, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/businesses/77/registration-identity?accountId=999`, {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        registrationStatus: 'registered',
+        registrationNumber: 'REG-77',
+        legalName: 'Example Legal Entity',
+      }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      registrationIdentity: {
+        businessId: 77,
+        registrationStatus: 'registered',
+        registrationNumber: 'REG-77',
+        legalName: 'Example Legal Entity',
+        updatedAt: '2026-11-10T20:00:00.000Z',
+      },
+    });
+  }, businessReader);
+  assert.deepEqual(received, [{
+    accountId: 42,
+    input: {
+      businessId: 77,
+      registrationStatus: 'registered',
+      registrationNumber: 'REG-77',
+      legalName: 'Example Legal Entity',
+    },
+  }]);
+});
+
+test('actor gateway registration identity write rejects malformed payloads before database access', async () => {
+  let calls = 0;
+  const identityReader: ActorIdentityReader = {
+    async readOwnIdentity(accountId: number): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  };
+  const businessReader: BusinessRegistrationIdentityReader = {
+    async readRegistrationIdentity() {
+      return { businessId: 1, registrationStatus: null, registrationNumber: null, legalName: null, updatedAt: null };
+    },
+    async updateRegistrationIdentity() {
+      calls += 1;
+      throw new Error('must not be called');
+    },
+  };
+  await withServer(identityReader, async (baseUrl) => {
+    for (const body of [
+      { registrationStatus: 'registered', registrationNumber: 'REG-1' },
+      { registrationStatus: 'approved', registrationNumber: null, legalName: null },
+      { registrationStatus: 'unregistered', registrationNumber: 'REG-1', legalName: null },
+      { registrationStatus: null, registrationNumber: null, legalName: null, accountId: 999 },
+    ]) {
+      const response = await fetch(`${baseUrl}/v1/businesses/77/registration-identity`, {
+        method: 'PUT',
+        headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      assert.equal(response.status, 400);
+    }
+  }, businessReader);
+  assert.equal(calls, 0);
+});
+
+test('actor gateway registration identity write hides membership denial as not found', async () => {
+  const identityReader: ActorIdentityReader = {
+    async readOwnIdentity(accountId: number): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  };
+  const businessReader: BusinessRegistrationIdentityReader = {
+    async readRegistrationIdentity() {
+      return { businessId: 1, registrationStatus: null, registrationNumber: null, legalName: null, updatedAt: null };
+    },
+    async updateRegistrationIdentity() {
+      throw Object.assign(new Error('Business management permission required'), { code: '42501' });
+    },
+  };
+  await withServer(identityReader, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/businesses/77/registration-identity`, {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ registrationStatus: null, registrationNumber: null, legalName: null }),
     });
     assert.equal(response.status, 404);
     assert.deepEqual(await response.json(), { error: 'not_found' });

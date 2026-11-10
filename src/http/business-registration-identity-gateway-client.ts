@@ -1,7 +1,11 @@
-import type { BusinessRegistrationIdentity } from '../resources/business-registration-identity/contracts';
+import type {
+  BusinessRegistrationIdentity,
+  UpdateBusinessRegistrationIdentityInput,
+} from '../resources/business-registration-identity/contracts';
 
 export interface BusinessRegistrationIdentityGatewayClient {
   readRegistrationIdentity(accessToken: string, businessId: number): Promise<BusinessRegistrationIdentity>;
+  updateRegistrationIdentity(accessToken: string, input: UpdateBusinessRegistrationIdentityInput): Promise<BusinessRegistrationIdentity>;
 }
 
 export class BusinessRegistrationIdentityGatewayError extends Error {
@@ -24,6 +28,23 @@ export class HttpBusinessRegistrationIdentityGatewayClient implements BusinessRe
   }
 
   async readRegistrationIdentity(accessToken: string, businessId: number): Promise<BusinessRegistrationIdentity> {
+    return this.request(accessToken, businessId, 'GET');
+  }
+
+  async updateRegistrationIdentity(accessToken: string, input: UpdateBusinessRegistrationIdentityInput): Promise<BusinessRegistrationIdentity> {
+    return this.request(accessToken, input.businessId, 'PUT', {
+      registrationStatus: input.registrationStatus,
+      registrationNumber: input.registrationNumber,
+      legalName: input.legalName,
+    });
+  }
+
+  private async request(
+    accessToken: string,
+    businessId: number,
+    method: 'GET' | 'PUT',
+    body?: { registrationStatus: 'registered' | 'unregistered' | null; registrationNumber: string | null; legalName: string | null },
+  ): Promise<BusinessRegistrationIdentity> {
     if (!accessToken.trim() || !Number.isSafeInteger(businessId) || businessId <= 0) {
       throw new Error('Actor gateway request is invalid');
     }
@@ -33,8 +54,13 @@ export class HttpBusinessRegistrationIdentityGatewayClient implements BusinessRe
       const response = await this.fetchImpl(
         `${this.baseUrl.replace(/\/$/, '')}/v1/businesses/${businessId}/registration-identity`,
         {
-          method: 'GET',
-          headers: { authorization: `Bearer ${accessToken}`, accept: 'application/json' },
+          method,
+          headers: {
+            authorization: `Bearer ${accessToken}`,
+            accept: 'application/json',
+            ...(body ? { 'content-type': 'application/json' } : {}),
+          },
+          ...(body ? { body: JSON.stringify(body) } : {}),
           signal: controller.signal,
         },
       );
@@ -55,9 +81,9 @@ export class HttpBusinessRegistrationIdentityGatewayClient implements BusinessRe
       ) throw new Error('Actor gateway response is invalid');
       return {
         businessId,
-        registrationStatus: row.registrationStatus,
-        registrationNumber: row.registrationNumber,
-        legalName: row.legalName,
+        registrationStatus: row.registrationStatus as BusinessRegistrationIdentity['registrationStatus'],
+        registrationNumber: row.registrationNumber as string | null,
+        legalName: row.legalName as string | null,
         updatedAt: row.updatedAt === null ? null : new Date(row.updatedAt as string),
       };
     } finally {
