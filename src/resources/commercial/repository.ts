@@ -4,7 +4,7 @@ import { withAuthorizedTransaction } from '../../db/authorized-transaction';
 import type { TransactionPool } from '../../db/transaction';
 import type {
   BusinessId,
-  CommercialAccess,
+  CommercialAccess,\n  CommercialOffer,
   CommercialEntitlement,
   CommercialPaymentAttempt,
   CommercialRepository,
@@ -572,6 +572,117 @@ export class PostgresCommercialRepository implements CommercialRepository {
       async (client) => {
         await assertBusinessReadAccess(client, context, businessId);
         return readCommercialAccess(client, businessId);
+      },
+      this.transactionPool,
+    );
+  }
+
+  async getCommercialOffer(
+    context: AuthContext,
+    businessId: BusinessId,
+    planCode: string,
+  ): Promise<CommercialOffer | null> {
+    requireBusinessId(businessId);
+    const normalizedPlanCode = requirePlanCode(planCode);
+
+    return withAuthorizedTransaction(
+      context,
+      async (client) => {
+        await assertBusinessReadAccess(client, context, businessId);
+        const access = await readCommercialAccess(client, businessId);
+        const result = await client.query(
+          `WITH clock AS (SELECT now() AS evaluated_at)
+           SELECT
+             plan.code AS plan_code,
+             plan.name AS plan_name,
+             version_row.id AS plan_version_id,
+             version_row.trial_days,
+             version_row.founding_limit,
+             clock.evaluated_at,
+             country.id AS country_id,
+             currency.code AS currency_code,
+             BOOL_OR(price.id IS NOT NULL) FILTER (WHERE price.price_kind = 'founding') AS has_founding_price,
+             MAX(price.id) FILTER (WHERE price.price_kind = 'founding') AS founding_price_id,
+             MAX(price.amount_minor_units) FILTER (WHERE price.price_kind = 'founding') AS founding_amount_minor_units,
+             MAX(price.id) FILTER (WHERE price.price_kind = 'standard') AS standard_price_id,
+             MAX(price.amount_minor_units) FILTER (WHERE price.price_kind = 'standard') AS standard_amount_minor_units,
+             COUNT(DISTINCT allocation.id)::integer AS founding_allocated,
+             EXISTS (
+               SELECT 1 FROM ghm.commercial_trial trial
+               WHERE trial.business_id = $2
+             ) AS trial_used
+           FROM ghm.commercial_plan plan
+           JOIN ghm.commercial_plan_version version_row
+             ON version_row.plan_id = plan.id
+           CROSS JOIN clock
+           LEFT JOIN ghm.country country
+             ON country.code = 'ZA' AND country.is_active = true
+           LEFT JOIN ghm.currency currency
+             ON currency.id = country.default_currency_id
+            AND currency.code = 'ZAR' AND currency.is_active = true
+           LEFT JOIN ghm.commercial_plan_price price
+             ON price.plan_version_id = version_row.id
+            AND price.country_id = country.id
+            AND price.currency_id = currency.id
+            AND price.lifecycle_status = 'active'
+            AND price.effective_from <= clock.evaluated_at
+            AND (price.effective_until IS NULL OR price.effective_until > clock.evaluated_at)
+           LEFT JOIN ghm.commercial_founding_allocation allocation
+             ON allocation.plan_version_id = version_row.id
+           WHERE plan.code = $1
+             AND plan.lifecycle_status = 'active'
+             AND version_row.lifecycle_status = 'active'
+             AND version_row.effective_from <= clock.evaluated_at
+             AND (version_row.effective_until IS NULL OR version_row.effective_until > clock.evaluated_at)
+           GROUP BY plan.code, plan.name, version_row.id, version_row.version,
+                    version_row.trial_days, version_row.founding_limit,
+                    clock.evaluated_at, country.id, currency.code
+           ORDER BY version_row.version DESC
+           LIMIT 1`,
+          [normalizedPlanCode, businessId],
+        );
+
+        if (result.rowCount !== 1) return null;
+        const row = result.rows[0];
+        const trialUsed = row.trial_used === true;
+        const foundingLimit = row.founding_limit === null ? null : Number(row.founding_limit);
+        const foundingAllocated = Number(row.founding_allocated ?? 0);
+        const currencyCode = row.currency_code ?? 'ZAR';
+        const foundingPrice = row.founding_price_id === null || row.founding_price_id === undefined
+          ? null
+          : {
+              priceId: Number(row.founding_price_id),
+              amountMinorUnits: Number(row.founding_amount_minor_units),
+              currencyCode,
+              billingInterval: 'month' as const,
+            };
+        const standardPrice = row.standard_price_id === null || row.standard_price_id === undefined
+          ? null
+          : {
+              priceId: Number(row.standard_price_id),
+              amountMinorUnits: Number(row.standard_amount_minor_units),
+              currencyCode,
+              billingInterval: 'month' as const,
+            };
+
+        return {
+          businessId,
+          planCode: row.plan_code,
+          planName: row.plan_name,
+          planVersionId: Number(row.plan_version_id),
+          trialDays: Number(row.trial_days),
+          trialUsed,
+          trialEligible: Number(row.trial_days) > 0 && !trialUsed && access.status === 'basic',
+          foundingLimit,
+          foundingAllocated,
+          foundingAvailable: foundingLimit !== null
+            && foundingAllocated < foundingLimit
+            && foundingPrice !== null,
+          foundingPrice,
+          standardPrice,
+          access,
+          evaluatedAt: row.evaluated_at,
+        };
       },
       this.transactionPool,
     );
