@@ -323,3 +323,15 @@ Read-only aggregate preflight: 16 Business rows, 0 Projects; no observed current
 
 
 **Business profile compatibility detail:** the live SECURITY DEFINER profile function checks active owner/admin membership and currently accepts camelCase fields plus `category` and `isSupplier`; the proposed source replacement switches to snake_case names, adds geo/avatar fields, and omits those existing fields. Existing years limit is 500 vs proposed 100; province limit 100 vs proposed 120; avatar-color check is currently stricter. A blind replacement would be an API compatibility risk. Full review is in Section 26 of the dated handover. Storage-object inventory remains blocked by connector SELECT denial (42501); no permissions were changed.
+
+
+## Active runtime and database correction — 2026-11-10 04:20 UTC
+
+This section supersedes earlier operational statements in this document that described the active Render runtime as auto-deploy-disabled or treated the sandbox services as the active GHM path.
+
+- The owner confirms the active platform path is **GHM-Internal-Runtime connected to the active GHM database**.
+- The identity-qualification service, PayFast sandbox runtime, and PayFast callback sandbox belong to the old sandbox environment. The sandbox database is suspended/expired and is not in use.
+- A fresh Render service listing at 2026-11-10 04:20 UTC showed GHM-Internal-Runtime on branch `main`, with auto-deploy enabled using the **After CI Checks Pass** trigger (`autoDeploy=yes`, `autoDeployTrigger=checksPass`). The service record update timestamp was 04:20:10 UTC.
+- The owner reports having changed the Internal Runtime auto-deploy setting. No setting change or deployment was performed by this documentation update.
+- Treat the sandbox services and sandbox database as retired infrastructure; do not use them as release targets or prerequisites for current GHM work.
+- This correction changes the deployment topology description only. It does not authorize a deployment, database migration, payment activation, callback activation, or production data mutation. Payment and commercial activation remain separately gated.
