@@ -4,7 +4,8 @@ import { withAuthorizedTransaction } from '../../db/authorized-transaction';
 import type { TransactionPool } from '../../db/transaction';
 import type {
   BusinessId,
-  CommercialAccess,\n  CommercialOffer,
+  CommercialAccess,
+  CommercialOffer,
   CommercialEntitlement,
   CommercialPaymentAttempt,
   CommercialRepository,
