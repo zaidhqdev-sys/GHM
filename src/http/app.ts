@@ -113,12 +113,22 @@ import { registerConnectServiceRoutes, type ConnectServiceHttpDependencies } fro
 import { registerCommercialInternalRoutes } from './commercial-internal-router';
 import { registerStorageRoutes } from './storage-router';
 import { createStorageProvider } from '../storage/factory';
+import { PostgresBusinessEngagementRepository } from '../resources/business-engagement/repository';
+import { BusinessEngagementServiceImpl } from '../resources/business-engagement/service';
+import type { BusinessEngagementService } from '../resources/business-engagement/contracts';
+import { registerBusinessEngagementRoutes } from './business-engagement-router';
+import { PostgresBusinessAnalyticsRepository } from '../resources/business-analytics/repository';
+import { BusinessAnalyticsServiceImpl } from '../resources/business-analytics/service';
+import type { BusinessAnalyticsService } from '../resources/business-analytics/contracts';
+import { registerBusinessAnalyticsRoutes } from './business-analytics-router';
 
 
 export interface AppDependencies {
   readonly businessIdentityService?: BusinessIdentityService;
   readonly publicBusinessService?: PublicBusinessService;
   readonly businessHoursService?: BusinessHoursService;
+  readonly businessEngagementService?: BusinessEngagementService;
+  readonly businessAnalyticsService?: BusinessAnalyticsService;
   readonly projectService?: ProjectService;
   readonly publicProjectService?: PublicProjectService;
   readonly enquiryService?: EnquiryService;
@@ -367,6 +377,10 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const businessHoursService =
     dependencies.businessHoursService
     ?? new BusinessHoursServiceImpl(new PostgresBusinessHoursRepository());
+  const businessEngagementService = dependencies.businessEngagementService
+    ?? new BusinessEngagementServiceImpl(new PostgresBusinessEngagementRepository());
+  const businessAnalyticsService = dependencies.businessAnalyticsService
+    ?? new BusinessAnalyticsServiceImpl(new PostgresBusinessAnalyticsRepository());
   const projectService = dependencies.projectService ?? new ProjectServiceImpl(new PostgresProjectRepository());
   const publicProjectService =
     dependencies.publicProjectService ??
@@ -942,6 +956,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerNotificationRoutes(app, notificationService, resourceAuthMiddleware);
   registerBusinessCategoryRoutes(app, businessCategoryService, resourceAuthMiddleware);
   registerBusinessOfferingRoutes(app, businessOfferingService, resourceAuthMiddleware);
+  registerBusinessEngagementRoutes(app, businessEngagementService, resourceAuthMiddleware);
+  registerBusinessAnalyticsRoutes(app, businessAnalyticsService, resourceAuthMiddleware);
   const authPersistence = dependencies.authPersistence ?? new PostgresAuthPersistence();
   const passwordResetService =
     dependencies.passwordResetService
