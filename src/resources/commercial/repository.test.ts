@@ -30,6 +30,7 @@ const createFakePool = (options: {
   subscriptionId?: number;
   failEvent?: boolean;
   offerRow?: Record<string, unknown> | null;
+  evaluatedAt?: Date;
 } = {}): { pool: TransactionPool; calls: string[]; params: unknown[][] } => {
   const calls: string[] = [];
   const params: unknown[][] = [];
@@ -39,6 +40,7 @@ const createFakePool = (options: {
       params.push(queryParams ?? []);
       if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rowCount: 0, rows: [] };
       if (sql === 'SELECT now() AS activated_at') return { rowCount: 1, rows: [{ activated_at: options.activatedAt ?? new Date(1000) }] };
+      if (sql === 'SELECT now() AS evaluated_at') return { rowCount: 1, rows: [{ evaluated_at: options.evaluatedAt ?? new Date(1500) }] };
       if (sql.includes('FROM ghm.business_membership') && sql.includes("membership_role IN ('owner', 'administrator')")) {
         return { rowCount: options.management === false ? 0 : 1, rows: [] };
       }
@@ -92,6 +94,37 @@ test('Commercial access read allows active Business membership', async () => {
   assert.equal(result.subscriptionId, 21);
   assert.equal(result.status, 'active');
   assert.deepEqual(result.entitlements, [{ code: 'quote_management', accessLevel: 'enabled', metadata: { source: 'commercial-plan-version' } }]);
+});
+
+test('Commercial access with an expired billing or trial period does not expose entitlements', async () => {
+  const { pool, calls } = createFakePool({
+    subscriptionRow: { ...subscriptionRow, current_period_end: new Date(1499) },
+    evaluatedAt: new Date(1500),
+  });
+  const result = await new PostgresCommercialRepository(pool).getCommercialAccess(context(), businessId);
+  assert.equal(result.status, 'active');
+  assert.deepEqual(result.entitlements, []);
+  assert.equal(calls.some(sql => sql.includes('FROM ghm.commercial_plan_entitlement')), false);
+});
+
+test('Commercial access before the subscription period starts does not expose entitlements', async () => {
+  const { pool, calls } = createFakePool({
+    subscriptionRow: { ...subscriptionRow, current_period_start: new Date(1501) },
+    evaluatedAt: new Date(1500),
+  });
+  const result = await new PostgresCommercialRepository(pool).getCommercialAccess(context(), businessId);
+  assert.deepEqual(result.entitlements, []);
+  assert.equal(calls.some(sql => sql.includes('FROM ghm.commercial_plan_entitlement')), false);
+});
+
+test('Commercial access fails closed when subscription period bounds are missing', async () => {
+  const { pool, calls } = createFakePool({
+    subscriptionRow: { ...subscriptionRow, current_period_end: null },
+    evaluatedAt: new Date(1500),
+  });
+  const result = await new PostgresCommercialRepository(pool).getCommercialAccess(context(), businessId);
+  assert.deepEqual(result.entitlements, []);
+  assert.equal(calls.some(sql => sql.includes('FROM ghm.commercial_plan_entitlement')), false);
 });
 
 test('Commercial access read rejects inactive or revoked membership', async () => {
