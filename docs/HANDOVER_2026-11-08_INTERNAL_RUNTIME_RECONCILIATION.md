@@ -685,3 +685,10 @@ The profile qualification now adds the production-only legacy `category` and `is
 Latest implementation head `09fd30d24b4eee1031f4437f353e2f71ee8469c9` passed workflow run #42908980806: TypeScript build, all migrations, Business profile qualification (including the simulated legacy columns and runtime RPC denial), full tests, commercial settlement qualification, migration audit, runtime boundary and Cloudflare Pages.
 
 This is stronger disposable compatibility evidence, but it is not a restored production-like clone. A restored active-database clone review remains required before applying the migration to production. A handover-only update follows, so final exact-head CI must be reconfirmed.
+
+
+## Final exact-head confirmation — PASS (2026-11-10)
+
+After both handover updates, latest PR #271 head `ae8bbb661622292c4ffedd4056c524986523279d` passed full CI run #42909236967. Quality and Cloudflare Pages are green; the quality job passed build, ordered migrations, legacy-column profile qualification, full test suite, migration audit and runtime-boundary verification.
+
+No production clone was changed, no production migration or role/grant change was made, and no gateway service or resource API deployment was performed. The restored active-database clone review remains a separate gate before production use.
