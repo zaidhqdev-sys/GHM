@@ -297,3 +297,13 @@ Draft PR #272 targets `main` so the full stacked capability governance chain (#2
 The CI workflow now provisions a separate `ghm_actor_gateway` login and `GHM_ACTOR_GATEWAY_DATABASE_URL`. Capability PostgreSQL qualification requires distinct runtime, gateway and migrator credentials; verifies neither runtime nor gateway can assume the other's role; checks admin gateway list/create/update/transition operations and non-admin denial; and confirms runtime cannot execute the gateway-only wrappers.
 
 The legacy three capability SECURITY DEFINER functions still retain `ghm_runtime` EXECUTE grants. That security gate remains open pending deployment/configuration of `GHM_ACTOR_GATEWAY_URL` and a separately qualified cutover. No production action is authorized or performed.
+
+## Unified Actor Gateway security integration — 2026-11-10
+
+Draft integration PR #272 now consolidates the capability (#250/#268/#269), supplier-classification (#243/#270), and Business profile (#237/#271) gateway work for a single migration-chain and CI qualification. Shared gateway principal/identity/registration migrations are deduplicated. The combined process wires actor identity, registration identity, capability governance, supplier classification and Business profile readers.
+
+Supplier and Business profile gateway cutover migrations are present in the integration branch but are not production-applied. Capability governance remains staged: its original three SECURITY DEFINER RPCs still grant EXECUTE to ghm_runtime, and revocation remains blocked until GHM_ACTOR_GATEWAY_URL is deployed/configured and route verification is complete. A separate capability cutover with direct runtime-denial tests is required.
+
+Individual feature evidence: supplier PR #270 exact head passed run #42911426091; Business profile PR #271 exact head passed run #42909483456. The combined branch has not yet passed exact-head CI. See [HANDOVER_2026-11-10_ACTOR_GATEWAY_INTEGRATION.md](HANDOVER_2026-11-10_ACTOR_GATEWAY_INTEGRATION.md).
+
+No production migration, grant/role change, Render service/environment update, deployment, data mutation or catalogue activation occurred. PayFast remains paused; legal-document work remains parked.
