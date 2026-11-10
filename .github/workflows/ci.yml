@@ -82,6 +82,9 @@ jobs:
       - name: Check storage qualification script syntax
         run: node --check scripts/qualify-storage-persistence.mjs
 
+      - name: Check Business profile qualification script syntax
+        run: node --check scripts/qualify-business-profile-contract-postgres.mjs
+
       - name: Build
         run: npm run build
 
@@ -131,6 +134,9 @@ jobs:
 
       - name: Qualify GHM supplier classification and membership authorization on disposable PostgreSQL
         run: npm run qualify:business-supplier-classification
+
+      - name: Qualify Business profile gateway and compatibility contract on disposable PostgreSQL
+        run: npm run qualify:business-profile-contract
 
       - name: Qualify commercial payment settlement identities against disposable PostgreSQL
         run: npm run build && node scripts/qualify-commercial-payment-result-runtime.mjs
