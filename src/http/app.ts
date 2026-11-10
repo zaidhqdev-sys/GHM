@@ -16,6 +16,7 @@ import { ProjectServiceImpl } from '../resources/project/service';
 import { CreateProjectInput, ProjectService, UpdateProjectInput } from '../resources/project/contracts';
 import { isRegisteredOperation, ResourceOperation } from '../resources/registry';
 import { config } from '../config';
+import { HttpSupplierClassificationGatewayClient, SupplierClassificationGatewayError } from './supplier-classification-gateway-client';
 import { PostgresPublicProjectRepository } from '../resources/project/public-repository';
 import { PublicProjectServiceImpl } from '../resources/project/public-service';
 import { PublicProjectService } from '../resources/project/public-contracts';
@@ -378,6 +379,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const app = express();
   const resourceAuthMiddleware = dependencies.resourceAuthMiddleware ?? requireAuth;
   const service = dependencies.businessIdentityService ?? new BusinessIdentityServiceImpl(new PostgresBusinessIdentityRepository());
+  const supplierClassificationGatewayClient = config.actorGatewayUrl ? new HttpSupplierClassificationGatewayClient(config.actorGatewayUrl) : undefined;
   const publicBusinessService = dependencies.publicBusinessService ?? new PublicBusinessServiceImpl(new PostgresPublicBusinessRepository());
   const businessHoursService =
     dependencies.businessHoursService
@@ -879,9 +881,40 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         res.status(400).json({ error: 'invalid_request' });
         return;
       }
+      if (input.isSupplier !== undefined) {
+        if (Object.keys(input).length !== 1) {
+          res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+        if (!supplierClassificationGatewayClient) {
+          res.status(503).json({ error: 'service_unavailable' });
+          return;
+        }
+        const authorization = req.header('authorization');
+        if (!authorization?.startsWith('Bearer ') || !authorization.slice(7).trim()) {
+          res.status(401).json({ error: 'unauthorized' });
+          return;
+        }
+        await supplierClassificationGatewayClient.update(authorization.slice(7).trim(), businessId, input.isSupplier);
+        const business = await service.getBusiness(context, businessId);
+        if (!business) {
+          res.status(404).json({ error: 'not_found' });
+          return;
+        }
+        res.status(200).json({ business });
+        return;
+      }
       const business = await service.updateBusiness(context, businessId, input);
       res.status(200).json({ business });
     } catch (error) {
+      if (error instanceof SupplierClassificationGatewayError) {
+        if (error.status === 401 || error.status === 403) { res.status(403).json({ error: 'forbidden' }); return; }
+        if (error.status === 400) { res.status(400).json({ error: 'invalid_request' }); return; }
+        if (error.status === 404) { res.status(404).json({ error: 'not_found' }); return; }
+        if (error.status === 409) { res.status(409).json({ error: 'conflict' }); return; }
+        res.status(503).json({ error: 'service_unavailable' });
+        return;
+      }
       handleError(error, res);
     }
   });
