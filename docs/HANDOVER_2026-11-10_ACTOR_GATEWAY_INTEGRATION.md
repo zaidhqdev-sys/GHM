@@ -77,3 +77,33 @@ The supplier and Business profile route wiring has been manually consolidated in
 PR #272 has been marked ready for review (not draft). GitHub Actions REST currently reports zero workflow runs for the exact PR head, while the Cloudflare Pages check is green. The CI workflow contains a pull_request trigger targeting main, so the absence of a run is not evidence of a pass or a failure. A new PR synchronize event is being requested with this handover update. Recheck the exact resulting head and its workflow runs before making any validation claim.
 
 The integration branch is currently 114 commits ahead and 15 commits behind main. This divergence must be reconciled and reviewed before merge; do not merge based only on the individual feature PR results.
+
+## Main-branch reconciliation — 2026-11-11
+
+The integration now retains the latest main-branch Actor Gateway foundation:
+- Registration identity read and write endpoints remain in the gateway process.
+- Resource API registration identity writes are routed through HttpBusinessRegistrationIdentityGatewayClient when GHM_ACTOR_GATEWAY_URL is configured.
+- The current main token verifier and ES256 key loader are retained; the verifier accepts tokens with absent iat only when the expiry remains bounded by the 15-minute token horizon and clock skew.
+- The gateway process wires registration identity, capability governance, supplier classification and Business profile readers.
+
+CI has been extended to run on pushes to this integration branch and now includes the main actor-gateway-principal qualification as well as capability, supplier and profile qualification. The package test command is the union of main's registration gateway tests and the three feature test groups.
+
+## Business profile compatibility correction
+
+The 20261109100000 presentation migration replaced the profile update function and dropped compatibility for legacy category/isSupplier fields and snake_case/camelCase aliases. The profile qualification script exposed this. A later forward-only migration, 20261110265000_reconcile_business_profile_legacy_contract.sql, restores the live profile contract after the presentation migration and before 20261110270000 gateway cutover. Disposable PostgreSQL qualification now verifies legacy fields, alias normalization/conflict rejection, direct runtime denial and gateway-only update success.
+
+## Validation checkpoint
+
+Exact integration head before the main-base reconciliation passed CI run #42917315263:
+- TypeScript build, full unit/integration test suite and web-quality.
+- Full disposable migration application.
+- Capability catalogue governance authorization and runtime-denial qualification.
+- Supplier classification runtime-denial and gateway-positive qualification.
+- Business profile compatibility, runtime-denial and gateway-positive qualification.
+- Runtime boundary verification and migration audit.
+
+Because main's registration gateway changes and actor-gateway-principal qualification have now been integrated, run full CI again on the merge commit's exact head before approving PR #272. The previous green run does not qualify the later merged head.
+
+## Current release gate
+
+PR #272 is ready for review but not approved to merge until the latest exact-head CI passes and the merge-base reconciliation is complete. Capability's original three SECURITY DEFINER functions still grant EXECUTE to ghm_runtime; the capability cutover remains blocked until gateway deployment/configuration and route verification. No production migration, grant/role change, service/environment change, deployment, data mutation or catalogue activation has occurred.
