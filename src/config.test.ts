@@ -85,17 +85,14 @@ test('legacy TRUST_PROXY=true is narrowed to one trusted hop', () => {
 });
 
 
-test('actor gateway origin is optional and accepts HTTPS origins', () => {
-  const result = loadConfig({ ...baseEnv, GHM_ACTOR_GATEWAY_URL: 'https://gateway.example.test' });
-  assert.equal(result.status, 0, result.stderr);
-  const loaded = JSON.parse(result.stdout.trim());
-  assert.equal(loaded.actorGatewayUrl, 'https://gateway.example.test');
-});
+test('actor gateway origin accepts HTTPS and rejects insecure remote URLs', () => {
+  const valid = loadConfig({ ...baseEnv, GHM_ACTOR_GATEWAY_URL: 'https://actor-gateway.example.test' });
+  assert.equal(valid.status, 0, valid.stderr);
+  assert.equal(JSON.parse(valid.stdout.trim()).actorGatewayUrl, 'https://actor-gateway.example.test');
 
-test('actor gateway origin rejects insecure non-local HTTP and URL paths', () => {
-  for (const value of ['http://gateway.example.test', 'https://gateway.example.test/path', 'not-a-url']) {
-    const result = loadConfig({ ...baseEnv, GHM_ACTOR_GATEWAY_URL: value });
-    assert.notEqual(result.status, 0, `expected GHM_ACTOR_GATEWAY_URL=${value} to fail`);
-    assert.match(result.stderr + result.stdout, /GHM_ACTOR_GATEWAY_URL/);
+  for (const value of ['http://actor-gateway.example.test', 'https://actor-gateway.example.test/path', 'https://actor-gateway.example.test?x=1']) {
+    const invalid = loadConfig({ ...baseEnv, GHM_ACTOR_GATEWAY_URL: value });
+    assert.notEqual(invalid.status, 0, `expected GHM_ACTOR_GATEWAY_URL=${value} to fail`);
+    assert.match(invalid.stderr + invalid.stdout, /GHM_ACTOR_GATEWAY_URL/);
   }
 });

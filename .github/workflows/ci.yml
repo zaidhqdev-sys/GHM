@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - integration/capability-gateway-qualification-20261110
   pull_request:
     branches:
       - main
@@ -35,8 +36,8 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgres://ghm_runtime:runtime-test-password@localhost:5432/ghm_disposable_test
       GHM_RUNTIME_DATABASE_URL: postgres://ghm_runtime:runtime-test-password@localhost:5432/ghm_disposable_test
+      GHM_ACTOR_GATEWAY_DATABASE_URL: postgres://ghm_actor_gateway:actor-gateway-test-password@localhost:5432/ghm_disposable_test
       GHM_PAYMENT_PROVIDER_DATABASE_URL: postgres://ghm_payment_provider:provider-test-password@localhost:5432/ghm_disposable_test
-      GHM_ACTOR_GATEWAY_DATABASE_URL: postgres://ghm_actor_gateway:gateway-test-password@localhost:5432/ghm_disposable_test
       GHM_MIGRATOR_DATABASE_URL: postgres://ghm_migrator:migrator-test-password@localhost:5432/ghm_disposable_test
       GHM_MIGRATION_DATABASE_NAME: ghm_disposable_test
       GHM_MIGRATION_DATABASE_HOST: localhost
@@ -72,8 +73,8 @@ jobs:
           CREATE ROLE ghm_migrator LOGIN NOINHERIT PASSWORD 'migrator-test-password';
           GRANT ghm_schema_owner TO ghm_migrator;
           CREATE ROLE ghm_runtime LOGIN NOINHERIT PASSWORD 'runtime-test-password';
+          CREATE ROLE ghm_actor_gateway LOGIN NOINHERIT PASSWORD 'actor-gateway-test-password';
           CREATE ROLE ghm_payment_provider LOGIN NOINHERIT PASSWORD 'provider-test-password';
-          CREATE ROLE ghm_actor_gateway LOGIN NOINHERIT PASSWORD 'gateway-test-password';
           GRANT CONNECT ON DATABASE ghm_disposable_test TO ghm_migrator, ghm_runtime, ghm_payment_provider, ghm_actor_gateway;
           GRANT CREATE ON DATABASE ghm_disposable_test TO ghm_schema_owner;
           GRANT USAGE, CREATE ON SCHEMA public TO ghm_schema_owner;
@@ -81,6 +82,15 @@ jobs:
 
       - name: Check storage qualification script syntax
         run: node --check scripts/qualify-storage-persistence.mjs
+
+      - name: Check Business profile qualification script syntax
+        run: node --check scripts/qualify-business-profile-contract-postgres.mjs
+
+      - name: Check supplier classification qualification script syntax
+        run: node --check scripts/qualify-business-supplier-classification-postgres.mjs
+
+      - name: Check capability governance qualification script syntax
+        run: node --check scripts/qualify-capability-catalogue-governance.mjs
 
       - name: Build
         run: npm run build
@@ -128,6 +138,15 @@ jobs:
 
       - name: Qualify Business Capability lifecycle and two-session assertion replacement on disposable PostgreSQL
         run: npm run qualify:business-capability-lifecycle-runtime
+
+      - name: Qualify system-admin Capability catalogue governance on disposable PostgreSQL
+        run: npm run qualify:capability-catalogue-governance
+
+      - name: Qualify GHM supplier classification and membership authorization on disposable PostgreSQL
+        run: npm run qualify:business-supplier-classification
+
+      - name: Qualify Business profile gateway and compatibility contract on disposable PostgreSQL
+        run: npm run qualify:business-profile-contract
 
       - name: Qualify commercial payment settlement identities against disposable PostgreSQL
         run: npm run build && node scripts/qualify-commercial-payment-result-runtime.mjs

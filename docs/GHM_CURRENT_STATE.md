@@ -358,3 +358,15 @@ PR #266 qualification correction: follow-up logs pinpointed the ambiguity inside
 - Exact-head CI passed quality, web-quality and Cloudflare Pages. Quality included build, full test suite, full disposable migration chain, gateway principal qualification, positive/negative gateway write/read tests, migration audit and runtime boundary verification.
 - No production URL, Render gateway service, credentials, role/grant cutover or deployment changed. The legacy runtime write grant remains until gateway deployment and end-to-end verification are separately completed.
 - Next: provision isolated gateway service only after dedicated gateway DB credentials and public ES256 verification keys are securely available; deploy gateway before setting resource API URL; verify end-to-end GET/PUT and only then plan legacy grant revocation separately. Continue actor-bound migration for other RPCs.
+
+## Unified Actor Gateway security integration — 2026-11-11
+
+Draft integration PR #272 consolidates the capability governance stack (#250/#268/#269), supplier-classification stack (#243/#270), and Business profile stack (#237/#271). It now preserves the latest main-branch Actor Gateway foundation, including registration identity read/write and HTTP routing through the gateway client, while wiring capability governance, supplier classification and Business profile readers into the same gateway process.
+
+The migration chain includes the dedicated gateway principal and identity/registration wrappers, capability governance wrappers, supplier-classification cutover, Business profile compatibility reconciliation at 20261110265000, and Business profile gateway cutover at 20261110270000. The compatibility reconciliation is deliberately ordered after 20261109100000 because that earlier presentation migration replaced the legacy profile function and dropped category/supplier/alias compatibility.
+
+The combined branch's previous exact-head CI run #42917315263 passed build, all migrations, full tests, capability/supplier/profile PostgreSQL authorization qualifications, runtime boundary verification, and web quality. The latest main-base reconciliation has additional changes and requires a fresh exact-head CI run before merge.
+
+Capability governance remains staged: its original three SECURITY DEFINER RPCs still grant EXECUTE to ghm_runtime. Do not revoke those grants until the Actor Gateway is deployed/configured and capability routes are verified. A separate capability cutover migration with direct runtime-denial tests remains required.
+
+No production migrations, grant/role changes, Render service/environment changes, deployments, data mutations or catalogue activation occurred. PayFast remains paused; legal-document work remains parked. See [HANDOVER_2026-11-10_ACTOR_GATEWAY_INTEGRATION.md](HANDOVER_2026-11-10_ACTOR_GATEWAY_INTEGRATION.md).

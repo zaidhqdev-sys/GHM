@@ -16,6 +16,8 @@ import { ProjectServiceImpl } from '../resources/project/service';
 import { CreateProjectInput, ProjectService, UpdateProjectInput } from '../resources/project/contracts';
 import { isRegisteredOperation, ResourceOperation } from '../resources/registry';
 import { config } from '../config';
+import { HttpSupplierClassificationGatewayClient, SupplierClassificationGatewayError, type SupplierClassificationGatewayClient } from './supplier-classification-gateway-client';
+import { HttpBusinessProfileGatewayClient, BusinessProfileGatewayError, type BusinessProfileGatewayClient } from './business-profile-gateway-client';
 import { PostgresPublicProjectRepository } from '../resources/project/public-repository';
 import { PublicProjectServiceImpl } from '../resources/project/public-service';
 import { PublicProjectService } from '../resources/project/public-contracts';
@@ -59,7 +61,9 @@ import { registerRelationshipsOutcomesRoutes } from './relationships-outcomes-ro
 import { registerBusinessCapabilityRoutes } from './business-capability-router';
 import { PgCapabilityRepository } from '../resources/capability/repository';
 import { CapabilityServiceImpl } from '../resources/capability/service';
+import type { CapabilityService } from '../resources/capability/contracts';
 import { registerCapabilityCatalogueRoutes } from './capability-catalogue-router';
+import { HttpCapabilityGovernanceGatewayClient } from './capability-governance-gateway-client';
 import { PostgresBusinessCapabilityEvidenceRepository } from '../resources/business-capability-evidence/repository';
 import { BusinessCapabilityEvidenceServiceImpl } from '../resources/business-capability-evidence/service';
 import type { BusinessCapabilityEvidenceService } from '../resources/business-capability-evidence/contracts';
@@ -141,9 +145,9 @@ export interface AppDependencies {
   readonly onboardingService?: OnboardingProgressService;
   readonly relationshipsOutcomesService?: RelationshipsOutcomesService;
   readonly businessCapabilityService?: BusinessCapabilityService;
+  readonly capabilityService?: CapabilityService;
   readonly businessCapabilityEvidenceService?: BusinessCapabilityEvidenceService;
   readonly businessRegistrationIdentityService?: BusinessRegistrationIdentityService;
-  readonly businessRegistrationIdentityGatewayClient?: BusinessRegistrationIdentityGatewayClient;
   readonly directoryReviewService?: DirectoryReviewService;
   readonly trustScoreService?: TrustScoreService;
   readonly supportRequestService?: SupportRequestService;
@@ -165,6 +169,9 @@ export interface AppDependencies {
   readonly quoteFlowMigrationResetRecoveryService?: QuoteFlowMigrationResetRecoveryService;
   readonly quoteFlowMigrationResetCompletionService?: QuoteFlowMigrationResetCompletionService;
   readonly resourceAuthMiddleware?: import('express').RequestHandler;
+  readonly businessRegistrationIdentityGatewayClient?: BusinessRegistrationIdentityGatewayClient;
+  readonly supplierClassificationGatewayClient?: SupplierClassificationGatewayClient;
+  readonly businessProfileGatewayClient?: BusinessProfileGatewayClient;
   readonly connectService?: Omit<ConnectServiceHttpDependencies, 'savedBusinesses'>;
 }
 
@@ -208,7 +215,7 @@ const parseCreateBusinessInput = (body: unknown): { name: string } | null => {
 const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   const input = body as Record<string, unknown>;
-  const allowed = new Set(['name', 'slug', 'description', 'phone', 'email', 'province', 'city', 'physicalAddress', 'latitude', 'longitude', 'whatsapp', 'website', 'avatarLetter', 'avatarColor', 'yearsInBusiness']);
+  const allowed = new Set(['name', 'slug', 'description', 'phone', 'email', 'province', 'city', 'physicalAddress', 'latitude', 'longitude', 'whatsapp', 'website', 'avatarLetter', 'avatarColor', 'yearsInBusiness', 'isSupplier']);
   const keys = Object.keys(input);
   if (keys.length === 0 || keys.some((key) => !allowed.has(key))) return null;
   if (Object.hasOwn(input, 'name') && (typeof input.name !== 'string' || !input.name.trim())) return null;
@@ -225,6 +232,7 @@ const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | n
   if (Object.hasOwn(input, 'avatarLetter') && input.avatarLetter !== null && (typeof input.avatarLetter !== 'string' || input.avatarLetter.trim().length > 3)) return null;
   if (Object.hasOwn(input, 'avatarColor') && input.avatarColor !== null && (typeof input.avatarColor !== 'string' || input.avatarColor.trim().length > 32)) return null;
   if (Object.hasOwn(input, 'yearsInBusiness') && (typeof input.yearsInBusiness !== 'number' || !Number.isInteger(input.yearsInBusiness) || input.yearsInBusiness < 0 || input.yearsInBusiness > 100)) return null;
+  if (Object.hasOwn(input, 'isSupplier') && typeof input.isSupplier !== 'boolean') return null;
   if (Object.hasOwn(input, 'latitude') !== Object.hasOwn(input, 'longitude')) return null;
   return {
     ...(Object.hasOwn(input, 'name') ? { name: input.name as string } : {}),
@@ -242,6 +250,7 @@ const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | n
     ...(Object.hasOwn(input, 'avatarLetter') ? { avatarLetter: input.avatarLetter as string | null } : {}),
     ...(Object.hasOwn(input, 'avatarColor') ? { avatarColor: input.avatarColor as string | null } : {}),
     ...(Object.hasOwn(input, 'yearsInBusiness') ? { yearsInBusiness: input.yearsInBusiness as number } : {}),
+    ...(Object.hasOwn(input, 'isSupplier') ? { isSupplier: input.isSupplier as boolean } : {}),
   };
 };
 
@@ -378,6 +387,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const app = express();
   const resourceAuthMiddleware = dependencies.resourceAuthMiddleware ?? requireAuth;
   const service = dependencies.businessIdentityService ?? new BusinessIdentityServiceImpl(new PostgresBusinessIdentityRepository());
+  const supplierClassificationGatewayClient = dependencies.supplierClassificationGatewayClient ?? (config.actorGatewayUrl ? new HttpSupplierClassificationGatewayClient(config.actorGatewayUrl) : undefined);
+  const businessProfileGatewayClient = dependencies.businessProfileGatewayClient ?? (config.actorGatewayUrl ? new HttpBusinessProfileGatewayClient(config.actorGatewayUrl) : undefined);
   const publicBusinessService = dependencies.publicBusinessService ?? new PublicBusinessServiceImpl(new PostgresPublicBusinessRepository());
   const businessHoursService =
     dependencies.businessHoursService
@@ -403,6 +414,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const businessCapabilityService =
     dependencies.businessCapabilityService ??
     new BusinessCapabilityServiceImpl(new PostgresBusinessCapabilityRepository());
+  const capabilityService = dependencies.capabilityService ?? new CapabilityServiceImpl(new PgCapabilityRepository());
+  const capabilityGovernanceGatewayClient = config.actorGatewayUrl ? new HttpCapabilityGovernanceGatewayClient(config.actorGatewayUrl) : undefined;
   const businessCapabilityEvidenceService =
     dependencies.businessCapabilityEvidenceService ??
     new BusinessCapabilityEvidenceServiceImpl(new PostgresBusinessCapabilityEvidenceRepository());
@@ -876,9 +889,54 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         res.status(400).json({ error: 'invalid_request' });
         return;
       }
-      const business = await service.updateBusiness(context, businessId, input);
+      if (input.isSupplier !== undefined) {
+        if (Object.keys(input).length !== 1) {
+          res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+        if (!supplierClassificationGatewayClient) {
+          res.status(503).json({ error: 'service_unavailable' });
+          return;
+        }
+        const authorization = req.header('authorization');
+        if (!authorization?.startsWith('Bearer ') || !authorization.slice(7).trim()) {
+          res.status(401).json({ error: 'unauthorized' });
+          return;
+        }
+        await supplierClassificationGatewayClient.update(authorization.slice(7).trim(), businessId, input.isSupplier);
+        const business = await service.getManagedBusiness(context, businessId);
+        if (!business) {
+          res.status(404).json({ error: 'not_found' });
+          return;
+        }
+        res.status(200).json({ business });
+        return;
+      }
+      if (!businessProfileGatewayClient) {
+        res.status(503).json({ error: 'service_unavailable' });
+        return;
+      }
+      const profileAuthorization = req.header('authorization');
+      if (!profileAuthorization?.startsWith('Bearer ') || !profileAuthorization.slice(7).trim()) {
+        res.status(401).json({ error: 'unauthorized' });
+        return;
+      }
+      await businessProfileGatewayClient.update(profileAuthorization.slice(7).trim(), businessId, input as unknown as Record<string, unknown>);
+      const business = await service.getManagedBusiness(context, businessId);
+      if (!business) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
       res.status(200).json({ business });
     } catch (error) {
+      if (error instanceof SupplierClassificationGatewayError || error instanceof BusinessProfileGatewayError) {
+        if (error.status === 401 || error.status === 403) { res.status(403).json({ error: 'forbidden' }); return; }
+        if (error.status === 400) { res.status(400).json({ error: 'invalid_request' }); return; }
+        if (error.status === 404) { res.status(404).json({ error: 'not_found' }); return; }
+        if (error.status === 409) { res.status(409).json({ error: 'conflict' }); return; }
+        res.status(503).json({ error: 'service_unavailable' });
+        return;
+      }
       handleError(error, res);
     }
   });
@@ -944,7 +1002,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerOnboardingRoutes(app, onboardingService, resourceAuthMiddleware);
   registerRelationshipsOutcomesRoutes(app, relationshipsOutcomesService, resourceAuthMiddleware);
   registerBusinessCapabilityRoutes(app, businessCapabilityService, resourceAuthMiddleware);
-  registerCapabilityCatalogueRoutes(app, new CapabilityServiceImpl(new PgCapabilityRepository()), resourceAuthMiddleware);
+  registerCapabilityCatalogueRoutes(app, capabilityService, resourceAuthMiddleware, capabilityGovernanceGatewayClient);
   registerBusinessCapabilityEvidenceRoutes(app, businessCapabilityEvidenceService, resourceAuthMiddleware);
   const businessRegistrationIdentityGatewayClient = dependencies.businessRegistrationIdentityGatewayClient
     ?? (config.actorGatewayUrl ? new HttpBusinessRegistrationIdentityGatewayClient(config.actorGatewayUrl) : undefined);
