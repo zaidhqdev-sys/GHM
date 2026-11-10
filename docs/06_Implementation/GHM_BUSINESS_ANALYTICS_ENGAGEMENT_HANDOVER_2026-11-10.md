@@ -72,3 +72,10 @@ No production migration, provider activation, environment change, deployment, me
 - Wired as `npm run qualify:business-analytics-engagement` immediately after migration application in CI.
 - This is a disposable PostgreSQL qualification only. No production DB has been accessed or mutated.
 - Latest branch commit at this documentation update: workflow also runs on feature-branch pushes, so future exact-head validation does not depend on a stacked-PR target filter.
+
+
+## Final test harness correction
+
+- Corrected the engagement repository rate-limit unit-test fake to acknowledge the advisory-lock query before returning the simulated account event count.
+- Latest code/test commit before this handover update: `db923f17d8e155e571c8c94c8c2d3baef386fbe1`.
+- Exact-head GHM CI remains the qualification authority; no pass is claimed from mocked unit tests alone.
