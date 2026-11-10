@@ -841,3 +841,19 @@ A further source review on current GHM main identified a critical trust-chain pr
 - Canonical design PR #251 was advanced with this finding: branch `docs/ghm-database-actor-boundary-proposal-20261110`, new commit `396c1e7a2809e4c00ec716b216ed68c9ba43a3d1`. Refresh PR #251 metadata and CI; prior proposal head `9a950e9cd0eab0bf19c042c050bfe34b98dfde86` passed CI #2367 (run ID `42764071752`). The new commit is documentation-only and its CI must be checked independently.
 - Implementation remains unapproved. No production secret, DB role/grant, extension, database, migration, deployment, payment, or commercial setting was changed.
 - Resume: read this finding and the latest PR #251 proposal before any gateway implementation. Update the threat model to include compromise of the token issuer/API signing path; do not repeat the incomplete "gateway validates bearer token" recommendation without issuer isolation.
+
+
+## 2026-11-10 05:56 UTC — signed session binding and issuer flow coverage
+
+Follow-up review refined the previous token-revocation finding. Current-main GHM source confirms a persisted session already exists and the auth response already returns `sessionId`; `AuthPersistence.validateSession(sessionId)` returns session status, account status, expiry and `isUsable`. But `AccessJwtService.sign(accountId)` currently signs only `sub`, `iss`, `aud`, `iat`, `exp`; the session ID is not in the JWT. Thus the gateway cannot currently bind a valid access JWT to the revocable persisted session.
+
+The #251 proposal is advanced at commit `eaa646ab265afc599b431c9cba2bfd77efb33b3c` to evaluate:
+- Add a signed `sid` sourced only from the issuer's own successful create/refresh-rotation transaction.
+- Gateway validates that `sid` against the authoritative session and account state on every protected operation, confirms JWT subject matches session account, and fails closed if validation is unavailable. Avoid cache or replica lag unless a strict freshness bound is approved and tested.
+- Gateway's session permission must be validate/read-only; no password or refresh-token mutation.
+- Existing session operations already cover refresh rotation/reuse detection, logout, password recovery and account disablement. Issuer isolation must own/mediate all session create/rotate/revoke operations, not merely relocate the signing key.
+- Issuer flow coverage includes native register/login/refresh/logout, browser-cookie register/login/refresh/logout, password recovery/reset, QuoteFlow migration-reset completion, and external identity/bootstrap flows if they issue sessions. Preserve existing HttpOnly cookie, origin, CSRF and response contracts.
+- `jti` may help token audit/revocation but does not by itself prevent bearer replay. Idempotency for writes is a separate concern.
+- This is an architecture proposal; exact DB grants and semantics of `ghm.auth_validate_session` have not yet been reviewed. No implementation is authorized.
+
+Latest proposal CI must be refreshed. Prior exact proposal head `396c1e7a2809e4c00ec716b216ed68c9ba43a3d1` passed CI #2370 (run ID `42765005024`); that result does not validate commit `eaa646ab265afc599b431c9cba2bfd77efb33b3c`.
