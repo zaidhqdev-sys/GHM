@@ -82,7 +82,7 @@ test('directory service normalizes supported location and ordering filters', asy
   let received: unknown;
   const service = new DirectoryServiceImpl({ search: async query => { received = query; return { items: [], page: query.page, pageSize: query.pageSize, total: 0 }; } });
   await service.search({ province: ' KwaZulu-Natal ', city: ' Durban ', latitude: -29.85, longitude: 31.02, radiusKm: 25, businessType: undefined, sort: 'distance', page: 1, pageSize: 20 });
-  assert.deepEqual(received, { q: undefined, category: undefined, province: 'KwaZulu-Natal', city: 'Durban', latitude: -29.85, longitude: 31.02, radiusKm: 25, sort: 'distance', page: 1, pageSize: 20 });
+  assert.deepEqual(received, { q: undefined, category: undefined, province: 'KwaZulu-Natal', city: 'Durban', latitude: -29.85, longitude: 31.02, radiusKm: 25, businessType: undefined, sort: 'distance', page: 1, pageSize: 20 });
 });
 
 
