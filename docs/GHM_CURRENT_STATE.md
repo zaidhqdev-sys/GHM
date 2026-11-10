@@ -276,3 +276,10 @@ PR [#222](https://github.com/zaidhqdev-sys/GHM/pull/222) is open from `integrati
 - Do not apply migration, alter grants, activate PayFast callbacks or deploy until the role graph is reviewed/remediated, the complete forensic migration audit passes under the approved migration identity, and owner authorization is recorded.
 - Integrated detailed record: [HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md](HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md), Sections 18–20.
 - The previous documentation PR #234 is stale relative to the new mainline. A fresh documentation-only branch `docs/handover-2026-11-08-mainline-reconciled` has been cut from the current main commit; do not merge PR #234 as-is.
+
+
+## Core release-readiness handover — 2026-11-10
+
+The active engineering handover is [HANDOVER_2026-11-10_CORE_RELEASE_READINESS.md](HANDOVER_2026-11-10_CORE_RELEASE_READINESS.md). It records the verified main/runtime baseline, founder scope decisions, the shared token-issuer/database actor-authentication prerequisite, affected PR gates, merge/deployment policy, and the next non-deferred work sequence.
+
+Owner scope decisions recorded 2026-11-10: pause all PayFast work until working sandbox access is restored; defer approved legal-document/QuoteFlow legal-acceptance work until core systems are running smoothly and the owner resumes it. Existing implementation and historical evidence are preserved. Neither item is a current workstream or release prerequisite.
