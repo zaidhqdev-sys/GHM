@@ -6,11 +6,26 @@ export interface GatewayBusinessRegistrationIdentity {
   registrationNumber: string | null;
   legalName: string | null;
   updatedAt: Date | null;
+}
 
-  async updateRegistrationIdentity(
-    accountId: number,
-    input: { businessId: number; registrationStatus: 'registered' | 'unregistered' | null; registrationNumber: string | null; legalName: string | null },
-  ): Promise<GatewayBusinessRegistrationIdentity> {
+export interface GatewayBusinessRegistrationIdentityUpdate {
+  businessId: number;
+  registrationStatus: 'registered' | 'unregistered' | null;
+  registrationNumber: string | null;
+  legalName: string | null;
+}
+
+export interface BusinessRegistrationIdentityReader {
+  readRegistrationIdentity(accountId: number, businessId: number): Promise<GatewayBusinessRegistrationIdentity>;
+  updateRegistrationIdentity(accountId: number, input: GatewayBusinessRegistrationIdentityUpdate): Promise<GatewayBusinessRegistrationIdentity>;
+}
+
+type ConnectablePool = Pick<Pool, 'connect'>;
+
+export class PostgresBusinessRegistrationIdentityReader implements BusinessRegistrationIdentityReader {
+  constructor(private readonly pool: ConnectablePool) {}
+
+  async readRegistrationIdentity(accountId: number, businessId: number): Promise<GatewayBusinessRegistrationIdentity> {
     const client: PoolClient = await this.pool.connect();
     try {
       await client.query('BEGIN');
@@ -21,8 +36,8 @@ export interface GatewayBusinessRegistrationIdentity {
         legal_name: string | null;
         updated_at: Date | null;
       }>(
-        'SELECT * FROM ghm.gateway_update_business_registration_identity($1, $2, $3, $4, $5)',
-        [accountId, input.businessId, input.registrationStatus, input.registrationNumber, input.legalName],
+        'SELECT * FROM ghm.gateway_read_business_registration_identity($1, $2)',
+        [accountId, businessId],
       );
       if (result.rowCount !== 1) {
         throw Object.assign(new Error('Business registration identity is unavailable'), { code: '42501' });
@@ -44,19 +59,7 @@ export interface GatewayBusinessRegistrationIdentity {
     }
   }
 
-}
-
-export interface BusinessRegistrationIdentityReader {
-  readRegistrationIdentity(accountId: number, businessId: number): Promise<GatewayBusinessRegistrationIdentity>;
-  updateRegistrationIdentity(accountId: number, input: { businessId: number; registrationStatus: 'registered' | 'unregistered' | null; registrationNumber: string | null; legalName: string | null }): Promise<GatewayBusinessRegistrationIdentity>;
-}
-
-type ConnectablePool = Pick<Pool, 'connect'>;
-
-export class PostgresBusinessRegistrationIdentityReader implements BusinessRegistrationIdentityReader {
-  constructor(private readonly pool: ConnectablePool) {}
-
-  async readRegistrationIdentity(accountId: number, businessId: number): Promise<GatewayBusinessRegistrationIdentity> {
+  async updateRegistrationIdentity(accountId: number, input: GatewayBusinessRegistrationIdentityUpdate): Promise<GatewayBusinessRegistrationIdentity> {
     const client: PoolClient = await this.pool.connect();
     try {
       await client.query('BEGIN');
@@ -67,8 +70,8 @@ export class PostgresBusinessRegistrationIdentityReader implements BusinessRegis
         legal_name: string | null;
         updated_at: Date | null;
       }>(
-        'SELECT * FROM ghm.gateway_read_business_registration_identity($1, $2)',
-        [accountId, businessId],
+        'SELECT * FROM ghm.gateway_update_business_registration_identity($1, $2, $3, $4, $5)',
+        [accountId, input.businessId, input.registrationStatus, input.registrationNumber, input.legalName],
       );
       if (result.rowCount !== 1) {
         throw Object.assign(new Error('Business registration identity is unavailable'), { code: '42501' });
