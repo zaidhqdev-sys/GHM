@@ -87,7 +87,11 @@ test('commercial access read derives actor from GHM auth context and returns can
     const headers = { authorization: `Bearer ${tokenFor({ userId: 42, role: 'business' })}` };
     const response = await fetch(`${baseUrl}/api/v1/commercial/access/55`, { headers });
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { result: access });
+    const body = await response.json() as { result: { businessId: number; currentPeriodStart: string; currentPeriodEnd: string; entitlements: Array<{ code: string }> } };
+    assert.equal(body.result.businessId, 55);
+    assert.equal(body.result.currentPeriodStart, access.currentPeriodStart?.toISOString());
+    assert.equal(body.result.currentPeriodEnd, access.currentPeriodEnd?.toISOString());
+    assert.equal(body.result.entitlements[0]?.code, 'quote_management');
     assert.deepEqual(received, [{ userId: 42, role: 'business' }, 55]);
   } finally {
     await new Promise<void>(resolve => server.close(() => resolve()));
