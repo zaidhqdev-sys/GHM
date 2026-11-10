@@ -2,17 +2,17 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import test from 'node:test';
 import { createApp } from './app';
-import type { SupplierClassificationGatewayClient } from './supplier-classification-gateway-client';
-import type { BusinessProfileGatewayClient } from './business-profile-gateway-client';
 import { httpTestAuth, tokenFor } from './test-resource-auth';
 import { AuthContext } from '../auth/authorization';
 import { Project, ProjectService } from '../resources/project/contracts';
 import { Opportunity, OpportunityService } from '../resources/opportunity/contracts';
 import { PublicProject, PublicProjectService } from '../resources/project/public-contracts';
-import { AccountIdentity, BusinessIdentity, BusinessIdentityService } from '../resources/business-identity/contracts';
+import { AccountIdentity, BusinessIdentityService } from '../resources/business-identity/contracts';
 import { PublicBusiness, PublicBusinessService } from '../resources/business-identity/public-contracts';
 import { DirectoryResult, DirectoryService } from '../resources/directory/contracts';
 import type { BusinessCategoryService } from '../resources/business-category/contracts';
+import type { SupplierClassificationGatewayClient } from './supplier-classification-gateway-client';
+import type { BusinessProfileGatewayClient } from './business-profile-gateway-client';
 import type { BusinessHoursService } from '../resources/business-hours/contracts';
 import type { BusinessCapabilityService } from '../resources/business-capability/contracts';
 
@@ -123,7 +123,7 @@ test('public directory route allows anonymous access and returns the directory r
   try {
     const response = await fetch(`${baseUrl}/api/v1/public/businesses?q=build&category=construction&page=1&pageSize=20`);
     assert.equal(response.status, 200);
-    assert.deepEqual(received, { q: 'build', category: 'construction', province: undefined, city: undefined, latitude: undefined, longitude: undefined, radiusKm: undefined, businessType: undefined, sort: undefined, page: 1, pageSize: 20 });
+    assert.deepEqual(received, { q: 'build', category: 'construction', province: undefined, city: undefined, latitude: undefined, longitude: undefined, radiusKm: undefined, sort: undefined, page: 1, pageSize: 20 });
     const body = await response.json() as DirectoryResult & { items: Array<PublicBusiness & { createdAt: string; updatedAt: string }> };
     assert.equal(body.items[0].id, 301);
     assert.equal(body.page, 1);
@@ -146,7 +146,7 @@ test('public directory route applies pagination defaults and ignores authenticat
       headers: { authorization: 'Bearer invalid-token' },
     });
     assert.equal(response.status, 200);
-    assert.deepEqual(received, { q: undefined, category: undefined, province: undefined, city: undefined, latitude: undefined, longitude: undefined, radiusKm: undefined, businessType: undefined, sort: undefined, page: 1, pageSize: 20 });
+    assert.deepEqual(received, { q: undefined, category: undefined, province: undefined, city: undefined, latitude: undefined, longitude: undefined, radiusKm: undefined, sort: undefined, page: 1, pageSize: 20 });
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
@@ -934,9 +934,9 @@ test('public directory route passes canonical location and geo filters without a
   };
   const { server, baseUrl } = await startDirectoryTestServer(directoryService);
   try {
-    const response = await fetch(`${baseUrl}/api/v1/public/businesses?province=KwaZulu-Natal&city=Durban&latitude=-29.85&longitude=31.02&radiusKm=25&businessType=suppliers&sort=distance`);
+    const response = await fetch(`${baseUrl}/api/v1/public/businesses?province=KwaZulu-Natal&city=Durban&latitude=-29.85&longitude=31.02&radiusKm=25&sort=distance`);
     assert.equal(response.status, 200);
-    assert.deepEqual(received, { q: undefined, category: undefined, province: 'KwaZulu-Natal', city: 'Durban', latitude: -29.85, longitude: 31.02, radiusKm: 25, businessType: 'suppliers', sort: 'distance', page: 1, pageSize: 20 });
+    assert.deepEqual(received, { q: undefined, category: undefined, province: 'KwaZulu-Natal', city: 'Durban', latitude: -29.85, longitude: 31.02, radiusKm: 25, sort: 'distance', page: 1, pageSize: 20 });
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 });
 
@@ -1203,7 +1203,6 @@ test('public Project marketplace list rejects invalid pagination', async () => {
     await new Promise<void>(resolve => server.close(() => resolve()));
   }
 });
-
 
 test('managed Business supplier classification is routed through the authenticated actor gateway', async () => {
   let received: unknown;
