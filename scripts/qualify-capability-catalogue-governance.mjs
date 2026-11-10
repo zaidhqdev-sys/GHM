@@ -138,6 +138,36 @@ try {
   await service.transition(admin, child.id, 'active');
   console.log('DRAFT TO ACTIVE LIFECYCLE PASS');
 
+  await expectReject(async () => {
+    const client = await cleanupPool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SET LOCAL ROLE ghm_schema_owner');
+      await client.query('UPDATE ghm.capability SET parent_id = $1 WHERE id = $2', [child.id, parent.id]);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally { client.release(); }
+  }, 'DATABASE DIRECT-SQL HIERARCHY CYCLE DENIAL PASS', 'Capability hierarchy cycle detected');
+
+  await expectReject(async () => {
+    const client = await cleanupPool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SET LOCAL ROLE ghm_schema_owner');
+      await client.query(
+        'INSERT INTO ghm.capability (id,name,slug,lifecycle_status,taxonomy_version,source_authority) VALUES ($1,$2,$3,$4,$5,$6)',
+        [randomUUID(), `${marker} duplicate`, `${marker}-replacement`, 'draft', 1, 'qualification'],
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally { client.release(); }
+  }, 'DATABASE DIRECT-SQL DUPLICATE SLUG DENIAL PASS', 'duplicate key');
+
+
   await expectReject(
     () => service.transition(admin, parent.id, 'retired', replacement.id),
     'PARENT RETIREMENT CHILD GUARD PASS',
