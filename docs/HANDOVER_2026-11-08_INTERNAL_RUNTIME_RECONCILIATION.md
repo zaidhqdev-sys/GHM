@@ -663,3 +663,16 @@ Draft PR #271 addresses this by:
 - Extending disposable PostgreSQL qualification to verify runtime direct-RPC denial, gateway owner success and member denial.
 
 PR #271 is stacked on draft PR #237. Exact-head CI is pending. No production role provisioning, migration, grant change, service deployment, environment change or data mutation occurred. PayFast remains paused pending sandbox access; legal-document work remains parked.
+
+
+## Business profile Actor Gateway exact-head qualification — PASS (2026-11-10)
+
+PR #271 implementation head `eeae30c0a39fe9baa6d62a9c358708a732c5849c` passed workflow run #42908435391. TypeScript build, ordered disposable PostgreSQL migrations, Business profile SQL qualification, full test suite, commercial settlement identity qualification, migration audit policy tests, runtime-boundary verification and Cloudflare Pages all passed.
+
+The disposable profile qualification proves:
+- `ghm_runtime` cannot execute the original `ghm.update_business_profile` RPC, even when supplying a real active owner ID.
+- `ghm_runtime` cannot execute the gateway-only wrapper.
+- `ghm_actor_gateway` can update the owner fixture while preserving the existing camelCase/snake_case alias and legacy-column contract.
+- An ordinary member is denied by the gateway wrapper.
+
+This is disposable CI only. It does not authorize applying the cutover migration or provisioning/deploying the gateway in production. A handover-only commit follows this run, so final exact-head CI must be reconfirmed before merge consideration.
