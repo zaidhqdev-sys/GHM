@@ -326,3 +326,18 @@ A scheduled monthly audit identified that current main still resolves web Vite 6
 
 The earlier local password-reset attempt targeted the wrong server because `psql` defaulted to port 5432. Diagnostics establish PostgreSQL 17 listens on 5432 (PID 6696) and PostgreSQL 18, the intended qualification server, listens on 5433 (PID 32144). Both are running. The original PostgreSQL 18 HBA file is restored and SHA256-verified against its backup. Do not edit either HBA file until the next port-explicit test to `127.0.0.1:5433`. Runtime reconciliation remains isolated from scheduled audit PR #238. No production changes.
 
+
+
+## Business profile actor-boundary remediation — draft PR #271 (2026-11-10)
+
+A follow-up security review found that `ghm.update_business_profile(p_account_id, p_business_id, p_patch)` is a SECURITY DEFINER function executable by `ghm_runtime` and authorizes using a caller-supplied account ID. The current qualification's nonexistent-account denial case did not test impersonation of another active owner/admin.
+
+Draft PR #271 addresses this by:
+- Adding `ghm.gateway_update_business_profile`, guarded by `ghm.assert_actor_gateway`, and granting it only to `ghm_actor_gateway`.
+- Revoking PUBLIC and `ghm_runtime` execution on the original profile RPC.
+- Verifying the GHM ES256 access token in the Actor Gateway and deriving the actor ID only from the signed token subject.
+- Routing all Business profile PATCH writes through the gateway client. The old repository SQL path now fails closed; absent gateway configuration returns 503 rather than falling back.
+- Preserving the existing SQL validation and alias/legacy-column compatibility contract.
+- Extending disposable PostgreSQL qualification to verify runtime direct-RPC denial, gateway owner success and member denial.
+
+PR #271 is stacked on draft PR #237. Exact-head CI is pending. No production role provisioning, migration, grant change, service deployment, environment change or data mutation occurred. PayFast remains paused pending sandbox access; legal-document work remains parked.
