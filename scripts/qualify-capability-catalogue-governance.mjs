@@ -189,6 +189,20 @@ try {
   }
   console.log('DEPRECATE, REACTIVATE, RETIRE + REPLACEMENT PASS');
 
+  await expectReject(async () => {
+    const client = await cleanupPool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SET LOCAL ROLE ghm_schema_owner');
+      await client.query("UPDATE ghm.capability SET lifecycle_status = 'deprecated' WHERE id = $1", [replacement.id]);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally { client.release(); }
+  }, 'DATABASE DIRECT-SQL REPLACEMENT TARGET RETENTION PASS', 'cannot leave active state or change taxonomy version');
+
+
   await expectReject(
     () => service.transition(admin, parent.id, 'active'),
     'RETIRED CAPABILITY TERMINAL STATE PASS',
