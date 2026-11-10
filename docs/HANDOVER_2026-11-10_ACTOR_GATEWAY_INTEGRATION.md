@@ -107,3 +107,34 @@ Because main's registration gateway changes and actor-gateway-principal qualific
 ## Current release gate
 
 PR #272 is ready for review but not approved to merge until the latest exact-head CI passes and the merge-base reconciliation is complete. Capability's original three SECURITY DEFINER functions still grant EXECUTE to ghm_runtime; the capability cutover remains blocked until gateway deployment/configuration and route verification. No production migration, grant/role change, service/environment change, deployment, data mutation or catalogue activation has occurred.
+
+## Main-base reconciliation and exact-head qualification — 2026-11-11
+
+The integration branch was reconciled with current main using a two-parent merge commit:
+
+- Main parent: d1bd49cde73bb4ef428da1f75fcd27b2b285ddd8.
+- Integration parent: c0e35b5c98126ac00bb5c32f23934b90b3027da8.
+- Reconciled head: 30b65587b4d16d2487a934573197fcfea526673f.
+
+The reconciled tree preserves main's registration identity gateway GET/PUT endpoints and resource API client routing, while adding capability, supplier and Business profile gateway routes. The process wires all five readers. The current main token verifier and key loader are retained. The test script includes main registration gateway tests plus all feature gateway tests. CI also runs the dedicated actor-gateway-principal qualification.
+
+## Exact reconciled-head CI
+
+GitHub Actions PR run #42918791858 passed on exact head 30b65587b4d16d2487a934573197fcfea526673f:
+- Build and full test suite.
+- Full disposable PostgreSQL migration chain.
+- Isolated actor-gateway principal qualification.
+- Capability catalogue governance and runtime direct-denial qualification.
+- Supplier classification runtime direct-denial and gateway-positive qualification.
+- Business profile compatibility and runtime direct-denial/gateway-positive qualification.
+- Migration audit policy tests and runtime boundary verification.
+- Web-quality build, tests, dependency audit and security-sensitive toolchain checks.
+- Cloudflare Pages preview passed.
+
+The branch is 137 commits ahead and 0 behind main. GitHub reports PR #272 mergeable/clean. PR #272 is ready for review but remains unmerged. The CI result does not authorize production deployment, grant changes or feature PR merges.
+
+## Final remaining release blockers
+
+1. Capability's original three SECURITY DEFINER functions still grant EXECUTE to ghm_runtime. The gateway URL is optional for capability API routing. Do not revoke legacy grants until the gateway is deployed/configured and route verification has passed; then add a separately qualified capability cutover migration and direct runtime-denial tests.
+2. Supplier classification, Business profile and registration identity gateway paths still require controlled deployment and end-to-end verification before their legacy access is cut over.
+3. No production migration, role/grant change, Render service/environment change, deployment, data mutation or catalogue activation occurred. PayFast remains paused; legal-document work remains parked.
