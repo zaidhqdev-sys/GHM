@@ -91,3 +91,26 @@ This qualifies the PR code on disposable CI only. It does not qualify or authori
 - GHM CI run #2306 (ID `42733223787`) passed on the documentation-updated PR head `9bc39e4d9d15eb870da2b8101fe6c565f3ac0871`.
 - The full quality job passed again, including build, migration chain, supplier classification PostgreSQL qualification, full test suite, migration audit and runtime-boundary verification.
 - This confirms the handover update did not break the branch. PR remains draft and no production changes occurred.
+
+
+## Actor Gateway security remediation — 2026-11-10 (draft PR #270)
+
+The original supplier-classification SECURITY DEFINER RPC accepted `p_account_id` from its caller and granted EXECUTE to `ghm_runtime`. A caller using the shared runtime database login could supply another active owner/admin ID. Application-level membership checks did not close this direct-RPC spoofing path.
+
+The security branch adds the following remediation:
+- Bring the isolated Actor Gateway foundation and its database principal guard into this stacked branch.
+- Add `ghm.gateway_update_business_supplier_classification`, which calls `ghm.assert_actor_gateway` before invoking the existing membership-checked classification function.
+- Revoke PUBLIC and `ghm_runtime` execution on the legacy supplier-classification RPC; grant the new wrapper only to `ghm_actor_gateway`.
+- Add a gateway HTTP endpoint that verifies the GHM ES256 bearer token and derives the account ID only from its signed `sub`.
+- Add the resource API gateway client. The existing Business PATCH contract still accepts an `isSupplier`-only update, but it is forwarded through the gateway; mixed profile + supplier updates are rejected rather than partially applied.
+- Remove the direct supplier RPC call from the normal Business identity repository path. If gateway routing is not configured, supplier updates fail closed with 503; they do not fall back to the legacy SQL function.
+- Extend disposable PostgreSQL qualification to use distinct `ghm_runtime`, `ghm_migrator`, and `ghm_actor_gateway` credentials. It proves the runtime cannot execute either the legacy RPC or gateway-only wrapper, while the gateway role can update as an owner and cannot update as an ordinary member.
+- Add HTTP token-subject binding tests, client forwarding/failure tests, config-origin validation, and CI role provisioning.
+
+**Deployment/cutover ordering (not yet performed):**
+1. Provision the isolated `ghm_actor_gateway` login and deploy the Actor Gateway service with only its DB credential and ES256 public verification keys.
+2. Configure the resource API's `GHM_ACTOR_GATEWAY_URL` and deploy the API version that routes supplier updates through the gateway.
+3. Apply the gateway principal and supplier cutover migrations to the approved target only after the gateway and API are verified. The cutover migration revokes direct `ghm_runtime` access, so the old API code must not be left serving supplier writes.
+4. Verify gateway owner success, member denial, and direct `ghm_runtime` RPC denial against a production-like environment before any Connect cutover.
+
+No production role was provisioned, no production migration or grant change was applied, no gateway service or environment variable was created, and no deployment or Connect activation occurred. Exact-head CI for PR #270 is pending. Keep PR #243 and PR #270 draft/unmerged until the new qualification passes and the active-database compatibility review is complete.
