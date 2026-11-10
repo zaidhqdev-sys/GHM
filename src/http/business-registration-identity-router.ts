@@ -1,4 +1,5 @@
 import type { Express, Request, Response, RequestHandler } from 'express';
+import { BusinessRegistrationIdentityGatewayError, type BusinessRegistrationIdentityGatewayClient } from './business-registration-identity-gateway-client';
 import { canAccessResource, type AuthContext } from '../auth/authorization';
 import { requireAuth } from '../auth/http';
 import { isRegisteredOperation } from '../resources/registry';
@@ -81,6 +82,7 @@ export const registerBusinessRegistrationIdentityRoutes = (
   app: Express,
   service: BusinessRegistrationIdentityService,
   authMiddleware: RequestHandler = requireAuth,
+  gatewayClient?: BusinessRegistrationIdentityGatewayClient,
 ): void => {
   app.get(
     '/api/v1/businesses/:businessId/registration-identity',
@@ -95,9 +97,33 @@ export const registerBusinessRegistrationIdentityRoutes = (
           res.status(400).json({ error: 'invalid_request' });
           return;
         }
+        if (gatewayClient) {
+          const authorization = req.header('authorization');
+          if (!authorization?.startsWith('Bearer ') || !authorization.slice('Bearer '.length).trim()) {
+            res.status(401).json({ error: 'unauthorized' });
+            return;
+          }
+          const accessToken = authorization.slice('Bearer '.length).trim();
+          const registrationIdentity = await gatewayClient.readRegistrationIdentity(accessToken, businessId);
+          res.status(200).json({ registrationIdentity });
+          return;
+        }
         const registrationIdentity = await service.getRegistrationIdentity(context, businessId);
         res.status(200).json({ registrationIdentity });
       } catch (error) {
+        if (error instanceof BusinessRegistrationIdentityGatewayError) {
+          if (error.status === 401 || error.status === 403 || error.status === 404) {
+            res.status(404).json({ error: 'not_found' });
+            return;
+          }
+          res.status(503).json({ error: 'service_unavailable' });
+          return;
+        }
+        if (gatewayClient) {
+          console.error(JSON.stringify({ event: 'actor_gateway_request_failed', operation: 'business.registrationIdentity.read', error: { name: error instanceof Error ? error.name : 'UnknownError' } }));
+          res.status(503).json({ error: 'service_unavailable' });
+          return;
+        }
         handleError(error, res);
       }
     },
