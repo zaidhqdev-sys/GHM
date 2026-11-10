@@ -71,3 +71,9 @@ Keep #250, #268, #269, #270, #271 and #272 draft/unmerged until their own gates 
 
 ## Latest combined branch checkpoint
 The supplier and Business profile route wiring has been manually consolidated into the capability integration branch. The combined gateway app and server register all three feature readers; resource API writes route supplier classification and Business profile updates through their gateway clients; legacy profile repository writes fail closed. The exact combined-head CI run is still the authoritative validation gate.
+
+## CI trigger investigation — 2026-11-11
+
+PR #272 has been marked ready for review (not draft). GitHub Actions REST currently reports zero workflow runs for the exact PR head, while the Cloudflare Pages check is green. The CI workflow contains a pull_request trigger targeting main, so the absence of a run is not evidence of a pass or a failure. A new PR synchronize event is being requested with this handover update. Recheck the exact resulting head and its workflow runs before making any validation claim.
+
+The integration branch is currently 114 commits ahead and 15 commits behind main. This divergence must be reconciled and reviewed before merge; do not merge based only on the individual feature PR results.
