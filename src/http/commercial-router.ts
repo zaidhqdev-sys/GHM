@@ -36,6 +36,26 @@ export const registerCommercialRoutes = (
   service: CommercialService,
   resourceAuthMiddleware: RequestHandler,
 ): void => {
+  app.get('/api/v1/commercial/offer/:businessId', resourceAuthMiddleware, requireCommercialRead, async (req: Request, res: Response) => {
+    const businessId = positiveIntegerId(req.params.businessId);
+    const context = req.authContext as AuthContext | undefined;
+    const planCode = typeof req.query.planCode === 'string' ? req.query.planCode.trim() : '';
+    if (!businessId || !context || !/^[a-z][a-z0-9_]{2,49}$/.test(planCode) || Object.keys(req.query).some(key => key !== 'planCode')) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    try {
+      const offer = await service.getCommercialOffer(context, businessId, planCode);
+      if (!offer) {
+        res.status(404).json({ error: 'offer_not_found' });
+        return;
+      }
+      res.status(200).json({ result: offer });
+    } catch (error) {
+      sendError(error, res);
+    }
+  });
+
   app.get('/api/v1/commercial/access/:businessId', resourceAuthMiddleware, requireCommercialRead, async (req: Request, res: Response) => {
     const businessId = positiveIntegerId(req.params.businessId);
     const context = req.authContext as AuthContext | undefined;
