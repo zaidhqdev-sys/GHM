@@ -525,3 +525,260 @@ The role catalog also confirms that the intended migration role path exists stru
 - No callback/payment activation.
 - No Render deploy or auto-deploy change.
 - Keep the production migration gate BLOCKED until the role graph is reviewed/remediated, the full ledger audit passes under the intended migration identity, and explicit owner approval is recorded.
+
+
+## 21. Deployment decision and migration-runbook reconciliation — 2026-11-08 13:20 UTC
+
+### Does documentation merge `458f3d7` need to be deployed?
+
+**No. Do not deploy `458f3d7` to `GHM-Internal-Runtime`.**
+
+- `458f3d7019c5732b22316c906307a69fd5a34a66` is the documentation-only merge of PR #235.
+- It changes the handover and current-state documentation; it is not an application/runtime release.
+- The permanent handover is already present in GitHub `main`; deploying it is unnecessary to preserve the record.
+- Keep `GHM-Internal-Runtime` on its currently approved live deployment until a separately reviewed application release is selected and explicitly authorized. Keep Render auto-deploy disabled.
+- No deployment was triggered in response to the user's "proceed" instruction. This instruction did not authorize a runtime deployment; the question was whether the user needed to deploy the docs commit, and the correct answer is no.
+
+### Important distinction discovered in the PostgreSQL role-separation runbook
+
+Reviewed current `main` versions of:
+- `docs/architecture/POSTGRES_ROLE_SEPARATION_RUNBOOK.md`
+- `docs/architecture/GHM_LEGACY_ROLE_REMEDIATION_AUDIT.md`
+- `scripts/forensic-migration-reconciliation.mjs`
+- `scripts/audit-legacy-role-remediation.mjs`
+
+The runbook is explicitly a **construction record**. It says the dedicated `ghm_migrator` → `ghm_schema_owner` path and forensic ledger reconciliation were qualified on the construction PostgreSQL database, and explicitly states production Supabase was unchanged. It also says bootstrap cleanup remains open and the legacy `ghm_app_user` → `ghm_db_user` authority path remains.
+
+This historic construction qualification must not be mistaken for qualification of the current Render `ghm-db` target. It does not establish that the production/internal Render database has the approved `GHM_MIGRATOR_DATABASE_URL`, the same verified role graph, or a reconciled live migration ledger.
+
+The forensic script itself is deliberately read-only: it opens `BEGIN READ ONLY`, verifies `current_user=ghm_migrator`, `session_user=ghm_migrator`, expected database `ghm_db`, then performs `SET ROLE ghm_schema_owner` and compares every repository migration against the live ledger plus retained-history and checksum exceptions. Its verdict is false if authority, missing migrations, unrecognized extras, name/checksum mismatches, orphaned exceptions or invalid retained history are found. It is an audit, not a migration executor.
+
+The legacy-role audit script is also explicitly non-mutating. It inventories role attributes, direct/transitive membership, object ownership and privileges, and emits `DO_NOT_MUTATE_LEGACY_ROLES_FROM_THIS_AUDIT`. Its documented remediation prerequisites include proving runtime/migration/recovery dependencies, preserving legacy users, inventorying ownership, approving a canonical least-privilege target, and only then planning a separately authorized mutation slice.
+
+### Reconciled production role finding
+
+The fresh read-only Render catalog query in Section 20 is consistent with the runbook's documented unresolved bootstrap memberships and legacy path. It is a real authority concern, but not an invitation to revoke anything. The runbook explains why `ghm_db_user` cannot clean up bootstrap memberships granted by `postgres`; an independent provider/bootstrap authority path is needed. Do not improvise revokes through the current query connector.
+
+### Next safe sequence
+
+1. Keep `458f3d7` in GitHub only; no deployment required.
+2. Confirm the intended migration credential path exists for the actual Render `ghm-db` resource without exposing secret values. Do not infer it from the construction runbook or role existence alone.
+3. Obtain owner/provider confirmation of the correct authority path and review the legacy-role remediation plan. No role mutation is authorized.
+4. Run the repository's read-only forensic reconciliation script against the actual Render `ghm-db` using the approved migration identity, with expected database `ghm_db`. Capture identity, ledger counts, exact/legacy checksum matches, retained history, exceptions, missing/extra migrations and final verdict. Do not proceed if any unexplained mismatch exists.
+5. Separately prove which runtime identity the deployed service actually uses and whether it depends on the legacy role path. Do not infer runtime identity from the query connector's login.
+6. Only after these gates, prepare a complete pending-migration review and request explicit authorization for a production migration. Migration, deployment and role remediation are separate approvals.
+
+**No action in this section changed Render, PostgreSQL, GitHub application code, secrets, feature flags, or the live runtime.**
+
+
+## 22. Fresh Render production read-only audit checkpoint — 2026-11-08 13:23 UTC
+
+### Render service and deploy boundary rechecked
+
+Fresh Render service metadata for `GHM-Internal-Runtime` confirms:
+- Service `srv-damupsek1f9s73eq8kkg`, branch `main`.
+- `autoDeploy=no`, `autoDeployTrigger=off`.
+- Build `npm ci && npm run build`; start `npm start`; health path `/healthz`.
+- Latest deployment remains `dep-dbnp1nou01pc73dbrki0`, live on `0e2c7c2181d457265a671a6f857140dd17faee97`, created 2026-11-07 20:58:08 UTC and finished 20:58:31 UTC.
+- No deployment of documentation commits `458f3d7` or the docs follow-up was triggered.
+
+### Actual Render `ghm-db` query identity
+
+A fresh read-only query against Render Postgres resource `dpg-dag0sdtbedkc7389vi2g-a` (`ghm_db`) returned:
+- `session_user = ghm_app_user`
+- `current_user = ghm_db_user`
+- `transaction_read_only = on`
+
+This is important: the connector's query session is not running as `ghm_migrator`. It has assumed `ghm_db_user` from the application login. This is not the approved dedicated migration identity and cannot be used to claim a forensic migration audit.
+
+### Live migration-ledger access
+
+Catalog inspection of `ghm.ghm_schema_migrations` confirms:
+- Owner: `ghm_schema_owner`.
+- Current query role `ghm_db_user` does not have SELECT privilege (`has_table_privilege(..., 'SELECT') = false`).
+
+The actual migration ledger therefore remains unreadable through the current Render read-only query connection. The prior permission-denied result is consistent with the ownership and ACL catalog evidence. No attempt was made to bypass the boundary or alter grants.
+
+### Fresh role membership edges
+
+Read-only `pg_auth_members` inspection reconfirmed:
+- `ghm_app_user` → `ghm_db_user`: SET true, INHERIT true, ADMIN false; grantor `postgres`.
+- `ghm_db_user` → `ghm_migrator`: SET false, INHERIT false, ADMIN true; grantor `postgres`.
+- `ghm_db_user` → `ghm_schema_owner`: SET false, INHERIT false, ADMIN true; grantor `postgres`.
+- `ghm_db_user` → `ghm_payment_provider`: SET false, INHERIT false, ADMIN true; grantor `postgres`.
+- `ghm_db_user` → `ghm_runtime`: one SET/INHERIT-capable edge granted by `ghm_db_user`, plus a separate ADMIN edge granted by `postgres`.
+- `ghm_migrator` → `ghm_schema_owner`: SET true, INHERIT false, ADMIN false; grantor `ghm_db_user`.
+
+This shows the intended `ghm_migrator` → `ghm_schema_owner` SET path exists in the catalog, but the query connection cannot become `ghm_migrator`: its `ghm_db_user` membership has SET=false. The role path's existence is not proof of credential availability or approval.
+
+### Precise remaining blocker
+
+The Render connector exposes a read-only query operation under its configured database login, but no supported operation to retrieve the service's environment-variable names/values or execute the repository Node audit script under a separate migration connection. Do not attempt to retrieve or expose secret values.
+
+Therefore the next evidence must come from the owner-approved migration execution context:
+1. Confirm privately in Render that `GHM_MIGRATOR_DATABASE_URL` is configured for the intended approved execution context (do not paste or reveal its value).
+2. Run `scripts/forensic-migration-reconciliation.mjs` in that context with `GHM_MIGRATION_AUDIT_DATABASE=ghm_db`, ensuring its output proves `current_user=ghm_migrator`, `session_user=ghm_migrator`, then `SET ROLE ghm_schema_owner`.
+3. Capture the script's full PASS/INVESTIGATE verdict and every migration count/mismatch category. It performs a READ ONLY transaction and rollback; it does not apply migrations.
+4. Separately verify the deployed runtime's actual DB identity and dependency path.
+5. Escalate the bootstrap memberships granted by `postgres` to the database provider/owner for a separately approved remediation plan. Do not revoke or alter them using `ghm_db_user`.
+
+No production database mutation, deployment, environment update, role/grant change or secret access occurred in this checkpoint.
+
+
+### Owner-run Render ghm-db forensic migration reconciliation — 2026-11-08 13:29 UTC
+
+**Execution record (completed):** The owner ran the repository's read-only forensic reconciliation script from a fresh temporary clone, without touching the existing `C:\\GHM-main` checkout.
+
+- Temporary clone: `C:\\Users\\zaidh\\AppData\\Local\\Temp\\GHM-migration-audit-61e0a61b314e411d89ddb39d8b6e33d2` (owner-provided terminal output).
+- Clone command targeted `zaidhqdev-sys/GHM`, branch `main`; exact audited source SHA: `458f3d7019c5732b22316c906307a69fd5a34a66`.
+- `npm ci` completed: 166 packages added; npm reported 0 vulnerabilities. npm emitted an `allow-scripts` warning that the `argon2@0.41.1` install script had not been approved; no approval command was run as part of this audit.
+- Owner supplied `GHM_MIGRATOR_DATABASE_URL` through PowerShell's hidden SecureString prompt. The URL/credential is intentionally not recorded. The script targeted `ghm_db` with `DATABASE_SSL=true`.
+- Script: `scripts/forensic-migration-reconciliation.mjs`. It completed its read-only transaction and returned exit code **2**, verdict **INVESTIGATE**. This is a completed audit, not a PASS and not permission to migrate.
+
+**Database authority gate — PASS:**
+- Expected database `ghm_db`; actual `current_database=ghm_db`.
+- `session_user=ghm_migrator`, `current_user=ghm_migrator` before role switch.
+- `can_set_schema_owner=true`; after `SET ROLE`, `current_user=ghm_schema_owner`, while `session_user` remains `ghm_migrator`.
+- `read_only_transaction=true`. Script rolls back; no migration, DDL, ledger write, role/grant change, or application data mutation was performed.
+
+**Migration reconciliation results:**
+
+| Measure | Result |
+|---|---:|
+| Repository migrations | 89 |
+| Live ledger entries | 89 |
+| Canonical checksum matches | 9 |
+| Supported legacy-CRLF checksum matches | 62 |
+| Approved historical checksum matches | 9 |
+| Repository migrations missing from live ledger | 9 |
+| Extra live ledger entries | 9 |
+| Unexplained checksum mismatches | 0 |
+| Name mismatches | 0 |
+| Unrecognized extra ledger entries | 0 |
+| Approved retained historical entries | 9 |
+| Orphaned historical exceptions | 0 |
+| Redundant historical exceptions | 7 |
+| Invalid retained-history records | 1 |
+
+The nine missing repository migrations are versions `20261104120000` (`bind_commercial_payment_attempt_provider`), `20261104130000` (`isolate_payfast_settlement_identity`), `20261105190000` (`extend_business_directory_location_contact`), `20261105213000` (`create_business_capability_evidence`), `20261105220000` (`replace_business_capability_assertions`), `20261105230000` (`create_founder_directory_review`), `20261106090000` (`business_logo_storage_binding`), `20261106200000` (`link_project_to_opportunity`), and `20261107211500` (`reconcile_business_profile_and_founder_authority`). The nine extra ledger entries are retained historical versions `20261016100000`, `20261016120000`, `20261016170000`, `20261016180000`, `20261016190000`, `20261018210000`, `20261019190000`, `20261020130000`, and `20261020140000`; the script recognized all nine as approved retained history, but one retained-history audit record is invalid and must be investigated.
+
+The nine approved historical checksum matches are `20260911030000`, `20260911210000`, `20260911211500`, `20260912030000`, `20260914120000`, `20260914130000`, `20260914220000`, `20260915193000`, and `20261005211000`. Seven historical exceptions are redundant because their registered hashes already match current repository bytes; do not delete or rewrite exception records without a separately reviewed reconciliation.
+
+**Interpretation / required next work:** The approved migration URL is now demonstrated to connect to the actual Render `ghm_db` as `ghm_migrator` and assume `ghm_schema_owner` successfully. This closes the prior uncertainty about whether the dedicated migration execution path exists and works. It does **not** close the ledger reconciliation: 9 source migrations are not recorded as applied, and the audit reports 1 invalid retained-history record. Do not infer that those nine migrations should simply be applied; first investigate whether they are genuinely unapplied, represented by equivalent historical schema state, or otherwise require a formally reviewed ledger/source reconciliation. Inspect the exact retained-history audit entry for version `20261019210000` (reported as `REPOSITORY_MIGRATION_PRESENT`), determine why the aggregate `invalid_retained_history_count` is 1, and reconcile the 7 redundant exception registrations in a reviewed source change if appropriate. The single invalid retained-history classification is now traced to a stale registry entry, not an unexplained live-ledger checksum: `config/retained-historical-migrations.json` still registers version `20261019210000` (`create_business_registration_identity`) as retained history, but that migration file is present in the audited repository at `database/migrations/20261019210000_create_business_registration_identity.sql`. The classifier deliberately emits `REPOSITORY_MIGRATION_PRESENT` whenever a retained-history registry entry has a corresponding repository migration, so `invalid_retained_history_count=1` is explained by this stale/overlapping registry classification. The version is therefore not one of the 9 extra live ledger rows; it is in the repository set and was not reported as missing or as an unexplained checksum mismatch. The correct follow-up is to review and likely remove/reclassify that retained-history registry entry in a separate reviewed documentation/config change, preserving the historical provenance elsewhere if still needed—not to alter the live ledger. Preserve the complete raw audit output in the operator's secure local evidence; only this sanitized summary is committed.
+
+**Execution boundary:** No secret value, database URL, token, or password was printed into the handover. No migration was executed. No role/grant or environment change was made. No Render deployment, restart, or auto-deploy change occurred. Render auto-deploy remains intentionally disabled. The temporary clone is separate from `C:\\GHM-main`; it is not a deployment checkout. Do not delete it until the owner has finished retaining any desired local audit artifacts.
+
+
+### Read-only production schema comparison for the nine missing migrations — 2026-11-08 (after 13:31 UTC)
+
+Following the owner-run migrator reconciliation, the operator compared the intended objects in all nine missing source migrations with the actual Render `ghm_db` catalog using the Render Postgres read-only query connector. These are catalog observations, not a schema mutation. The catalog comparison did **not** read or modify the migration ledger; the earlier dedicated migrator audit is the source for ledger counts.
+
+| Missing source migration | Live catalog observation | Assessment |
+|---|---|---|
+| `20261104120000_bind_commercial_payment_attempt_provider` | `ghm.commercial_payment_attempt.provider_code` and its check constraint are absent. The generic `ghm.commercial_apply_payment_result(...)` function already exists with the source signature and is owned by `ghm_schema_owner`, with EXECUTE granted to `ghm_runtime`. | Partial/out-of-order object state. The function exists while the column it references is absent; do not assume it works or replay this migration blindly. |
+| `20261104130000_isolate_payfast_settlement_identity` | `ghm_payment_provider` exists and is LOGIN-capable. However `commercial_get_payfast_attempt` and `commercial_apply_payfast_payment_result` are absent. The generic settlement function remains executable by `ghm_runtime`. | Provider isolation is not installed. This confirms the PayFast privilege boundary remains incomplete; do not enable callbacks or settle payments. |
+| `20261105190000_extend_business_directory_location_contact` | `ghm.business` already has `province`, `city`, `physical_address`, `whatsapp`, `website`, `avatar_letter`, `avatar_color`, and `years_in_business`. It lacks `latitude` and `longitude`. Existing constraint names/definitions differ (e.g. avatar color is constrained to a hex color; years-in-business permits up to 500 rather than source max 100). `update_business_profile(bigint,bigint,jsonb)` exists but its current allowlist/body is an older variant (camelCase keys such as `physicalAddress`, `isSupplier`, `yearsInBusiness`; it does not implement the source migration's full patch contract). | Partial schema overlap, not equivalent application of this migration. Reconcile the actual profile API/constraints deliberately; migration as written would fail on duplicate columns and must not be replayed unchanged. |
+| `20261105213000_create_business_capability_evidence` | Parent `ghm.business_capability` exists, but `ghm.business_capability_evidence` and `transition_business_capability_evidence` are absent. | Evidence feature objects are genuinely absent from the observed catalog. |
+| `20261105220000_replace_business_capability_assertions` | `ghm.replace_business_capability_assertions(bigint,bigint,jsonb)` is absent. | Function is genuinely absent from the observed catalog. |
+| `20261105230000_create_founder_directory_review` | The source review columns on `ghm.business`, `ghm.business_directory_review_event`, and the review submit/list/decision/presentation functions are absent. A separate `ghm.connect_founder_directory_reviewer` table exists, but it has a different shape and lifecycle; it is not the source migration's `directory_listing_founder_reviewer` authority table and cannot be treated as a substitute. | Founder directory review workflow is not installed. Existing Connect reviewer mapping is a distinct concept. |
+| `20261106090000_business_logo_storage_binding` | `ghm.storage_object` exists, but `ghm.business.logo_storage_object_id`, `business_logo_storage_object_unique`, `set_business_logo_object`, and `storage_get_public_business_logo` are absent. | Storage foundation exists; Business logo binding is absent. |
+| `20261106200000_link_project_to_opportunity` | `ghm.project.opportunity_id`, `project_opportunity_fk`, and `project_opportunity_unique` are absent. | Project-to-Opportunity link is absent in the observed schema. |
+| `20261107211500_reconcile_business_profile_and_founder_authority` | `latitude`, `longitude`, `logo_storage_object_id`, its related constraints/index, `directory_listing_founder_reviewer`, and `is_directory_listing_founder_reviewer(bigint)` are absent. Existing Connect reviewer table remains distinct. | Its idempotent additions address only part of the profile gap; it does not replace the missing profile-function reconciliation or the full directory review workflow. |
+
+**Cross-cutting finding:** the live schema is a mixed state, not simply “all nine absent.” There is older Business directory/profile state and a generic payment-result function in place, alongside genuinely absent provider isolation, capability evidence/replacement, founder directory review, logo binding, and Project–Opportunity linkage. The nine missing ledger versions therefore need a migration-by-migration disposition: (1) verify whether any existing objects came from earlier applied source or manual construction; (2) compare function definitions, grants, constraints, indexes, and dependent application code; (3) author explicit forward-only reconciliation migrations where appropriate; and (4) only then prepare a reviewed, ordered migration plan with backup/restore and authorization. Do not stamp ledger rows, delete historical rows, replay non-idempotent migrations, or apply the nine as a batch.
+
+**PayFast-specific safety note:** production catalog shows `ghm_payment_provider` is a LOGIN role, but the dedicated PayFast read/apply functions are absent and `ghm_runtime` still has EXECUTE on the generic payment-result function. The source isolation migration would revoke that generic runtime grant and create the restricted PayFast entry points. This is a confirmed outstanding security gap, not a reason to apply that migration without its complete reviewed prerequisite and privilege plan.
+
+**No changes:** these queries were read-only. No data rows were inspected or changed, no migration or ledger entry was written, no role/grant/ACL changed, no deployment/restart/environment change occurred, and Render auto-deploy remains intentionally disabled.
+
+
+### Follow-up permission/catalog checks — 2026-11-08
+
+Additional read-only catalog checks confirm:
+- `ghm_payment_provider` is LOGIN-capable. Its membership edge from `ghm_db_user` is `SET=false`, `INHERIT=false`, `ADMIN=true`; this is not itself proof that provider settlement permissions are safely provisioned.
+- `ghm_runtime` has a SET/INHERIT-capable membership edge from `ghm_db_user` and a separate ADMIN edge from `ghm_db_user` (`SET=false`, `INHERIT=false`, `ADMIN=true`). The pre-existing privileged role graph remains a separate least-privilege remediation concern.
+- `ghm_migrator` has a SET-capable, non-inheriting membership in `ghm_schema_owner`, consistent with the successful audited `SET ROLE ghm_schema_owner` path.
+- The existing `ghm.commercial_apply_payment_result` function is owned by `ghm_schema_owner`, and its ACL grants EXECUTE to `ghm_runtime`; effective privilege check returned `runtime_execute=true`, `provider_execute=false`. The PayFast-specific functions are absent. This independently confirms the intended provider isolation migration has not been installed and ordinary runtime still has the generic payment settlement entry point.
+- The source migration's provider wrapper would revoke the runtime grant from the generic function and add the PayFast-only entry points; this is security-sensitive and must be part of an approved, ordered change with role/grant owner participation, not applied in isolation.
+- A read-only catalog query found no non-internal triggers on the inspected Business, Business Capability, payment attempt, or Project tables other than the existing payment-attempt updated-at trigger. This is only an observation about those inspected tables, not a full dependency proof.
+
+One attempted privilege probe using literal role name `PUBLIC` returned a PostgreSQL error because PUBLIC is a pseudo-role, not a catalog role; the query was corrected to use effective checks for the two actual login roles. No state changed.
+
+PR #236 remains open and unmerged. A workflow-run lookup for its then-current head `72250a9786dd2d3259a92091402a2a0d9b5b5cac` returned no PR-triggered workflow runs; do not interpret this as a passing CI result. No merge or deployment was performed.
+
+
+### Forward-only reconciliation plan and data preflight — 2026-11-08
+
+This is the proposed engineering sequence based on the source migrations and live catalog evidence. It is a plan only; it is not migration authorization.
+
+#### Read-only data preflight (completed)
+
+A read-only aggregate query against `ghm.business` and `ghm.project` returned:
+
+- Business rows: **16**.
+- Business `years_in_business > 100`: **0**.
+- Existing non-null `avatar_color` values not matching six-digit hex: **0**.
+- Existing non-null WhatsApp values shorter than 7 chars: **0**.
+- Existing non-null website values shorter than 8 chars: **0**.
+- Existing non-null province/city/address values that are empty after trim: **0** for each.
+- Project rows: **0**.
+
+An initial combined aggregate query also attempted to count `ghm.storage_object` rows, but the read-only connector identity was denied SELECT on that table; the entire query failed and yielded no counts. The query was rerun without that table and succeeded. This is an observed permission boundary; do not try to bypass it or grant access. No row-level values were retrieved.
+
+The aggregate checks show no current rows violating the noted Business field shape checks, but they do not prove that tightening constraints is behaviorally safe for future writes or that other fields/functions are equivalent. No count was possible for storage objects, payment rows, or other restricted relations through this connector.
+
+#### Proposed execution order (each step is a separate reviewed/authorized slice)
+
+**Gate 0 — baseline and recovery package.** Before any DDL: capture a fresh provider-supported backup/PITR point and test/confirm restore procedure; retain the complete raw forensic audit locally; capture current schema definitions, function bodies, grants/default ACLs, role memberships, migration ledger and checksums using the approved migrator identity; verify app runtime and callback services' exact deployed revisions/configuration; confirm a maintenance/traffic plan. The migration audit's read-only identity proof is now positive, but backup/restore readiness and deployment compatibility remain unverified.
+
+**Gate 1 — reconcile Business profile, not replay the historical migration.** Do not run `20261105190000_extend_business_directory_location_contact.sql` unchanged: most columns already exist, and the older `update_business_profile(bigint,bigint,jsonb)` differs from the source patch contract. Design a new forward-only migration from the measured live baseline that adds only missing `latitude`/`longitude`, applies pair/range checks after explicit preflight, reconciles existing constraints without silently weakening them, and replaces `update_business_profile` only after reviewing its complete current body, all callers, key naming conventions, owner authorization checks, and ACL. Preserve current behavior not explicitly superseded. The aggregate preflight found 16 business rows and no observed violations of the checked current field constraints, but a full semantic and caller test is still required.
+
+**Gate 2 — payment provider binding and PayFast isolation as one controlled security slice.** First design the `provider_code` column/check and update of `commercial_apply_payment_result`; then in the same controlled release boundary remove ordinary runtime EXECUTE and install only provider-scoped `commercial_get_payfast_attempt` and `commercial_apply_payfast_payment_result`. The live generic function currently has EXECUTE for `ghm_runtime`, provider-specific functions are absent, and the provider role exists as LOGIN. Before this slice: confirm the provider credential is provisioned privately, callback process connects as exactly `ghm_payment_provider`, no app runtime code calls the generic settlement function, and integration tests cover ZAR-only, provider match, idempotency, replay/hash conflict, event status, failed/pending/succeeded outcomes, and privilege-denial from runtime. The existing generic function must not be left exposed to runtime after cutover. No callback traffic or PayFast settlement until end-to-end qualification and explicit approval.
+
+**Gate 3 — capability evidence and replacement.** Apply a reviewed forward-only creation of `business_capability_evidence` and transition function, then the assertion replacement function only after validating expected capability assertion semantics, status transitions, audit/event behavior, ownership, RLS, and exact EXECUTE grants. The parent `business_capability` table exists; evidence table and both observed functions do not. Test unauthorized business accounts, authorized owner/admin, malformed JSON, duplicate/replayed transitions, and audit completeness.
+
+**Gate 4 — founder directory review authority and workflow.** Build the actual `directory_listing_founder_reviewer` authority table and review-event/workflow functions; do not repurpose `connect_founder_directory_reviewer`, which is a distinct mapping. Establish the approved process for seeding reviewer identities (migration creates no reviewer identities), founder/admin authorization, RLS and grants, review state transitions, audit immutability, and public directory visibility. Test non-reviewer denial and reviewer decisions before any production listing state is affected.
+
+**Gate 5 — Business logo storage binding.** Confirm storage-object ownership/tenant/resource/status invariants and private provider/storage semantics with the object owner; connector SELECT on `ghm.storage_object` is currently denied, so use an authorized audited path rather than broadening read access. Add the Business FK/index and set/public-logo functions only after confirming existing storage rows, uniqueness, deletion behavior, and object lifecycle. Test cross-business object rejection, unavailable/private object rejection, owner/admin authorization, and public visibility only for active, verified, approved businesses.
+
+**Gate 6 — Project–Opportunity link.** The live `ghm.project` table lacks `opportunity_id`, and the current table has 0 rows. Before adding the FK and partial unique index, verify canonical Opportunity identity/type/status rules and the application transaction that creates Project and Opportunity atomically. Test rollback on either insert failure, uniqueness, FK restrict behavior, and no orphan Opportunity/Project. Because the table is currently empty, there is no existing row backfill, but application behavior and concurrent writes still require qualification.
+
+**Gate 7 — final business/founder authority reconciliation.** Treat `20261107211500_reconcile_business_profile_and_founder_authority.sql` as a partial idempotent source reference only. Its latitude/longitude/logo and founder-authority additions overlap the proposed earlier slices. Do not run it as-is after those slices; create a new forward-only reconciliation migration if any residual catalog differences remain. Confirm no duplicate constraints/indexes/functions or competing authority tables.
+
+#### Per-slice release/verification discipline
+
+For each approved slice, prepare a source migration and tests in a dedicated PR; review exact SQL and source checksum; run it against a production-like restored clone first; capture pre/post catalog and privilege snapshots; apply only that single migration using `GHM_MIGRATOR_DATABASE_URL` and explicit `SET ROLE ghm_schema_owner`; immediately verify ledger checksum, expected schema/function definitions, owner/ACL/RLS, positive and negative runtime/provider probes, and application health. Stop on any discrepancy. Do not proceed to the next slice until evidence is recorded and the owner approves. Do not stamp a migration ledger entry without its corresponding reviewed schema change.
+
+**Rollback/recovery:** Prefer forward corrective migrations for committed schema changes. A transaction rollback is only available before commit and does not reverse external callback side effects. Before any payment privilege cutover, keep callback traffic disabled and have provider-side retry/idempotency and restore plan confirmed. For schema changes involving columns/functions/constraints, capture definitions and test restore on a clone; do not drop data or reverse ownership as an ad hoc rollback. The exact rollback for each slice must be reviewed before execution.
+
+**Current blockers:** no explicit authorization to mutate production; backup/restore evidence not yet supplied; current Business function body/callers not fully reviewed; provider credential/process identity and callback E2E not qualified; storage-object inventory inaccessible through the current read-only connector; capability and directory review semantics/tests need review; deployment compatibility and production release plan not qualified. All nine missing ledger versions remain **not authorized to apply**. Render auto-deploy remains disabled; the live runtime is not to be deployed as part of these documentation/planning steps.
+
+
+### Detailed current Business profile function review — 2026-11-08
+
+The live `ghm.update_business_profile(bigint,bigint,jsonb)` definition was fetched directly from PostgreSQL via `pg_get_functiondef` in a read-only query. It is SECURITY DEFINER with fixed `search_path = pg_catalog, ghm`. It requires positive account/business IDs, a non-empty JSON object, rejects unknown keys, and checks an active owner/administrator membership before updating the Business. It currently accepts the camelCase/legacy contract:
+
+`name`, `slug`, `description`, `phone`, `email`, `category`, `province`, `city`, `physicalAddress`, `whatsapp`, `website`, `isSupplier`, `yearsInBusiness`.
+
+It also writes `is_supplier` and `category`; source migration `20261105190000` instead proposes snake_case `physical_address`, adds latitude/longitude and avatar fields, and does not include the existing category/isSupplier patch fields. Replacing it naively would be a breaking API contract even if the DDL succeeded. The live function validates years-in-business up to 500, while the source migration constraint limits stored values to 100; the aggregate preflight observed no existing values above 100 but that does not justify silently narrowing the API contract. The live province limit is 100 while the source migration constraint uses 120. The existing avatar_color check is stricter (hex) than the source's generic 1–32 character check. These differences must be resolved explicitly with API callers and product requirements before authoring a replacement. Preserve the active membership authorization check and SECURITY DEFINER fixed search_path.
+
+The source migration's replacement function also needs full caller/contract review: decide whether to support both camelCase and snake_case keys during a compatibility window, preserve `category`/`isSupplier`, and define the supported years limit consistently. No function replacement or DDL was performed.
+
+### Query access boundary encountered
+
+The first data aggregate attempted a SELECT count from `ghm.storage_object` and was rejected with PostgreSQL SQLSTATE 42501. It was rerun against permitted `ghm.business` and `ghm.project` only. No grants, role switches, or privilege bypass were attempted. Storage-object inventory remains a required preflight using an approved owner-authorized evidence path.
+
+
+## 27. Active GHM runtime and database — owner correction (2026-11-10 04:20 UTC)
+
+The owner clarified the current environment boundary:
+
+- **Active path:** GHM-Internal-Runtime and the active GHM database.
+- **Retired sandbox path:** ghm-identity-qualification, ghm-payfast-sandbox-runtime, and ghm-payfast-callback-sandbox all belonged to the sandbox environment. The sandbox database is suspended/expired and is not in use.
+- Do not treat any of those sandbox services or the sandbox database as current production dependencies, migration targets, or release prerequisites.
+
+A fresh Render service listing at 2026-11-10 04:20 UTC showed GHM-Internal-Runtime attached to branch `main`, with auto-deploy set to `yes` and trigger `checksPass` (After CI Checks Pass). The service record was updated at 04:20:10 UTC. The owner states that they changed this setting. No Render setting change or deployment was performed as part of this review.
+
+This section supersedes earlier statements in this handover that described Internal Runtime auto-deploy as disabled or presented the sandbox services as operational dependencies. Earlier observations remain historical snapshots of the environment at their recorded timestamps; they are not current configuration.
+
+**Release boundary unchanged:** this clarification does not authorize a deployment, production database migration, role/grant change, payment-provider activation, PayFast callback activation, or commercial cutover. Those actions still require their own explicit authorization and technical gates.

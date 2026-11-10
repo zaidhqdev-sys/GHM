@@ -276,3 +276,62 @@ PR [#222](https://github.com/zaidhqdev-sys/GHM/pull/222) is open from `integrati
 - Do not apply migration, alter grants, activate PayFast callbacks or deploy until the role graph is reviewed/remediated, the complete forensic migration audit passes under the approved migration identity, and owner authorization is recorded.
 - Integrated detailed record: [HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md](HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md), Sections 18–20.
 - The previous documentation PR #234 is stale relative to the new mainline. A fresh documentation-only branch `docs/handover-2026-11-08-mainline-reconciled` has been cut from the current main commit; do not merge PR #234 as-is.
+
+
+## Deployment decision — documentation commit 458f3d7 (2026-11-08)
+
+Do **not** deploy `458f3d7019c5732b22316c906307a69fd5a34a66` to `GHM-Internal-Runtime`. It is the documentation-only merge of PR #235; the handover is already preserved in GitHub main. Keep the runtime on its current approved live deployment and keep auto-deploy disabled.
+
+The PostgreSQL role-separation runbook is a construction record: its `ghm_migrator` → `ghm_schema_owner` and forensic-ledger qualification applies to the construction database and explicitly says production Supabase was unchanged. It does not qualify the Render `ghm-db` target. Before any production migration, verify the approved migration credential path against the actual Render database, run the repository's read-only forensic migration reconciliation under that identity, prove runtime identity/dependencies, and resolve the bootstrap legacy-role authority review. No role mutation or migration is authorized. Details in Section 21 of the dated handover.
+
+
+### Fresh Render database identity and ledger audit — 2026-11-08 13:23 UTC
+
+- Read-only Render `ghm-db` query identity: `session_user=ghm_app_user`, `current_user=ghm_db_user`; this is not the dedicated migration identity.
+- `ghm.ghm_schema_migrations` is owned by `ghm_schema_owner`; `ghm_db_user` has no SELECT privilege. Ledger remains unreadable through the available connector.
+- Role catalog confirms the `ghm_migrator` → `ghm_schema_owner` SET path exists, but the query connection cannot become `ghm_migrator`. Bootstrap ADMIN memberships from `postgres` remain unresolved.
+- No supported connector action exposes service environment-variable metadata or runs the repository audit script under a separate migration credential. Do not retrieve or expose secrets.
+- Next: owner verifies privately that `GHM_MIGRATOR_DATABASE_URL` is configured in the approved execution context, then runs `scripts/forensic-migration-reconciliation.mjs` read-only against `ghm_db`; separately verify deployed runtime identity and escalate bootstrap membership remediation. No grants or roles changed.
+- Detailed evidence in Section 22 of the dated handover.
+
+
+## 2026-11-08 owner-run production migration audit — 13:29 UTC
+
+The owner completed the read-only forensic migration reconciliation from a fresh temporary clone of GHM main at `458f3d7019c5732b22316c906307a69fd5a34a66`; the existing `C:\\GHM-main` checkout was not touched. Clone path: `C:\\Users\\zaidh\\AppData\\Local\\Temp\\GHM-migration-audit-61e0a61b314e411d89ddb39d8b6e33d2`. `npm ci` succeeded (166 packages; 0 vulnerabilities; argon2 install-script approval warning). The hidden owner-supplied migration URL successfully connected to Render `ghm_db` as `ghm_migrator`, switched to `ghm_schema_owner`, and ran in a read-only transaction.
+
+**Verdict: INVESTIGATE (exit 2), not PASS.** 89 repository migrations / 89 live ledger rows; 9 canonical matches, 62 supported legacy-CRLF matches, 9 approved historical matches; 9 repository migrations missing from the ledger; 9 extra ledger entries, all recognized as approved retained history; 0 unexplained checksum mismatches; 0 name mismatches; 0 unrecognized extras; 0 orphaned exceptions; 7 redundant historical exceptions; **1 invalid retained-history record**. The 9 missing versions and exact interpretation are recorded in Sections 23 of the dated handover. The one invalid retained-history classification is explained by a stale entry for `20261019210000_create_business_registration_identity`: that version is present in the repository migration directory, so it must not also be classified as retained-only history. Review/reclassify that registry entry in a separate source change while preserving provenance as needed. Separately establish why the 9 missing migrations are absent before any migration or ledger action. Do not blindly apply them or rewrite the ledger.
+
+The connection/role-switch uncertainty is now closed by direct execution evidence. Migration readiness remains blocked by the reconciliation verdict. Script completed read-only and rolled back; no DDL, migration, ledger write, role/grant change, secret disclosure, environment change, deploy, restart, or auto-deploy change occurred. Detailed sanitized evidence: [HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md](HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md).
+
+## 2026-11-08 — read-only schema comparison of missing migrations
+
+A catalog-only, read-only comparison against Render `ghm_db` confirms the live schema is a mixed state, not nine uniformly absent migrations. The Business profile migration overlaps existing columns and an older, behaviorally different `update_business_profile` function; its source cannot be replayed unchanged. The generic payment-result function exists while `commercial_payment_attempt.provider_code` is absent, and PayFast-specific read/apply functions are absent even though the LOGIN role exists and runtime still has EXECUTE on the generic settlement function. Capability evidence table/function, assertion replacement function, founder directory review workflow objects, Business logo binding, and Project–Opportunity linkage are absent. A separate `connect_founder_directory_reviewer` table is not interchangeable with the intended `directory_listing_founder_reviewer` authority table. See Section 24 of the dated handover for the per-migration evidence and dispositions.
+
+**Disposition:** no batch apply, ledger stamping, or replay. Prepare deliberate forward-only reconciliation after reviewing function bodies/grants, constraint/index differences, historical source provenance, dependencies, and backup/restore. PayFast callbacks/settlement remain NO-GO. All inspection was read-only; no production mutation or deployment occurred.
+
+
+**Further privilege confirmation:** `ghm_payment_provider` exists as LOGIN but its PayFast-specific settlement functions are absent. The generic `commercial_apply_payment_result` function remains executable by `ghm_runtime` (effective privilege check true; provider false). The source isolation migration is security-sensitive and requires a reviewed role/grant plan with the database role administrator; do not apply it in isolation. PR #236 is still open/unmerged; the workflow-run lookup for head `72250a9786dd2d3259a92091402a2a0d9b5b5cac` returned no runs, so CI is not established as passing. Detailed record in the dated handover.
+
+
+## Forward-only reconciliation plan (planning only)
+
+The proposed staged plan is documented in Section 25 of the dated handover. It explicitly avoids replaying the nine historical migrations unchanged: reconcile Business profile/function first; combine provider binding and PayFast privilege isolation as one controlled security slice; then capability evidence/assertions; founder directory review; logo storage binding; Project–Opportunity link; and final residual profile/founder reconciliation. Each step requires its own reviewed PR, restored-clone test, backup/restore evidence, explicit authorization, one-at-a-time migration, and immediate ledger/schema/ACL/runtime verification. No production mutation is authorized by this plan.
+
+Read-only aggregate preflight: 16 Business rows, 0 Projects; no observed current rows violating the checked Business year/avatar-color/WhatsApp/website/province/city/address shape checks. Storage-object count could not be read because the connector identity was denied SELECT; no privilege bypass or grant was attempted. The full per-slice prerequisites, test cases, blockers, and recovery discipline are in the dated handover.
+
+**Current gate remains NO-GO for production mutation:** no backup/restore evidence, provider credential/process E2E, complete Business function/caller review, storage inventory, feature semantic qualification, or explicit production mutation authorization has been supplied. No deployment or migration occurred; auto-deploy remains off.
+
+
+**Business profile compatibility detail:** the live SECURITY DEFINER profile function checks active owner/admin membership and currently accepts camelCase fields plus `category` and `isSupplier`; the proposed source replacement switches to snake_case names, adds geo/avatar fields, and omits those existing fields. Existing years limit is 500 vs proposed 100; province limit 100 vs proposed 120; avatar-color check is currently stricter. A blind replacement would be an API compatibility risk. Full review is in Section 26 of the dated handover. Storage-object inventory remains blocked by connector SELECT denial (42501); no permissions were changed.
+
+
+## Active runtime and database correction — 2026-11-10 04:20 UTC
+
+This section supersedes earlier operational statements in this document that described the active Render runtime as auto-deploy-disabled or treated the sandbox services as the active GHM path.
+
+- The owner confirms the active platform path is **GHM-Internal-Runtime connected to the active GHM database**.
+- The identity-qualification service, PayFast sandbox runtime, and PayFast callback sandbox belong to the old sandbox environment. The sandbox database is suspended/expired and is not in use.
+- A fresh Render service listing at 2026-11-10 04:20 UTC showed GHM-Internal-Runtime on branch `main`, with auto-deploy enabled using the **After CI Checks Pass** trigger (`autoDeploy=yes`, `autoDeployTrigger=checksPass`). The service record update timestamp was 04:20:10 UTC.
+- The owner reports having changed the Internal Runtime auto-deploy setting. No setting change or deployment was performed by this documentation update.
+- Treat the sandbox services and sandbox database as retired infrastructure; do not use them as release targets or prerequisites for current GHM work.
+- This correction changes the deployment topology description only. It does not authorize a deployment, database migration, payment activation, callback activation, or production data mutation. Payment and commercial activation remain separately gated.
