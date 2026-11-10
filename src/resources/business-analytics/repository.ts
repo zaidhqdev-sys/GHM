@@ -39,7 +39,7 @@ export class PostgresBusinessAnalyticsRepository implements BusinessAnalyticsRep
              count(*) FILTER (WHERE event_type = 'save')::int AS saves,
              count(*) FILTER (WHERE event_type = 'share')::int AS shares
            FROM ghm.business_engagement_event
-           WHERE business_id = $1 AND created_at >= now() - make_interval(days => $3::int)
+           WHERE business_id = $1 AND created_at >= now() - make_interval(days => $2::int)
          ), activity AS (
            SELECT coalesce(jsonb_agg(jsonb_build_object(
              'id', id, 'event_type', event_type, 'occurred_at', created_at
@@ -47,17 +47,17 @@ export class PostgresBusinessAnalyticsRepository implements BusinessAnalyticsRep
            FROM (
              SELECT id, event_type, created_at
              FROM ghm.business_engagement_event
-             WHERE business_id = $1 AND created_at >= now() - make_interval(days => $3::int)
+             WHERE business_id = $1 AND created_at >= now() - make_interval(days => $2::int)
              ORDER BY created_at DESC, id DESC LIMIT 5
            ) recent
          ), leads AS (
            SELECT count(*)::int AS total FROM ghm.enquiry
-           WHERE business_id = $1 AND created_at >= now() - make_interval(days => $3::int)
+           WHERE business_id = $1 AND created_at >= now() - make_interval(days => $2::int)
          ), quotes AS (
            SELECT count(*)::int AS total,
              count(*) FILTER (WHERE status = 'accepted')::int AS accepted
            FROM ghm.project_quote
-           WHERE business_id = $1 AND created_at >= now() - make_interval(days => $3::int)
+           WHERE business_id = $1 AND created_at >= now() - make_interval(days => $2::int)
          )
          SELECT jsonb_build_object(
            'version', 1, 'business_id', $1, 'period_days', $3, 'generated_at', now(),
@@ -68,7 +68,7 @@ export class PostgresBusinessAnalyticsRepository implements BusinessAnalyticsRep
            'recent_activity', activity.items
          ) AS dashboard
          FROM engagement, activity, leads, quotes`,
-        [businessId, context.userId, days],
+        [businessId, days],
       );
       return result.rows[0].dashboard as BusinessAnalyticsDashboard;
     }, this.transactionPool);
