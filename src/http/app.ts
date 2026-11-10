@@ -59,6 +59,7 @@ import { registerRelationshipsOutcomesRoutes } from './relationships-outcomes-ro
 import { registerBusinessCapabilityRoutes } from './business-capability-router';
 import { PgCapabilityRepository } from '../resources/capability/repository';
 import { CapabilityServiceImpl } from '../resources/capability/service';
+import type { CapabilityService } from '../resources/capability/contracts';
 import { registerCapabilityCatalogueRoutes } from './capability-catalogue-router';
 import { PostgresBusinessCapabilityEvidenceRepository } from '../resources/business-capability-evidence/repository';
 import { BusinessCapabilityEvidenceServiceImpl } from '../resources/business-capability-evidence/service';
@@ -140,6 +141,7 @@ export interface AppDependencies {
   readonly onboardingService?: OnboardingProgressService;
   readonly relationshipsOutcomesService?: RelationshipsOutcomesService;
   readonly businessCapabilityService?: BusinessCapabilityService;
+  readonly capabilityService?: CapabilityService;
   readonly businessCapabilityEvidenceService?: BusinessCapabilityEvidenceService;
   readonly businessRegistrationIdentityService?: BusinessRegistrationIdentityService;
   readonly directoryReviewService?: DirectoryReviewService;
@@ -401,6 +403,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const businessCapabilityService =
     dependencies.businessCapabilityService ??
     new BusinessCapabilityServiceImpl(new PostgresBusinessCapabilityRepository());
+  const capabilityService = dependencies.capabilityService ?? new CapabilityServiceImpl(new PgCapabilityRepository());
   const businessCapabilityEvidenceService =
     dependencies.businessCapabilityEvidenceService ??
     new BusinessCapabilityEvidenceServiceImpl(new PostgresBusinessCapabilityEvidenceRepository());
@@ -942,7 +945,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerOnboardingRoutes(app, onboardingService, resourceAuthMiddleware);
   registerRelationshipsOutcomesRoutes(app, relationshipsOutcomesService, resourceAuthMiddleware);
   registerBusinessCapabilityRoutes(app, businessCapabilityService, resourceAuthMiddleware);
-  registerCapabilityCatalogueRoutes(app, new CapabilityServiceImpl(new PgCapabilityRepository()), resourceAuthMiddleware);
+  registerCapabilityCatalogueRoutes(app, capabilityService, resourceAuthMiddleware);
   registerBusinessCapabilityEvidenceRoutes(app, businessCapabilityEvidenceService, resourceAuthMiddleware);
   registerBusinessRegistrationIdentityRoutes(app, businessRegistrationIdentityService, resourceAuthMiddleware);
   registerDirectoryReviewRoutes(app, directoryReviewService, resourceAuthMiddleware);
