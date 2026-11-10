@@ -348,3 +348,13 @@ PR #266 qualification note: the first disposable PostgreSQL run exposed an ambig
 
 
 PR #266 qualification correction: follow-up logs pinpointed the ambiguity inside the pre-existing `ghm.update_business_registration_identity` implementation (`ON CONFLICT (business_id)` conflicts with its RETURNS TABLE output variable), not the gateway wrapper. The additive migration now replaces that function using the named `business_registration_identity_pkey` constraint, preserves its existing `ghm_runtime` EXECUTE grant, and keeps the gateway-only wrapper grant isolated. This fix and the positive/negative write qualification must pass on the final exact head before merge.
+
+
+## Registration identity gateway GET + PUT merged — 2026-11-10
+
+- PR #266 merged as `a2c734348c3132396121c74d232eafb2794541d1`.
+- Gateway-only registration identity read and write operations are now both exposed as typed HTTP endpoints. The resource API's existing GET and PUT route can use the gateway when `GHM_ACTOR_GATEWAY_URL` is configured, forwarding the original bearer token and failing closed without legacy fallback.
+- The new write wrapper checks `ghm.assert_actor_gateway`, delegates to the membership-checked update function, and grants EXECUTE only to `ghm_actor_gateway`. The additive migration also fixes the pre-existing upsert ambiguity by using the named `business_registration_identity_pkey` conflict constraint; the original `ghm_runtime` EXECUTE grant is preserved pending cutover.
+- Exact-head CI passed quality, web-quality and Cloudflare Pages. Quality included build, full test suite, full disposable migration chain, gateway principal qualification, positive/negative gateway write/read tests, migration audit and runtime boundary verification.
+- No production URL, Render gateway service, credentials, role/grant cutover or deployment changed. The legacy runtime write grant remains until gateway deployment and end-to-end verification are separately completed.
+- Next: provision isolated gateway service only after dedicated gateway DB credentials and public ES256 verification keys are securely available; deploy gateway before setting resource API URL; verify end-to-end GET/PUT and only then plan legacy grant revocation separately. Continue actor-bound migration for other RPCs.
