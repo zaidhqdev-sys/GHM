@@ -49,7 +49,9 @@ export class CapabilityServiceImpl implements CapabilityService {
   updateDraft(context: AuthContext, capabilityId: CapabilityId, input: CapabilityDraftInput): Promise<Capability> {
     requireAdmin(context);
     if (!UUID_PATTERN.test(capabilityId)) throw new Error('Invalid capabilityId');
-    return this.repository.updateDraft(context, capabilityId, validateDraft(input));
+    const validated = validateDraft(input);
+    if (validated.parentId === capabilityId) throw new Error('Invalid parent Capability ID');
+    return this.repository.updateDraft(context, capabilityId, validated);
   }
 
   transition(
