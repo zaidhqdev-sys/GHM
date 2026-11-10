@@ -9,8 +9,8 @@ Draft PR #250 introduces GHM admin capability catalogue operations. Its follow-u
 - Parent cycles are rejected at the database boundary.
 - Slugs are trimmed and lowercased before uniqueness enforcement; the existing unique index remains authoritative.
 - Published slugs remain immutable.
-- Replacement references must target a different active capability in the same taxonomy version and only be set on deprecated/retired capabilities.
-- Disposable PostgreSQL qualification includes direct SQL hierarchy-cycle and duplicate-slug denial.
+- Replacement references must target a different active capability in the same taxonomy version and only be set on deprecated/retired capabilities; a referenced replacement cannot later leave active state or change taxonomy version.
+- Disposable PostgreSQL qualification includes direct SQL hierarchy-cycle, duplicate-slug and replacement-target-retention denial cases.
 
 ## Security blocker remains open
 PR #250's three SECURITY DEFINER functions still authorize using caller-supplied `p_actor_account_id` and remain executable by `ghm_runtime`. HTTP role checks do not bind a direct SQL caller to the claimed actor. Neither PR #250 nor #268 is approved for merge until a database-verifiable actor binding or isolated gateway path is implemented and each RPC is tested for positive use and cross-actor spoof denial.
