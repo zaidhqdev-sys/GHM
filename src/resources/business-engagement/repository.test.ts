@@ -29,6 +29,7 @@ test('enforces per-account engagement write rate limit inside the transaction', 
     query: async (sql: string) => {
       if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(sql)) return { rowCount: 0, rows: [] };
       statements.push(sql);
+      if (sql.includes('pg_advisory_xact_lock')) return { rowCount: 0, rows: [] };
       if (sql.includes('count(*)::int AS total')) return { rowCount: 1, rows: [{ total: 60 }] };
       throw new Error('event insert must not be reached');
     },
