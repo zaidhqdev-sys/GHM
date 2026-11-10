@@ -256,7 +256,7 @@ test('public-only ES256 key loader does not require or return a private key', ()
     GHM_JWT_ES256_PUBLIC_KEY_PEM: publicKeyPem,
     GHM_JWT_ES256_KID: 'ghm-es256-public-only-1',
   });
-  assert.equal(loaded.active.publicKeyPem, publicKeyPem);
+  assert.equal(loaded.active.publicKeyPem, publicKeyPem.trim());
   assert.equal(loaded.active.kid, 'ghm-es256-public-only-1');
   assert.equal(loaded.previous, null);
   assert.equal('privateKeyPem' in loaded.active, false);
@@ -275,7 +275,7 @@ test('public-only access JWT verifier accepts a valid token without private key 
   const token = jwt.sign(
     { sub: '42', iss: ACCESS_JWT_ISS, aud: ACCESS_JWT_AUD, iat: now, exp: now + 900 },
     privateKeyPem,
-    { algorithm: 'ES256', keyid: 'ghm-es256-public-only-1', noTimestamp: true },
+    { algorithm: 'ES256', keyid: 'ghm-es256-public-only-1' },
   );
   const verified = verifier.verify(token, now);
   assert.equal(verified.accountId, 42);
@@ -293,12 +293,12 @@ test('public-only access JWT verifier rejects excessive lifetime and future-issu
   const tooLong = jwt.sign(
     { sub: '42', iss: ACCESS_JWT_ISS, aud: ACCESS_JWT_AUD, iat: now, exp: now + 901 },
     privateKeyPem,
-    { algorithm: 'ES256', keyid: 'ghm-es256-public-only-1', noTimestamp: true },
+    { algorithm: 'ES256', keyid: 'ghm-es256-public-only-1' },
   );
   const future = jwt.sign(
     { sub: '42', iss: ACCESS_JWT_ISS, aud: ACCESS_JWT_AUD, iat: now + 61, exp: now + 900 },
     privateKeyPem,
-    { algorithm: 'ES256', keyid: 'ghm-es256-public-only-1', noTimestamp: true },
+    { algorithm: 'ES256', keyid: 'ghm-es256-public-only-1' },
   );
   assert.throws(() => verifier.verify(tooLong, now), AccessJwtError);
   assert.throws(() => verifier.verify(future, now), AccessJwtError);
