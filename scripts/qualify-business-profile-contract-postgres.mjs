@@ -22,6 +22,7 @@ try {
   );
   assert.equal(runtimeIdentity.rows[0].session_user, 'ghm_runtime');
   assert.equal(runtimeIdentity.rows[0].current_user, 'ghm_runtime');
+  assert.equal(runtimeIdentity.rows[0].database_name, process.env.GHM_QUALIFICATION_DATABASE_NAME);
   console.log('PROFILE CONTRACT RUNTIME IDENTITY PASS');
   const gatewayIdentity = await gatewayPool.query('SELECT current_database() AS database_name, session_user, current_user');
   assert.equal(gatewayIdentity.rows[0].session_user, 'ghm_actor_gateway');
@@ -65,6 +66,18 @@ try {
   }
   console.log('PROFILE CONTRACT FIXTURE CREATED');
 
+  // Simulate the production-only legacy profile columns in this disposable DB.
+  // This exercises the conditional dynamic-SQL path without touching a live clone.
+  const schemaOwner = await migratorPool.connect();
+  try {
+    await schemaOwner.query('SET ROLE ghm_schema_owner');
+    await schemaOwner.query('ALTER TABLE ghm.business ADD COLUMN IF NOT EXISTS category text');
+    await schemaOwner.query('ALTER TABLE ghm.business ADD COLUMN IF NOT EXISTS is_supplier boolean');
+  } finally {
+    schemaOwner.release();
+  }
+  console.log('LEGACY PROFILE COLUMN SIMULATION PASS');
+
   await assert.rejects(
     () => runtimePool.query(
       'SELECT * FROM ghm.update_business_profile($1, $2, $3::jsonb)',
@@ -89,6 +102,8 @@ try {
         AND column_name IN ('category', 'is_supplier')`,
   );
   const legacyColumnNames = new Set(optionalLegacyColumns.rows.map(row => row.column_name));
+  assert.equal(legacyColumnNames.has('category'), true);
+  assert.equal(legacyColumnNames.has('is_supplier'), true);
   const snakePatch = {
     physical_address: '10 Current Repository Road',
     avatar_letter: 'GH',
