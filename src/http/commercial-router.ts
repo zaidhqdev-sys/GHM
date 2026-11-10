@@ -20,7 +20,7 @@ const requireCommercialRead: RequestHandler = (req, res, next) => {
 };
 
 const sendError = (error: unknown, res: Response): void => {
-  if (error instanceof Error && error.message === 'Business read permission required') {
+  if (error instanceof Error && ['Business read permission required', 'Business management permission required'].includes(error.message)) {
     res.status(403).json({ error: 'forbidden' });
     return;
   }
