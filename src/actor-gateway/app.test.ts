@@ -7,6 +7,7 @@ import { createAccessJwtVerifier } from '../auth/foundation/access-jwt-verifier'
 import { ACCESS_JWT_AUD, ACCESS_JWT_ISS } from '../auth/foundation/access-jwt-verifier';
 import { createActorGatewayApp } from './app';
 import type { ActorIdentity, ActorIdentityReader } from './actor-identity-reader';
+import type { BusinessRegistrationIdentityReader } from './business-registration-identity-reader';
 
 const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
 const privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
@@ -33,8 +34,13 @@ const sign = (accountId: number, overrides: Record<string, unknown> = {}): strin
 const withServer = async (
   reader: ActorIdentityReader,
   work: (baseUrl: string) => Promise<void>,
+  businessRegistrationIdentityReader?: BusinessRegistrationIdentityReader,
 ): Promise<void> => {
-  const server = http.createServer(createActorGatewayApp({ verifier, actorIdentityReader: reader }));
+  const server = http.createServer(createActorGatewayApp({
+    verifier,
+    actorIdentityReader: reader,
+    businessRegistrationIdentityReader,
+  }));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('Actor gateway test server did not start');
@@ -131,4 +137,91 @@ test('actor gateway fails closed when the database is unavailable', async () => 
     assert.equal(response.status, 503);
     assert.deepEqual(await response.json(), { error: 'service_unavailable' });
   });
+});
+
+
+test('actor gateway registration identity read derives account ID from token and business ID from typed path', async () => {
+  const received: Array<{ accountId: number; businessId: number }> = [];
+  const reader: ActorIdentityReader = {
+    async readOwnIdentity(accountId: number): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  };
+  const businessReader: BusinessRegistrationIdentityReader = {
+    async readRegistrationIdentity(accountId: number, businessId: number) {
+      received.push({ accountId, businessId });
+      return {
+        businessId,
+        registrationStatus: 'registered',
+        registrationNumber: 'REG-123',
+        legalName: 'Example Legal Entity',
+        updatedAt: new Date('2026-11-10T20:00:00.000Z'),
+      };
+    },
+  };
+  await withServer(reader, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/businesses/77/registration-identity?accountId=999`, {
+      headers: { authorization: `Bearer ${sign(42)}` },
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      registrationIdentity: {
+        businessId: 77,
+        registrationStatus: 'registered',
+        registrationNumber: 'REG-123',
+        legalName: 'Example Legal Entity',
+        updatedAt: '2026-11-10T20:00:00.000Z',
+      },
+    });
+  }, businessReader);
+  assert.deepEqual(received, [{ accountId: 42, businessId: 77 }]);
+});
+
+test('actor gateway registration identity read rejects invalid business IDs before database access', async () => {
+  let calls = 0;
+  const reader: ActorIdentityReader = {
+    async readOwnIdentity(accountId: number): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  };
+  const businessReader: BusinessRegistrationIdentityReader = {
+    async readRegistrationIdentity() {
+      calls += 1;
+      return {
+        businessId: 1,
+        registrationStatus: null,
+        registrationNumber: null,
+        legalName: null,
+        updatedAt: null,
+      };
+    },
+  };
+  await withServer(reader, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/businesses/0/registration-identity`, {
+      headers: { authorization: `Bearer ${sign(42)}` },
+    });
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: 'invalid_request' });
+  }, businessReader);
+  assert.equal(calls, 0);
+});
+
+test('actor gateway hides registration identity membership denials as not found', async () => {
+  const reader: ActorIdentityReader = {
+    async readOwnIdentity(accountId: number): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  };
+  const businessReader: BusinessRegistrationIdentityReader = {
+    async readRegistrationIdentity() {
+      throw Object.assign(new Error('Business management permission required'), { code: '42501' });
+    },
+  };
+  await withServer(reader, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/businesses/77/registration-identity`, {
+      headers: { authorization: `Bearer ${sign(42)}` },
+    });
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), { error: 'not_found' });
+  }, businessReader);
 });
