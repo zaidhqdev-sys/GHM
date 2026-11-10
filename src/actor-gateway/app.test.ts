@@ -9,6 +9,7 @@ import { createActorGatewayApp } from './app';
 import type { ActorIdentity, ActorIdentityReader } from './actor-identity-reader';
 import type { BusinessRegistrationIdentityReader } from './business-registration-identity-reader';
 import type { SupplierClassificationReader } from './supplier-classification-reader';
+import type { BusinessProfileReader } from './business-profile-reader';
 
 const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
 const privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
@@ -38,6 +39,7 @@ const withServer = async (
   businessRegistrationIdentityReader?: BusinessRegistrationIdentityReader,
   capabilityGovernanceReader?: import('./capability-governance-reader').CapabilityGovernanceReader,
   supplierClassificationReader?: SupplierClassificationReader,
+  businessProfileReader?: BusinessProfileReader,
 ): Promise<void> => {
   const server = http.createServer(createActorGatewayApp({
     verifier,
@@ -45,6 +47,7 @@ const withServer = async (
     businessRegistrationIdentityReader,
     capabilityGovernanceReader,
     supplierClassificationReader,
+    businessProfileReader,
   }));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
@@ -427,5 +430,58 @@ test('supplier classification gateway rejects missing bearer token before databa
     });
     assert.equal(response.status, 401);
   }, undefined, undefined, reader);
+  assert.equal(calls, 0);
+});
+
+test('Business profile gateway derives actor from verified token subject', async () => {
+  const calls: Array<{ accountId: number; businessId: number; patch: Record<string, unknown> }> = [];
+  const reader: BusinessProfileReader = {
+    async updateBusinessProfile(accountId, businessId, patch) {
+      calls.push({ accountId, businessId, patch });
+      return { businessId };
+    },
+  };
+  await withServer({
+    async readOwnIdentity(accountId): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  }, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/businesses/73/profile`, {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Updated name', physicalAddress: 'Durban', accountId: 999 }),
+    });
+    assert.equal(response.status, 400);
+    const valid = await fetch(`${baseUrl}/v1/businesses/73/profile`, {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Updated name', physicalAddress: 'Durban' }),
+    });
+    assert.equal(valid.status, 200);
+    assert.deepEqual(await valid.json(), { businessProfile: { businessId: 73 } });
+  }, undefined, undefined, undefined, reader);
+  assert.deepEqual(calls, [{ accountId: 42, businessId: 73, patch: { name: 'Updated name', physicalAddress: 'Durban' } }]);
+});
+
+test('Business profile gateway rejects missing bearer token before database access', async () => {
+  let calls = 0;
+  const reader: BusinessProfileReader = {
+    async updateBusinessProfile(_accountId, businessId) {
+      calls += 1;
+      return { businessId };
+    },
+  };
+  await withServer({
+    async readOwnIdentity(accountId): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: null };
+    },
+  }, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/businesses/73/profile`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Updated name' }),
+    });
+    assert.equal(response.status, 401);
+  }, undefined, undefined, undefined, reader);
   assert.equal(calls, 0);
 });
