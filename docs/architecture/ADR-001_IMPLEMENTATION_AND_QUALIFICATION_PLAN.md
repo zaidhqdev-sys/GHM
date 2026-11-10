@@ -254,3 +254,12 @@ PR #266 qualification note: the first disposable PostgreSQL run exposed an ambig
 
 
 PR #266 qualification correction: follow-up logs pinpointed the ambiguity inside the pre-existing `ghm.update_business_registration_identity` implementation (`ON CONFLICT (business_id)` conflicts with its RETURNS TABLE output variable), not the gateway wrapper. The additive migration now replaces that function using the named `business_registration_identity_pkey` constraint, preserves its existing `ghm_runtime` EXECUTE grant, and keeps the gateway-only wrapper grant isolated. This fix and the positive/negative write qualification must pass on the final exact head before merge.
+
+
+## 16. Registration identity gateway GET + PUT merged — 2026-11-10
+
+PR #266 merged as `a2c734348c3132396121c74d232eafb2794541d1`. Gateway now exposes typed registration identity GET and PUT operations. Both use independently verified ES256 token subject and database-side active actor plus owner/administrator membership checks. The resource API can route its existing GET and PUT through the gateway via optional `GHM_ACTOR_GATEWAY_URL`, forwarding the original bearer token over HTTPS. Gateway-mode failures fail closed and never fall back to legacy DB operations; unset URL preserves current behavior for controlled rollout.
+
+The gateway-only write wrapper calls `ghm.assert_actor_gateway` and is executable only by `ghm_actor_gateway`. The additive migration fixes a pre-existing `ON CONFLICT (business_id)` ambiguity by naming `business_registration_identity_pkey`, while preserving the legacy runtime EXECUTE grant. Exact-head CI passed build, full suite, disposable migration chain, gateway principal and operation qualification, migration audit, runtime boundary, web-quality and Cloudflare Pages.
+
+No production gateway service, URL, credential, role/grant cutover, migration execution or deployment occurred. Next: securely provision the isolated gateway service and its dedicated DB login/public ES256 keys, deploy gateway before enabling the resource API URL, complete end-to-end GET/PUT tests, then separately plan legacy grant revocation. Other feature RPCs and auth issuer isolation remain pending.
