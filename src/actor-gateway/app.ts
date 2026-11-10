@@ -18,6 +18,7 @@ const isSqlState = (error: unknown, code: string): boolean =>
 export const createActorGatewayApp = (dependencies: ActorGatewayDependencies): Express => {
   const app = express();
   app.disable('x-powered-by');
+  app.use(express.json({ limit: '16kb' }));
 
   app.get('/healthz', (_req: Request, res: Response) => {
     res.status(200).json({ status: 'ok' });
