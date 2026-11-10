@@ -16,6 +16,7 @@ import { ProjectServiceImpl } from '../resources/project/service';
 import { CreateProjectInput, ProjectService, UpdateProjectInput } from '../resources/project/contracts';
 import { isRegisteredOperation, ResourceOperation } from '../resources/registry';
 import { config } from '../config';
+import { HttpBusinessProfileGatewayClient, BusinessProfileGatewayError, type BusinessProfileGatewayClient } from './business-profile-gateway-client';
 import { PostgresPublicProjectRepository } from '../resources/project/public-repository';
 import { PublicProjectServiceImpl } from '../resources/project/public-service';
 import { PublicProjectService } from '../resources/project/public-contracts';
@@ -148,6 +149,7 @@ export interface AppDependencies {
   readonly quoteFlowMigrationResetRecoveryService?: QuoteFlowMigrationResetRecoveryService;
   readonly quoteFlowMigrationResetCompletionService?: QuoteFlowMigrationResetCompletionService;
   readonly resourceAuthMiddleware?: import('express').RequestHandler;
+  readonly businessProfileGatewayClient?: BusinessProfileGatewayClient;
   readonly connectService?: Omit<ConnectServiceHttpDependencies, 'savedBusinesses'>;
 }
 
@@ -361,6 +363,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const app = express();
   const resourceAuthMiddleware = dependencies.resourceAuthMiddleware ?? requireAuth;
   const service = dependencies.businessIdentityService ?? new BusinessIdentityServiceImpl(new PostgresBusinessIdentityRepository());
+  const businessProfileGatewayClient = dependencies.businessProfileGatewayClient ?? (config.actorGatewayUrl ? new HttpBusinessProfileGatewayClient(config.actorGatewayUrl) : undefined);
   const publicBusinessService = dependencies.publicBusinessService ?? new PublicBusinessServiceImpl(new PostgresPublicBusinessRepository());
   const businessHoursService =
     dependencies.businessHoursService
@@ -856,9 +859,31 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         res.status(400).json({ error: 'invalid_request' });
         return;
       }
-      const business = await service.updateBusiness(context, businessId, input);
+      if (!businessProfileGatewayClient) {
+        res.status(503).json({ error: 'service_unavailable' });
+        return;
+      }
+      const authorization = req.header('authorization');
+      if (!authorization?.startsWith('Bearer ') || !authorization.slice(7).trim()) {
+        res.status(401).json({ error: 'unauthorized' });
+        return;
+      }
+      await businessProfileGatewayClient.update(authorization.slice(7).trim(), businessId, input as unknown as Record<string, unknown>);
+      const business = await service.getManagedBusiness(context, businessId);
+      if (!business) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
       res.status(200).json({ business });
     } catch (error) {
+      if (error instanceof BusinessProfileGatewayError) {
+        if (error.status === 401 || error.status === 403) { res.status(403).json({ error: 'forbidden' }); return; }
+        if (error.status === 400) { res.status(400).json({ error: 'invalid_request' }); return; }
+        if (error.status === 404) { res.status(404).json({ error: 'not_found' }); return; }
+        if (error.status === 409) { res.status(409).json({ error: 'conflict' }); return; }
+        res.status(503).json({ error: 'service_unavailable' });
+        return;
+      }
       handleError(error, res);
     }
   });
