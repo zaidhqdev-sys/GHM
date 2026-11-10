@@ -84,9 +84,9 @@ try {
   console.log('RUNTIME GATEWAY-ONLY BUSINESS PROFILE RPC DENIAL PASS');
 
   const optionalLegacyColumns = await gatewayPool.query(
-    \`SELECT column_name FROM information_schema.columns
+    `SELECT column_name FROM information_schema.columns
       WHERE table_schema = 'ghm' AND table_name = 'business'
-        AND column_name IN ('category', 'is_supplier')\`,
+        AND column_name IN ('category', 'is_supplier')`,
   );
   const legacyColumnNames = new Set(optionalLegacyColumns.rows.map(row => row.column_name));
   const snakePatch = {
