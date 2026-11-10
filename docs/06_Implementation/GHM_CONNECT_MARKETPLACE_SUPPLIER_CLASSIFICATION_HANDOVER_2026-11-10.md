@@ -66,3 +66,21 @@ Current GHM main does not publish an authoritative `isFeatured` field or a gover
 - Added npm script `qualify:business-supplier-classification` and CI step immediately after disposable migration application.
 - Qualification script is restricted to `NODE_ENV=test` and checks exact disposable database identity. It is not a production migration or production qualification.
 - New exact-head CI after the final test and qualification wiring commits is pending; verify its final result before claiming pass.
+
+
+## Exact-head CI qualification — PASS (2026-11-10 01:12 UTC)
+
+GHM CI run #2305 (ID `42733018770`) completed successfully on PR head `56ec40a4964d6308f3adfb470ac16e63b5394eef`.
+
+All workflow steps passed:
+- TypeScript build
+- Full migration chain on disposable PostgreSQL 18
+- New GHM supplier classification authorization qualification (owner can set supplier/contractor; active member is denied; null is rejected; fixture cleanup passes)
+- Existing business registration, storage, Opportunity SQL, storage lifecycle and tenant authorization qualifications
+- Full test suite
+- Business Capability lifecycle/two-session replacement qualification
+- Commercial payment settlement identity qualification
+- Migration audit policy tests
+- Runtime boundary verification
+
+This qualifies the PR code on disposable CI only. It does not qualify or authorize applying the migration to production, changing live supplier data, deploying GHM, or cutting over Connect.
