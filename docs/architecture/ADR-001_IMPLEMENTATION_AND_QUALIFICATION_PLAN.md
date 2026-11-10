@@ -230,3 +230,12 @@ Exact-head CI passed quality, web-quality and Cloudflare Pages, including full d
 This is a self-read proof slice only. The ordinary resource API still retains its existing token-signing capability and current `ghm_runtime` privileges remain unchanged. Feature RPCs and analytics-event writes are not yet migrated. No production gateway service, environment variable, credential, role, grant, migration or deployment was changed.
 
 Next milestone: migrate one existing actor-sensitive feature read to the gateway and require `ghm.assert_actor_gateway` inside its database function; qualify legitimate and forged cross-actor cases with actual disposable roles. Expand only after the representative operation is proven.
+
+
+## 14. Resource API → Actor Gateway registration read integration (PR #265) — 2026-11-10
+
+PR #265 introduces an HTTPS-only typed HTTP client and optional `GHM_ACTOR_GATEWAY_URL`. When configured, the existing resource API Business registration identity GET forwards the original bearer token to the gateway; resource API auth/operation authorization still runs first, and the gateway independently verifies the token and database membership. Gateway failures are fail-closed and never fall back to the legacy DB path. When unset, legacy behavior remains for controlled rollout.
+
+Tests cover bearer forwarding, gateway mode avoiding legacy service calls, no fallback on gateway outage, response validation, HTTPS-only configuration and config validation. At handover time PR #265 is open and CI is pending. No production URL, service, credential, role/grant, migration execution or deployment changed.
+
+Production rollout remains blocked on a separately provisioned gateway service using only gateway DB credentials and public ES256 verification keys, plus end-to-end HTTP/database qualification. Legacy runtime read grant must remain until the resource API is deployed and verified against the gateway. Next: exact-head CI, extend disposable database qualification through HTTP, then separately approve Render service provisioning and deployment ordering.
