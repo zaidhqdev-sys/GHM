@@ -144,8 +144,8 @@ test('Capability service delegates selectable catalogue reads', async () => {
 test('Capability governance mutations require admin role and normalize draft input', async () => {
   const repository = new FakeRepository();
   const service = new CapabilityServiceImpl(repository);
-  await assert.rejects(() => service.listGoverned(context), /admin/);
-  await assert.rejects(() => service.createDraft(context, { name: 'Build', slug: 'build' }), /admin/);
+  assert.throws(() => service.listGoverned(context), /Insufficient role/);
+  assert.throws(() => service.createDraft(context, { name: 'Build', slug: 'build' }), /Insufficient role/);
   const result = await service.createDraft(adminContext, {
     name: '  Building  ', slug: 'building', description: '  Built environment  ',
     parentId: null, sortOrder: 5, sourceReference: '  policy-42  ',
@@ -159,12 +159,12 @@ test('Capability governance mutations require admin role and normalize draft inp
 
 test('Capability governance validates draft fields and lifecycle targets', async () => {
   const service = new CapabilityServiceImpl(new FakeRepository());
-  await assert.rejects(() => service.createDraft(adminContext, { name: '', slug: 'bad slug' }), /Capability name/);
-  await assert.rejects(() => service.createDraft(adminContext, { name: 'Build', slug: 'Bad Slug' }), /slug/);
-  await assert.rejects(() => service.createDraft(adminContext, { name: 'Build', slug: 'build', sortOrder: -1 }), /sort order/);
+  assert.throws(() => service.createDraft(adminContext, { name: '', slug: 'bad slug' }), /Capability name/);
+  assert.throws(() => service.createDraft(adminContext, { name: 'Build', slug: 'Bad Slug' }), /slug/);
+  assert.throws(() => service.createDraft(adminContext, { name: 'Build', slug: 'build', sortOrder: -1 }), /sort order/);
   const id = '55555555-5555-4555-8555-555555555555';
-  await assert.rejects(() => service.updateDraft(adminContext, id, { name: 'Build', slug: 'build', parentId: id }), /parent Capability ID/);
-  await assert.rejects(() => service.transition(adminContext, '55555555-5555-4555-8555-555555555555', 'draft'), /lifecycle target/);
+  assert.throws(() => service.updateDraft(adminContext, id, { name: 'Build', slug: 'build', parentId: id }), /parent Capability ID/);
+  assert.throws(() => service.transition(adminContext, '55555555-5555-4555-8555-555555555555', 'draft'), /lifecycle target/);
 });
 
 test('Capability governance transitions are delegated with replacement context', async () => {
