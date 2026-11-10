@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION ghm.storage_mark_deletion_pending(
 )
 RETURNS ghm.storage_object
 LANGUAGE plpgsql
-SECURITY INVOKER
+SECURITY DEFINER
 SET search_path = pg_catalog, ghm
 AS $$
 DECLARE
