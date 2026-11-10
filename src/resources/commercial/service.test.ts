@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { AuthContext } from '../../auth/authorization';
 import type {
-  CommercialAccess,
+  CommercialAccess,\n  CommercialOffer,
   CommercialPaymentAttempt,
   CommercialRepository,
   CommercialSubscription,
@@ -47,7 +47,7 @@ const subscription = (): CommercialSubscription => ({
 
 class FakeRepository implements CommercialRepository {
   accessCalls: Array<{ context: AuthContext; businessId: number }> = [];
-  subscriptionCalls: Array<{ context: AuthContext; businessId: number }> = [];
+  subscriptionCalls: Array<{ context: AuthContext; businessId: number }> = [];\n  offerCalls: Array<{ context: AuthContext; businessId: number; planCode: string }> = [];
   trialCalls: Array<{ context: AuthContext; input: ActivateCommercialTrialInput }> = [];
   paymentCalls: Array<{ context: AuthContext; input: PrepareCommercialPaymentInput }> = [];
   cancellationCalls: Array<{ context: AuthContext; input: ScheduleCommercialCancellationInput }> = [];
@@ -55,6 +55,18 @@ class FakeRepository implements CommercialRepository {
   async getCommercialAccess(context: AuthContext, businessId: number): Promise<CommercialAccess> {
     this.accessCalls.push({ context, businessId });
     return access();
+  }
+
+  async getCommercialOffer(context: AuthContext, businessId: number, planCode: string): Promise<CommercialOffer | null> {
+    this.offerCalls.push({ context, businessId, planCode });
+    return {
+      businessId, planCode, planName: 'Business Pro', planVersionId: 31, trialDays: 14,
+      trialUsed: false, trialEligible: true, foundingLimit: 100, foundingAllocated: 4,
+      foundingAvailable: true,
+      foundingPrice: { priceId: 41, amountMinorUnits: 19900, currencyCode: 'ZAR', billingInterval: 'month' },
+      standardPrice: { priceId: 42, amountMinorUnits: 29900, currencyCode: 'ZAR', billingInterval: 'month' },
+      access: access(), evaluatedAt: new Date(1000),
+    };
   }
 
   async getCommercialSubscription(context: AuthContext, businessId: number): Promise<CommercialSubscription | null> {
@@ -151,4 +163,13 @@ test('Commercial service delegates Business-scoped subscription reads', async ()
   const result = await service.getCommercialSubscription(context, 11);
   assert.deepEqual(result, subscription());
   assert.deepEqual(repository.subscriptionCalls, [{ context, businessId: 11 }]);
+});
+
+test('Commercial service delegates canonical offer reads with explicit plan code', async () => {
+  const repository = new FakeRepository();
+  const service = new DefaultCommercialService(repository);
+  const result = await service.getCommercialOffer(context, 11, 'business_pro');
+  assert.equal(result?.trialEligible, true);
+  assert.equal(result?.foundingPrice?.amountMinorUnits, 19900);
+  assert.deepEqual(repository.offerCalls, [{ context, businessId: 11, planCode: 'business_pro' }]);
 });
