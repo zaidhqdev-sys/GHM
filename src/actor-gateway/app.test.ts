@@ -35,11 +35,13 @@ const withServer = async (
   reader: ActorIdentityReader,
   work: (baseUrl: string) => Promise<void>,
   businessRegistrationIdentityReader?: BusinessRegistrationIdentityReader,
+  capabilityGovernanceReader?: import('./capability-governance-reader').CapabilityGovernanceReader,
 ): Promise<void> => {
   const server = http.createServer(createActorGatewayApp({
     verifier,
     actorIdentityReader: reader,
     businessRegistrationIdentityReader,
+    capabilityGovernanceReader,
   }));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
