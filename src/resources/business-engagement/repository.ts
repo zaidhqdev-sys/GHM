@@ -8,7 +8,7 @@ export class PostgresBusinessEngagementRepository implements BusinessEngagementR
   async record(context: AuthContext, input: RecordBusinessEngagementInput): Promise<BusinessEngagementEvent> {
     return withAuthorizedTransaction(context, async client => {
       await client.query(
-        'SELECT pg_advisory_xact_lock(hashtextextended($1::text || \' : \' || $2::text, 0))',
+        'SELECT pg_advisory_xact_lock(hashtextextended($1::text || \':\' || $2::text, 0))',
         [input.businessId, context.userId],
       );
       const rate = await client.query(
