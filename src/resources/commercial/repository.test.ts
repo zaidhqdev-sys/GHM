@@ -129,9 +129,10 @@ test('Commercial subscription read returns current subscription', async () => {
   } satisfies CommercialSubscription);
 });
 
-test('Commercial subscription read rejects unauthorized membership', async () => {
-  const { pool } = createFakePool({ membership: false });
-  await assert.rejects(() => new PostgresCommercialRepository(pool).getCommercialSubscription(context(), businessId), /Business read permission required/);
+test('Commercial subscription read requires owner or administrator membership', async () => {
+  const { pool, calls } = createFakePool({ management: false });
+  await assert.rejects(() => new PostgresCommercialRepository(pool).getCommercialSubscription(context(), businessId), /Business management permission required/);
+  assert.equal(calls.some((sql) => sql.includes('FROM ghm.commercial_subscription')), false);
 });
 
 test('Commercial trial activation requires an explicit plan code', async () => {
