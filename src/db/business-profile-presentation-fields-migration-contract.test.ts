@@ -33,6 +33,7 @@ test('business tenure remains self-declared and is not a verified trust signal',
 });
 
 const reconciled=fs.readFileSync(path.resolve(process.cwd(),'database/migrations/20261108140000_reconcile_business_profile_contract.sql'),'utf8');
+const gatewayCutover=fs.readFileSync(path.resolve(process.cwd(),'database/migrations/20261110270000_gateway_business_profile_update.sql'),'utf8');
 
 test('forward-only Business profile reconciliation adds only missing coordinates idempotently',()=>{
  assert.match(reconciled,/ADD COLUMN IF NOT EXISTS latitude double precision/);
@@ -56,8 +57,12 @@ test('profile reconciliation preserves legacy category and supplier fields and a
  assert.match(reconciled,/membership_role IN \('owner', 'administrator'\)/);
  assert.match(reconciled,/SECURITY DEFINER/);
  assert.match(reconciled,/SET search_path = pg_catalog, ghm/);
- assert.match(reconciled,/GRANT EXECUTE ON FUNCTION ghm\.update_business_profile\(bigint, bigint, jsonb\) TO ghm_runtime/);
  assert.match(reconciled,/REVOKE ALL ON FUNCTION ghm\.update_business_profile\(bigint, bigint, jsonb\) FROM PUBLIC/);
+ assert.match(gatewayCutover,/REVOKE ALL ON FUNCTION ghm\.update_business_profile\(bigint, bigint, jsonb\) FROM ghm_runtime/);
+ assert.match(gatewayCutover,/GRANT EXECUTE ON FUNCTION ghm\.gateway_update_business_profile\(bigint, bigint, jsonb\) TO ghm_actor_gateway/);
+ assert.match(gatewayCutover,/REVOKE ALL ON FUNCTION ghm\.gateway_update_business_profile\(bigint, bigint, jsonb\) FROM ghm_runtime/);
+ assert.doesNotMatch(repository,/ghm\.update_business_profile/);
+ assert.match(repository,/must be updated through the authenticated actor gateway/);
 });
 
 test('profile reconciliation preserves live DB validation limits rather than tightening data contracts',()=>{
