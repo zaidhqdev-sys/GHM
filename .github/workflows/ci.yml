@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - integration/capability-gateway-qualification-20261110
   pull_request:
     branches:
       - main
@@ -84,6 +85,12 @@ jobs:
 
       - name: Check Business profile qualification script syntax
         run: node --check scripts/qualify-business-profile-contract-postgres.mjs
+
+      - name: Check supplier classification qualification script syntax
+        run: node --check scripts/qualify-business-supplier-classification-postgres.mjs
+
+      - name: Check capability governance qualification script syntax
+        run: node --check scripts/qualify-capability-catalogue-governance.mjs
 
       - name: Build
         run: npm run build
