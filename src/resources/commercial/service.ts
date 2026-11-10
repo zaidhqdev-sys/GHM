@@ -1,7 +1,7 @@
 ﻿import type { AuthContext } from '../../auth/authorization';
 import type {
   BusinessId,
-  CommercialAccess,
+  CommercialAccess,\n  CommercialOffer,
   CommercialPaymentAttempt,
   CommercialRepository,
   CommercialService,
@@ -20,6 +20,14 @@ export class DefaultCommercialService implements CommercialService {
     businessId: BusinessId,
   ): Promise<CommercialAccess> {
     return this.repository.getCommercialAccess(context, businessId);
+  }
+
+  getCommercialOffer(
+    context: AuthContext,
+    businessId: BusinessId,
+    planCode: string,
+  ): Promise<CommercialOffer | null> {
+    return this.repository.getCommercialOffer(context, businessId, planCode);
   }
 
   getCommercialSubscription(
