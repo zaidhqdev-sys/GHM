@@ -1260,7 +1260,7 @@ test('managed Business profile PATCH forwards updates through the authenticated 
       received = { accessToken, businessId, patch };
     },
   };
-  const { server, baseUrl } = await startTestServer(service, gateway);
+  const { server, baseUrl } = await startTestServer(service, undefined, gateway);
   try {
     const token = tokenFor({ userId: 42, role: 'business' });
     const response = await fetch(`${baseUrl}/api/v1/businesses/201`, {
