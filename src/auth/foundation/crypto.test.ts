@@ -161,6 +161,7 @@ test('ES256 access JWT signs and verifies with approved claims', () => {
   assert.equal(verified.claims.iss, ACCESS_JWT_ISS);
   assert.equal(verified.claims.aud, ACCESS_JWT_AUD);
   assert.equal(verified.claims.sub, '42');
+  assert.equal(Number.isSafeInteger(verified.claims.iat), true);
 });
 
 test('ES256 verify rejects wrong algorithm', () => {
@@ -300,4 +301,37 @@ test('public-only access JWT verifier rejects excessive lifetime and future-issu
   );
   assert.throws(() => verifier.verify(tooLong, now), AccessJwtError);
   assert.throws(() => verifier.verify(future, now), AccessJwtError);
+});
+
+
+test('public-only access JWT verifier accepts legacy access tokens without iat during the compatibility window', () => {
+  const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  const privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+  const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
+  const verifier = createAccessJwtVerifier(new Map([['ghm-es256-public-only-1', publicKeyPem]]));
+  const now = Math.floor(Date.now() / 1000);
+  const legacyToken = jwt.sign(
+    { sub: '42', iss: ACCESS_JWT_ISS, aud: ACCESS_JWT_AUD, exp: now + 300 },
+    privateKeyPem,
+    { algorithm: 'ES256', keyid: 'ghm-es256-public-only-1', noTimestamp: true },
+  );
+  const verified = verifier.verify(legacyToken, now);
+  assert.equal(verified.accountId, 42);
+  assert.equal(verified.claims.iat, undefined);
+});
+
+test('new access JWT signer emits iat while preserving the 900-second expiry', () => {
+  const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  const privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+  const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
+  const keys = loadEs256Keys({
+    GHM_JWT_ES256_PRIVATE_KEY_PEM: privateKeyPem,
+    GHM_JWT_ES256_PUBLIC_KEY_PEM: publicKeyPem,
+    GHM_JWT_ES256_KID: 'ghm-es256-20260921-1',
+  });
+  const now = Math.floor(Date.now() / 1000);
+  const token = createAccessJwtService(keys).sign(42, now);
+  const decoded = jwt.decode(token) as jwt.JwtPayload;
+  assert.equal(decoded.iat, now);
+  assert.equal(decoded.exp, now + 900);
 });
