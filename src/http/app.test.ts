@@ -934,7 +934,7 @@ test('public directory route passes canonical location and geo filters without a
   try {
     const response = await fetch(`${baseUrl}/api/v1/public/businesses?province=KwaZulu-Natal&city=Durban&latitude=-29.85&longitude=31.02&radiusKm=25&sort=distance`);
     assert.equal(response.status, 200);
-    assert.deepEqual(received, { q: undefined, category: undefined, province: 'KwaZulu-Natal', city: 'Durban', latitude: -29.85, longitude: 31.02, radiusKm: 25, sort: 'distance', page: 1, pageSize: 20 });
+    assert.deepEqual(received, { q: undefined, category: undefined, province: 'KwaZulu-Natal', city: 'Durban', latitude: -29.85, longitude: 31.02, radiusKm: 25, businessType: 'suppliers', sort: 'distance', page: 1, pageSize: 20 });
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 });
 
