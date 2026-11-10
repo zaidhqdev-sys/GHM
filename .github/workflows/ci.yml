@@ -92,6 +92,9 @@ jobs:
       - name: Check capability governance qualification script syntax
         run: node --check scripts/qualify-capability-catalogue-governance.mjs
 
+      - name: Check capability governance cutover qualification script syntax
+        run: node --check scripts/qualify-capability-governance-cutover-postgres.mjs
+
       - name: Build
         run: npm run build
 
@@ -141,6 +144,9 @@ jobs:
 
       - name: Qualify system-admin Capability catalogue governance on disposable PostgreSQL
         run: npm run qualify:capability-catalogue-governance
+
+      - name: Qualify capability legacy RPC cutover and gateway-only access on disposable PostgreSQL
+        run: npm run qualify:capability-governance-cutover
 
       - name: Qualify GHM supplier classification and membership authorization on disposable PostgreSQL
         run: npm run qualify:business-supplier-classification
