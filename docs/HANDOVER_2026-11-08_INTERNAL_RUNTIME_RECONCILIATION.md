@@ -676,3 +676,12 @@ The disposable profile qualification proves:
 - An ordinary member is denied by the gateway wrapper.
 
 This is disposable CI only. It does not authorize applying the cutover migration or provisioning/deploying the gateway in production. A handover-only commit follows this run, so final exact-head CI must be reconfirmed before merge consideration.
+
+
+## Legacy-column compatibility and latest exact-head CI — PASS (2026-11-10)
+
+The profile qualification now adds the production-only legacy `category` and `is_supplier` columns to the disposable PostgreSQL fixture before invoking the gateway wrapper. It verifies the conditional dynamic-SQL path with both columns present, while retaining alias-conflict and coordinate-pair checks. The catalog is inspected under the schema-owner role (the isolated gateway role intentionally has no direct table metadata access).
+
+Latest implementation head `09fd30d24b4eee1031f4437f353e2f71ee8469c9` passed workflow run #42908980806: TypeScript build, all migrations, Business profile qualification (including the simulated legacy columns and runtime RPC denial), full tests, commercial settlement qualification, migration audit, runtime boundary and Cloudflare Pages.
+
+This is stronger disposable compatibility evidence, but it is not a restored production-like clone. A restored active-database clone review remains required before applying the migration to production. A handover-only update follows, so final exact-head CI must be reconfirmed.
