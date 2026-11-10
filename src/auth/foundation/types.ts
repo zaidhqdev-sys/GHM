@@ -49,7 +49,7 @@ export interface AccessJwtClaims {
   sub: string;
   iss: 'ghm-auth';
   aud: 'ghm-api';
-  iat: number;
+  iat?: number;
   exp: number;
 }
 
