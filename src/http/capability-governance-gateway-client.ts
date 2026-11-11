@@ -1,3 +1,4 @@
+import { assertActorGatewayBaseUrl } from './actor-gateway-url';
 import type {Capability,CapabilityDraftInput,CapabilityLifecycle} from '../resources/capability/contracts';
 export interface CapabilityGovernanceGatewayClient {
  list(accessToken:string):Promise<Capability[]>;
@@ -10,13 +11,13 @@ export class CapabilityGovernanceGatewayError extends Error {
 }
 export class HttpCapabilityGovernanceGatewayClient implements CapabilityGovernanceGatewayClient {
  constructor(private readonly baseUrl:string,private readonly timeoutMs=5000,private readonly fetchImpl:typeof fetch=fetch){
-  const u=new URL(baseUrl);if(u.protocol!=='https:' && !['localhost','127.0.0.1'].includes(u.hostname))throw new Error('Actor gateway URL must use HTTPS outside localhost');
+  assertActorGatewayBaseUrl(baseUrl);
  }
  private async request<T>(token:string,path:string,method:'GET'|'POST'|'PATCH',body?:unknown):Promise<T>{
   if(!token.trim())throw new Error('Actor gateway bearer token is required');
   const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),this.timeoutMs);
   try{
-   const response=await this.fetchImpl(`${this.baseUrl.replace(/\/$/,'')}${path}`,{method,headers:{authorization:`Bearer ${token}`,accept:'application/json',...(body?{'content-type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:controller.signal});
+   const response=await this.fetchImpl(`${this.baseUrl.replace(/\/$/,'')}${path}`,{method,redirect:'error',headers:{authorization:`Bearer ${token}`,accept:'application/json',...(body?{'content-type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:controller.signal});
    if(!response.ok)throw new CapabilityGovernanceGatewayError(response.status);
    const payload:unknown=await response.json();
    if(!payload || typeof payload!=='object')throw new Error('Actor gateway response is invalid');
