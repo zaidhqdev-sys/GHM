@@ -1115,3 +1115,30 @@ Commits after the earlier code head: runtime URL/skip handling `0628804b9c1196d4
 
 At this checkpoint the latest code/test head `942203c53c94e81dabdef76895ac2220d48dbb25` has workflow run #43115856824 queued; the immediately preceding run #43115850276 is in progress on its parent commit. Earlier successful runs on the branch do not qualify this latest head. No qualification pass is claimed until the exact latest head's full workflow succeeds and the new DB qualification step is visible as PASS.
 
+
+
+## Internal auth call-path map and first integrated qualification failure (2026-11-11 22:58 UTC)
+
+### Verified application call paths — do not blanket-revoke these RPCs
+
+The following SQL functions remain part of pre-JWT authentication flows. Their account/session IDs are derived by application control flow, not by a verified access-token actor, so they need a dedicated internal-auth authority boundary. They are not safe candidates for indiscriminate Actor Gateway conversion or blanket revocation:
+
+- `auth_create_account(...)`: called by public registration after request validation and password hashing; returns the newly created account ID. The auth service then creates the first session.
+- `auth_lookup_password_by_normalized_email(text)`: called by login and password-recovery request. It returns the credential/account state required for password verification or recovery delivery.
+- `auth_set_password(bigint,...)`: called by login only after successful password verification when the hash needs rehashing; also used by the recovery-reset transaction after token redemption. It accepts account ID and credential fields, so direct runtime execution is broader than the application caller's proof.
+- `auth_create_session_with_refresh(bigint,bytea)`: called after public registration or successful password verification. It accepts account ID and a caller-supplied protected refresh hash; direct runtime execution could create a session for an arbitrary account.
+- `auth_validate_session(bigint)`: read-only session-state lookup. Keep separate from mutation operations; its direct exposure still needs review against actual bearer/JWT validation architecture.
+- `auth_rotate_refresh(bytea,bytea)`: refresh route passes the opaque presented token; persistence hashes it and generates the successor hash. This is a token-possession flow, not a caller-supplied account-ID flow.
+- `auth_issue_recovery(bigint,bytea,timestamptz)`: password-recovery route derives account ID from normalized-email credential lookup, generates a random opaque token and HMAC hash, then sends the wire token only through the delivery port. QuoteFlow migration-reset request derives account ID from the migration enrollment lookup. Direct runtime invocation still accepts arbitrary account ID and a caller-chosen token hash; preserve the flow while designing internal authority.
+- `auth_redeem_recovery(bytea)` and `auth_redeem_recovery_with_count(bytea)`: token-bound; the latter atomically returns account ID and revoked-session count and is used by normal recovery reset. The QuoteFlow migration reset has a separate atomic SECURITY DEFINER completion function and must retain its nested owner calls.
+- Logout now uses refresh-token possession through `auth_revoke_by_refresh_hash`; the unused account/session administration functions revoked by migration `20261111220000` are no longer part of an active HTTP/service path.
+- External identity bootstrap and explicit linking remain separate concerns, not part of the password/session flow above.
+
+This source map confirms the key design requirement: separate public/pre-authentication operations from generic internal mutation authority, and bind sensitive mutations to a verified credential/token proof inside the database boundary. The current runtime role still has EXECUTE on some broad pre-authentication functions; no safe replacement design is yet qualified. Do not revoke `auth_set_password`, `auth_create_session_with_refresh`, or `auth_issue_recovery` until an atomic internal-auth authority design preserves all existing flows.
+
+### First CI result after wiring the new provisioning qualification
+
+On exact code/test head `585aa150d7723ca0c530e23c4139f6fbc4751577`, run #43115920841 failed at the newly appended qualification script after the normal test suite had passed 884/884 (0 failed). The new script incorrectly hard-coded expected database name `ghm_db`; CI correctly runs against `ghm_disposable_test`. This was a qualification harness expectation mismatch, not a migration or privilege failure. Corrected by reading `GHM_QUALIFICATION_DATABASE_NAME` / `GHM_MIGRATION_DATABASE_NAME` with `ghm_db` only as the local default, commit `c71f795d92a5a500fd544420dad1845553d9a5f9`.
+
+Exact-head workflow runs #43116108337 and #43116117596 are IN PROGRESS on `c71f795d92a5a500fd544420dad1845553d9a5f9` at this checkpoint; both have web-quality completed successfully, while quality has not yet completed. No pass is claimed for the migration provisioning DB qualification. Continue from those exact runs and inspect the actual npm test log for the new qualifier result.
+
