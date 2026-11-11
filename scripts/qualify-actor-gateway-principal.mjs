@@ -21,7 +21,12 @@ const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
 const gatewayPool = new Pool({ connectionString: gatewayUrl, ssl });
 const cleanupPool = new Pool({ connectionString: migratorUrl, ssl });
 const fixture = { marker: `ghm-actor-gateway-${randomUUID()}`, accountIds: [], businessIds: [] };
-const signAssertion = (accountId,operation,context={}) => { const issuedAt=Math.floor(Date.now()/1000),nonce=randomUUID(),contextJson=JSON.stringify(context),contextHex=Buffer.from(contextJson,'utf8').toString('hex'); const payload=`ghm-actor-gateway:v2|${accountId}|${operation}|${issuedAt}|${nonce}|${contextHex}`; const signature=createHmac('sha256',Buffer.from(assertionSecret,'base64')).update(payload,'utf8').digest('hex'); return {issuedAt,nonce,context:contextJson,signature}; };
+const signAssertion = (accountId,operation,context={}) => {
+  const issuedAt=Math.floor(Date.now()/1000),nonce=randomUUID(),contextJson=JSON.stringify(context),contextHex=Buffer.from(contextJson,'utf8').toString('hex');
+  const payload=`ghm-actor-gateway:v2|${accountId}|${operation}|${issuedAt}|${nonce}|${contextHex}`;
+  const signature=createHmac('sha256',Buffer.from(assertionSecret,'base64')).update(payload,'utf8').digest('hex');
+  return {issuedAt,nonce,context:contextJson,signature};
+};
 const assertionContext = (operation,args) => {
   if(operation==='actor.identity.read') return {};
   if(operation==='business.registration.read') return {businessId:args[0]};
@@ -31,8 +36,6 @@ const assertionContext = (operation,args) => {
 const gatewayCall = (accountId,operation,sql,args=[]) => {
   const a=signAssertion(accountId,operation,assertionContext(operation,args));
   const shiftedSql=sql.replace(/\$(\d+)/g,(_match,n)=>'
-  return gatewayPool.query(shiftedSql,[accountId,a.issuedAt,a.nonce,a.context,a.signature,...args]);
-};
 
 const identity = async (pool, expectedUser) => {
   const { rows } = await pool.query(`
@@ -527,9 +530,9 @@ try {
   });
   console.log('TYPED GATEWAY SELF-IDENTITY READ: PASS');
 
-  const forgedSelf=signAssertion(activeAccountId,'actor.identity.read',{});
+  const forgedSelf=signAssertion(activeAccountId,'actor.identity.read');
   await expectSqlState(
-    () => gatewayPool.query('SELECT * FROM ghm.gateway_get_actor_identity($1,$2,$3,$4,$5)',[activeAccountId,forgedSelf.issuedAt,forgedSelf.nonce,forgedSelf.context,'0'.repeat(64)]),
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_get_actor_identity($1,$2,$3,$4)',[activeAccountId,forgedSelf.issuedAt,forgedSelf.nonce,'0'.repeat(64)]),
     '42501',
     'FORGED ACTOR SELF-IDENTITY ASSERTION DENIED',
   );
@@ -603,17 +606,17 @@ try {
     'ORDINARY RUNTIME CANNOT EXECUTE GATEWAY FUNCTION',
   );
   await expectSqlState(
-    () => runtimePool.query('SELECT * FROM ghm.gateway_get_actor_identity($1,$2,$3,$4,$5)', [activeAccountId,Math.floor(Date.now()/1000),randomUUID(),'{}','0'.repeat(64)]),
+    () => runtimePool.query('SELECT * FROM ghm.gateway_get_actor_identity($1,$2,$3,$4)', [activeAccountId,Math.floor(Date.now()/1000),randomUUID(),'0'.repeat(64)]),
     '42501',
     'ORDINARY RUNTIME CANNOT EXECUTE TYPED GATEWAY SELF-READ',
   );
   await expectSqlState(
-    () => runtimePool.query('SELECT * FROM ghm.gateway_read_business_registration_identity($1,$2,$3,$4,$5,$6)', [activeAccountId,Math.floor(Date.now()/1000),randomUUID(),JSON.stringify({businessId}),'0'.repeat(64),businessId]),
+    () => runtimePool.query('SELECT * FROM ghm.gateway_read_business_registration_identity($1,$2,$3,$4,$5)', [activeAccountId,Math.floor(Date.now()/1000),randomUUID(),'0'.repeat(64),businessId]),
     '42501',
     'ORDINARY RUNTIME CANNOT EXECUTE REGISTRATION IDENTITY GATEWAY READ',
   );
   await expectSqlState(
-    () => runtimePool.query('SELECT * FROM ghm.gateway_update_business_registration_identity($1,$2,$3,$4,$5,$6,$7,$8,$9)', [activeAccountId,Math.floor(Date.now()/1000),randomUUID(),JSON.stringify({businessId,registrationStatus:'registered',registrationNumber:'REG-X',legalName:'Spoofed Entity'}),'0'.repeat(64),businessId,'registered','REG-X','Spoofed Entity']),
+    () => runtimePool.query('SELECT * FROM ghm.gateway_update_business_registration_identity($1,$2,$3,$4,$5,$6,$7,$8)', [activeAccountId,Math.floor(Date.now()/1000),randomUUID(),'0'.repeat(64),businessId,'registered','REG-X','Spoofed Entity']),
     '42501',
     'ORDINARY RUNTIME CANNOT EXECUTE REGISTRATION IDENTITY GATEWAY WRITE',
   );
