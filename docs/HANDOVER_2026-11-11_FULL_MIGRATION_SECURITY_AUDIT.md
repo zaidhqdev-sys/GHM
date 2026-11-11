@@ -137,3 +137,22 @@ Implementation has not started yet. The current branch contains the corrected qu
 - Qualification correction commit: `549ba13d1c10b9165ac07b3c98c9273946c70818`.
 - PR #272 remains open and unmerged.
 - Exact-head CI must be checked for this commit and any subsequent code commit. Earlier run #3021 does not qualify this new commit.
+
+
+## Saved Business implementation checkpoint — first code batch (2026-11-11)
+
+The first implementation batch now exists on PR #272:
+
+- Migration `20261111100000_add_signed_saved_business_gateway.sql`: extends the existing v2 HMAC verifier allowlist with `saved_business.read/create/delete` and defines gateway-only SECURITY DEFINER list/get/create/delete wrappers. Each wrapper verifies actor, operation, timestamp, nonce, signature and exact JSON context; list/get SQL constrain `account_id` to the signed actor. Create/delete invoke the existing domain functions with `p_actor` only after assertion verification.
+- Manual cutover `20261111110000_revoke_legacy_saved_business_runtime.sql`: revokes runtime/PUBLIC table DML/read, sequence access and legacy create/delete EXECUTE. Not part of automatic migration execution.
+- `src/actor-gateway/saved-business-reader.ts`: v2 assertion reader for all four operations.
+- Actor Gateway app/server routes: authenticated JWT actor is used for list/get/create/delete; no account ID is accepted from caller input.
+- Resource API client/router/app integration: forwards original bearer token; production is configured to fail closed if gateway is unavailable/unconfigured; legacy path remains for non-production before cutover.
+- Tests: Actor Gateway route actor binding and account-field rejection; Resource API bearer-token forwarding; SQL migration/cutover contract test included in `npm test`.
+- `scripts/qualify-saved-business-gateway-cutover-postgres.mjs` plus npm/CI wiring: applies manual cutover only to the disposable localhost database; checks distinct role identities, runtime direct SELECT/legacy function/sequence denial, gateway ACLs, signed CRUD, cross-account isolation, actor substitution, context substitution and replay rejection.
+
+Implementation commits include migration `334fde36`, manual cutover `60c6065e`, reader `a715d524`, Actor Gateway routes/server, Resource API client/router/wiring, tests, qualification script and CI wiring. Latest code/CI wiring head at this checkpoint is `9e7383d26615ac5e4f04449c6f2406bf57c00528`.
+
+**Not yet qualified:** no successful exact-head CI run has been observed at this checkpoint. The new disposable PostgreSQL qualification has not yet been observed passing. Treat this batch as IMPLEMENTED / QUALIFICATION PENDING, not closed. No production cutover or production changes were made. Do not run the manual cutover outside the CI disposable database until explicit release gates and approval.
+
+Potential compatibility point to verify in CI: saved-business duplicate-create currently maps SQLSTATE `23505` to HTTP 409 at the Actor Gateway, while the Resource API client propagates the gateway 409; preserve existing domain error behavior if current callers expect a different response.
