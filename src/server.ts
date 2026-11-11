@@ -2,6 +2,7 @@ import http from 'http';
 import { config } from './config';
 import { createApp } from './http/app';
 import { pool } from './db/pool';
+import { assertRuntimeDatabaseIdentity } from './db/runtime-principal';
 
 const app = createApp();
 const server = http.createServer(app);
@@ -21,7 +22,10 @@ app.get('/readyz', (_req, res) => {
 });
 
 const start = async (): Promise<void> => {
-  await pool.query('SELECT 1');
+  const identity = await pool.query<{ session_user: string; current_user: string }>(
+    'SELECT session_user, current_user',
+  );
+  assertRuntimeDatabaseIdentity(identity.rows[0]);
   server.listen(config.port, () => {
     ready = true;
     console.log(`GHM Core Engine listening on port ${config.port}`);
