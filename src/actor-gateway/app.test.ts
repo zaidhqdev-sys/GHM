@@ -508,6 +508,12 @@ test('Business profile gateway derives actor from verified token subject', async
       body: JSON.stringify({ name: 'Updated name', physicalAddress: 'Durban', accountId: 999 }),
     });
     assert.equal(response.status, 400);
+    const supplierViaProfile = await fetch(`${baseUrl}/v1/businesses/73/profile`, {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ isSupplier: true }),
+    });
+    assert.equal(supplierViaProfile.status, 400);
     const valid = await fetch(`${baseUrl}/v1/businesses/73/profile`, {
       method: 'PATCH',
       headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
