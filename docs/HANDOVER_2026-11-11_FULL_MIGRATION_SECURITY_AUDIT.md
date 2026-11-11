@@ -176,3 +176,28 @@ Corrections made:
 - Add explicit column-level SELECT ACL checks, in addition to table-level SELECT checks.
 
 Latest runner code commit: `55665af44e741829ff72f07580b73119339d3f53`. Exact-head GitHub Actions run #3083 (`43090261075`) is currently in progress; do not claim qualification until a run on this head completes and its new `Qualify Saved Business signed gateway cutover on disposable PostgreSQL` step passes. The previous failed run remains recorded as a harness failure; it must not be hidden or described as an implementation pass.
+
+
+## Saved Business signed Actor Gateway — exact-head qualification PASS (2026-11-11)
+
+The corrected implementation/qualification head `55665af44e741829ff72f07580b73119339d3f53` passed GitHub Actions run [#3083](https://github.com/zaidhqdev-sys/GHM/actions/runs/43090261075): both `quality` and `web-quality` succeeded. The quality job passed build, full automated test suite, complete migration chain, and the new Saved Business disposable PostgreSQL cutover qualification.
+
+The saved-business qualification log explicitly records:
+
+- `MANUAL SAVED BUSINESS CUTOVER APPLIED TO DISPOSABLE POSTGRESQL: PASS`
+- `RUNTIME DIRECT SAVED BUSINESS SELECT DENIED: PASS`
+- `RUNTIME COLUMN-LEVEL SAVED BUSINESS SELECT DENIED: PASS`
+- `RUNTIME LEGACY CREATE EXECUTE DENIED: PASS`
+- `RUNTIME LEGACY DELETE EXECUTE DENIED: PASS`
+- `RUNTIME SAVED BUSINESS SEQUENCE ACCESS DENIED: PASS`
+- `POST-CUTOVER SAVED BUSINESS PRIVILEGE MATRIX: PASS`
+- `SIGNED ACTOR SUBSTITUTION DENIED: PASS`
+- `SIGNED ASSERTION REPLAY DENIED: PASS`
+- `SIGNED REQUEST TARGET SUBSTITUTION DENIED: PASS`
+- `GHM SAVED BUSINESS SIGNED GATEWAY CUTOVER QUALIFICATION: PASS`
+
+The gateway CRUD calls, actor provenance and cross-account get/delete isolation also passed in the script. Resource API and Actor Gateway tests cover JWT-derived actor, no caller-supplied account field, original bearer-token forwarding and fail-closed gateway behavior. SQL contract tests are included in the full suite.
+
+**Status update:** the Saved Business database actor-provenance issue is IMPLEMENTED / QUALIFIED on code head `55665af4`. The earlier qualification harness failure was fixed and must remain recorded as a harness issue, not hidden. The manual cutover was exercised only on disposable CI PostgreSQL; production table/function/sequence permissions remain unchanged. Production rollout still requires Render role-model resolution, a fresh independently verified production backup, and explicit approval. Do not apply the manual cutover to production.
+
+The latest PR branch documentation now includes the corrected qualification status. PR #272 remains open and unmerged; the qualification run proves the code head, while later documentation-only commits are not themselves code qualification claims.
