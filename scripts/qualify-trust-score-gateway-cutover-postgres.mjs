@@ -37,7 +37,7 @@ try {
     const owner = await fixture.query("INSERT INTO ghm.account_identity(full_name,role) VALUES($1,'business') RETURNING id", [marker]);
     const outsider = await fixture.query("INSERT INTO ghm.account_identity(full_name,role) VALUES($1,'business') RETURNING id", [marker + '-outsider']);
     const business = await fixture.query("INSERT INTO ghm.business(name,slug,rating,verification_status,is_verified,is_active) VALUES($1,$2,4.5,'approved',true,true) RETURNING id", [marker, marker]);
-    const privateBusiness = await fixture.query("INSERT INTO ghm.business(name,slug,rating,verification_status,is_verified,is_active) VALUES($1,$2,4.5,'pending',false,true) RETURNING id", [marker + '-private', marker + '-private']);
+    const privateBusiness = await fixture.query("INSERT INTO ghm.business(name,slug,rating,verification_status,is_verified,is_active) VALUES($1,$2,4.5,'unverified',false,true) RETURNING id", [marker + '-private', marker + '-private']);
     const accountId = Number(owner.rows[0].id);
     const businessId = Number(business.rows[0].id);
     const privateBusinessId = Number(privateBusiness.rows[0].id);
