@@ -631,3 +631,12 @@ Business Hours replacement is IMPLEMENTED / QUALIFIED. Direct runtime SELECT rem
 ### Business Hours exact-head CI confirmation
 
 Follow-up head `b24c820e3221e06aa85cbf9bf43a24dba6ccba35`, including the reader HMAC/context/rollback tests in `npm test`, passed exact-head GitHub Actions run #3136 (`43092456034`): both `quality` and `web-quality` succeeded. The Business Hours replacement mutation remains IMPLEMENTED / QUALIFIED. Direct runtime table SELECT remains OPEN pending a separately qualified member/public read projection. Production remains untouched.
+
+
+## 2026-11-11 — Business Hours database boundary fully qualified
+
+Business Hours signed replacement, authenticated member read and approved public read projection are now IMPLEMENTED / QUALIFIED on exact head `67d7049ec2f8fa8727475158558fb23f8724ab0d`, GitHub Actions run #3166 (`43093547768`): both quality jobs, full test suite, migration chain and disposable PostgreSQL qualification passed. The qualification proved runtime direct table SELECT, sequence access and legacy replacement EXECUTE denied; signed mutation/member read succeeded; cross-account read, actor substitution, target substitution and assertion replay were denied; approved public schedule projection remained available; and runtime could not execute gateway-only wrappers.
+
+Manual cutover revokes runtime direct table SELECT, sequence access and legacy replacement EXECUTE but was applied only to disposable CI PostgreSQL. It remains unapplied in production. Production remains blocked on Render role-model resolution, a fresh independently verified backup and explicit approval. Detailed evidence: `docs/architecture/BUSINESS_HOURS_QUALIFICATION.md` and `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+No production changes and no merge.
