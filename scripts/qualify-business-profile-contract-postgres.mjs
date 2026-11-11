@@ -20,7 +20,7 @@ let businessId;
 const usedNonces = new Set();
 const freshNonce = () => { let nonce; do { nonce=randomUUID(); } while (usedNonces.has(nonce)); usedNonces.add(nonce); return nonce; };
 const signAssertion = (actorId) => { const issuedAt=Math.floor(Date.now()/1000),nonce=freshNonce(); const payload=`ghm-actor-gateway:v1|${actorId}|business.profile.update|${issuedAt}|${nonce}`; const signature=createHmac('sha256',Buffer.from(assertionSecret,'base64')).update(payload,'utf8').digest('hex'); return {issuedAt,nonce,signature}; };
-const gatewayCall = (actorId,patch) => { const a=signAssertion(actorId); return gatewayPool.query('SELECT (ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6::jsonb)).*',[actorId,a.issuedAt,a.nonce,a.signature,businessId,JSON.stringify(patch)]); };
+const gatewayCall = (actorId,patch) => { const a=signAssertion(actorId); return gatewayPool.query('SELECT updated.* FROM ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6::jsonb) AS updated',[actorId,a.issuedAt,a.nonce,a.signature,businessId,JSON.stringify(patch)]); };
 
 try {
   const runtimeIdentity = await runtimePool.query(
@@ -136,7 +136,7 @@ try {
 
   const forged = signAssertion(accountId);
   await assert.rejects(
-    () => gatewayPool.query('SELECT (ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6::jsonb)).*',[accountId,forged.issuedAt,forged.nonce,'0'.repeat(64),businessId,JSON.stringify({description:'forged'})]),
+    () => gatewayPool.query('SELECT updated.* FROM ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6::jsonb) AS updated',[accountId,forged.issuedAt,forged.nonce,'0'.repeat(64),businessId,JSON.stringify({description:'forged'})]),
     /Actor assertion signature invalid/,
   );
   console.log('DATABASE DENIES FORGED BUSINESS PROFILE ACTOR ASSERTION PASS');
