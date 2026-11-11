@@ -1,5 +1,8 @@
 # GHM Actor Gateway integration handover — 2026-11-10
 
+> **Historical snapshot — superseded on 2026-11-11. This document records intermediate integration checkpoints and must not be used as the current deployment or cutover instruction. The current authoritative status is [HANDOVER_2026-11-11_ACTOR_GATEWAY_PRODUCTION_READINESS.md](./HANDOVER_2026-11-11_ACTOR_GATEWAY_PRODUCTION_READINESS.md) and [PR #272](https://github.com/zaidhqdev-sys/GHM/pull/272). PR #272 is now open, ready for review (not draft), and based on `main`; the 10 November statements about the combined head being unvalidated, the integration branch being behind main, and optional gateway fallback are historical. Current code CI and the production database privilege blocker are recorded in the 11 November handover. PRs #250/#268/#269/#270/#271 remain open/unmerged stacked predecessors; do not merge them independently while #272 consolidates their changes. No production migration, deployment, grant revocation or cutover is authorized by this note.**
+
+
 ## Purpose
 
 This branch coordinates three independently developed security boundaries without merging their source PRs:
