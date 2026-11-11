@@ -647,3 +647,8 @@ No production changes and no merge.
 Trust Score calculation now has a signed Actor Gateway path: `trust.score.calculate` assertion, gateway-only SQL wrapper binding verified actor + exact Business ID, JWT-derived Actor Gateway route, Resource API bearer-forwarding client, production fail-closed behavior, manual-only legacy EXECUTE revocation, and disposable PostgreSQL qualification script/CI wiring. Migration contract and reader HMAC/rollback tests are included in `npm test`.
 
 Status: IMPLEMENTED / QUALIFICATION PENDING on head `34172a7057a56ed027a0baead9640a3a835f7b59`, GitHub Actions run #3198 pending. Do not close until exact-head CI and disposable PostgreSQL qualification pass. Direct runtime SELECT on `ghm.trust_score` remains OPEN and unchanged pending safe public/member read projections. No production changes or merge.
+
+
+## 2026-11-11 — Campaign contract HTTP wording reconciled
+
+Corrected stale contradictory wording in `docs/architecture/CAMPAIGN_OPERATION_CONTRACT.md`: the bounded authenticated Campaign `read` / `create` / `update` HTTP routes are separately approved and implemented, despite older section 12/14 language claiming no HTTP routes. The contract now preserves no public/anonymous read and prohibits additional routes beyond the approved bounded surface. No runtime code changed.
