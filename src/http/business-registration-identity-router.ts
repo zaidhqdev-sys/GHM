@@ -83,6 +83,7 @@ export const registerBusinessRegistrationIdentityRoutes = (
   service: BusinessRegistrationIdentityService,
   authMiddleware: RequestHandler = requireAuth,
   gatewayClient?: BusinessRegistrationIdentityGatewayClient,
+  gatewayRequired = false,
 ): void => {
   app.get(
     '/api/v1/businesses/:businessId/registration-identity',
@@ -106,6 +107,10 @@ export const registerBusinessRegistrationIdentityRoutes = (
           const accessToken = authorization.slice('Bearer '.length).trim();
           const registrationIdentity = await gatewayClient.readRegistrationIdentity(accessToken, businessId);
           res.status(200).json({ registrationIdentity });
+          return;
+        }
+        if (gatewayRequired) {
+          res.status(503).json({ error: 'service_unavailable' });
           return;
         }
         const registrationIdentity = await service.getRegistrationIdentity(context, businessId);
@@ -152,6 +157,10 @@ export const registerBusinessRegistrationIdentityRoutes = (
           const accessToken = authorization.slice('Bearer '.length).trim();
           const registrationIdentity = await gatewayClient.updateRegistrationIdentity(accessToken, input);
           res.status(200).json({ registrationIdentity });
+          return;
+        }
+        if (gatewayRequired) {
+          res.status(503).json({ error: 'service_unavailable' });
           return;
         }
         const registrationIdentity = await service.updateRegistrationIdentity(context, input);
