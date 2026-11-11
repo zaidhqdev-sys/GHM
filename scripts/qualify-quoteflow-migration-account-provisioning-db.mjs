@@ -162,7 +162,11 @@ try {
     await migrator.query('begin').catch(() => {});
     await migrator.query('set local role ghm_schema_owner').catch(() => {});
     await migrator.query(
-      'delete from ghm.account_external_identity where account_id = any($1::bigint[]); delete from ghm.account_identity where id = any($1::bigint[]);',
+      'delete from ghm.account_external_identity where account_id = any($1::bigint[])',
+      [created],
+    ).catch(() => {});
+    await migrator.query(
+      'delete from ghm.account_identity where id = any($1::bigint[])',
       [created],
     ).catch(() => {});
     await migrator.query('commit').catch(() => {});
