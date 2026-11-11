@@ -425,6 +425,34 @@ export const createActorGatewayApp = (
   });
 
   const businessHoursReader = dependencies.businessHoursReader;
+  app.get('/v1/businesses/:businessId/hours', async (req: Request, res: Response) => {
+    const raw = req.params.businessId;
+    const businessId = typeof raw === 'string' && /^[1-9][0-9]*$/.test(raw) ? Number(raw) : NaN;
+    if (!Number.isSafeInteger(businessId) || businessId <= 0) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    if (!businessHoursReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    try {
+      const hours = await businessHoursReader.list(res.locals.actorAccountId as number, businessId);
+      res.status(200).json({ hours });
+    } catch (error) {
+      if (isSqlState(error, '42501') || isSqlState(error, 'P0001')) {
+        res.status(403).json({ error: 'forbidden' });
+        return;
+      }
+      console.error(JSON.stringify({
+        event: 'actor_gateway_operation_failed',
+        operation: 'business.hours.read',
+        error: { name: error instanceof Error ? error.name : 'UnknownError' },
+      }));
+      res.status(503).json({ error: 'service_unavailable' });
+    }
+  });
+
   app.put('/v1/businesses/:businessId/hours', async (req: Request, res: Response) => {
     const raw = req.params.businessId;
     const businessId = typeof raw === 'string' && /^[1-9][0-9]*$/.test(raw) ? Number(raw) : NaN;
