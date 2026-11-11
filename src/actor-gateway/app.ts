@@ -9,6 +9,7 @@ import type { CapabilityGovernanceReader, GatewayCapabilityDraftInput } from './
 import type { SupplierClassificationReader } from './supplier-classification-reader';
 import type { BusinessProfileReader } from './business-profile-reader';
 import type { GatewayCapabilityMutationReader } from './business-capability-mutation-reader';
+import type { SavedBusinessGatewayReader } from './saved-business-reader';
 
 export interface ActorGatewayAppOptions {
   rateLimitLimit?: number;
@@ -23,6 +24,7 @@ export interface ActorGatewayDependencies {
   supplierClassificationReader?: SupplierClassificationReader;
   businessProfileReader?: BusinessProfileReader;
   businessCapabilityMutationReader?: GatewayCapabilityMutationReader;
+  savedBusinessReader?: SavedBusinessGatewayReader;
 }
 
 const isSqlState = (error: unknown, code: string): boolean =>
@@ -418,6 +420,127 @@ export const createActorGatewayApp = (
     if(!mutationReader){res.status(503).json({error:'service_unavailable'});return;}
     try{const evidence=await mutationReader.reviewEvidence(res.locals.actorAccountId as number,id,b.decision as never,(b.reason as string|null|undefined)??null);res.status(200).json({evidence});}
     catch(error){capabilityFailure(error,res);}
+  });
+
+  const savedBusinessReader = dependencies.savedBusinessReader;
+  const positiveSavedBusinessId = (value: unknown): value is number =>
+    Number.isSafeInteger(value) && Number(value) > 0;
+
+  app.get('/v1/saved-businesses', async (_req: Request, res: Response) => {
+    if (!savedBusinessReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    try {
+      const savedBusinesses = await savedBusinessReader.list(res.locals.actorAccountId as number);
+      res.status(200).json({ savedBusinesses });
+    } catch (error) {
+      console.error(JSON.stringify({
+        event: 'actor_gateway_operation_failed',
+        operation: 'saved_business.read',
+        error: { name: error instanceof Error ? error.name : 'UnknownError' },
+      }));
+      res.status(503).json({ error: 'service_unavailable' });
+    }
+  });
+
+  app.get('/v1/saved-businesses/:savedBusinessId', async (req: Request, res: Response) => {
+    const raw = req.params.savedBusinessId;
+    const id = typeof raw === 'string' && /^[1-9][0-9]*$/.test(raw) ? Number(raw) : NaN;
+    if (!positiveSavedBusinessId(id)) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    if (!savedBusinessReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    try {
+      const savedBusiness = await savedBusinessReader.get(res.locals.actorAccountId as number, id);
+      if (!savedBusiness) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      res.status(200).json({ savedBusiness });
+    } catch (error) {
+      if (isSqlState(error, '42501') || isSqlState(error, 'P0001')) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      console.error(JSON.stringify({
+        event: 'actor_gateway_operation_failed',
+        operation: 'saved_business.read',
+        error: { name: error instanceof Error ? error.name : 'UnknownError' },
+      }));
+      res.status(503).json({ error: 'service_unavailable' });
+    }
+  });
+
+  app.post('/v1/saved-businesses', async (req: Request, res: Response) => {
+    const body = req.body as Record<string, unknown> | null;
+    if (!body || typeof body !== 'object' || Array.isArray(body)
+      || Object.keys(body).length !== 1 || !positiveSavedBusinessId(body.businessId)) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    if (!savedBusinessReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    try {
+      const savedBusiness = await savedBusinessReader.create(
+        res.locals.actorAccountId as number,
+        body.businessId,
+      );
+      res.status(201).json({ savedBusiness });
+    } catch (error) {
+      if (isSqlState(error, '42501') || isSqlState(error, 'P0001')) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      if (isSqlState(error, '23505')) {
+        res.status(409).json({ error: 'conflict' });
+        return;
+      }
+      console.error(JSON.stringify({
+        event: 'actor_gateway_operation_failed',
+        operation: 'saved_business.create',
+        error: { name: error instanceof Error ? error.name : 'UnknownError' },
+      }));
+      res.status(503).json({ error: 'service_unavailable' });
+    }
+  });
+
+  app.delete('/v1/saved-businesses/:savedBusinessId', async (req: Request, res: Response) => {
+    const raw = req.params.savedBusinessId;
+    const id = typeof raw === 'string' && /^[1-9][0-9]*$/.test(raw) ? Number(raw) : NaN;
+    if (!positiveSavedBusinessId(id)) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    if (!savedBusinessReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    try {
+      const deleted = await savedBusinessReader.delete(res.locals.actorAccountId as number, id);
+      if (!deleted) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      res.status(204).send();
+    } catch (error) {
+      if (isSqlState(error, '42501') || isSqlState(error, 'P0001')) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      console.error(JSON.stringify({
+        event: 'actor_gateway_operation_failed',
+        operation: 'saved_business.delete',
+        error: { name: error instanceof Error ? error.name : 'UnknownError' },
+      }));
+      res.status(503).json({ error: 'service_unavailable' });
+    }
   });
 
   return app;
