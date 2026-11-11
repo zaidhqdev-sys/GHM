@@ -133,6 +133,7 @@ import { PostgresCommercialRepository } from '../resources/commercial/repository
 import type { CommercialService } from '../resources/commercial/contracts';
 import { registerCommercialRoutes } from './commercial-router';
 import { registerStorageRoutes } from './storage-router';
+import { HttpBusinessLogoGatewayClient, type BusinessLogoGatewayClient } from './business-logo-gateway-client';
 import { createStorageProvider } from '../storage/factory';
 
 
@@ -177,6 +178,8 @@ export interface AppDependencies {
   readonly resourceAuthMiddleware?: import('express').RequestHandler;
   readonly businessHoursGatewayClient?: BusinessHoursGatewayClient;
   readonly businessHoursGatewayRequired?: boolean;
+  readonly businessLogoGatewayClient?: BusinessLogoGatewayClient;
+  readonly businessLogoGatewayRequired?: boolean;
   readonly savedBusinessGatewayClient?: SavedBusinessGatewayClient;
   readonly savedBusinessGatewayRequired?: boolean;
   readonly businessRegistrationIdentityGatewayClient?: BusinessRegistrationIdentityGatewayClient;
@@ -409,6 +412,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const businessHoursGatewayClient = dependencies.businessHoursGatewayClient
     ?? (config.actorGatewayUrl ? new HttpBusinessHoursGatewayClient(config.actorGatewayUrl) : undefined);
   const businessHoursGatewayRequired = config.isProduction || dependencies.businessHoursGatewayRequired === true;
+  const businessLogoGatewayClient = dependencies.businessLogoGatewayClient ?? (config.actorGatewayUrl ? new HttpBusinessLogoGatewayClient(config.actorGatewayUrl) : undefined);
+  const businessLogoGatewayRequired = config.isProduction || dependencies.businessLogoGatewayRequired === true;
   const projectService = dependencies.projectService ?? new ProjectServiceImpl(new PostgresProjectRepository());
   const publicProjectService =
     dependencies.publicProjectService ??
@@ -483,7 +488,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   app.use(express.json({ limit: '1mb' }));
 
   if (config.storage) {
-    registerStorageRoutes(app, createStorageProvider(config.storage), resourceAuthMiddleware, config.storage.uploadGrantTtlSeconds, config.storage.downloadGrantMaxTtlSeconds);
+    registerStorageRoutes(app, createStorageProvider(config.storage), resourceAuthMiddleware, config.storage.uploadGrantTtlSeconds, config.storage.downloadGrantMaxTtlSeconds, undefined, businessLogoGatewayClient, businessLogoGatewayRequired);
   }
 
   app.get('/', (_req: Request, res: Response) => {
