@@ -1,10 +1,12 @@
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import 'dotenv/config';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
 const gatewayUrl = process.env.GHM_ACTOR_GATEWAY_DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
+const assertionSecret = process.env.GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET;
+if (!assertionSecret || Buffer.from(assertionSecret, 'base64').length !== 32) throw new Error('A 32-byte capability assertion test key is required');
 if (!runtimeUrl || !gatewayUrl || !migratorUrl || new Set([runtimeUrl, gatewayUrl, migratorUrl]).size !== 3) {
   throw new Error('Dedicated runtime, actor gateway and migrator connections are required');
 }
@@ -19,6 +21,16 @@ const cleanupPool = new Pool({ connectionString: migratorUrl, ssl });
 const marker = `ghm-capability-governance-${randomUUID()}`;
 const accountIds = [];
 const capabilityIds = [];
+const signAssertion = (accountId, operation) => {
+  const issuedAt = Math.floor(Date.now() / 1000), nonce = randomUUID();
+  const payload = `ghm-actor-gateway:v1|${accountId}|${operation}|${issuedAt}|${nonce}`;
+  const signature = createHmac('sha256', Buffer.from(assertionSecret, 'base64')).update(payload, 'utf8').digest('hex');
+  return { issuedAt, nonce, signature };
+};
+const gatewayCall = (accountId, operation, sql, args = []) => {
+  const a = signAssertion(accountId, operation);
+  return gatewayPool.query(sql, [accountId, a.issuedAt, a.nonce, a.signature, ...args]);
+};
 
 const expectReject = async (work, label, expectedText) => {
   try { await work(); }
@@ -71,6 +83,8 @@ const cleanup = async () => {
 };
 
 try {
+  const provision = await cleanupPool.connect();
+  try { await provision.query('BEGIN'); await provision.query('SET LOCAL ROLE ghm_schema_owner'); await provision.query("INSERT INTO ghm.actor_gateway_capability_assertion_secret(singleton,secret) VALUES(true,$1) ON CONFLICT(singleton) DO UPDATE SET secret=EXCLUDED.secret", [Buffer.from(assertionSecret, 'base64')]); await provision.query('COMMIT'); } catch (e) { await provision.query('ROLLBACK').catch(()=>{}); throw e; } finally { provision.release(); }
   const adminId = await createAccount('admin');
   const businessId = await createAccount('business');
   const admin = { userId: adminId, role: 'admin' };
@@ -81,35 +95,32 @@ try {
   await expectReject(() => gatewayPool.query('SET ROLE ghm_runtime'), 'GATEWAY CANNOT ASSUME RUNTIME ROLE PASS', 'permission denied');
   await expectReject(() => runtimePool.query('SET ROLE ghm_actor_gateway'), 'RUNTIME CANNOT ASSUME GATEWAY ROLE PASS', 'permission denied');
 
-  const gatewayList = await gatewayPool.query('SELECT * FROM ghm.gateway_list_capabilities($1)', [adminId]);
+  const gatewayList = await gatewayCall(adminId, 'capability.list', 'SELECT * FROM ghm.gateway_list_capabilities($1,$2,$3,$4)');
   if (!Array.isArray(gatewayList.rows)) throw new Error('Gateway capability listing did not return rows');
   console.log('GATEWAY ADMIN LIST POSITIVE PASS');
   await expectReject(
-    () => gatewayPool.query('SELECT * FROM ghm.gateway_list_capabilities($1)', [businessId]),
+    () => gatewayCall(businessId, 'capability.list', 'SELECT * FROM ghm.gateway_list_capabilities($1,$2,$3,$4)'),
     'GATEWAY NON-ADMIN LIST DENIAL PASS',
     'System administrator permission required',
   );
 
-  const gatewayCreated = await gatewayPool.query(
-    'SELECT * FROM ghm.gateway_create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8)',
-    [adminId, `${marker} Gateway Draft`, `${marker}-gateway-draft`, 'Gateway qualification', null, 10, 'gateway-qualification', 1],
-  );
+  const gatewayCreated = await gatewayCall(adminId, 'capability.create',
+    'SELECT * FROM ghm.gateway_create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
+    [`${marker} Gateway Draft`, `${marker}-gateway-draft`, 'Gateway qualification', null, 10, 'gateway-qualification', 1]);
   const gatewayDraft = gatewayCreated.rows[0];
   if (!gatewayDraft?.id || gatewayDraft.lifecycle_status !== 'draft') throw new Error('Gateway draft creation failed');
   capabilityIds.push(gatewayDraft.id);
   console.log('GATEWAY ADMIN DRAFT CREATE POSITIVE PASS');
 
-  const gatewayUpdated = await gatewayPool.query(
-    'SELECT * FROM ghm.gateway_update_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-    [adminId, gatewayDraft.id, `${marker} Gateway Draft Updated`, `${marker}-gateway-draft`, 'Updated by gateway', null, 20, 'gateway-qualification-updated', 1],
-  );
+  const gatewayUpdated = await gatewayCall(adminId, 'capability.update',
+    'SELECT * FROM ghm.gateway_update_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)',
+    [gatewayDraft.id, `${marker} Gateway Draft Updated`, `${marker}-gateway-draft`, 'Updated by gateway', null, 20, 'gateway-qualification-updated', 1]);
   if (gatewayUpdated.rows[0]?.name !== `${marker} Gateway Draft Updated`) throw new Error('Gateway draft update failed');
   console.log('GATEWAY ADMIN DRAFT UPDATE POSITIVE PASS');
 
-  const gatewayTransition = await gatewayPool.query(
-    'SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5)',
-    [adminId, gatewayDraft.id, 'active', null, 1],
-  );
+  const gatewayTransition = await gatewayCall(adminId, 'capability.transition',
+    'SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5,$6,$7,$8)',
+    [gatewayDraft.id, 'active', null, 1]);
   if (gatewayTransition.rows[0]?.lifecycle_status !== 'active') throw new Error('Gateway lifecycle transition failed');
   console.log('GATEWAY ADMIN LIFECYCLE TRANSITION POSITIVE PASS');
 
@@ -258,8 +269,8 @@ try {
 
   await expectReject(
     () => runtimePool.query(
-      'SELECT * FROM ghm.gateway_create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8)',
-      [adminId, `${marker} Gateway Spoof`, `${marker}-gateway-spoof`, null, null, 0, null, 1],
+      'SELECT * FROM ghm.gateway_create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
+      [adminId, Math.floor(Date.now()/1000), randomUUID(), '0'.repeat(64), `${marker} Gateway Spoof`, `${marker}-gateway-spoof`, null, null, 0, null, 1],
     ),
     'RUNTIME GATEWAY PRINCIPAL FUNCTION DENIAL PASS',
     'permission denied',
@@ -272,10 +283,10 @@ try {
             has_function_privilege(current_user, 'ghm.create_capability_draft(bigint,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS can_create,
             has_function_privilege(current_user, 'ghm.update_capability_draft(bigint,uuid,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS can_update_draft,
             has_function_privilege(current_user, 'ghm.transition_capability_lifecycle(bigint,uuid,text,uuid,integer)', 'EXECUTE') AS can_transition,
-            has_function_privilege(current_user, 'ghm.gateway_list_capabilities(bigint)', 'EXECUTE') AS can_gateway_list,
-            has_function_privilege(current_user, 'ghm.gateway_create_capability_draft(bigint,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS can_gateway_create,
-            has_function_privilege(current_user, 'ghm.gateway_update_capability_draft(bigint,uuid,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS can_gateway_update,
-            has_function_privilege(current_user, 'ghm.gateway_transition_capability_lifecycle(bigint,uuid,text,uuid,integer)', 'EXECUTE') AS can_gateway_transition`,
+            has_function_privilege(current_user, 'ghm.gateway_list_capabilities(bigint,bigint,uuid,text)', 'EXECUTE') AS can_gateway_list,
+            has_function_privilege(current_user, 'ghm.gateway_create_capability_draft(bigint,bigint,uuid,text,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS can_gateway_create,
+            has_function_privilege(current_user, 'ghm.gateway_update_capability_draft(bigint,bigint,uuid,text,uuid,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS can_gateway_update,
+            has_function_privilege(current_user, 'ghm.gateway_transition_capability_lifecycle(bigint,bigint,uuid,text,uuid,text,uuid,integer)', 'EXECUTE') AS can_gateway_transition`,
   );
   const p = privilege.rows[0];
   if (p.can_insert || p.can_update || p.can_delete || !p.can_create || !p.can_update_draft || !p.can_transition || p.can_gateway_list || p.can_gateway_create || p.can_gateway_update || p.can_gateway_transition) {
