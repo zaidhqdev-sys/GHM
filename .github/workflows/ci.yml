@@ -81,6 +81,65 @@ jobs:
           GRANT USAGE, CREATE ON SCHEMA public TO ghm_schema_owner;
           SQL
 
+      - name: Reproduce PostgreSQL 18 delegated CREATEROLE membership behavior
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d ghm_disposable_test -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE ghm_role_creator NOLOGIN CREATEROLE;
+          SET ROLE ghm_role_creator;
+          CREATE ROLE ghm_role_created LOGIN NOINHERIT;
+          RESET ROLE;
+
+          DO $
+          DECLARE
+            membership record;
+          BEGIN
+            SELECT pg_get_userbyid(m.grantor) AS grantor,
+                   m.admin_option,
+                   m.set_option,
+                   m.inherit_option
+              INTO membership
+              FROM pg_auth_members m
+              JOIN pg_roles member_role ON member_role.oid = m.member
+              JOIN pg_roles granted_role ON granted_role.oid = m.roleid
+             WHERE member_role.rolname = 'ghm_role_creator'
+               AND granted_role.rolname = 'ghm_role_created';
+
+            IF membership IS NULL
+               OR membership.grantor <> 'postgres'
+               OR membership.admin_option IS DISTINCT FROM true
+               OR membership.set_option IS DISTINCT FROM false
+               OR membership.inherit_option IS DISTINCT FROM false THEN
+              RAISE EXCEPTION 'Unexpected PostgreSQL 18 delegated CREATEROLE membership: %', membership;
+            END IF;
+          END
+          $;
+
+          SET ROLE ghm_role_creator;
+          REVOKE ghm_role_created FROM ghm_role_creator;
+          RESET ROLE;
+
+          DO $
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1
+                FROM pg_auth_members m
+                JOIN pg_roles member_role ON member_role.oid = m.member
+                JOIN pg_roles granted_role ON granted_role.oid = m.roleid
+               WHERE member_role.rolname = 'ghm_role_creator'
+                 AND granted_role.rolname = 'ghm_role_created'
+                 AND m.grantor = 'postgres'::regrole
+            ) THEN
+              RAISE EXCEPTION 'Delegated creator unexpectedly revoked postgres-granted membership';
+            END IF;
+          END
+          $;
+
+          DROP ROLE ghm_role_created;
+          DROP ROLE ghm_role_creator;
+          SQL
+
       - name: Check storage qualification script syntax
         run: node --check scripts/qualify-storage-persistence.mjs
 
