@@ -1039,3 +1039,19 @@ A narrow follow-up change was committed to src/auth/foundation/persistence.ts at
 At the time of this note, PR #272 was verified OPEN and unmerged at ae7b2272ce5c1aea801dd19ad0e5781307394fe7. No workflow run was returned for this commit by the PR-triggered commit-run lookup; do not claim exact-head CI validation. Recheck Actions for this exact head before continuing or marking the recovery batch qualified.
 
 Next: verify whether the branch's canonical recovery SQL has been updated to raise RECOVERY_CREDENTIAL_INVALID consistently in both invalid-token paths (prefer correcting the SQL error contract if it has not already been corrected), then rerun exact-head build, full tests, disposable migration chain, and QuoteFlow migration-reset qualification. Preserve the token-bound session revocation and compatibility wrapper. No production migration/ACL change.
+
+
+## Token-bound recovery qualification — validation supersedes queued checkpoint (2026-11-11)
+
+The queued PR validation subsequently completed successfully. GitHub Actions PR run 43105509324:
+- quality: PASS; build and complete disposable PostgreSQL migration chain passed.
+- Full test suite: 884/884 passed, 0 failed.
+- All Actor Gateway, storage, capability, Saved Business, Business Hours, Trust Score, Business Logo, supplier classification, Business profile, commercial settlement, migration audit policy and runtime-boundary qualification steps passed.
+- QuoteFlow migration-reset HTTP tests passed (request remains anti-enumerating; completion issues a GHM session only after successful completion). The QuoteFlow retained-history qualification also passed 15/15.
+- web-quality: PASS.
+
+The push workflow run 43105500794 also completed with both quality and web-quality PASS. This supersedes the earlier note that these runs were in progress/queued. The earlier run 43105297445 remains a genuine failed run (881 passed, 3 failed) and is retained as history, not the current validation result.
+
+The follow-up error normalization in src/auth/foundation/persistence.ts is present in the branch (blob 1627447c0d9e05858e38944c28ff657264c83382); the token-bound SQL migration currently raises RECOVERY_CREDENTIAL_INVALID in both invalid-token paths (blob c007ff90a91ee266beecd29863c635bf8045a579). The passing PR run completed while the recovery implementation was present. PR #272 remains OPEN and UNMERGED; latest verified PR head after the handover-only update is 203c532f488a7a90e456a9d4eafb2bd3c96eb28c. The CI run began before that final handover-only commit; no source code changed in that documentation commit. No production migration, grant, role, deployment or data mutation occurred.
+
+Recovery token-bound revocation batch: DISPOSABLE QUALIFICATION PASS; PRODUCTION CUTOVER NOT PERFORMED. Continue the broader internal-auth caller/authority audit; do not treat all auth functions as closed based on this batch.
