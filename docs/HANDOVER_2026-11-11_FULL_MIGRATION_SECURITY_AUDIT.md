@@ -104,3 +104,36 @@ PR #272 exact documentation head `576c912fe99e359d1a2962f722fe67e76b8ffe61` pass
 3. Decide the onboarding direct-DML tenant boundary explicitly.
 4. Decide whether storage lifecycle mutators should remain trusted internal persistence operations or require an additional signed context. If changed, qualify the full lifecycle including retry and cleanup.
 5. Reconcile effective ACLs and all later migrations/cutovers for each function before declaring a batch complete.
+
+
+## Saved Business historical qualification correction (2026-11-11)
+
+The dedicated qualification record `docs/architecture/SAVED_BUSINESS_QUALIFICATION.md` now explicitly distinguishes its historical application-path PASS from the database actor-provenance boundary that was not tested.
+
+- Runtime table SELECT on `ghm.saved_business` permits direct cross-account reads with the shared runtime credential; repository `WHERE account_id = context.userId` does not constrain direct SQL.
+- Runtime EXECUTE on the legacy SECURITY DEFINER create/delete functions permits caller-supplied account IDs; create does not independently verify actor ownership.
+- Existing cross-account tests invoke the repository with a different AuthContext. They do not prove that direct SQL with a forged account ID is denied.
+
+This is now an explicit OPEN / NOT QUALIFIED security issue, not a closed qualification. The historical functional qualification remains valid for its tested app path. No production state changed.
+
+## Saved Business gateway design decision for implementation batch
+
+Keep the existing resource contract unchanged: private relationship rows, the current eligibility predicate, unique `(account_id,business_id)` behavior, DTOs, list ordering, and separate read/create/delete operations. Do not introduce toggle or expose a public business projection through this API.
+
+Required target boundary:
+
+1. Actor Gateway authenticates the original ES256 GHM access token once and derives `actorAccountId` only from its verified subject.
+2. Add gateway routes for list, get-by-ID, create, and delete. The resource API forwards the original bearer token; production routes fail closed if the gateway is missing. Never accept account IDs in request bodies, query strings, or route parameters.
+3. Add HMAC assertion operations `saved_business.read`, `saved_business.create`, and `saved_business.delete`. Bind full context: list uses an explicit empty operation context; get binds savedBusinessId; create binds businessId; delete binds savedBusinessId. Use one-use nonce, timestamp, operation, actor and exact JSON context, as in the existing v2 protocol.
+4. Add SECURITY DEFINER gateway wrappers owned by `ghm_schema_owner`, fixed `search_path = pg_catalog, ghm`, executable only by `ghm_actor_gateway`. Wrappers verify the signed assertion before querying or mutating rows. Create/delete call the existing domain functions only inside the wrapper after assertion validation; actor ID is supplied from the signed actor. Read/list wrappers enforce `account_id = verified actor` in SQL.
+5. Manual-only cutover revokes runtime SELECT on `ghm.saved_business`, revokes legacy create/delete EXECUTE from PUBLIC/runtime/migrator/gateway as appropriate, and revokes sequence USAGE if no remaining runtime path requires it. Verify effective table/column ACLs, PUBLIC defaults and role inheritance; do not rely on source GRANT statements alone.
+6. Disposable PostgreSQL qualification must demonstrate: runtime cannot SELECT rows, cannot invoke legacy create/delete, and cannot use sequence; actor gateway can list/get/create/delete its own rows; one actor cannot see or delete another actor's row; create cannot attach a row to a different account; replay/tamper/operation/target substitution is rejected; business eligibility and duplicate behavior remain unchanged; DTO/order/API compatibility remains unchanged.
+7. Add Resource API gateway client/router tests for original bearer forwarding, no fallback in production, invalid/missing token, 401/403/404 mapping, and fail-closed gateway outage. Keep existing local unit tests for application services.
+
+Implementation has not started yet. The current branch contains the corrected qualification/handover record only. Do not claim the Saved Business gateway or cutover is implemented until code and disposable PostgreSQL qualification pass.
+
+## Latest documentation checkpoint
+
+- Qualification correction commit: `549ba13d1c10b9165ac07b3c98c9273946c70818`.
+- PR #272 remains open and unmerged.
+- Exact-head CI must be checked for this commit and any subsequent code commit. Earlier run #3021 does not qualify this new commit.
