@@ -44,8 +44,9 @@ try{
 
  const altered=sign(owner,'business.capability.evidence.submit',context);
  const tamper=await denied(()=>gateway.query('SELECT * FROM ghm.gateway_submit_business_capability_evidence($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::date,$14::date,$15)',[owner,altered.issuedAt,altered.nonce,altered.context,altered.signature,bcId,'certification','Tampered title',null,'Qualification',marker,null,null,null,'private']),'SIGNED EVIDENCE PAYLOAD TAMPERING DENIED');assert.equal(tamper.code,'42501');
- const replay=sign(owner,'business.capability.evidence.submit',context);
- const submitArgs=[owner,replay.issuedAt,replay.nonce,replay.context,replay.signature,bcId,input.evidenceType,'Replay evidence',null,'Qualification',marker,null,null,null,'private'];
+ const replayContext={...input,referenceNumber:null};
+ const replay=sign(owner,'business.capability.evidence.submit',replayContext);
+ const submitArgs=[owner,replay.issuedAt,replay.nonce,replay.context,replay.signature,bcId,input.evidenceType,input.title,null,input.issuerName,null,null,null,null,'private'];
  await gateway.query('SELECT * FROM ghm.gateway_submit_business_capability_evidence($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::date,$14::date,$15)',submitArgs);
  const replayError=await denied(()=>gateway.query('SELECT * FROM ghm.gateway_submit_business_capability_evidence($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::date,$14::date,$15)',submitArgs),'SIGNED EVIDENCE ASSERTION REPLAY DENIED');assert.equal(replayError.code,'42501');
  const memberInput={...input,description:null,issuerName:null,referenceNumber:null};const memberSubmit=await denied(()=>call(member,'business.capability.evidence.submit','gateway_submit_business_capability_evidence',[bcId,input.evidenceType,input.title,null,null,null,null,null,null,'private'],memberInput),'NON-MANAGEMENT BUSINESS MEMBER CANNOT SUBMIT EVIDENCE');assert.match(memberSubmit.message,/Business management permission required/);
