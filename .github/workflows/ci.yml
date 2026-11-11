@@ -167,6 +167,9 @@ jobs:
       - name: Check Saved Business gateway cutover qualification script syntax
         run: node --check scripts/qualify-saved-business-gateway-cutover-postgres.mjs
 
+      - name: Check Business Hours gateway cutover qualification script syntax
+        run: node --check scripts/qualify-business-hours-gateway-cutover-postgres.mjs
+
       - name: Build
         run: npm run build
 
@@ -225,6 +228,9 @@ jobs:
 
       - name: Qualify Saved Business signed gateway cutover on disposable PostgreSQL
         run: npm run qualify:saved-business-gateway-cutover
+
+      - name: Qualify Business Hours signed gateway cutover on disposable PostgreSQL
+        run: npm run qualify:business-hours-gateway-cutover
 
       - name: Qualify GHM supplier classification and membership authorization on disposable PostgreSQL
         run: npm run qualify:business-supplier-classification
