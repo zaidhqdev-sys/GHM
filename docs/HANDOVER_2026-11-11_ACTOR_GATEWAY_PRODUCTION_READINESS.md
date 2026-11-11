@@ -7,9 +7,9 @@ This handover records the production-readiness review of GHM Actor Gateway PR #2
 - Repository: `zaidhqdev-sys/GHM`
 - PR: [#272 — Unified Actor Gateway](https://github.com/zaidhqdev-sys/GHM/pull/272)
 - Branch: `integration/capability-gateway-qualification-20261110`
-- Reviewed code head: `7043985e8877ede841d12b8886aeb9b41ecce948`
+- Reviewed head: `64ef0adf48f867a0780d9afe19f105b39384281b`
 - At review: PR remained open and unmerged.
-- CI on that exact code head: `quality` and `web-quality` passed ([run 43052954162](https://github.com/zaidhqdev-sys/GHM/actions/runs/43052954162)). The later handover-only update is commit `4218a8d243d2ca822f1a85f36260c96c8bbabe79`; its own CI is tracked separately.
+- CI on that exact head: `quality` and `web-quality` passed ([run 43053280502](https://github.com/zaidhqdev-sys/GHM/actions/runs/43053280502)).
 - No production migrations, deployments, service changes, or database privilege changes were performed as part of this review.
 
 **Current disposition: production rollout remains paused.** Green CI is useful evidence but does not qualify the production database role model or deployment topology.
@@ -139,7 +139,7 @@ The main API production configuration now requires `GHM_RUNTIME_DATABASE_URL`; g
 
 Both the main API and Actor Gateway startup now reject a runtime principal with any role membership or elevated role attribute. The PostgreSQL 18 CI fixture creates a non-superuser CREATEROLE role, has it create a login role, asserts the automatic postgres-granted ADMIN OPTION membership with SET/INHERIT false, attempts the creator-side REVOKE, and verifies the membership remains. The fixture is isolated to the disposable CI database and cleans up both roles.
 
-PR #272 remains open, unmerged, and mergeable; latest branch head at this handover update is `4218a8d243d2ca822f1a85f36260c96c8bbabe79` (documentation-only after the code head above). No production environment, database, roles, grants, secrets, migrations, or services were changed.
+PR #272 remains open, unmerged, and mergeable; latest branch head at this handover update is `64ef0adf48f867a0780d9afe19f105b39384281b`. No production environment, database, roles, grants, secrets, migrations, or services were changed.
 
 
 ## Additional gateway public-surface hardening (2026-11-11)
@@ -155,3 +155,8 @@ Repository-only changes on the current PR branch:
 Limitations:
 - The rate limiter is in-memory and per process/instance; counters reset on restart and are not shared across instances. It is not a distributed quota or volumetric DDoS defense. Avoid claiming it protects anonymous JWT-verification traffic at the network edge.
 - No Render service was created, repurposed, upgraded or deployed. No paid service or recurring cost was introduced.
+
+
+## Evidence and change-control discipline
+
+For future work, record each operational claim as verified, inferred, or unverified and identify the evidence and timestamp. A filename, remembered action, Render UI label, or an unsuccessful search is not proof of a completed backup or change. Never state that a backup exists, a production role is corrected, a secret is provisioned, or a deployment is live without checking the authoritative source. Before any production database role/privilege/migration/deployment change, verify a fresh recoverable backup first; if evidence is missing, stop the production change. Distinguish repository code/CI qualification from live production state. Do not spend money or create paid infrastructure; no paid service is permitted until revenue can fund it.
