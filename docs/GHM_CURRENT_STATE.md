@@ -652,3 +652,10 @@ Status: IMPLEMENTED / QUALIFICATION PENDING on head `34172a7057a56ed027a0baead96
 ## 2026-11-11 — Campaign contract HTTP wording reconciled
 
 Corrected stale contradictory wording in `docs/architecture/CAMPAIGN_OPERATION_CONTRACT.md`: the bounded authenticated Campaign `read` / `create` / `update` HTTP routes are separately approved and implemented, despite older section 12/14 language claiming no HTTP routes. The contract now preserves no public/anonymous read and prohibits additional routes beyond the approved bounded surface. No runtime code changed.
+
+
+## 2026-11-11 — Trust Score calculation actor gateway qualified
+
+Trust Score calculation passed exact-head GitHub Actions run #3198 (`43094248583`) on implementation head `34172a7057a56ed027a0baead9640a3a835f7b59`. Both quality jobs, full test suite, complete migration chain and disposable PostgreSQL cutover qualification passed. The logs confirm legacy runtime calculation EXECUTE denied, signed calculation + actor provenance passed, actor/target substitution and assertion replay denied, runtime gateway-wrapper EXECUTE denied, and post-cutover function ACL passed. Manual cutover was applied only to disposable CI PostgreSQL.
+
+Trust Score calculation mutation is IMPLEMENTED / QUALIFIED. Direct runtime SELECT on `ghm.trust_score` remains OPEN pending public/member read projections. Evidence: `docs/architecture/TRUST_SCORE_QUALIFICATION.md` and the full security handover. Production remains untouched; no merge.
