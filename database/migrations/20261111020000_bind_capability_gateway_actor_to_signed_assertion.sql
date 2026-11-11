@@ -36,6 +36,9 @@ DECLARE
   v_secret bytea;
   v_payload text;
   v_expected bytea;
+  v_provided bytea;
+  v_diff integer := 0;
+  v_i integer;
 BEGIN
   IF session_user <> 'ghm_actor_gateway' THEN
     RAISE EXCEPTION 'Actor gateway database principal required' USING ERRCODE = '42501';
@@ -60,7 +63,12 @@ BEGIN
   v_payload := 'ghm-actor-gateway:v1|' || p_actor_account_id::text || '|' ||
                p_operation || '|' || p_issued_at::text || '|' || p_nonce::text;
   v_expected := public.hmac(convert_to(v_payload, 'UTF8'), v_secret, 'sha256');
-  IF v_expected <> decode(p_signature, 'hex') THEN
+  v_provided := decode(p_signature, 'hex');
+  -- Compare every MAC byte before branching to avoid a prefix timing oracle.
+  FOR v_i IN 0..31 LOOP
+    v_diff := v_diff | (get_byte(v_expected, v_i) # get_byte(v_provided, v_i));
+  END LOOP;
+  IF v_diff <> 0 THEN
     RAISE EXCEPTION 'Actor assertion signature invalid' USING ERRCODE = '42501';
   END IF;
 
