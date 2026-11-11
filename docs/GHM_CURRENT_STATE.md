@@ -490,3 +490,8 @@ These newly added negative cases are pending exact-head CI and must not be descr
 Exact PR head `b7f3f2f2d8a9d18a023af86bf7a88f7e40016c6d` passed GitHub Actions run #2862 (`43071811499`): both `quality` and `web-quality` succeeded. The disposable PostgreSQL qualification included the new capability update target/payload, capability lifecycle target/status, supplier Business-ID, and Business profile Business-ID substitution negative tests, alongside the existing creation-payload, supplier-boolean, and profile-patch substitution cases. Full build, migrations, test suite, capability governance/lifecycle, supplier, Business profile, payment settlement, migration policy, and runtime-boundary checks passed.
 
 This is bounded evidence for the exercised code and disposable database fixtures, not a declaration of overall production readiness. PR #272 remains open and unmerged. Render role-model resolution and a fresh verified backup remain production blockers; the 4 November backup is not a valid pre-change recovery point for the 10 November role work. No production state or paid infrastructure was changed.
+
+
+## Actor Gateway qualification extension — registration update target substitution (2026-11-11, CI pending)
+
+The disposable actor-gateway principal qualification now also signs a Business registration update for one fixture Business and attempts to invoke it against a second fixture Business ID. The expected result is SQLSTATE `42501`. Existing registration read target-transplant and registration update payload-substitution cases remain. This new negative case is pending exact-head CI and is not yet reported as passing. No production state or paid infrastructure was changed.
