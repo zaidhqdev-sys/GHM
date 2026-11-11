@@ -666,3 +666,10 @@ Trust Score calculation mutation is IMPLEMENTED / QUALIFIED. Direct runtime SELE
 Audit confirmed active Business Logo PUT/DELETE routes call the SECURITY DEFINER `ghm.set_business_logo_object` directly with `context.userId` from the Resource API runtime. A signed Actor Gateway path now binds the verified actor, Business ID and nullable storage object ID; the original bearer token is forwarded, production fails closed, and the existing object validation / cleanup flow remains in place. A separate manual-only cutover revokes runtime EXECUTE on the legacy binding function; the approved public logo getter remains available.
 
 Status: IMPLEMENTED / QUALIFICATION PENDING. Disposable PostgreSQL runner and CI step are wired; wait for exact-head test suite and qualification pass. No production changes or merge.
+
+
+## 2026-11-11 — Trust Score read-boundary implementation in progress
+
+Trust Score direct-read replacement is now implemented but not yet qualified. Signed `trust.score.read` gateway get/list operations preserve active + verified + approved public visibility and active owner/administrator member visibility. Public runtime reads use SECURITY DEFINER `get_public_trust_score` / `list_public_trust_scores` projections. The manual cutover now revokes runtime direct SELECT and sequence access as well as legacy calculation EXECUTE. Resource API authenticated GET routes forward the bearer token through the Actor Gateway and fail closed in production. Disposable qualification now checks private member visibility, unrelated-account denial, public projections, and direct runtime SELECT/sequence denial.
+
+Status: IMPLEMENTED / QUALIFICATION PENDING; exact-head CI pending. The earlier Trust Score calculation mutation-only qualification remains passed but does not cover this new read boundary. No production changes or cutover. Full evidence: `docs/architecture/TRUST_SCORE_QUALIFICATION.md` and `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
