@@ -12,6 +12,7 @@ import type { GatewayCapabilityMutationReader } from './business-capability-muta
 import type { SavedBusinessGatewayReader } from './saved-business-reader';
 import type { BusinessHoursGatewayReader } from './business-hours-reader';
 import type { TrustScoreGatewayReader } from './trust-score-reader';
+import type { BusinessLogoGatewayReader } from './business-logo-reader';
 
 export interface ActorGatewayAppOptions {
   rateLimitLimit?: number;
@@ -29,6 +30,7 @@ export interface ActorGatewayDependencies {
   savedBusinessReader?: SavedBusinessGatewayReader;
   businessHoursReader?: BusinessHoursGatewayReader;
   trustScoreReader?: TrustScoreGatewayReader;
+  businessLogoReader?: BusinessLogoGatewayReader;
 }
 
 const isSqlState = (error: unknown, code: string): boolean =>
@@ -424,6 +426,42 @@ export const createActorGatewayApp = (
     if(!mutationReader){res.status(503).json({error:'service_unavailable'});return;}
     try{const evidence=await mutationReader.reviewEvidence(res.locals.actorAccountId as number,id,b.decision as never,(b.reason as string|null|undefined)??null);res.status(200).json({evidence});}
     catch(error){capabilityFailure(error,res);}
+  });
+
+  const businessLogoReader = dependencies.businessLogoReader;
+  app.put('/v1/businesses/:businessId/logo', async (req: Request, res: Response) => {
+    const raw = req.params.businessId;
+    const businessId = typeof raw === 'string' && /^[1-9][0-9]*$/.test(raw) ? Number(raw) : NaN;
+    const body = req.body as Record<string, unknown> | null;
+    if (!Number.isSafeInteger(businessId) || businessId <= 0 || !body || typeof body !== 'object'
+      || Array.isArray(body) || Object.keys(body).length !== 1 || !Object.hasOwn(body, 'objectId')
+      || (body.objectId !== null && (!Number.isSafeInteger(body.objectId) || Number(body.objectId) <= 0))) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    if (!businessLogoReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    try {
+      const previousObjectId = await businessLogoReader.bind(
+        res.locals.actorAccountId as number,
+        businessId,
+        body.objectId as number | null,
+      );
+      res.status(200).json({ previousObjectId });
+    } catch (error) {
+      if (isSqlState(error, '42501') || isSqlState(error, 'P0001')) {
+        res.status(403).json({ error: 'forbidden' });
+        return;
+      }
+      console.error(JSON.stringify({
+        event: 'actor_gateway_operation_failed',
+        operation: 'business.logo.bind',
+        error: { name: error instanceof Error ? error.name : 'UnknownError' },
+      }));
+      res.status(503).json({ error: 'service_unavailable' });
+    }
   });
 
   const trustScoreReader = dependencies.trustScoreReader;
