@@ -366,8 +366,8 @@ export class PostgresAuthPersistence implements AuthPersistence {
     const hashed = await this.passwordHasher.hash(password);
     try {
       const result = await this.tx(async (client) => {
-        const redeemed = await client.query(
-          `SELECT ghm.auth_redeem_recovery($1) AS account_id`,
+        const redeemed = await client.query<{ account_id: string | number; revoked_session_count: number | string }>(
+          `SELECT account_id, revoked_session_count FROM ghm.auth_redeem_recovery_with_count($1)`,
           [tokenHash],
         );
         if (redeemed.rowCount !== 1) {
@@ -389,11 +389,7 @@ export class PostgresAuthPersistence implements AuthPersistence {
         if (passwordResult.rowCount !== 1) {
           throw new AuthPersistenceError('Password reset failed');
         }
-        const revoked = await client.query(
-          `SELECT ghm.auth_revoke_all_sessions_for_account($1, $2) AS count`,
-          [accountId, 'password_recovery'],
-        );
-        return Number(revoked.rows[0]?.count ?? 0);
+        return Number(redeemed.rows[0].revoked_session_count ?? 0);
       });
       return { password: hashed, revokedSessionCount: result };
     } catch (error) {
