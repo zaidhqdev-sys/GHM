@@ -266,6 +266,7 @@ test('Business Hours PUT forwards the original bearer token through the gateway 
     },
   });
   const gatewayClient = {
+    list: async () => [],
     replace: async (token: string, input: ReplaceBusinessHoursInput) => {
       receivedToken = token;
       assert.deepEqual(input, {
