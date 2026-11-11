@@ -7,9 +7,9 @@ This handover records the production-readiness review of GHM Actor Gateway PR #2
 - Repository: `zaidhqdev-sys/GHM`
 - PR: [#272 — Unified Actor Gateway](https://github.com/zaidhqdev-sys/GHM/pull/272)
 - Branch: `integration/capability-gateway-qualification-20261110`
-- Last fully validated code head before the current documentation update: `3f9f41288c953bcc1796d63a4e7b3e6535935e14`
+- Last fully validated code head: `3f9f41288c953bcc1796d63a4e7b3e6535935e14`
 - At review: PR remained open and unmerged.
-- CI on that exact code head: `quality` and `web-quality` passed ([run 43054855935](https://github.com/zaidhqdev-sys/GHM/actions/runs/43054855935)).
+- CI on that exact code head: `quality` and `web-quality` passed ([run 43054855935](https://github.com/zaidhqdev-sys/GHM/actions/runs/43054855935)). The subsequent documentation-only handover update also passed both jobs ([run 43055141906](https://github.com/zaidhqdev-sys/GHM/actions/runs/43055141906)).
 - No production migrations, deployments, service changes, or database privilege changes were performed as part of this review.
 
 **Current disposition: production rollout remains paused.** Green CI is useful evidence but does not qualify the production database role model or deployment topology.
