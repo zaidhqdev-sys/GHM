@@ -990,3 +990,14 @@ On PR head `d9e4ec68f05ca71d57d04a9858a1a12686e70371`, GitHub Actions run `43104
 The original `auth_redeem_recovery(bytea)` already consumes the one-time recovery token and calls `auth_internal_revoke_all_sessions_for_account`. However, `PostgresAuthPersistence.resetPasswordWithRecovery` then redundantly calls `auth_revoke_all_sessions_for_account(account_id,...)` again after setting the password. This second call is normally a no-op because the sessions were already revoked by `auth_redeem_recovery`; it also keeps a broad caller-supplied account-ID revocation RPC runtime-executable.
 
 The QuoteFlow migration reset completion function also calls `auth_revoke_all_sessions_for_account` internally from a SECURITY DEFINER function; nested owner execution does not require a runtime grant. Next batch should introduce a token-bound recovery redemption result that returns both account ID and revoked-session count, update the normal reset path to use it, then revoke runtime EXECUTE on the direct account-ID revoke wrapper. Preserve the token single-use, atomic reset, and QuoteFlow migration-reset behavior. Do not revoke `auth_set_password` yet; login rehash still uses it after successful password verification.
+
+
+## Trust Score qualification fixture reconciliation (2026-11-11)
+
+The completed run `43104412505` on code head `d9e4ec68f05ca71d57d04a9858a1a12686e70371` passed build, all migrations, storage qualification and the full test suite, but failed at the Trust Score signed gateway disposable PostgreSQL step.
+
+The failure was not in the Trust Score gateway: `scripts/qualify-trust-score-gateway-cutover-postgres.mjs:40` seeded a private Business with `verification_status='pending'`, which is no longer allowed by the Business directory review status constraint. The private fixture needs to be `unverified` (still non-public and `is_verified=false`). Corrected in commit `1aa9477ae95666ae5d12596cb3b1ca858fbde86f`.
+
+New exact-head GitHub Actions PR run `43104846183` is IN PROGRESS on `1aa9477ae95666ae5d12596cb3b1ca858fbde86f`; no pass is claimed until all qualification steps complete.
+
+The next auth batch remains the token-bound recovery redemption result described above. Preserve the QuoteFlow reset completion function's nested owner call to `auth_revoke_all_sessions_for_account`; runtime EXECUTE can be revoked only after the ordinary recovery reset path no longer invokes that wrapper directly.
