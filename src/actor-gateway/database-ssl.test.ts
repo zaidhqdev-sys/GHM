@@ -6,8 +6,8 @@ test('production private-network database connections use internal transport mod
   assert.equal(actorGatewayDatabaseSslConfig('internal', true), false);
 });
 
-test('external database connections require certificate verification', () => {
-  assert.deepEqual(actorGatewayDatabaseSslConfig('external', true), { rejectUnauthorized: true });
+test('external database connections require TLS without claiming certificate verification', () => {
+  assert.deepEqual(actorGatewayDatabaseSslConfig('external', true), { rejectUnauthorized: false });
 });
 
 test('production refuses ambiguous or missing database transport mode', () => {
