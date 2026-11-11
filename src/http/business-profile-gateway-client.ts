@@ -1,5 +1,6 @@
-export interface BusinessProfileGatewayClient {
 import { assertActorGatewayBaseUrl } from './actor-gateway-url';
+
+export interface BusinessProfileGatewayClient {
   update(accessToken: string, businessId: number, patch: Record<string, unknown>): Promise<void>;
 }
 
