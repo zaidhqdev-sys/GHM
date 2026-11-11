@@ -5,6 +5,7 @@ import { createApp } from './app';
 import { httpTestAuth, tokenFor } from './test-resource-auth';
 import type { AuthContext } from '../auth/authorization';
 import type { BusinessCapabilityEvidence, BusinessCapabilityEvidenceService } from '../resources/business-capability-evidence/contracts';
+import { BusinessCapabilityEvidenceServiceImpl } from '../resources/business-capability-evidence/service';
 
 const start = async (service: BusinessCapabilityEvidenceService, capabilityMutationGatewayClient?: unknown, capabilityMutationGatewayRequired = false) => {
   const server = http.createServer(createApp({resourceAuthMiddleware:httpTestAuth,businessCapabilityEvidenceService:service,capabilityMutationGatewayClient:capabilityMutationGatewayClient as never,capabilityMutationGatewayRequired}));
@@ -40,9 +41,10 @@ test('customer cannot submit Capability evidence',async()=>{
  } finally {await new Promise<void>(resolve=>server.close(()=>resolve()));}
 });
 
-test('evidence submission rejects unbounded or non-HTTPS references before service execution',async()=>{
+test('evidence submission rejects unbounded or non-HTTPS references in the service validation boundary',async()=>{
  let called=false;
- const service={create:async()=>{called=true;return {} as BusinessCapabilityEvidence;}} as unknown as BusinessCapabilityEvidenceService;
+ const repository={create:async()=>{called=true;return {} as BusinessCapabilityEvidence;},listForBusiness:async()=>[],listForVerification:async()=>[],review:async()=>({} as BusinessCapabilityEvidence)};
+ const service=new BusinessCapabilityEvidenceServiceImpl(repository);
  const {server,baseUrl}=await start(service);
  try {
   const response=await fetch(`${baseUrl}/api/v1/business-capability-evidence`,{method:'POST',headers:{authorization:`Bearer ${tokenFor({userId:42,role:'business'})}`,'content-type':'application/json'},body:JSON.stringify({businessCapabilityId:12,evidenceType:'certification',title:'Certificate',evidenceUrl:'http://unsafe.test/doc'})});
@@ -71,15 +73,15 @@ test('admin review accepts verify, reject and revoke decisions only through revi
  } finally {await new Promise<void>(resolve=>server.close(()=>resolve()));}
 });
 
-test('business role cannot access admin verification queue or moderation service',async()=>{
- let listed=false,reviewed=false;
- const service={listForVerification:async()=>{listed=true;return[];},review:async()=>{reviewed=true;return{};}} as unknown as BusinessCapabilityEvidenceService;
+test('business role can list only business-scoped evidence and cannot access moderation',async()=>{
+ let pendingListed=false,businessListed=false,reviewed=false;
+ const service={listForBusiness:async()=>{businessListed=true;return[];},listForVerification:async()=>{pendingListed=true;return[];},review:async()=>{reviewed=true;return{};}} as unknown as BusinessCapabilityEvidenceService;
  const {server,baseUrl}=await start(service);
  try {
   const headers={authorization:`Bearer ${tokenFor({userId:42,role:'business'})}`};
-  const list=await fetch(`${baseUrl}/api/v1/business-capability-evidence`,{headers});
+  const list=await fetch(`${baseUrl}/api/v1/business-capability-evidence?businessId=55`,{headers});
   const review=await fetch(`${baseUrl}/api/v1/business-capability-evidence/91/review`,{method:'PATCH',headers:{...headers,'content-type':'application/json'},body:JSON.stringify({decision:'verified'})});
-  assert.equal(list.status,403);assert.equal(review.status,403);assert.equal(listed,false);assert.equal(reviewed,false);
+  assert.equal(list.status,200);assert.equal(review.status,403);assert.equal(businessListed,true);assert.equal(pendingListed,false);assert.equal(reviewed,false);
  } finally {await new Promise<void>(resolve=>server.close(()=>resolve()));}
 });
 
