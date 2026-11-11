@@ -315,3 +315,35 @@ The Actor Gateway principal qualification applied the new manual registration cu
 The first qualification attempts exposed harness defects (missing Node imports, wrong pool variable, then over-escaped contract regex); these were corrected. The successful exact-head run is #2891, not the earlier failed attempts. Cloudflare Pages also reported a successful PR preview for this exact commit at https://7d9a60be.ghm-cu1.pages.dev; this is a preview only, not a production release.
 
 PR #272 remains open, unmerged and mergeable. The manual registration cutover remains unapplied to production. Production remains blocked on Render's supported role-model resolution and a fresh verified backup. No production role/grant, secret, migration, service/environment or production deployment was changed.
+
+
+## 2026-11-11 — follow-on legacy RPC actor-impersonation audit (open; no cutover)
+
+A deeper review of application resource paths found legacy SECURITY DEFINER operations that still trust a caller-supplied account ID. These are not covered by the current Actor Gateway migration set and must not be described as protected by the signed v2 gateway assertion boundary.
+
+### Confirmed high-priority gaps
+
+1. `ghm.replace_business_capability_assertions(bigint,bigint,jsonb)` remains executable by `ghm_runtime`. It authorizes membership against its supplied `p_actor_id`, but the resource repository supplies `context.userId` from the API's verified token. A compromised runtime DB client can call the function directly with another active Business owner/administrator's account ID and attempt assertion replacement. The function correctly locks the Business and enforces owner/administrator membership; that does not authenticate the caller identity at the DB boundary.
+2. `ghm.transition_business_capability_verification(bigint,text,text,bigint,text)` remains executable by `ghm_runtime`. It checks the supplied `p_verifier_id` has role `admin` and is not the assertion creator. The HTTP service checks the verified JWT context role before calling it, but a compromised runtime DB client can supply an admin account ID directly. The database function does not cryptographically bind the verifier ID to a verified actor.
+3. `ghm.transition_business_capability_evidence(bigint,text,bigint,text)` remains executable by `ghm_runtime`. It similarly checks the supplied verifier ID's database role and self-verification restriction, but does not bind that ID to the authenticated request. The HTTP service checks admin role; direct runtime EXECUTE bypasses that service check.
+
+### Scope and existing controls
+
+- The HTTP routes currently use verified GHM auth middleware and service-level role checks. This is not equivalent to database-level caller identity when the runtime database credential itself is compromised.
+- Assertion replacement SQL enforces active Business membership, owner/administrator role, Business row locking, active/selectable catalogue references, bounded input, and verification invalidation on material changes. The gap is actor authenticity at the SQL privilege boundary, not absence of tenant checks.
+- Evidence verification SQL enforces admin role, forbids self-verification, validates transitions/reasons, serializes the parent assertion/evidence aggregate and prevents expired evidence verification. The gap is actor authenticity at the SQL privilege boundary.
+- Evidence submission uses a direct runtime INSERT with `submitted_by=context.userId`; its repository performs Business membership/owner checks before insertion. Treat this as a separate write path to review for signed actor binding, not as already covered by the gateway.
+- Founder directory-review operations are explicitly disabled by `20261109140000_close_evidence_and_founder_review_authority.sql`: reviewer predicate returns false and the runtime EXECUTE grants for submit/list/review are revoked. Keep this feature disabled; do not reopen it as part of this remediation.
+
+### Required remediation before claiming full runtime DB isolation
+
+- Add dedicated signed Actor Gateway operations for Business Capability assertion replacement and admin verification/evidence decisions. The gateway must derive actor identity from the verified GHM access token and sign exact business/assertion/evidence IDs, operation, decision, reason and payload context.
+- Route the existing HTTP endpoints through the gateway client using the original bearer token; fail closed when gateway configuration is absent. Do not pass a caller-supplied actor ID from the API to the gateway.
+- Add disposable PostgreSQL qualification proving direct `ghm_runtime` EXECUTE is denied after the manual cutover, signed gateway calls succeed, altered actor/target/payload/operation assertions fail, replay fails, non-admin review fails, non-owner Business replacement fails, and membership/Business authorization still holds.
+- Add migration-contract tests for exact function signatures, revoke/grant ACLs, request-context equality and manual-cutover SQL.
+- Add a manual-only cutover under `database/cutovers`; do not silently revoke runtime EXECUTE in an automatically applied migration while the current app routes still call the legacy functions.
+- Separately decide whether evidence submission should also become a gateway operation; its current direct table INSERT and submitted_by binding require a distinct least-privilege design.
+
+### Status and safety
+
+This is a confirmed source-level security boundary gap, not a production exploit finding. No evidence of unauthorized use was established. No code cutover has yet been implemented for these operations. Do not apply any privilege changes until gateway routes and clients are implemented, exact-head disposable qualification passes, the Render role model is resolved, and a fresh verified production backup exists. No production state was changed.
