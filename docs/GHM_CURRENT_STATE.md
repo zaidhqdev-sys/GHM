@@ -536,13 +536,24 @@ A source audit beyond the current Actor Gateway scope confirmed three remaining 
 
 Their membership/admin/self-verification rules are meaningful, but do not cryptographically prove that the supplied ID is the authenticated caller if the runtime database credential is compromised. Existing HTTP routes do check the verified JWT context and service role; direct database EXECUTE bypasses those checks. Evidence submission's direct runtime INSERT with `submitted_by=context.userId` is a separate path to assess. Founder directory review remains deliberately disabled and its runtime review EXECUTE grants are revoked.
 
-Remediation requires signed gateway operations, bearer-token forwarding from existing routes, fail-closed clients, exact-context assertions, disposable PostgreSQL negative tests and a manual-only privilege cutover. No such cutover has been applied or implemented yet. See `docs/HANDOVER_2026-11-11_ACTOR_GATEWAY_PRODUCTION_READINESS.md` for full details. Production remains untouched; Render role-model resolution and a fresh verified backup remain release blockers.
+Remediation required signed gateway operations, bearer-token forwarding from existing routes, fail-closed clients, exact-context assertions, disposable PostgreSQL negative tests and a manual-only privilege cutover. That implementation and its exact-head disposable qualification are now complete; the earlier statement that no implementation existed is superseded by the status below. The manual-only cutover remains unapplied in production. See `docs/HANDOVER_2026-11-11_ACTOR_GATEWAY_PRODUCTION_READINESS.md` for full details. Production remains untouched; Render role-model resolution and a fresh verified backup remain release blockers.
 
 
-## 2026-11-11 — Business Capability mutation Actor Gateway work (not yet qualified)
+## 2026-11-11 — Business Capability mutation Actor Gateway qualification passed
 
-The branch now implements signed gateway wrappers and authenticated Actor Gateway routes for Business Capability assertion replacement, administrator verification, evidence review and evidence submission. The new manual cutover revokes legacy mutation RPCs and direct evidence INSERT (including the previously granted column-level INSERT and sequence privileges). Resource API production routes are configured to fail closed when the Actor Gateway client is unavailable.
+Exact implementation head `f5c68802f9a23c8e5ce936914a2de5d82be3bf23` passed GitHub Actions run #3005 (`43086430055`) with both `quality` and `web-quality` successful.
 
-The first build found route-validator syntax errors, then the next build passed and PostgreSQL migration application exposed a malformed dollar-quote delimiter in the evidence-submission wrapper. That delimiter was corrected. Exact-head CI is being rerun; this batch is not yet qualified. Required next checks: full migration apply, migration contracts, runtime direct-EXECUTE/INSERT denial after manual cutover on disposable PostgreSQL, signed gateway success and tamper/replay/authorization negative cases, HTTP DTO compatibility and migration checksum inventory.
+The branch now implements signed gateway wrappers and authenticated Actor Gateway routes for Business Capability assertion replacement, administrator verification, evidence review and evidence submission. The gateway derives actor/verifier/submitted_by identity from the verified JWT actor and binds the full operation payload to the v2 HMAC assertion context. Evidence DTOs are returned by the SECURITY DEFINER gateway wrappers; the Actor Gateway database principal does not need direct evidence-table SELECT.
 
-The manual cutover has not been applied. Production remains untouched. Do not merge or deploy this work based on source implementation alone.
+The exact-head checks passed:
+- TypeScript build, full migration application and complete test suite.
+- Resource API tests for bearer-token forwarding to all four signed gateway operations, role checks and fail-closed behavior when the gateway is required but unavailable.
+- Disposable PostgreSQL manual cutover qualification: runtime cannot execute the legacy mutation RPCs, insert evidence rows directly, or access the evidence sequence.
+- Signed gateway replacement, administrator verification, evidence submission and administrator evidence review remain successful after the cutover.
+- Payload/target substitution, replay, non-management membership, non-admin verification and non-admin evidence review denials.
+- Actor provenance, evidence DTO compatibility and post-cutover role privilege matrix.
+- Migration audit policy and runtime boundary verification.
+
+The disposable qualification applies `database/cutovers/20261111030000_revoke_legacy_business_capability_runtime_mutations.sql` only to the CI disposable database. It has not been applied to production.
+
+Production remains untouched. PR #272 remains open and unmerged. Render role-model support and a fresh verified production backup remain release blockers. No paid infrastructure was introduced.
