@@ -370,3 +370,16 @@ The Business Logo routes are active in `src/http/storage-router.ts`; the binding
 - Disposable PostgreSQL qualification script and CI wiring: `scripts/qualify-business-logo-gateway-cutover-postgres.mjs`.
 
 **Status: IMPLEMENTED / QUALIFICATION PENDING.** CI has been wired; exact-head qualification is pending. Do not close until the full test suite and disposable PostgreSQL step pass. No production changes and no production cutover.
+
+
+## Trust Score direct-read boundary — implementation checkpoint (2026-11-11)
+
+A second bounded batch now replaces direct runtime reads on `ghm.trust_score`:
+
+- Migration `20261111170000_add_trust_score_read_projections.sql` adds signed `trust.score.read` operations for member get/list, preserving public visibility plus active owner/administrator membership. It also adds `get_public_trust_score` and `list_public_trust_scores` SECURITY DEFINER projections for runtime public reads, filtered to active + verified + approved Businesses.
+- Manual cutover `20261111150000_revoke_legacy_trust_score_runtime.sql` now revokes direct runtime/PUBLIC table SELECT and sequence access in addition to legacy calculation EXECUTE.
+- `PostgresTrustScoreGatewayReader` now implements signed get/list/calculate; Actor Gateway exposes authenticated GET `/v1/trust-scores` and `/v1/trust-scores/:businessId` as well as calculation.
+- Resource API `TrustScoreGatewayClient` and router forward the original bearer token for authenticated get/list/calculate; production fails closed if gateway unavailable/unconfigured. Public Resource API reads now call the governed public SQL projections.
+- Reader HMAC tests, migration/ACL contract tests, HTTP gateway/fail-closed tests and the disposable PostgreSQL qualification runner have been expanded to prove public/private visibility and no direct runtime reads.
+
+**Status: IMPLEMENTED / QUALIFICATION PENDING.** Exact-head CI for this read-boundary expansion is queued/pending; no pass is claimed. The earlier mutation-only Trust Score qualification (#3198) remains valid for the calculation boundary, but does not qualify these new read functions or the table/sequence revocations. Do not apply the expanded manual cutover to production until exact-head CI and the new disposable PostgreSQL read checks pass. No production changes.
