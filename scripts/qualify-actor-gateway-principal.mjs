@@ -250,6 +250,7 @@ try {
   const boundRead=signAssertion(activeAccountId,'business.registration.read',{businessId});
   await expectSqlState(() => gatewayPool.query('SELECT * FROM ghm.gateway_read_business_registration_identity($1,$2,$3,$4,$5,$6)',[activeAccountId,boundRead.issuedAt,boundRead.nonce,boundRead.context,boundRead.signature,otherBusinessId]),'42501','SIGNED REGISTRATION READ CANNOT BE TRANSPLANTED TO ANOTHER BUSINESS');
   const boundUpdate=signAssertion(activeAccountId,'business.registration.update',{businessId,registrationStatus:'registered',registrationNumber:'REG-primary',legalName:'Authorized legal name'});
+  await expectSqlState(() => gatewayPool.query('SELECT * FROM ghm.gateway_update_business_registration_identity($1,$2,$3,$4,$5,$6,$7,$8,$9)',[activeAccountId,boundUpdate.issuedAt,boundUpdate.nonce,boundUpdate.context,boundUpdate.signature,otherBusinessId,'registered','REG-primary','Authorized legal name']),'42501','SIGNED REGISTRATION UPDATE CANNOT BE TRANSPLANTED TO ANOTHER BUSINESS');
   await expectSqlState(() => gatewayPool.query('SELECT * FROM ghm.gateway_update_business_registration_identity($1,$2,$3,$4,$5,$6,$7,$8,$9)',[activeAccountId,boundUpdate.issuedAt,boundUpdate.nonce,boundUpdate.context,boundUpdate.signature,businessId,'registered','REG-primary','Tampered legal name']),'42501','SIGNED REGISTRATION UPDATE CANNOT BE REPLAYED WITH ALTERED PAYLOAD');
 
   const updatedRegistrationIdentity = await gatewayCall(activeAccountId,'business.registration.update',
