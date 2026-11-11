@@ -273,3 +273,12 @@ PR #272 remains open, unmerged and mergeable at the time of this update. Product
 ## 2026-11-11 — registration identity target-substitution coverage added (CI pending)
 
 A further operation-by-operation review found that registration identity already had a read-target transplant test and an update-payload substitution test, but lacked the matching update-target transplant test. Added a disposable PostgreSQL negative case that signs a registration update for one fixture Business and substitutes a second fixture Business ID while preserving the signed payload. It expects SQLSTATE `42501`. This closes that specific qualification gap; exact-head CI is pending. No production state was touched.
+
+
+## 2026-11-11 — registration update target-substitution qualification passed
+
+Exact PR head `cd591533b5130b560c58ffefc268fe416bbfa59c` passed GitHub Actions run #2870 (`43074793542`): both `quality` and `web-quality` succeeded. The `quality` job completed the full build, complete disposable PostgreSQL migration chain, test suite, actor-gateway principal qualification, registration migration qualification, capability lifecycle/governance/cutover qualifications, supplier classification and Business profile qualifications, commercial settlement identity checks, migration policy tests, and runtime boundary verification.
+
+The new actor-gateway principal qualification includes the Business registration update target-substitution case: an assertion signed for one fixture Business was presented with another fixture Business ID and rejected with SQLSTATE `42501`. The existing registration read target-transplant and update payload-substitution tests also ran in the same successful qualification. This is bounded disposable-database evidence for the exercised cases, not overall production readiness.
+
+PR #272 remains open, unmerged and mergeable at this check. Render's supported production role-model resolution and a fresh verified backup remain mandatory blockers. No production migration, role/grant change, secret provisioning, Render service change, deployment or paid infrastructure was introduced.
