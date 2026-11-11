@@ -106,6 +106,12 @@ try {
   const bound=signAssertion(accountId,'supplier.classification.update',Math.floor(Date.now()/1000),{businessId,isSupplier:true});
   await assert.rejects(() => gatewayPool.query('SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6,$7)',[accountId,bound.issuedAt,bound.nonce,bound.context,bound.signature,businessId,false]),/Actor assertion context mismatch/);
   console.log('DATABASE DENIES SUPPLIER ASSERTION PAYLOAD SUBSTITUTION PASS');
+  const targetBound = signAssertion(accountId,'supplier.classification.update',Math.floor(Date.now()/1000),{businessId,isSupplier:false});
+  await assert.rejects(
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6,$7)',[accountId,targetBound.issuedAt,targetBound.nonce,targetBound.context,targetBound.signature,businessId+999999,false]),
+    /Actor assertion context mismatch/,
+  );
+  console.log('DATABASE DENIES SUPPLIER BUSINESS TARGET SUBSTITUTION PASS');
 
   const expired = signAssertion(accountId, 'supplier.classification.update', Math.floor(Date.now()/1000) - 61, {businessId,isSupplier:false});
   await assert.rejects(
