@@ -6,11 +6,14 @@ import { httpTestAuth, tokenFor as es256TokenFor } from './test-resource-auth';
 import { AuthContext } from '../auth/authorization';
 import type { TrustScore, TrustScoreService } from '../resources/trust-score/contracts';
 import type { BusinessIdentityService } from '../resources/business-identity/contracts';
+import type { TrustScoreGatewayClient } from './trust-score-gateway-client';
 
-const startServer = async (trustScoreService: TrustScoreService) => {
+const startServer = async (trustScoreService: TrustScoreService, gatewayClient?: TrustScoreGatewayClient, gatewayRequired = false) => {
   const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth,
     businessIdentityService: {} as BusinessIdentityService,
     trustScoreService,
+    trustScoreGatewayClient: gatewayClient,
+    trustScoreGatewayRequired: gatewayRequired,
   }));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
@@ -273,6 +276,62 @@ test('trust score calculate route rejects invalid business ids before service ex
     });
     assert.equal(response.status, 400);
     assert.equal(called, false);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+
+test('Trust Score calculation fails closed when production requires the gateway but it is unavailable', async () => {
+  let serviceCalled = false;
+  const service = {
+    calculateTrustScore: async () => {
+      serviceCalled = true;
+      return fixture();
+    },
+  } as unknown as TrustScoreService;
+  const { server, baseUrl } = await startServer(service, undefined, true);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/trust-scores/20/calculate`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${tokenFor({ userId: 7, role: 'business' })}` },
+    });
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { error: 'service_unavailable' });
+    assert.equal(serviceCalled, false);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('Trust Score calculation forwards the original bearer token to the Actor Gateway', async () => {
+  let receivedToken: string | undefined;
+  let serviceCalled = false;
+  const service = {
+    calculateTrustScore: async () => {
+      serviceCalled = true;
+      return fixture();
+    },
+  } as unknown as TrustScoreService;
+  const gateway: TrustScoreGatewayClient = {
+    calculate: async (token, businessId) => {
+      receivedToken = token;
+      assert.equal(businessId, 20);
+      return fixture(businessId);
+    },
+  };
+  const { server, baseUrl } = await startServer(service, gateway, true);
+  try {
+    const token = tokenFor({ userId: 7, role: 'business' });
+    const response = await fetch(`${baseUrl}/api/v1/trust-scores/20/calculate`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    assert.equal(response.status, 200);
+    assert.equal(receivedToken, token);
+    assert.equal(serviceCalled, false);
+    const body = await response.json() as { trustScore: TrustScore };
+    assert.equal(body.trustScore.businessId, 20);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
