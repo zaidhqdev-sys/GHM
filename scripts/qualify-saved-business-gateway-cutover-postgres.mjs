@@ -86,6 +86,12 @@ try {
   );
   const businessId = Number(business.rows[0].id);
   ids.businesses.push(businessId);
+  const replayBusiness = await setup(
+    "INSERT INTO ghm.business(name,slug,verification_status,is_verified,is_active) VALUES($1,$2,'approved',true,true) RETURNING id",
+    [marker + ' replay', marker + '-replay'],
+  );
+  const replayBusinessId = Number(replayBusiness.rows[0].id);
+  ids.businesses.push(replayBusinessId);
 
   const cutover = await readFile(fileURLToPath(new URL('../database/cutovers/20261111110000_revoke_legacy_saved_business_runtime.sql', import.meta.url)), 'utf8');
   const cutoverStatements = cutover.replace(/^\s*BEGIN;\s*/i, '').replace(/\s*COMMIT;\s*$/i, '');
@@ -149,8 +155,8 @@ try {
     'SIGNED ACTOR SUBSTITUTION DENIED',
   );
 
-  const replay = sign(owner, 'saved_business.create', { businessId });
-  const replayArgs = [owner, replay.issuedAt, replay.nonce, replay.context, replay.signature, businessId];
+  const replay = sign(owner, 'saved_business.create', { businessId: replayBusinessId });
+  const replayArgs = [owner, replay.issuedAt, replay.nonce, replay.context, replay.signature, replayBusinessId];
   const replayCreate = await gateway.query(
     'SELECT * FROM ghm.gateway_create_saved_business($1,$2,$3,$4,$5,$6)', replayArgs,
   );
