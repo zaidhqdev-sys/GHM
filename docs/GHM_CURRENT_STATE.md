@@ -722,3 +722,9 @@ The detailed handover now maps the live pre-JWT callers for account registration
 
 The first CI run after adding the migration-provisioning DB qualifier passed the normal test suite (884/884) but the new script failed because it expected `ghm_db` while CI correctly uses `ghm_disposable_test`. Corrected to use the configured qualification/migration database name in commit `c71f795d92a5a500fd544420dad1845553d9a5f9`. Exact-head runs #43116108337 and #43116117596 were still in progress at the checkpoint; no qualification pass is claimed. See the full security handover for call paths and exact evidence.
 
+
+
+## 2026-11-11 — QuoteFlow migration provisioning DB qualifier passed inside npm test
+
+The bounded runtime EXECUTE revocation for `auth_provision_migration_account` is now covered by the integrated database qualification. On code/test head `c71f795d92a5a500fd544420dad1845553d9a5f9`, run #43116117596 completed the `Test suite` step successfully. The npm test command now runs the normal 884-test suite, syntax-checks the dedicated provisioning DB qualifier, and executes it using CI's disposable runtime/migrator URLs. The overall workflow remains in progress in later qualification steps; do not treat the whole PR as fully qualified yet. Subsequent documentation-only commits advanced PR head to `cd7eff3a907e5b68621c46f85aea7c89873328a5`. Full detail is in the security handover.
+
