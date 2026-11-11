@@ -826,3 +826,18 @@ Inspected:
 The Connect lifecycle mutation RPCs are not runtime-granted in the inspected migration and are not a current shared-runtime mutation exposure. The active Connect replay function is a narrow service-internal operation whose security depends on signature verification before invocation; record its residual database trust assumption, but do not convert it into a user-JWT Actor Gateway operation. Any future hardening should bind replay consumption to a separate service authority or a signed assertion proof, while preserving one-use JTI semantics.
 
 No Connect integration lifecycle or replay grants were changed. No production changes were made.
+
+
+## Session checkpoint — latest verified repository state (2026-11-11 21:15 UTC)
+
+- GHM PR #272 remains OPEN and UNMERGED.
+- Current branch: `integration/capability-gateway-qualification-20261110`.
+- Current PR head: `3d2c5796e19a06a6eea6bf40adb109f7e8db869f`.
+- The latest commits made during this recovery session are documentation-only handover additions. No runtime code, SQL migration, cutover, role, grant, secret, production service or production data was changed.
+- GitHub Actions run #3298 / run ID `43097925792` remains QUEUED with event `pull_request` and run head SHA `1ee5e91d247bb315df43f532a3beea7d10c1a344`. Its PR metadata now points at the newer current PR head, but the run's own `head_sha` is still the older commit. Do not treat it as exact-current-head qualification. No jobs/results were returned when checked.
+- The current PR head `3d2c5796e19a06a6eea6bf40adb109f7e8db869f` has no workflow run/status returned by the GitHub connector at this checkpoint. Do not claim CI passed for the current head.
+- Latest handover update includes internal-auth RPC caller review, ordered auth migration grant scan, storage metadata call graph and qualification coverage gap, ordered storage grant scan, Connect Business mapping ACL mismatch, and Connect integration lifecycle/replay review.
+
+### Immediate continuation point
+
+Continue with a bounded repository-wide search for remaining SECURITY DEFINER functions with runtime EXECUTE that accept account/session/business/resource identifiers, using this handover to skip the already reviewed families. Prioritize exact caller reachability and later ACL/cutover reconciliation. For the Connect Business mapping mismatch, do not restore table SELECT: the next implementation should use a full-field SECURITY DEFINER projection or a governed integration boundary and add live runtime-role PostgreSQL qualification. Keep the migration/production role boundaries unchanged until their dedicated qualification and release gates are satisfied.
