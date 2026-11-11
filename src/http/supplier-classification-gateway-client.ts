@@ -1,5 +1,6 @@
-export class SupplierClassificationGatewayError extends Error {
 import { assertActorGatewayBaseUrl } from './actor-gateway-url';
+
+export class SupplierClassificationGatewayError extends Error {
   constructor(readonly status: number) {
     super('Actor gateway request failed');
     this.name = 'SupplierClassificationGatewayError';
