@@ -404,6 +404,14 @@ export const createActorGatewayApp = (
     try{const capability=await mutationReader.verify(res.locals.actorAccountId as number,id,b.expectedStatus as never,b.targetStatus as never,(b.reason as string|null|undefined)??null);res.status(200).json({capability});}
     catch(error){capabilityFailure(error,res);}
   });
+  app.post('/v1/business-capability-evidence', async (req: Request,res: Response)=>{
+    const b=req.body as Record<string,unknown>|null;
+    const allowed=['businessCapabilityId','evidenceType','title','description','issuerName','referenceNumber','evidenceUrl','issuedOn','expiresOn','visibility'];
+    if(!b||typeof b!=='object'||Array.isArray(b)||Object.keys(b).some(k=>!allowed.includes(k))||!positiveId(b.businessCapabilityId)||typeof b.evidenceType!=='string'||typeof b.title!=='string'){res.status(400).json({error:'invalid_request'});return;}
+    if(!mutationReader){res.status(503).json({error:'service_unavailable'});return;}
+    try{const evidence=await mutationReader.submitEvidence(res.locals.actorAccountId as number,b as never);res.status(201).json({evidence});}
+    catch(error){capabilityFailure(error,res);}
+  });
   app.patch('/v1/business-capability-evidence/:id/review', async (req: Request,res: Response)=>{
     const raw=req.params.id;const id=typeof raw==='string'&&/^[1-9][0-9]*$/.test(raw)?Number(raw):NaN;const b=req.body as Record<string,unknown>|null;
     if(!positiveId(id)||!b||typeof b!=='object'||Array.isArray(b)||Object.keys(b).some(k=>!['decision','reason'].includes(k))||!['verified','rejected','revoked'].includes(String(b.decision))||(b.reason!==undefined&&b.reason!==null&&typeof b.reason!=='string)){res.status(400).json({error:'invalid_request'});return;}
