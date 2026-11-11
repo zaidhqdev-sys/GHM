@@ -46,7 +46,7 @@ const app = createActorGatewayApp({
   businessRegistrationIdentityReader: new PostgresBusinessRegistrationIdentityReader(pool),
   capabilityGovernanceReader: new PostgresCapabilityGovernanceReader(pool, capabilityAssertionSecret),
   supplierClassificationReader: new PostgresSupplierClassificationReader(pool, capabilityAssertionSecret),
-  businessProfileReader: new PostgresBusinessProfileReader(pool),
+  businessProfileReader: new PostgresBusinessProfileReader(pool, capabilityAssertionSecret),
 });
 const server = http.createServer(app);
 server.requestTimeout = 10_000;
