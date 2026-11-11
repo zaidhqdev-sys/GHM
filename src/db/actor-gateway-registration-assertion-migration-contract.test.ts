@@ -6,6 +6,7 @@ const migration = readFileSync('database/migrations/20261111050000_bind_registra
 
 test('registration identity and actor self-read wrappers require operation-bound HMAC assertions', () => {
   for (const operation of ['actor.identity.read','business.registration.read','business.registration.update']) assert.ok(migration.includes(`'${operation}'`));
+  assert.match(migration, /GREATEST\(clock_timestamp\(\),to_timestamp\(p_issued_at\)\)\+interval '60 seconds'/);
   assert.match(migration, /DROP FUNCTION ghm\.gateway_get_actor_identity\(bigint\)/);
   assert.match(migration, /gateway_get_actor_identity\(bigint,bigint,uuid,text\)/);
   assert.match(migration, /gateway_read_business_registration_identity\(bigint,bigint,uuid,text,bigint\)/);
