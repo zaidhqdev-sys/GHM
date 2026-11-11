@@ -260,3 +260,26 @@ Files added/changed:
 - `scripts/qualify-business-hours-gateway-cutover-postgres.mjs`, package script and `.github/workflows/ci.yml`: new disposable-PostgreSQL qualification step. It refuses non-local/non-disposable database URLs, uses distinct runtime/gateway/migrator roles, applies the manual cutover only to disposable CI PostgreSQL, checks legacy runtime EXECUTE denial, signed replacement/provenance, target-substitution denial and effective function ACLs.
 
 **Status at this checkpoint: IMPLEMENTED / QUALIFICATION PENDING.** No exact-head CI result has yet been observed. Do not call this qualified until the full exact-head quality run (including the new disposable PostgreSQL step) passes. The Business Hours direct SELECT grant remains unchanged in this batch; that read boundary remains OPEN. No production permissions or data were changed; no production cutover and no merge.
+
+
+### Business Hours signed replacement gateway — qualification PASS (2026-11-11)
+
+Implementation/qualification head: `b4663cb95e90b5f6633c871356b8c818c7a86814`.
+
+GitHub Actions run [#3134](https://github.com/zaidhqdev-sys/GHM/actions/runs/43092443886) completed successfully; both `quality` and `web-quality` passed. The full automated test suite passed. All migrations applied to disposable PostgreSQL. The Business Hours gateway qualification step completed with these explicit log results:
+
+- `MANUAL BUSINESS HOURS CUTOVER APPLIED TO DISPOSABLE POSTGRESQL: PASS`
+- `RUNTIME LEGACY REPLACEMENT EXECUTE DENIED: PASS`
+- `SIGNED BUSINESS HOURS REPLACEMENT + ACTOR PROVENANCE: PASS`
+- `SIGNED BUSINESS HOURS TARGET SUBSTITUTION DENIED: PASS`
+- `SIGNED BUSINESS HOURS ASSERTION REPLAY DENIED: PASS`
+- `SIGNED BUSINESS HOURS ACTOR SUBSTITUTION DENIED: PASS`
+- `RUNTIME GATEWAY WRAPPER EXECUTE DENIED: PASS`
+- `BUSINESS HOURS POST-CUTOVER FUNCTION ACL: PASS`
+- `GHM BUSINESS HOURS SIGNED GATEWAY QUALIFICATION: PASS`
+
+The qualification applied the manual cutover only to the disposable localhost PostgreSQL database, with distinct `ghm_runtime`, `ghm_actor_gateway`, and `ghm_migrator` identities. The existing schedule replacement semantics and `created_by` provenance were preserved. The test suite also covers production fail-closed behavior when the gateway is unavailable and forwarding of the original bearer token.
+
+The current PR head advanced afterward to `b24c820e3221e06aa85cbf9bf43a24dba6ccba35` to add the reader-level HMAC test to `npm test`; that later test-only head has its own CI run pending at the time of this note. The qualified implementation itself is `b4663cb9`; do not describe the newer head as fully qualified until its exact-head run completes.
+
+**Business Hours status:** replacement mutation database actor provenance IMPLEMENTED / QUALIFIED. **Still OPEN:** direct runtime SELECT on `ghm.business_hours` remains unchanged because member/public read projections have not yet been migrated to the Actor Gateway. Do not revoke that table read grant until the new read path is implemented and qualified. Production manual cutover remains unapplied and requires separate rollout approval, Render role-model resolution and a fresh independently verified production backup. No production changes and no merge.
