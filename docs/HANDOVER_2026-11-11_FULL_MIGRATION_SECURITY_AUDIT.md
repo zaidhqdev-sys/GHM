@@ -398,3 +398,8 @@ Tracing the active Business Logo lifecycle exposed a broader shared-runtime trus
 The existing storage qualification (`scripts/qualify-storage-persistence.mjs` and CI storage lifecycle qualification) proves direct table DML denial, lifecycle transitions, tenant behavior for the supplied account ID and public-logo visibility. It does **not** prove that a caller cannot substitute another account ID or directly invoke lifecycle functions against another tenant/object.
 
 **Disposition:** OPEN / NOT CLOSED by the Business Logo binding gateway. The new signed `business.logo.bind` wrapper only closes the canonical logo-reference mutation path. A separate bounded storage metadata gateway design must bind actor, operation, tenant Business, resource identity, object ID and lifecycle transition to signed JWT-derived assertions, while preserving the upload-complete/cleanup lifecycle. Do not revoke existing storage lifecycle EXECUTE privileges until all storage HTTP flows have replacement gateway routes and disposable PostgreSQL qualification. No production changes.
+
+
+## Saved Business product semantics clarification (2026-11-11)
+
+The product meaning of Saved Business is the user's personal favourites/bookmarks list: users save a Business for quick access later. It is not a Business-owned list or an administrative directory feature. The signed gateway work must preserve that exact user-facing behaviour: save/remove a favourite and list/retrieve the user's own saved Businesses, with strict account isolation. No product semantics were changed by the security remediation.
