@@ -541,14 +541,14 @@ Remediation required signed gateway operations, bearer-token forwarding from exi
 
 ## 2026-11-11 — Business Capability mutation Actor Gateway qualification passed
 
-Exact implementation head `f5c68802f9a23c8e5ce936914a2de5d82be3bf23` passed GitHub Actions run #3005 (`43086430055`) with both `quality` and `web-quality` successful.
+Latest qualification head `ccb194905d320602c476e54808ce1985b901f39d` passed GitHub Actions run #3013 (`43087190865`) with both `quality` and `web-quality` successful.
 
 The branch now implements signed gateway wrappers and authenticated Actor Gateway routes for Business Capability assertion replacement, administrator verification, evidence review and evidence submission. The gateway derives actor/verifier/submitted_by identity from the verified JWT actor and binds the full operation payload to the v2 HMAC assertion context. Evidence DTOs are returned by the SECURITY DEFINER gateway wrappers; the Actor Gateway database principal does not need direct evidence-table SELECT.
 
 The exact-head checks passed:
 - TypeScript build, full migration application and complete test suite.
 - Resource API tests for bearer-token forwarding to all four signed gateway operations, role checks and fail-closed behavior when the gateway is required but unavailable.
-- Disposable PostgreSQL manual cutover qualification: runtime cannot execute the legacy mutation RPCs, insert evidence rows directly, or access the evidence sequence.
+- Disposable PostgreSQL manual cutover qualification: runtime cannot execute the legacy mutation RPCs or any of the four new signed gateway wrapper functions, insert evidence rows directly, or access the evidence sequence.
 - Signed gateway replacement, administrator verification, evidence submission and administrator evidence review remain successful after the cutover.
 - Payload/target substitution, replay, non-management membership, non-admin verification and non-admin evidence review denials.
 - Actor provenance, evidence DTO compatibility and post-cutover role privilege matrix.
