@@ -878,3 +878,25 @@ This family was traced because the founder review authority had previously been 
 4. Verify trigger-helper effective EXECUTE ACLs and revoke PUBLIC explicitly in a cleanup migration if no required trigger invocation depends on PUBLIC.
 
 No directory-review function grants or routes were changed in this audit. No production changes.
+
+
+## Founder directory-review route reconciliation — implementation checkpoint (2026-11-11)
+
+Following the source audit above, the explicitly disabled founder-review write paths were reconciled in application code:
+
+- `src/http/directory-review-router.ts`: the legacy submit, admin queue and admin decision routes now return deterministic 403 responses after authentication and never call the revoked database functions. The authority endpoint continues to report `isFounderReviewer:false`. The owner-facing presentation read remains.
+- `src/resources/registry.ts`: `directory_review` now registers only `read`; disabled create/transition operations are no longer advertised as governed operations.
+- `src/resources/directory-review/contracts.ts`, `service.ts`, and `repository.ts`: removed the disabled submit/list/review service and repository methods and retained only the owner presentation read. This removes stale application callers for the revoked write RPCs.
+- `src/http/directory-review-router.test.ts`: replaced tests that expected the disabled endpoints to execute with tests proving submit/list/decision return 403 and the owner presentation read remains available.
+- `src/resources/directory-review/service.test.ts` and `src/resources/registry.test.ts`: now qualify only the active read operation and reject create/transition.
+- `src/db/directory-review-migration-contract.test.ts`: now checks that the final founder-review close migration revokes the write RPCs while preserving the separate presentation getter.
+
+The presentation getter remains OPEN for database actor provenance: `get_business_directory_review_presentation(p_account_id,p_business_id)` is still SECURITY DEFINER/runtime-executable and trusts the supplied account ID. The normal application path uses `withTenantTransaction` and AuthContext, but a direct runtime SQL caller can substitute another active owner/administrator account. Do not mark the entire directory-review boundary closed.
+
+### Validation / unrelated CI blocker
+
+The first CI runs on the implementation commits failed before the test suite at the pre-existing Trust Score qualification syntax check. Inspection found two literal escaped quote sequences in `scripts/qualify-trust-score-gateway-cutover-postgres.mjs` lines 72 and 100, which caused `node --check` to fail. Corrected those two quotes in commit `fb1e08146fff34f448630bb7b1a53fdf4430e639`. This was not caused by the directory-review changes.
+
+Current PR head at this checkpoint: `b60a2e937005cc92c258d185ef4fc47c6eb8a061`. GitHub Actions PR run ID `43102773940` is IN PROGRESS; do not claim the updated suite passed until its exact-head result is complete. Earlier failed runs at heads `0e1684f`, `377fa60`, `cced0bf`, and `d4e1dbd` all stopped at the same Trust Score script syntax check; the web-quality job succeeded. The corrected latest run must still prove build, full tests, disposable migrations and all qualification steps.
+
+No database migration, SQL grant, production role, deployment or production data was changed. PR #272 remains open and unmerged.
