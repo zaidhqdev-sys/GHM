@@ -288,3 +288,31 @@ The current PR head advanced afterward to `b24c820e3221e06aa85cbf9bf43a24dba6ccb
 ### Exact-head confirmation after reader HMAC test inclusion
 
 The follow-up test-only head `b24c820e3221e06aa85cbf9bf43a24dba6ccba35` also passed exact-head GitHub Actions run [#3136](https://github.com/zaidhqdev-sys/GHM/actions/runs/43092456034): both `quality` and `web-quality` succeeded. This head includes `src/actor-gateway/business-hours-reader.test.ts` in the full `npm test` command, so the reader HMAC/context and rollback tests are now covered by CI as well. The Business Hours implementation and disposable cutover qualification evidence remain as recorded above. Current subsequent commits in this handover are documentation-only.
+
+
+### Business Hours member/public read boundary — exact-head qualification PASS (2026-11-11)
+
+The read-boundary implementation and full manual-cutover qualification passed on exact head `67d7049ec2f8fa8727475158558fb23f8724ab0d`, GitHub Actions run [#3166](https://github.com/zaidhqdev-sys/GHM/actions/runs/43093547768). Both `quality` and `web-quality` succeeded. The full test suite, migration chain and disposable PostgreSQL qualification all passed.
+
+New migration `20261111140000_add_business_hours_read_projections.sql` adds:
+- `business.hours.read` signed v2 operation and gateway-only `gateway_get_business_hours`, bound to the JWT-derived actor and exact Business ID, with active owner/administrator/member membership enforced in SQL;
+- `get_public_business_hours`, a SECURITY DEFINER projection exposing schedule rows only for active + verified + approved businesses, executable by runtime.
+
+The manual-only cutover `20261111130000_revoke_legacy_business_hours_runtime.sql` now revokes legacy replacement EXECUTE, direct table SELECT and sequence access from PUBLIC/runtime. The Resource API member GET/PUT routes forward the original bearer token to Actor Gateway; public repository reads use `get_public_business_hours`.
+
+Exact qualification log evidence:
+- `RUNTIME DIRECT BUSINESS HOURS SELECT DENIED: PASS`
+- `RUNTIME BUSINESS HOURS SEQUENCE ACCESS DENIED: PASS`
+- `SIGNED BUSINESS HOURS REPLACEMENT + ACTOR PROVENANCE: PASS`
+- `SIGNED BUSINESS HOURS MEMBER READ: PASS`
+- `SIGNED BUSINESS HOURS CROSS-ACCOUNT READ DENIED: PASS`
+- `RUNTIME APPROVED PUBLIC BUSINESS HOURS PROJECTION: PASS`
+- `SIGNED BUSINESS HOURS TARGET SUBSTITUTION DENIED: PASS`
+- `SIGNED BUSINESS HOURS ASSERTION REPLAY DENIED: PASS`
+- `SIGNED BUSINESS HOURS ACTOR SUBSTITUTION DENIED: PASS`
+- `BUSINESS HOURS POST-CUTOVER FUNCTION/TABLE ACL: PASS`
+- `GHM BUSINESS HOURS SIGNED GATEWAY QUALIFICATION: PASS`
+
+The earlier test run #3164 failed only because the new read-contract assertions mistakenly read the replacement migration file instead of the new read-projection migration file. This was a test-target error; it did not indicate a migration or application defect. The test was corrected to load `20261111140000_add_business_hours_read_projections.sql`; exact-head run #3166 then passed.
+
+**Business Hours status:** mutation actor provenance and member/public read database boundaries IMPLEMENTED / QUALIFIED. The manual cutover was applied only to disposable CI PostgreSQL and remains unapplied in production. Production still requires Render role-model resolution, a fresh independently verified backup and explicit approval. No production changes, no merge.
