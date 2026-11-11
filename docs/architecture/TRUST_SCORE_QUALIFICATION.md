@@ -47,3 +47,10 @@ Do not revoke direct table SELECT until the public list/get projection and autho
 ## Production status
 
 No production migration, permission change, secret change, service deployment or data mutation was made. The manual cutover remains unapplied in production. Production rollout still requires Render role-model resolution, a fresh independently verified production backup and explicit approval.
+
+
+## Read-boundary replacement — implementation pending qualification (2026-11-11)
+
+A follow-on implementation now adds signed `trust.score.read` member get/list wrappers, preserving active + verified + approved public visibility and active owner/administrator membership; public runtime get/list projections; and a manual cutover revoking runtime direct SELECT and sequence access. The Resource API authenticated GET routes forward the original bearer token through Actor Gateway, while public GET routes call the restricted public SQL projections. The disposable qualification runner now checks direct SELECT/sequence denial, member/private reads, unrelated-account denial and public projection filtering.
+
+**Status: IMPLEMENTED / QUALIFICATION PENDING.** The calculation mutation PASS above is not sufficient to close the read boundary. Exact-head CI and disposable PostgreSQL read qualification are still pending. The expanded manual cutover must not be applied to production until those checks pass and separate production gates are satisfied.
