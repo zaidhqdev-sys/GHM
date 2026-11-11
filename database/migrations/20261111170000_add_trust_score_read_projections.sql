@@ -65,7 +65,7 @@ CREATE FUNCTION ghm.gateway_list_trust_scores(
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ghm AS $$
 DECLARE v_actor bigint;
 BEGIN
- IF p_trust_level NOT IN ('bronze','silver','gold','platinum')
+ IF p_trust_level IS NULL OR p_trust_level NOT IN ('bronze','silver','gold','platinum')
  OR p_context::jsonb<>jsonb_build_object('trustLevel',p_trust_level) THEN
   RAISE EXCEPTION 'Actor assertion context mismatch' USING ERRCODE='42501';
  END IF;
