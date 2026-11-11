@@ -759,3 +759,14 @@ Status: IMPLEMENTED / DISPOSABLE QUALIFICATION PASS; PRODUCTION CUTOVER NOT PERF
 ## 2026-11-12 — External identity bootstrap runtime authority removed
 
 The active Connect authorization route requires an existing external identity mapping and does not bootstrap accounts. Removed the unused bootstrap method from AuthPersistence/PostgresAuthPersistence and the Connect identity adapter; identity resolution is now lookup-only. Added migration `20261111260000_revoke_runtime_external_identity_bootstrap.sql` to revoke PUBLIC and `ghm_runtime` EXECUTE while preserving controlled schema-owner/migrator provisioning. Database ACL tests assert runtime cannot execute or directly invoke the function. No accounts/mappings, production ACLs or data were changed. PR #272 head `be08e9db8ac7fcf8602f2d6988518ae021597bfb` awaits exact-head CI; prior run #3441 applies only to its parent head. Current recursive tree count: 127 SQL migrations + 7 manual cutovers. Full source evidence and qualification gate are recorded in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+
+## Security audit checkpoint — internal authentication issuer (2026-11-12)
+
+- PR #272 remains the active, unmerged Actor Gateway/security integration. Its internal-auth follow-up is recorded in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+- Confirmed callers: registration and login create sessions after account creation or successful password verification; password rehash uses the verified credential lookup; recovery issuance follows normalized-email lookup and active-status checks; password reset and QuoteFlow migration reset derive the account from redeemed token records.
+- Confirmed remaining database authority gap: `ghm_runtime` retains EXECUTE on `auth_set_password`, `auth_create_session_with_refresh`, and `auth_issue_recovery`, whose account-ID arguments do not independently prove those upstream checks occurred.
+- ADR-001 is the governing approved design: isolated authentication issuer with dedicated DB principal and signing/pepper custody, separate typed actor gateway, no caller-writable GUC/temp-table proof and no generic SQL proxy. ADR approval covers isolated design/qualification only; it does not authorize production provisioning or changes.
+- No blind revocation: replacement issuer path and disposable-PostgreSQL positive/negative qualification must precede privilege changes.
+- No production changes, migrations, grants, secrets, deployments or data changes were made in this checkpoint.
+- Exact-head CI #3464/#3465 passed on predecessor head `6c25c96`; documentation has since advanced the branch to commit `2cd3f791ec850d60031047fd40d62d9ddbdfd3ec`. Recheck exact-head CI before any merge decision. Branch still requires reconciliation against the two commits newly on main.
