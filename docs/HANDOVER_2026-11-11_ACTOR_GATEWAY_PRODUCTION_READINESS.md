@@ -139,7 +139,7 @@ The main API production configuration now requires `GHM_RUNTIME_DATABASE_URL`; g
 
 Both the main API and Actor Gateway startup now reject a runtime principal with any role membership or elevated role attribute. The PostgreSQL 18 CI fixture creates a non-superuser CREATEROLE role, has it create a login role, asserts the automatic postgres-granted ADMIN OPTION membership with SET/INHERIT false, attempts the creator-side REVOKE, and verifies the membership remains. The fixture is isolated to the disposable CI database and cleans up both roles.
 
-PR #272 remains open, unmerged, and mergeable; latest branch head at this handover update is `64ef0adf48f867a0780d9afe19f105b39384281b`. No production environment, database, roles, grants, secrets, migrations, or services were changed.
+PR #272 remains open and unmerged. The latest code-reviewed and fully CI-passing head is `64ef0adf48f867a0780d9afe19f105b39384281b`; a subsequent documentation-only evidence-discipline update is `b8e2375d2eeac164078885b7275bb59cb157b86f` and its CI is pending. Do not infer mergeability while checks are recalculating. No production environment, database, roles, grants, secrets, migrations, or services were changed.
 
 
 ## Additional gateway public-surface hardening (2026-11-11)
