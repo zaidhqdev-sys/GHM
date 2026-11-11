@@ -659,3 +659,10 @@ Corrected stale contradictory wording in `docs/architecture/CAMPAIGN_OPERATION_C
 Trust Score calculation passed exact-head GitHub Actions run #3198 (`43094248583`) on implementation head `34172a7057a56ed027a0baead9640a3a835f7b59`. Both quality jobs, full test suite, complete migration chain and disposable PostgreSQL cutover qualification passed. The logs confirm legacy runtime calculation EXECUTE denied, signed calculation + actor provenance passed, actor/target substitution and assertion replay denied, runtime gateway-wrapper EXECUTE denied, and post-cutover function ACL passed. Manual cutover was applied only to disposable CI PostgreSQL.
 
 Trust Score calculation mutation is IMPLEMENTED / QUALIFIED. Direct runtime SELECT on `ghm.trust_score` remains OPEN pending public/member read projections. Evidence: `docs/architecture/TRUST_SCORE_QUALIFICATION.md` and the full security handover. Production remains untouched; no merge.
+
+
+## 2026-11-11 — Business Logo binding gateway implementation
+
+Audit confirmed active Business Logo PUT/DELETE routes call the SECURITY DEFINER `ghm.set_business_logo_object` directly with `context.userId` from the Resource API runtime. A signed Actor Gateway path now binds the verified actor, Business ID and nullable storage object ID; the original bearer token is forwarded, production fails closed, and the existing object validation / cleanup flow remains in place. A separate manual-only cutover revokes runtime EXECUTE on the legacy binding function; the approved public logo getter remains available.
+
+Status: IMPLEMENTED / QUALIFICATION PENDING. Disposable PostgreSQL runner and CI step are wired; wait for exact-head test suite and qualification pass. No production changes or merge.
