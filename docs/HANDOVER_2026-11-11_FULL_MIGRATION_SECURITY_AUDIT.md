@@ -1142,3 +1142,13 @@ On exact code/test head `585aa150d7723ca0c530e23c4139f6fbc4751577`, run #4311592
 
 Exact-head workflow runs #43116108337 and #43116117596 are IN PROGRESS on `c71f795d92a5a500fd544420dad1845553d9a5f9` at this checkpoint; both have web-quality completed successfully, while quality has not yet completed. No pass is claimed for the migration provisioning DB qualification. Continue from those exact runs and inspect the actual npm test log for the new qualifier result.
 
+
+
+## QuoteFlow migration provisioning DB qualifier — integrated test-step PASS (2026-11-11 23:00 UTC)
+
+On code/test head `c71f795d92a5a500fd544420dad1845553d9a5f9`, GitHub Actions run #43116117596 has completed the full `Test suite` step successfully. The step runs `npm test`; the updated package test command performs the 884-test suite, syntax-checks `scripts/qualify-quoteflow-migration-account-provisioning-db.mjs`, and then runs the DB qualifier. The workflow environment provides both `GHM_QUALIFICATION_DATABASE_URL` and `GHM_MIGRATOR_DATABASE_URL`, so the qualifier does not take its no-database local skip path in CI. Therefore the new disposable PostgreSQL provisioning qualification command completed successfully within the passing test step.
+
+The earlier #43115920841 failure was the hard-coded database-name mismatch and is superseded by the fix in `c71f795d`. At this checkpoint run #43116117596 is still IN PROGRESS in later qualification steps (Capability catalogue governance was active when checked); the overall `quality` job and full workflow are NOT yet marked PASS. The duplicate push/PR run #43116108337 is also still in progress on the same code/test head. No production ACL or database changes.
+
+The subsequent documentation-only commits advance PR head to `cd7eff3a907e5b68621c46f85aea7c89873328a5`; they do not change the validated code/test head. Recheck exact-head workflow after the docs commits and await the complete workflow result before calling the entire PR qualified.
+
