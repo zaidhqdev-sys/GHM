@@ -1,4 +1,5 @@
 export interface BusinessProfileGatewayClient {
+import { assertActorGatewayBaseUrl } from './actor-gateway-url';
   update(accessToken: string, businessId: number, patch: Record<string, unknown>): Promise<void>;
 }
 
@@ -15,10 +16,7 @@ export class HttpBusinessProfileGatewayClient implements BusinessProfileGatewayC
     private readonly timeoutMs = 5_000,
     private readonly fetchImpl: typeof fetch = fetch,
   ) {
-    const parsed = new URL(baseUrl);
-    if (parsed.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(parsed.hostname)) {
-      throw new Error('Actor gateway URL must use HTTPS outside localhost');
-    }
+    assertActorGatewayBaseUrl(baseUrl);
   }
 
   async update(accessToken: string, businessId: number, patch: Record<string, unknown>): Promise<void> {
@@ -33,6 +31,7 @@ export class HttpBusinessProfileGatewayClient implements BusinessProfileGatewayC
         `${this.baseUrl.replace(/\/$/, '')}/v1/businesses/${businessId}/profile`,
         {
           method: 'PATCH',
+          redirect: 'error',
           headers: {
             authorization: `Bearer ${accessToken}`,
             accept: 'application/json',
