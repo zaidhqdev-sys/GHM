@@ -584,3 +584,10 @@ The database actor-provenance remediation is no longer design-only. PR #272 now 
 Status is IMPLEMENTED / QUALIFICATION PENDING. No successful exact-head CI or new disposable PostgreSQL qualification result has yet been observed at this checkpoint. Saved Business's historic application-path PASS is retained, but database actor provenance remains OPEN until exact-head CI and disposable PostgreSQL positive/negative tests pass. Details: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md` and corrected `docs/architecture/SAVED_BUSINESS_QUALIFICATION.md`.
 
 No production database permissions, migration, secrets, services or application data were changed. PR #272 remains open and unmerged. Production remains blocked on Render role-model resolution and a fresh independently verified backup.
+
+
+## 2026-11-11 — Saved Business gateway cutover qualification runner wired into CI
+
+The new disposable PostgreSQL runner is now included in CI. It verifies runtime, gateway and migrator identity separation; applies the manual Saved Business cutover only to disposable PostgreSQL; denies runtime direct table SELECT (including column-level SELECT), legacy create/delete function execution and sequence access; verifies gateway-only wrapper privileges; and exercises signed list/get/create/delete, cross-account isolation, actor substitution, payload/target substitution and replay denial. Latest implementation/test/CI wiring commit is `b51e12bc684ed8e88b34815dbd128f51ec4c18e4`; exact-head GitHub Actions run #3067 (`43089884203`) was in progress at the time of this note. No qualification pass is claimed until the full run succeeds.
+
+Production remains untouched. Manual cutover is not authorized for production. PR #272 remains open and unmerged.
