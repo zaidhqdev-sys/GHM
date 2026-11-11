@@ -661,3 +661,43 @@ The audit now separates three classes that must not be conflated:
 - Reconcile every later migration for final auth function grants/revokes and role inheritance; the list of original grants above is not a final ACL result.
 - Confirm whether `auth_bootstrap_external_identity` has any active non-HTTP provider caller outside the inspected directories.
 - No auth grant revocation or internal-auth implementation is authorized by this source audit alone.
+
+
+## QuoteFlow migration authentication boundary — special-function review (2026-11-11)
+
+Additional migration files inspected:
+- `database/migrations/20261004030000_create_quoteflow_migration_account_provisioning.sql`
+- `database/migrations/20261004040000_reconcile_quoteflow_migration_account_provisioning.sql`
+- `database/migrations/20261004181000_add_quoteflow_migration_reset_enrollment_lookup.sql`
+- `database/migrations/20261004190000_add_quoteflow_migration_reset_completion.sql`
+- `database/migrations/20261004191000_extend_quoteflow_migration_reset_enrollment_lookup.sql`
+- `src/migrations/quoteflow-migration-account-provisioning.ts`
+- `src/migrations/quoteflow-migration-reconciliation.ts`
+- `src/migrations/quoteflow-migration-reset-recovery.ts`
+- `src/migrations/quoteflow-migration-reset-completion.ts`
+
+### Migration-only operations still exposed to the runtime role in source history
+
+- `auth_provision_migration_account(provider,subject,full_name,role)`: SECURITY DEFINER; restricted to provider `supabase`, creates a credentialless account and external mapping atomically, creates no password credential/session/business/membership, but grants EXECUTE to `ghm_runtime`. It accepts caller-supplied external subject and has no database-verifiable founder/migration approval proof.
+- `auth_link_external_identity(provider,subject,account_id)`: SECURITY DEFINER and runtime-executable. The QuoteFlow account provisioning/reconciliation service calls it only for an already-resolved target account with fixed provider `supabase`. The SQL itself does not prove that the mapping request came from an approved migration operation.
+- `auth_link_business_external_mapping(provider,external_business_id,business_id)`: SECURITY DEFINER and runtime-executable. The QuoteFlow Business provisioning service contract uses a fixed `supabase` provider and validated nonblank source organization/business fields, but the SQL itself only verifies that the target Business exists; it does not prove migration approval or Business ownership. The concrete production store/entry point still needs locating.
+- `auth_lookup_quoteflow_migration_reset_enrollment(normalized_email)`: SECURITY DEFINER and runtime-executable; returns enrollment/account details only for a reset_required enrollment, active account and matching Supabase external identity. The HTTP recovery endpoint does not return this lookup result directly.
+- `auth_complete_quoteflow_migration_reset(token_hash,password_hash,...)`: SECURITY DEFINER and runtime-executable. It locks a reset_required enrollment, requires a valid unexpired unused recovery token for that same account, requires active account and matching external identity mapping, consumes the token, sets password to the enrollment's approved email, revokes all sessions, and marks enrollment completed in one transaction. The public completion route accepts token/password, not account ID; it then performs a normal password login to issue a new session. This is a token-bound special case and its invariants must be preserved.
+
+The QuoteFlow reset recovery service derives account ID from the server-side enrollment lookup and sends the opaque token to the enrollment's approved email. The completion SQL derives the account from the matching token/enrollment; it does not trust an HTTP-supplied account ID. This is materially stronger than raw account-ID revocation or disable functions.
+
+### Concrete caller discovery status
+
+- The QuoteFlow migration account-provisioning and reconciliation services are present as TypeScript service contracts and orchestration logic. Their store interfaces are defined, but the concrete runtime store/approved execution entry point was not located in the inspected `src/migrations` directory.
+- `src/migrations/quoteflow-migration-business-provisioning.ts` similarly defines the Business provisioning service contract, but a concrete production store and its authority context have not yet been identified.
+- Persistence tests exercise `bootstrapExternalIdentity`, `linkExternalIdentity`, `linkBusinessExternalMapping`, `disableAccount`, and recovery/session primitives. Test coverage does not establish a production caller.
+- No active public OAuth/external-provider HTTP route was found in the inspected auth router. Do not claim the external identity bootstrap function is safely provider-authenticated until its actual caller is identified.
+
+### Updated security disposition
+
+The auth RPC family must be split into:
+1. Pre-authentication runtime authority for register/login/refresh/logout/recovery/reset, with database operations tied to verified password or one-time token proofs.
+2. Migration-only authority for credentialless account provisioning and external person/business identity mapping, with a founder-approved migration manifest/resolution proof and no general runtime EXECUTE.
+3. Unused/test-only legacy methods such as direct account disable, direct session-ID revoke, direct account-wide revoke and direct account/session password change; remove or narrow only after complete repository reference and compatibility checks.
+
+Do not convert these migration-only or pre-JWT operations into ordinary user-JWT Actor Gateway routes. A separate internal-auth/migration authority design is required. No grants have been revoked and no production changes were made.
