@@ -426,3 +426,43 @@ The 121-file scan is now the migration-source inventory baseline. It does not ye
 ### Tool failure / implementation status
 
 Attempted to create `20261111200000_add_signed_storage_metadata_gateway.sql` and its manual cutover, but GitHub write calls returned a retriable tool exception and the branch head did not advance. Therefore neither file exists on the branch. The design is recorded as proposed only; the storage work remains OPEN. No code or database mutation was made for this proposed storage batch.
+
+
+## Session-resumption checkpoint — 2026-11-11 21:00 UTC
+
+This checkpoint was added after recovering from an unavailable prior chat. It records only facts re-verified against GitHub in this session.
+
+### Live repository / PR state re-verified
+
+- Repository: `zaidhqdev-sys/GHM`.
+- PR #272 remains OPEN, unmerged, base `main`.
+- PR branch: `integration/capability-gateway-qualification-20261110`.
+- Exact current PR head returned by GitHub: `1ee5e91d247bb315df43f532a3beea7d10c1a344`.
+- PR metadata reports 559 commits and 138 changed files.
+- GitHub Actions run `43097925792` (CI) is QUEUED for that exact head. No result is claimed. Recheck this run before treating any current-head quality gate as passed.
+- The handover file currently fetched from the PR branch has blob SHA `91bcbe59ddd9bb2a41e70a60878ebbc55db1ab4f` before this checkpoint update.
+- No production database, Render service, production deployment, secret, role, grant, migration or application data was changed in this session.
+
+### Confirmed existing work — do not repeat
+
+- Saved Business is the user's personal favourites/bookmarks feature: save/remove a Business and list/retrieve the user's own saved Businesses for quick access. It is not a Business-owned collection, administrative directory, or toggle operation.
+- Saved Business signed gateway and manual cutover qualification passed on `55665af44e741829ff72f07580b73119339d3f53`, run #3083. Its manual cutover was exercised only on disposable PostgreSQL; production remains unchanged.
+- Business Hours signed mutation and read projections have exact-head disposable PostgreSQL qualification recorded in this handover.
+- Trust Score calculation mutation passed on `34172a7057a56ed027a0baead9640a3a835f7b59`, run #3198; the later Trust Score read-projection/direct-read expansion is separately recorded as IMPLEMENTED / QUALIFICATION PENDING.
+- Business Logo binding is recorded as IMPLEMENTED / QUALIFICATION PENDING; it does not close the broader storage metadata lifecycle boundary.
+- Storage metadata functions remain OPEN; the proposed `20261111200000_add_signed_storage_metadata_gateway.sql` and manual cutover were not committed. Do not represent that proposal as implementation.
+- Campaign actor-ID functions/direct table read remain an explicitly scoped OPEN risk; do not expand KBM/Campaign work without founder scope approval.
+- Internal authentication SECURITY DEFINER functions remain a SPECIAL TRUST BOUNDARY / OPEN AUDIT. Do not revoke their grants or blindly route pre-authentication login/recovery flows through user-JWT Actor Gateway operations.
+
+### Next execution sequence — resume here
+
+1. Continue the legacy database RPC audit from the existing 121-migration inventory. For every runtime-executable SECURITY DEFINER function accepting account, session, object, tenant or resource identifiers, trace: exact SQL definition; all later GRANT/REVOKE/cutover effects; PUBLIC and inherited role access; all TypeScript callers; caller authentication state; provenance of each supplied identifier; and whether the function is externally reachable or internal-only.
+2. Prioritize the internal authentication family as a distinct trust boundary: `auth_set_password`, `auth_create_session_with_refresh`, `auth_validate_session`, `auth_revoke_session`, `auth_revoke_all_sessions_for_account`, `auth_change_password`, `auth_disable_account`, `auth_issue_recovery`, and recovery redemption. Identify exact SQL migration/file paths and TypeScript implementations before proposing changes. Separate unauthenticated login/registration/refresh/recovery paths from authenticated account-scoped actions and privileged internal actions. Identify unused or unnecessarily broad direct account-ID entry points.
+3. Continue storage metadata lifecycle audit separately: `storage_get_object`, `storage_create_pending`, `storage_mark_available`, `storage_mark_deletion_pending`, and `storage_mark_deleted`. Trace all upload completion, logo bind/unbind, download/read, retry, deletion and cleanup call paths before designing any replacement. Preserve cleanup/retry behavior.
+4. For each function, classify the result as (a) confirmed database-boundary weakness, (b) application-path guarded but database credential trusted, (c) internal service operation with justified pre-auth provenance, or (d) effectively revoked/unreachable after later cutovers. Do not infer effective privileges from historical GRANT lines.
+5. Update this handover and the relevant feature qualification document after each bounded investigation/fix. Record exact commit, PR head, workflow run and explicit disposable PostgreSQL log markers. Keep implementation, qualification and production release status distinct.
+
+### Current next action
+
+Begin with source-level tracing of the internal authentication RPC family and its exact callers; do not change auth grants yet. If the source/migration paths cannot be established from the branch, record that retrieval limitation and use repository tree/commit evidence rather than guessing filenames. After that, reconcile the storage lifecycle call graph. Keep PR #272 open and unmerged until all required documentation is reconciled and current-head validation is verified.
+
