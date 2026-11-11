@@ -1209,3 +1209,18 @@ On current code/test head `6c6e20ca7d276c1153e2775968472d13a3d0ea08`, run #43116
 
 Next exact action: await run #43116910520 and inspect all later disposable qualification results. If it completes successfully, update this handover with the final result and then continue the separate bootstrap/pre-auth RPC authority trace. Do not merge PR #272 or apply production cutovers.
 
+
+
+## External identity linking runtime ACL remediation — exact-head full qualification PASS (2026-11-11 23:06 UTC)
+
+Code/test head `6c6e20ca7d276c1153e2775968472d13a3d0ea08` passed GitHub Actions run #43116918303: both `quality` and `web-quality` completed SUCCESS. The quality job confirms the complete 126-migration disposable PostgreSQL chain, full test suite and every existing disposable gateway qualification step passed. The auth persistence DB test within the suite proves:
+- runtime cannot SELECT/INSERT/UPDATE/DELETE `ghm.account_external_identity` or use its sequence;
+- runtime has no EXECUTE on `auth_link_external_identity` and direct invocation is denied;
+- the migrator connection can SET ROLE to `ghm_schema_owner` and execute linking;
+- create, idempotent retry, conflict, missing-account, cross-product and disabled-account semantics remain intact;
+- the general runtime AuthPersistence interface no longer exposes the account-ID linking operation.
+
+**Disposition: External identity linking runtime ACL remediation IMPLEMENTED / DISPOSABLE QUALIFICATION PASS.** Production cutover NOT performed. No production database, grants, roles, secrets, deployments or application data were changed.
+
+The latest documentation-only PR head after the qualification record is `aff86bd0e05b41cfbb4a8496c4ff1b69bd29cd77`; its exact-head CI runs #43117233949 and #43117240318 were IN PROGRESS when checked. The code/test qualification result remains tied specifically to `6c6e20ca`. PR #272 remains OPEN / UNMERGED.
+
