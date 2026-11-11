@@ -32,34 +32,25 @@ test('capability catalogue governance is admin-only', async () => {
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 });
 
-test('admin capability catalogue supports governed read, draft create/update and lifecycle transition', async () => {
-  const calls: unknown[][] = [];
+test('admin capability catalogue fails closed when the Actor Gateway is not configured', async () => {
+  let calls = 0;
   const service = {
-    listGoverned: async (...args: unknown[]) => { calls.push(['list', ...args]); return [capability]; },
-    createDraft: async (...args: unknown[]) => { calls.push(['create', ...args]); return capability; },
-    updateDraft: async (...args: unknown[]) => { calls.push(['update', ...args]); return capability; },
-    transition: async (...args: unknown[]) => { calls.push(['transition', ...args]); return { ...capability, lifecycleStatus: 'active', isSelectable: true }; },
+    listGoverned: async () => { calls += 1; return [capability]; },
+    createDraft: async () => { calls += 1; return capability; },
+    updateDraft: async () => { calls += 1; return capability; },
+    transition: async () => { calls += 1; return capability; },
     listSelectableCapabilities: async () => [capability],
   } as unknown as CapabilityService;
   const { server, baseUrl } = await start(service);
   try {
     const headers = { authorization: `Bearer ${tokenFor({ userId: 99, role: 'admin' })}`, 'content-type': 'application/json' };
-    const list = await fetch(`${baseUrl}/api/v1/admin/capabilities`, { headers });
-    assert.equal(list.status, 200);
-    assert.deepEqual((await list.json() as { capabilities: Capability[] }).capabilities[0].id, capability.id);
+    assert.equal((await fetch(`${baseUrl}/api/v1/admin/capabilities`, { headers })).status, 503);
 
     const body = { name: 'Building', slug: 'building', description: 'Built environment', parentId: null, sortOrder: 5, sourceReference: 'policy-42' };
-    const created = await fetch(`${baseUrl}/api/v1/admin/capabilities/drafts`, { method: 'POST', headers, body: JSON.stringify(body) });
-    assert.equal(created.status, 201);
-    const updated = await fetch(`${baseUrl}/api/v1/admin/capabilities/${capability.id}/draft`, { method: 'PATCH', headers, body: JSON.stringify(body) });
-    assert.equal(updated.status, 200);
-    const transitioned = await fetch(`${baseUrl}/api/v1/admin/capabilities/${capability.id}/transition`, {
-      method: 'POST', headers, body: JSON.stringify({ targetStatus: 'active' }),
-    });
-    assert.equal(transitioned.status, 200);
-    assert.deepEqual(calls.map(call => call[0]), ['list', 'create', 'update', 'transition']);
-    assert.deepEqual(calls[1], ['create', { userId: 99, role: 'admin' }, body]);
-    assert.deepEqual(calls[3], ['transition', { userId: 99, role: 'admin' }, capability.id, 'active', undefined]);
+    assert.equal((await fetch(`${baseUrl}/api/v1/admin/capabilities/drafts`, { method: 'POST', headers, body: JSON.stringify(body) })).status, 503);
+    assert.equal((await fetch(`${baseUrl}/api/v1/admin/capabilities/${capability.id}/draft`, { method: 'PATCH', headers, body: JSON.stringify(body) })).status, 503);
+    assert.equal((await fetch(`${baseUrl}/api/v1/admin/capabilities/${capability.id}/transition`, { method: 'POST', headers, body: JSON.stringify({ targetStatus: 'active' }) })).status, 503);
+    assert.equal(calls, 0, 'the legacy CapabilityService must never be called when the gateway is absent');
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 });
 
