@@ -36,7 +36,7 @@ test('directory review presentation requires an authenticated context', async ()
   const service = new DirectoryReviewServiceImpl(repo);
   await assert.rejects(
     () => service.getPresentation({ userId: 0, role: 'business' }, 55),
-    /authenticated/i,
+    /authentication/i,
   );
   assert.deepEqual(repo.calls, []);
 });
