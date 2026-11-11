@@ -701,3 +701,20 @@ The auth RPC family must be split into:
 3. Unused/test-only legacy methods such as direct account disable, direct session-ID revoke, direct account-wide revoke and direct account/session password change; remove or narrow only after complete repository reference and compatibility checks.
 
 Do not convert these migration-only or pre-JWT operations into ordinary user-JWT Actor Gateway routes. A separate internal-auth/migration authority design is required. No grants have been revoked and no production changes were made.
+
+
+## Ordered migration-reference scan — authentication RPC follow-up (2026-11-11)
+
+A branch-pinned scan fetched all 72 migration SQL files later than `20260921130000_create_auth_runtime_functions.sql` and searched for the exact auth lifecycle, external identity, migration provisioning, and QuoteFlow reset function names.
+
+Results:
+- The original auth runtime grant set is in `20260921130000_create_auth_runtime_functions.sql`.
+- Refresh rotation is replaced/reaffirmed in `20260921130100_fix_auth_rotate_refresh_ambiguity.sql` and `20260921130200_auth_rotate_refresh_replay_outcome.sql`; both continue to revoke PUBLIC and grant runtime EXECUTE.
+- `auth_link_external_identity` and `auth_link_business_external_mapping` are created/granted in their dedicated 20260921130400/130500 migrations.
+- `auth_provision_migration_account` is created/replaced in 20261004030000 and 20261004040000; both versions revoke PUBLIC and grant runtime EXECUTE.
+- QuoteFlow reset lookup and completion are created/granted in 20261004181000, 20261004190000 and lookup replacement 20261004191000.
+- No later migration among the 72 scanned files contained a matching revoke/replacement for the listed auth lifecycle function signatures.
+
+This materially increases confidence that those source-level runtime grants were not later explicitly revoked by a function-specific migration in the scanned chain. It is still **not** a final effective-ACL proof: PUBLIC/default privileges, role memberships, overloads, function owner, implicit privileges, actual database catalog state and any out-of-band SQL remain to be checked on disposable PostgreSQL and, separately, production after its release gates.
+
+No auth grants were changed. No production database access or mutation occurred.
