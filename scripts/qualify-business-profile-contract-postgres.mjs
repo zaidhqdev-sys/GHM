@@ -155,6 +155,12 @@ try {
   const bound=signAssertion(accountId,'business.profile.update',Math.floor(Date.now()/1000),{businessId,patch:boundPatch});
   await assert.rejects(() => gatewayPool.query('SELECT updated.* FROM ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6,$7::jsonb) AS updated',[accountId,bound.issuedAt,bound.nonce,bound.context,bound.signature,businessId,JSON.stringify({description:'tampered patch'})]),/Actor assertion context mismatch/);
   console.log('DATABASE DENIES BUSINESS PROFILE ASSERTION PAYLOAD SUBSTITUTION PASS');
+  const targetBound = signAssertion(accountId,'business.profile.update',Math.floor(Date.now()/1000),{businessId,patch:{description:'target-bound patch'}});
+  await assert.rejects(
+    () => gatewayPool.query('SELECT updated.* FROM ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6,$7::jsonb) AS updated',[accountId,targetBound.issuedAt,targetBound.nonce,targetBound.context,targetBound.signature,businessId+999999,JSON.stringify({description:'target-bound patch'})]),
+    /Actor assertion context mismatch/,
+  );
+  console.log('DATABASE DENIES BUSINESS PROFILE TARGET SUBSTITUTION PASS');
 
   const expired = signAssertion(accountId, 'business.profile.update', Math.floor(Date.now()/1000) - 61, {businessId,patch:{description:'expired'}});
   await assert.rejects(
