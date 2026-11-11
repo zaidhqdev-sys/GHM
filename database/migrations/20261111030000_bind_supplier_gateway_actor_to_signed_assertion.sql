@@ -46,7 +46,7 @@ BEGIN
   DELETE FROM ghm.actor_gateway_capability_assertion_nonce WHERE expires_at<clock_timestamp();
   BEGIN
     INSERT INTO ghm.actor_gateway_capability_assertion_nonce(nonce,expires_at)
-    VALUES(p_nonce,to_timestamp(p_issued_at)+interval '60 seconds');
+    VALUES(p_nonce,GREATEST(clock_timestamp(),to_timestamp(p_issued_at))+interval '60 seconds');
   EXCEPTION WHEN unique_violation THEN
     RAISE EXCEPTION 'Actor assertion replay detected' USING ERRCODE='42501';
   END;
