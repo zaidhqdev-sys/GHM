@@ -11,6 +11,7 @@ import type { PublicBusinessService } from '../resources/business-identity/publi
 import { PostgresBusinessHoursRepository } from '../resources/business-hours/repository';
 import { BusinessHoursServiceImpl } from '../resources/business-hours/service';
 import { BusinessHoursService } from '../resources/business-hours/contracts';
+import { HttpBusinessHoursGatewayClient, BusinessHoursGatewayError, type BusinessHoursGatewayClient } from './business-hours-gateway-client';
 import { PostgresProjectRepository } from '../resources/project/repository';
 import { ProjectServiceImpl } from '../resources/project/service';
 import { CreateProjectInput, ProjectService, UpdateProjectInput } from '../resources/project/contracts';
@@ -171,6 +172,8 @@ export interface AppDependencies {
   readonly quoteFlowMigrationResetRecoveryService?: QuoteFlowMigrationResetRecoveryService;
   readonly quoteFlowMigrationResetCompletionService?: QuoteFlowMigrationResetCompletionService;
   readonly resourceAuthMiddleware?: import('express').RequestHandler;
+  readonly businessHoursGatewayClient?: BusinessHoursGatewayClient;
+  readonly businessHoursGatewayRequired?: boolean;
   readonly savedBusinessGatewayClient?: SavedBusinessGatewayClient;
   readonly savedBusinessGatewayRequired?: boolean;
   readonly businessRegistrationIdentityGatewayClient?: BusinessRegistrationIdentityGatewayClient;
@@ -400,6 +403,9 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const businessHoursService =
     dependencies.businessHoursService
     ?? new BusinessHoursServiceImpl(new PostgresBusinessHoursRepository());
+  const businessHoursGatewayClient = dependencies.businessHoursGatewayClient
+    ?? (config.actorGatewayUrl ? new HttpBusinessHoursGatewayClient(config.actorGatewayUrl) : undefined);
+  const businessHoursGatewayRequired = config.isProduction || dependencies.businessHoursGatewayRequired === true;
   const projectService = dependencies.projectService ?? new ProjectServiceImpl(new PostgresProjectRepository());
   const publicProjectService =
     dependencies.publicProjectService ??
@@ -802,9 +808,35 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
           return;
         }
         const validHours = hours.filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+        if (businessHoursGatewayClient) {
+          const authorization = req.header('authorization');
+          if (!authorization?.startsWith('Bearer ') || !authorization.slice(7).trim()) {
+            res.status(401).json({ error: 'unauthorized' });
+            return;
+          }
+          const updated = await businessHoursGatewayClient.replace(authorization.slice(7).trim(), { businessId, hours: validHours });
+          res.status(200).json({ hours: updated });
+          return;
+        }
+        if (businessHoursGatewayRequired) {
+          res.status(503).json({ error: 'service_unavailable' });
+          return;
+        }
         const updated = await businessHoursService.replaceBusinessHours(context, { businessId, hours: validHours });
         res.status(200).json({ hours: updated });
       } catch (error) {
+        if (error instanceof BusinessHoursGatewayError) {
+          if (error.status === 401 || error.status === 403 || error.status === 404) {
+            res.status(403).json({ error: 'forbidden' });
+            return;
+          }
+          if (error.status === 400) {
+            res.status(400).json({ error: 'invalid_request' });
+            return;
+          }
+          res.status(503).json({ error: 'service_unavailable' });
+          return;
+        }
         if (error instanceof Error && (
           error.message.includes('Business Hours') ||
           error.message.includes('day') ||
