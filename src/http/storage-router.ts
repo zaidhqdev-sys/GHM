@@ -3,6 +3,7 @@ import type { AuthContext } from "../auth/authorization.js";
 import { withTenantTransaction } from "../db/authorized-transaction.js";
 import { pool } from "../db/pool.js";
 import { requireAuth } from "../auth/http.js";
+import { BusinessLogoGatewayError, type BusinessLogoGatewayClient } from "./business-logo-gateway-client.js";
 import type { StorageProvider } from "../storage/provider.js";
 import { createStorageService } from "../storage/service.js";
 import type { StorageMetadataStore, StorageService } from "../storage/service.js";
@@ -18,6 +19,13 @@ const objectIdParam = (value: unknown): string | null =>
   typeof value === "string" && /^[1-9]\d*$/.test(value) ? value : null;
 
 const handleStorageError = (error: unknown, res: Response): void => {
+  if (error instanceof BusinessLogoGatewayError) {
+    if (error.status === 401 || error.status === 403) { res.status(403).json({ error: 'forbidden' }); return; }
+    if (error.status === 404) { res.status(404).json({ error: 'not_found' }); return; }
+    if (error.status === 400) { res.status(400).json({ error: 'invalid_request' }); return; }
+    res.status(503).json({ error: 'service_unavailable' });
+    return;
+  }
   const message = error instanceof Error ? error.message : "";
   if (/permission|required|denied|access/i.test(message)) {
     res.status(403).json({ error: "forbidden" });
@@ -52,12 +60,16 @@ export const registerStorageRoutes = (
   uploadGrantTtlSeconds = 900,
   downloadGrantMaxTtlSeconds = 3600,
   testSeam: StorageRouteTestSeam = {},
+  businessLogoGatewayClient?: BusinessLogoGatewayClient,
+  businessLogoGatewayRequired = false,
 ): void => {
   const metadataFor = (context: AuthContext): StorageMetadataStore =>
     testSeam.metadataStoreForContext?.(context) ?? createPostgresStorageMetadataStore(context);
 
-  const bindLogo = async (context: AuthContext, businessId: number, objectId: number | null): Promise<number | null> => {
+  const bindLogo = async (context: AuthContext, businessId: number, objectId: number | null, accessToken: string): Promise<number | null> => {
     if (testSeam.bindBusinessLogoForContext) return testSeam.bindBusinessLogoForContext(context, businessId, objectId);
+    if (businessLogoGatewayClient) return businessLogoGatewayClient.bind(accessToken, businessId, objectId);
+    if (businessLogoGatewayRequired) throw new BusinessLogoGatewayError(503);
     return withTenantTransaction(context, businessId, async (client, _context, tenant) => {
       if (tenant.membershipRole !== "owner" && tenant.membershipRole !== "administrator") {
         throw new Error("Business management permission required");
@@ -104,7 +116,9 @@ export const registerStorageRoutes = (
         res.status(404).json({ error: "not_found" });
         return;
       }
-      const previousObjectId = await bindLogo(context, businessId, objectId);
+      const authorization = req.header('authorization');
+      if (!authorization?.startsWith('Bearer ') || !authorization.slice(7).trim()) { res.status(401).json({ error: 'unauthorized' }); return; }
+      const previousObjectId = await bindLogo(context, businessId, objectId, authorization.slice(7).trim());
       let cleanupPending = false;
       if (previousObjectId !== null && previousObjectId !== objectId) {
         try {
@@ -127,7 +141,9 @@ export const registerStorageRoutes = (
         res.status(400).json({ error: "invalid_request" });
         return;
       }
-      const previousObjectId = await bindLogo(context, businessId, null);
+      const authorization = req.header('authorization');
+      if (!authorization?.startsWith('Bearer ') || !authorization.slice(7).trim()) { res.status(401).json({ error: 'unauthorized' }); return; }
+      const previousObjectId = await bindLogo(context, businessId, null, authorization.slice(7).trim());
       let cleanupPending = false;
       if (previousObjectId !== null) {
         try {
