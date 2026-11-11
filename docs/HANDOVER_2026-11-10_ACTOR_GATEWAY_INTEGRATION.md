@@ -150,3 +150,6 @@ A separate disposable-only qualification now applies `database/cutovers/20261111
 
 ## Latest exact-head CI result
 Current branch head `fbee5509ea197d277e9d2fbc9d997bb61a6c66d9` passed GitHub Actions run #42923701476. Both `quality` and `web-quality` passed. The disposable capability cutover qualification passed after applying the manual cutover SQL in the isolated test database: runtime and gateway direct legacy create/update/transition calls were denied; runtime could not execute gateway wrappers; gateway list/create/update/transition wrappers remained available. Supplier, Business profile, commercial settlement, migration audit and runtime-boundary qualification steps also passed. This does not apply the cutover to production.
+
+## 2026-11-11 fail-closed hardening
+The capability catalogue admin HTTP routes now return `503 service_unavailable` whenever `GHM_ACTOR_GATEWAY_URL` is absent. They no longer call the legacy `CapabilityService` for governed list/create/update/transition operations. Regression coverage asserts all four operations fail closed and the legacy service is never invoked. The gateway client continues to forward the original bearer token for ES256 verification at the gateway. Exact-head CI after this change is pending; the prior green run #42924025946 does not cover it.
