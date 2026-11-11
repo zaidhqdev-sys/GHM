@@ -38,12 +38,13 @@ try {
     await fixture.query('BEGIN');
     await fixture.query('SET LOCAL ROLE ghm_schema_owner');
     const a = await fixture.query("INSERT INTO ghm.account_identity(full_name,role) VALUES($1,'business') RETURNING id", [marker]);
+    const outsider = await fixture.query("INSERT INTO ghm.account_identity(full_name,role) VALUES($1,'business') RETURNING id", [marker + '-outsider']);
     const b = await fixture.query("INSERT INTO ghm.business(name,slug,verification_status,is_verified,is_active) VALUES($1,$2,'approved',true,true) RETURNING id", [marker, marker]);
     const accountId = Number(a.rows[0].id);
     const businessId = Number(b.rows[0].id);
     await fixture.query("INSERT INTO ghm.business_membership(business_id,account_id,membership_role,membership_status,created_by) VALUES($1,$2,'owner','active',$2)", [businessId, accountId]);
     await fixture.query('COMMIT');
-    ids = { accountId, businessId };
+    ids = { accountId, outsiderId: Number(outsider.rows[0].id), businessId };
   } catch (e) { await fixture.query('ROLLBACK').catch(() => {}); throw e; }
   finally { fixture.release(); }
 
@@ -86,6 +87,48 @@ try {
   if (!targetDenied) throw new Error('Signed Business Hours request-target substitution was accepted');
   console.log('SIGNED BUSINESS HOURS TARGET SUBSTITUTION DENIED: PASS');
 
+  const replayAssertion = createActorGatewayAssertion(Buffer.from(secret, 'base64'), ids.accountId, 'business.hours.replace', {
+    businessId: ids.businessId,
+    hours: [],
+  });
+  await gateway.query(
+    'SELECT * FROM ghm.gateway_replace_business_hours($1,$2,$3,$4,$5,$6,$7::jsonb)',
+    [ids.accountId, replayAssertion.issuedAt, replayAssertion.nonce, replayAssertion.context, replayAssertion.signature, ids.businessId, JSON.stringify([])],
+  );
+  let replayDenied = false;
+  try {
+    await gateway.query(
+      'SELECT * FROM ghm.gateway_replace_business_hours($1,$2,$3,$4,$5,$6,$7::jsonb)',
+      [ids.accountId, replayAssertion.issuedAt, replayAssertion.nonce, replayAssertion.context, replayAssertion.signature, ids.businessId, JSON.stringify([])],
+    );
+  } catch { replayDenied = true; }
+  if (!replayDenied) throw new Error('Business Hours assertion replay was accepted');
+  console.log('SIGNED BUSINESS HOURS ASSERTION REPLAY DENIED: PASS');
+
+  const actorAssertion = createActorGatewayAssertion(Buffer.from(secret, 'base64'), ids.accountId, 'business.hours.replace', {
+    businessId: ids.businessId,
+    hours: [],
+  });
+  let actorDenied = false;
+  try {
+    await gateway.query(
+      'SELECT * FROM ghm.gateway_replace_business_hours($1,$2,$3,$4,$5,$6,$7::jsonb)',
+      [ids.outsiderId, actorAssertion.issuedAt, actorAssertion.nonce, actorAssertion.context, actorAssertion.signature, ids.businessId, JSON.stringify([])],
+    );
+  } catch { actorDenied = true; }
+  if (!actorDenied) throw new Error('Business Hours actor substitution was accepted');
+  console.log('SIGNED BUSINESS HOURS ACTOR SUBSTITUTION DENIED: PASS');
+
+  let runtimeWrapperDenied = false;
+  try {
+    await runtime.query(
+      'SELECT * FROM ghm.gateway_replace_business_hours($1,0,$2,$3,$4,$5,$6::jsonb)',
+      [ids.accountId, randomUUID(), '{}', '0'.repeat(64), ids.businessId, JSON.stringify([])],
+    );
+  } catch { runtimeWrapperDenied = true; }
+  if (!runtimeWrapperDenied) throw new Error('Runtime can execute the Actor Gateway wrapper');
+  console.log('RUNTIME GATEWAY WRAPPER EXECUTE DENIED: PASS');
+
   const privileges = await gateway.query("SELECT has_function_privilege('ghm_runtime','ghm.replace_business_hours(bigint,bigint,jsonb)','EXECUTE') legacy_runtime, has_function_privilege('ghm_actor_gateway','ghm.gateway_replace_business_hours(bigint,bigint,uuid,text,text,bigint,jsonb)','EXECUTE') gateway_wrapper");
   if (privileges.rows[0].legacy_runtime || !privileges.rows[0].gateway_wrapper) throw new Error(`Unexpected Business Hours ACL: ${JSON.stringify(privileges.rows[0])}`);
   console.log('BUSINESS HOURS POST-CUTOVER FUNCTION ACL: PASS');
@@ -97,7 +140,7 @@ try {
       await cleanup.query('BEGIN');
       await cleanup.query('SET LOCAL ROLE ghm_schema_owner');
       await cleanup.query('DELETE FROM ghm.business WHERE id=$1', [ids.businessId]);
-      await cleanup.query('DELETE FROM ghm.account_identity WHERE id=$1', [ids.accountId]);
+      await cleanup.query('DELETE FROM ghm.account_identity WHERE id IN ($1,$2)', [ids.accountId, ids.outsiderId]);
       await cleanup.query('COMMIT');
     } catch (e) { await cleanup.query('ROLLBACK').catch(() => {}); throw e; }
     finally { cleanup.release(); }
