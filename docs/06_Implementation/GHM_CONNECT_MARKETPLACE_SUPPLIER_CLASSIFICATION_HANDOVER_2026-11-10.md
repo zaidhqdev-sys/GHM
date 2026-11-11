@@ -1,5 +1,8 @@
 # Connect Marketplace Supplier Classification — GHM Handover
 
+> **Historical snapshot — superseded on 2026-11-11. This document records the supplier-classification implementation and its intermediate PR #270 state. The current consolidated integration is [PR #272](https://github.com/zaidhqdev-sys/GHM/pull/272); the authoritative Actor Gateway production-readiness, Render privilege blocker, backup status, hosting-cost constraint and exact-head CI are in [HANDOVER_2026-11-11_ACTOR_GATEWAY_PRODUCTION_READINESS.md](../HANDOVER_2026-11-11_ACTOR_GATEWAY_PRODUCTION_READINESS.md). PR #270 and its predecessor #243 remain open/unmerged historical stacked PRs; do not merge them independently while #272 carries the consolidated code. The 10 November draft/CI-pending statements are historical. Supplier classification is routed through the signed-assertion Actor Gateway in #272 and production rollout remains blocked pending Render's role-model response, fresh backup protection, free-tier security/availability review, deployment and separate authorization. No production migration or Connect cutover is authorized by this note.**
+
+
 **Date:** 2026-11-10  
 **Repository:** `zaidhqdev-sys/GHM`  
 **Branch:** `feat/connect-marketplace-supplier-contract-ghm-20261110`  
