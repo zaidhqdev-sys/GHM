@@ -942,3 +942,33 @@ On exact PR head `1ce967db5a161e82b41ef40ec4315a4ca7572a22`, GitHub Actions run 
 - At the last check, the quality job was still running the Business Hours signed gateway disposable PostgreSQL qualification. Remaining qualification steps had not yet completed. Do not mark the whole workflow PASS until both jobs finish successfully.
 
 No production database, Render role, deployment or user data was touched. Current PR #272 remains open and unmerged.
+
+
+## Unused authentication administration RPCs — least-privilege remediation checkpoint (2026-11-11)
+
+A targeted source reference check covered the auth service, recovery/reset services, bearer/auth middleware, all auth foundation files, Connect identity adapter and the inspected migration service paths. No active HTTP or application-service callers were found for:
+- `auth_revoke_session(bigint,text)`
+- `auth_change_password(bigint,bigint,text,text,text,integer,integer,integer)`
+- `auth_disable_account(bigint)`
+
+Their only application callers were dead convenience methods on `AuthPersistence`; the only direct test caller was the old `disableAccount` test. The normal logout route uses `auth_revoke_by_refresh_hash`, password recovery uses the one-time recovery transaction, and there is no password-change or account-disable HTTP route.
+
+### Changes made
+
+- Added `database/migrations/20261111220000_revoke_unused_auth_runtime_entry_points.sql`, revoking PUBLIC and `ghm_runtime` EXECUTE on those three functions. The functions remain owned by `ghm_schema_owner`; this does not drop them or alter their definitions.
+- Removed the unused `revokeSession`, `revokeAllSessionsForAccount`, `changePassword`, and `disableAccount` convenience methods from `AuthPersistence` / `PostgresAuthPersistence`. The account-wide revoke SQL function remains runtime-executable because the active password-recovery reset transaction still calls it after one-time token redemption.
+- Updated the Connect identity adapter test mock to match the narrowed persistence interface.
+- Replaced the old account-disable behavior test with a database-backed ACL qualification proving runtime cannot execute the three removed administration RPCs.
+
+### Deliberately not changed
+
+- `auth_validate_session(bigint)` remains runtime-executable and is covered by auth persistence tests; it is read-only and may be used by future internal session validation. No route was added.
+- `auth_revoke_all_sessions_for_account(bigint,text)` remains runtime-executable because the current recovery reset transaction calls it after `auth_redeem_recovery` derives the account from a valid one-time token. This is still an open internal-auth boundary requiring an atomic/token-bound authority design.
+- `auth_set_password` and `auth_create_session_with_refresh` remain required by verified login/registration/recovery flows and are not revoked by this batch.
+- `auth_bootstrap_external_identity`, `auth_provision_migration_account`, and external identity linking remain separately scoped internal/migration authority questions.
+
+### Validation status
+
+Current PR head at this checkpoint: `5fec70399ae220c5f1390dcd74c9dd5087248c16`. GitHub Actions PR run `43104203851` is IN PROGRESS on this exact head. The earlier intermediate build failure at head `a955787` occurred before the persistence test was updated to remove the deleted method; the current head contains the replacement ACL test. Do not claim the new auth ACL migration or full workflow passed until the current-head disposable migration and database-backed auth test complete.
+
+No production database, role, grant, deployment or user data was changed.
