@@ -7,9 +7,9 @@ This handover records the production-readiness review of GHM Actor Gateway PR #2
 - Repository: `zaidhqdev-sys/GHM`
 - PR: [#272 — Unified Actor Gateway](https://github.com/zaidhqdev-sys/GHM/pull/272)
 - Branch: `integration/capability-gateway-qualification-20261110`
-- Last fully validated code head: `717dff28cfc524e1d48be9eb0690e027066be00e`
+- Last fully validated code head: `512017beb5e46d939e70278b482e5cc0f721e0b5`
 - At review: PR remained open and unmerged.
-- CI on that exact code head: `quality` and `web-quality` passed ([run 43055902801](https://github.com/zaidhqdev-sys/GHM/actions/runs/43055902801)). This includes the production-only fail-closed registration identity routing change and tests.
+- CI on that exact code head: `quality` and `web-quality` passed ([run 43056260763](https://github.com/zaidhqdev-sys/GHM/actions/runs/43056260763)). This includes the production-only fail-closed registration identity routing change and tests.
 - No production migrations, deployments, service changes, or database privilege changes were performed as part of this review.
 
 **Current disposition: production rollout remains paused.** Green CI is useful evidence but does not qualify the production database role model or deployment topology.
@@ -150,7 +150,7 @@ A further main-API route audit found that Business registration identity still f
 - In production, registration identity read and write routes now return 503 when the gateway client is not configured; they do not call the legacy repository service.
 - Development/test behavior can still use the direct service fallback unless the gateway-required flag is set.
 - Added a test covering both read and write paths and asserting the legacy service is not called when gateway configuration is missing.
-- Code head `717dff28cfc524e1d48be9eb0690e027066be00e` passed both CI jobs, including build, full tests and disposable PostgreSQL qualification ([run 43055902801](https://github.com/zaidhqdev-sys/GHM/actions/runs/43055902801)).
+- Code head `512017beb5e46d939e70278b482e5cc0f721e0b5` passed both CI jobs, including build, full tests and disposable PostgreSQL qualification ([run 43056260763](https://github.com/zaidhqdev-sys/GHM/actions/runs/43056260763)). The production requirement is enforced as `config.isProduction || dependencyFlag === true`; a false injected flag cannot turn the legacy fallback back on in production.
 
 ## Gateway authentication-path consolidation (2026-11-11)
 
