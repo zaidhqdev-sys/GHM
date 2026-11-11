@@ -48,8 +48,8 @@ try{
  const submitArgs=[owner,replay.issuedAt,replay.nonce,replay.context,replay.signature,bcId,input.evidenceType,'Replay evidence',null,'Qualification',marker,null,null,null,'private'];
  await gateway.query('SELECT * FROM ghm.gateway_submit_business_capability_evidence($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::date,$14::date,$15)',submitArgs);
  const replayError=await denied(()=>gateway.query('SELECT * FROM ghm.gateway_submit_business_capability_evidence($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::date,$14::date,$15)',submitArgs),'SIGNED EVIDENCE ASSERTION REPLAY DENIED');assert.equal(replayError.code,'42501');
- const memberSubmit=await denied(()=>call(member,'business.capability.evidence.submit','gateway_submit_business_capability_evidence',[bcId,input.evidenceType,input.title,null,null,null,null,null,null,'private'],{...input}),'NON-MANAGEMENT BUSINESS MEMBER CANNOT SUBMIT EVIDENCE');assert.equal(memberSubmit.code,'42501');
- const outsiderSubmit=await denied(()=>call(outsider,'business.capability.evidence.submit','gateway_submit_business_capability_evidence',[bcId,input.evidenceType,input.title,null,null,null,null,null,null,'private'],{...input}),'NON-MEMBER CANNOT SUBMIT EVIDENCE');assert.equal(outsiderSubmit.code,'42501');
+ const memberInput={...input,description:null,issuerName:null,referenceNumber:null};const memberSubmit=await denied(()=>call(member,'business.capability.evidence.submit','gateway_submit_business_capability_evidence',[bcId,input.evidenceType,input.title,null,null,null,null,null,null,'private'],memberInput),'NON-MANAGEMENT BUSINESS MEMBER CANNOT SUBMIT EVIDENCE');assert.match(memberSubmit.message,/Business management permission required/);
+ const outsiderSubmit=await denied(()=>call(outsider,'business.capability.evidence.submit','gateway_submit_business_capability_evidence',[bcId,input.evidenceType,input.title,null,null,null,null,null,null,'private'],memberInput),'NON-MEMBER CANNOT SUBMIT EVIDENCE');assert.match(outsiderSubmit.message,/Business management permission required/);
 
  const replacement=[];const replaceContext={businessId:business,assertions:replacement};
  const replaced=await call(owner,'business.capability.replace','gateway_replace_business_capability_assertions',[business,JSON.stringify(replacement)],replaceContext);assert.equal(replaced.rowCount,0);
@@ -59,12 +59,12 @@ try{
  const memberReplace=await denied(()=>call(member,'business.capability.replace','gateway_replace_business_capability_assertions',[business,'[]'],replaceContext),'NON-MANAGEMENT MEMBER CANNOT REPLACE ASSERTIONS');assert.notEqual(memberReplace.code,'42501','HMAC/actor gate unexpectedly failed before membership authorization');
 
  const verifyContext={businessCapabilityId:bcId,expectedStatus:'unverified',targetStatus:'pending',reason:null};
- const nonAdmin=await denied(()=>call(owner,'business.capability.verify','gateway_transition_business_capability_verification',[bcId,'unverified','pending',null],verifyContext),'BUSINESS OWNER CANNOT VERIFY CAPABILITY');assert.notEqual(nonAdmin.code,'42501','HMAC/actor gate unexpectedly failed before admin authorization');
+ const nonAdmin=await denied(()=>call(owner,'business.capability.verify','gateway_transition_business_capability_verification',[bcId,'unverified','pending',null],verifyContext),'BUSINESS OWNER CANNOT VERIFY CAPABILITY');assert.match(nonAdmin.message,/Verification authority requires admin role/);
  const verified=await call(admin,'business.capability.verify','gateway_transition_business_capability_verification',[bcId,'unverified','pending',null],verifyContext);assert.equal(verified.rowCount,1);assert.equal(verified.rows[0].verification_status,'pending');
  console.log('SIGNED ADMIN CAPABILITY VERIFICATION AFTER CUTOVER: PASS');
 
  const reviewContext={evidenceId,decision:'verified',reason:null};
- const selfReview=await denied(()=>call(owner,'business.capability.evidence.review','gateway_transition_business_capability_evidence',[evidenceId,'verified',null],reviewContext),'BUSINESS OWNER CANNOT REVIEW EVIDENCE');assert.notEqual(selfReview.code,'42501','HMAC/actor gate unexpectedly failed before verifier authorization');
+ const selfReview=await denied(()=>call(owner,'business.capability.evidence.review','gateway_transition_business_capability_evidence',[evidenceId,'verified',null],reviewContext),'BUSINESS OWNER CANNOT REVIEW EVIDENCE');assert.match(selfReview.message,/Capability evidence verifier authority required/);
  const reviewed=await call(admin,'business.capability.evidence.review','gateway_transition_business_capability_evidence',[evidenceId,'verified',null],reviewContext);assert.equal(reviewed.rowCount,1);assert.equal(Number(reviewed.rows[0].verified_by),admin);assert.equal(reviewed.rows[0].verification_status,'verified');assert.equal(Number(reviewed.rows[0].submitted_by),owner);
  console.log('SIGNED ADMIN EVIDENCE REVIEW AND DTO COMPATIBILITY AFTER CUTOVER: PASS');
 
