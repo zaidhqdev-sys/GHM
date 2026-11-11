@@ -113,15 +113,6 @@ export interface AuthPersistence {
   createSessionWithRefresh(accountId: number): Promise<CreateSessionResult>;
   validateSession(sessionId: number): Promise<SessionValidationResult>;
   rotateRefresh(refreshTokenWire: string): Promise<RotateRefreshPersistenceResult>;
-  revokeSession(sessionId: number, reason?: RevokeReason): Promise<boolean>;
-  revokeAllSessionsForAccount(accountId: number, reason?: RevokeReason): Promise<number>;
-  changePassword(
-    accountId: number,
-    keepSessionId: number,
-    email: string,
-    password: string,
-  ): Promise<{ password: PasswordHashResult; revokedSessionCount: number }>;
-  disableAccount(accountId: number): Promise<void>;
   issueRecovery(accountId: number, ttlMinutes?: number): Promise<{ recoveryTokenWire: string; credentialId: number; expiresAt: Date }>;
   redeemRecovery(recoveryTokenWire: string): Promise<number>;
   resetPasswordWithRecovery(
@@ -322,77 +313,6 @@ export class PostgresAuthPersistence implements AuthPersistence {
       refreshCredentialId: Number(row.refresh_credential_id),
       refreshTokenWire: successor.wire,
     };
-  }
-
-  async revokeSession(sessionId: number, reason: RevokeReason = 'logout'): Promise<boolean> {
-    try {
-      const result = await this.tx(async (client) =>
-        client.query(`SELECT ghm.auth_revoke_session($1, $2) AS revoked`, [sessionId, reason]),
-      );
-      return Boolean(result.rows[0]?.revoked);
-    } catch (error) {
-      throw mapPgError(error);
-    }
-  }
-
-  async revokeAllSessionsForAccount(
-    accountId: number,
-    reason: RevokeReason = 'password_recovery',
-  ): Promise<number> {
-    try {
-      const result = await this.tx(async (client) =>
-        client.query(`SELECT ghm.auth_revoke_all_sessions_for_account($1, $2) AS count`, [
-          accountId,
-          reason,
-        ]),
-      );
-      return Number(result.rows[0]?.count ?? 0);
-    } catch (error) {
-      throw mapPgError(error);
-    }
-  }
-
-  async changePassword(
-    accountId: number,
-    keepSessionId: number,
-    email: string,
-    password: string,
-  ): Promise<{ password: PasswordHashResult; revokedSessionCount: number }> {
-    const normalized = normalizeLoginEmail(email);
-    const hashed = await this.passwordHasher.hash(password);
-    try {
-      const result = await this.tx(async (client) =>
-        client.query(
-          `SELECT ghm.auth_change_password($1, $2, $3, $4, $5, $6, $7, $8) AS revoked`,
-          [
-            accountId,
-            keepSessionId,
-            normalized.loginEmail,
-            normalized.loginEmailNormalized,
-            hashed.passwordHash,
-            hashed.argon2MemoryKib,
-            hashed.argon2TimeCost,
-            hashed.argon2Parallelism,
-          ],
-        ),
-      );
-      return {
-        password: hashed,
-        revokedSessionCount: Number(result.rows[0]?.revoked ?? 0),
-      };
-    } catch (error) {
-      throw mapPgError(error);
-    }
-  }
-
-  async disableAccount(accountId: number): Promise<void> {
-    try {
-      await this.tx(async (client) => {
-        await client.query(`SELECT ghm.auth_disable_account($1)`, [accountId]);
-      });
-    } catch (error) {
-      throw mapPgError(error);
-    }
   }
 
   async issueRecovery(
