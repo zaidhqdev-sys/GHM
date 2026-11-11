@@ -13,8 +13,6 @@ import type {
   AuthenticationSessionRecord,
   CreateSessionWithRefreshResult,
   ExternalIdentityMapping,
-  LinkExternalIdentityOutcome,
-  LinkExternalIdentityResult,
   LinkBusinessExternalMappingOutcome,
   LinkBusinessExternalMappingResult,
   PasswordCredentialLookup,
@@ -129,11 +127,6 @@ export interface AuthPersistence {
     fullName?: string | null,
     role?: 'customer' | 'business',
   ): Promise<ExternalIdentityMapping & { created: boolean }>;
-  linkExternalIdentity(
-    provider: string,
-    subject: string,
-    accountId: number,
-  ): Promise<LinkExternalIdentityResult>;
   linkBusinessExternalMapping(
     provider: string,
     externalBusinessId: string,
@@ -489,48 +482,6 @@ export class PostgresAuthPersistence implements AuthPersistence {
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         created: Boolean(row.created),
-      };
-    } catch (error) {
-      throw mapPgError(error);
-    }
-  }
-
-  async linkExternalIdentity(
-    provider: string,
-    subject: string,
-    accountId: number,
-  ): Promise<LinkExternalIdentityResult> {
-    try {
-      const result = await this.tx(async (client) =>
-        client.query(`SELECT * FROM ghm.auth_link_external_identity($1, $2, $3)`, [
-          provider,
-          subject,
-          accountId,
-        ]),
-      );
-      if (result.rowCount !== 1) throw new AuthPersistenceError('Link external identity failed');
-      const row = result.rows[0];
-      const outcome = String(row.outcome) as LinkExternalIdentityOutcome;
-      if (outcome === 'account_not_found') {
-        return { outcome, mapping: null };
-      }
-      if (
-        outcome !== 'created' &&
-        outcome !== 'already_linked' &&
-        outcome !== 'conflict'
-      ) {
-        throw new AuthPersistenceError(`Unexpected link outcome: ${outcome}`, 'LINK_UNEXPECTED_OUTCOME');
-      }
-      return {
-        outcome,
-        mapping: {
-          id: Number(row.id),
-          provider: String(row.provider),
-          subject: String(row.subject),
-          accountId: Number(row.account_id),
-          createdAt: row.created_at,
-          updatedAt: row.updated_at,
-        },
       };
     } catch (error) {
       throw mapPgError(error);
