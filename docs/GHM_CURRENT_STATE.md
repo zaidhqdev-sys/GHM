@@ -746,3 +746,11 @@ A new migration revokes PUBLIC and runtime EXECUTE. The runtime AuthPersistence 
 
 Current code/test head `6c6e20ca7d276c1153e2775968472d13a3d0ea08`: build, 126-migration disposable apply, full test suite, and web-quality all passed in run #43116910520; later disposable qualification steps were still running at this checkpoint. Inventory: 126 SQL migrations + 7 manual cutover SQL files. PR #272 remains open/unmerged. No production changes. The full handover records exact paths, commits and remaining bootstrap/internal-auth work.
 
+
+
+## 2026-11-11 — External identity link runtime ACL remediation qualified
+
+The runtime EXECUTE revocation for `auth_link_external_identity(text,text,bigint)` and removal from the general runtime AuthPersistence interface passed exact code/test head `6c6e20ca7d276c1153e2775968472d13a3d0ea08`, GitHub Actions run #43116918303. Both quality jobs passed, including all 126 migrations on disposable PostgreSQL, the full test suite, and existing disposable gateway qualifications. DB tests prove runtime direct invocation denied and migrator/owner linking still succeeds with all prior linking semantics retained.
+
+Status: IMPLEMENTED / DISPOSABLE QUALIFICATION PASS; PRODUCTION CUTOVER NOT PERFORMED. The subsequent documentation-only PR head is `aff86bd0e05b41cfbb4a8496c4ff1b69bd29cd77`; its exact-head CI was still in progress. PR #272 remains open/unmerged. No production changes. Full evidence is in the security handover.
+
