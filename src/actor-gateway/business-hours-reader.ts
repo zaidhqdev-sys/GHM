@@ -4,13 +4,15 @@ import type { BusinessHours } from '../resources/business-hours/contracts';
 
 type ConnectablePool = Pick<Pool, 'connect'>;
 
+export interface BusinessHoursGatewayInput {
+  day_of_week: number;
+  is_closed: boolean;
+  open_time: string | null;
+  close_time: string | null;
+}
+
 export interface BusinessHoursGatewayReader {
-  replace(actor: number, businessId: number, hours: Array<{
-    day_of_week: number;
-    is_closed: boolean;
-    open_time: string | null;
-    close_time: string | null;
-  }>): Promise<BusinessHours[]>;
+  replace(actor: number, businessId: number, hours: BusinessHoursGatewayInput[]): Promise<BusinessHours[]>;
 }
 
 const mapRow = (row: any): BusinessHours => ({
@@ -36,7 +38,7 @@ export class PostgresBusinessHoursGatewayReader implements BusinessHoursGatewayR
     this.key = key;
   }
 
-  async replace(actor: number, businessId: number, hours: BusinessHoursGatewayReader['replace'] extends (...args: any[]) => any ? Parameters<BusinessHoursGatewayReader['replace']>[2] : never): Promise<BusinessHours[]> {
+  async replace(actor: number, businessId: number, hours: BusinessHoursGatewayInput[]): Promise<BusinessHours[]> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
