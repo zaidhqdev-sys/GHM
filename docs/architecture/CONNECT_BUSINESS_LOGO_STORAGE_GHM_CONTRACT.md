@@ -109,3 +109,10 @@ The active HTTP binding route previously called `ghm.set_business_logo_object(ac
 - Qualify complete upload → complete → bind → public redirect/render → replace → clear → cleanup retry using an explicitly approved non-production storage target. The provider-level R2 qualification alone is insufficient.
 - Until the complete upload → complete → bind → public redirect/render → replace → clear → cleanup-retry journey passes against an explicitly approved non-production bucket, Connect must keep logo upload/removal disabled and must not call the legacy UUID-based Supabase logo service with numeric GHM Business IDs.
 
+
+
+## Additional shared storage metadata security gate
+
+The signed Business Logo binding wrapper is only one database-boundary control. A follow-on audit found the shared storage metadata SECURITY DEFINER functions still rely on application-side authorization and a trusted shared runtime credential: `storage_get_object(bigint,bigint)` accepts a caller-supplied account ID; `storage_create_pending` accepts tenant/resource identity; and the mark-available/deletion-pending/deleted lifecycle functions accept object IDs without a signed actor assertion. These functions are used by upload completion, access and deletion as well as logo flows. Existing storage qualification does not prove forged-actor or direct cross-tenant lifecycle resistance.
+
+This remains a separate OPEN GHM storage workstream. Do not revoke the existing storage lifecycle EXECUTE grants or claim the complete storage subsystem is security-qualified until the signed metadata gateway covers create/get/complete/cleanup transitions and all upload, public-read, replacement, clear and deletion flows pass disposable PostgreSQL qualification. The Business Logo binding cutover alone does not close this gate.
