@@ -23,3 +23,9 @@ test('each capability wrapper binds its own operation and requires signed assert
   assert.match(migration, /GRANT EXECUTE ON FUNCTION ghm\.gateway_transition_capability_lifecycle\(bigint,bigint,uuid,text,uuid,text,uuid,integer\) TO ghm_actor_gateway/);
   assert.doesNotMatch(migration, /GRANT EXECUTE ON FUNCTION ghm\.assert_actor_gateway\(bigint\) TO ghm_actor_gateway/);
 });
+
+test('capability assertion verifier compares the complete HMAC before branching', () => {
+  assert.match(migration, /FOR v_i IN 0\.\.31 LOOP/);
+  assert.match(migration, /get_byte\(v_expected,?\s*v_i\)\s*#\s*get_byte\(v_provided,?\s*v_i\)/);
+  assert.doesNotMatch(migration, /v_expected\s*<>\s*decode\(p_signature/);
+});
