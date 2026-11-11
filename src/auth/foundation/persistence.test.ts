@@ -229,25 +229,42 @@ test('auth foundation persistence (database)', async (t) => {
     assert.equal(absolute.rejectReason, 'absolute_expired');
   });
 
-  await t.test('disable account rejects further sessions and revokes existing', async () => {
-    const created = await persistence.createSessionWithRefresh(accountId);
-    await persistence.disableAccount(accountId);
-    const validation = await persistence.validateSession(created.session.id);
-    assert.equal(validation.isUsable, false);
-    assert.ok(
-      validation.rejectReason === 'account_disabled' || validation.rejectReason === 'session_revoked',
-    );
-    await assert.rejects(() => persistence.createSessionWithRefresh(accountId), AuthPersistenceError);
-
-    const client = await migratorPool.connect();
+  await t.test('unused account/session administration RPCs are not executable by runtime', async () => {
+    const runtimeClient = await runtimePool.connect();
     try {
-      await client.query('SET ROLE ghm_schema_owner');
-      await client.query(
-        `UPDATE ghm.account_identity SET account_status = 'active', updated_at = now() WHERE id = $1`,
-        [accountId],
+      const privileges = await runtimeClient.query(`
+        SELECT
+          has_function_privilege(current_user, 'ghm.auth_revoke_session(bigint,text)', 'EXECUTE') AS can_revoke_session,
+          has_function_privilege(current_user, 'ghm.auth_change_password(bigint,bigint,text,text,text,integer,integer,integer)', 'EXECUTE') AS can_change_password,
+          has_function_privilege(current_user, 'ghm.auth_disable_account(bigint)', 'EXECUTE') AS can_disable_account
+      `);
+      assert.deepEqual(privileges.rows[0], {
+        can_revoke_session: false,
+        can_change_password: false,
+        can_disable_account: false,
+      });
+
+      const denied = (error: unknown) => {
+        const err = error as { code?: string; message?: string };
+        return err.code === '42501' || Boolean(err.message?.match(/permission denied/i));
+      };
+      await assert.rejects(
+        () => runtimeClient.query('SELECT ghm.auth_revoke_session($1,$2)', [1, 'logout']),
+        denied,
+      );
+      await assert.rejects(
+        () => runtimeClient.query(
+          'SELECT ghm.auth_change_password($1,$2,$3,$4,$5,$6,$7,$8)',
+          [1, 1, 'user@example.test', 'user@example.test', 'not-a-real-hash', null, null, null],
+        ),
+        denied,
+      );
+      await assert.rejects(
+        () => runtimeClient.query('SELECT ghm.auth_disable_account($1)', [1]),
+        denied,
       );
     } finally {
-      client.release();
+      runtimeClient.release();
     }
   });
 
