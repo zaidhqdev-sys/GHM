@@ -10,6 +10,7 @@ import type { SupplierClassificationReader } from './supplier-classification-rea
 import type { BusinessProfileReader } from './business-profile-reader';
 import type { GatewayCapabilityMutationReader } from './business-capability-mutation-reader';
 import type { SavedBusinessGatewayReader } from './saved-business-reader';
+import type { BusinessHoursGatewayReader } from './business-hours-reader';
 
 export interface ActorGatewayAppOptions {
   rateLimitLimit?: number;
@@ -25,6 +26,7 @@ export interface ActorGatewayDependencies {
   businessProfileReader?: BusinessProfileReader;
   businessCapabilityMutationReader?: GatewayCapabilityMutationReader;
   savedBusinessReader?: SavedBusinessGatewayReader;
+  businessHoursReader?: BusinessHoursGatewayReader;
 }
 
 const isSqlState = (error: unknown, code: string): boolean =>
@@ -420,6 +422,64 @@ export const createActorGatewayApp = (
     if(!mutationReader){res.status(503).json({error:'service_unavailable'});return;}
     try{const evidence=await mutationReader.reviewEvidence(res.locals.actorAccountId as number,id,b.decision as never,(b.reason as string|null|undefined)??null);res.status(200).json({evidence});}
     catch(error){capabilityFailure(error,res);}
+  });
+
+  const businessHoursReader = dependencies.businessHoursReader;
+  app.put('/v1/businesses/:businessId/hours', async (req: Request, res: Response) => {
+    const raw = req.params.businessId;
+    const businessId = typeof raw === 'string' && /^[1-9][0-9]*$/.test(raw) ? Number(raw) : NaN;
+    const body = req.body as Record<string, unknown> | null;
+    if (!Number.isSafeInteger(businessId) || businessId <= 0 || !body || typeof body !== 'object'
+      || Array.isArray(body) || Object.keys(body).length !== 1 || !Array.isArray(body.hours) || body.hours.length > 7) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    const hours = body.hours.map((entry) => {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+      const row = entry as Record<string, unknown>;
+      if (Object.keys(row).some(key => !['day_of_week', 'is_closed', 'open_time', 'close_time'].includes(key))
+        || !Number.isInteger(row.day_of_week) || (row.day_of_week as number) < 0 || (row.day_of_week as number) > 6
+        || typeof row.is_closed !== 'boolean'
+        || (row.open_time !== null && typeof row.open_time !== 'string')
+        || (row.close_time !== null && typeof row.close_time !== 'string')) return null;
+      return {
+        day_of_week: row.day_of_week as number,
+        is_closed: row.is_closed as boolean,
+        open_time: row.open_time as string | null,
+        close_time: row.close_time as string | null,
+      };
+    });
+    if (hours.some(row => row === null)) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    if (!businessHoursReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    try {
+      const updated = await businessHoursReader.replace(
+        res.locals.actorAccountId as number,
+        businessId,
+        hours.filter((row): row is NonNullable<typeof row> => row !== null),
+      );
+      res.status(200).json({ hours: updated });
+    } catch (error) {
+      if (isSqlState(error, '42501') || isSqlState(error, 'P0001')) {
+        res.status(403).json({ error: 'forbidden' });
+        return;
+      }
+      if (isSqlState(error, '22023') || isSqlState(error, '23514')) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      console.error(JSON.stringify({
+        event: 'actor_gateway_operation_failed',
+        operation: 'business.hours.replace',
+        error: { name: error instanceof Error ? error.name : 'UnknownError' },
+      }));
+      res.status(503).json({ error: 'service_unavailable' });
+    }
   });
 
   const savedBusinessReader = dependencies.savedBusinessReader;
