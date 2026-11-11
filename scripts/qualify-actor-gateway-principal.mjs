@@ -21,8 +21,8 @@ const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
 const gatewayPool = new Pool({ connectionString: gatewayUrl, ssl });
 const cleanupPool = new Pool({ connectionString: migratorUrl, ssl });
 const fixture = { marker: `ghm-actor-gateway-${randomUUID()}`, accountIds: [], businessIds: [] };
-const signAssertion = (accountId,operation,context={}) => {
-  const issuedAt=Math.floor(Date.now()/1000),nonce=randomUUID(),contextJson=JSON.stringify(context),contextHex=Buffer.from(contextJson,'utf8').toString('hex');
+const signAssertion = (accountId,operation,context={},issuedAtOverride) => {
+  const issuedAt=issuedAtOverride ?? Math.floor(Date.now()/1000),nonce=randomUUID(),contextJson=JSON.stringify(context),contextHex=Buffer.from(contextJson,'utf8').toString('hex');
   const payload=`ghm-actor-gateway:v2|${accountId}|${operation}|${issuedAt}|${nonce}|${contextHex}`;
   const signature=createHmac('sha256',Buffer.from(assertionSecret,'base64')).update(payload,'utf8').digest('hex');
   return {issuedAt,nonce,context:contextJson,signature};
@@ -219,6 +219,11 @@ try {
     full_name: `${fixture.marker}-active`,
   });
   console.log('TYPED GATEWAY SELF-IDENTITY READ: PASS');
+  const boundaryAssertion=signAssertion(activeAccountId,'actor.identity.read',{},Math.floor(Date.now()/1000)-30);
+  await gatewayPool.query('SELECT * FROM ghm.gateway_get_actor_identity($1,$2,$3,$4,$5)',[activeAccountId,boundaryAssertion.issuedAt,boundaryAssertion.nonce,boundaryAssertion.context,boundaryAssertion.signature]);
+  const nonceCheck=await cleanupPool.connect();
+  try { await nonceCheck.query('BEGIN'); await nonceCheck.query('SET LOCAL ROLE ghm_schema_owner'); const retained=await nonceCheck.query('SELECT expires_at > clock_timestamp() + interval \'58 seconds\' AS retained FROM ghm.actor_gateway_capability_assertion_nonce WHERE nonce=$1',[boundaryAssertion.nonce]); assert.equal(retained.rows[0]?.retained,true); await nonceCheck.query('COMMIT'); } catch(e) { await nonceCheck.query('ROLLBACK').catch(()=>{}); throw e; } finally { nonceCheck.release(); }
+  console.log('NONCE RETENTION COVERS FULL ASSERTION ACCEPTANCE WINDOW PASS');
 
   const forgedSelf=signAssertion(activeAccountId,'actor.identity.read',{});
   await expectSqlState(
