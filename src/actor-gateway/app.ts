@@ -8,6 +8,7 @@ import type { BusinessRegistrationIdentityReader } from './business-registration
 import type { CapabilityGovernanceReader, GatewayCapabilityDraftInput } from './capability-governance-reader';
 import type { SupplierClassificationReader } from './supplier-classification-reader';
 import type { BusinessProfileReader } from './business-profile-reader';
+import type { GatewayCapabilityMutationReader } from './business-capability-mutation-reader';
 
 export interface ActorGatewayAppOptions {
   rateLimitLimit?: number;
@@ -21,6 +22,7 @@ export interface ActorGatewayDependencies {
   capabilityGovernanceReader?: CapabilityGovernanceReader;
   supplierClassificationReader?: SupplierClassificationReader;
   businessProfileReader?: BusinessProfileReader;
+  businessCapabilityMutationReader?: GatewayCapabilityMutationReader;
 }
 
 const isSqlState = (error: unknown, code: string): boolean =>
@@ -381,6 +383,33 @@ export const createActorGatewayApp = (
       }));
       res.status(503).json({ error: 'service_unavailable' });
     }
+  });
+
+
+  const mutationReader = dependencies.businessCapabilityMutationReader;
+  const positiveId = (value: unknown): value is number => Number.isSafeInteger(value) && Number(value) > 0;
+  app.put('/v1/businesses/:businessId/capabilities', async (req: Request, res: Response) => {
+    const raw=req.params.businessId; const businessId=typeof raw==='string'&&/^[1-9][0-9]*$/.test(raw)?Number(raw):NaN;
+    const body=req.body as Record<string,unknown>|null;
+    if(!positiveId(businessId)||!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).length!==1||!Array.isArray(body.assertions)){res.status(400).json({error:'invalid_request'});return;}
+    if(!mutationReader){res.status(503).json({error:'service_unavailable'});return;}
+    try{const capabilities=await mutationReader.replace(res.locals.actorAccountId as number,businessId,body.assertions as never);res.status(200).json({capabilities});}
+    catch(error){capabilityFailure(error,res);}
+  });
+  app.post('/v1/business-capabilities/:id/verification', async (req: Request,res: Response)=>{
+    const raw=req.params.id;const id=typeof raw==='string'&&/^[1-9][0-9]*$/.test(raw)?Number(raw):NaN;const b=req.body as Record<string,unknown>|null;
+    const statuses=['unverified','pending','verified','rejected','revoked','expired'];
+    if(!positiveId(id)||!b||typeof b!=='object'||Array.isArray(b)||Object.keys(b).some(k=>!['expectedStatus','targetStatus','reason'].includes(k))||!statuses.includes(String(b.expectedStatus))||!statuses.includes(String(b.targetStatus))||(b.reason!==undefined&&b.reason!==null&&typeof b.reason!=='string)){res.status(400).json({error:'invalid_request'});return;}
+    if(!mutationReader){res.status(503).json({error:'service_unavailable'});return;}
+    try{const capability=await mutationReader.verify(res.locals.actorAccountId as number,id,b.expectedStatus as never,b.targetStatus as never,(b.reason as string|null|undefined)??null);res.status(200).json({capability});}
+    catch(error){capabilityFailure(error,res);}
+  });
+  app.patch('/v1/business-capability-evidence/:id/review', async (req: Request,res: Response)=>{
+    const raw=req.params.id;const id=typeof raw==='string'&&/^[1-9][0-9]*$/.test(raw)?Number(raw):NaN;const b=req.body as Record<string,unknown>|null;
+    if(!positiveId(id)||!b||typeof b!=='object'||Array.isArray(b)||Object.keys(b).some(k=>!['decision','reason'].includes(k))||!['verified','rejected','revoked'].includes(String(b.decision))||(b.reason!==undefined&&b.reason!==null&&typeof b.reason!=='string)){res.status(400).json({error:'invalid_request'});return;}
+    if(!mutationReader){res.status(503).json({error:'service_unavailable'});return;}
+    try{const evidence=await mutationReader.reviewEvidence(res.locals.actorAccountId as number,id,b.decision as never,(b.reason as string|null|undefined)??null);res.status(200).json({evidence});}
+    catch(error){capabilityFailure(error,res);}
   });
 
   return app;
