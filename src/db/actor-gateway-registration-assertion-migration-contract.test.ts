@@ -11,4 +11,7 @@ test('registration identity and actor self-read wrappers require operation-bound
   assert.match(migration, /gateway_read_business_registration_identity\(bigint,bigint,uuid,text,bigint\)/);
   assert.match(migration, /gateway_update_business_registration_identity\(bigint,bigint,uuid,text,bigint,text,text,text\)/);
   assert.match(migration, /REVOKE ALL ON FUNCTION ghm\.gateway_update_business_registration_identity\(bigint,bigint,uuid,text,bigint,text,text,text\) FROM PUBLIC,ghm_runtime,ghm_migrator/);
+  assert.match(migration, /FOR v_i IN 0\.\.31 LOOP/);
+  assert.match(migration, /get_byte\(v_expected,v_i\) # get_byte\(v_provided,v_i\)/);
+  assert.doesNotMatch(migration, /v_expected\s*<>\s*decode\(p_signature/);
 });
