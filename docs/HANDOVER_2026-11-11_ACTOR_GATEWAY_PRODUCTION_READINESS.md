@@ -254,3 +254,17 @@ The existing supplier boolean and Business profile patch substitution tests rema
 **Validation status:** changes are committed to the PR branch, but exact-head CI has not yet been checked for this test expansion. Do not report these new cases as passing until the disposable PostgreSQL qualification and both CI jobs pass on the exact current head. The prior validated code head remains `7213dcc280da652d8913944136e3b312fb7e0638` (run #43067027027); later documentation-only head `a7fa07e396cdb6717bb013996f59fb70e815a06c` also passed both CI jobs (run #43067466817).
 
 Production remains paused: Render's role-model response and a fresh verified production backup are still required. The 4 November backup is stale for the 10 November role work. No production migrations, role/grant changes, secrets, deployments, or paid infrastructure are authorized by this qualification work.
+
+
+## 2026-11-11 — exact-head substitution qualification passed
+
+The expanded request-context substitution qualification is now green on exact PR head `b7f3f2f2d8a9d18a023af86bf7a88f7e40016c6d`.
+
+- GitHub Actions CI run #2862 / run ID `43071811499`: both `quality` and `web-quality` completed successfully.
+- The `quality` job passed the full build, complete migration application to disposable PostgreSQL, full test suite, capability lifecycle and two-session assertion replacement qualification, capability catalogue governance qualification, capability legacy RPC cutover qualification, supplier classification and membership authorization qualification, Business profile gateway/compatibility qualification, payment settlement identity qualification, migration audit policy tests, and runtime boundary verification.
+- `web-quality` passed the web application build and associated checks.
+- The newly added capability update target/payload, capability lifecycle target/status, supplier Business-ID, and Business profile Business-ID substitution negative tests are included in the successful disposable PostgreSQL qualification steps. Existing capability-create payload, supplier boolean, and profile patch substitution cases remain covered.
+
+**Result:** request-context substitution qualification is passed for the cases listed above. This is evidence for the tested database wrappers and test fixtures; it is not a blanket claim that every gateway operation, production topology, key-rotation process, or production database privilege is fully qualified.
+
+PR #272 remains open, unmerged and mergeable at the time of this update. Production remains blocked on Render's supported role-model resolution and a fresh verified backup. The 4 November recovery point is stale for the 10 November role work. No production migrations, grants/role changes, secrets, deployments, or paid infrastructure were introduced by this work.
