@@ -37,12 +37,14 @@ try {
     const owner = await fixture.query("INSERT INTO ghm.account_identity(full_name,role) VALUES($1,'business') RETURNING id", [marker]);
     const outsider = await fixture.query("INSERT INTO ghm.account_identity(full_name,role) VALUES($1,'business') RETURNING id", [marker + '-outsider']);
     const business = await fixture.query("INSERT INTO ghm.business(name,slug,rating,verification_status,is_verified,is_active) VALUES($1,$2,4.5,'approved',true,true) RETURNING id", [marker, marker]);
+    const privateBusiness = await fixture.query("INSERT INTO ghm.business(name,slug,rating,verification_status,is_verified,is_active) VALUES($1,$2,4.5,'pending',false,true) RETURNING id", [marker + '-private', marker + '-private']);
     const accountId = Number(owner.rows[0].id);
     const businessId = Number(business.rows[0].id);
+    const privateBusinessId = Number(privateBusiness.rows[0].id);
     const outsiderId = Number(outsider.rows[0].id);
-    await fixture.query("INSERT INTO ghm.business_membership(business_id,account_id,membership_role,membership_status,created_by) VALUES($1,$2,'owner','active',$2)", [businessId, accountId]);
+    await fixture.query("INSERT INTO ghm.business_membership(business_id,account_id,membership_role,membership_status,created_by) VALUES($1,$2,'owner','active',$2),($3,$2,'owner','active',$2)", [businessId, accountId, privateBusinessId]);
     await fixture.query('COMMIT');
-    ids = { accountId, outsiderId, businessId };
+    ids = { accountId, outsiderId, businessId, privateBusinessId };
   } catch (e) { await fixture.query('ROLLBACK').catch(() => {}); throw e; }
   finally { fixture.release(); }
 
@@ -51,6 +53,8 @@ try {
     await cutover.query('BEGIN');
     await cutover.query('SET LOCAL ROLE ghm_schema_owner');
     await cutover.query('REVOKE ALL ON FUNCTION ghm.calculate_business_trust_score(bigint,bigint) FROM PUBLIC,ghm_runtime');
+    await cutover.query('REVOKE SELECT ON TABLE ghm.trust_score FROM PUBLIC,ghm_runtime');
+    await cutover.query('REVOKE ALL ON SEQUENCE ghm.trust_score_id_seq FROM PUBLIC,ghm_runtime');
     await cutover.query('COMMIT');
   } catch (e) { await cutover.query('ROLLBACK').catch(() => {}); throw e; }
   finally { cutover.release(); }
@@ -60,13 +64,44 @@ try {
   try { await runtime.query('SELECT * FROM ghm.calculate_business_trust_score($1,$2)', [ids.accountId, ids.businessId]); } catch { legacyDenied = true; }
   if (!legacyDenied) throw new Error('Runtime can still execute legacy Trust Score calculation');
   console.log('RUNTIME LEGACY TRUST SCORE EXECUTE DENIED: PASS');
+  let directReadDenied = false;
+  try { await runtime.query('SELECT * FROM ghm.trust_score LIMIT 1'); } catch { directReadDenied = true; }
+  if (!directReadDenied) throw new Error('Runtime can directly read Trust Score table');
+  console.log('RUNTIME DIRECT TRUST SCORE SELECT DENIED: PASS');
+  let sequenceDenied = false;
+  try { await runtime.query(\"SELECT nextval('ghm.trust_score_id_seq')\"); } catch { sequenceDenied = true; }
+  if (!sequenceDenied) throw new Error('Runtime can access Trust Score sequence');
+  console.log('RUNTIME TRUST SCORE SEQUENCE ACCESS DENIED: PASS');
 
   const reader = new PostgresTrustScoreGatewayReader(gateway, secret);
   const score = await reader.calculate(ids.accountId, ids.businessId);
-  if (score.businessId !== ids.businessId || score.trustLevel !== 'bronze' || score.reviewsScore !== 14) {
-    throw new Error(`Unexpected Trust Score result: ${JSON.stringify(score)}`);
+  const privateScore = await reader.calculate(ids.accountId, ids.privateBusinessId);
+  if (score.businessId !== ids.businessId || score.trustLevel !== 'bronze' || score.reviewsScore !== 14
+    || privateScore.businessId !== ids.privateBusinessId) {
+    throw new Error(`Unexpected Trust Score result: ${JSON.stringify({ score, privateScore })}`);
   }
   console.log('SIGNED TRUST SCORE CALCULATION + ACTOR PROVENANCE: PASS');
+
+  const memberGet = await reader.get(ids.accountId, ids.privateBusinessId);
+  if (!memberGet || memberGet.businessId !== ids.privateBusinessId) throw new Error('Owner cannot read private Trust Score');
+  const unrelatedGet = await reader.get(ids.outsiderId, ids.privateBusinessId);
+  if (unrelatedGet !== null) throw new Error('Unrelated account can read private Trust Score');
+  console.log('SIGNED TRUST SCORE MEMBER GET + CROSS-ACCOUNT DENIAL: PASS');
+
+  const memberList = await reader.list(ids.accountId, 'bronze');
+  const unrelatedList = await reader.list(ids.outsiderId, 'bronze');
+  if (memberList.length !== 2 || unrelatedList.length !== 1 || unrelatedList[0].businessId !== ids.businessId) {
+    throw new Error('Trust Score member list did not preserve public/private visibility');
+  }
+  console.log('SIGNED TRUST SCORE MEMBER LIST VISIBILITY: PASS');
+
+  const publicPrivate = await runtime.query('SELECT * FROM ghm.get_public_trust_score($1)', [ids.privateBusinessId]);
+  const publicScore = await runtime.query('SELECT * FROM ghm.get_public_trust_score($1)', [ids.businessId]);
+  const publicList = await runtime.query(\"SELECT * FROM ghm.list_public_trust_scores('bronze')\");
+  if (publicPrivate.rowCount !== 0 || publicScore.rowCount !== 1 || publicList.rowCount !== 1) {
+    throw new Error('Trust Score public projection leaked private or omitted public score');
+  }
+  console.log('RUNTIME PUBLIC TRUST SCORE GET/LIST PROJECTIONS: PASS');
 
   const targetAssertion = createActorGatewayAssertion(Buffer.from(secret, 'base64'), ids.accountId, 'trust.score.calculate', { businessId: ids.businessId + 1 });
   let targetDenied = false;
@@ -115,7 +150,7 @@ try {
     try {
       await cleanup.query('BEGIN');
       await cleanup.query('SET LOCAL ROLE ghm_schema_owner');
-      await cleanup.query('DELETE FROM ghm.business WHERE id=$1', [ids.businessId]);
+      await cleanup.query('DELETE FROM ghm.business WHERE id IN ($1,$2)', [ids.businessId, ids.privateBusinessId]);
       await cleanup.query('DELETE FROM ghm.account_identity WHERE id IN ($1,$2)', [ids.accountId, ids.outsiderId]);
       await cleanup.query('COMMIT');
     } catch (e) { await cleanup.query('ROLLBACK').catch(() => {}); throw e; }
