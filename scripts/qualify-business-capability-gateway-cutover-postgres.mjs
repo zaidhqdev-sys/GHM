@@ -52,7 +52,7 @@ try{
  const memberInput={...input,description:null,issuerName:null,referenceNumber:null};const memberSubmit=await denied(()=>call(member,'business.capability.evidence.submit','gateway_submit_business_capability_evidence',[bcId,input.evidenceType,input.title,null,null,null,null,null,null,'private'],memberInput),'NON-MANAGEMENT BUSINESS MEMBER CANNOT SUBMIT EVIDENCE');assert.match(memberSubmit.message,/Business management permission required/);
  const outsiderSubmit=await denied(()=>call(outsider,'business.capability.evidence.submit','gateway_submit_business_capability_evidence',[bcId,input.evidenceType,input.title,null,null,null,null,null,null,'private'],memberInput),'NON-MEMBER CANNOT SUBMIT EVIDENCE');assert.match(outsiderSubmit.message,/Business management permission required/);
 
- const replacement=[];const replaceContext={businessId:business,assertions:replacement};
+ const replacement=[{capabilityId:capId}];const replaceContext={businessId:business,assertions:replacement};
  const replaced=await call(owner,'business.capability.replace','gateway_replace_business_capability_assertions',[business,JSON.stringify(replacement)],replaceContext);assert.equal(replaced.rowCount,0);
  console.log('SIGNED CAPABILITY ASSERTION REPLACEMENT AFTER CUTOVER: PASS');
  const wrongBusiness=sign(owner,'business.capability.replace',replaceContext);
