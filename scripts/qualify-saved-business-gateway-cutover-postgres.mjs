@@ -88,7 +88,8 @@ try {
   ids.businesses.push(businessId);
 
   const cutover = await readFile(fileURLToPath(new URL('../database/cutovers/20261111110000_revoke_legacy_saved_business_runtime.sql', import.meta.url)), 'utf8');
-  await setup(cutover);
+  const cutoverStatements = cutover.replace(/^\\s*BEGIN;\\s*/i, '').replace(/\\s*COMMIT;\\s*$/i, '');
+  await setup(cutoverStatements);
   console.log('MANUAL SAVED BUSINESS CUTOVER APPLIED TO DISPOSABLE POSTGRESQL: PASS');
 
   await denied(() => runtime.query('SELECT * FROM ghm.saved_business'), 'RUNTIME DIRECT SAVED BUSINESS SELECT DENIED');
