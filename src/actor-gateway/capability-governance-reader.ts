@@ -1,69 +1,16 @@
-import { createHmac, randomUUID } from 'node:crypto';
-import type { Pool, PoolClient } from 'pg';
-
-export interface GatewayCapability {
-  id:string; parentId:string|null; name:string; slug:string; description:string|null; sortOrder:number;
-  lifecycleStatus:'draft'|'active'|'deprecated'|'retired'; taxonomyVersion:number; effectiveFrom:Date|null;
-  effectiveTo:Date|null; sourceAuthority:string; sourceReference:string|null; replacedByCapabilityId:string|null;
-  isSelectable:boolean; createdAt:Date; updatedAt:Date;
-}
-export interface GatewayCapabilityDraftInput {
-  name:string; slug:string; description?:string|null; parentId?:string|null; sortOrder?:number; sourceReference?:string|null;
-}
-export interface CapabilityGovernanceReader {
-  list(accountId:number):Promise<GatewayCapability[]>;
-  createDraft(accountId:number,input:GatewayCapabilityDraftInput):Promise<GatewayCapability>;
-  updateDraft(accountId:number,id:string,input:GatewayCapabilityDraftInput):Promise<GatewayCapability>;
-  transition(accountId:number,id:string,status:'active'|'deprecated'|'retired',replacementId?:string|null):Promise<GatewayCapability>;
-}
-type ConnectablePool=Pick<Pool,'connect'>;
-type Operation='capability.list'|'capability.create'|'capability.update'|'capability.transition';
-interface ActorAssertion { issuedAt:number; nonce:string; signature:string; }
-const columns=`id,parent_id,name,slug,description,sort_order,lifecycle_status,taxonomy_version,effective_from,effective_to,source_authority,source_reference,replaced_by_capability_id,is_selectable,created_at,updated_at`;
-const map=(r:Record<string,unknown>):GatewayCapability=>({
- id:String(r.id),parentId:r.parent_id===null?null:String(r.parent_id),name:String(r.name),slug:String(r.slug),
- description:r.description===null?null:String(r.description),sortOrder:Number(r.sort_order),
- lifecycleStatus:r.lifecycle_status as GatewayCapability['lifecycleStatus'],taxonomyVersion:Number(r.taxonomy_version),
- effectiveFrom:r.effective_from===null?null:new Date(String(r.effective_from)),effectiveTo:r.effective_to===null?null:new Date(String(r.effective_to)),
- sourceAuthority:String(r.source_authority),sourceReference:r.source_reference===null?null:String(r.source_reference),
- replacedByCapabilityId:r.replaced_by_capability_id===null?null:String(r.replaced_by_capability_id),
- isSelectable:Boolean(r.is_selectable),createdAt:new Date(String(r.created_at)),updatedAt:new Date(String(r.updated_at)),
-});
-export class PostgresCapabilityGovernanceReader implements CapabilityGovernanceReader {
- private readonly assertionKey:Buffer;
- constructor(private readonly pool:ConnectablePool,assertionSecretBase64:string){
-  const key=Buffer.from(assertionSecretBase64,'base64');
-  if(key.length!==32 || key.toString('base64')!==assertionSecretBase64) throw new Error('GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET must be canonical base64 for exactly 32 bytes');
-  this.assertionKey=key;
- }
- private assertion(accountId:number,operation:Operation):ActorAssertion{
-  const issuedAt=Math.floor(Date.now()/1000),nonce=randomUUID();
-  const payload=`ghm-actor-gateway:v1|${accountId}|${operation}|${issuedAt}|${nonce}`;
-  const signature=createHmac('sha256',this.assertionKey).update(payload,'utf8').digest('hex');
-  return {issuedAt,nonce,signature};
- }
- private async run<T>(work:(client:PoolClient)=>Promise<T>):Promise<T>{
-  const client=await this.pool.connect();
-  try{await client.query('BEGIN');const value=await work(client);await client.query('COMMIT');return value;}
-  catch(error){await client.query('ROLLBACK').catch(()=>{});throw error;}
-  finally{client.release();}
- }
- async list(accountId:number):Promise<GatewayCapability[]>{
-  const a=this.assertion(accountId,'capability.list');
-  return this.run(async c=>(await c.query(`SELECT * FROM ghm.gateway_list_capabilities($1,$2,$3,$4)`,[accountId,a.issuedAt,a.nonce,a.signature])).rows.map(map));
- }
- async createDraft(accountId:number,input:GatewayCapabilityDraftInput):Promise<GatewayCapability>{
-  const a=this.assertion(accountId,'capability.create');
-  return this.run(async c=>{const r=await c.query(`SELECT * FROM ghm.gateway_create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-   [accountId,a.issuedAt,a.nonce,a.signature,input.name,input.slug,input.description??null,input.parentId??null,input.sortOrder??0,input.sourceReference??null,1]);return map(r.rows[0]);});
- }
- async updateDraft(accountId:number,id:string,input:GatewayCapabilityDraftInput):Promise<GatewayCapability>{
-  const a=this.assertion(accountId,'capability.update');
-  return this.run(async c=>{const r=await c.query(`SELECT * FROM ghm.gateway_update_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-   [accountId,a.issuedAt,a.nonce,a.signature,id,input.name,input.slug,input.description??null,input.parentId??null,input.sortOrder??0,input.sourceReference??null,1]);return map(r.rows[0]);});
- }
- async transition(accountId:number,id:string,status:'active'|'deprecated'|'retired',replacementId:string|null=null):Promise<GatewayCapability>{
-  const a=this.assertion(accountId,'capability.transition');
-  return this.run(async c=>{const r=await c.query(`SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5,$6,$7,$8)`,[accountId,a.issuedAt,a.nonce,a.signature,id,status,replacementId,1]);return map(r.rows[0]);});
- }
+import type {Pool,PoolClient} from 'pg';
+import {createActorGatewayAssertion} from './request-assertion';
+export interface GatewayCapability{id:string;parentId:string|null;name:string;slug:string;description:string|null;sortOrder:number;lifecycleStatus:'draft'|'active'|'deprecated'|'retired';taxonomyVersion:number;effectiveFrom:Date|null;effectiveTo:Date|null;sourceAuthority:string;sourceReference:string|null;replacedByCapabilityId:string|null;isSelectable:boolean;createdAt:Date;updatedAt:Date}
+export interface GatewayCapabilityDraftInput{name:string;slug:string;description?:string|null;parentId?:string|null;sortOrder?:number;sourceReference?:string|null}
+export interface CapabilityGovernanceReader{list(accountId:number):Promise<GatewayCapability[]>;createDraft(accountId:number,input:GatewayCapabilityDraftInput):Promise<GatewayCapability>;updateDraft(accountId:number,id:string,input:GatewayCapabilityDraftInput):Promise<GatewayCapability>;transition(accountId:number,id:string,status:'active'|'deprecated'|'retired',replacementId?:string|null):Promise<GatewayCapability>}
+type ConnectablePool=Pick<Pool,'connect'>;type Operation='capability.list'|'capability.create'|'capability.update'|'capability.transition';
+const map=(r:Record<string,unknown>):GatewayCapability=>({id:String(r.id),parentId:r.parent_id===null?null:String(r.parent_id),name:String(r.name),slug:String(r.slug),description:r.description===null?null:String(r.description),sortOrder:Number(r.sort_order),lifecycleStatus:r.lifecycle_status as GatewayCapability['lifecycleStatus'],taxonomyVersion:Number(r.taxonomy_version),effectiveFrom:r.effective_from===null?null:new Date(String(r.effective_from)),effectiveTo:r.effective_to===null?null:new Date(String(r.effective_to)),sourceAuthority:String(r.source_authority),sourceReference:r.source_reference===null?null:String(r.source_reference),replacedByCapabilityId:r.replaced_by_capability_id===null?null:String(r.replaced_by_capability_id),isSelectable:Boolean(r.is_selectable),createdAt:new Date(String(r.created_at)),updatedAt:new Date(String(r.updated_at))});
+export class PostgresCapabilityGovernanceReader implements CapabilityGovernanceReader{
+ private readonly key:Buffer;constructor(private readonly pool:ConnectablePool,secret:string){const k=Buffer.from(secret,'base64');if(k.length!==32||k.toString('base64')!==secret)throw new Error('GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET must be canonical base64 for exactly 32 bytes');this.key=k}
+ private async run<T>(work:(c:PoolClient)=>Promise<T>):Promise<T>{const c=await this.pool.connect();try{await c.query('BEGIN');const v=await work(c);await c.query('COMMIT');return v}catch(e){await c.query('ROLLBACK').catch(()=>{});throw e}finally{c.release()}}
+ private async assertion(c:PoolClient,id:number,op:Operation,context:Record<string,unknown>){return createActorGatewayAssertion(this.key,id,op,context)}
+ async list(id:number):Promise<GatewayCapability[]>{return this.run(async c=>{const a=await this.assertion(c,id,'capability.list',{});return(await c.query('SELECT * FROM ghm.gateway_list_capabilities($1,$2,$3,$4,$5)',[id,a.issuedAt,a.nonce,a.context,a.signature])).rows.map(map)})}
+ async createDraft(id:number,x:GatewayCapabilityDraftInput):Promise<GatewayCapability>{const args={name:x.name,slug:x.slug,description:x.description??null,parentId:x.parentId??null,sortOrder:x.sortOrder??0,sourceReference:x.sourceReference??null,version:1};return this.run(async c=>{const a=await this.assertion(c,id,'capability.create',args);const r=await c.query('SELECT * FROM ghm.gateway_create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)',[id,a.issuedAt,a.nonce,a.context,a.signature,args.name,args.slug,args.description,args.parentId,args.sortOrder,args.sourceReference,args.version]);return map(r.rows[0])})}
+ async updateDraft(id:number,capabilityId:string,x:GatewayCapabilityDraftInput):Promise<GatewayCapability>{const args={capabilityId,name:x.name,slug:x.slug,description:x.description??null,parentId:x.parentId??null,sortOrder:x.sortOrder??0,sourceReference:x.sourceReference??null,version:1};return this.run(async c=>{const a=await this.assertion(c,id,'capability.update',args);const r=await c.query('SELECT * FROM ghm.gateway_update_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)',[id,a.issuedAt,a.nonce,a.context,a.signature,args.capabilityId,args.name,args.slug,args.description,args.parentId,args.sortOrder,args.sourceReference,args.version]);return map(r.rows[0])})}
+ async transition(id:number,capabilityId:string,status:'active'|'deprecated'|'retired',replacementId:string|null=null):Promise<GatewayCapability>{const args={capabilityId,targetStatus:status,replacedByCapabilityId:replacementId,version:1};return this.run(async c=>{const a=await this.assertion(c,id,'capability.transition',args);const r=await c.query('SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5,$6,$7,$8,$9)',[id,a.issuedAt,a.nonce,a.context,a.signature,args.capabilityId,args.targetStatus,args.replacedByCapabilityId,args.version]);return map(r.rows[0])})}
 }
