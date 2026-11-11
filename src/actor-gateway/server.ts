@@ -32,6 +32,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 
 const keys = loadEs256VerificationKeys();
 const verifier = createAccessJwtVerifier(verificationKeyMapFromPublicKeys(keys));
+const capabilityAssertionSecret = required('GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET');
 const pool = new Pool({
   connectionString: databaseUrl,
   ssl: databaseSsl ? { rejectUnauthorized: false } : false,
@@ -43,8 +44,8 @@ const app = createActorGatewayApp({
   verifier,
   actorIdentityReader: new PostgresActorIdentityReader(pool),
   businessRegistrationIdentityReader: new PostgresBusinessRegistrationIdentityReader(pool),
-  capabilityGovernanceReader: new PostgresCapabilityGovernanceReader(pool, required('GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET')),
-  supplierClassificationReader: new PostgresSupplierClassificationReader(pool),
+  capabilityGovernanceReader: new PostgresCapabilityGovernanceReader(pool, capabilityAssertionSecret),
+  supplierClassificationReader: new PostgresSupplierClassificationReader(pool, capabilityAssertionSecret),
   businessProfileReader: new PostgresBusinessProfileReader(pool),
 });
 const server = http.createServer(app);
