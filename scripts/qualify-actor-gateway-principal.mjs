@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import 'dotenv/config';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL;
 const gatewayUrl = process.env.GHM_ACTOR_GATEWAY_DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
+const assertionSecret = process.env.GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET;
+if (!assertionSecret || Buffer.from(assertionSecret, 'base64').length !== 32) throw new Error('A 32-byte gateway assertion test key is required');
 
 if (!runtimeUrl || !gatewayUrl || !migratorUrl) {
   throw new Error('GHM runtime, actor-gateway and migrator database URLs are all required');
@@ -19,6 +21,8 @@ const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
 const gatewayPool = new Pool({ connectionString: gatewayUrl, ssl });
 const cleanupPool = new Pool({ connectionString: migratorUrl, ssl });
 const fixture = { marker: `ghm-actor-gateway-${randomUUID()}`, accountIds: [], businessIds: [] };
+const signAssertion = (accountId,operation) => { const issuedAt=Math.floor(Date.now()/1000),nonce=randomUUID(); const payload=`ghm-actor-gateway:v1|${accountId}|${operation}|${issuedAt}|${nonce}`; const signature=createHmac('sha256',Buffer.from(assertionSecret,'base64')).update(payload,'utf8').digest('hex'); return {issuedAt,nonce,signature}; };
+const gatewayCall = (accountId,operation,sql,args=[]) => { const a=signAssertion(accountId,operation); return gatewayPool.query(sql,[accountId,a.issuedAt,a.nonce,a.signature,...args]); };
 
 const identity = async (pool, expectedUser) => {
   const { rows } = await pool.query(`
@@ -108,6 +112,8 @@ try {
   await identity(runtimePool, 'ghm_runtime');
   await identity(gatewayPool, 'ghm_actor_gateway');
   await identity(cleanupPool, 'ghm_migrator');
+  const provision=await cleanupPool.connect();
+  try { await provision.query('BEGIN'); await provision.query('SET LOCAL ROLE ghm_schema_owner'); await provision.query("INSERT INTO ghm.actor_gateway_capability_assertion_secret(singleton,secret) VALUES(true,$1) ON CONFLICT(singleton) DO UPDATE SET secret=EXCLUDED.secret",[Buffer.from(assertionSecret,'base64')]); await provision.query('COMMIT'); } catch(e) { await provision.query('ROLLBACK').catch(()=>{}); throw e; } finally { provision.release(); }
   console.log('DATABASE PRINCIPAL IDENTITY: PASS');
 
   const activeAccountId = await createFixtureAccount(`${fixture.marker}-active`);
@@ -185,10 +191,8 @@ try {
   assert.equal(Number(accepted.rows[0].actor_account_id), activeAccountId);
   console.log('GATEWAY ACCEPTS ACTIVE TOKEN-SUBJECT CANDIDATE: PASS');
 
-  const ownIdentity = await gatewayPool.query(
-    'SELECT account_id, account_role, full_name FROM ghm.gateway_get_actor_identity($1)',
-    [activeAccountId],
-  );
+  const ownIdentity = await gatewayCall(activeAccountId,'actor.identity.read',
+    'SELECT account_id, account_role, full_name FROM ghm.gateway_get_actor_identity($1,$2,$3,$4)');
   assert.equal(ownIdentity.rowCount, 1);
   assert.deepEqual({
     account_id: Number(ownIdentity.rows[0].account_id),
@@ -201,10 +205,8 @@ try {
   });
   console.log('TYPED GATEWAY SELF-IDENTITY READ: PASS');
 
-  const registrationIdentity = await gatewayPool.query(
-    'SELECT * FROM ghm.gateway_read_business_registration_identity($1, $2)',
-    [activeAccountId, businessId],
-  );
+  const registrationIdentity = await gatewayCall(activeAccountId,'business.registration.read',
+    'SELECT * FROM ghm.gateway_read_business_registration_identity($1,$2,$3,$4,$5)',[businessId]);
   assert.equal(registrationIdentity.rowCount, 1);
   assert.deepEqual({
     business_id: Number(registrationIdentity.rows[0].business_id),
@@ -219,10 +221,9 @@ try {
   });
   console.log('TYPED GATEWAY BUSINESS REGISTRATION IDENTITY READ: PASS');
 
-  const updatedRegistrationIdentity = await gatewayPool.query(
-    'SELECT * FROM ghm.gateway_update_business_registration_identity($1, $2, $3, $4, $5)',
-    [activeAccountId, businessId, 'registered', 'REG-primary-updated', `${fixture.marker} updated legal entity`],
-  );
+  const updatedRegistrationIdentity = await gatewayCall(activeAccountId,'business.registration.update',
+    'SELECT * FROM ghm.gateway_update_business_registration_identity($1,$2,$3,$4,$5,$6,$7,$8)',
+    [businessId,'registered','REG-primary-updated',`${fixture.marker} updated legal entity`]);
   assert.equal(updatedRegistrationIdentity.rowCount, 1);
   assert.deepEqual({
     business_id: Number(updatedRegistrationIdentity.rows[0].business_id),
@@ -243,22 +244,22 @@ try {
     'DISABLED ACTOR DENIED',
   );
   await expectSqlState(
-    () => gatewayPool.query('SELECT * FROM ghm.gateway_read_business_registration_identity($1, $2)', [disabledAccountId, businessId]),
+    () => gatewayCall(disabledAccountId,'business.registration.read','SELECT * FROM ghm.gateway_read_business_registration_identity($1,$2,$3,$4,$5)',[businessId]),
     '42501',
     'DISABLED ACTOR CANNOT READ REGISTRATION IDENTITY',
   );
   await expectSqlState(
-    () => gatewayPool.query('SELECT * FROM ghm.gateway_update_business_registration_identity($1, $2, $3, $4, $5)', [disabledAccountId, businessId, 'registered', 'REG-X', 'Spoofed Entity']),
+    () => gatewayCall(disabledAccountId,'business.registration.update','SELECT * FROM ghm.gateway_update_business_registration_identity($1,$2,$3,$4,$5,$6,$7,$8)',[businessId,'registered','REG-X','Spoofed Entity']),
     '42501',
     'DISABLED ACTOR CANNOT WRITE REGISTRATION IDENTITY',
   );
   await expectSqlState(
-    () => gatewayPool.query('SELECT * FROM ghm.gateway_read_business_registration_identity($1, $2)', [activeAccountId, otherBusinessId]),
+    () => gatewayCall(activeAccountId,'business.registration.read','SELECT * FROM ghm.gateway_read_business_registration_identity($1,$2,$3,$4,$5)',[otherBusinessId]),
     'P0001',
     'CROSS-BUSINESS REGISTRATION IDENTITY READ DENIED',
   );
   await expectSqlState(
-    () => gatewayPool.query('SELECT * FROM ghm.gateway_update_business_registration_identity($1, $2, $3, $4, $5)', [activeAccountId, otherBusinessId, 'registered', 'REG-X', 'Spoofed Entity']),
+    () => gatewayCall(activeAccountId,'business.registration.update','SELECT * FROM ghm.gateway_update_business_registration_identity($1,$2,$3,$4,$5,$6,$7,$8)',[otherBusinessId,'registered','REG-X','Spoofed Entity']),
     'P0001',
     'CROSS-BUSINESS REGISTRATION IDENTITY WRITE DENIED',
   );
@@ -273,17 +274,17 @@ try {
     'ORDINARY RUNTIME CANNOT EXECUTE GATEWAY FUNCTION',
   );
   await expectSqlState(
-    () => runtimePool.query('SELECT * FROM ghm.gateway_get_actor_identity($1)', [activeAccountId]),
+    () => runtimePool.query('SELECT * FROM ghm.gateway_get_actor_identity($1,$2,$3,$4)', [activeAccountId,Math.floor(Date.now()/1000),randomUUID(),'0'.repeat(64)]),
     '42501',
     'ORDINARY RUNTIME CANNOT EXECUTE TYPED GATEWAY SELF-READ',
   );
   await expectSqlState(
-    () => runtimePool.query('SELECT * FROM ghm.gateway_read_business_registration_identity($1, $2)', [activeAccountId, businessId]),
+    () => runtimePool.query('SELECT * FROM ghm.gateway_read_business_registration_identity($1,$2,$3,$4,$5)', [activeAccountId,Math.floor(Date.now()/1000),randomUUID(),'0'.repeat(64),businessId]),
     '42501',
     'ORDINARY RUNTIME CANNOT EXECUTE REGISTRATION IDENTITY GATEWAY READ',
   );
   await expectSqlState(
-    () => runtimePool.query('SELECT * FROM ghm.gateway_update_business_registration_identity($1, $2, $3, $4, $5)', [activeAccountId, businessId, 'registered', 'REG-X', 'Spoofed Entity']),
+    () => runtimePool.query('SELECT * FROM ghm.gateway_update_business_registration_identity($1,$2,$3,$4,$5,$6,$7,$8)', [activeAccountId,Math.floor(Date.now()/1000),randomUUID(),'0'.repeat(64),businessId,'registered','REG-X','Spoofed Entity']),
     '42501',
     'ORDINARY RUNTIME CANNOT EXECUTE REGISTRATION IDENTITY GATEWAY WRITE',
   );
