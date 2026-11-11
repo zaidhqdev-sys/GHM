@@ -338,3 +338,21 @@ Files added/changed:
 The follow-on audit found stale contradictory wording in `docs/architecture/CAMPAIGN_OPERATION_CONTRACT.md`: section 2 already recorded that a bounded authenticated HTTP surface was separately approved and implemented, but section 12 still said there were no HTTP routes and section 14 listed campaign HTTP routes as an unqualified non-goal. This was inconsistent with the current `src/http/campaign-router.ts` and `CAMPAIGN_HTTP_FOUNDER_DECISION_RECORD.md`.
 
 Corrected section 12 to state accurately that there is no public/anonymous read, while the bounded authenticated `read` / `create` / `update` HTTP surface is separately approved and implemented. Corrected section 14 to prohibit additional routes beyond that bounded surface. No runtime code changed in this documentation correction.
+
+
+### Trust Score signed calculation gateway — exact-head qualification PASS (2026-11-11)
+
+Implementation head `34172a7057a56ed027a0baead9640a3a835f7b59` passed GitHub Actions run [#3198](https://github.com/zaidhqdev-sys/GHM/actions/runs/43094248583). Both `quality` and `web-quality` succeeded, including build, full automated suite, complete migrations and the new disposable PostgreSQL Trust Score cutover qualification.
+
+The qualification logs explicitly confirm:
+- `MANUAL TRUST SCORE CUTOVER APPLIED TO DISPOSABLE POSTGRESQL: PASS`
+- `RUNTIME LEGACY TRUST SCORE EXECUTE DENIED: PASS`
+- `SIGNED TRUST SCORE CALCULATION + ACTOR PROVENANCE: PASS`
+- `SIGNED TRUST SCORE TARGET SUBSTITUTION DENIED: PASS`
+- `SIGNED TRUST SCORE ASSERTION REPLAY DENIED: PASS`
+- `SIGNED TRUST SCORE ACTOR SUBSTITUTION DENIED: PASS`
+- `RUNTIME TRUST SCORE GATEWAY EXECUTE DENIED: PASS`
+- `TRUST SCORE POST-CUTOVER FUNCTION ACL: PASS`
+- `GHM TRUST SCORE SIGNED GATEWAY QUALIFICATION: PASS`
+
+The manual cutover ran only against disposable localhost PostgreSQL. The Trust Score calculation mutation is IMPLEMENTED / QUALIFIED. Direct runtime SELECT on `ghm.trust_score` remains OPEN and unchanged pending safe public list/get and authorised-member read projections. Full durable record: `docs/architecture/TRUST_SCORE_QUALIFICATION.md`. No production changes, no production cutover and no merge.
