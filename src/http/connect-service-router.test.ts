@@ -313,7 +313,7 @@ test('Connect service route uses lookup-only identity resolution', async () => {
   const lookupOnly: ConnectIdentityAdapter = {
     resolve: async (subject) => {
       resolveCalls += 1;
-      assert.equal(subject, '123e4567-e89b-12d3-a456-426614174000');
+      assert.equal(subject, '550e8400-e29b-41d4-a716-446655440000');
       return identity.resolve(subject);
     },
   };
