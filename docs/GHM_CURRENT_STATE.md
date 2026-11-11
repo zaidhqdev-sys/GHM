@@ -754,3 +754,8 @@ The runtime EXECUTE revocation for `auth_link_external_identity(text,text,bigint
 
 Status: IMPLEMENTED / DISPOSABLE QUALIFICATION PASS; PRODUCTION CUTOVER NOT PERFORMED. The subsequent documentation-only PR head is `aff86bd0e05b41cfbb4a8496c4ff1b69bd29cd77`; its exact-head CI was still in progress. PR #272 remains open/unmerged. No production changes. Full evidence is in the security handover.
 
+
+
+## 2026-11-12 — External identity bootstrap runtime authority removed
+
+The active Connect authorization route requires an existing external identity mapping and does not bootstrap accounts. Removed the unused bootstrap method from AuthPersistence/PostgresAuthPersistence and the Connect identity adapter; identity resolution is now lookup-only. Added migration `20261111260000_revoke_runtime_external_identity_bootstrap.sql` to revoke PUBLIC and `ghm_runtime` EXECUTE while preserving controlled schema-owner/migrator provisioning. Database ACL tests assert runtime cannot execute or directly invoke the function. No accounts/mappings, production ACLs or data were changed. PR #272 head `be08e9db8ac7fcf8602f2d6988518ae021597bfb` awaits exact-head CI; prior run #3441 applies only to its parent head. Current recursive tree count: 127 SQL migrations + 7 manual cutovers. Full source evidence and qualification gate are recorded in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
