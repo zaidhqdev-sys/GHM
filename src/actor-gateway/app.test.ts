@@ -10,6 +10,7 @@ import type { ActorIdentity, ActorIdentityReader } from './actor-identity-reader
 import type { BusinessRegistrationIdentityReader } from './business-registration-identity-reader';
 import type { SupplierClassificationReader } from './supplier-classification-reader';
 import type { BusinessProfileReader } from './business-profile-reader';
+import type { SavedBusinessGatewayReader } from './saved-business-reader';
 
 const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
 const privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
@@ -43,6 +44,7 @@ const withServer = async (
   options: import('./app').ActorGatewayAppOptions = {},
   requestVerifier: import('../auth/foundation/access-jwt-verifier').AccessJwtVerifier = verifier,
   businessCapabilityMutationReader?: import('./business-capability-mutation-reader').GatewayCapabilityMutationReader,
+  savedBusinessReader?: SavedBusinessGatewayReader,
 ): Promise<void> => {
   const server = http.createServer(createActorGatewayApp({
     verifier: requestVerifier,
@@ -52,6 +54,7 @@ const withServer = async (
     supplierClassificationReader,
     businessProfileReader,
     businessCapabilityMutationReader,
+    savedBusinessReader,
   }, options));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
@@ -574,4 +577,64 @@ test('actor gateway rejects evidence submitter identity and unknown fields from 
   assert.equal(response.status,400);
  },undefined,undefined,undefined,undefined,{},verifier,mutation);
  assert.equal(called,false);
+});
+
+
+test('saved business gateway derives owner from verified JWT and rejects caller-supplied account fields', async () => {
+  const calls: Array<{ operation: string; actor: number; id?: number }> = [];
+  const reader: SavedBusinessGatewayReader = {
+    async list(actor) {
+      calls.push({ operation: 'list', actor });
+      return [{ id: 1, accountId: actor, businessId: 77, createdAt: new Date('2026-11-11T00:00:00.000Z') }];
+    },
+    async get(actor, id) {
+      calls.push({ operation: 'get', actor, id });
+      return null;
+    },
+    async create(actor, businessId) {
+      calls.push({ operation: 'create', actor, id: businessId });
+      return { id: 2, accountId: actor, businessId, createdAt: new Date('2026-11-11T00:00:00.000Z') };
+    },
+    async delete(actor, id) {
+      calls.push({ operation: 'delete', actor, id });
+      return true;
+    },
+  };
+
+  await withServer({
+    async readOwnIdentity(accountId) {
+      return { accountId, role: 'customer', fullName: 'Test' };
+    },
+  }, async (baseUrl) => {
+    const headers = { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' };
+    const list = await fetch(`${baseUrl}/v1/saved-businesses?accountId=999`, { headers });
+    assert.equal(list.status, 200);
+    const listBody = await list.json() as { savedBusinesses: Array<{ accountId: number }> };
+    assert.equal(listBody.savedBusinesses[0].accountId, 42);
+
+    const create = await fetch(`${baseUrl}/v1/saved-businesses`, {
+      method: 'POST', headers, body: JSON.stringify({ businessId: 77, accountId: 999 }),
+    });
+    assert.equal(create.status, 400);
+
+    const validCreate = await fetch(`${baseUrl}/v1/saved-businesses`, {
+      method: 'POST', headers, body: JSON.stringify({ businessId: 77 }),
+    });
+    assert.equal(validCreate.status, 201);
+    const created = await validCreate.json() as { savedBusiness: { accountId: number } };
+    assert.equal(created.savedBusiness.accountId, 42);
+
+    const get = await fetch(`${baseUrl}/v1/saved-businesses/12`, { headers });
+    assert.equal(get.status, 404);
+
+    const remove = await fetch(`${baseUrl}/v1/saved-businesses/12`, { method: 'DELETE', headers });
+    assert.equal(remove.status, 204);
+  }, undefined, undefined, undefined, undefined, {}, verifier, undefined, reader);
+
+  assert.deepEqual(calls, [
+    { operation: 'list', actor: 42 },
+    { operation: 'create', actor: 42, id: 77 },
+    { operation: 'get', actor: 42, id: 12 },
+    { operation: 'delete', actor: 42, id: 12 },
+  ]);
 });
