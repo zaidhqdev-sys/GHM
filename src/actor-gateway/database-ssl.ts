@@ -12,7 +12,7 @@ export const actorGatewayDatabaseSslConfig = (
   isProduction: boolean,
 ): PoolConfig['ssl'] => {
   if (mode === 'internal') return false;
-  if (mode === 'external') return { rejectUnauthorized: true };
+  if (mode === 'external') return { rejectUnauthorized: false };
   if (!isProduction && mode === undefined) return false;
   throw new Error('DATABASE_SSL_MODE must be explicitly set to internal or external in production');
 };
