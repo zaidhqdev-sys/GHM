@@ -173,6 +173,9 @@ jobs:
       - name: Check Trust Score gateway cutover qualification script syntax
         run: node --check scripts/qualify-trust-score-gateway-cutover-postgres.mjs
 
+      - name: Check Business Logo gateway cutover qualification script syntax
+        run: node --check scripts/qualify-business-logo-gateway-cutover-postgres.mjs
+
       - name: Build
         run: npm run build
 
@@ -237,6 +240,9 @@ jobs:
 
       - name: Qualify Trust Score signed gateway cutover on disposable PostgreSQL
         run: npm run qualify:trust-score-gateway-cutover
+
+      - name: Qualify Business Logo signed gateway cutover on disposable PostgreSQL
+        run: npm run qualify:business-logo-gateway-cutover
 
       - name: Qualify GHM supplier classification and membership authorization on disposable PostgreSQL
         run: npm run qualify:business-supplier-classification
