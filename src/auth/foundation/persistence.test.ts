@@ -71,6 +71,25 @@ test('auth foundation persistence (database)', async (t) => {
   let accountId = 0;
   const persistence = new PostgresAuthPersistence(runtimePool);
 
+  const linkExternalIdentityAsOwner = async (provider: string, subject: string, targetAccountId: number) => {
+    const client = await migratorPool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SET LOCAL ROLE ghm_schema_owner');
+      const result = await client.query(
+        'SELECT * FROM ghm.auth_link_external_identity($1, $2, $3)',
+        [provider, subject, targetAccountId],
+      );
+      await client.query('COMMIT');
+      return result.rows[0];
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
+  };
+
   t.after(async () => {
     const client = await migratorPool.connect();
     try {
@@ -389,16 +408,16 @@ test('auth foundation persistence (database)', async (t) => {
     const subjectA = `link-a-${marker}`;
     const subjectB = `link-b-${marker}`;
 
-    const created = await persistence.linkExternalIdentity(provider, subjectA, accountId);
+    const created = await linkExternalIdentityAsOwner(provider, subjectA, accountId);
     assert.equal(created.outcome, 'created');
-    assert.equal(created.mapping?.accountId, accountId);
-    assert.equal(created.mapping?.provider, provider);
-    assert.equal(created.mapping?.subject, subjectA);
+    assert.equal(Number(created.account_id), accountId);
+    assert.equal(created.provider, provider);
+    assert.equal(created.subject, subjectA);
 
-    const again = await persistence.linkExternalIdentity(provider, subjectA, accountId);
+    const again = await linkExternalIdentityAsOwner(provider, subjectA, accountId);
     assert.equal(again.outcome, 'already_linked');
-    assert.equal(again.mapping?.id, created.mapping?.id);
-    assert.equal(again.mapping?.accountId, accountId);
+    assert.equal(again.id, created.id);
+    assert.equal(Number(again.account_id), accountId);
 
     const client = await migratorPool.connect();
     let otherAccountId = 0;
@@ -422,19 +441,20 @@ test('auth foundation persistence (database)', async (t) => {
       client.release();
     }
 
-    const conflict = await persistence.linkExternalIdentity(provider, subjectA, otherAccountId);
+    const conflict = await linkExternalIdentityAsOwner(provider, subjectA, otherAccountId);
     assert.equal(conflict.outcome, 'conflict');
-    assert.equal(conflict.mapping?.accountId, accountId);
-    assert.notEqual(conflict.mapping?.accountId, otherAccountId);
+    assert.equal(Number(conflict.account_id), accountId);
+    assert.notEqual(Number(conflict.account_id), otherAccountId);
 
-    const missing = await persistence.linkExternalIdentity(provider, `missing-${marker}`, 9_007_199_254_740_991);
+    const missing = await linkExternalIdentityAsOwner(provider, `missing-${marker}`, 9_007_199_254_740_991);
     assert.equal(missing.outcome, 'account_not_found');
-    assert.equal(missing.mapping, null);
+    assert.equal(missing.id, null);
+    assert.equal(missing.account_id, null);
 
     // Cross-product: two distinct supabase subjects → same GHM account (explicit link only)
-    const secondSubject = await persistence.linkExternalIdentity(provider, subjectB, accountId);
+    const secondSubject = await linkExternalIdentityAsOwner(provider, subjectB, accountId);
     assert.equal(secondSubject.outcome, 'created');
-    assert.equal(secondSubject.mapping?.accountId, accountId);
+    assert.equal(Number(secondSubject.account_id), accountId);
 
     const lookedA = await persistence.lookupExternalIdentity(provider, subjectA);
     const lookedB = await persistence.lookupExternalIdentity(provider, subjectB);
@@ -463,9 +483,9 @@ test('auth foundation persistence (database)', async (t) => {
       client.release();
     }
 
-    const linked = await persistence.linkExternalIdentity(provider, subject, disabledId);
+    const linked = await linkExternalIdentityAsOwner(provider, subject, disabledId);
     assert.equal(linked.outcome, 'created');
-    assert.equal(linked.mapping?.accountId, disabledId);
+    assert.equal(Number(linked.account_id), disabledId);
 
     const verify = await migratorPool.connect();
     try {
@@ -481,7 +501,7 @@ test('auth foundation persistence (database)', async (t) => {
     }
   });
 
-  await t.test('link external identity: runtime cannot read or mutate mapping table; can EXECUTE governed functions', async () => {
+  await t.test('link external identity: runtime cannot read, mutate, or create mappings; migrator owner can link', async () => {
     const { EXTERNAL_IDENTITY_PROVIDER_SUPABASE } = await import('./types');
     const provider = EXTERNAL_IDENTITY_PROVIDER_SUPABASE;
     const subject = `acl-${marker}`;
@@ -494,7 +514,8 @@ test('auth foundation persistence (database)', async (t) => {
           has_table_privilege(current_user, 'ghm.account_external_identity', 'INSERT') AS can_insert,
           has_table_privilege(current_user, 'ghm.account_external_identity', 'UPDATE') AS can_update,
           has_table_privilege(current_user, 'ghm.account_external_identity', 'DELETE') AS can_delete,
-          has_sequence_privilege(current_user, 'ghm.account_external_identity_id_seq', 'USAGE') AS can_use_sequence
+          has_sequence_privilege(current_user, 'ghm.account_external_identity_id_seq', 'USAGE') AS can_use_sequence,
+          has_function_privilege(current_user, 'ghm.auth_link_external_identity(text,text,bigint)', 'EXECUTE') AS can_link
       `);
       assert.deepEqual(privileges.rows[0], {
         can_select: false,
@@ -502,10 +523,12 @@ test('auth foundation persistence (database)', async (t) => {
         can_update: false,
         can_delete: false,
         can_use_sequence: false,
+        can_link: false,
       });
 
       for (const sql of [
         'SELECT * FROM ghm.account_external_identity',
+        `SELECT * FROM ghm.auth_link_external_identity('supabase', 'runtime-forged-subject', ${accountId})`,
         `INSERT INTO ghm.account_external_identity (provider, subject, account_id)
          VALUES ('supabase', 'direct-runtime-insert', ${accountId})`,
         "SELECT nextval('ghm.account_external_identity_id_seq')",
@@ -522,7 +545,11 @@ test('auth foundation persistence (database)', async (t) => {
       runtimeClient.release();
     }
 
-    const viaFunction = await persistence.linkExternalIdentity(provider, subject, accountId);
+    await assert.rejects(
+      runtimePool.query('SELECT * FROM ghm.auth_link_external_identity($1, $2, $3)', [provider, subject, accountId]),
+      /permission denied|insufficient_privilege/i,
+    );
+    const viaFunction = await linkExternalIdentityAsOwner(provider, subject, accountId);
     assert.equal(viaFunction.outcome, 'created');
     const lookedUp = await persistence.lookupExternalIdentity(provider, subject);
     assert.equal(lookedUp?.accountId, accountId);
