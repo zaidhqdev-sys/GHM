@@ -236,12 +236,14 @@ test('auth foundation persistence (database)', async (t) => {
         SELECT
           has_function_privilege(current_user, 'ghm.auth_revoke_session(bigint,text)', 'EXECUTE') AS can_revoke_session,
           has_function_privilege(current_user, 'ghm.auth_change_password(bigint,bigint,text,text,text,integer,integer,integer)', 'EXECUTE') AS can_change_password,
-          has_function_privilege(current_user, 'ghm.auth_disable_account(bigint)', 'EXECUTE') AS can_disable_account
+          has_function_privilege(current_user, 'ghm.auth_disable_account(bigint)', 'EXECUTE') AS can_disable_account,
+          has_function_privilege(current_user, 'ghm.auth_revoke_all_sessions_for_account(bigint,text)', 'EXECUTE') AS can_revoke_all_sessions
       `);
       assert.deepEqual(privileges.rows[0], {
         can_revoke_session: false,
         can_change_password: false,
         can_disable_account: false,
+        can_revoke_all_sessions: false,
       });
 
       const denied = (error: unknown) => {
@@ -261,6 +263,10 @@ test('auth foundation persistence (database)', async (t) => {
       );
       await assert.rejects(
         () => runtimeClient.query('SELECT ghm.auth_disable_account($1)', [1]),
+        denied,
+      );
+      await assert.rejects(
+        () => runtimeClient.query('SELECT ghm.auth_revoke_all_sessions_for_account($1,$2)', [1, 'password_recovery']),
         denied,
       );
     } finally {
@@ -296,6 +302,37 @@ test('auth foundation persistence (database)', async (t) => {
     assert.equal(concurrent.filter((r) => r.status === 'fulfilled').length, 1);
     assert.equal(concurrent.filter((r) => r.status === 'rejected').length, 1);
   });
+
+
+  await t.test('password recovery returns the session-family revocation count without a direct account-ID RPC', async () => {
+    const s1 = await persistence.createSessionWithRefresh(accountId);
+    const s2 = await persistence.createSessionWithRefresh(accountId);
+    const issued = await persistence.issueRecovery(accountId, 30);
+    const email = `recovery-reset-${accountId}@example.test`;
+
+    const reset = await persistence.resetPasswordWithRecovery(
+      issued.recoveryTokenWire,
+      email,
+      'New-Password-For-Recovery-123!',
+    );
+    assert.ok(reset.revokedSessionCount >= 2);
+
+    const v1 = await persistence.validateSession(s1.session.id);
+    const v2 = await persistence.validateSession(s2.session.id);
+    assert.equal(v1.isUsable, false);
+    assert.equal(v2.isUsable, false);
+
+    await assert.rejects(
+      () => persistence.resetPasswordWithRecovery(
+        issued.recoveryTokenWire,
+        email,
+        'Another-Password-123!',
+      ),
+      (error: unknown) =>
+        error instanceof AuthPersistenceError && error.code === 'RECOVERY_CREDENTIAL_INVALID',
+    );
+  });
+
 
   await t.test('expired recovery fails', async () => {
     const issued = await persistence.issueRecovery(accountId, 30);
