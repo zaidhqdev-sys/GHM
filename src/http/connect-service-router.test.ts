@@ -308,14 +308,20 @@ test('Connect service route fails closed for unmapped identity', async () => {
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
-test('Connect service route never enables identity bootstrap', async () => {
-  let allowBootstrap: boolean | undefined;
-  const guarded: ConnectIdentityAdapter = { resolve: async (subject, options) => { allowBootstrap = options?.allowBootstrap; return identity.resolve(subject, options); } };
-  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity: guarded, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService([]), projects: projectService([]), opportunities: opportunityService([]), opportunityParticipants: opportunityParticipantService([]) });
+test('Connect service route uses lookup-only identity resolution', async () => {
+  let resolveCalls = 0;
+  const lookupOnly: ConnectIdentityAdapter = {
+    resolve: async (subject) => {
+      resolveCalls += 1;
+      assert.equal(subject, '123e4567-e89b-12d3-a456-426614174000');
+      return identity.resolve(subject);
+    },
+  };
+  const { server, baseUrl } = await start({ assertionService: assertion(), replayStore: replayStore(), lifecycle, identity: lookupOnly, accounts, savedBusinesses: service([]), customers: customerService([]), quotes: quoteService([]), enquiries: enquiryService([]), projects: projectService([]), opportunities: opportunityService([]), opportunityParticipants: opportunityParticipantService([]) });
   try {
     const response = await fetch(`${baseUrl}/api/v1/connect/service`, { method: 'POST', headers: { authorization: 'Bearer valid', 'content-type': 'application/json' }, body: JSON.stringify(body()) });
     assert.equal(response.status, 200);
-    assert.equal(allowBootstrap, false);
+    assert.equal(resolveCalls, 1);
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
