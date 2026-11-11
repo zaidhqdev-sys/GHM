@@ -36,6 +36,7 @@ const probeAuthSchemaReady = async (): Promise<boolean> => {
         AND to_regprocedure('ghm.auth_create_account(text,text,text,text,text,integer,integer,integer)') IS NOT NULL
         AND to_regprocedure('ghm.auth_link_external_identity(text,text,bigint)') IS NOT NULL
         AND to_regprocedure('ghm.auth_link_business_external_mapping(text,text,bigint)') IS NOT NULL
+        AND to_regprocedure('ghm.auth_redeem_recovery_with_count(bytea)') IS NOT NULL
         AS ready
     `);
     return Boolean(result.rows[0]?.ready);
