@@ -197,3 +197,7 @@ The continuing source review found two additional improvements and applied repos
 Relevant code/test commits: `4596cb5b80c5d1b7586f8c8507205cf3d7c1ad36`, `e3347845bf9827fdb6ac48ad33b451cd06f1b4c7`, `fe6ceb7ee1ac8b04c04ad3ac6304e66635e709f2`, and `185b439ecf51cf3ec70c947daf4379c8d3aab571`. Exact-head CI is pending on the final branch head; do not treat these latest changes as validated until both required jobs pass.
 
 These changes do not alter production state, migration history already applied, database roles, secrets, Render services, or product routing.
+
+### HMAC comparison applied consistently across the ordered migration chain
+
+The fixed-length 32-byte XOR/OR comparison is now present in all four migrations that define or extend `ghm.assert_actor_gateway_capability` (`20261111020000`, `20261111030000`, `20261111040000`, and final definition `20261111050000`). This avoids leaving an early-exit bytea comparison in an intermediate migration state if a later migration fails. Static migration-contract tests now enforce the fixed-length comparison for the capability, supplier, Business profile, and final registration/self-identity definitions. Commits: `9a297c23cff5432748e0483c675fbfcb18780751`, `6aaf0c25ff4fb3e04a1380ee0fad59c890fe1e3e`, `623be533c06a196fe72e0332a21dfccf1bb2130b`, `f91093c99a61ccc4b6b8efd11d434749ebd3cf5d`, `c4a4cee00ce001bb309a6cbaeeb71441ec50cba5`, and `2179984393ed01148420366b8665cd5cee7208a1`. The latest exact-head CI is still pending.
