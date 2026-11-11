@@ -866,6 +866,20 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
           res.status(400).json({ error: 'invalid_request' });
           return;
         }
+        if (businessHoursGatewayClient) {
+          const authorization = req.header('authorization');
+          if (!authorization?.startsWith('Bearer ') || !authorization.slice(7).trim()) {
+            res.status(401).json({ error: 'unauthorized' });
+            return;
+          }
+          const hours = await businessHoursGatewayClient.list(authorization.slice(7).trim(), businessId);
+          res.status(200).json({ hours });
+          return;
+        }
+        if (businessHoursGatewayRequired) {
+          res.status(503).json({ error: 'service_unavailable' });
+          return;
+        }
         const hours = await businessHoursService.getBusinessHours(context, businessId);
         res.status(200).json({ hours });
       } catch (error) {
