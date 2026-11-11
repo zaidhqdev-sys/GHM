@@ -88,7 +88,7 @@ try {
   ids.businesses.push(businessId);
 
   const cutover = await readFile(fileURLToPath(new URL('../database/cutovers/20261111110000_revoke_legacy_saved_business_runtime.sql', import.meta.url)), 'utf8');
-  const cutoverStatements = cutover.replace(/^\\s*BEGIN;\\s*/i, '').replace(/\\s*COMMIT;\\s*$/i, '');
+  const cutoverStatements = cutover.replace(/^\s*BEGIN;\s*/i, '').replace(/\s*COMMIT;\s*$/i, '');
   await setup(cutoverStatements);
   console.log('MANUAL SAVED BUSINESS CUTOVER APPLIED TO DISPOSABLE POSTGRESQL: PASS');
 
