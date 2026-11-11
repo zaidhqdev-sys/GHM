@@ -15,7 +15,7 @@ CREATE FUNCTION ghm.assert_actor_gateway_capability(p_actor bigint,p_operation t
 RETURNS bigint LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ghm AS $$
 DECLARE v_secret bytea;v_expected bytea;v_provided bytea;v_payload text;v_diff integer:=0;v_i integer;
 BEGIN
- IF session_user<>'ghm_actor_gateway' OR p_actor IS NULL OR p_actor<=0 OR p_issued IS NULL OR p_nonce IS NULL OR p_context IS NULL OR p_signature IS NULL OR p_signature !~ '^[0-9a-f]{64}$' THEN RAISE EXCEPTION 'Invalid actor assertion' USING ERRCODE='42501';END IF;
+ IF session_user<>'ghm_actor_gateway' OR p_actor IS NULL OR p_actor<=0 OR p_issued IS NULL OR p_nonce IS NULL OR p_context IS NULL OR octet_length(convert_to(p_context,'UTF8'))>32768 OR p_operation NOT IN ('capability.list','capability.create','capability.update','capability.transition','supplier.classification.update','business.profile.update','actor.identity.read','business.registration.read','business.registration.update') OR p_signature IS NULL OR p_signature !~ '^[0-9a-f]{64}$' THEN RAISE EXCEPTION 'Invalid actor assertion' USING ERRCODE='42501';END IF;
  IF abs(extract(epoch FROM clock_timestamp())::bigint-p_issued)>60 THEN RAISE EXCEPTION 'Actor assertion expired' USING ERRCODE='42501';END IF;
  SELECT secret INTO v_secret FROM ghm.actor_gateway_capability_assertion_secret WHERE singleton=true;
  IF v_secret IS NULL OR octet_length(v_secret)<>32 THEN RAISE EXCEPTION 'Actor assertion verifier is not provisioned' USING ERRCODE='42501';END IF;
