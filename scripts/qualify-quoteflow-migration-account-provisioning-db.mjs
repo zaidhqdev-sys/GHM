@@ -11,9 +11,29 @@ assert.notEqual(runtimeUrl, migratorUrl, 'runtime and migrator URLs must be dist
 
 const runtime = new Client({ connectionString: runtimeUrl, ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined });
 const migrator = new Client({ connectionString: migratorUrl, ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined });
+const migratorPool = new Pool({ connectionString: migratorUrl, ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined });
 const runId = randomUUID();
 const subjects = Array.from({ length: 3 }, (_, i) => `qualify-${runId}-${i}-${randomUUID()}`);
 const created = [];
+
+const provisionAsMigrator = async (provider, subject, fullName, role) => {
+  const client = await migratorPool.connect();
+  try {
+    await client.query('begin');
+    await client.query('set local role ghm_schema_owner');
+    const result = await client.query(
+      'select * from ghm.auth_provision_migration_account($1,$2,$3,$4)',
+      [provider, subject, fullName, role],
+    );
+    await client.query('commit');
+    return result;
+  } catch (error) {
+    await client.query('rollback').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+};
 
 try {
   await runtime.connect();
@@ -35,10 +55,15 @@ try {
       has_table_privilege(current_user, 'ghm.account_external_identity', 'DELETE') can_delete_mapping
   `);
   assert.deepEqual(privilege.rows[0], {
-    can_execute: true,
+    can_execute: false,
     can_insert_identity: false, can_update_identity: false, can_delete_identity: false,
     can_insert_mapping: false, can_update_mapping: false, can_delete_mapping: false,
   });
+
+  await assert.rejects(
+    runtime.query('select * from ghm.auth_provision_migration_account($1,$2,$3,$4)', ['supabase', subjects[0], 'Runtime Must Be Denied', 'customer']),
+    /permission denied|insufficient_privilege/i,
+  );
 
   for (const sql of [
     'insert into ghm.account_identity (full_name, role, account_status, is_system_admin) values (\'qualifier\', \'customer\', \'active\', false)',
@@ -64,10 +89,7 @@ try {
   assert.match(definition, /outcome\s*:=\s*'created'/i);
   assert.doesNotMatch(definition, /EXCEPTION\s+WHEN\s+unique_violation/i);
 
-  const first = await runtime.query(
-    'select * from ghm.auth_provision_migration_account($1,$2,$3,$4)',
-    ['supabase', subjects[0], 'DB Qualification User', 'customer'],
-  );
+  const first = await provisionAsMigrator('supabase', subjects[0], 'DB Qualification User', 'customer');
   if (first.rows[0].outcome !== 'created') {
     const observed = await runtime.query(
       'select * from ghm.auth_lookup_external_identity($1,$2)',
@@ -82,24 +104,18 @@ try {
   assert.deepEqual(postFirst.rows[0], { provider: 'supabase', subject: subjects[0], account_id: first.rows[0].account_id });
   created.push(first.rows[0].account_id);
 
-  const retry = await runtime.query(
-    'select * from ghm.auth_provision_migration_account($1,$2,$3,$4)',
-    ['supabase', subjects[0], 'Different Name', 'customer'],
-  );
+  const retry = await provisionAsMigrator('supabase', subjects[0], 'Different Name', 'customer');
   assert.equal(retry.rows[0].outcome, 'already_provisioned');
   assert.equal(retry.rows[0].account_id, first.rows[0].account_id);
 
   await assert.rejects(
-    runtime.query('select * from ghm.auth_provision_migration_account($1,$2,$3,$4)', ['not-supabase', subjects[1], null, 'customer']),
+    provisionAsMigrator('not-supabase', subjects[1], null, 'customer'),
     /migration provider must be supabase/i,
   );
 
   const concurrent = await Promise.all(
     Array.from({ length: 4 }, () =>
-      runtime.query(
-        'select * from ghm.auth_provision_migration_account($1,$2,$3,$4)',
-        ['supabase', subjects[1], 'Concurrent Qualification User', 'customer'],
-      ),
+      provisionAsMigrator('supabase', subjects[1], 'Concurrent Qualification User', 'customer'),
     ),
   );
   const outcomes = concurrent.map(r => r.rows[0]);
@@ -108,13 +124,14 @@ try {
   assert.equal(new Set(outcomes.map(r => String(r.account_id))).size, 1);
   created.push(outcomes[0].account_id);
 
-  await runtime.query('begin');
-  const rolled = await runtime.query(
+  await migrator.query('begin');
+  await migrator.query('set local role ghm_schema_owner');
+  const rolled = await migrator.query(
     'select * from ghm.auth_provision_migration_account($1,$2,$3,$4)',
     ['supabase', subjects[2], 'Rollback Qualification User', 'customer'],
   );
   assert.equal(rolled.rows[0].outcome, 'created');
-  await runtime.query('rollback');
+  await migrator.query('rollback');
 
   await migrator.query('begin');
   await migrator.query('set local role ghm_schema_owner');
@@ -131,7 +148,7 @@ try {
       has_table_privilege('ghm_runtime', 'ghm.account_external_identity', 'INSERT') runtime_insert_mapping,
       has_function_privilege('ghm_runtime', 'ghm.auth_provision_migration_account(text,text,text,text)', 'EXECUTE') runtime_execute
   `);
-  assert.deepEqual(catalog.rows[0], { runtime_insert_identity: false, runtime_insert_mapping: false, runtime_execute: true });
+  assert.deepEqual(catalog.rows[0], { runtime_insert_identity: false, runtime_insert_mapping: false, runtime_execute: false });
 
   console.log('QuoteFlow migration account provisioning DB qualification: PASS');
   console.log(JSON.stringify({ run_id: runId, subjects }, null, 2));
@@ -148,4 +165,5 @@ try {
   }
   await runtime.end().catch(() => {});
   await migrator.end().catch(() => {});
+  await migratorPool.end().catch(() => {});
 }
