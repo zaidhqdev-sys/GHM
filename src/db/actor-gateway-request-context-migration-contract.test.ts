@@ -11,6 +11,8 @@ test('v2 assertion signs the exact serialized request context', () => {
   assert.match(migration, /Actor assertion context mismatch/);
   assert.match(migration, /FOR v_i IN 0\.\.31 LOOP/);
   assert.match(migration, /Actor assertion replay detected/);
+  assert.match(migration, /octet_length\(convert_to\(p_context,'UTF8'\)\)>32768/);
+  assert.match(migration, /p_operation NOT IN \('capability\.list','capability\.create','capability\.update','capability\.transition'/);
 });
 
 test('every gateway wrapper checks the context against its actual arguments', () => {
