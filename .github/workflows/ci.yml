@@ -51,6 +51,7 @@ jobs:
       INVITE_CODE: test-invite-code
       CORS_ORIGINS: http://localhost:3000
       GHM_AUTH_TOKEN_PEPPER: ci-test-token-pepper-32-bytes-minimum-length-000
+      GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -90,6 +91,9 @@ jobs:
         run: node --check scripts/qualify-business-supplier-classification-postgres.mjs
 
       - name: Check capability governance qualification script syntax
+        run: node --check scripts/qualify-capability-catalogue-governance.mjs
+
+      - name: Check signed capability actor assertion migration syntax
         run: node --check scripts/qualify-capability-catalogue-governance.mjs
 
       - name: Check capability governance cutover qualification script syntax
