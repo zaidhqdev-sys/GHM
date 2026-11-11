@@ -117,8 +117,9 @@ export const registerStorageRoutes = (
         return;
       }
       const authorization = req.header('authorization');
-      if (!authorization?.startsWith('Bearer ') || !authorization.slice(7).trim()) { res.status(401).json({ error: 'unauthorized' }); return; }
-      const previousObjectId = await bindLogo(context, businessId, objectId, authorization.slice(7).trim());
+      const accessToken = authorization?.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+      if ((businessLogoGatewayClient || businessLogoGatewayRequired) && !accessToken) { res.status(401).json({ error: "unauthorized" }); return; }
+      const previousObjectId = await bindLogo(context, businessId, objectId, accessToken);
       let cleanupPending = false;
       if (previousObjectId !== null && previousObjectId !== objectId) {
         try {
@@ -142,8 +143,9 @@ export const registerStorageRoutes = (
         return;
       }
       const authorization = req.header('authorization');
-      if (!authorization?.startsWith('Bearer ') || !authorization.slice(7).trim()) { res.status(401).json({ error: 'unauthorized' }); return; }
-      const previousObjectId = await bindLogo(context, businessId, null, authorization.slice(7).trim());
+      const accessToken = authorization?.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+      if ((businessLogoGatewayClient || businessLogoGatewayRequired) && !accessToken) { res.status(401).json({ error: "unauthorized" }); return; }
+      const previousObjectId = await bindLogo(context, businessId, null, accessToken);
       let cleanupPending = false;
       if (previousObjectId !== null) {
         try {
