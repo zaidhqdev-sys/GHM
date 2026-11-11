@@ -255,14 +255,14 @@ export const createActorGatewayApp = (
     catch(error){capabilityFailure(error,res);}
   });
   app.post('/v1/admin/capabilities/drafts', async (req: Request, res: Response) => {
-    const actor=capabilityRouteActor(req,res); if(actor===null)return;
+    const actor=capabilityRouteActor(res); if(actor===null)return;
     const input=parseCapabilityDraft(req.body); if(!input){res.status(400).json({error:'invalid_request'});return;}
     if(!capabilityReader){res.status(503).json({error:'service_unavailable'});return;}
     try { const capability=await capabilityReader.createDraft(actor,input); res.status(201).json({capability:capabilityDto(capability)}); }
     catch(error){capabilityFailure(error,res);}
   });
   app.patch('/v1/admin/capabilities/:capabilityId/draft', async (req: Request, res: Response) => {
-    const actor=capabilityRouteActor(req,res); if(actor===null)return;
+    const actor=capabilityRouteActor(res); if(actor===null)return;
     const id=req.params.capabilityId;
     if(typeof id!=='string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)){res.status(400).json({error:'invalid_request'});return;}
     const input=parseCapabilityDraft(req.body); if(!input){res.status(400).json({error:'invalid_request'});return;}
@@ -271,7 +271,7 @@ export const createActorGatewayApp = (
     catch(error){capabilityFailure(error,res);}
   });
   app.post('/v1/admin/capabilities/:capabilityId/transition', async (req: Request, res: Response) => {
-    const actor=capabilityRouteActor(req,res); if(actor===null)return;
+    const actor=capabilityRouteActor(res); if(actor===null)return;
     const id=req.params.capabilityId; const b=req.body as Record<string,unknown>|null;
     if(typeof id!=='string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id) ||
       !b || typeof b!=='object' || Array.isArray(b) || Object.keys(b).some(k=>!['targetStatus','replacedByCapabilityId'].includes(k)) ||
