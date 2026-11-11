@@ -41,9 +41,10 @@ const withServer = async (
   supplierClassificationReader?: SupplierClassificationReader,
   businessProfileReader?: BusinessProfileReader,
   options: import('./app').ActorGatewayAppOptions = {},
+  requestVerifier: import('../auth/foundation/access-jwt-verifier').AccessJwtVerifier = verifier,
 ): Promise<void> => {
   const server = http.createServer(createActorGatewayApp({
-    verifier,
+    verifier: requestVerifier,
     actorIdentityReader: reader,
     businessRegistrationIdentityReader,
     capabilityGovernanceReader,
@@ -103,6 +104,31 @@ test('actor gateway rate limits each verified account without trusting caller-su
     assert.equal(health.status, 200);
   }, undefined, undefined, undefined, undefined, { rateLimitLimit: 2, rateLimitWindowMs: 60_000 });
   assert.deepEqual(calls, [42, 42, 43]);
+});
+
+test('actor gateway verifies each bearer token once and reuses its verified account identity', async () => {
+  let verifications = 0;
+  const countingVerifier = {
+    verify(token: string) {
+      verifications += 1;
+      return verifier.verify(token);
+    },
+  };
+  const received: number[] = [];
+  const reader: ActorIdentityReader = {
+    async readOwnIdentity(accountId: number): Promise<ActorIdentity> {
+      received.push(accountId);
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  };
+  await withServer(reader, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/actor/me`, {
+      headers: { authorization: `Bearer ${sign(42)}` },
+    });
+    assert.equal(response.status, 200);
+  }, undefined, undefined, undefined, undefined, {}, countingVerifier);
+  assert.equal(verifications, 1);
+  assert.deepEqual(received, [42]);
 });
 
 test('actor gateway rejects missing and invalid bearer tokens before database access', async () => {
