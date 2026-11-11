@@ -529,12 +529,12 @@ Cloudflare Pages reported a successful PR preview for this commit at https://7d9
 
 ## 2026-11-11 — follow-on legacy RPC actor-binding gaps remain open
 
-A source audit beyond the current Actor Gateway scope confirmed three remaining SECURITY DEFINER functions executable by `ghm_runtime` that trust a caller-supplied actor/verifier ID:
+At the time of this source audit, three remaining SECURITY DEFINER functions were executable by `ghm_runtime` and trusted a caller-supplied actor/verifier ID:
 - `ghm.replace_business_capability_assertions(bigint,bigint,jsonb)`
 - `ghm.transition_business_capability_verification(bigint,text,text,bigint,text)`
 - `ghm.transition_business_capability_evidence(bigint,text,bigint,text)`
 
-Their membership/admin/self-verification rules are meaningful, but do not cryptographically prove that the supplied ID is the authenticated caller if the runtime database credential is compromised. Existing HTTP routes do check the verified JWT context and service role; direct database EXECUTE bypasses those checks. Evidence submission's direct runtime INSERT with `submitted_by=context.userId` is a separate path to assess. Founder directory review remains deliberately disabled and its runtime review EXECUTE grants are revoked.
+Their membership/admin/self-verification rules are meaningful, but do not cryptographically prove that the supplied ID is the authenticated caller if the runtime database credential is compromised. Existing HTTP routes do check the verified JWT context and service role; direct database EXECUTE bypasses those checks. Evidence submission's direct runtime INSERT with `submitted_by=context.userId` was a separate path identified in that same audit; it is now included in the signed gateway implementation and manual cutover qualified below. Founder directory review remains deliberately disabled and its runtime review EXECUTE grants are revoked.
 
 Remediation required signed gateway operations, bearer-token forwarding from existing routes, fail-closed clients, exact-context assertions, disposable PostgreSQL negative tests and a manual-only privilege cutover. That implementation and its exact-head disposable qualification are now complete; the earlier statement that no implementation existed is superseded by the status below. The manual-only cutover remains unapplied in production. See `docs/HANDOVER_2026-11-11_ACTOR_GATEWAY_PRODUCTION_READINESS.md` for full details. Production remains untouched; Render role-model resolution and a fresh verified backup remain release blockers.
 
