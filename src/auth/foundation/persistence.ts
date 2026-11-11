@@ -53,7 +53,7 @@ const raiseFromPg = (error: unknown): never => {
   if (message.includes('REFRESH_CREDENTIAL_INVALID')) {
     throw new AuthPersistenceError('Refresh credential invalid', 'REFRESH_CREDENTIAL_INVALID');
   }
-  if (message.includes('RECOVERY_CREDENTIAL_INVALID')) {
+  if (message.includes('RECOVERY_CREDENTIAL_INVALID') || message.toLowerCase().includes('invalid recovery token')) {
     throw new AuthPersistenceError('Recovery credential invalid', 'RECOVERY_CREDENTIAL_INVALID');
   }
   if (message.includes('SESSION_REVOKED')) {
