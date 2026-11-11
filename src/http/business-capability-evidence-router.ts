@@ -40,6 +40,7 @@ export const registerBusinessCapabilityEvidenceRoutes = (
       const input = parseCreate(req.body);
       if (!input) { res.status(400).json({error:'invalid_request'}); return; }
       if(gatewayClient||gatewayRequired){
+        if((req.authContext as AuthContext).role!=='business'){res.status(403).json({error:'forbidden'});return;}
         const authorization=req.header('authorization');
         if(!authorization?.startsWith('Bearer ')||!authorization.slice(7).trim()){res.status(401).json({error:'unauthorized'});return;}
         if(!gatewayClient){res.status(503).json({error:'service_unavailable'});return;}
@@ -72,6 +73,7 @@ export const registerBusinessCapabilityEvidenceRoutes = (
       const body = req.body as Record<string, unknown>;
       if (Object.keys(body).some(k => !['decision','reason'].includes(k)) || !['verified','rejected','revoked'].includes(String(body.decision)) || (body.reason != null && typeof body.reason !== 'string')) { res.status(400).json({error:'invalid_request'}); return; }
       if(gatewayClient||gatewayRequired){
+        if((req.authContext as AuthContext).role!=='admin'){res.status(403).json({error:'forbidden'});return;}
         const authorization=req.header('authorization');
         if(!authorization?.startsWith('Bearer ')||!authorization.slice(7).trim()){res.status(401).json({error:'unauthorized'});return;}
         if(!gatewayClient){res.status(503).json({error:'service_unavailable'});return;}
