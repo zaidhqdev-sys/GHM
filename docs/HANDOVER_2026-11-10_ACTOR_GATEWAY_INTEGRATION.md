@@ -153,3 +153,18 @@ Current branch head `fbee5509ea197d277e9d2fbc9d997bb61a6c66d9` passed GitHub Act
 
 ## 2026-11-11 fail-closed hardening
 The capability catalogue admin HTTP routes now return `503 service_unavailable` whenever `GHM_ACTOR_GATEWAY_URL` is absent. They no longer call the legacy `CapabilityService` for governed list/create/update/transition operations. Regression coverage asserts all four operations fail closed and the legacy service is never invoked. The gateway client continues to forward the original bearer token for ES256 verification at the gateway. Exact-head CI after this change is pending; the prior green run #42924025946 does not cover it.
+
+## 2026-11-11 database-verifiable capability actor assertions
+A review of `20261110210000_add_actor_gateway_principal_guard.sql` and the existing disposable qualification exposed a genuine trust gap: `ghm.assert_actor_gateway(bigint)` proved only that the SQL session used the isolated gateway login and that the supplied account was active. It did not prove that the account ID came from the ES256-verified JWT. A direct holder of the gateway DB credential could therefore claim another active account (subject to feature authorization).
+
+A forward-only migration, `20261111020000_bind_capability_gateway_actor_to_signed_assertion.sql`, now introduces a capability-specific HMAC assertion boundary:
+- The gateway signs a short-lived assertion over actor ID, exact capability operation, issue time and one-use nonce using a dedicated 32-byte secret.
+- PostgreSQL verifies HMAC-SHA256, a 60-second time window, active account status, and one-use nonce replay protection.
+- The HMAC secret table is owned by `ghm_schema_owner` and revoked from PUBLIC, runtime, gateway and migrator roles; the isolated gateway login cannot read the signing key.
+- Capability list/create/update/transition wrappers each bind the signed assertion to their own operation. Old unsigned gateway wrapper signatures are dropped.
+- The Actor Gateway process now requires `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET`; the reader creates unique signed assertions for each operation.
+- Disposable PostgreSQL qualification provisions only its test key and tests valid admin access, non-admin denial, forged-signature denial, replay denial and cross-operation assertion denial.
+
+The signing key must be independently generated and provisioned to the gateway secret store and the protected database secret table through a controlled owner-only process. Never commit or reuse the CI test key. This change currently hardens **capability governance wrappers only**; the other gateway feature wrappers still need an equivalent independent database assertion review before their own production cutovers.
+
+The new migration and qualification have not yet passed exact-head CI. No production migration, secret provisioning, role/grant change, Render service/environment change or deployment has occurred. The previous green CI run predates this security change and is not evidence for it.
