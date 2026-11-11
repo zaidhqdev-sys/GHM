@@ -64,6 +64,7 @@ import { CapabilityServiceImpl } from '../resources/capability/service';
 import type { CapabilityService } from '../resources/capability/contracts';
 import { registerCapabilityCatalogueRoutes } from './capability-catalogue-router';
 import { HttpCapabilityGovernanceGatewayClient } from './capability-governance-gateway-client';
+import { HttpCapabilityMutationGatewayClient } from './capability-mutation-gateway-client';
 import { PostgresBusinessCapabilityEvidenceRepository } from '../resources/business-capability-evidence/repository';
 import { BusinessCapabilityEvidenceServiceImpl } from '../resources/business-capability-evidence/service';
 import type { BusinessCapabilityEvidenceService } from '../resources/business-capability-evidence/contracts';
@@ -173,6 +174,8 @@ export interface AppDependencies {
   readonly businessRegistrationIdentityGatewayRequired?: boolean;
   readonly supplierClassificationGatewayClient?: SupplierClassificationGatewayClient;
   readonly businessProfileGatewayClient?: BusinessProfileGatewayClient;
+  readonly capabilityMutationGatewayClient?: HttpCapabilityMutationGatewayClient;
+  readonly capabilityMutationGatewayRequired?: boolean;
   readonly connectService?: Omit<ConnectServiceHttpDependencies, 'savedBusinesses'>;
 }
 
@@ -417,6 +420,8 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     new BusinessCapabilityServiceImpl(new PostgresBusinessCapabilityRepository());
   const capabilityService = dependencies.capabilityService ?? new CapabilityServiceImpl(new PgCapabilityRepository());
   const capabilityGovernanceGatewayClient = config.actorGatewayUrl ? new HttpCapabilityGovernanceGatewayClient(config.actorGatewayUrl) : undefined;
+  const capabilityMutationGatewayClient = dependencies.capabilityMutationGatewayClient ?? (config.actorGatewayUrl ? new HttpCapabilityMutationGatewayClient(config.actorGatewayUrl) : undefined);
+  const capabilityMutationGatewayRequired = config.isProduction || dependencies.capabilityMutationGatewayRequired === true;
   const businessCapabilityEvidenceService =
     dependencies.businessCapabilityEvidenceService ??
     new BusinessCapabilityEvidenceServiceImpl(new PostgresBusinessCapabilityEvidenceRepository());
@@ -1002,9 +1007,9 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerSavedBusinessRoutes(app, savedBusinessService, resourceAuthMiddleware);
   registerOnboardingRoutes(app, onboardingService, resourceAuthMiddleware);
   registerRelationshipsOutcomesRoutes(app, relationshipsOutcomesService, resourceAuthMiddleware);
-  registerBusinessCapabilityRoutes(app, businessCapabilityService, resourceAuthMiddleware);
+  registerBusinessCapabilityRoutes(app, businessCapabilityService, resourceAuthMiddleware, capabilityMutationGatewayClient, capabilityMutationGatewayRequired);
   registerCapabilityCatalogueRoutes(app, capabilityService, resourceAuthMiddleware, capabilityGovernanceGatewayClient);
-  registerBusinessCapabilityEvidenceRoutes(app, businessCapabilityEvidenceService, resourceAuthMiddleware);
+  registerBusinessCapabilityEvidenceRoutes(app, businessCapabilityEvidenceService, resourceAuthMiddleware, capabilityMutationGatewayClient, capabilityMutationGatewayRequired);
   const businessRegistrationIdentityGatewayClient = dependencies.businessRegistrationIdentityGatewayClient
     ?? (config.actorGatewayUrl ? new HttpBusinessRegistrationIdentityGatewayClient(config.actorGatewayUrl) : undefined);
   registerBusinessRegistrationIdentityRoutes(app, businessRegistrationIdentityService, resourceAuthMiddleware, businessRegistrationIdentityGatewayClient, config.isProduction || dependencies.businessRegistrationIdentityGatewayRequired === true);
