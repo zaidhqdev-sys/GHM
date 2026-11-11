@@ -19,6 +19,7 @@ test('new gateway functions are executable only by actor gateway',()=>{
  'gateway_replace_business_capability_assertions(bigint,bigint,uuid,text,text,bigint,jsonb)',
  'gateway_transition_business_capability_verification(bigint,bigint,uuid,text,text,bigint,text,text,text)',
  'gateway_transition_business_capability_evidence(bigint,bigint,uuid,text,text,bigint,text,text)',
+ 'gateway_submit_business_capability_evidence(bigint,bigint,uuid,text,text,bigint,text,text,text,text,text,text,date,date,text)',
  ]){
   assert.ok(migration.includes('REVOKE ALL ON FUNCTION ghm.'+signature+' FROM PUBLIC,ghm_runtime,ghm_migrator'));
   assert.ok(migration.includes('GRANT EXECUTE ON FUNCTION ghm.'+signature+' TO ghm_actor_gateway'));
