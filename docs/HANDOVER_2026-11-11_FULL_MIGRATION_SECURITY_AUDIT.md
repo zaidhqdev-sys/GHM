@@ -759,3 +759,37 @@ The existing storage qualification is a persistence/application-boundary qualifi
 Unit tests in `src/storage/service.test.ts` correctly prove that the normal service calls application authorization before metadata state transitions and provider operations, and that deletion retries preserve `deletion_pending`. These application-path tests must be retained and extended, not replaced.
 
 **Revised disposition:** existing storage lifecycle functional behavior remains covered; database actor provenance is OPEN / NOT QUALIFIED. The current qualification's expected runtime EXECUTE is an intentional legacy persistence contract, not evidence that direct runtime function invocation is safe against a compromised/misused shared credential. A future signed/internal gateway qualification must supersede this assumption and explicitly prove runtime EXECUTE denial only after every normal upload/read/delete/cleanup flow has been routed through its replacement.
+
+
+## Connect Business external-mapping ACL/call-path reconciliation (2026-11-11)
+
+A deeper review of the external Business mapping family found an application/ACL mismatch that was not visible from the migration marker scan alone.
+
+### Ordered ACL history
+
+- `20260921120300_create_business_external_mapping.sql` initially grants runtime SELECT and sequence USAGE on `ghm.business_external_mapping`, while denying runtime DML.
+- `20260921130500_auth_link_business_external_mapping.sql` creates SECURITY DEFINER `auth_link_business_external_mapping(provider,external_business_id,business_id)`, revokes PUBLIC, grants runtime EXECUTE, and reiterates that runtime cannot INSERT/UPDATE/DELETE the table.
+- `20261012000000_auth_lookup_business_external_mapping.sql` creates SECURITY DEFINER `auth_lookup_business_external_mapping(provider,external_business_id)`, returns the canonical Business ID, revokes PUBLIC and grants runtime/migrator EXECUTE.
+- `20261012120000_revoke_runtime_business_mapping_table_access.sql` explicitly revokes SELECT and all DML/other table privileges from `ghm_runtime`. The intended model is function-only lookup, not direct table access.
+- A source scan of later migrations found no later re-grant of direct table SELECT.
+
+### Application mismatch
+
+`src/integrations/connect/business-adapter.ts` still implements `findMapping` using direct SQL SELECT from `ghm.business_external_mapping`. It runs inside `withAuthorizedTransaction`, which uses the normal transaction pool and does not SET ROLE to schema owner. The adapter therefore cannot execute this lookup under the intended `ghm_runtime` ACL after migration 20261012120000.
+
+The same adapter's `linkMappingInTransaction` calls `auth_link_business_external_mapping` directly. That function accepts caller-supplied provider/external Business ID/target Business ID and checks only that the target Business exists and that the mapping is not conflicting; it does not independently verify that the authenticated actor owns/manages the target Business or that the integration request is approved. The ordinary adapter path calls `requireAuthenticatedContext`, `assertRole(context,'admin','business')`, and creates the canonical Business plus owner membership before linking, but the database function trusts that application sequence.
+
+### Qualification coverage
+
+- `src/integrations/connect/business-adapter.persistence.test.ts` is a live PostgreSQL test using distinct runtime/migrator URLs. It invokes the adapter using the runtime pool and directly inspects mapping rows through schema-owner setup/verification. Its adapter's initial direct SELECT conflicts with the later runtime SELECT revocation.
+- `package.json` exposes `qualify:connect-business-provisioning-live`, but the main `npm test` script does not include `business-adapter.persistence.test.js`; the CI workflow does not invoke that live qualification command.
+- The ordinary unit test `business-adapter.test.ts` uses a fake database client that accepts the direct SELECT and therefore cannot detect the real ACL mismatch.
+- `auth_lookup_business_external_mapping` is not called by the inspected Connect adapter, Connect HTTP router, or commercial repository. Its migration comment says payment preparation uses it, but that caller was not found in those inspected files; perform a repository-wide source caller check before deciding whether this function is dead code or used through another path.
+
+### Disposition
+
+**Confirmed source/ACL incompatibility in the Connect Business adapter's direct mapping lookup; live production impact is not yet established because the adapter is not wired by the inspected `src/http/app.ts` Connect router and no deployment call path has been demonstrated.** Do not restore table SELECT. The repair should make the adapter use a narrowly scoped SECURITY DEFINER mapping projection returning the complete fields required by `BusinessExternalMapping`, or a separately designed approved integration read boundary. Add exact live PostgreSQL qualification under the actual runtime role after the fix.
+
+The mapping mutation function is a separate actor/integration provenance boundary. Decide whether it should be a signed Actor Gateway operation bound to the authenticated GHM actor, provider, external Business ID and canonical Business ID, or a distinct integration authority that verifies the trusted Connect request. Do not assume `assertRole` in TypeScript makes the database function independently safe.
+
+No code, grants, Connect routing, production data or production permissions were changed during this investigation.
