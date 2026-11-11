@@ -736,3 +736,13 @@ The new migration-only account provisioning privilege boundary passed exact-head
 
 Status: IMPLEMENTED / DISPOSABLE QUALIFICATION PASS; PRODUCTION CUTOVER NOT PERFORMED. PR #272 remains open and unmerged. This evidence is for code/test head `c71f795d`; subsequent commits were documentation-only and require their own CI check. No production roles, grants, database, secrets, deployment or data changed. Full evidence: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
 
+
+
+## 2026-11-11 — External identity linking moved to migrator authority
+
+A separate source-traced finding showed `auth_link_external_identity(provider, subject, account_id)` accepts a caller-selected account ID and has no active Connect authorization-binding caller. The active Connect path performs identity lookup and sets `allowBootstrap:false`; QuoteFlow migration reconciliation currently exposes only a store abstraction, with no concrete production store wiring found. The general runtime AuthPersistence interface/method and its DB tests were the concrete runtime call path.
+
+A new migration revokes PUBLIC and runtime EXECUTE. The runtime AuthPersistence link method has been removed; database tests now call the SQL function using the migrator connection after `SET LOCAL ROLE ghm_schema_owner`, preserve all existing link semantics, and assert runtime direct calls are denied. Obsolete test mocks were removed.
+
+Current code/test head `6c6e20ca7d276c1153e2775968472d13a3d0ea08`: build, 126-migration disposable apply, full test suite, and web-quality all passed in run #43116910520; later disposable qualification steps were still running at this checkpoint. Inventory: 126 SQL migrations + 7 manual cutover SQL files. PR #272 remains open/unmerged. No production changes. The full handover records exact paths, commits and remaining bootstrap/internal-auth work.
+
