@@ -68,7 +68,9 @@ export const config = Object.freeze({
   nodeEnv: process.env.NODE_ENV ?? 'development',
   isProduction,
   port: Number.parseInt(process.env.PORT ?? '3000', 10),
-  databaseUrl: required('DATABASE_URL'),
+  databaseUrl: isProduction
+    ? required('GHM_RUNTIME_DATABASE_URL')
+    : (process.env.GHM_RUNTIME_DATABASE_URL?.trim() || required('DATABASE_URL')),
   actorGatewayUrl,
   databaseSsl,
   inviteCode: required('INVITE_CODE'),
