@@ -537,3 +537,12 @@ A source audit beyond the current Actor Gateway scope confirmed three remaining 
 Their membership/admin/self-verification rules are meaningful, but do not cryptographically prove that the supplied ID is the authenticated caller if the runtime database credential is compromised. Existing HTTP routes do check the verified JWT context and service role; direct database EXECUTE bypasses those checks. Evidence submission's direct runtime INSERT with `submitted_by=context.userId` is a separate path to assess. Founder directory review remains deliberately disabled and its runtime review EXECUTE grants are revoked.
 
 Remediation requires signed gateway operations, bearer-token forwarding from existing routes, fail-closed clients, exact-context assertions, disposable PostgreSQL negative tests and a manual-only privilege cutover. No such cutover has been applied or implemented yet. See `docs/HANDOVER_2026-11-11_ACTOR_GATEWAY_PRODUCTION_READINESS.md` for full details. Production remains untouched; Render role-model resolution and a fresh verified backup remain release blockers.
+
+
+## 2026-11-11 — Business Capability mutation Actor Gateway work (not yet qualified)
+
+The branch now implements signed gateway wrappers and authenticated Actor Gateway routes for Business Capability assertion replacement, administrator verification, evidence review and evidence submission. The new manual cutover revokes legacy mutation RPCs and direct evidence INSERT (including the previously granted column-level INSERT and sequence privileges). Resource API production routes are configured to fail closed when the Actor Gateway client is unavailable.
+
+The first build found route-validator syntax errors, then the next build passed and PostgreSQL migration application exposed a malformed dollar-quote delimiter in the evidence-submission wrapper. That delimiter was corrected. Exact-head CI is being rerun; this batch is not yet qualified. Required next checks: full migration apply, migration contracts, runtime direct-EXECUTE/INSERT denial after manual cutover on disposable PostgreSQL, signed gateway success and tamper/replay/authorization negative cases, HTTP DTO compatibility and migration checksum inventory.
+
+The manual cutover has not been applied. Production remains untouched. Do not merge or deploy this work based on source implementation alone.
