@@ -7,6 +7,7 @@ test('Business profile client forwards verified bearer token and patch', async (
   let auth = '';
   let body = '';
   const client = new HttpBusinessProfileGatewayClient('https://gateway.example.test', 1000, async (input, init) => {
+      assert.equal(init?.redirect, 'error');
     url = String(input);
     auth = new Headers(init?.headers).get('authorization') ?? '';
     body = String(init?.body ?? '');
