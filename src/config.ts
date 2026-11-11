@@ -5,7 +5,13 @@ import 'dotenv/config';
 const isProduction = process.env.NODE_ENV === 'production';
 const databaseSsl = process.env.DATABASE_SSL === 'true';
 const actorGatewayUrl = process.env.GHM_ACTOR_GATEWAY_URL?.trim() || null;
-if (actorGatewayUrl) assertActorGatewayBaseUrl(actorGatewayUrl);
+if (actorGatewayUrl) {
+  try {
+    assertActorGatewayBaseUrl(actorGatewayUrl);
+  } catch {
+    throw new Error('GHM_ACTOR_GATEWAY_URL must be a credential-free HTTPS origin');
+  }
+}
 
 const parseTrustProxy = (): boolean | number => {
   const hops = process.env.TRUST_PROXY_HOPS?.trim();
