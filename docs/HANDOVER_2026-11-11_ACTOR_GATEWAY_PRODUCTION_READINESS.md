@@ -9,7 +9,7 @@ This handover records the production-readiness review of GHM Actor Gateway PR #2
 - Branch: `integration/capability-gateway-qualification-20261110`
 - Last fully validated code head: `512017beb5e46d939e70278b482e5cc0f721e0b5`
 - At review: PR remained open and unmerged.
-- CI on that exact code head: `quality` and `web-quality` passed ([run 43056260763](https://github.com/zaidhqdev-sys/GHM/actions/runs/43056260763)). This includes the production-only fail-closed registration identity routing change and tests.
+- Latest fully validated code head: `2179984393ed01148420366b8665cd5cee7208a1`; both `quality` and `web-quality` passed ([run 43058907214](https://github.com/zaidhqdev-sys/GHM/actions/runs/43058907214)). This includes the fail-closed production registration routing, dedicated supplier-operation boundary test, and fixed-length HMAC comparisons across all four assertion migrations.
 - No production migrations, deployments, service changes, or database privilege changes were performed as part of this review.
 
 **Current disposition: production rollout remains paused.** Green CI is useful evidence but does not qualify the production database role model or deployment topology.
@@ -194,7 +194,7 @@ The continuing source review found two additional improvements and applied repos
 1. The gateway Business profile PATCH route previously accepted `isSupplier` despite supplier classification having its own dedicated endpoint and signed operation. The profile allowlist now excludes `isSupplier`; a regression test verifies this returns 400 without invoking the profile reader. Supplier classification must use its dedicated endpoint and `supplier.classification.update` assertion.
 2. The final migration definition of the shared HMAC assertion verifier previously compared the expected and supplied MACs using bytea equality. The final definition now XOR/OR accumulates all 32 byte differences before branching, avoiding an early-exit prefix comparison. A migration-contract test asserts the fixed-length comparison is retained. Earlier migration definitions are superseded by the final forward migration in the ordered chain; the final deployed definition is the one that matters.
 
-Relevant code/test commits: `4596cb5b80c5d1b7586f8c8507205cf3d7c1ad36`, `e3347845bf9827fdb6ac48ad33b451cd06f1b4c7`, `fe6ceb7ee1ac8b04c04ad3ac6304e66635e709f2`, and `185b439ecf51cf3ec70c947daf4379c8d3aab571`. Exact-head CI is pending on the final branch head; do not treat these latest changes as validated until both required jobs pass.
+Relevant code/test commits: `4596cb5b80c5d1b7586f8c8507205cf3d7c1ad36`, `e3347845bf9827fdb6ac48ad33b451cd06f1b4c7`, `fe6ceb7ee1ac8b04c04ad3ac6304e66635e709f2`, and `185b439ecf51cf3ec70c947daf4379c8d3aab571`. The combined code changes passed both required CI jobs on code head `2179984393ed01148420366b8665cd5cee7208a1` in [run #43058907214](https://github.com/zaidhqdev-sys/GHM/actions/runs/43058907214). The later handover-only commit `36b8eee1b427b574fd036a06187fc2e3b10ea880` has its own documentation-head CI still running.
 
 These changes do not alter production state, migration history already applied, database roles, secrets, Render services, or product routing.
 
