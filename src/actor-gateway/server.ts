@@ -43,7 +43,7 @@ const app = createActorGatewayApp({
   verifier,
   actorIdentityReader: new PostgresActorIdentityReader(pool),
   businessRegistrationIdentityReader: new PostgresBusinessRegistrationIdentityReader(pool),
-  capabilityGovernanceReader: new PostgresCapabilityGovernanceReader(pool),
+  capabilityGovernanceReader: new PostgresCapabilityGovernanceReader(pool, required('GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET')),
   supplierClassificationReader: new PostgresSupplierClassificationReader(pool),
   businessProfileReader: new PostgresBusinessProfileReader(pool),
 });
