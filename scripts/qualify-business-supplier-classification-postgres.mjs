@@ -17,8 +17,8 @@ const marker = `supplier-classification-${randomUUID()}`;
 let accountId;
 let memberAccountId;
 let businessId;
-const signAssertion = (actorId, operation = 'supplier.classification.update', issuedAt = Math.floor(Date.now()/1000)) => { const nonce=randomUUID(); const payload=`ghm-actor-gateway:v1|${actorId}|${operation}|${issuedAt}|${nonce}`; const signature=createHmac('sha256',Buffer.from(assertionSecret,'base64')).update(payload,'utf8').digest('hex'); return {issuedAt,nonce,signature}; };
-const gatewayCall = (actorId,isSupplier) => { const a=signAssertion(actorId); return gatewayPool.query('SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6)',[actorId,a.issuedAt,a.nonce,a.signature,businessId,isSupplier]); };
+const signAssertion = (actorId, operation = 'supplier.classification.update', issuedAt = Math.floor(Date.now()/1000), context = {}) => { const nonce=randomUUID(),contextJson=JSON.stringify(context),contextHex=Buffer.from(contextJson,'utf8').toString('hex'); const payload=`ghm-actor-gateway:v2|${actorId}|${operation}|${issuedAt}|${nonce}|${contextHex}`; const signature=createHmac('sha256',Buffer.from(assertionSecret,'base64')).update(payload,'utf8').digest('hex'); return {issuedAt,nonce,context:contextJson,signature}; };
+const gatewayCall = (actorId,isSupplier) => { const a=signAssertion(actorId,'supplier.classification.update',Math.floor(Date.now()/1000),{businessId,isSupplier}); return gatewayPool.query('SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6,$7)',[actorId,a.issuedAt,a.nonce,a.context,a.signature,businessId,isSupplier]); };
 
 try {
   const runtimeIdentity = await runtimePool.query('SELECT current_database() AS database_name, session_user, current_user');
@@ -79,8 +79,8 @@ try {
 
   await assert.rejects(
     () => runtimePool.query(
-      'SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6)',
-      [accountId, Math.floor(Date.now()/1000), randomUUID(), '0'.repeat(64), businessId, true],
+      'SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6,$7)',
+      [accountId, Math.floor(Date.now()/1000), randomUUID(), JSON.stringify({businessId,isSupplier:true}), '0'.repeat(64), businessId, true],
     ),
     /permission denied/,
   );
@@ -92,9 +92,9 @@ try {
   );
   console.log('RUNTIME CANNOT ASSUME ACTOR GATEWAY ROLE PASS');
 
-  const forged = signAssertion(accountId);
+  const forged = signAssertion(accountId,'supplier.classification.update',Math.floor(Date.now()/1000),{businessId,isSupplier:true});
   await assert.rejects(
-    () => gatewayPool.query('SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6)', [accountId,forged.issuedAt,forged.nonce,'0'.repeat(64),businessId,true]),
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6,$7)', [accountId,forged.issuedAt,forged.nonce,forged.context,'0'.repeat(64),businessId,true]),
     /Actor assertion signature invalid/,
   );
   console.log('DATABASE DENIES FORGED SUPPLIER ACTOR ASSERTION PASS');
@@ -103,24 +103,27 @@ try {
   assert.equal(supplier.rowCount, 1);
   assert.equal(supplier.rows[0].is_supplier, true);
   console.log('GATEWAY OWNER SUPPLIER CLASSIFICATION UPDATE PASS');
+  const bound=signAssertion(accountId,'supplier.classification.update',Math.floor(Date.now()/1000),{businessId,isSupplier:true});
+  await assert.rejects(() => gatewayPool.query('SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6,$7)',[accountId,bound.issuedAt,bound.nonce,bound.context,bound.signature,businessId,false]),/Actor assertion context mismatch/);
+  console.log('DATABASE DENIES SUPPLIER ASSERTION PAYLOAD SUBSTITUTION PASS');
 
-  const expired = signAssertion(accountId, 'supplier.classification.update', Math.floor(Date.now()/1000) - 61);
+  const expired = signAssertion(accountId, 'supplier.classification.update', Math.floor(Date.now()/1000) - 61, {businessId,isSupplier:false});
   await assert.rejects(
-    () => gatewayPool.query('SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6)', [accountId,expired.issuedAt,expired.nonce,expired.signature,businessId,false]),
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6,$7)', [accountId,expired.issuedAt,expired.nonce,expired.context,expired.signature,businessId,false]),
     /Actor assertion expired/,
   );
   console.log('DATABASE DENIES EXPIRED SUPPLIER ASSERTION PASS');
 
-  const wrongOperation = signAssertion(accountId, 'business.profile.update');
+  const wrongOperation = signAssertion(accountId, 'business.profile.update', Math.floor(Date.now()/1000), {businessId,isSupplier:false});
   await assert.rejects(
-    () => gatewayPool.query('SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6)', [accountId,wrongOperation.issuedAt,wrongOperation.nonce,wrongOperation.signature,businessId,false]),
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6,$7)', [accountId,wrongOperation.issuedAt,wrongOperation.nonce,wrongOperation.context,wrongOperation.signature,businessId,false]),
     /Actor assertion signature invalid/,
   );
   console.log('DATABASE BINDS SUPPLIER ASSERTION TO EXACT OPERATION PASS');
 
-  const replay = signAssertion(accountId);
-  const replaySql = 'SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6)';
-  const replayArgs = [accountId,replay.issuedAt,replay.nonce,replay.signature,businessId,false];
+  const replay = signAssertion(accountId,'supplier.classification.update',Math.floor(Date.now()/1000),{businessId,isSupplier:false});
+  const replaySql = 'SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6,$7)';
+  const replayArgs = [accountId,replay.issuedAt,replay.nonce,replay.context,replay.signature,businessId,false];
   await gatewayPool.query(replaySql,replayArgs);
   await assert.rejects(
     () => gatewayPool.query(replaySql,replayArgs),
