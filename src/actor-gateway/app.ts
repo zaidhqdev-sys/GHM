@@ -465,6 +465,65 @@ export const createActorGatewayApp = (
   });
 
   const trustScoreReader = dependencies.trustScoreReader;
+  app.get('/v1/trust-scores', async (req: Request, res: Response) => {
+    const trustLevel = req.query.trustLevel;
+    if (typeof trustLevel !== 'string' || !['bronze', 'silver', 'gold', 'platinum'].includes(trustLevel)) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    if (!trustScoreReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    try {
+      const trustScores = await trustScoreReader.list(res.locals.actorAccountId as number, trustLevel as 'bronze' | 'silver' | 'gold' | 'platinum');
+      res.status(200).json({ trustScores });
+    } catch (error) {
+      if (isSqlState(error, '42501') || isSqlState(error, 'P0001')) {
+        res.status(403).json({ error: 'forbidden' });
+        return;
+      }
+      console.error(JSON.stringify({
+        event: 'actor_gateway_operation_failed',
+        operation: 'trust.score.read',
+        error: { name: error instanceof Error ? error.name : 'UnknownError' },
+      }));
+      res.status(503).json({ error: 'service_unavailable' });
+    }
+  });
+
+  app.get('/v1/trust-scores/:businessId', async (req: Request, res: Response) => {
+    const raw = req.params.businessId;
+    const businessId = typeof raw === 'string' && /^[1-9][0-9]*$/.test(raw) ? Number(raw) : NaN;
+    if (!Number.isSafeInteger(businessId) || businessId <= 0) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    if (!trustScoreReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    try {
+      const trustScore = await trustScoreReader.get(res.locals.actorAccountId as number, businessId);
+      if (!trustScore) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      res.status(200).json({ trustScore });
+    } catch (error) {
+      if (isSqlState(error, '42501') || isSqlState(error, 'P0001')) {
+        res.status(403).json({ error: 'forbidden' });
+        return;
+      }
+      console.error(JSON.stringify({
+        event: 'actor_gateway_operation_failed',
+        operation: 'trust.score.read',
+        error: { name: error instanceof Error ? error.name : 'UnknownError' },
+      }));
+      res.status(503).json({ error: 'service_unavailable' });
+    }
+  });
+
   app.post('/v1/trust-scores/:businessId/calculate', async (req: Request, res: Response) => {
     const raw = req.params.businessId;
     const businessId = typeof raw === 'string' && /^[1-9][0-9]*$/.test(raw) ? Number(raw) : NaN;
