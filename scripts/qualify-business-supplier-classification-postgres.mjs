@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 
 if (process.env.NODE_ENV !== 'test') throw new Error('Supplier classification qualification is restricted to NODE_ENV=test');
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 const gatewayUrl = process.env.GHM_ACTOR_GATEWAY_DATABASE_URL;
+const assertionSecret = process.env.GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET;
+if (!assertionSecret || Buffer.from(assertionSecret, 'base64').length !== 32) throw new Error('A 32-byte gateway assertion test key is required');
 if (!runtimeUrl || !migratorUrl || !gatewayUrl || new Set([runtimeUrl, migratorUrl, gatewayUrl]).size !== 3) throw new Error('Distinct runtime, migrator and actor gateway database URLs are required');
 
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined });
@@ -15,6 +17,8 @@ const marker = `supplier-classification-${randomUUID()}`;
 let accountId;
 let memberAccountId;
 let businessId;
+const signAssertion = (actorId) => { const issuedAt=Math.floor(Date.now()/1000),nonce=randomUUID(); const payload=`ghm-actor-gateway:v1|${actorId}|supplier.classification.update|${issuedAt}|${nonce}`; const signature=createHmac('sha256',Buffer.from(assertionSecret,'base64')).update(payload,'utf8').digest('hex'); return {issuedAt,nonce,signature}; };
+const gatewayCall = (actorId,isSupplier) => { const a=signAssertion(actorId); return gatewayPool.query('SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6)',[actorId,a.issuedAt,a.nonce,a.signature,businessId,isSupplier]); };
 
 try {
   const runtimeIdentity = await runtimePool.query('SELECT current_database() AS database_name, session_user, current_user');
@@ -22,6 +26,8 @@ try {
   assert.equal(runtimeIdentity.rows[0].current_user, 'ghm_runtime');
   assert.equal(runtimeIdentity.rows[0].database_name, process.env.GHM_QUALIFICATION_DATABASE_NAME);
   const gatewayIdentity = await gatewayPool.query('SELECT current_database() AS database_name, session_user, current_user');
+  const provision = await migratorPool.connect();
+  try { await provision.query('BEGIN'); await provision.query('SET LOCAL ROLE ghm_schema_owner'); await provision.query("INSERT INTO ghm.actor_gateway_capability_assertion_secret(singleton,secret) VALUES(true,$1) ON CONFLICT(singleton) DO UPDATE SET secret=EXCLUDED.secret",[Buffer.from(assertionSecret,'base64')]); await provision.query('COMMIT'); } catch(e) { await provision.query('ROLLBACK').catch(()=>{}); throw e; } finally { provision.release(); }
   assert.equal(gatewayIdentity.rows[0].session_user, 'ghm_actor_gateway');
   assert.equal(gatewayIdentity.rows[0].current_user, 'ghm_actor_gateway');
   assert.equal(gatewayIdentity.rows[0].database_name, process.env.GHM_QUALIFICATION_DATABASE_NAME);
@@ -86,37 +92,19 @@ try {
   );
   console.log('RUNTIME CANNOT ASSUME ACTOR GATEWAY ROLE PASS');
 
-  const supplier = await gatewayPool.query(
-    'SELECT * FROM ghm.gateway_update_business_supplier_classification($1, $2, $3)',
-    [accountId, businessId, true],
-  );
+  const supplier = await gatewayCall(accountId,true);
   assert.equal(supplier.rowCount, 1);
   assert.equal(supplier.rows[0].is_supplier, true);
   console.log('GATEWAY OWNER SUPPLIER CLASSIFICATION UPDATE PASS');
 
-  const contractor = await gatewayPool.query(
-    'SELECT * FROM ghm.gateway_update_business_supplier_classification($1, $2, $3)',
-    [accountId, businessId, false],
-  );
+  const contractor = await gatewayCall(accountId,false);
   assert.equal(contractor.rows[0].is_supplier, false);
   console.log('GATEWAY OWNER CONTRACTOR CLASSIFICATION UPDATE PASS');
 
-  await assert.rejects(
-    () => gatewayPool.query(
-      'SELECT * FROM ghm.gateway_update_business_supplier_classification($1, $2, $3)',
-      [memberAccountId, businessId, true],
-    ),
-    /Business management permission required/,
-  );
+  await assert.rejects(() => gatewayCall(memberAccountId,true), /Business management permission required/);
   console.log('GATEWAY MEMBER CLASSIFICATION WRITE DENIAL PASS');
 
-  await assert.rejects(
-    () => gatewayPool.query(
-      'SELECT * FROM ghm.gateway_update_business_supplier_classification($1, $2, $3)',
-      [accountId, businessId, null],
-    ),
-    /Supplier classification must be true or false/,
-  );
+  await assert.rejects(() => gatewayCall(accountId,null), /Supplier classification must be true or false/);
   console.log('NULL CLASSIFICATION REJECTION PASS');
   console.log('GHM SUPPLIER CLASSIFICATION POSTGRES QUALIFICATION: PASS');
 } finally {
