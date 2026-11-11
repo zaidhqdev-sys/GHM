@@ -66,3 +66,41 @@ These application controls are useful and must be preserved, but do not by thems
 - Do not merge PR #272 merely because earlier workflow runs passed; verify exact current-head CI and reconcile the documentation/source state first.
 - Production cutover remains blocked on Render support's written role-model resolution and a fresh independently verified production backup. The last known Render backup is 4 November 2026; do not assume a newer backup exists.
 - PayFast remains paused until its sandbox is available. Approved legal-document work remains parked.
+
+
+## Follow-up source verification — exact call paths and storage correction (2026-11-11)
+
+### Saved Business is the strongest confirmed candidate
+
+The SQL body of `ghm.create_saved_business(bigint,bigint)` validates positive IDs and Business eligibility but does **not** check membership or any relationship between `p_account_id` and the authenticated actor. `ghm.delete_saved_business(bigint,bigint)` deletes by both caller-supplied saved-row ID and caller-supplied account ID. Both functions are SECURITY DEFINER and explicitly executable by `ghm_runtime`; no later migration found in the inspected follow-up set revokes those grants.
+
+The current Resource API repository correctly passes `context.userId` from AuthContext inside `withAuthorizedTransaction`. This protects the ordinary application path, but direct runtime database execution can create a saved-business row for another account (and can delete another account's row if the ID/account pair is known). Treat this as a confirmed database actor-provenance weakness, not evidence that it has been exploited. This should be the first narrow remediation target.
+
+### Other actor-ID functions
+
+- `ghm.replace_business_hours(bigint,bigint,jsonb)`: SECURITY DEFINER, runtime EXECUTE; validates active owner/administrator membership for supplied account/business. Repository uses `withTenantTransaction`, checks owner/administrator role, then passes `context.userId`. No database cryptographic actor binding.
+- `ghm.create_campaign(bigint,bigint,text)` and `ghm.update_campaign(bigint,bigint,text,text)`: SECURITY DEFINER, runtime EXECUTE; validate owner/administrator membership for supplied account ID. Repository passes AuthContext.userId inside `withAuthorizedTransaction`. No independent actor binding.
+- `ghm.calculate_business_trust_score(bigint,bigint)`: SECURITY DEFINER, runtime EXECUTE; validates owner/administrator membership for supplied account ID. Repository passes AuthContext.userId inside `withAuthorizedTransaction`. No independent actor binding.
+- `ghm.set_business_logo_object(bigint,bigint,bigint)` (defined in `20261106090000_business_logo_storage_binding.sql`) also accepts a caller-supplied account ID and checks owner/administrator membership. It is runtime-executable; include it in the same effective-ACL/call-path inventory. Do not miss it when assessing storage-related actor provenance.
+
+### Onboarding direct DML confirmed
+
+The migration grants `SELECT, INSERT, UPDATE` on `ghm.account_onboarding_progress` to `ghm_runtime` and sequence USAGE/SELECT. The repository uses `withAuthorizedTransaction` and binds every account predicate/insert to `context.userId`; the service requires authenticated context. The table itself has no row-level ownership enforcement. This is a deliberate app-enforced tenant boundary today, but direct runtime SQL can read or mutate another account's onboarding rows. Decide whether to add signed database operations or explicitly accept this trust model with a documented threat-model decision and tests.
+
+### Storage persistence correction and exact boundary
+
+The earlier first-pass note that the one-argument `storage_get_object(bigint)` remained active is superseded. Migration `20261026120000_scope_storage_metadata_lookup.sql` replaces it with `storage_get_object(bigint,bigint)`, checks public-logo eligibility or active membership for the supplied account, revokes runtime EXECUTE on the one-argument overload and drops it. The current repository passes `context.userId` to the two-argument getter. The lookup is application-account-scoped, but still trusts the account ID supplied by the shared runtime credential.
+
+The lifecycle mutators `storage_create_pending`, `storage_mark_available`, `storage_mark_deletion_pending`, and `storage_mark_deleted` are SECURITY DEFINER and runtime-executable without an actor argument. Current StorageService calls them only after its authorization adapter checks the caller/tenant and, for deletion, calls `assertCanDelete` before state mutation. The repository transaction is AuthContext-bound. These functions are an intentionally privileged internal persistence API, but a compromised runtime credential can invoke them with arbitrary object IDs/business IDs. This should be documented as a trusted-runtime boundary; do not describe it as an unauthenticated public route or assume the object-ID-only SQL function independently authorizes the tenant. Any hardening must preserve upload completion, retryable deletion_pending recovery, provider deletion ordering and metadata lifecycle semantics.
+
+### CI and current PR state
+
+PR #272 exact documentation head `576c912fe99e359d1a2962f722fe67e76b8ffe61` passed GitHub Actions run #3021 (`43088196513`): both `quality` and `web-quality` completed successfully. This qualifies the documentation commit, not any future implementation commit. PR #272 remains open and unmerged.
+
+### Updated next-batch order
+
+1. Remediate Saved Business create/delete actor provenance first; add a signed gateway operation or equivalent database-verifiable actor binding and disposable PostgreSQL negative tests. Preserve existing Resource API contracts and row DTOs.
+2. Assess whether Campaign + Business Hours + Trust Score + Business Logo object binding should be grouped into a second gateway batch; do not simply wrap every function without checking operation semantics and tests.
+3. Decide the onboarding direct-DML tenant boundary explicitly.
+4. Decide whether storage lifecycle mutators should remain trusted internal persistence operations or require an additional signed context. If changed, qualify the full lifecycle including retry and cleanup.
+5. Reconcile effective ACLs and all later migrations/cutovers for each function before declaring a batch complete.
