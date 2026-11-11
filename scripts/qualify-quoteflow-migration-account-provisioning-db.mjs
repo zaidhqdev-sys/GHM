@@ -45,7 +45,8 @@ try {
   await migrator.query('set role ghm_schema_owner');
 
   const identity = await runtime.query('select current_database() database, current_user user_name');
-  assert.equal(identity.rows[0].database, 'ghm_db');
+  const expectedDatabase = process.env.GHM_QUALIFICATION_DATABASE_NAME ?? process.env.GHM_MIGRATION_DATABASE_NAME ?? 'ghm_db';
+  assert.equal(identity.rows[0].database, expectedDatabase);
   assert.equal(identity.rows[0].user_name, 'ghm_runtime');
 
   const privilege = await runtime.query(`
