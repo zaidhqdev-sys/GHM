@@ -36,6 +36,10 @@ try {
   assert.equal(gatewayIdentity.rows[0].session_user, 'ghm_actor_gateway');
   assert.equal(gatewayIdentity.rows[0].current_user, 'ghm_actor_gateway');
   console.log('PROFILE CONTRACT GATEWAY IDENTITY PASS');
+  const resetAssertions = await migratorPool.connect();
+  try { await resetAssertions.query('BEGIN'); await resetAssertions.query('SET LOCAL ROLE ghm_schema_owner'); await resetAssertions.query('DELETE FROM ghm.actor_gateway_capability_assertion_nonce'); await resetAssertions.query('COMMIT'); }
+  catch(e) { await resetAssertions.query('ROLLBACK').catch(()=>{}); throw e; }
+  finally { resetAssertions.release(); }
 
   const migrator = await migratorPool.connect();
   try {
