@@ -591,3 +591,10 @@ No production database permissions, migration, secrets, services or application 
 The new disposable PostgreSQL runner is now included in CI. It verifies runtime, gateway and migrator identity separation; applies the manual Saved Business cutover only to disposable PostgreSQL; denies runtime direct table SELECT (including column-level SELECT), legacy create/delete function execution and sequence access; verifies gateway-only wrapper privileges; and exercises signed list/get/create/delete, cross-account isolation, actor substitution, payload/target substitution and replay denial. Latest implementation/test/CI wiring commit is `b51e12bc684ed8e88b34815dbd128f51ec4c18e4`; exact-head GitHub Actions run #3067 (`43089884203`) was in progress at the time of this note. No qualification pass is claimed until the full run succeeds.
 
 Production remains untouched. Manual cutover is not authorized for production. PR #272 remains open and unmerged.
+
+
+## 2026-11-11 — Saved Business qualification harness failure and correction
+
+The first Saved Business cutover qualification attempt failed in its catalog inspection after the manual cutover had successfully denied runtime direct table reads, legacy mutation RPCs and sequence access. The inspection query ran as `ghm_migrator` after `SET ROLE ghm_schema_owner` had ended, so PostgreSQL denied schema resolution. This was a harness failure, not a security pass. The runner was corrected to perform table/column/function privilege introspection through the schema-owner role, strip nested BEGIN/COMMIT when applying the manual cutover inside its controlled test transaction, and use a separate eligible Business fixture for nonce replay tests so the uniqueness constraint cannot mask replay validation.
+
+Latest runner fix: `55665af44e741829ff72f07580b73119339d3f53`; exact-head GitHub Actions run #3083 (`43090261075`) was in progress at this checkpoint. Await the new Saved Business cutover qualification step; no pass is claimed. Full detail: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
