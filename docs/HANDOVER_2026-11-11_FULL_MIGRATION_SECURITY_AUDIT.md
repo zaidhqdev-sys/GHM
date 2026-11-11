@@ -1099,3 +1099,19 @@ Recovery token-bound revocation batch: DISPOSABLE QUALIFICATION PASS; PRODUCTION
 - Separately inspect final effective ACLs for all auth routines, including PUBLIC, role membership, owner, default privileges and the real login/refresh/recovery paths. Preserve public registration, login, refresh, logout, password recovery and QuoteFlow reset behavior.
 - Do not apply this migration to production. Existing production gates remain unchanged: Render role-model/support resolution, fresh independently verified backup, approved role/network plan, and explicit cutover approval.
 
+
+
+## CI qualification wiring correction — migration provisioning batch (2026-11-11 22:57 UTC)
+
+The previous checkpoint's statement that CI already invoked `qualify:quoteflow-migration-account-provisioning-db` was premature. Inspection of the actual `.github/workflows/ci.yml` and `package.json` showed the command existed in package scripts but was NOT invoked by the workflow. The workflow's disposable runtime URL is `GHM_QUALIFICATION_DATABASE_URL`, not `GHM_RUNTIME_DATABASE_URL`.
+
+Corrections committed:
+- The qualification script now accepts `GHM_QUALIFICATION_DATABASE_URL` as the CI runtime URL fallback. It skips cleanly only when both runtime and migrator database URLs are absent; a partially configured environment still fails.
+- The qualification script cleanup now uses separate parameterized DELETE statements, rather than a multi-statement parameterized query.
+- The existing `npm test` script now syntax-checks and runs this DB qualification after the test suite. CI already invokes `npm test` after applying the complete migration chain; this integrates the new check without changing the workflow file.
+- The CI workflow itself was inspected and left unchanged.
+
+Commits after the earlier code head: runtime URL/skip handling `0628804b9c1196d4c10f57dfbc753fca7248b443`, no-DB local skip `1816bec852cb5ab1488bdc50ffa232e615cd2212`, cleanup fix `b1c653f3cc814f8d0fcccdfa3a004498ee24a5f3`, and `npm test` qualification wiring/syntax check `942203c53c94e81dabdef76895ac2220d48dbb25`.
+
+At this checkpoint the latest code/test head `942203c53c94e81dabdef76895ac2220d48dbb25` has workflow run #43115856824 queued; the immediately preceding run #43115850276 is in progress on its parent commit. Earlier successful runs on the branch do not qualify this latest head. No qualification pass is claimed until the exact latest head's full workflow succeeds and the new DB qualification step is visible as PASS.
+
