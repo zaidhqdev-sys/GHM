@@ -176,7 +176,7 @@ try {
        has_function_privilege(current_user, 'ghm.create_capability_draft(bigint,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS runtime_can_create,
        has_function_privilege(current_user, 'ghm.update_capability_draft(bigint,uuid,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS runtime_can_update,
        has_function_privilege(current_user, 'ghm.transition_capability_lifecycle(bigint,uuid,text,uuid,integer)', 'EXECUTE') AS runtime_can_transition,
-       has_function_privilege(current_user, 'ghm.gateway_create_capability_draft(bigint,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS runtime_can_gateway_create`,
+       has_function_privilege(current_user, 'ghm.gateway_create_capability_draft(bigint,bigint,uuid,text,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS runtime_can_gateway_create`,
   );
   const p = privileges.rows[0];
   if (p.runtime_can_create || p.runtime_can_update || p.runtime_can_transition || p.runtime_can_gateway_create) {
