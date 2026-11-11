@@ -19,8 +19,8 @@ let memberAccountId;
 let businessId;
 const usedNonces = new Set();
 const freshNonce = () => { let nonce; do { nonce=randomUUID(); } while (usedNonces.has(nonce)); usedNonces.add(nonce); return nonce; };
-const signAssertion = (actorId, operation = 'business.profile.update', issuedAt = Math.floor(Date.now()/1000)) => { const nonce=freshNonce(); const payload=`ghm-actor-gateway:v1|${actorId}|${operation}|${issuedAt}|${nonce}`; const signature=createHmac('sha256',Buffer.from(assertionSecret,'base64')).update(payload,'utf8').digest('hex'); return {issuedAt,nonce,signature}; };
-const gatewayCall = (actorId,patch) => { const a=signAssertion(actorId); return gatewayPool.query('SELECT updated.* FROM ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6::jsonb) AS updated',[actorId,a.issuedAt,a.nonce,a.signature,businessId,JSON.stringify(patch)]); };
+const signAssertion = (actorId, operation = 'business.profile.update', issuedAt = Math.floor(Date.now()/1000), context = {}) => { const nonce=freshNonce(),contextJson=JSON.stringify(context),contextHex=Buffer.from(contextJson,'utf8').toString('hex'); const payload=`ghm-actor-gateway:v2|${actorId}|${operation}|${issuedAt}|${nonce}|${contextHex}`; const signature=createHmac('sha256',Buffer.from(assertionSecret,'base64')).update(payload,'utf8').digest('hex'); return {issuedAt,nonce,context:contextJson,signature}; };
+const gatewayCall = (actorId,patch) => { const a=signAssertion(actorId,'business.profile.update',Math.floor(Date.now()/1000),{businessId,patch}); return gatewayPool.query('SELECT updated.* FROM ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6,$7::jsonb) AS updated',[actorId,a.issuedAt,a.nonce,a.context,a.signature,businessId,JSON.stringify(patch)]); };
 
 try {
   const runtimeIdentity = await runtimePool.query(
@@ -101,8 +101,8 @@ try {
 
   await assert.rejects(
     () => runtimePool.query(
-      'SELECT * FROM ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6::jsonb)',
-      [accountId, Math.floor(Date.now()/1000), randomUUID(), '0'.repeat(64), businessId, JSON.stringify({ description: 'Gateway wrapper spoof attempt' })],
+      'SELECT * FROM ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6,$7::jsonb)',
+      [accountId, Math.floor(Date.now()/1000), randomUUID(), JSON.stringify({businessId,patch:{description:'Gateway wrapper spoof attempt'}}), '0'.repeat(64), businessId, JSON.stringify({ description: 'Gateway wrapper spoof attempt' })],
     ),
     /permission denied/,
   );
@@ -134,9 +134,9 @@ try {
   if (legacyColumnNames.has('category')) snakePatch.category = 'construction';
   if (legacyColumnNames.has('is_supplier')) snakePatch.isSupplier = true;
 
-  const forged = signAssertion(accountId);
+  const forged = signAssertion(accountId,'business.profile.update',Math.floor(Date.now()/1000),{businessId,patch:{description:'forged'}});
   await assert.rejects(
-    () => gatewayPool.query('SELECT updated.* FROM ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6::jsonb) AS updated',[accountId,forged.issuedAt,forged.nonce,'0'.repeat(64),businessId,JSON.stringify({description:'forged'})]),
+    () => gatewayPool.query('SELECT updated.* FROM ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6,$7::jsonb) AS updated',[accountId,forged.issuedAt,forged.nonce,forged.context,'0'.repeat(64),businessId,JSON.stringify({description:'forged'})]),
     /Actor assertion signature invalid/,
   );
   console.log('DATABASE DENIES FORGED BUSINESS PROFILE ACTOR ASSERTION PASS');
@@ -152,24 +152,28 @@ try {
   if (legacyColumnNames.has('category')) assert.equal(snake.rows[0].category, 'construction');
   if (legacyColumnNames.has('is_supplier')) assert.equal(snake.rows[0].is_supplier, true);
   console.log('GATEWAY CURRENT REPOSITORY SNAKE_CASE PROFILE UPDATE PASS');
+  const boundPatch={description:'authorized patch'};
+  const bound=signAssertion(accountId,'business.profile.update',Math.floor(Date.now()/1000),{businessId,patch:boundPatch});
+  await assert.rejects(() => gatewayPool.query('SELECT updated.* FROM ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6,$7::jsonb) AS updated',[accountId,bound.issuedAt,bound.nonce,bound.context,bound.signature,businessId,JSON.stringify({description:'tampered patch'})]),/Actor assertion context mismatch/);
+  console.log('DATABASE DENIES BUSINESS PROFILE ASSERTION PAYLOAD SUBSTITUTION PASS');
 
-  const expired = signAssertion(accountId, 'business.profile.update', Math.floor(Date.now()/1000) - 61);
+  const expired = signAssertion(accountId, 'business.profile.update', Math.floor(Date.now()/1000) - 61, {businessId,patch:{description:'expired'}});
   await assert.rejects(
-    () => gatewayPool.query('SELECT updated.* FROM ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6::jsonb) AS updated',[accountId,expired.issuedAt,expired.nonce,expired.signature,businessId,JSON.stringify({description:'expired'})]),
+    () => gatewayPool.query('SELECT updated.* FROM ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6,$7::jsonb) AS updated',[accountId,expired.issuedAt,expired.nonce,expired.context,expired.signature,businessId,JSON.stringify({description:'expired'})]),
     /Actor assertion expired/,
   );
   console.log('DATABASE DENIES EXPIRED BUSINESS PROFILE ASSERTION PASS');
 
-  const wrongOperation = signAssertion(accountId, 'business.registration.update');
+  const wrongOperation = signAssertion(accountId, 'business.registration.update', Math.floor(Date.now()/1000), {businessId,patch:{description:'wrong operation'}});
   await assert.rejects(
-    () => gatewayPool.query('SELECT updated.* FROM ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6::jsonb) AS updated',[accountId,wrongOperation.issuedAt,wrongOperation.nonce,wrongOperation.signature,businessId,JSON.stringify({description:'wrong operation'})]),
+    () => gatewayPool.query('SELECT updated.* FROM ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6,$7::jsonb) AS updated',[accountId,wrongOperation.issuedAt,wrongOperation.nonce,wrongOperation.context,wrongOperation.signature,businessId,JSON.stringify({description:'wrong operation'})]),
     /Actor assertion signature invalid/,
   );
   console.log('DATABASE BINDS BUSINESS PROFILE ASSERTION TO EXACT OPERATION PASS');
 
-  const replay = signAssertion(accountId);
-  const replaySql = 'SELECT updated.* FROM ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6::jsonb) AS updated';
-  const replayArgs = [accountId,replay.issuedAt,replay.nonce,replay.signature,businessId,JSON.stringify({description:'one-use assertion'})];
+  const replay = signAssertion(accountId,'business.profile.update',Math.floor(Date.now()/1000),{businessId,patch:{description:'one-use assertion'}});
+  const replaySql = 'SELECT updated.* FROM ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6,$7::jsonb) AS updated';
+  const replayArgs = [accountId,replay.issuedAt,replay.nonce,replay.context,replay.signature,businessId,JSON.stringify({description:'one-use assertion'})];
   await gatewayPool.query(replaySql,replayArgs);
   await assert.rejects(
     () => gatewayPool.query(replaySql,replayArgs),
