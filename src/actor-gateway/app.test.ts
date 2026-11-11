@@ -42,6 +42,7 @@ const withServer = async (
   businessProfileReader?: BusinessProfileReader,
   options: import('./app').ActorGatewayAppOptions = {},
   requestVerifier: import('../auth/foundation/access-jwt-verifier').AccessJwtVerifier = verifier,
+  businessCapabilityMutationReader?: import('./business-capability-mutation-reader').GatewayCapabilityMutationReader,
 ): Promise<void> => {
   const server = http.createServer(createActorGatewayApp({
     verifier: requestVerifier,
@@ -50,6 +51,7 @@ const withServer = async (
     capabilityGovernanceReader,
     supplierClassificationReader,
     businessProfileReader,
+    businessCapabilityMutationReader,
   }, options));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
@@ -546,4 +548,30 @@ test('Business profile gateway rejects missing bearer token before database acce
     assert.equal(response.status, 401);
   }, undefined, undefined, undefined, reader);
   assert.equal(calls, 0);
+});
+
+test('actor gateway derives evidence submitter from verified bearer token',async()=>{
+ let received:any;
+ const identity:ActorIdentityReader={async readOwnIdentity(accountId){return{accountId,role:'business',fullName:'Actor'}}};
+ const mutation:import('./business-capability-mutation-reader').GatewayCapabilityMutationReader={
+  async replace(){return[]},async verify(){throw new Error('unused')},async reviewEvidence(){throw new Error('unused')},
+  async submitEvidence(actor,input){received={actor,input};return{} as never;}
+ };
+ await withServer(identity,async baseUrl=>{
+  const response=await fetch(`${baseUrl}/v1/business-capability-evidence`,{method:'POST',headers:{authorization:`Bearer ${sign(42)}`,'content-type':'application/json'},body:JSON.stringify({businessCapabilityId:12,evidenceType:'certification',title:'Certificate'})});
+  assert.equal(response.status,201);
+ },undefined,undefined,undefined,undefined,{},verifier,mutation);
+ assert.equal(received.actor,42);assert.equal(received.input.businessCapabilityId,12);
+});
+test('actor gateway rejects evidence submitter identity and unknown fields from request body',async()=>{
+ let called=false;
+ const identity:ActorIdentityReader={async readOwnIdentity(accountId){return{accountId,role:'business',fullName:'Actor'}}};
+ const mutation:import('./business-capability-mutation-reader').GatewayCapabilityMutationReader={
+  async replace(){return[]},async verify(){throw new Error('unused')},async reviewEvidence(){throw new Error('unused')},async submitEvidence(){called=true;return{} as never;}
+ };
+ await withServer(identity,async baseUrl=>{
+  const response=await fetch(`${baseUrl}/v1/business-capability-evidence`,{method:'POST',headers:{authorization:`Bearer ${sign(42)}`,'content-type':'application/json'},body:JSON.stringify({businessCapabilityId:12,evidenceType:'certification',title:'Certificate',submittedBy:999})});
+  assert.equal(response.status,400);
+ },undefined,undefined,undefined,undefined,{},verifier,mutation);
+ assert.equal(called,false);
 });
