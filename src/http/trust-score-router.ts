@@ -127,6 +127,14 @@ export const registerTrustScoreRoutes = (
           return;
         }
 
+        if (gatewayClient) {
+          const authorization = req.header('authorization');
+          if (!authorization?.startsWith('Bearer ') || !authorization.slice(7).trim()) { res.status(401).json({ error: 'unauthorized' }); return; }
+          const trustScores = await gatewayClient.list(authorization.slice(7).trim(), trustLevel);
+          res.status(200).json({ trustScores });
+          return;
+        }
+        if (gatewayRequired) { res.status(503).json({ error: 'service_unavailable' }); return; }
         const trustScores = await service.listByTrustLevel(context, trustLevel);
         res.status(200).json({ trustScores });
       } catch (error) {
@@ -149,6 +157,15 @@ export const registerTrustScoreRoutes = (
           return;
         }
 
+        if (gatewayClient) {
+          const authorization = req.header('authorization');
+          if (!authorization?.startsWith('Bearer ') || !authorization.slice(7).trim()) { res.status(401).json({ error: 'unauthorized' }); return; }
+          const trustScore = await gatewayClient.get(authorization.slice(7).trim(), businessId);
+          if (!trustScore) { res.status(404).json({ error: 'not_found' }); return; }
+          res.status(200).json({ trustScore });
+          return;
+        }
+        if (gatewayRequired) { res.status(503).json({ error: 'service_unavailable' }); return; }
         const trustScore = await service.getTrustScore(context, businessId);
         if (!trustScore) {
           res.status(404).json({ error: 'not_found' });
@@ -194,10 +211,11 @@ export const registerTrustScoreRoutes = (
         res.status(200).json({ trustScore });
       } catch (error) {
         if (error instanceof TrustScoreGatewayError) {
-          if (error.status === 401 || error.status === 403 || error.status === 404) {
+          if (error.status === 401 || error.status === 403) {
             res.status(403).json({ error: 'forbidden' });
             return;
           }
+          if (error.status === 404) { res.status(404).json({ error: 'not_found' }); return; }
           if (error.status === 400) {
             res.status(400).json({ error: 'invalid_request' });
             return;
