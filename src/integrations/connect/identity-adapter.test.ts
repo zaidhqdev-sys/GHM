@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type {
-  AuthPersistence,
-} from '../../auth/foundation/persistence';
+import type { AuthPersistence } from '../../auth/foundation/persistence';
 import type { ExternalIdentityMapping } from '../../auth/foundation/types';
 import { ConnectIdentityAdapterImpl } from './identity-adapter';
 
@@ -17,7 +15,6 @@ const mapping = (accountId: number): ExternalIdentityMapping => ({
 
 const createPersistence = (
   lookup: AuthPersistence['lookupExternalIdentity'],
-  bootstrap: AuthPersistence['bootstrapExternalIdentity'],
 ): AuthPersistence => ({
   completeQuoteFlowMigrationReset: async () => ({ accountId: 0, loginEmail: '', revokedSessionCount: 0 }),
   setPassword: async () => { throw new Error('unused'); },
@@ -30,43 +27,27 @@ const createPersistence = (
   redeemRecovery: async () => { throw new Error('unused'); },
   lookupQuoteFlowMigrationResetEnrollment: async () => null,
   lookupExternalIdentity: lookup,
-  bootstrapExternalIdentity: bootstrap,
   linkBusinessExternalMapping: async () => { throw new Error('unused'); },
   revokeSessionByRefreshToken: async () => ({ found: false, sessionId: null, accountId: null }),
 });
 
-test('Connect adapter resolves an existing Supabase identity without bootstrap', async () => {
+test('Connect adapter resolves an existing Supabase identity', async () => {
   const existing = mapping(42);
-  let bootstrapCalls = 0;
   const adapter = new ConnectIdentityAdapterImpl(
-    createPersistence(
-      async (_provider, subject) => {
-        assert.equal(subject, '11111111-1111-4111-8111-111111111111');
-        return existing;
-      },
-      async () => {
-        bootstrapCalls += 1;
-        return { ...existing, created: false };
-      },
-    ),
+    createPersistence(async (_provider, subject) => {
+      assert.equal(subject, '11111111-1111-4111-8111-111111111111');
+      return existing;
+    }),
   );
 
-  const result = await adapter.resolve('11111111-1111-4111-8111-111111111111', {
-    allowBootstrap: true,
-  });
+  const result = await adapter.resolve('11111111-1111-4111-8111-111111111111');
 
   assert.equal(result.outcome, 'resolved');
   assert.equal(result.mapping.accountId, 42);
-  assert.equal(bootstrapCalls, 0);
 });
 
-test('Connect adapter returns unmapped without explicit bootstrap authorization', async () => {
-  const adapter = new ConnectIdentityAdapterImpl(
-    createPersistence(
-      async () => null,
-      async () => { throw new Error('bootstrap must not be called'); },
-    ),
-  );
+test('Connect adapter returns unmapped when no external identity exists', async () => {
+  const adapter = new ConnectIdentityAdapterImpl(createPersistence(async () => null));
 
   const result = await adapter.resolve('22222222-2222-4222-8222-222222222222');
 
@@ -74,41 +55,9 @@ test('Connect adapter returns unmapped without explicit bootstrap authorization'
   assert.equal(result.mapping, null);
 });
 
-test('Connect adapter performs minimum bootstrap only when explicitly allowed', async () => {
-  const bootstrapped = mapping(77);
-  let captured: unknown[] = [];
+test('Connect adapter rejects malformed external subjects without querying persistence', async () => {
   const adapter = new ConnectIdentityAdapterImpl(
-    createPersistence(
-      async () => null,
-      async (provider, subject, fullName, role) => {
-        captured = [provider, subject, fullName, role];
-        return { ...bootstrapped, created: true };
-      },
-    ),
-  );
-
-  const result = await adapter.resolve('33333333-3333-4333-8333-333333333333', {
-    allowBootstrap: true,
-    fullName: 'Connect User',
-    role: 'customer',
-  });
-
-  assert.equal(result.outcome, 'bootstrapped');
-  assert.equal(result.mapping.accountId, 77);
-  assert.deepEqual(captured, [
-    'supabase',
-    '33333333-3333-4333-8333-333333333333',
-    'Connect User',
-    'customer',
-  ]);
-});
-
-test('Connect adapter rejects malformed external subjects', async () => {
-  const adapter = new ConnectIdentityAdapterImpl(
-    createPersistence(
-      async () => { throw new Error('lookup must not be called'); },
-      async () => { throw new Error('bootstrap must not be called'); },
-    ),
+    createPersistence(async () => { throw new Error('lookup must not be called'); }),
   );
 
   await assert.rejects(
@@ -120,13 +69,10 @@ test('Connect adapter rejects malformed external subjects', async () => {
 test('Connect adapter normalizes UUID case and surrounding whitespace', async () => {
   let received = '';
   const adapter = new ConnectIdentityAdapterImpl(
-    createPersistence(
-      async (_provider, subject) => {
-        received = subject;
-        return null;
-      },
-      async () => { throw new Error('unused'); },
-    ),
+    createPersistence(async (_provider, subject) => {
+      received = subject;
+      return null;
+    }),
   );
 
   const result = await adapter.resolve('  44444444-4444-4444-8444-444444444444  ');
@@ -135,12 +81,7 @@ test('Connect adapter normalizes UUID case and surrounding whitespace', async ()
 });
 
 test('Connect adapter never accepts a bearer token as identity input', async () => {
-  const adapter = new ConnectIdentityAdapterImpl(
-    createPersistence(
-      async () => null,
-      async () => { throw new Error('bootstrap must not be called'); },
-    ),
-  );
+  const adapter = new ConnectIdentityAdapterImpl(createPersistence(async () => null));
 
   await assert.rejects(
     () => adapter.resolve('eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.payload.signature'),
