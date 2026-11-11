@@ -42,8 +42,8 @@ const pool = new Pool({
 });
 const app = createActorGatewayApp({
   verifier,
-  actorIdentityReader: new PostgresActorIdentityReader(pool),
-  businessRegistrationIdentityReader: new PostgresBusinessRegistrationIdentityReader(pool),
+  actorIdentityReader: new PostgresActorIdentityReader(pool, capabilityAssertionSecret),
+  businessRegistrationIdentityReader: new PostgresBusinessRegistrationIdentityReader(pool, capabilityAssertionSecret),
   capabilityGovernanceReader: new PostgresCapabilityGovernanceReader(pool, capabilityAssertionSecret),
   supplierClassificationReader: new PostgresSupplierClassificationReader(pool, capabilityAssertionSecret),
   businessProfileReader: new PostgresBusinessProfileReader(pool, capabilityAssertionSecret),
