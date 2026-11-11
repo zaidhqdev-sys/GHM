@@ -216,3 +216,90 @@ test('Business Hours PUT rejects unknown request fields before service execution
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });
+
+
+test('Business Hours PUT fails closed when the gateway is required but unavailable', async () => {
+  let legacyCalled = false;
+  const service = stubHoursService({
+    replaceBusinessHours: async () => {
+      legacyCalled = true;
+      return [];
+    },
+  });
+  const server = http.createServer(createApp({
+    resourceAuthMiddleware: httpTestAuth,
+    businessIdentityService: {} as never,
+    businessHoursService: service,
+    businessHoursGatewayRequired: true,
+    projectService: {} as never,
+    publicProjectService: {} as never,
+    enquiryService: {} as never,
+    campaignService: {} as never,
+  }));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  try {
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/v1/businesses/265/hours`, {
+      method: 'PUT',
+      headers: {
+        authorization: `Bearer ${tokenFor({ userId: 468, role: 'business' })}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ hours: [] }),
+    });
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { error: 'service_unavailable' });
+    assert.equal(legacyCalled, false);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('Business Hours PUT forwards the original bearer token through the gateway client', async () => {
+  let receivedToken: string | undefined;
+  let legacyCalled = false;
+  const service = stubHoursService({
+    replaceBusinessHours: async () => {
+      legacyCalled = true;
+      return [];
+    },
+  });
+  const gatewayClient = {
+    replace: async (token: string, input: ReplaceBusinessHoursInput) => {
+      receivedToken = token;
+      assert.deepEqual(input, {
+        businessId: 265,
+        hours: [{ dayOfWeek: 1, isClosed: true, openTime: null, closeTime: null }],
+      });
+      return [hoursFixture({ isClosed: true, openTime: null, closeTime: null })];
+    },
+  };
+  const server = http.createServer(createApp({
+    resourceAuthMiddleware: httpTestAuth,
+    businessIdentityService: {} as never,
+    businessHoursService: service,
+    businessHoursGatewayClient: gatewayClient,
+    businessHoursGatewayRequired: true,
+    projectService: {} as never,
+    publicProjectService: {} as never,
+    enquiryService: {} as never,
+    campaignService: {} as never,
+  }));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  try {
+    const token = tokenFor({ userId: 468, role: 'business' });
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/v1/businesses/265/hours`, {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ hours: [{ dayOfWeek: 1, isClosed: true, openTime: null, closeTime: null }] }),
+    });
+    assert.equal(response.status, 200);
+    assert.equal(receivedToken, token);
+    assert.equal(legacyCalled, false);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
