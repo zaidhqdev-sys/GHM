@@ -19,12 +19,13 @@ test('registration identity and actor self-read wrappers require operation-bound
 
 
 const registrationCutover = readFileSync('database/cutovers/20261111020000_revoke_legacy_registration_identity_runtime.sql', 'utf8');
+const requestContextMigration = readFileSync('database/migrations/20261111060000_bind_gateway_assertions_to_request_context.sql', 'utf8');
 
 test('registration identity manual cutover removes direct legacy RPC access but preserves signed gateway wrappers', () => {
   assert.match(registrationCutover, /MANUAL CUTOVER ONLY/);
-  assert.match(registrationCutover, /REVOKE ALL ON FUNCTION ghm\\.read_business_registration_identity\\(bigint, bigint\\)\\s+FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway/);
-  assert.match(registrationCutover, /REVOKE ALL ON FUNCTION ghm\\.update_business_registration_identity\\(bigint, bigint, text, text, text\\)\\s+FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway/);
+  assert.match(registrationCutover, /REVOKE ALL ON FUNCTION ghm\.read_business_registration_identity\(bigint, bigint\)\s+FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway/);
+  assert.match(registrationCutover, /REVOKE ALL ON FUNCTION ghm\.update_business_registration_identity\(bigint, bigint, text, text, text\)\s+FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway/);
   assert.doesNotMatch(registrationCutover, /GRANT EXECUTE/);
-  assert.match(migration, /GRANT EXECUTE ON FUNCTION ghm\\.gateway_read_business_registration_identity\\(bigint,bigint,uuid,text,text,bigint\\) TO ghm_actor_gateway/);
-  assert.match(migration, /GRANT EXECUTE ON FUNCTION ghm\\.gateway_update_business_registration_identity\\(bigint,bigint,uuid,text,text,bigint,text,text,text\\) TO ghm_actor_gateway/);
+  assert.match(requestContextMigration, /GRANT EXECUTE ON FUNCTION ghm\.gateway_read_business_registration_identity\(bigint,bigint,uuid,text,text,bigint\) TO ghm_actor_gateway/);
+  assert.match(requestContextMigration, /GRANT EXECUTE ON FUNCTION ghm\.gateway_update_business_registration_identity\(bigint,bigint,uuid,text,text,bigint,text,text,text\) TO ghm_actor_gateway/);
 });
