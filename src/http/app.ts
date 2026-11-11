@@ -50,6 +50,7 @@ import { registerCampaignRoutes } from './campaign-router';
 import { registerOpportunityRoutes } from './opportunity-router';
 import { registerAuthRoutes, type AuthRouterDependencies } from './auth-router';
 import { registerSavedBusinessRoutes } from './saved-business-router';
+import { HttpSavedBusinessGatewayClient, type SavedBusinessGatewayClient } from './saved-business-gateway-client';
 import { PostgresOnboardingProgressRepository } from '../resources/onboarding/repository';
 import { DefaultOnboardingProgressService } from '../resources/onboarding/service';
 import type { OnboardingProgressService } from '../resources/onboarding/contracts';
@@ -170,6 +171,8 @@ export interface AppDependencies {
   readonly quoteFlowMigrationResetRecoveryService?: QuoteFlowMigrationResetRecoveryService;
   readonly quoteFlowMigrationResetCompletionService?: QuoteFlowMigrationResetCompletionService;
   readonly resourceAuthMiddleware?: import('express').RequestHandler;
+  readonly savedBusinessGatewayClient?: SavedBusinessGatewayClient;
+  readonly savedBusinessGatewayRequired?: boolean;
   readonly businessRegistrationIdentityGatewayClient?: BusinessRegistrationIdentityGatewayClient;
   readonly businessRegistrationIdentityGatewayRequired?: boolean;
   readonly supplierClassificationGatewayClient?: SupplierClassificationGatewayClient;
@@ -413,6 +416,9 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const savedBusinessService =
     dependencies.savedBusinessService ??
     new SavedBusinessServiceImpl(new PostgresSavedBusinessRepository());
+  const savedBusinessGatewayClient = dependencies.savedBusinessGatewayClient
+    ?? (config.actorGatewayUrl ? new HttpSavedBusinessGatewayClient(config.actorGatewayUrl) : undefined);
+  const savedBusinessGatewayRequired = config.isProduction || dependencies.savedBusinessGatewayRequired === true;
   const onboardingService = dependencies.onboardingService ?? new DefaultOnboardingProgressService(new PostgresOnboardingProgressRepository());
   const relationshipsOutcomesService = dependencies.relationshipsOutcomesService ?? new DefaultRelationshipsOutcomesService(new PostgresRelationshipsOutcomesRepository());
   const businessCapabilityService =
@@ -1004,7 +1010,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerEnquiryRoutes(app, enquiryService, resourceAuthMiddleware);
   registerCampaignRoutes(app, campaignService, resourceAuthMiddleware);
   registerOpportunityRoutes(app, opportunityService, resourceAuthMiddleware);
-  registerSavedBusinessRoutes(app, savedBusinessService, resourceAuthMiddleware);
+  registerSavedBusinessRoutes(app, savedBusinessService, resourceAuthMiddleware, savedBusinessGatewayClient, savedBusinessGatewayRequired);
   registerOnboardingRoutes(app, onboardingService, resourceAuthMiddleware);
   registerRelationshipsOutcomesRoutes(app, relationshipsOutcomesService, resourceAuthMiddleware);
   registerBusinessCapabilityRoutes(app, businessCapabilityService, resourceAuthMiddleware, capabilityMutationGatewayClient, capabilityMutationGatewayRequired);
