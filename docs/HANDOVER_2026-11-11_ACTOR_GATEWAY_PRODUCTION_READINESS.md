@@ -177,3 +177,12 @@ Limitations:
 ## Evidence and change-control discipline
 
 For future work, record each operational claim as verified, inferred, or unverified and identify the evidence and timestamp. A filename, remembered action, Render UI label, or an unsuccessful search is not proof of a completed backup or change. Never state that a backup exists, a production role is corrected, a secret is provisioned, or a deployment is live without checking the authoritative source. Before any production database role/privilege/migration/deployment change, verify a fresh recoverable backup first; if evidence is missing, stop the production change. Distinguish repository code/CI qualification from live production state. Do not spend money or create paid infrastructure; no paid service is permitted until revenue can fund it.
+
+## Dedicated supplier-classification operation enforcement (2026-11-11)
+
+A further route-boundary review found that the Actor Gateway Business profile PATCH allowlist also accepted `isSupplier`, even though supplier classification has its own dedicated route, operation-bound HMAC assertion (`supplier.classification.update`), and API client path. The database profile function retains legacy `isSupplier` compatibility, but the gateway HTTP profile route should not bypass the dedicated operation boundary.
+
+- Removed `isSupplier` from the Actor Gateway profile route allowlist. Supplier classification must use `PUT /v1/businesses/:businessId/supplier-classification` and its dedicated assertion operation.
+- Added a regression test that a profile PATCH containing only `isSupplier` returns 400 and does not reach the profile reader.
+- Code commits: `4596cb5b80c5d1b7586f8c8507205cf3d7c1ad36` (route) and `e3347845bf9827fdb6ac48ad33b451cd06f1b4c7` (test). Exact-head CI is pending; do not treat this correction as validated until both `quality` and `web-quality` pass on the final head.
+- This is repository-only. No production migration, deployment, secret, grant, or runtime setting changed.
