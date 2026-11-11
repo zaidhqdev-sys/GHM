@@ -186,3 +186,14 @@ A further route-boundary review found that the Actor Gateway Business profile PA
 - Added a regression test that a profile PATCH containing only `isSupplier` returns 400 and does not reach the profile reader.
 - Code commits: `4596cb5b80c5d1b7586f8c8507205cf3d7c1ad36` (route) and `e3347845bf9827fdb6ac48ad33b451cd06f1b4c7` (test). Exact-head CI is pending; do not treat this correction as validated until both `quality` and `web-quality` pass on the final head.
 - This is repository-only. No production migration, deployment, secret, grant, or runtime setting changed.
+
+## Gateway operation separation and HMAC comparison hardening (2026-11-11)
+
+The continuing source review found two additional improvements and applied repository-only corrections:
+
+1. The gateway Business profile PATCH route previously accepted `isSupplier` despite supplier classification having its own dedicated endpoint and signed operation. The profile allowlist now excludes `isSupplier`; a regression test verifies this returns 400 without invoking the profile reader. Supplier classification must use its dedicated endpoint and `supplier.classification.update` assertion.
+2. The final migration definition of the shared HMAC assertion verifier previously compared the expected and supplied MACs using bytea equality. The final definition now XOR/OR accumulates all 32 byte differences before branching, avoiding an early-exit prefix comparison. A migration-contract test asserts the fixed-length comparison is retained. Earlier migration definitions are superseded by the final forward migration in the ordered chain; the final deployed definition is the one that matters.
+
+Relevant code/test commits: `4596cb5b80c5d1b7586f8c8507205cf3d7c1ad36`, `e3347845bf9827fdb6ac48ad33b451cd06f1b4c7`, `fe6ceb7ee1ac8b04c04ad3ac6304e66635e709f2`, and `185b439ecf51cf3ec70c947daf4379c8d3aab571`. Exact-head CI is pending on the final branch head; do not treat these latest changes as validated until both required jobs pass.
+
+These changes do not alter production state, migration history already applied, database roles, secrets, Render services, or product routing.
