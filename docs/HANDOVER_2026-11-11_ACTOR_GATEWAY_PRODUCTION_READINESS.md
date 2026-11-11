@@ -7,9 +7,9 @@ This handover records the production-readiness review of GHM Actor Gateway PR #2
 - Repository: `zaidhqdev-sys/GHM`
 - PR: [#272 — Unified Actor Gateway](https://github.com/zaidhqdev-sys/GHM/pull/272)
 - Branch: `integration/capability-gateway-qualification-20261110`
-- Reviewed head: `64ef0adf48f867a0780d9afe19f105b39384281b`
+- Last fully validated code head before the current documentation update: `3f9f41288c953bcc1796d63a4e7b3e6535935e14`
 - At review: PR remained open and unmerged.
-- CI on that exact head: `quality` and `web-quality` passed ([run 43053280502](https://github.com/zaidhqdev-sys/GHM/actions/runs/43053280502)).
+- CI on that exact code head: `quality` and `web-quality` passed ([run 43054855935](https://github.com/zaidhqdev-sys/GHM/actions/runs/43054855935)).
 - No production migrations, deployments, service changes, or database privilege changes were performed as part of this review.
 
 **Current disposition: production rollout remains paused.** Green CI is useful evidence but does not qualify the production database role model or deployment topology.
@@ -141,6 +141,13 @@ Both the main API and Actor Gateway startup now reject a runtime principal with 
 
 PR #272 remains open and unmerged. The latest code-reviewed and fully CI-passing head is `64ef0adf48f867a0780d9afe19f105b39384281b`; a subsequent documentation-only evidence-discipline update is `b8e2375d2eeac164078885b7275bb59cb157b86f` and its CI is pending. Do not infer mergeability while checks are recalculating. No production environment, database, roles, grants, secrets, migrations, or services were changed.
 
+
+## Gateway authentication-path consolidation (2026-11-11)
+
+- Centralized `/v1` bearer-token verification in the authenticated namespace middleware. All route handlers now reuse the verified `res.locals.actorAccountId` rather than independently verifying the same JWT again.
+- This ensures the per-account limiter and route handlers use the exact same verified identity and avoids duplicate ES256 verification work.
+- Added a test asserting one verification per request and that the reader receives the verified account ID.
+- Initial CI exposed three stale capability-route calls after the helper signature changed; those were corrected. The final code head `3f9f41288c953bcc1796d63a4e7b3e6535935e14` passed both CI jobs, including build, full tests, disposable PostgreSQL migrations and gateway/business/capability qualifications.
 
 ## Additional gateway public-surface hardening (2026-11-11)
 
