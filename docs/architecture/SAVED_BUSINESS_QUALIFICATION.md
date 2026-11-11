@@ -2,7 +2,7 @@
 
 ## Status
 
-**QUALIFIED / CLOSED — PASS**
+**APPLICATION-PATH HISTORICAL PASS; SIGNED DATABASE ACTOR GATEWAY QUALIFIED ON DISPOSABLE POSTGRESQL; PRODUCTION CUTOVER SEPARATELY GATED**
 
 Historical qualification branch: `construction/saved-business-resource` (the qualified construction result is consolidated on `main`).
 
@@ -115,3 +115,26 @@ The existing qualification's “authenticated account binding” assertion means
 **Revised status:** application-path construction and historical functional qualification remain PASS; database actor-provenance and cross-account isolation are OPEN / NOT QUALIFIED. Do not mark the complete Saved Business security boundary closed until a gateway-backed read/list/create/delete path derives actor identity from a verified GHM access token, signed database assertions bind operation and complete context, and a manual-only cutover denies runtime direct table SELECT and legacy function EXECUTE. Disposable PostgreSQL tests must prove runtime direct SELECT and legacy create/delete EXECUTE are denied after cutover, while gateway list/get/create/delete still work and cross-account attempts fail.
 
 No production cutover is authorized by this re-review. Existing Connect/Saved Business contract, DTOs, eligibility predicate, duplicate behavior, ordering, and explicit read/create/delete operation surface remain unchanged.
+
+
+## Signed Actor Gateway security re-qualification — PASS (2026-11-11)
+
+Implementation head: `55665af44e741829ff72f07580b73119339d3f53`.
+
+GitHub Actions run [#3083](https://github.com/zaidhqdev-sys/GHM/actions/runs/43090261075) completed successfully: `quality` and `web-quality` both passed. The quality job built the application, ran the complete automated suite, applied the full migration chain to disposable PostgreSQL, and ran `npm run qualify:saved-business-gateway-cutover`.
+
+The disposable PostgreSQL qualification explicitly applied the manual cutover and observed:
+
+- runtime direct table SELECT denied;
+- runtime column-level SELECT denied;
+- legacy runtime create/delete function EXECUTE denied;
+- runtime sequence access denied;
+- post-cutover privilege matrix matched the intended runtime/gateway grants;
+- signed gateway list/get/create/delete succeeded for the authenticated actor;
+- cross-account get/delete isolation held;
+- actor substitution, assertion replay and request-target substitution were denied;
+- the manual cutover was applied only to disposable PostgreSQL.
+
+The Resource API and Actor Gateway route tests also cover verified JWT actor derivation, rejection of caller-supplied account fields, original bearer-token forwarding, and fail-closed behavior when the gateway is absent or unavailable. SQL contract tests are part of `npm test`.
+
+**Revised security status:** Saved Business database actor provenance is now IMPLEMENTED and QUALIFIED on the exact implementation head above. The historical app-only qualification is superseded for database-boundary status by this signed gateway qualification. Production remains separately gated: do not apply the manual cutover or deploy this path to production until Render's role model is resolved, a fresh independently verified production backup exists, and the production rollout/cutover is explicitly approved. No production changes were made.
