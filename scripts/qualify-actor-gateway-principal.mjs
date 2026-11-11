@@ -270,6 +270,61 @@ try {
   });
   console.log('TYPED GATEWAY BUSINESS REGISTRATION IDENTITY WRITE: PASS');
 
+  const registrationCutoverSql = await readFile(
+    fileURLToPath(new URL('../database/cutovers/20261111020000_revoke_legacy_registration_identity_runtime.sql', import.meta.url)),
+    'utf8',
+  );
+  const registrationCutover = await migratorPool.connect();
+  try {
+    await registrationCutover.query('SET ROLE ghm_schema_owner');
+    await registrationCutover.query(registrationCutoverSql);
+    await registrationCutover.query('RESET ROLE');
+  } finally {
+    registrationCutover.release();
+  }
+  console.log('MANUAL REGISTRATION IDENTITY CUTOVER SQL APPLIED TO DISPOSABLE DATABASE PASS');
+
+  await expectSqlState(
+    () => runtimePool.query('SELECT * FROM ghm.read_business_registration_identity($1,$2)', [activeAccountId,businessId]),
+    '42501',
+    'ORDINARY RUNTIME CANNOT EXECUTE LEGACY REGISTRATION READ AFTER CUTOVER',
+  );
+  await expectSqlState(
+    () => runtimePool.query('SELECT * FROM ghm.update_business_registration_identity($1,$2,$3,$4,$5)', [activeAccountId,businessId,'registered','REG-RUNTIME-SPOOF','Runtime Spoofed Entity']),
+    '42501',
+    'ORDINARY RUNTIME CANNOT EXECUTE LEGACY REGISTRATION WRITE AFTER CUTOVER',
+  );
+
+  const postCutoverRead = await gatewayCall(activeAccountId,'business.registration.read',
+    'SELECT * FROM ghm.gateway_read_business_registration_identity($1,$2,$3,$4,$5)',[businessId]);
+  if (postCutoverRead.rowCount !== 1) throw new Error('Gateway registration read failed after legacy RPC revocation');
+  console.log('SIGNED GATEWAY REGISTRATION READ REMAINS AVAILABLE AFTER CUTOVER PASS');
+
+  const postCutoverUpdate = await gatewayCall(activeAccountId,'business.registration.update',
+    'SELECT * FROM ghm.gateway_update_business_registration_identity($1,$2,$3,$4,$5,$6,$7,$8)',
+    [businessId,'registered','REG-GATEWAY-CUTOVER',`${fixture.marker} post-cutover legal entity`]);
+  if (postCutoverUpdate.rowCount !== 1 || postCutoverUpdate.rows[0].registration_number !== 'REG-GATEWAY-CUTOVER') {
+    throw new Error('Gateway registration write failed after legacy RPC revocation');
+  }
+  console.log('SIGNED GATEWAY REGISTRATION WRITE REMAINS AVAILABLE AFTER CUTOVER PASS');
+
+  const registrationPrivileges = await runtimePool.query(
+    `SELECT
+       has_function_privilege('ghm_runtime', 'ghm.read_business_registration_identity(bigint,bigint)', 'EXECUTE') AS runtime_can_legacy_read,
+       has_function_privilege('ghm_runtime', 'ghm.update_business_registration_identity(bigint,bigint,text,text,text)', 'EXECUTE') AS runtime_can_legacy_update,
+       has_function_privilege('ghm_actor_gateway', 'ghm.read_business_registration_identity(bigint,bigint)', 'EXECUTE') AS gateway_can_legacy_read,
+       has_function_privilege('ghm_actor_gateway', 'ghm.update_business_registration_identity(bigint,bigint,text,text,text)', 'EXECUTE') AS gateway_can_legacy_update,
+       has_function_privilege('ghm_actor_gateway', 'ghm.gateway_read_business_registration_identity(bigint,bigint,uuid,text,text,bigint)', 'EXECUTE') AS gateway_can_signed_read,
+       has_function_privilege('ghm_actor_gateway', 'ghm.gateway_update_business_registration_identity(bigint,bigint,uuid,text,text,bigint,text,text,text)', 'EXECUTE') AS gateway_can_signed_update`,
+  );
+  const registrationPrivilege = registrationPrivileges.rows[0];
+  if (registrationPrivilege.runtime_can_legacy_read || registrationPrivilege.runtime_can_legacy_update ||
+      registrationPrivilege.gateway_can_legacy_read || registrationPrivilege.gateway_can_legacy_update ||
+      !registrationPrivilege.gateway_can_signed_read || !registrationPrivilege.gateway_can_signed_update) {
+    throw new Error(`Registration identity privilege boundary failed after cutover: ${JSON.stringify(registrationPrivilege)}`);
+  }
+  console.log('REGISTRATION IDENTITY LEGACY RPC DENIAL AND SIGNED GATEWAY PRIVILEGE BOUNDARY PASS');
+
   await expectSqlState(
     () => gatewayPool.query('SELECT ghm.assert_actor_gateway($1)', [disabledAccountId]),
     '42501',
