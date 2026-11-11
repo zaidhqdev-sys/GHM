@@ -99,3 +99,19 @@ Result: clean.
 - No product adapter, shadow qualification, or production cutover is authorized.
 - Trust score and related Trust evidence remain separate capabilities.
 - Registry registration does not authorize a public Saved Business HTTP API without a separate contract.
+
+
+## Security re-review — database actor provenance not qualified (2026-11-11)
+
+The historical PASS above remains valid only for the tested application/service path and the listed schema/privilege checks. It does **not** establish that the shared `ghm_runtime` database credential independently enforces account ownership.
+
+Source re-review found two gaps that the historical qualification did not test:
+
+1. `ghm_runtime` has table-level `SELECT` on `ghm.saved_business`. The repository adds `WHERE account_id = context.userId`, but PostgreSQL does not enforce that predicate for direct SQL issued with the runtime credential. A compromised or misused runtime credential can read rows belonging to every account.
+2. `ghm_runtime` has EXECUTE on `ghm.create_saved_business(bigint,bigint)` and `ghm.delete_saved_business(bigint,bigint)`. Both SECURITY DEFINER functions trust the supplied account ID. The create function checks Business eligibility but not actor/account provenance; delete scopes the deletion to the supplied account ID but does not prove it belongs to the authenticated actor.
+
+The existing qualification's “authenticated account binding” assertion means only that the repository/service supplies `AuthContext.userId`. The “cross-account read isolation” and “cross-account delete denial” assertions exercise repository calls using another account's AuthContext; they do not attempt direct runtime SQL with a forged account ID. Therefore those test names must not be interpreted as database-level tenant isolation.
+
+**Revised status:** application-path construction and historical functional qualification remain PASS; database actor-provenance and cross-account isolation are OPEN / NOT QUALIFIED. Do not mark the complete Saved Business security boundary closed until a gateway-backed read/list/create/delete path derives actor identity from a verified GHM access token, signed database assertions bind operation and complete context, and a manual-only cutover denies runtime direct table SELECT and legacy function EXECUTE. Disposable PostgreSQL tests must prove runtime direct SELECT and legacy create/delete EXECUTE are denied after cutover, while gateway list/get/create/delete still work and cross-account attempts fail.
+
+No production cutover is authorized by this re-review. Existing Connect/Saved Business contract, DTOs, eligibility predicate, duplicate behavior, ordering, and explicit read/create/delete operation surface remain unchanged.
