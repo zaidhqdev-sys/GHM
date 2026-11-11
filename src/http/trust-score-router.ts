@@ -47,6 +47,13 @@ const requireTrustScorePublicAccess = (
 };
 
 const handleError = (error: unknown, res: Response): void => {
+  if (error instanceof TrustScoreGatewayError) {
+    if (error.status === 401 || error.status === 403) { res.status(403).json({ error: 'forbidden' }); return; }
+    if (error.status === 404) { res.status(404).json({ error: 'not_found' }); return; }
+    if (error.status === 400) { res.status(400).json({ error: 'invalid_request' }); return; }
+    res.status(503).json({ error: 'service_unavailable' });
+    return;
+  }
   if (error instanceof Error) {
     if (
       error.message === 'businessId must be a positive integer'
