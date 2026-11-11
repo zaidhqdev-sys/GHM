@@ -1,5 +1,5 @@
-import type {
 import { assertActorGatewayBaseUrl } from './actor-gateway-url';
+import type {
   BusinessRegistrationIdentity,
   UpdateBusinessRegistrationIdentityInput,
 } from '../resources/business-registration-identity/contracts';
