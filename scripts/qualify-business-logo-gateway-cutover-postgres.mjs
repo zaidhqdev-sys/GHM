@@ -99,10 +99,10 @@ try {
 
   const replay = createActorGatewayAssertion(Buffer.from(secret, 'base64'), ids.accountId, 'business.logo.bind', {
     businessId: ids.businessId,
-    objectId: null,
+    objectId: ids.objectId,
   });
   await gateway.query('SELECT ghm.gateway_set_business_logo_object($1,$2,$3,$4,$5,$6,$7)',
-    [ids.accountId, replay.issuedAt, replay.nonce, replay.context, replay.signature, ids.businessId, null]);
+    [ids.accountId, replay.issuedAt, replay.nonce, replay.context, replay.signature, ids.businessId, ids.objectId]);
   let replayDenied = false;
   try {
     await gateway.query('SELECT ghm.gateway_set_business_logo_object($1,$2,$3,$4,$5,$6,$7)',
