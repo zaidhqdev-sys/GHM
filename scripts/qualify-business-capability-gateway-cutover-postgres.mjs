@@ -47,13 +47,13 @@ try{
  const replayContext={...input,referenceNumber:null};
  const replay=sign(owner,'business.capability.evidence.submit',replayContext);
  const submitArgs=[owner,replay.issuedAt,replay.nonce,replay.context,replay.signature,bcId,input.evidenceType,input.title,null,input.issuerName,null,null,null,null,'private'];
- await gateway.query('SELECT * FROM ghm.gateway_submit_business_capability_evidence($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::date,$14::date,$15)',submitArgs);
+ const replayInserted=await gateway.query('SELECT * FROM ghm.gateway_submit_business_capability_evidence($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::date,$14::date,$15)',submitArgs);ids.evidence.push(Number(replayInserted.rows[0].id));
  const replayError=await denied(()=>gateway.query('SELECT * FROM ghm.gateway_submit_business_capability_evidence($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::date,$14::date,$15)',submitArgs),'SIGNED EVIDENCE ASSERTION REPLAY DENIED');assert.equal(replayError.code,'42501');
  const memberInput={...input,description:null,issuerName:null,referenceNumber:null};const memberSubmit=await denied(()=>call(member,'business.capability.evidence.submit','gateway_submit_business_capability_evidence',[bcId,input.evidenceType,input.title,null,null,null,null,null,null,'private'],memberInput),'NON-MANAGEMENT BUSINESS MEMBER CANNOT SUBMIT EVIDENCE');assert.match(memberSubmit.message,/Business management permission required/);
  const outsiderSubmit=await denied(()=>call(outsider,'business.capability.evidence.submit','gateway_submit_business_capability_evidence',[bcId,input.evidenceType,input.title,null,null,null,null,null,null,'private'],memberInput),'NON-MEMBER CANNOT SUBMIT EVIDENCE');assert.match(outsiderSubmit.message,/Business management permission required/);
 
  const replacement=[{capabilityId:capId}];const replaceContext={businessId:business,assertions:replacement};
- const replaced=await call(owner,'business.capability.replace','gateway_replace_business_capability_assertions',[business,JSON.stringify(replacement)],replaceContext);assert.equal(replaced.rowCount,0);
+ const replaced=await call(owner,'business.capability.replace','gateway_replace_business_capability_assertions',[business,JSON.stringify(replacement)],replaceContext);assert.equal(replaced.rowCount,1);
  console.log('SIGNED CAPABILITY ASSERTION REPLACEMENT AFTER CUTOVER: PASS');
  const wrongBusiness=sign(owner,'business.capability.replace',replaceContext);
  const cross=await denied(()=>gateway.query('SELECT * FROM ghm.gateway_replace_business_capability_assertions($1,$2,$3,$4,$5,$6,$7::jsonb)',[owner,wrongBusiness.issuedAt,wrongBusiness.nonce,wrongBusiness.context,wrongBusiness.signature,business+999,'[]']),'SIGNED REPLACEMENT TARGET SUBSTITUTION DENIED');assert.equal(cross.code,'42501');
