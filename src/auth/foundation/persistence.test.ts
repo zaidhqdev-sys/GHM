@@ -426,31 +426,51 @@ test('auth foundation persistence (database)', async (t) => {
     }
   });
 
-  await t.test('link external identity: runtime cannot INSERT table; can EXECUTE function', async () => {
+  await t.test('link external identity: runtime cannot read or mutate mapping table; can EXECUTE governed functions', async () => {
     const { EXTERNAL_IDENTITY_PROVIDER_SUPABASE } = await import('./types');
     const provider = EXTERNAL_IDENTITY_PROVIDER_SUPABASE;
     const subject = `acl-${marker}`;
 
     const runtimeClient = await runtimePool.connect();
     try {
-      await assert.rejects(
-        () =>
-          runtimeClient.query(
-            `INSERT INTO ghm.account_external_identity (provider, subject, account_id)
-             VALUES ($1, $2, $3)`,
-            [provider, subject, accountId],
-          ),
-        (error: unknown) => {
-          const err = error as { code?: string; message?: string };
-          return err.code === '42501' || Boolean(err.message?.match(/permission denied/i));
-        },
-      );
+      const privileges = await runtimeClient.query(`
+        SELECT
+          has_table_privilege(current_user, 'ghm.account_external_identity', 'SELECT') AS can_select,
+          has_table_privilege(current_user, 'ghm.account_external_identity', 'INSERT') AS can_insert,
+          has_table_privilege(current_user, 'ghm.account_external_identity', 'UPDATE') AS can_update,
+          has_table_privilege(current_user, 'ghm.account_external_identity', 'DELETE') AS can_delete,
+          has_sequence_privilege(current_user, 'ghm.account_external_identity_id_seq', 'USAGE') AS can_use_sequence
+      `);
+      assert.deepEqual(privileges.rows[0], {
+        can_select: false,
+        can_insert: false,
+        can_update: false,
+        can_delete: false,
+        can_use_sequence: false,
+      });
+
+      for (const sql of [
+        'SELECT * FROM ghm.account_external_identity',
+        `INSERT INTO ghm.account_external_identity (provider, subject, account_id)
+         VALUES ('supabase', 'direct-runtime-insert', ${accountId})`,
+        "SELECT nextval('ghm.account_external_identity_id_seq')",
+      ]) {
+        await assert.rejects(
+          () => runtimeClient.query(sql),
+          (error: unknown) => {
+            const err = error as { code?: string; message?: string };
+            return err.code === '42501' || Boolean(err.message?.match(/permission denied/i));
+          },
+        );
+      }
     } finally {
       runtimeClient.release();
     }
 
     const viaFunction = await persistence.linkExternalIdentity(provider, subject, accountId);
     assert.equal(viaFunction.outcome, 'created');
+    const lookedUp = await persistence.lookupExternalIdentity(provider, subject);
+    assert.equal(lookedUp?.accountId, accountId);
 
     const owner = await migratorPool.connect();
     try {
