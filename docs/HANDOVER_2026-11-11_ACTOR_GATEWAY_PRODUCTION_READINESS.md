@@ -268,3 +268,8 @@ The expanded request-context substitution qualification is now green on exact PR
 **Result:** request-context substitution qualification is passed for the cases listed above. This is evidence for the tested database wrappers and test fixtures; it is not a blanket claim that every gateway operation, production topology, key-rotation process, or production database privilege is fully qualified.
 
 PR #272 remains open, unmerged and mergeable at the time of this update. Production remains blocked on Render's supported role-model resolution and a fresh verified backup. The 4 November recovery point is stale for the 10 November role work. No production migrations, grants/role changes, secrets, deployments, or paid infrastructure were introduced by this work.
+
+
+## 2026-11-11 — registration identity target-substitution coverage added (CI pending)
+
+A further operation-by-operation review found that registration identity already had a read-target transplant test and an update-payload substitution test, but lacked the matching update-target transplant test. Added a disposable PostgreSQL negative case that signs a registration update for one fixture Business and substitutes a second fixture Business ID while preserving the signed payload. It expects SQLSTATE `42501`. This closes that specific qualification gap; exact-head CI is pending. No production state was touched.
