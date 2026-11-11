@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 const gatewayUrl = process.env.GHM_ACTOR_GATEWAY_DATABASE_URL;
+const assertionSecret = process.env.GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET;
+if (!assertionSecret || Buffer.from(assertionSecret, 'base64').length !== 32) throw new Error('A 32-byte gateway assertion test key is required');
 if (!runtimeUrl || !migratorUrl || !gatewayUrl || new Set([runtimeUrl, migratorUrl, gatewayUrl]).size !== 3) throw new Error('Distinct runtime, migrator and actor gateway database URLs are required');
 
 const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined;
@@ -15,6 +17,8 @@ const marker = `ghm-profile-contract-${randomUUID()}`;
 let accountId;
 let memberAccountId;
 let businessId;
+const signAssertion = (actorId) => { const issuedAt=Math.floor(Date.now()/1000),nonce=randomUUID(); const payload=`ghm-actor-gateway:v1|${actorId}|business.profile.update|${issuedAt}|${nonce}`; const signature=createHmac('sha256',Buffer.from(assertionSecret,'base64')).update(payload,'utf8').digest('hex'); return {issuedAt,nonce,signature}; };
+const gatewayCall = (actorId,patch) => { const a=signAssertion(actorId); return gatewayPool.query('SELECT (ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6::jsonb)).*',[actorId,a.issuedAt,a.nonce,a.signature,businessId,JSON.stringify(patch)]); };
 
 try {
   const runtimeIdentity = await runtimePool.query(
@@ -25,6 +29,8 @@ try {
   assert.equal(runtimeIdentity.rows[0].database_name, process.env.GHM_QUALIFICATION_DATABASE_NAME);
   console.log('PROFILE CONTRACT RUNTIME IDENTITY PASS');
   const gatewayIdentity = await gatewayPool.query('SELECT current_database() AS database_name, session_user, current_user');
+  const provision = await migratorPool.connect();
+  try { await provision.query('BEGIN'); await provision.query('SET LOCAL ROLE ghm_schema_owner'); await provision.query("INSERT INTO ghm.actor_gateway_capability_assertion_secret(singleton,secret) VALUES(true,$1) ON CONFLICT(singleton) DO UPDATE SET secret=EXCLUDED.secret",[Buffer.from(assertionSecret,'base64')]); await provision.query('COMMIT'); } catch(e) { await provision.query('ROLLBACK').catch(()=>{}); throw e; } finally { provision.release(); }
   assert.equal(gatewayIdentity.rows[0].session_user, 'ghm_actor_gateway');
   assert.equal(gatewayIdentity.rows[0].current_user, 'ghm_actor_gateway');
   console.log('PROFILE CONTRACT GATEWAY IDENTITY PASS');
@@ -89,8 +95,8 @@ try {
 
   await assert.rejects(
     () => runtimePool.query(
-      'SELECT * FROM ghm.gateway_update_business_profile($1, $2, $3::jsonb)',
-      [accountId, businessId, JSON.stringify({ description: 'Gateway wrapper spoof attempt' })],
+      'SELECT * FROM ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6::jsonb)',
+      [accountId, Math.floor(Date.now()/1000), randomUUID(), '0'.repeat(64), businessId, JSON.stringify({ description: 'Gateway wrapper spoof attempt' })],
     ),
     /permission denied/,
   );
@@ -122,10 +128,7 @@ try {
   if (legacyColumnNames.has('category')) snakePatch.category = 'construction';
   if (legacyColumnNames.has('is_supplier')) snakePatch.isSupplier = true;
 
-  const snake = await gatewayPool.query(
-    'SELECT (ghm.gateway_update_business_profile($1, $2, $3::jsonb)).*',
-    [accountId, businessId, JSON.stringify(snakePatch)],
-  );
+  const snake = await gatewayCall(accountId,snakePatch);
   assert.equal(snake.rowCount, 1);
   assert.equal(snake.rows[0].physical_address, '10 Current Repository Road');
   assert.equal(snake.rows[0].avatar_letter, 'GH');
@@ -137,17 +140,14 @@ try {
   if (legacyColumnNames.has('is_supplier')) assert.equal(snake.rows[0].is_supplier, true);
   console.log('GATEWAY CURRENT REPOSITORY SNAKE_CASE PROFILE UPDATE PASS');
 
-  const camel = await gatewayPool.query(
-    'SELECT (ghm.gateway_update_business_profile($1, $2, $3::jsonb)).*',
-    [accountId, businessId, JSON.stringify({
+  const camel = await gatewayCall(accountId,{
       physicalAddress: '11 Historical API Avenue',
       avatarLetter: 'API',
       avatarColor: '#ABCDEF',
       yearsInBusiness: 9,
       latitude: -30.0,
       longitude: 30.0,
-    })],
-  );
+    });
   assert.equal(camel.rows[0].physical_address, '11 Historical API Avenue');
   assert.equal(camel.rows[0].avatar_letter, 'API');
   assert.equal(camel.rows[0].avatar_color, '#ABCDEF');
@@ -159,31 +159,19 @@ try {
   console.log('GATEWAY HISTORICAL CAMELCASE PROFILE UPDATE PASS');
 
   await assert.rejects(
-    () => gatewayPool.query(
-      'SELECT (ghm.gateway_update_business_profile($1, $2, $3::jsonb)).*',
-      [accountId, businessId, JSON.stringify({
-        physical_address: 'Conflict A',
-        physicalAddress: 'Conflict B',
-      })],
-    ),
+    () => gatewayCall(accountId,{ physical_address: 'Conflict A', physicalAddress: 'Conflict B' }),
     /Conflicting Business profile aliases/,
   );
   console.log('CONFLICTING ALIAS REJECTION PASS');
 
   await assert.rejects(
-    () => gatewayPool.query(
-      'SELECT (ghm.gateway_update_business_profile($1, $2, $3::jsonb)).*',
-      [accountId, businessId, JSON.stringify({ latitude: -29.0 })],
-    ),
+    () => gatewayCall(accountId,{ latitude: -29.0 }),
     /Latitude and longitude must be supplied together/,
   );
   console.log('COORDINATE PAIR VALIDATION PASS');
 
   await assert.rejects(
-    () => gatewayPool.query(
-      'SELECT (ghm.gateway_update_business_profile($1, $2, $3::jsonb)).*',
-      [memberAccountId, businessId, JSON.stringify({ description: 'Unauthorized' })],
-    ),
+    () => gatewayCall(memberAccountId,{ description: 'Unauthorized' }),
     /Business management permission required/,
   );
   console.log('GATEWAY MEMBER AUTHORIZATION ENFORCEMENT PASS');
