@@ -383,3 +383,18 @@ A second bounded batch now replaces direct runtime reads on `ghm.trust_score`:
 - Reader HMAC tests, migration/ACL contract tests, HTTP gateway/fail-closed tests and the disposable PostgreSQL qualification runner have been expanded to prove public/private visibility and no direct runtime reads.
 
 **Status: IMPLEMENTED / QUALIFICATION PENDING.** Exact-head CI for this read-boundary expansion is queued/pending; no pass is claimed. The earlier mutation-only Trust Score qualification (#3198) remains valid for the calculation boundary, but does not qualify these new read functions or the table/sequence revocations. Do not apply the expanded manual cutover to production until exact-head CI and the new disposable PostgreSQL read checks pass. No production changes.
+
+
+## Storage metadata database-boundary findings — separate OPEN workstream (2026-11-11)
+
+Tracing the active Business Logo lifecycle exposed a broader shared-runtime trust assumption in the storage metadata layer. Existing migrations and call paths:
+
+- `ghm.storage_get_object(bigint,bigint)` is SECURITY DEFINER and accepts a caller-supplied `p_account_id`; it checks membership/public logo eligibility against that supplied ID. The migration comment explicitly says this is defense in depth and that the shared runtime role is trusted because PostgreSQL cannot derive the end-user identity from the shared credential. A direct runtime caller can supply another account ID to probe/read storage metadata.
+- `ghm.storage_create_pending(...)` is SECURITY DEFINER and accepts caller-supplied tenant Business/resource fields; it has no signed actor assertion or DB membership check.
+- `ghm.storage_mark_available(bigint,text)`, `ghm.storage_mark_deletion_pending(bigint)` and `ghm.storage_mark_deleted(bigint)` are SECURITY DEFINER and accept only an object ID (plus checksum for mark-available); they do not establish which authenticated actor is authorizing the transition.
+- `src/storage/repository.ts` invokes these functions through `withAuthorizedTransaction`, while `src/storage/authorization-adapter.ts` applies application-level owner/admin or tenant-membership checks. Those application checks do not make the database function boundary independently actor-bound.
+- `src/http/storage-router.ts` uses `metadataFor(context).getById(...)` in logo binding, upload completion, object access and object deletion. The current metadata store passes `context.userId` to `storage_get_object`; this remains application-derived but is not cryptographically bound at the database boundary.
+
+The existing storage qualification (`scripts/qualify-storage-persistence.mjs` and CI storage lifecycle qualification) proves direct table DML denial, lifecycle transitions, tenant behavior for the supplied account ID and public-logo visibility. It does **not** prove that a caller cannot substitute another account ID or directly invoke lifecycle functions against another tenant/object.
+
+**Disposition:** OPEN / NOT CLOSED by the Business Logo binding gateway. The new signed `business.logo.bind` wrapper only closes the canonical logo-reference mutation path. A separate bounded storage metadata gateway design must bind actor, operation, tenant Business, resource identity, object ID and lifecycle transition to signed JWT-derived assertions, while preserving the upload-complete/cleanup lifecycle. Do not revoke existing storage lifecycle EXECUTE privileges until all storage HTTP flows have replacement gateway routes and disposable PostgreSQL qualification. No production changes.
