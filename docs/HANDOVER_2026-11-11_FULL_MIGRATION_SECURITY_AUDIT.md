@@ -1240,3 +1240,57 @@ Bounded changes committed to this open PR branch:
 Current PR head after this batch: `be08e9db8ac7fcf8602f2d6988518ae021597bfb`. GitHub Actions had not yet returned a workflow run for this exact head at the time of this checkpoint. The preceding exact-head run #3441 passed on `47f5a7e45c4b8abdb46c529b385ec7e8607d550f`; that run does NOT qualify this new batch. Wait for exact-head CI, including full build/test and the disposable PostgreSQL migration chain, before marking this change qualified.
 
 Recursive tree at the new head contains 127 SQL migrations and 7 manual cutover files. This is a source-tree count only, not proof of effective production ACLs. PR #272 remains open and unmerged. Continue the internal-auth audit without blanket revocation: password set during login rehash/recovery, recovery issuance/redemption, session creation, refresh rotation and refresh-token logout are active service paths and must remain functional. The next bounded review should reconcile the remaining runtime-executable authentication functions against exact call sites, especially bootstrap-related grants now addressed, account/session administration functions already revoked by migration `20261111220000`, and any remaining runtime-executable RPCs that accept caller-supplied account/session IDs.
+
+
+## Follow-up — internal-auth issuer boundary trace (2026-11-12)
+
+### Exact source reviewed
+
+- PR #272 branch: `integration/capability-gateway-qualification-20261110`
+- Reviewed branch head at start of this follow-up: `6c25c96fd477f36ddb3b3b03827cf6114f4a1c1a`
+- Authentication architecture: `docs/architecture/ADR-001-isolated-auth-issuer-and-db-actor-gateway.md` (approved for isolated design and qualification only; implementation not yet deployed/provisioned).
+- Persistence: `src/auth/foundation/persistence.ts`
+- Application service: `src/auth/ghm-auth-service.ts`
+- HTTP routes: `src/http/auth-router.ts`
+- Recovery service: `src/auth/password-recovery.ts`; reset service: `src/auth/password-reset.ts`
+- Original function definitions/grants: `database/migrations/20260921130000_create_auth_runtime_functions.sql`
+
+### Caller and trust-boundary findings
+
+1. `POST /api/v1/auth/register` and `/api/v1/auth/web/register` call `GhmAuthService.register`. It validates registration input/password policy, calls `createAccount`, then calls `createSessionWithRefresh(created.accountId)` and signs an access token for that account.
+2. `POST /api/v1/auth/login` and `/api/v1/auth/web/login` call `GhmAuthService.login`. It normalizes email, obtains the credential record by normalized email, verifies the supplied password with the Argon2id hasher, checks account and credential status, optionally rehashes, then creates a session for the account returned by the credential lookup and signs the pair.
+3. The password recovery request route calls `PasswordRecoveryService.request`. It looks up the normalized email, checks active account and credential status, then calls `issueRecovery(credential.accountId, 30)` and delivers the opaque recovery token.
+4. Password reset calls `PasswordResetService.reset`, which passes the recovery token, email and new password into `resetPasswordWithRecovery`. That transaction redeems the token and obtains its account ID from the database token row before setting the password; this is materially safer than a caller-supplied account ID.
+5. QuoteFlow migration reset has separate request/completion services. Completion redeems a migration recovery token in its database function, atomically changes password and revokes sessions; the HTTP route then calls the normal login flow to issue a session. Keep this path in the caller inventory; do not collapse it into ordinary password-recovery semantics.
+6. The ordinary Resource API currently constructs the auth service in-process and uses the same configured runtime database pool. The approved ADR explicitly says the isolated issuer is not yet implemented and that issuer credentials, refresh pepper and signing key must not remain in the ordinary Resource API.
+
+### Effective authority gap
+
+The original migration grants `ghm_runtime` EXECUTE on:
+
+- `ghm.auth_set_password(bigint,text,text,text,integer,integer,integer)`
+- `ghm.auth_create_session_with_refresh(bigint,bytea)`
+- `ghm.auth_issue_recovery(bigint,bytea,timestamptz)`
+
+The function bodies validate basic argument shape/account existence (and session creation checks account state), but do not independently prove the upstream password verification, successful recovery lookup, or registration provenance. Their legitimate TypeScript callers currently establish that provenance before passing the account ID. Because the shared runtime principal can call the SECURITY DEFINER functions directly, PostgreSQL cannot distinguish those trusted call paths from arbitrary SQL invoked with the same runtime credential.
+
+This is a confirmed database-principal authority gap, not evidence of a public HTTP exploit or observed account compromise.
+
+### Design constraint / decision
+
+Do not add caller-writable GUCs, temporary tables, plain account-ID assertions, or a generic SQL/RPC proxy. Do not simply add a second connection string to the same ordinary API process and call that an isolated issuer. ADR-001 requires a separately isolated issuer boundary, issuer-only DB credentials and signing-key custody, and typed interfaces; the ordinary Resource API must not receive those credentials.
+
+The next implementation design must explicitly cover:
+- issuer-only database principal and the minimum function/table privileges it needs;
+- registration, password verification, rehash, session creation, refresh rotation, logout, password-recovery issuance, token-bound reset and QuoteFlow migration reset;
+- database-side checks for active account/credential state and token/session validity;
+- proof/provenance for account selection, with no account ID chosen by the HTTP caller;
+- safe delivery of recovery tokens and preservation of anti-enumeration/rate-limiting behavior;
+- key/pepper custody and migration of existing valid ES256/refresh behavior;
+- disposable PostgreSQL tests using real runtime and issuer logins, including direct runtime denial for all three functions and positive issuer flows.
+
+No code, grants, production credentials, deployments, data or production services were changed during this follow-up. No privilege revocation is authorized until the replacement issuer path and all positive/negative qualifications are implemented.
+
+### CI / documentation state
+
+At the beginning of this follow-up, PR #272 was open and unmerged at `6c25c96fd477f36ddb3b3b03827cf6114f4a1c1a`; exact-head runs #3464 and #3465 both completed successfully (`quality` and `web-quality`). The branch is reported by GitHub as 648 commits ahead and 2 behind `main`; reconcile the two newer main commits and inspect the merge base before any merge decision. This follow-up documentation commit will advance the branch, so recheck the exact head and CI after the commit.
