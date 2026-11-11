@@ -735,3 +735,27 @@ Confirmed sequence:
 No later migration in the 57-file scan revoked/replaced the runtime grants for `storage_create_pending`, `storage_mark_available`, `storage_mark_deletion_pending`, `storage_mark_deleted`, or `storage_get_object(bigint,bigint)`. The only manual cutover found for this related slice is `20261111160000_revoke_legacy_business_logo_runtime.sql`, which revokes only `set_business_logo_object`.
 
 This is an ordered migration-source result, not a live effective-ACL proof. PUBLIC/default privileges, role membership, actual function owners and production catalog state remain separate checks. The five metadata functions remain OPEN under the shared runtime credential. No storage grant was changed and no production state was touched.
+
+
+## Existing storage qualification coverage review — exact gap recorded (2026-11-11)
+
+Inspected:
+- `scripts/qualify-storage-persistence.mjs`
+- `src/storage/repository.test.ts`
+- `src/storage/service.test.ts`
+- `src/db/storage-pending-cleanup-migration-contract.test.ts`
+- `package.json` test/qualification scripts.
+
+The existing storage qualification is a persistence/application-boundary qualification, not a signed actor-provenance cutover qualification:
+
+- It explicitly checks that the runtime role has EXECUTE on all five canonical storage metadata functions. It fails if those EXECUTE privileges are absent.
+- It checks runtime direct INSERT/UPDATE/DELETE on `ghm.storage_object` are denied.
+- It directly calls `storage_create_pending`, `storage_mark_available`, `storage_mark_deletion_pending`, and `storage_mark_deleted` as runtime to exercise the lifecycle.
+- It tests the account-aware getter for a known active member and a synthetic non-member account ID, and checks public logo visibility.
+- It proves pending -> available -> deletion_pending -> deleted transitions and the pending-object cleanup path.
+- It does not prove that the runtime caller cannot forge another active member's account ID, create metadata for an unauthorized tenant, mark an arbitrary pending object available, or transition another tenant's object to deletion_pending/deleted.
+- It does not apply a storage metadata manual cutover, because no such cutover exists.
+
+Unit tests in `src/storage/service.test.ts` correctly prove that the normal service calls application authorization before metadata state transitions and provider operations, and that deletion retries preserve `deletion_pending`. These application-path tests must be retained and extended, not replaced.
+
+**Revised disposition:** existing storage lifecycle functional behavior remains covered; database actor provenance is OPEN / NOT QUALIFIED. The current qualification's expected runtime EXECUTE is an intentional legacy persistence contract, not evidence that direct runtime function invocation is safe against a compromised/misused shared credential. A future signed/internal gateway qualification must supersede this assumption and explicitly prove runtime EXECUTE denial only after every normal upload/read/delete/cleanup flow has been routed through its replacement.
