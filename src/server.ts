@@ -22,9 +22,35 @@ app.get('/readyz', (_req, res) => {
 });
 
 const start = async (): Promise<void> => {
-  const identity = await pool.query<{ session_user: string; current_user: string }>(
-    'SELECT session_user, current_user',
-  );
+  const identity = await pool.query<{
+    session_user: string;
+    current_user: string;
+    rolcanlogin: boolean;
+    rolinherit: boolean;
+    rolsuper: boolean;
+    rolcreatedb: boolean;
+    rolcreaterole: boolean;
+    rolreplication: boolean;
+    rolbypassrls: boolean;
+    no_role_memberships: boolean;
+  }>(`
+    SELECT session_user,
+           current_user,
+           r.rolcanlogin,
+           r.rolinherit,
+           r.rolsuper,
+           r.rolcreatedb,
+           r.rolcreaterole,
+           r.rolreplication,
+           r.rolbypassrls,
+           NOT EXISTS (
+             SELECT 1
+               FROM pg_auth_members m
+              WHERE m.member = r.oid OR m.roleid = r.oid
+           ) AS no_role_memberships
+      FROM pg_roles r
+     WHERE r.rolname = session_user
+  `);
   assertRuntimeDatabaseIdentity(identity.rows[0]);
   server.listen(config.port, () => {
     ready = true;
