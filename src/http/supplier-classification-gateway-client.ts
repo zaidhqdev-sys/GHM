@@ -1,4 +1,5 @@
 export class SupplierClassificationGatewayError extends Error {
+import { assertActorGatewayBaseUrl } from './actor-gateway-url';
   constructor(readonly status: number) {
     super('Actor gateway request failed');
     this.name = 'SupplierClassificationGatewayError';
@@ -15,10 +16,7 @@ export class HttpSupplierClassificationGatewayClient implements SupplierClassifi
     private readonly timeoutMs = 5_000,
     private readonly fetchImpl: typeof fetch = fetch,
   ) {
-    const parsed = new URL(baseUrl);
-    if (parsed.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(parsed.hostname)) {
-      throw new Error('Actor gateway URL must use HTTPS outside localhost');
-    }
+    assertActorGatewayBaseUrl(baseUrl);
   }
 
   async update(accessToken: string, businessId: number, isSupplier: boolean): Promise<{ businessId: number; isSupplier: boolean }> {
@@ -32,6 +30,7 @@ export class HttpSupplierClassificationGatewayClient implements SupplierClassifi
         `${this.baseUrl.replace(/\/$/, '')}/v1/businesses/${businessId}/supplier-classification`,
         {
           method: 'PUT',
+          redirect: 'error',
           headers: {
             authorization: `Bearer ${accessToken}`,
             accept: 'application/json',
