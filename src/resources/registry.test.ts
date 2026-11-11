@@ -19,8 +19,6 @@ test('registered operations are accepted', () => {
   assert.equal(isRegisteredOperation('business_registration_identity', 'read'), true);
   assert.equal(isRegisteredOperation('business_registration_identity', 'update'), true);
   assert.equal(isRegisteredOperation('directory_review', 'read'), true);
-  assert.equal(isRegisteredOperation('directory_review', 'create'), true);
-  assert.equal(isRegisteredOperation('directory_review', 'transition'), true);
   assert.equal(isRegisteredOperation('business_category', 'read'), true);
   assert.equal(isRegisteredOperation('business_category_assignment', 'read'), true);
   assert.equal(isRegisteredOperation('business_category_assignment', 'create'), true);
@@ -91,6 +89,8 @@ test('unregistered operations are rejected', () => {
   assert.equal(isRegisteredOperation('business_capability', 'update'), false);
   assert.equal(isRegisteredOperation('business_capability_evidence', 'delete'), false);
   assert.equal(isRegisteredOperation('business_capability_evidence', 'update'), false);
+  assert.equal(isRegisteredOperation('directory_review', 'create'), false);
+  assert.equal(isRegisteredOperation('directory_review', 'transition'), false);
   assert.equal(isRegisteredOperation('directory_review', 'delete'), false);
   assert.equal(isRegisteredOperation('directory_review', 'update'), false);
   assert.equal(isRegisteredOperation('business_category', 'create'), false);
