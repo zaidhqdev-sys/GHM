@@ -341,7 +341,7 @@ export const createActorGatewayApp = (
     const allowed = new Set([
       'name', 'slug', 'description', 'phone', 'email', 'category',
       'province', 'city', 'physicalAddress', 'whatsapp', 'website',
-      'isSupplier', 'yearsInBusiness', 'latitude', 'longitude',
+      'yearsInBusiness', 'latitude', 'longitude',
       'avatarLetter', 'avatarColor',
     ]);
     if (
