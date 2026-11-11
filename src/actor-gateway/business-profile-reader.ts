@@ -23,7 +23,7 @@ export class PostgresBusinessProfileReader implements BusinessProfileReader {
     try {
       await client.query('BEGIN');
       const result = await client.query<{ id: string | number }>(
-        'SELECT (ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6::jsonb)).id AS id',
+        'SELECT updated.id FROM ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6::jsonb) AS updated',
         [accountId,issuedAt,nonce,signature,businessId,JSON.stringify(patch)],
       );
       if (result.rowCount !== 1) throw Object.assign(new Error('Business profile is unavailable'), { code: '42501' });
