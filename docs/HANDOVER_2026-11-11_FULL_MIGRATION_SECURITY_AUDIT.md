@@ -316,3 +316,18 @@ Exact qualification log evidence:
 The earlier test run #3164 failed only because the new read-contract assertions mistakenly read the replacement migration file instead of the new read-projection migration file. This was a test-target error; it did not indicate a migration or application defect. The test was corrected to load `20261111140000_add_business_hours_read_projections.sql`; exact-head run #3166 then passed.
 
 **Business Hours status:** mutation actor provenance and member/public read database boundaries IMPLEMENTED / QUALIFIED. The manual cutover was applied only to disposable CI PostgreSQL and remains unapplied in production. Production still requires Render role-model resolution, a fresh independently verified backup and explicit approval. No production changes, no merge.
+
+
+## Trust Score signed calculation gateway — implementation checkpoint (2026-11-11)
+
+A bounded mutation-only Actor Gateway batch is now implemented for Trust Score calculation. It does not yet revoke direct runtime SELECT on `ghm.trust_score`; public/member read projections are a separate OPEN read-boundary task.
+
+Files added/changed:
+- `database/migrations/20261111150000_add_signed_trust_score_gateway.sql`: adds `trust.score.calculate` to signed v2 assertion allowlist and creates gateway-only `ghm.gateway_calculate_business_trust_score`. It binds the exact Business ID in signed context, verifies the actor and calls the existing calculation function with the verified actor.
+- `database/cutovers/20261111150000_revoke_legacy_trust_score_runtime.sql`: manual-only revocation of direct runtime/PUBLIC EXECUTE on legacy `ghm.calculate_business_trust_score`.
+- `src/actor-gateway/trust-score-reader.ts`, `src/actor-gateway/app.ts`, `src/actor-gateway/server.ts`: signed calculation reader and JWT-derived Actor Gateway route.
+- `src/http/trust-score-gateway-client.ts`, `src/http/trust-score-router.ts`, `src/http/app.ts`: forwards original bearer token and routes calculation through Actor Gateway; production fails closed if the gateway is unavailable/unconfigured.
+- `src/db/actor-gateway-trust-score-migration-contract.test.ts` and `src/actor-gateway/trust-score-reader.test.ts`: migration/ACL and HMAC/context/rollback tests included in `npm test`.
+- `scripts/qualify-trust-score-gateway-cutover-postgres.mjs`, package script and CI wiring: disposable-localhost-only qualification with distinct runtime/gateway/migrator roles, manual cutover, signed calculation, actor/target substitution, nonce replay and runtime-wrapper denial checks.
+
+**Status: IMPLEMENTED / QUALIFICATION PENDING.** Latest CI is running on implementation head `34172a7057a56ed027a0baead9640a3a835f7b59` (run #3198 pending). Do not mark Trust Score calculation qualified until the exact-head quality job passes the full suite and the new disposable PostgreSQL step. Direct runtime SELECT remains unchanged/open. No production changes, no manual production cutover, no merge.
