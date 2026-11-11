@@ -466,3 +466,89 @@ This checkpoint was added after recovering from an unavailable prior chat. It re
 
 Begin with source-level tracing of the internal authentication RPC family and its exact callers; do not change auth grants yet. If the source/migration paths cannot be established from the branch, record that retrieval limitation and use repository tree/commit evidence rather than guessing filenames. After that, reconcile the storage lifecycle call graph. Keep PR #272 open and unmerged until all required documentation is reconciled and current-head validation is verified.
 
+
+
+## Internal authentication RPC audit — source/call-path pass 1 (2026-11-11)
+
+This is a source-level audit checkpoint, not a live effective-ACL qualification and not a remediation. No auth migration, grant, function, service or route was changed.
+
+### Exact source locations inspected
+
+- Auth function definitions and original runtime grants: `database/migrations/20260921130000_create_auth_runtime_functions.sql` (872 lines).
+- Follow-on refresh semantics: `database/migrations/20260921130100_fix_auth_rotate_refresh_ambiguity.sql`, `20260921130200_auth_rotate_refresh_replay_outcome.sql`.
+- Logout-by-refresh-token: `database/migrations/20260921130300_auth_revoke_by_refresh_hash.sql`.
+- External identity link operations: `20260921130400_auth_link_external_identity.sql`, `20260921130500_auth_link_business_external_mapping.sql`.
+- Canonical password registration: `20261004020000_create_auth_account_registration.sql`.
+- Persistence and internal service: `src/auth/foundation/persistence.ts`, `src/auth/ghm-auth-service.ts`, `src/auth/password-recovery.ts`, `src/auth/password-reset.ts`.
+- Public HTTP routes and wiring: `src/http/auth-router.ts`, `src/http/app.ts`.
+
+### Confirmed original migration grants
+
+The 20260921130000 migration explicitly revokes PUBLIC and grants EXECUTE to `ghm_runtime` on these SECURITY DEFINER functions:
+
+- `auth_set_password`
+- `auth_lookup_password_by_normalized_email`
+- `auth_create_session_with_refresh`
+- `auth_validate_session`
+- `auth_rotate_refresh`
+- `auth_revoke_session`
+- `auth_revoke_all_sessions_for_account`
+- `auth_change_password`
+- `auth_disable_account`
+- `auth_issue_recovery`
+- `auth_redeem_recovery`
+- `auth_lookup_external_identity`
+- `auth_bootstrap_external_identity`
+
+The two `auth_internal_*` helpers are explicitly revoked from PUBLIC and are not granted to runtime in that migration. Separate migrations grant runtime EXECUTE on `auth_create_account`, `auth_link_external_identity`, and `auth_link_business_external_mapping`. This is the historical/source grant set only; the final effective ACL after every later migration, default privilege and role membership has not yet been established.
+
+### Public HTTP authentication flows observed
+
+`src/http/auth-router.ts` registers unauthenticated routes for:
+- register and login (including browser-cookie variants);
+- refresh and logout (including browser-cookie variants);
+- password recovery request and password recovery reset;
+- QuoteFlow migration-reset request and completion.
+
+The ordinary registration/login/refresh/logout service is `GhmAuthService`. Login first looks up the credential by normalized email, verifies the password hash, checks active account/credential status, optionally rehashes, then creates a session. Registration hashes the submitted password before calling account creation and session creation. Refresh derives the presented token hash from the opaque refresh token and rotates it; logout derives a hash from the presented refresh token and revokes the matching session family.
+
+Password recovery request looks up an account by normalized email and only issues a recovery token for an active account/credential; delivery receives the raw token. Reset redeems the supplied opaque recovery token inside a transaction, obtains the account ID from the redeemed credential (not from the HTTP body), sets the new password and revokes that account's other sessions in the same transaction. The route does not accept an account ID.
+
+The HTTP router receives recovery/reset service dependencies from `src/http/app.ts`; the default app wiring creates the password-reset service, while the password-recovery and QuoteFlow migration-reset services are injected dependencies. Do not assume those optional services are active in every deployment without inspecting deployment composition/configuration.
+
+### High-risk database entry points requiring distinct internal-auth authority analysis
+
+The SQL bodies accept identifiers without proving the end-user actor at the database boundary:
+
+- `auth_set_password(account_id,...)`: accepts arbitrary account ID. Current service callers include login password rehash after password verification and recovery reset after one-time recovery-token redemption. The direct persistence method also accepts account ID. The database function itself does not prove either precondition.
+- `auth_create_session_with_refresh(account_id, token_hash)`: accepts arbitrary account ID and caller-provided refresh hash. Normal registration/login callers derive account ID from new account creation or verified password credentials, but SQL itself only checks account existence and active status.
+- `auth_validate_session(session_id)`: accepts a raw session ID and returns its account/session state. It is exposed by the persistence interface; exact non-test production caller still needs tracing.
+- `auth_revoke_session(session_id, reason)`: accepts raw session ID and revokes its family. `AuthPersistence.revokeSession` calls it; no public route in the inspected AuthRouter/GhmAuthService exposes this method. Treat as an unused-or-internal candidate until all repository call sites are checked.
+- `auth_revoke_all_sessions_for_account(account_id, reason)`: accepts raw account ID. The public recovery-reset transaction calls it only with the account ID returned by successful recovery-token redemption. A separate persistence method accepts arbitrary account ID and is not exposed by the inspected public AuthService.
+- `auth_change_password(account_id, keep_session_id,...)`: accepts both account and session IDs without checking that the keep-session belongs to that account or that the caller controls it. The persistence interface/method exists; no public HTTP route or GhmAuthService method was found in the inspected route/service files. Treat as a high-priority unused/internal entry point, not as a demonstrated public exploit.
+- `auth_disable_account(account_id)`: can disable any account and revoke its sessions. The persistence interface/method exists, but no public route or GhmAuthService method was found in the inspected files. This is a particularly sensitive broad runtime EXECUTE grant; trace all non-HTTP callers before deciding to remove/narrow it.
+- `auth_issue_recovery(account_id, token_hash, expires_at)`: accepts arbitrary account ID. The current recovery service derives the ID from an email lookup and controls the raw token delivery; SQL does not enforce this call provenance.
+- `auth_redeem_recovery(token_hash)`: accepts only a pepper-protected token hash; the reset path derives it from the supplied opaque recovery token. This is a stronger capability-shaped input than raw account/session IDs, but effective secret custody and direct runtime invocation still need assessment.
+- `auth_rotate_refresh(presented_hash, successor_hash)` and `auth_revoke_by_refresh_hash(token_hash, reason)`: operate by protected refresh-token hash rather than caller-supplied account/session ID. Preserve replay handling and session-family semantics; do not replace with account-ID operations.
+- `auth_bootstrap_external_identity(provider, subject,...)`: creates an account/mapping based on provider+subject. It has no account ID parameter, but its safety depends on the caller proving the provider subject is authentic. Caller and provider verification path remain untraced.
+- `auth_link_external_identity(provider, subject, account_id)`: accepts arbitrary account ID and can attach an external identity to an existing account. Caller and provider-verification/administrative authorization path remain untraced.
+- `auth_link_business_external_mapping(provider, external_business_id, business_id)`: accepts arbitrary Business ID and can attach an external mapping. Caller and provider/Business authorization path remain untraced.
+
+### Important distinction — not yet an exploit finding
+
+The above SQL functions execute under a shared runtime database credential. Application service methods currently impose some provenance checks before calling them, but those checks are not independently enforced by PostgreSQL. This creates a database-boundary trust gap if the runtime credential or an arbitrary SQL execution path is compromised. It does not prove that an unauthenticated HTTP caller can directly supply another account/session ID: the inspected HTTP contracts do not expose these IDs for the ordinary register/login/refresh/logout/recovery/reset routes.
+
+Do not route these pre-JWT flows through user-JWT Actor Gateway. The required design is a distinct, tightly controlled internal-auth authority (or equivalent database-verifiable proof) that preserves password verification, one-time refresh/recovery token validation, registration, external provider verification, and privileged account administration.
+
+### Audit items still OPEN
+
+1. Trace every production caller of the persistence methods `validateSession`, `revokeSession`, `revokeAllSessionsForAccount`, `changePassword`, `disableAccount`, `issueRecovery`, `redeemRecovery`, `bootstrapExternalIdentity`, `linkExternalIdentity`, and `linkBusinessExternalMapping`. Search tests separately from runtime call sites.
+2. Inspect all later migrations/cutovers for function-level grants/revokes, including `auth_create_account`, auth external identity functions and any role-wide privilege changes. Historical grants above are not a final ACL matrix.
+3. Inspect all authentication migration bodies in full, including refresh and recovery constraints, token pepper/key custody, and QuoteFlow migration-reset special handling.
+4. Determine whether the production auth service has any other internal callers or deployment wiring beyond `src/http/app.ts`.
+5. Build a disposable PostgreSQL final effective-ACL matrix for every auth SECURITY DEFINER function, PUBLIC, runtime, migrator, gateway, owner and any inherited roles. No such qualification has yet been run for this audit.
+6. Only after caller and ACL reconciliation, decide which unused broad methods/functions can be revoked, which should be split into narrow internal operations, and how a dedicated internal-auth DB principal can be provisioned without paid infrastructure or production disruption.
+
+### Next action
+
+Continue tracing external identity/bootstrap/link call sites and QuoteFlow migration-reset callers, then audit all later auth-related grants/cutovers and the complete storage lifecycle call graph. Keep this audit read-only until the internal-auth authority design is supported by full caller and ACL evidence. No auth grant has been revoked; no production changes; PR #272 remains open and unmerged.
