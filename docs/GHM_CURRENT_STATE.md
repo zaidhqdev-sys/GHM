@@ -525,3 +525,15 @@ New cutover qualification is pending exact-head CI. The SQL is manual-only and h
 Exact code/test head `9f69d17ef362cc01e45fe151609101893104747a` passed GitHub Actions run #2891 (`43076550978`), with both `quality` and `web-quality` successful. The disposable Actor Gateway principal qualification applied `database/cutovers/20261111020000_revoke_legacy_registration_identity_runtime.sql`, denied direct legacy registration read/write execution to `ghm_runtime`, and confirmed signed gateway registration read/write still worked. Full build, migrations, test suite, all other PostgreSQL qualifications, migration policy and runtime-boundary checks passed.
 
 Cloudflare Pages reported a successful PR preview for this commit at https://7d9a60be.ghm-cu1.pages.dev. Preview only; no production release. PR #272 remains open and unmerged. The manual cutover has not been applied to production. Render role-model resolution and a fresh verified backup remain release blockers. No production state or paid infrastructure changed.
+
+
+## 2026-11-11 — follow-on legacy RPC actor-binding gaps remain open
+
+A source audit beyond the current Actor Gateway scope confirmed three remaining SECURITY DEFINER functions executable by `ghm_runtime` that trust a caller-supplied actor/verifier ID:
+- `ghm.replace_business_capability_assertions(bigint,bigint,jsonb)`
+- `ghm.transition_business_capability_verification(bigint,text,text,bigint,text)`
+- `ghm.transition_business_capability_evidence(bigint,text,bigint,text)`
+
+Their membership/admin/self-verification rules are meaningful, but do not cryptographically prove that the supplied ID is the authenticated caller if the runtime database credential is compromised. Existing HTTP routes do check the verified JWT context and service role; direct database EXECUTE bypasses those checks. Evidence submission's direct runtime INSERT with `submitted_by=context.userId` is a separate path to assess. Founder directory review remains deliberately disabled and its runtime review EXECUTE grants are revoked.
+
+Remediation requires signed gateway operations, bearer-token forwarding from existing routes, fail-closed clients, exact-context assertions, disposable PostgreSQL negative tests and a manual-only privilege cutover. No such cutover has been applied or implemented yet. See `docs/HANDOVER_2026-11-11_ACTOR_GATEWAY_PRODUCTION_READINESS.md` for full details. Production remains untouched; Render role-model resolution and a fresh verified backup remain release blockers.
