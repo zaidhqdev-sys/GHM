@@ -207,7 +207,7 @@ test('business role cannot invoke gateway capability verification',async()=>{
  const gateway={verify:async()=>{called=true;return{capability:fixture({userId:42,role:'business'})};}};
  const {server,baseUrl}=await startServer(service,gateway,true);
  try{
-  const response=await fetch(`${baseUrl}/api/v1/business-capabilities/101/verification`,{method:'PATCH',headers:{authorization:`Bearer ${tokenFor({userId:42,role:'business'})`,'content-type':'application/json'},body:JSON.stringify({expectedStatus:'unverified',targetStatus:'pending',reason:null})});
+  const response=await fetch(`${baseUrl}/api/v1/business-capabilities/101/verification`,{method:'PATCH',headers:{authorization:`Bearer ${tokenFor({userId:42,role:'business'})}`,'content-type':'application/json'},body:JSON.stringify({expectedStatus:'unverified',targetStatus:'pending',reason:null})});
   assert.equal(response.status,403);assert.equal(called,false);
  }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
 });
