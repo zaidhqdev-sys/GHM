@@ -3,6 +3,7 @@ import { canAccessResource, type AuthContext } from '../auth/authorization';
 import { isRegisteredOperation } from '../resources/registry';
 import { requireAuth } from '../auth/http';
 import type { BusinessCapabilityEvidenceService, CreateBusinessCapabilityEvidenceInput, EvidenceDecision } from '../resources/business-capability-evidence/contracts';
+import { CapabilityMutationGatewayError, type HttpCapabilityMutationGatewayClient } from './capability-mutation-gateway-client';
 
 const requireEvidenceAccess = (operation: 'read' | 'create' | 'readPending' | 'transition') => (req: Request,res: Response,next: () => void) => {
   const context = req.authContext as AuthContext | undefined;
@@ -32,6 +33,7 @@ const fail = (error: unknown, res: Response) => {
 
 export const registerBusinessCapabilityEvidenceRoutes = (
   app: Express, service: BusinessCapabilityEvidenceService, authMiddleware: RequestHandler = requireAuth,
+  gatewayClient?: HttpCapabilityMutationGatewayClient, gatewayRequired = false,
 ) => {
   app.post('/api/v1/business-capability-evidence', authMiddleware, requireEvidenceAccess('create'), async (req: Request,res: Response) => {
     try {
@@ -62,8 +64,15 @@ export const registerBusinessCapabilityEvidenceRoutes = (
       if (evidenceId === null || !req.body || typeof req.body !== 'object' || Array.isArray(req.body)) { res.status(400).json({error:'invalid_request'}); return; }
       const body = req.body as Record<string, unknown>;
       if (Object.keys(body).some(k => !['decision','reason'].includes(k)) || !['verified','rejected','revoked'].includes(String(body.decision)) || (body.reason != null && typeof body.reason !== 'string')) { res.status(400).json({error:'invalid_request'}); return; }
+      if(gatewayClient||gatewayRequired){
+        const authorization=req.header('authorization');
+        if(!authorization?.startsWith('Bearer ')||!authorization.slice(7).trim()){res.status(401).json({error:'unauthorized'});return;}
+        if(!gatewayClient){res.status(503).json({error:'service_unavailable'});return;}
+        const result=await gatewayClient.reviewEvidence(authorization.slice(7).trim(),evidenceId,body.decision as EvidenceDecision,(body.reason as string|null|undefined)??null);
+        res.status(200).json(result);return;
+      }
       const evidence = await service.review(req.authContext as AuthContext,evidenceId,body.decision as EvidenceDecision,body.reason as string | null | undefined);
       res.status(200).json({evidence});
-    } catch(error) { fail(error,res); }
+    } catch(error) { if(error instanceof CapabilityMutationGatewayError){res.status(error.status===400?400:error.status===403||error.status===404?404:503).json({error:error.status===400?'invalid_request':error.status===403||error.status===404?'not_found':'service_unavailable'});return;} if(gatewayClient||gatewayRequired){res.status(503).json({error:'service_unavailable'});return;} fail(error,res); }
   });
 };
