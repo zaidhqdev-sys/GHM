@@ -10,6 +10,8 @@ test('capability gateway actor identity is bound to a one-use HMAC assertion', (
   assert.match(migration, /actor_gateway_capability_assertion_nonce/);
   assert.match(migration, /public\.hmac\(convert_to\(v_payload, 'UTF8'\), v_secret, 'sha256'\)/);
   assert.match(migration, /Actor assertion replay detected/);
+  assert.match(migration, /GREATEST\(clock_timestamp\(\), to_timestamp\(p_issued_at\)\) \+ interval '60 seconds'/);
+  assert.match(migration, /actor_gateway_capability_assertion_nonce_expires_at_idx/);
   assert.match(migration, /abs\(extract\(epoch FROM clock_timestamp\(\)\)::bigint - p_issued_at\) > 60/);
   assert.match(migration, /session_user <> 'ghm_actor_gateway'/);
 });
