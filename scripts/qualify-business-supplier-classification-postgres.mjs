@@ -92,6 +92,13 @@ try {
   );
   console.log('RUNTIME CANNOT ASSUME ACTOR GATEWAY ROLE PASS');
 
+  const forged = signAssertion(accountId);
+  await assert.rejects(
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6)', [accountId,forged.issuedAt,forged.nonce,'0'.repeat(64),businessId,true]),
+    /Actor assertion signature invalid/,
+  );
+  console.log('DATABASE DENIES FORGED SUPPLIER ACTOR ASSERTION PASS');
+
   const supplier = await gatewayCall(accountId,true);
   assert.equal(supplier.rowCount, 1);
   assert.equal(supplier.rows[0].is_supplier, true);
