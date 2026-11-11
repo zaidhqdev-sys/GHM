@@ -116,17 +116,21 @@ Before rollout:
 Read-only repository and Render inspection was authorized. This handover update is documentation-only. No production role changes, grants/revokes, secrets, migrations, deployments, service configuration changes, or PR merge were performed. Any such production action requires separate explicit authorization after the support response and a reviewed change plan.
 
 
-## Pre-change local backup — verification still open
+## Pre-change backup finding — no 10 November recovery point verified
 
-The user recalls that a **local database backup** may have been taken before the production role was created/altered. This is distinct from a Render-managed backup. The repository handover/history inspected so far does not record a local dump filename, path, timestamp, checksum, or successful completion, so the existence and recoverability of that backup are **not yet verified**.
+The user clarified that the expected backup should have been taken on **10 November 2026, before the production role assignment/change**. The targeted workstation search did not find a 10 November PostgreSQL dump/archive. The user confirmed that the only Render-managed backup available is dated **4 November 2026**.
 
-The local backup may reside on the user's workstation or another local storage location and is not discoverable from GitHub repository inspection or Render's backup history. Do not conclude that no backup exists merely because it is absent from those systems.
+A local archive was found at the user's workstation with basename `2026-11-04T20_42Zghm-db.dir.tar.gz`. Its filesystem timestamps are 4 November 2026 at 22:46 local time; size 71,488 bytes; SHA-256 begins `3F5DBD02E03FD20F0A593A57E51700D07DC8FEEA42A03B2BD2A38AF127...`. The tar listing was readable and contains a `ghm_db` directory with numbered `.dat` files. This confirms a readable 4 November archive candidate, **not** a verified 10 November backup and not yet a tested restore.
 
-Before any further production role or privilege change, locate the suspected local backup and record:
-- exact file path/name and format (for example, custom-format `pg_dump` or plain SQL);
-- creation timestamp and the point in the role-change sequence when it was taken;
-- file size and checksum;
-- whether the dump completed successfully (including the command exit status/log, if available);
-- whether it can be listed/read and, ideally, restored into a separate disposable PostgreSQL instance.
+The 4 November recovery point predates subsequent work and must not be treated as a current rollback point. A restore could discard later data and is not authorized.
 
-Do not upload a database dump or expose its contents/credentials in chat or Git. No restore is authorized by this verification step. Until the local artifact is located and its integrity/restore viability is checked, record backup status as **believed to exist by user; not yet evidenced or verified**.
+**Operational rule:** before any further production database role, privilege, migration, or deployment change, first obtain a fresh backup of the current production state through a supported Render process and verify its completion, timestamp, size, and recoverability/readability. Keep production changes frozen until that protection is established. Do not imply that a backup exists without direct evidence.
+
+
+## Follow-up engineering work — 2026-11-11
+
+While awaiting Render support, safe repository-only work continued on PR #272. The API runtime now requires `GHM_RUNTIME_DATABASE_URL` in production instead of silently accepting generic `DATABASE_URL`; non-production retains the existing fallback. Main API startup now queries `session_user` and `current_user` and refuses readiness unless both are `ghm_runtime`. Unit tests cover the required production variable and mismatched login/effective identities.
+
+A CI qualification step was added to reproduce the PostgreSQL 18 delegated `CREATEROLE` path in the disposable PostgreSQL 18 service: a non-superuser creator creates a role, CI inspects the automatic membership/grantor/options, attempts the same creator-side REVOKE, and verifies that the postgres-granted membership remains. This is deliberately separate from the clean superuser-created gateway fixture. Exact-head CI must pass before this behavior is considered qualified.
+
+Latest code/documentation head at handover update: PR #272 branch `integration/capability-gateway-qualification-20261110`; latest CI run is triggered by the new commits and must be checked against its exact head. No production environment, database, roles, grants, secrets, migrations, or services were changed. PR remains open and unmerged.
