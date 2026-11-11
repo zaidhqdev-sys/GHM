@@ -1169,3 +1169,43 @@ For this bounded change, the evidence now supports:
 
 The subsequent documentation-only commits advance the PR head beyond this code/test head. The current docs-only head must still have its own workflow checked; the code/test qualification result above remains tied specifically to `c71f795d`.
 
+
+
+## External identity linking authority — runtime removal and migrator-only qualification in progress (2026-11-11 23:05 UTC)
+
+### Evidence and scope
+
+- `ghm.auth_link_external_identity(text,text,bigint)` accepts provider, external subject and caller-supplied GHM account ID. It can attach a new external identity to an existing account; the function itself does not establish that the caller is authorized to link that identity to that account.
+- The active Connect authorization binding uses external identity lookup and explicitly passes `allowBootstrap:false`; it does not call the link operation.
+- The QuoteFlow migration reconciliation module defines a store abstraction that calls a link operation, but the inspected tree contains no concrete production store implementation/wiring. The database-backed auth persistence tests were the concrete runtime callers.
+- The general `AuthPersistence` interface and `PostgresAuthPersistence` implementation previously exposed this migration-oriented operation through the runtime connection. That was broader than the demonstrated active application need.
+
+### Changes committed
+
+1. Added `database/migrations/20261111250000_revoke_runtime_external_identity_link.sql`, revoking PUBLIC and `ghm_runtime` EXECUTE while preserving the schema-owner function and migrator `SET ROLE ghm_schema_owner` path.
+2. Removed `linkExternalIdentity` from the general runtime `AuthPersistence` interface and `PostgresAuthPersistence` implementation. The independent QuoteFlow migration reconciliation store abstraction remains; any future concrete implementation must use the dedicated migrator/owner path.
+3. Changed database-backed persistence tests to call the function through a migrator connection after `SET LOCAL ROLE ghm_schema_owner`, preserving create, idempotent retry, conflict, missing account, cross-product and disabled-account behavior.
+4. Added explicit runtime privilege assertion and direct-call denial for `auth_link_external_identity`; the owner path remains positively qualified.
+5. Removed obsolete mock properties from `src/integrations/connect/identity-adapter.test.ts` and `src/http/auth-router.test.ts`. The first build attempts exposed the stale auth-router mock; the mock was removed rather than reintroducing the unsafe runtime interface.
+
+Commits: migration `2152ed41970322f50556dabfe4e7fa7f8b65862e`; persistence interface removal `c27dca4da672ee7ce456815ed3dd35e3b10b4e0b`; migrator-owner DB tests `0482878647dc3013685a288c09ee8213d2e59337`; Connect mock cleanup `9d6de26b4713d0929aaca1075a821aa32bb2bf46`; auth-router mock cleanup `6c6e20ca7d276c1153e2775968472d13a3d0ea08`.
+
+### Validation status
+
+On current code/test head `6c6e20ca7d276c1153e2775968472d13a3d0ea08`, run #43116910520:
+- Build: PASS.
+- All 126 SQL migrations applied to disposable PostgreSQL: PASS.
+- Full test suite (including the updated auth persistence runtime-denial / migrator-owner tests and the QuoteFlow migration provisioning qualifier): PASS.
+- Web-quality: PASS.
+- Later existing disposable qualification steps were still in progress; overall workflow is NOT yet marked complete at this checkpoint.
+- Branch inventory: 126 SQL migration files + 7 manual cutover SQL files.
+- PR #272 remains OPEN / UNMERGED. No production grant, role, database, secret, deployment, or data change.
+
+### Remaining boundaries
+
+- `auth_bootstrap_external_identity` remains distinct: it creates a new credentialless external-identity account and is still exposed by the optional Connect adapter bootstrap seam. The active authorization-binding path passes `allowBootstrap:false`. Do not conflate bootstrap with linking or remove the optional behavior without a separate caller/authority decision.
+- The QuoteFlow migration reconciliation store is still an abstraction, not a demonstrated live production implementation. If it is implemented, its SQL linking operation must use the migrator/owner connection and not reintroduce a runtime AuthPersistence method.
+- Continue the internal-auth authority review for `auth_set_password`, `auth_create_session_with_refresh`, and `auth_issue_recovery`; preserve the real login, registration, refresh, recovery and QuoteFlow reset flows. These are not closed by the migration-only linking changes.
+
+Next exact action: await run #43116910520 and inspect all later disposable qualification results. If it completes successfully, update this handover with the final result and then continue the separate bootstrap/pre-auth RPC authority trace. Do not merge PR #272 or apply production cutovers.
+
