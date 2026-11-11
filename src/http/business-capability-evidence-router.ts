@@ -39,9 +39,16 @@ export const registerBusinessCapabilityEvidenceRoutes = (
     try {
       const input = parseCreate(req.body);
       if (!input) { res.status(400).json({error:'invalid_request'}); return; }
+      if(gatewayClient||gatewayRequired){
+        const authorization=req.header('authorization');
+        if(!authorization?.startsWith('Bearer ')||!authorization.slice(7).trim()){res.status(401).json({error:'unauthorized'});return;}
+        if(!gatewayClient){res.status(503).json({error:'service_unavailable'});return;}
+        const result=await gatewayClient.submitEvidence(authorization.slice(7).trim(),input);
+        res.status(201).json(result);return;
+      }
       const evidence = await service.create(req.authContext as AuthContext,input);
       res.status(201).json({evidence});
-    } catch(error) { fail(error,res); }
+    } catch(error) { if(error instanceof CapabilityMutationGatewayError){res.status(error.status===400?400:error.status===403||error.status===404?404:503).json({error:error.status===400?'invalid_request':error.status===403||error.status===404?'not_found':'service_unavailable'});return;} if(gatewayClient||gatewayRequired){res.status(503).json({error:'service_unavailable'});return;} fail(error,res); }
   });
   app.get('/api/v1/business-capability-evidence', authMiddleware, async (req: Request,res: Response) => {
     try {
