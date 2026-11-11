@@ -16,6 +16,7 @@ import { PostgresGatewayCapabilityMutationReader } from './business-capability-m
 import { PostgresSavedBusinessGatewayReader } from './saved-business-reader';
 import { PostgresBusinessHoursGatewayReader } from './business-hours-reader';
 import { PostgresTrustScoreGatewayReader } from './trust-score-reader';
+import { PostgresBusinessLogoGatewayReader } from './business-logo-reader';
 import { assertActorGatewayDatabaseIdentity } from './database-principal';
 
 const required = (name: string): string => {
@@ -54,6 +55,7 @@ const app = createActorGatewayApp({
   savedBusinessReader: new PostgresSavedBusinessGatewayReader(pool, capabilityAssertionSecret),
   businessHoursReader: new PostgresBusinessHoursGatewayReader(pool, capabilityAssertionSecret),
   trustScoreReader: new PostgresTrustScoreGatewayReader(pool, capabilityAssertionSecret),
+  businessLogoReader: new PostgresBusinessLogoGatewayReader(pool, capabilityAssertionSecret),
 });
 const server = http.createServer(app);
 server.requestTimeout = 10_000;
