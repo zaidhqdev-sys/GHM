@@ -51,10 +51,10 @@ try {
   assert.equal(preflight.rows[0].count, 0, `qualification subject unexpectedly exists: ${subjects[0]}`);
 
   const runtimePreflight = await runtime.query(
-    'select count(*)::int as count from ghm.account_external_identity where provider=$1 and subject=$2',
+    'select * from ghm.auth_lookup_external_identity($1,$2)',
     ['supabase', subjects[0]],
   );
-  assert.equal(runtimePreflight.rows[0].count, 0, `runtime sees unexpected existing mapping: ${subjects[0]}`);
+  assert.equal(runtimePreflight.rowCount, 0, `runtime lookup sees unexpected existing mapping: ${subjects[0]}`);
 
   const functionDefinition = await migrator.query(
     'select pg_get_functiondef(\'ghm.auth_provision_migration_account(text,text,text,text)\'::regprocedure) as definition',
@@ -70,7 +70,7 @@ try {
   );
   if (first.rows[0].outcome !== 'created') {
     const observed = await runtime.query(
-      'select provider, subject, account_id from ghm.account_external_identity where provider=$1 and subject=$2',
+      'select * from ghm.auth_lookup_external_identity($1,$2)',
       ['supabase', subjects[0]],
     );
     throw new Error(`unexpected first outcome: ${JSON.stringify({ result: first.rows[0], observed: observed.rows[0] ?? null, subject: subjects[0], run_id: runId })}`);
