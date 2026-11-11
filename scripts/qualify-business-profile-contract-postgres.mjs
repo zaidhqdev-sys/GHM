@@ -132,7 +132,6 @@ try {
     longitude: 31.0218,
   };
   if (legacyColumnNames.has('category')) snakePatch.category = 'construction';
-  if (legacyColumnNames.has('is_supplier')) snakePatch.isSupplier = true;
 
   const forged = signAssertion(accountId,'business.profile.update',Math.floor(Date.now()/1000),{businessId,patch:{description:'forged'}});
   await assert.rejects(
@@ -150,7 +149,7 @@ try {
   assert.equal(Number(snake.rows[0].latitude), -29.8587);
   assert.equal(Number(snake.rows[0].longitude), 31.0218);
   if (legacyColumnNames.has('category')) assert.equal(snake.rows[0].category, 'construction');
-  if (legacyColumnNames.has('is_supplier')) assert.equal(snake.rows[0].is_supplier, true);
+  if (legacyColumnNames.has('is_supplier')) assert.equal(snake.rows[0].is_supplier, false);
   console.log('GATEWAY CURRENT REPOSITORY SNAKE_CASE PROFILE UPDATE PASS');
   const boundPatch={description:'authorized patch'};
   const bound=signAssertion(accountId,'business.profile.update',Math.floor(Date.now()/1000),{businessId,patch:boundPatch});
@@ -196,8 +195,11 @@ try {
   assert.equal(Number(camel.rows[0].latitude), -30);
   assert.equal(Number(camel.rows[0].longitude), 30);
   if (legacyColumnNames.has('category')) assert.equal(camel.rows[0].category, 'construction');
-  if (legacyColumnNames.has('is_supplier')) assert.equal(camel.rows[0].is_supplier, true);
+  if (legacyColumnNames.has('is_supplier')) assert.equal(camel.rows[0].is_supplier, false);
   console.log('GATEWAY HISTORICAL CAMELCASE PROFILE UPDATE PASS');
+  await assert.rejects(() => gatewayCall(accountId,{isSupplier:true}),/Supplier classification must use the dedicated gateway operation/);
+  await assert.rejects(() => gatewayCall(accountId,{is_supplier:true}),/Supplier classification must use the dedicated gateway operation/);
+  console.log('DATABASE PROFILE WRAPPER REJECTS SUPPLIER CLASSIFICATION BYPASS PASS');
 
   await assert.rejects(
     () => gatewayCall(accountId,{ physical_address: 'Conflict A', physicalAddress: 'Conflict B' }),
