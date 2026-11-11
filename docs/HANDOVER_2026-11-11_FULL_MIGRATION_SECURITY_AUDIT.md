@@ -841,3 +841,40 @@ No Connect integration lifecycle or replay grants were changed. No production ch
 ### Immediate continuation point
 
 Continue with a bounded repository-wide search for remaining SECURITY DEFINER functions with runtime EXECUTE that accept account/session/business/resource identifiers, using this handover to skip the already reviewed families. Prioritize exact caller reachability and later ACL/cutover reconciliation. For the Connect Business mapping mismatch, do not restore table SELECT: the next implementation should use a full-field SECURITY DEFINER projection or a governed integration boundary and add live runtime-role PostgreSQL qualification. Keep the migration/production role boundaries unchanged until their dedicated qualification and release gates are satisfied.
+
+
+## Founder directory-review RPC and route reconciliation (2026-11-11)
+
+This family was traced because the founder review authority had previously been marked as disabled.
+
+### Migration history / final source disposition
+
+- `20261005210000_create_founder_system_admin_bootstrap.sql` created a one-time founder bootstrap function that was explicitly revoked from PUBLIC and `ghm_runtime`.
+- `20261005211000_correct_founder_system_admin_bootstrap_existing_account.sql` replaced it with a promotion-only function for the already-existing canonical founder account and again revoked PUBLIC/runtime. It does not create the founder account or expose a runtime bootstrap route.
+- `20261105230000_create_founder_directory_review.sql` initially created SECURITY DEFINER review RPCs accepting `p_account_id`, and granted runtime EXECUTE on submit/list/review/presentation functions.
+- `20261109130000_harden_evidence_and_founder_review_authority.sql` temporarily tied reviewer resolution to the one-time founder system-admin state.
+- `20261109140000_close_evidence_and_founder_review_authority.sql` deliberately disabled founder review: `is_directory_listing_founder_reviewer(bigint)` now returns false and is revoked from PUBLIC/runtime; submit/list/review functions are revoked from PUBLIC/runtime.
+- That final close migration does **not** revoke `get_business_directory_review_presentation(bigint,bigint)`. It remains SECURITY DEFINER and runtime-executable from the earlier migration.
+
+### Application caller and route mismatch
+
+- `src/resources/directory-review/repository.ts` still calls all four functions: submit, list, review and presentation.
+- `src/http/directory-review-router.ts` still registers POST business submission, GET admin review list, PATCH admin decision and GET business review presentation routes.
+- `src/resources/registry.ts` still registers `directory_review` read/create/transition, and `src/auth/authorization.ts` includes `directory_review` in admin, customer and business role resources.
+- The authority probe route explicitly returns `{ isFounderReviewer: false }`, but the POST/list/PATCH routes remain wired to functions whose runtime EXECUTE was revoked. The submission function would also reject because the reviewer allowlist is intentionally unconfigured/disabled.
+- The GET business presentation route remains meaningful: `get_business_directory_review_presentation` verifies active owner/administrator membership for the supplied account ID and Business ID, and the repository invokes it after `withTenantTransaction` using `context.userId`. This is application-path guarded but still trusts the supplied account ID at the database function boundary.
+
+**Disposition:** founder bootstrap is correctly non-runtime/deployment-only. Founder review submit/list/decision database functions are intentionally disabled at the SQL layer, but their HTTP routes and resource registration were not reconciled in the inspected code. These routes are therefore dead/mismatched and may surface permission errors rather than a deliberate 403/410. The presentation getter remains active and is a separate caller-supplied account-ID database trust gap.
+
+### Trigger helper privilege note
+
+`prevent_directory_review_event_mutation()` and `reject_expired_capability_evidence_verification()` are trigger-only functions. Their creation migrations do not explicitly revoke PUBLIC EXECUTE. PostgreSQL's default function EXECUTE grant therefore needs to be checked against schema usage and effective role privileges. Trigger functions cannot be called as ordinary SQL functions, and runtime has no trigger-creation/table DML authority on the protected tables in the inspected migrations; this is a least-privilege cleanup candidate, not a demonstrated bypass. Future migrations should explicitly revoke PUBLIC EXECUTE from trigger-only helpers.
+
+### Next work
+
+1. Decide whether to remove/disable the dead directory-review submit/list/decision HTTP routes and their registry operations, while retaining the owner-facing presentation read if still needed.
+2. If presentation remains, replace the raw account-ID SQL trust with a signed actor-bound read operation or another database-verifiable context mechanism; preserve owner/administrator-only visibility.
+3. Add migration-contract and HTTP tests that prove disabled founder review endpoints return the deliberate denial response and cannot reach revoked RPCs.
+4. Verify trigger-helper effective EXECUTE ACLs and revoke PUBLIC explicitly in a cleanup migration if no required trigger invocation depends on PUBLIC.
+
+No directory-review function grants or routes were changed in this audit. No production changes.
