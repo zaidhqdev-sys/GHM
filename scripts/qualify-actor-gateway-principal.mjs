@@ -205,6 +205,13 @@ try {
   });
   console.log('TYPED GATEWAY SELF-IDENTITY READ: PASS');
 
+  const forgedSelf=signAssertion(activeAccountId,'actor.identity.read');
+  await expectSqlState(
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_get_actor_identity($1,$2,$3,$4)',[activeAccountId,forgedSelf.issuedAt,forgedSelf.nonce,'0'.repeat(64)]),
+    '42501',
+    'FORGED ACTOR SELF-IDENTITY ASSERTION DENIED',
+  );
+
   const registrationIdentity = await gatewayCall(activeAccountId,'business.registration.read',
     'SELECT * FROM ghm.gateway_read_business_registration_identity($1,$2,$3,$4,$5)',[businessId]);
   assert.equal(registrationIdentity.rowCount, 1);
