@@ -114,3 +114,19 @@ Before rollout:
 ## Authorization / safety boundary
 
 Read-only repository and Render inspection was authorized. This handover update is documentation-only. No production role changes, grants/revokes, secrets, migrations, deployments, service configuration changes, or PR merge were performed. Any such production action requires separate explicit authorization after the support response and a reviewed change plan.
+
+
+## Pre-change local backup — verification still open
+
+The user recalls that a **local database backup** may have been taken before the production role was created/altered. This is distinct from a Render-managed backup. The repository handover/history inspected so far does not record a local dump filename, path, timestamp, checksum, or successful completion, so the existence and recoverability of that backup are **not yet verified**.
+
+The local backup may reside on the user's workstation or another local storage location and is not discoverable from GitHub repository inspection or Render's backup history. Do not conclude that no backup exists merely because it is absent from those systems.
+
+Before any further production role or privilege change, locate the suspected local backup and record:
+- exact file path/name and format (for example, custom-format `pg_dump` or plain SQL);
+- creation timestamp and the point in the role-change sequence when it was taken;
+- file size and checksum;
+- whether the dump completed successfully (including the command exit status/log, if available);
+- whether it can be listed/read and, ideally, restored into a separate disposable PostgreSQL instance.
+
+Do not upload a database dump or expose its contents/credentials in chat or Git. No restore is authorized by this verification step. Until the local artifact is located and its integrity/restore viability is checked, record backup status as **believed to exist by user; not yet evidenced or verified**.
