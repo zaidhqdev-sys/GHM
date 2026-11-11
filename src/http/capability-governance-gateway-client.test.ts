@@ -5,6 +5,7 @@ import {HttpCapabilityGovernanceGatewayClient,CapabilityGovernanceGatewayError} 
 test('capability gateway client forwards the original bearer token and typed route',async()=>{
  let url='',auth='';
  const client=new HttpCapabilityGovernanceGatewayClient('https://gateway.example.test',1000,async(input,init)=>{
+      assert.equal(init?.redirect, 'error');
   url=String(input);auth=new Headers(init?.headers).get('authorization')??'';
   return new Response(JSON.stringify({capabilities:[]}),{status:200,headers:{'content-type':'application/json'}});
  });
