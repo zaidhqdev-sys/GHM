@@ -140,8 +140,8 @@ try {
   if (!runtimeWrapperDenied) throw new Error('Runtime can execute Trust Score gateway wrapper');
   console.log('RUNTIME TRUST SCORE GATEWAY EXECUTE DENIED: PASS');
 
-  const acl = await gateway.query("SELECT has_function_privilege('ghm_runtime','ghm.calculate_business_trust_score(bigint,bigint)','EXECUTE') legacy_runtime, has_function_privilege('ghm_actor_gateway','ghm.gateway_calculate_business_trust_score(bigint,bigint,uuid,text,text,bigint)','EXECUTE') gateway_wrapper");
-  if (acl.rows[0].legacy_runtime || !acl.rows[0].gateway_wrapper) throw new Error(`Unexpected Trust Score ACL: ${JSON.stringify(acl.rows[0])}`);
+  const acl = await gateway.query("SELECT has_function_privilege('ghm_runtime','ghm.calculate_business_trust_score(bigint,bigint)','EXECUTE') legacy_runtime, has_table_privilege('ghm_runtime','ghm.trust_score','SELECT') direct_select, has_sequence_privilege('ghm_runtime','ghm.trust_score_id_seq','USAGE') sequence_usage, has_function_privilege('ghm_actor_gateway','ghm.gateway_calculate_business_trust_score(bigint,bigint,uuid,text,text,bigint)','EXECUTE') gateway_wrapper, has_function_privilege('ghm_actor_gateway','ghm.gateway_get_trust_score(bigint,bigint,uuid,text,text,bigint)','EXECUTE') read_get, has_function_privilege('ghm_actor_gateway','ghm.gateway_list_trust_scores(bigint,bigint,uuid,text,text,text)','EXECUTE') read_list, has_function_privilege('ghm_runtime','ghm.get_public_trust_score(bigint)','EXECUTE') public_get, has_function_privilege('ghm_runtime','ghm.list_public_trust_scores(text)','EXECUTE') public_list");
+  if (acl.rows[0].legacy_runtime || acl.rows[0].direct_select || acl.rows[0].sequence_usage || !acl.rows[0].gateway_wrapper || !acl.rows[0].read_get || !acl.rows[0].read_list || !acl.rows[0].public_get || !acl.rows[0].public_list) throw new Error(`Unexpected Trust Score ACL: ${JSON.stringify(acl.rows[0])}`);
   console.log('TRUST SCORE POST-CUTOVER FUNCTION ACL: PASS');
   console.log('GHM TRUST SCORE SIGNED GATEWAY QUALIFICATION: PASS');
 } finally {
