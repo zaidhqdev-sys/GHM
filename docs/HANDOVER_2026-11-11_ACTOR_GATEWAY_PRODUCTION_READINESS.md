@@ -346,32 +346,55 @@ A deeper review of application resource paths found legacy SECURITY DEFINER oper
 
 ### Status and safety
 
-This is a confirmed source-level security boundary gap, not a production exploit finding. No evidence of unauthorized use was established. No code cutover has yet been implemented for these operations. Do not apply any privilege changes until gateway routes and clients are implemented, exact-head disposable qualification passes, the Render role model is resolved, and a fresh verified production backup exists. No production state was changed.
+This was the confirmed source-level finding at the time of the initial audit, not a production exploit finding. No evidence of unauthorized use was established. The statement that no cutover implementation existed is superseded by the implementation and exact-head disposable qualification recorded below. The manual privilege cutover remains unapplied in production. Render role-model resolution and a fresh verified production backup remain release blockers. No production state was changed.
 
 
-## 2026-11-11 — Business Capability mutation gateway implementation (qualification pending)
+## 2026-11-11 — Business Capability mutation gateway implementation and qualification
 
-A focused implementation batch now adds signed Actor Gateway operations for all four previously identified mutation paths:
+A focused implementation adds signed Actor Gateway operations for all four Business Capability mutation paths:
 - `business.capability.replace`: binds Business ID and the complete assertion JSON array, then invokes the existing membership/owner/administrator-checked replacement function using the verified actor derived from the JWT.
-- `business.capability.verify`: binds capability assertion ID, expected status, target status and reason; the gateway supplies the verified actor as the verifier ID.
-- `business.capability.evidence.review`: binds evidence ID, decision and reason; the gateway supplies the verified actor as the verifier ID.
-- `business.capability.evidence.submit`: binds the complete evidence payload; the database gateway wrapper independently resolves active Business membership and owner/administrator role and sets `submitted_by` from the verified actor. The runtime no longer needs to choose that identity once the manual cutover is applied.
+- `business.capability.verify`: binds capability assertion ID, expected status, target status and reason; the gateway supplies the verified actor as the verifier ID. The underlying database function enforces administrator authority and expected-state transition rules.
+- `business.capability.evidence.review`: binds evidence ID, decision and reason; the gateway supplies the verified actor as the verifier ID. The underlying database function enforces administrator authority and prohibits self-verification.
+- `business.capability.evidence.submit`: binds the complete evidence payload; the database gateway wrapper independently resolves active Business membership and owner/administrator role and sets `submitted_by` from the verified actor.
 
-Files added/changed:
+Implementation files:
 - Migration `20261111070000_add_signed_business_capability_mutations.sql` adds the signed wrappers and extends the v2 operation allowlist.
-- `database/cutovers/20261111030000_revoke_legacy_business_capability_runtime_mutations.sql` is manual-only and revokes legacy assertion replacement, verification, evidence review RPCs plus table and column-level runtime INSERT and sequence privileges for evidence submission.
+- `database/cutovers/20261111030000_revoke_legacy_business_capability_runtime_mutations.sql` is manual-only and revokes legacy assertion replacement, verification and evidence review RPCs plus table/column-level runtime INSERT and sequence privileges for evidence submission.
 - Actor Gateway reader, authenticated routes and server wiring were added under `src/actor-gateway`.
 - Resource API gateway client and fail-closed production routing were added to Business Capability replacement/verification and evidence submission/review paths.
-- `src/db/actor-gateway-business-capability-mutation-migration-contract.test.ts` checks wrapper context binding, actor derivation, gateway-only grants and manual cutover revocations.
-- Actor Gateway app tests cover deriving evidence submitter from the bearer-token actor and reject caller-supplied `submittedBy`.
+- The gateway database wrappers return the complete evidence DTO, so the Actor Gateway database principal does not require direct evidence-table SELECT access.
+- Migration contract tests check signed context binding and gateway-only EXECUTE grants for all four wrappers, including evidence submission.
+- Actor Gateway app tests cover deriving the evidence submitter from the verified bearer-token actor and rejecting caller-supplied `submittedBy`.
+- Resource API HTTP tests now cover bearer-token forwarding for replacement, verification, evidence submission and evidence review; gateway-unavailable fail-closed behavior; and role-specific denial of Business evidence review and administrator evidence submission.
 
-Important qualification state: the first CI attempt caught TypeScript syntax errors in two route validators; corrected. The next build passed but disposable PostgreSQL migration application caught a malformed dollar-quote delimiter in the new evidence-submission function; corrected using a named dollar-quote delimiter. A subsequent exact-head CI run is in progress. Do not treat this implementation as qualified until exact-head CI, full disposable migration chain, negative PostgreSQL tests and all relevant HTTP tests pass.
+### Exact-head qualification passed
 
-Known remaining work before any cutover:
-1. Extend disposable PostgreSQL qualification to execute all four new signed wrappers and test payload/target substitution, wrong actor, replay, non-owner membership and non-admin verification denials.
-2. Add direct-runtime denial assertions for all four paths against the manual cutover, including column-level evidence INSERT and sequence access; prove gateway writes still succeed after cutover.
-3. Complete resource HTTP client/router tests and ensure returned evidence/capability DTOs preserve the existing API contracts.
-4. Review the evidence-submission SQL membership query and function privileges against the fully applied migration chain.
-5. Update migration checksum inventory/manifest if the repository requires a separate checksum record for newly added migrations.
+Exact implementation head `f5c68802f9a23c8e5ce936914a2de5d82be3bf23` passed GitHub Actions run **#3005** (`43086430055`) on 11 November 2026. Both `quality` and `web-quality` passed.
 
-No production migration, privilege cutover, secret provisioning, deployment, role change or data mutation was performed. The new cutover is not applied. PR #272 remains open and unmerged. Render role-model support and a fresh verified production backup remain release blockers.
+The successful `quality` job included:
+- TypeScript build and complete PostgreSQL migration application.
+- Full automated test suite, including the newly enabled Business Capability evidence router tests and new gateway route tests.
+- Disposable PostgreSQL qualification of all four signed mutation wrappers after applying the manual cutover.
+- Direct runtime denial for the legacy replacement, verification and evidence-review functions.
+- Direct runtime denial for evidence table INSERT and evidence sequence access.
+- Successful signed gateway replacement, administrator verification, evidence submission and administrator evidence review after cutover.
+- HMAC/context tampering and replay rejection.
+- Business membership/owner/admin authorization negative cases.
+- Evidence submitter/verifier provenance and existing evidence DTO compatibility.
+- Post-cutover role privilege checks.
+- Migration audit policy tests and runtime boundary verification.
+
+The qualification also exposed and corrected test-only defects during the work: the initial Business fixture did not satisfy the verified-state constraint; the replay test initially signed a different payload; the replacement assertion expected the wrong row count; and previously unexecuted evidence-router tests contained stale expectations about HTTPS validation and business-scoped listing. The tests now exercise the actual service validation boundary and the intended business-scoped read/admin-only moderation contract. A further review also added explicit HTTP role checks before gateway evidence submission/review, so these routes do not rely solely on database rejection.
+
+The successful disposable qualification is evidence for the manual cutover design; it is not permission to apply that cutover to production.
+
+### Remaining release gates
+
+1. Obtain Render support's written confirmation of the production database role/ownership model and supported role-membership approach.
+2. Obtain and verify a fresh production backup before any production migration or privilege change. The previously missing 10 November backup remains unresolved; do not assume it exists.
+3. Review and approve the production cutover plan, exact target database, rollback strategy and deployment ordering before mutation.
+4. Provision/verify the Actor Gateway assertion secret and runtime/gateway connection configuration only after the production role model and backup gates are cleared.
+5. Keep PayFast out of this work until its sandbox is available again; no payment-provider testing is part of this qualification.
+6. Keep approved legal-document work out of this technical cutover.
+
+No production migration, privilege cutover, secret provisioning, deployment, role change or data mutation was performed. The new cutover is not applied. PR #272 remains open and unmerged. No paid infrastructure was introduced.
