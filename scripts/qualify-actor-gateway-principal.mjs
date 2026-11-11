@@ -276,7 +276,7 @@ try {
     fileURLToPath(new URL('../database/cutovers/20261111020000_revoke_legacy_registration_identity_runtime.sql', import.meta.url)),
     'utf8',
   );
-  const registrationCutover = await migratorPool.connect();
+  const registrationCutover = await cleanupPool.connect();
   try {
     await registrationCutover.query('SET ROLE ghm_schema_owner');
     await registrationCutover.query(registrationCutoverSql);
