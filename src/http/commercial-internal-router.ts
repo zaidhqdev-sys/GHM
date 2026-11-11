@@ -130,7 +130,7 @@ export const registerCommercialInternalRoutes = (
       const input = parsePrepareInput(req.body);
       if (!input) { res.status(400).json({ error: 'invalid_request' }); return; }
       const identityAdapter = new ConnectIdentityAdapterImpl(new PostgresAuthPersistence(pool));
-      const identity = await identityAdapter.resolve(input.externalIdentity.subject, { allowBootstrap: false });
+      const identity = await identityAdapter.resolve(input.externalIdentity.subject);
       if (identity.outcome !== 'resolved') {
         res.status(409).json({ error: 'commercial_conflict' });
         return;
