@@ -53,6 +53,8 @@ try {
     await cutover.query('BEGIN');
     await cutover.query('SET LOCAL ROLE ghm_schema_owner');
     await cutover.query('REVOKE ALL ON FUNCTION ghm.replace_business_hours(bigint,bigint,jsonb) FROM PUBLIC,ghm_runtime');
+    await cutover.query('REVOKE SELECT ON TABLE ghm.business_hours FROM PUBLIC,ghm_runtime');
+    await cutover.query('REVOKE ALL ON SEQUENCE ghm.business_hours_id_seq FROM PUBLIC,ghm_runtime');
     await cutover.query('COMMIT');
   } catch (e) { await cutover.query('ROLLBACK').catch(() => {}); throw e; }
   finally { cutover.release(); }
@@ -65,13 +67,37 @@ try {
   if (!denied) throw new Error('Runtime can still execute legacy Business Hours replacement');
   console.log('RUNTIME LEGACY REPLACEMENT EXECUTE DENIED: PASS');
 
+  let directReadDenied = false;
+  try { await runtime.query('SELECT * FROM ghm.business_hours LIMIT 1'); } catch { directReadDenied = true; }
+  if (!directReadDenied) throw new Error('Runtime can directly read Business Hours table');
+  console.log('RUNTIME DIRECT BUSINESS HOURS SELECT DENIED: PASS');
+
+  let sequenceDenied = false;
+  try { await runtime.query("SELECT nextval('ghm.business_hours_id_seq')"); } catch { sequenceDenied = true; }
+  if (!sequenceDenied) throw new Error('Runtime can access Business Hours sequence');
+  console.log('RUNTIME BUSINESS HOURS SEQUENCE ACCESS DENIED: PASS');
+
   const reader = new PostgresBusinessHoursGatewayReader(gateway, secret);
-  const result = await reader.replace(ids.accountId, ids.businessId, [
+  const schedule = [
     { day_of_week: 1, is_closed: false, open_time: '08:00', close_time: '17:00' },
     { day_of_week: 2, is_closed: true, open_time: null, close_time: null },
-  ]);
+  ];
+  const result = await reader.replace(ids.accountId, ids.businessId, schedule);
   if (result.length !== 2 || result.some(row => row.createdBy !== ids.accountId)) throw new Error('Signed Business Hours replacement returned unexpected rows');
   console.log('SIGNED BUSINESS HOURS REPLACEMENT + ACTOR PROVENANCE: PASS');
+
+  const memberRead = await reader.list(ids.accountId, ids.businessId);
+  if (memberRead.length !== 2) throw new Error('Signed member read did not return the saved schedule');
+  console.log('SIGNED BUSINESS HOURS MEMBER READ: PASS');
+
+  let crossBusinessReadDenied = false;
+  try { await reader.list(ids.outsiderId, ids.businessId); } catch { crossBusinessReadDenied = true; }
+  if (!crossBusinessReadDenied) throw new Error('Unrelated account read Business Hours');
+  console.log('SIGNED BUSINESS HOURS CROSS-ACCOUNT READ DENIED: PASS');
+
+  const publicRead = await runtime.query('SELECT * FROM ghm.get_public_business_hours($1)', [ids.businessId]);
+  if (publicRead.rowCount !== 2) throw new Error('Approved public Business Hours projection failed');
+  console.log('RUNTIME APPROVED PUBLIC BUSINESS HOURS PROJECTION: PASS');
 
   const assertion = createActorGatewayAssertion(Buffer.from(secret, 'base64'), ids.accountId, 'business.hours.replace', {
     businessId: ids.businessId + 1,
@@ -129,9 +155,9 @@ try {
   if (!runtimeWrapperDenied) throw new Error('Runtime can execute the Actor Gateway wrapper');
   console.log('RUNTIME GATEWAY WRAPPER EXECUTE DENIED: PASS');
 
-  const privileges = await gateway.query("SELECT has_function_privilege('ghm_runtime','ghm.replace_business_hours(bigint,bigint,jsonb)','EXECUTE') legacy_runtime, has_function_privilege('ghm_actor_gateway','ghm.gateway_replace_business_hours(bigint,bigint,uuid,text,text,bigint,jsonb)','EXECUTE') gateway_wrapper");
-  if (privileges.rows[0].legacy_runtime || !privileges.rows[0].gateway_wrapper) throw new Error(`Unexpected Business Hours ACL: ${JSON.stringify(privileges.rows[0])}`);
-  console.log('BUSINESS HOURS POST-CUTOVER FUNCTION ACL: PASS');
+  const privileges = await gateway.query("SELECT has_function_privilege('ghm_runtime','ghm.replace_business_hours(bigint,bigint,jsonb)','EXECUTE') legacy_runtime, has_table_privilege('ghm_runtime','ghm.business_hours','SELECT') direct_select, has_function_privilege('ghm_actor_gateway','ghm.gateway_replace_business_hours(bigint,bigint,uuid,text,text,bigint,jsonb)','EXECUTE') gateway_wrapper, has_function_privilege('ghm_actor_gateway','ghm.gateway_get_business_hours(bigint,bigint,uuid,text,text,bigint)','EXECUTE') read_wrapper, has_function_privilege('ghm_runtime','ghm.get_public_business_hours(bigint)','EXECUTE') public_read");
+  if (privileges.rows[0].legacy_runtime || privileges.rows[0].direct_select || !privileges.rows[0].gateway_wrapper || !privileges.rows[0].read_wrapper || !privileges.rows[0].public_read) throw new Error(`Unexpected Business Hours ACL: ${JSON.stringify(privileges.rows[0])}`);
+  console.log('BUSINESS HOURS POST-CUTOVER FUNCTION/TABLE ACL: PASS');
   console.log('GHM BUSINESS HOURS SIGNED GATEWAY QUALIFICATION: PASS');
 } finally {
   if (ids) {
