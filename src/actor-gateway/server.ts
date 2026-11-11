@@ -14,6 +14,7 @@ import { PostgresSupplierClassificationReader } from './supplier-classification-
 import { PostgresBusinessProfileReader } from './business-profile-reader';
 import { PostgresGatewayCapabilityMutationReader } from './business-capability-mutation-reader';
 import { PostgresSavedBusinessGatewayReader } from './saved-business-reader';
+import { PostgresBusinessHoursGatewayReader } from './business-hours-reader';
 import { assertActorGatewayDatabaseIdentity } from './database-principal';
 
 const required = (name: string): string => {
@@ -50,6 +51,7 @@ const app = createActorGatewayApp({
   businessProfileReader: new PostgresBusinessProfileReader(pool, capabilityAssertionSecret),
   businessCapabilityMutationReader: new PostgresGatewayCapabilityMutationReader(pool, capabilityAssertionSecret),
   savedBusinessReader: new PostgresSavedBusinessGatewayReader(pool, capabilityAssertionSecret),
+  businessHoursReader: new PostgresBusinessHoursGatewayReader(pool, capabilityAssertionSecret),
 });
 const server = http.createServer(app);
 server.requestTimeout = 10_000;
