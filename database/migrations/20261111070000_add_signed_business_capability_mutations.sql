@@ -76,7 +76,7 @@ CREATE FUNCTION ghm.gateway_submit_business_capability_evidence(
  p_actor bigint,p_issued bigint,p_nonce uuid,p_context text,p_signature text,
  p_capability bigint,p_evidence_type text,p_title text,p_description text,p_issuer text,
  p_reference text,p_url text,p_issued_on date,p_expires_on date,p_visibility text
-) RETURNS ghm.business_capability_evidence LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ghm AS $
+) RETURNS ghm.business_capability_evidence LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ghm AS $evidence_submit$
 DECLARE v_business bigint;v_role text;v_result ghm.business_capability_evidence%ROWTYPE;v_payload jsonb;
 BEGIN
  v_payload:=jsonb_build_object('businessCapabilityId',p_capability,'evidenceType',p_evidence_type,'title',p_title,
@@ -97,7 +97,7 @@ BEGIN
  VALUES(p_capability,p_evidence_type,p_title,NULLIF(btrim(p_description),''),NULLIF(btrim(p_issuer),''),NULLIF(btrim(p_reference),''),NULLIF(btrim(p_url),''),p_issued_on,p_expires_on,COALESCE(p_visibility,'private'),'pending',p_actor)
  RETURNING * INTO v_result;
  RETURN v_result;
-END;$;
+END;$evidence_submit$;
 ALTER FUNCTION ghm.gateway_submit_business_capability_evidence(bigint,bigint,uuid,text,text,bigint,text,text,text,text,text,text,date,date,text) OWNER TO ghm_schema_owner;
 REVOKE ALL ON FUNCTION ghm.gateway_submit_business_capability_evidence(bigint,bigint,uuid,text,text,bigint,text,text,text,text,text,text,date,date,text) FROM PUBLIC,ghm_runtime,ghm_migrator;
 GRANT EXECUTE ON FUNCTION ghm.gateway_submit_business_capability_evidence(bigint,bigint,uuid,text,text,bigint,text,text,text,text,text,text,date,date,text) TO ghm_actor_gateway;
