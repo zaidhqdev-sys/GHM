@@ -81,6 +81,7 @@ import { DirectoryReviewServiceImpl } from '../resources/directory-review/servic
 import type { DirectoryReviewService } from '../resources/directory-review/contracts';
 import { registerDirectoryReviewRoutes } from './directory-review-router';
 import { registerTrustScoreRoutes } from './trust-score-router';
+import { HttpTrustScoreGatewayClient, type TrustScoreGatewayClient } from './trust-score-gateway-client';
 import { registerSupportRequestRoutes } from './support-request-router';
 import { registerReviewRoutes } from './review-router';
 import type { GhmAuthService } from '../auth/ghm-auth-service';
@@ -153,6 +154,8 @@ export interface AppDependencies {
   readonly businessRegistrationIdentityService?: BusinessRegistrationIdentityService;
   readonly directoryReviewService?: DirectoryReviewService;
   readonly trustScoreService?: TrustScoreService;
+  readonly trustScoreGatewayClient?: TrustScoreGatewayClient;
+  readonly trustScoreGatewayRequired?: boolean;
   readonly supportRequestService?: SupportRequestService;
   readonly reviewService?: ReviewService;
   readonly projectQuoteService?: ProjectQuoteService;
@@ -442,6 +445,9 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const trustScoreService =
     dependencies.trustScoreService ??
     new TrustScoreServiceImpl(new PostgresTrustScoreRepository());
+  const trustScoreGatewayClient = dependencies.trustScoreGatewayClient
+    ?? (config.actorGatewayUrl ? new HttpTrustScoreGatewayClient(config.actorGatewayUrl) : undefined);
+  const trustScoreGatewayRequired = config.isProduction || dependencies.trustScoreGatewayRequired === true;
   const supportRequestService =
     dependencies.supportRequestService ??
     new SupportRequestServiceImpl(new PostgresSupportRequestRepository());
@@ -1066,7 +1072,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     ?? (config.actorGatewayUrl ? new HttpBusinessRegistrationIdentityGatewayClient(config.actorGatewayUrl) : undefined);
   registerBusinessRegistrationIdentityRoutes(app, businessRegistrationIdentityService, resourceAuthMiddleware, businessRegistrationIdentityGatewayClient, config.isProduction || dependencies.businessRegistrationIdentityGatewayRequired === true);
   registerDirectoryReviewRoutes(app, directoryReviewService, resourceAuthMiddleware);
-  registerTrustScoreRoutes(app, trustScoreService, resourceAuthMiddleware);
+  registerTrustScoreRoutes(app, trustScoreService, resourceAuthMiddleware, trustScoreGatewayClient, trustScoreGatewayRequired);
   registerSupportRequestRoutes(app, supportRequestService, resourceAuthMiddleware);
   registerReviewRoutes(app, reviewService, resourceAuthMiddleware);
   registerProjectQuoteRoutes(app, projectQuoteService, resourceAuthMiddleware);
