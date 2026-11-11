@@ -5,6 +5,7 @@ import { test } from 'node:test';
 const loadConfig = (overrides: Record<string, string | undefined>) => {
   const env = { ...process.env, ...overrides };
   env.DATABASE_SSL = overrides.DATABASE_SSL ?? '';
+  env.GHM_RUNTIME_DATABASE_URL = overrides.GHM_RUNTIME_DATABASE_URL ?? '';
   return spawnSync(
     process.execPath,
     ['-e', "const { config } = require('./dist/config.js'); console.log(JSON.stringify(config));"],
