@@ -37,7 +37,7 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM ghm.account_identity WHERE id=p_actor_account_id AND account_status='active') THEN RAISE EXCEPTION 'Active actor account required' USING ERRCODE='42501'; END IF;
  DELETE FROM ghm.actor_gateway_capability_assertion_nonce WHERE expires_at<clock_timestamp();
  BEGIN
-  INSERT INTO ghm.actor_gateway_capability_assertion_nonce(nonce,expires_at) VALUES(p_nonce,to_timestamp(p_issued_at)+interval '60 seconds');
+  INSERT INTO ghm.actor_gateway_capability_assertion_nonce(nonce,expires_at) VALUES(p_nonce,GREATEST(clock_timestamp(),to_timestamp(p_issued_at))+interval '60 seconds');
  EXCEPTION WHEN unique_violation THEN RAISE EXCEPTION 'Actor assertion replay detected' USING ERRCODE='42501';
  END;
  RETURN p_actor_account_id;
