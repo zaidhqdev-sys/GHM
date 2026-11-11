@@ -6,6 +6,7 @@ const migration = readFileSync('database/migrations/20261111040000_bind_business
 
 test('Business profile wrapper requires a signed operation-bound actor assertion', () => {
   assert.match(migration, /business\.profile\.update/);
+  assert.match(migration, /GREATEST\(clock_timestamp\(\),to_timestamp\(p_issued_at\)\)\+interval '60 seconds'/);
   assert.match(migration, /DROP FUNCTION ghm\.gateway_update_business_profile\(bigint,bigint,jsonb\)/);
   assert.match(migration, /gateway_update_business_profile\(bigint,bigint,uuid,text,bigint,jsonb\)/);
   assert.match(migration, /REVOKE ALL ON FUNCTION ghm\.gateway_update_business_profile\(bigint,bigint,uuid,text,bigint,jsonb\) FROM PUBLIC,ghm_runtime,ghm_migrator/);
