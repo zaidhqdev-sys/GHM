@@ -17,7 +17,7 @@ const marker = `supplier-classification-${randomUUID()}`;
 let accountId;
 let memberAccountId;
 let businessId;
-const signAssertion = (actorId) => { const issuedAt=Math.floor(Date.now()/1000),nonce=randomUUID(); const payload=`ghm-actor-gateway:v1|${actorId}|supplier.classification.update|${issuedAt}|${nonce}`; const signature=createHmac('sha256',Buffer.from(assertionSecret,'base64')).update(payload,'utf8').digest('hex'); return {issuedAt,nonce,signature}; };
+const signAssertion = (actorId, operation = 'supplier.classification.update', issuedAt = Math.floor(Date.now()/1000)) => { const nonce=randomUUID(); const payload=`ghm-actor-gateway:v1|${actorId}|${operation}|${issuedAt}|${nonce}`; const signature=createHmac('sha256',Buffer.from(assertionSecret,'base64')).update(payload,'utf8').digest('hex'); return {issuedAt,nonce,signature}; };
 const gatewayCall = (actorId,isSupplier) => { const a=signAssertion(actorId); return gatewayPool.query('SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6)',[actorId,a.issuedAt,a.nonce,a.signature,businessId,isSupplier]); };
 
 try {
@@ -103,6 +103,30 @@ try {
   assert.equal(supplier.rowCount, 1);
   assert.equal(supplier.rows[0].is_supplier, true);
   console.log('GATEWAY OWNER SUPPLIER CLASSIFICATION UPDATE PASS');
+
+  const expired = signAssertion(accountId, 'supplier.classification.update', Math.floor(Date.now()/1000) - 61);
+  await assert.rejects(
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6)', [accountId,expired.issuedAt,expired.nonce,expired.signature,businessId,false]),
+    /Actor assertion expired/,
+  );
+  console.log('DATABASE DENIES EXPIRED SUPPLIER ASSERTION PASS');
+
+  const wrongOperation = signAssertion(accountId, 'business.profile.update');
+  await assert.rejects(
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6)', [accountId,wrongOperation.issuedAt,wrongOperation.nonce,wrongOperation.signature,businessId,false]),
+    /Actor assertion signature invalid/,
+  );
+  console.log('DATABASE BINDS SUPPLIER ASSERTION TO EXACT OPERATION PASS');
+
+  const replay = signAssertion(accountId);
+  const replaySql = 'SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6)';
+  const replayArgs = [accountId,replay.issuedAt,replay.nonce,replay.signature,businessId,false];
+  await gatewayPool.query(replaySql,replayArgs);
+  await assert.rejects(
+    () => gatewayPool.query(replaySql,replayArgs),
+    /Actor assertion replay detected/,
+  );
+  console.log('DATABASE DENIES REPLAYED SUPPLIER ASSERTION PASS');
 
   const contractor = await gatewayCall(accountId,false);
   assert.equal(contractor.rows[0].is_supplier, false);
