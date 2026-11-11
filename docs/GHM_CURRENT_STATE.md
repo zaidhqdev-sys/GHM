@@ -575,3 +575,12 @@ A security re-review found that the historical Saved Business PASS proves the te
 The next implementation batch is specified in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`: authenticated Actor Gateway list/get/create/delete; signed v2 assertions binding actor, operation and full context; gateway-only SECURITY DEFINER wrappers; production fail-closed Resource API forwarding; manual-only cutover revoking direct runtime SELECT and legacy function execution; disposable PostgreSQL negative/positive qualification. The existing Saved Business contract, eligibility, duplicate semantics, DTOs and ordering must remain unchanged. No code implementation or production cutover is claimed yet.
 
 Latest handover commit: `e6fe13f5ba939a6219a56255e99b9c6c10cf5e19`. PR #272 remains open and unmerged. Recheck exact-head CI before treating this documentation head as qualified. Production remains blocked on Render role-model resolution and a fresh independently verified backup.
+
+
+## 2026-11-11 — Saved Business signed Actor Gateway implementation in progress
+
+The database actor-provenance remediation is no longer design-only. PR #272 now contains the signed v2 HMAC migration wrappers for Saved Business list/get/create/delete, the separate manual-only runtime cutover, Actor Gateway reader/routes, Resource API bearer-forwarding client/router integration, route/client and SQL contract tests, and a disposable PostgreSQL cutover qualification script wired into CI. The gateway derives the actor from the verified ES256 access-token subject; callers cannot submit an account ID. The manual cutover revokes direct runtime table reads and legacy mutation function execution but remains unapplied outside disposable CI.
+
+Status is IMPLEMENTED / QUALIFICATION PENDING. No successful exact-head CI or new disposable PostgreSQL qualification result has yet been observed at this checkpoint. Saved Business's historic application-path PASS is retained, but database actor provenance remains OPEN until exact-head CI and disposable PostgreSQL positive/negative tests pass. Details: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md` and corrected `docs/architecture/SAVED_BUSINESS_QUALIFICATION.md`.
+
+No production database permissions, migration, secrets, services or application data were changed. PR #272 remains open and unmerged. Production remains blocked on Render role-model resolution and a fresh independently verified backup.
