@@ -119,3 +119,14 @@ test('evidence mutation fails closed when gateway is required but unavailable',a
   assert.equal(response.status,503);assert.equal(called,false);
  }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
 });
+
+test('business role cannot invoke the signed evidence review gateway',async()=>{
+ let called=false;
+ const service={review:async()=>{throw new Error('legacy review must not run');}} as unknown as BusinessCapabilityEvidenceService;
+ const gateway={reviewEvidence:async()=>{called=true;return{evidence:fixture({userId:42,role:'business'})};}};
+ const {server,baseUrl}=await start(service,gateway,true);
+ try{
+  const response=await fetch(`${baseUrl}/api/v1/business-capability-evidence/91/review`,{method:'PATCH',headers:{authorization:`Bearer ${tokenFor({userId:42,role:'business'})}`,'content-type':'application/json'},body:JSON.stringify({decision:'verified',reason:null})});
+  assert.equal(response.status,403);assert.equal(called,false);
+ }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
+});
