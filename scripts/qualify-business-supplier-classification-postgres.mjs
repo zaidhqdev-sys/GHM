@@ -79,8 +79,8 @@ try {
 
   await assert.rejects(
     () => runtimePool.query(
-      'SELECT * FROM ghm.gateway_update_business_supplier_classification($1, $2, $3)',
-      [accountId, businessId, true],
+      'SELECT * FROM ghm.gateway_update_business_supplier_classification($1,$2,$3,$4,$5,$6)',
+      [accountId, Math.floor(Date.now()/1000), randomUUID(), '0'.repeat(64), businessId, true],
     ),
     /permission denied/,
   );
