@@ -12,6 +12,7 @@ import { PostgresBusinessRegistrationIdentityReader } from './business-registrat
 import { PostgresCapabilityGovernanceReader } from './capability-governance-reader';
 import { PostgresSupplierClassificationReader } from './supplier-classification-reader';
 import { PostgresBusinessProfileReader } from './business-profile-reader';
+import { assertActorGatewayDatabaseIdentity } from './database-principal';
 
 const required = (name: string): string => {
   const value = process.env[name]?.trim();
@@ -73,10 +74,36 @@ process.on('unhandledRejection', (reason: unknown) => {
 });
 
 const start = async (): Promise<void> => {
-  const identity = await pool.query('SELECT current_database() AS database_name, session_user, current_user');
-  if (identity.rows[0]?.session_user !== 'ghm_actor_gateway' || identity.rows[0]?.current_user !== 'ghm_actor_gateway') {
-    throw new Error('Actor gateway database login identity mismatch');
-  }
+  const identity = await pool.query<{
+    session_user: string;
+    current_user: string;
+    rolcanlogin: boolean;
+    rolinherit: boolean;
+    rolsuper: boolean;
+    rolcreatedb: boolean;
+    rolcreaterole: boolean;
+    rolreplication: boolean;
+    rolbypassrls: boolean;
+    no_role_memberships: boolean;
+  }>(`
+    SELECT session_user,
+           current_user,
+           r.rolcanlogin,
+           r.rolinherit,
+           r.rolsuper,
+           r.rolcreatedb,
+           r.rolcreaterole,
+           r.rolreplication,
+           r.rolbypassrls,
+           NOT EXISTS (
+             SELECT 1
+               FROM pg_auth_members m
+              WHERE m.member = r.oid OR m.roleid = r.oid
+           ) AS no_role_memberships
+      FROM pg_roles r
+     WHERE r.rolname = session_user
+  `);
+  assertActorGatewayDatabaseIdentity(identity.rows[0]);
   server.listen(port, () => {
     console.log(`GHM Actor Gateway listening on port ${port}`);
   });
