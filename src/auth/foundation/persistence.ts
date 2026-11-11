@@ -121,12 +121,6 @@ export interface AuthPersistence {
   lookupQuoteFlowMigrationResetEnrollment(email: string): Promise<{ enrollmentId: number; accountId: number; approvedEmail: string } | null>;
   completeQuoteFlowMigrationReset(recoveryTokenWire: string, password: string): Promise<{ accountId: number; loginEmail: string; revokedSessionCount: number }>;
   lookupExternalIdentity(provider: string, subject: string): Promise<ExternalIdentityMapping | null>;
-  bootstrapExternalIdentity(
-    provider: string,
-    subject: string,
-    fullName?: string | null,
-    role?: 'customer' | 'business',
-  ): Promise<ExternalIdentityMapping & { created: boolean }>;
   linkBusinessExternalMapping(
     provider: string,
     externalBusinessId: string,
@@ -455,37 +449,6 @@ export class PostgresAuthPersistence implements AuthPersistence {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
-  }
-
-  async bootstrapExternalIdentity(
-    provider: string,
-    subject: string,
-    fullName: string | null = null,
-    role: 'customer' | 'business' = 'customer',
-  ): Promise<ExternalIdentityMapping & { created: boolean }> {
-    try {
-      const result = await this.tx(async (client) =>
-        client.query(`SELECT * FROM ghm.auth_bootstrap_external_identity($1, $2, $3, $4)`, [
-          provider,
-          subject,
-          fullName,
-          role,
-        ]),
-      );
-      if (result.rowCount !== 1) throw new AuthPersistenceError('Bootstrap failed');
-      const row = result.rows[0];
-      return {
-        id: Number(row.id),
-        provider: String(row.provider),
-        subject: String(row.subject),
-        accountId: Number(row.account_id),
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-        created: Boolean(row.created),
-      };
-    } catch (error) {
-      throw mapPgError(error);
-    }
   }
 
   async linkBusinessExternalMapping(
