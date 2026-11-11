@@ -1023,3 +1023,19 @@ Source review confirmed that the existing `auth_redeem_recovery(bytea)` already 
 The first run on the new recovery function failed the existing recovery single-use test because the new helper raised lowercase `invalid recovery token`, while `raiseFromPg` maps the established `RECOVERY_CREDENTIAL_INVALID` error marker. Corrected both helper error paths to preserve the existing error contract in commit `1ebe0c5dfab55968fe4cbf6ffe0aa79a46230fbf`. No database migration has been applied to production; the migration is still open-PR-only.
 
 Current PR head: `1ebe0c5dfab55968fe4cbf6ffe0aa79a46230fbf`. Push run `43105500794` is IN PROGRESS and PR run `43105509324` is QUEUED. The preceding failure at `13f9e741` was the error-marker mismatch above; do not claim the new recovery path qualified until the latest exact-head run passes all tests and QuoteFlow reset qualification.
+
+
+## Recovery error-contract follow-up — exact-head checkpoint (2026-11-11)
+
+A subsequent exact-head workflow run 43105297445 on code head 13f9e741c323ceaf9c847e0683911b6800c23d8d completed with:
+- Build: PASS.
+- All migrations: PASS on disposable PostgreSQL, including the token-bound recovery migration.
+- Existing full test suite: 881 passed, 3 failed (the two recovery persistence subtests caused one parent-suite failure).
+- web-quality: PASS.
+- Failure cause: the recovery redemption path returned PostgreSQL text 'invalid recovery token' on second-use rejection, while raiseFromPg only recognized RECOVERY_CREDENTIAL_INVALID. The token was still rejected; this was an error-contract translation mismatch, not token replay acceptance or a session-revocation failure.
+
+A narrow follow-up change was committed to src/auth/foundation/persistence.ts at commit ae7b2272ce5c1aea801dd19ad0e5781307394fe7: map both the canonical marker and legacy lowercase PostgreSQL message to RECOVERY_CREDENTIAL_INVALID. No SQL, authorization, transaction, or production behavior was changed by this follow-up.
+
+At the time of this note, PR #272 was verified OPEN and unmerged at ae7b2272ce5c1aea801dd19ad0e5781307394fe7. No workflow run was returned for this commit by the PR-triggered commit-run lookup; do not claim exact-head CI validation. Recheck Actions for this exact head before continuing or marking the recovery batch qualified.
+
+Next: verify whether the branch's canonical recovery SQL has been updated to raise RECOVERY_CREDENTIAL_INVALID consistently in both invalid-token paths (prefer correcting the SQL error contract if it has not already been corrected), then rerun exact-head build, full tests, disposable migration chain, and QuoteFlow migration-reset qualification. Preserve the token-bound session revocation and compatibility wrapper. No production migration/ACL change.
