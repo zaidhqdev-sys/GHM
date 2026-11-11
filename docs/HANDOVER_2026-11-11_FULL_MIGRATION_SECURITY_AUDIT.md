@@ -900,3 +900,26 @@ The first CI runs on the implementation commits failed before the test suite at 
 Current PR head at this checkpoint: `b60a2e937005cc92c258d185ef4fc47c6eb8a061`. GitHub Actions PR run ID `43102773940` is IN PROGRESS; do not claim the updated suite passed until its exact-head result is complete. Earlier failed runs at heads `0e1684f`, `377fa60`, `cced0bf`, and `d4e1dbd` all stopped at the same Trust Score script syntax check; the web-quality job succeeded. The corrected latest run must still prove build, full tests, disposable migrations and all qualification steps.
 
 No database migration, SQL grant, production role, deployment or production data was changed. PR #272 remains open and unmerged.
+
+
+## External person identity mapping table boundary — remediation implementation checkpoint (2026-11-11)
+
+The source audit confirmed that `20260921120200_create_account_external_identity.sql` granted `ghm_runtime` direct SELECT and sequence USAGE on `ghm.account_external_identity`, while later application code already used the SECURITY DEFINER `auth_lookup_external_identity(text,text)` function. No current application code requires direct runtime table reads. The QuoteFlow DB qualification script was the only identified runtime direct reader; it has been changed to use the governed lookup function. The persistence test's direct mapping inspection is performed under `ghm_migrator` after `SET ROLE ghm_schema_owner`.
+
+### Changes made
+
+- Added `database/migrations/20261111210000_revoke_runtime_account_external_identity_table_access.sql`.
+  - Revokes all PUBLIC and `ghm_runtime` privileges on `ghm.account_external_identity`.
+  - Revokes all PUBLIC and `ghm_runtime` privileges on `ghm.account_external_identity_id_seq`.
+  - Explicitly preserves runtime EXECUTE on the existing SECURITY DEFINER lookup, link, bootstrap and QuoteFlow migration-provisioning functions. Their owners retain the table/sequence access required internally.
+- Updated `scripts/qualify-quoteflow-migration-account-provisioning-db.mjs` so runtime preflight and diagnostic lookup use `auth_lookup_external_identity`; migrator verification remains direct under the owner role.
+- Updated `src/auth/foundation/persistence.test.ts` to assert runtime has no SELECT/INSERT/UPDATE/DELETE on the mapping table and no sequence USAGE, that direct SELECT/INSERT/nextval are denied, and that governed link + lookup functions still work.
+
+### Scope and remaining risks
+
+This change closes direct enumeration of the external identity mapping table by the shared runtime while preserving the existing identity lookup and provisioning contracts. It does **not** yet close the separate broad function-authority risks:
+- `auth_bootstrap_external_identity`, `auth_provision_migration_account`, and `auth_link_external_identity` remain runtime-executable and need their caller/migration authority reconciled.
+- `auth_link_business_external_mapping` remains runtime-executable and lacks database actor/integration provenance; see the Connect Business mapping audit above.
+- The other pre-authentication auth functions still require a dedicated internal-auth authority design.
+
+No production ACL was changed. The new migration is only in the open PR branch and must be qualified on disposable PostgreSQL. Current code head at this checkpoint: `cf06ba02652189f9b418c39caa0437b7a80cf54f`. GitHub Actions run `43103300049` is IN PROGRESS on this exact head; no pass is claimed.
