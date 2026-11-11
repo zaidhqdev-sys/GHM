@@ -16,14 +16,15 @@ test('capability verification and evidence review derive verifier from signed ac
 });
 test('new gateway functions are executable only by actor gateway',()=>{
  for(const signature of [
- 'gateway_replace_business_capability_assertions\(bigint,bigint,uuid,text,text,bigint,jsonb\)',
- 'gateway_transition_business_capability_verification\(bigint,bigint,uuid,text,text,bigint,text,text,text\)',
- 'gateway_transition_business_capability_evidence\(bigint,bigint,uuid,text,text,bigint,text,text\)',
+ 'gateway_replace_business_capability_assertions(bigint,bigint,uuid,text,text,bigint,jsonb)',
+ 'gateway_transition_business_capability_verification(bigint,bigint,uuid,text,text,bigint,text,text,text)',
+ 'gateway_transition_business_capability_evidence(bigint,bigint,uuid,text,text,bigint,text,text)',
  ]){
-  assert.match(migration,new RegExp('REVOKE ALL ON FUNCTION ghm\\.'+signature+' FROM PUBLIC,ghm_runtime,ghm_migrator'));
-  assert.match(migration,new RegExp('GRANT EXECUTE ON FUNCTION ghm\\.'+signature+' TO ghm_actor_gateway'));
+  assert.ok(migration.includes('REVOKE ALL ON FUNCTION ghm.'+signature+' FROM PUBLIC,ghm_runtime,ghm_migrator'));
+  assert.ok(migration.includes('GRANT EXECUTE ON FUNCTION ghm.'+signature+' TO ghm_actor_gateway'));
  }
 });
+
 test('manual cutover removes all legacy runtime mutation RPC execution without changing automatic migration path',()=>{
  assert.match(cutover,/MANUAL CUTOVER ONLY/);
  assert.match(cutover,/REVOKE ALL ON FUNCTION ghm\.replace_business_capability_assertions/);
