@@ -972,3 +972,21 @@ Their only application callers were dead convenience methods on `AuthPersistence
 Current PR head at this checkpoint: `5fec70399ae220c5f1390dcd74c9dd5087248c16`. GitHub Actions PR run `43104203851` is IN PROGRESS on this exact head. The earlier intermediate build failure at head `a955787` occurred before the persistence test was updated to remove the deleted method; the current head contains the replacement ACL test. Do not claim the new auth ACL migration or full workflow passed until the current-head disposable migration and database-backed auth test complete.
 
 No production database, role, grant, deployment or user data was changed.
+
+
+## Unused auth administration RPC batch — latest validation checkpoint (2026-11-11)
+
+The first build after removing the unused persistence methods exposed one additional mock in `src/http/auth-router.test.ts` that still implemented `revokeSession`, `revokeAllSessionsForAccount`, `changePassword`, and `disableAccount`. Those four stale mock properties have now been removed in commit `d9e4ec68f05ca71d57d04a9858a1a12686e70371`. A follow-up source check confirms no remaining application/persistence references to the removed methods; the remaining `auth_revoke_session`, `auth_change_password`, and `auth_disable_account` references are only the new database ACL assertions.
+
+On PR head `d9e4ec68f05ca71d57d04a9858a1a12686e70371`, GitHub Actions run `43104412505`:
+- Build: PASS.
+- All migrations, including `20261111210000` and `20261111220000`: applied successfully to disposable PostgreSQL.
+- Storage getter and lifecycle qualification: PASS.
+- Full test suite: PASS, including the new auth function ACL assertions, external identity table ACL tests, and directory-review route tests.
+- At the last check, the workflow was still running Trust Score signed gateway disposable PostgreSQL qualification and had not completed all remaining qualification jobs. Overall workflow is still IN PROGRESS; do not claim full CI PASS yet.
+
+### Newly identified next auth boundary item — account-wide session revocation
+
+The original `auth_redeem_recovery(bytea)` already consumes the one-time recovery token and calls `auth_internal_revoke_all_sessions_for_account`. However, `PostgresAuthPersistence.resetPasswordWithRecovery` then redundantly calls `auth_revoke_all_sessions_for_account(account_id,...)` again after setting the password. This second call is normally a no-op because the sessions were already revoked by `auth_redeem_recovery`; it also keeps a broad caller-supplied account-ID revocation RPC runtime-executable.
+
+The QuoteFlow migration reset completion function also calls `auth_revoke_all_sessions_for_account` internally from a SECURITY DEFINER function; nested owner execution does not require a runtime grant. Next batch should introduce a token-bound recovery redemption result that returns both account ID and revoked-session count, update the normal reset path to use it, then revoke runtime EXECUTE on the direct account-ID revoke wrapper. Preserve the token single-use, atomic reset, and QuoteFlow migration-reset behavior. Do not revoke `auth_set_password` yet; login rehash still uses it after successful password verification.
