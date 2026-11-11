@@ -793,3 +793,36 @@ The same adapter's `linkMappingInTransaction` calls `auth_link_business_external
 The mapping mutation function is a separate actor/integration provenance boundary. Decide whether it should be a signed Actor Gateway operation bound to the authenticated GHM actor, provider, external Business ID and canonical Business ID, or a distinct integration authority that verifies the trusted Connect request. Do not assume `assertRole` in TypeScript makes the database function independently safe.
 
 No code, grants, Connect routing, production data or production permissions were changed during this investigation.
+
+
+## Connect integration lifecycle and service-assertion RPC review (2026-11-11)
+
+Inspected:
+- `database/migrations/20261002101500_create_connect_integration_lifecycle.sql`
+- `database/migrations/20261002130000_create_connect_service_assertion_replay.sql`
+- `src/integrations/connect/integration-lifecycle.ts`
+- `src/integrations/connect/service-assertion.ts`
+- `src/integrations/connect/service-assertion-replay.ts`
+- `src/integrations/connect/trusted-request-context.ts`
+- `src/http/connect-service-router.ts`
+
+### Integration lifecycle
+
+- `ghm.connect_integration` has runtime SELECT only; PUBLIC table access is revoked.
+- `connect_integration_get(text)` is SECURITY INVOKER and runtime-executable; the application repository uses it to resolve integration lifecycle state.
+- `connect_integration_create`, `connect_integration_disable`, `connect_integration_enable`, and `connect_integration_revoke` are SECURITY DEFINER and PUBLIC-revoked, but no runtime EXECUTE grant is issued in the inspected migration. Their mutation surface is therefore not exposed to the shared runtime by this migration.
+- No caller-supplied end-user account ID is involved in this lifecycle getter. The integration identity is a separate service principal, not an end-user identity.
+
+### Service assertion replay protection
+
+- `ghm.connect_service_assertion_replay` has PUBLIC table privileges revoked; runtime direct table DML is not granted.
+- `connect_service_assertion_consume(jti,integration_id,expires_at)` is SECURITY DEFINER, PUBLIC-revoked and runtime-executable. It validates identifier shapes and future expiry, removes expired rows, then inserts the JTI idempotently.
+- `src/http/connect-service-router.ts` verifies the ES256 service assertion before calling `requireFreshConnectServiceAssertion`; only after replay consumption does it establish the trusted context and require the integration to be active. The verified assertion's subject/JTI are carried into the trusted request.
+- The database replay function does not independently verify the ES256 signature. Its trust model is that only the application calls it after successful cryptographic verification. A direct runtime SQL caller could insert chosen replay JTIs and cause denial of service for matching requests, but cannot use this function to create an authenticated integration context or read tenant data.
+- The runtime cannot directly insert/update/delete the replay table under the inspected table ACL; the function-only path is intentional for atomic replay consumption.
+
+### Disposition
+
+The Connect lifecycle mutation RPCs are not runtime-granted in the inspected migration and are not a current shared-runtime mutation exposure. The active Connect replay function is a narrow service-internal operation whose security depends on signature verification before invocation; record its residual database trust assumption, but do not convert it into a user-JWT Actor Gateway operation. Any future hardening should bind replay consumption to a separate service authority or a signed assertion proof, while preserving one-use JTI semantics.
+
+No Connect integration lifecycle or replay grants were changed. No production changes were made.
