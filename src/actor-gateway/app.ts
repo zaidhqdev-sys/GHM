@@ -1,7 +1,6 @@
 import express, { type Express, type Request, type Response, type NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import {
-  AccessJwtError,
   type AccessJwtVerifier,
 } from '../auth/foundation/access-jwt-verifier';
 import type { ActorIdentityReader } from './actor-identity-reader';
@@ -73,29 +72,7 @@ export const createActorGatewayApp = (
   app.use('/v1', express.json({ limit: '16kb' }));
 
   app.get('/v1/actor/me', async (req: Request, res: Response) => {
-    const authorization = req.header('authorization');
-    if (!authorization?.startsWith('Bearer ')) {
-      res.status(401).json({ error: 'unauthorized' });
-      return;
-    }
-
-    const token = authorization.slice('Bearer '.length).trim();
-    if (!token) {
-      res.status(401).json({ error: 'unauthorized' });
-      return;
-    }
-
-    let accountId: number;
-    try {
-      accountId = dependencies.verifier.verify(token).accountId;
-    } catch (error) {
-      if (error instanceof AccessJwtError) {
-        res.status(401).json({ error: 'unauthorized' });
-        return;
-      }
-      res.status(401).json({ error: 'unauthorized' });
-      return;
-    }
+    const accountId = res.locals.actorAccountId as number;
 
     try {
       const actor = await dependencies.actorIdentityReader.readOwnIdentity(accountId);
@@ -124,25 +101,7 @@ export const createActorGatewayApp = (
   });
 
   app.get('/v1/businesses/:businessId/registration-identity', async (req: Request, res: Response) => {
-    const authorization = req.header('authorization');
-    if (!authorization?.startsWith('Bearer ')) {
-      res.status(401).json({ error: 'unauthorized' });
-      return;
-    }
-
-    const token = authorization.slice('Bearer '.length).trim();
-    if (!token) {
-      res.status(401).json({ error: 'unauthorized' });
-      return;
-    }
-
-    let accountId: number;
-    try {
-      accountId = dependencies.verifier.verify(token).accountId;
-    } catch {
-      res.status(401).json({ error: 'unauthorized' });
-      return;
-    }
+    const accountId = res.locals.actorAccountId as number;
 
     const rawBusinessId = req.params.businessId;
     if (typeof rawBusinessId !== 'string' || !/^[1-9][0-9]*$/.test(rawBusinessId)) {
@@ -183,24 +142,7 @@ export const createActorGatewayApp = (
   });
 
   app.put('/v1/businesses/:businessId/registration-identity', async (req: Request, res: Response) => {
-    const authorization = req.header('authorization');
-    if (!authorization?.startsWith('Bearer ')) {
-      res.status(401).json({ error: 'unauthorized' });
-      return;
-    }
-    const token = authorization.slice('Bearer '.length).trim();
-    if (!token) {
-      res.status(401).json({ error: 'unauthorized' });
-      return;
-    }
-
-    let accountId: number;
-    try {
-      accountId = dependencies.verifier.verify(token).accountId;
-    } catch {
-      res.status(401).json({ error: 'unauthorized' });
-      return;
-    }
+    const accountId = res.locals.actorAccountId as number;
 
     const rawBusinessId = req.params.businessId;
     if (typeof rawBusinessId !== 'string' || !/^[1-9][0-9]*$/.test(rawBusinessId)) {
@@ -278,12 +220,8 @@ export const createActorGatewayApp = (
     }
   });
 
-  const capabilityRouteActor = (req: Request, res: Response): number | null => {
-    const authorization = req.header('authorization');
-    if (!authorization?.startsWith('Bearer ')) { res.status(401).json({ error: 'unauthorized' }); return null; }
-    try { return dependencies.verifier.verify(authorization.slice('Bearer '.length).trim()).accountId; }
-    catch { res.status(401).json({ error: 'unauthorized' }); return null; }
-  };
+  const capabilityRouteActor = (res: Response): number =>
+    res.locals.actorAccountId as number;
   const capabilityDto = (c: import('./capability-governance-reader').GatewayCapability) => ({
     id:c.id,parentId:c.parentId,name:c.name,slug:c.slug,description:c.description,sortOrder:c.sortOrder,
     lifecycleStatus:c.lifecycleStatus,taxonomyVersion:c.taxonomyVersion,effectiveFrom:c.effectiveFrom,
@@ -311,7 +249,7 @@ export const createActorGatewayApp = (
   };
   const capabilityReader = dependencies.capabilityGovernanceReader;
   app.get('/v1/admin/capabilities', async (req: Request, res: Response) => {
-    const actor=capabilityRouteActor(req,res); if(actor===null)return;
+    const actor=capabilityRouteActor(res); if(actor===null)return;
     if(!capabilityReader){res.status(503).json({error:'service_unavailable'});return;}
     try { const capabilities=await capabilityReader.list(actor); res.status(200).json({capabilities:capabilities.map(capabilityDto)}); }
     catch(error){capabilityFailure(error,res);}
@@ -347,24 +285,7 @@ export const createActorGatewayApp = (
   });
 
   app.put('/v1/businesses/:businessId/supplier-classification', async (req: Request, res: Response) => {
-    const authorization = req.header('authorization');
-    if (!authorization?.startsWith('Bearer ')) {
-      res.status(401).json({ error: 'unauthorized' });
-      return;
-    }
-    const token = authorization.slice('Bearer '.length).trim();
-    if (!token) {
-      res.status(401).json({ error: 'unauthorized' });
-      return;
-    }
-
-    let accountId: number;
-    try {
-      accountId = dependencies.verifier.verify(token).accountId;
-    } catch {
-      res.status(401).json({ error: 'unauthorized' });
-      return;
-    }
+    const accountId = res.locals.actorAccountId as number;
 
     const rawBusinessId = req.params.businessId;
     if (typeof rawBusinessId !== 'string' || !/^[1-9][0-9]*$/.test(rawBusinessId)) {
@@ -409,24 +330,7 @@ export const createActorGatewayApp = (
   });
 
   app.patch('/v1/businesses/:businessId/profile', async (req: Request, res: Response) => {
-    const authorization = req.header('authorization');
-    if (!authorization?.startsWith('Bearer ')) {
-      res.status(401).json({ error: 'unauthorized' });
-      return;
-    }
-    const token = authorization.slice('Bearer '.length).trim();
-    if (!token) {
-      res.status(401).json({ error: 'unauthorized' });
-      return;
-    }
-
-    let accountId: number;
-    try {
-      accountId = dependencies.verifier.verify(token).accountId;
-    } catch {
-      res.status(401).json({ error: 'unauthorized' });
-      return;
-    }
+    const accountId = res.locals.actorAccountId as number;
 
     const rawBusinessId = req.params.businessId;
     if (typeof rawBusinessId !== 'string' || !/^[1-9][0-9]*$/.test(rawBusinessId)) {
