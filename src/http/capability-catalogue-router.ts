@@ -117,20 +117,22 @@ export const registerCapabilityCatalogueRoutes = (
   app.get('/api/v1/admin/capabilities', authMiddleware, requireCatalogueAdmin('read'), async (req: Request, res: Response) => {
     try {
       const context = req.authContext as AuthContext;
-      const token = gatewayClient ? gatewayToken(req,res) : null; if(gatewayClient && !token)return;
-      const capabilities = gatewayClient ? await gatewayClient.list(token!) : await service.listGoverned(context);
+      if (!gatewayClient) { res.status(503).json({ error: 'service_unavailable' }); return; }
+      const token = gatewayToken(req,res); if (!token) return;
+      const capabilities = await gatewayClient.list(token);
       res.status(200).json({ capabilities: capabilities.map(toCapabilityDto) });
-    } catch (error) { if(gatewayClient) gatewayError(error,res); else handleError(error, res); }
+    } catch (error) { gatewayError(error,res); }
   });
 
   app.post('/api/v1/admin/capabilities/drafts', authMiddleware, requireCatalogueAdmin('create'), async (req: Request, res: Response) => {
     const input = parseDraft(req.body);
     if (!input) { res.status(400).json({ error: 'invalid_request' }); return; }
     try {
-      const token = gatewayClient ? gatewayToken(req,res) : null; if(gatewayClient && !token)return;
-      const capability = gatewayClient ? await gatewayClient.createDraft(token!,input) : await service.createDraft(req.authContext as AuthContext, input);
+      if (!gatewayClient) { res.status(503).json({ error: 'service_unavailable' }); return; }
+      const token = gatewayToken(req,res); if (!token) return;
+      const capability = await gatewayClient.createDraft(token,input);
       res.status(201).json({ capability: toCapabilityDto(capability) });
-    } catch (error) { if(gatewayClient) gatewayError(error,res); else handleError(error, res); }
+    } catch (error) { gatewayError(error,res); }
   });
 
   app.patch('/api/v1/admin/capabilities/:capabilityId/draft', authMiddleware, requireCatalogueAdmin('update'), async (req: Request, res: Response) => {
@@ -138,10 +140,11 @@ export const registerCapabilityCatalogueRoutes = (
     const input = parseDraft(req.body);
     if (!input) { res.status(400).json({ error: 'invalid_request' }); return; }
     try {
-      const token = gatewayClient ? gatewayToken(req,res) : null; if(gatewayClient && !token)return;
-      const capability = gatewayClient ? await gatewayClient.updateDraft(token!,req.params.capabilityId,input) : await service.updateDraft(req.authContext as AuthContext, req.params.capabilityId, input);
+      if (!gatewayClient) { res.status(503).json({ error: 'service_unavailable' }); return; }
+      const token = gatewayToken(req,res); if (!token) return;
+      const capability = await gatewayClient.updateDraft(token,req.params.capabilityId,input);
       res.status(200).json({ capability: toCapabilityDto(capability) });
-    } catch (error) { if(gatewayClient) gatewayError(error,res); else handleError(error, res); }
+    } catch (error) { gatewayError(error,res); }
   });
 
   app.post('/api/v1/admin/capabilities/:capabilityId/transition', authMiddleware, requireCatalogueAdmin('transition'), async (req: Request, res: Response) => {
@@ -157,14 +160,10 @@ export const registerCapabilityCatalogueRoutes = (
       res.status(400).json({ error: 'invalid_request' }); return;
     }
     try {
-      const token = gatewayClient ? gatewayToken(req,res) : null; if(gatewayClient && !token)return;
-      const capability = gatewayClient ? await gatewayClient.transition(token!,req.params.capabilityId,body.targetStatus as CapabilityLifecycle,body.replacedByCapabilityId as string | null | undefined) : await service.transition(
-        req.authContext as AuthContext,
-        req.params.capabilityId,
-        body.targetStatus as CapabilityLifecycle,
-        body.replacedByCapabilityId as string | null | undefined,
-      );
+      if (!gatewayClient) { res.status(503).json({ error: 'service_unavailable' }); return; }
+      const token = gatewayToken(req,res); if (!token) return;
+      const capability = await gatewayClient.transition(token,req.params.capabilityId,body.targetStatus as CapabilityLifecycle,body.replacedByCapabilityId as string | null | undefined);
       res.status(200).json({ capability: toCapabilityDto(capability) });
-    } catch (error) { if(gatewayClient) gatewayError(error,res); else handleError(error, res); }
+    } catch (error) { gatewayError(error,res); }
   });
 };
