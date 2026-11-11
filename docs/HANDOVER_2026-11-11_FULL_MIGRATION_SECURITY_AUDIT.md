@@ -622,3 +622,42 @@ These are confirmed database-boundary trust gaps under the shared runtime creden
 **OPEN / CONFIRMED DATABASE ACTOR-PROVENANCE GAP.** Do not revoke current storage lifecycle grants yet. First design the complete signed storage metadata boundary and route all create, complete, get, delete, retry and cleanup operations through it, or provide a separately justified narrow internal authority for provider-confirmed lifecycle transitions. Bind actor, tenant Business, resource identity, object ID, operation and lifecycle transition to verified JWT-derived assertions wherever an end-user actor exists. For provider/system cleanup without an end-user JWT, use a distinct narrowly scoped internal storage authority and prove it cannot perform arbitrary tenant operations.
 
 Next qualification must use disposable PostgreSQL with distinct runtime, Actor Gateway, internal storage authority (if needed), and migrator roles. Prove runtime direct function EXECUTE denial after cutover; signed actor/tenant/object substitution and replay denial; upload completion cannot mark available without matching provider verification path; only authorized actors can read/delete; public logo projection remains constrained; and deletion retry/pending cleanup still works end-to-end. Compare final effective ACLs including PUBLIC and memberships. No production cutover, no production mutation, no paid service.
+
+
+## Internal authentication caller trace — follow-up pass (2026-11-11)
+
+Additional source paths inspected:
+- `src/auth/foundation/persistence.test.ts`
+- `src/migrations/quoteflow-migration-reset-recovery.ts`
+- `src/migrations/quoteflow-migration-reset-completion.ts`
+- `src/migrations/quoteflow-migration-reset-enrollment.ts`
+- `src/migrations/quoteflow-migration-account-provisioning.ts`
+- `src/migrations/quoteflow-migration-reconciliation.ts`
+
+### Caller classification refined
+
+- `issueRecovery(accountId)` has two identified service callers: normal password recovery after normalized-email credential lookup, and QuoteFlow migration-reset recovery after a dedicated migration-enrollment lookup. Both deliver the raw one-time token to the approved email address; the account ID comes from the server-side lookup result, not the HTTP request body. The SQL function itself still trusts a supplied account ID.
+- `resetPasswordWithRecovery(token,email,password)` derives account ID from `auth_redeem_recovery(token_hash)` inside the same transaction, then sets the password and revokes all sessions. The public reset route accepts token/email/password, not account ID. This is the correct provenance pattern to preserve.
+- `completeQuoteFlowMigrationReset(token,password)` delegates to a dedicated atomic persistence operation and the public completion route subsequently calls login with the returned email/password. The dedicated SQL function and its full grant/ACL/call contract remain to be inspected.
+- `linkExternalIdentity(provider,subject,accountId)` is used by the explicit QuoteFlow migration provisioning/reconciliation services. Those services require a resolved target account and use the fixed source provider `supabase`; this is a controlled migration operation, not a public login/register HTTP route. The migration provisioning contract explicitly avoids creating sessions or inventing credentials. The account ID is still an input to the persistence/database function and must be protected by a narrow migration authority rather than assumed safe because the TypeScript service is internal.
+- `lookupExternalIdentity` supports that migration provisioning flow. The SQL lookup is keyed by provider+subject.
+- `linkBusinessExternalMapping(provider,externalBusinessId,businessId)` is part of the QuoteFlow Business migration provisioning store contract; the concrete store implementation/caller authority still needs locating. Its SQL function accepts a Business ID and does not independently prove migration authority.
+- `bootstrapExternalIdentity(provider,subject,...)` is covered by persistence tests, but no public OAuth/provider HTTP route or production service caller was found in the inspected `src/auth`, `src/http`, and `src/migrations` paths. Treat as no production caller identified, not proof of global non-use.
+- `disableAccount(accountId)`, `changePassword(accountId,keepSessionId,...)`, `revokeSession(sessionId,...)`, and `revokeAllSessionsForAccount(accountId,...)` appear as persistence interface/class methods and are exercised in persistence tests. No corresponding public HTTP route or `GhmAuthService` method was found in the inspected source. `revokeAllSessionsForAccount` is also used internally by the recovery-reset transaction through SQL. The direct persistence convenience method remains a separate broad entry point.
+- `validateSession(sessionId)` is used in persistence tests and available as a persistence method; no production route/service caller was identified in the inspected AuthService/AuthRouter. Verify all repository references before removing or changing it.
+
+### Consequence
+
+The audit now separates three classes that must not be conflated:
+
+1. **Pre-authentication credential/capability flows:** register, password-verified login, refresh-token rotation, logout by refresh token, password recovery/reset. These need a dedicated internal-auth DB authority that can prove or derive account/session identity from verified credentials or one-time tokens. A user-JWT gateway is not appropriate before token issuance.
+2. **Founder/migration-only identity linking:** QuoteFlow external identity and Business mapping operations. These need a migration-only authority with explicit approval/provenance, not broad permanent runtime EXECUTE merely because a TypeScript migration service calls them.
+3. **Unexposed or test-only persistence methods:** direct account disable, direct session revoke, direct account-wide revoke, direct password change and external bootstrap. Confirm all repository references and remove/restrict unused methods/functions only after a complete caller search and compatibility check.
+
+### Remaining internal-auth checks
+
+- Locate the concrete QuoteFlow migration persistence adapters and their execution entry points; prove how migration manifest/resolution inputs are approved and how the runtime credential is selected.
+- Inspect `auth_complete_quoteflow_migration_reset` definition, grants, enrollment constraints and token semantics.
+- Reconcile every later migration for final auth function grants/revokes and role inheritance; the list of original grants above is not a final ACL result.
+- Confirm whether `auth_bootstrap_external_identity` has any active non-HTTP provider caller outside the inspected directories.
+- No auth grant revocation or internal-auth implementation is authorized by this source audit alone.
