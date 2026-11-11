@@ -91,7 +91,7 @@ jobs:
           CREATE ROLE ghm_role_created LOGIN NOINHERIT;
           RESET ROLE;
 
-          DO $
+          DO $do$
           DECLARE
             membership record;
           BEGIN
@@ -114,13 +114,13 @@ jobs:
               RAISE EXCEPTION 'Unexpected PostgreSQL 18 delegated CREATEROLE membership: %', membership;
             END IF;
           END
-          $;
+          $do$;
 
           SET ROLE ghm_role_creator;
           REVOKE ghm_role_created FROM ghm_role_creator;
           RESET ROLE;
 
-          DO $
+          DO $do$
           BEGIN
             IF NOT EXISTS (
               SELECT 1
@@ -134,7 +134,7 @@ jobs:
               RAISE EXCEPTION 'Delegated creator unexpectedly revoked postgres-granted membership';
             END IF;
           END
-          $;
+          $do$;
 
           DROP ROLE ghm_role_created;
           DROP ROLE ghm_role_creator;
