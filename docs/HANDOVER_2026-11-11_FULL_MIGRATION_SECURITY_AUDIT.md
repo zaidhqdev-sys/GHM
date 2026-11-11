@@ -552,3 +552,73 @@ Do not route these pre-JWT flows through user-JWT Actor Gateway. The required de
 ### Next action
 
 Continue tracing external identity/bootstrap/link call sites and QuoteFlow migration-reset callers, then audit all later auth-related grants/cutovers and the complete storage lifecycle call graph. Keep this audit read-only until the internal-auth authority design is supported by full caller and ACL evidence. No auth grant has been revoked; no production changes; PR #272 remains open and unmerged.
+
+
+## Storage metadata lifecycle audit — source/call-path pass 1 (2026-11-11)
+
+This is a source-level trust-boundary audit. No storage code, SQL grants, object metadata, provider object, production data or service configuration was changed.
+
+### Exact source locations inspected
+
+- Storage lifecycle table/function creation: `database/migrations/20261004220000_create_storage_object.sql`, `20261004221000_establish_storage_persistence_boundary.sql`.
+- SECURITY DEFINER hardening and runtime grants: `database/migrations/20261004222000_harden_storage_persistence_function_authority.sql`.
+- Account-aware metadata getter: `database/migrations/20261026120000_scope_storage_metadata_lookup.sql`.
+- Logo binding and public logo projection: `database/migrations/20261106090000_business_logo_storage_binding.sql`.
+- Pending-object cleanup transition: `database/migrations/20261110140000_allow_pending_storage_object_cleanup.sql`.
+- Signed logo-binding wrapper: `database/migrations/20261111160000_add_signed_business_logo_gateway.sql`; manual cutover `database/cutovers/20261111160000_revoke_legacy_business_logo_runtime.sql`.
+- Application lifecycle: `src/storage/repository.ts`, `src/storage/authorization-adapter.ts`, `src/storage/service.ts`, `src/http/storage-router.ts`.
+
+### Final source-level runtime grant disposition
+
+The ordered source history establishes these current intended function signatures and runtime grants; this is not yet a disposable PostgreSQL effective-ACL query:
+
+| Function | Current signature | Source-level runtime EXECUTE |
+|---|---|---|
+| `storage_create_pending` | `(bigint,text,bigint,text,text,text,bigint,text,text)` | Granted; SECURITY DEFINER after 20261004222000 |
+| `storage_mark_available` | `(bigint,text)` | Granted; SECURITY DEFINER after 20261004222000 |
+| `storage_mark_deletion_pending` | `(bigint)` | Reaffirmed by 20261110140000; SECURITY DEFINER |
+| `storage_mark_deleted` | `(bigint)` | Granted; SECURITY DEFINER after 20261004222000 |
+| `storage_get_object` | `(bigint,bigint)` | Granted to runtime by 20261026120000; SECURITY DEFINER |
+| `storage_get_public_business_logo` | `(bigint)` | Runtime projection grant in 20261106090000; separately governed public projection |
+
+The earlier one-argument `storage_get_object(bigint)` was explicitly revoked and dropped in 20261026120000. The two-argument replacement accepts object ID plus account ID. Its migration comment explicitly states that the shared runtime is trusted and PostgreSQL cannot derive end-user identity from that shared credential. The SQL applies public-business-logo visibility or active membership for the supplied account ID, but a direct runtime SQL caller can supply another account ID. This is an acknowledged shared-credential trust assumption, not a database-enforced actor boundary.
+
+The Business Logo gateway migration adds a signed wrapper only for `set_business_logo_object`; its paired manual cutover revokes only that legacy binding function from PUBLIC/runtime. It does not revoke or replace the five storage metadata lifecycle functions above. Do not treat Business Logo binding gateway implementation as closure of the storage lifecycle.
+
+### Application call graph and authorization order
+
+- `TransactionalPostgresStorageMetadataStore` in `src/storage/repository.ts` wraps each operation in `withAuthorizedTransaction(context,...)`.
+- `createStorageService.createUpload`: validates content type and byte size; calls `authorization.assertCanManage`; then `metadata.createPending`; then requests the provider upload grant.
+- `completeUpload`: reads metadata with `getById(objectId)`; reconstructs its resource; calls `assertCanManage`; verifies provider HEAD metadata and downloads/checks actual bytes; validates the business-logo image; only then calls `markAvailable`.
+- `getAccess`: reads metadata with `getById`; requires status `available`; calls `assertCanRead`; only then creates a provider download grant.
+- `deleteObject`: reads metadata; accepts `pending`, `available`, or `deletion_pending`; calls `assertCanDelete`; marks `deletion_pending` if needed; deletes the provider object; finally marks metadata `deleted`.
+- `createPostgresStorageAuthorization` binds the supplied caller user ID to the `AuthContext`, requires Business owner/administrator membership for management/deletion, and requires active membership for non-public reads. Public Business logo read has a separate active-Business check.
+- `src/http/storage-router.ts` applies auth middleware to upload, completion, access and delete routes. It derives the caller from AuthContext and performs metadata lookup before completion/access/delete. Logo replacement paths also call the storage service to delete the previous object.
+
+### Confirmed database-boundary gaps
+
+These functions are SECURITY DEFINER and callable by the shared runtime, while their SQL bodies accept object/tenant IDs without independently proving the authenticated actor or the preceding provider/authorization checks:
+
+1. `storage_create_pending(...)`: inserts caller-supplied tenant Business/resource and provider metadata. SQL validates nonblank/positive-shaped fields and status defaults but does not establish active owner/administrator membership or actor provenance.
+2. `storage_mark_available(object_id, checksum)`: transitions a pending object to available based only on object ID. The application normally checks the caller's Business management rights and verifies provider bytes first; the SQL function does not prove either.
+3. `storage_mark_deletion_pending(object_id)`: latest body allows pending or available objects to enter deletion_pending based only on object ID. This was broadened in 20261110140000 to support cleanup of abandoned pending uploads. The SQL function does not prove actor authorization.
+4. `storage_mark_deleted(object_id)`: transitions deletion_pending to deleted based only on object ID. The application normally calls the provider delete first; SQL does not prove provider deletion occurred.
+5. `storage_get_object(object_id, account_id)`: uses the supplied account ID for tenant membership checks. A direct runtime caller can substitute an account ID that has membership in the target Business; PostgreSQL does not derive it from the end-user JWT.
+
+These are confirmed database-boundary trust gaps under the shared runtime credential. The normal HTTP/service path performs additional checks; this audit does not claim an unauthenticated HTTP caller can directly select arbitrary account IDs or bypass the application route. A compromised/misused runtime SQL path can bypass those application checks.
+
+### Lifecycle invariants that any replacement must preserve
+
+- Upload grants are short-lived; provider key is generated server-side from Business ID and object UUID.
+- Completion verifies provider HEAD size/content type, retrieves bytes, checks byte count and validates image bytes before making metadata available.
+- Only available objects can be read/downloaded.
+- Delete is intentionally retryable: a failed provider delete or failed final metadata update leaves `deletion_pending`; a later authorized retry must be able to delete again and complete metadata transition.
+- Abandoned pending uploads must be eligible for cleanup. The 20261110140000 migration intentionally broadened `storage_mark_deletion_pending` from available-only to pending-or-available.
+- Public Business logo reads remain through the separately governed `storage_get_public_business_logo` projection; do not replace this with unrestricted metadata access.
+- Business Logo binding is a distinct signed operation and must preserve replacement/unbind/cleanup semantics.
+
+### Disposition and next work
+
+**OPEN / CONFIRMED DATABASE ACTOR-PROVENANCE GAP.** Do not revoke current storage lifecycle grants yet. First design the complete signed storage metadata boundary and route all create, complete, get, delete, retry and cleanup operations through it, or provide a separately justified narrow internal authority for provider-confirmed lifecycle transitions. Bind actor, tenant Business, resource identity, object ID, operation and lifecycle transition to verified JWT-derived assertions wherever an end-user actor exists. For provider/system cleanup without an end-user JWT, use a distinct narrowly scoped internal storage authority and prove it cannot perform arbitrary tenant operations.
+
+Next qualification must use disposable PostgreSQL with distinct runtime, Actor Gateway, internal storage authority (if needed), and migrator roles. Prove runtime direct function EXECUTE denial after cutover; signed actor/tenant/object substitution and replay denial; upload completion cannot mark available without matching provider verification path; only authorized actors can read/delete; public logo projection remains constrained; and deletion retry/pending cleanup still works end-to-end. Compare final effective ACLs including PUBLIC and memberships. No production cutover, no production mutation, no paid service.
