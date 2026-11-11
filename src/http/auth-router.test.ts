@@ -439,15 +439,6 @@ test('login issues ES256 access JWT with decimal sub and no role claim', async (
     redeemRecovery: async () => 1,
     lookupQuoteFlowMigrationResetEnrollment: async () => null,
     lookupExternalIdentity: async () => null,
-    bootstrapExternalIdentity: async () => ({
-      id: 1,
-      provider: 'p',
-      subject: 's',
-      accountId: 1,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      created: true,
-    }),
     linkBusinessExternalMapping: async () => ({
       outcome: 'created' as const,
       mapping: {
