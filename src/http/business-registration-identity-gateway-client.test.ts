@@ -9,6 +9,7 @@ test('gateway client forwards bearer token and validates typed registration iden
     'https://gateway.example.test',
     1000,
     async (input, init) => {
+      assert.equal(init?.redirect, 'error');
       requestedUrl = String(input);
       authorization = new Headers(init?.headers).get('authorization') ?? '';
       return new Response(JSON.stringify({
