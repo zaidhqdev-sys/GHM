@@ -7,9 +7,9 @@ This handover records the production-readiness review of GHM Actor Gateway PR #2
 - Repository: `zaidhqdev-sys/GHM`
 - PR: [#272 — Unified Actor Gateway](https://github.com/zaidhqdev-sys/GHM/pull/272)
 - Branch: `integration/capability-gateway-qualification-20261110`
-- Last fully validated code head: `3f9f41288c953bcc1796d63a4e7b3e6535935e14`
+- Last fully validated code head: `717dff28cfc524e1d48be9eb0690e027066be00e`
 - At review: PR remained open and unmerged.
-- CI on that exact code head: `quality` and `web-quality` passed ([run 43054855935](https://github.com/zaidhqdev-sys/GHM/actions/runs/43054855935)). The subsequent documentation-only handover update also passed both jobs ([run 43055141906](https://github.com/zaidhqdev-sys/GHM/actions/runs/43055141906)).
+- CI on that exact code head: `quality` and `web-quality` passed ([run 43055902801](https://github.com/zaidhqdev-sys/GHM/actions/runs/43055902801)). This includes the production-only fail-closed registration identity routing change and tests.
 - No production migrations, deployments, service changes, or database privilege changes were performed as part of this review.
 
 **Current disposition: production rollout remains paused.** Green CI is useful evidence but does not qualify the production database role model or deployment topology.
@@ -141,6 +141,16 @@ Both the main API and Actor Gateway startup now reject a runtime principal with 
 
 PR #272 remains open and unmerged. The latest code-reviewed and fully CI-passing head is `64ef0adf48f867a0780d9afe19f105b39384281b`; a subsequent documentation-only evidence-discipline update is `b8e2375d2eeac164078885b7275bb59cb157b86f` and its CI is pending. Do not infer mergeability while checks are recalculating. No production environment, database, roles, grants, secrets, migrations, or services were changed.
 
+
+## Production registration identity fail-closed routing (2026-11-11)
+
+A further main-API route audit found that Business registration identity still fell back to the legacy direct database service when `GHM_ACTOR_GATEWAY_URL` was absent. This was inconsistent with the intended production gateway boundary.
+
+- Added an explicit `businessRegistrationIdentityGatewayRequired` dependency, defaulting to `config.isProduction` in the real application.
+- In production, registration identity read and write routes now return 503 when the gateway client is not configured; they do not call the legacy repository service.
+- Development/test behavior can still use the direct service fallback unless the gateway-required flag is set.
+- Added a test covering both read and write paths and asserting the legacy service is not called when gateway configuration is missing.
+- Code head `717dff28cfc524e1d48be9eb0690e027066be00e` passed both CI jobs, including build, full tests and disposable PostgreSQL qualification ([run 43055902801](https://github.com/zaidhqdev-sys/GHM/actions/runs/43055902801)).
 
 ## Gateway authentication-path consolidation (2026-11-11)
 
