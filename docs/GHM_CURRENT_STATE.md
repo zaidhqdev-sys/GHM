@@ -626,3 +626,8 @@ The Business Hours direct table SELECT grant has intentionally not been revoked 
 Business Hours mutation actor provenance passed on implementation head `b4663cb95e90b5f6633c871356b8c818c7a86814`, GitHub Actions run #3134 (`43092443886`): `quality` and `web-quality` both passed, including the full test suite and disposable PostgreSQL cutover qualification. Logs explicitly confirm legacy runtime replacement denied, signed replacement and actor provenance passed, actor/target substitution and nonce replay denied, runtime cannot execute the gateway wrapper, and the post-cutover function ACL is correct. Manual cutover ran only on disposable localhost PostgreSQL. Full evidence: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
 
 Business Hours replacement is IMPLEMENTED / QUALIFIED. Direct runtime SELECT remains OPEN and intentionally unchanged because member/public read paths still require a gateway projection. Current branch head advanced to `b24c820e` for an additional reader HMAC test and npm test inclusion; exact-head CI is pending. No production changes, no production cutover, no merge.
+
+
+### Business Hours exact-head CI confirmation
+
+Follow-up head `b24c820e3221e06aa85cbf9bf43a24dba6ccba35`, including the reader HMAC/context/rollback tests in `npm test`, passed exact-head GitHub Actions run #3136 (`43092456034`): both `quality` and `web-quality` succeeded. The Business Hours replacement mutation remains IMPLEMENTED / QUALIFIED. Direct runtime table SELECT remains OPEN pending a separately qualified member/public read projection. Production remains untouched.
