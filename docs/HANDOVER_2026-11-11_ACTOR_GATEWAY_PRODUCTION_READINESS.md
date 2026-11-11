@@ -300,3 +300,18 @@ Added manual cutover `database/cutovers/20261111020000_revoke_legacy_registratio
 Extended `scripts/qualify-actor-gateway-principal.mjs` to apply this manual cutover only to the disposable PostgreSQL qualification database, prove that ordinary runtime direct read/write calls fail with SQLSTATE `42501`, prove signed gateway read/write still work, and verify effective function privileges. Extended the registration assertion migration-contract test to guard the manual cutover SQL and wrapper grants.
 
 **Validation status:** this new cutover qualification has not yet run on exact-head CI. The cutover file is deliberately under `database/cutovers`, not `database/migrations`; it is not automatically applied. Do not apply it to production until the Actor Gateway is deployed, registration routes have passed end-to-end verification, the Render role model is resolved, and a fresh verified backup exists. No production privileges, roles, data, secrets, deployments or services were changed.
+
+
+## 2026-11-11 — registration legacy RPC cutover qualification passed
+
+Exact code/test head `9f69d17ef362cc01e45fe151609101893104747a` passed GitHub Actions run #2891 (`43076550978`): both `quality` and `web-quality` succeeded. The `quality` job passed the full build, complete disposable PostgreSQL migration chain, full test suite, Actor Gateway principal qualification, registration migration qualification, all capability lifecycle/governance/cutover qualifications, supplier classification, Business profile, commercial settlement identity, migration policy and runtime-boundary checks.
+
+The Actor Gateway principal qualification applied the new manual registration cutover to the disposable database. It proved:
+- `ghm_runtime` cannot directly execute legacy registration identity read or write functions (SQLSTATE `42501`).
+- Signed Actor Gateway registration read and write wrappers continue to work after the revocation.
+- Effective grants do not give `ghm_runtime` or `ghm_actor_gateway` direct execution of the underlying legacy functions, while the gateway role retains execute on the signed wrappers.
+- The test suite checks the manual cutover file and final v2 wrapper grants.
+
+The first qualification attempts exposed harness defects (missing Node imports, wrong pool variable, then over-escaped contract regex); these were corrected. The successful exact-head run is #2891, not the earlier failed attempts. Cloudflare Pages also reported a successful PR preview for this exact commit at https://7d9a60be.ghm-cu1.pages.dev; this is a preview only, not a production release.
+
+PR #272 remains open, unmerged and mergeable. The manual registration cutover remains unapplied to production. Production remains blocked on Render's supported role-model resolution and a fresh verified backup. No production role/grant, secret, migration, service/environment or production deployment was changed.
