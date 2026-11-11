@@ -1,4 +1,4 @@
-import type { Pool, PoolClient } from 'pg';
+import type { Pool } from 'pg';
 import { createActorGatewayAssertion } from './request-assertion';
 import type { BusinessHours } from '../resources/business-hours/contracts';
 
