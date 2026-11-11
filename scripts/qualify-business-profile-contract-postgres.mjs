@@ -17,7 +17,9 @@ const marker = `ghm-profile-contract-${randomUUID()}`;
 let accountId;
 let memberAccountId;
 let businessId;
-const signAssertion = (actorId) => { const issuedAt=Math.floor(Date.now()/1000),nonce=randomUUID(); const payload=`ghm-actor-gateway:v1|${actorId}|business.profile.update|${issuedAt}|${nonce}`; const signature=createHmac('sha256',Buffer.from(assertionSecret,'base64')).update(payload,'utf8').digest('hex'); return {issuedAt,nonce,signature}; };
+const usedNonces = new Set();
+const freshNonce = () => { let nonce; do { nonce=randomUUID(); } while (usedNonces.has(nonce)); usedNonces.add(nonce); return nonce; };
+const signAssertion = (actorId) => { const issuedAt=Math.floor(Date.now()/1000),nonce=freshNonce(); const payload=`ghm-actor-gateway:v1|${actorId}|business.profile.update|${issuedAt}|${nonce}`; const signature=createHmac('sha256',Buffer.from(assertionSecret,'base64')).update(payload,'utf8').digest('hex'); return {issuedAt,nonce,signature}; };
 const gatewayCall = (actorId,patch) => { const a=signAssertion(actorId); return gatewayPool.query('SELECT (ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6::jsonb)).*',[actorId,a.issuedAt,a.nonce,a.signature,businessId,JSON.stringify(patch)]); };
 
 try {
