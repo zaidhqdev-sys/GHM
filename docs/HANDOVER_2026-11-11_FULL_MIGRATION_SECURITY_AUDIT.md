@@ -718,3 +718,20 @@ Results:
 This materially increases confidence that those source-level runtime grants were not later explicitly revoked by a function-specific migration in the scanned chain. It is still **not** a final effective-ACL proof: PUBLIC/default privileges, role memberships, overloads, function owner, implicit privileges, actual database catalog state and any out-of-band SQL remain to be checked on disposable PostgreSQL and, separately, production after its release gates.
 
 No auth grants were changed. No production database access or mutation occurred.
+
+
+## Ordered migration-reference scan — storage lifecycle follow-up (2026-11-11)
+
+A branch-pinned scan fetched the 57 migration SQL files from `20261004220000` onward and searched exact storage lifecycle and Business Logo binding function names.
+
+Confirmed sequence:
+- `20261004221000_establish_storage_persistence_boundary.sql` creates the lifecycle functions and grants runtime EXECUTE.
+- `20261004222000_harden_storage_persistence_function_authority.sql` converts lifecycle functions to SECURITY DEFINER with fixed search paths, revokes PUBLIC, and reaffirms runtime EXECUTE.
+- `20261026120000_scope_storage_metadata_lookup.sql` replaces the ID-only getter with `storage_get_object(bigint,bigint)`, revokes/drops the old one-argument function, and grants runtime EXECUTE on the account-aware signature.
+- `20261106090000_business_logo_storage_binding.sql` creates the logo-binding function, revokes PUBLIC/migrator, and grants runtime EXECUTE; the public logo projection is separately granted to runtime.
+- `20261110140000_allow_pending_storage_object_cleanup.sql` replaces `storage_mark_deletion_pending(bigint)` to support pending and available cleanup, revokes PUBLIC/migrator and re-grants runtime EXECUTE.
+- `20261111160000_add_signed_business_logo_gateway.sql` adds the signed gateway wrapper for logo binding and restricts that wrapper to `ghm_actor_gateway`; it does not revoke runtime EXECUTE on the storage metadata lifecycle functions.
+
+No later migration in the 57-file scan revoked/replaced the runtime grants for `storage_create_pending`, `storage_mark_available`, `storage_mark_deletion_pending`, `storage_mark_deleted`, or `storage_get_object(bigint,bigint)`. The only manual cutover found for this related slice is `20261111160000_revoke_legacy_business_logo_runtime.sql`, which revokes only `set_business_logo_object`.
+
+This is an ordered migration-source result, not a live effective-ACL proof. PUBLIC/default privileges, role membership, actual function owners and production catalog state remain separate checks. The five metadata functions remain OPEN under the shared runtime credential. No storage grant was changed and no production state was touched.
