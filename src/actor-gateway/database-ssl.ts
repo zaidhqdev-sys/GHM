@@ -4,8 +4,8 @@ export type ActorGatewayDatabaseSslMode = 'internal' | 'external';
 
 /**
  * Render same-region private-network connections use the internal URL and do
- * not require TLS. External Render Postgres connections require TLS and use
- * Render-managed certificates, which must be verified by the Node client.
+ * not require TLS. External Render Postgres connections require TLS. This
+ * external mode encrypts traffic but does not authenticate the server certificate.
  */
 export const actorGatewayDatabaseSslConfig = (
   mode: string | undefined,
