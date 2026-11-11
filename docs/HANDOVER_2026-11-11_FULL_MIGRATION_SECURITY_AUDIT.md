@@ -923,3 +923,22 @@ This change closes direct enumeration of the external identity mapping table by 
 - The other pre-authentication auth functions still require a dedicated internal-auth authority design.
 
 No production ACL was changed. The new migration is only in the open PR branch and must be qualified on disposable PostgreSQL. Current code head at this checkpoint: `cf06ba02652189f9b418c39caa0437b7a80cf54f`. GitHub Actions run `43103300049` is IN PROGRESS on this exact head; no pass is claimed.
+
+
+## External identity adapter call-path clarification and CI progress (2026-11-11)
+
+Further inspection of `src/integrations/connect/identity-adapter.ts` and `src/integrations/connect/authorization-binding.ts` established:
+
+- `ConnectIdentityAdapter` is explicitly a domain/integration seam, not an HTTP endpoint; it accepts a validated external UUID subject, not a Supabase JWT.
+- The active governed authorization binding calls `identity.resolve(subject, { allowBootstrap: false })`. It requires an existing `supabase` mapping and then checks the canonical GHM account is active before deriving AuthContext.
+- The adapter supports optional bootstrap for a trusted caller, and tests cover that optional path, but the inspected production authorization-binding path explicitly disables it. No public HTTP route was found that allows an external caller to request bootstrap.
+- Therefore the direct table SELECT/sequence revocation preserves the active Connect identity lookup path. The optional bootstrap function remains a separate internal-authority question; do not remove it solely because the current authorization-binding path does not use it.
+
+### Disposable CI progress for external identity ACL migration and directory-review route fix
+
+On exact PR head `1ce967db5a161e82b41ef40ec4315a4ca7572a22`, GitHub Actions run `43103370681`:
+- `web-quality`: completed successfully.
+- `quality`: build succeeded; all migrations applied to disposable PostgreSQL successfully; isolated Actor Gateway principal qualification succeeded; storage/Opportunity SQL qualification steps reached; full `Test suite` step completed successfully, including the new external identity table ACL assertions and directory-review route/service/registry tests.
+- At the last check, the quality job was still running the Business Hours signed gateway disposable PostgreSQL qualification. Remaining qualification steps had not yet completed. Do not mark the whole workflow PASS until both jobs finish successfully.
+
+No production database, Render role, deployment or user data was touched. Current PR #272 remains open and unmerged.
