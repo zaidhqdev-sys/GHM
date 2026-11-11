@@ -145,6 +145,49 @@ try {
   capabilityIds.push(gatewayDraft.id);
   console.log('GATEWAY ADMIN DRAFT CREATE POSITIVE PASS');
 
+  const substitutionTarget = await service.createDraft(admin, {
+    name: `${marker} Substitution Target`, slug: `${marker}-substitution-target`,
+  });
+  capabilityIds.push(substitutionTarget.id);
+
+  const updateContextArgs = [gatewayDraft.id, `${marker} Bound Update`, `${marker}-bound-update`, 'Bound update payload', null, 30, 'gateway-update-context-qualification', 1];
+  const boundUpdate = signAssertion(adminId, 'capability.update', assertionContext('capability.update', updateContextArgs));
+  await expectReject(
+    () => gatewayPool.query(
+      'SELECT * FROM ghm.gateway_update_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)',
+      [adminId, boundUpdate.issuedAt, boundUpdate.nonce, boundUpdate.context, boundUpdate.signature, substitutionTarget.id, ...updateContextArgs.slice(1)],
+    ),
+    'DATABASE REJECTS CAPABILITY UPDATE TARGET SUBSTITUTION PASS',
+    'Actor assertion context mismatch',
+  );
+  await expectReject(
+    () => gatewayPool.query(
+      'SELECT * FROM ghm.gateway_update_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)',
+      [adminId, boundUpdate.issuedAt, boundUpdate.nonce, boundUpdate.context, boundUpdate.signature, gatewayDraft.id, updateContextArgs[1], updateContextArgs[2], 'Tampered update payload', ...updateContextArgs.slice(4)],
+    ),
+    'DATABASE REJECTS CAPABILITY UPDATE PAYLOAD SUBSTITUTION PASS',
+    'Actor assertion context mismatch',
+  );
+
+  const transitionContextArgs = [gatewayDraft.id, 'active', null, 1];
+  const boundTransition = signAssertion(adminId, 'capability.transition', assertionContext('capability.transition', transitionContextArgs));
+  await expectReject(
+    () => gatewayPool.query(
+      'SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+      [adminId, boundTransition.issuedAt, boundTransition.nonce, boundTransition.context, boundTransition.signature, substitutionTarget.id, ...transitionContextArgs.slice(1)],
+    ),
+    'DATABASE REJECTS CAPABILITY TRANSITION TARGET SUBSTITUTION PASS',
+    'Actor assertion context mismatch',
+  );
+  await expectReject(
+    () => gatewayPool.query(
+      'SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+      [adminId, boundTransition.issuedAt, boundTransition.nonce, boundTransition.context, boundTransition.signature, gatewayDraft.id, 'deprecated', null, 1],
+    ),
+    'DATABASE REJECTS CAPABILITY TRANSITION PAYLOAD SUBSTITUTION PASS',
+    'Actor assertion context mismatch',
+  );
+
   const gatewayUpdated = await gatewayCall(adminId, 'capability.update',
     'SELECT * FROM ghm.gateway_update_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)',
     [gatewayDraft.id, `${marker} Gateway Draft Updated`, `${marker}-gateway-draft`, 'Updated by gateway', null, 20, 'gateway-qualification-updated', 1]);
