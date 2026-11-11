@@ -69,7 +69,7 @@ try {
   if (!directReadDenied) throw new Error('Runtime can directly read Trust Score table');
   console.log('RUNTIME DIRECT TRUST SCORE SELECT DENIED: PASS');
   let sequenceDenied = false;
-  try { await runtime.query(\"SELECT nextval('ghm.trust_score_id_seq')\"); } catch { sequenceDenied = true; }
+  try { await runtime.query("SELECT nextval('ghm.trust_score_id_seq')"); } catch { sequenceDenied = true; }
   if (!sequenceDenied) throw new Error('Runtime can access Trust Score sequence');
   console.log('RUNTIME TRUST SCORE SEQUENCE ACCESS DENIED: PASS');
 
@@ -97,7 +97,7 @@ try {
 
   const publicPrivate = await runtime.query('SELECT * FROM ghm.get_public_trust_score($1)', [ids.privateBusinessId]);
   const publicScore = await runtime.query('SELECT * FROM ghm.get_public_trust_score($1)', [ids.businessId]);
-  const publicList = await runtime.query(\"SELECT * FROM ghm.list_public_trust_scores('bronze')\");
+  const publicList = await runtime.query("SELECT * FROM ghm.list_public_trust_scores('bronze')");
   if (publicPrivate.rowCount !== 0 || publicScore.rowCount !== 1 || publicList.rowCount !== 1) {
     throw new Error('Trust Score public projection leaked private or omitted public score');
   }
