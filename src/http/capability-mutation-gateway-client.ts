@@ -1,6 +1,6 @@
 import {assertActorGatewayBaseUrl} from './actor-gateway-url';
 import type {ReplaceBusinessCapabilityAssertionInput,BusinessCapabilityVerificationStatus} from '../resources/business-capability/contracts';
-import type {EvidenceDecision} from '../resources/business-capability-evidence/contracts';
+import type {CreateBusinessCapabilityEvidenceInput,EvidenceDecision} from '../resources/business-capability-evidence/contracts';
 export class CapabilityMutationGatewayError extends Error{constructor(readonly status:number){super('Actor gateway request failed');this.name='CapabilityMutationGatewayError'}}
 export class HttpCapabilityMutationGatewayClient{
  constructor(private readonly baseUrl:string,private readonly timeoutMs=5000,private readonly fetchImpl:typeof fetch=fetch){assertActorGatewayBaseUrl(baseUrl)}
@@ -11,5 +11,6 @@ export class HttpCapabilityMutationGatewayClient{
  }
  replace(token:string,businessId:number,assertions:readonly ReplaceBusinessCapabilityAssertionInput[]){return this.request<{capabilities:unknown[]}>(token,`/v1/businesses/${businessId}/capabilities`,'PUT',{assertions})}
  verify(token:string,id:number,expectedStatus:BusinessCapabilityVerificationStatus,targetStatus:BusinessCapabilityVerificationStatus,reason:string|null){return this.request<{capability:unknown}>(token,`/v1/business-capabilities/${id}/verification`,'POST',{expectedStatus,targetStatus,reason})}
+ submitEvidence(token:string,input:CreateBusinessCapabilityEvidenceInput){return this.request<{evidence:unknown}>(token,'/v1/business-capability-evidence','POST',input)}
  reviewEvidence(token:string,id:number,decision:EvidenceDecision,reason:string|null){return this.request<{evidence:unknown}>(token,`/v1/business-capability-evidence/${id}/review`,'PATCH',{decision,reason})}
 }
