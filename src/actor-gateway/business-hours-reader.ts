@@ -12,6 +12,7 @@ export interface BusinessHoursGatewayInput {
 }
 
 export interface BusinessHoursGatewayReader {
+  list(actor: number, businessId: number): Promise<BusinessHours[]>;
   replace(actor: number, businessId: number, hours: BusinessHoursGatewayInput[]): Promise<BusinessHours[]>;
 }
 
@@ -36,6 +37,26 @@ export class PostgresBusinessHoursGatewayReader implements BusinessHoursGatewayR
       throw new Error('GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET must be canonical base64 for exactly 32 bytes');
     }
     this.key = key;
+  }
+
+  async list(actor: number, businessId: number): Promise<BusinessHours[]> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const context = { businessId };
+      const assertion = createActorGatewayAssertion(this.key, actor, 'business.hours.read', context);
+      const result = await client.query(
+        'SELECT * FROM ghm.gateway_get_business_hours($1,$2,$3,$4,$5,$6) ORDER BY day_of_week,id',
+        [actor, assertion.issuedAt, assertion.nonce, assertion.context, assertion.signature, businessId],
+      );
+      await client.query('COMMIT');
+      return result.rows.map(mapRow);
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async replace(actor: number, businessId: number, hours: BusinessHoursGatewayInput[]): Promise<BusinessHours[]> {
