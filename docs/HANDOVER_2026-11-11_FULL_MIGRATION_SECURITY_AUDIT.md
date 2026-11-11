@@ -245,3 +245,18 @@ Important distinctions:
 - The Business Logo storage contract describes an incomplete lifecycle; the presence of `set_business_logo_object` does not mean the complete logo HTTP/storage lifecycle is qualified.
 
 **Status:** all findings OPEN / NEED DATABASE-BOUNDARY REMEDIATION OR A DOCUMENTED, TESTED ALTERNATIVE. No code or production privileges were changed in this audit batch. Next implementation should be split into bounded resource batches: first remove direct actor-ID trust for one mutation family and prove a signed gateway actor; separately revoke broad direct table reads only after matching application reads are routed through a suitable gateway projection. Preserve intended public projections and existing product behavior. No production cutover, no merge, no production mutation.
+
+
+## Business Hours signed mutation gateway — implementation checkpoint (2026-11-11)
+
+A bounded first implementation batch has been added for Business Hours **replacement only**. It deliberately does not yet revoke direct table SELECT because authenticated member reads and approved public reads still use the Resource API repository and require a separately designed/qualified read projection.
+
+Files added/changed:
+- `database/migrations/20261111130000_add_signed_business_hours_gateway.sql`: adds `business.hours.replace` to the signed v2 assertion allowlist and creates gateway-only `ghm.gateway_replace_business_hours`. The wrapper checks exact JSON context (`businessId` + complete hours payload), verifies signed actor, and calls the existing domain function with `p_actor` as `p_account_id`.
+- `database/cutovers/20261111130000_revoke_legacy_business_hours_runtime.sql`: manual-only revocation of direct runtime/PUBLIC EXECUTE on legacy `ghm.replace_business_hours`; not part of automatic migrations.
+- `src/actor-gateway/business-hours-reader.ts`, `src/actor-gateway/app.ts`, `src/actor-gateway/server.ts`: signed assertion reader and JWT-derived Actor Gateway PUT route.
+- `src/http/business-hours-gateway-client.ts`, `src/http/app.ts`: forwards the original bearer token to Actor Gateway for replacement; production fails closed if the gateway client is not configured. Non-production retains the legacy path until cutover.
+- `src/db/actor-gateway-business-hours-migration-contract.test.ts`: static migration/cutover contract tests included in `npm test`.
+- `scripts/qualify-business-hours-gateway-cutover-postgres.mjs`, package script and `.github/workflows/ci.yml`: new disposable-PostgreSQL qualification step. It refuses non-local/non-disposable database URLs, uses distinct runtime/gateway/migrator roles, applies the manual cutover only to disposable CI PostgreSQL, checks legacy runtime EXECUTE denial, signed replacement/provenance, target-substitution denial and effective function ACLs.
+
+**Status at this checkpoint: IMPLEMENTED / QUALIFICATION PENDING.** No exact-head CI result has yet been observed. Do not call this qualified until the full exact-head quality run (including the new disposable PostgreSQL step) passes. The Business Hours direct SELECT grant remains unchanged in this batch; that read boundary remains OPEN. No production permissions or data were changed; no production cutover and no merge.
