@@ -5,7 +5,11 @@ import 'dotenv/config';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.GHM_QUALIFICATION_DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
-assert(runtimeUrl, 'GHM_RUNTIME_DATABASE_URL is required');
+if (!runtimeUrl && !migratorUrl) {
+  console.log('QuoteFlow migration account provisioning DB qualification: SKIP (database URLs unavailable)');
+  process.exit(0);
+}
+assert(runtimeUrl, 'GHM_RUNTIME_DATABASE_URL or GHM_QUALIFICATION_DATABASE_URL is required');
 assert(migratorUrl, 'GHM_MIGRATOR_DATABASE_URL is required');
 assert.notEqual(runtimeUrl, migratorUrl, 'runtime and migrator URLs must be distinct');
 
