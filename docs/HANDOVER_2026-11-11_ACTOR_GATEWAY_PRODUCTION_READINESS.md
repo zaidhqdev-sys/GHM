@@ -139,7 +139,7 @@ The main API production configuration now requires `GHM_RUNTIME_DATABASE_URL`; g
 
 Both the main API and Actor Gateway startup now reject a runtime principal with any role membership or elevated role attribute. The PostgreSQL 18 CI fixture creates a non-superuser CREATEROLE role, has it create a login role, asserts the automatic postgres-granted ADMIN OPTION membership with SET/INHERIT false, attempts the creator-side REVOKE, and verifies the membership remains. The fixture is isolated to the disposable CI database and cleans up both roles.
 
-PR #272 remains open and unmerged. The latest code-reviewed and fully CI-passing head is `64ef0adf48f867a0780d9afe19f105b39384281b`; a subsequent documentation-only evidence-discipline update is `b8e2375d2eeac164078885b7275bb59cb157b86f` and its CI is pending. Do not infer mergeability while checks are recalculating. No production environment, database, roles, grants, secrets, migrations, or services were changed.
+PR #272 remains open, ready for review (not draft), and unmerged. The latest fully validated code head is `512017beb5e46d939e70278b482e5cc0f721e0b5`; both `quality` and `web-quality` passed on that code in run [#43056260763](https://github.com/zaidhqdev-sys/GHM/actions/runs/43056260763). Subsequent branch commits are documentation-only handover reconciliations, including explicit supersession notices on the 10 November capability, Actor Gateway integration and supplier-classification handovers. Their latest exact-head CI is tracked separately; do not infer a pass until both jobs finish. No production environment, database, roles, grants, secrets, migrations, or services were changed.
 
 
 ## Production registration identity fail-closed routing (2026-11-11)
