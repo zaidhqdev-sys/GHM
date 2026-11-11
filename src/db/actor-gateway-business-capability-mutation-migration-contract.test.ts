@@ -31,3 +31,13 @@ test('manual cutover removes all legacy runtime mutation RPC execution without c
  assert.match(cutover,/REVOKE ALL ON FUNCTION ghm\.transition_business_capability_evidence/);
  assert.doesNotMatch(cutover,/GRANT EXECUTE/);
 });
+
+test('evidence submission binds all supplied fields and derives submitted_by from the signed actor',()=>{
+ assert.match(migration,/business\.capability\.evidence\.submit/);
+ assert.match(migration,/jsonb_build_object\('businessCapabilityId',p_capability,'evidenceType',p_evidence_type,'title',p_title/);
+ assert.match(migration,/bm\.account_id=p_actor/);
+ assert.match(migration,/bm\.membership_role INTO v_business,v_role/);
+ assert.match(migration,/verification_status,submitted_by\)[\s\S]*'pending',p_actor/);
+ assert.match(migration,/gateway_submit_business_capability_evidence/);
+ assert.match(cutover,/REVOKE INSERT \(business_capability_id,evidence_type,title,description,issuer_name,reference_number,evidence_url,issued_on,expires_on,visibility,verification_status,submitted_by\)/);
+});
