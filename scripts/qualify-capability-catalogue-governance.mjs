@@ -98,6 +98,27 @@ try {
   const gatewayList = await gatewayCall(adminId, 'capability.list', 'SELECT * FROM ghm.gateway_list_capabilities($1,$2,$3,$4)');
   if (!Array.isArray(gatewayList.rows)) throw new Error('Gateway capability listing did not return rows');
   console.log('GATEWAY ADMIN LIST POSITIVE PASS');
+
+  const invalidSignature = signAssertion(adminId, 'capability.list');
+  await expectReject(
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_list_capabilities($1,$2,$3,$4)', [adminId, invalidSignature.issuedAt, invalidSignature.nonce, '0'.repeat(64)]),
+    'DATABASE REJECTS FORGED ACTOR ASSERTION PASS',
+    'Actor assertion signature invalid',
+  );
+  const replay = signAssertion(adminId, 'capability.list');
+  const replaySql = 'SELECT * FROM ghm.gateway_list_capabilities($1,$2,$3,$4)';
+  await gatewayPool.query(replaySql, [adminId, replay.issuedAt, replay.nonce, replay.signature]);
+  await expectReject(
+    () => gatewayPool.query(replaySql, [adminId, replay.issuedAt, replay.nonce, replay.signature]),
+    'DATABASE REJECTS REPLAYED ACTOR ASSERTION PASS',
+    'Actor assertion replay detected',
+  );
+  const wrongOperation = signAssertion(adminId, 'capability.create');
+  await expectReject(
+    () => gatewayPool.query(replaySql, [adminId, wrongOperation.issuedAt, wrongOperation.nonce, wrongOperation.signature]),
+    'DATABASE BINDS ASSERTION TO OPERATION PASS',
+    'Actor assertion signature invalid',
+  );
   await expectReject(
     () => gatewayCall(businessId, 'capability.list', 'SELECT * FROM ghm.gateway_list_capabilities($1,$2,$3,$4)'),
     'GATEWAY NON-ADMIN LIST DENIAL PASS',
