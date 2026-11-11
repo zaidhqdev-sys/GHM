@@ -680,3 +680,8 @@ Status: IMPLEMENTED / QUALIFICATION PENDING; exact-head CI pending. The earlier 
 The active storage metadata layer still relies on the shared runtime credential being trusted. `storage_get_object(bigint,bigint)` accepts caller-supplied account ID; `storage_create_pending` accepts caller-supplied tenant/resource identity; and `storage_mark_available`, `storage_mark_deletion_pending`, `storage_mark_deleted` accept object IDs without a signed actor assertion. The application enforces tenant/membership checks before invoking them, but direct runtime callers can bypass those checks. Existing storage qualification does not test forged actor or direct cross-tenant lifecycle calls. This is a separate OPEN workstream and is NOT closed by the Business Logo binding gateway. Full source evidence and next steps: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
 
 Do not revoke current storage lifecycle function EXECUTE until the complete upload/complete/access/delete flows have signed gateway replacements and disposable PostgreSQL qualification. No production changes.
+
+
+## Saved Business product semantics
+
+Saved Business is the user's personal favourites/bookmarks feature: users save a Business for quick access later. The signed gateway implementation preserves save/remove/list/retrieve for the user's own favourites and does not turn it into a Business-owned or administrative feature. Full handover clarification is in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
