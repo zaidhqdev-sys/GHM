@@ -163,3 +163,16 @@ Potential compatibility point to verify in CI: saved-business duplicate-create c
 The cutover qualification runner is wired into `.github/workflows/ci.yml` after the existing Business Capability gateway cutover qualification, using the same disposable PostgreSQL service and three distinct runtime/gateway/migrator roles. It applies the Saved Business cutover only to that disposable database. The script additionally checks column-level SELECT ACLs, not just table-level SELECT.
 
 Latest implementation/test/CI wiring head: `b51e12bc684ed8e88b34815dbd128f51ec4c18e4`. GitHub Actions run #3067 (`43089884203`) is running on this exact head; both `quality` and `web-quality` were still in progress at the time of this update. No pass is claimed until the exact-head run completes, including the new Saved Business disposable PostgreSQL qualification step.
+
+
+### Disposable qualification harness correction — 2026-11-11
+
+The first run of the new Saved Business cutover qualification (`43089878554`) failed after the cutover had successfully denied runtime direct SELECT, legacy create/delete EXECUTE and sequence access. The failure was in the harness's catalog inspection: it queried privilege metadata as `ghm_migrator` after the schema-owner role had been reset, causing `permission denied for schema ghm`. This was not a security-test pass and was not treated as one.
+
+Corrections made:
+- Execute post-cutover table/column/function privilege introspection through the existing migrator connection after `SET LOCAL ROLE ghm_schema_owner`.
+- Strip the cutover file's explicit BEGIN/COMMIT when running it inside the harness transaction helper, avoiding nested transaction warnings and ensuring a single controlled transaction.
+- Give replay qualification a separate eligible Business fixture. The earlier replay test reused the already-saved Business and would have hit the unique constraint before testing nonce replay; the distinct fixture removes that false failure path.
+- Add explicit column-level SELECT ACL checks, in addition to table-level SELECT checks.
+
+Latest runner code commit: `55665af44e741829ff72f07580b73119339d3f53`. Exact-head CI run #? is currently pending/starting; do not claim qualification until a run on this head completes and its new `Qualify Saved Business signed gateway cutover on disposable PostgreSQL` step passes. The previous failed run remains recorded as a harness failure; it must not be hidden or described as an implementation pass.
