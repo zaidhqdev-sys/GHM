@@ -3,7 +3,7 @@ import {createActorGatewayAssertion} from './request-assertion';
 import type {ReplaceBusinessCapabilityAssertionInput,BusinessCapabilityVerificationStatus,BusinessCapability} from '../resources/business-capability/contracts';
 import type {EvidenceDecision,BusinessCapabilityEvidence,CreateBusinessCapabilityEvidenceInput} from '../resources/business-capability-evidence/contracts';
 type ConnectablePool=Pick<Pool,'connect'>;
-type Operation='business.capability.replace'|'business.capability.verify'|'business.capability.evidence.review';
+type Operation='business.capability.replace'|'business.capability.verify'|'business.capability.evidence.review'|'business.capability.evidence.submit';
 export interface GatewayCapabilityMutationReader {
  replace(actor:number,businessId:number,assertions:readonly ReplaceBusinessCapabilityAssertionInput[]):Promise<unknown[]>;
  verify(actor:number,id:number,expected:BusinessCapabilityVerificationStatus,target:BusinessCapabilityVerificationStatus,reason:string|null):Promise<BusinessCapability>;
