@@ -8,10 +8,12 @@ import type { SavedBusiness, SavedBusinessService } from '../resources/saved-bus
 import type { BusinessIdentityService } from '../resources/business-identity/contracts';
 import { HttpSavedBusinessGatewayClient } from './saved-business-gateway-client';
 
-const startServer = async (savedBusinessService: SavedBusinessService) => {
+const startServer = async (savedBusinessService: SavedBusinessService, gatewayRequired = false, gatewayClient?: import('./saved-business-gateway-client').SavedBusinessGatewayClient) => {
   const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth,
     businessIdentityService: {} as BusinessIdentityService,
     savedBusinessService,
+    savedBusinessGatewayRequired: gatewayRequired,
+    savedBusinessGatewayClient: gatewayClient,
   }));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
@@ -229,4 +231,53 @@ test('saved business gateway client forwards the original bearer token and prese
   assert.ok(calls.every(call => call.authorization === 'Bearer verified-original-token'));
   assert.deepEqual(JSON.parse(calls[2].body), { businessId: 77 });
   assert.ok(calls.every(call => call.url.startsWith('https://gateway.example.test/')));
+});
+
+
+test('saved business route fails closed when production requires gateway but no gateway is configured', async () => {
+  let serviceCalled = false;
+  const service = {
+    listSavedBusinesses: async () => {
+      serviceCalled = true;
+      return [];
+    },
+  } as unknown as SavedBusinessService;
+  const { server, baseUrl } = await startServer(service, true);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/saved-businesses`, {
+      headers: { authorization: `Bearer ${tokenFor({ userId: 42, role: 'customer' })}` },
+    });
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { error: 'service_unavailable' });
+    assert.equal(serviceCalled, false);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('saved business gateway failure never falls back to the legacy repository', async () => {
+  let serviceCalled = false;
+  const service = {
+    listSavedBusinesses: async () => {
+      serviceCalled = true;
+      return [];
+    },
+  } as unknown as SavedBusinessService;
+  const gateway = {
+    list: async () => { throw new Error('gateway unavailable'); },
+    get: async () => null,
+    create: async () => { throw new Error('unused'); },
+    delete: async () => undefined,
+  };
+  const { server, baseUrl } = await startServer(service, true, gateway);
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/saved-businesses`, {
+      headers: { authorization: `Bearer ${tokenFor({ userId: 42, role: 'customer' })}` },
+    });
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { error: 'service_unavailable' });
+    assert.equal(serviceCalled, false);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
 });
