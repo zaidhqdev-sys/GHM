@@ -1,5 +1,8 @@
 -- Bind every one-use gateway assertion to the exact operation arguments.
 BEGIN;
+
+CREATE INDEX IF NOT EXISTS actor_gateway_capability_assertion_nonce_expires_at_idx
+  ON ghm.actor_gateway_capability_assertion_nonce(expires_at);
 DROP FUNCTION ghm.gateway_list_capabilities(bigint,bigint,uuid,text);
 DROP FUNCTION ghm.gateway_create_capability_draft(bigint,bigint,uuid,text,text,text,text,uuid,integer,text,integer);
 DROP FUNCTION ghm.gateway_update_capability_draft(bigint,bigint,uuid,text,uuid,text,text,text,uuid,integer,text,integer);
@@ -25,7 +28,7 @@ BEGIN
  IF v_diff<>0 THEN RAISE EXCEPTION 'Actor assertion signature invalid' USING ERRCODE='42501';END IF;
  IF NOT EXISTS(SELECT 1 FROM ghm.account_identity WHERE id=p_actor AND account_status='active') THEN RAISE EXCEPTION 'Active actor account required' USING ERRCODE='42501';END IF;
  DELETE FROM ghm.actor_gateway_capability_assertion_nonce WHERE expires_at<clock_timestamp();
- BEGIN INSERT INTO ghm.actor_gateway_capability_assertion_nonce(nonce,expires_at) VALUES(p_nonce,to_timestamp(p_issued)+interval '60 seconds');
+ BEGIN INSERT INTO ghm.actor_gateway_capability_assertion_nonce(nonce,expires_at) VALUES(p_nonce,GREATEST(clock_timestamp(),to_timestamp(p_issued))+interval '60 seconds');
  EXCEPTION WHEN unique_violation THEN RAISE EXCEPTION 'Actor assertion replay detected' USING ERRCODE='42501';END;
  RETURN p_actor;
 END;$$;
