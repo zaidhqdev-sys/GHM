@@ -685,3 +685,10 @@ Do not revoke current storage lifecycle function EXECUTE until the complete uplo
 ## Saved Business product semantics
 
 Saved Business is the user's personal favourites/bookmarks feature: users save a Business for quick access later. The signed gateway implementation preserves save/remove/list/retrieve for the user's own favourites and does not turn it into a Business-owned or administrative feature. Full handover clarification is in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+
+## 2026-11-11 — Full migration security inventory checkpoint
+
+Recursive branch inventory: 121 migration SQL files + 7 manual cutover SQL files. Source marker scan identified open groups beyond the signed gateway batches: (1) storage metadata lifecycle SECURITY DEFINER functions still runtime-executable and dependent on app authorization; (2) Campaign create/update SECURITY DEFINER functions accept caller-supplied account IDs and Campaign table SELECT is runtime granted, though the live router derives actor from AuthContext; (3) internal authentication SECURITY DEFINER functions accept account/session IDs but serve pre-JWT login/registration/refresh/recovery flows and require a separate internal-auth authority review, not a blind Actor Gateway conversion. Historical directory/capability grants must be reconciled with later cutovers and actual role memberships. Provider/payment settlement and Connect integration final ACLs also need effective-grant verification.
+
+This is a migration-source marker inventory, NOT a completed effective ACL audit. Production grants, PUBLIC inheritance, role memberships, default privileges, function ownership and runtime call reachability remain to be reconciled against disposable PostgreSQL. Proposed storage signed gateway migration/cutover failed to commit because GitHub returned a retriable write error; no storage implementation is present on the branch. Full details: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
