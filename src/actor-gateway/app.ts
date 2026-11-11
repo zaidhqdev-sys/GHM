@@ -1,4 +1,5 @@
-import express, { type Express, type Request, type Response } from 'express';
+import express, { type Express, type Request, type Response, type NextFunction } from 'express';
+import rateLimit from 'express-rate-limit';
 import {
   AccessJwtError,
   type AccessJwtVerifier,
@@ -8,6 +9,11 @@ import type { BusinessRegistrationIdentityReader } from './business-registration
 import type { CapabilityGovernanceReader, GatewayCapabilityDraftInput } from './capability-governance-reader';
 import type { SupplierClassificationReader } from './supplier-classification-reader';
 import type { BusinessProfileReader } from './business-profile-reader';
+
+export interface ActorGatewayAppOptions {
+  rateLimitLimit?: number;
+  rateLimitWindowMs?: number;
+}
 
 export interface ActorGatewayDependencies {
   verifier: AccessJwtVerifier;
@@ -21,7 +27,10 @@ export interface ActorGatewayDependencies {
 const isSqlState = (error: unknown, code: string): boolean =>
   Boolean(error && typeof error === 'object' && 'code' in error && error.code === code);
 
-export const createActorGatewayApp = (dependencies: ActorGatewayDependencies): Express => {
+export const createActorGatewayApp = (
+  dependencies: ActorGatewayDependencies,
+  options: ActorGatewayAppOptions = {},
+): Express => {
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json({ limit: '16kb' }));
@@ -29,6 +38,38 @@ export const createActorGatewayApp = (dependencies: ActorGatewayDependencies): E
   app.get('/healthz', (_req: Request, res: Response) => {
     res.status(200).json({ status: 'ok' });
   });
+
+  // Authenticate once before any protected route, then enforce a per-account
+  // budget. Keying by the verified GHM account avoids trusting proxy IP headers
+  // and avoids putting every caller behind Render's shared proxy in one bucket.
+  const authenticateGatewayActor = (req: Request, res: Response, next: NextFunction): void => {
+    const authorization = req.header('authorization');
+    if (!authorization?.startsWith('Bearer ')) {
+      res.status(401).json({ error: 'unauthorized' });
+      return;
+    }
+    try {
+      const accountId = dependencies.verifier.verify(authorization.slice('Bearer '.length).trim()).accountId;
+      res.locals.actorAccountId = accountId;
+      next();
+    } catch {
+      res.status(401).json({ error: 'unauthorized' });
+    }
+  };
+  app.use('/v1', authenticateGatewayActor);
+  app.use('/v1', rateLimit({
+    windowMs: options.rateLimitWindowMs ?? 60_000,
+    limit: options.rateLimitLimit ?? 120,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    keyGenerator: (_req, res) => {
+      const accountId = res.locals.actorAccountId;
+      return Number.isSafeInteger(accountId) ? `actor:${accountId}` : 'actor:unverified';
+    },
+    handler: (_req, res) => {
+      res.status(429).json({ error: 'rate_limited' });
+    },
+  }));
 
   app.get('/v1/actor/me', async (req: Request, res: Response) => {
     const authorization = req.header('authorization');
