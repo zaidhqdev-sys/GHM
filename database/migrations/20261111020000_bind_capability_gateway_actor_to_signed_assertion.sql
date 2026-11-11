@@ -42,7 +42,7 @@ BEGIN
   END IF;
   IF p_actor_account_id IS NULL OR p_actor_account_id <= 0
      OR p_issued_at IS NULL OR p_nonce IS NULL
-     OR p_operation NOT IN ('capability.list','capability.create','capability.update','capability.transition')
+     OR p_operation IS NULL OR p_operation NOT IN ('capability.list','capability.create','capability.update','capability.transition')
      OR p_signature IS NULL OR p_signature !~ '^[0-9a-f]{64}$' THEN
     RAISE EXCEPTION 'Invalid actor assertion' USING ERRCODE = '42501';
   END IF;
