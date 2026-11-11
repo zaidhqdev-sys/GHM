@@ -92,7 +92,7 @@ try {
   console.log('MANUAL SAVED BUSINESS CUTOVER APPLIED TO DISPOSABLE POSTGRESQL: PASS');
 
   await denied(() => runtime.query('SELECT * FROM ghm.saved_business'), 'RUNTIME DIRECT SAVED BUSINESS SELECT DENIED');
-  const columnReads = await migrator.query(`
+  const columnReads = await setup(`
     SELECT a.attname
       FROM pg_catalog.pg_attribute a
       JOIN pg_catalog.pg_class c ON c.oid = a.attrelid
@@ -107,7 +107,7 @@ try {
   await denied(() => runtime.query('SELECT ghm.delete_saved_business($1,$2)', [owner, 1]), 'RUNTIME LEGACY DELETE EXECUTE DENIED');
   await denied(() => runtime.query("SELECT nextval('ghm.saved_business_id_seq')"), 'RUNTIME SAVED BUSINESS SEQUENCE ACCESS DENIED');
 
-  const privileges = await migrator.query(`
+  const privileges = await setup(`
     SELECT has_table_privilege('ghm_runtime','ghm.saved_business','SELECT') AS runtime_select,
            has_function_privilege('ghm_runtime','ghm.create_saved_business(bigint,bigint)','EXECUTE') AS runtime_create,
            has_function_privilege('ghm_runtime','ghm.delete_saved_business(bigint,bigint)','EXECUTE') AS runtime_delete,
