@@ -128,6 +128,13 @@ try {
   if (legacyColumnNames.has('category')) snakePatch.category = 'construction';
   if (legacyColumnNames.has('is_supplier')) snakePatch.isSupplier = true;
 
+  const forged = signAssertion(accountId);
+  await assert.rejects(
+    () => gatewayPool.query('SELECT (ghm.gateway_update_business_profile($1,$2,$3,$4,$5,$6::jsonb)).*',[accountId,forged.issuedAt,forged.nonce,'0'.repeat(64),businessId,JSON.stringify({description:'forged'})]),
+    /Actor assertion signature invalid/,
+  );
+  console.log('DATABASE DENIES FORGED BUSINESS PROFILE ACTOR ASSERTION PASS');
+
   const snake = await gatewayCall(accountId,snakePatch);
   assert.equal(snake.rowCount, 1);
   assert.equal(snake.rows[0].physical_address, '10 Current Repository Road');
