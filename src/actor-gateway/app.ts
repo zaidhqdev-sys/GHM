@@ -33,8 +33,6 @@ export const createActorGatewayApp = (
 ): Express => {
   const app = express();
   app.disable('x-powered-by');
-  app.use(express.json({ limit: '16kb' }));
-
   app.get('/healthz', (_req: Request, res: Response) => {
     res.status(200).json({ status: 'ok' });
   });
@@ -70,6 +68,9 @@ export const createActorGatewayApp = (
       res.status(429).json({ error: 'rate_limited' });
     },
   }));
+
+  // Do not spend JSON parsing work on unauthenticated requests.
+  app.use('/v1', express.json({ limit: '16kb' }));
 
   app.get('/v1/actor/me', async (req: Request, res: Response) => {
     const authorization = req.header('authorization');
