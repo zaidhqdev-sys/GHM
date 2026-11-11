@@ -1224,3 +1224,19 @@ Code/test head `6c6e20ca7d276c1153e2775968472d13a3d0ea08` passed GitHub Actions 
 
 The latest documentation-only PR head after the qualification record is `aff86bd0e05b41cfbb4a8496c4ff1b69bd29cd77`; its exact-head CI runs #43117233949 and #43117240318 were IN PROGRESS when checked. The code/test qualification result remains tied specifically to `6c6e20ca`. PR #272 remains OPEN / UNMERGED.
 
+
+
+## 2026-11-12 — External identity bootstrap runtime authority removed
+
+A source-traced review found that `ghm.auth_bootstrap_external_identity(text,text,text,text)` remained SECURITY DEFINER and executable by `ghm_runtime`. The function creates a new active GHM account plus an external identity mapping. The ordinary Connect authorization route does not use it: `src/http/connect-service-router.ts` resolves the signed integration request through `bindConnectAuthorization`, and `src/integrations/connect/authorization-binding.ts` requires an existing mapping. Before this batch it passed `allowBootstrap: false`; no active HTTP caller was found that authorized bootstrap. The adapter/persistence bootstrap methods and tests were therefore an unused authority seam, not an established live product flow.
+
+Bounded changes committed to this open PR branch:
+- `database/migrations/20261111260000_revoke_runtime_external_identity_bootstrap.sql` revokes PUBLIC and `ghm_runtime` EXECUTE on the bootstrap function. The schema-owner/migrator governance path remains available for controlled provisioning.
+- Removed `bootstrapExternalIdentity` from `AuthPersistence` and `PostgresAuthPersistence`.
+- Simplified `ConnectIdentityAdapter` to lookup-only resolution; unmapped identities fail closed and cannot create accounts through this adapter.
+- Updated Connect authorization binding and adapter/persistence tests. The database-backed runtime ACL test now asserts bootstrap EXECUTE is false and direct runtime invocation is denied.
+- No existing identity mappings or accounts were changed; no production database or ACL was touched.
+
+Current PR head after this batch: `be08e9db8ac7fcf8602f2d6988518ae021597bfb`. GitHub Actions had not yet returned a workflow run for this exact head at the time of this checkpoint. The preceding exact-head run #3441 passed on `47f5a7e45c4b8abdb46c529b385ec7e8607d550f`; that run does NOT qualify this new batch. Wait for exact-head CI, including full build/test and the disposable PostgreSQL migration chain, before marking this change qualified.
+
+Recursive tree at the new head contains 127 SQL migrations and 7 manual cutover files. This is a source-tree count only, not proof of effective production ACLs. PR #272 remains open and unmerged. Continue the internal-auth audit without blanket revocation: password set during login rehash/recovery, recovery issuance/redemption, session creation, refresh rotation and refresh-token logout are active service paths and must remain functional. The next bounded review should reconcile the remaining runtime-executable authentication functions against exact call sites, especially bootstrap-related grants now addressed, account/session administration functions already revoked by migration `20261111220000`, and any remaining runtime-executable RPCs that accept caller-supplied account/session IDs.
