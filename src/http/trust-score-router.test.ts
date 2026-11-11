@@ -314,6 +314,8 @@ test('Trust Score calculation forwards the original bearer token to the Actor Ga
     },
   } as unknown as TrustScoreService;
   const gateway: TrustScoreGatewayClient = {
+    get: async (_token, businessId) => fixture(businessId),
+    list: async () => [fixture()],
     calculate: async (token, businessId) => {
       receivedToken = token;
       assert.equal(businessId, 20);
@@ -332,6 +334,50 @@ test('Trust Score calculation forwards the original bearer token to the Actor Ga
     assert.equal(serviceCalled, false);
     const body = await response.json() as { trustScore: TrustScore };
     assert.equal(body.trustScore.businessId, 20);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+
+test('Trust Score member reads use the gateway and preserve the original bearer token', async () => {
+  const received: string[] = [];
+  const service = {
+    getTrustScore: async () => { throw new Error('legacy repository must not be called'); },
+    listByTrustLevel: async () => { throw new Error('legacy repository must not be called'); },
+  } as unknown as TrustScoreService;
+  const gateway: TrustScoreGatewayClient = {
+    get: async (token, businessId) => { received.push(token); return fixture(businessId); },
+    list: async (token, trustLevel) => { received.push(token); assert.equal(trustLevel, 'gold'); return [fixture()]; },
+    calculate: async () => fixture(),
+  };
+  const { server, baseUrl } = await startServer(service, gateway, true);
+  try {
+    const token = tokenFor({ userId: 7, role: 'business' });
+    const get = await fetch(`${baseUrl}/api/v1/trust-scores/20`, { headers: { authorization: `Bearer ${token}` } });
+    assert.equal(get.status, 200);
+    const list = await fetch(`${baseUrl}/api/v1/trust-scores?trustLevel=gold`, { headers: { authorization: `Bearer ${token}` } });
+    assert.equal(list.status, 200);
+    assert.deepEqual(received, [token, token]);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('Trust Score member reads fail closed when the gateway is required but unavailable', async () => {
+  let serviceCalled = false;
+  const service = {
+    getTrustScore: async () => { serviceCalled = true; return fixture(); },
+    listByTrustLevel: async () => { serviceCalled = true; return [fixture()]; },
+  } as unknown as TrustScoreService;
+  const { server, baseUrl } = await startServer(service, undefined, true);
+  try {
+    const token = tokenFor({ userId: 7, role: 'business' });
+    const get = await fetch(`${baseUrl}/api/v1/trust-scores/20`, { headers: { authorization: `Bearer ${token}` } });
+    assert.equal(get.status, 503);
+    const list = await fetch(`${baseUrl}/api/v1/trust-scores?trustLevel=gold`, { headers: { authorization: `Bearer ${token}` } });
+    assert.equal(list.status, 503);
+    assert.equal(serviceCalled, false);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
