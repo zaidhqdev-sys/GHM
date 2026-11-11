@@ -1007,7 +1007,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerBusinessCapabilityEvidenceRoutes(app, businessCapabilityEvidenceService, resourceAuthMiddleware);
   const businessRegistrationIdentityGatewayClient = dependencies.businessRegistrationIdentityGatewayClient
     ?? (config.actorGatewayUrl ? new HttpBusinessRegistrationIdentityGatewayClient(config.actorGatewayUrl) : undefined);
-  registerBusinessRegistrationIdentityRoutes(app, businessRegistrationIdentityService, resourceAuthMiddleware, businessRegistrationIdentityGatewayClient, dependencies.businessRegistrationIdentityGatewayRequired ?? config.isProduction);
+  registerBusinessRegistrationIdentityRoutes(app, businessRegistrationIdentityService, resourceAuthMiddleware, businessRegistrationIdentityGatewayClient, config.isProduction || dependencies.businessRegistrationIdentityGatewayRequired === true);
   registerDirectoryReviewRoutes(app, directoryReviewService, resourceAuthMiddleware);
   registerTrustScoreRoutes(app, trustScoreService, resourceAuthMiddleware);
   registerSupportRequestRoutes(app, supportRequestService, resourceAuthMiddleware);
