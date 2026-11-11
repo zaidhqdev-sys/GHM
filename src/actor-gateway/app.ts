@@ -399,7 +399,7 @@ export const createActorGatewayApp = (
   app.post('/v1/business-capabilities/:id/verification', async (req: Request,res: Response)=>{
     const raw=req.params.id;const id=typeof raw==='string'&&/^[1-9][0-9]*$/.test(raw)?Number(raw):NaN;const b=req.body as Record<string,unknown>|null;
     const statuses=['unverified','pending','verified','rejected','revoked','expired'];
-    if(!positiveId(id)||!b||typeof b!=='object'||Array.isArray(b)||Object.keys(b).some(k=>!['expectedStatus','targetStatus','reason'].includes(k))||!statuses.includes(String(b.expectedStatus))||!statuses.includes(String(b.targetStatus))||(b.reason!==undefined&&b.reason!==null&&typeof b.reason!=='string)){res.status(400).json({error:'invalid_request'});return;}
+    if(!positiveId(id)||!b||typeof b!=='object'||Array.isArray(b)||Object.keys(b).some(k=>!['expectedStatus','targetStatus','reason'].includes(k))||!statuses.includes(String(b.expectedStatus))||!statuses.includes(String(b.targetStatus))||(b.reason!==undefined&&b.reason!==null&&typeof b.reason!=='string'))){res.status(400).json({error:'invalid_request'});return;}
     if(!mutationReader){res.status(503).json({error:'service_unavailable'});return;}
     try{const capability=await mutationReader.verify(res.locals.actorAccountId as number,id,b.expectedStatus as never,b.targetStatus as never,(b.reason as string|null|undefined)??null);res.status(200).json({capability});}
     catch(error){capabilityFailure(error,res);}
