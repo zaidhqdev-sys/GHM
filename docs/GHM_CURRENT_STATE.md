@@ -728,3 +728,11 @@ The first CI run after adding the migration-provisioning DB qualifier passed the
 
 The bounded runtime EXECUTE revocation for `auth_provision_migration_account` is now covered by the integrated database qualification. On code/test head `c71f795d92a5a500fd544420dad1845553d9a5f9`, run #43116117596 completed the `Test suite` step successfully. The npm test command now runs the normal 884-test suite, syntax-checks the dedicated provisioning DB qualifier, and executes it using CI's disposable runtime/migrator URLs. The overall workflow remains in progress in later qualification steps; do not treat the whole PR as fully qualified yet. Subsequent documentation-only commits advanced PR head to `cd7eff3a907e5b68621c46f85aea7c89873328a5`. Full detail is in the security handover.
 
+
+
+## 2026-11-11 — QuoteFlow migration provisioning runtime ACL remediation qualified
+
+The new migration-only account provisioning privilege boundary passed exact-head GitHub Actions PR run #43116117596 on code/test head `c71f795d92a5a500fd544420dad1845553d9a5f9`. Both `quality` and `web-quality` succeeded, including the complete disposable migration chain, full 884-test suite, and the new DB qualification integrated into `npm test`. The qualification proves runtime EXECUTE denial and direct-call rejection while the migrator/owner path retains account+mapping creation, idempotency, provider validation, concurrency and rollback.
+
+Status: IMPLEMENTED / DISPOSABLE QUALIFICATION PASS; PRODUCTION CUTOVER NOT PERFORMED. PR #272 remains open and unmerged. This evidence is for code/test head `c71f795d`; subsequent commits were documentation-only and require their own CI check. No production roles, grants, database, secrets, deployment or data changed. Full evidence: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
