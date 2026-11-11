@@ -714,3 +714,11 @@ The earlier checkpoint's claim that CI already invoked the migration provisionin
 
 Latest code/test head: `942203c53c94e81dabdef76895ac2220d48dbb25`. Exact-head workflow run #43115856824 was queued at the checkpoint; no pass is claimed. Earlier successful branch runs predate the qualification wiring. Full correction and exact commits are in the migration-security handover. No production changes.
 
+
+
+## 2026-11-11 — Internal-auth call-path audit and provisioning qualification correction
+
+The detailed handover now maps the live pre-JWT callers for account registration, password lookup/rehash, session creation, refresh rotation, recovery issuance/redemption, logout and QuoteFlow migration reset. Several functions still accept account/session identifiers even though their legitimate application callers derive those values only after password verification, token possession or enrollment lookup. Preserve these flows; do not blanket-revoke the remaining auth RPCs. A dedicated internal-auth authority design and database qualification are still required.
+
+The first CI run after adding the migration-provisioning DB qualifier passed the normal test suite (884/884) but the new script failed because it expected `ghm_db` while CI correctly uses `ghm_disposable_test`. Corrected to use the configured qualification/migration database name in commit `c71f795d92a5a500fd544420dad1845553d9a5f9`. Exact-head runs #43116108337 and #43116117596 were still in progress at the checkpoint; no qualification pass is claimed. See the full security handover for call paths and exact evidence.
+
