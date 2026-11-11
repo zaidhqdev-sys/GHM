@@ -48,7 +48,7 @@ The user attempted to revoke this membership while connected as `session_user=gh
 
 The ADMIN OPTION is consequential: it allows `ghm_db_user` to grant membership to other roles, including granting itself SET/INHERIT membership. Therefore, merely keeping the auto-created membership's SET and INHERIT flags false does not restore isolation.
 
-The production migration `20261110210000_add_actor_gateway_principal_guard.sql` currently rejects any membership involving `ghm_actor_gateway`. **Keep this guard strict; do not weaken it to accommodate the production-created role.** CI currently creates the gateway role as a superuser/admin and does not reproduce the Render CREATEROLE creation path. Qualification should cover both creation paths.
+The production migration `20261110210000_add_actor_gateway_principal_guard.sql` currently rejects any membership involving `ghm_actor_gateway`. **Keep this guard strict; do not weaken it to accommodate the production-created role.** CI now covers both role-creation paths: the clean superuser-created role and the PostgreSQL 18 delegated CREATEROLE path that leaves a postgres-granted ADMIN OPTION membership. The production migration guard remains strict.
 
 ## Why Render was contacted; current support status
 
@@ -83,7 +83,7 @@ Do not assume Render has agreed to perform any change until a human response con
 
 ## Application connection identity gap
 
-The PR's `src/config.ts` reads the API database connection from `DATABASE_URL`; it does not explicitly require `GHM_RUNTIME_DATABASE_URL` or validate the database session identity at startup. The actual deployed environment value was not visible in this review, so do not assume the live API is connected as `ghm_runtime` or any other particular role.
+The PR now requires `GHM_RUNTIME_DATABASE_URL` in production and verifies `session_user=current_user=ghm_runtime` plus role attributes and membership absence at startup. The actual deployed Render environment has not been changed or verified, so this code-level enforcement is not evidence that the currently running service already uses that login.
 
 Before rollout:
 - Make the API use an explicitly named restricted runtime connection in production (or otherwise explicitly configure and verify the expected login).
@@ -97,7 +97,7 @@ Before rollout:
 - The HMAC secret/nonce tables are not yet present in production. The CI qualification provisions only a disposable test secret; this is not production secret provisioning.
 - HMAC key custody must be independent between the gateway secret store and protected database secret table. Never put key material in Git, chat, SQL history, or logs.
 - The API no longer relies on generic `DATABASE_URL` in production: it requires `GHM_RUNTIME_DATABASE_URL` and verifies the runtime login/effective role plus least-privilege attributes and absence of memberships at startup. The Actor Gateway now performs equivalent startup checks for `ghm_actor_gateway`.
-- Gateway configuration currently accepts HTTPS origins while the server is created with `http.createServer()`. This is compatible with a public Render web-service URL, where Render terminates inbound TLS and forwards HTTP to the service. Render private-service internal addresses use the private hostname and port and commonly require an `http://` URL; the current client configuration does not yet allow that. Do not treat external TLS mode with `rejectUnauthorized:false` as authenticated server identity.
+- Gateway server uses `http.createServer()`, which is compatible with a public Render web-service URL because Render terminates inbound TLS and forwards HTTP to the process. Gateway URL validation is now centralized: remote endpoints must be credential-free HTTPS origins with no path/query/fragment; HTTP is accepted only for localhost development. All four API-to-gateway clients reject redirects. Render private-service internal addresses commonly require `http://` on a private hostname/port, which is deliberately not accepted yet. Do not weaken this check without a reviewed private-network trust design. Do not treat database external TLS mode with `rejectUnauthorized:false` as authenticated server identity.
 - Render workspace inspection found no dedicated Actor Gateway service. `GHM-Internal-Runtime` is a public web service on `main`, not a private Actor Gateway service; do not repurpose it. Current Render documentation confirms Free web services can initiate but cannot receive private-network traffic, and Free compute is unavailable for private services. Free web services also spin down after 15 minutes idle and can take about a minute to wake; Render explicitly advises against using Free instances for production. A true private gateway therefore requires paid private-service compute. A public HTTPS web service is technically compatible with the existing gateway URL validation and JWT-protected routes, but it exposes a public endpoint and a Free instance has cold-start/availability limitations. Given the no-unnecessary-spend constraint, gateway hosting remains an unresolved cost/security decision; do not create or repurpose a service until this is reviewed. Official references: [Render private network](https://render.com/docs/private-network), [Render Free instances](https://render.com/docs/free), [Render private services](https://render.com/docs/private-services).
 - Existing legacy capability SECURITY DEFINER grants and other legacy access paths must remain in place until the new path is deployed and end-to-end proven. The manual cutover file is not part of the migration directory and must not be run prematurely.
 - CI now separately reproduces the PostgreSQL 18 delegated CREATEROLE path and verifies the automatic postgres-granted ADMIN OPTION membership persists after the creator-side REVOKE attempt. The clean superuser-created gateway role fixture remains separate; the production migration guard remains strict.
@@ -108,7 +108,7 @@ Before rollout:
 2. Runtime identity enforcement and delegated PostgreSQL 18 role-creation qualification are implemented and covered by passing CI. Continue repository-only review and tests while Render support is pending; do not deploy or apply production migrations while the production privilege model remains unresolved.
 3. Agree a safe, staged role migration with a restricted runtime login and a separately controlled schema-owner/migrator path. Test replacement credentials before switching the live service.
 4. Re-run CI and exact-head review after code changes.
-5. Only after the role model, backup protection, hosting cost/network architecture and service protocol are qualified, provision the gateway host, secrets and schema changes under explicit change authorization.
+5. Only after the role model and fresh-backup protection are qualified, select a hosting/network design that meets security requirements without additional paid services. The current instruction is no paid Render services or upgrades until the products generate enough revenue to afford them. If the free-tier options cannot satisfy production security/availability, keep the gateway rollout blocked rather than lowering the requirements.
 6. Keep the PR open/unmerged and do not run the legacy cutover until the new route is proven end-to-end and separately approved.
 
 ## Authorization / safety boundary
@@ -140,3 +140,18 @@ The main API production configuration now requires `GHM_RUNTIME_DATABASE_URL`; g
 Both the main API and Actor Gateway startup now reject a runtime principal with any role membership or elevated role attribute. The PostgreSQL 18 CI fixture creates a non-superuser CREATEROLE role, has it create a login role, asserts the automatic postgres-granted ADMIN OPTION membership with SET/INHERIT false, attempts the creator-side REVOKE, and verifies the membership remains. The fixture is isolated to the disposable CI database and cleans up both roles.
 
 PR #272 remains open, unmerged, and mergeable; latest observed head is `dbd35c68f05300ac5d047d73b63219153ff31ccf`. No production environment, database, roles, grants, secrets, migrations, or services were changed.
+
+
+## Additional gateway public-surface hardening (2026-11-11)
+
+Repository-only changes on the current PR branch:
+- `/v1` requests now require a valid ES256 access JWT before rate-limit accounting or JSON parsing.
+- Verified requests are limited per signed GHM account ID (default 120 per 60 seconds); caller-supplied account IDs and proxy IP headers are not used as the key.
+- `/healthz` remains process-only and outside the authenticated `/v1` namespace.
+- JSON request bodies remain capped at 16 KiB and are parsed only after authentication/rate-limit middleware.
+- API-to-gateway clients share strict origin validation (HTTPS remotely, localhost HTTP only; no embedded credentials, path, query or fragment) and set redirect: error so a gateway redirect cannot silently change the destination of a bearer-token request.
+- Tests cover account isolation, 429 behavior, health-route independence, origin validation and redirect rejection.
+
+Limitations:
+- The rate limiter is in-memory and per process/instance; counters reset on restart and are not shared across instances. It is not a distributed quota or volumetric DDoS defense. Avoid claiming it protects anonymous JWT-verification traffic at the network edge.
+- No Render service was created, repurposed, upgraded or deployed. No paid service or recurring cost was introduced.
