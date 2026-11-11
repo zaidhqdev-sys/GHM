@@ -1001,3 +1001,25 @@ The failure was not in the Trust Score gateway: `scripts/qualify-trust-score-gat
 New exact-head GitHub Actions PR run `43104846183` is IN PROGRESS on `1aa9477ae95666ae5d12596cb3b1ca858fbde86f`; no pass is claimed until all qualification steps complete.
 
 The next auth batch remains the token-bound recovery redemption result described above. Preserve the QuoteFlow reset completion function's nested owner call to `auth_revoke_all_sessions_for_account`; runtime EXECUTE can be revoked only after the ordinary recovery reset path no longer invokes that wrapper directly.
+
+
+## Token-bound recovery revocation result — implementation checkpoint (2026-11-11)
+
+Source review confirmed that the existing `auth_redeem_recovery(bytea)` already consumes the one-time recovery token and revokes every active session through `auth_internal_revoke_all_sessions_for_account`. The old Resource API then redundantly called `auth_revoke_all_sessions_for_account(account_id,...)` a second time after setting the password. That second call normally returned zero because the sessions had already been revoked, and it preserved an unnecessary runtime RPC accepting arbitrary account ID.
+
+### Changes made
+
+- Added `database/migrations/20261111230000_add_token_bound_recovery_revocation_result.sql`.
+  - Adds owner-only `auth_internal_redeem_recovery_with_count(bytea)`, which consumes a valid one-time recovery token and returns both the derived account ID and exact session revocation count.
+  - Replaces `auth_redeem_recovery(bytea)` with a compatibility wrapper over the internal function; its original bigint return contract is preserved.
+  - Adds runtime-executable `auth_redeem_recovery_with_count(bytea)`, which accepts only the protected one-time token hash and returns the account ID/count.
+  - Revokes runtime/PUBLIC EXECUTE on `auth_revoke_all_sessions_for_account(bigint,text)`. The QuoteFlow migration-reset SECURITY DEFINER function may still call it as `ghm_schema_owner`.
+- Updated `PostgresAuthPersistence.resetPasswordWithRecovery` to use the token-bound count result, set the password in the same transaction, and no longer call the raw account-ID revocation wrapper.
+- Extended the database persistence test to verify the returned count covers active sessions, all sessions are revoked, the token is single-use, and runtime cannot execute the direct account-ID revocation wrapper.
+- Extended the auth schema readiness probe to require the new token-bound function.
+
+### CI failure and correction
+
+The first run on the new recovery function failed the existing recovery single-use test because the new helper raised lowercase `invalid recovery token`, while `raiseFromPg` maps the established `RECOVERY_CREDENTIAL_INVALID` error marker. Corrected both helper error paths to preserve the existing error contract in commit `1ebe0c5dfab55968fe4cbf6ffe0aa79a46230fbf`. No database migration has been applied to production; the migration is still open-PR-only.
+
+Current PR head: `1ebe0c5dfab55968fe4cbf6ffe0aa79a46230fbf`. Push run `43105500794` is IN PROGRESS and PR run `43105509324` is QUEUED. The preceding failure at `13f9e741` was the error-marker mismatch above; do not claim the new recovery path qualified until the latest exact-head run passes all tests and QuoteFlow reset qualification.
