@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Client, Pool } from 'pg';
 import 'dotenv/config';
 
-const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL;
+const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.GHM_QUALIFICATION_DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 assert(runtimeUrl, 'GHM_RUNTIME_DATABASE_URL is required');
 assert(migratorUrl, 'GHM_MIGRATOR_DATABASE_URL is required');
