@@ -62,22 +62,26 @@ END;$$;
 CREATE FUNCTION ghm.gateway_transition_business_capability_evidence(
  p_actor bigint,p_issued bigint,p_nonce uuid,p_context text,p_signature text,
  p_evidence bigint,p_decision text,p_reason text
-) RETURNS ghm.business_capability_evidence LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ghm AS $$
+ ) RETURNS TABLE(id bigint,business_capability_id bigint,business_id bigint,business_name text,capability_name text,evidence_type text,title text,description text,issuer_name text,reference_number text,evidence_url text,issued_on date,expires_on date,visibility text,verification_status text,submitted_by bigint,submitted_at timestamptz,verified_by bigint,verified_at timestamptz,verification_reason text)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ghm AS $evidence_review$
 BEGIN
  IF p_context::jsonb<>jsonb_build_object('evidenceId',p_evidence,'decision',p_decision,'reason',p_reason) THEN
   RAISE EXCEPTION 'Actor assertion context mismatch' USING ERRCODE='42501';
  END IF;
  PERFORM ghm.assert_actor_gateway_capability(p_actor,'business.capability.evidence.review',p_issued,p_nonce,p_context,p_signature);
- RETURN ghm.transition_business_capability_evidence(p_evidence,p_decision,p_actor,p_reason);
-END;$$;
+ PERFORM ghm.transition_business_capability_evidence(p_evidence,p_decision,p_actor,p_reason);
+ RETURN QUERY SELECT e.id,e.business_capability_id,bc.business_id,b.name,c.name,e.evidence_type,e.title,e.description,e.issuer_name,e.reference_number,e.evidence_url,e.issued_on,e.expires_on,e.visibility,e.verification_status,e.submitted_by,e.submitted_at,e.verified_by,e.verified_at,e.verification_reason
+ FROM ghm.business_capability_evidence e JOIN ghm.business_capability bc ON bc.id=e.business_capability_id JOIN ghm.business b ON b.id=bc.business_id JOIN ghm.capability c ON c.id=bc.capability_id WHERE e.id=p_evidence;
+END;$evidence_review$;
 
 
 CREATE FUNCTION ghm.gateway_submit_business_capability_evidence(
  p_actor bigint,p_issued bigint,p_nonce uuid,p_context text,p_signature text,
  p_capability bigint,p_evidence_type text,p_title text,p_description text,p_issuer text,
  p_reference text,p_url text,p_issued_on date,p_expires_on date,p_visibility text
-) RETURNS ghm.business_capability_evidence LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ghm AS $evidence_submit$
-DECLARE v_business bigint;v_role text;v_result ghm.business_capability_evidence%ROWTYPE;v_payload jsonb;
+) RETURNS TABLE(id bigint,business_capability_id bigint,business_id bigint,business_name text,capability_name text,evidence_type text,title text,description text,issuer_name text,reference_number text,evidence_url text,issued_on date,expires_on date,visibility text,verification_status text,submitted_by bigint,submitted_at timestamptz,verified_by bigint,verified_at timestamptz,verification_reason text)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ghm AS $evidence_submit$
+DECLARE v_business bigint;v_role text;v_evidence_id bigint;v_payload jsonb;
 BEGIN
  v_payload:=jsonb_build_object('businessCapabilityId',p_capability,'evidenceType',p_evidence_type,'title',p_title,
   'description',p_description,'issuerName',p_issuer,'referenceNumber',p_reference,'evidenceUrl',p_url,
@@ -87,16 +91,17 @@ BEGIN
  SELECT bc.business_id,bm.membership_role INTO v_business,v_role
  FROM ghm.business_capability bc
  JOIN ghm.business b ON b.id=bc.business_id
- JOIN ghm.business_membership bm ON bm.business_id=b.id
+ JOIN ghm.business_membership bm ON bm.business_id=bc.business_id
  WHERE bc.id=p_capability AND bc.assertion_status='active' AND bm.account_id=p_actor
  AND bm.membership_status='active' AND b.is_active=true
  LIMIT 1;
  IF v_business IS NULL OR v_role NOT IN ('owner','administrator') THEN RAISE EXCEPTION 'Business management permission required' USING ERRCODE='42501';END IF;
  INSERT INTO ghm.business_capability_evidence
  (business_capability_id,evidence_type,title,description,issuer_name,reference_number,evidence_url,issued_on,expires_on,visibility,verification_status,submitted_by)
- VALUES(p_capability,p_evidence_type,p_title,NULLIF(btrim(p_description),''),NULLIF(btrim(p_issuer),''),NULLIF(btrim(p_reference),''),NULLIF(btrim(p_url),''),p_issued_on,p_expires_on,COALESCE(p_visibility,'private'),'pending',p_actor)
- RETURNING * INTO v_result;
- RETURN v_result;
+ VALUES(p_capability,p_evidence_type,btrim(p_title),NULLIF(btrim(p_description),''),NULLIF(btrim(p_issuer),''),NULLIF(btrim(p_reference),''),NULLIF(btrim(p_url),''),p_issued_on,p_expires_on,COALESCE(p_visibility,'private'),'pending',p_actor)
+ RETURNING business_capability_evidence.id INTO v_evidence_id;
+ RETURN QUERY SELECT e.id,e.business_capability_id,bc.business_id,b.name,c.name,e.evidence_type,e.title,e.description,e.issuer_name,e.reference_number,e.evidence_url,e.issued_on,e.expires_on,e.visibility,e.verification_status,e.submitted_by,e.submitted_at,e.verified_by,e.verified_at,e.verification_reason
+ FROM ghm.business_capability_evidence e JOIN ghm.business_capability bc ON bc.id=e.business_capability_id JOIN ghm.business b ON b.id=bc.business_id JOIN ghm.capability c ON c.id=bc.capability_id WHERE e.id=v_evidence_id;
 END;$evidence_submit$;
 ALTER FUNCTION ghm.gateway_submit_business_capability_evidence(bigint,bigint,uuid,text,text,bigint,text,text,text,text,text,text,date,date,text) OWNER TO ghm_schema_owner;
 REVOKE ALL ON FUNCTION ghm.gateway_submit_business_capability_evidence(bigint,bigint,uuid,text,text,bigint,text,text,text,text,text,text,date,date,text) FROM PUBLIC,ghm_runtime,ghm_migrator;
