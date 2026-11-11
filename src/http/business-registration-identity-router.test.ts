@@ -11,11 +11,12 @@ import type {
   UpdateBusinessRegistrationIdentityInput,
 } from '../resources/business-registration-identity/contracts';
 
-const startServer = async (service: BusinessRegistrationIdentityService, gatewayClient?: BusinessRegistrationIdentityGatewayClient) => {
+const startServer = async (service: BusinessRegistrationIdentityService, gatewayClient?: BusinessRegistrationIdentityGatewayClient, gatewayRequired = false) => {
   const server = http.createServer(createApp({
     resourceAuthMiddleware: httpTestAuth,
     businessRegistrationIdentityService: service,
     businessRegistrationIdentityGatewayClient: gatewayClient,
+    businessRegistrationIdentityGatewayRequired: gatewayRequired,
   }));
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
@@ -30,6 +31,38 @@ const identity: BusinessRegistrationIdentity = {
   legalName: 'Example (Pty) Ltd',
   updatedAt: new Date('2026-10-19T12:00:00.000Z'),
 };
+
+test('production registration identity routes fail closed when the actor gateway is not configured', async () => {
+  let readCalls = 0;
+  let writeCalls = 0;
+  const service = {
+    getRegistrationIdentity: async () => { readCalls += 1; return identity; },
+    updateRegistrationIdentity: async () => { writeCalls += 1; return identity; },
+  } as unknown as BusinessRegistrationIdentityService;
+  const { server, baseUrl } = await startServer(service, undefined, true);
+  try {
+    const authorization = `Bearer ${tokenFor({ userId: 42, role: 'business' })}`;
+    const read = await fetch(`${baseUrl}/api/v1/businesses/55/registration-identity`, {
+      headers: { authorization },
+    });
+    assert.equal(read.status, 503);
+    assert.deepEqual(await read.json(), { error: 'service_unavailable' });
+
+    const write = await fetch(`${baseUrl}/api/v1/businesses/55/registration-identity`, {
+      method: 'PUT',
+      headers: { authorization, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        registrationStatus: 'registered',
+        registrationNumber: '2020/123456/07',
+        legalName: 'Example (Pty) Ltd',
+      }),
+    });
+    assert.equal(write.status, 503);
+    assert.deepEqual(await write.json(), { error: 'service_unavailable' });
+    assert.equal(readCalls, 0);
+    assert.equal(writeCalls, 0);
+  } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+});
 
 test('registration identity read requires authentication', async () => {
   const service = { getRegistrationIdentity: async () => { throw new Error('must not be called'); } } as unknown as BusinessRegistrationIdentityService;
