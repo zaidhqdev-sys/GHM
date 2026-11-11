@@ -1,4 +1,5 @@
 import type {
+import { assertActorGatewayBaseUrl } from './actor-gateway-url';
   BusinessRegistrationIdentity,
   UpdateBusinessRegistrationIdentityInput,
 } from '../resources/business-registration-identity/contracts';
@@ -21,10 +22,7 @@ export class HttpBusinessRegistrationIdentityGatewayClient implements BusinessRe
     private readonly requestTimeoutMs = 5_000,
     private readonly fetchImpl: typeof fetch = fetch,
   ) {
-    const parsed = new URL(baseUrl);
-    if (parsed.protocol !== 'https:' && parsed.hostname !== 'localhost' && parsed.hostname !== '127.0.0.1') {
-      throw new Error('Actor gateway URL must use HTTPS outside localhost');
-    }
+    assertActorGatewayBaseUrl(baseUrl);
   }
 
   async readRegistrationIdentity(accessToken: string, businessId: number): Promise<BusinessRegistrationIdentity> {
@@ -55,6 +53,7 @@ export class HttpBusinessRegistrationIdentityGatewayClient implements BusinessRe
         `${this.baseUrl.replace(/\/$/, '')}/v1/businesses/${businessId}/registration-identity`,
         {
           method,
+          redirect: 'error',
           headers: {
             authorization: `Bearer ${accessToken}`,
             accept: 'application/json',
