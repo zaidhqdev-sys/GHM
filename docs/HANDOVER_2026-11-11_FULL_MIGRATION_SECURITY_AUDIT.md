@@ -356,3 +356,17 @@ The qualification logs explicitly confirm:
 - `GHM TRUST SCORE SIGNED GATEWAY QUALIFICATION: PASS`
 
 The manual cutover ran only against disposable localhost PostgreSQL. The Trust Score calculation mutation is IMPLEMENTED / QUALIFIED. Direct runtime SELECT on `ghm.trust_score` remains OPEN and unchanged pending safe public list/get and authorised-member read projections. Full durable record: `docs/architecture/TRUST_SCORE_QUALIFICATION.md`. No production changes, no production cutover and no merge.
+
+
+## Business Logo binding signed gateway — implementation checkpoint (2026-11-11)
+
+The Business Logo routes are active in `src/http/storage-router.ts`; the binding path calls `ghm.set_business_logo_object(p_account_id,p_business_id,p_storage_object_id)` directly under the runtime DB credential. This is another caller-supplied actor ID boundary. A signed gateway binding path has now been implemented:
+
+- Migration `20261111160000_add_signed_business_logo_gateway.sql`: adds `business.logo.bind` to the signed v2 assertion allowlist and creates gateway-only `ghm.gateway_set_business_logo_object`, binding actor, Business ID and nullable storage object ID in the signed context before calling the existing domain function.
+- Manual cutover `20261111160000_revoke_legacy_business_logo_runtime.sql`: revokes runtime/PUBLIC EXECUTE on the legacy binding function only. The public logo getter remains available; it is a separate SECURITY DEFINER projection enforcing active + verified + approved Business visibility.
+- Actor Gateway reader/route/server wiring: `src/actor-gateway/business-logo-reader.ts`, `/v1/businesses/:businessId/logo`, and `src/actor-gateway/server.ts`.
+- Resource API client/storage router wiring: `src/http/business-logo-gateway-client.ts` and `src/http/storage-router.ts` forward the original bearer token; production fails closed if the gateway is unavailable/unconfigured. Existing upload, replacement, unbind and cleanup semantics are preserved.
+- Tests: migration contract, reader HMAC/context/rollback, storage route bearer forwarding and fail-closed tests.
+- Disposable PostgreSQL qualification script and CI wiring: `scripts/qualify-business-logo-gateway-cutover-postgres.mjs`.
+
+**Status: IMPLEMENTED / QUALIFICATION PENDING.** CI has been wired; exact-head qualification is pending. Do not close until the full test suite and disposable PostgreSQL step pass. No production changes and no production cutover.
