@@ -640,3 +640,10 @@ Business Hours signed replacement, authenticated member read and approved public
 Manual cutover revokes runtime direct table SELECT, sequence access and legacy replacement EXECUTE but was applied only to disposable CI PostgreSQL. It remains unapplied in production. Production remains blocked on Render role-model resolution, a fresh independently verified backup and explicit approval. Detailed evidence: `docs/architecture/BUSINESS_HOURS_QUALIFICATION.md` and `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
 
 No production changes and no merge.
+
+
+## 2026-11-11 — Trust Score signed calculation gateway implementation
+
+Trust Score calculation now has a signed Actor Gateway path: `trust.score.calculate` assertion, gateway-only SQL wrapper binding verified actor + exact Business ID, JWT-derived Actor Gateway route, Resource API bearer-forwarding client, production fail-closed behavior, manual-only legacy EXECUTE revocation, and disposable PostgreSQL qualification script/CI wiring. Migration contract and reader HMAC/rollback tests are included in `npm test`.
+
+Status: IMPLEMENTED / QUALIFICATION PENDING on head `34172a7057a56ed027a0baead9640a3a835f7b59`, GitHub Actions run #3198 pending. Do not close until exact-head CI and disposable PostgreSQL qualification pass. Direct runtime SELECT on `ghm.trust_score` remains OPEN and unchanged pending safe public/member read projections. No production changes or merge.
