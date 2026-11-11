@@ -1,12 +1,38 @@
 export interface RuntimeDatabaseIdentity {
   session_user: string;
   current_user: string;
+  rolcanlogin: boolean;
+  rolinherit: boolean;
+  rolsuper: boolean;
+  rolcreatedb: boolean;
+  rolcreaterole: boolean;
+  rolreplication: boolean;
+  rolbypassrls: boolean;
+  no_role_memberships: boolean;
 }
 
 export const assertRuntimeDatabaseIdentity = (identity: RuntimeDatabaseIdentity): void => {
-  if (identity.session_user !== 'ghm_runtime' || identity.current_user !== 'ghm_runtime') {
+  const expectedFlags = {
+    rolcanlogin: true,
+    rolinherit: false,
+    rolsuper: false,
+    rolcreatedb: false,
+    rolcreaterole: false,
+    rolreplication: false,
+    rolbypassrls: false,
+    no_role_memberships: true,
+  };
+  const invalidFlags = Object.entries(expectedFlags)
+    .filter(([key, expected]) => identity[key as keyof RuntimeDatabaseIdentity] !== expected)
+    .map(([key]) => key);
+
+  if (
+    identity.session_user !== 'ghm_runtime' ||
+    identity.current_user !== 'ghm_runtime' ||
+    invalidFlags.length > 0
+  ) {
     throw new Error(
-      `Runtime database identity mismatch: expected session_user=current_user=ghm_runtime; received session_user=${identity.session_user}, current_user=${identity.current_user}`,
+      `Runtime database principal failed least-privilege verification: session_user=${identity.session_user}, current_user=${identity.current_user}, invalid_flags=${invalidFlags.join(',') || 'none'}`,
     );
   }
 };
