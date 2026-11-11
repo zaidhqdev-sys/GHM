@@ -20,7 +20,7 @@ DECLARE
   v_revoked integer := 0;
 BEGIN
   IF p_token_hash IS NULL OR octet_length(p_token_hash) <> 32 THEN
-    RAISE EXCEPTION 'invalid recovery token' USING ERRCODE = 'P0001';
+    RAISE EXCEPTION 'RECOVERY_CREDENTIAL_INVALID' USING ERRCODE = 'P0001';
   END IF;
 
   UPDATE ghm.password_recovery_credential AS recovery
@@ -32,7 +32,7 @@ BEGIN
 
   GET DIAGNOSTICS v_updated = ROW_COUNT;
   IF v_updated <> 1 OR v_account_id IS NULL THEN
-    RAISE EXCEPTION 'invalid recovery token' USING ERRCODE = 'P0001';
+    RAISE EXCEPTION 'RECOVERY_CREDENTIAL_INVALID' USING ERRCODE = 'P0001';
   END IF;
 
   v_revoked := ghm.auth_internal_revoke_all_sessions_for_account(
