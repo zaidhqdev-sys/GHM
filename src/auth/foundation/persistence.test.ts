@@ -372,35 +372,6 @@ test('auth foundation persistence (database)', async (t) => {
     await assert.rejects(() => persistence.redeemRecovery(issued.recoveryTokenWire), AuthPersistenceError);
   });
 
-  await t.test('external identity lookup/bootstrap is idempotent and non-admin', async () => {
-    const provider = `test-provider-${marker}`;
-    const subject = `subject-${marker}`;
-    const first = await persistence.bootstrapExternalIdentity(provider, subject, marker, 'customer');
-    assert.equal(first.created, true);
-    assert.ok(first.accountId > 0);
-    const second = await persistence.bootstrapExternalIdentity(provider, subject, marker, 'customer');
-    assert.equal(second.created, false);
-    assert.equal(second.accountId, first.accountId);
-    const looked = await persistence.lookupExternalIdentity(provider, subject);
-    assert.equal(looked?.accountId, first.accountId);
-
-    const client = await migratorPool.connect();
-    try {
-      await client.query('SET ROLE ghm_schema_owner');
-      const admin = await client.query(
-        `SELECT is_system_admin FROM ghm.account_identity WHERE id = $1`,
-        [first.accountId],
-      );
-      assert.equal(admin.rows[0].is_system_admin, false);
-      const membership = await client.query(
-        `SELECT 1 FROM ghm.business_membership WHERE account_id = $1`,
-        [first.accountId],
-      );
-      assert.equal(membership.rowCount, 0);
-    } finally {
-      client.release();
-    }
-  });
 
   await t.test('link external identity: create, idempotent, conflict, missing account', async () => {
     const { EXTERNAL_IDENTITY_PROVIDER_SUPABASE } = await import('./types');
@@ -501,7 +472,7 @@ test('auth foundation persistence (database)', async (t) => {
     }
   });
 
-  await t.test('link external identity: runtime cannot read, mutate, or create mappings; migrator owner can link', async () => {
+  await t.test('link external identity: runtime cannot read, mutate, create, or bootstrap mappings; migrator owner can link', async () => {
     const { EXTERNAL_IDENTITY_PROVIDER_SUPABASE } = await import('./types');
     const provider = EXTERNAL_IDENTITY_PROVIDER_SUPABASE;
     const subject = `acl-${marker}`;
@@ -515,7 +486,8 @@ test('auth foundation persistence (database)', async (t) => {
           has_table_privilege(current_user, 'ghm.account_external_identity', 'UPDATE') AS can_update,
           has_table_privilege(current_user, 'ghm.account_external_identity', 'DELETE') AS can_delete,
           has_sequence_privilege(current_user, 'ghm.account_external_identity_id_seq', 'USAGE') AS can_use_sequence,
-          has_function_privilege(current_user, 'ghm.auth_link_external_identity(text,text,bigint)', 'EXECUTE') AS can_link
+          has_function_privilege(current_user, 'ghm.auth_link_external_identity(text,text,bigint)', 'EXECUTE') AS can_link,
+          has_function_privilege(current_user, 'ghm.auth_bootstrap_external_identity(text,text,text,text)', 'EXECUTE') AS can_bootstrap
       `);
       assert.deepEqual(privileges.rows[0], {
         can_select: false,
@@ -524,11 +496,13 @@ test('auth foundation persistence (database)', async (t) => {
         can_delete: false,
         can_use_sequence: false,
         can_link: false,
+        can_bootstrap: false,
       });
 
       for (const sql of [
         'SELECT * FROM ghm.account_external_identity',
         `SELECT * FROM ghm.auth_link_external_identity('supabase', 'runtime-forged-subject', ${accountId})`,
+        `SELECT * FROM ghm.auth_bootstrap_external_identity('supabase', 'runtime-bootstrap-subject', 'Runtime Bootstrap', 'customer')`,
         `INSERT INTO ghm.account_external_identity (provider, subject, account_id)
          VALUES ('supabase', 'direct-runtime-insert', ${accountId})`,
         "SELECT nextval('ghm.account_external_identity_id_seq')",
