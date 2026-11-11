@@ -518,3 +518,10 @@ Read-only source review found that `ghm.read_business_registration_identity` and
 Added manual cutover `database/cutovers/20261111020000_revoke_legacy_registration_identity_runtime.sql` to revoke direct legacy function execution from PUBLIC, runtime, migrator and gateway roles while preserving gateway wrapper execution as `ghm_actor_gateway`. Disposable qualification now applies the cutover and checks that runtime direct calls are denied while signed gateway calls remain functional. The migration-contract test guards the cutover contents.
 
 New cutover qualification is pending exact-head CI. The SQL is manual-only and has not been applied to production. Production remains blocked on Render role-model resolution and a fresh verified backup. No production state or paid infrastructure changed.
+
+
+## Registration legacy RPC cutover — exact-head qualification passed (2026-11-11)
+
+Exact code/test head `9f69d17ef362cc01e45fe151609101893104747a` passed GitHub Actions run #2891 (`43076550978`), with both `quality` and `web-quality` successful. The disposable Actor Gateway principal qualification applied `database/cutovers/20261111020000_revoke_legacy_registration_identity_runtime.sql`, denied direct legacy registration read/write execution to `ghm_runtime`, and confirmed signed gateway registration read/write still worked. Full build, migrations, test suite, all other PostgreSQL qualifications, migration policy and runtime-boundary checks passed.
+
+Cloudflare Pages reported a successful PR preview for this commit at https://7d9a60be.ghm-cu1.pages.dev. Preview only; no production release. PR #272 remains open and unmerged. The manual cutover has not been applied to production. Render role-model resolution and a fresh verified backup remain release blockers. No production state or paid infrastructure changed.
