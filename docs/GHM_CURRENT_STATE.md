@@ -495,3 +495,10 @@ This is bounded evidence for the exercised code and disposable database fixtures
 ## Actor Gateway qualification extension — registration update target substitution (2026-11-11, CI pending)
 
 The disposable actor-gateway principal qualification now also signs a Business registration update for one fixture Business and attempts to invoke it against a second fixture Business ID. The expected result is SQLSTATE `42501`. Existing registration read target-transplant and registration update payload-substitution cases remain. This new negative case is pending exact-head CI and is not yet reported as passing. No production state or paid infrastructure was changed.
+
+
+## Actor Gateway registration update target substitution — exact-head pass (2026-11-11)
+
+The new registration update target-substitution negative case passed on exact PR head `cd591533b5130b560c58ffefc268fe416bbfa59c`, GitHub Actions run #2870 (`43074793542`). Both `quality` and `web-quality` succeeded. The disposable actor-gateway principal qualification rejected an update assertion signed for one Business when invoked with a second Business ID (SQLSTATE `42501`). Existing registration read target-transplant and update payload-substitution cases also passed.
+
+This is evidence for the tested path, not a blanket production-readiness claim. PR #272 remains open and unmerged. Production role-model resolution from Render and a fresh verified backup remain blockers. No production state or paid infrastructure was changed.
