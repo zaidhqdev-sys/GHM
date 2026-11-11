@@ -31,7 +31,6 @@ const createPersistence = (
   lookupQuoteFlowMigrationResetEnrollment: async () => null,
   lookupExternalIdentity: lookup,
   bootstrapExternalIdentity: bootstrap,
-  linkExternalIdentity: async () => { throw new Error('unused'); },
   linkBusinessExternalMapping: async () => { throw new Error('unused'); },
   revokeSessionByRefreshToken: async () => ({ found: false, sessionId: null, accountId: null }),
 });
