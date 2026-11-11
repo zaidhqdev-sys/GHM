@@ -92,6 +92,17 @@ try {
   console.log('MANUAL SAVED BUSINESS CUTOVER APPLIED TO DISPOSABLE POSTGRESQL: PASS');
 
   await denied(() => runtime.query('SELECT * FROM ghm.saved_business'), 'RUNTIME DIRECT SAVED BUSINESS SELECT DENIED');
+  const columnReads = await migrator.query(`
+    SELECT a.attname
+      FROM pg_catalog.pg_attribute a
+      JOIN pg_catalog.pg_class c ON c.oid = a.attrelid
+      JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'ghm' AND c.relname = 'saved_business'
+       AND a.attnum > 0 AND NOT a.attisdropped
+       AND has_column_privilege('ghm_runtime', c.oid, a.attnum, 'SELECT')
+  `);
+  assert.equal(columnReads.rowCount, 0, 'runtime must not retain column-level SELECT privileges');
+  console.log('RUNTIME COLUMN-LEVEL SAVED BUSINESS SELECT DENIED: PASS');
   await denied(() => runtime.query('SELECT * FROM ghm.create_saved_business($1,$2)', [owner, businessId]), 'RUNTIME LEGACY CREATE EXECUTE DENIED');
   await denied(() => runtime.query('SELECT ghm.delete_saved_business($1,$2)', [owner, 1]), 'RUNTIME LEGACY DELETE EXECUTE DENIED');
   await denied(() => runtime.query("SELECT nextval('ghm.saved_business_id_seq')"), 'RUNTIME SAVED BUSINESS SEQUENCE ACCESS DENIED');
