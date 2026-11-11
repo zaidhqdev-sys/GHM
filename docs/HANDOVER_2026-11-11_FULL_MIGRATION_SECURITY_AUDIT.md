@@ -331,3 +331,10 @@ Files added/changed:
 - `scripts/qualify-trust-score-gateway-cutover-postgres.mjs`, package script and CI wiring: disposable-localhost-only qualification with distinct runtime/gateway/migrator roles, manual cutover, signed calculation, actor/target substitution, nonce replay and runtime-wrapper denial checks.
 
 **Status: IMPLEMENTED / QUALIFICATION PENDING.** Latest CI is running on implementation head `34172a7057a56ed027a0baead9640a3a835f7b59` (run #3198 pending). Do not mark Trust Score calculation qualified until the exact-head quality job passes the full suite and the new disposable PostgreSQL step. Direct runtime SELECT remains unchanged/open. No production changes, no manual production cutover, no merge.
+
+
+## Campaign contract contradiction corrected (2026-11-11)
+
+The follow-on audit found stale contradictory wording in `docs/architecture/CAMPAIGN_OPERATION_CONTRACT.md`: section 2 already recorded that a bounded authenticated HTTP surface was separately approved and implemented, but section 12 still said there were no HTTP routes and section 14 listed campaign HTTP routes as an unqualified non-goal. This was inconsistent with the current `src/http/campaign-router.ts` and `CAMPAIGN_HTTP_FOUNDER_DECISION_RECORD.md`.
+
+Corrected section 12 to state accurately that there is no public/anonymous read, while the bounded authenticated `read` / `create` / `update` HTTP surface is separately approved and implemented. Corrected section 14 to prohibit additional routes beyond that bounded surface. No runtime code changed in this documentation correction.
