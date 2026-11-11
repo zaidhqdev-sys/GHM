@@ -73,7 +73,8 @@
     "qualify:business-supplier-classification": "node scripts/qualify-business-supplier-classification-postgres.mjs",
     "qualify:business-profile-contract": "node scripts/qualify-business-profile-contract-postgres.mjs",
     "qualify:capability-governance-cutover": "npm run build && node scripts/qualify-capability-governance-cutover-postgres.mjs",
-    "qualify:business-capability-gateway-cutover": "npm run build && node scripts/qualify-business-capability-gateway-cutover-postgres.mjs"
+    "qualify:business-capability-gateway-cutover": "npm run build && node scripts/qualify-business-capability-gateway-cutover-postgres.mjs",
+    "qualify:saved-business-gateway-cutover": "npm run build && node scripts/qualify-saved-business-gateway-cutover-postgres.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",
