@@ -439,3 +439,22 @@ This section supersedes earlier dated Actor Gateway progress notes below whereve
 - **Production status:** no Actor Gateway service deployment, production HMAC secret provisioning, production migration, manual legacy grant cutover, or PR merge has occurred. Existing legacy access grants remain untouched pending a proven gateway path and separate authorization.
 
 The detailed operational evidence, support escalation, backup warning, and next-step sequence are maintained in [HANDOVER_2026-11-11_ACTOR_GATEWAY_PRODUCTION_READINESS.md](./HANDOVER_2026-11-11_ACTOR_GATEWAY_PRODUCTION_READINESS.md). This PR branch is not yet mainline authority; the above records the current candidate and must not be read as proof that production is migrated.
+
+
+## 2026-11-11 — v2 request-context-bound Actor Gateway assertions
+
+This section supersedes the earlier dated notes above that describe the database assertion as binding only the actor ID, operation, issue time and nonce. That was the previous design; it is no longer the current PR candidate.
+
+The source review identified that an otherwise valid, unused one-use assertion could be presented with a different business ID, capability ID or payload because the HMAC did not include those arguments. The wrapper's own authorization checks still applied, but the signed proof was not tied to the exact request. This was corrected in forward-only migration `20261111060000_bind_gateway_assertions_to_request_context.sql` and the matching gateway readers:
+
+- Assertions now use version `ghm-actor-gateway:v2` and sign actor ID, exact operation, issue time, nonce, and the UTF-8 bytes of a serialized request-context object.
+- Each database wrapper recomputes the expected JSONB context from its actual SQL arguments and rejects a mismatch before performing the operation. This binds capability IDs and draft/transition fields, supplier business ID and boolean, Business profile business ID and full patch, registration business ID and all registration fields, and the empty context for self-identity/list operations.
+- The database verifier enforces an explicit nine-operation allowlist, rejects a null operation, caps context size at 32 KiB, retains the 60-second validity window, checks the full 32-byte HMAC before branching, and retains one-use nonce replay protection.
+- The gateway readers create the assertion context and pass it with the signature in the same database transaction. The serialized context is signed exactly as sent; PostgreSQL's JSONB comparison verifies semantic equality with the actual arguments.
+- The Business profile database wrapper now rejects both `isSupplier` and `is_supplier`. Supplier classification can only use its dedicated signed operation, not the profile wrapper.
+- Disposable qualifications now explicitly attempt capability argument substitution, registration target substitution, registration payload substitution, profile patch substitution, and supplier boolean substitution. Those mismatches must fail with SQLSTATE 42501 before the mutation.
+- The actor-principal, capability catalogue, legacy capability cutover, supplier-classification and Business profile qualification scripts have all been updated to call the v2 signatures. The CI qualification does not retain old wrapper signatures as a compatibility escape hatch.
+
+**Validation:** exact code head `5a846df7f8d107eb1c2c99654b11c344bd7ed06a` passed both `quality` and `web-quality` in [GitHub Actions run #43065388570](https://github.com/zaidhqdev-sys/GHM/actions/runs/43065388570). This run applied the complete migration chain to disposable PostgreSQL 18, built the project, passed the full test suite, gateway-principal qualification, capability catalogue qualification, disposable legacy cutover qualification, supplier classification qualification, Business profile qualification, commercial settlement qualification, migration audit and runtime boundary verification.
+
+**Scope and remaining blockers:** this is repository code and disposable CI only. No production migration, HMAC secret provisioning, role/grant change, Render service/environment change, deployment, or manual legacy grant cutover has occurred. The live production role model remains blocked on Render's response. No verified 10 November backup exists; the 4 November recovery point is stale and must not be used as a rollback point for later work. No paid infrastructure is permitted until revenue can fund it. PR #272 remains open and unmerged.
