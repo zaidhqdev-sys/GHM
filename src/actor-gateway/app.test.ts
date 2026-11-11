@@ -40,6 +40,7 @@ const withServer = async (
   capabilityGovernanceReader?: import('./capability-governance-reader').CapabilityGovernanceReader,
   supplierClassificationReader?: SupplierClassificationReader,
   businessProfileReader?: BusinessProfileReader,
+  options: import('./app').ActorGatewayAppOptions = {},
 ): Promise<void> => {
   const server = http.createServer(createActorGatewayApp({
     verifier,
@@ -48,7 +49,7 @@ const withServer = async (
     capabilityGovernanceReader,
     supplierClassificationReader,
     businessProfileReader,
-  }));
+  }, options));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('Actor gateway test server did not start');
@@ -73,6 +74,35 @@ test('actor gateway health endpoint is process-only and does not query actor ide
     assert.deepEqual(await response.json(), { status: 'ok' });
   });
   assert.equal(calls, 0);
+});
+
+test('actor gateway rate limits each verified account without trusting caller-supplied identity', async () => {
+  const calls: number[] = [];
+  const reader: ActorIdentityReader = {
+    async readOwnIdentity(accountId: number): Promise<ActorIdentity> {
+      calls.push(accountId);
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  };
+  await withServer(reader, async (baseUrl) => {
+    const request = (accountId: number) => fetch(`${baseUrl}/v1/actor/me`, {
+      headers: { authorization: `Bearer ${sign(accountId)}` },
+    });
+    const first = await request(42);
+    assert.equal(first.status, 200);
+    const second = await request(42);
+    assert.equal(second.status, 200);
+    const limited = await request(42);
+    assert.equal(limited.status, 429);
+    assert.deepEqual(await limited.json(), { error: 'rate_limited' });
+
+    const otherAccount = await request(43);
+    assert.equal(otherAccount.status, 200);
+
+    const health = await fetch(`${baseUrl}/healthz`);
+    assert.equal(health.status, 200);
+  }, undefined, undefined, undefined, undefined, { rateLimitLimit: 2, rateLimitWindowMs: 60_000 });
+  assert.deepEqual(calls, [42, 42, 43]);
 });
 
 test('actor gateway rejects missing and invalid bearer tokens before database access', async () => {
