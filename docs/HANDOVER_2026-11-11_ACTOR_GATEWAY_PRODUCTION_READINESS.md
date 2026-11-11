@@ -238,3 +238,19 @@ A further review found that the nonce row expiry had been calculated as `issued_
 The current HMAC verifier uses one protected singleton secret row and one gateway environment secret; unlike the ES256 verifier, it has no key ID or previous-key overlap. A rotation is therefore currently a coordinated maintenance-window operation: stop the gateway, update the protected database secret and gateway environment secret as a matched pair, restart, then verify the signed path before restoring traffic. Do not rotate one side while the gateway is serving requests. Before production provisioning, the rotation and rollback procedure must be documented and the previous secret held in approved secure custody; alternatively, add key IDs and dual-key verification before production if no-downtime rotation is required. No production HMAC secret has been generated or provisioned, so this is a design gate, not a live outage.
 
 No production migration, role/grant change, secret provisioning, Render service/environment change, deployment, or manual legacy cutover occurred. PR #272 remains open and unmerged. The production database privilege issue and missing fresh backup remain blockers; no paid infrastructure is permitted until revenue can fund it.
+
+
+## 2026-11-11 — expanded request-context substitution qualification (CI pending)
+
+The v2 database wrappers already compare signed request context with the actual SQL arguments. The disposable qualification scripts have now been extended to exercise additional independent target-substitution cases rather than relying only on the existing payload-substitution cases:
+
+- Capability draft update: signed capability ID substituted with a different disposable capability ID; separately, signed update fields are changed after signing.
+- Capability lifecycle transition: signed capability ID substituted with a different disposable capability ID; separately, the target lifecycle status is changed after signing.
+- Supplier classification: signed Business ID substituted with a different ID.
+- Business profile: signed Business ID substituted with a different ID.
+
+The existing supplier boolean and Business profile patch substitution tests remain in place. The capability creation payload-substitution test also remains. Each new case expects the database wrapper to reject with `Actor assertion context mismatch` before the underlying operation. These are negative tests only; they do not change production data or authorize cutover.
+
+**Validation status:** changes are committed to the PR branch, but exact-head CI has not yet been checked for this test expansion. Do not report these new cases as passing until the disposable PostgreSQL qualification and both CI jobs pass on the exact current head. The prior validated code head remains `7213dcc280da652d8913944136e3b312fb7e0638` (run #43067027027); later documentation-only head `a7fa07e396cdb6717bb013996f59fb70e815a06c` also passed both CI jobs (run #43067466817).
+
+Production remains paused: Render's role-model response and a fresh verified production backup are still required. The 4 November backup is stale for the 10 November role work. No production migrations, role/grant changes, secrets, deployments, or paid infrastructure are authorized by this qualification work.
