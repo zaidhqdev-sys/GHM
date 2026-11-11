@@ -130,3 +130,14 @@ test('business role cannot invoke the signed evidence review gateway',async()=>{
   assert.equal(response.status,403);assert.equal(called,false);
  }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
 });
+
+test('admin role cannot invoke the Business evidence submission gateway',async()=>{
+ let called=false;
+ const service={create:async()=>{throw new Error('legacy create must not run');}} as unknown as BusinessCapabilityEvidenceService;
+ const gateway={submitEvidence:async()=>{called=true;return{evidence:fixture({userId:99,role:'admin'})};}};
+ const {server,baseUrl}=await start(service,gateway,true);
+ try{
+  const response=await fetch(`${baseUrl}/api/v1/business-capability-evidence`,{method:'POST',headers:{authorization:`Bearer ${tokenFor({userId:99,role:'admin'})}`,'content-type':'application/json'},body:JSON.stringify({businessCapabilityId:12,evidenceType:'certification',title:'Certificate'})});
+  assert.equal(response.status,403);assert.equal(called,false);
+ }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
+});
