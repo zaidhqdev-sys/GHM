@@ -215,15 +215,13 @@ Archival is expressed as `status = archived` via `campaign.update`.
 
 Physical row deletion is reserved for migrator/schema-owner governed cleanup (qualification fixtures), not runtime product operations.
 
-## 12. No public read / no HTTP
+## 12. No public read / bounded HTTP approval
 
 - no `campaign.readPublic`;
 - no anonymous access;
-- **no HTTP Resource API routes** in this slice.
+- the bounded authenticated Resource API routes are separately approved by `CAMPAIGN_HTTP_FOUNDER_DECISION_RECORD.md` and implemented in `src/http/campaign-router.ts` (implementation commit `785df12345e9dff95127573224266075dcc7c888`).
 
-Registry registration of `campaign` with `read` / `create` / `update` does **not** imply HTTP exposure.
-
-HTTP requires a separately authorized Resource API qualification.
+The existing HTTP surface is limited to the frozen `read`, `create`, and `update` operations and does not authorize additional routes, public access, child resources, storage, AI providers, or production cutover.
 
 ## 13. Registry and module boundary
 
@@ -256,7 +254,7 @@ This contract does not authorize:
 - brief / concept / script / presenter / consent / media / generation resources;
 - object storage;
 - AI provider calls;
-- campaign HTTP routes;
+- additional campaign HTTP routes beyond the separately approved bounded surface;
 - production cutover;
 - reopening Opportunity, Saved Business, Trust, or other closed slices.
 
