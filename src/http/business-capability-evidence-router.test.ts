@@ -75,7 +75,8 @@ test('admin review accepts verify, reject and revoke decisions only through revi
 
 test('business role can list only business-scoped evidence and cannot access moderation',async()=>{
  let pendingListed=false,businessListed=false,reviewed=false;
- const service={listForBusiness:async()=>{businessListed=true;return[];},listForVerification:async()=>{pendingListed=true;return[];},review:async()=>{reviewed=true;return{};}} as unknown as BusinessCapabilityEvidenceService;
+ const repository={create:async()=>({} as BusinessCapabilityEvidence),listForBusiness:async()=>{businessListed=true;return[];},listForVerification:async()=>{pendingListed=true;return[];},review:async()=>{reviewed=true;return{} as BusinessCapabilityEvidence;}};
+ const service=new BusinessCapabilityEvidenceServiceImpl(repository);
  const {server,baseUrl}=await start(service);
  try {
   const headers={authorization:`Bearer ${tokenFor({userId:42,role:'business'})}`};
