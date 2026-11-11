@@ -369,13 +369,14 @@ Implementation files:
 
 ### Exact-head qualification passed
 
-Exact implementation head `f5c68802f9a23c8e5ce936914a2de5d82be3bf23` passed GitHub Actions run **#3005** (`43086430055`) on 11 November 2026. Both `quality` and `web-quality` passed.
+Latest qualification head `ccb194905d320602c476e54808ce1985b901f39d` passed GitHub Actions run **#3013** (`43087190865`) on 11 November 2026. Both `quality` and `web-quality` passed. This head includes the final expanded role-boundary qualification described below.
 
 The successful `quality` job included:
 - TypeScript build and complete PostgreSQL migration application.
 - Full automated test suite, including the newly enabled Business Capability evidence router tests and new gateway route tests.
 - Disposable PostgreSQL qualification of all four signed mutation wrappers after applying the manual cutover.
 - Direct runtime denial for the legacy replacement, verification and evidence-review functions.
+- Direct runtime denial for all four new signed gateway wrapper functions, proven by actual runtime-role calls and the privilege matrix.
 - Direct runtime denial for evidence table INSERT and evidence sequence access.
 - Successful signed gateway replacement, administrator verification, evidence submission and administrator evidence review after cutover.
 - HMAC/context tampering and replay rejection.
