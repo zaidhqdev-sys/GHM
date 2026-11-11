@@ -1,5 +1,13 @@
 # Capability catalogue governance — implementation handover (2026-11-10)
 
+> **Historical snapshot — superseded on 2026-11-11.** This document records the 10 November state and must not be used as the current rollout instruction. The current authoritative status is [HANDOVER_2026-11-11_ACTOR_GATEWAY_PRODUCTION_READINESS.md](./HANDOVER_2026-11-11_ACTOR_GATEWAY_PRODUCTION_READINESS.md) and [PR #272](https://github.com/zaidhqdev-sys/GHM/pull/272). PR #272 is the current consolidated integration/qualification branch based on `main`; it contains the gateway capability wrappers, supplier/profile/registration signed-assertion work, PostgreSQL 18 role-creation qualification, and production readiness findings. PRs #250, #268 and #269 remain open and unmerged as historical stacked predecessors; do not merge them independently or treat their earlier optional-gateway/fallback instructions as current. No merge or production cutover is authorized by this note.
+
+**Superseded statements in this snapshot:**
+- The statement below that `GHM_ACTOR_GATEWAY_URL` is optional for staged production rollout and that the pre-existing runtime path remains active is no longer the production rule. PR #272 makes capability governance fail closed and makes Business registration identity read/write routes return 503 in production when the gateway is missing; no production legacy fallback is permitted for those routes.
+- The 10 November statement that exact-head CI was pending is historical. The consolidated code head `512017beb5e46d939e70278b482e5cc0f721e0b5` passed both `quality` and `web-quality` in [run #43056260763](https://github.com/zaidhqdev-sys/GHM/actions/runs/43056260763). Later documentation-only commits are validated separately.
+- The original legacy capability cutover remains a separate manual production action and must not be run until the gateway is actually deployed, end-to-end verified, the database privilege model is resolved with Render, a fresh recoverable backup is verified, and separate explicit authorization is given.
+
+
 ## Current work
 Draft PR #250 introduces GHM admin capability catalogue operations. Its follow-up PR #268 adds database-boundary invariants and is stacked on #250.
 
