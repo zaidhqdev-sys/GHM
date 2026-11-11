@@ -1,5 +1,6 @@
 import http from 'http';
 import { Pool } from 'pg';
+import { actorGatewayDatabaseSslConfig } from './database-ssl';
 import { createAccessJwtVerifier } from '../auth/foundation/access-jwt-verifier';
 import {
   loadEs256VerificationKeys,
@@ -19,10 +20,7 @@ const required = (name: string): string => {
 };
 
 const isProduction = process.env.NODE_ENV === 'production';
-const databaseSsl = process.env.DATABASE_SSL === 'true';
-if (isProduction && !databaseSsl) {
-  throw new Error('DATABASE_SSL must be true in production');
-}
+const databaseSsl = actorGatewayDatabaseSslConfig(process.env.DATABASE_SSL_MODE, isProduction);
 
 const databaseUrl = required('GHM_ACTOR_GATEWAY_DATABASE_URL');
 const port = Number.parseInt(process.env.PORT ?? '10000', 10);
@@ -35,7 +33,7 @@ const verifier = createAccessJwtVerifier(verificationKeyMapFromPublicKeys(keys))
 const capabilityAssertionSecret = required('GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET');
 const pool = new Pool({
   connectionString: databaseUrl,
-  ssl: databaseSsl ? { rejectUnauthorized: false } : false,
+  ssl: databaseSsl,
   max: 10,
   connectionTimeoutMillis: 5_000,
   idleTimeoutMillis: 30_000,
