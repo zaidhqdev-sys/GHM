@@ -6,8 +6,8 @@ import { httpTestAuth, tokenFor as es256TokenFor } from './test-resource-auth';
 import type { AuthContext } from '../auth/authorization';
 import type { BusinessCapability, BusinessCapabilityService } from '../resources/business-capability/contracts';
 
-const startServer = async (service: BusinessCapabilityService) => {
-  const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth, businessCapabilityService: service }));
+const startServer = async (service: BusinessCapabilityService, capabilityMutationGatewayClient?: unknown, capabilityMutationGatewayRequired = false) => {
+  const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth, businessCapabilityService: service, capabilityMutationGatewayClient: capabilityMutationGatewayClient as never, capabilityMutationGatewayRequired }));
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
@@ -175,4 +175,49 @@ test('business capability create rejects malformed canonical input', async () =>
     assert.equal(response.status, 400);
     assert.equal(called, false);
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+});
+
+test('capability assertion replacement forwards the verified bearer token and complete assertion payload to gateway',async()=>{
+ const token=tokenFor({userId:42,role:'business'});let received:any;
+ const service={replaceBusinessCapabilities:async()=>{throw new Error('legacy replacement must not run');}} as unknown as BusinessCapabilityService;
+ const gateway={replace:async(t:string,businessId:number,assertions:unknown)=>{received={token:t,businessId,assertions};return{capabilities:[fixture({userId:42,role:'business'})]};}};
+ const {server,baseUrl}=await startServer(service,gateway,true);
+ try{
+  const assertions=[{capabilityId:'550e8400-e29b-41d4-a716-446655440000',proficiencyLevel:'advanced',description:'Verified payload'}];
+  const response=await fetch(`${baseUrl}/api/v1/business-capabilities`,{method:'PUT',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},body:JSON.stringify({businessId:55,assertions})});
+  assert.equal(response.status,200);assert.deepEqual(received,{token,businessId:55,assertions});
+  const body=await response.json() as {capabilities:BusinessCapability[]};assert.equal(body.capabilities[0].id,101);
+ }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
+});
+
+test('capability verification forwards the verified admin bearer token and exact transition context',async()=>{
+ const token=tokenFor({userId:99,role:'admin'});let received:any;
+ const service={transitionBusinessCapabilityVerification:async()=>{throw new Error('legacy verification must not run');}} as unknown as BusinessCapabilityService;
+ const gateway={verify:async(t:string,id:number,expectedStatus:string,targetStatus:string,reason:string|null)=>{received={token:t,id,expectedStatus,targetStatus,reason};return{capability:fixture({userId:99,role:'admin'})};}};
+ const {server,baseUrl}=await startServer(service,gateway,true);
+ try{
+  const response=await fetch(`${baseUrl}/api/v1/business-capabilities/101/verification`,{method:'PATCH',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},body:JSON.stringify({expectedStatus:'unverified',targetStatus:'pending',reason:null})});
+  assert.equal(response.status,200);assert.deepEqual(received,{token,id:101,expectedStatus:'unverified',targetStatus:'pending',reason:null});
+ }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
+});
+
+test('business role cannot invoke gateway capability verification',async()=>{
+ let called=false;
+ const service={} as unknown as BusinessCapabilityService;
+ const gateway={verify:async()=>{called=true;return{capability:fixture({userId:42,role:'business'})};}};
+ const {server,baseUrl}=await startServer(service,gateway,true);
+ try{
+  const response=await fetch(`${baseUrl}/api/v1/business-capabilities/101/verification`,{method:'PATCH',headers:{authorization:`Bearer ${tokenFor({userId:42,role:'business'})`,'content-type':'application/json'},body:JSON.stringify({expectedStatus:'unverified',targetStatus:'pending',reason:null})});
+  assert.equal(response.status,403);assert.equal(called,false);
+ }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
+});
+
+test('capability mutations fail closed when gateway is required but unavailable',async()=>{
+ let called=false;
+ const service={replaceBusinessCapabilities:async()=>{called=true;return[];}} as unknown as BusinessCapabilityService;
+ const {server,baseUrl}=await startServer(service,undefined,true);
+ try{
+  const response=await fetch(`${baseUrl}/api/v1/business-capabilities`,{method:'PUT',headers:{authorization:`Bearer ${tokenFor({userId:42,role:'business'})}`,'content-type':'application/json'},body:JSON.stringify({businessId:55,assertions:[]})});
+  assert.equal(response.status,503);assert.equal(called,false);
+ }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
 });
