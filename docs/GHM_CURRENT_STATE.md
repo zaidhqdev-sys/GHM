@@ -557,3 +557,12 @@ The exact-head checks passed:
 The disposable qualification applies `database/cutovers/20261111030000_revoke_legacy_business_capability_runtime_mutations.sql` only to the CI disposable database. It has not been applied to production.
 
 Production remains untouched. PR #272 remains open and unmerged. Render role-model support and a fresh verified production backup remain release blockers. No paid infrastructure was introduced.
+
+
+## 2026-11-11 — broader migration security inventory in progress
+
+A full recursive repository-tree inventory was started on PR #272. At audited source head `ee753ba8c6cb4a48c3ff1d46c1fe9fde6eaadbf2`, the tree contained 115 SQL migration files. A first-pass scan across the full migration directory identified additional actor-ID SECURITY DEFINER candidates outside the already qualified Actor Gateway batch: Business Hours replacement, Saved Business create/delete, Campaign create/update and Trust Score calculation. Their current application repositories pass the authenticated `AuthContext.userId`, but the legacy SQL functions accept that ID as a caller-supplied argument and still require effective ACL/cutover reconciliation.
+
+The scan also identified direct runtime SELECT/INSERT/UPDATE grants on `ghm.account_onboarding_progress`; its current repository derives account_id from AuthContext, but the database ACL does not enforce per-account ownership. Storage deletion's SECURITY DEFINER persistence function is currently called only after actor-scoped metadata retrieval and application authorization; all callers and the direct-runtime threat model still need reconciliation. Auth lifecycle functions are also under review; preserve login, registration, refresh and recovery flows while tracing server-only call paths.
+
+Detailed evidence and next steps are recorded in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`. This is a first-pass inventory, not a completed audit or proof of effective final ACLs. No production changes or manual cutovers were performed. PR #272 remains open and unmerged; the handover update is on its branch. Earlier CI results are not assumed to qualify the new documentation head. Production still requires Render role-model resolution and a fresh independently verified backup. PayFast and approved legal-document work remain parked.
