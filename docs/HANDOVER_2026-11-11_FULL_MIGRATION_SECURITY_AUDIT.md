@@ -283,3 +283,8 @@ The qualification applied the manual cutover only to the disposable localhost Po
 The current PR head advanced afterward to `b24c820e3221e06aa85cbf9bf43a24dba6ccba35` to add the reader-level HMAC test to `npm test`; that later test-only head has its own CI run pending at the time of this note. The qualified implementation itself is `b4663cb9`; do not describe the newer head as fully qualified until its exact-head run completes.
 
 **Business Hours status:** replacement mutation database actor provenance IMPLEMENTED / QUALIFIED. **Still OPEN:** direct runtime SELECT on `ghm.business_hours` remains unchanged because member/public read projections have not yet been migrated to the Actor Gateway. Do not revoke that table read grant until the new read path is implemented and qualified. Production manual cutover remains unapplied and requires separate rollout approval, Render role-model resolution and a fresh independently verified production backup. No production changes and no merge.
+
+
+### Exact-head confirmation after reader HMAC test inclusion
+
+The follow-up test-only head `b24c820e3221e06aa85cbf9bf43a24dba6ccba35` also passed exact-head GitHub Actions run [#3136](https://github.com/zaidhqdev-sys/GHM/actions/runs/43092456034): both `quality` and `web-quality` succeeded. This head includes `src/actor-gateway/business-hours-reader.test.ts` in the full `npm test` command, so the reader HMAC/context and rollback tests are now covered by CI as well. The Business Hours implementation and disposable cutover qualification evidence remain as recorded above. Current subsequent commits in this handover are documentation-only.
