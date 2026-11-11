@@ -77,6 +77,7 @@ END;$$;
 CREATE FUNCTION ghm.gateway_update_business_profile(p_actor bigint,p_issued bigint,p_nonce uuid,p_context text,p_signature text,p_business bigint,p_patch jsonb)
 RETURNS ghm.business LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ghm AS $$
 BEGIN
+ IF p_patch ? 'isSupplier' OR p_patch ? 'is_supplier' THEN RAISE EXCEPTION 'Supplier classification must use the dedicated gateway operation' USING ERRCODE='22023';END IF;
  IF p_context::jsonb<>jsonb_build_object('businessId',p_business,'patch',p_patch) THEN RAISE EXCEPTION 'Actor assertion context mismatch' USING ERRCODE='42501';END IF;
  PERFORM ghm.assert_actor_gateway_capability(p_actor,'business.profile.update',p_issued,p_nonce,p_context,p_signature);
  RETURN ghm.update_business_profile(p_actor,p_business,p_patch);
