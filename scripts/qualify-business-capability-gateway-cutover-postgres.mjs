@@ -20,7 +20,7 @@ const setup=async(sql,args=[])=>{const c=await migrator.connect();try{await c.qu
 try{
  const accounts=await setup("INSERT INTO ghm.account_identity(full_name,role) VALUES($1,'business'),($2,'business'),($3,'business'),($4,'admin') RETURNING id,role",[marker+' owner',marker+' member',marker+' outsider',marker+' verifier']);
  const owner=Number(accounts.rows[0].id),member=Number(accounts.rows[1].id),outsider=Number(accounts.rows[2].id),admin=Number(accounts.rows[3].id);ids.accounts.push(owner,member,outsider,admin);
- const b=await setup("INSERT INTO ghm.business(name,slug,verification_status,is_active) VALUES($1,$2,'approved',true) RETURNING id",[marker,marker]);const business=Number(b.rows[0].id);ids.businesses.push(business);
+ const b=await setup("INSERT INTO ghm.business(name,slug,verification_status,is_verified,is_active) VALUES($1,$2,'approved',true,true) RETURNING id",[marker,marker]);const business=Number(b.rows[0].id);ids.businesses.push(business);
  await setup("INSERT INTO ghm.business_membership(business_id,account_id,membership_role,membership_status,created_by) VALUES($1,$2,'owner','active',$2),($1,$3,'member','active',$2)",[business,owner,member]);
  const capId=randomUUID();ids.capabilities.push(capId);
  await setup("INSERT INTO ghm.capability(id,name,slug,lifecycle_status,taxonomy_version,source_authority,is_selectable) VALUES($1,$2,$3,'active',1,'gateway qualification',true)",[capId,marker,marker]);
