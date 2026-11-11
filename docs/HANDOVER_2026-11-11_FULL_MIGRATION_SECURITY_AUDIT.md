@@ -1152,3 +1152,20 @@ The earlier #43115920841 failure was the hard-coded database-name mismatch and i
 
 The subsequent documentation-only commits advance PR head to `cd7eff3a907e5b68621c46f85aea7c89873328a5`; they do not change the validated code/test head. Recheck exact-head workflow after the docs commits and await the complete workflow result before calling the entire PR qualified.
 
+
+
+## QuoteFlow migration provisioning boundary — exact-head full qualification PASS (2026-11-11 23:01 UTC)
+
+The corrected code/test head `c71f795d92a5a500fd544420dad1845553d9a5f9` passed exact-head GitHub Actions PR run #43116117596: both `quality` and `web-quality` completed SUCCESS. The quality job completed the full build, all ordered migrations on disposable PostgreSQL, the 884-test suite, and every existing disposable qualification step. The `npm test` command includes the new provisioning qualifier after the normal suite; the CI environment supplied the disposable runtime and migrator URLs. The earlier hard-coded database-name failure is superseded by this passing exact-head run.
+
+For this bounded change, the evidence now supports:
+- `auth_provision_migration_account` migration applied successfully on disposable PostgreSQL;
+- runtime EXECUTE=false and direct invocation denied;
+- migrator/owner path successfully creates the account+mapping;
+- idempotent retry, fixed-provider validation, concurrent same-subject provisioning and rollback qualification all pass;
+- runtime direct table INSERT remains denied.
+
+**Disposition: QuoteFlow migration-only provisioning runtime ACL remediation IMPLEMENTED / DISPOSABLE QUALIFICATION PASS.** Production cutover NOT performed. PR #272 remains open and unmerged. No production roles, grants, database, secrets, deployments or data were changed.
+
+The subsequent documentation-only commits advance the PR head beyond this code/test head. The current docs-only head must still have its own workflow checked; the code/test qualification result above remains tied specifically to `c71f795d`.
+
