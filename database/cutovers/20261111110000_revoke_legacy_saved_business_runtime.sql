@@ -9,6 +9,10 @@ REVOKE SELECT, INSERT, UPDATE, DELETE
   ON TABLE ghm.saved_business
   FROM PUBLIC, ghm_runtime;
 
+REVOKE SELECT (id, account_id, business_id, created_at)
+  ON TABLE ghm.saved_business
+  FROM PUBLIC, ghm_runtime;
+
 REVOKE ALL
   ON SEQUENCE ghm.saved_business_id_seq
   FROM PUBLIC, ghm_runtime;
