@@ -1055,3 +1055,47 @@ The push workflow run 43105500794 also completed with both quality and web-quali
 The follow-up error normalization in src/auth/foundation/persistence.ts is present in the branch (blob 1627447c0d9e05858e38944c28ff657264c83382); the token-bound SQL migration currently raises RECOVERY_CREDENTIAL_INVALID in both invalid-token paths (blob c007ff90a91ee266beecd29863c635bf8045a579). The passing PR run completed while the recovery implementation was present. PR #272 remains OPEN and UNMERGED; latest verified PR head after the handover-only update is 203c532f488a7a90e456a9d4eafb2bd3c96eb28c. The CI run began before that final handover-only commit; no source code changed in that documentation commit. No production migration, grant, role, deployment or data mutation occurred.
 
 Recovery token-bound revocation batch: DISPOSABLE QUALIFICATION PASS; PRODUCTION CUTOVER NOT PERFORMED. Continue the broader internal-auth caller/authority audit; do not treat all auth functions as closed based on this batch.
+
+
+## Internal authentication authority audit — QuoteFlow migration provisioning boundary (2026-11-11 22:55 UTC)
+
+### Exact repository state and validation discipline
+
+- PR #272 remains OPEN and UNMERGED.
+- Current branch: `integration/capability-gateway-qualification-20261110`.
+- Current head after this checkpoint's code/test commits: `1478452aad96dc42bce3fc8d95c4fe832b51e19e`.
+- The immediately preceding exact-head workflow lookup returned no run for this new head. The earlier success run #43105997182 belongs to the prior head `356de9d8ec6ce871bcc875a1b8b1e4de14f08b00`; it does NOT qualify these two new commits.
+- Current branch inventory after adding this migration: 125 SQL migration files and 7 manual cutover SQL files.
+- No production database, role, grant, secret, service, deployment, or data was changed. No PR was merged or closed.
+
+### Findings established from SQL definitions and all discovered source paths
+
+1. `ghm.auth_provision_migration_account(text,text,text,text)` is documented by its creation migrations as **migration-only credentialless QuoteFlow account provisioning**. It creates an active, non-admin GHM account and exact `(provider='supabase', subject)` mapping; it does not create credentials, sessions, Business records, or memberships.
+2. Both creation/reconciliation migrations granted EXECUTE to `ghm_runtime`. The later mapping-table ACL migration `20261111210000_revoke_runtime_account_external_identity_table_access.sql` explicitly re-granted this provisioning function to runtime.
+3. The concrete DB qualification script was the only discovered direct caller of this function. It used the runtime database connection to create accounts, test idempotency/concurrency/rollback, and asserted runtime EXECUTE=true. The TypeScript migration provisioning service is an abstraction over a store; the inspected source tree contains no concrete production store wiring to this SQL function, and no HTTP route invokes it.
+4. The dedicated migrator path is already configured to use `SET ROLE ghm_schema_owner` for owner-controlled operations. The function owner is `ghm_schema_owner`; the intended migration operation can therefore be retained through the migrator/owner path without exposing it to the shared runtime.
+5. `ghm.auth_bootstrap_external_identity` remains a separate Connect identity adapter method. The active `bindConnectAuthorization` caller explicitly passes `allowBootstrap:false`; tests assert that setting. The adapter's opt-in bootstrap behavior is still present as a domain seam and must not be conflated with the separate QuoteFlow migration-provisioning function.
+6. `ghm.auth_link_external_identity(text,text,bigint)` is a general explicit mapping function that trusts caller-supplied account ID. The migration reconciliation executor is an abstraction and no concrete production store wiring was found in the inspected source tree. The database persistence tests call it through runtime and test linking, conflict, disabled-account and cross-product semantics. Do not revoke it until the migration reconciliation contract and test/runtime use are deliberately separated and the required migrator operation is qualified.
+7. The current QuoteFlow migration reset completion SECURITY DEFINER function calls password-setting and account-wide session-revocation helpers internally. Its nested owner execution is distinct from direct runtime access and must be preserved when reviewing final ACLs.
+
+### Bounded implementation performed — runtime restriction for migration provisioning only
+
+- Added `database/migrations/20261111240000_revoke_runtime_quoteflow_migration_provisioning.sql`.
+- It revokes PUBLIC and `ghm_runtime` EXECUTE on `ghm.auth_provision_migration_account(text,text,text,text)`; it does not drop or rewrite the function and does not alter the owner.
+- Updated `scripts/qualify-quoteflow-migration-account-provisioning-db.mjs`:
+  - runtime now must fail to execute the migration-only function;
+  - runtime direct INSERT remains denied;
+  - controlled provisioning, idempotent retry, provider validation, concurrency and rollback now execute through a dedicated migrator-pool connection after `SET LOCAL ROLE ghm_schema_owner`;
+  - catalog assertions now require runtime EXECUTE=false.
+- The qualification command is already registered in `package.json` as `qualify:quoteflow-migration-account-provisioning-db`; CI's existing qualification invocation remains the validation path.
+- Commits: migration `6311c12c9dad3a902fbb29941b02665429545b15`; qualification runner `1478452aad96dc42bce3fc8d95c4fe832b51e19e`.
+
+### Qualification status and next exact actions
+
+- **Implementation committed to the open PR branch; qualification NOT YET PASSED.** The current head has no workflow run returned by the commit-run lookup at this checkpoint.
+- Do not report this migration as qualified until a workflow on the exact current head completes successfully, including the full suite and the QuoteFlow migration-account provisioning disposable PostgreSQL qualification.
+- Next, inspect the exact current-head CI job logs. If the runner fails, fix only evidence-backed harness or implementation defects, then re-run exact-head CI.
+- Continue the caller/authority audit for `auth_bootstrap_external_identity` and `auth_link_external_identity` separately. The first has an explicit opt-in adapter seam but no active authorization-binding use; the second has migration reconciliation abstractions and runtime persistence tests but no concrete production migration-store wiring found. Establish intended production migration invocation and exact effective grants before changing either.
+- Separately inspect final effective ACLs for all auth routines, including PUBLIC, role membership, owner, default privileges and the real login/refresh/recovery paths. Preserve public registration, login, refresh, logout, password recovery and QuoteFlow reset behavior.
+- Do not apply this migration to production. Existing production gates remain unchanged: Render role-model/support resolution, fresh independently verified backup, approved role/network plan, and explicit cutover approval.
+
