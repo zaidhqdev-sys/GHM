@@ -118,13 +118,13 @@ try {
   const replaySql = 'SELECT * FROM ghm.gateway_list_capabilities($1,$2,$3,$4,$5)';
   await gatewayPool.query(replaySql, [adminId, replay.issuedAt, replay.nonce, replay.context, replay.signature]);
   await expectReject(
-    () => gatewayPool.query(replaySql, [adminId, replay.issuedAt, replay.nonce, replay.signature]),
+    () => gatewayPool.query(replaySql, [adminId, replay.issuedAt, replay.nonce, replay.context, replay.signature]),
     'DATABASE REJECTS REPLAYED ACTOR ASSERTION PASS',
     'Actor assertion replay detected',
   );
   const wrongOperation = signAssertion(adminId, 'capability.create', {});
   await expectReject(
-    () => gatewayPool.query(replaySql, [adminId, wrongOperation.issuedAt, wrongOperation.nonce, wrongOperation.signature]),
+    () => gatewayPool.query(replaySql, [adminId, wrongOperation.issuedAt, wrongOperation.nonce, wrongOperation.context, wrongOperation.signature]),
     'DATABASE BINDS ASSERTION TO OPERATION PASS',
     'Actor assertion signature invalid',
   );
