@@ -28,3 +28,18 @@ test('legacy Business Hours replacement revocation is a separate manual cutover'
   assert.match(cutover, /REVOKE ALL ON FUNCTION ghm\.replace_business_hours\(bigint,bigint,jsonb\) FROM PUBLIC,ghm_runtime/);
   assert.doesNotMatch(cutover, /GRANT EXECUTE/);
 });
+
+
+test('Business Hours member read is signed and public read is a visibility-filtered projection', () => {
+  assert.match(migration, /'business\.hours\.read'/);
+  assert.match(migration, /gateway_get_business_hours[\s\S]*?assert_actor_gateway_capability\(p_actor,'business\.hours\.read'/);
+  assert.match(migration, /bm\.membership_role IN \('owner','administrator','member'\)/);
+  assert.match(migration, /CREATE FUNCTION ghm\.get_public_business_hours[\s\S]*?b\.is_active=true AND b\.is_verified=true/);
+  assert.match(migration, /b\.verification_status='approved'/);
+  assert.match(migration, /GRANT EXECUTE ON FUNCTION ghm\.get_public_business_hours\(bigint\) TO ghm_runtime/);
+});
+
+test('Business Hours manual cutover revokes direct table and sequence access', () => {
+  assert.match(cutover, /REVOKE SELECT ON TABLE ghm\.business_hours FROM PUBLIC,ghm_runtime/);
+  assert.match(cutover, /REVOKE ALL ON SEQUENCE ghm\.business_hours_id_seq FROM PUBLIC,ghm_runtime/);
+});
