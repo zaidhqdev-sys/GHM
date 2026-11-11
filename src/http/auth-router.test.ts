@@ -448,17 +448,6 @@ test('login issues ES256 access JWT with decimal sub and no role claim', async (
       updatedAt: new Date(),
       created: true,
     }),
-    linkExternalIdentity: async () => ({
-      outcome: 'created' as const,
-      mapping: {
-        id: 1,
-        provider: 'supabase',
-        subject: 's',
-        accountId: 1,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    }),
     linkBusinessExternalMapping: async () => ({
       outcome: 'created' as const,
       mapping: {
