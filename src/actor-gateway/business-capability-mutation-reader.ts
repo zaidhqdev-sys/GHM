@@ -1,13 +1,19 @@
 import type {Pool,PoolClient} from 'pg';
 import {createActorGatewayAssertion} from './request-assertion';
 import type {ReplaceBusinessCapabilityAssertionInput,BusinessCapabilityVerificationStatus,BusinessCapability} from '../resources/business-capability/contracts';
-import type {EvidenceDecision,BusinessCapabilityEvidence} from '../resources/business-capability-evidence/contracts';
+import type {EvidenceDecision,BusinessCapabilityEvidence,CreateBusinessCapabilityEvidenceInput} from '../resources/business-capability-evidence/contracts';
 type ConnectablePool=Pick<Pool,'connect'>;
 type Operation='business.capability.replace'|'business.capability.verify'|'business.capability.evidence.review';
 export interface GatewayCapabilityMutationReader {
  replace(actor:number,businessId:number,assertions:readonly ReplaceBusinessCapabilityAssertionInput[]):Promise<unknown[]>;
  verify(actor:number,id:number,expected:BusinessCapabilityVerificationStatus,target:BusinessCapabilityVerificationStatus,reason:string|null):Promise<BusinessCapability>;
  reviewEvidence(actor:number,id:number,decision:EvidenceDecision,reason:string|null):Promise<BusinessCapabilityEvidence>;
+ submitEvidence(actor:number,input:CreateBusinessCapabilityEvidenceInput):Promise<BusinessCapabilityEvidence>;
+ async submitEvidence(actor:number,x:CreateBusinessCapabilityEvidenceInput){
+  const args={businessCapabilityId:x.businessCapabilityId,evidenceType:x.evidenceType,title:x.title,description:x.description??null,issuerName:x.issuerName??null,referenceNumber:x.referenceNumber??null,evidenceUrl:x.evidenceUrl??null,issuedOn:x.issuedOn??null,expiresOn:x.expiresOn??null,visibility:x.visibility??'private'};
+  return this.run(async c=>{const a=this.assertion(actor,'business.capability.evidence.submit',args);const r=await c.query('SELECT * FROM ghm.gateway_submit_business_capability_evidence($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::date,$14::date,$15)',[actor,a.issuedAt,a.nonce,a.context,a.signature,args.businessCapabilityId,args.evidenceType,args.title,args.description,args.issuerName,args.referenceNumber,args.evidenceUrl,args.issuedOn,args.expiresOn,args.visibility]);if(r.rowCount!==1)throw Object.assign(new Error('Evidence submission failed'),{code:'P0001'});return r.rows[0] as BusinessCapabilityEvidence})
+ }
+
 }
 export class PostgresGatewayCapabilityMutationReader implements GatewayCapabilityMutationReader {
  private readonly key:Buffer;
