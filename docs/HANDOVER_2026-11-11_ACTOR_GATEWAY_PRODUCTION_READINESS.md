@@ -7,9 +7,9 @@ This handover records the production-readiness review of GHM Actor Gateway PR #2
 - Repository: `zaidhqdev-sys/GHM`
 - PR: [#272 — Unified Actor Gateway](https://github.com/zaidhqdev-sys/GHM/pull/272)
 - Branch: `integration/capability-gateway-qualification-20261110`
-- Reviewed head: `2132c15f5fa4618c30b05f516c3256a4f0ff31e4`
+- Reviewed code head: `7043985e8877ede841d12b8886aeb9b41ecce948`
 - At review: PR remained open and unmerged.
-- CI on that exact head: `quality` and `web-quality` passed ([run 43051229549](https://github.com/zaidhqdev-sys/GHM/actions/runs/43051229549)).
+- CI on that exact code head: `quality` and `web-quality` passed ([run 43052954162](https://github.com/zaidhqdev-sys/GHM/actions/runs/43052954162)). The later handover-only update is commit `4218a8d243d2ca822f1a85f36260c96c8bbabe79`; its own CI is tracked separately.
 - No production migrations, deployments, service changes, or database privilege changes were performed as part of this review.
 
 **Current disposition: production rollout remains paused.** Green CI is useful evidence but does not qualify the production database role model or deployment topology.
@@ -133,13 +133,13 @@ While awaiting Render support, safe repository-only work continued on PR #272. T
 
 A CI qualification step was added to reproduce the PostgreSQL 18 delegated `CREATEROLE` path in the disposable PostgreSQL 18 service: a non-superuser creator creates a role, CI inspects the automatic membership/grantor/options, attempts the same creator-side REVOKE, and verifies that the postgres-granted membership remains. This is deliberately separate from the clean superuser-created gateway fixture. Exact-head CI must pass before this behavior is considered qualified.
 
-Latest exact-head validation: commit `2132c15f5fa4618c30b05f516c3256a4f0ff31e4`; GitHub Actions run [#43051229549](https://github.com/zaidhqdev-sys/GHM/actions/runs/43051229549) completed successfully with both `quality` and `web-quality` passing. This includes the additional Actor Gateway startup least-privilege check and its unit tests. This run includes the delegated PostgreSQL 18 CREATEROLE membership reproduction, build, all migrations, full test suite, Actor Gateway principal qualification, capability/supplier/profile qualifications, commercial settlement identity qualification, migration audit policy tests, runtime boundary verification, web build/tests and dependency audit.
+Exact code-head validation: commit `7043985e8877ede841d12b8886aeb9b41ecce948`; GitHub Actions run [#43052954162](https://github.com/zaidhqdev-sys/GHM/actions/runs/43052954162) completed successfully with both `quality` and `web-quality` passing. This includes the delegated PostgreSQL 18 CREATEROLE membership reproduction, strict gateway origin validation, redirect rejection, verified-account rate limiting, the new unit tests, build, all migrations, full test suite, Actor Gateway principal qualification, capability/supplier/profile qualifications, commercial settlement identity qualification, migration audit policy tests, runtime boundary verification, web build/tests and dependency audit.
 
 The main API production configuration now requires `GHM_RUNTIME_DATABASE_URL`; generic `DATABASE_URL` is only a non-production fallback. Main API startup verifies `session_user=current_user=ghm_runtime` and checks the runtime role has LOGIN, NOINHERIT, no SUPERUSER/CREATEDB/CREATEROLE/REPLICATION/BYPASSRLS attributes, and no memberships in either direction. A mismatch prevents the server from listening/ becoming ready. The Actor Gateway now performs the equivalent startup check for `ghm_actor_gateway`: it also requires LOGIN/NOINHERIT, no elevated role attributes, and no role memberships in either direction; failure prevents the gateway from listening. Tests cover wrong login/effective role and elevated role attributes/memberships. Render's existing production environment has not been changed to set this variable; any future deployment of this code must be separately planned after the production role model and backup gate are resolved.
 
 Both the main API and Actor Gateway startup now reject a runtime principal with any role membership or elevated role attribute. The PostgreSQL 18 CI fixture creates a non-superuser CREATEROLE role, has it create a login role, asserts the automatic postgres-granted ADMIN OPTION membership with SET/INHERIT false, attempts the creator-side REVOKE, and verifies the membership remains. The fixture is isolated to the disposable CI database and cleans up both roles.
 
-PR #272 remains open, unmerged, and mergeable; latest observed head is `dbd35c68f05300ac5d047d73b63219153ff31ccf`. No production environment, database, roles, grants, secrets, migrations, or services were changed.
+PR #272 remains open, unmerged, and mergeable; latest branch head at this handover update is `4218a8d243d2ca822f1a85f36260c96c8bbabe79` (documentation-only after the code head above). No production environment, database, roles, grants, secrets, migrations, or services were changed.
 
 
 ## Additional gateway public-surface hardening (2026-11-11)
