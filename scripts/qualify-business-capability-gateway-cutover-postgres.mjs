@@ -57,7 +57,7 @@ try{
  console.log('SIGNED CAPABILITY ASSERTION REPLACEMENT AFTER CUTOVER: PASS');
  const wrongBusiness=sign(owner,'business.capability.replace',replaceContext);
  const cross=await denied(()=>gateway.query('SELECT * FROM ghm.gateway_replace_business_capability_assertions($1,$2,$3,$4,$5,$6,$7::jsonb)',[owner,wrongBusiness.issuedAt,wrongBusiness.nonce,wrongBusiness.context,wrongBusiness.signature,business+999,'[]']),'SIGNED REPLACEMENT TARGET SUBSTITUTION DENIED');assert.equal(cross.code,'42501');
- const memberReplace=await denied(()=>call(member,'business.capability.replace','gateway_replace_business_capability_assertions',[business,'[]'],replaceContext),'NON-MANAGEMENT MEMBER CANNOT REPLACE ASSERTIONS');assert.notEqual(memberReplace.code,'42501','HMAC/actor gate unexpectedly failed before membership authorization');
+ const memberReplaceContext={businessId:business,assertions:[]};const memberReplace=await denied(()=>call(member,'business.capability.replace','gateway_replace_business_capability_assertions',[business,'[]'],memberReplaceContext),'NON-MANAGEMENT MEMBER CANNOT REPLACE ASSERTIONS');assert.notEqual(memberReplace.code,'42501','HMAC/actor gate unexpectedly failed before membership authorization');
 
  const verifyContext={businessCapabilityId:bcId,expectedStatus:'unverified',targetStatus:'pending',reason:null};
  const nonAdmin=await denied(()=>call(owner,'business.capability.verify','gateway_transition_business_capability_verification',[bcId,'unverified','pending',null],verifyContext),'BUSINESS OWNER CANNOT VERIFY CAPABILITY');assert.match(nonAdmin.message,/Verification authority requires admin role/);
