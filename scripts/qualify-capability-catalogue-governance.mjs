@@ -107,6 +107,9 @@ try {
   const gatewayList = await gatewayCall(adminId, 'capability.list', 'SELECT * FROM ghm.gateway_list_capabilities($1,$2,$3,$4)');
   if (!Array.isArray(gatewayList.rows)) throw new Error('Gateway capability listing did not return rows');
   console.log('GATEWAY ADMIN LIST POSITIVE PASS');
+  const createContextArgs=[`${marker} Bound Draft`,`${marker}-bound-draft`,null,null,10,'gateway-context-qualification',1];
+  const boundCreate=signAssertion(adminId,'capability.create',assertionContext('capability.create',createContextArgs));
+  await expectReject(() => gatewayPool.query('SELECT * FROM ghm.gateway_create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)',[adminId,boundCreate.issuedAt,boundCreate.nonce,boundCreate.context,boundCreate.signature,'Tampered draft name',...createContextArgs.slice(1)]),'DATABASE REJECTS CAPABILITY REQUEST SUBSTITUTION PASS','Actor assertion context mismatch');
 
   const invalidSignature = signAssertion(adminId, 'capability.list', {});
   await expectReject(
