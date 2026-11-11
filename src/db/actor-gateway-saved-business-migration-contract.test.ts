@@ -15,7 +15,7 @@ test('Saved Business gateway operations are included in the v2 assertion allowli
 
 test('Saved Business read wrappers bind reads to the signed actor account', () => {
   assert.match(migration, /gateway_list_saved_businesses[\s\S]*?s\.account_id=p_actor/);
-  assert.match(migration, /gateway_get_saved_businesses?\([\s\S]*?s\.account_id=p_actor/);
+  assert.match(migration, /gateway_get_saved_business\([\s\S]*?s\.account_id=p_actor/);
   assert.match(migration, /jsonb_build_object\('savedBusinessId',p_saved_business_id\)/);
   assert.match(migration, /'saved_business\.read'/);
 });
