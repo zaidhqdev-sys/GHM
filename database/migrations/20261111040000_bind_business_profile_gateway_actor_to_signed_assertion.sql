@@ -6,7 +6,7 @@ CREATE OR REPLACE FUNCTION ghm.assert_actor_gateway_capability(
 ) RETURNS bigint
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ghm
 AS $$
-DECLARE v_secret bytea; v_payload text; v_expected bytea;
+DECLARE v_secret bytea; v_payload text; v_expected bytea; v_provided bytea; v_diff integer := 0; v_i integer;
 BEGIN
   IF session_user<>'ghm_actor_gateway' THEN RAISE EXCEPTION 'Actor gateway database principal required' USING ERRCODE='42501'; END IF;
   IF p_actor_account_id IS NULL OR p_actor_account_id<=0 OR p_issued_at IS NULL OR p_nonce IS NULL
@@ -17,7 +17,12 @@ BEGIN
   IF v_secret IS NULL OR octet_length(v_secret)<>32 THEN RAISE EXCEPTION 'Actor assertion verifier is not provisioned' USING ERRCODE='42501'; END IF;
   v_payload:='ghm-actor-gateway:v1|'||p_actor_account_id::text||'|'||p_operation||'|'||p_issued_at::text||'|'||p_nonce::text;
   v_expected:=public.hmac(convert_to(v_payload,'UTF8'),v_secret,'sha256');
-  IF v_expected<>decode(p_signature,'hex') THEN RAISE EXCEPTION 'Actor assertion signature invalid' USING ERRCODE='42501'; END IF;
+  v_provided:=decode(p_signature,'hex');
+  -- Compare every MAC byte before branching to avoid a prefix timing oracle.
+  FOR v_i IN 0..31 LOOP
+    v_diff:=v_diff | (get_byte(v_expected,v_i) # get_byte(v_provided,v_i));
+  END LOOP;
+  IF v_diff<>0 THEN RAISE EXCEPTION 'Actor assertion signature invalid' USING ERRCODE='42501'; END IF;
   IF NOT EXISTS(SELECT 1 FROM ghm.account_identity WHERE id=p_actor_account_id AND account_status='active') THEN RAISE EXCEPTION 'Active actor account required' USING ERRCODE='42501'; END IF;
   DELETE FROM ghm.actor_gateway_capability_assertion_nonce WHERE expires_at<clock_timestamp();
   BEGIN
