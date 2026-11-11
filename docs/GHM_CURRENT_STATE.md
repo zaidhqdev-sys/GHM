@@ -458,3 +458,21 @@ The source review identified that an otherwise valid, unused one-use assertion c
 **Validation:** exact code head `5a846df7f8d107eb1c2c99654b11c344bd7ed06a` passed both `quality` and `web-quality` in [GitHub Actions run #43065388570](https://github.com/zaidhqdev-sys/GHM/actions/runs/43065388570). This run applied the complete migration chain to disposable PostgreSQL 18, built the project, passed the full test suite, gateway-principal qualification, capability catalogue qualification, disposable legacy cutover qualification, supplier classification qualification, Business profile qualification, commercial settlement qualification, migration audit and runtime boundary verification.
 
 **Scope and remaining blockers:** this is repository code and disposable CI only. No production migration, HMAC secret provisioning, role/grant change, Render service/environment change, deployment, or manual legacy grant cutover has occurred. The live production role model remains blocked on Render's response. No verified 10 November backup exists; the 4 November recovery point is stale and must not be used as a rollback point for later work. No paid infrastructure is permitted until revenue can fund it. PR #272 remains open and unmerged.
+
+
+## 2026-11-11 — nonce retention boundary and HMAC rotation review
+
+A further review found that the nonce row expiry had been calculated as `issued_at + 60 seconds`, while the verifier accepts assertions within a 60-second clock-skew window. Near the end of that acceptance window, cleanup could therefore consider a nonce expired before the assertion itself was fully outside the accepted window. The nonce expiry is now calculated as `GREATEST(clock_timestamp(), to_timestamp(issued_at)) + interval '60 seconds'`, so the nonce remains stored for at least 60 seconds after first acceptance, including for assertions whose issue time is near the edge of the accepted past/future window.
+
+- Applied the corrected retention expression in all four ordered migrations that define the v1 assertion verifier and in the final v2 request-context migration. This keeps intermediate migration states safe if a later migration fails.
+- Added an index on `ghm.actor_gateway_capability_assertion_nonce(expires_at)` so expiry cleanup does not require a full table scan as request volume grows.
+- Added migration-contract checks across all four earlier definitions and the final v2 definition.
+- Extended the disposable actor-gateway qualification: it signs an assertion with an issue time 30 seconds in the past, executes it, and verifies the nonce remains stored for more than 58 seconds from the time of the check. This distinguishes the corrected retention from the old issue-time-based expiry.
+
+**Validation:** current code head `7213dcc280da652d8913944136e3b312fb7e0638` passed both `quality` and `web-quality` in [GitHub Actions run #43067027027](https://github.com/zaidhqdev-sys/GHM/actions/runs/43067027027). The run applied the complete PostgreSQL 18 migration chain, passed the full test suite and all actor-gateway, capability, supplier, Business profile, registration, cutover and runtime-boundary qualifications.
+
+### HMAC assertion-key rotation limitation
+
+The current HMAC verifier uses one protected singleton secret row and one gateway environment secret; unlike the ES256 verifier, it has no key ID or previous-key overlap. A rotation is therefore currently a coordinated maintenance-window operation: stop the gateway, update the protected database secret and gateway environment secret as a matched pair, restart, then verify the signed path before restoring traffic. Do not rotate one side while the gateway is serving requests. Before production provisioning, the rotation and rollback procedure must be documented and the previous secret held in approved secure custody; alternatively, add key IDs and dual-key verification before production if no-downtime rotation is required. No production HMAC secret has been generated or provisioned, so this is a design gate, not a live outage.
+
+No production migration, role/grant change, secret provisioning, Render service/environment change, deployment, or manual legacy cutover occurred. PR #272 remains open and unmerged. The production database privilege issue and missing fresh backup remain blockers; no paid infrastructure is permitted until revenue can fund it.
