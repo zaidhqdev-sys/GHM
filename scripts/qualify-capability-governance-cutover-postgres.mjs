@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { Pool } from 'pg';
@@ -9,6 +9,8 @@ const gatewayUrl = process.env.GHM_ACTOR_GATEWAY_DATABASE_URL;
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 const databaseName = process.env.GHM_QUALIFICATION_DATABASE_NAME;
 const databaseHost = process.env.GHM_QUALIFICATION_DATABASE_HOST;
+const assertionSecret = process.env.GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET;
+if (!assertionSecret || Buffer.from(assertionSecret, 'base64').length !== 32) throw new Error('A 32-byte capability assertion test key is required');
 
 if (!runtimeUrl || !gatewayUrl || !migratorUrl || new Set([runtimeUrl, gatewayUrl, migratorUrl]).size !== 3) {
   throw new Error('Dedicated runtime, actor gateway and migrator connections are required');
@@ -24,6 +26,8 @@ const migratorPool = new Pool({ connectionString: migratorUrl, ssl });
 const marker = `ghm-capability-cutover-${randomUUID()}`;
 const capabilityIds = [];
 let adminId;
+const signAssertion = (accountId, operation) => { const issuedAt=Math.floor(Date.now()/1000),nonce=randomUUID(); const payload=`ghm-actor-gateway:v1|${accountId}|${operation}|${issuedAt}|${nonce}`; const signature=createHmac('sha256',Buffer.from(assertionSecret,'base64')).update(payload,'utf8').digest('hex'); return {issuedAt,nonce,signature}; };
+const gatewayCall = (accountId, operation, sql, args=[]) => { const a=signAssertion(accountId,operation); return gatewayPool.query(sql,[accountId,a.issuedAt,a.nonce,a.signature,...args]); };
 
 const expectDenied = async (work, label) => {
   try {
@@ -59,6 +63,8 @@ const cleanup = async () => {
 };
 
 try {
+  const provision = await migratorPool.connect();
+  try { await provision.query('BEGIN'); await provision.query('SET LOCAL ROLE ghm_schema_owner'); await provision.query("INSERT INTO ghm.actor_gateway_capability_assertion_secret(singleton,secret) VALUES(true,$1) ON CONFLICT(singleton) DO UPDATE SET secret=EXCLUDED.secret",[Buffer.from(assertionSecret,'base64')]); await provision.query('COMMIT'); } catch(e) { await provision.query('ROLLBACK').catch(()=>{}); throw e; } finally { provision.release(); }
   const setup = await migratorPool.connect();
   try {
     await setup.query('BEGIN');
@@ -106,14 +112,13 @@ try {
     'GATEWAY DIRECT LEGACY CAPABILITY RPC DENIAL',
   );
 
-  const gatewayList = await gatewayPool.query('SELECT * FROM ghm.gateway_list_capabilities($1)', [adminId]);
+  const gatewayList = await gatewayCall(adminId,'capability.list','SELECT * FROM ghm.gateway_list_capabilities($1,$2,$3,$4)');
   if (!Array.isArray(gatewayList.rows)) throw new Error('Gateway list wrapper failed after legacy RPC revocation');
   console.log('GATEWAY CAPABILITY LIST REMAINS AVAILABLE AFTER CUTOVER PASS');
 
-  const created = await gatewayPool.query(
-    'SELECT * FROM ghm.gateway_create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8)',
-    [adminId, `${marker} Gateway Draft`, `${marker}-gateway-draft`, null, null, 0, null, 1],
-  );
+  const created = await gatewayCall(adminId,'capability.create',
+    'SELECT * FROM ghm.gateway_create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
+    [`${marker} Gateway Draft`, `${marker}-gateway-draft`, null, null, 0, null, 1]);
   const capabilityId = created.rows[0]?.id;
   if (!capabilityId || created.rows[0]?.lifecycle_status !== 'draft') {
     throw new Error('Gateway draft creation failed after legacy RPC revocation');
@@ -150,19 +155,17 @@ try {
     'GATEWAY DIRECT LEGACY CAPABILITY TRANSITION DENIAL',
   );
 
-  const gatewayUpdated = await gatewayPool.query(
-    'SELECT * FROM ghm.gateway_update_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-    [adminId, capabilityId, `${marker} Gateway Draft Updated`, `${marker}-gateway-draft`, null, null, 0, null, 1],
-  );
+  const gatewayUpdated = await gatewayCall(adminId,'capability.update',
+    'SELECT * FROM ghm.gateway_update_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)',
+    [capabilityId, `${marker} Gateway Draft Updated`, `${marker}-gateway-draft`, null, null, 0, null, 1]);
   if (gatewayUpdated.rows[0]?.name !== `${marker} Gateway Draft Updated`) {
     throw new Error('Gateway update wrapper failed after legacy RPC revocation');
   }
   console.log('GATEWAY CAPABILITY UPDATE REMAINS AVAILABLE AFTER CUTOVER PASS');
 
-  const gatewayTransition = await gatewayPool.query(
-    'SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5)',
-    [adminId, capabilityId, 'active', null, 1],
-  );
+  const gatewayTransition = await gatewayCall(adminId,'capability.transition',
+    'SELECT * FROM ghm.gateway_transition_capability_lifecycle($1,$2,$3,$4,$5,$6,$7,$8)',
+    [capabilityId, 'active', null, 1]);
   if (gatewayTransition.rows[0]?.lifecycle_status !== 'active') {
     throw new Error('Gateway transition wrapper failed after legacy RPC revocation');
   }
