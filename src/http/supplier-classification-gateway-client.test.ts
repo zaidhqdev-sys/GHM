@@ -7,6 +7,7 @@ test('supplier classification client forwards the bearer token and only classifi
   let auth = '';
   let body = '';
   const client = new HttpSupplierClassificationGatewayClient('https://gateway.example.test', 1000, async (input, init) => {
+      assert.equal(init?.redirect, 'error');
     url = String(input);
     auth = new Headers(init?.headers).get('authorization') ?? '';
     body = String(init?.body ?? '');
