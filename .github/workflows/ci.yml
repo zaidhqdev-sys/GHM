@@ -93,8 +93,11 @@ jobs:
       - name: Check capability governance qualification script syntax
         run: node --check scripts/qualify-capability-catalogue-governance.mjs
 
-      - name: Check signed capability actor assertion migration syntax
+      - name: Check signed capability actor assertion qualification syntax
         run: node --check scripts/qualify-capability-catalogue-governance.mjs
+
+      - name: Check signed gateway principal qualification syntax
+        run: node --check scripts/qualify-actor-gateway-principal.mjs
 
       - name: Check capability governance cutover qualification script syntax
         run: node --check scripts/qualify-capability-governance-cutover-postgres.mjs
