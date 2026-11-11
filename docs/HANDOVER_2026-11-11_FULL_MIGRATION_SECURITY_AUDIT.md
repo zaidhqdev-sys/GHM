@@ -201,3 +201,47 @@ The gateway CRUD calls, actor provenance and cross-account get/delete isolation 
 **Status update:** the Saved Business database actor-provenance issue is IMPLEMENTED / QUALIFIED on code head `55665af4`. The earlier qualification harness failure was fixed and must remain recorded as a harness issue, not hidden. The manual cutover was exercised only on disposable CI PostgreSQL; production table/function/sequence permissions remain unchanged. Production rollout still requires Render role-model resolution, a fresh independently verified production backup, and explicit approval. Do not apply the manual cutover to production.
 
 The latest PR branch documentation now includes the corrected qualification status. PR #272 remains open and unmerged; the qualification run proves the code head, while later documentation-only commits are not themselves code qualification claims.
+
+
+## Follow-on database actor-provenance audit — Business Hours, Trust Score, Campaign, Business Logo (2026-11-11)
+
+The next source review identified four existing SECURITY DEFINER mutation paths that accept caller-supplied account IDs and are directly executable by `ghm_runtime`:
+
+| Resource | Function | Actor parameter | Runtime grant | Finding |
+|---|---|---|---|---|
+| Business Hours | `ghm.replace_business_hours(bigint,bigint,jsonb)` | `p_account_id` | EXECUTE granted to `ghm_runtime` | Membership check trusts supplied actor; direct caller can assert an owner/admin account ID |
+| Trust Score | `ghm.calculate_business_trust_score(bigint,bigint)` | `p_account_id` | EXECUTE granted to `ghm_runtime` | Membership check trusts supplied actor; direct caller can assert an owner/admin account ID |
+| Campaign | `ghm.create_campaign(bigint,bigint,text)` | `p_account_id` | EXECUTE granted to `ghm_runtime` | Business membership check trusts supplied actor |
+| Campaign | `ghm.update_campaign(bigint,bigint,text,text)` | `p_account_id` | EXECUTE granted to `ghm_runtime` | Business membership check trusts supplied actor |
+| Business Logo | `ghm.set_business_logo_object(bigint,bigint,bigint)` | `p_account_id` | EXECUTE granted to `ghm_runtime` | Membership check trusts supplied actor; can bind another business's eligible logo object only if target/tenant checks also pass, but actor provenance is forgeable |
+
+The TypeScript repositories currently pass `context.userId` for these functions. That is application-level provenance, not a database-enforced actor binding: a direct caller holding the runtime DB credential can supply another account ID.
+
+A second, distinct read-boundary finding was confirmed from the migration grants:
+
+- `ghm.business_hours`: runtime has direct table SELECT. The application applies public-business visibility and tenant membership filters, but the table grant itself is not row-scoped.
+- `ghm.trust_score`: runtime has direct table SELECT. The public repository filters to active, verified, approved businesses, but direct table SELECT bypasses that projection.
+- `ghm.campaign`: runtime has direct table SELECT. Campaign is not a public-read resource; the application repository enforces membership for get/list, but direct SELECT bypasses those predicates.
+
+Source evidence reviewed at PR head `defb828e86f0ee5cbb806222410bb2fb1400fcef`:
+- `database/migrations/20260916223000_create_business_hours.sql`
+- `database/migrations/20260916240000_create_trust_score.sql`
+- `database/migrations/20260916250000_extend_business_profile_trust_inputs.sql`
+- `database/migrations/20260918180000_create_campaign.sql`
+- `database/migrations/20260918180100_fix_campaign_function_column_ambiguity.sql`
+- `database/migrations/20261106090000_business_logo_storage_binding.sql`
+- `src/resources/business-hours/repository.ts`
+- `src/resources/trust-score/repository.ts`
+- `src/resources/campaign/repository.ts`
+- `src/http/campaign-router.ts`
+- `src/http/trust-score-router.ts`
+- `scripts/qualify-business-hours-runtime.mjs`
+- `scripts/qualify-trust-score-runtime.mjs`
+- `scripts/qualify-campaign-runtime.mjs`
+
+Important distinctions:
+- Existing Business Hours / Trust Score / Campaign runtime qualification proves application-path behavior and current grants, but does not prove forged actor IDs are rejected at the database boundary.
+- The Campaign operation contract still contains stale historical wording that says no HTTP routes, while the current source has `src/http/campaign-router.ts` and the contract itself records a later separately authorized HTTP implementation. This must be reconciled in the docs audit; do not treat the old sentence as current policy.
+- The Business Logo storage contract describes an incomplete lifecycle; the presence of `set_business_logo_object` does not mean the complete logo HTTP/storage lifecycle is qualified.
+
+**Status:** all findings OPEN / NEED DATABASE-BOUNDARY REMEDIATION OR A DOCUMENTED, TESTED ALTERNATIVE. No code or production privileges were changed in this audit batch. Next implementation should be split into bounded resource batches: first remove direct actor-ID trust for one mutation family and prove a signed gateway actor; separately revoke broad direct table reads only after matching application reads are routed through a suitable gateway projection. Preserve intended public projections and existing product behavior. No production cutover, no merge, no production mutation.
