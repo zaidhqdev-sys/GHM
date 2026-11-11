@@ -26,8 +26,15 @@ const migratorPool = new Pool({ connectionString: migratorUrl, ssl });
 const marker = `ghm-capability-cutover-${randomUUID()}`;
 const capabilityIds = [];
 let adminId;
-const signAssertion = (accountId, operation) => { const issuedAt=Math.floor(Date.now()/1000),nonce=randomUUID(); const payload=`ghm-actor-gateway:v1|${accountId}|${operation}|${issuedAt}|${nonce}`; const signature=createHmac('sha256',Buffer.from(assertionSecret,'base64')).update(payload,'utf8').digest('hex'); return {issuedAt,nonce,signature}; };
-const gatewayCall = (accountId, operation, sql, args=[]) => { const a=signAssertion(accountId,operation); return gatewayPool.query(sql,[accountId,a.issuedAt,a.nonce,a.signature,...args]); };
+const signAssertion = (accountId, operation, context = {}) => { const issuedAt=Math.floor(Date.now()/1000),nonce=randomUUID(),contextJson=JSON.stringify(context),contextHex=Buffer.from(contextJson,'utf8').toString('hex'); const payload=`ghm-actor-gateway:v2|${accountId}|${operation}|${issuedAt}|${nonce}|${contextHex}`; const signature=createHmac('sha256',Buffer.from(assertionSecret,'base64')).update(payload,'utf8').digest('hex'); return {issuedAt,nonce,context:contextJson,signature}; };
+const assertionContext=(operation,args)=>{
+ if(operation==='capability.list')return{};
+ if(operation==='capability.create')return{name:args[0],slug:args[1],description:args[2],parentId:args[3],sortOrder:args[4],sourceReference:args[5],version:args[6]};
+ if(operation==='capability.update')return{capabilityId:args[0],name:args[1],slug:args[2],description:args[3],parentId:args[4],sortOrder:args[5],sourceReference:args[6],version:args[7]};
+ if(operation==='capability.transition')return{capabilityId:args[0],targetStatus:args[1],replacedByCapabilityId:args[2],version:args[3]};
+ throw new Error(`Unsupported capability assertion operation: ${operation}`);
+};
+const gatewayCall = (accountId, operation, sql, args=[]) => { const a=signAssertion(accountId,operation,assertionContext(operation,args)); const shiftedSql=sql.replace(/\$(\d+)/g,(_m,n)=>'$'+(Number(n)>=4?Number(n)+1:Number(n))).replace(/\(\$1,\$2,\$3,\$5/,()=> '($1,$2,$3,$4,$5'); return gatewayPool.query(shiftedSql,[accountId,a.issuedAt,a.nonce,a.context,a.signature,...args]); };
 
 const expectDenied = async (work, label) => {
   try {
@@ -176,7 +183,7 @@ try {
        has_function_privilege(current_user, 'ghm.create_capability_draft(bigint,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS runtime_can_create,
        has_function_privilege(current_user, 'ghm.update_capability_draft(bigint,uuid,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS runtime_can_update,
        has_function_privilege(current_user, 'ghm.transition_capability_lifecycle(bigint,uuid,text,uuid,integer)', 'EXECUTE') AS runtime_can_transition,
-       has_function_privilege(current_user, 'ghm.gateway_create_capability_draft(bigint,bigint,uuid,text,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS runtime_can_gateway_create`,
+       has_function_privilege(current_user, 'ghm.gateway_create_capability_draft(bigint,bigint,uuid,text,text,text,text,text,uuid,integer,text,integer)', 'EXECUTE') AS runtime_can_gateway_create`,
   );
   const p = privileges.rows[0];
   if (p.runtime_can_create || p.runtime_can_update || p.runtime_can_transition || p.runtime_can_gateway_create) {
