@@ -6,6 +6,7 @@ import { httpTestAuth, tokenFor as es256TokenFor } from './test-resource-auth';
 import { AuthContext } from '../auth/authorization';
 import type { SavedBusiness, SavedBusinessService } from '../resources/saved-business/contracts';
 import type { BusinessIdentityService } from '../resources/business-identity/contracts';
+import { HttpSavedBusinessGatewayClient } from './saved-business-gateway-client';
 
 const startServer = async (savedBusinessService: SavedBusinessService) => {
   const server = http.createServer(createApp({ resourceAuthMiddleware: httpTestAuth,
@@ -188,4 +189,44 @@ test('saved business delete route rejects invalid ids', async () => {
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
+});
+
+
+test('saved business gateway client forwards the original bearer token and preserves operation contracts', async () => {
+  const calls: Array<{ url: string; method: string; authorization: string; body: string }> = [];
+  const client = new HttpSavedBusinessGatewayClient('https://gateway.example.test', 1000, async (input, init) => {
+    calls.push({
+      url: String(input),
+      method: String(init?.method),
+      authorization: new Headers(init?.headers).get('authorization') ?? '',
+      body: String(init?.body ?? ''),
+    });
+    const url = String(input);
+    if (url.endsWith('/v1/saved-businesses')) {
+      if (init?.method === 'POST') {
+        return new Response(JSON.stringify({ savedBusiness: { id: 1, accountId: 42, businessId: 77 } }), {
+          status: 201, headers: { 'content-type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({ savedBusinesses: [] }), {
+        status: 200, headers: { 'content-type': 'application/json' },
+      });
+    }
+    if (url.endsWith('/v1/saved-businesses/1') && init?.method === 'DELETE') {
+      return new Response(null, { status: 204 });
+    }
+    return new Response(JSON.stringify({ savedBusiness: { id: 1, accountId: 42, businessId: 77 } }), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    });
+  });
+
+  await client.list('verified-original-token');
+  await client.get('verified-original-token', 1);
+  await client.create('verified-original-token', 77);
+  await client.delete('verified-original-token', 1);
+
+  assert.deepEqual(calls.map(call => call.method), ['GET', 'GET', 'POST', 'DELETE']);
+  assert.ok(calls.every(call => call.authorization === 'Bearer verified-original-token'));
+  assert.deepEqual(JSON.parse(calls[2].body), { businessId: 77 });
+  assert.ok(calls.every(call => call.url.startsWith('https://gateway.example.test/')));
 });
