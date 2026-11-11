@@ -706,3 +706,11 @@ A bounded migration now revokes PUBLIC and runtime EXECUTE while preserving the 
 
 Detailed caller evidence, exact migration/script paths, commit SHAs and next actions are in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`. The 125/7 count is the PR branch inventory, not a claim that all effective ACLs or all repository documentation are fully reconciled.
 
+
+
+## 2026-11-11 — Correction: migration provisioning qualification is now part of npm test
+
+The earlier checkpoint's claim that CI already invoked the migration provisioning DB qualifier was incorrect. The command existed in `package.json` but was not called by `.github/workflows/ci.yml`. This has now been corrected by appending a syntax check and the DB qualifier to the existing `npm test` command, which CI already runs after applying migrations. The qualifier accepts the workflow's `GHM_QUALIFICATION_DATABASE_URL` as its runtime URL and skips only when both DB URLs are absent locally. Cleanup uses separate parameterized statements.
+
+Latest code/test head: `942203c53c94e81dabdef76895ac2220d48dbb25`. Exact-head workflow run #43115856824 was queued at the checkpoint; no pass is claimed. Earlier successful branch runs predate the qualification wiring. Full correction and exact commits are in the migration-security handover. No production changes.
+
