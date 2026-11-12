@@ -1294,3 +1294,47 @@ No code, grants, production credentials, deployments, data or production service
 ### CI / documentation state
 
 At the beginning of this follow-up, PR #272 was open and unmerged at `6c25c96fd477f36ddb3b3b03827cf6114f4a1c1a`; exact-head runs #3464 and #3465 both completed successfully (`quality` and `web-quality`). The branch is reported by GitHub as 648 commits ahead and 2 behind `main`; reconcile the two newer main commits and inspect the merge base before any merge decision. This follow-up documentation commit will advance the branch, so recheck the exact head and CI after the commit.
+
+
+## Follow-up — broadened auth lifecycle EXECUTE inventory (2026-11-12)
+
+A second pass against the ordered auth migrations shows the three account-ID functions above are not the whole issuer boundary. The original runtime grants also include the following auth lifecycle/credential operations. This is a grant-history inventory; effective final privileges still require ordered migration and live catalog reconciliation.
+
+### Auth functions originally granted to `ghm_runtime`
+
+- Account/credential creation and lookup: `auth_create_account`, `auth_lookup_password_by_normalized_email`.
+- Credential mutation: `auth_set_password`.
+- Session creation and validation: `auth_create_session_with_refresh`, `auth_validate_session`.
+- Refresh/session lifecycle: `auth_rotate_refresh`, `auth_revoke_by_refresh_hash`.
+- Recovery: `auth_issue_recovery`, `auth_redeem_recovery`, `auth_redeem_recovery_with_count` (later token-bound wrapper).
+- QuoteFlow migration reset: `auth_lookup_quoteflow_migration_reset_enrollment`, `auth_complete_quoteflow_migration_reset`.
+- External identity: `auth_lookup_external_identity`, `auth_link_external_identity`, `auth_link_business_external_mapping`, `auth_lookup_business_external_mapping`.
+- Historical account/session administration: `auth_revoke_session`, `auth_revoke_all_sessions_for_account`, `auth_change_password`, `auth_disable_account`; later migration `20261111220000_revoke_unused_auth_runtime_entry_points.sql` revokes the first, third and fourth, while the token-bound recovery follow-up revokes runtime access to the account-wide revoke wrapper. Verify the final catalog for every overload.
+
+Later migrations already narrow some of this surface: `20261111240000` revokes runtime QuoteFlow migration provisioning, `20261111250000` revokes external identity linking, and `20261111260000` revokes external identity bootstrap. Preserve these completed cuts; do not re-open them.
+
+### Required issuer-only scope is broader than three writes
+
+The issuer boundary must cover the password-hash lookup itself (ordinary runtime must not retrieve password hashes), registration/account creation, password rehash/change, session creation, refresh rotation, logout/revocation, recovery issuance/redemption/reset, and QuoteFlow migration reset. The exact minimal allow-list must be established from all production application call sites and current product contracts. `auth_validate_session` appears in the persistence/test surface; confirm whether it has any active non-test caller before deciding whether it belongs in the issuer allow-list or should be removed from runtime.
+
+External identity mapping and business mapping need separate call-path decisions: lookup may be needed by Connect identity resolution, while link/bootstrap are privileged lifecycle operations and later revocations already exist. Do not sweep them into an auth migration without tracing their current consumers.
+
+### Additional reset-flow review item
+
+The HTTP password-reset contract currently accepts both a recovery token and an email value. The persistence path redeems the token to obtain the account ID, then calls the general password setter with the submitted email fields. Since that setter updates the stored login email, qualify whether reset is intentionally allowed to change the login email or whether the reset must retain the account's existing email / bind the submitted email to the redeemed credential. Add a negative test for token/account/email mismatch before changing behavior. This is an unresolved contract question, not yet classified as an exploit.
+
+### Corrected next implementation order
+
+1. Complete the exhaustive function/caller/effective-ACL matrix, including every overload, PUBLIC/default grants, and all later migration/cutover revokes.
+2. Define the isolated issuer's minimal DB principal and typed operation surface. No ordinary Resource API process may receive issuer DB credentials, refresh pepper, or ES256 private key.
+3. Move password-hash lookup, account registration and auth lifecycle calls behind the issuer boundary; ensure public requests never choose account IDs for session/recovery operations.
+4. Prefer token/credential-bound database entry points over new arbitrary account-ID RPCs (e.g. recovery token-bound reset; refresh-token-bound logout; one-time credential-derived login/session operation). Any challenge/proof mechanism must be threat-modelled for replay, race, transaction binding and ordinary-runtime forgery; do not implement caller-writable GUCs or a generic SQL proxy.
+5. Preserve QuoteFlow migration reset as a distinct, token-bound flow and preserve Connect external identity lookup/linking semantics.
+6. Add real-login disposable-PostgreSQL tests proving `ghm_runtime` cannot read password hashes or execute issuer-only operations, while the issuer can complete registration/login/rehash/refresh/logout/recovery/QuoteFlow reset and disabled-account denial.
+
+### Updated CI status after documentation commits
+
+- Security handover update committed: `2cd3f791ec850d60031047fd40d62d9ddbdfd3ec`.
+- Current-state update committed: `a7dbf3cebf7b7cbd65f60615c11864c03638cdd1`.
+- Exact-head runs #3468 and #3469 were triggered for `a7dbf3c`; both were still in progress at the time of this note. Do not describe the documentation head as CI-passed until both finish successfully.
+- No production migration, role/grant change, secret provisioning, deployment or data mutation was performed.
