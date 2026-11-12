@@ -812,3 +812,18 @@ A migration-by-migration review corrected the initial runtime grant summary. `au
 Retain runtime-only `auth_lookup_external_identity` for Connect's lookup-only adapter unless a replacement contract is qualified. Preserve the already-revoked operator/admin functions. Detailed corrected matrix and migration provenance are in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
 
 CI run #3485 targets predecessor handover head `b9a35a5`: web-quality passed; quality was still in progress at the last check (Build step running). The latest matrix documentation commit will trigger a new exact-head run. No database grants have been changed.
+
+
+## Auth issuer topology and route availability correction (2026-11-12)
+
+ADR-001's default is **two distinct internal services**, not merely separate processes in one deployment. A process-only alternative requires demonstrable equivalent process, credential, network and deployment isolation plus architecture approval. No service provisioning is authorized.
+
+Current route composition is now confirmed precisely:
+- Resource API constructs `PostgresAuthPersistence` by default, immediately loading `GHM_AUTH_TOKEN_PEPPER`.
+- Register/login/refresh/logout lazily load the ES256 private signing key through the default auth-service factory.
+- Password reset is enabled by default.
+- Password-recovery request and both QuoteFlow migration-reset routes return 503 unless their explicit services are injected; the default server injects none, and no recovery delivery adapter is configured in the default composition.
+
+The issuer extraction must preserve current route availability and response behavior; it must not silently enable recovery or QuoteFlow routes. It must also move native and browser-cookie auth endpoints, rate limits, cookie policy, anti-enumeration and signing/token custody. Details and source evidence are in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+No code, production config, secrets, grants, routes or services were changed.
