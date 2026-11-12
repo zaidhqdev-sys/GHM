@@ -4,6 +4,7 @@
 - **Status:** APPROVED FOR ISOLATED DESIGN AND QUALIFICATION
 - **Decision owner:** GHM owner (approval recorded in project conversation on 2026-11-10)
 - **Implementation status:** Not implemented; no production provisioning or credential changes authorized
+- **2026-11-12 implementation note:** Actor Gateway and Authentication Issuer implementations now exist on unmerged construction branches. Exact Actor Gateway ACL startup enforcement is under qualification; this does not change the no-production-provisioning/credential/grant authorization.
 - **Supersedes:** The undecided topology section in PR #251's proposal
 
 ## Context
