@@ -16,7 +16,10 @@ test('issuer verifies its exact database ACL boundary before opening the HTTP li
   assert.match(server, /const currentPrivileges = await readAuthIssuerDatabasePrivileges\(pool\)/);
   assert.match(server, /assertAuthIssuerDatabaseIdentity\(databaseIdentity\)/, 'exact database identity must be enforced before the HTTP listener opens');
   assert.match(server, /m\.member = r\.oid/);
-  assert.match(server, /m\.roleid = r\.oid AND member_role\.rolname <> 'ghm_db_user'/);
+  assert.match(server, /member_role\.rolname <> 'ghm_db_user'/);
+  assert.match(server, /m\.admin_option IS DISTINCT FROM true/);
+  assert.match(server, /m\.inherit_option IS DISTINCT FROM false/);
+  assert.match(server, /m\.set_option IS DISTINCT FROM false/);
   assert.match(server, /assertAuthIssuerDatabasePrivileges\(currentPrivileges\)/);
   assert.match(privilegeSource, /has_database_privilege\(session_user, current_database\(\), 'CONNECT'\)/);
   assert.match(privilegeSource, /has_database_privilege\(session_user, current_database\(\), 'CREATE'\)/);
@@ -36,8 +39,11 @@ test('issuer verifies its exact database ACL boundary before opening the HTTP li
 
 test('issuer startup and manual cutover allow only the Render administrator as a role member', () => {
   assert.match(server, /member_role\.rolname <> 'ghm_db_user'/);
-  assert.match(privilegeCutover, /member_role\.rolname <> 'ghm_db_user'/);
   assert.match(privilegeCutover, /m\.member = issuer_role\.oid/);
+  assert.match(privilegeCutover, /member_role\.rolname <> 'ghm_db_user'/);
+  assert.match(privilegeCutover, /m\.admin_option IS DISTINCT FROM true/);
+  assert.match(privilegeCutover, /m\.inherit_option IS DISTINCT FROM false/);
+  assert.match(privilegeCutover, /m\.set_option IS DISTINCT FROM false/);
   assert.match(privilegeCutover, /m\.roleid = issuer_role\.oid/);
 });
 
