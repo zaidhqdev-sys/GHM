@@ -7,12 +7,14 @@ import {
 
 const payload = {
   outcome: 'provisioned',
-  business: { id: 42, name: 'Acme Construction', slug: 'acme-construction' },
+  business: { id: 42, name: 'Acme Construction', slug: 'acme-construction', createdAt: '2026-11-12T00:00:00.000Z', updatedAt: '2026-11-12T00:00:00.000Z' },
   mapping: {
     id: 9,
     provider: 'supabase',
     externalBusinessId: '11111111-1111-4111-8111-111111111111',
     businessId: 42,
+    createdAt: '2026-11-12T00:00:00.000Z',
+    updatedAt: '2026-11-12T00:00:00.000Z',
   },
 };
 
