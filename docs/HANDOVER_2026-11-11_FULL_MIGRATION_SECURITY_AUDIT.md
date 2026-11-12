@@ -2757,3 +2757,8 @@ After those 27 planned revocations, the 16-function runtime residual in this pre
 - Storage: `storage_create_pending`, `storage_get_object`, `storage_get_public_business_logo`, `storage_mark_available`, `storage_mark_deletion_pending`, `storage_mark_deleted`.
 
 The public lookup functions enforce approved/active/verified publication predicates; the directory review presentation checks active owner/administrator membership. The five non-public storage functions remain the open database-boundary finding above. The exact signatures and ACL grantors/grantees are preserved in the retrieved inventory artifact; no role is auto-approved solely by this purpose-level grouping.
+
+
+### Branch and PR relationship verified
+
+The active security-inventory work is on `construction/auth-issuer-isolation-20261112`; this branch currently has no associated open pull request. PR #272 is a separate integration branch, `integration/capability-gateway-qualification-20261110`, targeting `main`; its observed head is `0eda4ea8e232c98264fe83c7aecc3c85f71a5596`, it remains open/unmerged, and GitHub reports it not mergeable. Do not attribute this construction branch's inventory commits or CI results to PR #272, and do not merge either branch as part of this audit. The current construction branch remains the working evidence branch until the complete audit and documentation reconciliation are finished.
