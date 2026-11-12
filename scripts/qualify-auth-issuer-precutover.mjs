@@ -82,6 +82,10 @@ try {
            AND acl.privilege_type = 'EXECUTE'
            AND acl.grantee <> p.proowner
            AND acl.grantee <> 'ghm_runtime'::regrole
+           AND NOT (
+             p.oid::regprocedure::text = 'ghm.auth_lookup_business_external_mapping(text,text)'
+             AND acl.grantee = 'ghm_migrator'::regrole
+           )
          ORDER BY 1
       ) AS unexpected_auth_function_grantees
   `);
