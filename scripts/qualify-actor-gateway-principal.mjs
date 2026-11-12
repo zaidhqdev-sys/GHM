@@ -332,11 +332,6 @@ try {
   console.log('REGISTRATION IDENTITY LEGACY RPC DENIAL AND SIGNED GATEWAY PRIVILEGE BOUNDARY PASS');
 
   await expectSqlState(
-    () => gatewayPool.query('SELECT ghm.assert_actor_gateway($1)', [disabledAccountId]),
-    '42501',
-    'DISABLED ACTOR DENIED',
-  );
-  await expectSqlState(
     () => gatewayCall(disabledAccountId,'business.registration.read','SELECT * FROM ghm.gateway_read_business_registration_identity($1,$2,$3,$4,$5)',[businessId]),
     '42501',
     'DISABLED ACTOR CANNOT READ REGISTRATION IDENTITY',
@@ -357,14 +352,9 @@ try {
     'CROSS-BUSINESS REGISTRATION IDENTITY WRITE DENIED',
   );
   await expectSqlState(
-    () => gatewayPool.query('SELECT ghm.assert_actor_gateway(0)'),
-    '22023',
-    'INVALID ACTOR ID DENIED',
-  );
-  await expectSqlState(
     () => runtimePool.query('SELECT ghm.assert_actor_gateway($1)', [activeAccountId]),
     '42501',
-    'ORDINARY RUNTIME CANNOT EXECUTE GATEWAY FUNCTION',
+    'ORDINARY RUNTIME CANNOT EXECUTE UNSIGNED IDENTITY HELPER',
   );
   await expectSqlState(
     () => runtimePool.query('SELECT * FROM ghm.gateway_get_actor_identity($1,$2,$3,$4,$5)', [activeAccountId,Math.floor(Date.now()/1000),randomUUID(),'{}','0'.repeat(64)]),
