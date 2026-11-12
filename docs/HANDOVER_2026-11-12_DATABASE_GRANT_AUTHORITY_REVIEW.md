@@ -549,3 +549,98 @@ The failure log showed the qualification harness expecting the older 43/40 runti
 6. Keep the Dashboard administrator, current production credentials, roles, grants, service configuration, migrations and deployment unchanged until all gates are complete.
 
 **No production role, membership, grant, credential, environment variable, migration, service, deployment, traffic or data was changed in this continuation. PayFast remains paused.**
+
+
+---
+
+## 2026-11-12 continuation — production database/object ACL and SECURITY DEFINER snapshot
+
+**Evidence source:** fresh read-only catalog queries against Render `ghm-db` / `ghm_db` / PostgreSQL 18.  
+**Mutation:** none. All queries were read-only.  
+**Important:** this is a snapshot of the live production catalog, which currently reflects an older schema/security state than the unmerged `construction/auth-issuer-isolation-20261112` branch. Do not assume construction migrations or cutovers are present in production.
+
+### Database and schema ownership / ACL
+
+- Database `ghm_db` is owned by `ghm_schema_owner`.
+- Database ACL observed: PUBLIC has TEMP and CONNECT; `ghm_schema_owner` has CREATE/TEMP/CONNECT; `ghm_runtime` has CONNECT only.
+- Schema `ghm` is owned by `ghm_schema_owner`; `ghm_runtime` and `ghm_payment_provider` have USAGE only; no CREATE grant to either was observed.
+- Schema `public` is owned by `ghm_db_user`; PUBLIC has USAGE only; `ghm_db_user` has USAGE/CREATE.
+- No additional non-system application schema was returned by the schema ACL query.
+
+### Object ownership
+
+The production relation inventory (indexes included in their own relkind count) showed:
+
+| Schema | Object kind | Owner | Count |
+|---|---|---|---:|
+| `ghm` | sequences | `ghm_schema_owner` | 48 |
+| `ghm` | indexes | `ghm_schema_owner` | 214 |
+| `ghm` | tables | `ghm_schema_owner` | 59 |
+| `ghm` | views | `ghm_schema_owner` | 1 |
+| `public` | sequences | `ghm_db_user` | 5 |
+| `public` | indexes | `ghm_db_user` | 10 |
+| `public` | tables | `ghm_db_user` | 5 |
+
+The 5 legacy public tables and their ownership remain a separate legacy-object/data-disposition gate; this snapshot does not authorize moving or dropping them.
+
+### Production Resource API direct object privileges
+
+The current production `ghm_runtime` role has direct ACL entries on 39 `ghm` relations and 49 sequences. The relation grants include:
+
+- Direct SELECT on authentication-sensitive tables including `account_identity`, `account_external_identity`, and `authentication_session`.
+- Direct INSERT on `business` and `business_membership`.
+- Direct INSERT/UPDATE on `opportunity`.
+- Direct DELETE on `opportunity_capability_requirement`.
+- SELECT on the other business, commercial, campaign, customer, enquiry, notification, project, quote, review, saved-business, support and trust relations listed in the live query.
+- Sequence grants are predominantly USAGE; selected sequences also expose SELECT.
+
+This is a production snapshot, not a claim that these grants match the current construction branch. In particular, the current construction branch's issuer/storage cutover plans must not be assumed applied to this catalog. The exact per-object ACL list was captured during the read-only query; re-query before any future cutover and compare it with the latest source/allow-list.
+
+### Production SECURITY DEFINER inventory and direct EXECUTE counts
+
+The live production `ghm` schema returned 78 routines, all owned by `ghm_schema_owner`; 63 are SECURITY DEFINER.
+
+Effective callable SECURITY DEFINER counts by role at this snapshot:
+
+| Role | SECURITY DEFINER routines executable |
+|---|---:|
+| `ghm_runtime` | 46 |
+| `ghm_actor_gateway` | 0 |
+| `ghm_migrator` | 2 |
+| `ghm_payment_provider` | 2 |
+| `ghm_db_user` | 46 |
+
+The 46 runtime SECURITY DEFINER routines include legacy authentication lifecycle/identity link functions, direct Business registration identity functions, Campaign and directory-review functions, storage metadata functions, Business Capability/Hours/Trust/Logo operations and other operations. The live signatures/grantees were enumerated from `pg_proc` and `aclexplode`; do not substitute the disposable 41/38/27/24 allow-list or the construction branch's future gateway operation set for this production state.
+
+No PUBLIC EXECUTE grants were found on SECURITY DEFINER routines in `ghm`. The PUBLIC EXECUTE entries found in the schema belonged to ordinary non-SECURITY-DEFINER trigger/helper functions, not SECURITY DEFINER routines. This does not replace a full cross-schema whole-database inventory.
+
+### Production default privileges
+
+The only relevant default ACL row returned for `ghm_schema_owner`, `ghm_db_user` or `ghm_migrator` was:
+
+- owner `ghm_schema_owner`, schema `ghm`, object type sequence: USAGE to `ghm_runtime`.
+
+No function default ACL row for PUBLIC or runtime was returned in this query. Recheck all default ACLs and the effective privileges they produce as part of the final pre-cutover capture.
+
+### Material differences from construction branch
+
+The live production catalog is not yet at the construction branch's intended state:
+
+- Production has no `ghm_auth_issuer` role; the construction branch expects a dedicated `ghm_auth_issuer` login.
+- Production `ghm_actor_gateway` exists but currently has no SECURITY DEFINER EXECUTE grants (effective count 0); construction branch gateway expects a 30-operation allow-list in its disposable pre/post staged states.
+- Production `ghm_runtime` can execute 46 SECURITY DEFINER routines and has broad direct relation/sequence ACLs. Construction branch CI inventory is a separate disposable database and its current runtime allow-list states are 41/38/27/24; these counts are not production evidence.
+- Production still has direct runtime execution on legacy auth, registration, Campaign/review and storage functions that the construction branch plans to revoke manually or through separately staged cutovers.
+- Production Actor Gateway role is not a deployed gateway service. The current Render service inventory contains only `ghm-internal-runtime` as the production GHM web service.
+
+**Disposition:** production role/object/function ACL reconciliation remains OPEN. The live inventory is now more concrete, but every one of the 46 runtime SECURITY DEFINER grants and 39 relation/49 sequence grants still needs signature/object-level call-site and necessity reconciliation against the intended deployment state. Do not apply any construction cutover based on CI-only evidence.
+
+### Next read-only reconciliation work
+
+1. Export a complete per-signature production EXECUTE matrix for every application role, including ACL grantor, grant option and PUBLIC entries, and reconcile each entry with its current production caller.
+2. Trace the 46 runtime SECURITY DEFINER routines to current Resource API/legacy service call sites and distinguish required current production grants from target gateway/issuer cutovers.
+3. Reconcile all 39 relation and 49 sequence runtime grants against repository source, including the direct auth table SELECTs and direct Business/Opportunity DML.
+4. Inspect all table/sequence ownership, foreign keys, views, triggers, function owners, search_path settings, extensions, languages and default privileges across all non-system schemas.
+5. Preserve the five legacy `public` tables/rows until their existing disposition/recovery gate is satisfied.
+6. Obtain a fresh independently verified production backup before any privilege or schema cutover. The 4 November backup remains stale.
+
+**No production roles, memberships, grants, ownership, credentials, secrets, migrations, Render environment, services, deployment, traffic or data were changed.**
