@@ -40,7 +40,6 @@ export const RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS = [
   'ghm.get_public_trust_score(bigint)',
   'ghm.is_business_capability_publicly_evidence_eligible(bigint)',
   'ghm.list_public_trust_scores(text)',
-  'ghm.read_business_registration_identity(bigint, bigint)',
   'ghm.replace_business_capability_assertions(bigint, bigint, jsonb)',
   'ghm.replace_business_hours(bigint, bigint, jsonb)',
   'ghm.set_business_logo_object(bigint, bigint, bigint)',
@@ -53,7 +52,6 @@ export const RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS = [
   'ghm.transition_business_capability_evidence(bigint, text, bigint, text)',
   'ghm.transition_business_capability_verification(bigint, text, text, bigint, text)',
   'ghm.transition_capability_lifecycle(bigint, uuid, text, uuid, integer)',
-  'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
   'ghm.update_campaign(bigint, bigint, text, text)',
   'ghm.update_capability_draft(bigint, uuid, text, text, text, uuid, integer, text, integer)'
 ] as const;
@@ -155,7 +153,7 @@ export const assertRuntimeDatabaseFunctionPrivileges = (
   const postCampaignReview = [...(privileges.expected_post_campaign_review_functions ?? RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS)].sort();
   const postAuthIssuer = [...(privileges.expected_post_auth_issuer_functions ?? RUNTIME_POST_AUTH_ISSUER_FUNCTIONS)].sort();
   const postCampaignAndIssuer = [...(privileges.expected_post_campaign_review_and_auth_issuer_functions ?? RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS)].sort();
-  if (preCutover.length !== 43 || postCampaignReview.length !== 40 || postAuthIssuer.length !== 29 || postCampaignAndIssuer.length !== 26) {
+  if (preCutover.length !== 41 || postCampaignReview.length !== 38 || postAuthIssuer.length !== 27 || postCampaignAndIssuer.length !== 24) {
     throw new Error('Runtime database function allow-list signatures did not all resolve in this database');
   }
   const matches = (expected: string[]) => JSON.stringify(actual) === JSON.stringify(expected);
