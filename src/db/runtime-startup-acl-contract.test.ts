@@ -22,4 +22,6 @@ test('Resource API verifies exact function EXECUTE allow-list before listening',
   const listen = server.indexOf('server.listen(config.port');
   assert.ok(functionCheck >= 0 && listen > functionCheck, 'function EXECUTE allow-list must be checked before server.listen');
   assert.match(server, /readRuntimeDatabaseFunctionPrivileges\(pool\)/);
+  assert.match(server, /GHM_RUNTIME_FUNCTION_ALLOWLIST_ENFORCED === 'true'/);
+  assert.match(server, /production_acl_baseline_not_yet_independently_qualified/);
 });
