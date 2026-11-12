@@ -15,6 +15,7 @@ const leastPrivilege: AuthIssuerDatabasePrivileges = {
   expected_functions: ['ghm.auth_login(text)'],
   unsafe_function_defaults: false,
   unsafe_security_definer_functions: [],
+  unsafe_function_grantees: [],
   runtime_executable_auth_functions: [
     'ghm.auth_lookup_external_identity(text, text)',
     'ghm.auth_lookup_business_external_mapping(text, text)',
@@ -67,5 +68,16 @@ test('rejects SECURITY DEFINER functions with unexpected owners or unsafe search
       unsafe_security_definer_functions: ['ghm.auth_sensitive_operation()'],
     }),
     /unsafe_security_definer_functions/,
+  );
+});
+
+
+test('rejects issuer-only function grants to any non-owner principal other than the issuer', () => {
+  assert.throws(
+    () => assertAuthIssuerDatabasePrivileges({
+      ...leastPrivilege,
+      unsafe_function_grantees: ['ghm.auth_create_account(text)'],
+    }),
+    /unsafe_function_grantees/,
   );
 });
