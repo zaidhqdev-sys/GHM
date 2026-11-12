@@ -23,6 +23,11 @@ const securityDefinerMigration = fs.readFileSync(path.resolve(
   process.cwd(),
   'database/migrations/20261112090000_pin_security_definer_search_path.sql',
 ), 'utf8');
+const preCutoverQualification = fs.readFileSync(path.resolve(
+  process.cwd(),
+  'scripts/qualify-auth-issuer-precutover.mjs',
+), 'utf8');
+const ciWorkflow = fs.readFileSync(path.resolve(process.cwd(), '.github/workflows/ci.yml'), 'utf8');
 
 test('future GHM functions created by the schema owner do not inherit PUBLIC EXECUTE', () => {
   assert.ok(migration.includes('ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner'));
@@ -76,4 +81,14 @@ test('issuer cutover role preflight uses a balanced named dollar-quote delimiter
   assert.ok(issuerCutover.includes('DO $issuer_role_guard$'));
   assert.ok(issuerCutover.includes('$issuer_role_guard$;'));
   assert.doesNotMatch(issuerCutover, /\\nDO \\$\\n/);
+});
+
+
+test('pre-cutover qualification locks the exact runtime grant state that rollback must restore', () => {
+  assert.ok(preCutoverQualification.includes('expectedRuntimeAuthFunctions'));
+  assert.ok(preCutoverQualification.includes('pre-issuer Resource API runtime must have exactly the documented 16-function authentication allow-list'));
+  assert.ok(preCutoverQualification.includes('unexpected_auth_function_grantees'));
+  const preCutoverStep = ciWorkflow.indexOf('Qualify exact pre-issuer Resource API authentication grants');
+  const cutoverStep = ciWorkflow.indexOf('Apply guarded auth issuer manual cutover in disposable PostgreSQL only');
+  assert.ok(preCutoverStep >= 0 && cutoverStep > preCutoverStep, 'pre-cutover grant snapshot must run before the manual SQL cutover');
 });
