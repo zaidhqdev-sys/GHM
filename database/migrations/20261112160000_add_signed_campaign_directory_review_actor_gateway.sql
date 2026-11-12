@@ -7,13 +7,13 @@ BEGIN
   SELECT pg_get_functiondef(
     'ghm.assert_actor_gateway_capability(bigint,text,bigint,uuid,text,text)'::regprocedure
   ) INTO v_definition;
-  IF position('''business.connect.provision''' || chr(10) IN v_definition) = 0 THEN
+  IF position('business.connect.provision' IN v_definition) = 0 THEN
     RAISE EXCEPTION 'Actor Gateway capability operation allow-list changed; reconcile migration manually';
   END IF;
   v_definition := replace(
     v_definition,
-    '''business.connect.provision''' || chr(10),
-    '''business.connect.provision'',''campaign.create'',''campaign.update'',''directory_review.presentation.read''' || chr(10)
+    '''business.connect.provision''',
+    '''business.connect.provision'',''campaign.create'',''campaign.update'',''directory_review.presentation.read'''
   );
   EXECUTE v_definition;
 END;
