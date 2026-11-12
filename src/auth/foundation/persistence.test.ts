@@ -75,7 +75,7 @@ test('auth foundation persistence (database)', async (t) => {
     const { decodeOpaqueTokenWire } = await import('./opaque-token');
     const { protectOpaqueToken } = await import('./token-hmac');
     const raw = decodeOpaqueTokenWire(recoveryTokenWire);
-    const tokenHash = protectOpaqueToken(process.env.GHM_AUTH_TOKEN_PEPPER!, 'recovery', raw);
+    const tokenHash = protectOpaqueToken(Buffer.from(process.env.GHM_AUTH_TOKEN_PEPPER!, 'utf8'), 'recovery', raw);
     const client = await migratorPool.connect();
     try {
       await client.query('BEGIN');
