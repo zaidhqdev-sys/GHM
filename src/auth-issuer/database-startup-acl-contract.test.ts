@@ -4,13 +4,13 @@ import path from 'node:path';
 import test from 'node:test';
 
 const server = fs.readFileSync(path.resolve(process.cwd(), 'src/auth-issuer/server.ts'), 'utf8');
-const verifier = fs.readFileSync(path.resolve(process.cwd(), 'src/auth-issuer/database-privileges.ts'), 'utf8');
+const privilegeSource = fs.readFileSync(path.resolve(process.cwd(), 'src/auth-issuer/database-privileges.ts'), 'utf8');
 
 test('issuer verifies its exact database ACL boundary before opening the HTTP listener', () => {
-  const verifier = server.indexOf('assertAuthIssuerDatabasePrivileges(databasePrivileges)');
+  const verifierCall = server.indexOf('assertAuthIssuerDatabasePrivileges(databasePrivileges)');
   const listen = server.indexOf('server.listen(port');
-  assert.ok(verifier >= 0 && listen > verifier, 'database ACL verification must precede server.listen');
-  assert.match(verifier, /has_schema_privilege\(session_user, 'ghm', 'CREATE'\)/);
+  assert.ok(verifierCall >= 0 && listen > verifierCall, 'database ACL verification must precede server.listen');
+  assert.match(privilegeSource, /has_schema_privilege\(session_user, 'ghm', 'CREATE'\)/);
   assert.match(verifier, /has_table_privilege\(session_user/);
   assert.match(verifier, /has_sequence_privilege\(session_user/);
   assert.match(verifier, /has_function_privilege\(session_user/);
