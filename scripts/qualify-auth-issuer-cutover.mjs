@@ -703,16 +703,24 @@ try {
     'rollback must restore exactly the documented pre-issuer Resource API auth function allow-list',
   );
 
-  const legacyAuthorityAfterRollback = await migratorPool.query(`
-    SELECT
-      has_function_privilege('ghm_runtime','ghm.auth_read_account_email(bigint)','EXECUTE') AS runtime_email_read,
-      has_function_privilege('ghm_runtime','ghm.auth_read_connect_identity_authority(bigint)','EXECUTE') AS runtime_connect_authority_read,
-      has_function_privilege('ghm_runtime','ghm.auth_revoke_all_sessions_for_account(bigint,text)','EXECUTE') AS runtime_revoke_all,
-      has_function_privilege('ghm_migrator','ghm.auth_read_account_email(bigint)','EXECUTE') AS migrator_email_read,
-      has_function_privilege('ghm_actor_gateway','ghm.auth_read_connect_identity_authority(bigint)','EXECUTE') AS gateway_authority_read,
-      has_function_privilege('ghm_auth_issuer','ghm.auth_revoke_all_sessions_for_account(bigint,text)','EXECUTE') AS issuer_revoke_all,
-      has_function_privilege('ghm_payment_provider','ghm.auth_read_account_email(bigint)','EXECUTE') AS payment_email_read
-  `);
+  const legacyAuthorityClient = await migratorPool.connect();
+  let legacyAuthorityAfterRollback;
+  try {
+    await legacyAuthorityClient.query('SET ROLE ghm_schema_owner');
+    legacyAuthorityAfterRollback = await legacyAuthorityClient.query(`
+      SELECT
+        has_function_privilege('ghm_runtime','ghm.auth_read_account_email(bigint)','EXECUTE') AS runtime_email_read,
+        has_function_privilege('ghm_runtime','ghm.auth_read_connect_identity_authority(bigint)','EXECUTE') AS runtime_connect_authority_read,
+        has_function_privilege('ghm_runtime','ghm.auth_revoke_all_sessions_for_account(bigint,text)','EXECUTE') AS runtime_revoke_all,
+        has_function_privilege('ghm_migrator','ghm.auth_read_account_email(bigint)','EXECUTE') AS migrator_email_read,
+        has_function_privilege('ghm_actor_gateway','ghm.auth_read_connect_identity_authority(bigint)','EXECUTE') AS gateway_authority_read,
+        has_function_privilege('ghm_auth_issuer','ghm.auth_revoke_all_sessions_for_account(bigint,text)','EXECUTE') AS issuer_revoke_all,
+        has_function_privilege('ghm_payment_provider','ghm.auth_read_account_email(bigint)','EXECUTE') AS payment_email_read
+    `);
+  } finally {
+    await legacyAuthorityClient.query('RESET ROLE');
+    legacyAuthorityClient.release();
+  }
   assert.deepEqual(
     legacyAuthorityAfterRollback.rows[0],
     {
