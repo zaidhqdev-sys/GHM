@@ -16,6 +16,7 @@ const leastPrivilege: ActorGatewayDatabasePrivileges = {
   public_executable_functions: [],
   runtime_executable_functions: [],
   unsafe_function_defaults: false,
+  unsafe_security_definer_functions: [],
 };
 
 test('accepts only the exact Actor Gateway database function and relation boundary', () => {
@@ -50,4 +51,15 @@ test('rejects schema CREATE, direct relation access and unsafe future function d
       /Actor Gateway database privileges failed least-privilege verification/,
     );
   }
+});
+
+
+test('rejects SECURITY DEFINER functions with unexpected owners or unsafe search_path', () => {
+  assert.throws(
+    () => assertActorGatewayDatabasePrivileges({
+      ...leastPrivilege,
+      unsafe_security_definer_functions: ['ghm.gateway_sensitive_operation()'],
+    }),
+    /unsafe_security_definer_functions/,
+  );
 });
