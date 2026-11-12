@@ -172,6 +172,42 @@ try {
     'SIGNED CAMPAIGN ACTOR-ID SUBSTITUTION DENIED',
   );
 
+  const updateActorSubstitution = createActorGatewayAssertion(key, ownerId, 'campaign.update', {
+    campaignId: created.id, title: 'Forged update', status: null,
+  });
+  await denied(
+    () => gateway.query(
+      'SELECT * FROM ghm.gateway_update_campaign($1,$2,$3,$4,$5,$6,$7,$8)',
+      [outsiderId, updateActorSubstitution.issuedAt, updateActorSubstitution.nonce, updateActorSubstitution.context,
+        updateActorSubstitution.signature, created.id, 'Forged update', null],
+    ),
+    'SIGNED CAMPAIGN UPDATE ACTOR-ID SUBSTITUTION DENIED',
+  );
+
+  const reviewActorSubstitution = createActorGatewayAssertion(key, ownerId, 'directory_review.presentation.read', {
+    businessId,
+  });
+  await denied(
+    () => gateway.query(
+      'SELECT * FROM ghm.gateway_get_business_directory_review_presentation($1,$2,$3,$4,$5,$6)',
+      [outsiderId, reviewActorSubstitution.issuedAt, reviewActorSubstitution.nonce,
+        reviewActorSubstitution.context, reviewActorSubstitution.signature, businessId],
+    ),
+    'SIGNED DIRECTORY-REVIEW ACTOR-ID SUBSTITUTION DENIED',
+  );
+
+  const wrongCampaignTarget = createActorGatewayAssertion(key, ownerId, 'campaign.create', {
+    businessId: otherBusinessId, title: 'Wrong target',
+  });
+  await denied(
+    () => gateway.query(
+      'SELECT * FROM ghm.gateway_create_campaign($1,$2,$3,$4,$5,$6,$7)',
+      [ownerId, wrongCampaignTarget.issuedAt, wrongCampaignTarget.nonce, wrongCampaignTarget.context,
+        wrongCampaignTarget.signature, businessId, 'Wrong target'],
+    ),
+    'SIGNED CAMPAIGN REQUEST-TARGET SUBSTITUTION DENIED',
+  );
+
   const replay = createActorGatewayAssertion(key, ownerId, 'campaign.create', {
     businessId, title: 'Replay campaign',
   });
