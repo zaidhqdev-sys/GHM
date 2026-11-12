@@ -297,7 +297,14 @@ try {
     process.cwd(),
     'database/cutovers/20261112020000_authentication_issuer_privilege_rollback.sql',
   ), 'utf8');
-  await migratorPool.query(rollbackSql);
+  const rollbackClient = await migratorPool.connect();
+  try {
+    await rollbackClient.query('SET ROLE ghm_schema_owner');
+    await rollbackClient.query(rollbackSql);
+  } finally {
+    await rollbackClient.query('RESET ROLE');
+    rollbackClient.release();
+  }
 
   const issuerAfterRollback = await issuerPool.query(`
     SELECT count(*)::integer AS count
