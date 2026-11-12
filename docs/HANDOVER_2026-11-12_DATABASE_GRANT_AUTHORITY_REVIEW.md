@@ -937,3 +937,49 @@ Commits:
 The corrected code/tests have been pushed. The new exact-head CI must complete before declaring the allow-list defect closed. The prior runs `43297432850`, `43301386903`, and `43301449333` remain failed historical evidence and must not be described as passes. Their specific failure modes have been recorded above; they do not indicate a production mutation or a storage dual-proof regression.
 
 **Production remains untouched.** No production grants, roles, credentials, secrets, migrations, deployments, services, buckets, objects or data were changed. No PR was merged.
+
+
+---
+
+## 2026-11-12 continuation — runtime allow-list query simplification and CI test-contract correction
+
+### Query/expected-stage separation
+
+The previous run `43302247383` for source commit `8fa604d40d35cbef84eca88e11770dd7400f24ad` had:
+- `web-quality`: passed.
+- `quality`: failed in the unit test `startup inventory measures only SECURITY DEFINER EXECUTE privileges`.
+- The assertion still expected the removed SQL CTE alias `expected_post_issuer`; the implementation had intentionally simplified the SQL query to return only actual executable functions and derive all eight expected stages locally.
+
+Corrected the test to assert the actual SQL contract (`executable_functions`, schema `ghm`, SECURITY DEFINER filter and effective EXECUTE check), not the removed expected-stage CTE. Commit: `62c147f90392e5ffd9dca9c51a315696c332358e`.
+
+The simplified implementation is retained:
+- Query actual effective SECURITY DEFINER EXECUTE functions only.
+- Derive all eight expected cutover combinations locally from the reviewed baseline.
+- Normalize PostgreSQL `regprocedure::text` argument formatting before comparison.
+- Emit per-stage missing/unexpected signatures on mismatch.
+
+### Campaign-stage investigation evidence
+
+The earlier Campaign qualification failure run `43301449333` showed an actual runtime state of 38 signatures. An offline exact set comparison against the reviewed source-derived stage confirmed it matched the Campaign + registration-identity cutover state exactly (38/38), with no missing or unexpected functions. This is the expected state because the preceding Actor Gateway qualification applies the registration identity manual cutover, then the Campaign qualification applies the Campaign/directory-review cutover. The corrected local-stage comparison implementation is intended to recognize that composition; the subsequent run `43302247383` stopped earlier at the stale test assertion before the Campaign qualification could be rerun. The next exact-head CI is the validation for this fix.
+
+### Production mapping lookup ACL reconciliation
+
+A fresh read-only production catalog query against Render `ghm_db` found:
+
+| Function | Production direct EXECUTE grantees |
+|---|---|
+| `ghm.auth_lookup_account_external_mapping(text,text)` | `ghm_migrator`, `ghm_schema_owner` |
+| `ghm.auth_lookup_business_external_mapping(text,text)` | `ghm_migrator`, `ghm_runtime`, `ghm_schema_owner` |
+
+Both functions are owned by `ghm_schema_owner`, SECURITY DEFINER, read-only lookup functions with pinned search paths.
+
+The current construction source contains migration `20261112170000_revoke_redundant_migrator_business_mapping_lookup.sql`, which removes the redundant `ghm_migrator` grant from `auth_lookup_business_external_mapping`. The source comment identifies the live Resource API caller in `src/http/commercial-internal-router.ts`; that route calls it as `ghm_runtime`. Production still shows the `ghm_migrator` grant, so the post-migration ACL state has not yet been established in production. No production migration was applied by this audit.
+
+The separate `auth_lookup_account_external_mapping` function's `ghm_migrator` grant remains unmapped. Its body reads `ghm.account_external_mapping` by provider and external account ID. The inspected current Auth Foundation persistence, Connect identity adapter, QuoteFlow migration account/business provisioning, legacy identity provenance and reconciliation scripts did not contain a caller. This is not yet an exhaustive whole-repository proof of no caller. Keep the grant until all source, scripts, migrations and operational migration procedures have been searched; do not revoke based only on the focused search.
+
+### Current validation state
+
+- Latest corrected test commit: `62c147f90392e5ffd9dca9c51a315696c332358e`.
+- Its exact-head CI result must be checked before any passing claim.
+- Earlier failed runs and their causes remain historical evidence: `43301449333` Campaign-stage allow-list mismatch under the first implementation; `43302247383` stale unit-test expectation after SQL simplification.
+- No production roles, grants, migrations, credentials, secrets, environment variables, services, deployments, buckets, objects or data were changed. No PR was merged.
