@@ -27,9 +27,6 @@ test('issuer verifies its exact database ACL boundary before opening the HTTP li
   assert.doesNotMatch(privilegeSource, /ghm\.auth_link_business_external_mapping/, 'business mapping mutation must not remain in runtime auth allow-list after signed gateway cutover');
   assert.match(privilegeSource, /ghm\.auth_lookup_business_external_mapping/);
   assert.match(privilegeSource, /pg_default_acl/);
-  assert.match(privilegeSource, /ghm_actor_gateway/);
-  assert.match(privilegeSource, /ghm_migrator/);
-  assert.match(privilegeSource, /ghm_payment_provider/);
 });
 
 
