@@ -128,6 +128,23 @@ const migrate = async (): Promise<void> => {
            WHERE membership.roleid = migrator.oid
              AND member_role.rolname <> 'ghm_db_user'
         ) AS migrator_untrusted_member_count,
+        (
+          SELECT count(*)::int
+            FROM pg_auth_members membership
+            JOIN pg_roles member_role ON member_role.oid = membership.member
+           WHERE membership.roleid = migrator.oid
+             AND member_role.rolname = 'ghm_db_user'
+        ) AS migrator_admin_member_count,
+        EXISTS (
+          SELECT 1
+            FROM pg_auth_members membership
+            JOIN pg_roles member_role ON member_role.oid = membership.member
+           WHERE membership.roleid = migrator.oid
+             AND member_role.rolname = 'ghm_db_user'
+             AND membership.admin_option = true
+             AND membership.inherit_option = false
+             AND membership.set_option = false
+        ) AS exact_migrator_admin_membership,
         EXISTS (
           SELECT 1
             FROM pg_auth_members membership
@@ -149,6 +166,23 @@ const migrate = async (): Promise<void> => {
            WHERE membership.roleid = schema_owner.oid
              AND member_role.rolname NOT IN ('ghm_db_user', 'ghm_migrator')
         ) AS schema_owner_untrusted_member_count,
+        (
+          SELECT count(*)::int
+            FROM pg_auth_members membership
+            JOIN pg_roles member_role ON member_role.oid = membership.member
+           WHERE membership.roleid = schema_owner.oid
+             AND member_role.rolname = 'ghm_db_user'
+        ) AS schema_owner_admin_member_count,
+        EXISTS (
+          SELECT 1
+            FROM pg_auth_members membership
+            JOIN pg_roles member_role ON member_role.oid = membership.member
+           WHERE membership.roleid = schema_owner.oid
+             AND member_role.rolname = 'ghm_db_user'
+             AND membership.admin_option = true
+             AND membership.inherit_option = false
+             AND membership.set_option = false
+        ) AS exact_schema_owner_admin_membership,
         has_database_privilege('ghm_schema_owner', current_database(), 'CREATE') AS schema_owner_database_create_privilege,
         EXISTS (
           SELECT 1
