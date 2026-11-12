@@ -17,6 +17,8 @@ export interface MigratorDatabaseIdentity {
   direct_membership_count: number;
   exact_schema_owner_membership: boolean;
   schema_owner_direct_membership_count: number;
+  schema_owner_database_create_privilege: boolean;
+  schema_owner_owns_ghm_schema: boolean;
   schema_owner_rolcanlogin: boolean;
   schema_owner_rolsuper: boolean;
   schema_owner_rolcreatedb: boolean;
@@ -44,6 +46,8 @@ export const assertMigratorDatabaseIdentity = (identity: MigratorDatabaseIdentit
     direct_membership_count: 1,
     exact_schema_owner_membership: true,
     schema_owner_direct_membership_count: 0,
+    schema_owner_database_create_privilege: true,
+    schema_owner_owns_ghm_schema: true,
     schema_owner_rolcanlogin: false,
     schema_owner_rolsuper: false,
     schema_owner_rolcreatedb: false,
