@@ -8,7 +8,7 @@ export interface AuthIssuerDatabaseIdentity {
   rolcreaterole: boolean;
   rolreplication: boolean;
   rolbypassrls: boolean;
-  no_role_memberships: boolean;
+  no_untrusted_role_memberships: boolean;
 }
 
 export const assertAuthIssuerDatabaseIdentity = (
@@ -22,7 +22,7 @@ export const assertAuthIssuerDatabaseIdentity = (
     rolcreaterole: false,
     rolreplication: false,
     rolbypassrls: false,
-    no_role_memberships: true,
+    no_untrusted_role_memberships: true,
   };
   const invalidFlags = Object.entries(expectedFlags)
     .filter(([key, expected]) => identity[key as keyof AuthIssuerDatabaseIdentity] !== expected)
