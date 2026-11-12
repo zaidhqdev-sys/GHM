@@ -1056,3 +1056,8 @@ GHM open PR review:
 - #201 QuoteFlow legal acceptance remains parked pending the founder's instruction to defer legal work.
 
 Earlier standalone Connect/QuoteFlow branches based on main are superseded by the stacked branches. No branch-delete operation is exposed in this session, so they remain but must not be used. No merges or production changes occurred.
+
+
+### External issuer ingress requirement
+
+QuoteFlow's native mobile app calls the issuer URL directly from outside Render, so a private-only issuer is not reachable. A future deployment needs reviewed public HTTPS ingress or an approved public gateway. Connect's native browser bearer flow also calls the issuer origin directly and requires exact CORS; its optional browser-cookie mode uses the same-origin Vercel BFF. Public issuer ingress does not justify public database exposure.
