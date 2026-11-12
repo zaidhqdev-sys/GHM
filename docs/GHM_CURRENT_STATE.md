@@ -904,3 +904,10 @@ Private service networking, trusted proxy chain, and an additional free service 
 The issuer now has separate liveness `/healthz` and DB-backed readiness `/readyz`; readiness returns 503 without a successful `SELECT 1` on its dedicated pool. Tests cover fail-closed and ready cases.
 
 The issuer ACL checks now inspect every GHM table/partition/view/materialized view/foreign table for direct privileges, not just credential tables. A variable rename regression caused #3544/#3545 to fail in the pre-grant qualification script; fixed in `f254435`. CI #3549 passed build, all migrations and the strengthened baseline; full suite and post-cutover issuer tests were still running at that checkpoint. Latest readiness and handover commits need exact-head CI.
+
+
+## Guarded issuer cutover SQL and minimal allow-list (2026-11-12)
+
+Added `database/cutovers/20261112010000_authentication_issuer_privilege_cutover.sql` as a manual-only cutover artifact. It preflights the dedicated issuer role, removes direct issuer relation/function privileges, revokes auth lifecycle functions from PUBLIC/runtime and grants the reviewed allow-list. CI #3553/#3554 passed the disposable qualification using this actual cutover SQL.
+
+A caller audit found `auth_validate_session` had no active production caller and was used only by database tests. Removed its persistence API method and issuer grant; database tests now call it under the schema-owner role. Runtime denial remains explicitly tested. The allow-list is reduced from 12 to 11 functions. CI #3557/#3558 are validating this reduced list and owner-only test path; wait for exact-head success before marking it qualified. The cutover SQL remains manual only and has not been applied to any live database.
