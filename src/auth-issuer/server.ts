@@ -107,7 +107,7 @@ const start = async (): Promise<void> => {
   `);
   const databaseIdentity = identity.rows[0];
   if (!databaseIdentity) throw new Error('Authentication Issuer database identity could not be resolved');
-  assertAuthIssuerDat  const databasePrivileges = await readAuthIssuerDatabasePrivileges(pool);
+  const databasePrivileges = await readAuthIssuerDatabasePrivileges(pool);
   assertAuthIssuerDatabasePrivileges(databasePrivileges);
   server.listen(port, () => {
     console.log(`GHM Authentication Issuer listening on port ${port}`);
