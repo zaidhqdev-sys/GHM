@@ -226,7 +226,7 @@ The new PostgreSQL qualification proves:
 - Campaign request-target substitution and assertion replay are denied.
 - Disabled actors cannot read directory-review presentation.
 
-The overall quality job still has subsequent qualification steps in progress at this checkpoint; do not call the complete exact-head CI run passed until both quality and web-quality finish successfully.
+Both exact-head CI jobs have now passed for implementation HEAD 1bd6ba2ab7fea7ae62585d0de8060d34e1e8c9ee: quality and web-quality, run [43254532210](https://github.com/zaidhqdev-sys/GHM/actions/runs/43254532210). The latest follow-on commits are documentation-only; their own exact-head run is tracked separately.
 
 ### Deployment sequencing and safety
 
