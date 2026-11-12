@@ -1026,3 +1026,13 @@ Issuer branch ancestry is 140 commits ahead and 0 behind `integration/capability
 Added migration `20261112050000_revoke_public_default_function_execution.sql` to revoke PostgreSQL's default PUBLIC EXECUTE privilege for all future functions created by `ghm_schema_owner`. A disposable PostgreSQL probe function verifies PUBLIC, `ghm_runtime` and `ghm_auth_issuer` receive no implicit EXECUTE, then drops the function. This does not change existing function ACLs; existing functions remain governed by their explicit migrations/cutover.
 
 Issuer server wires QuoteFlow migration-reset completion; the reset request and generic recovery request remain unavailable (503) until a delivery adapter is configured. This is a go-live blocker, not a passing recovery delivery flow.
+
+### 2026-11-12 — Exact issuer qualification passed
+
+Construction branch exact head f678ea8d3a6f36556bd768318919134fa3241634, GitHub Actions #3648: quality and web-quality passed; 900/900 main tests and 15/15 additional disposable PostgreSQL qualification checks passed.
+
+Coverage includes issuer principal baseline, future-function default ACL probe (PUBLIC/runtime/issuer all denied), issuer ten-function allow-list, zero direct table/view/sequence grants, no schema CREATE, guarded cutover, runtime denials, QuoteFlow migration-reset completion and fail-closed request, plus disposable rollback restoring the documented runtime function allow-list.
+
+Run #3647 was an assertion-shape failure: diagnostic metadata was included in a deep equality comparison; actual ACL booleans were all false. The assertion was corrected to compare only those booleans. #3648 passed on the exact corrected head.
+
+This remains construction/disposable qualification. No production service, secret, DB grant, migration, routing or deployment changed. Generic recovery and QuoteFlow reset request delivery remain 503 until an approved delivery adapter is configured.
