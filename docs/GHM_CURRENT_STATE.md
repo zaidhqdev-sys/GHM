@@ -1101,7 +1101,7 @@ The previous exact-head CI pass at `4abb42e` predates these changes and is not e
 
 Actor Gateway startup previously asserted its database login identity but did not verify its complete effective GHM function/relation ACL. Added a verifier for the exact 21-function signed-operation allow-list, zero direct table/view/sequence privileges, schema USAGE without CREATE, no PUBLIC EXECUTE on its executable functions, no runtime EXECUTE on gateway-specific functions, and safe future-function defaults. The verifier is wired before the HTTP listener; disposable qualification now calls the same verifier and unit/source-contract regressions cover the boundary. The issuer's future-default check also treats grants to `ghm_actor_gateway` as unsafe.
 
-This is an enforcement/qualification change, not a grant change. Exact-head CI and disposable PostgreSQL Actor Gateway qualification are pending; do not claim the 22-function boundary qualified until they pass.
+This is an enforcement/qualification change, not a grant change. Exact-head CI and disposable PostgreSQL Actor Gateway qualification are pending; do not claim the 21-function boundary qualified until they pass.
 
 
 ### 2026-11-12 — Revoke unsigned Actor Gateway entry points
