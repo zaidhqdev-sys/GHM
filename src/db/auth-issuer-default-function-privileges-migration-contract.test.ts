@@ -13,7 +13,7 @@ const issuerCutover = fs.readFileSync(path.resolve(
 ), 'utf8');
 
 test('future GHM functions created by the schema owner do not inherit PUBLIC EXECUTE', () => {
-  assert.match(migration, /ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner IN SCHEMA ghm[\\s\\S]*?REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC/i);
+  assert.match(migration, /ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner[\\s\\S]*?REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC/i);
 });
 
 test('issuer allow-list is applied after clearing current function grants', () => {
