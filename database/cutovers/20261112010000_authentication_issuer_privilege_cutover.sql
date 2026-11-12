@@ -78,6 +78,12 @@ REVOKE ALL ON FUNCTION ghm.auth_lookup_quoteflow_migration_reset_enrollment(text
 REVOKE ALL ON FUNCTION ghm.auth_complete_quoteflow_migration_reset(bytea, text, integer, integer, integer)
   FROM PUBLIC, ghm_runtime;
 
+-- Connect Business provider mapping is now an internal helper used only by the
+-- signed Actor Gateway provisioning transaction; runtime and other app logins
+-- must not invoke it directly.
+REVOKE ALL ON FUNCTION ghm.auth_link_business_external_mapping(text, text, bigint)
+  FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway, ghm_auth_issuer, ghm_payment_provider;
+
 -- Grant exactly the reviewed authentication issuer function allow-list.
 GRANT EXECUTE ON FUNCTION ghm.auth_create_account(text, text, text, text, text, integer, integer, integer)
   TO ghm_auth_issuer;
