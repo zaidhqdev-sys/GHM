@@ -96,6 +96,8 @@ test('Connect Business provisioning: signed gateway atomicity, membership and is
 
   t.after(async () => {
     await ownerClient(async (client) => {
+      await client.query('DROP TRIGGER IF EXISTS qualification_reject_connect_mapping ON ghm.business_external_mapping');
+      await client.query('DROP FUNCTION IF EXISTS ghm.qualification_reject_connect_mapping()');
       if (externalBusinessIds.length > 0) {
         await client.query(
           'DELETE FROM ghm.business_external_mapping WHERE provider = $1 AND external_business_id = ANY($2::text[])',
@@ -254,6 +256,8 @@ test('Connect Business provisioning: signed gateway atomicity, membership and is
 
     await ownerClient(async (client) => {
       await client.query(`
+        DROP TRIGGER IF EXISTS qualification_reject_connect_mapping ON ghm.business_external_mapping;
+        DROP FUNCTION IF EXISTS ghm.qualification_reject_connect_mapping();
         CREATE OR REPLACE FUNCTION ghm.qualification_reject_connect_mapping()
         RETURNS trigger
         LANGUAGE plpgsql
