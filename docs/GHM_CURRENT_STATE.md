@@ -1061,3 +1061,10 @@ Earlier standalone Connect/QuoteFlow branches based on main are superseded by th
 ### External issuer ingress requirement
 
 QuoteFlow's native mobile app calls the issuer URL directly from outside Render, so a private-only issuer is not reachable. A future deployment needs reviewed public HTTPS ingress or an approved public gateway. Connect's native browser bearer flow also calls the issuer origin directly and requires exact CORS; its optional browser-cookie mode uses the same-origin Vercel BFF. Public issuer ingress does not justify public database exposure.
+
+
+### Issuer startup ACL enforcement added
+
+The issuer now verifies database ACLs before opening its HTTP listener. Startup fails closed unless schema USAGE exists, schema CREATE is absent, no direct table/view/foreign-table/sequence privileges exist, the executable function set exactly matches the ten-function allow-list, future function defaults are safe, and ghm_runtime has no issuer lifecycle function execution grants.
+
+Added a pure privilege verifier, unit tests, and a source contract test that verification occurs before server.listen. Exact-head CI pending. No production deployment or grants changed.
