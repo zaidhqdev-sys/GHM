@@ -983,3 +983,105 @@ The separate `auth_lookup_account_external_mapping` function's `ghm_migrator` gr
 - Its exact-head CI result must be checked before any passing claim.
 - Earlier failed runs and their causes remain historical evidence: `43301449333` Campaign-stage allow-list mismatch under the first implementation; `43302247383` stale unit-test expectation after SQL simplification.
 - No production roles, grants, migrations, credentials, secrets, environment variables, services, deployments, buckets, objects or data were changed. No PR was merged.
+
+
+---
+
+## 2026-11-12 continuation — exact production runtime SECURITY DEFINER set compared with construction baseline
+
+**Evidence:** read-only PostgreSQL 18 catalog query against Render `ghm-db` / `ghm_db`, compared to source `src/db/runtime-database-privileges.ts` on the construction branch.  
+**Production mutation:** none.
+
+### Exact set comparison
+
+Fresh production query returned 46 SECURITY DEFINER functions executable by `ghm_runtime`. The reviewed construction/disposable pre-cutover baseline contains 43 functions.
+
+The sets are materially different, not merely different in count:
+
+**12 production-only signatures (not in the 43-signature construction baseline):**
+
+1. `ghm.auth_bootstrap_external_identity(text,text,text,text)`
+2. `ghm.auth_change_password(bigint,bigint,text,text,text,integer,integer,integer)`
+3. `ghm.auth_disable_account(bigint)`
+4. `ghm.auth_link_business_external_mapping(text,text,bigint)`
+5. `ghm.auth_link_external_identity(text,text,bigint)`
+6. `ghm.auth_provision_migration_account(text,text,text,text)`
+7. `ghm.auth_read_account_email(bigint)`
+8. `ghm.auth_read_connect_identity_authority(bigint)`
+9. `ghm.auth_register_quoteflow_migration_reset_enrollment(bigint,text,text,text,text,text)`
+10. `ghm.auth_revoke_all_sessions_for_account(bigint,text)`
+11. `ghm.auth_revoke_session(bigint,text)`
+12. `ghm.update_business_profile(bigint,bigint,jsonb)`
+
+**9 construction-baseline signatures not executable by production `ghm_runtime`:**
+
+1. `ghm.auth_redeem_recovery_with_count(bytea)`
+2. `ghm.auth_rehash_password_if_unchanged(bigint,text,text,integer,integer,integer)`
+3. `ghm.auth_reset_password_with_recovery(bytea,text,text,integer,integer,integer)`
+4. `ghm.create_capability_draft(bigint,text,text,text,uuid,integer,text,integer)`
+5. `ghm.get_public_business_hours(bigint)`
+6. `ghm.get_public_trust_score(bigint)`
+7. `ghm.list_public_trust_scores(text)`
+8. `ghm.transition_capability_lifecycle(bigint,uuid,text,uuid,integer)`
+9. `ghm.update_capability_draft(bigint,uuid,text,text,text,uuid,integer,text,integer)`
+
+The two sets therefore differ by 21 signatures (12 production-only plus 9 baseline-only). Do not infer production is at the current migration state from the repository branch or disposable CI.
+
+### Production-only functions with explicit source revocation migrations
+
+The construction branch contains forward migrations that explicitly revoke runtime access to these production-only functions:
+
+| Production-only function(s) | Source revocation |
+|---|---|
+| `auth_bootstrap_external_identity` | `20261111260000_revoke_runtime_external_identity_bootstrap.sql` |
+| `auth_change_password`, `auth_disable_account`, `auth_revoke_session` | `20261111220000_revoke_unused_auth_runtime_entry_points.sql` |
+| `auth_link_external_identity` | `20261111250000_revoke_runtime_external_identity_link.sql` |
+| `auth_provision_migration_account` | `20261111240000_revoke_runtime_quoteflow_migration_provisioning.sql` |
+| `auth_register_quoteflow_migration_reset_enrollment` | `20261112040000_revoke_runtime_quoteflow_reset_enrollment_registration.sql` |
+| `update_business_profile` | `20261110270000_gateway_business_profile_update.sql` (revokes PUBLIC and `ghm_runtime`; grants the signed gateway wrapper to `ghm_actor_gateway`) |
+
+All eight are still executable by production `ghm_runtime` in the live catalog snapshot, despite the corresponding revocation SQL existing in the construction branch. This is strong evidence that production has not reached the same migration/ACL state as the current branch. It is not authorization to run the migrations now; production migration/backup/rollback gates remain open.
+
+### Four production-only functions still need a specific disposition
+
+No exact revocation migration or active caller was established in this pass for:
+
+- `auth_link_business_external_mapping(text,text,bigint)`
+- `auth_read_account_email(bigint)`
+- `auth_read_connect_identity_authority(bigint)`
+- `auth_revoke_all_sessions_for_account(bigint,text)`
+
+Their production definitions were inspected:
+- `auth_read_account_email` reads an active credential's normalized login email.
+- `auth_read_connect_identity_authority` returns Connect role, operator intent, system-admin flag and active founder-reviewer status.
+- `auth_revoke_all_sessions_for_account` delegates to the internal all-session revoker.
+- `auth_link_business_external_mapping` is a SECURITY DEFINER mapping-link operation.
+
+Focused current-source checks across Auth Foundation persistence, Auth service/router, Connect identity/authorization adapters, QuoteFlow migration provisioning/reconciliation and the inspected current repository files found no direct callers for these four signatures. That search is not yet an exhaustive repository-wide/operational proof. Keep the grants unchanged until every current route, background job, script, migration and operator workflow is accounted for. The function bodies and ACLs are evidence for review, not an instruction to revoke.
+
+### Nine baseline functions missing from production
+
+The missing signatures include newer token-bound recovery/rehash functions, public read projections and Capability lifecycle operations. These are expected in the current construction migration set, and their absence from the production runtime EXECUTE set further confirms that the production ACL catalog is not equivalent to the construction baseline. Some functions are expected to be gateway-only or issuer-owned after their respective cutovers; a runtime absence alone does not prove the underlying function is absent or that the production route is healthy. Reconcile function existence, grants, owning service and route configuration individually before any migration.
+
+### Migration tracking limitation
+
+A read-only `information_schema.tables` query for base-table names containing `migration` or `ledger` returned no rows in the live production database. This focused query does not prove no migration tracking exists under a differently named object or external deployment system. The production migration state must therefore be established from the actual supported deployment/migration mechanism and catalog evidence, not by assuming a familiar ledger table.
+
+### Revised production readiness disposition
+
+- Production runtime SECURITY DEFINER allow-list: **not aligned** with the construction/disposable baseline (46 live vs 43 baseline; 12 extra / 9 missing).
+- Eight production-only grants have explicit source revocation migrations but remain present in the live catalog.
+- Four production-only grants still require caller/disposition investigation.
+- Nine construction-baseline functions are not currently executable by production runtime; function existence and replacement call path must be checked.
+- The current production `ghm_actor_gateway` effective SECURITY DEFINER EXECUTE count remains zero; no deployed dedicated Actor Gateway service was identified in the earlier Render service inventory.
+- Production cutover remains blocked. Do not apply migrations, revoke grants, rotate credentials, change environment variables or deploy based on this set comparison alone.
+
+### Next actions
+
+1. Obtain an authoritative production migration/deployment history and determine why these forward revocations/additions are not reflected in the live ACL set.
+2. Reconcile all 12 production-only signatures against every active caller and source migration, with special focus on the four without a specific disposition.
+3. Reconcile the nine missing baseline functions for existence, ACL, replacement gateway/issuer ownership and production route behavior.
+4. Compare production table/schema/sequence ACLs and default privileges to the intended source state, not only SECURITY DEFINER EXECUTE.
+5. Complete fresh verified backup, Render SQL-created login cutover plan, service environment mapping, deployment/network and rollback gates before any production action.
+
+**No production grants, roles, ownership, credentials, secrets, environment variables, migrations, services, deployments, buckets, objects or application data were changed. No PR was merged.**
