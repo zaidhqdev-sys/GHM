@@ -50,6 +50,45 @@ const expectPermissionDenied = async (sql, values = []) => {
 };
 
 try {
+  // Verify future functions created by the schema owner do not inherit
+  // PostgreSQL's default PUBLIC EXECUTE privilege. This probe is disposable-only.
+  const defaultPrivilegeClient = await migratorPool.connect();
+  try {
+    await defaultPrivilegeClient.query('BEGIN');
+    await defaultPrivilegeClient.query('SET LOCAL ROLE ghm_schema_owner');
+    await defaultPrivilegeClient.query(`
+      CREATE FUNCTION ghm.auth_issuer_default_privilege_qualification()
+      RETURNS integer
+      LANGUAGE sql
+      AS 'SELECT 1'
+    `);
+    const defaultAcl = await defaultPrivilegeClient.query(`
+      SELECT
+        EXISTS (
+          SELECT 1
+            FROM pg_proc p
+            CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl
+           WHERE p.oid = 'ghm.auth_issuer_default_privilege_qualification()'::regprocedure
+             AND acl.grantee = 0
+             AND acl.privilege_type = 'EXECUTE'
+        ) AS public_execute,
+        has_function_privilege('ghm_runtime', 'ghm.auth_issuer_default_privilege_qualification()', 'EXECUTE') AS runtime_execute,
+        has_function_privilege('ghm_auth_issuer', 'ghm.auth_issuer_default_privilege_qualification()', 'EXECUTE') AS issuer_execute
+    `);
+    assert.deepEqual(defaultAcl.rows[0], {
+      public_execute: false,
+      runtime_execute: false,
+      issuer_execute: false,
+    }, 'new schema-owner functions must receive no implicit PUBLIC/runtime/issuer EXECUTE grants');
+    await defaultPrivilegeClient.query('DROP FUNCTION ghm.auth_issuer_default_privilege_qualification()');
+    await defaultPrivilegeClient.query('COMMIT');
+  } catch (error) {
+    await defaultPrivilegeClient.query('ROLLBACK');
+    throw error;
+  } finally {
+    defaultPrivilegeClient.release();
+  }
+
   const issuerFunctions = await issuerPool.query(`
     SELECT p.proname
       FROM pg_proc p
