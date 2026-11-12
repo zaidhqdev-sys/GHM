@@ -15,6 +15,7 @@ export interface AuthIssuerAppDependencies {
   passwordRecoveryService?: PasswordRecoveryService;
   quoteFlowMigrationResetRecoveryService?: QuoteFlowMigrationResetRecoveryService;
   quoteFlowMigrationResetCompletionService?: QuoteFlowMigrationResetCompletionService;
+  readinessCheck?: () => Promise<void>;
 }
 
 const configuredTrustProxyHops = (): number => {
@@ -78,6 +79,19 @@ export const createAuthIssuerApp = (
 
   app.get('/healthz', (_req, res) => {
     res.status(200).json({ status: 'ok' });
+  });
+
+  app.get('/readyz', async (_req, res) => {
+    if (!dependencies.readinessCheck) {
+      res.status(503).json({ status: 'not_ready' });
+      return;
+    }
+    try {
+      await dependencies.readinessCheck();
+      res.status(200).json({ status: 'ready' });
+    } catch {
+      res.status(503).json({ status: 'not_ready' });
+    }
   });
 
   app.use(express.json({ limit: '16kb' }));
