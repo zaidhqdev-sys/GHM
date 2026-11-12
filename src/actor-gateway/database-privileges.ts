@@ -76,6 +76,8 @@ export const ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL = `
        AND has_function_privilege(session_user, p.oid, 'EXECUTE')
   )
   SELECT
+    has_database_privilege(session_user, current_database(), 'CONNECT') AS database_connect_privilege,
+    has_database_privilege(session_user, current_database(), 'CREATE') AS database_create_privilege,
     has_schema_privilege(session_user, 'ghm', 'USAGE') AS schema_usage,
     has_schema_privilege(session_user, 'ghm', 'CREATE') AS schema_create,
     (
