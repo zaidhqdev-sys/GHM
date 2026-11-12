@@ -1338,3 +1338,8 @@ The HTTP password-reset contract currently accepts both a recovery token and an 
 - Current-state update committed: `a7dbf3cebf7b7cbd65f60615c11864c03638cdd1`.
 - Exact-head runs #3468 and #3469 were triggered for `a7dbf3c`; both were still in progress at the time of this note. Do not describe the documentation head as CI-passed until both finish successfully.
 - No production migration, role/grant change, secret provisioning, deployment or data mutation was performed.
+
+
+### Documentation-head correction
+
+The broadened inventory above was committed as `87cfe564c427ce51ad1f5b93f3c718af52f70189`, after the two current-state/handover commits noted immediately above. Therefore runs #3468/#3469 validate the preceding documentation head `a7dbf3c`, not this latest commit. Recheck CI against the final documentation head before treating it as qualified.
