@@ -12,6 +12,7 @@ test('issuer verifies its exact database ACL boundary before opening the HTTP li
   assert.ok(verifierCall >= 0 && listen > verifierCall, 'database ACL verification must precede server.listen');
   assert.match(server, /readinessCheck: async/);
   assert.match(server, /const currentPrivileges = await readAuthIssuerDatabasePrivileges\(pool\)/);
+  assert.match(server, /assertAuthIssuerDatabaseIdentity\(databaseIdentity\)/, 'exact database identity must be enforced before the HTTP listener opens');
   assert.match(server, /assertAuthIssuerDatabasePrivileges\(currentPrivileges\)/);
   assert.match(privilegeSource, /has_schema_privilege\(session_user, 'ghm', 'CREATE'\)/);
   assert.match(privilegeSource, /has_table_privilege\(session_user/);
