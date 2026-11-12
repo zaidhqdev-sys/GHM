@@ -2202,7 +2202,7 @@ The issuer server now wires QuoteFlow migration-reset completion through `create
 
 A complete operational sequence and limitations are documented in `docs/architecture/AUTH_ISSUER_CUTOVER_AND_ROLLBACK_RUNBOOK.md`. The runbook is design-only and authorizes no production changes.
 
-The issuer branch remains directly based on `integration/capability-gateway-qualification-20261110`; latest comparison showed 130 commits ahead and 0 behind. PR #272 remains upstream and must not be merged independently underneath this dependent branch. Production remains unchanged. The exact latest branch head must pass CI before this batch is considered qualified.
+The issuer branch remains directly based on `integration/capability-gateway-qualification-20261110`; latest comparison showed 140 commits ahead and 0 behind. PR #272 remains upstream and must not be merged independently underneath this dependent branch. Production remains unchanged. The exact latest branch head must pass CI before this batch is considered qualified.
 
 
 ### PostgreSQL future-function default ACL closure
