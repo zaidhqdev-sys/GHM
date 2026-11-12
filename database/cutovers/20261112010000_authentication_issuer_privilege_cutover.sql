@@ -95,6 +95,25 @@ REVOKE ALL ON FUNCTION ghm.auth_complete_quoteflow_migration_reset(bytea, text, 
 REVOKE ALL ON FUNCTION ghm.auth_link_business_external_mapping(text, text, bigint)
   FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway, ghm_auth_issuer, ghm_payment_provider;
 
+-- Remove legacy account-ID authority readers and all-session administration
+-- wrappers retained in older production schemas. They are not part of the new
+-- issuer API; the issuer uses token-bound lifecycle functions and the internal
+-- owner-executed revocation helper. Some historical installations may not contain
+-- these signatures, so revoke conditionally without making the cutover non-portable.
+DO $legacy_auth_authority_revoke$
+BEGIN
+  IF to_regprocedure('ghm.auth_read_account_email(bigint)') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION ghm.auth_read_account_email(bigint) FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway, ghm_auth_issuer, ghm_payment_provider';
+  END IF;
+  IF to_regprocedure('ghm.auth_read_connect_identity_authority(bigint)') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION ghm.auth_read_connect_identity_authority(bigint) FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway, ghm_auth_issuer, ghm_payment_provider';
+  END IF;
+  IF to_regprocedure('ghm.auth_revoke_all_sessions_for_account(bigint,text)') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION ghm.auth_revoke_all_sessions_for_account(bigint,text) FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway, ghm_auth_issuer, ghm_payment_provider';
+  END IF;
+END;
+$legacy_auth_authority_revoke$;
+
 -- Grant exactly the reviewed authentication issuer function allow-list.
 GRANT EXECUTE ON FUNCTION ghm.auth_create_account(text, text, text, text, text, integer, integer, integer)
   TO ghm_auth_issuer;
