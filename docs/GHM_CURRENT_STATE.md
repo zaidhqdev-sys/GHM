@@ -1171,4 +1171,4 @@ Manual issuer cutover and rollback SQL now fail closed unless the session login 
 
 The issuer branch is separate from open/unmerged upstream PR #272. A live comparison during this audit reported 411 commits ahead and 0 behind the integration base; this is diagnostic only and is not merge readiness. The available GitHub workflow-run view did not expose push-triggered runs for this branch, so exact-head CI status is unverified. Previous green run `43161326835` predates these changes and is historical only.
 
-Latest source/test correction before this documentation update: `de794d763eb5b2c0641e34e920cd0d45434b6170`. Production remains untouched; no paid resource was created.
+Latest source/test correction before this documentation update: `419dd4470268b5811dd9197ba36c9e40b87f4b1b`. Production remains untouched; no paid resource was created.
