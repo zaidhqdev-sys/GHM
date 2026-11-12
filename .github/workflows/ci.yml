@@ -54,6 +54,7 @@ jobs:
       CORS_ORIGINS: http://localhost:3000
       GHM_AUTH_TOKEN_PEPPER: ci-test-token-pepper-32-bytes-minimum-length-000
       GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET: cHJvdmlkZXItdGVzdC1zZWNyZXQtMzItYnl0ZS1rZXk=
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -189,6 +190,9 @@ jobs:
       - name: Check storage provider attestation provisioning script syntax
         run: node --check scripts/provision-storage-provider-attestation-secret.mjs
 
+      - name: Check storage provider workflow qualification script syntax
+        run: node --check scripts/qualify-storage-provider-workflow-attestation-postgres.mjs
+
       - name: Build
         run: npm run build
 
@@ -206,6 +210,16 @@ jobs:
 
       - name: Qualify isolated actor gateway database principal
         run: npm run qualify:actor-gateway-principal
+
+      - name: Provision provider attestation secret in disposable PostgreSQL
+        env:
+          GHM_STORAGE_PROVIDER_ATTESTATION_ALLOW_MUTATIONS: 'true'
+        run: node scripts/provision-storage-provider-attestation-secret.mjs
+
+      - name: Qualify storage provider dual-proof transitions on disposable PostgreSQL
+        env:
+          GHM_STORAGE_PROVIDER_ATTESTATION_ALLOW_MUTATIONS: 'true'
+        run: node scripts/qualify-storage-provider-workflow-attestation-postgres.mjs
       - name: Qualify signed Connect Business provisioning, membership isolation and rollback
         run: npm run qualify:connect-business-provisioning-live
 
