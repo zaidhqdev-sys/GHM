@@ -100,3 +100,19 @@ This runbook authorizes no production action. Do not:
 - Resume PayFast work while its sandbox is unavailable.
 - Resume legal-document work that remains parked.
 - Merge PR #272 or this dependent construction branch before exact-head CI, documentation reconciliation and release approval.
+
+## Exact database principal matrix — disposable qualification (2026-11-12)
+
+The following principal boundaries are enforced by application startup or the migration runner and exercised by disposable PostgreSQL 18 CI. This is not evidence that production Render currently matches; production inspection remains mandatory.
+
+| Principal | Database / schema boundary | Role and object authority |
+|---|---|---|
+| `ghm_runtime` (Resource API) | Database CONNECT; no database CREATE. GHM schema USAGE; no schema CREATE. | LOGIN / NOINHERIT, no memberships or elevated role flags. Retains application-specific relation/function privileges. Exact auth-function set: two lookup functions only. |
+| `ghm_auth_issuer` | Database CONNECT; no database CREATE. GHM schema USAGE; no schema CREATE. | LOGIN / NOINHERIT, no memberships/elevated flags, zero direct relation privileges, exact ten-function allow-list, safe future-function defaults. |
+| `ghm_actor_gateway` | Database CONNECT; no database CREATE. GHM schema USAGE; no schema CREATE. | LOGIN / NOINHERIT, no memberships/elevated flags, zero direct relation privileges, exact 25 signed/typed function allow-list, no PUBLIC or Resource API execution of gateway functions. |
+| `ghm_migrator` | Database CONNECT only; no database CREATE, no GHM schema USAGE/CREATE, no direct GHM relation or sequence privileges. | LOGIN / NOINHERIT, no elevated flags, exactly one direct membership to schema owner with ADMIN FALSE / INHERIT FALSE / SET TRUE. |
+| `ghm_schema_owner` | Owns GHM schema and objects; has controlled database/schema DDL authority required by migrations. | NOLOGIN, no elevated role flags, no direct role memberships. Authority is entered only by the dedicated migrator using the exact SET-only membership. |
+
+Exact-head disposable CI evidence: run `43161326835` at `2b2014afff8dc605ab427a15256a41f89c70adab` passed quality, web-quality, Cloudflare Pages, build, migrations, full suite, Connect Business provisioning, Actor Gateway cutovers, issuer cutover/lifecycle/runtime denials and database-only rollback. Runtime, issuer and Actor Gateway startup verifiers now assert database CONNECT without CREATE; runtime additionally requires GHM schema USAGE without CREATE.
+
+Before production migration/cutover, independently inspect live Render role attributes, memberships, membership options, database privileges, schema privileges, object ACLs and ownership against this matrix. Do not infer live compliance from disposable CI. No production changes or paid services were made.
