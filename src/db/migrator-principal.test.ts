@@ -21,6 +21,8 @@ const leastPrivilegeMigrator: MigratorDatabaseIdentity = {
   direct_membership_count: 1,
   exact_schema_owner_membership: true,
   schema_owner_direct_membership_count: 0,
+  schema_owner_database_create_privilege: true,
+  schema_owner_owns_ghm_schema: true,
   schema_owner_rolcanlogin: false,
   schema_owner_rolsuper: false,
   schema_owner_rolcreatedb: false,
@@ -38,6 +40,8 @@ test('rejects missing, additional or incorrectly configured role memberships', (
     { direct_membership_count: 0 },
     { direct_membership_count: 2 },
     { schema_owner_direct_membership_count: 1 },
+    { schema_owner_database_create_privilege: false },
+    { schema_owner_owns_ghm_schema: false },
     { exact_schema_owner_membership: false },
   ]) {
     assert.throws(
