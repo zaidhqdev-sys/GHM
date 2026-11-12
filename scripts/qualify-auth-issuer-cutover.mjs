@@ -746,6 +746,45 @@ try {
     legacyFixtureCleanup.release();
   }
 
+  // The rollback above is deliberately qualified, but the CI inventory that
+  // follows this script must describe the issuer-cutover state, not the rollback
+  // state. Reapply the guarded cutover after every rollback assertion and fixture
+  // cleanup, then verify both service startup allow-lists before the script exits.
+  const finalCutoverClient = await migratorPool.connect();
+  try {
+    await finalCutoverClient.query('SET ROLE ghm_schema_owner');
+    await finalCutoverClient.query(issuerCutoverSql);
+  } finally {
+    await finalCutoverClient.query('RESET ROLE');
+    finalCutoverClient.release();
+  }
+
+  const finalRuntimePrivileges = await readRuntimeDatabaseFunctionPrivileges(runtimePool);
+  assertRuntimeDatabaseFunctionPrivileges(finalRuntimePrivileges);
+  const finalIssuerPrivileges = await readAuthIssuerDatabasePrivileges(issuerPool);
+  assertAuthIssuerDatabasePrivileges(finalIssuerPrivileges);
+  const finalIssuerFunctions = await issuerPool.query(`
+    SELECT p.oid::regprocedure::text AS signature
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'ghm'
+       AND p.proname LIKE 'auth\\_%' ESCAPE '\\\\'
+       AND has_function_privilege(session_user, p.oid, 'EXECUTE')
+     ORDER BY 1
+  `);
+  assert.equal(finalIssuerFunctions.rowCount, issuerOnlyFunctionNames.length,
+    'final disposable state must restore the exact issuer allow-list for the post-cutover inventory');
+  const finalRuntimeAuthFunctions = await issuerPool.query(`
+    SELECT count(*)::integer AS count
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'ghm'
+       AND left(p.proname, 5) = 'auth_'
+       AND has_function_privilege('ghm_runtime', p.oid, 'EXECUTE')
+  `);
+  assert.equal(Number(finalRuntimeAuthFunctions.rows[0].count), 2,
+    'final disposable state must retain only the two reviewed runtime identity lookups');
+
   process.stdout.write(JSON.stringify({
     issuerAllowList: issuerOnlyFunctionNames.length,
     issuerDirectRelationPrivileges: 0,
@@ -754,7 +793,7 @@ try {
     registrationLoginPasswordRehashConcurrentResetRefreshLogout: 'passed',
     recoveryResetReplayAndSessionRevocation: 'passed',
     quoteFlowMigrationReset: 'passed',
-    disposableDatabasePrivilegeRollback: 'passed',
+    disposableDatabasePrivilegeRollback: 'passed',\n    finalDisposableState: 'issuer-cutover-active-for-post-cutover-inventory',\n    finalRuntimeAuthFunctionAllowList: Number(finalRuntimeAuthFunctions.rows[0].count),
     issuerStartupAclVerification: 'passed',
     globalAndSchemaScopedDefaultAclDenials: 'passed',
     unexpectedDirectFunctionGrantDenials: 'passed',
