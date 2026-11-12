@@ -12,6 +12,7 @@ import type { SupplierClassificationReader } from './supplier-classification-rea
 import type { BusinessProfileReader } from './business-profile-reader';
 import type { SavedBusinessGatewayReader } from './saved-business-reader';
 import type { ConnectBusinessProvisioningReader } from '../integrations/connect/business-provisioning-contracts';
+import type { StorageMetadataGatewayReader } from './storage-metadata-reader';
 
 const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
 const privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
@@ -47,6 +48,7 @@ const withServer = async (
   businessCapabilityMutationReader?: import('./business-capability-mutation-reader').GatewayCapabilityMutationReader,
   savedBusinessReader?: SavedBusinessGatewayReader,
   connectBusinessProvisioningReader?: ConnectBusinessProvisioningReader,
+  storageMetadataReader?: StorageMetadataGatewayReader,
 ): Promise<void> => {
   const server = http.createServer(createActorGatewayApp({
     verifier: requestVerifier,
@@ -58,6 +60,7 @@ const withServer = async (
     businessCapabilityMutationReader,
     savedBusinessReader,
     connectBusinessProvisioningReader,
+    storageMetadataReader,
   }, options));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
@@ -695,3 +698,87 @@ test('Connect Business provisioning route uses the verified actor and denies non
   ]);
 });
 
+
+
+test('storage metadata create route derives actor from token and fixes Business Logo metadata policy', async () => {
+  const received: Array<{ actor: number; input: unknown }> = [];
+  const storageReader: StorageMetadataGatewayReader = {
+    async createPending(actor, input) { received.push({ actor, input }); return { id: '8' } as never; },
+    async getObject() { return null; },
+    async markDeletionPending() { throw new Error('not used'); },
+  };
+  await withServer({
+    async readOwnIdentity(accountId): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: 'Actor' };
+    },
+  }, async baseUrl => {
+    const response = await fetch(`${baseUrl}/v1/storage/metadata?accountId=999`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        businessId: 73, resourceId: 73, providerKey: 'media/logos/73/550e8400-e29b-41d4-a716-446655440000',
+        contentType: 'image/png', byteSize: 1024, originalFilename: null,
+      }),
+    });
+    assert.equal(response.status, 201);
+    assert.deepEqual(await response.json(), { object: { id: '8' } });
+  }, undefined, undefined, undefined, undefined, {}, verifier, undefined, undefined, undefined, storageReader);
+  assert.equal(received[0].actor, 42);
+  assert.deepEqual(received[0].input, {
+    businessId: 73, resourceType: 'business', resourceId: 73, objectClass: 'business_logo',
+    providerKey: 'media/logos/73/550e8400-e29b-41d4-a716-446655440000',
+    contentType: 'image/png', byteSize: 1024, visibility: 'public', originalFilename: null,
+  });
+});
+
+test('storage metadata create rejects cross-tenant provider keys and malformed metadata before reader access', async () => {
+  let calls = 0;
+  const storageReader: StorageMetadataGatewayReader = {
+    async createPending() { calls += 1; throw new Error('must not be called'); },
+    async getObject() { return null; },
+    async markDeletionPending() { throw new Error('must not be called'); },
+  };
+  await withServer({
+    async readOwnIdentity(accountId): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: 'Actor' };
+    },
+  }, async baseUrl => {
+    const response = await fetch(`${baseUrl}/v1/storage/metadata`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        businessId: 73, resourceId: 73, providerKey: 'media/logos/74/550e8400-e29b-41d4-a716-446655440000',
+        contentType: 'image/png', byteSize: 1024, originalFilename: null,
+      }),
+    });
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: 'invalid_request' });
+  }, undefined, undefined, undefined, undefined, {}, verifier, undefined, undefined, undefined, storageReader);
+  assert.equal(calls, 0);
+});
+
+test('storage metadata read and deletion routes bind actor to verified token and object path', async () => {
+  const calls: Array<{ operation: string; actor: number; objectId: number }> = [];
+  const storageReader: StorageMetadataGatewayReader = {
+    async createPending() { throw new Error('not used'); },
+    async getObject(actor, objectId) { calls.push({ operation: 'read', actor, objectId }); return { id: String(objectId), status: 'available' } as never; },
+    async markDeletionPending(actor, objectId) { calls.push({ operation: 'delete', actor, objectId }); return { id: String(objectId), status: 'deletion_pending' } as never; },
+  };
+  await withServer({
+    async readOwnIdentity(accountId): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: 'Actor' };
+    },
+  }, async baseUrl => {
+    const headers = { authorization: `Bearer ${sign(42)}` };
+    const read = await fetch(`${baseUrl}/v1/storage/metadata/81?accountId=999`, { headers });
+    assert.equal(read.status, 200);
+    const remove = await fetch(`${baseUrl}/v1/storage/metadata/81/deletion-pending`, { method: 'POST', headers });
+    assert.equal(remove.status, 200);
+    const invalid = await fetch(`${baseUrl}/v1/storage/metadata/0`, { headers });
+    assert.equal(invalid.status, 400);
+  }, undefined, undefined, undefined, undefined, {}, verifier, undefined, undefined, undefined, storageReader);
+  assert.deepEqual(calls, [
+    { operation: 'read', actor: 42, objectId: 81 },
+    { operation: 'delete', actor: 42, objectId: 81 },
+  ]);
+});
