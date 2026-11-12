@@ -12,7 +12,7 @@ const leastPrivilegeIssuer: AuthIssuerDatabaseIdentity = {
   rolcreaterole: false,
   rolreplication: false,
   rolbypassrls: false,
-  no_role_memberships: true,
+  no_untrusted_role_memberships: true,
 };
 
 test('accepts only the isolated least-privilege Authentication Issuer principal', () => {
@@ -30,7 +30,7 @@ test('rejects an unexpected login or effective role', () => {
   );
 });
 
-test('rejects elevated role attributes and any membership', () => {
+test('rejects elevated role attributes and untrusted memberships but allows the Render administrator member', () => {
   for (const override of [
     { rolinherit: true },
     { rolsuper: true },
@@ -38,7 +38,7 @@ test('rejects elevated role attributes and any membership', () => {
     { rolcreaterole: true },
     { rolreplication: true },
     { rolbypassrls: true },
-    { no_role_memberships: false },
+    { no_untrusted_role_memberships: false },
   ]) {
     assert.throws(
       () => assertAuthIssuerDatabaseIdentity({ ...leastPrivilegeIssuer, ...override }),
