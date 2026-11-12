@@ -127,7 +127,7 @@ export const AUTH_ISSUER_DATABASE_PRIVILEGES_SQL = `
         SELECT signature::regprocedure::text
           FROM unnest(ARRAY[
             'ghm.auth_lookup_external_identity(text, text)',
-            'ghm.auth_lookup_business_external_mapping(text, text)',
+            'ghm.auth_lookup_business_external_mapping(text, text)'
           ]::text[]) AS expected(signature)
          ORDER BY 1
       ) AS expected_runtime_auth_functions
