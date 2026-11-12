@@ -1023,6 +1023,6 @@ Issuer branch ancestry is 140 commits ahead and 0 behind `integration/capability
 
 ### 2026-11-12 — Future GHM function default ACL
 
-Added migration `20261112050000_revoke_public_default_function_execution.sql` to revoke PostgreSQL's default PUBLIC EXECUTE privilege for future functions created by `ghm_schema_owner` in schema `ghm`. A disposable PostgreSQL probe function verifies PUBLIC, `ghm_runtime` and `ghm_auth_issuer` receive no implicit EXECUTE, then drops the function. This does not change existing function ACLs; existing functions remain governed by their explicit migrations/cutover.
+Added migration `20261112050000_revoke_public_default_function_execution.sql` to revoke PostgreSQL's default PUBLIC EXECUTE privilege for all future functions created by `ghm_schema_owner`. A disposable PostgreSQL probe function verifies PUBLIC, `ghm_runtime` and `ghm_auth_issuer` receive no implicit EXECUTE, then drops the function. This does not change existing function ACLs; existing functions remain governed by their explicit migrations/cutover.
 
 Issuer server wires QuoteFlow migration-reset completion; the reset request and generic recovery request remain unavailable (503) until a delivery adapter is configured. This is a go-live blocker, not a passing recovery delivery flow.
