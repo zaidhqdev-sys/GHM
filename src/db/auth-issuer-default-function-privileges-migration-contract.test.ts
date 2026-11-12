@@ -19,6 +19,10 @@ const qualification = fs.readFileSync(path.resolve(
   process.cwd(),
   'scripts/qualify-auth-issuer-cutover.mjs',
 ), 'utf8');
+const securityDefinerMigration = fs.readFileSync(path.resolve(
+  process.cwd(),
+  'database/migrations/20261112090000_pin_security_definer_search_path.sql',
+), 'utf8');
 
 test('future GHM functions created by the schema owner do not inherit PUBLIC EXECUTE', () => {
   assert.ok(migration.includes('ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner'));
@@ -58,4 +62,11 @@ test('disposable qualification exercises and cleans up schema-scoped unexpected 
   assert.ok(qualification.includes('IN SCHEMA ghm REVOKE EXECUTE ON FUNCTIONS FROM postgres'));
   assert.ok(qualification.includes('issuerWithUnexpectedDefault.unsafe_function_defaults'));
   assert.ok(qualification.includes('actorWithUnexpectedDefault.unsafe_function_defaults'));
+});
+
+
+test('SECURITY DEFINER migration preflights owner identity and pins pg_temp last', () => {
+  assert.ok(securityDefinerMigration.includes("pg_get_userbyid(p.proowner) IS DISTINCT FROM 'ghm_schema_owner'"));
+  assert.ok(securityDefinerMigration.includes('ALTER FUNCTION %s SET search_path = pg_catalog, ghm, pg_temp'));
+  assert.ok(securityDefinerMigration.includes('AND p.prosecdef'));
 });
