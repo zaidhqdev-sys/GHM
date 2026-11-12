@@ -185,13 +185,19 @@ try {
     ]);
     assert.deepEqual(
       issuerPublicDefiner.public_executable_security_definer_functions,
-      ['ghm.auth_create_account(text,text,text,text,text,integer,integer,integer)'],
-      'issuer verifier must report PUBLIC execution on any SECURITY DEFINER function',
+      [
+        'ghm.auth_create_account(text,text,text,text,text,integer,integer,integer)',
+        'ghm.gateway_provision_connect_business(bigint,bigint,uuid,text,text,text,text,text)',
+      ].sort(),
+      'issuer verifier must report PUBLIC execution across every GHM SECURITY DEFINER function',
     );
     assert.deepEqual(
       actorPublicDefiner.public_executable_security_definer_functions,
-      ['ghm.gateway_provision_connect_business(bigint,bigint,uuid,text,text,text,text,text)'],
-      'Actor Gateway verifier must report PUBLIC execution on any SECURITY DEFINER function',
+      [
+        'ghm.auth_create_account(text,text,text,text,text,integer,integer,integer)',
+        'ghm.gateway_provision_connect_business(bigint,bigint,uuid,text,text,text,text,text)',
+      ].sort(),
+      'Actor Gateway verifier must report PUBLIC execution across every GHM SECURITY DEFINER function',
     );
   } finally {
     if (publicDefinerProbeInstalled) {
