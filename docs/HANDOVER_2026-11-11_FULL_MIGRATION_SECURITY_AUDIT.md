@@ -2540,3 +2540,20 @@ Previous failed exact-head attempts were not hidden or counted as passes:
 - Source-contract tests still expected a hard-coded role list after the verifier moved to an any-non-owner-grantee predicate; obsolete assertions were removed.
 
 Do not use any earlier intermediate run as exact-head evidence. The successful run SHA above is the current qualified source checkpoint.
+
+
+## 2026-11-12 — complete direct function-grantee boundary added and qualified
+
+The issuer and Actor Gateway startup verifiers previously checked their own effective EXECUTE allow-lists, PUBLIC access, and selected Resource API runtime access, but did not independently reject every direct EXECUTE grant to other principals. A function could therefore be callable by the intended principal and still be directly executable by an unexpected application login.
+
+Both verifiers now enumerate function ACLs with `aclexplode`:
+- Authentication Issuer's ten-function allow-list permits EXECUTE only to `ghm_auth_issuer` and the function owner.
+- Actor Gateway's 25-function allow-list permits EXECUTE only to `ghm_actor_gateway` and the function owner.
+- Any other grantee is reported, including PUBLIC, `ghm_runtime`, `ghm_migrator`, `ghm_payment_provider`, other known roles, and arbitrary/unexpected roles.
+- Both startup assertions fail closed on any such grant.
+
+The disposable issuer qualification now proves this behavior by temporarily granting EXECUTE on `auth_create_account` and `gateway_provision_connect_business` to `ghm_payment_provider`, confirming each verifier reports the unexpected grantee, revoking both grants through the migrator/schema-owner path, and confirming both verifiers return to an empty unsafe-grantee result. Static contract tests lock the adversarial fixture and cleanup into the qualification.
+
+**Exact-head qualification passed:** source HEAD `1db5f78b8a0f0405586fc9ae2675f16732e9374e`, CI run `43179755317`, both `quality` and `web-quality` success. PostgreSQL 18.6 full migrations, issuer and Actor Gateway principal checks, full test suite, runtime boundary, guarded disposable cutover, and issuer lifecycle/runtime-denial/database rollback all passed. The run includes both the unexpected direct-grant fixture and the schema-scoped default-ACL fixture.
+
+This remains disposable-only evidence. Production grants/cutover, roles, deployments, secrets, data, routing and paid services remain untouched. PR #272 and the issuer dependent branch remain unmerged. Production role/ownership resolution, fresh independently verified backup, transport/network topology, recovery delivery, cross-product compatibility and separate founder approvals remain blockers.
