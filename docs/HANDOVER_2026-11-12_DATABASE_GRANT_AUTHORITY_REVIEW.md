@@ -779,3 +779,74 @@ This narrows the direct DML review substantially: the four relation entries abov
 5. No production changes until the current source/ACL plan is fully qualified and a fresh verified production backup exists.
 
 **No production grants, roles, ownership, credentials, environment variables, migrations, deployment, service configuration or application data were changed.**
+
+
+---
+
+## 2026-11-12 continuation — registration cutover startup-allowlist mismatch and correction
+
+**Work branch:** `construction/auth-issuer-isolation-20261112`.  
+**Scope:** continue production-to-source grant-authority audit; preserve all prior evidence and do not merge or mutate production.
+
+### Exact-head CI failure found and classified
+
+The prior documentation head `85d74a31f4ba08b7876b4b3c392529619d60f003` ran CI `43297432850`:
+
+- `web-quality`: passed.
+- `quality`: failed at `Qualify isolated actor gateway database principal`, before storage, the main test suite and later disposable cutover jobs could run.
+- The failing step's initial runtime exact EXECUTE allow-list assertion saw 43 SECURITY DEFINER signatures, while the code's expected pre-cutover state contained 41.
+- The two extra actual signatures were:
+  - `ghm.read_business_registration_identity(bigint,bigint)`
+  - `ghm.update_business_registration_identity(bigint,bigint,text,text,text)`
+
+This is explained by the manual-only registration identity revocation file `database/cutovers/20261111020000_revoke_legacy_registration_identity_runtime.sql`: the functions are intentionally still granted to `ghm_runtime` before that cutover is applied. The allow-list had incorrectly omitted them from every stage, even though the cutover is deliberately not part of automatic migrations. The runtime qualification asserts its baseline before applying that manual cutover, so its baseline must include both functions.
+
+### Correction committed
+
+Updated `src/db/runtime-database-privileges.ts` to model all eight independently reviewed combinations of the three manual cutovers:
+- Campaign/directory-review (3 signatures)
+- Authentication Issuer (14 signatures)
+- Registration identity (2 signatures)
+
+The exact expected counts are now:
+- Baseline: 43
+- Campaign only: 40
+- Issuer only: 29
+- Campaign + Issuer: 26
+- Registration only: 41
+- Campaign + Registration: 38
+- Issuer + Registration: 27
+- Campaign + Issuer + Registration: 24
+
+Updated `src/db/runtime-database-privileges.test.ts` to assert all eight stages, reject unexpected/missing grants in every stage, and explicitly prove the two registration identity functions are accepted only before the registration cutover.
+
+Commits:
+- Allow-list implementation: `9550eb3f0f55bdb1602f797b96413216798c0861`
+- Stage contract tests: `36eb11308966f8618000bb22e4d51b30da9f8ce2`
+
+**Validation status:** these commits were pushed and the exact latest head's CI must be checked before claiming the correction passes. Do not treat the previous failing CI as a passing result or infer a pass from source changes.
+
+### Storage finding correction / existing qualification confirmed
+
+During this continuation, the dedicated `docs/HANDOVER_2026-11-12_STORAGE_METADATA_GATEWAY.md` was read before further storage work. It confirms that the storage database actor/provider boundary is already source-remediated and disposable-qualified; my immediately preceding conversational statement that this was a newly discovered unremediated storage flaw was incorrect and is superseded.
+
+The existing construction branch already contains:
+- Actor-signed v2 assertions for create, read and deletion-pending.
+- Separate Resource API HMAC provider attestations for mark-available and mark-deleted, verified by PostgreSQL.
+- Five replacement `gateway_storage_*` SECURITY DEFINER wrappers.
+- Cross-business/member/disabled actor, context substitution, nonce replay, provider signature/expiry/context and lifecycle-state qualification.
+- A localhost-only disposable rehearsal that revokes the five legacy storage functions from PUBLIC, runtime, migrator and Actor Gateway, proves direct calls denied and replacement wrapper grants preserved, then restores original ACLs exactly.
+- A separate public metadata read guard requiring `status='available'` for the public Business Logo exception.
+
+This storage work is not a new implementation task. The remaining storage gates are production grant cutover after backup/role/deployment gates, and a full deployed non-production Resource API ↔ Actor Gateway ↔ PostgreSQL ↔ external-provider journey against a dedicated non-production bucket. The existing `zaid-ghm-production` bucket must not be used for further mutation tests.
+
+### Next actions
+
+1. Check the latest exact-head CI for `36eb11308966f8618000bb22e4d51b30da9f8ce2` (or a newer head), inspect any failure logs and correct the actual issue.
+2. Continue mapping production SECURITY DEFINER EXECUTE grants by source caller and compare production's live catalog with construction/disposable stages without conflating them.
+3. Review the two legacy Connect external mapping/replay functions, including the migrator's explicitly granted mapping lookup, against current consumers.
+4. Complete the full source/SQL/migration/job search for `opportunity_capability_requirement` DELETE before considering a forward-only revocation.
+5. Preserve all manual cutover files as manual-only; do not apply them to production. Fresh verified production backup, supported Render role model, and approved service/network/rollback plan remain prerequisites.
+6. Continue appending every material finding, correction, CI result and production mutation status to this handover and the corresponding specialist handover.
+
+**Production state:** no production role, grant, credential, secret, environment variable, migration, service, deployment, storage bucket/object or application data was changed. No PR was merged. PayFast remains paused.
