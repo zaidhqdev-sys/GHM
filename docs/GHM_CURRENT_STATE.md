@@ -1283,3 +1283,8 @@ The 71 pre-cutover application-role grants reconcile to Actor Gateway 25, runtim
 
 
 Branch clarification: active inventory/security work is on `construction/auth-issuer-isolation-20261112`, with no PR currently attached. PR #272 is separate and remains on `integration/capability-gateway-qualification-20261110` (head `0eda4ea8e232c98264fe83c7aecc3c85f71a5596`), open/unmerged and reported not mergeable. Do not conflate their CI or commits; no merge is authorized.
+
+
+### Function-body identity review
+
+All 24 signed Actor Gateway wrappers independently compare signed request context to actual target/payload arguments and call the verifier that requires the Actor Gateway DB login, active actor, short-lived one-use nonce and full HMAC comparison. Saved Business remains favourites/bookmarks: creation may save an eligible public Business without membership; reads/deletes are scoped to the signed actor. Legacy campaign/profile/hours/trust/registration/capability operations enforce membership/admin checks in their function bodies, with old runtime grants removed only by their manual cutovers. Evidence review legacy functions rely on admin role without checking active status themselves; signed gateway wrappers add the active-account assertion, and runtime legacy grants remain a cutover gate. The five storage functions remain the open direct-runtime identity/tenant boundary finding.
