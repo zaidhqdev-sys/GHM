@@ -4,8 +4,9 @@ export interface RuntimeDatabaseFunctionPrivileges {
   executable_functions: string[];
 }
 
-// Exact pre-migration baseline from the PostgreSQL 18.6 whole-database
-// SECURITY DEFINER inventory. Do not add a signature without reviewing its
+// Exact pre-migration baseline from the disposable PostgreSQL 18.6 whole-database
+// SECURITY DEFINER inventory. Production enforcement stays gated until its own
+// catalog is captured and reconciled. Do not add a signature without reviewing its
 // actor binding, tenant scope, lifecycle checks and owning service.
 export const RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS = [
   'ghm.auth_complete_quoteflow_migration_reset(bytea, text, integer, integer, integer)',
