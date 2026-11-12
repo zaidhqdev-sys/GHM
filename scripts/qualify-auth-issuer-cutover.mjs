@@ -9,16 +9,18 @@ import { PostgresAuthPersistence } from '../dist/auth/foundation/persistence.js'
 import { createArgon2idPasswordHasher } from '../dist/auth/foundation/password.js';
 import { createGhmAuthService } from '../dist/auth/ghm-auth-service.js';
 import { assertAuthIssuerDatabasePrivileges, readAuthIssuerDatabasePrivileges } from '../dist/auth-issuer/database-privileges.js';
+import { readActorGatewayDatabasePrivileges } from '../dist/actor-gateway/database-privileges.js';
 
 const issuerUrl = process.env.GHM_AUTH_ISSUER_DATABASE_URL?.trim();
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL?.trim();
 const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
+const actorGatewayUrl = process.env.GHM_ACTOR_GATEWAY_DATABASE_URL?.trim();
 const expectedDatabase = process.env.GHM_QUALIFICATION_DATABASE_NAME;
-if (!issuerUrl || !runtimeUrl || !migratorUrl) throw new Error('Issuer, runtime and migrator qualification URLs are required');
+if (!issuerUrl || !runtimeUrl || !migratorUrl || !actorGatewayUrl) throw new Error('Issuer, runtime, Actor Gateway and migrator qualification URLs are required');
 if (expectedDatabase !== 'ghm_disposable_test') {
   throw new Error('Auth issuer cutover qualification is restricted to ghm_disposable_test');
 }
-for (const [label, value] of [['issuer', issuerUrl], ['runtime', runtimeUrl], ['migrator', migratorUrl]]) {
+for (const [label, value] of [['issuer', issuerUrl], ['runtime', runtimeUrl], ['Actor Gateway', actorGatewayUrl], ['migrator', migratorUrl]]) {
   const parsed = new URL(value);
   if (!['localhost', '127.0.0.1'].includes(parsed.hostname) || parsed.pathname !== '/ghm_disposable_test') {
     throw new Error(`Auth issuer qualification ${label} URL must target local ghm_disposable_test`);
@@ -28,6 +30,7 @@ for (const [label, value] of [['issuer', issuerUrl], ['runtime', runtimeUrl], ['
 const issuerPool = new Pool({ connectionString: issuerUrl, ssl: false, max: 2, connectionTimeoutMillis: 5_000 });
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl: false, max: 1, connectionTimeoutMillis: 5_000 });
 const migratorPool = new Pool({ connectionString: migratorUrl, ssl: false, max: 1, connectionTimeoutMillis: 5_000 });
+const actorGatewayPool = new Pool({ connectionString: actorGatewayUrl, ssl: false, max: 1, connectionTimeoutMillis: 5_000 });
 
 const issuerOnlyFunctionNames = [
   'auth_create_account',
@@ -102,6 +105,57 @@ try {
   } finally {
     defaultPrivilegeClient.release();
   }
+
+  // Prove both startup verifiers detect a schema-scoped default EXECUTE grant
+  // to an unexpected non-owner role, not just PUBLIC or known application roles.
+  const baselineIssuerAcl = await readAuthIssuerDatabasePrivileges(issuerPool);
+  const baselineActorAcl = await readActorGatewayDatabasePrivileges(actorGatewayPool);
+  assert.equal(baselineIssuerAcl.unsafe_function_defaults, false, 'issuer default function ACL baseline must be safe');
+  assert.equal(baselineActorAcl.unsafe_function_defaults, false, 'Actor Gateway default function ACL baseline must be safe');
+
+  const schemaDefaultAclProbe = await migratorPool.connect();
+  let schemaDefaultAclProbeInstalled = false;
+  try {
+    await schemaDefaultAclProbe.query('BEGIN');
+    await schemaDefaultAclProbe.query('SET LOCAL ROLE ghm_schema_owner');
+    await schemaDefaultAclProbe.query(
+      'ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner IN SCHEMA ghm GRANT EXECUTE ON FUNCTIONS TO postgres',
+    );
+    await schemaDefaultAclProbe.query('COMMIT');
+    schemaDefaultAclProbeInstalled = true;
+
+    const [issuerWithUnexpectedDefault, actorWithUnexpectedDefault] = await Promise.all([
+      readAuthIssuerDatabasePrivileges(issuerPool),
+      readActorGatewayDatabasePrivileges(actorGatewayPool),
+    ]);
+    assert.equal(
+      issuerWithUnexpectedDefault.unsafe_function_defaults,
+      true,
+      'issuer startup ACL verifier must reject schema-scoped EXECUTE defaults granted to an unexpected role',
+    );
+    assert.equal(
+      actorWithUnexpectedDefault.unsafe_function_defaults,
+      true,
+      'Actor Gateway startup ACL verifier must reject schema-scoped EXECUTE defaults granted to an unexpected role',
+    );
+  } finally {
+    if (schemaDefaultAclProbeInstalled) {
+      await schemaDefaultAclProbe.query('BEGIN');
+      await schemaDefaultAclProbe.query('SET LOCAL ROLE ghm_schema_owner');
+      await schemaDefaultAclProbe.query(
+        'ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner IN SCHEMA ghm REVOKE EXECUTE ON FUNCTIONS FROM postgres',
+      );
+      await schemaDefaultAclProbe.query('COMMIT');
+    } else {
+      await schemaDefaultAclProbe.query('ROLLBACK').catch(() => undefined);
+    }
+    schemaDefaultAclProbe.release();
+  }
+
+  const issuerAclAfterProbe = await readAuthIssuerDatabasePrivileges(issuerPool);
+  const actorAclAfterProbe = await readActorGatewayDatabasePrivileges(actorGatewayPool);
+  assert.equal(issuerAclAfterProbe.unsafe_function_defaults, false, 'issuer default ACL must return to its safe baseline after probe cleanup');
+  assert.equal(actorAclAfterProbe.unsafe_function_defaults, false, 'Actor Gateway default ACL must return to its safe baseline after probe cleanup');
 
   const runtimeAuthFunctions = await issuerPool.query(`
     WITH expected(signature) AS (
@@ -468,7 +522,8 @@ try {
     quoteFlowMigrationReset: 'passed',
     disposableDatabasePrivilegeRollback: 'passed',
     issuerStartupAclVerification: 'passed',
+    globalAndSchemaScopedDefaultAclDenials: 'passed',
   }) + '\\n');
 } finally {
-  await Promise.all([issuerPool.end(), runtimePool.end(), migratorPool.end()]);
+  await Promise.all([issuerPool.end(), runtimePool.end(), migratorPool.end(), actorGatewayPool.end()]);
 }
