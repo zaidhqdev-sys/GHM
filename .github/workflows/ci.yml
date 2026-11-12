@@ -37,6 +37,7 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgres://ghm_runtime:runtime-test-password@localhost:5432/ghm_disposable_test
       GHM_RUNTIME_DATABASE_URL: postgres://ghm_runtime:runtime-test-password@localhost:5432/ghm_disposable_test
+      GHM_AUTH_ISSUER_DATABASE_URL: postgres://ghm_auth_issuer:auth-issuer-test-password@localhost:5432/ghm_disposable_test
       GHM_ACTOR_GATEWAY_DATABASE_URL: postgres://ghm_actor_gateway:actor-gateway-test-password@localhost:5432/ghm_disposable_test
       GHM_PAYMENT_PROVIDER_DATABASE_URL: postgres://ghm_payment_provider:provider-test-password@localhost:5432/ghm_disposable_test
       GHM_MIGRATOR_DATABASE_URL: postgres://ghm_migrator:migrator-test-password@localhost:5432/ghm_disposable_test
@@ -142,6 +143,9 @@ jobs:
           DROP ROLE ghm_role_creator;
           SQL
 
+      - name: Check auth issuer principal qualification script syntax
+        run: node --check scripts/qualify-auth-issuer-principal.mjs
+
       - name: Check storage qualification script syntax
         run: node --check scripts/qualify-storage-persistence.mjs
 
@@ -183,6 +187,9 @@ jobs:
 
       - name: Apply all migrations to disposable PostgreSQL
         run: npm run migrate
+
+      - name: Qualify isolated auth issuer database principal and empty privilege baseline
+        run: npm run qualify:auth-issuer-principal
 
       - name: Qualify isolated actor gateway database principal
         run: npm run qualify:actor-gateway-principal
