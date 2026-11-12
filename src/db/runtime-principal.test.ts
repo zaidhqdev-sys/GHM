@@ -16,7 +16,7 @@ const leastPrivilegeRuntime: RuntimeDatabaseIdentity = {
   rolcreaterole: false,
   rolreplication: false,
   rolbypassrls: false,
-  no_role_memberships: true,
+  no_untrusted_role_memberships: true,
 };
 
 test('accepts only the dedicated least-privilege ghm_runtime principal', () => {
@@ -44,7 +44,7 @@ test('rejects an unexpected effective role even when the login is ghm_runtime', 
   );
 });
 
-test('rejects CREATEROLE and privileged role memberships', () => {
+test('rejects CREATEROLE and untrusted role memberships while allowing the isolated Render administrator membership', () => {
   for (const override of [
     { database_connect_privilege: false },
     { database_create_privilege: true },
@@ -52,7 +52,7 @@ test('rejects CREATEROLE and privileged role memberships', () => {
     { schema_create: true },
     { rolcreaterole: true },
     { rolsuper: true },
-    { no_role_memberships: false },
+    { no_untrusted_role_memberships: false },
     { rolcreatedb: true },
     { rolreplication: true },
     { rolbypassrls: true },
