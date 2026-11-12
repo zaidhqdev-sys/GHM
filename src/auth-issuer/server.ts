@@ -116,7 +116,8 @@ const start = async (): Promise<void> => {
     executable_functions: string[];
     expected_functions: string[];
     unsafe_function_defaults: boolean;
-    runtime_can_execute_auth_lifecycle_functions: boolean;
+    runtime_executable_auth_functions: string[];
+    expected_runtime_auth_functions: string[];
   }>(`
     WITH expected_signatures(signature) AS (
       SELECT unnest(ARRAY[
@@ -132,25 +133,7 @@ const start = async (): Promise<void> => {
         'ghm.auth_complete_quoteflow_migration_reset(bytea, text, integer, integer, integer)'
       ]::text[])
     ),
-    runtime_lifecycle_signatures(signature) AS (
-      SELECT unnest(ARRAY[
-        'ghm.auth_create_account(text, text, text, text, text, integer, integer, integer)',
-        'ghm.auth_lookup_password_by_normalized_email(text)',
-        'ghm.auth_set_password(bigint, text, text, text, integer, integer, integer)',
-        'ghm.auth_rehash_password_if_unchanged(bigint, text, text, integer, integer, integer)',
-        'ghm.auth_create_session_with_refresh(bigint, bytea)',
-        'ghm.auth_validate_session(bigint)',
-        'ghm.auth_rotate_refresh(bytea, bytea)',
-        'ghm.auth_revoke_by_refresh_hash(bytea, text)',
-        'ghm.auth_issue_recovery(bigint, bytea, timestamptz)',
-        'ghm.auth_redeem_recovery(bytea)',
-        'ghm.auth_redeem_recovery_with_count(bytea)',
-        'ghm.auth_reset_password_with_recovery(bytea, text, text, integer, integer, integer)',
-        'ghm.auth_lookup_quoteflow_migration_reset_enrollment(text)',
-        'ghm.auth_complete_quoteflow_migration_reset(bytea, text, integer, integer, integer)',
-        'ghm.auth_register_quoteflow_migration_reset_enrollment(bigint, text, text, text, text, text)'
-      ]::text[])
-    )
+
     SELECT
       has_schema_privilege(session_user, 'ghm', 'USAGE') AS schema_usage,
       has_schema_privilege(session_user, 'ghm', 'CREATE') AS schema_create,
@@ -207,11 +190,24 @@ const start = async (): Promise<void> => {
              AND acl.grantee IN (0, 'ghm_runtime'::regrole::oid, 'ghm_auth_issuer'::regrole::oid)
         )
       ) AS unsafe_function_defaults,
-      EXISTS (
-        SELECT 1
-          FROM runtime_lifecycle_signatures f
-         WHERE has_function_privilege('ghm_runtime', f.signature::regprocedure, 'EXECUTE')
-      ) AS runtime_can_execute_auth_lifecycle_functions
+      ARRAY(
+        SELECT p.oid::regprocedure::text
+          FROM pg_proc p
+          JOIN pg_namespace n ON n.oid = p.pronamespace
+         WHERE n.nspname = 'ghm'
+           AND left(p.proname, 5) = 'auth_'
+           AND has_function_privilege('ghm_runtime', p.oid, 'EXECUTE')
+         ORDER BY 1
+      ) AS runtime_executable_auth_functions,
+      ARRAY(
+        SELECT signature::regprocedure::text
+          FROM unnest(ARRAY[
+            'ghm.auth_lookup_external_identity(text, text)',
+            'ghm.auth_link_business_external_mapping(text, text, bigint)',
+            'ghm.auth_lookup_business_external_mapping(text, text)'
+          ]::text[]) AS expected(signature)
+         ORDER BY 1
+      ) AS expected_runtime_auth_functions
   `);
   const databasePrivileges = privileges.rows[0];
   if (!databasePrivileges) throw new Error('Authentication Issuer database privileges could not be resolved');
