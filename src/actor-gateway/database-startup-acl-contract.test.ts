@@ -44,3 +44,10 @@ test('disposable qualification proves Actor Gateway rejects unexpected schema-sc
   assert.ok(qualificationSource.includes('actorWithUnexpectedDefault.unsafe_function_defaults'));
   assert.ok(qualificationSource.includes('IN SCHEMA ghm GRANT EXECUTE ON FUNCTIONS TO postgres'));
 });
+
+
+test('Actor Gateway verifier checks every SECURITY DEFINER owner and pinned temporary-safe search_path', () => {
+  assert.ok(privilegeSource.includes('unsafe_security_definer_functions'));
+  assert.ok(privilegeSource.includes("pg_get_userbyid(p.proowner) IS DISTINCT FROM 'ghm_schema_owner'"));
+  assert.ok(privilegeSource.includes("search_path=pg_catalog, ghm, pg_temp"));
+});
