@@ -28,7 +28,15 @@ try {
                FROM pg_auth_members m
                JOIN pg_roles member_role ON member_role.oid = m.member
               WHERE m.member = r.oid
-                 OR (m.roleid = r.oid AND member_role.rolname <> 'ghm_db_user')
+                 OR (
+                   m.roleid = r.oid
+                   AND (
+                     member_role.rolname <> 'ghm_db_user'
+                     OR m.admin_option IS DISTINCT FROM true
+                     OR m.inherit_option IS DISTINCT FROM false
+                     OR m.set_option IS DISTINCT FROM false
+                   )
+                 )
            ) AS no_untrusted_role_memberships
       FROM pg_roles r
      WHERE r.rolname = session_user
