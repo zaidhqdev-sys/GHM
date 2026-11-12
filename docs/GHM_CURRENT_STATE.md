@@ -862,3 +862,12 @@ An initial separate issuer process/app now exists under `src/auth-issuer/`, with
 This is not a cutover: Resource API still registers auth routes and retains its signing/pepper code path. The issuer DB login has no auth function grants yet; no privilege migration, deployment or product-client changes. Cross-product auth/resource URL separation and Connect BFF issuer upstream split remain required. Recovery delivery and QuoteFlow reset services remain unavailable by default.
 
 CI runs #3508–#3510 are still in progress / superseded while commits were being added. The latest run against the exact current head must complete successfully before claiming build/test qualification. Detailed implementation and remaining security gates are in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+
+## Disposable auth issuer cutover qualification passed (2026-11-12)
+
+CI #3521 passed both quality and web-quality on `76adba8`. A real disposable `ghm_auth_issuer` login was proven locked before grants, then granted an exact 12-function auth allow-list in a CI-only SQL fixture. The real `ghm_runtime` login was denied on all 12 issuer-only functions (42501), while its Connect lookup-only `auth_lookup_external_identity` operation remained available. The issuer had no direct credential/session/identity table privileges.
+
+Positive issuer flows passed: registration, login, refresh rotation, logout, one-time recovery issuance/redemption, password reset, replay rejection, old-password rejection and new-password login. The disposable fixture is applied after the existing runtime tests/qualifications; no existing test assumptions were weakened.
+
+Still outstanding: positive QuoteFlow migration-reset enrollment/completion with a real issuer login; forced password-rehash qualification; recovery-token/email mismatch contract resolution; exact-head CI for the later CORS and environment-documentation commits; actual separate-service deployment and cross-product URL/proxy migration. Resource API still owns current auth routes and secrets. No production role/grant/secret/service/deployment changes.
