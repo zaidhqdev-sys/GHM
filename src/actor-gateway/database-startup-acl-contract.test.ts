@@ -6,6 +6,7 @@ import test from 'node:test';
 const server = fs.readFileSync(path.resolve(process.cwd(), 'src/actor-gateway/server.ts'), 'utf8');
 const privilegeSource = fs.readFileSync(path.resolve(process.cwd(), 'src/actor-gateway/database-privileges.ts'), 'utf8');
 const qualificationSource = fs.readFileSync(path.resolve(process.cwd(), 'scripts/qualify-auth-issuer-cutover.mjs'), 'utf8');
+const principalMigration = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261110210000_add_actor_gateway_principal_guard.sql'), 'utf8');
 
 test('Actor Gateway verifies its exact database ACL before opening the HTTP listener', () => {
   const identityCheck = server.indexOf('assertActorGatewayDatabaseIdentity(identity.rows[0])');
