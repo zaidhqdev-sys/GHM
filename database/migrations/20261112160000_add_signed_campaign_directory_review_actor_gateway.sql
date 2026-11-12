@@ -7,7 +7,7 @@ BEGIN
   SELECT pg_get_functiondef(
     'ghm.assert_actor_gateway_capability(bigint,text,bigint,uuid,text,text)'::regprocedure
   ) INTO v_definition;
-  IF position('''business.connect.provision'',' IN v_definition) = 0 THEN
+  IF position('''business.connect.provision''' IN v_definition) = 0 THEN
     RAISE EXCEPTION 'Actor Gateway capability operation allow-list changed; reconcile migration manually';
   END IF;
   v_definition := replace(
