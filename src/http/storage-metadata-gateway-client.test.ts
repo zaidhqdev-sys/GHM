@@ -69,3 +69,49 @@ test('storage metadata gateway rejects invalid signer keys and non-HTTPS origins
   assert.throws(() => new HttpStorageMetadataGatewayClient('https://actor.example', 'token', 'bad'));
   assert.throws(() => new HttpStorageMetadataGatewayClient('http://actor.example', 'token', secret));
 });
+
+test('storage metadata gateway transports pending creation, deletion request and provider-confirmed deletion', async () => {
+  const requests: Request[] = [];
+  const client = new HttpStorageMetadataGatewayClient(
+    'https://actor.example', 'caller-token', secret, 5000,
+    (async (input: string, init?: RequestInit) => {
+      const request = new Request(String(input), init);
+      requests.push(request);
+      return Response.json({ object: row });
+    }) as typeof fetch,
+  );
+  const evidence = {
+    id: '9', businessId: '7', resourceType: 'business', resourceId: '7',
+    objectClass: 'business_logo' as const, providerKey: row.provider_key, contentType: 'image/png',
+    byteSize: 1024, visibility: 'public' as const, status: 'deletion_pending' as const,
+  };
+  await client.createPending({
+    businessId: '7', resourceType: 'business', resourceId: '7',
+    objectClass: 'business_logo', providerKey: row.provider_key, contentType: 'image/png',
+    byteSize: 1024, visibility: 'public',
+  });
+  await client.markDeletionPending('9');
+  await client.markDeleted('9', evidence);
+
+  assert.deepEqual(requests.map(request => [request.method, new URL(request.url).pathname]), [
+    ['POST', '/v1/storage/metadata'],
+    ['POST', '/v1/storage/metadata/9/deletion-pending'],
+    ['POST', '/v1/storage/metadata/9/deleted'],
+  ]);
+  const createBody = await requests[0].clone().json() as Record<string, unknown>;
+  assert.deepEqual(createBody, {
+    businessId: 7, resourceId: 7, providerKey: row.provider_key,
+    contentType: 'image/png', byteSize: 1024, originalFilename: null,
+  });
+  const deleteBody = await requests[2].clone().json() as {
+    providerKey: string; attestation: { issuedAt: number; nonce: string; context: string; signature: string };
+  };
+  assert.equal(deleteBody.providerKey, row.provider_key);
+  const payload = `ghm-storage-provider:v1|storage.provider.mark_deleted|${deleteBody.attestation.issuedAt}|${deleteBody.attestation.nonce}|${Buffer.from(deleteBody.attestation.context, 'utf8').toString('hex')}`;
+  const expected = createHmac('sha256', Buffer.from(secret, 'base64')).update(payload, 'utf8').digest('hex');
+  assert.equal(deleteBody.attestation.signature, expected);
+  assert.deepEqual(JSON.parse(deleteBody.attestation.context), {
+    businessId: 7, objectId: 9, providerKey: row.provider_key,
+  });
+});
+
