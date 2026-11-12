@@ -94,7 +94,7 @@ export interface CreateAccountResult {
 
 export interface AuthPersistence {
   createAccount?(fullName: string | null, role: 'customer' | 'business', email: string, password: string): Promise<CreateAccountResult>;
-  setPassword(accountId: number, email: string, password: string): Promise<PasswordHashResult>;
+  rehashPasswordIfUnchanged(accountId: number, expectedPasswordHash: string, password: string): Promise<boolean>;
   lookupPasswordByEmail(email: string): Promise<(PasswordCredentialLookup & { accountStatus: string }) | null>;
   createSessionWithRefresh(accountId: number): Promise<CreateSessionResult>;
   rotateRefresh(refreshTokenWire: string): Promise<RotateRefreshPersistenceResult>;
@@ -162,28 +162,30 @@ export class PostgresAuthPersistence implements AuthPersistence {
     }
   }
 
-  async setPassword(accountId: number, email: string, password: string): Promise<PasswordHashResult> {
-    const normalized = normalizeLoginEmail(email);
+  async rehashPasswordIfUnchanged(
+    accountId: number,
+    expectedPasswordHash: string,
+    password: string,
+  ): Promise<boolean> {
     const hashed = await this.passwordHasher.hash(password);
     try {
-      await this.tx(async (client) => {
-        await client.query(
-          `SELECT ghm.auth_set_password($1, $2, $3, $4, $5, $6, $7)`,
+      const result = await this.tx(async (client) =>
+        client.query<{ updated: boolean }>(
+          `SELECT ghm.auth_rehash_password_if_unchanged($1, $2, $3, $4, $5, $6) AS updated`,
           [
             accountId,
-            normalized.loginEmail,
-            normalized.loginEmailNormalized,
+            expectedPasswordHash,
             hashed.passwordHash,
             hashed.argon2MemoryKib,
             hashed.argon2TimeCost,
             hashed.argon2Parallelism,
           ],
-        );
-      });
+        ),
+      );
+      return result.rows[0]?.updated === true;
     } catch (error) {
       throw mapPgError(error);
     }
-    return hashed;
   }
 
   async lookupPasswordByEmail(
