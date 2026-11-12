@@ -42,6 +42,7 @@ const app = createAuthIssuerApp({
   authService,
   authPersistence: persistence,
   passwordResetService: createPasswordResetService(persistence),
+  readinessCheck: async () => { await pool.query('SELECT 1'); },
 });
 const server = http.createServer(app);
 server.requestTimeout = 30_000;
