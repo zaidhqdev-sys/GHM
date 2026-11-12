@@ -108,6 +108,10 @@ REVOKE ALL ON FUNCTION ghm.auth_register_quoteflow_migration_reset_enrollment(bi
 -- available to ghm_runtime. Business external mapping remains a separate
 -- resource integration and is not part of this issuer cutover.
 
+-- Provider business-ID linking is an operator/migration action; request paths are lookup-only.
+REVOKE ALL ON FUNCTION ghm.auth_link_business_external_mapping(text, text, bigint)
+  FROM PUBLIC, ghm_runtime;
+
 GRANT EXECUTE ON FUNCTION ghm.auth_reset_password_with_recovery(bytea, text, text, integer, integer, integer)
   TO ghm_auth_issuer;
 
