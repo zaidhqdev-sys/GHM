@@ -1,7 +1,7 @@
 import type { Pool, PoolClient } from 'pg';
 import { createBusinessSlug } from '../resources/business-identity/repository';
 import type { BusinessIdentity } from '../resources/business-identity/contracts';
-import type { ConnectBusinessProvisioningInput, ConnectBusinessProvisioningResult } from '../integrations/connect/business-provisioning-contracts';
+import type { ConnectBusinessProvisioningInput, ConnectBusinessProvisioningReader, ConnectBusinessProvisioningResult } from '../integrations/connect/business-provisioning-contracts';
 import { createActorGatewayAssertion } from './request-assertion';
 
 
