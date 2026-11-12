@@ -99,7 +99,6 @@ export interface AuthPersistence {
   createSessionWithRefresh(accountId: number): Promise<CreateSessionResult>;
   rotateRefresh(refreshTokenWire: string): Promise<RotateRefreshPersistenceResult>;
   issueRecovery(accountId: number, ttlMinutes?: number): Promise<{ recoveryTokenWire: string; credentialId: number; expiresAt: Date }>;
-  redeemRecovery(recoveryTokenWire: string): Promise<number>;
   resetPasswordWithRecovery(
     recoveryTokenWire: string,
     email: string,
@@ -295,19 +294,6 @@ export class PostgresAuthPersistence implements AuthPersistence {
     }
   }
 
-  async redeemRecovery(recoveryTokenWire: string): Promise<number> {
-    const raw = decodeOpaqueTokenWire(recoveryTokenWire);
-    const tokenHash = protectOpaqueToken(this.pepper, 'recovery', raw);
-    try {
-      const result = await this.tx(async (client) =>
-        client.query(`SELECT ghm.auth_redeem_recovery($1) AS account_id`, [tokenHash]),
-      );
-      return Number(result.rows[0].account_id);
-    } catch (error) {
-      throw mapPgError(error);
-    }
-  }
-
   async resetPasswordWithRecovery(
     recoveryTokenWire: string,
     email: string,
@@ -318,33 +304,27 @@ export class PostgresAuthPersistence implements AuthPersistence {
     const normalized = normalizeLoginEmail(email);
     const hashed = await this.passwordHasher.hash(password);
     try {
-      const result = await this.tx(async (client) => {
-        const redeemed = await client.query<{ account_id: string | number; revoked_session_count: number | string }>(
-          `SELECT account_id, revoked_session_count FROM ghm.auth_redeem_recovery_with_count($1)`,
-          [tokenHash],
-        );
-        if (redeemed.rowCount !== 1) {
-          throw new AuthPersistenceError('Recovery credential invalid', 'RECOVERY_CREDENTIAL_INVALID');
-        }
-        const accountId = Number(redeemed.rows[0].account_id);
-        const passwordResult = await client.query(
-          `SELECT ghm.auth_set_password($1, $2, $3, $4, $5, $6, $7) AS ok`,
+      const result = await this.tx(async (client) =>
+        client.query(
+          `SELECT account_id, revoked_session_count
+             FROM ghm.auth_reset_password_with_recovery($1, $2, $3, $4, $5, $6)`,
           [
-            accountId,
-            normalized.loginEmail,
+            tokenHash,
             normalized.loginEmailNormalized,
             hashed.passwordHash,
             hashed.argon2MemoryKib,
             hashed.argon2TimeCost,
             hashed.argon2Parallelism,
           ],
-        );
-        if (passwordResult.rowCount !== 1) {
-          throw new AuthPersistenceError('Password reset failed');
-        }
-        return Number(redeemed.rows[0].revoked_session_count ?? 0);
-      });
-      return { password: hashed, revokedSessionCount: result };
+        ),
+      );
+      if (result.rowCount !== 1) {
+        throw new AuthPersistenceError('Recovery credential invalid', 'RECOVERY_CREDENTIAL_INVALID');
+      }
+      return {
+        password: hashed,
+        revokedSessionCount: Number(result.rows[0].revoked_session_count ?? 0),
+      };
     } catch (error) {
       throw mapPgError(error);
     }
