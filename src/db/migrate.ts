@@ -121,6 +121,13 @@ const migrate = async (): Promise<void> => {
             FROM pg_auth_members membership
            WHERE membership.member = migrator.oid
         ) AS direct_membership_count,
+        (
+          SELECT count(*)::int
+            FROM pg_auth_members membership
+            JOIN pg_roles member_role ON member_role.oid = membership.member
+           WHERE membership.roleid = migrator.oid
+             AND member_role.rolname <> 'ghm_db_user'
+        ) AS migrator_untrusted_member_count,
         EXISTS (
           SELECT 1
             FROM pg_auth_members membership
@@ -135,6 +142,13 @@ const migrate = async (): Promise<void> => {
             FROM pg_auth_members membership
            WHERE membership.member = schema_owner.oid
         ) AS schema_owner_direct_membership_count,
+        (
+          SELECT count(*)::int
+            FROM pg_auth_members membership
+            JOIN pg_roles member_role ON member_role.oid = membership.member
+           WHERE membership.roleid = schema_owner.oid
+             AND member_role.rolname NOT IN ('ghm_db_user', 'ghm_migrator')
+        ) AS schema_owner_untrusted_member_count,
         has_database_privilege('ghm_schema_owner', current_database(), 'CREATE') AS schema_owner_database_create_privilege,
         EXISTS (
           SELECT 1
