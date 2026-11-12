@@ -78,18 +78,6 @@ const mapPgError = (error: unknown): AuthPersistenceError => {
   throw new AuthPersistenceError('Auth persistence operation failed');
 };
 
-export interface SessionValidationResult {
-  sessionId: number;
-  accountId: number | null;
-  sessionStatus: string | null;
-  accountStatus: string | null;
-  createdAt: Date | null;
-  lastSeenAt: Date | null;
-  absoluteExpiresAt: Date | null;
-  isUsable: boolean;
-  rejectReason: string | null;
-}
-
 export interface CreateSessionResult extends CreateSessionWithRefreshResult {
   /** Raw refresh wire token — return to issuer only; never persist */
   refreshTokenWire: string;
@@ -109,7 +97,6 @@ export interface AuthPersistence {
   setPassword(accountId: number, email: string, password: string): Promise<PasswordHashResult>;
   lookupPasswordByEmail(email: string): Promise<(PasswordCredentialLookup & { accountStatus: string }) | null>;
   createSessionWithRefresh(accountId: number): Promise<CreateSessionResult>;
-  validateSession(sessionId: number): Promise<SessionValidationResult>;
   rotateRefresh(refreshTokenWire: string): Promise<RotateRefreshPersistenceResult>;
   issueRecovery(accountId: number, ttlMinutes?: number): Promise<{ recoveryTokenWire: string; credentialId: number; expiresAt: Date }>;
   redeemRecovery(recoveryTokenWire: string): Promise<number>;
@@ -245,27 +232,6 @@ export class PostgresAuthPersistence implements AuthPersistence {
     } catch (error) {
       throw mapPgError(error);
     }
-  }
-
-  async validateSession(sessionId: number): Promise<SessionValidationResult> {
-    const result = await this.tx(async (client) =>
-      client.query(`SELECT * FROM ghm.auth_validate_session($1)`, [sessionId]),
-    );
-    if (result.rowCount !== 1) {
-      throw new AuthPersistenceError('Session validation failed');
-    }
-    const row = result.rows[0];
-    return {
-      sessionId: Number(row.session_id),
-      accountId: row.account_id == null ? null : Number(row.account_id),
-      sessionStatus: row.session_status ?? null,
-      accountStatus: row.account_status ?? null,
-      createdAt: row.created_at ?? null,
-      lastSeenAt: row.last_seen_at ?? null,
-      absoluteExpiresAt: row.absolute_expires_at ?? null,
-      isUsable: Boolean(row.is_usable),
-      rejectReason: row.reject_reason ?? null,
-    };
   }
 
   async rotateRefresh(refreshTokenWire: string): Promise<RotateRefreshPersistenceResult> {
