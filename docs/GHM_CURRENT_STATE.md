@@ -1082,7 +1082,7 @@ The issuer now verifies database ACLs before opening its HTTP listener. Startup 
 Added a pure privilege verifier, unit tests, and a source contract test that verification occurs before server.listen. Exact-head CI pending. No production deployment or grants changed.
 
 
-Historical three-function runtime allow-list was superseded on 2026-11-12: startup now enforces the exact two-function lookup-only set (`auth_lookup_external_identity`, `auth_lookup_business_external_mapping`). Provider-business mapping creation is operator/migration-only.
+Historical checkpoint: the Resource API runtime's exact three-function allow-list remains in force. The 2026-11-12 source trace confirmed `auth_link_business_external_mapping` is an active Connect Business provisioning dependency; see the later Connect mapping dependency section for the open security gap and required gateway migration.
 
 
 ### 2026-11-12 — Startup identity enforcement and Connect business mapping dependency
