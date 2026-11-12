@@ -871,3 +871,12 @@ CI #3521 passed both quality and web-quality on `76adba8`. A real disposable `gh
 Positive issuer flows passed: registration, login, refresh rotation, logout, one-time recovery issuance/redemption, password reset, replay rejection, old-password rejection and new-password login. The disposable fixture is applied after the existing runtime tests/qualifications; no existing test assumptions were weakened.
 
 Still outstanding: positive QuoteFlow migration-reset enrollment/completion with a real issuer login; forced password-rehash qualification; recovery-token/email mismatch contract resolution; exact-head CI for the later CORS and environment-documentation commits; actual separate-service deployment and cross-product URL/proxy migration. Resource API still owns current auth routes and secrets. No production role/grant/secret/service/deployment changes.
+
+
+## Extended issuer lifecycle qualification passed (2026-11-12)
+
+CI #3528 passed quality + web-quality. The disposable issuer test now also forces password rehash-on-login and proves a subsequent normal login verifies the replacement hash. It exercises the full QuoteFlow migration reset using a credentialless active account, approved enrollment and matching Supabase external identity mapping; the issuer performs enrollment lookup, issues/consumes the token-bound recovery credential, completes reset once, rejects replay, transitions enrollment out of `reset_required`, and successfully logs in with the new password.
+
+Final output: 12 issuer-only functions, zero issuer direct secret-table privileges, 12 runtime permission denials, Connect lookup preserved, registration/login/forced rehash/refresh/logout passed, recovery replay/session revocation passed, QuoteFlow migration reset passed. Fixture setup uses the migrator with `SET ROLE ghm_schema_owner`; issuer operations use the real issuer login.
+
+CORS allow-list validation and explicit production proxy-hop configuration were added after #3528. CI against those later commits is pending; see the security handover. No production changes.
