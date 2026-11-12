@@ -107,7 +107,7 @@ export const AUTH_ISSUER_DATABASE_PRIVILEGES_SQL = `
           SELECT 1
             FROM pg_default_acl d
            WHERE d.defaclrole = 'ghm_schema_owner'::regrole
-             AND (d.defaclnamespace = 0 OR d.defaclnamespace = 'ghm'::regnamespace)
+             AND d.defaclnamespace = 0
              AND d.defaclobjtype = 'f'
         )
         OR EXISTS (
