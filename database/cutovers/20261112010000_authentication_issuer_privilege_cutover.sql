@@ -97,6 +97,12 @@ GRANT EXECUTE ON FUNCTION ghm.auth_lookup_quoteflow_migration_reset_enrollment(t
 GRANT EXECUTE ON FUNCTION ghm.auth_complete_quoteflow_migration_reset(bytea, text, integer, integer, integer)
   TO ghm_auth_issuer;
 
+-- QuoteFlow reset enrollment registration is a migration/operator action.
+-- The issuer may read/complete an existing enrollment, but cannot register or
+-- alter the approved migration provenance itself.
+REVOKE ALL ON FUNCTION ghm.auth_register_quoteflow_migration_reset_enrollment(bigint, text, text, text, text, text)
+  FROM PUBLIC, ghm_runtime, ghm_auth_issuer;
+
 -- Connect's lookup-only external identity operation deliberately remains
 -- available to ghm_runtime. Business external mapping remains a separate
 -- resource integration and is not part of this issuer cutover.
