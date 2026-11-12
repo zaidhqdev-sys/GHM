@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { AuthContext } from '../../auth/authorization';
 import type {
   ConnectBusinessProvisioningGatewayClient,
   ConnectBusinessProvisioningInput,
@@ -8,7 +7,6 @@ import type {
 } from './business-provisioning-contracts';
 import { ConnectBusinessAdapter } from './business-adapter';
 
-const context: AuthContext = { userId: 7, role: 'business' };
 const accessToken = 'verified-ghm-access-token';
 
 const business = {
@@ -66,7 +64,7 @@ test('existing Connect Business mapping resolves through the signed gateway', as
   const gateway = new FakeGateway(result('resolved'));
   const adapter = new ConnectBusinessAdapter(gateway);
 
-  const resolved = await adapter.provisionOrResolve(context, accessToken, {
+  const resolved = await adapter.provisionOrResolve(accessToken, {
     externalBusinessId: '11111111-1111-4111-8111-111111111111',
     name: 'Ignored For Existing Mapping',
   });
@@ -126,15 +124,15 @@ test('Connect Business provisioning requires the verified access token', async (
   assert.equal(gateway.calls.length, 0);
 });
 
-test('customer cannot provision a Connect Business', async () => {
+test('missing bearer token cannot invoke Connect Business provisioning', async () => {
   const gateway = new FakeGateway(result('provisioned'));
   const adapter = new ConnectBusinessAdapter(gateway);
   await assert.rejects(
-    () => adapter.provisionOrResolve({ userId: 7, role: 'customer' }, accessToken, {
+    () => adapter.provisionOrResolve(' ', {
       externalBusinessId: '33333333-3333-4333-8333-333333333333',
       name: 'Blocked Business',
     }),
-    /Insufficient role/,
+    /verified access token/,
   );
   assert.equal(gateway.calls.length, 0);
 });
