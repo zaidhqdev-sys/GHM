@@ -2495,3 +2495,21 @@ The qualification uses the existing Actor Gateway database URL from the disposab
 Static contract tests now ensure this adversarial fixture remains part of the issuer and Actor Gateway qualification. This test is committed but still requires a full exact-head PostgreSQL 18 CI run. The available GitHub workflow-run connector does not expose push-triggered run records for this branch, so do not claim it passed until a run is independently retrieved.
 
 Latest qualification-source/test commit before this handover update: `c2e345440978716bc221cbf8aa486dd9d8d173a6`. The issuer branch remains separate from open/unmerged upstream PR #272; no integration or merge is authorized.
+
+
+## 2026-11-12 — SECURITY DEFINER owner and temporary-schema search_path hardening
+
+A further review of the issuer and Actor Gateway allow-lists found that startup verified effective EXECUTE sets but did not verify the metadata of every privileged GHM function. A function can be correctly granted yet still be unsafe if its SECURITY DEFINER owner is not the schema owner or its search_path permits temporary-object shadowing.
+
+Added migration `20261112090000_pin_security_definer_search_path.sql`:
+- Preflights that every SECURITY DEFINER function in schema `ghm` is owned by `ghm_schema_owner`; it aborts before changing any function if ownership is unexpected.
+- Pins every such function to `search_path = pg_catalog, ghm, pg_temp`. Explicitly placing `pg_temp` last prevents PostgreSQL's implicit temporary-schema-first behavior from allowing caller-created temporary objects to shadow trusted objects.
+- Uses `ALTER FUNCTION ... SET` and changes no function body, grants, ownership, data or service configuration.
+
+Both issuer and Actor Gateway startup ACL queries now return every GHM SECURITY DEFINER function whose owner is not `ghm_schema_owner` or whose function-local search_path is not exactly `pg_catalog, ghm, pg_temp`. Both startup assertions fail closed unless that result is empty. Unit tests reject a non-empty result; source-contract tests cover the catalog predicates; disposable issuer qualification asserts both verifiers return an empty result before and after the default-ACL adversarial probe.
+
+The earlier registration migration had a function-local path `ghm, pg_temp`; the new migration normalizes that and every other SECURITY DEFINER function, not just the current issuer/gateway allow-lists. Existing function bodies and application behavior are not rewritten.
+
+**Qualification status:** the migration, startup verifier, and regression tests are committed but no exact-head PostgreSQL 18 CI evidence is available yet. The connector's combined-status endpoint returned no status checks for the inspected commit; that is not a pass. The disposable full migration chain must prove the owner preflight, ALTER FUNCTION loop, exact catalog string representation, all existing SECURITY DEFINER functions, and startup checks. If any owner preflight fails, stop and audit that owner rather than weakening the preflight.
+
+Latest source/test commit before this handover entry: `228cf68a0fda4c507a50af75d9e24ab2a946df07`. Issuer branch remains separate from open/unmerged PR #272. No production database, grants, roles, secrets, services, deployments, data, routing or paid resources were changed.
