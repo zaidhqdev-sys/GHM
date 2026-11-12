@@ -2137,3 +2137,10 @@ A new read-only Render Postgres inventory found exactly three databases:
 There is no available Free Postgres database in the current Render workspace inventory. Therefore the hosted non-production Authentication Issuer cannot currently be deployed with a verified isolated database without either using a paid existing resource or creating another database. Neither is authorized under the no-new-spend constraint. Do not connect the issuer to ghm_db, and do not repurpose the identity qualification DB without a separate read-only ownership/data/role audit and explicit founder approval.
 
 Continue using CI disposable PostgreSQL for issuer schema/grant/lifecycle qualification. Keep hosted end-to-end routing blocked. No database query, database mutation, role/grant change, service update, or environment write was performed during this inventory.
+
+
+### Branch / PR relationship — checked 2026-11-12
+
+PR #272 remains open and unmerged: "chore(security): qualify unified Actor Gateway integration stack", head `0eda4ea8e232c98264fe83c7aecc3c85f71a5596`, base `main`. Its current GitHub checks (quality, web-quality and Cloudflare Pages) are green. This does not authorize merging: production role-model/backup/deployment gates remain, and the founder's docs-first/no-stale-contradictions merge rule remains in force.
+
+The Authentication Issuer construction branch is not an unrelated parallel fork. GitHub's commit comparison confirms `construction/auth-issuer-isolation-20261112` is **105 commits ahead and 0 commits behind** PR #272's current head at the time of this audit. It therefore carries the Actor Gateway integration stack as its base plus the subsequent issuer-isolation work. Keep the issuer work isolated on its construction branch; do not merge PR #272 underneath it or open a conflicting duplicate integration before the issuer branch is ready. Recheck ancestry and exact-head CI before preparing any eventual PR.
