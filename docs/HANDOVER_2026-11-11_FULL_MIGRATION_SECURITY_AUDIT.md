@@ -2182,3 +2182,24 @@ The latest test head is not the latest documentation head. Subsequent handover/s
 The Render `GHM-Internal-Runtime` service is still configured to deploy from `main`, with auto-deploy disabled. Its latest live deployment inventory entry is commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf` from 2026-11-10. The Authentication Issuer construction branch has not been deployed to Render. Therefore the issuer-route removal, public-key-only Resource API verifier, separate issuer process and client split-origin routing are **construction-branch code only**, not live production behavior.
 
 The current production Resource API remains on its existing deployed authentication arrangement until a coordinated, approved deployment and routing cutover. Do not remove its current signing/token secrets, alter its database grants, or point any production client at a new issuer based on CI success. No issuer service, production issuer principal, issuer environment values, or production routing was created or enabled.
+
+
+## 2026-11-12 — Authentication issuer database authority closure and rollback qualification
+
+A further ACL audit found that QuoteFlow migration reset enrollment registration, `ghm.auth_register_quoteflow_migration_reset_enrollment(bigint, text, text, text, text, text)`, was still granted to `ghm_runtime` by its original migration. This operation creates approved migration provenance and is not a Resource API or issuer operation.
+
+Corrected on the issuer construction branch:
+- Added automatic migration `20261112040000_revoke_runtime_quoteflow_reset_enrollment_registration.sql`, revoking PUBLIC and `ghm_runtime`.
+- Added the same explicit revocation for `ghm_auth_issuer` to the manual issuer cutover.
+- Extended disposable cutover qualification to assert runtime denial and to create the approved enrollment only through the migrator's controlled `SET ROLE ghm_schema_owner` path.
+- Added a migration contract test protecting the boundary.
+
+Issuer cutover hardening also explicitly revokes `CREATE` on schema `ghm`. Disposable qualification now checks issuer table/view privileges, sequence privileges, schema CREATE, exact function allow-list and runtime denials.
+
+Added manual rollback file `database/cutovers/20261112020000_authentication_issuer_privilege_rollback.sql`. It revokes issuer auth function and schema usage, then restores the documented pre-issuer-cutover `ghm_runtime` authentication function allow-list. It deliberately does not restore earlier-removed migration/operator privileges or direct relation/sequence access. This is DB ACL rollback only; it does not restore binaries, signing keys, pepper, secrets, client routing or a deployment. The qualification script applies cutover and rollback only to disposable PostgreSQL, then asserts issuer auth execution is zero and the documented runtime allow-list is restored. Earlier intermediate CI runs exposed a SQL ESCAPE bug in the rollback assertion; the query was corrected to use an explicit `left(proname, 5) = 'auth_'` predicate and metadata checks through the migrator connection. Do not treat those failed intermediate runs as green.
+
+The issuer server now wires QuoteFlow migration-reset completion through `createQuoteFlowMigrationResetCompletionService`, and an HTTP regression verifies that completion precedes login/session issuance using the enrollment's approved email. QuoteFlow reset *request* and generic password-recovery *request* remain unavailable (503) because no recovery delivery adapter is wired. This is an explicit go-live blocker; do not claim recovery delivery works or introduce a paid provider without approval.
+
+A complete operational sequence and limitations are documented in `docs/architecture/AUTH_ISSUER_CUTOVER_AND_ROLLBACK_RUNBOOK.md`. The runbook is design-only and authorizes no production changes.
+
+The issuer branch remains directly based on `integration/capability-gateway-qualification-20261110`; latest comparison showed 130 commits ahead and 0 behind. PR #272 remains upstream and must not be merged independently underneath this dependent branch. Production remains unchanged. The exact latest branch head must pass CI before this batch is considered qualified.
