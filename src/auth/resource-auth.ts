@@ -59,7 +59,7 @@ export const createRequireResourceAuth = (
       .authenticateAndLoadState(req)
       .then(({ context, state }) => {
         req.ghmAuthContext = context;
-        req.authContext = authContextFromAccountState(context.accountId, state);
+        req.authContext = Object.freeze({ ...authContextFromAccountState(context.accountId, state), actorGatewayBearerToken: req.header('authorization')?.slice('Bearer '.length).trim() });
         next();
       })
       .catch((error: unknown) => {
