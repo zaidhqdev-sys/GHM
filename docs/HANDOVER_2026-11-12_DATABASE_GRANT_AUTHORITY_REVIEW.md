@@ -1085,3 +1085,66 @@ A read-only `information_schema.tables` query for base-table names containing `m
 5. Complete fresh verified backup, Render SQL-created login cutover plan, service environment mapping, deployment/network and rollback gates before any production action.
 
 **No production grants, roles, ownership, credentials, secrets, environment variables, migrations, services, deployments, buckets, objects or application data were changed. No PR was merged.**
+
+
+---
+
+## 2026-11-12 continuation — complete manual-cutover stage inventory and 13-function post-cutover state
+
+### Exact CI failure classification
+
+The run `43302670194` (source head `91ea5d30ff87e34e003cc69cccb0aa4f83b9fe3b`) passed `web-quality` and failed in `quality` during `qualify-auth-issuer-cutover.mjs`.
+
+The failure occurred after the CI sequence had qualified/applied the Campaign, capability-governance, Business Capability, Saved Business, Business Hours, Trust Score and Business Logo manual cutovers, in addition to the earlier registration-identity cutover. The Resource API runtime had reached the fully cut-over state with 13 executable SECURITY DEFINER functions. The guard only modeled Campaign, Authentication Issuer and registration identity (24 functions after those three), so it rejected the legitimate combination with the other six gateway cutovers.
+
+The diagnostic identified exactly eleven further removed signatures:
+- Capability governance: `create_capability_draft`, `update_capability_draft`, `transition_capability_lifecycle`.
+- Business Capability mutations: `replace_business_capability_assertions`, `transition_business_capability_verification`, `transition_business_capability_evidence`.
+- Saved Business: `create_saved_business`, `delete_saved_business`.
+- Business Hours: `replace_business_hours`.
+- Trust Score: `calculate_business_trust_score`.
+- Business Logo: `set_business_logo_object`.
+
+This is an expected set of individually qualified manual revocations, not an unexplained privilege disappearance. The 13-function actual state is the baseline of 43 minus the 30 signatures removed by all nine manual cutover groups.
+
+### Complete cutover model implemented
+
+Updated `src/db/runtime-database-privileges.ts` to enumerate all nine independently qualified manual cutover groups:
+
+1. Campaign/directory review — 3 functions.
+2. Authentication Issuer — 14 functions.
+3. Registration identity — 2 functions.
+4. Capability governance — 3 functions.
+5. Business Capability mutations — 3 functions.
+6. Saved Business — 2 functions.
+7. Business Hours — 1 function.
+8. Trust Score — 1 function.
+9. Business Logo — 1 function.
+
+The groups contain 30 distinct signatures, all present in the 43-function baseline. The guard now derives and accepts only the exact (2^9=512) possible combinations of these reviewed revocations. It rejects any extra or missing function outside those combinations and reports per-stage missing/unexpected signatures. It does not add a wildcard, prefix match or permissive fallback.
+
+The all-nine-cutover state is exactly 13 functions. It retains:
+- the two separately reviewed Resource API lookup functions (`auth_lookup_business_external_mapping`, `auth_lookup_external_identity`);
+- Connect assertion replay consumption;
+- the approved public read projections for Business Hours, Trust Score and Capability eligibility;
+- the public Business Logo projection;
+- the five legacy storage metadata functions, because storage's current grant-revocation rehearsal restores its ACL and there is not yet a separate production cutover file in `database/cutovers/`.
+
+The five legacy storage grants are not silently treated as revoked. Their separate storage dual-proof and disposable grant-revocation/rollback qualification remains recorded in the storage handover.
+
+Updated `src/db/runtime-database-privileges.test.ts` to:
+- assert all nine group sizes and 512 combinations;
+- accept source and PostgreSQL-normalized signature formatting;
+- prove the exact 13-function all-cutover state;
+- reject one unexpected and one missing function in every combination;
+- retain focused issuer, registration and Campaign cutover assertions.
+
+Commits:
+- Complete cutover stage implementation: `fbcf63870782ca0e2bb2794784fadf4c28dbd3f3`.
+- 512-combination regression tests: `5729ac712f9dc9fac9abb47f38291b147e5ea159`.
+
+### Validation status
+
+The new implementation and tests have been pushed. Exact-head CI for `5729ac712f9dc9fac9abb47f38291b147e5ea159` must complete before claiming the cutover stage guard passes. Run `43302670194` remains failed historical evidence and is now explained by the incomplete three-group model.
+
+No production role, grant, credential, environment variable, migration, service, deployment, storage object or data was changed. No PR was merged.
