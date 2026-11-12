@@ -2814,3 +2814,47 @@ The latest exact-head run 43241401707 passed both CI jobs and produced a refresh
 The inventory remains 103 SECURITY DEFINER routines, all in ghm, all owned by ghm_schema_owner, all trusted languages and all pinned to pg_catalog, ghm, pg_temp. It finds zero PUBLIC EXECUTE grants and 75 preliminary non-owner grant findings. Direct grants remain runtime 43, Actor Gateway 30, payment provider 2, migrator 1. The updated gateway_storage_get_object definition now explicitly requires public Business Logo objects to be in available state for cross-business reads; the inventory body confirms that predicate. The 75 grants remain a human-reviewed role/function matrix, not automatic vulnerabilities or approvals. The artifact is a disposable pre-cutover baseline only.
 
 The same run proves the expanded public-read lifecycle rule: cross-business reads of pending, deletion_pending and deleted public objects are denied; available public Business Logo metadata remains readable; private object reads still require membership. The full 960-test suite, storage dual-proof, legacy grant rollback, issuer qualification and whole-database inventory all passed. No production grants or roles were changed.
+
+
+## 2026-11-12 23:30 UTC — recovered session, exact-head CI failure and correction
+
+Recovered the active construction branch directly from GitHub. Current branch HEAD before this correction was `c7b59ee93d954aa51311b79143ed961a7250302d`. The prior session's note that the startup ACL source-contract test was the immediate blocker was incomplete: the latest exact-head CI run exposed a separate malformed Actor Gateway source-contract test before any database qualification could run.
+
+### Exact evidence
+
+- Branch: `construction/auth-issuer-isolation-20261112`
+- Failed exact-head run: [43325617355](https://github.com/zaidhqdev-sys/GHM/actions/runs/43325617355)
+- `web-quality`: PASS
+- Cloudflare Pages preview: PASS
+- `quality`: FAIL at the TypeScript build step, before migrations, inventory, tests or disposable PostgreSQL qualifications.
+- Exact compiler errors: `src/actor-gateway/database-startup-acl-contract.test.ts` lines 1–4 referenced `principalMigration` before its declaration (TS2448/TS2454).
+- Inspection confirmed four membership assertions had been accidentally prepended before the imports and variable declarations. The test body also contained the correct assertions later; the four leading lines were the defect.
+
+### Correction committed
+
+Replaced `src/actor-gateway/database-startup-acl-contract.test.ts` with the complete correctly ordered test module. The Render-shaped membership assertions now execute inside the first test after `principalMigration` is initialized. Existing checks for startup ACL verification, global/schema default ACLs, all gateway allow-list functions, SECURITY DEFINER ownership/search_path, unexpected direct grantees and PUBLIC execution probes were retained.
+
+- Fix commit: `95f0feb3f2419c3a1daac500f81e3e815bc85b82`
+- Exact-head workflow run: [43328569213](https://github.com/zaidhqdev-sys/GHM/actions/runs/43328569213)
+- At handover update time, `quality` and `web-quality` were queued and Cloudflare Pages was building. **Do not claim the fix is qualified until both CI jobs and the preview check complete successfully.**
+
+### Important current-source corrections
+
+- The latest live PR #272 metadata now reports it is OPEN, DRAFT, UNMERGED and mergeable, based on `main` at `ad4fea43f2eb7bf959042b9db77a9f86e6bb531b`, with PR head `c81e2bf2534febef9c5e49b39f60f85415f04ff1`. This supersedes historical handover text saying it was not mergeable or based on the old `0eda4ea` head. It remains a distinct integration PR; do not merge it as part of this audit.
+- Current construction branch comparison against main reports divergence: 1,566 commits ahead and 6 behind, merge base `d1bd49cde73bb4ef428da1f75fcd27b2b285ddd8`. This count is inflated by the branch's unusual history; do not use it as a reason to merge or rebase blindly. Resolve ancestry/dependency integration deliberately.
+- Connect issuer-origin branch exists at `e016f4e8fa241b65ec7f89330e88c18fd7f2d482`; its documentation records the predecessor complete branch head `d177f623c4eb1d16f2f8d2c78bbdaec471f77184) passing Connect Actions #300. QuoteFlow issuer-origin branch exists at `d2c9b48dc58e48e11e597c57204900c08c9d63fc`; its documentation records a separate prior head `350aa8a8aed634e3af334ef33a7317f81179cd9e). These are independently constructed origin branches, not proof that issuer changes are integrated with the actual open product migration work. The earlier Connect proxy encoded-path normalization finding was addressed in its branch; retain a dependency-aware integration review.
+- QuoteFlow PR #25 remains open and draft. Its feature flag remains default-off; legal acceptance, subscription authority, local-data handling and end-to-end qualification remain gates. The approved one-owner/two-bot classification remains unchanged.
+- Connect PR #68 remains an open core-workflow migration line; inspect its current head and dependencies before integrating the issuer-origin changes. Do not infer that an empty result from a prior search means no open PRs; use the PR search endpoint.
+
+### Next execution order
+
+1. Wait for exact-head run `43328569213`; inspect the failed job logs if either quality job fails.
+2. If green, record exact commit/run evidence, then resume the startup ACL verifier review. The issuer test source currently checks global and schema-specific defaults and the exact two-function Resource API auth allow-list; the live PostgreSQL verifier still needs to prove those catalog queries and negative probes.
+3. Reconcile all five principals (Resource API, Auth Issuer, Actor Gateway, Migrator, payment provider) against the current Render-shaped trusted-admin membership model and exact direct/effective ACLs.
+4. Integrate Connect and QuoteFlow issuer work on top of their actual product migration PR heads (or a deliberate combined candidate), not independent `main` snapshots. Keep default-off flags and no Supabase fallback.
+5. Continue the whole-repository SECURITY DEFINER grant/owner/search_path/default-ACL review using the latest retrieved inventory and exact-head artifact; do not close findings merely from grant counts.
+6. Update this handover and `docs/GHM_CURRENT_STATE.md` after each verified batch.
+
+### Safety
+
+No production database, roles, grants, secrets, Render environment, deployment, routing, traffic, backup or paid infrastructure changed. No PR merged. Production cutover remains blocked. PayFast and legal-document work remain paused.
