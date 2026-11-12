@@ -1107,3 +1107,12 @@ This is an enforcement/qualification change, not a grant change. Exact-head CI a
 ### 2026-11-12 — Revoke unsigned Actor Gateway entry points
 
 Source review confirmed that the current pre-cleanup gateway ACL included 25 functions: 24 signed/typed operations plus the surviving unsigned `assert_actor_gateway(bigint)` helper. The three later signed read projections cover business hours and trust-score reads. Nine older overloads had already been explicitly dropped by earlier signed-assertion migrations. The surviving helper was not used by current gateway code; migration `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads.sql` revokes PUBLIC, runtime, migrator and gateway execution from that one helper. The exact gateway allow-list is now 24 signed/typed operations, and disposable qualification requires SQLSTATE 42501 for the unsigned helper. Exact-head CI and disposable PostgreSQL qualification remain pending.
+
+
+### Authentication issuer qualification follow-up — 2026-11-12
+
+The latest fully green exact-head CI before the current follow-up was `4abb42e029f774ec11b90705b59222d042ee5584` (both `quality` and `web-quality` passed; disposable issuer cutover/lifecycle/rollback emitted `issuerStartupAclVerification: passed`). Subsequent review found that the cutover qualification script's separate Resource API expected-function arrays omitted `auth_link_business_external_mapping`, although the actual migration grants it, the manual cutover intentionally preserves it for Connect Business provisioning, the startup ACL verifier expects it, and the runbook describes an exact three-function runtime auth allow-list.
+
+The qualification script now expects all three reviewed runtime functions both after cutover and after database rollback, and positively probes the mapping-link function using invalid blank inputs that must fail at the function's own validation boundary without writing a mapping. This corrects qualification consistency; it does not add or broaden a database grant. The relevant source change is `a650c699ba6e7a4c800b80b5ec18c87c6992b490`; documentation follow-up is `ce75a7f32d1c46fd4f6d968a913aa9796c82a5b9`.
+
+Current dependent branch head: `6581f6b4917274ec2018064ffcae3ab19bb7e453`. Exact-head CI run `43157797939` is pending. Do not describe the updated branch as fully qualified until both required checks pass. Production remains unchanged; PR #272 and this dependent branch remain unmerged.
