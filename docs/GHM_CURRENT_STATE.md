@@ -781,3 +781,14 @@ A further contract test is required for password reset: HTTP currently accepts a
 Detailed caller trace, source paths, grant history, and next implementation sequence: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
 
 Latest documentation-only branch commit at this update: `0812d0afea2e0b737ee524edcb05289cdcabdb78`. Earlier exact-head runs #3468/#3469 do not validate this newer commit. Recheck exact-head CI before any merge decision. No production changes or issuer provisioning are authorized by this checkpoint.
+
+
+## Proposed internal auth issuer implementation boundary (2026-11-12)
+
+The detailed security handover now records the proposed isolation shape and typed database-operation direction. Current auth routes are still registered inside the ordinary Resource API process and use its normal runtime persistence pool; therefore ADR-001's isolated issuer is not yet implemented. The intended boundary is a separate issuer process with its own `ghm_auth_issuer` NOINHERIT login, exact EXECUTE allow-list, ES256 private key and refresh pepper. None of those credentials belong in the ordinary Resource API.
+
+The boundary covers account/credential creation and lookup, password mutation/rehash, session creation, refresh rotation, logout, recovery issuance/redemption/reset and QuoteFlow migration reset. Keep Actor Gateway credentials separate. Preserve external identity lookup contracts. Prefer token/credential-derived SQL targets over caller-supplied account IDs; reset must not silently replace login email through the generic password setter.
+
+This is a proposed construction design only. No issuer service, database role, migration, grants, production secrets or deployment have been created. Effective ACL reconciliation and disposable-PostgreSQL issuer/runtime positive-negative qualification are required before privilege changes.
+
+Detailed source trace and proposed operation matrix: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
