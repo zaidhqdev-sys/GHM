@@ -243,6 +243,7 @@ test('auth issuer enforces the native login rate limit on the registered app ins
 
 test('auth issuer completes an approved QuoteFlow migration reset before issuing the standard login token pair', async () => {
   const calls: Array<[string, string]> = [];
+  const loginCalls: Array<[string, string]> = [];
   const quoteFlowMigrationResetCompletionService = {
     complete: async (token: string, password: string) => {
       calls.push([token, password]);
@@ -250,7 +251,13 @@ test('auth issuer completes an approved QuoteFlow migration reset before issuing
     },
   };
   const app = createAuthIssuerApp({
-    authService,
+    authService: {
+      ...authService,
+      login: async (email: string, password: string) => {
+        loginCalls.push([email, password]);
+        return authService.login(email, password);
+      },
+    },
     authPersistence: persistence,
     passwordResetService,
     quoteFlowMigrationResetCompletionService,
@@ -266,6 +273,7 @@ test('auth issuer completes an approved QuoteFlow migration reset before issuing
     });
     assert.equal(response.status, 200);
     assert.deepEqual(calls, [['migration-token', 'NewPassword1']]);
+    assert.deepEqual(loginCalls, [['approved@example.com', 'NewPassword1']]);
     assert.deepEqual(await response.json(), {
       accessToken: 'access',
       refreshToken: 'refresh',
