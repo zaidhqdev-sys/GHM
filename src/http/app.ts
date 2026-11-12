@@ -134,6 +134,7 @@ import type { CommercialService } from '../resources/commercial/contracts';
 import { registerCommercialRoutes } from './commercial-router';
 import { registerStorageRoutes } from './storage-router';
 import { HttpBusinessLogoGatewayClient, type BusinessLogoGatewayClient } from './business-logo-gateway-client';
+import { HttpStorageMetadataGatewayClient } from './storage-metadata-gateway-client';
 import { createStorageProvider } from '../storage/factory';
 
 
@@ -182,6 +183,7 @@ export interface AppDependencies {
   readonly businessHoursGatewayRequired?: boolean;
   readonly businessLogoGatewayClient?: BusinessLogoGatewayClient;
   readonly businessLogoGatewayRequired?: boolean;
+  readonly storageMetadataGatewayRequired?: boolean;
   readonly savedBusinessGatewayClient?: SavedBusinessGatewayClient;
   readonly savedBusinessGatewayRequired?: boolean;
   readonly businessRegistrationIdentityGatewayClient?: BusinessRegistrationIdentityGatewayClient;
@@ -416,6 +418,16 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const businessHoursGatewayRequired = config.isProduction || dependencies.businessHoursGatewayRequired === true;
   const businessLogoGatewayClient = dependencies.businessLogoGatewayClient ?? (config.actorGatewayUrl ? new HttpBusinessLogoGatewayClient(config.actorGatewayUrl) : undefined);
   const businessLogoGatewayRequired = config.isProduction || dependencies.businessLogoGatewayRequired === true;
+  const storageProviderAttestationSecret = process.env.GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET?.trim() ?? '';
+  const storageMetadataGatewayRequired = config.isProduction || dependencies.storageMetadataGatewayRequired === true;
+  if (config.isProduction && config.storage && !storageProviderAttestationSecret) {
+    throw new Error('Missing required environment variable: GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET');
+  }
+  const storageMetadataGatewayStoreFactory = config.actorGatewayUrl && storageProviderAttestationSecret
+    ? (accessToken: string) => new HttpStorageMetadataGatewayClient(
+        config.actorGatewayUrl as string, accessToken, storageProviderAttestationSecret,
+      )
+    : undefined;
   const projectService = dependencies.projectService ?? new ProjectServiceImpl(new PostgresProjectRepository());
   const publicProjectService =
     dependencies.publicProjectService ??
@@ -490,7 +502,12 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   app.use(express.json({ limit: '1mb' }));
 
   if (config.storage) {
-    registerStorageRoutes(app, createStorageProvider(config.storage), resourceAuthMiddleware, config.storage.uploadGrantTtlSeconds, config.storage.downloadGrantMaxTtlSeconds, undefined, businessLogoGatewayClient, businessLogoGatewayRequired);
+    registerStorageRoutes(
+      app, createStorageProvider(config.storage), resourceAuthMiddleware,
+      config.storage.uploadGrantTtlSeconds, config.storage.downloadGrantMaxTtlSeconds,
+      undefined, businessLogoGatewayClient, businessLogoGatewayRequired,
+      storageMetadataGatewayStoreFactory, storageMetadataGatewayRequired,
+    );
   }
 
   app.get('/', (_req: Request, res: Response) => {
