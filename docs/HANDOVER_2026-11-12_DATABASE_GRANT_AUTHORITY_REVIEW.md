@@ -1672,3 +1672,66 @@ Still unresolved before any production permission revocation:
 - Resolve Render principal/role-membership administration and independently verified production backup prerequisites.
 
 **No production role, grant, migration, credential, secret, Render service, deployment, traffic or application data was changed. No PR merged. PayFast remains paused.**
+
+
+---
+
+## 2026-11-12 continuation — wider open-PR reconciliation and CI fixture corrections
+
+### 1. Additional open PRs reviewed against current construction branch
+
+| PR | Finding | Current construction relationship |
+|---|---|---|
+| #269 Capability Governance Actor Gateway | Four gateway SQL wrappers and separate capability-governance reader; dedicated capability qualification includes admin/non-admin, runtime-vs-gateway principal separation, direct DML denial and lifecycle/invariant checks. | Gateway SQL migration `20261110250000_add_gateway_capability_governance.sql` is byte-identical on the construction branch. Reader source differs from PR head, so it must be reviewed at construction HEAD, not copied from PR branch. |
+| #270 Supplier Classification Actor Gateway | Dedicated gateway write wrapper, reader, Resource API gateway client, route and disposable PostgreSQL qualification; legacy runtime RPC revoked by migration. | Cutover migration `20261110260000_gateway_supplier_classification_cutover.sql` is byte-identical on construction. Reader and qualification script differ from PR head; integrated construction versions are authoritative for continued audit. |
+| #268 Capability Catalogue cross-row invariants | SQL trigger/migration and disposable PostgreSQL invariant qualification. | Remains a dependency in the stacked capability-governance branch chain; do not cherry-pick or independently merge out of order. |
+| #250 Capability Catalogue governance API | Admin governance API, repository/service/router tests and disposable PostgreSQL qualification. | Base of #268/#269 stack; preserve merge ordering. |
+| #243 Marketplace Supplier classification | Supplier classification domain and wider Marketplace stack. | Base dependency for #270 and #244; no independent merge while its dependent security stack is being reconciled. |
+| #244 Business Engagement and Analytics | Identifies the previously unresolved `business_engagement_event` table. Migration grants runtime INSERT only on `business_id, account_id, event_type, event_context, source` and SELECT on `id, business_id, account_id, event_type, event_context, source, created_at`; sequence USAGE/SELECT is separately granted. | PR #244 is open and stacked on #243. Its migration and repository files are absent from the current construction branch and therefore are not proof of a deployed production caller or current production grant. |
+
+### 2. Engagement-event caller now identified (but not yet production ACL evidence)
+
+PR #244 implements:
+- Authenticated `POST /api/v1/business-engagement-events`.
+- Actor/account ID comes from verified `AuthContext.userId`; caller cannot supply actor ID.
+- `PostgresBusinessEngagementRepository.record()` uses an authorized transaction and writes the five explicitly granted columns.
+- Only active, verified and approved Business records are eligible.
+- Active members of the target Business are excluded from self-engagement.
+- Per-account 60-events/minute limit is enforced transactionally using advisory lock + count.
+- PR #244 disposable PostgreSQL qualification tests authenticated event insert, self-engagement denial, rate limit and analytics entitlement fail-closed behavior.
+
+**Critical provenance boundary:** PR #244 is an open stacked PR and its migration/source are not present in construction HEAD. Do not use it to explain any production `business_engagement_event` privilege unless a separate deployed migration or production catalog observation establishes that table/grant. It does, however, resolve the source caller for the proposed PR #244 grant.
+
+### 3. Existing integrated test coverage retained
+
+Do not recreate:
+- Capability governance wrapper qualification.
+- Supplier Classification gateway wrapper qualification.
+- Business Profile gateway HTTP tests and PostgreSQL adversarial suite.
+- Registration identity and Actor Gateway identity tests.
+- Storage provider attestation qualification.
+
+The current construction branch contains the capability and supplier-classification gateway SQL migrations from #269/#270. Their corresponding readers differ from their PR head blobs; the construction copies are the versions to audit.
+
+### 4. CI failure investigation and correction
+
+The first new Business Profile reader test run exposed a real test assertion bug:
+- `JSON.parse(String(values[6]))` creates a new object, but the test used `assert.equal` (reference equality).
+- Changed to `assert.deepEqual` (structural equality). Commit: `a3144988c9c42135a420f70aab71117490a76f7c`.
+
+The first disabled-account disposable PostgreSQL fixture also tried to UPDATE `account_identity.account_status` directly as `ghm_migrator`, which is intentionally denied because account lifecycle columns are mutated only through `auth_*` SECURITY DEFINER functions.
+- Changed fixture setup to call the established `ghm.auth_disable_account($1)` lifecycle function through the runtime principal.
+- Commit: `160d20014ba60b28b0334361e08c949e02b6e18a`.
+
+The failed earlier runs (`43313824504`, `43313832844`, `43313919003`) are not qualification passes. At this update, exact-head CI for `160d20014ba60b28b0334361e08c949e02b6e18a` is still in progress (run `43314318722`). Wait for both `quality` and `web-quality` to complete before reporting pass.
+
+### 5. PR/branch merge policy
+
+No PR was merged or closed. The current construction branch remains the integration/qualification branch. Stacked dependencies remain:
+- #237 → #271 → #272 (Business Profile compatibility + gateway qualification).
+- #243 → #270 and #244 (Marketplace supplier classification and engagement/analytics).
+- #250 → #268 → #269 (Capability catalogue invariants and Actor Gateway governance).
+
+PR #274 remains the Render role-separation handover. It documents the unresolved Render-managed membership/admin-option authority issue; do not attempt a production revoke or role mutation from this audit.
+
+**Production boundary:** no production grants/roles, SQL migrations, credentials, secrets, environment variables, Render services, deployments, traffic or application data changed. No PR merge. PayFast remains paused.
