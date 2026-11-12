@@ -192,7 +192,9 @@ BEGIN
 
   SELECT * INTO v_link
     FROM ghm.auth_link_business_external_mapping('supabase', p_external_business_id, v_business_id);
-  IF v_link.outcome NOT IN ('created', 'already_linked') THEN
+  IF v_link.outcome IS DISTINCT FROM 'created'
+     OR v_link.business_id IS DISTINCT FROM v_business_id
+  THEN
     RAISE EXCEPTION 'Connect Business mapping conflict' USING ERRCODE = '23505';
   END IF;
   v_mapping_id := v_link.id;
