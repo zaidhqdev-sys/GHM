@@ -379,3 +379,37 @@ The next genuine storage qualification gate remains the deployed full Resource A
 After the code/qualification checkpoint at HEAD 4ba231ec566e75780ab5a435d7b365f07c1dacbc (run 43241401707, both jobs passed), the remaining storage and security handovers/contracts were reconciled. This includes the Business Logo route contract, Connect storage source audit, provider-adapter reconciliation, storage README, persistence function/boundary/qualification contracts, authorization/database authority/tenant-isolation contracts, and the November 11 full migration security and Actor Gateway readiness handovers. Historical 25-function Actor Gateway allow-list checkpoints are now explicitly distinguished from the current 30-function allow-list after the five storage wrappers.
 
 The exact docs-only head 27a39c23d99916e418e529a73cd329494212f952 passed CI run 43242508859: both quality and web-quality passed. The main code/test suite remained unchanged from the previously qualified 4ba231ec... source head; run 432425 revalidated the complete workflow after the documentation updates. No code was changed by this documentation reconciliation, no production state was touched, and no PR was merged.
+
+
+---
+
+## Whole-database grant-authority audit cross-check — 2026-11-12 20:30 UTC
+
+This specialist storage handover was re-read during continuation of the whole-database SECURITY DEFINER review. It remains the authoritative storage implementation/qualification record and supersedes any conversational implication that the storage actor/provider remediation is still unimplemented.
+
+### Storage implementation status reaffirmed
+
+- User actor v2 assertions bind create, read and deletion-request operations to verified JWT actor, exact operation and request context.
+- Provider-confirmed availability and deletion completion require a second, separate Resource API HMAC attestation. The Actor Gateway does not possess the provider signing key.
+- PostgreSQL wrappers validate both proofs, recompute signed context from actual arguments, enforce active actor/tenant membership and lifecycle predicates, and reject replay/tampering.
+- The five legacy metadata functions have a localhost-only disposable revocation/rollback rehearsal. It proves direct runtime/migrator/gateway execution is denied while the five signed replacement wrappers retain gateway-only EXECUTE; then original ACLs are restored.
+- The public Business Logo read exception explicitly requires `status='available'`; pending, deletion-pending and deleted states are denied cross-business reads.
+- Exact historical storage qualification at construction HEAD `4ba231ec566e75780ab5a435d7b365f07c1dacbc`, CI run `43241401707`, passed both jobs and 960/960 main tests, including dual-proof, lifecycle, grant revocation/rollback and inventory. Later docs-only reconciliation head `27a39c23d99916e418e529a73cd329494212f952` passed CI run `43242508859`.
+
+### Remaining storage gates — unchanged
+
+1. Do not apply the manual five-function legacy grant revocation to production until the supported Render role separation is fully planned, the deployed gateway/runtime route configuration is verified, and a fresh independently verified production backup exists.
+2. Complete the full deployed non-production Resource API ↔ Actor Gateway ↔ PostgreSQL ↔ R2 lifecycle using a dedicated non-production bucket and deployment-managed test credentials.
+3. The existing bucket `zaid-ghm-production` is not proven non-production; do not mutate it for qualification.
+4. Keep Connect upload/removal controls disabled until the complete deployed non-production lifecycle passes.
+
+### Current continuation / CI state
+
+The broader whole-database audit discovered a separate runtime function allow-list defect: the startup allow-list had omitted two legacy registration identity functions that remain executable before their manual cutover. This was not a storage implementation defect. The allow-list was corrected in `src/db/runtime-database-privileges.ts` and its tests to model all eight combinations of Campaign, issuer and registration cutovers.
+
+- Implementation commit: `9550eb3f0f55bdb1602f797b96413216798c0861`.
+- Tests commit: `36eb11308966f8618000bb22e4d51b30da9f8ce2`.
+- The exact-head CI run `43301449333` for the tests commit was still in progress at the time this handover was updated. Check the final result before claiming the correction passes.
+- The latest documentation head at the time of this entry is `4d9a75b52a41f218fc117064dc8db403c3539e5d`; it also requires exact-head CI confirmation.
+
+No storage production grants, roles, secrets, provider credentials, buckets, objects, deployments, traffic or data were changed. No PR was merged.
