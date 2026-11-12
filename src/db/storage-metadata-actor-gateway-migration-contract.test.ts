@@ -8,7 +8,7 @@ test('storage actor operations are allow-listed by the shared v2 assertion verif
   for (const operation of ['storage.metadata.create','storage.metadata.read','storage.metadata.mark_deletion_pending']) {
     assert.ok(migration.includes(`'${operation}'`));
   }
-  assert.match(migration, /ghm-actor-gateway:v2\\\|/);
+  assert.ok(migration.includes('ghm-actor-gateway:v2|'));
   assert.match(migration, /Actor assertion replay detected/);
   assert.match(migration, /FOR v_i IN 0\\.\\.31 LOOP/);
 });
