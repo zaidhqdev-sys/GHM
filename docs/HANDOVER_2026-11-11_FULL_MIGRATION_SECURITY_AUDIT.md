@@ -2320,31 +2320,25 @@ Correction:
 - Fix commit: `0b7761eaf5cfeaabd16490474d483163fb488492`.
 - Source-contract regression commit: `607d0260b244adc21bd0b934b83699479865165c`.
 
-### Provider-business mapping mutation is an active Connect dependency and remains an open security gap
+### Provider-business mapping mutation moved behind signed Actor Gateway
 
-The historical migration `20260921130500_auth_link_business_external_mapping.sql` grants `EXECUTE` to `ghm_runtime` on `ghm.auth_link_business_external_mapping(text,text,bigint)`. The SQL function verifies that the target Business exists and mapping conflicts, but does not independently verify actor membership/management, integration identity, or approved provisioning provenance.
+The current branch now replaces the runtime mapping mutation with one signed, atomic Actor Gateway operation.
 
-The current branch contains a Connect Business provisioning adapter and live PostgreSQL qualification path:
-- `src/integrations/connect/business-adapter.ts` implements `ConnectBusinessAdapter.provisionOrResolve`.
-- It requires an authenticated context and `assertRole(context, 'admin', 'business')`.
-- Inside one `withAuthorizedTransaction`, it serializes the external Business UUID, resolves an existing mapping or creates a canonical GHM Business and owner membership, then calls `auth_link_business_external_mapping` before committing.
-- `src/integrations/connect/business-adapter.persistence.test.ts` exercises this runtime-backed adapter path, including concurrent same-external-ID provisioning, idempotent resolution, conflict behavior and transaction rollback.
-- Important qualification: the inspected `ConnectServiceHttpDependencies` and `connect-service-router.ts` do not currently wire this adapter into a public HTTP route, and repository search did not find another production constructor. Treat it as an existing product integration component and qualification path, not as proof of a currently mounted production endpoint.
+Implementation:
+- Added migration `20261112080000_signed_connect_business_provisioning_gateway.sql`.
+- Added `ghm.gateway_provision_connect_business`, operation `business.connect.provision`, to the Actor Gateway. It validates the signed request assertion, active actor and business/admin role; serializes by provider/external ID; creates the canonical Business, active owner membership and provider mapping in one transaction; and resolves an existing mapping only for an active member or system admin.
+- The function locks the actor row and existing membership row to prevent deactivation/revocation races. It rejects a mapping race unless the helper created the exact mapping for the new Business, preventing orphan Business rows.
+- The old `ghm.auth_link_business_external_mapping(text,text,bigint)` function is now an internal schema-owner helper. The migration revokes PUBLIC, runtime, migrator, Actor Gateway, issuer and payment-provider execution; the signed wrapper calls it as `ghm_schema_owner`.
+- Actor Gateway exact allow-list is now 25 signed/typed functions. Runtime's exact `ghm.auth_*` allow-list is now two lookup functions: `auth_lookup_external_identity` and `auth_lookup_business_external_mapping`.
+- Removed the obsolete `AuthPersistence.linkBusinessExternalMapping` method and its runtime persistence test.
+- Refactored `ConnectBusinessAdapter` to use `HttpConnectBusinessProvisioningGatewayClient`; it no longer connects to the runtime database or calls the helper directly.
+- Added the Actor Gateway HTTP route `POST /v1/connect/businesses/provision-or-resolve`, HTTP client tests, route tests, migration contract tests, and a disposable PostgreSQL qualification for concurrency, membership isolation, runtime denial and atomic rollback.
+- Added `npm run qualify:connect-business-provisioning-live` to CI.
 
-The proposed revocation would break the adapter and its live PostgreSQL qualification. The test failure was valid evidence about the adapter's current database dependency, not an obsolete fixture. Since the route is not currently wired, the safer course is to replace the adapter with a signed Actor Gateway operation before it is exposed, then revoke runtime EXECUTE.
-
-Correction to the attempted revocation:
-- Deleted the proposed migration `20261112060000_revoke_runtime_business_external_mapping_link.sql`; it is not part of the current migration chain.
-- Removed the explicit mapping-link REVOKE from the manual issuer cutover.
-- Restored `auth_link_business_external_mapping(text,text,bigint)` to the exact Resource API runtime auth-function allow-list.
-- Restored the runtime-positive permission assertion in issuer cutover qualification. The existing Connect persistence qualification continues to exercise the actual provisioning flow.
-- The runtime auth-function allow-list is therefore exactly three functions for now: `auth_lookup_external_identity`, `auth_lookup_business_external_mapping`, and `auth_link_business_external_mapping`.
-
-### Required remediation before revoking the mapping-link grant
-
-The permission remains a genuine database-boundary risk: a compromised `ghm_runtime` client can call the SECURITY DEFINER function directly with a caller-chosen provider, external Business ID and existing target Business ID, bypassing the application sequence that checks the verified actor and creates the owner membership.
-
-Do not solve this by moving only the function call to `ghm_migrator`, or by revoking runtime while the current adapter still uses it. The complete provisioning transaction must move behind a signed, database-verifiable operation (for example, a typed Actor Gateway operation that binds the verified actor, provider, external Business ID and canonical Business creation/membership/mapping in one atomic database operation). Preserve idempotency, concurrency serialization, existing mapping resolution and rollback behavior. Then remove the runtime mapping-link grant and prove direct runtime denial plus signed gateway positive/negative cases on disposable PostgreSQL.
+Important integration status:
+- The Actor Gateway route and adapter client are implemented and independently testable.
+- The inspected main Connect service router does not yet mount `ConnectBusinessAdapter`; do not claim the Connect product API is fully wired until its authenticated route is mounted and end-to-end tested. No new public Connect endpoint was exposed by this work.
+- The existing adapter's previous behavior allowed a second unrelated business account to resolve the same mapped Business without membership. The new gateway operation denies that case with SQLSTATE 42501; an active member or system admin can resolve it.
 
 ### Current qualification state
 
