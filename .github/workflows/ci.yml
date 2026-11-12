@@ -75,8 +75,9 @@ jobs:
           GRANT ghm_schema_owner TO ghm_migrator;
           CREATE ROLE ghm_runtime LOGIN NOINHERIT PASSWORD 'runtime-test-password';
           CREATE ROLE ghm_actor_gateway LOGIN NOINHERIT PASSWORD 'actor-gateway-test-password';
+          CREATE ROLE ghm_auth_issuer LOGIN NOINHERIT PASSWORD 'auth-issuer-test-password';
           CREATE ROLE ghm_payment_provider LOGIN NOINHERIT PASSWORD 'provider-test-password';
-          GRANT CONNECT ON DATABASE ghm_disposable_test TO ghm_migrator, ghm_runtime, ghm_payment_provider, ghm_actor_gateway;
+          GRANT CONNECT ON DATABASE ghm_disposable_test TO ghm_migrator, ghm_runtime, ghm_payment_provider, ghm_actor_gateway, ghm_auth_issuer;
           GRANT CREATE ON DATABASE ghm_disposable_test TO ghm_schema_owner;
           GRANT USAGE, CREATE ON SCHEMA public TO ghm_schema_owner;
           SQL
