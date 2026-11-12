@@ -880,3 +880,13 @@ CI #3528 passed quality + web-quality. The disposable issuer test now also force
 Final output: 12 issuer-only functions, zero issuer direct secret-table privileges, 12 runtime permission denials, Connect lookup preserved, registration/login/forced rehash/refresh/logout passed, recovery replay/session revocation passed, QuoteFlow migration reset passed. Fixture setup uses the migrator with `SET ROLE ghm_schema_owner`; issuer operations use the real issuer login.
 
 CORS allow-list validation and explicit production proxy-hop configuration were added after #3528. CI against those later commits is pending; see the security handover. No production changes.
+
+
+## Cross-product auth issuer origin construction (2026-11-12)
+
+Optional issuer-origin separation has been added on construction branches:
+- GHM web: `VITE_GHM_AUTH_ISSUER_BASE_URL`; auth requests use issuer, resource requests remain on `VITE_GHM_API_BASE_URL`; fallback preserves current behavior.
+- ZAID Connect: `VITE_GHM_AUTH_ISSUER_BASE_URL` for native auth; optional server-only `GHM_AUTH_ISSUER_URL` for its existing browser-auth BFF; resource proxy remains on `GHM_INTERNAL_RUNTIME_URL`. Browser auth remains default-off.
+- QuoteFlow: `EXPO_PUBLIC_GHM_AUTH_ISSUER_URL`; auth calls use issuer while identity calls remain on `EXPO_PUBLIC_GHM_AUTH_BASE_URL`. Gate A remains disabled and Supabase coexistence is unchanged.
+
+Connect CI #292 and QuoteFlow CI #220 passed on their workflow-triggering commits; later final branch test commits still need exact-head rechecks. Full source paths, CI evidence and remaining end-to-end/deployment gates are in the security handover. No production URLs, environment variables, flags, deployments, secrets or service routing changed.
