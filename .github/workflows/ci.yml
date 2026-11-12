@@ -74,7 +74,7 @@ jobs:
           psql -h localhost -U postgres -d ghm_disposable_test -v ON_ERROR_STOP=1 <<'SQL'
           CREATE ROLE ghm_schema_owner NOLOGIN;
           CREATE ROLE ghm_migrator LOGIN NOINHERIT PASSWORD 'migrator-test-password';
-          GRANT ghm_schema_owner TO ghm_migrator;
+          GRANT ghm_schema_owner TO ghm_migrator WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;
           CREATE ROLE ghm_runtime LOGIN NOINHERIT PASSWORD 'runtime-test-password';
           CREATE ROLE ghm_actor_gateway LOGIN NOINHERIT PASSWORD 'actor-gateway-test-password';
           CREATE ROLE ghm_auth_issuer LOGIN NOINHERIT PASSWORD 'auth-issuer-test-password';
