@@ -1254,3 +1254,10 @@ The prior failed workflow also predated the inventory step in CI, so it says not
 
 
 The inventory also flags every non-owner role with effective EXECUTE on each SECURITY DEFINER function, separately from direct ACL grants, so inherited membership paths are explicit review findings.
+
+
+## 2026-11-12 — First PostgreSQL 18 SECURITY DEFINER inventory reviewed
+
+Exact-head CI run `43220670560` passed both jobs on `d0bf47c13114dcfe477ed45dd28173e6d4a552bd`. The inventory artifact was retrieved. It describes the disposable PostgreSQL 18.6 post-migration/pre-manual-issuer-cutover state: 97 SECURITY DEFINER routines, all in `ghm`, all owned by `ghm_schema_owner`, all pinned to `pg_catalog, ghm, pg_temp`, all in trusted SQL/PLpgSQL; no PUBLIC EXECUTE; only application-role membership is migrator SET-only membership to schema owner. The first 97 findings were inflated because superuser `postgres` was counted as an ordinary effective grantee. Inventory code now distinguishes and excludes superusers from ordinary non-owner EXECUTE findings while reporting them separately; corrected artifact is pending.
+
+Direct ACL principals in the baseline: Actor Gateway 25 functions, Resource API runtime 43, payment provider 2, migrator 1. These remain to be justified signature-by-signature; migrator's one grant is the explicit read-only business external mapping lookup. Dynamic SQL exists in `ghm.update_business_profile`; it uses fixed SQL fragments and parameterized values, while its signed gateway wrapper rejects supplier-classification fields. Full review and next gates are in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`. No production changes, merge or cutover.
