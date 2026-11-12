@@ -1,4 +1,3 @@
-import { assertRole, requireAuthenticatedContext, type AuthContext } from '../../auth/authorization';
 import type {
   ConnectBusinessProvisioningGatewayClient,
   ConnectBusinessProvisioningInput,
@@ -24,12 +23,9 @@ export class ConnectBusinessAdapter {
   constructor(private readonly gateway: ConnectBusinessProvisioningGatewayClient) {}
 
   async provisionOrResolve(
-    context: AuthContext,
     accessToken: string,
     input: ConnectBusinessProvisioningInput,
   ): Promise<ConnectBusinessProvisioningResult> {
-    requireAuthenticatedContext(context);
-    assertRole(context, 'admin', 'business');
     if (!accessToken.trim()) throw new Error('Connect Business provisioning requires the verified access token');
     return this.gateway.provisionOrResolve(accessToken, normalizeInput(input));
   }
