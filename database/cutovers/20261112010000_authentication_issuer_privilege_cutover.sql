@@ -39,6 +39,7 @@ BEGIN
 END;
 $$;
 
+REVOKE CREATE ON SCHEMA ghm FROM ghm_auth_issuer;
 GRANT USAGE ON SCHEMA ghm TO ghm_auth_issuer;
 
 -- Reset any accidental direct relation/function grants before applying the
