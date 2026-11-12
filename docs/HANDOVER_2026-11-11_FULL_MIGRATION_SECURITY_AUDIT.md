@@ -2251,3 +2251,17 @@ The branch list still includes the earlier standalone Connect/QuoteFlow construc
 ### External client ingress constraint
 
 QuoteFlow's native mobile client calls the configured issuer URL directly from outside Render. A private-only issuer cannot serve it; a future deployment requires reviewed public HTTPS ingress or a separately approved public gateway. Connect's native bearer browser flow also calls the issuer origin directly and needs exact CORS allow-listing. Its optional browser-cookie flow uses the same-origin Vercel BFF and a server-side issuer upstream. Public issuer ingress must not imply a public database; the database path and TLS verification remain separate deployment blockers.
+
+
+### Issuer startup now enforces the database ACL cutover
+
+A source audit found that the issuer startup previously verified only the database login role flags and memberships. CI qualified the manual cutover, but a production service could still have started if an operator accidentally left extra function/table grants or had not applied the cutover.
+
+Added `src/auth-issuer/database-privileges.ts` and startup checks in `src/auth-issuer/server.ts`. Before opening the HTTP listener, the issuer now verifies:
+- GHM schema USAGE exists and schema CREATE does not.
+- No direct table/view/foreign-table or sequence privileges exist.
+- The executable function set equals the exact reviewed ten-function allow-list.
+- The schema owner's global future-function default ACL does not grant EXECUTE to PUBLIC, `ghm_runtime`, or `ghm_auth_issuer`.
+- `ghm_runtime` has no execution rights on the issuer lifecycle function set revoked by the cutover.
+
+A mismatch aborts startup; it does not merely log a warning. Added unit tests for the pure privilege verifier and a source contract test that the check runs before `server.listen`. The next exact-head CI must qualify this change. This is fail-closed deployment defense in depth, not permission to deploy.
