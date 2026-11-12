@@ -12,7 +12,7 @@ export interface RuntimeDatabaseIdentity {
   rolcreaterole: boolean;
   rolreplication: boolean;
   rolbypassrls: boolean;
-  no_role_memberships: boolean;
+  no_untrusted_role_memberships: boolean;
 }
 
 export const assertRuntimeDatabaseIdentity = (identity: RuntimeDatabaseIdentity): void => {
@@ -28,7 +28,7 @@ export const assertRuntimeDatabaseIdentity = (identity: RuntimeDatabaseIdentity)
     rolcreaterole: false,
     rolreplication: false,
     rolbypassrls: false,
-    no_role_memberships: true,
+    no_untrusted_role_memberships: true,
   };
   const invalidFlags = Object.entries(expectedFlags)
     .filter(([key, expected]) => identity[key as keyof RuntimeDatabaseIdentity] !== expected)
