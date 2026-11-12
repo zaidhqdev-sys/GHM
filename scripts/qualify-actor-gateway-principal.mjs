@@ -189,7 +189,7 @@ try {
   assert.equal(functionState.rows[0].security_definer, true);
   assert.equal(functionState.rows[0].runtime_can_execute, false);
   assert.equal(functionState.rows[0].gateway_can_execute, false);
-  assert.ok(functionState.rows[0].function_config?.includes('search_path=pg_catalog, ghm'));
+  assert.ok(functionState.rows[0].function_config?.includes('search_path=pg_catalog, ghm, pg_temp'));
   console.log('UNUSED UNSIGNED HELPER IS OWNER-ONLY WITH FIXED SEARCH PATH: PASS');
 
   const tablePrivileges = await gatewayPool.query(`
