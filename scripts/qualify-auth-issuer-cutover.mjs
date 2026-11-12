@@ -306,23 +306,23 @@ try {
     rollbackClient.release();
   }
 
-  const issuerAfterRollback = await issuerPool.query(`
+  const issuerAfterRollback = await migratorPool.query(`
     SELECT count(*)::integer AS count
       FROM pg_proc p
       JOIN pg_namespace n ON n.oid = p.pronamespace
      WHERE n.nspname = 'ghm'
-       AND p.proname LIKE 'auth\\_%' ESCAPE '\\'
-       AND has_function_privilege(session_user, p.oid, 'EXECUTE')
+       AND left(p.proname, 5) = 'auth_'
+       AND has_function_privilege('ghm_auth_issuer', p.oid, 'EXECUTE')
   `);
   assert.equal(Number(issuerAfterRollback.rows[0].count), 0, 'rollback must remove all issuer auth-function execution privileges');
 
-  const runtimeRollbackFunctions = await runtimePool.query(`
+  const runtimeRollbackFunctions = await migratorPool.query(`
     SELECT p.proname
       FROM pg_proc p
       JOIN pg_namespace n ON n.oid = p.pronamespace
      WHERE n.nspname = 'ghm'
        AND p.proname = ANY($1::text[])
-       AND has_function_privilege(session_user, p.oid, 'EXECUTE')
+       AND has_function_privilege('ghm_runtime', p.oid, 'EXECUTE')
      ORDER BY p.proname
   `, [[
     'auth_create_account',
