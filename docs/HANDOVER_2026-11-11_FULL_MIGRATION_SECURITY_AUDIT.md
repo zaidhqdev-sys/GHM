@@ -2665,3 +2665,8 @@ The first Actions runs after the global PUBLIC-definer scan change failed at `sc
 Corrected the adversarial qualification to require both verifiers to report the complete two-function set (sorted), then require both arrays to be empty after the probe revokes both grants. Do not narrow the verifier back to service-local allow-lists. This preserves the intended cross-service protection and makes the test prove it. The earlier failed runs checked the previous assertion and do not qualify the corrected commit. Await the next exact-head PostgreSQL 18 CI run.
 
 The run failed at the final issuer cutover qualification before the new inventory CI step had been added; it therefore provides no evidence about the inventory runner. The new workflow now executes the inventory immediately after migrations and stores the report artifact. Inspect the new exact-head run's inventory step and artifact independently of the later issuer cutover step.
+
+
+### Effective inherited function execution explicitly flagged
+
+The inventory now separately derives `effective_non_owner_execute_roles` for each SECURITY DEFINER routine from `has_function_privilege(role_oid, function_oid, 'EXECUTE')`, excluding only the function owner. This is distinct from direct ACL grantees and makes inherited membership paths visible as review findings alongside the membership graph. Contract coverage asserts that this effective-role finding is emitted. It still does not auto-approve any service exception.
