@@ -1825,3 +1825,12 @@ These are client-side construction changes only. No product deployment/environme
 - End-to-end non-production tests across GHM web, Connect native and browser modes, and QuoteFlow Gate A before any production routing changes.
 
 No live service, database, secret, product environment, or feature flag has been changed.
+
+
+### Final cross-product construction CI trigger
+
+The product handover commits now trigger CI against the latest product branch heads, including the final test changes:
+- Connect final construction handover commit: `5b564c09148948b7a854bc73dbe920844b4b16ce`.
+- QuoteFlow final construction handover commit: `321eb8d8322fcc1d07ce576d382bb4b34af1573f`.
+
+Wait for the new exact-head Connect and QuoteFlow workflows to finish before marking their branch heads qualified. Earlier #292/#220 results covered their workflow-triggering commits, not the later final test/handover commits.
