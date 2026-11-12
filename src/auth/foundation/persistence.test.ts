@@ -71,6 +71,35 @@ test('auth foundation persistence (database)', async (t) => {
   let accountId = 0;
   const persistence = new PostgresAuthPersistence(runtimePool);
 
+  const setPasswordAsOwner = async (targetAccountId: number, email: string, password: string): Promise<void> => {
+    const { createArgon2idPasswordHasher } = await import('./password');
+    const hashed = await createArgon2idPasswordHasher().hash(password);
+    const normalizedEmail = email.trim().toLowerCase();
+    const client = await migratorPool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SET LOCAL ROLE ghm_schema_owner');
+      await client.query(
+        `SELECT ghm.auth_set_password($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          targetAccountId,
+          email,
+          normalizedEmail,
+          hashed.passwordHash,
+          hashed.argon2MemoryKib,
+          hashed.argon2TimeCost,
+          hashed.argon2Parallelism,
+        ],
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
+  };
+
   const redeemRecoveryAsOwner = async (recoveryTokenWire: string): Promise<number> => {
     const { decodeOpaqueTokenWire } = await import('./opaque-token');
     const { protectOpaqueToken } = await import('./token-hmac');
@@ -375,7 +404,7 @@ test('auth foundation persistence (database)', async (t) => {
     const s2 = await persistence.createSessionWithRefresh(accountId);
     const issued = await persistence.issueRecovery(accountId, 30);
     const email = `recovery-reset-${accountId}@example.test`;
-    await persistence.setPassword(accountId, email, 'Initial-Recovery-Password-123!');
+    await setPasswordAsOwner(accountId, email, 'Initial-Recovery-Password-123!');
 
     await assert.rejects(
       () => persistence.resetPasswordWithRecovery(
@@ -746,7 +775,7 @@ test('auth foundation persistence (database)', async (t) => {
   });
 
   await t.test('password set via DEFINER', async () => {
-    await persistence.setPassword(accountId, `user+${marker}@Example.COM`, 'CorrectHorseBattery1');
+    await setPasswordAsOwner(accountId, `user+${marker}@Example.COM`, 'CorrectHorseBattery1');
     const looked = await persistence.lookupPasswordByEmail(`user+${marker}@example.com`);
     assert.ok(looked);
     assert.equal(looked!.accountId, accountId);
