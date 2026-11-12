@@ -33,6 +33,27 @@ test('verifies a valid PayFast ITN', () => {
   assert.equal(result.providerPaymentId, '12345');
   assert.equal(result.transactionStatus, 'COMPLETE');
   assert.equal(result.amountMinorUnits, 19900);
+  assert.equal(result.occurredAt?.toISOString(), '2026-10-07T20:00:00.000Z');
+});
+
+test('preserves an explicit timezone offset in the PayFast payment date', () => {
+  const fields = {
+    merchant_id: '10000100',
+    m_payment_id: 'attempt-1',
+    pf_payment_id: '12345',
+    amount_gross: '199.00',
+    payment_status: 'COMPLETE',
+    payment_date: '2026-10-07T20:00:00+02:00',
+  };
+  const signature = generatePayfastSignature(fields, 'secret');
+  const result = verifyPayfastItn({
+    fields: { ...fields, signature },
+    sourceIp: '197.97.145.150',
+    expectedMerchantId: '10000100',
+    expectedAmountMinorUnits: 19900,
+    passphrase: 'secret',
+  });
+  assert.equal(result.occurredAt?.toISOString(), '2026-10-07T18:00:00.000Z');
 });
 
 test('rejects invalid source IP before accepting an ITN', () => {
