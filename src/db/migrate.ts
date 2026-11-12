@@ -6,6 +6,7 @@ import historicalProvenanceExceptions from '../../config/historical-migration-pr
 import { migrationSqlChecksum, matchesMigrationSqlChecksum, normalizeMigrationSqlForExecution } from './migration-checksum';
 import { Pool, PoolClient } from 'pg';
 import { assertPostgresTargetConfiguration } from './postgres-target-guard';
+import { assertMigratorDatabaseIdentity, type MigratorDatabaseIdentity } from './migrator-principal';
 
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
 const approvedTarget = assertPostgresTargetConfiguration(databaseUrl, {
@@ -72,6 +73,53 @@ const migrate = async (): Promise<void> => {
   if (migrations.length === 0) throw new Error('No migrations found');
   const client = await pool.connect();
   try {
+    const migratorPrincipal = await client.query<MigratorDatabaseIdentity>(`
+      SELECT
+        current_database() AS current_database,
+        current_user,
+        session_user,
+        migrator.rolcanlogin AS migrator_rolcanlogin,
+        migrator.rolinherit AS migrator_rolinherit,
+        migrator.rolsuper AS migrator_rolsuper,
+        migrator.rolcreatedb AS migrator_rolcreatedb,
+        migrator.rolcreaterole AS migrator_rolcreaterole,
+        migrator.rolreplication AS migrator_rolreplication,
+        migrator.rolbypassrls AS migrator_rolbypassrls,
+        (
+          SELECT count(*)::int
+            FROM pg_auth_members membership
+           WHERE membership.member = migrator.oid
+        ) AS direct_membership_count,
+        EXISTS (
+          SELECT 1
+            FROM pg_auth_members membership
+           WHERE membership.member = migrator.oid
+             AND membership.roleid = schema_owner.oid
+             AND membership.admin_option = false
+             AND membership.inherit_option = false
+             AND membership.set_option = true
+        ) AS exact_schema_owner_membership,
+        (
+          SELECT count(*)::int
+            FROM pg_auth_members membership
+           WHERE membership.member = schema_owner.oid
+        ) AS schema_owner_direct_membership_count,
+        schema_owner.rolcanlogin AS schema_owner_rolcanlogin,
+        schema_owner.rolsuper AS schema_owner_rolsuper,
+        schema_owner.rolcreatedb AS schema_owner_rolcreatedb,
+        schema_owner.rolcreaterole AS schema_owner_rolcreaterole,
+        schema_owner.rolreplication AS schema_owner_rolreplication,
+        schema_owner.rolbypassrls AS schema_owner_rolbypassrls
+      FROM pg_roles migrator
+      CROSS JOIN pg_roles schema_owner
+      WHERE migrator.rolname = 'ghm_migrator'
+        AND schema_owner.rolname = 'ghm_schema_owner'
+    `);
+    assertMigratorDatabaseIdentity(migratorPrincipal.rows[0]);
+    if (migratorPrincipal.rows[0].current_database !== approvedTarget.databaseName) {
+      throw new Error('Migration refused: connected database does not match the explicitly approved database name');
+    }
+
     await client.query(`SET ROLE ${MIGRATION_OWNER_ROLE}`);
     const identity = await client.query<{ current_user: string; session_user: string; current_database: string }>(`SELECT current_user, session_user, current_database()`);
     if (identity.rows[0]?.current_database !== approvedTarget.databaseName) {
