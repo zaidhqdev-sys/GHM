@@ -78,7 +78,8 @@
     "qualify:business-hours-gateway-cutover": "npm run build && node scripts/qualify-business-hours-gateway-cutover-postgres.mjs",
     "qualify:trust-score-gateway-cutover": "npm run build && node scripts/qualify-trust-score-gateway-cutover-postgres.mjs",
     "qualify:business-logo-gateway-cutover": "npm run build && node scripts/qualify-business-logo-gateway-cutover-postgres.mjs",
-    "start:auth-issuer": "node dist/auth-issuer/server.js"
+    "start:auth-issuer": "node dist/auth-issuer/server.js",
+    "qualify:auth-issuer-principal": "npm run build && node scripts/qualify-auth-issuer-principal.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.500.0",
