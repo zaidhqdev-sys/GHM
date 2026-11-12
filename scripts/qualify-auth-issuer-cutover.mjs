@@ -430,7 +430,6 @@ try {
         'ghm.auth_complete_quoteflow_migration_reset(bytea, text, integer, integer, integer)',
         'ghm.auth_lookup_external_identity(text, text)',
         'ghm.auth_lookup_business_external_mapping(text, text)',
-        'ghm.auth_link_business_external_mapping(text, text, bigint)',
       ]::text[])
     )
     SELECT
