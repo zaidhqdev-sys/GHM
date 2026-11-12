@@ -13,8 +13,6 @@ import type {
   AuthenticationSessionRecord,
   CreateSessionWithRefreshResult,
   ExternalIdentityMapping,
-  LinkBusinessExternalMappingOutcome,
-  LinkBusinessExternalMappingResult,
   PasswordCredentialLookup,
   PasswordHashResult,
   RotateRefreshResult,
@@ -107,11 +105,6 @@ export interface AuthPersistence {
   lookupQuoteFlowMigrationResetEnrollment(email: string): Promise<{ enrollmentId: number; accountId: number; approvedEmail: string } | null>;
   completeQuoteFlowMigrationReset(recoveryTokenWire: string, password: string): Promise<{ accountId: number; loginEmail: string; revokedSessionCount: number }>;
   lookupExternalIdentity(provider: string, subject: string): Promise<ExternalIdentityMapping | null>;
-  linkBusinessExternalMapping(
-    provider: string,
-    externalBusinessId: string,
-    businessId: number,
-  ): Promise<LinkBusinessExternalMappingResult>;
   revokeSessionByRefreshToken(refreshTokenWire: string, reason?: RevokeReason): Promise<{ found: boolean; sessionId: number | null; accountId: number | null }>;
 }
 
