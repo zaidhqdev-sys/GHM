@@ -175,12 +175,24 @@ try {
   ));
 
   const runtimeDenied = await runtime.query(
-    "SELECT has_function_privilege('ghm_runtime','ghm.gateway_storage_mark_available(bigint,bigint,uuid,text,text,bigint,uuid,text,text,bigint,text,text,text,bigint)','EXECUTE') AS available_wrapper, has_function_privilege('ghm_runtime','ghm.gateway_storage_mark_deleted(bigint,bigint,uuid,text,text,bigint,uuid,text,text,bigint,text)','EXECUTE') AS deleted_wrapper",
+    "SELECT " +
+      "has_function_privilege('ghm_runtime','ghm.gateway_storage_mark_available(bigint,bigint,uuid,text,text,bigint,uuid,text,text,bigint,text,text,text,bigint)','EXECUTE') AS runtime_available_wrapper, " +
+      "has_function_privilege('ghm_runtime','ghm.gateway_storage_mark_deleted(bigint,bigint,uuid,text,text,bigint,uuid,text,text,bigint,text)','EXECUTE') AS runtime_deleted_wrapper, " +
+      "has_function_privilege('ghm_actor_gateway','ghm.gateway_storage_mark_available(bigint,bigint,uuid,text,text,bigint,uuid,text,text,bigint,text,text,text,bigint)','EXECUTE') AS gateway_available_wrapper, " +
+      "has_function_privilege('ghm_actor_gateway','ghm.gateway_storage_mark_deleted(bigint,bigint,uuid,text,text,bigint,uuid,text,text,bigint,text)','EXECUTE') AS gateway_deleted_wrapper, " +
+      "has_function_privilege('ghm_runtime','ghm.assert_storage_provider_workflow_attestation(text,bigint,uuid,text,text)','EXECUTE') AS runtime_verifier, " +
+      "has_function_privilege('ghm_actor_gateway','ghm.assert_storage_provider_workflow_attestation(text,bigint,uuid,text,text)','EXECUTE') AS gateway_verifier, " +
+      "has_table_privilege('ghm_runtime','ghm.storage_provider_workflow_attestation_secret','SELECT') AS runtime_secret_read, " +
+      "has_table_privilege('ghm_actor_gateway','ghm.storage_provider_workflow_attestation_secret','SELECT') AS gateway_secret_read",
   );
-  if (runtimeDenied.rows[0].available_wrapper || runtimeDenied.rows[0].deleted_wrapper) {
-    throw new Error('Runtime role unexpectedly has EXECUTE on provider transition wrappers');
+  const acl = runtimeDenied.rows[0];
+  if (acl.runtime_available_wrapper || acl.runtime_deleted_wrapper
+    || !acl.gateway_available_wrapper || !acl.gateway_deleted_wrapper
+    || acl.runtime_verifier || acl.gateway_verifier
+    || acl.runtime_secret_read || acl.gateway_secret_read) {
+    throw new Error(`Unexpected provider workflow ACL: ${JSON.stringify(acl)}`);
   }
-  console.log('RUNTIME PROVIDER TRANSITION WRAPPERS DENIED: PASS');
+  console.log('PROVIDER WRAPPER, VERIFIER AND SECRET TABLE ACL BOUNDARIES: PASS');
   console.log('GHM STORAGE METADATA PROVIDER DUAL-PROOF QUALIFICATION: PASS');
 } finally {
   const cleanup = await migrator.connect();
