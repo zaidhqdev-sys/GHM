@@ -129,3 +129,9 @@ The database wrapper must compare the attested tenant and provider key to the st
 
 The current implementation exposes cleanup only through the authenticated storage delete workflow. `src/storage/service.test.ts` covers user-authorized cleanup of abandoned pending uploads and retry of deletion-pending objects. The repository tree contains no storage cleanup worker or scheduled storage cleanup entry point. Therefore do not add a system cleanup credential/API at this stage. Keep pending-object cleanup and deletion retry under the authenticated manager workflow; re-open this decision only if a real background caller is introduced and evidenced.
 
+### Secret provisioning precedent
+
+Read-only inspection of `scripts/qualify-actor-gateway-principal.mjs` confirms the established Actor Gateway assertion-secret provisioning pattern: a dedicated migrator connection begins a transaction, executes `SET LOCAL ROLE ghm_schema_owner`, and inserts/rotates the 32-byte secret into the protected singleton table. The script obtains the secret from an environment variable; it does not commit the value. This is a concrete repository precedent, not permission to run it against production.
+
+The provider-attestation implementation should use a separate environment variable (for example `GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET`) supplied only to the Resource API signer and the explicitly invoked provisioning/qualification process. A separate provisioning script should use the same migrator-to-schema-owner transaction pattern, require an explicitly named disposable/qualification database for automated tests, verify the exact database identity before mutation, and never print the secret. Production provisioning remains blocked by the already documented Render role-administration issue and must not be attempted in this construction work.
+
