@@ -2926,3 +2926,23 @@ Found that CI preserved only the pre-cutover SECURITY DEFINER inventory. Updated
 ### No production mutation
 
 All tests and the manual issuer cutover ran only against disposable CI PostgreSQL. Production Render `ghm-db` and `ghm-internal-runtime` remain unchanged. PayFast and legal-document publication remain paused.
+
+
+## 2026-11-12 23:30 UTC — current cross-product PR heads rechecked
+
+Refreshed open PR metadata directly from GitHub to avoid relying on stale branch notes.
+
+### ZAID Connect
+- PR #68 `feat: migrate core Connect workflows to GHM`: draft, head `2eadf761400bb5a644b5907e670aacb68526c81f`, base `main` at `1e92f85cdd99dea2070ede58a875cec45d5f2047`.
+- PR #69 is a separate draft handover PR, not the product migration implementation.
+- PR #33 is the disabled GHM PayFast sandbox checkout bridge; PayFast remains out of scope while sandbox access is unavailable.
+- The previously inspected issuer-origin branch head `e016f4e8fa241b65ec7f89330e88c18fd7f2d482` is not a substitute for integration atop PR #68. The issuer-origin work must be reviewed/stacked onto PR #68's current product contract and tested as a combined candidate.
+
+### QuoteFlow
+- PR #25 `feat(quoteflow): begin GHM-native identity cutover`: draft, head `065225304f3a19c97050aa237ebbfe578f649a43`, base `main` at `e4b39a8515177ed00791e6be5213765d3f054a7f`.
+- PR #20 is an identity-context adapter test PR; PR #21 is a recoverable GHM storage-scope migration primitive; PR #23 is its storage identity mapping contract. These are separate dependencies and should not be silently folded into issuer work.
+- Previously inspected issuer-origin branch head `d2c9b48dc58e48e11e597c57204900c08c9d63fc` is not proof of integration with PR #25. Build a combined dependency graph before any merge or branch surgery.
+- Keep QuoteFlow's GHM Gate A default-off and no Supabase fallback. Retain the approved backup classification of one owner account and two banned bot accounts.
+
+### Integration decision
+No cross-product branch has been merged or rewritten. First complete GHM post-cutover inventory qualification, then compare issuer client contracts and changes against these exact product PR heads. Do not merge standalone issuer-origin branches merely because their independent CI passed.
