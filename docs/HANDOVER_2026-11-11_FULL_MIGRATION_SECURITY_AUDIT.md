@@ -2295,3 +2295,13 @@ The issuer startup ACL guard has been strengthened beyond checking a list of kno
 2. If it fails, inspect the actual failing assertion/log and make the smallest correction; do not weaken the privilege boundary or replace exact allow-list checks with a weaker subset check.
 3. After CI passes, continue the issuer/Resource API/Actor Gateway/migrator privilege matrix and rollback review, then reconcile this handover and `docs/GHM_CURRENT_STATE.md` with the resulting evidence.
 4. Keep the issuer branch stacked on PR #272; do not merge PR #272 underneath it independently. No production cutover, service creation, secrets, grants, deployment, or paid infrastructure is authorized by this work.
+
+
+### Documentation reconciliation follow-up — current branch head
+
+After recording the ACL correction, the handover and `docs/GHM_CURRENT_STATE.md` were reconciled on the dependent issuer branch. The handover records the failed run, actual PostgreSQL diagnostic, correction, and exact-head qualification gate. The current-state index now distinguishes mainline/PR #272 from the unmerged issuer construction branch and records the outstanding production blockers and recovery-delivery limitation.
+
+- Current branch head after these documentation commits: `e4b48f6d7f5f092baccf5dc882ca77e3afa62ce3`.
+- The corrected implementation/test commits remain `c2ddd18d793b61fe20a017f26bfade8cdb0394a1` and `fe3b765e2e265817655359c9fd96977a3dca9179`.
+- A new exact-head CI run was queued for `e4b48f6d7f5f092baccf5dc882ca77e3afa62ce3` after the documentation updates. This run, not the earlier `fe3b765` push run, is the current full-branch evidence gate.
+- No merge, production mutation, deployment, secret change, service creation, or paid spend occurred.
