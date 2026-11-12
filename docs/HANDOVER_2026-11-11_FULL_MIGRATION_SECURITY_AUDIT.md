@@ -1708,3 +1708,47 @@ CI is running on the construction branch. Earlier queued runs predate the correc
 3. Add issuer-specific database grant plan only after final effective ACL inventory; keep all grant changes in isolated qualification first.
 4. Add cross-product auth-origin configuration and tests without changing product flags or production environment.
 5. Remove auth routes/private key/pepper from Resource API only after issuer path and same-origin routing compatibility are qualified.
+
+
+## Disposable issuer cutover qualification — passed (2026-11-12)
+
+CI run #3521 passed both `quality` and `web-quality` on commit `76adba8bff042b40bd864c419c27259db40e63da`. The quality job ran the new issuer baseline and disposable cutover sequence after the existing runtime-based suite and all prior runtime qualifications.
+
+### What passed
+
+1. **Pre-grant baseline:** a real `ghm_auth_issuer` PostgreSQL login has no role memberships/elevated role flags, no callable `ghm.auth_*` functions, and no direct credential/session table privileges.
+2. **Disposable-only cutover fixture:** `scripts/fixtures/auth-issuer-disposable-qualification-grants.sql` grants schema USAGE and an exact 12-function allow-list to `ghm_auth_issuer`, while revoking those functions from PUBLIC and `ghm_runtime`. This fixture is applied only to the CI disposable PostgreSQL database, after the normal runtime tests.
+3. **Issuer privilege shape:** the issuer can execute exactly the 12 reviewed function names and has no direct privileges on the protected credential/session/identity mapping tables.
+4. **Runtime negative tests:** real `ghm_runtime` login receives PostgreSQL permission-denied (SQLSTATE 42501) on all 12 issuer-only operations.
+5. **Connect compatibility:** `ghm_runtime` can still execute `auth_lookup_external_identity`; the lookup-only Connect identity path remains available.
+6. **Positive issuer lifecycle:** a separate real issuer DB login successfully registers an account, logs in, rotates refresh, logs out, issues recovery, redeems a one-time recovery token, changes the password, verifies replay rejection, confirms the old password no longer works, logs in with the new password and logs out.
+
+### Exact issuer function allow-list qualified in disposable PostgreSQL
+
+- `auth_create_account`
+- `auth_lookup_password_by_normalized_email`
+- `auth_set_password`
+- `auth_create_session_with_refresh`
+- `auth_validate_session`
+- `auth_rotate_refresh`
+- `auth_revoke_by_refresh_hash`
+- `auth_issue_recovery`
+- `auth_redeem_recovery`
+- `auth_redeem_recovery_with_count`
+- `auth_lookup_quoteflow_migration_reset_enrollment`
+- `auth_complete_quoteflow_migration_reset`
+
+### Remaining qualification gaps
+
+- The positive QuoteFlow migration-reset enrollment/completion ceremony has not yet been run through the new issuer login. The two functions are in the allow-list, but require a dedicated enrollment fixture and end-to-end assertion.
+- The password rehash-on-login branch has not yet been forced in the new issuer integration test.
+- Password reset still accepts an email alongside the recovery token and calls the general setter; same-account email binding/mismatch behavior remains an open contract issue. This qualification used the account's existing email only.
+- The issuer HTTP server itself is not deployed or started by CI; the database lifecycle test constructs the same persistence/service with a real issuer DB pool and ephemeral ES256 key. HTTP app route tests and compile pass separately.
+- Resource API auth routes, private key and token pepper are still present. No live cutover occurred.
+- Product clients and Connect BFF are unchanged. No service deployment, secret, production database role or grant was changed.
+
+### Important sequencing proof
+
+The disposable grant/revoke fixture is intentionally applied only after the existing auth persistence suite, runtime qualifications and `verify:runtime` have completed. This avoids changing the assumptions of the pre-existing runtime qualification suite and then misreading its failures. The resulting issuer test proves the post-cutover database boundary separately.
+
+Latest CORS validation and environment documentation commits were added after #3521; use the newest exact-head CI run before treating the current construction branch as fully green.
