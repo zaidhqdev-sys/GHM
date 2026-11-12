@@ -12,6 +12,8 @@ test('Actor Gateway verifies its exact database ACL before opening the HTTP list
   const listen = server.indexOf('server.listen(port');
   assert.ok(identityCheck >= 0 && privilegeCheck > identityCheck && listen > privilegeCheck);
   assert.match(server, /readActorGatewayDatabasePrivileges\(pool\)/);
+  assert.match(privilegeSource, /has_database_privilege\(session_user, current_database\(\), 'CONNECT'\)/);
+  assert.match(privilegeSource, /has_database_privilege\(session_user, current_database\(\), 'CREATE'\)/);
   assert.match(privilegeSource, /has_schema_privilege\(session_user, 'ghm', 'CREATE'\)/);
   assert.match(privilegeSource, /has_table_privilege\(session_user/);
   assert.match(privilegeSource, /has_sequence_privilege\(session_user/);
