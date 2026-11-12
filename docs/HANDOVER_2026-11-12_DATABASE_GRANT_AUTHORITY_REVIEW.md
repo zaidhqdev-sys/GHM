@@ -644,3 +644,69 @@ The live production catalog is not yet at the construction branch's intended sta
 6. Obtain a fresh independently verified production backup before any privilege or schema cutover. The 4 November backup remains stale.
 
 **No production roles, memberships, grants, ownership, credentials, secrets, migrations, Render environment, services, deployment, traffic or data were changed.**
+
+
+---
+
+## 2026-11-12 continuation — production runtime DML reconciliation and SECURITY DEFINER search_path audit
+
+**Evidence:** read-only Render PostgreSQL 18 catalog queries plus source inspection on the open unified Actor Gateway integration PR branch `integration/capability-gateway-qualification-20261110`.  
+**Production mutation:** none.
+
+### Whole non-system routine inventory / SECURITY DEFINER search_path
+
+The cross-schema routine query returned only the application schema `ghm` (78 routines; 63 SECURITY DEFINER). No routines were returned in `public` or another non-system schema.
+
+All 63 production SECURITY DEFINER routines have an explicit function-level `search_path` setting (`proconfig`); none is missing a pinned function-level search_path. Every one is owned by `ghm_schema_owner`. The observed paths are schema-qualified and place `pg_temp` last where it is included. This closes the specific live production gap of an unpinned SECURITY DEFINER search_path for the current `ghm` inventory; it does not replace source-body review for dynamic SQL, unsafe object resolution, or function-level authorization.
+
+No PUBLIC EXECUTE grants were found on any production SECURITY DEFINER routine in `ghm`. PUBLIC EXECUTE grants observed in the schema belong to ordinary non-SECURITY-DEFINER trigger/helper functions.
+
+### Exact production runtime direct DML privileges
+
+A new effective privilege check confirmed `ghm_runtime` and the current effective production administrator session `ghm_db_user` both resolve the same inherited runtime table privileges for these objects:
+
+| Object | Runtime direct privilege(s) | Source callsite / current disposition |
+|---|---|---|
+| `ghm.business` | INSERT, SELECT | `src/resources/business-identity/repository.ts:createBusinessInTransaction` creates Business directly |
+| `ghm.business_membership` | INSERT, SELECT | same method inserts initial owner membership |
+| `ghm.opportunity` | INSERT, SELECT, UPDATE | `src/resources/opportunity/repository.ts` creates/updates opportunities directly; `src/resources/project/repository.ts:createProject` creates its linked Opportunity directly |
+| `ghm.opportunity_capability_requirement` | DELETE, SELECT | DELETE grant has not yet been mapped to a live repository callsite; remains an explicit unresolved least-privilege item |
+| `ghm.account_identity` | SELECT only | source `PostgresBusinessIdentityRepository.updateAccount` issues direct UPDATE, but production runtime has no UPDATE privilege |
+
+The exact direct DML grants have no grant option. The other 35 relation ACL entries are SELECT-only; all 49 runtime sequence ACL entries are USAGE, with SELECT additionally present on a subset of sequences. The complete object list was captured in the preceding production inventory section and re-query before any change.
+
+### Newly confirmed source/ACL mismatch: account profile UPDATE
+
+`src/resources/business-identity/repository.ts` includes `PostgresBusinessIdentityRepository.updateAccount`, which executes:
+
+`UPDATE ghm.account_identity SET full_name=..., phone=..., avatar_ref=... WHERE id=$1`
+
+The live production ACL grants `ghm_runtime` only SELECT on `ghm.account_identity`; the effective `has_table_privilege(...,'UPDATE')` check is false for both `ghm_runtime` and `ghm_db_user`. Therefore this direct UPDATE cannot succeed under either the intended runtime login or the currently effective production role, absent some other execution context not evidenced by the inspected code. This is a source/production ACL contract defect or stale/unreachable path that must be resolved before the runtime credential cutover. Do not solve it by granting broad UPDATE on the whole account table; first trace the route/callers and define a narrow authenticated operation (likely a dedicated SECURITY DEFINER function or an appropriately scoped gateway operation) with tests and an exact ACL contract.
+
+### Business and Opportunity direct DML implications
+
+The existing Business creation flow is still direct Resource API DML for Business INSERT and owner-membership INSERT. The existing Opportunity repository performs direct Opportunity INSERT/UPDATE and the Project repository atomically creates a linked Opportunity + participant + Project with direct DML. These are currently represented in the live runtime ACL and are not replaced by the Business profile / registration / supplier / capability gateway routes.
+
+This means those direct grants cannot be revoked as a side effect of the Actor Gateway work without first replacing the flows and their transaction semantics. In particular, Project + Opportunity atomicity must be preserved if that flow is moved to a gateway or a dedicated database function. No cutover migration for these direct DML grants is authorized by this finding.
+
+The `opportunity_capability_requirement` DELETE grant has not been tied to a source callsite in this pass. It may be legacy residue, but do not revoke until every repository, route, maintenance job, trigger interaction and product workflow has been checked.
+
+### Disposition
+
+- **SECURITY DEFINER search_path:** production inventory passed the pinned-setting check (63/63).
+- **PUBLIC EXECUTE on SECURITY DEFINER:** none found in production `ghm`.
+- **Business create / owner membership direct DML:** mapped; remains a live direct-DML boundary.
+- **Opportunity create/update and Project-linked Opportunity DML:** mapped; remains a live direct-DML boundary.
+- **Account identity profile UPDATE:** confirmed source/ACL mismatch; needs caller tracing and a narrow replacement/contract correction.
+- **Opportunity capability requirement DELETE:** unresolved; keep grant and investigate.
+- **Production runtime direct DML scope:** not ready for blanket revocation.
+
+### Next work
+
+1. Trace the `updateAccount` route and test coverage; determine whether it is reachable and currently broken in production, then design the smallest authenticated SQL/gateway operation without broad account table UPDATE.
+2. Find all `opportunity_capability_requirement` DELETE callsites and confirm whether the grant is required or obsolete.
+3. Inspect Project, Opportunity and Business create/update route authorization and tests, then define the migration path for their direct DML while preserving atomic Project↔Opportunity semantics.
+4. Continue exact function-by-function mapping of the remaining production `ghm_runtime` SECURITY DEFINER grants, especially storage metadata and the remaining legacy auth entry points.
+5. Re-run the same read-only production catalog queries immediately before any future cutover; production remains on the older ACL state until an approved migration is applied after a fresh verified backup.
+
+**No production role, grant, ownership, credential, secret, environment variable, migration, deployment, application data or service was changed.**
