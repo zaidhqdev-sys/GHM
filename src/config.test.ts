@@ -5,6 +5,7 @@ import { test } from 'node:test';
 const loadConfig = (overrides: Record<string, string | undefined>) => {
   const env = { ...process.env, ...overrides };
   env.DATABASE_SSL = overrides.DATABASE_SSL ?? '';
+  env.GHM_RUNTIME_DATABASE_URL = overrides.GHM_RUNTIME_DATABASE_URL ?? '';
   return spawnSync(
     process.execPath,
     ['-e', "const { config } = require('./dist/config.js'); console.log(JSON.stringify(config));"],
@@ -20,24 +21,36 @@ const baseEnv = {
 };
 
 test('production configuration fails closed when database TLS is not enabled', () => {
-  const result = loadConfig({ ...baseEnv, NODE_ENV: 'production', GHM_RUNTIME_DATABASE_URL: 'postgres://ghm_runtime:secret@example.invalid/ghm' });
+  const result = loadConfig({ ...baseEnv, NODE_ENV: 'production', GHM_RUNTIME_DATABASE_URL: 'postgres://runtime.example.invalid/ghm' });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr + result.stdout, /DATABASE_SSL must be true in production/);
 });
 
-test('production configuration requires the dedicated runtime database URL', () => {
-  const result = loadConfig({ ...baseEnv, NODE_ENV: 'production', DATABASE_SSL: 'true', GHM_RUNTIME_DATABASE_URL: undefined });
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr + result.stdout, /GHM_RUNTIME_DATABASE_URL/);
-});
-
-test('production configuration accepts the dedicated runtime database URL and TLS', () => {
-  const result = loadConfig({ ...baseEnv, NODE_ENV: 'production', DATABASE_SSL: 'true', GHM_RUNTIME_DATABASE_URL: 'postgres://ghm_runtime:secret@example.invalid/ghm' });
+test('production configuration accepts explicitly enabled database TLS', () => {
+  const result = loadConfig({ ...baseEnv, NODE_ENV: 'production', DATABASE_SSL: 'true', GHM_RUNTIME_DATABASE_URL: 'postgres://runtime.example.invalid/ghm' });
   assert.equal(result.status, 0, result.stderr);
   const loaded = JSON.parse(result.stdout.trim());
   assert.equal(loaded.isProduction, true);
   assert.equal(loaded.databaseSsl, true);
-  assert.equal(loaded.databaseUrl, 'postgres://ghm_runtime:secret@example.invalid/ghm');
+});
+
+test('production configuration refuses generic DATABASE_URL without an explicit runtime principal URL', () => {
+  const result = loadConfig({ ...baseEnv, NODE_ENV: 'production', DATABASE_SSL: 'true' });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr + result.stdout, /GHM_RUNTIME_DATABASE_URL/);
+});
+
+test('production configuration uses the explicitly named runtime database URL', () => {
+  const runtimeUrl = 'postgres://ghm_runtime:runtime-password@example.invalid/ghm';
+  const result = loadConfig({
+    ...baseEnv,
+    NODE_ENV: 'production',
+    DATABASE_SSL: 'true',
+    GHM_RUNTIME_DATABASE_URL: runtimeUrl,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  const loaded = JSON.parse(result.stdout.trim());
+  assert.equal(loaded.databaseUrl, runtimeUrl);
 });
 
 test('non-production configuration preserves explicit database TLS setting', () => {
@@ -92,17 +105,14 @@ test('legacy TRUST_PROXY=true is narrowed to one trusted hop', () => {
 });
 
 
-test('actor gateway origin is optional and accepts HTTPS origins', () => {
-  const result = loadConfig({ ...baseEnv, GHM_ACTOR_GATEWAY_URL: 'https://gateway.example.test' });
-  assert.equal(result.status, 0, result.stderr);
-  const loaded = JSON.parse(result.stdout.trim());
-  assert.equal(loaded.actorGatewayUrl, 'https://gateway.example.test');
-});
+test('actor gateway origin accepts HTTPS and rejects insecure remote URLs', () => {
+  const valid = loadConfig({ ...baseEnv, GHM_ACTOR_GATEWAY_URL: 'https://actor-gateway.example.test' });
+  assert.equal(valid.status, 0, valid.stderr);
+  assert.equal(JSON.parse(valid.stdout.trim()).actorGatewayUrl, 'https://actor-gateway.example.test');
 
-test('actor gateway origin rejects insecure non-local HTTP and URL paths', () => {
-  for (const value of ['http://gateway.example.test', 'https://gateway.example.test/path', 'not-a-url']) {
-    const result = loadConfig({ ...baseEnv, GHM_ACTOR_GATEWAY_URL: value });
-    assert.notEqual(result.status, 0, `expected GHM_ACTOR_GATEWAY_URL=${value} to fail`);
-    assert.match(result.stderr + result.stdout, /GHM_ACTOR_GATEWAY_URL/);
+  for (const value of ['http://actor-gateway.example.test', 'https://actor-gateway.example.test/path', 'https://actor-gateway.example.test?x=1']) {
+    const invalid = loadConfig({ ...baseEnv, GHM_ACTOR_GATEWAY_URL: value });
+    assert.notEqual(invalid.status, 0, `expected GHM_ACTOR_GATEWAY_URL=${value} to fail`);
+    assert.match(invalid.stderr + invalid.stdout, /GHM_ACTOR_GATEWAY_URL/);
   }
 });
