@@ -1368,3 +1368,10 @@ Updated CI workflow in commit `89fb0461ddac3763d721d0bf8cb04c34457ff355` to capt
 ## 2026-11-12 23:30 UTC — product PR dependency refresh
 
 Current Connect PR #68 head is `2eadf761400bb5a644b5907e670aacb68526c81f` (draft core GHM workflow migration); PR #69 is handover documentation and PR #33 is the disabled PayFast bridge. Current QuoteFlow PR #25 head is `065225304f3a19c97050aa237ebbfe578f649a43` (draft GHM-native identity cutover); PRs #20, #21 and #23 are separate identity adapter/storage migration dependencies. The prior issuer-origin branches are not integrated proof against these product PR heads. Full dependency note added to security handover. No branch rewrites or merges.
+
+
+## 2026-11-13 — five-principal security review checkpoint
+
+Source-level reconciliation documented in the full security handover. Resource API runtime has 43 pre-cutover SECURITY DEFINER signatures and exact 512 reviewed manual-cutover combinations; issuer has an exact 10-function allow-list and permits only two runtime external-identity lookup functions; Actor Gateway has an exact 33-function signed-wrapper allow-list; migrator is limited to its controlled schema-owner SET path; payment provider qualification proves PayFast-only settlement and no direct table privileges. Payment callback startup currently checks identity but not the complete function ACL; this is a pre-reactivation hardening gate while PayFast remains paused, and no PayFast code was changed.
+
+Run `43329488561` on `0e986e448028a1a78e733b33b893b49721b2a8f4`: web-quality passed; quality is still in progress after the disposable manual issuer cutover, with issuer lifecycle and post-cutover whole-database inventory pending. No post-cutover report/artifact has yet been retrieved. No production change, merge, deployment, secret or routing change.
