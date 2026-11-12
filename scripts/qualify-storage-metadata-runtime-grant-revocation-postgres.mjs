@@ -59,7 +59,7 @@ const restoreOriginalAcl = async () => {
   await withSchemaOwner(async client => {
     for (const item of snapshots) {
       if (item.public_execute) await client.query(`GRANT EXECUTE ON FUNCTION ${item.signature} TO PUBLIC`);
-      if (item.runtime_execute) await client.query(`GRANT EXECUTE ON FUNCTION ${item.signature} TO ghm_runtime`);
+      if (item.runtime_direct_execute) await client.query(`GRANT EXECUTE ON FUNCTION ${item.signature} TO ghm_runtime`);
     }
   });
   cutoverApplied = false;
@@ -75,6 +75,7 @@ try {
       p.oid::regprocedure::text AS signature,
       p.proname,
       COALESCE(bool_or(a.grantee = 0 AND a.privilege_type = 'EXECUTE'), false) AS public_execute,
+      COALESCE(bool_or(a.grantee = runtime_role.oid AND a.privilege_type = 'EXECUTE'), false) AS runtime_direct_execute,
       has_function_privilege('ghm_runtime', p.oid, 'EXECUTE') AS runtime_execute,
       (
         SELECT string_agg(format('NULL::%s', format_type(arg_type, NULL)), ', ' ORDER BY ord)
@@ -82,6 +83,7 @@ try {
       ) AS null_arguments
     FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
+    JOIN pg_roles runtime_role ON runtime_role.rolname = 'ghm_runtime'
     CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) a
     WHERE n.nspname = 'ghm'
       AND p.proname = ANY($1::text[])
