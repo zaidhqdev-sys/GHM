@@ -131,6 +131,7 @@ try {
   await identity(gatewayPool, 'ghm_actor_gateway');
   await identity(cleanupPool, 'ghm_migrator');
   const gatewayPrivileges = await readActorGatewayDatabasePrivileges(gatewayPool);
+  console.log(`GATEWAY ACL DIAGNOSTIC: ${JSON.stringify(gatewayPrivileges)}`);
   assertActorGatewayDatabasePrivileges(gatewayPrivileges);
   console.log('GATEWAY EXACT FUNCTION AND RELATION ACL ALLOW-LIST: PASS');
   const provision=await cleanupPool.connect();
