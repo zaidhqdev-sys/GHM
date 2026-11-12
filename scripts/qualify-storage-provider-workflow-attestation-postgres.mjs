@@ -66,7 +66,7 @@ try {
     const outsider = await setup.query("INSERT INTO ghm.account_identity(full_name,role) VALUES($1,'business') RETURNING id", [marker + '-outsider']);
     const member = await setup.query("INSERT INTO ghm.account_identity(full_name,role) VALUES($1,'business') RETURNING id", [marker + '-member']);
     const nonmember = await setup.query("INSERT INTO ghm.account_identity(full_name,role) VALUES($1,'business') RETURNING id", [marker + '-nonmember']);
-    const inactive = await setup.query("INSERT INTO ghm.account_identity(full_name,role,account_status) VALUES($1,'business','inactive') RETURNING id", [marker + '-inactive']);
+    const inactive = await setup.query("INSERT INTO ghm.account_identity(full_name,role,account_status) VALUES($1,'business','disabled') RETURNING id", [marker + '-inactive']);
     const a = await setup.query("INSERT INTO ghm.business(name,slug,verification_status,is_verified,is_active) VALUES($1,$2,'approved',true,true) RETURNING id", [marker, marker]);
     const b = await setup.query("INSERT INTO ghm.business(name,slug,verification_status,is_verified,is_active) VALUES($1,$2,'approved',true,true) RETURNING id", [marker + '-other', marker + '-other']);
     const accountId = Number(owner.rows[0].id);
