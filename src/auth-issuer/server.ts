@@ -45,7 +45,11 @@ const app = createAuthIssuerApp({
   authPersistence: persistence,
   passwordResetService: createPasswordResetService(persistence),
   quoteFlowMigrationResetCompletionService: createQuoteFlowMigrationResetCompletionService(persistence),
-  readinessCheck: async () => { await pool.query('SELECT 1'); },
+  readinessCheck: async () => {
+    await pool.query('SELECT 1');
+    const currentPrivileges = await readAuthIssuerDatabasePrivileges(pool);
+    assertAuthIssuerDatabasePrivileges(currentPrivileges);
+  },
 });
 const server = http.createServer(app);
 server.requestTimeout = 30_000;
