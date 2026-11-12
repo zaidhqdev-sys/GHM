@@ -25,7 +25,6 @@ const createPersistence = (
   issueRecovery: async () => { throw new Error('unused'); },
   lookupQuoteFlowMigrationResetEnrollment: async () => null,
   lookupExternalIdentity: lookup,
-  linkBusinessExternalMapping: async () => { throw new Error('unused'); },
   revokeSessionByRefreshToken: async () => ({ found: false, sessionId: null, accountId: null }),
 });
 
