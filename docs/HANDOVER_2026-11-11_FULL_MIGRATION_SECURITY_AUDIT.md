@@ -2397,3 +2397,21 @@ The signed Connect Business gateway and its disposable PostgreSQL qualification 
 - Updated issuer privilege unit tests to expect exactly the two remaining Resource API lookup functions, including rejection of a missing lookup grant. Updated Actor Gateway privilege unit fixture to use the signed assertion verifier rather than the revoked unsigned helper.
 
 Current code/test commits include `a6a8749eef94a04af692c127292755869481cb6f`, `4edd60f1dfa6675626c9b043c533fc264e4566cf`, `242479d2d8dd74b4c53e9cbf2f1a46ebb4dc9f28`, `b6855d5c3eccbadbf106d2b62e25f384a3b2353e`, `eff5d3bcf3bc5612e9911424728855cafcc389e6`, and `608c767397b37a06579c3bd4efeaad64583d9e05`. The latest exact-head run must complete the Connect provisioning qualification, full suite, manual issuer cutover/lifecycle/rollback, and both required CI checks before any green qualification claim.
+### Exact-head issuer and Actor Gateway qualification — 2026-11-12
+
+Corrected exact candidate `0f12703108b1b42f6efcd8fe49970f5c28dd052f` passed GitHub Actions run `43159174319`: `quality` and `web-quality` succeeded, and the Cloudflare Pages check completed successfully.
+
+Qualification evidence on that exact source head:
+- TypeScript build, complete test suite and ordered PostgreSQL 18 migration chain passed.
+- Isolated `ghm_auth_issuer` principal baseline passed.
+- Actor Gateway principal and exact 25-function signed/typed ACL passed; no direct table/view/sequence privileges, no schema CREATE, no PUBLIC executable gateway functions, no runtime gateway-function execution, and safe future-function defaults.
+- Signed Connect Business provisioning live PostgreSQL qualification passed: runtime mapping-helper/table denials, concurrent membership isolation, existing mapping membership checks, idempotent resolution, and atomic rollback.
+- The full Actor Gateway signed-operation/cutover qualification sequence passed, including capability, Saved Business, Business Hours, Trust Score, Business Logo, supplier classification and Business profile.
+- Runtime boundary and migration audit policy checks passed.
+- Manual Authentication Issuer cutover applied only to disposable PostgreSQL; issuer lifecycle, runtime denials, ten-function issuer allow-list, two-function Resource API auth allow-list, startup ACL verification, and database-only rollback all passed. Qualification output: `issuerAllowList: 10`, `issuerDirectRelationPrivileges: 0`, `runtimeIssuerFunctionDenials: 16`, `disposableDatabasePrivilegeRollback: passed`, `issuerStartupAclVerification: passed`.
+
+During this final qualification pass, the updated two-function SQL allow-list exposed trailing commas in PostgreSQL array literals in both the production startup verifier and disposable qualification runner. These were removed in commits `a30fa4ada464733a1bb64c23301a5775314eed90` and `0f12703108b1b42f6efcd8fe49970f5c28dd052f`; the exact-head run above proves both corrected queries execute and verify successfully.
+
+The current two-function Resource API auth allow-list is `auth_lookup_external_identity` and `auth_lookup_business_external_mapping`. Direct `auth_link_business_external_mapping` remains revoked from all application roles and is invoked only inside the signed `gateway_provision_connect_business` SECURITY DEFINER operation. Actor Gateway has 25 signed/typed operations, including `business.connect.provision`.
+
+**Important:** this is disposable qualification only. No production database, role, grant, secret, service, deployment, routing, backup, or paid resource was changed. PR #272 remains open/unmerged, and the issuer construction branch remains dependent on it. Production remains blocked on a fresh independently verified backup, Render database role/ownership resolution, reviewed network/TLS topology, recovery delivery, client/service readiness, and separate founder approvals. Do not merge or apply production cutovers on the strength of this CI run alone.

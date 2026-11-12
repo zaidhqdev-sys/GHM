@@ -1120,3 +1120,11 @@ The current Resource API runtime auth-function allow-list is exactly two functio
 The previous green exact-head CI was run on `4abb42e029f774ec11b90705b59222d042ee5584` before the signed Connect provisioning gateway was added. It is historical evidence only and does not qualify the newer gateway/cutover integration. The initial follow-up commit `a650c699ba6e7a4c800b80b5ec18c87c6992b490` incorrectly assumed the older three-function architecture and was superseded before qualification. Do not use its intermediate state as evidence.
 
 Current dependent branch: `construction/auth-issuer-isolation-20261112`. Exact-head CI for the corrected two-function qualification and reconciled documentation is pending; refresh the exact SHA and run before any qualification claim. PR #272 and the dependent issuer branch remain unmerged. No production grants, data, secrets, services, deployments, routing or paid resources were changed.
+
+### 2026-11-12 — exact-head issuer / Actor Gateway qualification
+
+Exact candidate `0f12703108b1b42f6efcd8fe49970f5c28dd052f` passed run `43159174319` (`quality`, `web-quality`, Cloudflare Pages). The run completed the full build, test suite, migration chain, Actor Gateway 25-function ACL, signed Connect Business provisioning membership/atomicity/rollback, all existing signed gateway qualifications, runtime boundary checks, and disposable Authentication Issuer cutover/lifecycle/rollback.
+
+The issuer qualification reported an exact ten-function issuer allow-list, zero direct issuer relation privileges, 16 expected Resource API runtime denials, the exact two-function Resource API auth lookup allow-list, safe default function privileges, successful startup ACL verification and successful disposable database-only rollback. The PostgreSQL array-literal trailing commas in the startup verifier and qualification runner were corrected before this green exact-head run.
+
+This does not authorize production mutation. PR #272 remains open/unmerged; the issuer branch is dependent on it. Fresh independently verified production backup, Render role/ownership resolution, reviewed network/TLS topology, recovery-delivery readiness, client/service compatibility, and separate founder approvals remain blocking. No production resources or paid services were changed.
