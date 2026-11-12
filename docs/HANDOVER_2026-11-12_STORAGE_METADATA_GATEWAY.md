@@ -292,3 +292,12 @@ The design document was updated to reflect this expanded principal coverage in c
 3. Run the complete exact-head whole-database SECURITY DEFINER inventory and issuer/Actor Gateway qualification; retain the artifact and checksum.
 4. Review production blockers independently: Render role-administration access, a fresh independently verified backup, approved deployment/network/rollback plan, and production secret provisioning. Do not bypass them.
 5. Do not merge or perform production cutover. Founder approval and fully reconciled documentation remain mandatory.
+
+
+## Retrieved whole-database inventory artifact — 2026-11-12 14:27 UTC
+
+The successful exact code/fixture CI run `43237334881` preserved artifact `security-definer-authority-inventory` (ID `13952542959`), which was retrieved and inspected. ZIP SHA-256 `060094751895ed023ba1411679e0af9c2b60d86fe3`; JSON SHA-256 `8111ac1ff29f67d11961782d4bbe3f614bd1b650afb05f4fa1b723664db1869f`.
+
+Captured without mutation from `ghm_disposable_test` on PostgreSQL 18.6 as `ghm_migrator` at `2026-11-12T14:27:50.233Z`: 103 SECURITY DEFINER routines, all owned by `ghm_schema_owner`, all in `ghm`, all trusted language, all pinned to `pg_catalog, ghm, pg_temp`; zero PUBLIC EXECUTE grants. The 75 preliminary grant findings group into direct EXECUTE grants for runtime 43, Actor Gateway 30, payment provider 2, migrator 1. These are grant inventory items requiring operation-by-operation review, not automatic vulnerability findings. The artifact's decision remains `REVIEW_REQUIRED_NO_AUTOMATIC_APPROVAL`.
+
+The five new storage gateway wrappers are among the 30 Actor Gateway grants. The five legacy metadata functions remain among the 43 runtime grants in the post-rollback snapshot. The cutover test revokes them only during the disposable rehearsal, verifies runtime/migrator/Actor Gateway direct-call denial, verifies wrapper access, then restores the original state. This is not production revocation. The full migration security handover records the role-grant breakdown and the one explicitly scoped migrator mapping lookup.
