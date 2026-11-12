@@ -2267,7 +2267,7 @@ Added `src/auth-issuer/database-privileges.ts` and startup checks in `src/auth-i
 A mismatch aborts startup; it does not merely log a warning. Added unit tests for the pure privilege verifier and a source contract test that the check runs before `server.listen`. The next exact-head CI must qualify this change. This is fail-closed deployment defense in depth, not permission to deploy.
 
 
-Historical checkpoint only: the issuer startup ACL guard initially required a three-function Resource API allow-list. The 2026-11-12 follow-up below supersedes that list after a separate review of provider-business mapping mutation authority.
+Historical checkpoint: the three-function Resource API allow-list remains current. The 2026-11-12 follow-up below confirms the mapping-link function is still required by Connect Business provisioning and records it as an open security gate.
 
 
 ## 2026-11-12 — Startup ACL verifier false-positive correction (in progress)
