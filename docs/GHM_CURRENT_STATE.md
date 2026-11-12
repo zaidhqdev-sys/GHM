@@ -836,3 +836,13 @@ The web client currently sends auth and resource requests to one API origin (`VI
 No Render Blueprint, Dockerfile or deployment manifest is present in the GHM repository tree, so current service start/build commands, proxy/routing capability and network exposure cannot be inferred from source. Obtain the actual service configuration/inventory before specifying deployment. No Render changes or new services.
 
 Latest handover adds the full client route contract, cookie behavior, deployment evidence gap and compatibility test requirements. CI #3493 was still running its test suite and subsequent PostgreSQL qualification at the previous documentation head; the new handover commit will require exact-head CI recheck.
+
+
+## Product auth consumer inventory (2026-11-12)
+
+Issuer cutover is cross-repository:
+- GHM web uses one `VITE_GHM_API_BASE_URL` for resource and native auth traffic.
+- Connect native auth currently uses `VITE_GHM_API_BASE_URL` direct to GHM Runtime. Optional browser-cookie auth is feature-flagged off by default and uses a same-origin Vercel BFF with one `GHM_INTERNAL_RUNTIME_URL` upstream.
+- QuoteFlow's GHM Gate A adapter is disabled by default. If enabled, `EXPO_PUBLIC_GHM_AUTH_BASE_URL` currently serves both auth endpoints and `/api/v1/identity`.
+
+Before GHM removes auth routes from Resource API, add separate auth issuer/resource base URLs in clients, split Connect's BFF issuer upstream from its resource upstream, preserve the optional browser mode's default-off behavior, and test all cross-repository contracts. No product repo, flag, environment or deployment was changed. Full paths and required compatibility sequence are in the security handover.
