@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import { randomUUID, generateKeyPairSync } from 'node:crypto';
 import { Pool } from 'pg';
 import { createAccessJwtService } from '../dist/auth/foundation/access-jwt.js';
@@ -74,6 +76,24 @@ try {
      ORDER BY c.relname, privilege.privilege
   `);
   assert.deepEqual(issuerTablePrivileges.rows, [], 'issuer must not receive direct privileges on any GHM table/view; all access remains through reviewed SECURITY DEFINER functions');
+
+  const issuerSequencePrivileges = await issuerPool.query(`
+    SELECT c.relname AS sequence_name, privilege.privilege
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      CROSS JOIN (VALUES ('USAGE'), ('SELECT'), ('UPDATE')) AS privilege(privilege)
+     WHERE n.nspname = 'ghm'
+       AND c.relkind = 'S'
+       AND has_sequence_privilege(session_user, c.oid, privilege.privilege)
+     ORDER BY c.relname, privilege.privilege
+  `);
+  assert.deepEqual(issuerSequencePrivileges.rows, [], 'issuer must not receive direct privileges on any GHM sequence');
+
+  assert.equal(
+    await issuerPool.query(`SELECT has_schema_privilege(session_user, 'ghm', 'CREATE') AS can_create`).then((r) => r.rows[0].can_create),
+    false,
+    'issuer must not be able to create objects in the GHM schema',
+  );
 
   const deniedCalls = [
     'SELECT * FROM ghm.auth_create_account(NULL::text, NULL::text, NULL::text, NULL::text, NULL::text, NULL::integer, NULL::integer, NULL::integer)',
@@ -271,6 +291,69 @@ try {
   assert.equal(quoteFlowLogin.accountId, quoteFlowAccountId);
   await authService.logout(quoteFlowLogin.refreshToken);
 
+  // Exercise the separately reviewed database rollback against this disposable
+  // database only. Application routing/secrets require their own coordinated rollback.
+  const rollbackSql = fs.readFileSync(path.resolve(
+    process.cwd(),
+    'database/cutovers/20261112020000_authentication_issuer_privilege_rollback.sql',
+  ), 'utf8');
+  await migratorPool.query(rollbackSql);
+
+  const issuerAfterRollback = await issuerPool.query(`
+    SELECT count(*)::integer AS count
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'ghm'
+       AND p.proname LIKE 'auth\\_%' ESCAPE '\\\\'
+       AND has_function_privilege(session_user, p.oid, 'EXECUTE')
+  `);
+  assert.equal(Number(issuerAfterRollback.rows[0].count), 0, 'rollback must remove all issuer auth-function execution privileges');
+
+  const runtimeRollbackFunctions = await runtimePool.query(`
+    SELECT p.proname
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'ghm'
+       AND p.proname = ANY($1::text[])
+       AND has_function_privilege(session_user, p.oid, 'EXECUTE')
+     ORDER BY p.proname
+  `, [[
+    'auth_create_account',
+    'auth_lookup_password_by_normalized_email',
+    'auth_set_password',
+    'auth_rehash_password_if_unchanged',
+    'auth_create_session_with_refresh',
+    'auth_validate_session',
+    'auth_rotate_refresh',
+    'auth_revoke_by_refresh_hash',
+    'auth_issue_recovery',
+    'auth_redeem_recovery',
+    'auth_redeem_recovery_with_count',
+    'auth_reset_password_with_recovery',
+    'auth_lookup_quoteflow_migration_reset_enrollment',
+    'auth_complete_quoteflow_migration_reset',
+  ]]);
+  assert.deepEqual(
+    runtimeRollbackFunctions.rows.map((row) => row.proname),
+    [
+      'auth_complete_quoteflow_migration_reset',
+      'auth_create_account',
+      'auth_create_session_with_refresh',
+      'auth_issue_recovery',
+      'auth_lookup_password_by_normalized_email',
+      'auth_lookup_quoteflow_migration_reset_enrollment',
+      'auth_redeem_recovery',
+      'auth_redeem_recovery_with_count',
+      'auth_rehash_password_if_unchanged',
+      'auth_reset_password_with_recovery',
+      'auth_revoke_by_refresh_hash',
+      'auth_rotate_refresh',
+      'auth_set_password',
+      'auth_validate_session',
+    ].sort(),
+    'rollback must restore exactly the documented legacy runtime auth function grants',
+  );
+
   process.stdout.write(JSON.stringify({
     issuerAllowList: issuerOnlyFunctionNames.length,
     issuerDirectRelationPrivileges: 0,
@@ -279,6 +362,7 @@ try {
     registrationLoginPasswordRehashConcurrentResetRefreshLogout: 'passed',
     recoveryResetReplayAndSessionRevocation: 'passed',
     quoteFlowMigrationReset: 'passed',
+    disposableDatabasePrivilegeRollback: 'passed',
   }) + '\\n');
 } finally {
   await Promise.all([issuerPool.end(), runtimePool.end(), migratorPool.end()]);
