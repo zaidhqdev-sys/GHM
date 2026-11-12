@@ -3,6 +3,7 @@ import { config } from './config';
 import { createApp } from './http/app';
 import { pool } from './db/pool';
 import { assertRuntimeDatabaseIdentity } from './db/runtime-principal';
+import { assertRuntimeDatabaseFunctionPrivileges, readRuntimeDatabaseFunctionPrivileges } from './db/runtime-database-privileges';
 
 const app = createApp({ authRoutesEnabled: false });
 const server = http.createServer(app);
@@ -60,6 +61,8 @@ const start = async (): Promise<void> => {
      WHERE r.rolname = session_user
   `);
   assertRuntimeDatabaseIdentity(identity.rows[0]);
+  const functionPrivileges = await readRuntimeDatabaseFunctionPrivileges(pool);
+  assertRuntimeDatabaseFunctionPrivileges(functionPrivileges);
   server.listen(config.port, () => {
     ready = true;
     console.log(`GHM Core Engine listening on port ${config.port}`);
