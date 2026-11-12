@@ -11,6 +11,7 @@ export interface ActorGatewayDatabasePrivileges {
   public_executable_functions: string[];
   runtime_executable_functions: string[];
   unsafe_function_defaults: boolean;
+  unsafe_security_definer_functions: string[];
 }
 
 export const assertActorGatewayDatabasePrivileges = (
@@ -31,6 +32,7 @@ export const assertActorGatewayDatabasePrivileges = (
   if (publicFunctions.length !== 0) failures.push('public_gateway_function_execution');
   if (runtimeFunctions.length !== 0) failures.push('runtime_gateway_function_execution');
   if (privileges.unsafe_function_defaults !== false) failures.push('unsafe_future_function_defaults');
+  if (privileges.unsafe_security_definer_functions.length !== 0) failures.push('unsafe_security_definer_functions');
 
   if (failures.length > 0) {
     throw new Error(`Actor Gateway database privileges failed least-privilege verification: ${failures.join(',')}`);
