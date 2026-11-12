@@ -15,7 +15,8 @@ test('storage metadata gateway forwards caller token and returns typed metadata'
   let request: Request | undefined;
   const client = new HttpStorageMetadataGatewayClient(
     'https://actor.example', 'caller-token', secret, 5000,
-    (async (input: RequestInfo | URL, init?: RequestInit) => {
+    (async (...args: Parameters<typeof fetch>) => {
+      const [input, init] = args;
       request = new Request(String(input), init);
       return Response.json({ object: row });
     }) as typeof fetch,
