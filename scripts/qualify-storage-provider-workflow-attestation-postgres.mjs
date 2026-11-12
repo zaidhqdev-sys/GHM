@@ -84,28 +84,18 @@ try {
     };
     const availableTarget = await insertObject(businessId, 'pending', 'available-target');
     const replayTarget = await insertObject(businessId, 'pending', 'replay-target');
+    const replayTargetTwo = await insertObject(businessId, 'pending', 'replay-target-two');
+    const badSignatureTarget = await insertObject(businessId, 'pending', 'bad-signature-target');
+    const crossActorTarget = await insertObject(businessId, 'pending', 'cross-actor-target');
     const wrongState = await insertObject(businessId, 'available', 'wrong-state');
     const deletionTarget = await insertObject(businessId, 'deletion_pending', 'deletion-target');
     await setup.query('COMMIT');
-    fixture = { accountId, outsiderId, businessId, otherBusinessId, availableTarget, replayTarget, wrongState, deletionTarget };
+    fixture = { accountId, outsiderId, businessId, otherBusinessId, availableTarget, replayTarget, replayTargetTwo, badSignatureTarget, crossActorTarget, wrongState, deletionTarget };
   } catch (error) {
     await setup.query('ROLLBACK').catch(() => undefined);
     throw error;
   } finally { setup.release(); }
 
-  const provision = await migrator.connect();
-  try {
-    await provision.query('BEGIN');
-    await provision.query('SET LOCAL ROLE ghm_schema_owner');
-    await provision.query(
-      'INSERT INTO ghm.storage_provider_workflow_attestation_secret(singleton,secret) VALUES(true,$1) ON CONFLICT(singleton) DO UPDATE SET secret=EXCLUDED.secret,created_at=clock_timestamp()',
-      [providerKey],
-    );
-    await provision.query('COMMIT');
-  } catch (error) {
-    await provision.query('ROLLBACK').catch(() => undefined);
-    throw error;
-  } finally { provision.release(); }
   console.log('DISPOSABLE PROVIDER SECRET PROVISIONING: PASS');
 
   const reader = new PostgresStorageMetadataGatewayReader(gateway, actorSecret);
@@ -130,7 +120,7 @@ try {
     fixture.accountId, replay.objectId, 'sha256:replay', replay.providerKey, 'image/png', 1024, replayProof,
   );
   if (replayed.status !== 'available') throw new Error('First nonce use did not complete');
-  const secondObject = fixture.wrongState;
+  const secondObject = fixture.replayTargetTwo;
   const secondNonceProof = proof('storage.provider.mark_available', {
     businessId: secondObject.businessId, objectId: secondObject.objectId, providerKey: secondObject.providerKey,
     contentType: 'image/png', byteSize: 1024, checksum: 'sha256:wrong-state',
@@ -146,21 +136,36 @@ try {
   if (deleted.status !== 'deleted') throw new Error('Legitimate deletion completion did not complete');
   console.log('LEGITIMATE ACTOR + PROVIDER DUAL-PROOF DELETION: PASS');
 
-  const wrong = fixture.wrongState;
+  const bad = fixture.badSignatureTarget;
+  const badContext = {
+    businessId: bad.businessId, objectId: bad.objectId, providerKey: bad.providerKey,
+    contentType: 'image/png', byteSize: 1024, checksum: 'sha256:invalid',
+  };
   await expectDenied('Invalid provider signature', () => reader.markAvailable(
-    fixture.accountId, wrong.objectId, 'sha256:invalid', wrong.providerKey, 'image/png', 1024,
-    { ...proof('storage.provider.mark_available', {
-      businessId: wrong.businessId, objectId: wrong.objectId, providerKey: wrong.providerKey,
-      contentType: 'image/png', byteSize: 1024, checksum: 'sha256:invalid',
-    }), signature: '0'.repeat(64) },
+    fixture.accountId, bad.objectId, 'sha256:invalid', bad.providerKey, 'image/png', 1024,
+    { ...proof('storage.provider.mark_available', badContext), signature: '0'.repeat(64) },
+  ));
+  const stale = fixture.crossActorTarget;
+  const staleContext = {
+    businessId: stale.businessId, objectId: stale.objectId, providerKey: stale.providerKey,
+    contentType: 'image/png', byteSize: 1024, checksum: 'sha256:stale',
+  };
+  await expectDenied('Expired provider attestation', () => reader.markAvailable(
+    fixture.accountId, stale.objectId, 'sha256:stale', stale.providerKey, 'image/png', 1024,
+    proof('storage.provider.mark_available', staleContext, randomUUID(), Math.floor(Date.now() / 1000) - 120),
+  ));
+  const contextSubstitution = proof('storage.provider.mark_available', badContext);
+  await expectDenied('Provider context substitution', () => reader.markAvailable(
+    fixture.accountId, stale.objectId, 'sha256:invalid', stale.providerKey, 'image/png', 1024, contextSubstitution,
   ));
   await expectDenied('Cross-business actor', () => reader.markAvailable(
-    fixture.outsiderId, wrong.objectId, 'sha256:outsider', wrong.providerKey, 'image/png', 1024,
+    fixture.outsiderId, stale.objectId, 'sha256:outsider', stale.providerKey, 'image/png', 1024,
     proof('storage.provider.mark_available', {
-      businessId: wrong.businessId, objectId: wrong.objectId, providerKey: wrong.providerKey,
+      businessId: stale.businessId, objectId: stale.objectId, providerKey: stale.providerKey,
       contentType: 'image/png', byteSize: 1024, checksum: 'sha256:outsider',
     }),
   ));
+  const wrong = fixture.wrongState;
   await expectDenied('Invalid storage lifecycle state', () => reader.markAvailable(
     fixture.accountId, wrong.objectId, 'sha256:state', wrong.providerKey, 'image/png', 1024,
     proof('storage.provider.mark_available', {
@@ -178,21 +183,19 @@ try {
   console.log('RUNTIME PROVIDER TRANSITION WRAPPERS DENIED: PASS');
   console.log('GHM STORAGE METADATA PROVIDER DUAL-PROOF QUALIFICATION: PASS');
 } finally {
-  if (fixture) {
-    const cleanup = await migrator.connect();
-    try {
-      await cleanup.query('BEGIN');
-      await cleanup.query('SET LOCAL ROLE ghm_schema_owner');
-      await cleanup.query('DELETE FROM ghm.storage_provider_workflow_attestation_secret WHERE singleton=true');
+  const cleanup = await migrator.connect();
+  try {
+    await cleanup.query('BEGIN');
+    await cleanup.query('SET LOCAL ROLE ghm_schema_owner');
+    await cleanup.query('DELETE FROM ghm.storage_provider_workflow_attestation_secret WHERE singleton=true');
+    if (fixture) {
       await cleanup.query('DELETE FROM ghm.business WHERE id IN ($1,$2)', [fixture.businessId, fixture.otherBusinessId]);
       await cleanup.query('DELETE FROM ghm.account_identity WHERE id IN ($1,$2)', [fixture.accountId, fixture.outsiderId]);
-      await cleanup.query('COMMIT');
-    } catch (error) {
-      await cleanup.query('ROLLBACK').catch(() => undefined);
-      throw error;
-    } finally { cleanup.release(); }
-  } else {
-    await migrator.query('DELETE FROM ghm.storage_provider_workflow_attestation_secret WHERE singleton=true').catch(() => undefined);
-  }
+    }
+    await cleanup.query('COMMIT');
+  } catch (error) {
+    await cleanup.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally { cleanup.release(); }
   await Promise.all([runtime.end(), gateway.end(), migrator.end()]);
 }
