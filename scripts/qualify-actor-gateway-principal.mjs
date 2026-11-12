@@ -133,6 +133,51 @@ try {
   const gatewayPrivileges = await readActorGatewayDatabasePrivileges(gatewayPool);
   assertActorGatewayDatabasePrivileges(gatewayPrivileges);
   console.log('GATEWAY EXACT FUNCTION AND RELATION ACL ALLOW-LIST: PASS');
+  await expectSqlState(
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_get_actor_identity(NULL::bigint)'),
+    '42501',
+    'legacy unsigned gateway overload gateway_get_actor_identity is denied',
+  );
+  await expectSqlState(
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_read_business_registration_identity(NULL::bigint, NULL::bigint)'),
+    '42501',
+    'legacy unsigned gateway overload gateway_read_business_registration_identity is denied',
+  );
+  await expectSqlState(
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_update_business_registration_identity(NULL::bigint, NULL::bigint, NULL::text, NULL::text, NULL::text)'),
+    '42501',
+    'legacy unsigned gateway overload gateway_update_business_registration_identity is denied',
+  );
+  await expectSqlState(
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_list_capabilities(NULL::bigint)'),
+    '42501',
+    'legacy unsigned gateway overload gateway_list_capabilities is denied',
+  );
+  await expectSqlState(
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_create_capability_draft(NULL::bigint, NULL::text, NULL::text, NULL::text, NULL::uuid, NULL::integer, NULL::text, NULL::integer)'),
+    '42501',
+    'legacy unsigned gateway overload gateway_create_capability_draft is denied',
+  );
+  await expectSqlState(
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_update_capability_draft(NULL::bigint, NULL::uuid, NULL::text, NULL::text, NULL::text, NULL::uuid, NULL::integer, NULL::text, NULL::integer)'),
+    '42501',
+    'legacy unsigned gateway overload gateway_update_capability_draft is denied',
+  );
+  await expectSqlState(
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_transition_capability_lifecycle(NULL::bigint, NULL::uuid, NULL::text, NULL::uuid, NULL::integer)'),
+    '42501',
+    'legacy unsigned gateway overload gateway_transition_capability_lifecycle is denied',
+  );
+  await expectSqlState(
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_update_business_supplier_classification(NULL::bigint, NULL::bigint, NULL::boolean)'),
+    '42501',
+    'legacy unsigned gateway overload gateway_update_business_supplier_classification is denied',
+  );
+  await expectSqlState(
+    () => gatewayPool.query('SELECT * FROM ghm.gateway_update_business_profile(NULL::bigint, NULL::bigint, NULL::jsonb)'),
+    '42501',
+    'legacy unsigned gateway overload gateway_update_business_profile is denied',
+  );
   const provision=await cleanupPool.connect();
   try { await provision.query('BEGIN'); await provision.query('SET LOCAL ROLE ghm_schema_owner'); await provision.query("INSERT INTO ghm.actor_gateway_capability_assertion_secret(singleton,secret) VALUES(true,$1) ON CONFLICT(singleton) DO UPDATE SET secret=EXCLUDED.secret",[Buffer.from(assertionSecret,'base64')]); await provision.query('COMMIT'); } catch(e) { await provision.query('ROLLBACK').catch(()=>{}); throw e; } finally { provision.release(); }
   console.log('DATABASE PRINCIPAL IDENTITY: PASS');
