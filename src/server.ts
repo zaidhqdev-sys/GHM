@@ -2,6 +2,7 @@ import http from 'http';
 import { config } from './config';
 import { createApp } from './http/app';
 import { pool } from './db/pool';
+import { assertRuntimeDatabaseIdentity } from './db/runtime-principal';
 
 const app = createApp();
 const server = http.createServer(app);
@@ -21,6 +22,32 @@ app.get('/readyz', (_req, res) => {
 });
 
 const start = async (): Promise<void> => {
+  const identity = await pool.query<{
+    session_user: string; current_user: string;
+    database_connect_privilege: boolean; database_create_privilege: boolean;
+    schema_usage: boolean; schema_create: boolean;
+    rolcanlogin: boolean; rolinherit: boolean; rolsuper: boolean;
+    rolcreatedb: boolean; rolcreaterole: boolean; rolreplication: boolean;
+    rolbypassrls: boolean; no_untrusted_role_memberships: boolean;
+  }>(`
+    SELECT session_user, current_user,
+           has_database_privilege(session_user, current_database(), 'CONNECT') AS database_connect_privilege,
+           has_database_privilege(session_user, current_database(), 'CREATE') AS database_create_privilege,
+           has_schema_privilege(session_user, 'ghm', 'USAGE') AS schema_usage,
+           has_schema_privilege(session_user, 'ghm', 'CREATE') AS schema_create,
+           r.rolcanlogin, r.rolinherit, r.rolsuper, r.rolcreatedb,
+           r.rolcreaterole, r.rolreplication, r.rolbypassrls,
+           NOT EXISTS (
+             SELECT 1 FROM pg_auth_members m
+             JOIN pg_roles member_role ON member_role.oid = m.member
+             WHERE m.member = r.oid
+                OR (m.roleid = r.oid AND member_role.rolname <> 'ghm_db_user')
+           ) AS no_untrusted_role_memberships
+      FROM pg_roles r WHERE r.rolname = session_user
+  `);
+  const databaseIdentity = identity.rows[0];
+  if (!databaseIdentity) throw new Error('Resource API database identity could not be resolved');
+  assertRuntimeDatabaseIdentity(databaseIdentity);
   await pool.query('SELECT 1');
   server.listen(config.port, () => {
     ready = true;
