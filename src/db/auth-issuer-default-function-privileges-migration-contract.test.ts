@@ -70,3 +70,10 @@ test('SECURITY DEFINER migration preflights owner identity and pins pg_temp last
   assert.ok(securityDefinerMigration.includes('ALTER FUNCTION %s SET search_path = pg_catalog, ghm, pg_temp'));
   assert.ok(securityDefinerMigration.includes('AND p.prosecdef'));
 });
+
+
+test('issuer cutover role preflight uses a balanced named dollar-quote delimiter', () => {
+  assert.ok(issuerCutover.includes('DO $issuer_role_guard$'));
+  assert.ok(issuerCutover.includes('$issuer_role_guard$;'));
+  assert.doesNotMatch(issuerCutover, /\\nDO \\$\\n/);
+});
