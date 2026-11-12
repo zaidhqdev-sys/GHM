@@ -2,14 +2,6 @@ import type { Pool } from 'pg';
 
 export interface RuntimeDatabaseFunctionPrivileges {
   executable_functions: string[];
-  expected_pre_cutover_functions?: string[];
-  expected_post_campaign_review_functions?: string[];
-  expected_post_auth_issuer_functions?: string[];
-  expected_post_campaign_review_and_auth_issuer_functions?: string[];
-  expected_post_registration_identity_functions?: string[];
-  expected_post_campaign_review_and_registration_identity_functions?: string[];
-  expected_post_auth_issuer_and_registration_identity_functions?: string[];
-  expected_post_campaign_review_auth_issuer_and_registration_identity_functions?: string[];
 }
 
 // Exact pre-migration baseline from the disposable PostgreSQL 18.6 whole-database
@@ -90,107 +82,83 @@ const REGISTRATION_IDENTITY_LEGACY_FUNCTIONS = [
   'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
 ] as const;
 
-export const RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS = RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS
-  .filter(signature => !(CAMPAIGN_REVIEW_LEGACY_FUNCTIONS as readonly string[]).includes(signature));
+const normalizeSignature = (signature: string): string => signature.replace(/,\s+/g, ',');
+const without = (source: readonly string[], removed: readonly string[]): string[] =>
+  source.filter(signature => !(removed as readonly string[]).includes(signature));
 
-export const RUNTIME_POST_AUTH_ISSUER_FUNCTIONS = RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS
-  .filter(signature => !(AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS as readonly string[]).includes(signature));
+export const RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS = without(
+  RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS, CAMPAIGN_REVIEW_LEGACY_FUNCTIONS,
+);
+export const RUNTIME_POST_AUTH_ISSUER_FUNCTIONS = without(
+  RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS, AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS,
+);
+export const RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS = without(
+  RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS, AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS,
+);
+export const RUNTIME_POST_REGISTRATION_IDENTITY_FUNCTIONS = without(
+  RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS, REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
+);
+export const RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS = without(
+  RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS, REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
+);
+export const RUNTIME_POST_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS = without(
+  RUNTIME_POST_AUTH_ISSUER_FUNCTIONS, REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
+);
+export const RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS = without(
+  RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS, REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
+);
 
-export const RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS = RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS
-  .filter(signature => !(AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS as readonly string[]).includes(signature));
+const REVIEWED_RUNTIME_FUNCTION_STAGES = [
+  RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS,
+  RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS,
+  RUNTIME_POST_AUTH_ISSUER_FUNCTIONS,
+  RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS,
+  RUNTIME_POST_REGISTRATION_IDENTITY_FUNCTIONS,
+  RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+  RUNTIME_POST_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+  RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+] as const;
 
-export const RUNTIME_POST_REGISTRATION_IDENTITY_FUNCTIONS = RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS
-  .filter(signature => !(REGISTRATION_IDENTITY_LEGACY_FUNCTIONS as readonly string[]).includes(signature));
-
-export const RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS = RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS
-  .filter(signature => !(REGISTRATION_IDENTITY_LEGACY_FUNCTIONS as readonly string[]).includes(signature));
-
-export const RUNTIME_POST_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS = RUNTIME_POST_AUTH_ISSUER_FUNCTIONS
-  .filter(signature => !(REGISTRATION_IDENTITY_LEGACY_FUNCTIONS as readonly string[]).includes(signature));
-
-export const RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS = RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS
-  .filter(signature => !(REGISTRATION_IDENTITY_LEGACY_FUNCTIONS as readonly string[]).includes(signature));
-
-// The startup guard accepts only the eight explicitly reviewed combinations of
-// the pre-cutover baseline and the three independent manual Campaign, issuer and
-// registration-identity cutovers. Other manual cutovers require their own stage.
 export const RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL = `
-  WITH expected_pre AS (
-    SELECT unnest($1::text[]) AS signature
-  ),
-  expected_post_campaign AS (
-    SELECT signature FROM expected_pre WHERE NOT (signature = ANY($2::text[]))
-  ),
-  expected_post_issuer AS (
-    SELECT signature FROM expected_pre WHERE NOT (signature = ANY($3::text[]))
-  ),
-  expected_post_campaign_issuer AS (
-    SELECT signature FROM expected_post_campaign WHERE NOT (signature = ANY($3::text[]))
-  ),
-  expected_post_registration AS (
-    SELECT signature FROM expected_pre WHERE NOT (signature = ANY($4::text[]))
-  ),
-  expected_post_campaign_registration AS (
-    SELECT signature FROM expected_post_campaign WHERE NOT (signature = ANY($4::text[]))
-  ),
-  expected_post_issuer_registration AS (
-    SELECT signature FROM expected_post_issuer WHERE NOT (signature = ANY($4::text[]))
-  ),
-  expected_post_all AS (
-    SELECT signature FROM expected_post_campaign_issuer WHERE NOT (signature = ANY($4::text[]))
-  )
-  SELECT
-    ARRAY(
-      SELECT p.oid::regprocedure::text
-        FROM pg_catalog.pg_proc p
-        JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
-       WHERE n.nspname = 'ghm'
-         AND p.prosecdef
-         AND has_function_privilege(session_user, p.oid, 'EXECUTE')
-       ORDER BY 1
-    ) AS executable_functions,
-    ARRAY(SELECT to_regprocedure(signature)::text FROM expected_pre WHERE to_regprocedure(signature) IS NOT NULL ORDER BY 1) AS expected_pre_cutover_functions,
-    ARRAY(SELECT to_regprocedure(signature)::text FROM expected_post_campaign WHERE to_regprocedure(signature) IS NOT NULL ORDER BY 1) AS expected_post_campaign_review_functions,
-    ARRAY(SELECT to_regprocedure(signature)::text FROM expected_post_issuer WHERE to_regprocedure(signature) IS NOT NULL ORDER BY 1) AS expected_post_auth_issuer_functions,
-    ARRAY(SELECT to_regprocedure(signature)::text FROM expected_post_campaign_issuer WHERE to_regprocedure(signature) IS NOT NULL ORDER BY 1) AS expected_post_campaign_review_and_auth_issuer_functions,
-    ARRAY(SELECT to_regprocedure(signature)::text FROM expected_post_registration WHERE to_regprocedure(signature) IS NOT NULL ORDER BY 1) AS expected_post_registration_identity_functions,
-    ARRAY(SELECT to_regprocedure(signature)::text FROM expected_post_campaign_registration WHERE to_regprocedure(signature) IS NOT NULL ORDER BY 1) AS expected_post_campaign_review_and_registration_identity_functions,
-    ARRAY(SELECT to_regprocedure(signature)::text FROM expected_post_issuer_registration WHERE to_regprocedure(signature) IS NOT NULL ORDER BY 1) AS expected_post_auth_issuer_and_registration_identity_functions,
-    ARRAY(SELECT to_regprocedure(signature)::text FROM expected_post_all WHERE to_regprocedure(signature) IS NOT NULL ORDER BY 1) AS expected_post_campaign_review_auth_issuer_and_registration_identity_functions
+  SELECT ARRAY(
+    SELECT p.oid::regprocedure::text
+      FROM pg_catalog.pg_proc p
+      JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'ghm'
+       AND p.prosecdef
+       AND has_function_privilege(session_user, p.oid, 'EXECUTE')
+     ORDER BY 1
+  ) AS executable_functions
 `;
 
 export const assertRuntimeDatabaseFunctionPrivileges = (
   privileges: RuntimeDatabaseFunctionPrivileges,
 ): void => {
-  const actual = [...privileges.executable_functions].sort();
-  const stages = [
-    [...(privileges.expected_pre_cutover_functions ?? RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS)].sort(),
-    [...(privileges.expected_post_campaign_review_functions ?? RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS)].sort(),
-    [...(privileges.expected_post_auth_issuer_functions ?? RUNTIME_POST_AUTH_ISSUER_FUNCTIONS)].sort(),
-    [...(privileges.expected_post_campaign_review_and_auth_issuer_functions ?? RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS)].sort(),
-    [...(privileges.expected_post_registration_identity_functions ?? RUNTIME_POST_REGISTRATION_IDENTITY_FUNCTIONS)].sort(),
-    [...(privileges.expected_post_campaign_review_and_registration_identity_functions ?? RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS)].sort(),
-    [...(privileges.expected_post_auth_issuer_and_registration_identity_functions ?? RUNTIME_POST_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS)].sort(),
-    [...(privileges.expected_post_campaign_review_auth_issuer_and_registration_identity_functions ?? RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS)].sort(),
-  ];
+  const actual = privileges.executable_functions.map(normalizeSignature).sort();
+  const stages = REVIEWED_RUNTIME_FUNCTION_STAGES.map(stage =>
+    stage.map(normalizeSignature).sort(),
+  );
   const expectedLengths = [43, 40, 29, 26, 41, 38, 27, 24];
   if (stages.some((stage, index) => stage.length !== expectedLengths[index])) {
-    throw new Error('Runtime database function allow-list signatures did not all resolve in this database');
+    throw new Error('Runtime database function allow-list signatures did not all resolve in this source revision');
   }
   if (!stages.some(expected => JSON.stringify(actual) === JSON.stringify(expected))) {
-    throw new Error(`Runtime database function EXECUTE allow-list mismatch: actual=${JSON.stringify(actual)}, accepted_stage_counts=${JSON.stringify(stages.map(stage => stage.length))}`);
+    const diagnostics = stages.map((expected, index) => ({
+      stage: index,
+      count: expected.length,
+      missing: expected.filter(signature => !actual.includes(signature)),
+      unexpected: actual.filter(signature => !expected.includes(signature)),
+    }));
+    throw new Error(
+      `Runtime database function EXECUTE allow-list mismatch: actual=${JSON.stringify(actual)}, stages=${JSON.stringify(diagnostics)}`,
+    );
   }
 };
 
 export async function readRuntimeDatabaseFunctionPrivileges(
   pool: Pick<Pool, 'query'>,
 ): Promise<RuntimeDatabaseFunctionPrivileges> {
-  const result = await pool.query<RuntimeDatabaseFunctionPrivileges>(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, [
-    RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS,
-    CAMPAIGN_REVIEW_LEGACY_FUNCTIONS,
-    AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS,
-    REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
-  ]);
+  const result = await pool.query<RuntimeDatabaseFunctionPrivileges>(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL);
   if (!result.rows[0]) throw new Error('Runtime database function privileges could not be resolved');
   return result.rows[0];
 }
