@@ -1,6 +1,6 @@
 # Storage Metadata Actor Gateway Design
 
-**Status:** approved implementation target; not yet implemented or qualified  
+**Status:** implemented in source; disposable PostgreSQL 18 migration, adversarial and grant rollback qualification passed; production cutover not performed  
 **Date:** 2026-11-12  
 **Scope:** replace direct Resource API runtime execution of the five non-public storage metadata SECURITY DEFINER functions with signed Actor Gateway operations.
 
@@ -14,17 +14,17 @@ The whole-database SECURITY DEFINER inventory and function-body review identifie
 - `ghm.storage_mark_deletion_pending`
 - `ghm.storage_mark_deleted`
 
-The Resource API currently performs membership and provider checks before calling them. Those checks do not constrain a holder of the shared `ghm_runtime` database credential who invokes the functions directly. This is an open finding. Existing grants must remain until the replacement is implemented and qualified.
+The Resource API previously performed membership and provider checks before calling these functions. Those checks did not constrain a holder of the shared `ghm_runtime` database credential invoking them directly. The source remediation is now implemented: Resource API metadata operations use signed Actor Gateway wrappers and provider-confirmed transitions require a separate Resource API HMAC attestation verified inside PostgreSQL. The five legacy functions remain directly executable by `ghm_runtime` in production until the separately approved manual cutover. The cutover and exact rollback have been rehearsed successfully on disposable PostgreSQL 18.
 
 ## Trust boundary and assertion contract
 
 Extend the existing isolated Actor Gateway and v2 one-use HMAC-SHA256 assertion mechanism. Do not create a second gateway, assertion format, secret, or principal.
 
-- The HTTP gateway verifies the GHM ES256 bearer token once and derives the actor account ID exclusively from its verified subject.
+- The HTTP gateway verifies the GHM ES256 bearer token once and derives the actor account ID exclusively from its verified subject. For mark-available and mark-deleted, the user bearer token alone is insufficient: the database also requires the separately signed provider-workflow attestation.
 - The Actor Gateway database connection uses `ghm_actor_gateway`.
 - Each database wrapper calls `ghm.assert_actor_gateway_capability`, which requires that session login, an active actor, a timestamp within the existing 60-second window, a unique nonce, the exact operation name, and a full 32-byte HMAC comparison.
 - Each wrapper compares the signed JSON context with the actual SQL arguments. Object-targeted operations derive the tenant/business from the stored object row; callers cannot substitute a different tenant ID.
-- Extend the existing verifier operation allow-list only for the five storage operation names below. Preserve the shared verifier's current checks and nonce behavior.
+- The existing verifier operation allow-list now includes the five storage operation names below. Preserve the shared verifier's existing checks and nonce behavior.
 
 ## Typed operation contract
 
@@ -32,9 +32,9 @@ Extend the existing isolated Actor Gateway and v2 one-use HMAC-SHA256 assertion 
 |---|---|---|
 | `storage.metadata.create` | businessId, resourceType, resourceId, objectClass, providerKey, contentType, byteSize, visibility | Active actor; resource must be the supported Business resource; current owner/administrator membership for the supplied Business; validate required metadata invariants before invoking the existing pending-row function. |
 | `storage.metadata.read` | objectId | Active actor. Resolve the object by ID inside the wrapper. Preserve the existing public-read exception only for an active Business and its public Business Logo; otherwise require current Business membership. Return no row for an inaccessible/nonexistent object, preserving the existing not-found behavior. |
-| `storage.metadata.mark_available` | objectId, checksum | Resolve Business from the object row; require active owner/administrator membership; preserve the existing pending-to-available transition and metadata constraints. |
+| `storage.metadata.mark_available` | objectId, checksum, providerKey, contentType, byteSize | Resolve Business and provider metadata from the object row; require active owner/administrator membership plus a valid separate provider attestation; preserve the pending-to-available transition. |
 | `storage.metadata.mark_deletion_pending` | objectId | Resolve Business from the object row; require active owner/administrator membership; preserve the existing retry/idempotency semantics. |
-| `storage.metadata.mark_deleted` | objectId | Resolve Business from the object row; require active owner/administrator membership; preserve the existing deletion-pending-to-deleted lifecycle. |
+| `storage.metadata.mark_deleted` | objectId, providerKey | Resolve Business/provider key from the object row; require active owner/administrator membership plus a valid separate provider attestation; preserve the deletion-pending-to-deleted lifecycle. |
 
 The wrappers may delegate to the existing storage functions after establishing the signed actor and authorization predicates. The legacy functions must not remain directly callable by `ghm_runtime` after the manual cutover. The public approved-logo lookup `ghm.storage_get_public_business_logo` is a separate, narrowly scoped public projection and remains unchanged unless new evidence requires otherwise.
 
@@ -51,27 +51,27 @@ The gateway must not accept provider claims from an HTTP caller as proof of uplo
 
 ## Resource API integration
 
-Replace the five direct calls in `src/storage/repository.ts` with a typed `StorageMetadataGatewayClient` when the gateway is configured/required. The client forwards the original verified GHM bearer token, uses HTTPS origin validation, rejects redirects, bounds request time, and fails closed when the required gateway is unavailable. Remove the Resource API runtime's direct function dependency only after end-to-end gateway wiring is in place.
+The Resource API storage router now uses `HttpStorageMetadataGatewayClient` through `src/http/storage-router.ts` and `src/http/app.ts`. The client forwards the original verified GHM bearer token, validates the HTTPS Actor Gateway origin, rejects redirects, bounds request time/response size, and signs provider-transition attestations. Production storage requires `GHM_ACTOR_GATEWAY_URL` and `GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET` and fails closed if either is missing. `src/storage/repository.ts` remains as a non-production/development fallback only; production cannot silently fall back to direct legacy function execution.
 
 The existing Resource API authorization adapter remains useful as defense in depth but is not the database security boundary. The gateway's signed actor is authoritative. Do not silently fall back to direct legacy RPC execution when gateway mode is required.
 
 ## Manual cutover
 
-Add a separate manual-only SQL cutover for the five legacy functions. It must fail closed unless `session_user = 'ghm_migrator'` and `current_user = 'ghm_schema_owner'`, and revoke direct EXECUTE from `PUBLIC`, `ghm_runtime`, `ghm_migrator`, and `ghm_actor_gateway` as appropriate to the observed ACL matrix. Preserve only explicitly justified grants. Include a database-only rollback script with the same operator identity guard. Do not apply either script to production as part of this construction work.
+The five-function cutover and rollback have been rehearsed on disposable PostgreSQL 18 by `scripts/qualify-storage-metadata-runtime-grant-revocation-postgres.mjs`. It verifies `session_user = 'ghm_migrator'` and `current_user = 'ghm_schema_owner'`, snapshots the exact PUBLIC/runtime ACLs, revokes them, confirms runtime direct calls fail, verifies Actor Gateway wrapper access remains, and restores the exact original ACLs. The rehearsal script is qualification evidence, not the production cutover script. Production revocation remains a separate manual operation requiring a fresh verified backup, role-administration access and approval. No production grants were changed.
 
 ## Required qualification
 
-Use disposable PostgreSQL 18.6 and the real migration chain. Tests must prove:
+Disposable PostgreSQL 18 qualification has now proved the following (the expanded exact-head qualification is run `43235502697`; its remaining repository-wide checks were still running at this document checkpoint):
 
-- Runtime direct invocation of all five legacy functions is denied after cutover.
-- Signed gateway operations succeed for authorized actors.
-- Cross-tenant object reads and mutations are denied.
+- Runtime direct invocation of all five legacy functions is denied during the disposable cutover rehearsal, then the original ACLs are restored exactly.
+- Signed gateway operations succeed for authorized owners/administrators, including pending creation, metadata read, availability, deletion request and provider-confirmed deletion.
+- Cross-business private-object reads and cross-business mutations are denied.
 - Non-member pending-object creation is denied.
 - Member-but-not-owner/administrator lifecycle mutations are denied.
 - Inactive actors are denied.
-- Forged, expired, replayed, wrong-operation, wrong-object and context-substituted assertions are denied.
+- Invalid provider signatures, expired attestations, replayed nonces, wrong provider operations and provider-context substitution are denied; actor context is bound to the database arguments.
 - Public approved-logo lookup still works for an active public Business without Business membership; unapproved/inactive/non-public objects are not exposed.
-- Provider HEAD metadata mismatch, byte-length mismatch and invalid image bytes never transition an object to available.
+- Provider metadata mismatch is denied without changing a pending row. Existing Resource API storage-service tests continue to cover provider HEAD/byte/image validation; the new PostgreSQL qualification proves the database does not accept mismatched stored metadata.
 - Upload grant, completion, public logo read, authenticated read, deletion, provider failure and deletion retry workflows retain their intended behavior.
 - Startup/grant verifiers and whole-database inventory reflect the post-cutover privilege boundary.
 - The manual cutover and rollback both reject an unexpected operator identity.
@@ -91,7 +91,7 @@ A user bearer token alone must **not** authorize provider-completion transitions
 Use two distinct authorization classes:
 
 1. **Actor-authorized metadata operations:** create pending, metadata read, and request deletion-pending. These are bound to the verified GHM actor JWT, exact operation, object/business context and database membership/role predicates. The HTTP route may be user-reachable because the database wrapper independently enforces the user's actual authority.
-2. **Resource-service workflow transitions:** mark available and mark deleted. These must be inaccessible with only an end-user bearer token. Require an additional Resource API service-to-service attestation, distinct from the user's JWT and the database HMAC assertion. The attestation must be bound to operation, object ID, tenant/business, expected transition, provider verification result and short expiry/nonce; only the Resource API storage workflow may mint it after successful provider verification/deletion. The Actor Gateway validates this service attestation before producing the database v2 HMAC assertion. Do not expose these operations through ordinary user-authorized routes.
+2. **Resource-service workflow transitions:** mark available and mark deleted. These must be inaccessible with only an end-user bearer token. Require an additional Resource API service-to-service attestation, distinct from the user's JWT and the database HMAC assertion. The attestation must be bound to operation, object ID, tenant/business, expected transition, provider verification result and short expiry/nonce; only the Resource API storage workflow may mint it after successful provider verification/deletion. The Actor Gateway validates the provider-attestation envelope shape and forwards its fields unchanged; it does not possess the provider signing key and cannot mint the proof. PostgreSQL cryptographically verifies the provider HMAC, operation, timestamp, context and nonce. The Actor Gateway separately produces the signed actor assertion. Do not expose these operations through ordinary user-authorized routes.
 
 The service attestation is an additional application-to-application trust boundary, not a substitute for the database's signed actor/tenant assertion. It must use a dedicated secret/configuration with strict startup validation, HTTPS, redirect rejection, bounded body size, short expiry, replay protection, and no logging of credentials. Do not reuse the public actor assertion secret as the service credential. If the existing deployment/network constraints cannot protect this channel adequately, pause implementation and return with a decision rather than silently exposing the transition endpoints.
 
@@ -113,14 +113,14 @@ The implementation target for the two provider-confirmed transitions is a dual-p
 
 Add a dedicated `ghm.storage_provider_workflow_attestation_secret` singleton table and `ghm.storage_provider_workflow_attestation_nonce` replay table, both owned by `ghm_schema_owner`. Revoke all table access from `PUBLIC`, `ghm_runtime`, `ghm_actor_gateway` and `ghm_migrator`. Add a SECURITY DEFINER verifier `ghm.assert_storage_provider_workflow_attestation` callable only from the Actor Gateway database login. It verifies a canonical 32-byte HMAC-SHA256, exact operation, 60-second timestamp window, active one-use nonce and constant-time full 32-byte comparison. Its signed payload is domain-separated from the user actor assertion, for example `ghm-storage-provider:v1|<operation>|<issuedAt>|<nonce>|<hex-encoded-context>`.
 
-The secret must be provisioned independently to the Resource API signing environment and the database secret row through a documented, audited operator process. It must not be embedded in migrations, committed files, the Actor Gateway environment, or a general runtime database-readable table. Do not implement until the secure database secret-provisioning path is specified and tested; do not assume `ghm_migrator` can read or insert into the protected secret table.
+The secret must be provisioned independently to the Resource API signing environment and the database secret row through a documented, audited operator process. It must not be embedded in migrations, committed files, the Actor Gateway environment, or a general runtime database-readable table. The disposable provisioning path is implemented and tested in `scripts/provision-storage-provider-attestation-secret.mjs`: it requires the explicit localhost disposable database and migrator URL, mutation opt-in, `session_user = ghm_migrator`, `SET LOCAL ROLE ghm_schema_owner`, and never logs the secret. No production secret has been provisioned.
 
 ### Dual-proof transition wrappers
 
 - `gateway_storage_mark_available` receives the user actor v2 assertion plus the provider attestation. The actor assertion binds `objectId`, `checksum`, `providerKey`, `contentType`, `byteSize` and the actor operation `storage.metadata.mark_available`. The provider attestation binds the same fields plus the stored tenant/business ID and operation `storage.provider.mark_available`. The wrapper derives the tenant and canonical provider key from the stored row, compares every field to the row, requires an active owner/administrator membership for the actor, requires the row to be `pending`, consumes both nonces, then performs the transition.
 - `gateway_storage_mark_deleted` receives the user actor v2 assertion plus provider attestation. Both bind `objectId`, stored tenant/business ID and provider key; operations are `storage.metadata.mark_deleted` and `storage.provider.mark_deleted`. The wrapper derives tenant/provider key from the stored row, requires active owner/administrator membership, requires `deletion_pending`, consumes both nonces, then marks deleted.
 - The provider attestation is signed only after the Resource API has successfully performed the corresponding provider verification or deletion. A client-supplied boolean, user JWT claim, object ID alone, or gateway-generated signature is not acceptable proof.
-- Actor Gateway routes remain behind the verified user bearer middleware. The transition request carries the Resource API attestation in a dedicated header; the Actor Gateway does not possess the signing key and cannot mint a valid provider proof. It forwards the attestation fields unchanged to the database wrapper, where PostgreSQL performs the cryptographic verification.
+- Actor Gateway routes remain behind the verified user bearer middleware. The transition request carries the Resource API attestation in the JSON `attestation` body field; the Actor Gateway does not possess the signing key and cannot mint a valid provider proof. It validates the envelope shape, forwards the attestation fields unchanged to the database wrapper, and PostgreSQL performs cryptographic verification.
 - The Resource API client must use HTTPS, reject redirects, bound request time and body size, never log the attestation, and fail closed if the Actor Gateway or proof is missing. The signing secret must not be sent in the request; only the short-lived signed attestation is sent.
 
 The database wrapper must compare the attested tenant and provider key to the stored row rather than trusting request arguments. The transition's row-state predicate prevents replaying a valid proof into a second state change. Both nonce stores independently prevent replay within their validity windows.
