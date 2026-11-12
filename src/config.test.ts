@@ -26,7 +26,7 @@ test('production configuration fails closed when database TLS is not enabled', (
 });
 
 test('production configuration requires the dedicated runtime database URL', () => {
-  const result = loadConfig({ ...baseEnv, NODE_ENV: 'production', DATABASE_SSL: 'true' });
+  const result = loadConfig({ ...baseEnv, NODE_ENV: 'production', DATABASE_SSL: 'true', GHM_RUNTIME_DATABASE_URL: undefined });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr + result.stdout, /GHM_RUNTIME_DATABASE_URL/);
 });
@@ -37,6 +37,7 @@ test('production configuration accepts the dedicated runtime database URL and TL
   const loaded = JSON.parse(result.stdout.trim());
   assert.equal(loaded.isProduction, true);
   assert.equal(loaded.databaseSsl, true);
+  assert.equal(loaded.databaseUrl, 'postgres://ghm_runtime:secret@example.invalid/ghm');
 });
 
 test('non-production configuration preserves explicit database TLS setting', () => {
