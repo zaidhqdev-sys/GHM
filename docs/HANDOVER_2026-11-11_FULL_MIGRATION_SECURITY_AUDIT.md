@@ -2268,3 +2268,30 @@ A mismatch aborts startup; it does not merely log a warning. Added unit tests fo
 
 
 The issuer startup ACL guard has been strengthened beyond checking a list of known revoked lifecycle functions. It now enumerates every `ghm.auth_*` function executable by `ghm_runtime` and requires the exact three-function Resource API allow-list: `auth_lookup_external_identity`, `auth_link_business_external_mapping`, and `auth_lookup_business_external_mapping`. This prevents a newly added or overlooked auth function grant from silently surviving the issuer cutover.
+
+
+## 2026-11-12 — Startup ACL verifier false-positive correction (in progress)
+
+### Exact failed head and evidence
+
+- Construction branch: `construction/auth-issuer-isolation-20261112`.
+- Failed head: `8c6502a9faf8e31e66ca3afd07eb262c97f74d5c`.
+- GitHub Actions run #3685 / run ID `43143027343`: `web-quality` passed; `quality` failed only at the final `Qualify isolated auth issuer lifecycle and runtime denials on disposable PostgreSQL` step. The full build, migration chain, test suite, Actor Gateway principal qualification and all preceding database cutover qualifications passed.
+- The actual diagnostic showed the issuer's ten expected auth functions plus fourteen trigger-returning functions in `executable_functions`. All other reported issuer boundaries were correct: schema USAGE true, schema CREATE false, no direct relation privileges, safe future-function defaults, and the Resource API runtime's exact three-function auth allow-list.
+- Root cause: PostgreSQL `has_function_privilege(..., 'EXECUTE')` also reports trigger functions, which are not directly invocable as ordinary SQL functions. The startup query compared every `pg_proc` row and therefore produced a false-positive allow-list mismatch. This was a query-classification defect, not evidence of excess issuer authority.
+
+### Correction committed
+
+- Updated `src/auth-issuer/database-privileges.ts` to exclude trigger-returning functions from the callable-function set using `p.prorettype <> 'trigger'::regtype`. Other function privilege checks and the exact ten-function allow-list remain unchanged.
+- Added a source-contract regression in `src/auth-issuer/database-startup-acl-contract.test.ts` requiring the trigger-return exclusion, so the false-positive cannot silently return.
+- Fix commit: `c2ddd18d793b61fe20a017f26bfade8cdb0394a1`.
+- Regression-test commit: `fe3b765e2e265817655359c9fd96977a3dca9179`.
+- Current branch head at this checkpoint: `fe3b765e2e265817655359c9fd96977a3dca9179`.
+- Exact-head CI for this corrected head was queued when this handover was updated; do not claim it passed until all required checks finish successfully. The prior failed run remains historical evidence and must not be rewritten as green.
+
+### Next actions
+
+1. Inspect exact-head CI for `fe3b765e`, including the full disposable PostgreSQL issuer cutover/lifecycle/rollback qualification.
+2. If it fails, inspect the actual failing assertion/log and make the smallest correction; do not weaken the privilege boundary or replace exact allow-list checks with a weaker subset check.
+3. After CI passes, continue the issuer/Resource API/Actor Gateway/migrator privilege matrix and rollback review, then reconcile this handover and `docs/GHM_CURRENT_STATE.md` with the resulting evidence.
+4. Keep the issuer branch stacked on PR #272; do not merge PR #272 underneath it independently. No production cutover, service creation, secrets, grants, deployment, or paid infrastructure is authorized by this work.
