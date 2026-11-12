@@ -94,3 +94,15 @@ test('pre-cutover qualification locks the exact runtime grant state that rollbac
   const cutoverStep = ciWorkflow.indexOf('Apply guarded auth issuer manual cutover in disposable PostgreSQL only');
   assert.ok(preCutoverStep >= 0 && cutoverStep > preCutoverStep, 'pre-cutover grant snapshot must run before the manual SQL cutover');
 });
+
+
+test('issuer and Actor Gateway startup verifiers reject PUBLIC execution on any SECURITY DEFINER function', () => {
+  for (const sourcePath of ['src/auth-issuer/database-privileges.ts', 'src/actor-gateway/database-privileges.ts']) {
+    const source = fs.readFileSync(path.resolve(process.cwd(), sourcePath), 'utf8');
+    assert.ok(source.includes('public_executable_security_definer_functions'));
+    assert.ok(source.includes('acl.grantee = 0'));
+    assert.ok(source.includes('p.prosecdef'));
+  }
+  assert.ok(qualification.includes('publicDefinerProbeInstalled'));
+  assert.ok(qualification.includes('FROM PUBLIC'));
+});
