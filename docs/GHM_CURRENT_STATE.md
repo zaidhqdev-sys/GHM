@@ -1216,3 +1216,14 @@ The CI now verifies the exact pre-issuer Resource API runtime auth-function set 
 Both issuer and Actor Gateway default-ACL verifiers now require the global schema-owner function default ACL row to exist, while checking both global and schema-specific rows for non-owner grants.
 
 Exact HEAD `405a220d408cb3c2f176131173fedb9200f62635` passed CI run `43181545588` (`quality` and `web-quality`), including PostgreSQL 18.6 full migration, all tests, principal checks, pre-cutover snapshot, manual cutover, issuer lifecycle/runtime denials and database rollback. Disposable evidence only; production remains untouched.
+
+
+## 2026-11-12 — SECURITY DEFINER audit scope and CI status
+
+The source-body pass found the GHM profile function's dynamic SQL uses fixed identifier fragments and parameter-bound values; the signed profile wrapper rejects supplier classification fields. Founder directory review functions remain disabled and runtime-revoked. Issuer/Actor Gateway role checks reject memberships and elevated attributes.
+
+**Qualification correction:** CI run `43181545588` passed at `405a220d408cb3c2f176131173fedb9200f62635`, but later PUBLIC-definer verifier and adversarial-test commits followed. Latest code/test SHA `e4a644825824b61db0692c479a71edbdc23b2ebf` has no verified exact-head CI run/status. Current issuer branch HEAD is `1095dc5619c013d8efe53fb416e846bad842a3e4`; PR #272 remains separate, open and unmerged.
+
+**Open coverage gaps:** PUBLIC EXECUTE is now checked across all GHM SECURITY DEFINER functions, but direct non-owner grants are not yet inventoried across every GHM SECURITY DEFINER function; the current direct-grantee checks remain service-allow-list scoped. Ownership/search_path/PUBLIC scans also remain GHM-schema scoped. A whole-database non-system SECURITY DEFINER inventory, extension/legacy schema review, and explicit function-to-role EXECUTE exception matrix are required before the security audit can be called complete. No production changes or cutover.
+
+Full evidence and next steps: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
