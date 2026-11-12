@@ -192,6 +192,12 @@ jobs:
       - name: Apply all migrations to disposable PostgreSQL
         run: npm run migrate
 
+      - name: Check whole-database SECURITY DEFINER inventory script syntax
+        run: node --check scripts/audit-security-definer-authority.mjs
+
+      - name: Inventory SECURITY DEFINER authority across disposable PostgreSQL
+        run: npm run audit:security-definer-authority
+
       - name: Qualify isolated auth issuer database principal and empty privilege baseline
         run: npm run qualify:auth-issuer-principal
 
@@ -287,6 +293,15 @@ jobs:
           -c 'RESET ROLE'
       - name: Qualify isolated auth issuer lifecycle and runtime denials on disposable PostgreSQL
         run: npm run qualify:auth-issuer-cutover
+
+      - name: Preserve SECURITY DEFINER authority inventory
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-definer-authority-inventory
+          path: tmp/security-definer-authority-audit.json
+          if-no-files-found: warn
+          retention-days: 14
 
   web-quality:
     runs-on: ubuntu-latest
