@@ -548,12 +548,85 @@ export const createActorGatewayApp = (
   app.post('/v1/storage/metadata', async (req: Request, res: Response) => {
     const body = req.body as Record<string, unknown> | null;
     const allowed = ['businessId', 'resourceId', 'providerKey', 'contentType', 'byteSize', 'originalFilename'];
+    const businessId = body?.businessId;
+    const providerKey = body?.providerKey;
+    const keyParts = typeof providerKey === 'string' ? providerKey.split('/') : [];
+    const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!body || typeof body !== 'object' || Array.isArray(body)
       || Object.keys(body).length !== allowed.length || Object.keys(body).some(key => !allowed.includes(key))
-      || !Number.isSafeInteger(body.businessId) || Number(body.businessId) <= 0
-      || body.resourceId !== body.businessId
-      || typeof body.providerKey !== 'string'
-      || !new RegExp('^media/logos/' + String(body.businessId) + '/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}
+      || !Number.isSafeInteger(businessId) || Number(businessId) <= 0
+      || body.resourceId !== businessId
+      || keyParts.length !== 4 || keyParts[0] !== 'media' || keyParts[1] !== 'logos'
+      || keyParts[2] !== String(businessId) || !validUuid.test(keyParts[3])
+      || !['image/jpeg', 'image/png', 'image/webp'].includes(String(body.contentType))
+      || !Number.isSafeInteger(body.byteSize) || Number(body.byteSize) < 0 || Number(body.byteSize) > 2 * 1024 * 1024
+      || (body.originalFilename !== null && typeof body.originalFilename !== 'string')
+      || (typeof body.originalFilename === 'string' && body.originalFilename.length > 255)) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    if (!storageMetadataReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    try {
+      const object = await storageMetadataReader.createPending(res.locals.actorAccountId as number, {
+        businessId: Number(businessId),
+        resourceType: 'business',
+        resourceId: Number(body.resourceId),
+        objectClass: 'business_logo',
+        providerKey: String(providerKey),
+        contentType: body.contentType as 'image/jpeg' | 'image/png' | 'image/webp',
+        byteSize: Number(body.byteSize),
+        visibility: 'public',
+        originalFilename: body.originalFilename as string | null,
+      });
+      res.status(201).json({ object });
+    } catch (error) {
+      storageGatewayFailure(error, res);
+    }
+  });
+
+  app.get('/v1/storage/metadata/:objectId', async (req: Request, res: Response) => {
+    const objectId = parseStorageObjectId(req.params.objectId);
+    if (objectId === null) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    if (!storageMetadataReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    try {
+      const object = await storageMetadataReader.getObject(res.locals.actorAccountId as number, objectId);
+      if (!object) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+      res.status(200).json({ object });
+    } catch (error) {
+      storageGatewayFailure(error, res);
+    }
+  });
+
+  app.post('/v1/storage/metadata/:objectId/deletion-pending', async (req: Request, res: Response) => {
+    const objectId = parseStorageObjectId(req.params.objectId);
+    if (objectId === null) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    if (!storageMetadataReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    try {
+      const object = await storageMetadataReader.markDeletionPending(res.locals.actorAccountId as number, objectId);
+      res.status(200).json({ object });
+    } catch (error) {
+      storageGatewayFailure(error, res);
+    }
+  });
+
   app.get('/v1/trust-scores', async (req: Request, res: Response) => {
     const trustLevel = req.query.trustLevel;
     if (typeof trustLevel !== 'string' || !['bronze', 'silver', 'gold', 'platinum'].includes(trustLevel)) {
