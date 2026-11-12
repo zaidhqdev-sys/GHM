@@ -71,3 +71,15 @@ test('disposable qualification probes and cleans up unexpected issuer function g
 test('issuer default ACL verifier requires the global default ACL row, not merely a schema override', () => {
   assert.match(privilegeSource, /NOT EXISTS \([\s\S]{0,240}defaclnamespace = 0[\s\S]{0,100}defaclobjtype = 'f'/);
 });
+
+
+test('issuer qualification restores the guarded cutover after rollback before post-cutover inventory', () => {
+  const rollback = qualificationSource.indexOf('const rollbackSql = fs.readFileSync');
+  const finalCutover = qualificationSource.lastIndexOf('await finalCutoverClient.query(issuerCutoverSql)');
+  const inventoryOutput = qualificationSource.indexOf('finalDisposableState:');
+  assert.ok(rollback >= 0 && finalCutover > rollback && inventoryOutput > finalCutover,
+    'the disposable database must finish in issuer-cutover state before CI captures the post-cutover inventory');
+  assert.match(qualificationSource, /assertRuntimeDatabaseFunctionPrivileges\(finalRuntimePrivileges\)/);
+  assert.match(qualificationSource, /assertAuthIssuerDatabasePrivileges\(finalIssuerPrivileges\)/);
+  assert.match(qualificationSource, /final disposable state must retain only the two reviewed runtime identity lookups/);
+});
