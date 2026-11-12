@@ -2267,7 +2267,7 @@ Added `src/auth-issuer/database-privileges.ts` and startup checks in `src/auth-i
 A mismatch aborts startup; it does not merely log a warning. Added unit tests for the pure privilege verifier and a source contract test that the check runs before `server.listen`. The next exact-head CI must qualify this change. This is fail-closed deployment defense in depth, not permission to deploy.
 
 
-The issuer startup ACL guard has been strengthened beyond checking a list of known revoked lifecycle functions. It now enumerates every `ghm.auth_*` function executable by `ghm_runtime` and requires the exact three-function Resource API allow-list: `auth_lookup_external_identity`, `auth_link_business_external_mapping`, and `auth_lookup_business_external_mapping`. This prevents a newly added or overlooked auth function grant from silently surviving the issuer cutover.
+Historical checkpoint only: the issuer startup ACL guard initially required a three-function Resource API allow-list. The 2026-11-12 follow-up below supersedes that list after a separate review of provider-business mapping mutation authority.
 
 
 ## 2026-11-12 — Startup ACL verifier false-positive correction (in progress)
@@ -2305,3 +2305,44 @@ After recording the ACL correction, the handover and `docs/GHM_CURRENT_STATE.md`
 - The corrected implementation/test commits remain `c2ddd18d793b61fe20a017f26bfade8cdb0394a1` and `fe3b765e2e265817655359c9fd96977a3dca9179`.
 - A new exact-head CI run was queued for `e4b48f6d7f5f092baccf5dc882ca77e3afa62ce3` after the documentation updates. This run, not the earlier `fe3b765` push run, is the current full-branch evidence gate.
 - No merge, production mutation, deployment, secret change, service creation, or paid spend occurred.
+
+
+## 2026-11-12 — Startup identity enforcement and business-mapping mutation closure
+
+### Exact database identity must be enforced, not merely queried
+
+A source review found that `src/auth-issuer/server.ts` queried `session_user`, `current_user`, role flags and membership state, but did not pass the result to `assertAuthIssuerDatabaseIdentity`. The pure verifier and unit tests existed, but the live startup path was not enforcing the principal contract.
+
+Correction:
+- Startup now calls `assertAuthIssuerDatabaseIdentity(databaseIdentity)` immediately after resolving the identity and before ACL verification and `server.listen`.
+- The startup source-contract test requires this assertion to be present before the listener.
+- The assertion checks both login/effective role are exactly `ghm_auth_issuer`, LOGIN / NOINHERIT, no elevated attributes, and no role memberships.
+- Fix commit: `0b7761eaf5cfeaabd16490474d483163fb488492`.
+- Source-contract regression commit: `607d0260b244adc21bd0b934b83699479865165c`.
+
+### Residual runtime permission: provider-business mapping mutation
+
+The historical migration `20260921130500_auth_link_business_external_mapping.sql` grants `EXECUTE` to `ghm_runtime` on `ghm.auth_link_business_external_mapping(text,text,bigint)`. Its own SQL comment describes a controlled link of an existing GHM business to a provider business ID. The function accepts caller-supplied provider, external business ID and GHM business ID; its SQL verifies that the target business exists and mapping conflicts, but does not independently verify actor membership/management, integration identity, or approved migration provenance.
+
+Current caller tracing on this branch:
+- `src/http/commercial-internal-router.ts` resolves the external business ID through `ghm.auth_lookup_business_external_mapping` (lookup only).
+- `src/integrations/connect/identity-adapter.ts` resolves person identity through `ghm.auth_lookup_external_identity` (lookup only).
+- The current source tree has no active TypeScript request-path caller of `auth_link_business_external_mapping`; the old business-adapter path recorded in the earlier audit is not present in this current branch tree.
+- The commercial payment preparation path needs business mapping lookup, not mapping creation. No product request path should be able to create or relink provider-business mappings.
+
+Correction:
+- Added automatic migration `20261112060000_revoke_runtime_business_external_mapping_link.sql`, revoking PUBLIC and `ghm_runtime` EXECUTE while leaving the controlled `ghm_migrator` → `ghm_schema_owner` path intact.
+- Added the same explicit revocation to the manual issuer cutover.
+- Reduced the startup-enforced Resource API `ghm.auth_*` allow-list from three to two: `auth_lookup_external_identity` and `auth_lookup_business_external_mapping`.
+- Added a disposable PostgreSQL denial probe for `ghm_runtime` attempting to call `auth_link_business_external_mapping`.
+- Updated rollback qualification so it does not restore this operator-only permission. Rollback restores the post-migration pre-issuer runtime state, not a stale historical grant from September.
+- Added a migration source-contract regression.
+- The historical three-function allow-list in earlier handover/current-state entries is superseded by this exact two-function contract.
+
+### Current qualification state
+
+- Identity enforcement commits: `0b7761eaf5cfeaabd16490474d483163fb488492`, `607d0260b244adc21bd0b934b83699479865165c`.
+- Business mapping permission closure began at `8a5c3bb7d92c184d52ec76e58fc0c6d323a4eae0`; implementation, disposable denial, allow-list, regression and runbook commits follow on this same construction branch.
+- The last fully green exact head before these changes was `4abb42e029f774ec11b90705b59222d042ee5584`. It did not contain the identity enforcement or business-mapping revocation.
+- The newer exact head must pass the full migration chain, all tests, disposable issuer cutover/lifecycle/denials/rollback and web checks before this follow-up is considered qualified.
+- No production database, grants, service, secrets, deployment, routing, paid resource, or client environment was changed.
