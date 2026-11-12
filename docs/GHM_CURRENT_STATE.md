@@ -1085,15 +1085,16 @@ Added a pure privilege verifier, unit tests, and a source contract test that ver
 Historical checkpoint: the Resource API runtime's exact three-function allow-list remains in force. The 2026-11-12 source trace confirmed `auth_link_business_external_mapping` is an active Connect Business provisioning dependency; see the later Connect mapping dependency section for the open security gap and required gateway migration.
 
 
-### 2026-11-12 — Startup identity enforcement and Connect business mapping dependency
+### 2026-11-12 — Signed Connect Business provisioning gateway
 
-Issuer startup now enforces the exact database identity before opening the HTTP listener. A separate review found that `auth_link_business_external_mapping(text,text,bigint)` is called by the existing `src/integrations/connect/business-adapter.ts` provisioning adapter and its live PostgreSQL qualification. The inspected `connect-service-router.ts` does not currently mount this adapter, so it is an existing integration dependency rather than a confirmed live HTTP route.
+The runtime's provider-business mapping mutation has been moved behind `ghm.gateway_provision_connect_business`, a signed Actor Gateway operation. Migration `20261112080000_signed_connect_business_provisioning_gateway.sql` adds operation `business.connect.provision`, creates Business + owner membership + external mapping atomically, and resolves existing mappings only for an active member or system admin. It serializes by provider/external ID and locks actor/membership rows.
 
-The attempted runtime revocation migration `20261112060000` was deleted, and the matching manual issuer cutover REVOKE was removed. The runtime auth-function allow-list remains exactly three functions: `auth_lookup_external_identity`, `auth_lookup_business_external_mapping`, and `auth_link_business_external_mapping`. The last is a genuine security gap because its SECURITY DEFINER SQL does not independently bind the caller to the target Business membership or signed integration provenance. Preserve the grant until the adapter is replaced or removed and the signed gateway alternative is qualified; do not expose the current adapter as a production route in this state.
+The old `auth_link_business_external_mapping` SECURITY DEFINER function is now schema-owner-only; PUBLIC, runtime, migrator, Actor Gateway, issuer and payment-provider EXECUTE are revoked. Runtime's exact auth-function allow-list is now two lookups. Actor Gateway's exact signed/typed allow-list is now 25 functions.
 
-Required follow-up: move the complete Business creation, owner-membership and external-mapping transaction behind a signed, database-verifiable Actor Gateway operation, preserving atomicity, concurrency, idempotency and rollback. Only after that path is deployed and qualified may runtime EXECUTE be revoked. Do not move only the link call to the migrator or break the existing adapter.
+`ConnectBusinessAdapter` now calls the signed gateway HTTP client, and the Actor Gateway route, client tests, route tests, migration contract and live disposable PostgreSQL qualification are added. The adapter is not yet mounted in the main Connect service router; full product API wiring remains a separate integration gate. The new DB operation denies resolving an existing mapped Business without active membership (unless system admin), correcting the previous cross-business disclosure behavior.
 
-No production grants or data were changed. The current exact branch still requires a fresh full CI run after these corrections.
+No production grants or data were changed. The current exact branch still requires a fresh full CI run after these changes.
+
 
 
 
