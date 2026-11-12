@@ -145,7 +145,8 @@ BEGIN
   SELECT a.role::text, a.is_system_admin
     INTO v_role, v_is_system_admin
     FROM ghm.account_identity a
-   WHERE a.id = p_actor AND a.account_status = 'active';
+   WHERE a.id = p_actor AND a.account_status = 'active'
+   FOR UPDATE;
   IF NOT FOUND OR v_role NOT IN ('business', 'admin') THEN
     RAISE EXCEPTION 'Business provisioning role required' USING ERRCODE = '42501';
   END IF;
@@ -162,14 +163,16 @@ BEGIN
    FOR UPDATE;
 
   IF FOUND THEN
-    IF NOT v_is_system_admin AND NOT EXISTS (
-      SELECT 1
+    IF NOT v_is_system_admin THEN
+      PERFORM 1
         FROM ghm.business_membership bm
        WHERE bm.business_id = v_business_id
          AND bm.account_id = p_actor
          AND bm.membership_status = 'active'
-    ) THEN
-      RAISE EXCEPTION 'Business membership required' USING ERRCODE = '42501';
+       FOR UPDATE;
+      IF NOT FOUND THEN
+        RAISE EXCEPTION 'Business membership required' USING ERRCODE = '42501';
+      END IF;
     END IF;
 
     SELECT to_jsonb(b), to_jsonb(m)
