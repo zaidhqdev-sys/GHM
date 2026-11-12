@@ -2641,3 +2641,18 @@ Run `npm test` on this exact branch head, then run `npm run audit:security-defin
 ### Inventory runner output handling
 
 The runner now accepts `GHM_SECURITY_DEFINER_AUDIT_DATABASE_URL`, falling back to `GHM_MIGRATOR_DATABASE_URL` loaded from the local dotenv file. The host/database guard still requires localhost and `/ghm_disposable_test`; a production or remote URL is rejected. Full JSON is written by default to `tmp/security-definer-authority-audit.json` (override with `GHM_SECURITY_DEFINER_AUDIT_OUTPUT`), while the terminal receives only counts, decision and report path. The database inventory is read-only; local report-file creation is expected. This runner has still not been executed here and its output must not be treated as evidence until the user runs it against the disposable PostgreSQL 18 qualification database.
+
+
+## 2026-11-12 — Expanded whole-database authority inventory and CI integration
+
+Expanded `scripts/audit-security-definer-authority.mjs` beyond SECURITY DEFINER routine ACLs. The read-only report now also captures role attributes (including superuser, CREATEROLE, CREATEDB, BYPASSRLS, LOGIN and replication), schema ownership and direct/effective USAGE/CREATE privileges, current-database ownership and direct/effective CONNECT/CREATE/TEMPORARY privileges, language trust status, extension membership, all role-membership options, and global/schema function default ACLs. Non-trusted languages are flagged for manual review. The test contract now asserts the additional catalog coverage.
+
+CI workflow `.github/workflows/ci.yml` now syntax-checks the runner, executes it after all migrations have been applied to the PostgreSQL 18 disposable database, and preserves the JSON report as the `security-definer-authority-inventory` Actions artifact (14-day retention). It uses the existing CI `GHM_MIGRATOR_DATABASE_URL`, and the script's localhost + exact disposable-database guard remains active. This makes inventory evidence reproducible on each push to the issuer construction branch. The report is deliberately non-gating on preliminary findings: it records all exceptions for human review and does not pretend every grant is unsafe or automatically approved.
+
+### CI checkpoint
+
+The first workflow runs triggered by the successive audit commits were observed in GitHub Actions. Run `43220323598` was queued at exact HEAD `c9a599a19e3590de4f29ef243e7138b85e0da881`; earlier runs for intermediate commits were in progress. These are not yet passing results. Wait for the latest-head run and inspect the inventory artifact, test results and full job logs before claiming qualification. Each commit has its own run; results from intermediate SHAs do not qualify the eventual documentation-updated HEAD.
+
+### Next decision gate
+
+Review the full report for every non-owner EXECUTE grant, PUBLIC execution, unsafe/unpinned search path, non-trusted language, unexpected schema/database CREATE or USAGE privilege, powerful role attributes, role membership path, extension-owned function, and function default ACL. Build a documented exact-signature × role permission matrix from that evidence and migration intent. Add adversarial grant/search-path/temporary-shadowing tests for any identified gaps. No production catalog access, privilege changes, merge or issuer cutover is authorized by this work.
