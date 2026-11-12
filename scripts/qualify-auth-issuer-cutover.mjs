@@ -116,7 +116,7 @@ try {
   const initialPassword = 'CorrectHorse1';
   const replacementPassword = 'DifferentHorse2';
 
-  const registered = await authService.register!({
+  const registered = await authService.register({
     fullName: 'Auth Issuer Qualification',
     role: 'customer',
     email,
