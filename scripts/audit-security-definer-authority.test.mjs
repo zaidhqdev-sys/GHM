@@ -18,6 +18,8 @@ test('inventory covers non-system SECURITY DEFINER routines, direct ACLs and eff
   assert.match(source, /pg_get_functiondef\(p\.oid\)/);
   assert.match(source, /aclexplode\(COALESCE\(p\.proacl/);
   assert.match(source, /has_function_privilege\(r\.oid, p\.oid, 'EXECUTE'\)/);
+  assert.match(source, /effectiveNonOwnerRoles/);
+  assert.match(source, /effective_non_owner_execute_roles: effectiveNonOwnerRoles/);
   assert.match(source, /pg_extension/);
   assert.match(source, /pg_auth_members/);
   assert.match(source, /pg_default_acl/);
