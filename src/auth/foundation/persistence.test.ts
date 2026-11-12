@@ -377,12 +377,23 @@ test('auth foundation persistence (database)', async (t) => {
     const issued = await persistence.issueRecovery(accountId, 30);
     const email = `recovery-reset-${accountId}@example.test`;
 
+    await assert.rejects(
+      () => persistence.resetPasswordWithRecovery(
+        issued.recoveryTokenWire,
+        `mismatch+${email}`,
+        'New-Password-For-Recovery-123!',
+      ),
+      (error: unknown) =>
+        error instanceof AuthPersistenceError && error.code === 'RECOVERY_CREDENTIAL_INVALID',
+    );
+
     const reset = await persistence.resetPasswordWithRecovery(
       issued.recoveryTokenWire,
       email,
       'New-Password-For-Recovery-123!',
     );
     assert.ok(reset.revokedSessionCount >= 2);
+    assert.equal(await persistence.lookupPasswordByEmail(email).then((credential) => credential?.loginEmail), email);
 
     const v1 = await validateSessionAsOwner(s1.session.id);
     const v2 = await validateSessionAsOwner(s2.session.id);
