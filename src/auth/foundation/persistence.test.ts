@@ -71,6 +71,30 @@ test('auth foundation persistence (database)', async (t) => {
   let accountId = 0;
   const persistence = new PostgresAuthPersistence(runtimePool);
 
+  const validateSessionAsOwner = async (sessionId: number) => {
+    const client = await migratorPool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SET LOCAL ROLE ghm_schema_owner');
+      const result = await client.query(
+        'SELECT * FROM ghm.auth_validate_session($1)',
+        [sessionId],
+      );
+      await client.query('COMMIT');
+      if (result.rowCount !== 1) throw new Error('Session validation fixture returned no row');
+      const row = result.rows[0];
+      return {
+        isUsable: Boolean(row.is_usable),
+        rejectReason: row.reject_reason ?? null,
+      };
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
+  };
+
   const linkExternalIdentityAsOwner = async (provider: string, subject: string, targetAccountId: number) => {
     const client = await migratorPool.connect();
     try {
@@ -185,7 +209,7 @@ test('auth foundation persistence (database)', async (t) => {
     assert.equal('raw' in created, false);
     assert.equal(decodeOpaqueTokenWire(created.refreshTokenWire).length, 32);
 
-    const usable = await persistence.validateSession(created.session.id);
+    const usable = await validateSessionAsOwner(created.session.id);
     assert.equal(usable.isUsable, true);
 
     const rotated = await persistence.rotateRefresh(created.refreshTokenWire);
@@ -198,7 +222,7 @@ test('auth foundation persistence (database)', async (t) => {
         error instanceof AuthPersistenceError && error.code === 'REFRESH_CREDENTIAL_REUSED',
     );
 
-    const afterReplay = await persistence.validateSession(created.session.id);
+    const afterReplay = await validateSessionAsOwner(created.session.id);
     assert.equal(afterReplay.isUsable, false);
     assert.equal(afterReplay.rejectReason, 'session_revoked');
 
@@ -225,7 +249,7 @@ test('auth foundation persistence (database)', async (t) => {
     } finally {
       client.release();
     }
-    const inactive = await persistence.validateSession(created.session.id);
+    const inactive = await validateSessionAsOwner(created.session.id);
     assert.equal(inactive.isUsable, false);
     assert.equal(inactive.rejectReason, 'inactivity_expired');
 
@@ -244,7 +268,7 @@ test('auth foundation persistence (database)', async (t) => {
     } finally {
       client2.release();
     }
-    const absolute = await persistence.validateSession(created2.session.id);
+    const absolute = await validateSessionAsOwner(created2.session.id);
     assert.equal(absolute.isUsable, false);
     assert.equal(absolute.rejectReason, 'absolute_expired');
   });
@@ -309,8 +333,8 @@ test('auth foundation persistence (database)', async (t) => {
         error instanceof AuthPersistenceError && error.code === 'RECOVERY_CREDENTIAL_INVALID',
     );
 
-    const v1 = await persistence.validateSession(s1.session.id);
-    const v2 = await persistence.validateSession(s2.session.id);
+    const v1 = await validateSessionAsOwner(s1.session.id);
+    const v2 = await validateSessionAsOwner(s2.session.id);
     assert.equal(v1.isUsable, false);
     assert.equal(v2.isUsable, false);
 
@@ -337,8 +361,8 @@ test('auth foundation persistence (database)', async (t) => {
     );
     assert.ok(reset.revokedSessionCount >= 2);
 
-    const v1 = await persistence.validateSession(s1.session.id);
-    const v2 = await persistence.validateSession(s2.session.id);
+    const v1 = await validateSessionAsOwner(s1.session.id);
+    const v2 = await validateSessionAsOwner(s2.session.id);
     assert.equal(v1.isUsable, false);
     assert.equal(v2.isUsable, false);
 
