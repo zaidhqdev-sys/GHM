@@ -82,6 +82,7 @@ jobs:
           GRANT CONNECT ON DATABASE ghm_disposable_test TO ghm_migrator, ghm_runtime, ghm_payment_provider, ghm_actor_gateway, ghm_auth_issuer;
           GRANT CREATE ON DATABASE ghm_disposable_test TO ghm_schema_owner;
           GRANT USAGE, CREATE ON SCHEMA public TO ghm_schema_owner;
+          CREATE SCHEMA ghm AUTHORIZATION ghm_schema_owner;
           SQL
 
       - name: Reproduce PostgreSQL 18 delegated CREATEROLE membership behavior
