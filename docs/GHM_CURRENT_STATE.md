@@ -1036,3 +1036,23 @@ Coverage includes issuer principal baseline, future-function default ACL probe (
 Run #3647 was an assertion-shape failure: diagnostic metadata was included in a deep equality comparison; actual ACL booleans were all false. The assertion was corrected to compare only those booleans. #3648 passed on the exact corrected head.
 
 This remains construction/disposable qualification. No production service, secret, DB grant, migration, routing or deployment changed. Generic recovery and QuoteFlow reset request delivery remain 503 until an approved delivery adapter is configured.
+
+
+## 2026-11-12 — Cross-product issuer integration and PR stack snapshot
+
+Client-origin changes are now stacked on the actual open product PR heads:
+- Connect dependent branch: `construction/ghm-auth-issuer-origin-connect-20261112`, based on PR #68, 9 ahead / 0 behind. Code CI #296 and documentation-head CI #298 passed. The BFF now blocks encoded/case-variant native auth paths.
+- QuoteFlow dependent branch: `construction/ghm-auth-issuer-origin-quoteflow-20261112`, based on PR #25, 10 ahead / 0 behind. CI #224 passed (8 suites, 55 tests). Auth and resource origins are separated; Gate A is opt-in and defaults false. PR #25 itself hard-coded Gate A true and must not be merged/released as-is.
+No client changes were deployed or merged.
+
+GHM open PR review:
+- #272 is the unified Actor Gateway integration (open, non-draft, mergeable); exact head 0eda4ea has green quality, web-quality and Cloudflare Pages checks. Still do not merge until all GHM docs are fully reconciled.
+- #250, #268, #269 are ancestors already included in #272 (0 behind); do not merge separately.
+- #271 and #270 are divergent older drafts with overlapping profile/supplier gateway work; review unique diffs before closing/superseding.
+- #243/#244 form a separate supplier/analytics stack and contain additional work not all in #272; preserve dependency.
+- #237 older Business-profile compatibility branch diverges; compare SQL before superseding.
+- #264 docs-only checkpoint has mergeability conflict; reconcile with current #272 handovers.
+- #233 PayFast remains parked pending sandbox availability.
+- #201 QuoteFlow legal acceptance remains parked pending the founder's instruction to defer legal work.
+
+Earlier standalone Connect/QuoteFlow branches based on main are superseded by the stacked branches. No branch-delete operation is exposed in this session, so they remain but must not be used. No merges or production changes occurred.
