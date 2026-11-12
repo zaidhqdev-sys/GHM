@@ -87,7 +87,7 @@ export const assertRuntimeDatabaseFunctionPrivileges = (
   const matches = (expected: string[]) => JSON.stringify(actual) === JSON.stringify(expected);
   if (!matches(preCutover) && !matches(postCutover)) {
     throw new Error(
-      `Runtime database function EXECUTE allow-list mismatch: actual_count=${actual.length}, pre_campaign_review_count=${preCutover.length}, post_campaign_review_count=${postCutover.length}`,
+      `Runtime database function EXECUTE allow-list mismatch: actual=${JSON.stringify(actual)}, expected_pre=${JSON.stringify(preCutover)}, expected_post=${JSON.stringify(postCutover)}`,
     );
   }
 };
