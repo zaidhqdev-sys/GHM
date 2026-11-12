@@ -429,14 +429,14 @@ Repository source separation is therefore not yet a deployed service topology. T
 
 ### Runtime function EXECUTE allow-list staged-state gap closed in source
 
-The Resource API runtime function verifier previously accepted only the 43-function pre-cutover state and 40-function post-Campaign/review state. The Authentication Issuer cutover removes fourteen runtime authentication lifecycle functions, leaving only the two separately reviewed external identity/business mapping lookups. The old verifier would reject the valid post-issuer state once production enforcement was enabled.
+The Resource API runtime function verifier previously accepted only the 43-function pre-cutover state and 40-function post-Campaign/review state. A fresh disposable PostgreSQL inventory showed that the already-applied registration-identity gateway migrations also revoke two legacy registration functions from `ghm_runtime`; those two signatures must never be re-accepted in a later runtime state. The Authentication Issuer cutover removes fourteen runtime authentication lifecycle functions, leaving only the two separately reviewed external identity/business mapping lookups. The old verifier would reject the valid post-issuer state once production enforcement was enabled.
 
 Added four exact reviewed states:
 
-- 43 functions: pre-Campaign/review and pre-issuer.
-- 40 functions: Campaign/review cutover only.
-- 29 functions: issuer cutover only.
-- 26 functions: combined Campaign/review plus issuer cutovers.
+- 41 functions: post-registration gateway migrations, pre-Campaign/review and pre-issuer.
+- 38 functions: post-registration gateway migrations plus Campaign/review cutover.
+- 27 functions: post-registration gateway migrations plus issuer cutover only.
+- 24 functions: combined registration, Campaign/review and issuer cutovers.
 
 Added unit tests for all four states and adversarial added/missing grants. The disposable Authentication Issuer cutover qualification now invokes the actual Resource API runtime startup allow-list verifier after the earlier Campaign/review cutover, proving the combined 26-function state.
 
