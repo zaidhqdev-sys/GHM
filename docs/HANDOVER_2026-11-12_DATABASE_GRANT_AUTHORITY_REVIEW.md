@@ -2270,3 +2270,35 @@ The production source ref and current Render deployment ref are therefore the sa
 - The construction branch exact-head run `43317737320` on `e2ae770` completed successfully (`quality`, `web-quality`, Cloudflare Pages). The handover-only commit in this file still needs its own exact-head CI after this append.
 
 The next engineering move should be a small mainline-based Resource API runtime-principal integration (or an explicitly bounded branch rebuilt on current main), not an attempt to merge the entire #272 stack. Keep Actor Gateway and Authentication Issuer hosting/deployment as separate release gates. Preserve Render auto deploy OFF and do not deploy.
+
+
+## 2026-11-12 22:24 UTC — focused Resource API principal integration opened as PR #275
+
+A clean branch was created from the then-current mainline commit `744b91f030d5cfc9257685677aaff148cf1f9f43`, rather than trying to merge the 672-commit #272 stack.
+
+- Branch: `security/resource-api-runtime-principal-20261112`
+- PR: https://github.com/zaidhqdev-sys/GHM/pull/275
+- Initial head: `4d4a0624ba8df999bea0167762b467e1bfc9421f`
+- Base: `main` at `744b91f...`
+- Draft PR, open and unmerged.
+
+### Code changes
+
+1. Production Resource API configuration now requires `GHM_RUNTIME_DATABASE_URL`; generic `DATABASE_URL` is retained only as a non-production fallback.
+2. Resource API startup now reads the live database identity and fails before listening unless:
+   - `session_user=current_user=ghm_runtime`;
+   - role is LOGIN/NOINHERIT and has no elevated role attributes;
+   - database CONNECT and `ghm` schema USAGE are present;
+   - database CREATE and schema CREATE are absent;
+   - no untrusted role memberships exist.
+3. The trusted `ghm_db_user` administrator membership is explicitly excluded from the untrusted-membership check, matching the Render support decision and observed live role graph. The application must still connect directly as `ghm_runtime`.
+4. Added focused principal tests, added them to the main `npm test` command, and documented the environment variable in `.env.example`.
+5. Config tests now prove production rejects a missing `GHM_RUNTIME_DATABASE_URL`, and accepts the dedicated URL only when TLS is enabled.
+
+### Validation and safety
+
+At time of this handover update, exact-head GitHub Actions run `43319364059` is in progress on `4d4a062...`; `quality`, `web-quality` and Cloudflare Pages checks were running. Do not claim validation passed until the run completes successfully.
+
+No production credentials or environment variables were set. The Render service remains on `main`, auto-deploy OFF, and live deployment `c7cf1eb`. The PR intentionally fails closed if deployed without `GHM_RUNTIME_DATABASE_URL`; do not deploy until the existing SQL-created `ghm_runtime` credential is provisioned via the controlled secret-management path and connection identity is verified.
+
+No production role, membership, grant, migration, database data, service branch, auto-deploy setting, deployment or traffic changed. PR #274 is the only PR merged in this continuation and it was docs-only. PayFast and legal publication remain paused.
