@@ -35,10 +35,10 @@ test('issuer verifies its exact database ACL boundary before opening the HTTP li
 
 
 test('issuer startup and manual cutover allow only the Render administrator as a role member', () => {
-  assert.match(server, /member_role\\.rolname <> 'ghm_db_user'/);
-  assert.match(privilegeCutover, /member_role\\.rolname <> 'ghm_db_user'/);
-  assert.match(privilegeCutover, /m\\.member = issuer_role\\.oid/);
-  assert.match(privilegeCutover, /m\\.roleid = issuer_role\\.oid/);
+  assert.match(server, /member_role\.rolname <> 'ghm_db_user'/);
+  assert.match(privilegeCutover, /member_role\.rolname <> 'ghm_db_user'/);
+  assert.match(privilegeCutover, /m\.member = issuer_role\.oid/);
+  assert.match(privilegeCutover, /m\.roleid = issuer_role\.oid/);
 });
 
 test('issuer verifier checks every SECURITY DEFINER owner and pinned temporary-safe search_path', () => {
