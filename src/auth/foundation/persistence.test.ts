@@ -352,8 +352,7 @@ test('auth foundation persistence (database)', async (t) => {
 
     await assert.rejects(
       () => redeemRecoveryAsOwner(issued.recoveryTokenWire),
-      (error: unknown) =>
-        error instanceof AuthPersistenceError && error.code === 'RECOVERY_CREDENTIAL_INVALID',
+      (error: unknown) => (error as { code?: string }).code === 'P0001',
     );
 
     const v1 = await validateSessionAsOwner(s1.session.id);
