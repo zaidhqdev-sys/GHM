@@ -17,6 +17,7 @@ const leastPrivilege: ActorGatewayDatabasePrivileges = {
   runtime_executable_functions: [],
   unsafe_function_defaults: false,
   unsafe_security_definer_functions: [],
+  public_executable_security_definer_functions: [],
   unsafe_function_grantees: [],
 };
 
@@ -73,5 +74,16 @@ test('rejects Actor Gateway function grants to any non-owner principal other tha
       unsafe_function_grantees: ['ghm.gateway_unreviewed()'],
     }),
     /unsafe_function_grantees/,
+  );
+});
+
+
+test('rejects PUBLIC EXECUTE on any SECURITY DEFINER function', () => {
+  assert.throws(
+    () => assertActorGatewayDatabasePrivileges({
+      ...leastPrivilege,
+      public_executable_security_definer_functions: ['ghm.gateway_sensitive_operation()'],
+    }),
+    /public_executable_security_definer_functions/,
   );
 });
