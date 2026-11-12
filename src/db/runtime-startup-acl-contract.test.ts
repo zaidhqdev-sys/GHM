@@ -14,8 +14,8 @@ test('Resource API verifies database CONNECT and schema usage without CREATE bef
   assert.match(server, /has_schema_privilege\(session_user, 'ghm', 'USAGE'\)/);
   assert.match(server, /has_schema_privilege\(session_user, 'ghm', 'CREATE'\)/);
   assert.match(server, /NOT EXISTS\s*\([\s\S]*FROM pg_auth_members/);
-  assert.match(server, /m\.member = r\\.oid/);
-  assert.match(server, /m\.roleid = r\\.oid AND member_role\.rolname <> 'ghm_db_user'/);
+  assert.match(server, /m\.member = r\.oid/);
+  assert.match(server, /m\.roleid = r\.oid AND member_role\.rolname <> 'ghm_db_user'/);
 });
 
 
