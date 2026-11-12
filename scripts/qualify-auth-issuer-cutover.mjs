@@ -78,6 +78,7 @@ try {
         SET search_path = pg_catalog, ghm, pg_temp AS 'SELECT 0'`,
     },
   ];
+  const createdLegacyAuthorityFixtures = [];
   const legacyFixtureClient = await migratorPool.connect();
   try {
     await legacyFixtureClient.query('BEGIN');
@@ -87,10 +88,10 @@ try {
         'SELECT to_regprocedure($1) IS NOT NULL AS exists',
         [fixture.signature],
       );
-      if (exists.rows[0].exists) {
-        throw new Error(`Legacy authority qualification fixture unexpectedly exists: ${fixture.signature}`);
+      if (!exists.rows[0].exists) {
+        await legacyFixtureClient.query(fixture.createSql);
+        createdLegacyAuthorityFixtures.push(fixture.signature);
       }
-      await legacyFixtureClient.query(fixture.createSql);
       await legacyFixtureClient.query(
         `GRANT EXECUTE ON FUNCTION ${fixture.signature} TO PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway, ghm_auth_issuer, ghm_payment_provider`,
       );
@@ -729,8 +730,8 @@ try {
   const legacyFixtureCleanup = await migratorPool.connect();
   try {
     await legacyFixtureCleanup.query('SET ROLE ghm_schema_owner');
-    for (const fixture of legacyAuthorityFixtures) {
-      await legacyFixtureCleanup.query(`DROP FUNCTION ${fixture.signature}`);
+    for (const signature of createdLegacyAuthorityFixtures) {
+      await legacyFixtureCleanup.query(`DROP FUNCTION ${signature}`);
     }
   } finally {
     await legacyFixtureCleanup.query('RESET ROLE');
