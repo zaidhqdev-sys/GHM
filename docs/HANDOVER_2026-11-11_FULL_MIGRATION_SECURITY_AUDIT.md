@@ -2225,3 +2225,24 @@ The exact-head run covered the default-function-ACL probe, issuer exact allow-li
 An intermediate run #3647 failed because the diagnostic query returned owner/ACL metadata in addition to the three boolean fields being compared. The underlying ACL values were already false for PUBLIC/runtime/issuer; the assertion was narrowed to compare only the intended booleans. #3648 is the successful exact-head rerun.
 
 This CI result qualifies construction code and disposable PostgreSQL only. It does not authorize production migration, grants, service creation, secret changes, routing, or deployment. The runbook remains design-only. Recovery email delivery is still unavailable and both recovery request routes remain 503 until an approved adapter exists.
+
+
+## 2026-11-12 — Cross-product issuer branches and open GHM PR stack audit
+
+The earlier standalone client-origin branches were not based on the open product migration PRs. They have been superseded by dependent construction branches based on the exact open PR heads:
+
+- Connect: `construction/ghm-auth-issuer-origin-connect-20261112`, based on PR #68 head `2eadf761400bb5a644b5907e670aacb68526c81f`; 9 commits ahead, 0 behind. Exact code head passed Connect CI #296; documentation head `0e1b93a08f449c727686dffa9d21c663a2c8edf3` passed #298. The BFF now blocks encoded, double-encoded, separator-encoded and case-variant native auth paths before upstream fetch.
+- QuoteFlow: `construction/ghm-auth-issuer-origin-quoteflow-20261112`, based on PR #25 head `065225304f3a19c97050aa237ebbfe578f649a43`; 10 commits ahead, 0 behind. Exact head `fbdee2e0ccd536a8641abe0f1a7de328a266dc42` passed CI #224 (8 suites / 55 tests). Auth and resource origins are separate; Gate A now requires explicit `EXPO_PUBLIC_GHM_AUTH_ENABLED=true` and defaults false. The parent PR #25 had `ghmAuthEnabled: true` hard-coded and must not be merged/released as-is.
+- Neither product branch is deployed or merged. Connect browser-cookie auth remains disabled by default. QuoteFlow Gate A remains disabled by default.
+
+Open GHM PR stack snapshot:
+- PR #272 is the current unified Actor Gateway integration branch, base `main`, open/non-draft, mergeable, exact head `0eda4ea8e232c98264fe83c7aecc3c85f71a5596`; all check-runs on that head passed (quality, web-quality and Cloudflare Pages). Do not merge until the complete GHM documentation reconciliation gate is satisfied.
+- PRs #250, #268 and #269 are direct ancestors of the PR #272 integration branch (compare shows 0 commits behind); their capability-governance/invariant work is already in that integration stack. Do not merge them independently.
+- PRs #271 and #270 are divergent older drafts whose Business-profile and supplier-classification work overlaps the revised integration in #272. Do not merge independently; reconcile their unique diffs before closing or superseding.
+- PRs #243 and #244 are a separate supplier-classification/Business analytics stack; #244 depends on #243. Their branches diverge from #272 and contain additional onboarding, relationships/outcomes, storage and analytics work not all present in #272. Keep them stacked and do not merge until that separate diff is audited.
+- PR #237 is the older Business-profile compatibility stack and diverges from #272; the newer integration includes a separate reconciliation migration. Compare exact SQL behavior before treating #237 as redundant.
+- PR #264 is a documentation-only registration-identity checkpoint with mergeability conflict; reconcile its docs against the newer #272 handovers rather than merging blindly.
+- PR #233 PayFast remains parked until PayFast sandbox access is restored.
+- PR #201 QuoteFlow legal acceptance remains parked under the founder's instruction to defer legal work.
+
+The branch list still includes the earlier standalone Connect/QuoteFlow construction branches created from `main`; the stacked branches above are the valid integration targets. The GitHub connector available in this session exposes no branch-delete operation, so those superseded branches have not been deleted. Do not continue work on them.
