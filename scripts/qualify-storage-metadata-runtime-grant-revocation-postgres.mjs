@@ -160,7 +160,9 @@ try {
   const restored = await migrator.query(`
     SELECT p.oid::regprocedure::text AS signature,
       COALESCE(bool_or(a.grantee = 0 AND a.privilege_type = 'EXECUTE'), false) AS public_execute,
-      has_function_privilege('ghm_runtime', p.oid, 'EXECUTE') AS runtime_execute
+      has_function_privilege('ghm_runtime', p.oid, 'EXECUTE') AS runtime_execute,
+      has_function_privilege('ghm_migrator', p.oid, 'EXECUTE') AS migrator_execute,
+      has_function_privilege('ghm_actor_gateway', p.oid, 'EXECUTE') AS gateway_execute
     FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
     CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) a
