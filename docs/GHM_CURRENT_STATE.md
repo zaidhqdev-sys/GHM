@@ -1234,3 +1234,6 @@ Full evidence and next steps: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_
 Added read-only `scripts/audit-security-definer-authority.mjs`, its contract test, and `npm run audit:security-definer-authority`. It is restricted to local `ghm_disposable_test`, and inventories SECURITY DEFINER functions/procedures across all non-system schemas, including owner, definition, search_path/settings, extension membership, direct ACL grantor/grantee/grant-option entries, effective EXECUTE roles, role memberships and function default ACLs. It makes no changes and reports `REVIEW_REQUIRED_NO_AUTOMATIC_APPROVAL`.
 
 **Not yet qualified:** the inventory has not been executed against disposable PostgreSQL in this session. No actual grant matrix or cross-schema findings are claimed. The contract test is included in `npm test`; exact-head CI and database execution remain pending. Do not merge or cut over. Full next steps are in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+
+Inventory runner refinement: full catalog JSON is saved to `tmp/security-definer-authority-audit.json` by default; terminal output is a compact summary. It reads `GHM_SECURITY_DEFINER_AUDIT_DATABASE_URL` or local `GHM_MIGRATOR_DATABASE_URL`, but rejects anything other than localhost `ghm_disposable_test`. Not yet executed; no findings claimed.
