@@ -43,6 +43,7 @@ The manual cutover:
 - Requires `ghm_auth_issuer` to be LOGIN / NOINHERIT with no elevated role flags or role memberships.
 - Removes issuer direct table, sequence and function grants, then grants only the reviewed authentication function allow-list.
 - Explicitly removes GHM schema CREATE from the issuer.
+- Future schema-owner functions do not inherit PUBLIC EXECUTE after migration `20261112050000`; new application functions require explicit grants.
 - Revokes the Resource API runtime's legacy credential/session lifecycle functions.
 - Keeps Connect's lookup-only external identity operation available to `ghm_runtime`.
 - Keeps business external mapping separate from authentication issuer authority.
