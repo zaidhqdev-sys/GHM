@@ -1128,3 +1128,8 @@ Exact candidate `0f12703108b1b42f6efcd8fe49970f5c28dd052f` passed run `431591743
 The issuer qualification reported an exact ten-function issuer allow-list, zero direct issuer relation privileges, 16 expected Resource API runtime denials, the exact two-function Resource API auth lookup allow-list, safe default function privileges, successful startup ACL verification and successful disposable database-only rollback. The PostgreSQL array-literal trailing commas in the startup verifier and qualification runner were corrected before this green exact-head run.
 
 This does not authorize production mutation. PR #272 remains open/unmerged; the issuer branch is dependent on it. Fresh independently verified production backup, Render role/ownership resolution, reviewed network/TLS topology, recovery-delivery readiness, client/service compatibility, and separate founder approvals remain blocking. No production resources or paid services were changed.
+### 2026-11-12 — current exact-head qualification and migrator role gate
+
+Latest exact candidate `465b8e034243c80bf7efe6cc6ea8b27705176760` passed run `43160050121` (`quality`, `web-quality`, Cloudflare Pages). The migration runner now validates the exact `ghm_migrator` → `ghm_schema_owner` SET-only membership and both role attribute sets before applying migrations. Disposable migration, full suite, Connect Business signed provisioning, Actor Gateway qualification, issuer cutover/lifecycle/rollback all passed.
+
+Production Render role flags and membership options still require independent inspection against the new gate before any live migration. PR #272 remains open/unmerged; no production changes or paid services.

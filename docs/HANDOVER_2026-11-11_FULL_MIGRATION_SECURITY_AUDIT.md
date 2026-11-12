@@ -2415,3 +2415,18 @@ During this final qualification pass, the updated two-function SQL allow-list ex
 The current two-function Resource API auth allow-list is `auth_lookup_external_identity` and `auth_lookup_business_external_mapping`. Direct `auth_link_business_external_mapping` remains revoked from all application roles and is invoked only inside the signed `gateway_provision_connect_business` SECURITY DEFINER operation. Actor Gateway has 25 signed/typed operations, including `business.connect.provision`.
 
 **Important:** this is disposable qualification only. No production database, role, grant, secret, service, deployment, routing, backup, or paid resource was changed. PR #272 remains open/unmerged, and the issuer construction branch remains dependent on it. Production remains blocked on a fresh independently verified backup, Render database role/ownership resolution, reviewed network/TLS topology, recovery delivery, client/service readiness, and separate founder approvals. Do not merge or apply production cutovers on the strength of this CI run alone.
+### Migrator role-membership hardening — 2026-11-12
+
+The migration runner previously checked `current_user = ghm_schema_owner` and `session_user = ghm_migrator` only after `SET ROLE`. That proved the effective execution identity but did not independently reject an over-privileged migrator login, extra role memberships, an inheritable/admin membership, or a login-capable/elevated schema-owner role before activating owner authority.
+
+Added `src/db/migrator-principal.ts` and its unit tests. Before `SET ROLE`, `src/db/migrate.ts` now requires:
+- `ghm_migrator` is LOGIN, NOINHERIT, and has no SUPERUSER, CREATEDB, CREATEROLE, REPLICATION or BYPASSRLS attributes.
+- Exactly one direct membership exists for `ghm_migrator`, to `ghm_schema_owner`, with `ADMIN FALSE`, `INHERIT FALSE`, `SET TRUE`.
+- `ghm_schema_owner` is NOLOGIN, has no elevated role attributes, and has no direct role memberships (therefore no transitive authority path through another role).
+- Both `current_user` and `session_user` are `ghm_migrator` before activation; after `SET ROLE`, the runner still verifies `session_user = ghm_migrator` and `current_user = ghm_schema_owner`.
+
+The CI role fixture now explicitly creates the membership with `WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`. A source-contract test protects the ordering and catalog checks. The migration chain executes this gate on every CI run; unit tests exercise rejection of extra/missing membership, incorrect membership options, elevated flags, and owner transitive membership.
+
+Exact-head CI passed on `465b8e034243c80bf7efe6cc6ea8b27705176760` in run `43160050121`: `quality`, `web-quality`, and Cloudflare Pages all passed. The build, complete migrations, full suite, Connect Business gateway qualification, Actor Gateway cutover qualifications, manual issuer cutover, issuer lifecycle/runtime denials, and disposable database-only rollback also passed.
+
+**Production qualification remains outstanding:** inspect the actual Render `ghm_migrator` and `ghm_schema_owner` role flags and `pg_auth_members` options against this exact contract before any production migration run. Do not assume the disposable CI role state proves the live Render roles conform. No production role, grant, database, secret, service, deployment, routing or paid resource was changed.

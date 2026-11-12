@@ -97,3 +97,9 @@ No result authorizes GRANT, REVOKE, ALTER ROLE, DROP ROLE, ownership changes, or
 ## Documentation reconciliation
 
 This contract reconciles the role-separation model, migration runner boundary, QuoteFlow existing-user migration boundary, and legacy-object disposition findings. The legacy role audit remains a separate evidence artifact and is not silently overwritten by this qualification.
+
+## 2026-11-12 reconciliation — exact migrator authority
+
+The canonical migrator boundary is now enforced by the migration runner, not only documented: before `SET ROLE`, it verifies `ghm_migrator` is LOGIN/NOINHERIT/no elevated attributes, has exactly one direct `ghm_schema_owner` membership with `ADMIN FALSE`, `INHERIT FALSE`, `SET TRUE`, and that `ghm_schema_owner` is NOLOGIN/non-elevated with no memberships. After activation it verifies `session_user = ghm_migrator` and `current_user = ghm_schema_owner`. CI explicitly constructs this membership and the full migration chain passes with the guard enabled.
+
+Disposable exact-head evidence: `465b8e034243c80bf7efe6cc6ea8b27705176760`, run `43160050121` passed. Production role flags/membership options must still be independently inspected in Render before the live migration runner is used. This remains read-only until separately authorized.
