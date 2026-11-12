@@ -22,7 +22,7 @@ test('issuer verifies its exact database ACL boundary before opening the HTTP li
   assert.match(privilegeSource, /runtime_executable_auth_functions/);
   assert.match(privilegeSource, /expected_runtime_auth_functions/);
   assert.match(privilegeSource, /ghm\.auth_lookup_external_identity/);
-  assert.doesNotMatch(privilegeSource, /ghm\.auth_link_business_external_mapping/, 'runtime must not retain business-mapping link authority');
+  assert.match(privilegeSource, /ghm\.auth_link_business_external_mapping/, 'Connect provisioning remains an explicit runtime dependency pending signed gateway replacement');
   assert.match(privilegeSource, /ghm\.auth_lookup_business_external_mapping/);
   assert.match(privilegeSource, /pg_default_acl/);
   assert.match(privilegeSource, /ghm_actor_gateway/);
