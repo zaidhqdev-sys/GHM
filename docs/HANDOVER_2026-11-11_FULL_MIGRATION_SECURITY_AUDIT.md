@@ -2733,3 +2733,27 @@ The first superuser-aware contract test run failed because its source-text regul
 The corrected superuser-aware inventory completed successfully on code/test HEAD `df7aba60df7eaf1a01a5b7b6811f5d4a5d9afe6e`, Actions run `43221800807`: both `quality` and `web-quality` passed, with 55/55 quality steps successful. The new artifact `security-definer-authority-inventory` (SHA-256 `ac619dc8b558ad7b828aaf50770c73f34b2d9973f2d51f8cb580af75557e47a1`) was retrieved and independently parsed. It reports 97 SECURITY DEFINER routines and 70 preliminary findings after excluding PostgreSQL superuser bypass from ordinary role findings. All 70 findings are attributable to direct non-owner application-role EXECUTE grants; no PUBLIC EXECUTE grants were found. Each of the 97 functions reports owner `ghm_schema_owner`, pinned search path, trusted language; all routines are in `ghm`. The superuser `postgres` remains explicitly listed separately for every routine. The 70 findings are not automatically safe or unsafe: they are the complete signature-level application grant set that still requires role-purpose justification. Counts by grantee remain Actor Gateway 25, Resource API runtime 43, payment provider 2, migrator 1.
 
 This corrected result supersedes the first artifact's misleading 97 preliminary findings. The earlier failure on the superuser metadata contract test was a test regex escaping error; the corrected test and full exact-code-head CI now pass. Subsequent handover documentation commits are being validated separately at the current branch HEAD.
+
+
+### Pre-cutover application grant matrix — reconciled by role purpose
+
+The 71 direct non-owner application-role EXECUTE grants in the retrieved pre-manual-cutover artifact reconcile as follows:
+
+| Principal | Direct routine grants | Purpose / disposition |
+|---|---:|---|
+| `ghm_actor_gateway` | 25 | 24 signed `gateway_*` operations plus the signed assertion verifier; matches the Actor Gateway database privilege allow-list. |
+| `ghm_runtime` | 43 | Mixed active Resource API functions and legacy operations whose manual gateway/issuer cutovers are still pending. See exact residual allow-list below. |
+| `ghm_payment_provider` | 2 | PayFast-specific attempt lookup and settlement-result wrapper. |
+| `ghm_migrator` | 1 | Read-only `ghm.auth_lookup_business_external_mapping(text,text)`, explicitly granted by its migration. |
+
+The planned manual issuer/gateway cutovers account for 27 of the 43 pre-cutover runtime grants: 14 auth lifecycle/enrollment functions (issuer cutover), 3 capability catalogue governance functions, 2 registration identity functions, 3 legacy Business Capability mutation functions, 2 Saved Business favourite functions, 1 Business Hours function, 1 Trust Score function, and 1 Business Logo binding function. These are manual-only files and must be applied only after the relevant service/client deployment, end-to-end qualification, production role-model resolution and fresh verified backup. Their disposable qualification does not mean they have been applied to production.
+
+After those 27 planned revocations, the 16-function runtime residual in this pre-cutover matrix is:
+
+- Auth mapping/read: `auth_lookup_external_identity`, `auth_lookup_business_external_mapping`.
+- Connect service assertion replay: `connect_service_assertion_consume`.
+- Campaign: `create_campaign`, `update_campaign` (both enforce active owner/administrator membership in the function body).
+- Directory/public reads: `get_business_directory_review_presentation`, `get_public_business_hours`, `get_public_trust_score`, `list_public_trust_scores`, `is_business_capability_publicly_evidence_eligible`.
+- Storage: `storage_create_pending`, `storage_get_object`, `storage_get_public_business_logo`, `storage_mark_available`, `storage_mark_deletion_pending`, `storage_mark_deleted`.
+
+The public lookup functions enforce approved/active/verified publication predicates; the directory review presentation checks active owner/administrator membership. The five non-public storage functions remain the open database-boundary finding above. The exact signatures and ACL grantors/grantees are preserved in the retrieved inventory artifact; no role is auto-approved solely by this purpose-level grouping.
