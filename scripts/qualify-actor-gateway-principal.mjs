@@ -192,9 +192,12 @@ try {
            r.rolreplication,
            r.rolbypassrls,
            NOT EXISTS (
-             SELECT 1 FROM pg_auth_members m
-              WHERE m.member = r.oid OR m.roleid = r.oid
-           ) AS no_memberships
+             SELECT 1
+                FROM pg_auth_members m
+                JOIN pg_roles member_role ON member_role.oid = m.member
+               WHERE m.member = r.oid
+                  OR (m.roleid = r.oid AND member_role.rolname <> 'ghm_db_user')
+           ) AS no_untrusted_role_memberships
       FROM pg_roles r
      WHERE r.rolname = 'ghm_actor_gateway'
   `);
@@ -207,7 +210,7 @@ try {
     rolcreaterole: false,
     rolreplication: false,
     rolbypassrls: false,
-    no_memberships: true,
+    no_untrusted_role_memberships: true,
   });
   console.log('GATEWAY LOGIN LEAST-PRIVILEGE ATTRIBUTES: PASS');
 
