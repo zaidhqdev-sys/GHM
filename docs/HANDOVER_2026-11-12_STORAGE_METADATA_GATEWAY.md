@@ -115,3 +115,13 @@ Latest implementation commits (ordered):
 
 The most recent observed GitHub workflow/status query for commit `b2805e10e7b4d2a18566ba819b77703499b1e0ce` returned no workflow runs or status checks. This is **not** a CI pass. Check the current branch HEAD and CI again before relying on the implementation.
 
+### Latest continuation checkpoint
+
+- Additional hardening: provider key namespace is enforced in both HTTP validation and the SECURITY DEFINER create wrapper; the key must be `media/logos/<businessId>/<UUID>` for the exact authorized Business.
+- The shared assertion allow-list was checked against the preceding Connect provisioning migration and corrected to preserve all existing operation names, including Saved Business, business hours, trust score, Business Logo binding and Connect provisioning.
+- Startup privilege verifier now expects all three new wrapper signatures, and its source-contract test asserts those entries.
+- Corrected the storage migration-contract test regular expressions and added a regression assertion for all pre-existing gateway operations.
+- Latest branch HEAD at the time of this checkpoint: `e1f296175c0d0b817502cd29e34c7946b2d56f51`.
+- A fresh exact-HEAD workflow/status lookup returned no workflow runs and no status checks. Treat CI as **not yet observed**, not passed.
+- No SQL was applied to disposable or production databases in this continuation. No grant revocation, service deployment, or merge occurred.
+
