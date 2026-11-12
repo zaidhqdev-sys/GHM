@@ -176,3 +176,66 @@ test('auth issuer readiness succeeds only after its database check succeeds', as
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 });
+
+
+test('auth issuer applies the exact configured CORS origin and rejects unlisted browser origins', async () => {
+  const previous = process.env.GHM_AUTH_ISSUER_CORS_ORIGINS;
+  process.env.GHM_AUTH_ISSUER_CORS_ORIGINS = 'https://web.example,https://connect.example';
+  const app = createAuthIssuerApp({ authService, authPersistence: persistence, passwordResetService });
+  const server = app.listen(0);
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    const baseUrl = `http://127.0.0.1:${address.port}`;
+
+    const allowed = await fetch(`${baseUrl}/api/v1/auth/login`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://web.example',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'content-type',
+      },
+    });
+    assert.equal(allowed.status, 204);
+    assert.equal(allowed.headers.get('access-control-allow-origin'), 'https://web.example');
+    assert.match(allowed.headers.get('vary') ?? '', /Origin/i);
+
+    const denied = await fetch(`${baseUrl}/api/v1/auth/login`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://attacker.example',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'content-type',
+      },
+    });
+    assert.equal(denied.status, 204);
+    assert.equal(denied.headers.get('access-control-allow-origin'), null);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    if (previous === undefined) delete process.env.GHM_AUTH_ISSUER_CORS_ORIGINS;
+    else process.env.GHM_AUTH_ISSUER_CORS_ORIGINS = previous;
+  }
+});
+
+test('auth issuer enforces the native login rate limit on the registered app instance', async () => {
+  const app = createAuthIssuerApp({ authService, authPersistence: persistence, passwordResetService });
+  const server = app.listen(0);
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    const baseUrl = `http://127.0.0.1:${address.port}`;
+    const responses = [];
+    for (let index = 0; index < 11; index += 1) {
+      responses.push(await fetch(`${baseUrl}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: 'person@example.com', password: 'password' }),
+      }));
+    }
+    assert.deepEqual(responses.slice(0, 10).map((response) => response.status), Array(10).fill(200));
+    assert.equal(responses[10].status, 429);
+    assert.deepEqual(await responses[10].json(), { error: 'rate_limited' });
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
