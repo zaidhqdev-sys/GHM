@@ -372,3 +372,10 @@ The inventory remains a disposable pre-cutover baseline, not production catalog 
 - No production database, grants, roles, secrets, provider credentials, deployments, buckets or traffic were changed. No PR was merged.
 
 The next genuine storage qualification gate remains the deployed full Resource API ↔ Actor Gateway ↔ PostgreSQL ↔ external provider journey. The existing R2 bucket zaid-ghm-production is not proven to be a non-production target; do not mutate it for this work. A dedicated non-production target is required. Production cutover remains blocked by fresh verified backup, Render role-administration access and approved deployment/network/rollback planning.
+
+
+## Documentation reconciliation checkpoint — 2026-11-12 14:57 UTC
+
+After the code/qualification checkpoint at HEAD 4ba231ec566e75780ab5a435d7b365f07c1dacbc (run 43241401707, both jobs passed), the remaining storage and security handovers/contracts were reconciled. This includes the Business Logo route contract, Connect storage source audit, provider-adapter reconciliation, storage README, persistence function/boundary/qualification contracts, authorization/database authority/tenant-isolation contracts, and the November 11 full migration security and Actor Gateway readiness handovers. Historical 25-function Actor Gateway allow-list checkpoints are now explicitly distinguished from the current 30-function allow-list after the five storage wrappers.
+
+The exact docs-only head 27a39c23d99916e418e529a73cd329494212f952 passed CI run 43242508859: both quality and web-quality passed. The main code/test suite remained unchanged from the previously qualified 4ba231ec... source head; run 432425 revalidated the complete workflow after the documentation updates. No code was changed by this documentation reconciliation, no production state was touched, and no PR was merged.
