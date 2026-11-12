@@ -1343,3 +1343,56 @@ The HTTP password-reset contract currently accepts both a recovery token and an 
 ### Documentation-head correction
 
 The broadened inventory above was committed as `87cfe564c427ce51ad1f5b93f3c718af52f70189`, after the two current-state/handover commits noted immediately above. Therefore runs #3468/#3469 validate the preceding documentation head `a7dbf3c`, not this latest commit. Recheck CI against the final documentation head before treating it as qualified.
+
+
+## Follow-up — issuer boundary implementation shape (proposed, not yet implemented)
+
+The source trace confirms the current HTTP auth routes are registered inside the ordinary Resource API process (`src/http/app.ts` constructs `PostgresAuthPersistence` and calls `registerAuthRoutes`). That process currently shares the normal runtime pool/configuration. This is not the isolated issuer required by ADR-001.
+
+### Proposed isolation boundary
+
+- Move the authentication HTTP surface and its persistence/crypto dependencies into a separately deployed or demonstrably isolated GHM issuer process.
+- Give that process a dedicated `ghm_auth_issuer` LOGIN / NOINHERIT database principal. It must have no role memberships, no SET ROLE path, no DDL/table ownership, no broad table DML and only a reviewed exact EXECUTE allow-list.
+- Keep the issuer DB credential, refresh-token pepper and ES256 private signing key out of the ordinary Resource API environment. The ordinary API must not call a generic issuer SQL endpoint or supply account IDs to a privileged internal endpoint.
+- Keep the Actor Gateway DB principal distinct from the issuer DB principal. The gateway verifies access JWTs and handles typed actor operations; it is not the credential verifier or token signer.
+- Ordinary Resource API retains only public-key JWT verification and ordinary resource DB access.
+
+### Preferred database interface direction
+
+These are design candidates to qualify, not approved function signatures:
+
+| Flow | Safer DB input / binding | Required DB behavior |
+|---|---|---|
+| Registration | registration fields + Argon2 hash + refresh hash; no account ID | Create identity/credential and initial session atomically or preserve a clearly recoverable two-step transaction |
+| Login | normalized login key / opaque lookup handle + expected credential version/hash + refresh hash | Issuer-only credential lookup; create session only if the credential/account is still active and unchanged; derive account ID in SQL |
+| Rehash | credential identity + expected old hash/version + new hash | Conditional update; must not change email or credential identity as a side effect |
+| Refresh | presented refresh hash + successor hash | Existing token-bound rotation; issuer-only EXECUTE; derive account/session from stored token |
+| Logout | presented refresh hash + reason | Existing token-bound revocation; issuer-only EXECUTE |
+| Recovery request | normalized login key + recovery hash + bounded TTL | Resolve eligible active account in SQL; create token bound to that account without caller-supplied account ID; preserve HTTP anti-enumeration |
+| Password reset | recovery token hash + new password hash | One atomic token-bound operation: validate/consume token, update the same account credential, revoke all sessions; no caller-supplied account ID or email replacement |
+| QuoteFlow migration reset | migration recovery token hash + new password hash | Preserve the existing enrollment-bound, one-time atomic reset; issuer-only EXECUTE |
+| External identity lookup | provider + external subject | Keep separate from credential issuance; preserve the current Connect mapping lookup contract |
+
+The issuer must still verify Argon2id passwords in the issuer process; PostgreSQL should not be given plaintext passwords. The database must derive account/session targets from stored credential/token rows where possible and reject stale credential versions. A one-time challenge/handle is a possible login bridge, but only after its lifecycle, entropy, expiry, replay, concurrency, and transaction semantics are qualified.
+
+### Important compatibility notes
+
+- The current registration path creates the account then creates its session in a second persistence transaction. The new issuer must preserve duplicate-email behavior and avoid leaving confusing partial registration state if session creation fails.
+- Login performs a dummy Argon2 verification for unknown emails; preserve timing/anti-enumeration behavior.
+- Password rehash happens only after successful password verification; a conditional expected-hash update is needed to avoid overwriting a concurrent password change.
+- Refresh rotation and replay currently have qualified single-use/session-family semantics; do not replace them with a weaker flow.
+- Recovery request currently returns a generic 202 for ineligible/unknown accounts; preserve that behavior.
+- QuoteFlow migration reset is not ordinary password recovery. It checks enrollment, external identity binding, active account, consumes the recovery credential, changes password, revokes sessions and completes enrollment atomically.
+- Password reset currently accepts an email alongside the token and passes it to the general setter, which updates the stored login email. Resolve this contract before implementing the new token-bound reset; default security posture should be to preserve the account's existing login email unless a separately verified email-change flow is intended.
+
+### Implementation gate
+
+Before any grant change:
+1. Finish the effective-ACL matrix from the complete migration history and inspect disposable PostgreSQL catalogs as both `ghm_runtime` and the proposed issuer login.
+2. Implement the isolated issuer and typed operations in a dedicated construction branch; no production service, secrets or grants.
+3. Prove direct runtime denial for password-hash lookup, registration, password mutation, session creation, refresh, logout and recovery/migration-reset functions.
+4. Prove positive issuer registration/login/rehash/refresh/logout/recovery/QuoteFlow reset and disabled-account denial.
+5. Prove token replay, stale-hash race, wrong-account/email mismatch, duplicate registration, transaction rollback, concurrent refresh and no secret leakage.
+6. Update the API/crypto/session contracts and this handover with exact source/CI evidence before any review or merge request.
+
+This section is a technical proposal derived from the source trace; it does not silently approve a new DB role, service topology, function signature, migration or production operation.
