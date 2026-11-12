@@ -1,6 +1,10 @@
 export interface RuntimeDatabaseIdentity {
   session_user: string;
   current_user: string;
+  database_connect_privilege: boolean;
+  database_create_privilege: boolean;
+  schema_usage: boolean;
+  schema_create: boolean;
   rolcanlogin: boolean;
   rolinherit: boolean;
   rolsuper: boolean;
@@ -13,6 +17,10 @@ export interface RuntimeDatabaseIdentity {
 
 export const assertRuntimeDatabaseIdentity = (identity: RuntimeDatabaseIdentity): void => {
   const expectedFlags = {
+    database_connect_privilege: true,
+    database_create_privilege: false,
+    schema_usage: true,
+    schema_create: false,
     rolcanlogin: true,
     rolinherit: false,
     rolsuper: false,
