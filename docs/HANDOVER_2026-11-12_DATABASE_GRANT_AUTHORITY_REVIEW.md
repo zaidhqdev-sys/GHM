@@ -1450,3 +1450,65 @@ Inspected the Resource API repository implementations and their registered HTTP 
 5. Continue with the remaining production SECURITY DEFINER caller/actor-binding review and reconcile the 46-function live production set independently of the column ACL work.
 
 **Disposition:** first source-callsite tranche mapped; column-by-column approval remains OPEN. No production grant, role, migration, credential, environment, service, deployment, traffic, bucket, object or application data was changed. No PR was merged. PayFast remains paused.
+
+
+---
+
+## 2026-11-12 continuation — deployed-source comparison and notification/commercial caller clarification
+
+**Comparison refs:** deployed production source commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`; construction branch commit `2c7c055077024e9870eca8940a04eeff1a2388c5`.  
+**Method:** compared Git blob SHAs for individual source files at both refs. A matching blob SHA establishes byte-identical source for that file at those two commits.  
+**Production mutation:** none.
+
+### Verified identical repository implementations at both refs
+
+The following files have matching production and construction blob SHAs:
+
+| File | Production/construction blob SHA | Result |
+|---|---|---|
+| `src/resources/notification/repository.ts` | `1e1706c6dab2b4a7f691b59a09117ab9ec84e964` | Identical |
+| `src/resources/commercial/repository.ts` | `b40b01a8a8edaf43536586504aeae206a5ca7e07` | Identical |
+| `src/resources/review/repository.ts` | `5b9db44c2b1e9d2071e96cbdd1c0dcff99d8aa92` | Identical |
+| `src/resources/business-capability/repository.ts` | `2df0329738d242c426276dc8be06a37715bcc4c4` | Identical |
+| `src/resources/business-capability-evidence/repository.ts` | `595aa727dfa4cc8f8f2b1ef3c830464bf47517e3` | Identical |
+| `src/resources/business-category/repository.ts` | `200f08530f7a987c7907dc6b85740db6b798f9e3` | Identical |
+| `src/resources/business-offering/repository.ts` | `b9e712c2733183ad855f38db9ea6a721a7acdf33` | Identical |
+
+This is a scoped comparison of these seven files only, not proof that all 21 production INSERT tables or all 12 UPDATE tables have identical callers.
+
+### Material difference: Business Identity
+
+`src/resources/business-identity/repository.ts` differs between deployed production and construction.
+
+- **Deployed production:** implements the Business profile update path using a constrained allow-list and direct UPDATE against `ghm.business`.
+- **Construction:** the `updateBusiness()` repository method intentionally throws `Business profile must be updated through the authenticated actor gateway`.
+- **Construction HTTP surface:** `PATCH /api/v1/businesses/:businessId` remains registered in `src/http/app.ts`. The feature route remains, while the direct repository operation has been replaced with an explicit gateway-required failure.
+- **Construction also contains:** `updateAccount()`, which directly updates `ghm.account_identity`; the inspected application registration exposes no corresponding account-profile PATCH route. This remains an unresolved/dead-code candidate, not an approved revocation.
+
+**Correction to the prior source map:** the production Business profile UPDATE is a live route dependency. Do not describe its grants as unexplained or unused. The construction branch's gateway-required repository behavior is the intended replacement boundary, but the Actor Gateway route, SQL wrapper, and exact field-to-column mapping must be verified before this transition can be accepted. Confirm that gateway failure is closed and does not silently fall back to direct Resource API DML.
+
+### Notification INSERT/UPDATE caller clarification
+
+The production and construction `notification/repository.ts` files are byte-identical.
+
+- INSERT columns are exactly `user_id, type, title, body, metadata`; generated/default columns are not explicitly supplied.
+- UPDATE columns are exactly `is_read, read_at`, with a row predicate binding notification ID and `context.userId`; bulk read-all is also restricted to `context.userId` and unread rows.
+- `NotificationServiceImpl.createNotification()` restricts non-admin recipients to the authenticated account. The `lead` notification type has an additional identity-mapping restriction.
+- `src/http/app.ts` constructs the default `PostgresNotificationRepository`/service and registers `registerNotificationRoutes`. The registered INSERT entry point is authenticated `POST /api/v1/notifications`, with the registered create operation and resource-access check.
+- The inspected application wiring did not establish separate internal producer routes. The earlier phrase “multiple internal producers” is therefore **not yet substantiated**. Do not rely on it to justify broad INSERT authority. A full-repository callsite search is still needed before concluding there are no other instantiations or injected producers.
+
+### Commercial event distinction
+
+The production and construction `commercial/repository.ts` files are byte-identical. The inspected payment preparation path writes `ghm.commercial_event` with business, subscription, event type, actor account, source, idempotency key, JSON payload and occurrence time. The HTTP entry point is `POST /api/v1/internal/commercial/payment-prepare`, which verifies a Connect service assertion, replay freshness, active integration and external identity/business mapping before calling the commercial service.
+
+This is specifically `commercial_event`; it does not resolve the separately mentioned engagement-event ACL. Do not conflate those relations. PayFast activation remains paused and no payment was initiated.
+
+### Updated disposition and next actions
+
+1. Production Business profile UPDATE is confirmed live and direct at deployed commit; construction has an explicit gateway-required replacement. Verify the gateway endpoint/wrapper and field parity before any privilege decision.
+2. Account Identity direct UPDATE in construction has no matching registered account-profile route in the inspected app wiring. Trace the complete call graph and decide whether it is dead code or a missing intended feature.
+3. Notification INSERT has one verified registered authenticated route in app wiring; separate internal producers have not been established. Complete repository-wide caller search before narrowing grants.
+4. Commercial event DML is a verified internal Connect-assertion path; keep separate from engagement-event ACL findings.
+5. Continue the per-file production/construction comparison for the remaining repositories and route/service wiring. The seven identical blobs above are a partial comparison, not a global equivalence claim.
+
+**Status:** production-vs-construction comparison has identified one important gateway transition and clarified three caller assumptions. Column-by-column ACL approval remains OPEN. No production grants, roles, migrations, credentials, environment variables, Render services, deployments, traffic or application data were changed. No PR was merged. PayFast remains paused.
