@@ -25,7 +25,7 @@ const configuredTrustProxyHops = (): number => {
     }
     return 0;
   }
-  if (!/^(0|[1-9]\\d*)$/.test(raw)) {
+  if (!/^(0|[1-9]\d*)$/.test(raw)) {
     throw new Error('GHM_AUTH_ISSUER_TRUST_PROXY_HOPS must be an integer from 0 to 10');
   }
   const hops = Number(raw);
