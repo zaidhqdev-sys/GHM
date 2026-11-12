@@ -51,11 +51,7 @@ export class PostgresTrustScoreRepository implements TrustScoreRepository {
     const id = requirePositiveId(businessId, 'businessId');
     return withTransaction(async (client) => {
       const result = await client.query(
-        `SELECT ${COLUMNS}
-         FROM ghm.trust_score ts
-         JOIN ghm.business b ON b.id = ts.business_id
-         WHERE ts.business_id = $1
-           AND ${PUBLIC_VISIBLE}`,
+        `SELECT * FROM ghm.get_public_trust_score($1)`,
         [id],
       );
       return result.rowCount === 1 ? mapTrustScore(result.rows[0]) : null;
@@ -91,12 +87,7 @@ export class PostgresTrustScoreRepository implements TrustScoreRepository {
     const level = requireTrustLevel(trustLevel);
     return withTransaction(async (client) => {
       const result = await client.query(
-        `SELECT ${COLUMNS}
-         FROM ghm.trust_score ts
-         JOIN ghm.business b ON b.id = ts.business_id
-         WHERE ts.trust_level = $1
-           AND ${PUBLIC_VISIBLE}
-         ORDER BY ts.total_score DESC, ts.id DESC`,
+        `SELECT * FROM ghm.list_public_trust_scores($1) ORDER BY total_score DESC, id DESC`,
         [level],
       );
       return result.rows.map(mapTrustScore);

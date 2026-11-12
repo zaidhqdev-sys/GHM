@@ -13,8 +13,6 @@ import type {
   AuthenticationSessionRecord,
   CreateSessionWithRefreshResult,
   ExternalIdentityMapping,
-  LinkExternalIdentityOutcome,
-  LinkExternalIdentityResult,
   LinkBusinessExternalMappingOutcome,
   LinkBusinessExternalMappingResult,
   PasswordCredentialLookup,
@@ -53,7 +51,7 @@ const raiseFromPg = (error: unknown): never => {
   if (message.includes('REFRESH_CREDENTIAL_INVALID')) {
     throw new AuthPersistenceError('Refresh credential invalid', 'REFRESH_CREDENTIAL_INVALID');
   }
-  if (message.includes('RECOVERY_CREDENTIAL_INVALID')) {
+  if (message.includes('RECOVERY_CREDENTIAL_INVALID') || message.toLowerCase().includes('invalid recovery token')) {
     throw new AuthPersistenceError('Recovery credential invalid', 'RECOVERY_CREDENTIAL_INVALID');
   }
   if (message.includes('SESSION_REVOKED')) {
@@ -113,15 +111,6 @@ export interface AuthPersistence {
   createSessionWithRefresh(accountId: number): Promise<CreateSessionResult>;
   validateSession(sessionId: number): Promise<SessionValidationResult>;
   rotateRefresh(refreshTokenWire: string): Promise<RotateRefreshPersistenceResult>;
-  revokeSession(sessionId: number, reason?: RevokeReason): Promise<boolean>;
-  revokeAllSessionsForAccount(accountId: number, reason?: RevokeReason): Promise<number>;
-  changePassword(
-    accountId: number,
-    keepSessionId: number,
-    email: string,
-    password: string,
-  ): Promise<{ password: PasswordHashResult; revokedSessionCount: number }>;
-  disableAccount(accountId: number): Promise<void>;
   issueRecovery(accountId: number, ttlMinutes?: number): Promise<{ recoveryTokenWire: string; credentialId: number; expiresAt: Date }>;
   redeemRecovery(recoveryTokenWire: string): Promise<number>;
   resetPasswordWithRecovery(
@@ -132,17 +121,6 @@ export interface AuthPersistence {
   lookupQuoteFlowMigrationResetEnrollment(email: string): Promise<{ enrollmentId: number; accountId: number; approvedEmail: string } | null>;
   completeQuoteFlowMigrationReset(recoveryTokenWire: string, password: string): Promise<{ accountId: number; loginEmail: string; revokedSessionCount: number }>;
   lookupExternalIdentity(provider: string, subject: string): Promise<ExternalIdentityMapping | null>;
-  bootstrapExternalIdentity(
-    provider: string,
-    subject: string,
-    fullName?: string | null,
-    role?: 'customer' | 'business',
-  ): Promise<ExternalIdentityMapping & { created: boolean }>;
-  linkExternalIdentity(
-    provider: string,
-    subject: string,
-    accountId: number,
-  ): Promise<LinkExternalIdentityResult>;
   linkBusinessExternalMapping(
     provider: string,
     externalBusinessId: string,
@@ -324,77 +302,6 @@ export class PostgresAuthPersistence implements AuthPersistence {
     };
   }
 
-  async revokeSession(sessionId: number, reason: RevokeReason = 'logout'): Promise<boolean> {
-    try {
-      const result = await this.tx(async (client) =>
-        client.query(`SELECT ghm.auth_revoke_session($1, $2) AS revoked`, [sessionId, reason]),
-      );
-      return Boolean(result.rows[0]?.revoked);
-    } catch (error) {
-      throw mapPgError(error);
-    }
-  }
-
-  async revokeAllSessionsForAccount(
-    accountId: number,
-    reason: RevokeReason = 'password_recovery',
-  ): Promise<number> {
-    try {
-      const result = await this.tx(async (client) =>
-        client.query(`SELECT ghm.auth_revoke_all_sessions_for_account($1, $2) AS count`, [
-          accountId,
-          reason,
-        ]),
-      );
-      return Number(result.rows[0]?.count ?? 0);
-    } catch (error) {
-      throw mapPgError(error);
-    }
-  }
-
-  async changePassword(
-    accountId: number,
-    keepSessionId: number,
-    email: string,
-    password: string,
-  ): Promise<{ password: PasswordHashResult; revokedSessionCount: number }> {
-    const normalized = normalizeLoginEmail(email);
-    const hashed = await this.passwordHasher.hash(password);
-    try {
-      const result = await this.tx(async (client) =>
-        client.query(
-          `SELECT ghm.auth_change_password($1, $2, $3, $4, $5, $6, $7, $8) AS revoked`,
-          [
-            accountId,
-            keepSessionId,
-            normalized.loginEmail,
-            normalized.loginEmailNormalized,
-            hashed.passwordHash,
-            hashed.argon2MemoryKib,
-            hashed.argon2TimeCost,
-            hashed.argon2Parallelism,
-          ],
-        ),
-      );
-      return {
-        password: hashed,
-        revokedSessionCount: Number(result.rows[0]?.revoked ?? 0),
-      };
-    } catch (error) {
-      throw mapPgError(error);
-    }
-  }
-
-  async disableAccount(accountId: number): Promise<void> {
-    try {
-      await this.tx(async (client) => {
-        await client.query(`SELECT ghm.auth_disable_account($1)`, [accountId]);
-      });
-    } catch (error) {
-      throw mapPgError(error);
-    }
-  }
-
   async issueRecovery(
     accountId: number,
     ttlMinutes: number = 30,
@@ -446,8 +353,8 @@ export class PostgresAuthPersistence implements AuthPersistence {
     const hashed = await this.passwordHasher.hash(password);
     try {
       const result = await this.tx(async (client) => {
-        const redeemed = await client.query(
-          `SELECT ghm.auth_redeem_recovery($1) AS account_id`,
+        const redeemed = await client.query<{ account_id: string | number; revoked_session_count: number | string }>(
+          `SELECT account_id, revoked_session_count FROM ghm.auth_redeem_recovery_with_count($1)`,
           [tokenHash],
         );
         if (redeemed.rowCount !== 1) {
@@ -469,11 +376,7 @@ export class PostgresAuthPersistence implements AuthPersistence {
         if (passwordResult.rowCount !== 1) {
           throw new AuthPersistenceError('Password reset failed');
         }
-        const revoked = await client.query(
-          `SELECT ghm.auth_revoke_all_sessions_for_account($1, $2) AS count`,
-          [accountId, 'password_recovery'],
-        );
-        return Number(revoked.rows[0]?.count ?? 0);
+        return Number(redeemed.rows[0].revoked_session_count ?? 0);
       });
       return { password: hashed, revokedSessionCount: result };
     } catch (error) {
@@ -546,79 +449,6 @@ export class PostgresAuthPersistence implements AuthPersistence {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
-  }
-
-  async bootstrapExternalIdentity(
-    provider: string,
-    subject: string,
-    fullName: string | null = null,
-    role: 'customer' | 'business' = 'customer',
-  ): Promise<ExternalIdentityMapping & { created: boolean }> {
-    try {
-      const result = await this.tx(async (client) =>
-        client.query(`SELECT * FROM ghm.auth_bootstrap_external_identity($1, $2, $3, $4)`, [
-          provider,
-          subject,
-          fullName,
-          role,
-        ]),
-      );
-      if (result.rowCount !== 1) throw new AuthPersistenceError('Bootstrap failed');
-      const row = result.rows[0];
-      return {
-        id: Number(row.id),
-        provider: String(row.provider),
-        subject: String(row.subject),
-        accountId: Number(row.account_id),
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-        created: Boolean(row.created),
-      };
-    } catch (error) {
-      throw mapPgError(error);
-    }
-  }
-
-  async linkExternalIdentity(
-    provider: string,
-    subject: string,
-    accountId: number,
-  ): Promise<LinkExternalIdentityResult> {
-    try {
-      const result = await this.tx(async (client) =>
-        client.query(`SELECT * FROM ghm.auth_link_external_identity($1, $2, $3)`, [
-          provider,
-          subject,
-          accountId,
-        ]),
-      );
-      if (result.rowCount !== 1) throw new AuthPersistenceError('Link external identity failed');
-      const row = result.rows[0];
-      const outcome = String(row.outcome) as LinkExternalIdentityOutcome;
-      if (outcome === 'account_not_found') {
-        return { outcome, mapping: null };
-      }
-      if (
-        outcome !== 'created' &&
-        outcome !== 'already_linked' &&
-        outcome !== 'conflict'
-      ) {
-        throw new AuthPersistenceError(`Unexpected link outcome: ${outcome}`, 'LINK_UNEXPECTED_OUTCOME');
-      }
-      return {
-        outcome,
-        mapping: {
-          id: Number(row.id),
-          provider: String(row.provider),
-          subject: String(row.subject),
-          accountId: Number(row.account_id),
-          createdAt: row.created_at,
-          updatedAt: row.updated_at,
-        },
-      };
-    } catch (error) {
-      throw mapPgError(error);
-    }
   }
 
   async linkBusinessExternalMapping(

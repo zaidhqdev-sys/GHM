@@ -4,7 +4,7 @@ import path from 'node:path';
 import { Client } from 'pg';
 
 const repoRoot = process.cwd();
-const REQUIRED = ['DATABASE_URL', 'GHM_MIGRATOR_DATABASE_URL'];
+const REQUIRED = ['GHM_MIGRATOR_DATABASE_URL'];
 const LEGACY_ROLES = ['ghm_app_user', 'ghm_db_user'];
 const CANONICAL_ROLES = ['ghm_runtime', 'ghm_migrator', 'ghm_schema_owner'];
 const LEGACY_OBJECTS = ['public.users', 'public.profiles', 'public.todos', 'public.files', 'public.password_reset_tokens'];
@@ -43,7 +43,8 @@ const migrateSource = await readFile(path.join(repoRoot, 'src', 'db', 'migrate.t
 const recoverySource = await readFile(path.join(repoRoot, 'src', 'auth', 'password-recovery.ts'), 'utf8');
 const migrationResetSource = await readFile(path.join(repoRoot, 'src', 'migrations', 'quoteflow-migration-reset-recovery.ts'), 'utf8');
 
-if (!/required\('DATABASE_URL'\)/.test(configSource)) failures.push('runtime configuration does not require DATABASE_URL');
+if (!/required\('GHM_RUNTIME_DATABASE_URL'\)/.test(configSource)) failures.push('production runtime configuration does not require GHM_RUNTIME_DATABASE_URL');
+if (!/required\('DATABASE_URL'\)/.test(configSource)) failures.push('non-production runtime configuration does not retain the DATABASE_URL fallback');
 if (!/connectionString:\s*config\.databaseUrl/.test(poolSource)) failures.push('canonical runtime pool does not use config.databaseUrl');
 if (!/process\.env\.GHM_MIGRATOR_DATABASE_URL\?\.trim\(\)/.test(migrateSource)) failures.push('migration runner does not require GHM_MIGRATOR_DATABASE_URL');
 if (!/SET ROLE \$\{MIGRATION_OWNER_ROLE\}/.test(migrateSource) || !/MIGRATION_OWNER_ROLE = 'ghm_schema_owner'/.test(migrateSource)) failures.push('migration runner does not explicitly enter ghm_schema_owner');
@@ -51,6 +52,9 @@ if (!/new PostgresAuthPersistence\(\)/.test((await readFile(path.join(repoRoot, 
 if (!/persistence\.issueRecovery/.test(recoverySource)) failures.push('password recovery does not use canonical persistence boundary');
 if (!/persistence\.lookupQuoteFlowMigrationResetEnrollment/.test(migrationResetSource)) failures.push('QuoteFlow migration reset does not use canonical persistence boundary');
 
+if (!process.env.GHM_RUNTIME_DATABASE_URL?.trim() && !process.env.DATABASE_URL?.trim()) {
+  failures.push('missing runtime database credential: set GHM_RUNTIME_DATABASE_URL (production) or DATABASE_URL (non-production fallback)');
+}
 for (const name of REQUIRED) if (!process.env[name]?.trim()) failures.push(`missing required environment variable: ${name}`);
 
 const safeIdentity = async (label, url) => {
@@ -129,7 +133,7 @@ console.log(JSON.stringify({
     legacy_roles: 'ghm_app_user and ghm_db_user have no application/runtime authority; retire only after legacy data/object disposition and independent provider authority are resolved'
   },
   dependency_boundary: {
-    runtime_application_credential: 'DATABASE_URL -> ghm_runtime',
+    runtime_application_credential: 'GHM_RUNTIME_DATABASE_URL (production); DATABASE_URL (non-production fallback) -> ghm_runtime',
     migration_credential: 'GHM_MIGRATOR_DATABASE_URL -> ghm_migrator',
     recovery_and_migration_reset: 'canonical GHM Postgres auth persistence boundary',
     legacy_audit_credential: 'GHM_LEGACY_AUDIT_DATABASE_URL is one-off audit input only; not a runtime or migration dependency'

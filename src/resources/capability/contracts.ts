@@ -27,6 +27,15 @@ export interface Capability {
   updatedAt: Date;
 }
 
+export interface CapabilityDraftInput {
+  readonly name: string;
+  readonly slug: string;
+  readonly description?: string | null;
+  readonly parentId?: CapabilityId | null;
+  readonly sortOrder?: number;
+  readonly sourceReference?: string | null;
+}
+
 export interface CapabilityRepository {
   getCapability(
     context: AuthContext,
@@ -40,6 +49,11 @@ export interface CapabilityRepository {
   listSelectableCapabilities(
     context: AuthContext,
   ): Promise<Capability[]>;
+
+  listGoverned(context: AuthContext): Promise<Capability[]>;
+  createDraft(context: AuthContext, input: CapabilityDraftInput): Promise<Capability>;
+  updateDraft(context: AuthContext, capabilityId: CapabilityId, input: CapabilityDraftInput): Promise<Capability>;
+  transition(context: AuthContext, capabilityId: CapabilityId, targetStatus: CapabilityLifecycle, replacedByCapabilityId?: CapabilityId | null): Promise<Capability>;
 }
 
 export interface CapabilityService {
@@ -55,6 +69,11 @@ export interface CapabilityService {
   listSelectableCapabilities(
     context: AuthContext,
   ): Promise<Capability[]>;
+
+  listGoverned(context: AuthContext): Promise<Capability[]>;
+  createDraft(context: AuthContext, input: CapabilityDraftInput): Promise<Capability>;
+  updateDraft(context: AuthContext, capabilityId: CapabilityId, input: CapabilityDraftInput): Promise<Capability>;
+  transition(context: AuthContext, capabilityId: CapabilityId, targetStatus: CapabilityLifecycle, replacedByCapabilityId?: CapabilityId | null): Promise<Capability>;
 }
 
 export const CAPABILITY_OPERATIONS = Object.freeze({
