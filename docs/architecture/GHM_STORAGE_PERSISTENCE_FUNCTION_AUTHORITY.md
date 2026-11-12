@@ -20,7 +20,7 @@ Those functions use PostgreSQL `SECURITY DEFINER` deliberately because the persi
 
 `SECURITY INVOKER` cannot implement this boundary: the runtime caller has no table DML privilege by design, so lifecycle mutation would fail.
 
-`SECURITY DEFINER` is therefore used as a controlled privilege boundary rather than as an authorization substitute. The owner is the non-login canonical schema owner, the function search path is fixed, and execution is restricted to the runtime role.
+`SECURITY DEFINER` is used as a controlled privilege boundary rather than as an authorization substitute. The legacy direct persistence functions remain owned by the non-login canonical schema owner with fixed search paths and historical runtime EXECUTE grants. The newer signed gateway wrappers are separately owned by `ghm_schema_owner`, grant EXECUTE only to `ghm_actor_gateway`, and establish actor/tenant authority checks inside PostgreSQL.
 
 ## Qualification gate
 
@@ -32,7 +32,7 @@ The storage persistence qualification must prove both sides of the boundary:
 4. the terminal deleted state is recorded;
 5. no public function execution is available.
 
-This persistence gate did not qualify provider credentials, object upload/download, tenant authorization, provider reconciliation, or backup/recovery. A later controlled live-provider data-path qualification passed signed upload/download, payload integrity, and deletion against Cloudflare R2; see `../evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-05.md`. Full service-level tenant/resource authorization, provider/orphan reconciliation, backup/recovery, HTTP/product exposure, and production provider enablement remain open.
+Historical scope of the October persistence gate: it did not qualify provider credentials, object upload/download, tenant authorization, provider reconciliation, or backup/recovery. A later controlled live-provider data-path qualification passed signed upload/download, payload integrity, and deletion against Cloudflare R2; see `../evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-05.md`. The November signed Actor Gateway storage wrappers and Resource API gateway integration now implement and pass disposable PostgreSQL 18 tenant/actor authorization qualification. Provider/orphan reconciliation, backup/recovery, production provider enablement, and production legacy-grant cutover remain open.
 
 ## Documentation reconciliation
 
@@ -43,7 +43,7 @@ No provider provisioning is authorized by this change.
 
 ## Account-scoped metadata lookup — proposed, not live-applied
 
-Migration `20261026120000_scope_storage_metadata_lookup.sql` replaces the ID-only `storage_get_object(bigint)` with `storage_get_object(bigint,bigint)`. It returns an active public business-logo record only for an active business, or a record for which the supplied account has an active membership in the business; missing and unauthorized IDs share one error. The old unscoped signature is dropped, and runtime callers now pass `AuthContext.userId`. This is defense in depth, not a database-authenticated end-user identity: a shared runtime DB role can invoke a function with caller-supplied parameters, so application authorization must remain authoritative. Apply only through the normal reviewed migration process after CI, disposable-database tests, and migration-ledger reconciliation pass. No live database function was changed by this source commit.
+Historical getter-scope checkpoint: migration `20261026120000_scope_storage_metadata_lookup.sql` replaces the ID-only `storage_get_object(bigint)` with `storage_get_object(bigint,bigint)` and checks active public visibility or supplied-account membership. This remains defense in depth for the legacy function, not a database-authenticated actor identity. The new `gateway_storage_get_object` wrapper verifies the signed Actor Gateway assertion and is the application-facing read path. Production still retains the legacy runtime grant until the separately approved cutover; disposable PostgreSQL 18 revocation and exact rollback have passed.
 
 
 ## 2026-11-12 security-boundary reconciliation — persistence is not actor authorization
