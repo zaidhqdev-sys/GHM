@@ -137,3 +137,25 @@ Inspected the full storage service, HTTP routes, storage tests, storage migratio
 
 This refinement is design-only; no provider transition wrapper, secret, secret table, transport header, or production configuration was created. The existing direct runtime function grants remain unchanged.
 
+## Provider-transition database stage added (not yet integrated)
+
+A second database migration now exists: `database/migrations/20261112150000_add_storage_provider_workflow_attestation.sql`.
+
+It adds:
+- A separate protected 32-byte provider-attestation secret table and one-use nonce table.
+- A domain-separated `ghm-storage-provider:v1` HMAC verifier, executable only through schema-owner-owned wrappers, checking Actor Gateway session identity, operation, 60-second age, full 32-byte comparison and replay.
+- `gateway_storage_mark_available` and `gateway_storage_mark_deleted` dual-proof wrappers. Each requires the existing user actor assertion plus the separate Resource API provider attestation, binds the evidence to the stored Business/object/provider key/metadata, requires an active owner/administrator, locks the row, and enforces the exact pending/deletion_pending state transition.
+- Both new wrapper signatures are included in the Actor Gateway startup ACL allow-list and a new migration-contract test.
+
+A guarded disposable-only provisioning script was added at `scripts/provision-storage-provider-attestation-secret.mjs`. It requires an explicit qualification database URL and mutation opt-in, verifies `session_user=current_user=ghm_migrator`, checks the database name, uses `SET LOCAL ROLE ghm_schema_owner`, and never logs the secret value. This is a qualification/provisioning precedent only; it does not authorize production provisioning.
+
+**Still not complete:** the Resource API signer, service-attestation transport, Actor Gateway reader/route forwarding, and Storage Metadata Gateway client integration are not yet implemented. No provider secret was provisioned. No migration was applied. Legacy runtime grants remain. Do not interpret the wrappers as an active cutover.
+
+Latest code commits for this provider stage:
+- `13392ac82502613f7533ade85e5d8773c6fafb20` — provider attestation tables, verifier and dual-proof wrappers.
+- `976b372bb055d1416f6d471aef00f7cfb62e1303` — startup ACL allow-list includes provider wrappers.
+- `d473e4e010f714ebef822a3238fabcc9a2470132` — startup ACL source-contract checks.
+- `8e3c02c6b0151efa28bbf8ca0210cdd963e32d3d` — provider attestation migration contract tests.
+- `3e6fbaebe300ed00bd0a6127677798c3982484b8` — guarded disposable secret provisioning script.
+- `66d92971cb1d14293c8c8ce4c600b5cd63ce303e` — actor assertion operation regression test includes both provider transitions.
+
