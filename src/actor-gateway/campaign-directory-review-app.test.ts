@@ -30,7 +30,7 @@ const presentation: DirectoryReviewPresentation = {
   directory_review_submitted_at: null, directory_review_last_reason: null, directory_review_last_event_type: null,
 };
 
-const run = async (work: (baseUrl: string) => Promise<void>) => {
+const run = async (work: (baseUrl: string, calls: unknown[]) => Promise<void>) => {
   const calls: unknown[] = [];
   const reader: CampaignDirectoryReviewGatewayReader = {
     async createCampaign(actor, input) { calls.push({ operation: 'create', actor, input }); return campaign; },
