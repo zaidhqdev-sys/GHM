@@ -105,8 +105,10 @@ REVOKE ALL ON FUNCTION ghm.auth_register_quoteflow_migration_reset_enrollment(bi
   FROM PUBLIC, ghm_runtime, ghm_auth_issuer;
 
 -- Connect's lookup-only external identity operation deliberately remains
--- available to ghm_runtime. Business external mapping remains a separate
--- resource integration and is not part of this issuer cutover.
+-- available to ghm_runtime. Connect Business provisioning also calls
+-- auth_link_business_external_mapping inside its authorized creation transaction;
+-- preserve that grant until the complete provisioning transaction moves behind
+-- a signed Actor Gateway operation. This issuer cutover does not revoke it.
 
 GRANT EXECUTE ON FUNCTION ghm.auth_reset_password_with_recovery(bytea, text, text, integer, integer, integer)
   TO ghm_auth_issuer;
