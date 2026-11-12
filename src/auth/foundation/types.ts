@@ -116,19 +116,6 @@ export interface BusinessExternalMapping {
   updatedAt: Date;
 }
 
-/** Outcomes from ghm.auth_link_business_external_mapping — never raw PG errors. */
-export type LinkBusinessExternalMappingOutcome =
-  | 'created'
-  | 'already_linked'
-  | 'conflict'
-  | 'business_not_found';
-
-export interface LinkBusinessExternalMappingResult {
-  outcome: LinkBusinessExternalMappingOutcome;
-  /** Present for created | already_linked | conflict; null for business_not_found. */
-  mapping: BusinessExternalMapping | null;
-}
-
 export interface PasswordCredentialLookup {
   accountId: number;
   loginEmail: string;
