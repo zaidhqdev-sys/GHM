@@ -60,7 +60,7 @@ export const createRequireResourceAuth = (
       .authenticateAndLoadState(req)
       .then(({ context, state }) => {
         req.ghmAuthContext = context;
-        req.authContext = authContextFromAccountState(context.accountId, state, req.header('authorization')?.slice('Bearer '.length).trim());
+        req.authContext = authContextFromAccountState(context.accountId, state, token);
         next();
       })
       .catch((error: unknown) => {
