@@ -1382,3 +1382,8 @@ Run `43329488561` on `0e986e448028a1a78e733b33b893b49721b2a8f4`: web-quality pas
 Run `43329488561` passed both CI jobs, but inspection of its artifact found that the purported post-cutover inventory was captured after the qualification script had exercised rollback and left disposable PostgreSQL rolled back. Its 27 runtime direct grants (including 16 auth functions) and zero issuer grants therefore did not prove post-cutover state. Do not use the old comparison as cutover evidence.
 
 Updated the qualification script to reapply the guarded issuer cutover after rollback checks and fixture cleanup, verify the exact runtime and issuer allow-lists, and leave disposable PostgreSQL in cutover state for the subsequent inventory step. Added a source-contract regression test and corrected the final issuer allow-list SQL escape. Exact-head run `43330073708` on `6778b015b388f782c2d1bf9e77cbb03a65254fbe` is queued/in progress. Full evidence in security handover. No production changes or merges.
+
+
+## 2026-11-13 — qualification syntax failure corrected
+
+Run `43330073708` failed at `node --check scripts/qualify-auth-issuer-cutover.mjs` because literal backslash-n characters had been inserted into the JSON summary object. The failure occurred before disposable migration/cutover/inventory steps; no production impact. Corrected with commit `2fe38cb56ca560cb57d145d8bcc37a574ac15a7a`; exact-head run `43330297297` is queued for quality and web-quality. See full security handover. No production changes, merge or deployment.
