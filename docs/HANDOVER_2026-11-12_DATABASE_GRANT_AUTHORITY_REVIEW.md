@@ -1512,3 +1512,95 @@ This is specifically `commercial_event`; it does not resolve the separately ment
 5. Continue the per-file production/construction comparison for the remaining repositories and route/service wiring. The seven identical blobs above are a partial comparison, not a global equivalence claim.
 
 **Status:** production-vs-construction comparison has identified one important gateway transition and clarified three caller assumptions. Column-by-column ACL approval remains OPEN. No production grants, roles, migrations, credentials, environment variables, Render services, deployments, traffic or application data were changed. No PR was merged. PayFast remains paused.
+
+
+---
+
+## 2026-11-12 continuation — Business profile Actor Gateway end-to-end source qualification
+
+**Source ref:** `9f56a6d0207506c3b1c942aab82c85ff7c8e7269`.  
+**Production comparison ref:** `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`.  
+**Production mutation:** none; no database was connected or modified.
+
+### 1. Resource API route and fail-closed behavior
+
+The construction branch's `PATCH /api/v1/businesses/:businessId` route no longer invokes the direct Business profile repository UPDATE.
+
+- The route parses and validates the profile patch.
+- `isSupplier` is accepted only as a single-field operation and sent to the separate Supplier Classification Gateway.
+- All other supported profile fields require `businessProfileGatewayClient`.
+- If the client is absent, the route returns HTTP 503; it does not call `service.updateBusiness()` as a fallback.
+- The route forwards the original bearer token to the gateway, then reads the managed Business after the gateway write succeeds.
+- Gateway errors are mapped to explicit 4xx responses or 503. The client test confirms a gateway 404 is propagated as a `BusinessProfileGatewayError`, not followed by a direct SQL fallback.
+
+The repository implementation independently reinforces this: construction `PostgresBusinessIdentityRepository.updateBusiness()` throws `Business profile must be updated through the authenticated actor gateway`. This is a second fail-closed guard if another caller attempts to use the legacy method.
+
+Gateway client construction is conditional on `config.actorGatewayUrl`. Missing URL therefore leaves the profile client undefined and the PATCH route returns 503. The inspected route does not have a legacy write fallback.
+
+### 2. Actor Gateway endpoint and identity derivation
+
+The Actor Gateway:
+
+- Authenticates the bearer token with the configured ES256 access JWT verifier in middleware.
+- Derives `accountId` from the verified token's `sub`; the route does not accept an actor ID from the request body.
+- Exposes `PATCH /v1/businesses/:businessId/profile`.
+- Validates positive Business ID and a non-empty object patch with a field allow-list.
+- Returns 503 if `businessProfileReader` is not configured.
+- Calls `updateBusinessProfile(verifiedAccountId, businessId, patch)`.
+- Maps authorization/not-found SQL states to 404, validation SQL states to 400, and unexpected database failures to 503.
+
+The production Actor Gateway server constructs `PostgresBusinessProfileReader` with its own `GHM_ACTOR_GATEWAY_DATABASE_URL` pool and required 32-byte `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET`. Startup also checks the database session identity and database privileges before listening. The normal Resource API does not perform the profile UPDATE using its own DB pool.
+
+### 3. Signed assertion and database enforcement
+
+The gateway reader creates a one-use HMAC assertion using the verified JWT actor ID, operation `business.profile.update`, timestamp, nonce, and exact JSON context `{businessId, patch}`.
+
+The reader calls the seven-argument SQL wrapper:
+`ghm.gateway_update_business_profile(actor, issued_at, nonce, context, signature, business_id, patch)`.
+
+The final request-context migration `20261111060000_bind_gateway_assertions_to_request_context.sql`:
+
+- Replaces the older assertion verifier with v2 context-bound HMAC.
+- Requires `session_user = 'ghm_actor_gateway'`.
+- Restricts assertion operation to the explicit allow-list including `business.profile.update`.
+- Enforces a 60-second timestamp window, 32-byte secret, full 32-byte MAC comparison, active account and one-use nonce.
+- Checks the signed context equals the actual wrapper arguments: `jsonb_build_object('businessId', p_business, 'patch', p_patch)`.
+- Calls the underlying `ghm.update_business_profile(actor, business, patch)` only after assertion verification.
+
+The underlying profile function independently requires an active Business membership with role `owner` or `administrator`, validates the patch and updates only its explicit allow-list. The gateway wrapper rejects `isSupplier`/ `is_supplier` and delegates that capability to its separate dedicated operation.
+
+The final migration revokes PUBLIC, `ghm_runtime` and `ghm_migrator` execution on the gateway wrapper and grants execution to `ghm_actor_gateway`. The earlier gateway migration also revoked `ghm_runtime` execution on the legacy `ghm.update_business_profile(bigint,bigint,jsonb)` function. The wrapper is SECURITY DEFINER, owned by `ghm_schema_owner`, with pinned `pg_catalog,ghm` search path.
+
+### 4. Field contract and identified consistency issue
+
+The Actor Gateway endpoint allow-list includes:
+`name, slug, description, phone, email, category, province, city, physicalAddress, whatsapp, website, yearsInBusiness, latitude, longitude, avatarLetter, avatarColor`.
+
+The database function validates these keys (including the conditional `category` column check), plus the separate supplier classification key which the gateway wrapper explicitly refuses.
+
+The Resource API's `parseUpdateBusinessInput()` allow-list currently omits `category`, although the Actor Gateway endpoint and database function accept it. This is not an authorization bypass, but it is a contract mismatch: a caller through the Resource API cannot update `category` even though a direct Actor Gateway caller can. Keep this explicit as a compatibility decision; do not silently broaden it during privilege qualification.
+
+The Resource API parser additionally enforces paired latitude/longitude, type/range constraints, and a maximum of 100 years in business. The database function independently validates coordinate bounds/pairing and allows years through 500. Actor Gateway endpoint relies on database validation for these deeper field constraints. Because the Resource API route is the intended public entry point, its stricter validation applies there; direct Actor Gateway callers must still satisfy database validation. Confirm whether the 100-versus-500 limit is intentional before claiming full API/DB validation parity.
+
+### 5. Test evidence and remaining gaps
+
+Present tests found:
+- `src/http/business-profile-gateway-client.test.ts`: bearer forwarding, exact URL/body, gateway denial propagation without fallback, HTTPS-only remote gateway origin.
+- `src/db/actor-gateway-business-profile-assertion-migration-contract.test.ts`: signed operation binding, assertion age/replay-related migration markers, full MAC-byte comparison and wrapper grants/revokes.
+
+Qualification gaps:
+- No dedicated `business-profile-reader.test.ts` was present in the repository tree at this ref.
+- No focused Actor Gateway HTTP route test for the Business profile endpoint was present in `src/actor-gateway/app.test.ts`.
+- The SQL migration contract test is largely regex/contract based; it does not execute adversarial database cases for forged actor, wrong context, replay, inactive actor, non-member, member-not-owner/admin, or unsupported fields.
+- No disposable PostgreSQL execution evidence for this exact profile wrapper was retrieved in this pass.
+- No production proof that the required gateway service, dedicated DB principal, secrets and migration are currently deployed. The construction branch source is not proof of live production state.
+
+### 6. Decision
+
+**Source-level design:** the Business profile write path is correctly routed through the isolated Actor Gateway in the construction branch. JWT identity is independently verified by the gateway; the database independently requires the dedicated gateway session and signed operation/context assertion; the underlying function enforces active owner/administrator membership. Resource API and repository fail closed with no direct-DML fallback.
+
+**Production/cutover decision:** NOT QUALIFIED for production cutover yet. The above is source inspection only. Existing production direct UPDATE privileges must not be revoked based on this review until (a) the construction branch has passed exact-head CI, (b) disposable PostgreSQL adversarial qualification covers the enumerated cases, (c) production gateway deployment/configuration and dedicated principal are independently confirmed, and (d) the full production column ACL rows are mapped to the deployed migration/function contracts.
+
+**Next actions:** add focused reader and HTTP route tests; add disposable PostgreSQL adversarial coverage for signed actor/context/nonce and membership authority; resolve/document `category` and years-limit contract differences; compare all Business profile ACL columns against the underlying function's actual UPDATE list and current production migration state.
+
+No production role/grant/migration/credential/environment/service/deployment/traffic/data changes. No merge. PayFast remains paused.
