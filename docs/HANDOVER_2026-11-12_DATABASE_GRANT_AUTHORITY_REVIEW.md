@@ -2246,3 +2246,27 @@ The integrated branch also has no separately deployed production Actor Gateway o
 6. Do not change Render credentials, environment variables, role memberships, grants, service branch, auto-deploy, deployments or database objects during this qualification.
 
 **No production mutation occurred in this checkpoint.** The only production interaction was read-only role catalog inspection and Render service metadata retrieval. PR #274 was a documentation-only merge. No production credential, role, grant, membership, migration, secret, environment variable, service configuration, deployment, application data or traffic was changed. PayFast and legal publication remain paused.
+
+
+### 7. Render's actual latest deployed commit independently confirmed
+
+Render deployment history for `GHM-Internal-Runtime` was checked after the service metadata review. Its latest live deployment is:
+- Deploy ID: `dep-dbpmv8jrjlhs73abkli0`
+- Commit: `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`
+- Deploy finished: `2026-11-10T19:26:11.350836Z`
+- Status: `live`
+- Trigger: manual.
+
+This independently confirms the production service is still running the old `c7cf1eb` source snapshot. The role-boundary implementation on the construction/integration branch is not deployed. Auto deploy remains OFF; no deployment was triggered.
+
+The production source ref and current Render deployment ref are therefore the same exact commit for the purposes of this qualification. Do not infer that mainline documentation merges update the service: the Render service is pinned to branch `main`, but auto deploy is OFF and the deployed commit remains `c7cf1eb`.
+
+### 8. PR/branch advancement decision
+
+- PR #274: docs-only, exact-head `quality` and `web-quality` passed; marked ready and squash-merged to main as `744b91f`. This is complete.
+- PR #272: latest integration head `382c888` passed `quality`, `web-quality` and Cloudflare Pages, but GitHub reports `mergeable=false` / `mergeable_state=dirty`; it is a 672-commit, 164-file stacked integration. Do not merge as-is.
+- PRs #268, #269, #270 and #271 remain draft component/stack PRs. Their code is represented in the integrated #272 candidate, but must be reconciled against the new mainline and each dependency before any merge. Do not independently merge a child branch while its base is another unmerged draft stack.
+- PR #243/#244 remain draft marketplace/analytics work with their own stacked dependencies and production parity/entitlement questions. They are not prerequisites for the Resource API credential-only principal correction and should not be bundled into it.
+- The construction branch exact-head run `43317737320` on `e2ae770` completed successfully (`quality`, `web-quality`, Cloudflare Pages). The handover-only commit in this file still needs its own exact-head CI after this append.
+
+The next engineering move should be a small mainline-based Resource API runtime-principal integration (or an explicitly bounded branch rebuilt on current main), not an attempt to merge the entire #272 stack. Keep Actor Gateway and Authentication Issuer hosting/deployment as separate release gates. Preserve Render auto deploy OFF and do not deploy.
