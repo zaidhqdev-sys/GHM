@@ -2457,3 +2457,23 @@ The migration-contract test now loads both artifacts and asserts both identity c
 The issuer runbook's old 130-commit branch-distance statement was also corrected: the GitHub comparison at this audit reported 381 commits ahead and zero behind the integration base. This is a dated comparison, not a live guarantee.
 
 Production remains untouched. The production role/ownership issue, fresh independently verified backup, transport/network topology, recovery-delivery readiness, cross-product compatibility, and separate founder approvals remain blockers. No paid infrastructure, production grants, roles, secrets, services, deployments, data or routing were changed.
+
+
+## 2026-11-12 — startup default-ACL verifier gap and correction
+
+A further source audit found that both the Authentication Issuer and Actor Gateway startup verifiers inspected only global function default ACL rows (`pg_default_acl.defaclnamespace = 0`). They did not inspect GHM-schema-specific function defaults. A schema-specific default EXECUTE grant could therefore have escaped the startup default-privilege check.
+
+The verifier was also limited to PUBLIC and a fixed list of known application-role grantees. That was not a complete non-owner audit: an unexpected role grant could be missed. Both verifiers now inspect global and `ghm`-schema function default ACLs and treat any EXECUTE grant to any grantee other than `ghm_schema_owner` as unsafe. This covers PUBLIC, known application principals, and unexpected/non-catalogued roles without relying on a hard-coded role list.
+
+Regression source-contract assertions were added to both startup ACL contract tests. The PostgreSQL 18 exact-head run must still prove the catalog query compiles and behaves correctly against actual global and schema-specific default ACL fixtures; source assertions alone are not database evidence.
+
+Other current audit corrections:
+- Manual issuer cutover and rollback SQL each enforce `session_user=ghm_migrator` and `current_user=ghm_schema_owner`.
+- CI runs the manual cutover in one psql connection using the dedicated migrator login, `SET ROLE`, the SQL file, and `RESET ROLE`.
+- Issuer cutover allow-list is ten functions; rollback restores fourteen Resource API authentication functions. The rollback deliberately does not restore the separate QuoteFlow migration-reset enrollment registration operation.
+- The issuer branch remains separate from upstream PR #272; PR #272 itself is still open and unmerged. Current branch comparison during this audit was 411 commits ahead / 0 behind the integration base. This is a dated diagnostic only, not merge readiness.
+- The available GitHub workflow-run view did not expose push-triggered run records for the issuer branch. Exact-head CI status is therefore **unverified**, not passed. Do not use the earlier run `43161326835` as evidence for these later changes.
+
+Latest source/test correction before this handover update: `de794d763eb5b2c0641e34e920cd0d45434b6170`. Re-fetch the branch head after the documentation commits and require full exact-head CI.
+
+No production ACL, role, secret, service, deployment, data or routing change was made. No paid resource was created.
