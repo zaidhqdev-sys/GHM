@@ -295,6 +295,9 @@ test('integration: ES256 access JWT reaches governed profile route with DB-backe
     });
     assert.equal(response.status, 200);
     assert.deepEqual(receivedContext, { userId: 42, role: 'business' });
+    assert.equal(receivedContext?.actorGatewayBearerToken, token);
+    assert.deepEqual(Object.keys(receivedContext ?? {}), ['userId', 'role']);
+    assert.equal(JSON.stringify(receivedContext).includes(token), false);
     const body = (await response.json()) as { profile: AccountIdentity };
     assert.equal(body.profile.id, 42);
   } finally {
