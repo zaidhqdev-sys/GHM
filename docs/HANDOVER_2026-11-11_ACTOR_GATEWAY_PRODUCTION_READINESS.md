@@ -452,3 +452,35 @@ This means PR #272 is **not yet a complete implementation of ADR-001** and must 
 No production change occurred. The Actor Gateway migration's principal guard grants `USAGE ON SCHEMA ghm` to `ghm_actor_gateway`; the startup check now verifies that required access. The production role currently lacks this schema USAGE in the read-only evidence, so the gateway cannot start until the approved migration is applied. Do not grant this manually during qualification.
 
 The PR remains unmerged, and the six-commit mainline divergence plus overlapping Resource API runtime-principal files require a controlled rebase/integration. The latest branch CI must pass before further disposition. The separate issuer and service-hosting/network plan remain release gates; do not create or repurpose Render services, change credentials, run migrations/cutovers, deploy or alter production grants.
+
+
+## 2026-11-12 22:48 UTC — PR #272 rebased onto current mainline and exact-head CI passed
+
+The former 672-commit divergent branch was reconstructed as a clean current-mainline integration, preserving the latest Resource API principal enforcement and current Render support handover.
+
+- PR: https://github.com/zaidhqdev-sys/GHM/pull/272
+- Current head: `6712ac4e8c1ab04beb38bfcc110dfda08bf6529e`
+- Base: `ad4fea43f2eb7bf959042b9db77a9f86e6bb531b`
+- Compare: 4 commits ahead, 0 behind; GitHub reports mergeable/clean.
+- Exact-head run `43322730693`: `quality`, `web-quality`, and Cloudflare Pages all passed.
+- The PR was deliberately converted to draft after the Auth Issuer gap was confirmed. It remains open, unmerged and undeployed.
+
+The rebased tree preserves mainline `src/server.ts`, `src/db/runtime-principal.ts`, `src/db/runtime-principal.test.ts`, the current migration security audit handover and Render support handover. It retains the gateway-specific `.env.example`, configuration URL validation, gateway tests and scripts.
+
+The successful exact-head CI run includes:
+- Complete TypeScript build and unit test suite.
+- Full migration application to disposable PostgreSQL.
+- PostgreSQL 18 delegated CREATEROLE membership reproduction.
+- Actor Gateway principal qualification using the exact allowed `ghm_db_user` membership shape.
+- Gateway principal migration guard and startup contract.
+- Capability governance and manual cutover qualifications.
+- Business Capability, Saved Business, Business Hours, Trust Score, Business Logo, supplier classification and Business profile gateway qualifications.
+- Runtime-boundary and migration policy verification.
+
+### Still blocked
+
+The Auth Issuer is not isolated: Resource API still loads the ES256 private signing key and owns auth/session/recovery routes. A compromised Resource API could mint a chosen-subject JWT accepted by Actor Gateway. This remains the primary ADR-001 security blocker.
+
+The separate Business Engagement / Analytics feature stack (#244) is not included in this gateway integration. Its current Resource API implementation accepts account/business attribution through a direct runtime INSERT path. Do not merge or deploy that stack until the actor attribution is bound through an issuer-verified gateway operation and disposable PostgreSQL proves runtime spoofing is denied.
+
+No production role, grant, membership, secret, environment variable, migration, cutover, Render service, deployment, application data or traffic changed.
