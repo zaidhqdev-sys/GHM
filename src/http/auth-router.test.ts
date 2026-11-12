@@ -427,17 +427,6 @@ test('login issues ES256 access JWT with decimal sub and no role claim', async (
     issueRecovery: async () => ({ recoveryTokenWire: 'x', credentialId: 1, expiresAt: new Date() }),
     lookupQuoteFlowMigrationResetEnrollment: async () => null,
     lookupExternalIdentity: async () => null,
-    linkBusinessExternalMapping: async () => ({
-      outcome: 'created' as const,
-      mapping: {
-        id: 1,
-        provider: 'supabase',
-        externalBusinessId: 'ext',
-        businessId: 1,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    }),
     revokeSessionByRefreshToken: async () => ({ found: true, sessionId: 9, accountId: 42 }),
   };
 
