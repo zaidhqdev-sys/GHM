@@ -196,6 +196,12 @@ try {
     gateway_create: true, gateway_update: true, gateway_review: true,
   });
   console.log('CAMPAIGN/REVIEW POST-ROLLBACK RESTORATION: PASS');
+  await applyManualCutover('database/cutovers/20261112160000_campaign_directory_review_actor_gateway.sql');
+  assert.deepEqual(await privilegeMatrix(), {
+    runtime_create: false, runtime_update: false, runtime_review: false,
+    gateway_create: true, gateway_update: true, gateway_review: true,
+  });
+  console.log('CAMPAIGN/REVIEW CUTOVER RE-APPLICATION: PASS');
 
   const reader = new PostgresCampaignDirectoryReviewGatewayReader(gateway, secretText);
   const created = await reader.createCampaign(ownerId, { businessId, title: 'Signed Campaign' });
