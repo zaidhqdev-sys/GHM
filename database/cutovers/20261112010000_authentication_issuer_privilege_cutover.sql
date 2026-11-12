@@ -43,9 +43,17 @@ BEGIN
          FROM pg_auth_members m
          JOIN pg_roles member_role ON member_role.oid = m.member
         WHERE m.member = issuer_role.oid
-           OR (m.roleid = issuer_role.oid AND member_role.rolname <> 'ghm_db_user')
+           OR (
+              m.roleid = issuer_role.oid
+              AND (
+                member_role.rolname <> 'ghm_db_user'
+                OR m.admin_option IS DISTINCT FROM true
+                OR m.inherit_option IS DISTINCT FROM false
+                OR m.set_option IS DISTINCT FROM false
+              )
+            )
      ) THEN
-    RAISE EXCEPTION 'ghm_auth_issuer must exist as LOGIN NOINHERIT with no elevated attributes or role memberships';
+    RAISE EXCEPTION 'ghm_auth_issuer must be LOGIN NOINHERIT with no elevated attributes and only the bounded ghm_db_user administrator membership';
   END IF;
 END;
 $issuer_role_guard$;
