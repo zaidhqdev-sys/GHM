@@ -1,6 +1,8 @@
 import type { Pool } from 'pg';
 
 export interface ActorGatewayDatabasePrivileges {
+  database_connect_privilege: boolean;
+  database_create_privilege: boolean;
   schema_usage: boolean;
   schema_create: boolean;
   direct_relation_privileges: boolean;
@@ -20,6 +22,8 @@ export const assertActorGatewayDatabasePrivileges = (
   const runtimeFunctions = [...privileges.runtime_executable_functions].sort();
   const failures: string[] = [];
 
+  if (privileges.database_connect_privilege !== true) failures.push('database_connect_missing');
+  if (privileges.database_create_privilege !== false) failures.push('database_create_granted');
   if (privileges.schema_usage !== true) failures.push('schema_usage_missing');
   if (privileges.schema_create !== false) failures.push('schema_create_granted');
   if (privileges.direct_relation_privileges !== false) failures.push('direct_relation_privileges');
