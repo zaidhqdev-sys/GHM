@@ -78,6 +78,37 @@ const migrate = async (): Promise<void> => {
         current_database() AS current_database,
         current_user,
         session_user,
+        has_database_privilege('ghm_migrator', current_database(), 'CONNECT') AS database_connect_privilege,
+        has_database_privilege('ghm_migrator', current_database(), 'CREATE') AS database_create_privilege,
+        CASE
+          WHEN to_regnamespace('ghm') IS NULL THEN false
+          ELSE has_schema_privilege('ghm_migrator', 'ghm', 'USAGE')
+        END AS schema_usage,
+        CASE
+          WHEN to_regnamespace('ghm') IS NULL THEN false
+          ELSE has_schema_privilege('ghm_migrator', 'ghm', 'CREATE')
+        END AS schema_create,
+        (
+          EXISTS (
+            SELECT 1
+              FROM pg_class relation
+              JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+              CROSS JOIN (VALUES ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'),
+                                 ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')) AS privilege(name)
+             WHERE namespace.nspname = 'ghm'
+               AND relation.relkind IN ('r', 'p', 'v', 'm', 'f')
+               AND has_table_privilege('ghm_migrator', relation.oid, privilege.name)
+          )
+          OR EXISTS (
+            SELECT 1
+              FROM pg_class relation
+              JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+              CROSS JOIN (VALUES ('USAGE'), ('SELECT'), ('UPDATE')) AS privilege(name)
+             WHERE namespace.nspname = 'ghm'
+               AND relation.relkind = 'S'
+               AND has_sequence_privilege('ghm_migrator', relation.oid, privilege.name)
+          )
+        ) AS direct_relation_privileges,
         migrator.rolcanlogin AS migrator_rolcanlogin,
         migrator.rolinherit AS migrator_rolinherit,
         migrator.rolsuper AS migrator_rolsuper,
