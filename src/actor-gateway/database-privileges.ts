@@ -12,6 +12,7 @@ export interface ActorGatewayDatabasePrivileges {
   runtime_executable_functions: string[];
   unsafe_function_defaults: boolean;
   unsafe_security_definer_functions: string[];
+  public_executable_security_definer_functions: string[];
   unsafe_function_grantees: string[];
 }
 
@@ -34,6 +35,7 @@ export const assertActorGatewayDatabasePrivileges = (
   if (runtimeFunctions.length !== 0) failures.push('runtime_gateway_function_execution');
   if (privileges.unsafe_function_defaults !== false) failures.push('unsafe_future_function_defaults');
   if (privileges.unsafe_security_definer_functions.length !== 0) failures.push('unsafe_security_definer_functions');
+  if (privileges.public_executable_security_definer_functions.length !== 0) failures.push('public_executable_security_definer_functions');
   if (privileges.unsafe_function_grantees.length !== 0) failures.push('unsafe_function_grantees');
 
   if (failures.length > 0) {
@@ -150,6 +152,17 @@ export const ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL = `
            AND acl.grantee <> d.defaclrole
       )
     ) AS unsafe_function_defaults,
+    ARRAY(
+      SELECT p.oid::regprocedure::text
+        FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+        CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl
+       WHERE n.nspname = 'ghm'
+         AND p.prosecdef
+         AND acl.privilege_type = 'EXECUTE'
+         AND acl.grantee = 0
+       ORDER BY 1
+    ) AS public_executable_security_definer_functions,
     ARRAY(
       SELECT p.oid::regprocedure::text
         FROM pg_proc p
