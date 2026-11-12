@@ -305,3 +305,14 @@ Using `ghm_runtime` directly also matches the existing strict startup identity v
 This refinement supersedes the earlier suggestion to create a replacement Dashboard administrator and delete the existing Dashboard-managed user as a prerequisite. The optional rotation path remains available only if a future requirement specifically calls for removing the current Dashboard-managed user.
 
 No production credential, role, environment variable, service, migration or deployment was changed by this design refinement.
+## Production catalog reconciliation — what the administrator membership means
+
+A fresh read-only production query reconfirmed that the Render-managed connection authenticates as `ghm_app_user` but executes as `ghm_db_user`. The latter has CREATEROLE/CREATEDB and ADMIN OPTION memberships in `ghm_actor_gateway`, `ghm_runtime`, `ghm_migrator`, `ghm_payment_provider` and `ghm_schema_owner`. The current `ghm_actor_gateway` membership has SET=false and INHERIT=false. `ghm_runtime` cannot SET ROLE `ghm_actor_gateway`; `ghm_db_user` can SET ROLE `ghm_runtime`.
+
+The correct trust model is therefore not to pretend the administrator membership can be removed from every SQL-created service role. Keep the Render administrator as a trusted administrator, keep service logins themselves out of other roles, and reject any service-role member other than the trusted administrator. The service identity verifier must not reject the expected administrator-as-member relationship.
+
+The active GHM construction branch now applies this `no_untrusted_role_memberships` rule to Resource API runtime, Actor Gateway and Authentication Issuer. The service login cannot be a member of any other role; only `ghm_db_user` may be a member of the service login role. The Authentication Issuer manual cutover uses the same guard. Migrator/schema-owner membership is separately constrained to the expected `ghm_migrator` SET-only owner path and trusted administrator membership.
+
+The production role catalog currently does not contain `ghm_auth_issuer`; the separate issuer service is not yet deployed. The current Render service inventory has `ghm-internal-runtime` as the only production GHM web service; no separate production Actor Gateway or Authentication Issuer service exists yet.
+
+This confirms the original security objective: normal Resource API execution must use the existing SQL-created `ghm_runtime` login, not the Dashboard-managed `ghm_app_user`/effective `ghm_db_user` connection. The administrator's membership is an administrative trust relationship, not a reason to expose that administrator connection to application code.
