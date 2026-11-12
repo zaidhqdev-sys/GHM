@@ -263,3 +263,39 @@ describe('GHM auth client', () => {
     expect(refreshCount).toBe(1);
   });
 });
+
+
+  it('sends authentication to the issuer origin and resource calls to the API origin', async () => {
+    const store = createStore();
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === 'https://issuer.example/api/v1/auth/login') {
+        return Response.json(tokenBundle('split-origin'), { status: 200 });
+      }
+      if (url === 'https://resource.example/api/v1/profile') {
+        return Response.json({ profile: { id: 42 } }, { status: 200 });
+      }
+      if (url === 'https://issuer.example/api/v1/auth/logout') {
+        return Response.json({ ok: true }, { status: 200 });
+      }
+      throw new Error(`unexpected url ${url}`);
+    });
+
+    const client = createGhmAuthClient({
+      baseUrl: 'https://resource.example/',
+      authBaseUrl: 'https://issuer.example/',
+      store,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+
+    await client.login('founder@example.com', 'secret');
+    const profile = await client.apiFetch('/api/v1/profile');
+    expect(profile.status).toBe(200);
+    await client.logout();
+
+    expect(fetchImpl.mock.calls.map(([url]) => String(url))).toEqual([
+      'https://issuer.example/api/v1/auth/login',
+      'https://resource.example/api/v1/profile',
+      'https://issuer.example/api/v1/auth/logout',
+    ]);
+  });
