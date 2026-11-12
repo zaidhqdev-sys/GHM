@@ -61,7 +61,7 @@ export class PostgresStorageMetadataGatewayReader implements StorageMetadataGate
 
   async createPending(actor: number, input: GatewayStorageMetadataInput): Promise<GatewayStorageMetadataRow> {
     return this.withClient(async client => {
-      const assertion = createActorGatewayAssertion(this.key, actor, 'storage.metadata.create', input);
+      const assertion = createActorGatewayAssertion(this.key, actor, 'storage.metadata.create', { ...input });
       const result = await client.query<GatewayStorageMetadataRow>(
         'SELECT * FROM ghm.gateway_storage_create_pending($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)',
         [actor, assertion.issuedAt, assertion.nonce, assertion.context, assertion.signature,
