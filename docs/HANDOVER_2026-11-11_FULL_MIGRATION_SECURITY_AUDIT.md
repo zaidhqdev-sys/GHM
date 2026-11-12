@@ -2383,7 +2383,7 @@ The dependent branch subsequently added:
 
 Relevant implementation commits include `12f7b09f72` (issuer cutover helper revocation), `68136846d5` (Connect adapter routes provisioning through the signed gateway identity), `a650c699ba` (the initial qualification follow-up, subsequently corrected after discovering the signed gateway migration), and `4ef26bafdc` / `6fb40c1ff3` (corrected two-function qualification and SQL comment). Do not treat the initial three-function follow-up as current.
 
-The issuer cutover's database-only rollback still restores the documented pre-issuer Resource API auth-function set, not the obsolete business-mapping mutation path. The mapping-link helper remains unavailable to runtime after rollback because the signed gateway migration independently revoked it. The gateway remains a separate principal and its exact 25-function allow-list (including signed Connect Business provisioning) must continue to be checked independently.
+The issuer cutover's database-only rollback still restores the documented pre-issuer Resource API auth-function set, not the obsolete business-mapping mutation path. The mapping-link helper remains unavailable to runtime after rollback because the signed gateway migration independently revoked it. The gateway remains a separate principal. At this pre-storage checkpoint its exact allow-list contained 25 functions (including signed Connect Business provisioning); the five signed Storage Metadata Gateway wrappers added on 12 November expand the current allow-list to 30, as confirmed by the refreshed inventory.
 
 The latest corrected exact-head CI is pending. Do not claim the current dependent branch fully qualified until both required checks pass. No production grant, database, secret, service, deployment, routing or paid infrastructure was changed.
 
@@ -2548,7 +2548,7 @@ The issuer and Actor Gateway startup verifiers previously checked their own effe
 
 Both verifiers now enumerate function ACLs with `aclexplode`:
 - Authentication Issuer's ten-function allow-list permits EXECUTE only to `ghm_auth_issuer` and the function owner.
-- Actor Gateway's 25-function allow-list permits EXECUTE only to `ghm_actor_gateway` and the function owner.
+- At the pre-storage checkpoint, Actor Gateway's 25-function allow-list permitted EXECUTE only to `ghm_actor_gateway` and the function owner. The five storage wrappers added on 12 November expand the current allow-list to 30; the same per-function principal restriction applies.
 - Any other grantee is reported, including PUBLIC, `ghm_runtime`, `ghm_migrator`, `ghm_payment_provider`, other known roles, and arbitrary/unexpected roles.
 - Both startup assertions fail closed on any such grant.
 
