@@ -135,7 +135,7 @@ Inspected the full storage service, HTTP routes, storage tests, storage migratio
 - Proposed provider attestation is domain-separated (`ghm-storage-provider:v1`), short-lived, one-use, and bound to operation, object ID, stored tenant/business, provider key, and the provider evidence required for the transition.
 - The database secret provisioning path is still an unresolved prerequisite. Do not create the secret table and claim security until the operator provisioning route is designed, audited and tested. In particular, do not assume the migrator may read/insert into the protected secret table.
 
-Historical checkpoint note: at the time this paragraph was written, the dual-proof proposal was design-only. It was superseded by the provider-transition migration and transport implementation documented below. The secret table and wrappers now exist in source, but no provider secret has been provisioned and no migration has been applied to any database. Existing direct runtime function grants remain unchanged.
+Historical checkpoint note: at the time this paragraph was written, the dual-proof proposal was design-only. It was superseded by the provider-transition migration and transport implementation documented below. Subsequent CI applied the migrations to disposable PostgreSQL 18 and provisioned a temporary test secret through the guarded migrator path; the qualification script removed that secret and its fixtures afterward. No production secret was provisioned. Existing direct runtime function grants remain unchanged.
 
 ## Provider-transition database stage
 
@@ -149,7 +149,7 @@ It adds:
 
 A guarded disposable-only provisioning script was added at `scripts/provision-storage-provider-attestation-secret.mjs`. It requires an explicit qualification database URL and mutation opt-in, verifies `session_user=current_user=ghm_migrator`, checks the database name, uses `SET LOCAL ROLE ghm_schema_owner`, and never logs the secret value. This is a qualification/provisioning precedent only; it does not authorize production provisioning.
 
-Historical implementation checkpoint: the signer, transport, Actor Gateway reader/routes and Resource API client were not yet implemented when this section was first recorded. They have since been added and wired into the Resource API storage router/app, as detailed below. No provider secret has been provisioned, no migration has been applied, and legacy runtime grants remain. Do not interpret the source implementation as an active or qualified cutover.
+Historical implementation checkpoint: the signer, transport, Actor Gateway reader/routes and Resource API client were not yet implemented when this section was first recorded. They have since been added and wired into the Resource API storage router/app, and the dual-proof database path has passed disposable PostgreSQL qualification as detailed below. No production provider secret has been provisioned; legacy runtime grants remain. Do not interpret this as a production cutover.
 
 Latest code commits for this provider stage:
 - `13392ac82502613f7533ade85e5d8773c6fafb20` — provider attestation tables, verifier and dual-proof wrappers.
@@ -171,7 +171,7 @@ Further implementation after the provider migration:
 - Added signer and provider-transition route tests.
 - CI workflow now syntax-checks the disposable-only provider secret provisioning script.
 
-**Integration checkpoint (source-level complete, qualification outstanding):** `src/http/storage-router.ts` now selects the Actor Gateway-backed metadata store, forwards the original caller bearer token across create/read/delete/complete/access/cleanup paths, and fails closed when the gateway is required but unavailable. `src/http/app.ts` constructs the client from `GHM_ACTOR_GATEWAY_URL` and `GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET`; production storage startup now requires both. The direct PostgreSQL metadata repository remains only as a non-required fallback for non-production/development. The signer secret has not been provisioned, no provider attestation has been exercised against PostgreSQL, and neither migration nor provisioning script has been executed. This remains construction code, not a qualified cutover.
+**Integration checkpoint (source-level complete; database qualification partially passed):** `src/http/storage-router.ts` now selects the Actor Gateway-backed metadata store, forwards the original caller bearer token across create/read/delete/complete/access/cleanup paths, and fails closed when the gateway is required but unavailable. `src/http/app.ts` constructs the client from `GHM_ACTOR_GATEWAY_URL` and `GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET`; production storage startup now requires both. The direct PostgreSQL metadata repository remains only as a non-required fallback for non-production/development. At the time of this source-level checkpoint, the signer secret had not been provisioned and the database migration had not been applied. Subsequent CI provisioned a temporary disposable secret and exercised provider attestations against PostgreSQL 18, including replay and adversarial denials. Full external provider lifecycle qualification and production cutover remain outstanding.
 
 ## Storage router and Resource API integration checkpoint — 2026-11-12
 
