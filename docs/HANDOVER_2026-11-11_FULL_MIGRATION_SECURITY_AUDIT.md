@@ -2670,3 +2670,27 @@ The run failed at the final issuer cutover qualification before the new inventor
 ### Effective inherited function execution explicitly flagged
 
 The inventory now separately derives `effective_non_owner_execute_roles` for each SECURITY DEFINER routine from `has_function_privilege(role_oid, function_oid, 'EXECUTE')`, excluding only the function owner. This is distinct from direct ACL grantees and makes inherited membership paths visible as review findings alongside the membership graph. Contract coverage asserts that this effective-role finding is emitted. It still does not auto-approve any service exception.
+
+
+## 2026-11-12 — First complete inventory reviewed; superuser classification corrected
+
+The exact-head workflow run `43220670560` passed both `quality` and `web-quality` on `d0bf47c13114dcfe477ed45dd28173e6d4a552bd`. Its `security-definer-authority-inventory` artifact (SHA-256 `d005bcab9aec26a3ed50ca135493fba87618464dd55fd50b3e735960dc5eb582`) was retrieved and reviewed. It represents the post-migration, **pre-manual-auth-issuer-cutover** disposable PostgreSQL 18.6 state, using `ghm_migrator` to inspect `ghm_disposable_test`; no database mutation was performed by the inventory.
+
+Observed baseline: 97 SECURITY DEFINER routines, all in schema `ghm`, all owned by `ghm_schema_owner`, all with `search_path=pg_catalog, ghm, pg_temp`, and all written in trusted `plpgsql` or `sql` languages. No non-system schema outside `ghm` contained SECURITY DEFINER routines. No PUBLIC EXECUTE grant appeared in the direct ACLs. The only role-membership edge among application roles was `ghm_migrator -> ghm_schema_owner` with `INHERIT FALSE`, `SET TRUE`, and `ADMIN FALSE`. Application login roles had no SUPERUSER, CREATEROLE, CREATEDB, REPLICATION or BYPASSRLS attributes. Schema/database ACLs and default function ACLs are included in the artifact for review.
+
+The original report flagged all 97 functions because `has_function_privilege` reports superuser `postgres` as effectively able to execute every function. This is PostgreSQL superuser bypass, not an ordinary application-role grant. Corrected the inventory to return role metadata with effective EXECUTE, report superuser roles separately, and exclude superusers from `effective_non_owner_execute_roles`. They remain visible under `effective_superuser_roles_excluded_from_acl_findings`. The revised classification must be re-run in CI; do not reuse the old 97-finding count as the corrected result.
+
+The original direct ACL evidence identified four application principals with grants: `ghm_actor_gateway` (25 functions), `ghm_runtime` (43), `ghm_payment_provider` (2), and `ghm_migrator` (1). These are **pre-cutover observations, not automatic approvals**. Gateway functions must match the Actor Gateway allow-list; payment-provider functions must match settlement responsibilities; runtime functions must be traced to active Resource API callers and separately approved manual cutovers; the migrator's single grant is the narrow read-only `ghm.auth_lookup_business_external_mapping(text,text)`, explicitly granted by migration `20261012000000_auth_lookup_business_external_mapping.sql`. Build and record the exact signature × role matrix before changing grants. The issuer principal's absence of `ghm` schema USAGE in this pre-cutover snapshot is expected to be resolved only by the separately qualified manual issuer cutover.
+
+Function-body review found one SECURITY DEFINER routine containing dynamic SQL: `ghm.update_business_profile(bigint,bigint,jsonb)`. Its dynamic statement uses a fixed SQL template, fixed code-authored optional fragments, and parameterized values via `USING`; no caller-supplied identifier or SQL fragment is interpolated. The caller-controlled JSON keys are checked against a fixed allow-list before the statement is built. The gateway wrapper separately rejects `isSupplier` and `is_supplier` so supplier classification remains on its dedicated operation. This must remain covered by the database qualification and migration contract tests.
+
+### Remaining review, not yet closed
+
+- Finish signature-by-signature justification of all 71 direct application-role grants (70 unique routines across the four principals).
+- Trace every `ghm_runtime` grant to an active caller, distinguishing pre-issuer baseline functions that the manual cutover revokes.
+- Confirm the 25 Actor Gateway grants exactly equal the service's allow-list and two payment-provider grants equal its narrow settlement allow-list.
+- Review SECURITY DEFINER bodies for account/business ID trust, actor authorization and cross-operation boundaries; dynamic SQL review is not a substitute for this.
+- Review schema/database ACLs, default ACLs and role membership against the intended Render PostgreSQL production role model. Disposable CI evidence does not establish production state.
+- Run the corrected superuser-aware inventory on the new exact HEAD, inspect its artifact, and repeat the full CI qualification.
+
+No production database, secrets, deployments, services, migrations or live grants were changed. No merge or cutover is authorized.
