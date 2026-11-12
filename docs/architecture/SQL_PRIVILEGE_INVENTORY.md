@@ -105,3 +105,17 @@ Remaining authority work is controlled cleanup and future extension, not reconst
 ## Production safety
 
 Zaid Connect and QuoteFlow remain on their existing Supabase production backends throughout this construction work. No production routing, credentials, DNS, environment variables, or traffic were changed.
+
+
+## Authentication and provider-business mapping function authority — 2026-11-12
+
+The isolated Authentication Issuer has a separate exact ten-function allow-list. It receives no direct GHM table/view/sequence privileges and no schema CREATE; startup verifies the database login/effective role and ACL set before opening the listener. See `AUTH_ISSUER_CUTOVER_AND_ROLLBACK_RUNBOOK.md` for the manual-only cutover and coordinated rollback boundaries.
+
+The Resource API runtime's remaining `ghm.auth_*` functions are deliberately lookup-only:
+
+- `ghm.auth_lookup_external_identity(text,text)` — Connect person identity lookup.
+- `ghm.auth_lookup_business_external_mapping(text,text)` — provider business ID to canonical GHM business ID lookup.
+
+The legacy migration `20260921130500_auth_link_business_external_mapping.sql` granted runtime EXECUTE on `auth_link_business_external_mapping(text,text,bigint)`. That SECURITY DEFINER function creates a provider-business mapping and does not independently prove caller membership/management or migration approval. Current Connect/commercial TypeScript request paths use lookup functions; no active request-path caller of the mutating function exists in the current branch source tree. Migration `20261112060000_revoke_runtime_business_external_mapping_link.sql` revokes PUBLIC and runtime EXECUTE. The controlled migrator/schema-owner path remains available.
+
+The issuer startup verifier checks the entire runtime `ghm.auth_*` executable set against exactly the two lookup functions, so any later auth-function grant drift fails startup. The disposable cutover qualification includes an explicit runtime denial probe for the mapping-link function and confirms rollback does not restore the stale grant.
