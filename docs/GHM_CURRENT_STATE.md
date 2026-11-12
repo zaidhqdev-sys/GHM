@@ -927,3 +927,14 @@ The issuer allow-list is now 10 functions: registration, password lookup, passwo
 Added migration `20261112030000_add_conditional_password_rehash.sql`. Login rehash now uses `auth_rehash_password_if_unchanged`, which updates only if the stored active credential hash still equals the hash verified by that login. If another reset wins the race, the issuer re-reads and re-verifies the current credential before issuing a session. This prevents stale login from restoring an old password.
 
 Removed general `setPassword` from the production persistence API; `auth_set_password` remains an owner-internal operation for the distinct QuoteFlow migration-reset function and is not granted to the issuer. Manual cutover grants conditional rehash instead. The disposable issuer script now includes an interleaved concurrent-reset/rehash adversarial scenario. CI #3588 is validating the corrected reset migration, rehash migration, test suite and manual cutover.
+
+
+## 10-function auth issuer cutover qualification passed (2026-11-12)
+
+CI #3588 passed both quality and web-quality on code commit `68b5713`. The full test suite passed 894/894, all migrations and runtime-boundary checks passed, and the guarded manual cutover SQL succeeded in disposable PostgreSQL.
+
+Post-cutover output: exact 10-function issuer allow-list; zero direct GHM relation privileges; 14 tested runtime issuer/legacy-function denials; Connect lookup preserved; registration/login/conditional rehash/concurrent-reset protection/refresh/logout passed; token-bound recovery email mismatch/replay/session revocation passed; QuoteFlow migration reset passed.
+
+Final allow-list: account creation, password-hash lookup, conditional password rehash, session creation, refresh rotation, refresh-token logout, recovery issuance, token-bound email-preserving password reset, QuoteFlow enrollment lookup and QuoteFlow reset completion. General `auth_set_password` is not granted to issuer; only the QuoteFlow SECURITY DEFINER owner path uses it. Old redemption wrappers and unused session validation are excluded.
+
+The cutover SQL ran only on disposable CI PostgreSQL after all ordinary runtime tests. No production grants, roles, secrets, services, routing or deployments were changed. Current construction branch documentation commits are later than #3588 and require exact-head CI confirmation. Deployment/routing and product production env cutover remain outstanding.
