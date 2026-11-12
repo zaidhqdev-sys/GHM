@@ -82,8 +82,6 @@ GRANT EXECUTE ON FUNCTION ghm.auth_set_password(bigint, text, text, text, intege
   TO ghm_auth_issuer;
 GRANT EXECUTE ON FUNCTION ghm.auth_create_session_with_refresh(bigint, bytea)
   TO ghm_auth_issuer;
-GRANT EXECUTE ON FUNCTION ghm.auth_validate_session(bigint)
-  TO ghm_auth_issuer;
 GRANT EXECUTE ON FUNCTION ghm.auth_rotate_refresh(bytea, bytea)
   TO ghm_auth_issuer;
 GRANT EXECUTE ON FUNCTION ghm.auth_revoke_by_refresh_hash(bytea, text)
