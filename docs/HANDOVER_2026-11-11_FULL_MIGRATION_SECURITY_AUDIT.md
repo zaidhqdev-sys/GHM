@@ -2072,3 +2072,55 @@ These are source-level split-origin implementations and CI contract tests, not d
 6. Only after successful non-production end-to-end tests, a fresh independently verified production backup, Render role-model resolution, and explicit approval may the guarded manual issuer cutover be considered. The cutover file remains unapplied to every live database.
 
 No production database grants/roles, secrets, Render services/environment, routing, deployments, product flags, application data or payment settings were changed. PayFast remains paused pending sandbox access; approved legal-document work remains parked. No merge was performed.
+
+
+## 2026-11-12 — Render free-tier ingress and non-production topology decision
+
+A fresh read-only inventory of the connected Render workspace and the current official Render networking/free-instance documentation resolves the earlier private-networking uncertainty.
+
+### Verified workspace inventory
+
+The workspace currently exposes five web services. Relevant GHM services:
+
+- GHM-Internal-Runtime: Free web service, Frankfurt, branch main, auto-deploy disabled, public URL https://ghm-internal-runtime.onrender.com.
+- ghm-identity-qualification: Free web service, Frankfurt, branch integration/ghm-identity-merge-candidate-20261018, auto-deploy enabled, last live deployment from 2026-11-04 commit ee91f42503e064571d57e87ed0d5cd1e9d5badd5. It has no configured Render health-check path in the service metadata.
+- ghm-payfast-sandbox-runtime and ghm-payfast-callback-sandbox are separate Free services and remain outside this issuer work.
+
+No dedicated Authentication Issuer service exists. The identity qualification service is an existing active deployment, not an unused allocation. Its database/environment contract has not been independently verified for issuer use. Do not repoint its branch, overwrite its environment, or redeploy it as an issuer until its current purpose, credentials and data boundary are reviewed. Do not treat the existence of this service as a free spare slot.
+
+### Render networking facts
+
+Official Render documentation confirms:
+
+- Services in the same workspace and region share a private network.
+- Free web services can initiate private-network requests but cannot receive private-network traffic.
+- The current Resource API is a Free web service, so it cannot receive private-network requests either.
+- A Free web service can receive public HTTPS traffic, but Render explicitly says Free instances are not intended for production applications.
+- Free web services spin down after 15 minutes without inbound traffic and take about one minute to spin back up; they have one instance and no scaling.
+
+References:
+- https://render.com/docs/private-network
+- https://render.com/docs/free
+
+Therefore, a Free Render issuer cannot be privately reached by the Resource API or other services. A public-HTTPS issuer is technically possible for non-production routing, but it is not a private-network deployment and must be treated as public ingress. The current client architecture does not require issuer-to-Resource-API private calls: GHM web, Connect native, QuoteFlow native and Connect's server-side BFF call the issuer only for authentication operations; their resource/identity calls remain directed to the Resource API.
+
+### Safe public-ingress contract for non-production only
+
+If a verified non-production issuer endpoint is made available:
+
+1. Use HTTPS only and a dedicated issuer origin. Keep issuer private signing key, token pepper and issuer DB URL exclusively in the issuer service.
+2. Set GHM_AUTH_ISSUER_CORS_ORIGINS to exact browser origins that actually call the issuer. At present, GHM web is the browser client with direct split-origin auth. Connect browser-cookie auth remains disabled and, if separately approved later, its BFF calls the issuer server-to-server. Native Connect and QuoteFlow clients do not use browser CORS.
+3. Treat CORS strictly as browser policy, never as authentication or authorization. Native clients and server-to-server requests can omit or forge Origin.
+4. Determine GHM_AUTH_ISSUER_TRUST_PROXY_HOPS from observed request headers and a controlled deployed test. Do not guess a hop count or use X-Forwarded-For as a trusted identity signal.
+5. Existing express-rate-limit limits are process-local. They provide a useful per-instance guard but do not survive process restarts and are not a distributed abuse-control system. Verify actual proxy IP handling and limiter behavior before public testing; do not claim global rate limiting.
+6. Test health/readiness, cold starts, TLS, login/refresh/logout, invalid credentials, rate limits, CORS allow/deny behavior, and resource-origin separation. No production clients may be pointed at a qualification endpoint.
+
+### Decision / blocker
+
+No Render service or environment was changed. No deployment, secret write, database grant, or branch repointing occurred.
+
+A Free public issuer could be used only as a temporary non-production qualification target after confirming a truly isolated non-production issuer database principal and credentials. The existing ghm-identity-qualification service must not be commandeered without confirming its purpose and database boundary. Free Render hosting is not an acceptable production availability plan for authentication because of spin-down/cold-start and the explicit non-production positioning in Render's own documentation.
+
+Do not create a paid Render service, paid database, or other paid infrastructure. Do not use the live GHM database for a non-production issuer test. If no independently isolated non-production database and safe existing service allocation can be verified, keep end-to-end deployment blocked and continue with source-level and disposable-CI qualification.
+
+Production cutover remains blocked on a fresh independently verified backup, approved production role provisioning/cutover, successful non-production end-to-end routing, and explicit approval. No production state changed.
