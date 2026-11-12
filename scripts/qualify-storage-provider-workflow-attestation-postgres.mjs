@@ -77,7 +77,7 @@ try {
     const insertObject = async (business, status, suffix) => {
       const key = `media/logos/${business}/${randomUUID()}`;
       const result = await setup.query(
-        "INSERT INTO ghm.storage_object(tenant_business_id,resource_type,resource_id,object_class,provider_key,content_type,byte_size,visibility,status) VALUES($1,'business',$1,'business_logo',$2,'image/png',1024,'public',$3) RETURNING id",
+        "INSERT INTO ghm.storage_object(tenant_business_id,resource_type,resource_id,object_class,provider_key,content_type,byte_size,visibility,status,available_at) VALUES($1,'business',$1,'business_logo',$2,'image/png',1024,'public',$3,CASE WHEN $3 IN ('available','deletion_pending') THEN clock_timestamp() ELSE NULL END) RETURNING id",
         [business, key, status],
       );
       return { objectId: Number(result.rows[0].id), businessId: business, providerKey: key, status, suffix };
