@@ -3042,3 +3042,21 @@ The final-state ordering correction remains in place: rollback is tested, dispos
 Inspect run 43330297297. If syntax passes but the final allow-list query/assertions fail, diagnose against the actual SQL ACLs and update the disposable regression, not production. Once the run passes, retrieve both inventory files and compare exact signatures/grantees/owners/default ACLs. Update this handover after each verified batch.
 
 No production mutation, merge, Render deploy, secret or routing change. PayFast remains paused.
+
+
+## 2026-11-13 — issuer lifecycle qualification SQL escape corrected
+
+Exact-head run [43330297297](https://github.com/zaidhqdev-sys/GHM/actions/runs/43330297297) passed both source syntax checks, migration/build, preceding disposable database qualifications and web-quality, but failed at step 58, `Qualify isolated auth issuer lifecycle and runtime denials on disposable PostgreSQL`. The failure was not an ACL assertion: PostgreSQL rejected the final issuer allow-list query with SQLSTATE 22025 (`invalid escape string`) because the query used `LIKE 'auth\\_%' ESCAPE '\\\\'`; PostgreSQL's standard-conforming string handling treated the ESCAPE literal as two characters. The same query's intended purpose is simply to select function names with the literal `auth_` prefix.
+
+Corrected the query to the equivalent, simpler predicate `left(p.proname, 5) = 'auth_'`. The first matching occurrence was updated in commit `0246ef0fea21dc41b28303741424fa98640fb787`; a follow-up scan found the final-state assertion still contained the invalid predicate, so it was corrected in commit `e48e7e34d26f2d609fb63e0d3abaeeb22d39cc4d`. A complete scan of the qualification script now shows all auth-prefix checks use `left(p.proname, 5) = 'auth_'` and no remaining `p.proname LIKE` escape predicate.
+
+**Validation status:** the original failure log is conclusive for the SQL escape defect. The two correction commits are on `construction/auth-issuer-isolation-20261112`; exact-head CI for `e48e7e34d26f2d609fb63e0d3abaeeb22d39cc4d` has not yet been observed in the available workflow-run query. Do not claim the issuer lifecycle qualification or post-cutover inventory has passed until the new run completes, the lifecycle step succeeds, and both pre/post inventory artifacts are retrieved and reconciled by exact function signature, owner, direct/effective grantee, PUBLIC ACL and default ACL.
+
+No production database, role, grant, credential, secret, Render environment, deployment, routing, traffic, backup or paid infrastructure was changed. No PR was merged. PayFast and legal-document publication remain paused.
+
+### Next checkpoint
+
+1. Confirm exact-head CI on `e48e7e34d26f2d609fb63e0d3abaeeb22d39cc4d` and inspect the issuer lifecycle step.
+2. If it passes, retrieve both inventory JSON reports and verify the actual post-cutover runtime/issuer/gateway/payment-provider authority sets; do not rely on counts alone.
+3. Add/retain a regression assertion that the qualification's auth-function filters avoid PostgreSQL multi-character ESCAPE literals, then update this handover with exact run and artifact evidence.
+4. Continue the five-principal and cross-product dependency review only after this disposable qualification is green.
