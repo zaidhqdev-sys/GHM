@@ -2147,3 +2147,25 @@ The Authentication Issuer construction branch is not an unrelated parallel fork.
 
 
 The paid identity-qualification database was not queried: Render's read-only Postgres connector reported that its IP allow-list is empty and blocks external connections. We did not widen that allow-list to enable the connector. Its schema, roles, migration state, consumers and data boundary therefore remain unverified. This is an explicit blocker, not evidence that the database is empty or suitable. Do not alter its network allow-list merely to make this audit possible.
+
+
+## 2026-11-12 — Issuer CORS and abuse-control regression qualification
+
+The next issuer hardening batch added real HTTP-level tests, beyond validating environment parsing:
+
+- Exact allow-listed browser origin receives the matching `Access-Control-Allow-Origin` on preflight.
+- An unlisted origin receives no CORS allow-origin header.
+- Login rate limiting is exercised over HTTP: ten requests pass and the eleventh from the same client IP returns 429 with `rate_limited`.
+- Existing auth-router regression also verifies the login limiter uses the rightmost trusted forwarded client IP under the configured proxy trust model.
+
+Exact code/test head `51e1faa9836d09c8cf8f6eae4b97a06e82467115` passed GitHub Actions **#3606**: `quality` and `web-quality` succeeded; main test suite **898 passed / 0 failed** and the additional qualification suite **15 passed / 0 failed**. The issuer CORS and login limiter tests passed (test cases 42 and 43); issuer lifecycle/runtime-denial disposable PostgreSQL qualification also passed.
+
+Existing auth-router limits are per registered app process and per client-IP key:
+- Native/browser registration and login: 10 per 15 minutes.
+- Password recovery and QuoteFlow migration-reset request/completion: 5 per 15 minutes.
+- Refresh: 60 per 15 minutes.
+- Browser-cookie logout: 60 per 15 minutes.
+
+These are in-process limits, not a distributed quota, account-level global limit, edge WAF, or DDoS defense. Proxy trust must be set from measured deployed request topology. CORS only controls compliant browsers; it is not an authorization boundary and does not constrain native clients or server-to-server calls.
+
+The latest test head is not the latest documentation head. Subsequent handover/state edits are being qualified separately; do not report them green until their exact-head CI completes.

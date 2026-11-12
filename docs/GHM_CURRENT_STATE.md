@@ -983,3 +983,12 @@ PR #272 remains open/unmerged with green current checks. The issuer construction
 
 
 The existing paid identity-qualification database could not be audited through the read-only Render Postgres connector because its IP allow-list is empty. No allow-list change was made. Its schema, roles, migration state, data and service consumers remain unknown; do not assume it is reusable or empty.
+
+
+## 2026-11-12 — Issuer CORS and rate-limit tests passed
+
+Code/test head `51e1faa9836d09c8cf8f6eae4b97a06e82467115`, GitHub Actions #3606: quality and web-quality passed; 898 tests passed, 0 failed, plus 15 additional qualification checks passed. New HTTP regressions verify exact allowed CORS preflight origin, no CORS grant to an unlisted origin, and 10 successful login requests followed by 429 on request 11. Existing test verifies rate limiting uses the rightmost trusted forwarded client IP.
+
+Current per-process auth route limits: register/login 10 per 15 minutes; password recovery and QuoteFlow migration-reset recovery request/completion 5 per 15 minutes; refresh 60 per 15 minutes; browser-cookie logout 60 per 15 minutes. These are process-local, not distributed or edge abuse controls. CORS is not authentication/authorization. Do not claim deployed proxy behavior until hop count is measured on the actual issuer ingress.
+
+This is the qualified code/test head, not the latest documentation head. The latest handover/state commit still requires exact-head CI.
