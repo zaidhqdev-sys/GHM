@@ -706,6 +706,8 @@ test('storage metadata create route derives actor from token and fixes Business 
     async createPending(actor, input) { received.push({ actor, input }); return { id: '8' } as never; },
     async getObject() { return null; },
     async markDeletionPending() { throw new Error('not used'); },
+    async markAvailable() { throw new Error('not used'); },
+    async markDeleted() { throw new Error('not used'); },
   };
   await withServer({
     async readOwnIdentity(accountId): Promise<ActorIdentity> {
@@ -737,6 +739,8 @@ test('storage metadata create rejects cross-tenant provider keys and malformed m
     async createPending() { calls += 1; throw new Error('must not be called'); },
     async getObject() { return null; },
     async markDeletionPending() { throw new Error('must not be called'); },
+    async markAvailable() { throw new Error('must not be called'); },
+    async markDeleted() { throw new Error('must not be called'); },
   };
   await withServer({
     async readOwnIdentity(accountId): Promise<ActorIdentity> {
@@ -781,4 +785,61 @@ test('storage metadata read and deletion routes bind actor to verified token and
     { operation: 'read', actor: 42, objectId: 81 },
     { operation: 'delete', actor: 42, objectId: 81 },
   ]);
+});
+
+
+test('provider transition routes require a typed one-use attestation and forward the verified actor', async () => {
+  const calls: Array<{ operation: string; actor: number; objectId: number; attestation: unknown }> = [];
+  const attestation = {
+    issuedAt: Math.floor(Date.now() / 1000),
+    nonce: '550e8400-e29b-41d4-a716-446655440000',
+    context: JSON.stringify({ businessId: 73, objectId: 81, providerKey: 'media/logos/73/550e8400-e29b-41d4-a716-446655440000' }),
+    signature: 'a'.repeat(64),
+  };
+  const storageReader: StorageMetadataGatewayReader = {
+    async createPending() { throw new Error('not used'); },
+    async getObject() { return null; },
+    async markDeletionPending() { throw new Error('not used'); },
+    async markAvailable(actor, objectId, _checksum, _providerKey, _contentType, _byteSize, proof) {
+      calls.push({ operation: 'available', actor, objectId, attestation: proof });
+      return { id: String(objectId), status: 'available' } as never;
+    },
+    async markDeleted(actor, objectId, _providerKey, proof) {
+      calls.push({ operation: 'deleted', actor, objectId, attestation: proof });
+      return { id: String(objectId), status: 'deleted' } as never;
+    },
+  };
+  await withServer({
+    async readOwnIdentity(accountId): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: 'Actor' };
+    },
+  }, async baseUrl => {
+    const headers = { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' };
+    const available = await fetch(`${baseUrl}/v1/storage/metadata/81/available`, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        checksum: 'sha256:abc', providerKey: 'media/logos/73/550e8400-e29b-41d4-a716-446655440000',
+        contentType: 'image/png', byteSize: 1024, attestation,
+      }),
+    });
+    assert.equal(available.status, 200);
+    const deleted = await fetch(`${baseUrl}/v1/storage/metadata/81/deleted`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ providerKey: 'media/logos/73/550e8400-e29b-41d4-a716-446655440000', attestation }),
+    });
+    assert.equal(deleted.status, 200);
+    const invalid = await fetch(`${baseUrl}/v1/storage/metadata/81/available`, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        checksum: null, providerKey: 'media/logos/73/object', contentType: 'image/png', byteSize: 1,
+        attestation: { ...attestation, signature: 'invalid' },
+      }),
+    });
+    assert.equal(invalid.status, 400);
+  }, undefined, undefined, undefined, undefined, {}, verifier, undefined, undefined, undefined, storageReader);
+  assert.deepEqual(calls.map(call => [call.operation, call.actor, call.objectId]), [
+    ['available', 42, 81],
+    ['deleted', 42, 81],
+  ]);
+  assert.deepEqual(calls[0].attestation, attestation);
 });
