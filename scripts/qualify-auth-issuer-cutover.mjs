@@ -107,7 +107,6 @@ try {
     WITH expected(signature) AS (
       SELECT unnest(ARRAY[
         'ghm.auth_lookup_external_identity(text, text)',
-        'ghm.auth_link_business_external_mapping(text, text, bigint)',
         'ghm.auth_lookup_business_external_mapping(text, text)'
       ]::text[])
     )
@@ -201,6 +200,7 @@ try {
     'SELECT * FROM ghm.auth_lookup_quoteflow_migration_reset_enrollment(NULL::text)',
     'SELECT * FROM ghm.auth_complete_quoteflow_migration_reset(NULL::bytea, NULL::text, NULL::integer, NULL::integer, NULL::integer)',
     'SELECT * FROM ghm.auth_register_quoteflow_migration_reset_enrollment(NULL::bigint, NULL::text, NULL::text, NULL::text, NULL::text, NULL::text)',
+    'SELECT * FROM ghm.auth_link_business_external_mapping(NULL::text, NULL::text, NULL::bigint)',
   ];
   for (const sql of deniedCalls) await expectPermissionDenied(sql);
 
