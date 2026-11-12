@@ -88,6 +88,8 @@ test('pre-cutover qualification locks the exact runtime grant state that rollbac
   assert.ok(preCutoverQualification.includes('expectedRuntimeAuthFunctions'));
   assert.ok(preCutoverQualification.includes('pre-issuer Resource API runtime must have exactly the documented 16-function authentication allow-list'));
   assert.ok(preCutoverQualification.includes('unexpected_auth_function_grantees'));
+  assert.ok(preCutoverQualification.includes("acl.grantee = 'ghm_migrator'::regrole"));
+  assert.ok(preCutoverQualification.includes("ghm.auth_lookup_business_external_mapping(text,text)"));
   const preCutoverStep = ciWorkflow.indexOf('Qualify exact pre-issuer Resource API authentication grants');
   const cutoverStep = ciWorkflow.indexOf('Apply guarded auth issuer manual cutover in disposable PostgreSQL only');
   assert.ok(preCutoverStep >= 0 && cutoverStep > preCutoverStep, 'pre-cutover grant snapshot must run before the manual SQL cutover');
