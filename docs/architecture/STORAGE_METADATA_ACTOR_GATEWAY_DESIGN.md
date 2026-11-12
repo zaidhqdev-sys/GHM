@@ -57,13 +57,13 @@ The existing Resource API authorization adapter remains useful as defense in dep
 
 ## Manual cutover
 
-The five-function cutover and rollback have been rehearsed on disposable PostgreSQL 18 by `scripts/qualify-storage-metadata-runtime-grant-revocation-postgres.mjs`. It verifies `session_user = 'ghm_migrator'` and `current_user = 'ghm_schema_owner'`, snapshots the exact PUBLIC/runtime ACLs, revokes them, confirms runtime direct calls fail, verifies Actor Gateway wrapper access remains, and restores the exact original ACLs. The rehearsal script is qualification evidence, not the production cutover script. Production revocation remains a separate manual operation requiring a fresh verified backup, role-administration access and approval. No production grants were changed.
+The five-function cutover and rollback have been rehearsed on disposable PostgreSQL 18 by `scripts/qualify-storage-metadata-runtime-grant-revocation-postgres.mjs`. It verifies `session_user = 'ghm_migrator'` and `current_user = 'ghm_schema_owner'`, snapshots the PUBLIC, `ghm_runtime`, `ghm_migrator` and `ghm_actor_gateway` execution state, revokes EXECUTE from all four principals, confirms direct calls fail for runtime, migrator and Actor Gateway logins, verifies the five replacement Actor Gateway wrapper grants remain, and restores the original execution state. The rehearsal leaves the five production legacy grants unchanged. The rehearsal script is qualification evidence, not the production cutover script. Production revocation remains a separate manual operation requiring a fresh verified backup, role-administration access and approval. No production grants were changed.
 
 ## Required qualification
 
-Disposable PostgreSQL 18 qualification has now proved the following (the expanded exact-head qualification is run `43235502697`; its remaining repository-wide checks were still running at this document checkpoint):
+Disposable PostgreSQL 18 qualification has proved the following in the completed expanded storage step of run `43236301670`; subsequent exact-head runs are rechecking the expanded fixture and full repository suite:
 
-- Runtime direct invocation of all five legacy functions is denied during the disposable cutover rehearsal, then the original ACLs are restored exactly.
+- Direct invocation of all five legacy functions is denied for `ghm_runtime`, `ghm_migrator` and `ghm_actor_gateway` during the disposable cutover rehearsal, then the original execution state for the four modified principals is restored.
 - Signed gateway operations succeed for authorized owners/administrators, including pending creation, metadata read, availability, deletion request and provider-confirmed deletion.
 - Cross-business private-object reads and cross-business mutations are denied.
 - Non-member pending-object creation is denied.
