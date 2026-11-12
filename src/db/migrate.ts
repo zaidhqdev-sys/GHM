@@ -135,6 +135,13 @@ const migrate = async (): Promise<void> => {
             FROM pg_auth_members membership
            WHERE membership.member = schema_owner.oid
         ) AS schema_owner_direct_membership_count,
+        has_database_privilege('ghm_schema_owner', current_database(), 'CREATE') AS schema_owner_database_create_privilege,
+        EXISTS (
+          SELECT 1
+            FROM pg_namespace owned_schema
+           WHERE owned_schema.nspname = 'ghm'
+             AND owned_schema.nspowner = schema_owner.oid
+        ) AS schema_owner_owns_ghm_schema,
         schema_owner.rolcanlogin AS schema_owner_rolcanlogin,
         schema_owner.rolsuper AS schema_owner_rolsuper,
         schema_owner.rolcreatedb AS schema_owner_rolcreatedb,
