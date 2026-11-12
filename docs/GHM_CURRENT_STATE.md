@@ -1227,3 +1227,10 @@ The source-body pass found the GHM profile function's dynamic SQL uses fixed ide
 **Open coverage gaps:** PUBLIC EXECUTE is now checked across all GHM SECURITY DEFINER functions, but direct non-owner grants are not yet inventoried across every GHM SECURITY DEFINER function; the current direct-grantee checks remain service-allow-list scoped. Ownership/search_path/PUBLIC scans also remain GHM-schema scoped. A whole-database non-system SECURITY DEFINER inventory, extension/legacy schema review, and explicit function-to-role EXECUTE exception matrix are required before the security audit can be called complete. No production changes or cutover.
 
 Full evidence and next steps: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+
+## 2026-11-12 — Whole-database SECURITY DEFINER inventory tooling
+
+Added read-only `scripts/audit-security-definer-authority.mjs`, its contract test, and `npm run audit:security-definer-authority`. It is restricted to local `ghm_disposable_test`, and inventories SECURITY DEFINER functions/procedures across all non-system schemas, including owner, definition, search_path/settings, extension membership, direct ACL grantor/grantee/grant-option entries, effective EXECUTE roles, role memberships and function default ACLs. It makes no changes and reports `REVIEW_REQUIRED_NO_AUTOMATIC_APPROVAL`.
+
+**Not yet qualified:** the inventory has not been executed against disposable PostgreSQL in this session. No actual grant matrix or cross-schema findings are claimed. The contract test is included in `npm test`; exact-head CI and database execution remain pending. Do not merge or cut over. Full next steps are in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
