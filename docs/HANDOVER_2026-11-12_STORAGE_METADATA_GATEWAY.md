@@ -197,7 +197,9 @@ Added and wired `scripts/qualify-storage-provider-workflow-attestation-postgres.
 3. Runs the adversarial provider-transition qualification through the actual `PostgresStorageMetadataGatewayReader` and the `ghm_actor_gateway` database login.
 4. Removes the disposable secret and all fixture rows afterward.
 
-The qualification passed on run `43232525014` for:
+The complete workflow passed on run `43232525014`, including the PostgreSQL 18 provider qualification, existing storage qualification, 959/959 automated tests, and the remaining issuer/Actor Gateway/database qualification jobs.
+
+The provider qualification passed for:
 - Legitimate availability transition with user actor proof plus Resource API provider proof.
 - Legitimate deletion completion with both proofs.
 - Invalid provider signature.
@@ -209,6 +211,8 @@ The qualification passed on run `43232525014` for:
 - `ghm_runtime` denied EXECUTE on both provider-transition wrappers.
 
 The provisioning script was tightened after its first CI attempt: it now uses the explicit migrator URL, not the qualification/admin URL, and still rejects non-local or incorrectly named targets. The first attempt was blocked by the identity guard and did not provision the secret. The subsequent run passed.
+
+A further ACL refinement now explicitly checks that neither `ghm_runtime` nor `ghm_actor_gateway` can directly execute the provider verifier or read the provider secret table, while only `ghm_actor_gateway` can execute the two transition wrappers. That expanded exact-head run is `43232859256` and remains in progress at this checkpoint.
 
 **Important boundary:** this is database-wrapper qualification, not yet a complete external provider lifecycle or production cutover. Legacy runtime grants remain unchanged; no production secret has been created; no production migration or deployment has occurred.
 
