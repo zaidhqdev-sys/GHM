@@ -18,6 +18,7 @@ test('storage create binds every metadata argument to the signed context', () =>
   assert.match(migration, /p_resource_type<>'business'/);
   assert.match(migration, /p_resource_id IS DISTINCT FROM p_business/);
   assert.match(migration, /p_object_class<>'business_logo'/);
+  assert.match(migration, /media\/logos\/'\|\|p_business::text/);
   assert.match(migration, /p_byte_size>2097152/);
   assert.match(migration, /bm\\.membership_role IN \\('owner','administrator'\\)/);
 });
