@@ -41,6 +41,8 @@ try {
            p.proleakproof AS leakproof,
            p.provolatile AS volatility,
            p.proparallel AS parallel_safety,
+           language.lanname AS language_name,
+           language.lanpltrusted AS language_trusted,
            p.proconfig AS function_settings,
            pg_get_userbyid(p.proowner) AS owner_name,
            pg_get_function_identity_arguments(p.oid) AS identity_arguments,
@@ -52,6 +54,7 @@ try {
       FROM pg_proc p
       JOIN pg_namespace n ON n.oid = p.pronamespace
       JOIN pg_roles owner_role ON owner_role.oid = p.proowner
+      JOIN pg_language language ON language.oid = p.prolang
       LEFT JOIN LATERAL (
         SELECT jsonb_agg(jsonb_build_object(
           'extension', e.extname,
@@ -99,6 +102,82 @@ try {
       JOIN pg_roles member ON member.oid = m.member
       JOIN pg_roles granted ON granted.oid = m.roleid
      ORDER BY member.rolname, granted.rolname
+  `);
+
+  const roles = await query(`
+    SELECT rolname,
+           rolsuper,
+           rolinherit,
+           rolcreaterole,
+           rolcreatedb,
+           rolreplication,
+           rolbypassrls,
+           rolcanlogin,
+           rolconnlimit,
+           rolvaliduntil
+      FROM pg_roles
+     ORDER BY rolname
+  `);
+
+  const schemas = await query(`
+    SELECT n.nspname AS schema_name,
+           owner_role.rolname AS owner,
+           COALESCE(schema_acl.entries, '[]'::jsonb) AS direct_acl,
+           COALESCE(effective_privileges.roles, '[]'::jsonb) AS effective_schema_privileges
+      FROM pg_namespace n
+      JOIN pg_roles owner_role ON owner_role.oid = n.nspowner
+      LEFT JOIN LATERAL (
+        SELECT jsonb_agg(jsonb_build_object(
+          'grantee', CASE WHEN acl.grantee = 0 THEN 'PUBLIC' ELSE grantee_role.rolname END,
+          'grantor', grantor_role.rolname,
+          'privilege', acl.privilege_type,
+          'grantable', acl.is_grantable
+        ) ORDER BY acl.grantee, acl.privilege_type, acl.grantor) AS entries
+          FROM aclexplode(COALESCE(n.nspacl, acldefault('n', n.nspowner))) acl
+          LEFT JOIN pg_roles grantee_role ON grantee_role.oid = acl.grantee
+          LEFT JOIN pg_roles grantor_role ON grantor_role.oid = acl.grantor
+      ) schema_acl ON true
+      LEFT JOIN LATERAL (
+        SELECT jsonb_agg(jsonb_build_object(
+          'role', r.rolname,
+          'usage', has_schema_privilege(r.oid, n.oid, 'USAGE'),
+          'create', has_schema_privilege(r.oid, n.oid, 'CREATE')
+        ) ORDER BY r.rolname) AS roles
+          FROM pg_roles r
+      ) effective_privileges ON true
+     WHERE n.nspname <> 'information_schema'
+       AND n.nspname NOT LIKE 'pg_%'
+     ORDER BY n.nspname
+  `);
+
+  const databaseAcls = await query(`
+    SELECT d.datname AS database_name,
+           owner_role.rolname AS owner,
+           COALESCE(database_acl.entries, '[]'::jsonb) AS direct_acl,
+           COALESCE(effective_privileges.roles, '[]'::jsonb) AS effective_database_privileges
+      FROM pg_database d
+      JOIN pg_roles owner_role ON owner_role.oid = d.datdba
+      LEFT JOIN LATERAL (
+        SELECT jsonb_agg(jsonb_build_object(
+          'grantee', CASE WHEN acl.grantee = 0 THEN 'PUBLIC' ELSE grantee_role.rolname END,
+          'grantor', grantor_role.rolname,
+          'privilege', acl.privilege_type,
+          'grantable', acl.is_grantable
+        ) ORDER BY acl.grantee, acl.privilege_type, acl.grantor) AS entries
+          FROM aclexplode(COALESCE(d.datacl, acldefault('d', d.datdba))) acl
+          LEFT JOIN pg_roles grantee_role ON grantee_role.oid = acl.grantee
+          LEFT JOIN pg_roles grantor_role ON grantor_role.oid = acl.grantor
+      ) database_acl ON true
+      LEFT JOIN LATERAL (
+        SELECT jsonb_agg(jsonb_build_object(
+          'role', r.rolname,
+          'connect', has_database_privilege(r.oid, d.oid, 'CONNECT'),
+          'create', has_database_privilege(r.oid, d.oid, 'CREATE'),
+          'temporary', has_database_privilege(r.oid, d.oid, 'TEMPORARY')
+        ) ORDER BY r.rolname) AS roles
+          FROM pg_roles r
+      ) effective_privileges ON true
+     WHERE d.datname = current_database()
   `);
 
   const defaultAcls = await query(`
@@ -153,6 +232,9 @@ try {
     routine_count: functions.length,
     functions,
     role_memberships: memberships,
+    role_attributes: roles,
+    schema_privileges: schemas,
+    database_privileges: databaseAcls,
     function_default_acls: defaultAcls,
     preliminary_findings: findings,
     decision: 'REVIEW_REQUIRED_NO_AUTOMATIC_APPROVAL',
