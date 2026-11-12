@@ -76,6 +76,7 @@
     "qualify:business-capability-gateway-cutover": "npm run build && node scripts/qualify-business-capability-gateway-cutover-postgres.mjs",
     "qualify:saved-business-gateway-cutover": "npm run build && node scripts/qualify-saved-business-gateway-cutover-postgres.mjs",
     "qualify:business-hours-gateway-cutover": "npm run build && node scripts/qualify-business-hours-gateway-cutover-postgres.mjs",
+    "qualify:campaign-directory-review-gateway": "npm run build && node scripts/qualify-campaign-directory-review-gateway-postgres.mjs",
     "qualify:trust-score-gateway-cutover": "npm run build && node scripts/qualify-trust-score-gateway-cutover-postgres.mjs",
     "qualify:business-logo-gateway-cutover": "npm run build && node scripts/qualify-business-logo-gateway-cutover-postgres.mjs",
     "start:auth-issuer": "node dist/auth-issuer/server.js",
