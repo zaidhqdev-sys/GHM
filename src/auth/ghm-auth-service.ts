@@ -162,13 +162,15 @@ export const createGhmAuthService = (
           // A concurrent password change/reset may have won after verification.
           // Re-read and verify the current credential before issuing any session.
           const latest = await persistence.lookupPasswordByEmail(normalized.loginEmail);
+          if (!latest) {
+            throw new GhmAuthServiceError('Authentication required', 'INVALID_CREDENTIALS', 401);
+          }
           if (
-            !latest ||
             latest.accountId !== credential.accountId ||
             latest.accountStatus !== 'active' ||
             latest.credentialStatus !== 'active'
           ) {
-            failCredentials();
+            throw new GhmAuthServiceError('Authentication required', 'INVALID_CREDENTIALS', 401);
           }
           const latestVerified = await passwordHasher.verify(latest.passwordHash, password);
           if (!latestVerified.verified) failCredentials();
