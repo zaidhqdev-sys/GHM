@@ -83,6 +83,7 @@ export const AUTH_ISSUER_DATABASE_PRIVILEGES_SQL = `
           FROM pg_proc p
           JOIN pg_namespace n ON n.oid = p.pronamespace
          WHERE n.nspname = 'ghm'
+           AND p.prorettype <> 'trigger'::regtype
            AND has_function_privilege(session_user, p.oid, 'EXECUTE')
          ORDER BY 1
       ) AS executable_functions,
