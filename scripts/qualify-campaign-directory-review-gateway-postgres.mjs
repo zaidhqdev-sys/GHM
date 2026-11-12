@@ -107,8 +107,8 @@ try {
       throw error;
     } finally { client.release(); }
   };
-  const privilegeMatrix = async () => {
-    const result = await gateway.query(`
+  const privilegeMatrix = async (client = gateway) => {
+    const result = await client.query(`
       SELECT has_function_privilege('ghm_runtime','ghm.create_campaign(bigint,bigint,text)','EXECUTE') AS runtime_create,
              has_function_privilege('ghm_runtime','ghm.update_campaign(bigint,bigint,text,text)','EXECUTE') AS runtime_update,
              has_function_privilege('ghm_runtime','ghm.get_business_directory_review_presentation(bigint,bigint)','EXECUTE') AS runtime_review,
@@ -181,7 +181,7 @@ try {
     await rollbackClient.query('BEGIN');
     await rollbackClient.query('SET LOCAL ROLE ghm_schema_owner');
     await rollbackClient.query(rollbackSql);
-    assert.deepEqual(await privilegeMatrix(), {
+    assert.deepEqual(await privilegeMatrix(rollbackClient), {
       runtime_create: true, runtime_update: true, runtime_review: true,
       gateway_create: false, gateway_update: false, gateway_review: false,
     });
