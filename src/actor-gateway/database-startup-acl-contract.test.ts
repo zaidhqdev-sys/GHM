@@ -63,3 +63,8 @@ test('disposable qualification probes and cleans up unexpected Actor Gateway fun
   assert.ok(qualificationSource.includes('actorAclAfterDirectProbe.unsafe_function_grantees'));
   assert.ok(qualificationSource.includes('REVOKE EXECUTE ON FUNCTION ghm.gateway_provision_connect_business'));
 });
+
+
+test('Actor Gateway default ACL verifier requires the global default ACL row, not merely a schema override', () => {
+  assert.match(privilegeSource, /NOT EXISTS \([\s\S]{0,240}defaclnamespace = 0[\s\S]{0,100}defaclobjtype = 'f'/);
+});
