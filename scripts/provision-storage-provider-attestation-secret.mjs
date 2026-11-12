@@ -2,9 +2,9 @@ import 'dotenv/config';
 import pg from 'pg';
 
 const { Client } = pg;
-const databaseUrl = process.env.GHM_QUALIFICATION_DATABASE_URL;
+const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 const encodedSecret = process.env.GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET;
-if (!databaseUrl) throw new Error('GHM_QUALIFICATION_DATABASE_URL is required; generic DATABASE_URL fallbacks are disabled');
+if (!databaseUrl) throw new Error('GHM_MIGRATOR_DATABASE_URL is required; generic DATABASE_URL fallbacks are disabled');
 const qualificationUrl = new URL(databaseUrl);
 const expectedDatabase = process.env.GHM_QUALIFICATION_DATABASE_NAME?.trim() || 'ghm_disposable_test';
 if (!['localhost', '127.0.0.1', '::1'].includes(qualificationUrl.hostname)
