@@ -76,3 +76,42 @@ Relevant source facts:
 
 This is a design-only refinement. No application code, database grants, migrations, production resources or deployments were changed. No security qualification or CI pass is claimed for the new documents.
 
+## Implementation progress — actor-authorized metadata slice
+
+Implemented on the construction branch after the design review:
+
+- `database/migrations/20261112140000_add_signed_storage_metadata_actor_gateway.sql` adds three v2 assertion-bound wrappers: `gateway_storage_create_pending`, `gateway_storage_get_object`, and `gateway_storage_mark_deletion_pending`.
+- The shared assertion verifier allow-list was extended while preserving every existing operation: capability governance, supplier/profile/registration, actor identity, business capability, Saved Business, business hours, trust score, Business Logo binding, and Connect provisioning.
+- Create binds every metadata argument to signed JSON context, limits this vertical slice to Business Logo metadata, checks active owner/administrator membership, enforces the 2 MiB/type policy, and validates provider keys are under the exact `media/logos/<authorized-business>/<UUID>` namespace.
+- Read derives tenant from the stored object and preserves the public Business Logo / active membership behavior.
+- Deletion-pending derives tenant from the stored object and requires an active owner/administrator.
+- All three wrappers are owned by `ghm_schema_owner`, pin `search_path = pg_catalog, ghm, pg_temp`, and grant EXECUTE only to `ghm_actor_gateway`.
+- `src/actor-gateway/storage-metadata-reader.ts` signs the exact operation/context with the existing v2 HMAC mechanism. The HTTP Actor Gateway now has create/read/deletion-pending routes, validates IDs and canonical provider-key shape, and derives actor exclusively from the verified JWT.
+- The Actor Gateway startup ACL allow-list now includes exactly the three new wrapper signatures.
+- Added migration-contract, reader and HTTP route tests.
+
+Latest implementation commits (ordered):
+- `9d7511b4815c12afd299d7e3affa2f20a1e6f894` — initial database wrappers.
+- `f185ced5df5945dd97f72aa2849c8352ac927199` — tenant-bound provider key validation.
+- `8587fee3ee78fdbfc98db17fe9e296c0e14c88ee` — temporary-safe SECURITY DEFINER search paths.
+- `43f84f74f1c5f8b6bc3b35c11041882cb22378a3` — preserved the complete existing assertion operation allow-list.
+- `edf2f517695684f848491d6f13799f61d117ba5f` — startup ACL allow-list.
+- `cdc54fb6100f98663075600f00d9c60cae26c051` — signed metadata reader.
+- `0358981ddaf962d2ac8c477adcf4ecb44dbe6678` — HTTP routes (subsequently corrected in `b2805e10e7b4d2a18566ba819b77703499b1e0ce` after detecting a truncated edit; use the corrected commit).
+- `e22af7b7f944cfbab1bdd10c354d46ffade6ad49` — server wiring.
+- `e79a8e2320e893811bfc61744d6665479750f263` — route tests.
+- `2f8df2f7110a024d54f8a59be751901a496c3f0c` — assertion allow-list regression test.
+
+**Not yet complete:** these are only the actor-authorized operations. Provider-confirmed `mark_available` and `mark_deleted` transitions are deliberately not exposed or implemented. The Resource API storage repository is still using direct runtime SQL for all five legacy functions. No manual grant cutover exists yet. No disposable PostgreSQL 18 qualification or exact-head CI pass is claimed for this implementation.
+
+## Immediate next steps
+
+1. Add and adversarially qualify the separate Resource API provider attestation described in the design. It must be signed by a key unavailable to the Actor Gateway process, checked by PostgreSQL, bound to object/tenant/operation/provider evidence, short-lived and one-use. Do not turn provider transitions into ordinary user-JWT routes.
+2. Enumerate and classify every pending-object cleanup/retry caller before designing any system authority.
+3. Implement provider transition wrappers and trusted internal transport; only then integrate the complete Storage Metadata Gateway client into `src/storage/repository.ts` and `src/http/storage-router.ts`.
+4. Add HTTP, reader, repository and adversarial PostgreSQL 18 tests; verify legitimate upload/completion/public-read/delete/retry lifecycle.
+5. Add manual-only revoke/rollback scripts and disposable cutover qualification.
+6. Run exact-head CI and full issuer/Actor Gateway/whole-database qualification. Only after all docs are reconciled can integration be considered.
+
+The most recent observed GitHub workflow/status query for commit `b2805e10e7b4d2a18566ba819b77703499b1e0ce` returned no workflow runs or status checks. This is **not** a CI pass. Check the current branch HEAD and CI again before relying on the implementation.
+
