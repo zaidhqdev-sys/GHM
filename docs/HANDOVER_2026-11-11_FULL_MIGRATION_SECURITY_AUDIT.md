@@ -1630,3 +1630,38 @@ The documentation/current-state head `0f9349a14b7b5e3e4e2d1d3c05c83470330beb0b` 
 ### CI follow-up after routing documentation
 
 CI run #3493 is for predecessor commit `0f9349a14b7b5e3e4e2d1d3c05c83470330beb0b`: `web-quality` passed; `quality` has not yet reported a final conclusion. The subsequent routing handover/current-state commits are later than that run and require exact-head CI confirmation. No code changes were made in this audit batch.
+
+
+## Follow-up — complete product-consumer auth endpoint inventory (2026-11-12)
+
+The issuer route cutover has external product consumers, so it cannot be implemented only inside GHM. The following current-main source contracts were inspected.
+
+### GHM web
+
+- `web/src/api/config.ts` exposes one `VITE_GHM_API_BASE_URL` for both resource and auth traffic.
+- `web/src/auth/ghm-auth-client.ts` calls native `/api/v1/auth/login`, `refresh`, and `logout` on that same base URL.
+- Split auth and resource origins only after adding explicit configuration and tests; do not silently repoint ordinary resource requests to the issuer.
+
+### ZAID Connect
+
+- Main `src/lib/ghmAuth.js` currently uses `VITE_GHM_API_BASE_URL` for native `/api/v1/auth/register|login|refresh|logout` and all GHM resource requests.
+- Optional browser auth is gated by `VITE_GHM_WEB_AUTH_ENABLED === "true"`; it defaults off. When enabled, `src/features/authentication/ghmWebAuthClient.js` calls the same-origin Vercel BFF at `/api/ghm/auth/web/{register,login,refresh,logout}`.
+- `api/ghm/[...path].js` currently has one server-only upstream `GHM_INTERNAL_RUNTIME_URL`. Its browser-auth allow-list is exactly four POST routes; it maps them to `/api/v1/auth/web/*`, forwards the cookie and the canonical Origin, and blocks native auth routes from the general resource proxy.
+- Native bearer mode remains the default and uses direct runtime auth endpoints; browser-cookie mode is optional and not enabled by default. Do not treat the optional BFF as proof that native auth has moved to a separate issuer.
+
+### QuoteFlow
+
+- Current main has a Gate A GHM auth adapter, but it is explicitly disabled unless `EXPO_PUBLIC_GHM_AUTH_ENABLED=true` and `EXPO_PUBLIC_GHM_AUTH_BASE_URL` is set.
+- When enabled, `src/lib/ghmAuthClient.ts` uses one `baseUrl` for both native `/api/v1/auth/login|refresh|logout` and `/api/v1/identity`. Therefore the issuer extraction must split the auth issuer origin from the GHM resource/identity API origin before Gate A can be enabled against the new topology.
+- QuoteFlow's existing Supabase Auth coexistence contract remains unchanged by this GHM issuer work. Do not enable the Gate A flag or change Supabase coexistence as part of this task.
+
+### Required consumer migration
+
+Before removing auth routes from the Resource API:
+1. Add a distinct auth issuer base URL to GHM web and Connect native auth clients; keep resource API base URLs unchanged.
+2. Add a distinct server-only issuer upstream to the Connect Vercel BFF for the four optional browser-cookie endpoints. Keep its allow-list, origin validation, body limits, cookie forwarding and no-redirect behavior.
+3. Add separate issuer/resource base URLs to QuoteFlow's GHM client; preserve its disabled-by-default Gate A flag and Supabase coexistence.
+4. Keep public auth path contracts, token response shape, ES256 claims/TTL, refresh rotation, logout semantics, cookie attributes and error mapping unchanged.
+5. Add cross-repository contract tests and a staged non-production end-to-end plan before any product environment variable or deployment changes.
+
+This inventory is based on GHM integration branch source plus the current `main` branches of `zaid-connect` and `QuoteFlow` as of 2026-11-12. No product repositories were modified and no feature flags or deployments were changed.
