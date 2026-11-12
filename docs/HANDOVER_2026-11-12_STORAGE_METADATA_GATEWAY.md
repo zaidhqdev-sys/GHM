@@ -301,3 +301,30 @@ The successful exact code/fixture CI run `43237334881` preserved artifact `secur
 Captured without mutation from `ghm_disposable_test` on PostgreSQL 18.6 as `ghm_migrator` at `2026-11-12T14:27:50.233Z`: 103 SECURITY DEFINER routines, all owned by `ghm_schema_owner`, all in `ghm`, all trusted language, all pinned to `pg_catalog, ghm, pg_temp`; zero PUBLIC EXECUTE grants. The 75 preliminary grant findings group into direct EXECUTE grants for runtime 43, Actor Gateway 30, payment provider 2, migrator 1. These are grant inventory items requiring operation-by-operation review, not automatic vulnerability findings. The artifact's decision remains `REVIEW_REQUIRED_NO_AUTOMATIC_APPROVAL`.
 
 The five new storage gateway wrappers are among the 30 Actor Gateway grants. The five legacy metadata functions remain among the 43 runtime grants in the post-rollback snapshot. The cutover test revokes them only during the disposable rehearsal, verifies runtime/migrator/Actor Gateway direct-call denial, verifies wrapper access, then restores the original state. This is not production revocation. The full migration security handover records the role-grant breakdown and the one explicitly scoped migrator mapping lookup.
+
+
+## External provider end-to-end gate and latest CI — 2026-11-12
+
+### Provider safety and coverage boundary
+
+The repository's storage service and router tests now exercise the complete mocked workflow, including:
+- authorization before upload persistence/provider access;
+- pending metadata before upload grant;
+- provider HEAD metadata and actual byte/image validation before availability;
+- mismatch/spoofed image denial;
+- available-only access grants;
+- deletion-pending before provider deletion, retry after failure, and deleted only after provider success;
+- abandoned pending upload cleanup through the existing deletion lifecycle;
+- authenticated route behavior, original bearer-token forwarding, required-gateway fail-closed behavior, public approved-logo redirect, Business Logo replace/clear and cleanup retry.
+
+The Resource API ↔ gateway HTTP client tests cover HTTPS origin validation, redirect rejection, bearer-token forwarding, typed responses, and provider attestation signing. These tests use controlled/mock providers; they are not a deployed external-provider end-to-end run.
+
+The live Cloudflare R2 adapter test passed on 2026-10-26 for signed PUT, provider HEAD metadata, signed GET/payload integrity, DELETE and post-delete absence. However, its target bucket was `zaid-ghm-production`, recorded as the only bucket then created. The evidence explicitly says it is not established as a dedicated non-production bucket. **Do not run further live mutation tests against that bucket by default.** A dedicated non-production bucket/container and deployment-managed test credentials are required before running the full new Resource API ↔ Actor Gateway ↔ PostgreSQL ↔ R2 lifecycle. This avoids accidentally mutating production storage and does not authorize new paid infrastructure.
+
+### Inventory interpretation clarification
+
+The 103-routine inventory was captured after the guarded manual-cutover rehearsal scripts had restored their original ACL state. It is therefore a pre-cutover baseline: `ghm_auth_issuer` has no `ghm` schema USAGE or direct function grants in this snapshot, as expected before the isolated issuer cutover. The same CI workflow separately qualifies the ten-function issuer allow-list and disposable cutover/rollback. Do not read the inventory's issuer-zero baseline as a failed issuer qualification or as the post-cutover production state.
+
+### Latest exact-head CI
+
+The complete CI workflow passed in run `43238876670` at source/docs head `fab9f6389d7a7e992dfc93786a42394bbb8064a1`; both `quality` and `web-quality` passed. This includes the 960/960 main test suite, PostgreSQL 18 storage dual-proof and legacy grant rollback qualification, whole-database inventory, and issuer/Actor Gateway cutover qualifications. Further documentation-only reconciliations followed; the current exact branch head and its latest CI run must be checked before claiming final exact-head status.
