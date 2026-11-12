@@ -1592,3 +1592,36 @@ The issuer construction must not silently enable currently disabled recovery/Quo
 6. Do not change production service topology, environment variables, secrets, grants, routes or payment settings during this isolated construction work.
 
 No code or production configuration was changed in this follow-up.
+
+
+## Follow-up — external auth routing and deployment contract (2026-11-12)
+
+### Browser client contract
+
+The GHM web app currently has one API origin:
+- `web/src/api/config.ts` uses `VITE_GHM_API_BASE_URL`, defaulting to the current GHM Internal Runtime origin.
+- `web/src/auth/ghm-auth-client.ts` sends login, refresh and logout directly to `/api/v1/auth/login`, `/api/v1/auth/refresh`, and `/api/v1/auth/logout` on that same origin.
+- The web client also sends all ordinary resource API calls to the same origin.
+- The server auth router includes both native JSON refresh-token routes and browser cookie routes. Browser cookies are scoped to `/api/ghm`, with configured allowed origins, HttpOnly, SameSite=Lax and Secure in production.
+
+Therefore, a separate issuer service cannot simply be given a new browser-visible base URL without designing cross-origin/CORS/cookie and frontend/native-client compatibility. The preferred public contract is to preserve the existing auth paths and route them to the isolated issuer through an explicitly designed edge/reverse-proxy or same-origin routing layer. The proxy must not become an issuer-signing oracle or expose issuer DB/pepper/private-key credentials. Its authentication, network policy, request limits, origin validation and failure behavior must be threat-modelled.
+
+### Deployment evidence gap
+
+The repository tree contains no Render Blueprint, Dockerfile, deployment manifest, or service topology definition for the current Resource API / Actor Gateway. The Actor Gateway has a package start script and source entrypoint, but the deployment arrangement is not source-controlled here. No issuer deployment can be safely specified from the repository alone.
+
+Do not guess the current Render service's start command, build command, environment variables, network exposure, proxy capabilities, or custom-domain routing. A deployment manifest and operational service inventory must be obtained before proposing the final public routing arrangement. No Render service is to be created or changed.
+
+### Route compatibility and extraction
+
+The issuer must own all auth routes, including:
+- Native JSON register/login/refresh/logout.
+- Browser register/login/refresh/logout and cookie issuance/clearing.
+- Password recovery request/reset.
+- QuoteFlow migration reset request/completion.
+
+Current default service availability must be preserved: password reset exists; password recovery and QuoteFlow reset routes return 503 without injected dependencies. Rate limits, status codes, payloads, anti-enumeration, token bundle shape, cookie name/path/flags, and existing ES256 claims/TTL must be contract-tested across the extraction.
+
+### Latest CI
+
+The documentation/current-state head `0f9349a14b7b5e3e4e2d1d3c05c83470330beb0b` triggered CI run #3493. `web-quality` passed. `quality` completed build and all migrations, and was still running the test suite and subsequent disposable PostgreSQL qualification steps at the time of this note. Exact-head CI remains pending until the job concludes.
