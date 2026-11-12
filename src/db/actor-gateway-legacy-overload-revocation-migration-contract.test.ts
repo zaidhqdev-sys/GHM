@@ -12,7 +12,7 @@ const legacySignatures = [
   'ghm.assert_actor_gateway(bigint)',
 ];
 
-test('all unsigned legacy Actor Gateway overloads lose application and PUBLIC execution', () => {
+test('the unused unsigned Actor Gateway identity helper loses application and PUBLIC execution', () => {
   for (const signature of legacySignatures) {
     assert.ok(migration.includes(`REVOKE ALL ON FUNCTION ${signature}`), `missing revocation for ${signature}`);
   }
