@@ -1863,3 +1863,113 @@ The Business Profile disabled-account regression and reader unit tests passed on
 This handover continuation is committed as `c4a1cb2efcfa35e4639de0d98d55f4f818c85111`; its own exact-head CI run `43315369602` was in progress when this note was authored. Do not report that documentation-head run as passed until both jobs finish.
 
 **No production grants, roles, memberships, migrations, credentials, secrets, environment variables, Render services, deployments, traffic, storage objects or application data changed. No PR was merged or closed. PayFast and legal publication remain paused.**
+
+
+---
+
+## 2026-11-12 22:03 UTC — live production column ACL snapshot recovered
+
+### 1. Provenance and query context
+
+The missing production ACL matrix has now been retrieved directly from the live Render PostgreSQL instance:
+
+- Render database: `ghm-db`, database `ghm_db`, PostgreSQL 18.6.
+- Render Postgres resource ID: `dpg-dag0sdtbedkc7389vi2g-a`.
+- Snapshot time: `2026-11-12T22:03:18.829831Z`.
+- Query connection: `session_user = ghm_app_user`; `current_user = ghm_db_user`.
+- Query was executed through Render's read-only SQL transaction.
+- Catalog source: `pg_attribute.attacl`, expanded with `aclexplode`, including table, column, privilege, grantor, grantee and grant-option status.
+
+The snapshot reproduces the previously reported counts exactly. Every row is granted to `ghm_runtime`, by `ghm_schema_owner`, with no grant option.
+
+| Privilege | Column grants | Tables | Grantees | Grant-option rows |
+|---|---:|---:|---:|---:|
+| INSERT | 156 | 21 | 1 | 0 |
+| UPDATE | 60 | 12 | 1 | 0 |
+| SELECT | 7 | 1 | 1 | 0 |
+| **Total** | **223** | | | **0** |
+
+This is the actual production column ACL matrix, not the SECURITY DEFINER inventory.
+
+### 2. Complete INSERT column matrix — 156 grants
+
+| Production table | Exact INSERT columns |
+|---|---|
+| `business_capability` | `business_id, capability_id, created_by, description, effective_from, effective_until, proficiency_level, source_reference` |
+| `business_capability_evidence` | `business_capability_id, description, evidence_type, evidence_url, expires_on, issued_on, issuer_name, reference_number, submitted_by, title, visibility` |
+| `business_category_assignment` | `business_id, category_id, created_by, is_primary` |
+| `business_engagement_event` | `business_id, account_id, event_context, event_type, source` |
+| `business_offering` | `business_id, created_by, currency_code, description, name, offering_type, price_amount, price_unit, slug, sort_order` |
+| `commercial_event` | `actor_account_id, business_id, event_type, idempotency_key, occurred_at, payload, source, subscription_id` |
+| `commercial_payment_attempt` | `amount_minor_units, attempt_status, billing_interval, business_id, currency_id, expires_at, idempotency_key, initiated_by, price_id, subscription_id` |
+| `commercial_subscription` | `business_id, current_period_end, current_period_start, lifecycle_status, plan_version_id, price_id, trial_id` |
+| `commercial_trial` | `activated_at, activated_by, business_id, expires_at, lifecycle_status, plan_version_id` |
+| `customer` | `account_id, email, name, phone` |
+| `enquiry` | `budget_max, budget_min, business_id, city, customer_email, customer_id, customer_name, customer_phone, description, opportunity_id, project, source, urgency` |
+| `notification` | `body, metadata, title, type, user_id` |
+| `opportunity_capability_requirement` | `capability_id, created_by, description, importance, minimum_proficiency_level, opportunity_id, sort_order` |
+| `opportunity_participant` | `account_id, business_id, created_by, opportunity_id, participation_role, participation_status` |
+| `project` | `account_id, budget_max, budget_min, category, city, description, province, title, urgency` |
+| `project_quote` | `amount, business_id, description, duration_days, labour_max, labour_min, materials_max, materials_min, project_id, total_max, total_min` |
+| `quote` | `account_id, amount, customer_email, customer_id, customer_name, customer_phone, description, follow_up_date` |
+| `quote_line_item` | `catalog_item_id, description, quantity, quote_id, unit_price` |
+| `review` | `body, business_id, moderated_at, moderated_by, moderation_reason, moderation_status, rating, reviewer_id, reviewer_name, title` |
+| `support_request` | `account_id, business_id, category, description, subject` |
+| `support_request_message` | `account_id, body, sender_kind, support_request_id` |
+
+### 3. Complete UPDATE column matrix — 60 grants
+
+| Production table | Exact UPDATE columns |
+|---|---|
+| `account_identity` | `avatar_ref, business_operator_intent, connect_role, full_name, phone, updated_at` |
+| `business` | `rating, review_count, updated_at` |
+| `business_category_assignment` | `is_primary` |
+| `business_offering` | `currency_code, description, is_active, name, offering_type, price_amount, price_unit, slug, sort_order` |
+| `customer` | `status, updated_at` |
+| `enquiry` | `status` |
+| `notification` | `is_read, read_at` |
+| `project` | `budget_max, budget_min, category, city, description, province, status, title, updated_at, urgency` |
+| `project_quote` | `amount, description, duration_days, labour_max, labour_min, materials_max, materials_min, status, total_max, total_min, updated_at` |
+| `quote` | `notes, reminder_date, reminder_id, status, updated_at` |
+| `review` | `moderated_at, moderated_by, moderation_reason, moderation_status, updated_at` |
+| `support_request` | `closed_at, resolution_summary, resolved_at, status, updated_at` |
+
+### 4. Complete SELECT column matrix — 7 grants
+
+| Production table | Exact SELECT columns |
+|---|---|
+| `business_engagement_event` | `account_id, business_id, created_at, event_context, event_type, id, source` |
+
+### 5. New production-vs-source discrepancy: Business Engagement
+
+The live production catalog contains `ghm.business_engagement_event`:
+
+- Owner: `ghm_schema_owner`.
+- Exact columns: `id, business_id, account_id, event_type, event_context, source, created_at`.
+- Its production INSERT and SELECT column ACLs exactly match the grants in PR #244's migration `20261110020000_create_business_engagement_analytics.sql`.
+- PR #244's source defines the authenticated `POST /api/v1/business-engagement-events` route, uses `AuthContext.userId` as the account ID, excludes active Business members, requires an active/verified/approved Business, and applies a transactionally serialized 60-events/minute limit.
+- PR #244 remains open and stacked on #243.
+- Neither the migration nor the engagement resource/router files exist in production source tree ref `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`.
+
+This changes the earlier conclusion: there **is** a real production table and a real production runtime column ACL for engagement events. It is no longer accurate to say the grant is merely proposed or absent from production.
+
+The database object and grants closely match PR #244's migration, but the exact migration-ledger row could not be read through the available production query identity: SELECT on `ghm.ghm_schema_migrations` returned SQLSTATE 42501. Therefore the migration's precise ledger provenance and the live HTTP route's deployment status remain unverified. Do not assume the route is deployed merely because its database object exists. Resolve this as a production schema/source provenance discrepancy, not by creating a duplicate table or reapplying the migration.
+
+### 6. Newly highlighted account-identity UPDATE scope
+
+The live production ACL contains six account-identity UPDATE columns:
+`full_name, phone, avatar_ref, updated_at, connect_role, business_operator_intent`.
+
+The earlier handover's narrower profile-field summary was incomplete. In particular, `connect_role` and `business_operator_intent` need explicit callsite and lifecycle-authority mapping. Do not infer they are safe profile fields or revoke them based only on their names.
+
+### 7. Immediate next source reconciliation
+
+With the full production matrix now preserved, continue by mapping the exact live column groups to deployed repository SQL, service/route wiring and authorization:
+1. Resolve `account_identity` six-column UPDATE, including `connect_role` and `business_operator_intent`.
+2. Resolve `business.rating/review_count` UPDATE to the exact review aggregation trigger/function or application caller.
+3. Confirm Business Offering, category assignment, capability and evidence write routes against their exact granted columns.
+4. Reconcile the 21 INSERT table groups and 12 UPDATE table groups against the production source tree, including route wiring and any triggers.
+5. Resolve Business Engagement's production object/ACL versus source/ledger discrepancy.
+6. Check table-level ACLs, sequence ACLs and inherited membership separately; this snapshot is specifically the column ACL matrix.
+
+**No production mutation was performed.** The only production interaction was catalog inspection and read-only queries. No grant, role, membership, migration, secret, environment variable, Render service, deployment, traffic, or application data was changed. No PR was merged or closed. PayFast and legal publication remain paused.
