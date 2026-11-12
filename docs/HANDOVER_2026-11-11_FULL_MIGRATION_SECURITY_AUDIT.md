@@ -1888,3 +1888,33 @@ This is a read-only inventory correction. No Render service, database, environme
 - The latest readiness changes and the follow-up handover commits are newer than #3549 and will need exact-head CI confirmation.
 
 No production changes.
+
+
+## Manual cutover SQL now exercised in disposable PostgreSQL; least-privilege correction (2026-11-12)
+
+### Guarded manual cutover artifact
+
+The disposable qualification now applies the same durable manual cutover SQL intended for a future, explicitly approved cutover:
+`database/cutovers/20261112010000_authentication_issuer_privilege_cutover.sql`.
+
+This is deliberately under `database/cutovers/`, not the automatic migration chain. It:
+- fails unless `ghm_auth_issuer` exists as LOGIN/NOINHERIT, has no elevated role flags and has no role memberships;
+- grants only `USAGE` on schema `ghm`;
+- removes all direct table, sequence and function privileges from the issuer before the allow-list;
+- revokes the reviewed auth lifecycle functions from PUBLIC and `ghm_runtime`;
+- grants the reviewed function allow-list to the issuer;
+- deliberately retains `auth_lookup_external_identity` for Connect's lookup-only resource path.
+
+CI runs #3553 and #3554 passed the full disposable sequence using this manual cutover file, including the positive lifecycle and runtime denial checks. This confirms the SQL artifact works in disposable PostgreSQL. It is not an authorization to apply it to a live database.
+
+### Removed an unnecessary issuer permission: `auth_validate_session`
+
+A source-level caller audit confirmed `auth_validate_session` / `PostgresAuthPersistence.validateSession` had no active production caller; all references were in the persistence test suite. It was therefore unnecessarily included in the first 12-function issuer allow-list.
+
+Correction:
+- removed `validateSession` from the production `AuthPersistence` interface and `PostgresAuthPersistence` implementation;
+- retained the underlying SQL function for tests, but changed test-only calls to use the migrator login with `SET LOCAL ROLE ghm_schema_owner`;
+- retained explicit denial of `auth_validate_session` to `ghm_runtime` in the post-cutover negative test;
+- removed its issuer GRANT from the manual cutover and its name from the issuer allow-list.
+
+The reviewed issuer allow-list is now **11 functions**, not 12. The latest CI runs #3557/#3558 test this reduced allow-list and owner-only test access. Do not claim the 11-function version is qualified until the exact-head run completes successfully.
