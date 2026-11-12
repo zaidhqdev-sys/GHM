@@ -1670,3 +1670,41 @@ This inventory is based on GHM integration branch source plus the current `main`
 ### Updated CI result
 
 Run #3493 on predecessor commit `0f9349a14b7b5e3e4e2d1d3c05c83470330beb0b` has now completed successfully: both `quality` and `web-quality` passed. This covers the full build, migration chain, complete test suite and all configured disposable PostgreSQL qualifications. It does not validate the later cross-product consumer-inventory commits. The current branch head is newer and still requires exact-head CI confirmation.
+
+
+## Construction checkpoint — isolated issuer foundation (2026-11-12)
+
+A dedicated construction branch has been created from the reconciled integration documentation head:
+`construction/auth-issuer-isolation-20261112`.
+
+### Implemented in this construction batch
+
+- `src/auth-issuer/server.ts`: separate issuer process entrypoint, dedicated `GHM_AUTH_ISSUER_DATABASE_URL`, explicit production SSL mode, independent PostgreSQL pool, startup database-principal assertion, and issuer-only construction of `PostgresAuthPersistence`, ES256 signing service and password-reset service.
+- `src/auth-issuer/app.ts`: independent Express app that owns the existing auth router contract, with bounded JSON parsing, optional explicit CORS allow-list and process health endpoint.
+- `src/auth-issuer/database-principal.ts` + tests: require session/effective user `ghm_auth_issuer`, LOGIN/NOINHERIT, no elevated role flags and no role memberships in either direction.
+- `src/auth-issuer/database-ssl.ts` + tests: production must explicitly select internal or external DB transport; no implicit production mode.
+- `src/auth-issuer/app.test.ts`: tests existing native login response contract and preserves the default 503 behavior for unconfigured password-recovery delivery.
+- `package.json`: adds `start:auth-issuer` and includes the issuer tests in the Node test suite.
+- `.env.example`: documents issuer-only environment variables; no values/secrets added.
+- `.github/workflows/ci.yml`: creates a disposable `ghm_auth_issuer` login for future qualification and runs CI on this construction branch. This is CI-only role setup, not a database migration or production role change.
+
+### Deliberately not done yet
+
+- The Resource API still registers its existing auth routes and still loads the current token pepper/private signing path. This construction batch does not claim that production or the current runtime has been isolated.
+- The issuer role has not been granted auth function/table privileges. There is no issuer privilege migration or manual cutover yet.
+- The issuer process has not been deployed or connected to a live database.
+- No GHM web, Connect or QuoteFlow clients have been modified. The cross-product base-URL split and Connect BFF upstream split remain required before route cutover.
+- Password-recovery delivery and QuoteFlow migration-reset dependencies remain unconfigured, preserving current default 503 behavior.
+- No production services, database roles, grants, secrets, environment variables, routes or deployments were changed.
+
+### Qualification status
+
+CI is running on the construction branch. Earlier queued runs predate the corrected package test-list placement; use the latest run against the exact current head as authoritative. Do not treat any earlier construction run as final qualification. The app test is a route-contract unit test only; issuer DB privilege tests, end-to-end issuer flow tests, cross-product tests and actual disposable issuer login qualification remain outstanding.
+
+### Next construction tasks
+
+1. Resolve any build/test issues from exact-head CI.
+2. Add a dedicated issuer disposable-PostgreSQL qualification with a real `ghm_auth_issuer` login, exact function allow-list and negative `ghm_runtime` assertions.
+3. Add issuer-specific database grant plan only after final effective ACL inventory; keep all grant changes in isolated qualification first.
+4. Add cross-product auth-origin configuration and tests without changing product flags or production environment.
+5. Remove auth routes/private key/pepper from Resource API only after issuer path and same-origin routing compatibility are qualified.
