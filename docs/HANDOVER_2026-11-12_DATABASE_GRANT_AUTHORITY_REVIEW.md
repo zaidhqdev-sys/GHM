@@ -1148,3 +1148,34 @@ Commits:
 The new implementation and tests have been pushed. Exact-head CI for `5729ac712f9dc9fac9abb47f38291b147e5ea159` must complete before claiming the cutover stage guard passes. Run `43302670194` remains failed historical evidence and is now explained by the incomplete three-group model.
 
 No production role, grant, credential, environment variable, migration, service, deployment, storage object or data was changed. No PR was merged.
+
+
+---
+
+## Correction — production migration ledger exists but is not readable through the Render default query identity
+
+The earlier note that the information_schema search returned no migration/ledger table is superseded by a broader read-only `pg_class` catalog query.
+
+### Verified relation
+
+Production contains `ghm.ghm_schema_migrations`:
+- Owner: `ghm_schema_owner`.
+- Relation kind: ordinary table.
+- Columns: `version varchar(64)`, `name varchar(255)`, `checksum varchar(64)`, `applied_at timestamptz`.
+
+The earlier `information_schema.tables` query returned no rows because the current Render query identity did not have visibility/access to the owner-controlled migration table; it was not evidence that the ledger did not exist.
+
+### Access boundary
+
+A read-only `SELECT to_jsonb(m) FROM ghm.ghm_schema_migrations m` using the available Render default query identity failed with SQLSTATE `42501 permission denied for table ghm_schema_migrations`.
+
+No role escalation was attempted. The default Render query connection is not the dedicated `ghm_migrator` identity and cannot be treated as authorized to read the owner-only ledger. No migration rows, versions, checksums or applied timestamps have therefore been retrieved.
+
+### Revised disposition
+
+- The production migration ledger **exists**.
+- Its contents and latest applied version/checksum remain **unverified** through the current read-only connection.
+- The next safe evidence route is a controlled read using the supported `ghm_migrator` connection (or an approved owner-mediated export) that returns only migration metadata, without exposing credentials or changing data.
+- Reconcile the ledger rows with the 12 production-only and 9 baseline-only runtime function differences before deciding whether migrations are unapplied, checksums diverged, or manual cutovers are pending.
+
+No role, membership, grant, ledger row, migration, credential, environment variable, service or production data was changed.
