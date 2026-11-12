@@ -1305,3 +1305,25 @@ At the new construction checkpoint:
 - Production remains untouched; the migration is not approved for production application.
 
 Do not use the older 36fd0f63 checkpoint as the current branch HEAD. The linked November 12 grant-authority handover records the later source SHA, CI runs and remaining production gates.
+
+---
+
+## 2026-11-12 — Render support resolution and current database connection inventory
+
+Render support representative Amanda explicitly confirmed that normal application execution should use SQL-created login role(s) outside the Dashboard-managed credential list, while Dashboard-managed default credentials remain for controlled administration. The original `ghm_actor_gateway` role-creation/membership issue and complete support exchange are recorded in `docs/security/RENDER_ACTOR_GATEWAY_ROLE_SEPARATION_HANDOVER_2026-11-12.md` on the documentation handover branch and summarized in `docs/HANDOVER_2026-11-12_DATABASE_GRANT_AUTHORITY_REVIEW.md` on this construction branch.
+
+The active security construction branch is `construction/auth-issuer-isolation-20261112`; it contains the isolated Auth Issuer, Actor Gateway, Resource API runtime, migrator and storage metadata work. PR #272 remains a separate older integration branch and is not the current working source. Do not merge or conflate them.
+
+Source-level database connection inventory:
+- Resource API: `GHM_RUNTIME_DATABASE_URL` → `ghm_runtime` (production); `DATABASE_URL` is non-production fallback only.
+- Auth Issuer: `GHM_AUTH_ISSUER_DATABASE_URL` → `ghm_auth_issuer`.
+- Actor Gateway: `GHM_ACTOR_GATEWAY_DATABASE_URL` → `ghm_actor_gateway`.
+- Migration runner: `GHM_MIGRATOR_DATABASE_URL` → `ghm_migrator`, then explicit `SET ROLE ghm_schema_owner`.
+- PayFast callback: `PAYFAST_CALLBACK_DATABASE_URL` → `ghm_payment_provider`; PayFast remains paused and this is inventory-only.
+- Resource API feature repositories and storage share the Resource API runtime pool; storage provider credentials are object-storage credentials, not separate PostgreSQL identities.
+
+The active Resource API server composes `createApp({ authRoutesEnabled: false })`; the isolated Auth Issuer has its own server, pool and authentication persistence. This is implementation source evidence only, not proof of Render deployment, environment configuration or client routing cutover. Cross-product route compatibility, recovery delivery, live ACL reconciliation and deployment topology remain gates.
+
+A stale read-only legacy-role qualification harness was corrected to align with the production `GHM_RUNTIME_DATABASE_URL` requirement, and `.env.example` now distinguishes production runtime credentials from the non-production `DATABASE_URL` fallback. The Campaign/directory-review manual cutover's malformed DO-block delimiter was also corrected after exact-head CI exposed PostgreSQL syntax error 42601 in disposable qualification. The exact-head CI run after these corrections must pass both jobs before qualification is claimed.
+
+**Production remains unchanged and blocked:** Render role transition has not happened; no production SQL/privilege change, credential rotation, secret/environment update, migration, deployment, service provisioning, or traffic cutover occurred. A fresh independently verified production backup, actual live Render role/ownership/ACL inspection, TLS/network decision, and separately approved staged cutover/rollback remain required. PayFast and legal-document work remain parked.
