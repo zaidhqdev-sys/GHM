@@ -1068,3 +1068,6 @@ QuoteFlow's native mobile app calls the issuer URL directly from outside Render,
 The issuer now verifies database ACLs before opening its HTTP listener. Startup fails closed unless schema USAGE exists, schema CREATE is absent, no direct table/view/foreign-table/sequence privileges exist, the executable function set exactly matches the ten-function allow-list, future function defaults are safe, and ghm_runtime has no issuer lifecycle function execution grants.
 
 Added a pure privilege verifier, unit tests, and a source contract test that verification occurs before server.listen. Exact-head CI pending. No production deployment or grants changed.
+
+
+Issuer startup now checks the Resource API runtime's entire executable ghm.auth_* set against the exact three-function external identity/business-mapping allow-list, not just a finite list of known lifecycle revocations.
