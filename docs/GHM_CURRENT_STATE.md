@@ -975,3 +975,8 @@ Read-only Render inventory returned three databases:
 - ghm-identity-qualification-20261018 / ghm_identity_qualification_20261018: available paid basic_256mb, 15 GB disk. Dedicated qualification DB, but ownership/consumers/roles/data contract not yet audited for issuer suitability.
 
 No available Free Postgres DB exists in the workspace. Hosted non-production issuer deployment is blocked unless an already-paid qualification DB is first audited and explicitly approved for reuse, or a free isolated DB becomes available. Do not connect issuer to production ghm_db, repurpose the identity qualification DB without approval, or create paid infrastructure. Continue disposable PostgreSQL CI qualification. No DB connection/query or mutation, grants, service settings or environment variables were changed in this inventory.
+
+
+### PR #272 / Authentication Issuer branch ancestry (2026-11-12)
+
+PR #272 remains open/unmerged with green current checks. The issuer construction branch is 105 commits ahead and 0 behind PR #272's head, so the issuer work is layered directly on the Actor Gateway integration stack. Do not merge PR #272 independently underneath this branch or create a duplicate integration. Preserve the separate construction branch until issuer routing, deployment constraints, documentation and exact-head CI are fully reconciled.
