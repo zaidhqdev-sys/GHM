@@ -2210,7 +2210,7 @@ The issuer branch remains directly based on `integration/capability-gateway-qual
 The original schema-establishment migration configured default sequence usage for `ghm_runtime` but did not explicitly remove PostgreSQL's default `PUBLIC EXECUTE` privilege for future functions created by `ghm_schema_owner`. Current functions had individual grants/revocations, but that alone did not protect future functions from inheriting PUBLIC execution.
 
 Added migration `20261112050000_revoke_public_default_function_execution.sql`:
-`ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner IN SCHEMA ghm REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`.
+`ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`.
 
 Added a source contract test and disposable PostgreSQL qualification that creates a probe function as `ghm_schema_owner`, verifies PUBLIC, `ghm_runtime` and `ghm_auth_issuer` have no implicit EXECUTE, then drops the probe in the same disposable transaction. Intended functions must receive explicit per-role grants. This is not a retroactive revoke; existing function ACLs remain controlled by their migrations and the manual issuer cutover.
 
