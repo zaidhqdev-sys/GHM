@@ -1988,3 +1988,53 @@ The disposable issuer test now interleaves a password reset after the login has 
 ### Current CI status
 
 The first run with the new reset and rehash migrations found an ambiguous `account_id` reference in the new token-bound reset function (the name also exists as a PL/pgSQL output variable). The credential update was qualified with an explicit table alias in `68b5713`. CI #3588 is validating the corrected migration, full persistence suite, manual cutover and issuer race test. Do not claim this batch qualified until the exact-head run passes.
+
+
+## Full issuer cutover qualification — 10-function boundary passed (2026-11-12)
+
+CI run **#3588** completed successfully on code commit `68b57139994fc57120720d238047bc780cf0b972`: both `quality` and `web-quality` passed. The quality workflow completed all 894 tests (894 passed, 0 failed), all migrations, runtime boundary verification, the manual issuer cutover against disposable PostgreSQL, and the issuer lifecycle qualification.
+
+### Exact post-cutover qualification output
+
+```json
+{
+  "issuerAllowList": 10,
+  "issuerDirectRelationPrivileges": 0,
+  "runtimeIssuerFunctionDenials": 14,
+  "connectLookup": "preserved",
+  "registrationLoginPasswordRehashConcurrentResetRefreshLogout": "passed",
+  "recoveryResetReplayAndSessionRevocation": "passed",
+  "quoteFlowMigrationReset": "passed"
+}
+```
+
+### Final 10-function issuer allow-list at this checkpoint
+
+1. `auth_create_account`
+2. `auth_lookup_password_by_normalized_email`
+3. `auth_rehash_password_if_unchanged`
+4. `auth_create_session_with_refresh`
+5. `auth_rotate_refresh`
+6. `auth_revoke_by_refresh_hash`
+7. `auth_issue_recovery`
+8. `auth_reset_password_with_recovery`
+9. `auth_lookup_quoteflow_migration_reset_enrollment`
+10. `auth_complete_quoteflow_migration_reset`
+
+The general `auth_set_password` operation is no longer an issuer permission. It remains an owner-internal dependency of the QuoteFlow migration-reset SECURITY DEFINER operation and is revoked from PUBLIC/runtime by the manual cutover. `auth_validate_session`, `auth_redeem_recovery`, and `auth_redeem_recovery_with_count` are also excluded from issuer permissions; test-only uses run under schema-owner credentials.
+
+### Adversarial guarantees demonstrated
+
+- A normal login rehash succeeds and a later login verifies the new hash.
+- A password reset interleaved after verification but before rehash wins; the stale login is rejected and cannot restore the old password.
+- Recovery reset rejects a mismatched email without consuming the token, then succeeds with the matching existing email and leaves that login email unchanged.
+- Recovery replay is rejected and all existing sessions are revoked.
+- QuoteFlow migration reset remains one-time and bound to its enrolled external identity and approved email.
+- The issuer has no direct privileges on any GHM table/partition/view/materialized view/foreign table.
+- The shared runtime is denied 14 tested issuer/legacy auth operations; Connect's lookup-only external identity operation remains callable.
+
+### Qualification boundary
+
+The manual cutover was applied only to the disposable CI PostgreSQL database after the normal runtime test suite and all existing runtime qualifications. This proves the manual SQL and application boundary work together in isolation. It does **not** authorize applying the cutover to any live database.
+
+The current construction branch contains later handover/current-state documentation commits than code commit `68b571`; exact-current-head CI is still required before branch review. Actual issuer service deployment, Render networking/routing, client production configuration and end-to-end non-production routing remain outstanding. No production role/grant/secret/service/deployment was changed.
