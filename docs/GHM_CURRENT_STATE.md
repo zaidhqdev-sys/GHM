@@ -792,3 +792,14 @@ The boundary covers account/credential creation and lookup, password mutation/re
 This is a proposed construction design only. No issuer service, database role, migration, grants, production secrets or deployment have been created. Effective ACL reconciliation and disposable-PostgreSQL issuer/runtime positive-negative qualification are required before privilege changes.
 
 Detailed source trace and proposed operation matrix: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+
+## Auth issuer source/entrypoint audit (2026-11-12)
+
+The latest pass confirms the issue is both database authority and process/secret isolation. The ordinary Resource API's `src/server.ts` launches `createApp()`; `src/http/app.ts` registers auth routes and constructs `PostgresAuthPersistence()`; the auth router lazily creates the service whose default factory loads the ES256 private key. Persistence defaults to loading the refresh/recovery token pepper. The ordinary API therefore owns code paths for credential verification, refresh/recovery token protection and JWT signing.
+
+The Actor Gateway already has the correct separate-process pattern: dedicated entrypoint, dedicated DB URL/principal, startup identity assertion and public-key-only JWT verification. Reuse its public-key verifier/key loader in the Resource API; do not introduce a new token format.
+
+No auth issuer entrypoint, issuer-specific DB URL, issuer role assertion, or issuer start script exists yet. Also, production `src/server.ts` currently calls `createApp()` without injecting password recovery delivery or QuoteFlow migration-reset services; determine intended deployment wiring before moving those routes. No new email provider or route behavior is assumed.
+
+Latest handover contains the process/dependency graph, source evidence, unresolved route-delivery question and implementation gate. CI runs #3478/#3479 passed both quality and web-quality on predecessor head `6a95966`; subsequent handover commits still need exact-head CI confirmation. No production or database privilege changes.
