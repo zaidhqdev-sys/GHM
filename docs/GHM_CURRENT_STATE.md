@@ -1351,3 +1351,8 @@ Latest construction branch checkpoint and exact-head CI correction are recorded 
 PR #272 live state is OPEN/DRAFT/UNMERGED and currently mergeable, based on main `ad4fea43f2eb7bf959042b9db77a9f86e6bb531b`, head `c81e2bf2534febef9c5e49b39f60f85415f04ff1`. It remains separate from the active construction branch. Current branch/main comparison reports 1,566 ahead / 6 behind with an unusual merge base; do not blindly merge/rebase.
 
 Connect issuer-origin branch exists at `e016f4e8fa241b65ec7f89330e88c18fd7f2d482`; QuoteFlow issuer-origin branch exists at `d2c9b48dc58e48e11e597c57204900c08c9d63fc`. Their previous branch CI is not evidence of integration atop current product migration PRs. See full handover for the required dependency-aware integration sequence. No production mutation, deployment, merge, secret change or paid resource change occurred.
+
+
+## 2026-11-12 23:26 UTC — startup ACL contract syntax correction
+
+Exact-head run `43328641760` failed in TypeScript build because the Actor Gateway startup ACL contract test had over-escaped regular-expression literals (TS1005 at lines 29–31 and 78). Web quality and Cloudflare preview passed; all database migration/inventory/qualification steps were skipped. Corrected the regex literals without weakening assertions in commit `acae5ea856fd8c695912d1990e4c8a27b0430c25`. New exact-head CI is pending. Full evidence is in the security handover. No production changes or merges.
