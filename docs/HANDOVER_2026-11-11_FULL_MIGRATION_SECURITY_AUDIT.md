@@ -2370,3 +2370,21 @@ Correction:
 
 The nine previously obsolete overloads are already dropped and are not included in the new migration or denial probes. The latest exact-head CI must prove the migration applies cleanly and the 24-function startup verifier passes. Do not claim this closure before that run passes.
 
+
+
+### Follow-up: retained Connect Business mapping grant (2026-11-12)
+
+A cross-check of the migration chain against the cutover verifier found a mismatch in the *qualification expectation*, not in the production cutover SQL:
+
+- Migration `20260921130500_auth_link_business_external_mapping.sql` explicitly grants `ghm_runtime` EXECUTE on `ghm.auth_link_business_external_mapping(text,text,bigint)`.
+- Migration `20261012000000_auth_lookup_business_external_mapping.sql` separately grants the lookup function.
+- The manual issuer cutover deliberately preserves the link function because the current Connect Business provisioning transaction still calls it. The cutover comment and architecture runbook already document this temporary exception pending a signed Actor Gateway provisioning operation.
+- The startup verifier's expected Resource API auth-function set already included all three functions (external identity lookup, business mapping lookup, business mapping link). However, the disposable cutover script's separate expected list and error assertion described only two, despite its comment claiming three. That made the independent qualification expectation inconsistent with the production startup verifier and actual migration grants.
+
+Correction on the dependent construction branch:
+- Updated `scripts/qualify-auth-issuer-cutover.mjs` so both post-cutover and post-rollback Resource API expected sets contain the exact three documented functions.
+- Added a positive runtime probe for the mapping-link function. It deliberately supplies invalid blank arguments and expects the function's own validation error (`P0001` / `provider must be non-blank`), proving the runtime can execute the function without performing a mapping write.
+- Kept the explicit runtime denials for all other reviewed auth lifecycle, bootstrap, migration and mapping functions.
+- No privilege grant was added or broadened by this test correction. The manual cutover remains unchanged.
+
+The previous exact-head CI on `4abb42e029f774ec11b90705b59222d042ee5584` passed its disposable cutover/lifecycle/rollback checks. The new qualification change is commit `a650c699ba6e7a4c800b80b5ec18c87c6992b490`; its exact-head CI must pass before this updated qualification is considered complete.
