@@ -186,6 +186,9 @@ jobs:
       - name: Check Business Logo gateway cutover qualification script syntax
         run: node --check scripts/qualify-business-logo-gateway-cutover-postgres.mjs
 
+      - name: Check storage provider attestation provisioning script syntax
+        run: node --check scripts/provision-storage-provider-attestation-secret.mjs
+
       - name: Build
         run: npm run build
 
