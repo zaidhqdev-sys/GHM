@@ -1082,7 +1082,7 @@ The issuer now verifies database ACLs before opening its HTTP listener. Startup 
 Added a pure privilege verifier, unit tests, and a source contract test that verification occurs before server.listen. Exact-head CI pending. No production deployment or grants changed.
 
 
-Historical checkpoint: the Resource API runtime's exact three-function allow-list remains in force. The 2026-11-12 source trace confirmed `auth_link_business_external_mapping` is an active Connect Business provisioning dependency; see the later Connect mapping dependency section for the open security gap and required gateway migration.
+Historical checkpoint: the Resource API runtime previously had a three-function auth allow-list. The signed Connect Business gateway migration below supersedes that state and leaves only the two lookup functions executable by runtime.
 
 
 ### 2026-11-12 — Signed Connect Business provisioning gateway
@@ -1100,14 +1100,14 @@ No production grants or data were changed. The current exact branch still requir
 
 ### 2026-11-12 — Actor Gateway exact database ACL guard
 
-Actor Gateway startup previously asserted its database login identity but did not verify its complete effective GHM function/relation ACL. Added a verifier for the exact 24-function signed-operation allow-list, zero direct table/view/sequence privileges, schema USAGE without CREATE, no PUBLIC EXECUTE on its executable functions, no runtime EXECUTE on gateway-specific functions, and safe future-function defaults. The verifier is wired before the HTTP listener; disposable qualification now calls the same verifier and unit/source-contract regressions cover the boundary. The issuer's future-default check also treats grants to `ghm_actor_gateway` as unsafe.
+Actor Gateway startup previously asserted its database login identity but did not verify its complete effective GHM function/relation ACL. Added a verifier for the exact 25-function signed-operation allow-list, zero direct table/view/sequence privileges, schema USAGE without CREATE, no PUBLIC EXECUTE on its executable functions, no runtime EXECUTE on gateway-specific functions, and safe future-function defaults. The verifier is wired before the HTTP listener; disposable qualification now calls the same verifier and unit/source-contract regressions cover the boundary. The issuer's future-default check also treats grants to `ghm_actor_gateway` as unsafe.
 
-This is an enforcement/qualification change, not a grant change. Exact-head CI and disposable PostgreSQL Actor Gateway qualification are pending; do not claim the 24-function boundary qualified until they pass.
+This is an enforcement/qualification change, not a grant change. Exact-head CI and disposable PostgreSQL Actor Gateway qualification are pending; do not claim the 25-function boundary qualified until they pass.
 
 
 ### 2026-11-12 — Revoke unsigned Actor Gateway entry points
 
-Source review confirmed that the current pre-cleanup gateway ACL included 25 functions: 24 signed/typed operations plus the surviving unsigned `assert_actor_gateway(bigint)` helper. The three later signed read projections cover business hours and trust-score reads. Nine older overloads had already been explicitly dropped by earlier signed-assertion migrations. The surviving helper was not used by current gateway code; migration `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads.sql` revokes PUBLIC, runtime, migrator and gateway execution from that one helper. The exact gateway allow-list is now 24 signed/typed operations, and disposable qualification requires SQLSTATE 42501 for the unsigned helper. Exact-head CI and disposable PostgreSQL qualification remain pending.
+Source review confirmed that the current pre-cleanup gateway ACL included 25 functions: 24 signed/typed operations plus the surviving unsigned `assert_actor_gateway(bigint)` helper. The three later signed read projections cover business hours and trust-score reads. Nine older overloads had already been explicitly dropped by earlier signed-assertion migrations. The surviving helper was not used by current gateway code; migration `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads.sql` revokes PUBLIC, runtime, migrator and gateway execution from that one helper. The exact gateway allow-list is now 25 signed/typed operations, and disposable qualification requires SQLSTATE 42501 for the unsigned helper. Exact-head CI and disposable PostgreSQL qualification remain pending.
 
 
 
