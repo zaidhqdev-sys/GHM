@@ -10,6 +10,9 @@ test('issuer verifies its exact database ACL boundary before opening the HTTP li
   const verifierCall = server.indexOf('assertAuthIssuerDatabasePrivileges(databasePrivileges)');
   const listen = server.indexOf('server.listen(port');
   assert.ok(verifierCall >= 0 && listen > verifierCall, 'database ACL verification must precede server.listen');
+  assert.match(server, /readinessCheck: async/);
+  assert.match(server, /const currentPrivileges = await readAuthIssuerDatabasePrivileges\(pool\)/);
+  assert.match(server, /assertAuthIssuerDatabasePrivileges\(currentPrivileges\)/);
   assert.match(privilegeSource, /has_schema_privilege\(session_user, 'ghm', 'CREATE'\)/);
   assert.match(privilegeSource, /has_table_privilege\(session_user/);
   assert.match(privilegeSource, /has_sequence_privilege\(session_user/);
