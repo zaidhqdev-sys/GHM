@@ -1918,3 +1918,47 @@ Correction:
 - removed its issuer GRANT from the manual cutover and its name from the issuer allow-list.
 
 The reviewed issuer allow-list is now **11 functions**, not 12. The latest CI runs #3557/#3558 test this reduced allow-list and owner-only test access. Do not claim the 11-function version is qualified until the exact-head run completes successfully.
+
+
+## Password-reset email binding corrected; issuer allow-list reduced again (2026-11-12)
+
+The unresolved reset contract has now been addressed in construction.
+
+### New database operation
+
+Migration `20261112020000_add_token_bound_password_recovery_reset.sql` adds `ghm.auth_reset_password_with_recovery`. It:
+- accepts the recovery-token hash, normalized login email and new Argon2 hash/parameters;
+- locks and validates the one-time recovery token;
+- requires that token's account be active and the supplied normalized email match that account's existing active credential;
+- rejects generic password reset for accounts still enrolled in the separate QuoteFlow migration-reset ceremony;
+- consumes the token, updates only the password hash/Argon2 metadata (never login email), and revokes all sessions atomically;
+- returns the account ID and revoked-session count without allowing the caller to choose an account ID.
+
+The function is initially granted to `ghm_runtime` by the automatic migration to preserve compatibility until the manual service cutover. The guarded manual issuer cutover revokes it from PUBLIC/runtime and grants it to `ghm_auth_issuer`.
+
+### Persistence and API changes
+
+- `PostgresAuthPersistence.resetPasswordWithRecovery` now calls the single token-bound reset function instead of separately redeeming the token and calling the general password setter.
+- The existing HTTP body still accepts the email field for compatibility, but it is now a binding check, not an instruction to change the account's login email.
+- The database integration test and issuer qualification test attempt a mismatched email first, require `RECOVERY_CREDENTIAL_INVALID`, then successfully reset with the original email using the same still-unconsumed token. The subsequent login uses the unchanged original email.
+- The standalone `redeemRecovery` persistence method was also found to have no active production caller. It has been removed from the production persistence interface/implementation; its underlying DB function is now used only by database tests through the schema-owner fixture path.
+
+### Minimal issuer allow-list
+
+The old `auth_redeem_recovery` and `auth_redeem_recovery_with_count` wrappers are no longer issuer operations. The issuer allow-list now consists of ten function names:
+1. `auth_create_account`
+2. `auth_lookup_password_by_normalized_email`
+3. `auth_set_password`
+4. `auth_create_session_with_refresh`
+5. `auth_rotate_refresh`
+6. `auth_revoke_by_refresh_hash`
+7. `auth_issue_recovery`
+8. `auth_reset_password_with_recovery`
+9. `auth_lookup_quoteflow_migration_reset_enrollment`
+10. `auth_complete_quoteflow_migration_reset`
+
+The manual cutover revokes both old redemption wrappers from PUBLIC/runtime and grants the new token-bound reset function to the issuer. QuoteFlow migration reset remains a separate token-bound operation that sets the approved enrollment email; generic password reset cannot consume an enrolled migration token.
+
+### Qualification state
+
+Runs #3563 and #3553/#3554 validated earlier manual cutover versions, but not this new migration and 10-function allow-list. Runs #3571–#3573 are validating the new persistence API, tests, migration and cutover. Earlier failures in #3564–#3570 exposed stale test mocks and a token-pepper Buffer conversion in the owner-only fixture; these have been corrected. Do not claim the current reset change or 10-function allow-list qualified until exact-head CI passes.
