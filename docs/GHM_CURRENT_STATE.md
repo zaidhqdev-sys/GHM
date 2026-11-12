@@ -1251,3 +1251,6 @@ Latest observed pre-documentation CI commit: `c9a599a19e3590de4f29ef243e7138b85e
 An early Actions run failed at `scripts/qualify-auth-issuer-cutover.mjs:186`: its probe explicitly grants PUBLIC EXECUTE to both `auth_create_account` and `gateway_provision_connect_business`, but the old expected array listed only the issuer function. The issuer verifier correctly returned both functions because the new scan is intentionally global across all GHM SECURITY DEFINER functions. Updated both issuer and Actor Gateway expectations to require both signatures, then verify both arrays clear after cleanup. This is a qualification-test expectation correction; do not weaken the global verifier. Earlier failures predate the correction and do not qualify the current head.
 
 The prior failed workflow also predated the inventory step in CI, so it says nothing about inventory execution. Await the exact-head CI run that executes the new report and uploads the artifact. No production change, merge or cutover.
+
+
+The inventory also flags every non-owner role with effective EXECUTE on each SECURITY DEFINER function, separately from direct ACL grants, so inherited membership paths are explicit review findings.
