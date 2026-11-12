@@ -29,7 +29,7 @@ const migratorPool = new Pool({ connectionString: migratorUrl, ssl: false, max: 
 const issuerOnlyFunctionNames = [
   'auth_create_account',
   'auth_lookup_password_by_normalized_email',
-  'auth_set_password',
+  'auth_rehash_password_if_unchanged',
   'auth_create_session_with_refresh',
   'auth_rotate_refresh',
   'auth_revoke_by_refresh_hash',
@@ -79,6 +79,7 @@ try {
     'SELECT * FROM ghm.auth_create_account(NULL::text, NULL::text, NULL::text, NULL::text, NULL::text, NULL::integer, NULL::integer, NULL::integer)',
     'SELECT * FROM ghm.auth_lookup_password_by_normalized_email(NULL::text)',
     'SELECT ghm.auth_set_password(NULL::bigint, NULL::text, NULL::text, NULL::text, NULL::integer, NULL::integer, NULL::integer)',
+    'SELECT ghm.auth_rehash_password_if_unchanged(NULL::bigint, NULL::text, NULL::text, NULL::integer, NULL::integer, NULL::integer)',
     'SELECT * FROM ghm.auth_create_session_with_refresh(NULL::bigint, NULL::bytea)',
     'SELECT * FROM ghm.auth_validate_session(NULL::bigint)',
     'SELECT * FROM ghm.auth_rotate_refresh(NULL::bytea, NULL::bytea)',
