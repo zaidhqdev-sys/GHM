@@ -8,7 +8,7 @@ Move Connect's governed Business logo upload/removal off Supabase Storage and UU
 
 The current implementation lives in `src/lib/businessLogo.js` and `businessService.uploadLogo/clearLogo` in `src/lib/lib_supabase.js`. It uses the public `media` bucket, a deterministic `logos/{supabase-business-uuid}/logo.{jpg|jpeg|png|webp}` object path, and the `set_business_logo`/`clear_business_logo` RPCs.
 
-The GHM-backed Connect profile editor now fails closed and disables upload/removal until an equivalent GHM contract exists. Do not pass numeric GHM Business IDs into the legacy UUID service.
+The GHM-backed Connect profile editor still fails closed and keeps upload/removal disabled until the deployed non-production GHM logo journey is qualified. The source contract and signed storage gateway now exist, but source/CI qualification is not deployed product qualification. Do not pass numeric GHM Business IDs into the legacy UUID service.
 
 ## Authority and asset identity
 
