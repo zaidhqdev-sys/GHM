@@ -2979,3 +2979,48 @@ Run [43329488561](https://github.com/zaidhqdev-sys/GHM/actions/runs/43329488561)
 3. Keep PayFast startup ACL hardening parked until the explicit PayFast pause is lifted; preserve the current two-operation settlement boundary and do not resume integration.
 4. Continue Connect PR #68 / QuoteFlow PR #25 dependency-aware issuer integration after GHM's post-cutover inventory evidence is complete.
 5. Production cutover remains blocked; no PR merge, production role/grant change, Render deployment, secret, routing, traffic, backup or paid resource change occurred.
+
+
+## 2026-11-13 — corrected post-cutover inventory evidence ordering
+
+### Completed run and artifact
+
+Run [43329488561](https://github.com/zaidhqdev-sys/GHM/actions/runs/43329488561) completed successfully on `0e986e448028a1a78e733b33b893b49721b2a8f4`:
+- quality: PASS
+- web-quality: PASS
+- artifact `security-definer-authority-inventory` retrieved; it contained both pre and purported post issuer JSON files.
+
+### Audit defect found in the artifact
+
+Inspection showed the second inventory was captured after `scripts/qualify-auth-issuer-cutover.mjs` had deliberately exercised the rollback SQL and left the disposable DB rolled back. Therefore it was **not a true post-cutover snapshot**. Do not use its apparent 43-to-27 runtime-grant reduction or 103-to-106 routine delta as proof of issuer cutover. The reports are still useful as pre-cutover inventory and as evidence that the existing workflow's post-step was incorrectly ordered.
+
+The second report actually showed:
+- 106 SECURITY DEFINER routines, 62 preliminary findings.
+- 33 Actor Gateway direct EXECUTE grants.
+- 27 runtime direct EXECUTE grants, including 16 auth functions still directly executable by `ghm_runtime`.
+- 2 payment-provider direct EXECUTE grants.
+- no PUBLIC EXECUTE, unsafe SECURITY DEFINER owner/search_path or untrusted-language findings.
+- global function default ACL for `ghm_schema_owner` only grants EXECUTE to the owner.
+- no `ghm_auth_issuer` direct grants in that rolled-back snapshot, as expected after rollback.
+
+### Correction committed
+
+Fixed the qualification lifecycle so it now:
+1. exercises and verifies rollback;
+2. removes disposable legacy authority fixtures;
+3. reapplies the guarded issuer cutover at the very end;
+4. rechecks the Resource API runtime's exact 24-function combined campaign+issuer stage and issuer's exact 10-function allow-list;
+5. confirms only the two approved runtime external-identity lookups remain executable by `ghm_runtime`;
+6. exits with the disposable DB in issuer-cutover state, so the following CI inventory step captures the actual post-cutover ACL.
+
+Added a source-contract regression test requiring this final state restoration before the post-cutover inventory. Corrected the SQL escape in the final issuer function-count query.
+
+- Final correction commit: `6778b015b388f782c2d1bf9e77cbb03a65254fbe` (includes preceding script/test commits `e008171` and `5655e6d`).
+- New exact-head workflow run: [43330073708](https://github.com/zaidhqdev-sys/GHM/actions/runs/43330073708).
+- At this handover update, quality and web-quality were queued; Cloudflare Pages was running. No qualification claim until the full run passes and the new artifact's pre/post reports are independently compared.
+
+### Current next step
+
+Inspect run 43330073708 and retrieve the new artifact. Confirm the post-cutover inventory shows zero direct `ghm_runtime` EXECUTE grants on the 14 issuer-revoked auth lifecycle functions, exactly two runtime external identity lookups, exactly 10 issuer grants, 33 Actor Gateway grants and 2 payment-provider grants. Reconcile all signatures against the source allow-lists, then record any discrepancy as a blocker and add a regression test.
+
+No production database or roles were touched. No production cutover, merge, deployment, secrets, routing, traffic, backup or paid infrastructure change. PayFast remains paused.
