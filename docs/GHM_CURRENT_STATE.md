@@ -1244,3 +1244,10 @@ Inventory runner refinement: full catalog JSON is saved to `tmp/security-definer
 The read-only SECURITY DEFINER inventory now also reports role attributes, all non-system schema owners/ACL/effective privileges, current database owner/ACL/effective privileges, trusted/untrusted languages, extensions, membership options and function default ACLs. CI runs the inventory after migrations on PostgreSQL 18 and uploads `security-definer-authority-inventory` for 14 days. It uses the disposable CI database only and makes no database changes. Preliminary findings remain manual-review items, not automatic failures or approvals.
 
 Latest observed pre-documentation CI commit: `c9a599a19e3590de4f29ef243e7138b85e0da881`, run `43220323598` queued; earlier per-commit runs were still in progress. No exact-head pass or inventory result has yet been verified. Inspect the latest Actions run and artifact, then build the exact function/role permission matrix. Production untouched; no merge or cutover. Full detail: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+
+## 2026-11-12 — Corrected cross-service PUBLIC-definer probe expectation
+
+An early Actions run failed at `scripts/qualify-auth-issuer-cutover.mjs:186`: its probe explicitly grants PUBLIC EXECUTE to both `auth_create_account` and `gateway_provision_connect_business`, but the old expected array listed only the issuer function. The issuer verifier correctly returned both functions because the new scan is intentionally global across all GHM SECURITY DEFINER functions. Updated both issuer and Actor Gateway expectations to require both signatures, then verify both arrays clear after cleanup. This is a qualification-test expectation correction; do not weaken the global verifier. Earlier failures predate the correction and do not qualify the current head.
+
+The prior failed workflow also predated the inventory step in CI, so it says nothing about inventory execution. Await the exact-head CI run that executes the new report and uploads the artifact. No production change, merge or cutover.
