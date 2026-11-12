@@ -2397,3 +2397,23 @@ This is a hard security/release gate, not a documentation-only omission. The nex
 ### Safety boundary
 
 No production migration, cutover, grant, role membership, credential, Render environment variable, service branch, auto-deploy, deployment, application data or traffic changed. No PR #272, #250, #268–#271, #243/#244 or #237 merge occurred. PayFast and legal publication remain paused.
+
+
+## 2026-11-12 22:49 UTC — unified Actor Gateway branch rebased and validated; remaining boundaries identified
+
+PR #272 has now been reconstructed on top of current mainline `ad4fea43f2eb7bf959042b9db77a9f86e6bb531b` without carrying the old divergent history:
+- Current head before this documentation-only append: `6712ac4e8c1ab04beb38bfcc110dfda08bf6529e`.
+- 4 commits ahead, 0 behind; GitHub mergeability clean.
+- Exact-head Actions run `43322730693` passed `quality`, `web-quality` and Cloudflare Pages.
+- The branch preserves the merged PR #275 runtime identity checks and current Render support documentation.
+- PR #272 remains draft, open, unmerged and undeployed.
+
+The disposable PostgreSQL run passed with the Render-shaped gateway membership: the only inbound membership permitted is `ghm_db_user` with ADMIN true, INHERIT false and SET false. The migration guard, Actor Gateway startup verifier and qualification script now agree on that rule. The gateway itself cannot be a member of another role; database CONNECT and schema USAGE are required; database/schema CREATE are rejected.
+
+The branch contains the code from capability governance (#250), catalogue invariants (#268), capability gateway (#269), supplier classification (#243/#270) and Business profile gateway (#237/#271), with the older Business profile contract migration superseded by the later `20261110265000_reconcile_business_profile_legacy_contract.sql`. The component PRs remain stacked and should not be merged independently of the unified branch.
+
+Two remaining gaps were verified:
+1. **Authentication Issuer:** Resource API still loads the ES256 private key, signs tokens and owns login/refresh/logout/recovery/QuoteFlow migration-reset routes. No `src/auth-issuer/` process or `ghm_auth_issuer` role contract exists. A compromised Resource API can mint a chosen-subject JWT that Actor Gateway will accept. The issuer must be isolated before ADR-001 is complete.
+2. **Business Engagement / Analytics (#244):** This separate feature stack is not included in #272. Its current engagement repository performs a direct runtime INSERT into `ghm.business_engagement_event` with request-derived business/account attribution. The account ID comes from Resource API auth context, not an independently verified database actor. Keep PR #244 draft/unmerged until an issuer-verified Actor Gateway write/read path binds the actor and tenant and disposable PostgreSQL proves direct runtime spoofing is denied.
+
+No production changes occurred. The existing production service remains on `main`, auto-deploy OFF, live deploy `c7cf1eb`. No role/grant/membership, credentials, secrets, migrations, cutovers, deployment, data or traffic changed. PayFast and legal publication remain paused.
