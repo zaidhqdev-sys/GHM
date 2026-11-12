@@ -420,6 +420,9 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const businessLogoGatewayRequired = config.isProduction || dependencies.businessLogoGatewayRequired === true;
   const storageProviderAttestationSecret = process.env.GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET?.trim() ?? '';
   const storageMetadataGatewayRequired = config.isProduction || dependencies.storageMetadataGatewayRequired === true;
+  if (config.isProduction && config.storage && !config.actorGatewayUrl) {
+    throw new Error('GHM_ACTOR_GATEWAY_URL is required when production storage is enabled');
+  }
   if (config.isProduction && config.storage && !storageProviderAttestationSecret) {
     throw new Error('Missing required environment variable: GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET');
   }
