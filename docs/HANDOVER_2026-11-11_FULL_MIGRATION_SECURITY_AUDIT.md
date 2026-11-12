@@ -2858,3 +2858,21 @@ Replaced `src/actor-gateway/database-startup-acl-contract.test.ts` with the comp
 ### Safety
 
 No production database, roles, grants, secrets, Render environment, deployment, routing, traffic, backup or paid infrastructure changed. No PR merged. Production cutover remains blocked. PayFast and legal-document work remain paused.
+
+
+## 2026-11-12 23:26 UTC — exact CI failure root cause and regex correction
+
+The exact-head CI run `43328641760` completed:
+- `web-quality`: PASS
+- Cloudflare Pages: PASS
+- `quality`: FAIL during TypeScript build, before migrations, inventory, tests or PostgreSQL qualification.
+
+The previous fix had removed the declaration-order problem, but the test file still contained over-escaped regular-expression literals. Four TypeScript parser errors were reported at lines 29, 30, 31 and 78 (TS1005: ')' expected). The source contained two literal backslashes before regex metacharacters where one was required. This is a test-source syntax defect; it provides no evidence about the runtime database ACL itself.
+
+Corrected the regex literals in `src/actor-gateway/database-startup-acl-contract.test.ts` without changing the assertions or weakening the checks.
+
+- Correction commit: `acae5ea856fd8c695912d1990e4c8a27b0430c25`.
+- New exact-head CI is triggered by this commit; its result must be inspected before proceeding to claim qualification.
+- The failed run's PostgreSQL migration, inventory, principal, runtime, and issuer lifecycle steps were skipped because the TypeScript build failed. No disposable database qualification was completed by that run.
+
+Next: inspect the exact-head CI on `acae5ea`; if TypeScript build passes, continue through all database steps and inspect any subsequent failures individually. Do not apply production cutover, merge PRs, or alter production state.
