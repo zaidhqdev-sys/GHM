@@ -1363,3 +1363,8 @@ Exact-head run `43328641760` failed in TypeScript build because the Actor Gatewa
 Construction branch exact-head run `43328832429` passed `quality` and `web-quality` on `70671a19ae2f8f5d5f82121ed7d9d67f05b63e4b`, including PostgreSQL 18.7 disposable migrations, SECURITY DEFINER inventory, principal qualifications, guarded disposable issuer cutover, issuer lifecycle/runtime denial checks and full test suite. CI inventory artifact contained 103 SECURITY DEFINER routines and 75 preliminary non-owner EXECUTE findings (43 runtime, 30 Actor Gateway, 2 payment provider), with no PUBLIC execution, unsafe search_path, owner or language findings. These are inventory findings requiring exact signature-to-role reconciliation, not 75 automatically confirmed vulnerabilities. Artifact is pre-cutover only.
 
 Updated CI workflow in commit `89fb0461ddac3763d721d0bf8cb04c34457ff355` to capture a second whole-database inventory after the disposable issuer cutover; new run `43329351747` is pending at this note. See full security handover for evidence, interpretation and next comparison. No production mutation, deployment, secret change or merge.
+
+
+## 2026-11-12 23:30 UTC — product PR dependency refresh
+
+Current Connect PR #68 head is `2eadf761400bb5a644b5907e670aacb68526c81f` (draft core GHM workflow migration); PR #69 is handover documentation and PR #33 is the disabled PayFast bridge. Current QuoteFlow PR #25 head is `065225304f3a19c97050aa237ebbfe578f649a43` (draft GHM-native identity cutover); PRs #20, #21 and #23 are separate identity adapter/storage migration dependencies. The prior issuer-origin branches are not integrated proof against these product PR heads. Full dependency note added to security handover. No branch rewrites or merges.
