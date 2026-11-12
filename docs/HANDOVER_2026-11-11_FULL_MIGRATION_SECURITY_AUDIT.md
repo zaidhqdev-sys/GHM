@@ -2577,3 +2577,18 @@ The probe is confined to the existing guarded disposable database. It is not pro
 This audit is limited to GHM-schema SECURITY DEFINER functions. It does not yet prove that extension-owned or other-schema SECURITY DEFINER functions are harmless, nor does it replace a full role-membership/ownership audit. Function bodies and dynamic SQL still require separate review for unsafe object resolution, dynamic execution and assumptions about caller-controlled values.
 
 Latest code/test commit before this handover update: `e4a644825824b61db0692c479a71edbdc23b2ebf`. Exact-head CI remains unverified; do not reuse earlier green workflow runs as qualification for these changes. No production change, merge, paid resource or external provider operation was made.
+
+
+## 2026-11-12 — global default-ACL row and pre-cutover rollback baseline qualified
+
+A further default-ACL review found that the verifier's "global or schema-specific row exists" condition could treat a schema-specific row as sufficient even if the global function default ACL row was absent. PostgreSQL schema-specific defaults are additive; they do not replace the global defaults. Both issuer and Actor Gateway verifiers now require the global `ghm_schema_owner` function-default ACL row to exist, then inspect both global and GHM-schema-specific rows for any non-owner EXECUTE grant. Source-contract tests cover this distinction.
+
+The manual rollback's claimed "pre-issuer" Resource API grant state is now independently verified **before** cutover. Added `scripts/qualify-auth-issuer-precutover.mjs` and a CI step that runs it before the manual SQL:
+- Requires exactly the documented 16 Resource API runtime auth functions.
+- Rejects unexpected direct auth-function grants, including PUBLIC and arbitrary roles.
+- Preserves the one explicit migration/operator exception: `ghm_migrator` may execute `auth_lookup_business_external_mapping(text,text)`, as granted by migration `20261012000000_auth_lookup_business_external_mapping.sql`.
+- Only after this snapshot passes does CI apply the guarded issuer cutover; the existing rollback test then verifies that the exact 16-function Resource API grant set is restored and issuer grants are removed.
+
+**Exact-head qualification passed:** HEAD `405a220d408cb3c2f176131173fedb9200f62635`, CI run `43181545588`, both `quality` and `web-quality` success. The run includes PostgreSQL 18.6 full migrations, issuer and Actor Gateway principal qualification, full test suite, pre-cutover Resource API grant snapshot, manual issuer cutover, issuer lifecycle/runtime denials, adversarial function/default ACL probes, and database-only rollback.
+
+This remains disposable-only evidence. No production ACL, role, service, secret, deployment, data, routing or paid resource was changed. Upstream PR #272 and the issuer dependent branch remain unmerged. Production ownership/grantor authority, fresh independently verified backup, TLS/network topology, recovery delivery, cross-product compatibility and separate founder approvals remain blockers.
