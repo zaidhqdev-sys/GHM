@@ -112,6 +112,8 @@ try {
   const baselineActorAcl = await readActorGatewayDatabasePrivileges(actorGatewayPool);
   assert.equal(baselineIssuerAcl.unsafe_function_defaults, false, 'issuer default function ACL baseline must be safe');
   assert.equal(baselineActorAcl.unsafe_function_defaults, false, 'Actor Gateway default function ACL baseline must be safe');
+  assert.deepEqual(baselineIssuerAcl.unsafe_security_definer_functions, [], 'every GHM SECURITY DEFINER function must be schema-owner-owned with the pinned pg_temp-last search_path');
+  assert.deepEqual(baselineActorAcl.unsafe_security_definer_functions, [], 'Actor Gateway verifier must reject unsafe GHM SECURITY DEFINER ownership or search_path');
 
   const schemaDefaultAclProbe = await migratorPool.connect();
   let schemaDefaultAclProbeInstalled = false;
@@ -156,6 +158,8 @@ try {
   const actorAclAfterProbe = await readActorGatewayDatabasePrivileges(actorGatewayPool);
   assert.equal(issuerAclAfterProbe.unsafe_function_defaults, false, 'issuer default ACL must return to its safe baseline after probe cleanup');
   assert.equal(actorAclAfterProbe.unsafe_function_defaults, false, 'Actor Gateway default ACL must return to its safe baseline after probe cleanup');
+  assert.deepEqual(issuerAclAfterProbe.unsafe_security_definer_functions, [], 'issuer post-probe SECURITY DEFINER audit must remain clean');
+  assert.deepEqual(actorAclAfterProbe.unsafe_security_definer_functions, [], 'Actor Gateway post-probe SECURITY DEFINER audit must remain clean');
 
   const runtimeAuthFunctions = await issuerPool.query(`
     WITH expected(signature) AS (
