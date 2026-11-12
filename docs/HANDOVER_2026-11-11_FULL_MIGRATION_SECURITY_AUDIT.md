@@ -2265,3 +2265,6 @@ Added `src/auth-issuer/database-privileges.ts` and startup checks in `src/auth-i
 - `ghm_runtime` has no execution rights on the issuer lifecycle function set revoked by the cutover.
 
 A mismatch aborts startup; it does not merely log a warning. Added unit tests for the pure privilege verifier and a source contract test that the check runs before `server.listen`. The next exact-head CI must qualify this change. This is fail-closed deployment defense in depth, not permission to deploy.
+
+
+The issuer startup ACL guard has been strengthened beyond checking a list of known revoked lifecycle functions. It now enumerates every `ghm.auth_*` function executable by `ghm_runtime` and requires the exact three-function Resource API allow-list: `auth_lookup_external_identity`, `auth_link_business_external_mapping`, and `auth_lookup_business_external_mapping`. This prevents a newly added or overlooked auth function grant from silently surviving the issuer cutover.
