@@ -47,6 +47,9 @@ export const ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL = `
   WITH expected_signatures(signature) AS (
     SELECT unnest(ARRAY[
       'ghm.assert_actor_gateway_capability(bigint, text, bigint, uuid, text, text)',
+      'ghm.gateway_create_campaign(bigint, bigint, uuid, text, text, bigint, text)',
+      'ghm.gateway_get_business_directory_review_presentation(bigint, bigint, uuid, text, text, bigint)',
+      'ghm.gateway_update_campaign(bigint, bigint, uuid, text, text, bigint, text, text)',
       'ghm.gateway_calculate_business_trust_score(bigint, bigint, uuid, text, text, bigint)',
       'ghm.gateway_create_capability_draft(bigint, bigint, uuid, text, text, text, text, text, uuid, integer, text, integer)',
       'ghm.gateway_create_saved_business(bigint, bigint, uuid, text, text, bigint)',
