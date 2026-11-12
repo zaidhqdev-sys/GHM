@@ -12,6 +12,7 @@ export interface ActorGatewayDatabasePrivileges {
   runtime_executable_functions: string[];
   unsafe_function_defaults: boolean;
   unsafe_security_definer_functions: string[];
+  unsafe_function_grantees: string[];
 }
 
 export const assertActorGatewayDatabasePrivileges = (
@@ -33,6 +34,7 @@ export const assertActorGatewayDatabasePrivileges = (
   if (runtimeFunctions.length !== 0) failures.push('runtime_gateway_function_execution');
   if (privileges.unsafe_function_defaults !== false) failures.push('unsafe_future_function_defaults');
   if (privileges.unsafe_security_definer_functions.length !== 0) failures.push('unsafe_security_definer_functions');
+  if (privileges.unsafe_function_grantees.length !== 0) failures.push('unsafe_function_grantees');
 
   if (failures.length > 0) {
     throw new Error(`Actor Gateway database privileges failed least-privilege verification: ${failures.join(',')}`);
@@ -163,7 +165,16 @@ export const ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL = `
            )
          )
        ORDER BY 1
-    ) AS unsafe_security_definer_functions
+    ) AS unsafe_security_definer_functions,
+    ARRAY(
+      SELECT f.signature
+        FROM gateway_functions f
+        CROSS JOIN LATERAL aclexplode(COALESCE(f.proacl, acldefault('f', f.proowner))) acl
+       WHERE acl.privilege_type = 'EXECUTE'
+         AND acl.grantee <> f.proowner
+         AND acl.grantee <> 'ghm_actor_gateway'::regrole
+       ORDER BY 1
+    ) AS unsafe_function_grantees
 `;
 
 export async function readActorGatewayDatabasePrivileges(
