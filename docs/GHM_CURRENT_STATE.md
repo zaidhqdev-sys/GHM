@@ -890,3 +890,10 @@ Optional issuer-origin separation has been added on construction branches:
 - QuoteFlow: `EXPO_PUBLIC_GHM_AUTH_ISSUER_URL`; auth calls use issuer while identity calls remain on `EXPO_PUBLIC_GHM_AUTH_BASE_URL`. Gate A remains disabled and Supabase coexistence is unchanged.
 
 Connect CI #292 and QuoteFlow CI #220 passed on their workflow-triggering commits; later final branch test commits still need exact-head rechecks. Full source paths, CI evidence and remaining end-to-end/deployment gates are in the security handover. No production URLs, environment variables, flags, deployments, secrets or service routing changed.
+
+
+## Render topology verified read-only (2026-11-12)
+
+Render inventory confirms the current `GHM-Internal-Runtime` service is a Free Frankfurt web service on `main`, build `npm ci && npm run build`, start `npm start`, health `/healthz`, auto-deploy disabled, public edge allow-list `0.0.0.0/0`. No dedicated Actor Gateway service appears in the current five-service inventory; only its source entrypoint/process contract is verified. Do not describe it as separately deployed until an actual service is found/created and qualified.
+
+Private service networking, trusted proxy chain, and an additional free service allocation remain unverified. Do not create services or change routing/secrets before these are confirmed. Detailed service inventory and next gates are in the security handover. No Render configuration was changed.
