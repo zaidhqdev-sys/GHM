@@ -71,6 +71,7 @@ export const RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL = `
       FROM pg_catalog.pg_proc p
       JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
      WHERE n.nspname = 'ghm'
+       AND p.prosecdef
        AND has_function_privilege(session_user, p.oid, 'EXECUTE')
      ORDER BY 1
   ) AS executable_functions
