@@ -1396,3 +1396,70 @@ Before any grant change:
 6. Update the API/crypto/session contracts and this handover with exact source/CI evidence before any review or merge request.
 
 This section is a technical proposal derived from the source trace; it does not silently approve a new DB role, service topology, function signature, migration or production operation.
+
+
+## Follow-up — direct issuer secret-custody and runtime grant audit (2026-11-12)
+
+### Confirmed isolation defect in current composition
+
+The earlier note identified that auth routes are registered in the ordinary Resource API. This pass confirms the secret-custody consequence in code, not just topology:
+
+- `src/http/app.ts` constructs `new PostgresAuthPersistence()` for the default auth persistence and registers the auth routes in the same application.
+- `PostgresAuthPersistence` defaults to `loadTokenPepper()`, which loads `GHM_AUTH_TOKEN_PEPPER`.
+- `src/http/auth-router.ts` lazily constructs `createGhmAuthService(dependencies.authPersistence)` when the auth service is not injected.
+- `createGhmAuthService` defaults to `createAccessJwtService(loadEs256Keys())`.
+- `loadEs256Keys()` loads `GHM_JWT_ES256_PRIVATE_KEY_PEM` and the public key. The service signs access tokens in-process.
+- The same ordinary HTTP auth composition therefore has code paths that load the refresh/recovery pepper and ES256 private signing key, as well as the runtime database pool.
+
+This is a confirmed implementation mismatch with ADR-001's isolated issuer / public-key-only Resource API design. It is not proof that a secret has leaked or that a production deployment currently has those variables configured. Do not infer deployment environment state from source code.
+
+### Revised minimum isolation boundary
+
+The issuer separation must move all of the following into the isolated auth issuer, not merely move three SQL calls:
+
+1. Password credential lookup and Argon2id verification (including dummy-hash timing behavior).
+2. Registration and Argon2id credential hashing.
+3. Password rehash after verified login.
+4. Session creation, refresh-token generation/HMAC, refresh rotation and logout.
+5. Recovery token generation/HMAC, issuance, delivery handoff, redemption/reset.
+6. QuoteFlow migration-reset lookup/issuance/completion and token delivery.
+7. ES256 access-token signing and private-key custody.
+
+The ordinary Resource API and Actor Gateway must use the public-key-only `createAccessJwtVerifier` / `loadEs256VerificationKeys` path. They must not instantiate `createAccessJwtService`, `loadEs256Keys`, or `PostgresAuthPersistence` with the default token pepper. The gateway may validate sessions only if a separately reviewed contract requires it; it must not receive refresh/recovery pepper or private signing authority.
+
+### Full original runtime EXECUTE grant inventory — clarified
+
+The original auth migration grants `ghm_runtime` EXECUTE on these function signatures:
+
+- `auth_set_password(bigint,text,text,text,integer,integer,integer)`
+- `auth_lookup_password_by_normalized_email(text)`
+- `auth_create_session_with_refresh(bigint,bytea)`
+- `auth_validate_session(bigint)`
+- `auth_rotate_refresh(bytea,bytea)`
+- `auth_revoke_session(bigint,text)`
+- `auth_revoke_all_sessions_for_account(bigint,text)`
+- `auth_change_password(bigint,bigint,text,text,text,integer,integer,integer)`
+- `auth_disable_account(bigint)`
+- `auth_issue_recovery(bigint,bytea,timestamptz)`
+- `auth_redeem_recovery(bytea)`
+- `auth_lookup_external_identity(text,text)`
+- `auth_bootstrap_external_identity(text,text,text,text)`
+
+The original migration also grants runtime access to account creation and token-bound recovery wrappers in subsequent migrations. The account creation function signature is `auth_create_account(text,text,text,text,text,integer,integer,integer)`; token-bound recovery functions include `auth_redeem_recovery_with_count(bytea)`. Do not treat the original list as the final ACL: later migrations revoke unused account/session admin RPCs, account-wide revocation, QuoteFlow migration provisioning, external identity linking and bootstrap. The final authority matrix must query the actual PostgreSQL catalogs after all migrations, including PUBLIC and inherited role privileges and overloads.
+
+### Positive test coverage currently present
+
+`src/auth/foundation/persistence.test.ts` uses a real `ghm_runtime` pool for account creation, credential lookup, session creation/validation, refresh rotation/replay, recovery issuance/redemption/reset, and external identity mapping. It uses the migrator/owner path for fixture setup/cleanup and currently verifies runtime denial for the four already-revoked admin operations (`auth_revoke_session`, `auth_change_password`, `auth_disable_account`, `auth_revoke_all_sessions_for_account`).
+
+It does not yet prove that runtime is denied the remaining issuer-only operations, nor prove a distinct issuer login can perform them. The present test is a baseline for preserving positive flows; extend it rather than replacing it with only denial assertions.
+
+### Current exact-head CI
+
+- Latest documentation head before this note: `6a959665a0d9dccec11665c4a238d1aded7b03fa`.
+- Runs #3478 and #3479 both completed successfully; each reports `quality` and `web-quality` passed.
+- This note will advance the branch again; CI must be rechecked against the resulting exact commit.
+- PR #272 remains open/unmerged. The source-level issuer isolation gap is not fixed by the documentation commits.
+
+### Next construction work — no privilege cut yet
+
+Build the isolated issuer as a distinct process entrypoint and dependency graph, with separate runtime/issuer DB connection configuration, private key + pepper only in issuer config, and explicit public-key-only Resource API verification. Then define issuer-specific DB role and function grants from the final ACL matrix. Do not simply split routes into a different file while retaining one process/environment. Do not make production role/secret/deployment changes during construction qualification.
