@@ -2302,3 +2302,14 @@ At time of this handover update, exact-head GitHub Actions run `43319364059` is 
 No production credentials or environment variables were set. The Render service remains on `main`, auto-deploy OFF, and live deployment `c7cf1eb`. The PR intentionally fails closed if deployed without `GHM_RUNTIME_DATABASE_URL`; do not deploy until the existing SQL-created `ghm_runtime` credential is provisioned via the controlled secret-management path and connection identity is verified.
 
 No production role, membership, grant, migration, database data, service branch, auto-deploy setting, deployment or traffic changed. PR #274 is the only PR merged in this continuation and it was docs-only. PayFast and legal publication remain paused.
+
+
+### 2026-11-12 22:25 UTC — first PR #275 CI failure corrected
+
+The first exact-head run `43319364059` on `4d4a062...` found one test-isolation issue, not a runtime implementation failure:
+- The config test intended to prove a missing `GHM_RUNTIME_DATABASE_URL` is rejected.
+- The CI test environment can provide a disposable `GHM_RUNTIME_DATABASE_URL`, so the test did not explicitly clear that inherited variable.
+- Updated the test to set `GHM_RUNTIME_DATABASE_URL: undefined` for the missing-variable case and to assert the selected production URL equals the dedicated runtime URL.
+
+Correction commit: `df4453869d3cac8ba73d774877e0fbd9530732b2`.
+New exact-head CI run: `43319557839`; `web-quality` and Cloudflare Pages have passed, while `quality` was still running at the time of this note. Await its final result before declaring PR #275 qualified.
