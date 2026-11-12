@@ -1752,3 +1752,36 @@ CI run #3521 passed both `quality` and `web-quality` on commit `76adba8bff042b40
 The disposable grant/revoke fixture is intentionally applied only after the existing auth persistence suite, runtime qualifications and `verify:runtime` have completed. This avoids changing the assumptions of the pre-existing runtime qualification suite and then misreading its failures. The resulting issuer test proves the post-cutover database boundary separately.
 
 Latest CORS validation and environment documentation commits were added after #3521; use the newest exact-head CI run before treating the current construction branch as fully green.
+
+
+### Extended issuer qualification — QuoteFlow reset and password rehash passed
+
+CI run #3528 passed both quality and web-quality on commit `7f3c848c51ed09beedc6967640694b325f02ba57`. Its final qualification output was:
+
+```json
+{
+  "issuerAllowList": 12,
+  "issuerDirectSecretTablePrivileges": 0,
+  "runtimeIssuerFunctionDenials": 12,
+  "connectLookup": "preserved",
+  "registrationLoginPasswordRehashRefreshLogout": "passed",
+  "recoveryResetReplayAndSessionRevocation": "passed",
+  "quoteFlowMigrationReset": "passed"
+}
+```
+
+This closes two gaps from the previous checkpoint:
+- Password rehash-on-login was forced with a wrapper hasher, then the new stored hash was independently verified by a subsequent normal login.
+- QuoteFlow reset was exercised end-to-end using a credentialless active account, a matching Supabase external-identity mapping, a real migration enrollment, a token-bound recovery credential, the issuer-only enrollment lookup and completion functions, one-time completion/replay rejection, enrollment transition out of `reset_required`, and a successful login with the established password.
+
+The enrollment/account/mapping fixture was created through the dedicated migrator login with `SET ROLE ghm_schema_owner`; all auth lifecycle operations ran through the separate `ghm_auth_issuer` login. No issuer direct table grants were introduced.
+
+### Additional issuer ingress hardening in progress
+
+After #3528, the construction app was hardened to:
+- reject wildcard, opaque, malformed, non-HTTPS (except localhost) CORS origins;
+- deduplicate exact configured origins;
+- require explicit `GHM_AUTH_ISSUER_TRUST_PROXY_HOPS` in production (including explicit `0` for direct/no-proxy deployment), with a bounded integer range 0–10;
+- avoid guessing Render/proxy topology; the value must be set only after the actual trusted hop chain is verified.
+
+The latest exact-head CI run for these CORS/proxy changes is still in progress. Do not treat those later changes as qualified until the run completes.
