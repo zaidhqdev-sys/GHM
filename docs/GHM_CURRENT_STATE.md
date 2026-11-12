@@ -1186,3 +1186,10 @@ Latest qualification-source/test commit before this state update: `c2e3454409787
 Added manual-free migration `20261112090000_pin_security_definer_search_path.sql`. It fails closed if any GHM SECURITY DEFINER function is not owned by `ghm_schema_owner`, then pins every GHM SECURITY DEFINER function to `pg_catalog, ghm, pg_temp` so caller temporary objects cannot shadow trusted objects. Both issuer and Actor Gateway startup ACL verifiers now fail closed on any SECURITY DEFINER function with unexpected ownership or search_path; unit/source-contract tests and disposable qualification assertions were added.
 
 This is source-level hardening awaiting exact-head PostgreSQL 18 CI. The inspected commit status endpoint returned no status checks; do not claim qualification passed. Production remains untouched.
+
+
+## 2026-11-12 — SECURITY DEFINER metadata exact-head qualification passed
+
+Exact HEAD `b0711ccebc4adb82fc24256a40a812d0335f8702` passed CI run `43178029417` (`quality` and `web-quality`). PostgreSQL 18.6 applied the full migration chain, including the SECURITY DEFINER owner/search_path migration; issuer and Actor Gateway principal qualification, full test suite, migration policy, runtime boundary, guarded disposable issuer cutover, issuer lifecycle/runtime-denial and database-only rollback all passed. The issuer cutover dollar-quote guard and revised temporary-safe path expectations are included.
+
+This is disposable qualification only. No production changes or paid resources. Upstream PR #272 remains open/unmerged; issuer branch remains dependent and is not independently mergeable.
