@@ -2149,3 +2149,28 @@ All findings above came from read-only Render catalog queries against `ghm_db` a
 5. Keep production Business Profile Actor Gateway migration/deployment and Business Engagement provenance as separate cutover gates.
 
 **No production mutation occurred.** No role attribute, membership, grant, sequence, migration, credential, secret, Render setting, service, deployment, application route, traffic, or application data changed. No PR was merged or closed. PayFast and legal publication remain paused.
+
+
+### 6. Sequence candidate provenance checked against deployed migrations
+
+The source/migration check confirms several sequence USAGE grants are explicitly attached to SECURITY DEFINER function-only write paths:
+
+| Sequence | Deployed writer | Function security model | Runtime sequence USAGE assessment |
+|---|---|---|---|
+| `business_hours_id_seq` | `ghm.replace_business_hours` | SECURITY DEFINER, owned by `ghm_schema_owner`; Resource API calls function. | Candidate redundant for runtime. |
+| `saved_business_id_seq` | `ghm.create_saved_business` | SECURITY DEFINER, owned by `ghm_schema_owner`; Resource API calls function. | Candidate redundant for runtime. |
+| `trust_score_id_seq` | `ghm.calculate_business_trust_score` | SECURITY DEFINER, owned by `ghm_schema_owner`; Resource API calls function. | Candidate redundant for runtime. |
+| `campaign_id_seq` | `ghm.create_campaign` | SECURITY DEFINER, owned by `ghm_schema_owner`; Resource API calls function. | Candidate redundant for runtime. |
+| `business_directory_review_event_id_seq` | `ghm.submit_business_directory_review` and `ghm.review_business_directory_listing` | SECURITY DEFINER functions owned by `ghm_schema_owner`; they also insert notification rows. | Candidate redundant for runtime. |
+| `business_external_mapping_id_seq` | Business external mapping gateway/function path | Table has no direct runtime INSERT grant; gateway path is SECURITY DEFINER. | Candidate redundant for runtime; complete wrapper dependency check still required. |
+| `account_identity_id_seq`, `account_external_identity_id_seq`, `account_external_mapping_id_seq` | Authentication and identity functions | Current auth/identity writes are function-owned, not direct runtime table INSERT. | Candidate redundant for runtime; verify every deployed auth function overload. |
+| `authentication_session_id_seq`, `refresh_credential_id_seq`, `password_recovery_credential_id_seq` | Authentication session/refresh/recovery functions | Dedicated auth lifecycle functions, separate from direct Resource API table INSERT. | Candidate redundant for runtime; verify exact surviving function set. |
+| `storage_object_id_seq` | Storage metadata gateway wrappers | SECURITY DEFINER storage functions own metadata writes. | Candidate redundant for runtime. |
+| `opportunity_type_id_seq` | Reference/catalogue data | No runtime table INSERT path identified; catalogue rows are migration-owned. | Candidate redundant for runtime. |
+
+For the first five entries, exact deployed migration source confirms the functions are SECURITY DEFINER and owned by `ghm_schema_owner`, yet the migration also grants sequence USAGE directly to `ghm_runtime`. The function owner, not the invoking runtime role, performs the sequence operation. This is strong evidence of unnecessary runtime sequence authority, but still not an authorization to revoke until every function/trigger path and live deployed migration is confirmed.
+
+The following candidate sequence grants still need explicit owner/function/trigger provenance before classification:
+`campaign_id_seq` is now source-mapped above; remaining unmapped candidates include `quoteflow_migration_business_provisioning_audit_id_seq`, `quoteflow_migration_reset_enrollment_id_seq`, `business_directory_review_event_id_seq` if the exact trigger/sequence default is not from the checked migration, and any sequence with identity/default behavior outside the reviewed functions.
+
+**Important:** sequence USAGE/SELECT revocation is not included in any change. The final cutover must be a separate reviewed migration with disposable qualification and rollback plan.
