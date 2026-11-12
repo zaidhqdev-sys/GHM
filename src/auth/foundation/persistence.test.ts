@@ -71,6 +71,29 @@ test('auth foundation persistence (database)', async (t) => {
   let accountId = 0;
   const persistence = new PostgresAuthPersistence(runtimePool);
 
+  const redeemRecoveryAsOwner = async (recoveryTokenWire: string): Promise<number> => {
+    const { decodeOpaqueTokenWire } = await import('./opaque-token');
+    const { protectOpaqueToken } = await import('./token-hmac');
+    const raw = decodeOpaqueTokenWire(recoveryTokenWire);
+    const tokenHash = protectOpaqueToken(process.env.GHM_AUTH_TOKEN_PEPPER!, 'recovery', raw);
+    const client = await migratorPool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SET LOCAL ROLE ghm_schema_owner');
+      const result = await client.query(
+        'SELECT ghm.auth_redeem_recovery($1) AS account_id',
+        [tokenHash],
+      );
+      await client.query('COMMIT');
+      return Number(result.rows[0].account_id);
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
+  };
+
   const validateSessionAsOwner = async (sessionId: number) => {
     const client = await migratorPool.connect();
     try {
@@ -324,11 +347,11 @@ test('auth foundation persistence (database)', async (t) => {
     const issued = await persistence.issueRecovery(accountId, 30);
     assert.ok(issued.recoveryTokenWire.length > 0);
 
-    const redeemedAccount = await persistence.redeemRecovery(issued.recoveryTokenWire);
+    const redeemedAccount = await redeemRecoveryAsOwner(issued.recoveryTokenWire);
     assert.equal(redeemedAccount, accountId);
 
     await assert.rejects(
-      () => persistence.redeemRecovery(issued.recoveryTokenWire),
+      () => redeemRecoveryAsOwner(issued.recoveryTokenWire),
       (error: unknown) =>
         error instanceof AuthPersistenceError && error.code === 'RECOVERY_CREDENTIAL_INVALID',
     );
@@ -340,8 +363,8 @@ test('auth foundation persistence (database)', async (t) => {
 
     const again = await persistence.issueRecovery(accountId, 30);
     const concurrent = await Promise.allSettled([
-      persistence.redeemRecovery(again.recoveryTokenWire),
-      persistence.redeemRecovery(again.recoveryTokenWire),
+      redeemRecoveryAsOwner(again.recoveryTokenWire),
+      redeemRecoveryAsOwner(again.recoveryTokenWire),
     ]);
     assert.equal(concurrent.filter((r) => r.status === 'fulfilled').length, 1);
     assert.equal(concurrent.filter((r) => r.status === 'rejected').length, 1);
@@ -393,7 +416,7 @@ test('auth foundation persistence (database)', async (t) => {
     } finally {
       client.release();
     }
-    await assert.rejects(() => persistence.redeemRecovery(issued.recoveryTokenWire), AuthPersistenceError);
+    await assert.rejects(() => redeemRecoveryAsOwner(issued.recoveryTokenWire), AuthPersistenceError);
   });
 
 
