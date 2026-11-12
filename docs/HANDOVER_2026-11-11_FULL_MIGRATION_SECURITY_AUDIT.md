@@ -2352,7 +2352,7 @@ Correction:
 
 A cross-role review found that Actor Gateway startup enforced its database login identity, but did not verify the complete effective database function and relation privilege set. Its disposable qualification previously spot-checked selected functions and four authentication tables; it did not prove that the gateway had exactly its reviewed callable-function set or zero direct relation privileges across the whole GHM schema.
 
-The migration history initially granted the gateway 22 current functions, including an unsigned identity helper and nine pre-signed overloads:
+The migration history granted 31 distinct gateway function signatures before cleanup: 21 signed/typed operations plus ten obsolete unsigned entry points (one unsigned identity helper and nine pre-signed overloads).
 - `assert_actor_gateway` and `assert_actor_gateway_capability`;
 - the typed identity, registration, capability governance/evidence, supplier classification, business profile, saved-business, business-hours, trust-score and business-logo operations.
 
