@@ -1133,3 +1133,8 @@ This does not authorize production mutation. PR #272 remains open/unmerged; the 
 Latest exact candidate `465b8e034243c80bf7efe6cc6ea8b27705176760` passed run `43160050121` (`quality`, `web-quality`, Cloudflare Pages). The migration runner now validates the exact `ghm_migrator` → `ghm_schema_owner` SET-only membership and both role attribute sets before applying migrations. Disposable migration, full suite, Connect Business signed provisioning, Actor Gateway qualification, issuer cutover/lifecycle/rollback all passed.
 
 Production Render role flags and membership options still require independent inspection against the new gate before any live migration. PR #272 remains open/unmerged; no production changes or paid services.
+### 2026-11-12 — migrator direct privilege qualification
+
+Latest candidate `5a1b26ab65c69bab654ba3b1c4fc8610123481cd` passed run `43160516327` (`quality`, `web-quality`, Cloudflare Pages). The migration runner now verifies before `SET ROLE` that `ghm_migrator` has database CONNECT only, no database CREATE, no GHM schema USAGE/CREATE, and no direct GHM table/view/sequence privileges, in addition to the exact single non-inheritable SET membership to the NOLOGIN schema owner. Full migration chain, test suite, Actor Gateway and issuer cutover/lifecycle/rollback qualifications passed.
+
+Live Render role and ACL inspection remains a production gate. No production changes or paid services.

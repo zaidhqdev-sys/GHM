@@ -2430,3 +2430,12 @@ The CI role fixture now explicitly creates the membership with `WITH ADMIN FALSE
 Exact-head CI passed on `465b8e034243c80bf7efe6cc6ea8b27705176760` in run `43160050121`: `quality`, `web-quality`, and Cloudflare Pages all passed. The build, complete migrations, full suite, Connect Business gateway qualification, Actor Gateway cutover qualifications, manual issuer cutover, issuer lifecycle/runtime denials, and disposable database-only rollback also passed.
 
 **Production qualification remains outstanding:** inspect the actual Render `ghm_migrator` and `ghm_schema_owner` role flags and `pg_auth_members` options against this exact contract before any production migration run. Do not assume the disposable CI role state proves the live Render roles conform. No production role, grant, database, secret, service, deployment, routing or paid resource was changed.
+### Migrator direct privilege boundary — exact-head qualification (2026-11-12)
+
+The migrator contract was tightened one further step after the role-membership check. Before `SET ROLE`, the runner now also requires that `ghm_migrator` has database CONNECT only: no database CREATE, no `ghm` schema USAGE or CREATE, and no direct SELECT/INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER on GHM relations or USAGE/SELECT/UPDATE on GHM sequences. The membership remains exactly one direct, non-inheritable, SET-only path to `ghm_schema_owner`; the owner remains NOLOGIN, non-elevated and without role memberships.
+
+Unit tests and a source-contract test cover the new direct privilege boundary. The migration runner's real preflight is exercised by CI's full migration chain.
+
+Exact candidate `5a1b26ab65c69bab654ba3b1c4fc8610123481cd` passed run `43160516327`: `quality`, `web-quality`, Cloudflare Pages, build, migrations, full suite, Connect Business gateway qualification, Actor Gateway qualifications, manual issuer cutover, issuer lifecycle/runtime denials and disposable rollback all passed. This is disposable evidence only.
+
+Before production migration, inspect the live Render role flags, exact `pg_auth_members` options, database/schema/object privileges and schema-owner memberships against the same contract. No production mutation was made.

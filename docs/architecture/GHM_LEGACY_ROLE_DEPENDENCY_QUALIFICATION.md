@@ -103,3 +103,8 @@ This contract reconciles the role-separation model, migration runner boundary, Q
 The canonical migrator boundary is now enforced by the migration runner, not only documented: before `SET ROLE`, it verifies `ghm_migrator` is LOGIN/NOINHERIT/no elevated attributes, has exactly one direct `ghm_schema_owner` membership with `ADMIN FALSE`, `INHERIT FALSE`, `SET TRUE`, and that `ghm_schema_owner` is NOLOGIN/non-elevated with no memberships. After activation it verifies `session_user = ghm_migrator` and `current_user = ghm_schema_owner`. CI explicitly constructs this membership and the full migration chain passes with the guard enabled.
 
 Disposable exact-head evidence: `465b8e034243c80bf7efe6cc6ea8b27705176760`, run `43160050121` passed. Production role flags/membership options must still be independently inspected in Render before the live migration runner is used. This remains read-only until separately authorized.
+## 2026-11-12 reconciliation — migrator direct privileges
+
+In addition to exact role flags and membership, the migration runner now verifies `ghm_migrator` has database CONNECT only: no database CREATE, no `ghm` schema USAGE/CREATE, and no direct GHM relation or sequence privileges. This ensures the migration process gains object authority only after explicitly entering `ghm_schema_owner`. The exact-head disposable qualification passed in run `43160516327` at `5a1b26ab65c69bab654ba3b1c4fc8610123481cd`.
+
+Production Render role flags, membership options and direct privileges still require independent inspection. No role or grant mutation is authorized by this evidence.
