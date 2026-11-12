@@ -1237,3 +1237,10 @@ Added read-only `scripts/audit-security-definer-authority.mjs`, its contract tes
 
 
 Inventory runner refinement: full catalog JSON is saved to `tmp/security-definer-authority-audit.json` by default; terminal output is a compact summary. It reads `GHM_SECURITY_DEFINER_AUDIT_DATABASE_URL` or local `GHM_MIGRATOR_DATABASE_URL`, but rejects anything other than localhost `ghm_disposable_test`. Not yet executed; no findings claimed.
+
+
+## 2026-11-12 — Whole-database security inventory integrated into PostgreSQL 18 CI
+
+The read-only SECURITY DEFINER inventory now also reports role attributes, all non-system schema owners/ACL/effective privileges, current database owner/ACL/effective privileges, trusted/untrusted languages, extensions, membership options and function default ACLs. CI runs the inventory after migrations on PostgreSQL 18 and uploads `security-definer-authority-inventory` for 14 days. It uses the disposable CI database only and makes no database changes. Preliminary findings remain manual-review items, not automatic failures or approvals.
+
+Latest observed pre-documentation CI commit: `c9a599a19e3590de4f29ef243e7138b85e0da881`, run `43220323598` queued; earlier per-commit runs were still in progress. No exact-head pass or inventory result has yet been verified. Inspect the latest Actions run and artifact, then build the exact function/role permission matrix. Production untouched; no merge or cutover. Full detail: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
