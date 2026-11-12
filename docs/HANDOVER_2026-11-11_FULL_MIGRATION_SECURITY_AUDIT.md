@@ -2364,4 +2364,3 @@ Correction:
 
 The nine previously obsolete overloads are already dropped and are not included in the new migration or denial probes. The latest exact-head CI must prove the migration applies cleanly and the 21-function startup verifier passes. Do not claim this closure before that run passes.
 
-The latest exact-head CI must prove the migration applies cleanly, the 21-function startup verifier passes, and all ten legacy entry points are denied. Do not claim this closure before that run passes.
