@@ -64,3 +64,10 @@ Referenced by application code only. **No** `insert into storage.buckets` for `p
 ## Target Connect storage exposure reconciliation — 2026-10-13
 
 The storage service/R2 qualification recorded in this source audit proves only the bounded provider/service behavior it names. The current Connect no-Supabase audit found no storage router registered in `src/http/app.ts`, and the current storage object policy supports `business_logo` only. Thus the existing evidence is not proof of a browser-usable Connect storage API. Keep authenticated upload/complete/access/delete HTTP exposure and contract tests open as **Extend** for the confirmed logo journey; do not treat workspace files, project images, or verification documents as covered until separate active callers, object classes, privacy and retention rules are evidenced. No production route exposure or cutover is authorized by this note.
+
+
+## GHM storage route and gateway reconciliation — 2026-11-12
+
+Since the 2026-10-13 target-exposure checkpoint, GHM source now includes authenticated storage upload, completion, access-grant and deletion routes, Business Logo bind/clear/public redirect routes, and the signed Storage Metadata Actor Gateway integration. The five metadata operations use signed actor assertions; provider-confirmed transitions require separate Resource API HMAC proof verified by PostgreSQL. Disposable PostgreSQL 18 adversarial and grant-revocation/rollback qualification passed in CI run `43237334881`.
+
+This does not change the scope of the Connect source inventory above: it remains tied to Connect commit `abcffa73f893602c25310a58946bebb91fd7eeb5`. Nor does it qualify broader Connect media prefixes (avatars, gallery, project images, workspace files or private verification documents), a deployed end-to-end GHM logo lifecycle, or production enablement. Connect logo upload/removal remains disabled until the full deployed non-production journey passes against a dedicated non-production bucket. The existing `zaid-ghm-production` bucket is not proven to be a dedicated non-production target and must not be used for further mutation tests by default.
