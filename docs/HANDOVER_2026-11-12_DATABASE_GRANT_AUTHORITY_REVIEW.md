@@ -1735,3 +1735,12 @@ No PR was merged or closed. The current construction branch remains the integrat
 PR #274 remains the Render role-separation handover. It documents the unresolved Render-managed membership/admin-option authority issue; do not attempt a production revoke or role mutation from this audit.
 
 **Production boundary:** no production grants/roles, SQL migrations, credentials, secrets, environment variables, Render services, deployments, traffic or application data changed. No PR merge. PayFast remains paused.
+
+
+### Follow-up correction to disabled-account fixture authority
+
+The first correction changed the fixture from direct UPDATE to `ghm.auth_disable_account($1)`, but a log review showed the current construction ACL intentionally revokes that function from `ghm_runtime`. Therefore the fixture must not call it through the runtime principal.
+
+Final fixture setup now calls the existing `ghm.auth_disable_account($1)` SECURITY DEFINER lifecycle function using the disposable qualification connection after `SET ROLE ghm_schema_owner` under the dedicated `ghm_migrator` login. This preserves the invariant that account lifecycle changes occur only through the governed auth function, without reintroducing runtime EXECUTE or direct table UPDATE.
+
+Final correction commit: `12e75e8a142150c8ebb3dac1f1e0cda3ff871941`. Exact-head workflow run `43314592392` is still running at the time of this update. The prior fixture attempts are failed runs and are superseded; only the final exact-head CI result may qualify this change.
