@@ -4,6 +4,7 @@ import {
   assertRuntimeDatabaseFunctionPrivileges,
   RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS,
   RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS,
+  RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL,
 } from './runtime-database-privileges';
 
 test('runtime startup accepts only the inventoried 43-function baseline or reviewed 40-function gateway cutover', () => {
@@ -30,6 +31,11 @@ test('runtime startup rejects added, missing or unexpected function EXECUTE gran
     }),
     /Runtime database function EXECUTE allow-list mismatch/,
   );
+});
+
+test('startup inventory measures only SECURITY DEFINER EXECUTE privileges', () => {
+  assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /p\.prosecdef/);
+  assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /has_function_privilege\(session_user, p\.oid, 'EXECUTE'\)/);
 });
 
 test('Campaign and directory-review legacy signatures are absent only from the post-cutover state', () => {
