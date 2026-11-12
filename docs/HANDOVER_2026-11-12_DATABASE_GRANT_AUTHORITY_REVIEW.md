@@ -1803,3 +1803,63 @@ The existing PR/branch review confirms that much of the security work already ex
 7. Resolve Render's Dashboard-managed role membership/admin-option issue and fresh backup evidence before planning production principal cutover.
 
 **No production ACL, role, membership, migration, credential, secret, environment variable, Render service, deployment, traffic, bucket, object or application data was changed. No PR merged or closed. PayFast and legal publication remain paused.**
+
+
+---
+
+## 2026-11-12 continuation — expanded production/deployed repository blob comparison
+
+**Production source ref:** `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`.  
+**Construction source ref:** `20660992490318eb9e8aafe40afd4db2401a1822`.  
+**Method:** fetched each exact repository file at both commits and compared Git blob SHA. Matching hashes establish byte-identical repository SQL implementations at these two refs. This does not establish that every route, environment setting or production database migration is identical.
+
+### Result: 15 of 16 reviewed resource repositories are byte-identical
+
+| Resource repository | Result |
+|---|---|
+| `business-capability/repository.ts` | Identical |
+| `business-capability-evidence/repository.ts` | Identical |
+| `business-category/repository.ts` | Identical |
+| `business-offering/repository.ts` | Identical |
+| `customer/repository.ts` | Identical |
+| `enquiry/repository.ts` | Identical |
+| `opportunity-participant/repository.ts` | Identical |
+| `opportunity/repository.ts` | Identical |
+| `project/repository.ts` | Identical |
+| `project-quote/repository.ts` | Identical |
+| `quote/repository.ts` | Identical |
+| `notification/repository.ts` | Identical |
+| `review/repository.ts` | Identical |
+| `support-request/repository.ts` | Identical |
+| `commercial/repository.ts` | Identical |
+| `business-identity/repository.ts` | **Different** |
+
+The 15 matching files include the SQL-producing repositories for the majority of the already mapped production column DML domains. Their deployed repository statements therefore match the construction source at these exact refs. The existing source-to-route and authorization map remains applicable for those repository implementations, subject to the separate route wiring and deployed schema/ACL checks.
+
+### Sole repository difference: Business Identity
+
+The only differing file in this 16-file sample is `src/resources/business-identity/repository.ts`.
+
+- Production source contains the direct Business profile UPDATE path.
+- Construction source replaces that direct repository operation with a fail-closed error requiring the authenticated Actor Gateway.
+- Construction's registered PATCH route forwards bearer authentication to the gateway; when the gateway is missing or fails, it does not fall back to direct Resource API DML.
+- Construction's separate `updateAccount()` direct UPDATE of `account_identity` remains in the repository, but the inspected application wiring has no registered account-profile update route. Keep this method/ACL mapping unresolved until the full call graph and exact production column grants are inspected.
+
+This is a real, intentional source delta. Do not describe the production Business profile write as already gateway-routed: the deployed production ref is the direct-write implementation. Do not revoke its production UPDATE grants until the gateway replacement is deployed, verified and the corresponding migration is applied under a separately approved cutover.
+
+### Scope limitation — not yet a full ACL reconciliation
+
+This comparison covers 16 repository files selected from the known production column DML caller map. It does not itself contain the exact 156 INSERT / 60 UPDATE / 7 SELECT ACL rows, and it does not prove the entire 21-table/12-table ACL matrix is exhausted. Remaining steps:
+1. Retrieve the complete row-level production column ACL query result; the 39 KB SECURITY DEFINER workflow artifact is a different inventory and must not be mistaken for the DML ACL matrix.
+2. Map each exact ACL row and column list to its SQL statement in the matching repository, including any direct statements outside the selected 16 repositories.
+3. Compare application route/service wiring at both refs for each mapped write, rather than treating repository blob identity as route identity.
+4. Resolve the account identity profile-update method and all six production account identity UPDATE columns.
+5. Finish repository-wide search for additional notification producers and engagement-event writers.
+
+### CI and branch checkpoint
+
+The Business Profile disabled-account regression and reader unit tests passed on exact code head `12e75e8a142150c8ebb3dac1f1e0cda3ff871941`, run `43314592392` (quality + web-quality). The next exact construction head `20660992490318eb9e8aafe40afd4db2401a1822` also passed both jobs, run `43314669620`.
+
+This handover continuation is committed as `c4a1cb2efcfa35e4639de0d98d55f4f818c85111`; its own exact-head CI run `43315369602` was in progress when this note was authored. Do not report that documentation-head run as passed until both jobs finish.
+
+**No production grants, roles, memberships, migrations, credentials, secrets, environment variables, Render services, deployments, traffic, storage objects or application data changed. No PR was merged or closed. PayFast and legal publication remain paused.**
