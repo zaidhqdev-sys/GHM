@@ -2439,3 +2439,21 @@ Unit tests and a source-contract test cover the new direct privilege boundary. T
 Exact candidate `5a1b26ab65c69bab654ba3b1c4fc8610123481cd` passed run `43160516327`: `quality`, `web-quality`, Cloudflare Pages, build, migrations, full suite, Connect Business gateway qualification, Actor Gateway qualifications, manual issuer cutover, issuer lifecycle/runtime denials and disposable rollback all passed. This is disposable evidence only.
 
 Before production migration, inspect the live Render role flags, exact `pg_auth_members` options, database/schema/object privileges and schema-owner memberships against the same contract. No production mutation was made.
+
+## 2026-11-12 — manual issuer cutover operator-boundary correction
+
+A source/qualification review found that the two manual issuer SQL artifacts relied on the operator convention and CI caller to establish the intended migrator/schema-owner identity. The SQL itself did not reject direct execution under another privileged login. This was a real fail-closed gap in the manual change artifacts even though the disposable qualification invoked them through a controlled path.
+
+Corrected both:
+- `database/cutovers/20261112010000_authentication_issuer_privilege_cutover.sql`
+- `database/cutovers/20261112020000_authentication_issuer_privilege_rollback.sql`
+
+Each now begins its transaction with a SQL identity guard requiring exactly `session_user=ghm_migrator` and `current_user=ghm_schema_owner`. Any other login/effective role raises an exception before privilege changes. The scripts remain manual-only; no production script was run.
+
+The migration-contract test now loads both artifacts and asserts both identity checks and the fail-closed diagnostic. CI was changed to invoke the cutover through a single `ghm_migrator` psql session, execute `SET ROLE ghm_schema_owner`, include the SQL file in that same session, then reset role. The CI include is a single psql meta-command backslash; do not change it to a shell-level invocation that loses the session identity.
+
+**Exact-head qualification pending:** the previous green run `43161326835` at `2b2014afff8dc605ab427a15256a41f89c70adab` predates these changes and is historical evidence only. The latest known branch commit after the code, CI and runbook updates is `7569ea12d8261eff341fe06feae95e3aa7e11dba`; verify the live branch head and obtain a complete exact-head run before claiming this correction qualified.
+
+The issuer runbook's old 130-commit branch-distance statement was also corrected: the GitHub comparison at this audit reported 381 commits ahead and zero behind the integration base. This is a dated comparison, not a live guarantee.
+
+Production remains untouched. The production role/ownership issue, fresh independently verified backup, transport/network topology, recovery-delivery readiness, cross-product compatibility, and separate founder approvals remain blockers. No paid infrastructure, production grants, roles, secrets, services, deployments, data or routing were changed.
