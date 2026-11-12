@@ -421,17 +421,6 @@ test('login issues ES256 access JWT with decimal sub and no role claim', async (
       refreshCredentialId: 1,
       refreshTokenWire: 'refresh-wire-token',
     }),
-    validateSession: async () => ({
-      sessionId: 9,
-      accountId: 42,
-      sessionStatus: 'active',
-      accountStatus: 'active',
-      createdAt: new Date(),
-      lastSeenAt: new Date(),
-      absoluteExpiresAt: new Date(),
-      isUsable: true,
-      rejectReason: null,
-    }),
     rotateRefresh: async () => {
       throw new Error('unused');
     },
