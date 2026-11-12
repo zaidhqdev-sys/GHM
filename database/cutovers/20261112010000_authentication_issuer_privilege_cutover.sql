@@ -13,14 +13,14 @@
 -- receives EXECUTE only; it receives no direct table/sequence privileges.
 BEGIN;
 
-DO $
+DO $issuer_operator_guard$
 BEGIN
   IF session_user IS DISTINCT FROM 'ghm_migrator'
      OR current_user IS DISTINCT FROM 'ghm_schema_owner' THEN
     RAISE EXCEPTION 'issuer privilege operation requires session_user=ghm_migrator and current_user=ghm_schema_owner';
   END IF;
 END;
-$;
+$issuer_operator_guard$;
 
 DO $
 DECLARE
