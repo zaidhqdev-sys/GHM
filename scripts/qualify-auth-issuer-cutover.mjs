@@ -55,6 +55,67 @@ const expectPermissionDenied = async (sql, values = []) => {
 };
 
 try {
+  // Rehearse legacy production-only auth authority wrappers that are absent from
+  // the current disposable migration chain. Seed them with broad grants, then
+  // reapply the guarded cutover to prove it removes those historical grants.
+  const legacyAuthorityFixtures = [
+    {
+      signature: 'ghm.auth_read_account_email(bigint)',
+      createSql: `CREATE FUNCTION ghm.auth_read_account_email(p_account_id bigint)
+        RETURNS text LANGUAGE sql STABLE SECURITY DEFINER
+        SET search_path = pg_catalog, ghm, pg_temp AS 'SELECT NULL::text'`,
+    },
+    {
+      signature: 'ghm.auth_read_connect_identity_authority(bigint)',
+      createSql: `CREATE FUNCTION ghm.auth_read_connect_identity_authority(p_account_id bigint)
+        RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER
+        SET search_path = pg_catalog, ghm, pg_temp AS 'SELECT NULL::jsonb'`,
+    },
+    {
+      signature: 'ghm.auth_revoke_all_sessions_for_account(bigint,text)',
+      createSql: `CREATE FUNCTION ghm.auth_revoke_all_sessions_for_account(p_account_id bigint, p_reason text DEFAULT 'password_recovery')
+        RETURNS integer LANGUAGE sql SECURITY DEFINER
+        SET search_path = pg_catalog, ghm, pg_temp AS 'SELECT 0'`,
+    },
+  ];
+  const legacyFixtureClient = await migratorPool.connect();
+  try {
+    await legacyFixtureClient.query('BEGIN');
+    await legacyFixtureClient.query('SET LOCAL ROLE ghm_schema_owner');
+    for (const fixture of legacyAuthorityFixtures) {
+      const exists = await legacyFixtureClient.query(
+        'SELECT to_regprocedure($1) IS NOT NULL AS exists',
+        [fixture.signature],
+      );
+      if (exists.rows[0].exists) {
+        throw new Error(`Legacy authority qualification fixture unexpectedly exists: ${fixture.signature}`);
+      }
+      await legacyFixtureClient.query(fixture.createSql);
+      await legacyFixtureClient.query(
+        `GRANT EXECUTE ON FUNCTION ${fixture.signature} TO PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway, ghm_auth_issuer, ghm_payment_provider`,
+      );
+    }
+    await legacyFixtureClient.query('COMMIT');
+  } catch (error) {
+    await legacyFixtureClient.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    legacyFixtureClient.release();
+  }
+
+  const issuerCutoverSql = fs.readFileSync(path.resolve(
+    process.cwd(),
+    'database/cutovers/20261112010000_authentication_issuer_privilege_cutover.sql',
+  ), 'utf8');
+  const reapplyIssuerCutoverClient = await migratorPool.connect();
+  try {
+    await reapplyIssuerCutoverClient.query('SET ROLE ghm_schema_owner');
+    await reapplyIssuerCutoverClient.query(issuerCutoverSql);
+  } finally {
+    await reapplyIssuerCutoverClient.query('RESET ROLE');
+    reapplyIssuerCutoverClient.release();
+  }
+
   // Verify future functions created by the schema owner do not inherit
   // PostgreSQL's default PUBLIC EXECUTE privilege. This probe is disposable-only.
   const defaultPrivilegeClient = await migratorPool.connect();
@@ -381,6 +442,9 @@ try {
     'SELECT * FROM ghm.auth_complete_quoteflow_migration_reset(NULL::bytea, NULL::text, NULL::integer, NULL::integer, NULL::integer)',
     'SELECT * FROM ghm.auth_register_quoteflow_migration_reset_enrollment(NULL::bigint, NULL::text, NULL::text, NULL::text, NULL::text, NULL::text)',
     'SELECT * FROM ghm.auth_link_business_external_mapping(NULL::text, NULL::text, NULL::bigint)',
+    'SELECT ghm.auth_read_account_email(NULL::bigint)',
+    'SELECT ghm.auth_read_connect_identity_authority(NULL::bigint)',
+    'SELECT ghm.auth_revoke_all_sessions_for_account(NULL::bigint, NULL::text)',
   ];
   for (const sql of deniedCalls) await expectPermissionDenied(sql);
 
@@ -637,6 +701,41 @@ try {
     runtimeRollbackFunctions.rows[0].expected,
     'rollback must restore exactly the documented pre-issuer Resource API auth function allow-list',
   );
+
+  const legacyAuthorityAfterRollback = await migratorPool.query(`
+    SELECT
+      has_function_privilege('ghm_runtime','ghm.auth_read_account_email(bigint)','EXECUTE') AS runtime_email_read,
+      has_function_privilege('ghm_runtime','ghm.auth_read_connect_identity_authority(bigint)','EXECUTE') AS runtime_connect_authority_read,
+      has_function_privilege('ghm_runtime','ghm.auth_revoke_all_sessions_for_account(bigint,text)','EXECUTE') AS runtime_revoke_all,
+      has_function_privilege('ghm_migrator','ghm.auth_read_account_email(bigint)','EXECUTE') AS migrator_email_read,
+      has_function_privilege('ghm_actor_gateway','ghm.auth_read_connect_identity_authority(bigint)','EXECUTE') AS gateway_authority_read,
+      has_function_privilege('ghm_auth_issuer','ghm.auth_revoke_all_sessions_for_account(bigint,text)','EXECUTE') AS issuer_revoke_all,
+      has_function_privilege('ghm_payment_provider','ghm.auth_read_account_email(bigint)','EXECUTE') AS payment_email_read
+  `);
+  assert.deepEqual(
+    legacyAuthorityAfterRollback.rows[0],
+    {
+      runtime_email_read: false,
+      runtime_connect_authority_read: false,
+      runtime_revoke_all: false,
+      migrator_email_read: false,
+      gateway_authority_read: false,
+      issuer_revoke_all: false,
+      payment_email_read: false,
+    },
+    'issuer rollback must not restore legacy arbitrary-account authority readers or all-session revocation',
+  );
+
+  const legacyFixtureCleanup = await migratorPool.connect();
+  try {
+    await legacyFixtureCleanup.query('SET ROLE ghm_schema_owner');
+    for (const fixture of legacyAuthorityFixtures) {
+      await legacyFixtureCleanup.query(`DROP FUNCTION ${fixture.signature}`);
+    }
+  } finally {
+    await legacyFixtureCleanup.query('RESET ROLE');
+    legacyFixtureCleanup.release();
+  }
 
   process.stdout.write(JSON.stringify({
     issuerAllowList: issuerOnlyFunctionNames.length,
