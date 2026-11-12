@@ -64,11 +64,27 @@ export class HttpConnectBusinessProvisioningGatewayClient implements ConnectBusi
         !Number.isSafeInteger(payload.business.id) ||
         !isRecord(payload.mapping) ||
         payload.mapping.externalBusinessId !== externalBusinessId ||
-        payload.mapping.businessId !== payload.business.id
+        payload.mapping.businessId !== payload.business.id ||
+        typeof payload.business.createdAt !== 'string' ||
+        typeof payload.business.updatedAt !== 'string' ||
+        typeof payload.mapping.createdAt !== 'string' ||
+        typeof payload.mapping.updatedAt !== 'string'
       ) {
         throw new Error('Actor gateway response is invalid');
       }
-      return payload as unknown as ConnectBusinessProvisioningResult;
+      return {
+        outcome: payload.outcome,
+        business: {
+          ...payload.business,
+          createdAt: new Date(payload.business.createdAt),
+          updatedAt: new Date(payload.business.updatedAt),
+        },
+        mapping: {
+          ...payload.mapping,
+          createdAt: new Date(payload.mapping.createdAt),
+          updatedAt: new Date(payload.mapping.updatedAt),
+        },
+      } as unknown as ConnectBusinessProvisioningResult;
     } finally {
       clearTimeout(timeout);
     }
