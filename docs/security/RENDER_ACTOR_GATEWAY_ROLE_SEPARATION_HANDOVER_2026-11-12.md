@@ -280,3 +280,28 @@ On the next session:
 6. Keep the original Actor Gateway objective visible throughout: the normal runtime must not be able to administer or undermine the Actor Gateway security boundary.
 
 **Handover note:** The support conversation is closed with a confirmed recommendation. The engineering implementation is still open and must be qualified before production changes.
+
+## Implementation decision refinement — retain the current Dashboard administrator
+
+After reconciling Amanda's guidance with the active GHM runtime principal contract, the preferred transition is simpler than the conditional credential-rotation option described in her numbered response.
+
+**Keep the existing Render Dashboard-managed default credential as the controlled database administrator.** Amanda explicitly recommended leaving the default user listed in the Dashboard for administration and creating other service logins directly in PostgreSQL.
+
+GHM already has the SQL-created `ghm_runtime` LOGIN principal. The active Resource API production configuration requires `GHM_RUNTIME_DATABASE_URL`, and its startup verifier requires `session_user=current_user=ghm_runtime` with no role memberships. The Resource API should use that existing SQL-created `ghm_runtime` login directly, not the Dashboard-managed default credential.
+
+Therefore, do not rotate/delete the current Dashboard-managed `ghm_app_user` merely to complete this separation. Do not create a replacement Dashboard administrator or a new `ghm_app_user IN ROLE ghm_runtime` login as a prerequisite. Amanda's numbered point 2 describes the optional path if we choose to remove the current Dashboard-managed default user; it is not required when that user is retained for administration.
+
+Using `ghm_runtime` directly also matches the existing strict startup identity verifier. A separate login such as `ghm_app_user` that is a member of `ghm_runtime` would not match `session_user=current_user=ghm_runtime` and zero-membership requirements without a deliberate architecture change.
+
+### Revised credential transition
+
+1. Keep the current Dashboard-managed default user and its administrative role-setting behaviour for controlled administration only.
+2. Verify the existing SQL-created `ghm_runtime` role's live role attributes, memberships, schema/object/function privileges and ownership dependencies using read-only production catalog queries.
+3. Establish or rotate the `ghm_runtime` password only through an approved controlled administrator session, without exposing it in chat, Git, logs or handover documents.
+4. Supply the `ghm_runtime` connection string as `GHM_RUNTIME_DATABASE_URL` to the Resource API service only, preserving host/port/database and verified SSL/network settings.
+5. Verify the actual service connection reports `session_user=current_user=ghm_runtime` and passes startup least-privilege checks before any production traffic cutover.
+6. Keep separate credentials for Auth Issuer, Actor Gateway, Migrator and Payment Provider. Do not put their URLs/secrets into the Resource API environment.
+
+This refinement supersedes the earlier suggestion to create a replacement Dashboard administrator and delete the existing Dashboard-managed user as a prerequisite. The optional rotation path remains available only if a future requirement specifically calls for removing the current Dashboard-managed user.
+
+No production credential, role, environment variable, service, migration or deployment was changed by this design refinement.
