@@ -159,6 +159,9 @@ try {
   if (createdAvailable.status !== 'available') throw new Error('Created pending object did not complete provider-verified availability');
   const pendingDeletion = await reader.markDeletionPending(fixture.accountId, Number(created.id));
   if (pendingDeletion.status !== 'deletion_pending') throw new Error('Legitimate owner deletion request did not enter deletion_pending');
+  const deletionPendingPublicRead = await reader.getObject(fixture.outsiderId, Number(created.id));
+  if (deletionPendingPublicRead) throw new Error('Cross-business actor read deletion-pending public storage metadata');
+  console.log('DELETION-PENDING PUBLIC STORAGE METADATA CROSS-BUSINESS READ DENIED: PASS');
   const completedDeletion = await reader.markDeleted(
     fixture.accountId, Number(created.id), createdKey,
     proof('storage.provider.mark_deleted', {
@@ -166,6 +169,9 @@ try {
     }),
   );
   if (completedDeletion.status !== 'deleted') throw new Error('Legitimate created-object deletion lifecycle did not complete');
+  const deletedPublicRead = await reader.getObject(fixture.outsiderId, Number(created.id));
+  if (deletedPublicRead) throw new Error('Cross-business actor read deleted public storage metadata');
+  console.log('DELETED PUBLIC STORAGE METADATA CROSS-BUSINESS READ DENIED: PASS');
   console.log('LEGITIMATE SIGNED CREATE → READ → DELETION → PROVIDER COMPLETION: PASS');
 
   const target = fixture.availableTarget;
