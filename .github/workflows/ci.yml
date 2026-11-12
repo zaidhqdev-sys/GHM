@@ -269,6 +269,9 @@ jobs:
       - name: Test suite
         run: npm test
 
+      - name: Qualify Campaign and directory-review signed actor gateway on disposable PostgreSQL
+        run: npm run qualify:campaign-directory-review-gateway
+
       - name: Qualify Business Capability lifecycle and two-session assertion replacement on disposable PostgreSQL
         run: npm run qualify:business-capability-lifecycle-runtime
 
@@ -287,8 +290,6 @@ jobs:
       - name: Qualify Business Hours signed gateway cutover on disposable PostgreSQL
         run: npm run qualify:business-hours-gateway-cutover
 
-      - name: Qualify Campaign and directory-review signed actor gateway on disposable PostgreSQL
-        run: npm run qualify:campaign-directory-review-gateway
 
       - name: Qualify Trust Score signed gateway cutover on disposable PostgreSQL
         run: npm run qualify:trust-score-gateway-cutover
