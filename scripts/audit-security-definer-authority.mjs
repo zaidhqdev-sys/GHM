@@ -6,7 +6,7 @@ import { Client } from 'pg';
 const url = process.env.GHM_SECURITY_DEFINER_AUDIT_DATABASE_URL?.trim();
 if (!url) throw new Error('Missing GHM_SECURITY_DEFINER_AUDIT_DATABASE_URL');
 const target = new URL(url);
-if (!['localhost', '127.0.0.1', '::1'].includes(target.hostname) || target.pathname !== '/ghm_disposable_test') {
+if (!['localhost', '127.0.0.1', '::1', '[::1]'].includes(target.hostname) || target.pathname !== '/ghm_disposable_test') {
   throw new Error('SECURITY DEFINER inventory is restricted to local ghm_disposable_test');
 }
 
@@ -30,7 +30,7 @@ try {
   const functions = await query(`
     SELECT n.nspname AS schema_name,
            p.proname AS function_name,
-           p.oid::regprocedure::text AS identity_signature,
+           format('%I.%I(%s)', n.nspname, p.proname, pg_get_function_identity_arguments(p.oid)) AS identity_signature,
            p.prokind AS routine_kind,
            owner_role.rolname AS owner,
            p.proowner AS owner_oid,
