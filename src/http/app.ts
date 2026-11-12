@@ -135,6 +135,7 @@ import { registerCommercialRoutes } from './commercial-router';
 import { registerStorageRoutes } from './storage-router';
 import { HttpBusinessLogoGatewayClient, type BusinessLogoGatewayClient } from './business-logo-gateway-client';
 import { HttpStorageMetadataGatewayClient } from './storage-metadata-gateway-client';
+import { HttpCampaignDirectoryReviewGatewayClient, type CampaignDirectoryReviewGatewayClient } from './campaign-directory-review-gateway-client';
 import { createStorageProvider } from '../storage/factory';
 
 
@@ -184,6 +185,8 @@ export interface AppDependencies {
   readonly businessLogoGatewayClient?: BusinessLogoGatewayClient;
   readonly businessLogoGatewayRequired?: boolean;
   readonly storageMetadataGatewayRequired?: boolean;
+  readonly campaignDirectoryReviewGatewayClient?: CampaignDirectoryReviewGatewayClient;
+  readonly campaignDirectoryReviewGatewayRequired?: boolean;
   readonly savedBusinessGatewayClient?: SavedBusinessGatewayClient;
   readonly savedBusinessGatewayRequired?: boolean;
   readonly businessRegistrationIdentityGatewayClient?: BusinessRegistrationIdentityGatewayClient;
@@ -438,9 +441,12 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const enquiryService =
     dependencies.enquiryService ??
     new EnquiryServiceImpl(new PostgresEnquiryRepository());
+  const campaignDirectoryReviewGatewayClient = dependencies.campaignDirectoryReviewGatewayClient
+    ?? (config.actorGatewayUrl ? new HttpCampaignDirectoryReviewGatewayClient(config.actorGatewayUrl) : undefined);
+  const campaignDirectoryReviewGatewayRequired = config.isProduction || dependencies.campaignDirectoryReviewGatewayRequired === true;
   const campaignService =
     dependencies.campaignService ??
-    new CampaignServiceImpl(new PostgresCampaignRepository());
+    new CampaignServiceImpl(new PostgresCampaignRepository(undefined, campaignDirectoryReviewGatewayClient, campaignDirectoryReviewGatewayRequired));
   const opportunityService =
     dependencies.opportunityService ??
     new OpportunityServiceImpl(new PostgresOpportunityRepository());
@@ -463,7 +469,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     dependencies.businessCapabilityEvidenceService ??
     new BusinessCapabilityEvidenceServiceImpl(new PostgresBusinessCapabilityEvidenceRepository());
   const businessRegistrationIdentityService = dependencies.businessRegistrationIdentityService ?? new BusinessRegistrationIdentityServiceImpl(new PostgresBusinessRegistrationIdentityRepository());
-  const directoryReviewService = dependencies.directoryReviewService ?? new DirectoryReviewServiceImpl(new PostgresDirectoryReviewRepository());
+  const directoryReviewService = dependencies.directoryReviewService ?? new DirectoryReviewServiceImpl(new PostgresDirectoryReviewRepository(undefined, campaignDirectoryReviewGatewayClient, campaignDirectoryReviewGatewayRequired));
   const trustScoreService =
     dependencies.trustScoreService ??
     new TrustScoreServiceImpl(new PostgresTrustScoreRepository());
