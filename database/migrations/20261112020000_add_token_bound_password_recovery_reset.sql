@@ -77,15 +77,15 @@ BEGIN
     RAISE EXCEPTION 'RECOVERY_CREDENTIAL_INVALID' USING ERRCODE = 'P0001';
   END IF;
 
-  UPDATE ghm.account_password_credential
+  UPDATE ghm.account_password_credential AS credential
      SET password_hash = p_password_hash,
          argon2_memory_kib = p_argon2_memory_kib,
          argon2_time_cost = p_argon2_time_cost,
          argon2_parallelism = p_argon2_parallelism,
          password_changed_at = v_now,
          updated_at = v_now
-   WHERE account_id = v_account_id
-     AND credential_status = 'active';
+   WHERE credential.account_id = v_account_id
+     AND credential.credential_status = 'active';
 
   GET DIAGNOSTICS v_updated = ROW_COUNT;
   IF v_updated <> 1 THEN
