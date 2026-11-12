@@ -15,6 +15,7 @@ import type { TrustScoreGatewayReader } from './trust-score-reader';
 import type { BusinessLogoGatewayReader } from './business-logo-reader';
 import type { StorageMetadataGatewayReader } from './storage-metadata-reader';
 import type { ConnectBusinessProvisioningReader } from '../integrations/connect/business-provisioning-contracts';
+import type { CampaignDirectoryReviewGatewayReader } from './campaign-directory-review-reader';
 
 export interface ActorGatewayAppOptions {
   rateLimitLimit?: number;
@@ -35,6 +36,7 @@ export interface ActorGatewayDependencies {
   businessLogoReader?: BusinessLogoGatewayReader;
   storageMetadataReader?: StorageMetadataGatewayReader;
   connectBusinessProvisioningReader?: ConnectBusinessProvisioningReader;
+  campaignDirectoryReviewReader?: CampaignDirectoryReviewGatewayReader;
 }
 
 const isSqlState = (error: unknown, code: string): boolean =>
@@ -990,6 +992,68 @@ export const createActorGatewayApp = (
         operation: 'saved_business.delete',
         error: { name: error instanceof Error ? error.name : 'UnknownError' },
       }));
+      res.status(503).json({ error: 'service_unavailable' });
+    }
+  });
+
+
+  app.post('/v1/campaigns', async (req: Request, res: Response) => {
+    const reader = dependencies.campaignDirectoryReviewReader;
+    const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body as Record<string, unknown> : null;
+    if (!reader) { res.status(503).json({ error: 'service_unavailable' }); return; }
+    if (!body || Object.keys(body).length !== 2 || !Number.isSafeInteger(body.businessId) || (body.businessId as number) <= 0 || typeof body.title !== 'string') {
+      res.status(400).json({ error: 'invalid_request' }); return;
+    }
+    try {
+      const campaign = await reader.createCampaign(res.locals.actorAccountId as number, { businessId: body.businessId as number, title: body.title });
+      res.status(201).json({ campaign });
+    } catch (error) {
+      if (isSqlState(error, '42501')) { res.status(403).json({ error: 'forbidden' }); return; }
+      if (isSqlState(error, '22023')) { res.status(400).json({ error: 'invalid_request' }); return; }
+      console.error(JSON.stringify({ event: 'actor_gateway_operation_failed', operation: 'campaign.create', error: { name: error instanceof Error ? error.name : 'UnknownError' } }));
+      res.status(503).json({ error: 'service_unavailable' });
+    }
+  });
+
+  app.patch('/v1/campaigns/:campaignId', async (req: Request, res: Response) => {
+    const reader = dependencies.campaignDirectoryReviewReader;
+    const raw = req.params.campaignId;
+    const campaignId = typeof raw === 'string' && /^[1-9][0-9]*$/.test(raw) ? Number(raw) : NaN;
+    const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body as Record<string, unknown> : null;
+    const allowed = new Set(['title', 'status']);
+    if (!reader) { res.status(503).json({ error: 'service_unavailable' }); return; }
+    if (!Number.isSafeInteger(campaignId) || campaignId <= 0 || !body || Object.keys(body).length === 0 ||
+        Object.keys(body).some(key => !allowed.has(key)) ||
+        (Object.hasOwn(body, 'title') && typeof body.title !== 'string') ||
+        (Object.hasOwn(body, 'status') && body.status !== 'draft' && body.status !== 'active' && body.status !== 'archived')) {
+      res.status(400).json({ error: 'invalid_request' }); return;
+    }
+    try {
+      const campaign = await reader.updateCampaign(res.locals.actorAccountId as number, campaignId, {
+        ...(Object.hasOwn(body, 'title') ? { title: body.title as string } : {}),
+        ...(Object.hasOwn(body, 'status') ? { status: body.status as 'draft' | 'active' | 'archived' } : {}),
+      });
+      res.status(200).json({ campaign });
+    } catch (error) {
+      if (isSqlState(error, '42501') || isSqlState(error, 'P0001')) { res.status(404).json({ error: 'not_found' }); return; }
+      if (isSqlState(error, '22023')) { res.status(400).json({ error: 'invalid_request' }); return; }
+      console.error(JSON.stringify({ event: 'actor_gateway_operation_failed', operation: 'campaign.update', error: { name: error instanceof Error ? error.name : 'UnknownError' } }));
+      res.status(503).json({ error: 'service_unavailable' });
+    }
+  });
+
+  app.get('/v1/businesses/:businessId/directory-review-presentation', async (req: Request, res: Response) => {
+    const reader = dependencies.campaignDirectoryReviewReader;
+    const raw = req.params.businessId;
+    const businessId = typeof raw === 'string' && /^[1-9][0-9]*$/.test(raw) ? Number(raw) : NaN;
+    if (!reader) { res.status(503).json({ error: 'service_unavailable' }); return; }
+    if (!Number.isSafeInteger(businessId) || businessId <= 0) { res.status(400).json({ error: 'invalid_request' }); return; }
+    try {
+      const review = await reader.getDirectoryReviewPresentation(res.locals.actorAccountId as number, businessId);
+      res.status(200).json({ review });
+    } catch (error) {
+      if (isSqlState(error, '42501') || isSqlState(error, 'P0001')) { res.status(404).json({ error: 'not_found' }); return; }
+      console.error(JSON.stringify({ event: 'actor_gateway_operation_failed', operation: 'directory_review.presentation.read', error: { name: error instanceof Error ? error.name : 'UnknownError' } }));
       res.status(503).json({ error: 'service_unavailable' });
     }
   });
