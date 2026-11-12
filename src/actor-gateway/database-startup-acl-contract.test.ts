@@ -56,3 +56,10 @@ test('Actor Gateway verifier rejects direct EXECUTE grants to every non-owner gr
   assert.ok(privilegeSource.includes("acl.grantee <> 'ghm_actor_gateway'::regrole"));
   assert.ok(privilegeSource.includes('aclexplode(COALESCE(f.proacl'));
 });
+
+
+test('disposable qualification probes and cleans up unexpected Actor Gateway function grants', () => {
+  assert.ok(qualificationSource.includes('actorWithUnexpectedGrant.unsafe_function_grantees'));
+  assert.ok(qualificationSource.includes('actorAclAfterDirectProbe.unsafe_function_grantees'));
+  assert.ok(qualificationSource.includes('REVOKE EXECUTE ON FUNCTION ghm.gateway_provision_connect_business'));
+});
