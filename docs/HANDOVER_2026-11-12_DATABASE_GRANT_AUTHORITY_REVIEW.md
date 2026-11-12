@@ -456,3 +456,96 @@ Corrected the artifact to one transaction with one operator guard, one idempoten
 ### Production safety
 
 No production role, membership, grant, role setting, credential, environment variable, service, migration, deployment, traffic or data was changed. The Render queries were read-only. The Dashboard administrator remains the current default; the Resource API is not yet cut over to `GHM_RUNTIME_DATABASE_URL`. No fresh independently verified production backup has been established in this continuation. PayFast remains paused.
+
+---
+
+## 2026-11-12 continuation — Render support confirmation and fresh production role verification
+
+**Continuation:** after Amanda's final Render support confirmation at 18:46 UTC, the source-level connection inventory and production role graph were rechecked. All database queries in this addendum were read-only. No production changes were made.
+
+### Render support decision is now confirmed
+
+Amanda explicitly recommended moving normal application execution to SQL-created login role(s) outside the Dashboard-managed credential list. The Dashboard-managed default credential should remain for controlled administration.
+
+The original reason for this support discussion remains the deliberately created `ghm_actor_gateway` role and the subsequent attempt to resolve/revoke its creator/admin membership. Render's explanation is that PostgreSQL 16+ automatically grants the creating CREATEROLE role ADMIN OPTION membership in roles it creates; the grant is recorded as coming from `postgres`, and Render cannot revoke it for us. Amanda confirmed that SQL-created application/service logins are the supported route.
+
+The implementation decision is refined to use the **existing SQL-created `ghm_runtime` LOGIN directly** for Resource API execution. Do not create `ghm_app_user IN ROLE ghm_runtime` as a default solution. Keep the current Dashboard-managed default credential for administration; do not rotate/delete it just to achieve runtime separation.
+
+### Fresh read-only production membership verification
+
+A new catalog query against Render `ghm-db` / `ghm_db` reconfirmed these relevant memberships:
+
+| Granted role | Member role | Grantor | ADMIN | INHERIT | SET |
+|---|---|---|---:|---:|---:|
+| `ghm_actor_gateway` | `ghm_db_user` | `postgres` | true | false | false |
+| `ghm_migrator` | `ghm_db_user` | `postgres` | true | false | false |
+| `ghm_runtime` | `ghm_db_user` | `ghm_db_user` | false | true | true |
+| `ghm_runtime` | `ghm_db_user` | `postgres` | true | false | false |
+| `ghm_schema_owner` | `ghm_db_user` | `postgres` | true | false | false |
+| `ghm_schema_owner` | `ghm_migrator` | `ghm_db_user` | false | false | true |
+
+Fresh `pg_has_role` checks reconfirmed:
+
+- `ghm_runtime` cannot SET ROLE `ghm_db_user`, `ghm_schema_owner`, `ghm_migrator`, or `ghm_actor_gateway`.
+- `ghm_actor_gateway` cannot SET ROLE `ghm_db_user`, `ghm_schema_owner`, or `ghm_migrator`.
+- `ghm_db_user` can SET ROLE `ghm_runtime` due to its explicit SET-enabled membership. This is an administrator-to-runtime path, not a runtime-to-administrator path.
+- `ghm_db_user` currently cannot SET ROLE `ghm_actor_gateway`; the automatic ADMIN OPTION membership currently has SET=false and INHERIT=false.
+
+This is consistent with the intended distinction: the trusted administrator can manage/assume service roles, while the service logins themselves must not be members of administrator, migrator, schema-owner or other privileged roles. Do not misstate the ADMIN OPTION membership as proof that a successful Actor Gateway escalation has occurred.
+
+### Resource API / Actor Gateway / Issuer / Migrator connection inventory
+
+The current construction branch source uses distinct connections:
+
+| Consumer | Environment variable | Required login | Live production status |
+|---|---|---|---|
+| Resource API | `GHM_RUNTIME_DATABASE_URL` | `ghm_runtime` | Not yet cut over; Render service environment was not changed |
+| Authentication Issuer | `GHM_AUTH_ISSUER_DATABASE_URL` | `ghm_auth_issuer` | Role absent from production catalog; no deployed issuer service |
+| Actor Gateway | `GHM_ACTOR_GATEWAY_DATABASE_URL` | `ghm_actor_gateway` | Role exists; no deployed dedicated gateway service |
+| Migration runner | `GHM_MIGRATOR_DATABASE_URL` | `ghm_migrator` | Separate source/configured migration identity; production execution remains gated |
+| PayFast callback | `PAYFAST_CALLBACK_DATABASE_URL` | `ghm_payment_provider` | Legacy sandbox service only; PayFast remains paused and excluded |
+
+Resource API production config requires `GHM_RUNTIME_DATABASE_URL`; generic `DATABASE_URL` is a non-production fallback only. The migration runner requires `GHM_MIGRATOR_DATABASE_URL` and enters `ghm_schema_owner` through its narrowly scoped SET-only membership. Auth Issuer and Actor Gateway each have separate pools and startup identity/privilege checks.
+
+Fresh Render service listing confirmed that `ghm-internal-runtime` is the only production GHM web service, on `main`, with auto-deploy OFF. No dedicated production Auth Issuer or Actor Gateway service exists. The older identity qualification and PayFast sandbox services are not production targets.
+
+The Render service metadata action did not expose the service's environment-variable names. No secret values were requested, displayed or recorded. Therefore the live value/presence of `GHM_RUNTIME_DATABASE_URL` and all other service environment variables remains unverified. Repository source/config is not evidence that the deployed service has adopted those variables.
+
+### Runtime role membership guard compatibility
+
+The current construction branch has corrected the earlier over-broad `no_role_memberships` check to `no_untrusted_role_memberships` for Resource API, Actor Gateway and Auth Issuer. The accepted service-role membership model is:
+
+- The service login itself must not be a member of any other role.
+- The only role permitted to be a member of a service login role is the trusted Render administrator `ghm_db_user`.
+- Any other member of the service login role is rejected.
+- Elevated attributes, database/schema privileges, direct relation privileges and exact function allow-lists remain independently checked.
+- Migrator has its own stricter contract: exactly the schema-owner SET-only path; only `ghm_db_user` may be a member of `ghm_migrator`; only `ghm_db_user` and `ghm_migrator` may be members of `ghm_schema_owner`.
+
+This is the Render-compatible distinction required by Amanda's explanation. Do not revert to rejecting every membership in both directions; that would reject the administrator's trusted automatic membership in SQL-created service roles.
+
+### CI checkpoint and current source reconciliation
+
+The previously recorded Actions run `43291959904` completed with:
+- `web-quality`: passed.
+- `quality`: failed in `qualify:campaign-directory-review-gateway` at the Resource API runtime function EXECUTE allow-list check.
+
+The failure log showed the qualification harness expecting the older 43/40 runtime function states, while the current inspected source `src/db/runtime-database-privileges.ts` now defines the corrected 41/38/27/24 states that account for the two registration-identity grants already revoked by the earlier gateway migrations. The failed run is therefore evidence of a stale qualification state at that run's source head; it is **not** a passing qualification of the current source. The current corrected source still requires exact-head CI and disposable PostgreSQL requalification. Do not claim it passes until that run completes.
+
+### Gate 1 disposition
+
+**Source-level connection inventory: COMPLETE.** All five service/migration connection consumers and their intended principals are identified.
+
+**Live Render environment-variable mapping: NOT VERIFIED.** Do not read, print or record secret values. Before any future cutover, verify only the presence/name mapping through an approved safe mechanism and then verify actual `session_user=current_user` at service startup.
+
+**Production role graph: READ-ONLY RECONFIRMED.** The role graph and membership options above match the intended separation design, but no role, membership or credential change is authorized.
+
+### Next work
+
+1. Verify exact current construction-branch HEAD and rerun/inspect CI against that exact SHA, including the corrected 41/38/27/24 runtime function states.
+2. Finish the whole-database direct EXECUTE grant-by-grant purpose/call-site review, including the remaining runtime storage and Connect replay grants.
+3. Resolve the migrator's extra direct mapping lookup grant by tracing every caller; do not revoke it without evidence and forward-only disposable qualification.
+4. Complete production object ownership, database/schema/table/sequence/function ACL, default ACL and legacy-object reconciliation from fresh read-only catalog evidence.
+5. Obtain a fresh independently verified production backup before any production role/privilege/migration/deployment action. The 4 November backup remains stale.
+6. Keep the Dashboard administrator, current production credentials, roles, grants, service configuration, migrations and deployment unchanged until all gates are complete.
+
+**No production role, membership, grant, credential, environment variable, migration, service, deployment, traffic or data was changed in this continuation. PayFast remains paused.**
