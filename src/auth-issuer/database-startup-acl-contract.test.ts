@@ -6,6 +6,7 @@ import test from 'node:test';
 const server = fs.readFileSync(path.resolve(process.cwd(), 'src/auth-issuer/server.ts'), 'utf8');
 const privilegeSource = fs.readFileSync(path.resolve(process.cwd(), 'src/auth-issuer/database-privileges.ts'), 'utf8');
 const qualificationSource = fs.readFileSync(path.resolve(process.cwd(), 'scripts/qualify-auth-issuer-cutover.mjs'), 'utf8');
+const privilegeCutover = fs.readFileSync(path.resolve(process.cwd(), 'database/cutovers/20261112010000_authentication_issuer_privilege_cutover.sql'), 'utf8');
 
 test('issuer verifies its exact database ACL boundary before opening the HTTP listener', () => {
   const verifierCall = server.indexOf('assertAuthIssuerDatabasePrivileges(databasePrivileges)');
@@ -32,6 +33,13 @@ test('issuer verifies its exact database ACL boundary before opening the HTTP li
   assert.match(privilegeSource, /pg_default_acl/);
 });
 
+
+test('issuer startup and manual cutover allow only the Render administrator as a role member', () => {
+  assert.match(server, /member_role\\.rolname <> 'ghm_db_user'/);
+  assert.match(privilegeCutover, /member_role\\.rolname <> 'ghm_db_user'/);
+  assert.match(privilegeCutover, /m\\.member = issuer_role\\.oid/);
+  assert.match(privilegeCutover, /m\\.roleid = issuer_role\\.oid/);
+});
 
 test('issuer verifier checks every SECURITY DEFINER owner and pinned temporary-safe search_path', () => {
   assert.ok(privilegeSource.includes('unsafe_security_definer_functions'));
