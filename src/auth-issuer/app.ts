@@ -17,6 +17,24 @@ export interface AuthIssuerAppDependencies {
   quoteFlowMigrationResetCompletionService?: QuoteFlowMigrationResetCompletionService;
 }
 
+const configuredTrustProxyHops = (): number => {
+  const raw = process.env.GHM_AUTH_ISSUER_TRUST_PROXY_HOPS?.trim();
+  if (!raw) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('GHM_AUTH_ISSUER_TRUST_PROXY_HOPS must be explicitly set in production (use 0 for a direct connection)');
+    }
+    return 0;
+  }
+  if (!/^(0|[1-9]\\d*)$/.test(raw)) {
+    throw new Error('GHM_AUTH_ISSUER_TRUST_PROXY_HOPS must be an integer from 0 to 10');
+  }
+  const hops = Number(raw);
+  if (!Number.isSafeInteger(hops) || hops > 10) {
+    throw new Error('GHM_AUTH_ISSUER_TRUST_PROXY_HOPS must be an integer from 0 to 10');
+  }
+  return hops;
+};
+
 const configuredOrigins = (): string[] => {
   const origins = (process.env.GHM_AUTH_ISSUER_CORS_ORIGINS ?? '')
     .split(',')
@@ -46,6 +64,7 @@ export const createAuthIssuerApp = (
 ): Express => {
   const app = express();
   app.disable('x-powered-by');
+  app.set('trust proxy', configuredTrustProxyHops());
 
   const origins = configuredOrigins();
   if (origins.length > 0) {
