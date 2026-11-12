@@ -122,3 +122,8 @@ Before production migration/cutover, independently inspect live Render role attr
 Both manual issuer SQL scripts now fail closed unless the connection identity is exactly `session_user=ghm_migrator` and the active execution identity is exactly `current_user=ghm_schema_owner`. This prevents a direct superuser/operator invocation from bypassing the controlled migrator path and makes the execution contract self-enforcing in the SQL artifact, not merely a property of the CI harness.
 
 The disposable CI applies the cutover through the same restricted migrator login and SET-only membership used by the migration runner. A migration-contract test covers both cutover and rollback guards. Exact-head CI is required after this change; no production operation was performed.
+
+
+## SECURITY DEFINER metadata prerequisite
+
+Before issuer or Actor Gateway cutover, migration `20261112090000_pin_security_definer_search_path.sql` must be present in the fully qualified migration chain. It preflights every GHM SECURITY DEFINER function as owned by `ghm_schema_owner` and pins each function-local path to `pg_catalog, ghm, pg_temp`. Issuer and Actor Gateway startup checks independently enforce the same owner/path contract across all GHM SECURITY DEFINER functions, not only their callable allow-lists. Exact-head PostgreSQL 18 migration and startup qualification is mandatory; do not treat the source change or a prior green run as evidence. Unexpected function ownership is a hard stop, not a reason to relax the preflight.
