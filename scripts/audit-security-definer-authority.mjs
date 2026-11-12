@@ -81,7 +81,11 @@ try {
           LEFT JOIN pg_roles grantor_role ON grantor_role.oid = acl.grantor
       ) acl_entries ON true
       LEFT JOIN LATERAL (
-        SELECT jsonb_agg(r.rolname ORDER BY r.rolname) AS roles
+        SELECT jsonb_agg(jsonb_build_object(
+            'role', r.rolname,
+            'superuser', r.rolsuper,
+            'login', r.rolcanlogin
+          ) ORDER BY r.rolname) AS roles
           FROM pg_roles r
          WHERE has_function_privilege(r.oid, p.oid, 'EXECUTE')
       ) effective_roles ON true
@@ -208,7 +212,12 @@ try {
     const publicExec = acl.filter((entry) =>
       entry.privilege === 'EXECUTE' && entry.grantee === 'PUBLIC'
     );
-    const effectiveNonOwnerRoles = (fn.effective_execute_roles ?? []).filter((role) => role !== fn.owner);
+    const effectiveNonOwnerRoles = (fn.effective_execute_roles ?? []).filter((entry) =>
+      entry.role !== fn.owner && entry.superuser !== true
+    );
+    const effectiveSuperuserRoles = (fn.effective_execute_roles ?? [])
+      .filter((entry) => entry.superuser === true)
+      .map((entry) => entry.role);
     const unsafeSearchPath = !(fn.function_settings ?? []).some((setting) =>
       setting === 'search_path=pg_catalog, ghm, pg_temp'
     );
@@ -221,6 +230,7 @@ try {
         non_owner_execute_grants: nonOwnerExec,
         public_execute_grants: publicExec,
         effective_non_owner_execute_roles: effectiveNonOwnerRoles,
+        effective_superuser_roles_excluded_from_acl_findings: effectiveSuperuserRoles,
         pinned_search_path: !unsafeSearchPath,
         trusted_language: !untrustedLanguage,
       });
@@ -244,7 +254,7 @@ try {
     decision: 'REVIEW_REQUIRED_NO_AUTOMATIC_APPROVAL',
     limitations: [
       'Catalog inventory is limited to this disposable database and does not establish production state.',
-      'Direct grants and effective role execution are reported separately; every grant needs a documented function-role justification.',
+      'Direct grants and effective role execution are reported separately; superusers are reported but excluded from ordinary ACL findings because they bypass function ACLs.',
       'Owner, search_path, extension membership and role membership require human review.',
       'This report is an inventory, not a migration or permission-change script.',
     ],
