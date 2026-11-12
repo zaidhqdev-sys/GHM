@@ -1405,3 +1405,20 @@ No production database, role, grant, credential, secret, Render environment, dep
 2. If it passes, retrieve both inventory JSON reports and verify the actual post-cutover runtime/issuer/gateway/payment-provider authority sets; do not rely on counts alone.
 3. Add/retain a regression assertion that the qualification's auth-function filters avoid PostgreSQL multi-character ESCAPE literals, then update this handover with exact run and artifact evidence.
 4. Continue the five-principal and cross-product dependency review only after this disposable qualification is green.
+
+
+## 2026-11-13 — baseline SECURITY DEFINER artifact inspected
+
+Retrieved the only artifact attached to failed run [43330297297](https://github.com/zaidhqdev-sys/GHM/actions/runs/43330297297): `security-definer-authority-inventory` (artifact ID `13994833038`, ZIP SHA-256 `7738ddd13fdfcb6a796164cdf707cd84aace174713004051e6c901477a591aa7`). The contained JSON SHA-256 is `00ff3198ee9e885d66ee4736c10a741c87f455866e48b947ecdda015ddcde9ce`. It was captured at `2026-11-12T23:37:17.658Z`, before the failed lifecycle step, from the explicitly disposable `ghm_disposable_test` database as `session_user=current_user=ghm_migrator`, PostgreSQL 18.7. It is a baseline/pre-cutover artifact, not a post-cutover inventory and not production evidence. The artifact decision is `REVIEW_REQUIRED_NO_AUTOMATIC_APPROVAL`; mutation is false.
+
+Baseline catalog observations (103 SECURITY DEFINER functions):
+- Direct EXECUTE grants: `ghm_schema_owner` 103, `ghm_runtime` 43, `ghm_actor_gateway` 30, `ghm_payment_provider` 2; no PUBLIC EXECUTE grants were found in this catalog snapshot.
+- `ghm_auth_issuer` had zero direct SECURITY DEFINER EXECUTE grants before the manual cutover rehearsal, as expected for the pre-cutover state.
+- Runtime's 43 include the auth lifecycle functions that the manual cutover is designed to remove, plus non-issuer functions. The auth set observed includes create-account, password lookup/set/rehash, session create/validate, refresh rotate/revoke, recovery issue/redeem/reset, QuoteFlow migration reset, external-identity lookup and Connect business mapping lookup. This inventory alone does not decide which read-only identity lookups should remain with Resource API; they require caller/route review.
+- Actor Gateway had 30 direct gateway EXECUTE grants; payment provider had the two PayFast functions. No direct SECURITY DEFINER EXECUTE was granted to `ghm_migrator` in the captured catalog.
+- Function default ACL snapshot showed global function EXECUTE default only for `ghm_schema_owner`; no PUBLIC default grant was present. The cutover qualification separately probes global and schema-scoped default ACL behavior.
+- Role graph showed `ghm_db_user` as administrator member of the five application principals plus `ghm_schema_owner`, each with ADMIN=true, INHERIT=false, SET=false in this disposable setup; `ghm_migrator` has SET=true membership in `ghm_schema_owner`. This is a constructed CI role graph and must not be represented as a fresh production catalog.
+
+**Artifact completeness limitation:** only one artifact was attached to failed run 43330297297. No second post-cutover authority inventory was produced by that failed run. Do not compare the baseline against a presumed final state or infer that the issuer received the intended ten-function allow-list. The next successful exact-head run must retain and publish both before/after (or otherwise independently captured pre/post) inventories and compare full signatures, owners, direct ACLs, effective role reachability, PUBLIC, global/schema default ACLs, table/column/sequence privileges and memberships.
+
+The qualification script's allow-list currently names ten issuer functions. The manual cutover file is explicitly non-migration and documents that it must not be applied until issuer routes, service, private ingress, client configuration, credentials and rollback gates are ready. This remains disposable qualification only; production remains untouched. No merge/deploy/production role or grant changes were made. PayFast and legal publication remain paused.
