@@ -66,11 +66,7 @@ export const ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL = `
       JOIN pg_namespace n ON n.oid = p.pronamespace
      WHERE n.nspname = 'ghm'
        AND p.prorettype <> 'trigger'::regtype
-       AND (
-         p.proname = 'assert_actor_gateway'
-         OR p.proname = 'assert_actor_gateway_capability'
-         OR left(p.proname, 8) = 'gateway_'
-       )
+       AND has_function_privilege(session_user, p.oid, 'EXECUTE')
   )
   SELECT
     has_schema_privilege(session_user, 'ghm', 'USAGE') AS schema_usage,
@@ -113,9 +109,13 @@ export const ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL = `
        ORDER BY 1
     ) AS public_executable_functions,
     ARRAY(
-      SELECT f.signature
-        FROM gateway_functions f
-       WHERE has_function_privilege('ghm_runtime', f.oid, 'EXECUTE')
+      SELECT p.oid::regprocedure::text
+        FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname = 'ghm'
+         AND p.prorettype <> 'trigger'::regtype
+         AND (p.proname = 'assert_actor_gateway' OR p.proname = 'assert_actor_gateway_capability' OR left(p.proname, 8) = 'gateway_')
+         AND has_function_privilege('ghm_runtime', p.oid, 'EXECUTE')
        ORDER BY 1
     ) AS runtime_executable_functions,
     (
