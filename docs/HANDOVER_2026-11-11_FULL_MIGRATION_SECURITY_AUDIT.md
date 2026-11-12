@@ -2474,6 +2474,6 @@ Other current audit corrections:
 - The issuer branch remains separate from upstream PR #272; PR #272 itself is still open and unmerged. Current branch comparison during this audit was 411 commits ahead / 0 behind the integration base. This is a dated diagnostic only, not merge readiness.
 - The available GitHub workflow-run view did not expose push-triggered run records for the issuer branch. Exact-head CI status is therefore **unverified**, not passed. Do not use the earlier run `43161326835` as evidence for these later changes.
 
-Latest source/test correction before this handover update: `de794d763eb5b2c0641e34e920cd0d45434b6170`. Re-fetch the branch head after the documentation commits and require full exact-head CI.
+Latest source/test correction before this handover update: `419dd4470268b5811dd9197ba36c9e40b87f4b1b`. Re-fetch the branch head after the documentation commits and require full exact-head CI.
 
 No production ACL, role, secret, service, deployment, data or routing change was made. No paid resource was created.
