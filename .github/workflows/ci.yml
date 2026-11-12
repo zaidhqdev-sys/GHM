@@ -281,9 +281,6 @@ jobs:
           -c 'SET ROLE ghm_schema_owner'
           -f database/cutovers/20261112010000_authentication_issuer_privilege_cutover.sql
           -c 'RESET ROLE'
-          RESET ROLE;
-          SQL
-
       - name: Qualify isolated auth issuer lifecycle and runtime denials on disposable PostgreSQL
         run: npm run qualify:auth-issuer-cutover
 
