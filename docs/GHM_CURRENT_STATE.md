@@ -1200,3 +1200,10 @@ This is disposable qualification only. No production changes or paid resources. 
 Issuer and Actor Gateway startup ACL verifiers now reject direct EXECUTE grants to every non-owner principal except their respective dedicated login. Disposable PostgreSQL qualification temporarily grants issuer and gateway functions to `ghm_payment_provider`, proves both verifiers detect the grants, revokes them through the restricted migrator/schema-owner path, and confirms clean baselines.
 
 Exact source HEAD `1db5f78b8a0f0405586fc9ae2675f16732e9374e` passed CI run `43179755317` (`quality` and `web-quality`), including PostgreSQL 18.6 full migrations, principal checks, full suite, runtime boundary, guarded issuer cutover, lifecycle, runtime denials and database-only rollback. Disposable evidence only; production untouched and no paid resources.
+
+
+## 2026-11-12 — PUBLIC execution denied for every GHM SECURITY DEFINER function
+
+Authentication Issuer and Actor Gateway startup privilege verifiers now independently enumerate PUBLIC EXECUTE grants across every SECURITY DEFINER function in schema `ghm`, not merely the service's callable allow-list. Both reject any result. Tests cover assertion rejection, and disposable PostgreSQL qualification temporarily grants PUBLIC EXECUTE on one function from each service, proves detection, revokes the grants and verifies a clean baseline. This is still awaiting exact-head PostgreSQL 18 CI evidence.
+
+The audit remains scoped to GHM-schema SECURITY DEFINER functions; other schemas/extensions and function-body/dynamic-SQL safety need separate review. Latest code/test commit before this state update: `e4a644825824b61db0692c479a71edbdc23b2ebf`. Production untouched.
