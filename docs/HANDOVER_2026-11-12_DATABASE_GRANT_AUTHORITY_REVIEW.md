@@ -897,3 +897,43 @@ This confirms the four non-SELECT relation DML grants mapped in the prior invent
 This does not mean the overall Resource API direct-DML boundary is ideal or closed; it means the four grants must be retained until their respective replacement architecture is implemented and qualified. No privilege changes are proposed by this finding.
 
 **No production role, grant, data, credential, environment, migration, deployment or service was changed.**
+
+
+---
+
+## 2026-11-12 continuation — second exact-head CI failure and allow-list comparison correction
+
+### Campaign/directory-review qualification exposed a stage-composition mismatch
+
+After the first correction added the two pre-cutover registration identity signatures, exact-head run `43301449333` completed:
+- `web-quality`: passed.
+- `quality`: failed in step `Qualify Campaign and directory-review signed actor gateway on disposable PostgreSQL`.
+- The initial actor-gateway principal qualification, storage dual-proof, storage legacy grant rollback, Connect provisioning, Business registration migration, Opportunity marketplace, storage lifecycle and main test suite all passed before the Campaign qualification step.
+- The failing Campaign qualification had applied its manual Campaign/directory-review cutover after the prior Actor Gateway qualification had already applied the registration identity cutover. The resulting runtime state was the Campaign + registration combination (38 signatures).
+
+The failure was in startup allow-list comparison, not in the Campaign gateway database operation itself. The runtime startup allow-list implementation was using expected arrays returned by a multi-CTE SQL query. The actual catalog array contained the expected 38 signatures, but the staged comparison still failed. A direct offline comparison of the logged actual list against the source-derived Campaign + registration stage showed exact set equality. This localized the defect to the expected-state plumbing/normalization rather than an unexplained production grant.
+
+### Corrective simplification
+
+Reworked `src/db/runtime-database-privileges.ts`:
+- The database query now returns only the actual executable SECURITY DEFINER signature inventory.
+- All eight approved staged allow-lists are derived locally from the reviewed baseline and the three explicit cutover signature sets.
+- PostgreSQL `regprocedure::text` formatting is normalized by removing whitespace after argument commas before comparison.
+- On mismatch, the assertion now reports per-stage missing and unexpected signatures, not just the stage counts.
+- The eight stage counts remain 43 / 40 / 29 / 26 / 41 / 38 / 27 / 24.
+
+Updated `src/db/runtime-database-privileges.test.ts`:
+- Tests all eight staged states.
+- Tests both source signature formatting and PostgreSQL normalized formatting.
+- Tests added and missing grants for every stage.
+- Tests Campaign, issuer and registration cutover membership independently.
+
+Commits:
+- Local staged comparison implementation: `8fa604d40d35cbef84eca88e11770dd7400f24ad`.
+- Normalized signature and stage regression tests: `a8b8ea7d1d8974d56d7d0fc18baae78d1b70a575`.
+
+### Validation status
+
+The corrected code/tests have been pushed. The new exact-head CI must complete before declaring the allow-list defect closed. The prior runs `43297432850`, `43301386903`, and `43301449333` remain failed historical evidence and must not be described as passes. Their specific failure modes have been recorded above; they do not indicate a production mutation or a storage dual-proof regression.
+
+**Production remains untouched.** No production grants, roles, credentials, secrets, migrations, deployments, services, buckets, objects or data were changed. No PR was merged.
