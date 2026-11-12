@@ -329,12 +329,17 @@ jobs:
       - name: Qualify isolated auth issuer lifecycle and runtime denials on disposable PostgreSQL
         run: npm run qualify:auth-issuer-cutover
 
-      - name: Preserve SECURITY DEFINER authority inventory
+      - name: Inventory SECURITY DEFINER authority after disposable issuer cutover
+        env:
+          GHM_SECURITY_DEFINER_AUDIT_OUTPUT: tmp/security-definer-authority-audit-post-issuer-cutover.json
+        run: npm run audit:security-definer-authority
+
+      - name: Preserve pre- and post-cutover SECURITY DEFINER authority inventories
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: security-definer-authority-inventory
-          path: tmp/security-definer-authority-audit.json
+          path: tmp/security-definer-authority-audit*.json
           if-no-files-found: warn
           retention-days: 14
 
