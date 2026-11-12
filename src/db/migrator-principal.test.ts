@@ -6,6 +6,11 @@ const leastPrivilegeMigrator: MigratorDatabaseIdentity = {
   current_database: 'ghm_disposable_test',
   current_user: 'ghm_migrator',
   session_user: 'ghm_migrator',
+  database_connect_privilege: true,
+  database_create_privilege: false,
+  schema_usage: false,
+  schema_create: false,
+  direct_relation_privileges: false,
   migrator_rolcanlogin: true,
   migrator_rolinherit: false,
   migrator_rolsuper: false,
@@ -44,6 +49,11 @@ test('rejects missing, additional or incorrectly configured role memberships', (
 
 test('rejects over-privileged migrator or login-capable schema owner roles', () => {
   for (const override of [
+    { database_connect_privilege: false },
+    { database_create_privilege: true },
+    { schema_usage: true },
+    { schema_create: true },
+    { direct_relation_privileges: true },
     { migrator_rolinherit: true },
     { migrator_rolsuper: true },
     { migrator_rolcreatedb: true },
