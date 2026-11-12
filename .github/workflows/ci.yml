@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - integration/capability-gateway-qualification-20261110
+      - construction/auth-issuer-isolation-20261112
   pull_request:
     branches:
       - main
