@@ -39,7 +39,7 @@ test('Business profile reader signs the exact actor, operation, target and patch
   const payload = `ghm-actor-gateway:v2|42|business.profile.update|${values[1]}|${values[2]}|${Buffer.from(context, 'utf8').toString('hex')}`;
   const expected = createHmac('sha256', key).update(payload, 'utf8').digest('hex');
   assert.equal(values[4], expected);
-  assert.equal(JSON.parse(String(values[6])), patch);
+  assert.deepEqual(JSON.parse(String(values[6])), patch);
   assert.equal(released, true);
 });
 
