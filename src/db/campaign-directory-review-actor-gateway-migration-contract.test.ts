@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const migration = readFileSync('database/cutovers/20261112160000_campaign_directory_review_actor_gateway.sql', 'utf8');
 const reader = readFileSync('src/actor-gateway/campaign-directory-review-reader.ts', 'utf8');
+const rollback = readFileSync('database/cutovers/20261112161000_campaign_directory_review_actor_gateway_rollback.sql', 'utf8');
 
 test('manual Campaign/review cutover extends the signed actor assertion allow-list', () => {
   for (const operation of ['campaign.create', 'campaign.update', 'directory_review.presentation.read']) {
@@ -40,4 +41,16 @@ test('manual cutover grants wrappers only to Actor Gateway and revokes legacy ru
   }
   assert.match(migration, /REVOKE ALL ON FUNCTION ghm\.create_campaign\(bigint,bigint,text\) FROM PUBLIC,ghm_runtime/);
   assert.match(migration, /REVOKE ALL ON FUNCTION ghm\.update_campaign\(bigint,bigint,text,text\) FROM PUBLIC,ghm_runtime/);
+});
+
+
+test('manual rollback is guarded and restores the legacy runtime ACL while disabling gateway wrappers', () => {
+  assert.match(rollback, /session_user IS DISTINCT FROM 'ghm_migrator'/);
+  assert.match(rollback, /current_user IS DISTINCT FROM 'ghm_schema_owner'/);
+  assert.match(rollback, /GRANT EXECUTE ON FUNCTION ghm\.create_campaign\(bigint,bigint,text\) TO ghm_runtime/);
+  assert.match(rollback, /GRANT EXECUTE ON FUNCTION ghm\.update_campaign\(bigint,bigint,text,text\) TO ghm_runtime/);
+  assert.match(rollback, /GRANT EXECUTE ON FUNCTION ghm\.get_business_directory_review_presentation\(bigint,bigint\) TO ghm_runtime/);
+  assert.match(rollback, /REVOKE ALL ON FUNCTION ghm\.gateway_create_campaign[\s\S]*?FROM ghm_actor_gateway/);
+  assert.match(rollback, /REVOKE ALL ON FUNCTION ghm\.gateway_update_campaign[\s\S]*?FROM ghm_actor_gateway/);
+  assert.match(rollback, /REVOKE ALL ON FUNCTION ghm\.gateway_get_business_directory_review_presentation[\s\S]*?FROM ghm_actor_gateway/);
 });
