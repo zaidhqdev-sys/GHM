@@ -327,3 +327,15 @@ The Resource API and migration runner use `DATABASE_SSL=true` with `rejectUnauth
 - PayFast remains paused.
 - The 4 November backup is stale for post-10 November changes; no fresh independently verified backup is established here.
 - Do not rotate/delete the Dashboard-managed default user or create the SQL replacement login until the administrator recovery route, role design, object/legacy ownership dependencies, exact service consumers and fresh backup are verified.
+
+### Runtime login design clarification — use the existing SQL-created `ghm_runtime` principal
+
+Render's example `CREATE ROLE ghm_app_user LOGIN ... IN ROLE ghm_runtime` is illustrative, not the right command to copy into this GHM implementation without changing its principal contract.
+
+The active Resource API production configuration requires `GHM_RUNTIME_DATABASE_URL`. Its startup verifier requires `session_user=current_user='ghm_runtime'`, LOGIN/NOINHERIT, no elevated role attributes, and no role memberships in either direction. Therefore a new login such as `ghm_app_user` that is a member of `ghm_runtime` would not satisfy the current verifier: the authenticated/effective identity would be `ghm_app_user`, and it would have a role membership. Do not silently weaken that verifier.
+
+The preferred current design is to use the already-existing SQL-created `ghm_runtime` LOGIN role directly as the Resource API connection identity, provided a fresh read-only privilege/ownership audit confirms its effective permissions and the controlled credential provisioning/reset procedure is qualified. `ghm_runtime` is distinct from the Dashboard-managed `ghm_app_user`; it is the intended application login in the current source and CI role model. The Dashboard-managed `ghm_app_user` remains an administrative-credential transition concern and must not be used by the Resource API.
+
+Only revisit a separate SQL-created application login if there is a deliberate architecture change to support a separate login role plus a privilege role, including explicit changes to startup identity verification, role membership checks, CI, handovers and all consumers. That is not the current implementation contract.
+
+Do not create or alter any production login or membership as part of this clarification.
