@@ -58,7 +58,7 @@ No historical Supabase object is imported by this migration.
 
 **Qualified separately after this metadata slice:** controlled live signed upload/download, provider-side metadata observation, payload integrity, and deletion against Cloudflare R2 (see `../evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-05.md`). This does not qualify production credential enablement.
 
-**Still open:** full service-level tenant/resource authorization, HTTP/product exposure, recovery/backup, orphan/reconciliation jobs, deployment-managed production configuration, and production provider enablement.
+**Historical open gates as of the October 2026 metadata-only qualification:** service-level tenant/resource authorization, HTTP/product exposure, recovery/backup, orphan/reconciliation jobs, deployment-managed production configuration, and production provider enablement. The November 12 signed Actor Gateway implementation now closes the source/database actor and tenant authorization gap and wires the Resource API HTTP storage routes to the gateway; disposable PostgreSQL 18 adversarial and grant rollback qualification passed. Remaining gates are a fresh full Resource API ↔ Actor Gateway ↔ external provider upload/HEAD/read/delete qualification, recovery/backup and orphan reconciliation, deployed production configuration/credentials, production provider enablement, and the separately approved legacy runtime grant cutover.
 
 ## Documentation reconciliation
 
