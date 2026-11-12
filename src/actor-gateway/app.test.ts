@@ -11,6 +11,7 @@ import type { BusinessRegistrationIdentityReader } from './business-registration
 import type { SupplierClassificationReader } from './supplier-classification-reader';
 import type { BusinessProfileReader } from './business-profile-reader';
 import type { SavedBusinessGatewayReader } from './saved-business-reader';
+import type { ConnectBusinessProvisioningReader } from '../integrations/connect/business-provisioning-contracts';
 
 const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
 const privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
@@ -45,6 +46,7 @@ const withServer = async (
   requestVerifier: import('../auth/foundation/access-jwt-verifier').AccessJwtVerifier = verifier,
   businessCapabilityMutationReader?: import('./business-capability-mutation-reader').GatewayCapabilityMutationReader,
   savedBusinessReader?: SavedBusinessGatewayReader,
+  connectBusinessProvisioningReader?: ConnectBusinessProvisioningReader,
 ): Promise<void> => {
   const server = http.createServer(createActorGatewayApp({
     verifier: requestVerifier,
@@ -55,6 +57,7 @@ const withServer = async (
     businessProfileReader,
     businessCapabilityMutationReader,
     savedBusinessReader,
+    connectBusinessProvisioningReader,
   }, options));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
@@ -638,3 +641,57 @@ test('saved business gateway derives owner from verified JWT and rejects caller-
     { operation: 'delete', actor: 42, id: 12 },
   ]);
 });
+
+test('Connect Business provisioning route uses the verified actor and denies non-membership without fallback', async () => {
+  const calls: Array<{ accountId: number; externalBusinessId: string; name: string }> = [];
+  const reader: ConnectBusinessProvisioningReader = {
+    async provisionOrResolve(accountId, input) {
+      calls.push({ accountId, ...input });
+      if (accountId === 43) throw Object.assign(new Error('Business membership required'), { code: '42501' });
+      return {
+        outcome: 'provisioned',
+        business: { id: 42 } as any,
+        mapping: {
+          id: 9, provider: 'supabase', externalBusinessId: input.externalBusinessId,
+          businessId: 42, createdAt: new Date(0), updatedAt: new Date(0),
+        },
+      };
+    },
+  };
+  const externalBusinessId = '11111111-1111-4111-8111-111111111111';
+  await withServer({
+    async readOwnIdentity(accountId: number): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  }, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/connect/businesses/provision-or-resolve`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ externalBusinessId, name: 'Acme Construction' }),
+    });
+    assert.equal(response.status, 200);
+    const payload = await response.json() as { outcome: string; mapping: { businessId: number } };
+    assert.equal(payload.outcome, 'provisioned');
+    assert.equal(payload.mapping.businessId, 42);
+
+    const denied = await fetch(`${baseUrl}/v1/connect/businesses/provision-or-resolve`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${sign(43)}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ externalBusinessId, name: 'Acme Construction' }),
+    });
+    assert.equal(denied.status, 403);
+    assert.deepEqual(await denied.json(), { error: 'forbidden' });
+
+    const invalid = await fetch(`${baseUrl}/v1/connect/businesses/provision-or-resolve`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ externalBusinessId, name: 'Acme Construction', businessId: 99 }),
+    });
+    assert.equal(invalid.status, 400);
+  }, undefined, undefined, undefined, undefined, {}, verifier, undefined, undefined, reader);
+  assert.deepEqual(calls, [
+    { accountId: 42, externalBusinessId, name: 'Acme Construction' },
+    { accountId: 43, externalBusinessId, name: 'Acme Construction' },
+  ]);
+});
+
