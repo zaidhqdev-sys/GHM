@@ -2636,3 +2636,8 @@ The contract test is appended to the repository `npm test` command. This is tool
 ### Next required evidence
 
 Run `npm test` on this exact branch head, then run `npm run audit:security-definer-authority` with `GHM_SECURITY_DEFINER_AUDIT_DATABASE_URL` pointing only to local `ghm_disposable_test`. Preserve the JSON output as qualification evidence, inspect all SECURITY DEFINER bodies outside `ghm`, and construct the exact function-signature-to-role EXECUTE exception matrix from observed disposable catalog state plus migration intent. Only after that review should we decide whether to strengthen startup verifiers or add adversarial grants for every uncovered function/role combination. Exact-head CI is still required; no production cutover, merge or live catalog mutation is authorized.
+
+
+### Inventory runner output handling
+
+The runner now accepts `GHM_SECURITY_DEFINER_AUDIT_DATABASE_URL`, falling back to `GHM_MIGRATOR_DATABASE_URL` loaded from the local dotenv file. The host/database guard still requires localhost and `/ghm_disposable_test`; a production or remote URL is rejected. Full JSON is written by default to `tmp/security-definer-authority-audit.json` (override with `GHM_SECURITY_DEFINER_AUDIT_OUTPUT`), while the terminal receives only counts, decision and report path. The database inventory is read-only; local report-file creation is expected. This runner has still not been executed here and its output must not be treated as evidence until the user runs it against the disposable PostgreSQL 18 qualification database.
