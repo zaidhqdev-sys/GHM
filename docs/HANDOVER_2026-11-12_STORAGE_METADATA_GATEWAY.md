@@ -328,3 +328,47 @@ The 103-routine inventory was captured after the guarded manual-cutover rehearsa
 ### Latest exact-head CI
 
 The complete CI workflow passed in run `43238876670` at source/docs head `fab9f6389d7a7e992dfc93786a42394bbb8064a1`; both `quality` and `web-quality` passed. This includes the 960/960 main test suite, PostgreSQL 18 storage dual-proof and legacy grant rollback qualification, whole-database inventory, and issuer/Actor Gateway cutover qualifications. Further documentation-only reconciliations followed; the current exact branch head and its latest CI run must be checked before claiming final exact-head status.
+
+
+## Final exact-head storage read-state hardening and inventory — 2026-11-12 14:53 UTC
+
+### Public metadata read lifecycle guard
+
+A final source review compared the new signed gateway_storage_get_object wrapper against the existing account-scoped legacy getter. It found that the new public Business Logo read exception did not explicitly require status='available'. Although the service separately refused download grants for non-available rows, the database metadata read boundary should preserve the legacy status predicate itself.
+
+Fixed database/migrations/20261112140000_add_signed_storage_metadata_actor_gateway.sql so the cross-business public read exception requires an active Business, a public Business Logo identity, and so.status='available'. Private reads still require active membership; owner/administrator mutations remain separately enforced. This does not change the separate public directory projection, which continues to require an active, verified and approved Business.
+
+The PostgreSQL 18 qualification now proves:
+- pending public metadata is not readable cross-business;
+- available public Business Logo metadata remains publicly readable;
+- deletion-pending public metadata is not readable cross-business;
+- deleted public metadata is not readable cross-business;
+- private object reads still require membership.
+
+All four new lifecycle-state checks passed in exact-head CI run 43241401707, alongside the complete storage dual-proof and grant-revocation/rollback qualification. The main test suite passed 960/960.
+
+### Latest whole-database inventory artifact
+
+The same successful exact-head run 43241401707 preserved artifact security-definer-authority-inventory, ID 13955835753, captured at 2026-11-12T14:51:19.189Z without mutation from ghm_disposable_test on PostgreSQL 18.6 as ghm_migrator.
+
+- ZIP SHA-256: b0549ff7d1b339551f29d127d06496a3c7f853d54ea3e528bd81509f0e6b8dd2
+- JSON SHA-256: c20b8c75591b1cabf8f0e52d8028c8002d86da0105acb822351c42d1021926d1
+- SECURITY DEFINER routines: 103
+- Preliminary non-owner grant findings: 75, requiring human review rather than automatic approval
+- All 103 owned by ghm_schema_owner, in schema ghm, trusted languages, exact pinned path pg_catalog, ghm, pg_temp
+- PUBLIC EXECUTE grants: 0
+- Direct EXECUTE grants: runtime 43, Actor Gateway 30, payment provider 2, migrator 1
+- The inventory confirms the updated gateway_storage_get_object definition includes the available state guard.
+
+The inventory remains a disposable pre-cutover baseline, not production catalog evidence. The 75 grant entries must continue to be reviewed against each role's application call path; the five legacy storage grants remain present in the restored baseline.
+
+### Exact branch checkpoint
+
+- Branch: construction/auth-issuer-isolation-20261112
+- HEAD: 4ba231ec566e75780ab5a435d7b365f07c1dacbc
+- CI run: 43241401707 — both quality and web-quality passed.
+- Main test suite: 960/960 passed.
+- Storage dual-proof, pending/available/deletion-pending/deleted public-read checks, five-function grant revocation/rollback, issuer cutover qualification, and whole-database inventory: passed.
+- No production database, grants, roles, secrets, provider credentials, deployments, buckets or traffic were changed. No PR was merged.
+
+The next genuine storage qualification gate remains the deployed full Resource API ↔ Actor Gateway ↔ PostgreSQL ↔ external provider journey. The existing R2 bucket zaid-ghm-production is not proven to be a non-production target; do not mutate it for this work. A dedicated non-production target is required. Production cutover remains blocked by fresh verified backup, Render role-administration access and approved deployment/network/rollback planning.
