@@ -980,3 +980,6 @@ No available Free Postgres DB exists in the workspace. Hosted non-production iss
 ### PR #272 / Authentication Issuer branch ancestry (2026-11-12)
 
 PR #272 remains open/unmerged with green current checks. The issuer construction branch is 105 commits ahead and 0 behind PR #272's head, so the issuer work is layered directly on the Actor Gateway integration stack. Do not merge PR #272 independently underneath this branch or create a duplicate integration. Preserve the separate construction branch until issuer routing, deployment constraints, documentation and exact-head CI are fully reconciled.
+
+
+The existing paid identity-qualification database could not be audited through the read-only Render Postgres connector because its IP allow-list is empty. No allow-list change was made. Its schema, roles, migration state, data and service consumers remain unknown; do not assume it is reusable or empty.
