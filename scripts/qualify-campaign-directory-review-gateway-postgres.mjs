@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { Pool } from 'pg';
 import 'dotenv/config';
 import { createActorGatewayAssertion } from '../dist/actor-gateway/request-assertion.js';
+import { assertActorGatewayDatabasePrivileges, readActorGatewayDatabasePrivileges } from '../dist/actor-gateway/database-privileges.js';
+import { assertRuntimeDatabaseFunctionPrivileges, readRuntimeDatabaseFunctionPrivileges } from '../dist/db/runtime-database-privileges.js';
 import { PostgresCampaignDirectoryReviewGatewayReader } from '../dist/actor-gateway/campaign-directory-review-reader.js';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
@@ -131,6 +134,68 @@ try {
     () => runtime.query('SELECT * FROM ghm.gateway_create_campaign(1,0,$1,$2,$3,1,$4)', [randomUUID(), '{}', '0'.repeat(64), 'runtime']),
     'RUNTIME ACTOR GATEWAY WRAPPER EXECUTE DENIED',
   );
+
+  const applyManualCutover = async (path) => {
+    const sql = readFileSync(path, 'utf8')
+      .replace(/^\\s*BEGIN;\\s*/i, '')
+      .replace(/\\s*COMMIT;\\s*$/i, '');
+    const client = await migrator.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SET LOCAL ROLE ghm_schema_owner');
+      await client.query(sql);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw error;
+    } finally { client.release(); }
+  };
+  const privilegeMatrix = async () => {
+    const result = await gateway.query(`
+      SELECT has_function_privilege('ghm_runtime','ghm.create_campaign(bigint,bigint,text)','EXECUTE') AS runtime_create,
+             has_function_privilege('ghm_runtime','ghm.update_campaign(bigint,bigint,text,text)','EXECUTE') AS runtime_update,
+             has_function_privilege('ghm_runtime','ghm.get_business_directory_review_presentation(bigint,bigint)','EXECUTE') AS runtime_review,
+             has_function_privilege('ghm_actor_gateway','ghm.gateway_create_campaign(bigint,bigint,uuid,text,text,bigint,text)','EXECUTE') AS gateway_create,
+             has_function_privilege('ghm_actor_gateway','ghm.gateway_update_campaign(bigint,bigint,uuid,text,text,bigint,text,text)','EXECUTE') AS gateway_update,
+             has_function_privilege('ghm_actor_gateway','ghm.gateway_get_business_directory_review_presentation(bigint,bigint,uuid,text,text,bigint)','EXECUTE') AS gateway_review
+    `);
+    return result.rows[0];
+  };
+
+  await applyManualCutover('database/cutovers/20261112160000_campaign_directory_review_actor_gateway.sql');
+  assertRuntimeDatabaseFunctionPrivileges(await readRuntimeDatabaseFunctionPrivileges(runtime));
+  assertActorGatewayDatabasePrivileges(await readActorGatewayDatabasePrivileges(gateway));
+  assert.deepEqual(await privilegeMatrix(), {
+    runtime_create: false, runtime_update: false, runtime_review: false,
+    gateway_create: true, gateway_update: true, gateway_review: true,
+  });
+  console.log('MANUAL CAMPAIGN/REVIEW CUTOVER ACL MATRIX: PASS');
+
+  // Rehearse the guarded rollback in a transaction and roll that transaction
+  // back, restoring the post-cutover state for the remaining qualification.
+  const rollbackSql = readFileSync('database/cutovers/20261112161000_campaign_directory_review_actor_gateway_rollback.sql', 'utf8')
+    .replace(/^\\s*BEGIN;\\s*/i, '')
+    .replace(/\\s*COMMIT;\\s*$/i, '');
+  const rollbackClient = await migrator.connect();
+  try {
+    await rollbackClient.query('BEGIN');
+    await rollbackClient.query('SET LOCAL ROLE ghm_schema_owner');
+    await rollbackClient.query(rollbackSql);
+    assert.deepEqual(await privilegeMatrix(), {
+      runtime_create: true, runtime_update: true, runtime_review: true,
+      gateway_create: false, gateway_update: false, gateway_review: false,
+    });
+    console.log('MANUAL CAMPAIGN/REVIEW ROLLBACK ACL REHEARSAL: PASS');
+    await rollbackClient.query('ROLLBACK');
+  } catch (error) {
+    await rollbackClient.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally { rollbackClient.release(); }
+  assert.deepEqual(await privilegeMatrix(), {
+    runtime_create: false, runtime_update: false, runtime_review: false,
+    gateway_create: true, gateway_update: true, gateway_review: true,
+  });
+  console.log('CAMPAIGN/REVIEW POST-ROLLBACK RESTORATION: PASS');
 
   const reader = new PostgresCampaignDirectoryReviewGatewayReader(gateway, secretText);
   const created = await reader.createCampaign(ownerId, { businessId, title: 'Signed Campaign' });
