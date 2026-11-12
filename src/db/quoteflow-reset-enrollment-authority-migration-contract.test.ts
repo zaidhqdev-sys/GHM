@@ -30,6 +30,10 @@ const rollback = fs.readFileSync(path.resolve(
   'database/cutovers/20261112020000_authentication_issuer_privilege_rollback.sql',
 ), 'utf8');
 
+test('issuer manual cutover explicitly denies schema object creation', () => {
+  assert.match(issuerCutover, /REVOKE CREATE ON SCHEMA ghm FROM ghm_auth_issuer/);
+});
+
 test('issuer cutover qualification covers sequences and prevents issuer schema DDL', () => {
   const qualification = issuerQualification;
   assert.match(qualification, /has_sequence_privilege/);
