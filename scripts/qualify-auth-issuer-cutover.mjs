@@ -71,19 +71,11 @@ try {
       JOIN pg_namespace n ON n.oid = c.relnamespace
       CROSS JOIN (VALUES ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'), ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')) AS privilege(privilege)
      WHERE n.nspname = 'ghm'
-       AND c.relname = ANY(ARRAY[
-         'account_password_credential',
-         'refresh_credential',
-         'password_recovery_credential',
-         'authentication_session',
-         'account_external_identity',
-         'business_external_mapping'
-       ])
-       AND c.relkind IN ('r', 'p')
+       AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
        AND has_table_privilege(session_user, c.oid, privilege.privilege)
      ORDER BY c.relname, privilege.privilege
   `);
-  assert.deepEqual(issuerTablePrivileges.rows, [], 'issuer must use SECURITY DEFINER functions, not direct secret-table access');
+  assert.deepEqual(issuerTablePrivileges.rows, [], 'issuer must not receive direct privileges on any GHM table/view; all access remains through reviewed SECURITY DEFINER functions');
 
   const deniedCalls = [
     'SELECT * FROM ghm.auth_create_account(NULL::text, NULL::text, NULL::text, NULL::text, NULL::text, NULL::integer, NULL::integer, NULL::integer)',
@@ -236,7 +228,7 @@ try {
 
   process.stdout.write(JSON.stringify({
     issuerAllowList: issuerOnlyFunctionNames.length,
-    issuerDirectSecretTablePrivileges: 0,
+    issuerDirectRelationPrivileges: 0,
     runtimeIssuerFunctionDenials: deniedCalls.length,
     connectLookup: 'preserved',
     registrationLoginPasswordRehashRefreshLogout: 'passed',
