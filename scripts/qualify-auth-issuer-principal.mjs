@@ -60,7 +60,7 @@ try {
      ORDER BY c.relname, privilege.privilege
   `);
   assert.deepEqual(
-    secretTablePrivileges.rows,
+    directRelationPrivileges.rows,
     [],
     'issuer must not receive direct privileges on any GHM table/view; all access remains through reviewed SECURITY DEFINER functions',
   );
@@ -69,7 +69,7 @@ try {
     principal: identityResult.rows[0].session_user,
     roleIsolation: 'passed',
     callableAuthFunctionsBeforeAllowList: 0,
-    secretTablePrivileges: 0,
+    directRelationPrivileges: 0,
   }) + '\\n');
 } finally {
   await pool.end();
