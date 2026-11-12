@@ -2,7 +2,7 @@
 
 ## Decision
 
-The `ghm.storage_object` table remains inaccessible for direct runtime DML. The runtime role receives `EXECUTE` only on the canonical storage lifecycle functions.
+The `ghm.storage_object` table remains inaccessible for direct runtime DML. Historically, `ghm_runtime` received EXECUTE on five legacy SECURITY DEFINER metadata functions. Those legacy grants remain present pending the separately approved production cutover; the Resource API's current application path uses the signed Storage Metadata Actor Gateway instead. The constrained `storage_get_public_business_logo` projection remains a separate runtime-granted public read.
 
 Those functions use PostgreSQL `SECURITY DEFINER` deliberately because the persistence boundary must perform narrowly scoped table mutations without granting the runtime role table DML.
 
@@ -11,10 +11,10 @@ Those functions use PostgreSQL `SECURITY DEFINER` deliberately because the persi
 - `ghm_schema_owner` owns the storage schema objects.
 - `ghm_schema_owner` is a non-login schema owner and is not the application runtime identity.
 - `ghm_runtime` has no direct `INSERT`, `UPDATE`, or `DELETE` privilege on `ghm.storage_object`.
-- Lifecycle functions use a fixed `search_path` of `pg_catalog, ghm`.
+- All 103 SECURITY DEFINER routines in the latest disposable PostgreSQL 18.6 inventory use the fixed `search_path` `pg_catalog, ghm, pg_temp`; the five legacy storage functions and five signed gateway wrappers follow this standard.
 - `PUBLIC` execution is revoked explicitly.
-- `ghm_runtime` receives `EXECUTE` only on the explicitly granted canonical storage persistence functions; see `GHM_STORAGE_PERSISTENCE_BOUNDARY.md` for the named lifecycle functions.
-- The functions remain persistence-only; service-layer authorization is not delegated to PostgreSQL function privileges.
+- `ghm_runtime` retains historical EXECUTE on the five legacy storage metadata functions and the separate constrained public approved-logo lookup. The current Resource API path does not use those legacy functions directly; it calls the signed Actor Gateway wrappers. See `GHM_STORAGE_PERSISTENCE_BOUNDARY.md` for the exact function boundary.
+- The five legacy functions remain persistence-only and do not establish database-authenticated actor authority. The replacement gateway wrappers validate signed JWT-derived actor assertions, operation/argument binding, active account state and Business membership/manager authority inside PostgreSQL. Provider-confirmed transitions additionally require the separate Resource API HMAC attestation.
 
 ## Why SECURITY DEFINER is required here
 
@@ -41,9 +41,9 @@ This decision reconciles the storage persistence boundary with the storage capab
 No provider provisioning is authorized by this change.
 
 
-## Account-scoped metadata lookup — proposed, not live-applied
+## Historical account-scoped metadata lookup — applied and superseded
 
-Historical getter-scope checkpoint: migration `20261026120000_scope_storage_metadata_lookup.sql` replaces the ID-only `storage_get_object(bigint)` with `storage_get_object(bigint,bigint)` and checks active public visibility or supplied-account membership. This remains defense in depth for the legacy function, not a database-authenticated actor identity. The new `gateway_storage_get_object` wrapper verifies the signed Actor Gateway assertion and is the application-facing read path. Production still retains the legacy runtime grant until the separately approved cutover; disposable PostgreSQL 18 revocation and exact rollback have passed.
+Historical getter-scope checkpoint: migration `20261026120000_scope_storage_metadata_lookup.sql` replaces the ID-only `storage_get_object(bigint)` with `storage_get_object(bigint,bigint)` and checks active public visibility or supplied-account membership. This remains defense in depth for the legacy function, not a database-authenticated actor identity. The new `gateway_storage_get_object` wrapper verifies the signed Actor Gateway assertion and is the application-facing read path. Production still retains the legacy runtime grant until the separately approved cutover; disposable PostgreSQL 18 revocation and rollback have passed for PUBLIC, runtime, migrator and Actor Gateway direct execution.
 
 
 ## 2026-11-12 security-boundary reconciliation — persistence is not actor authorization
@@ -58,7 +58,7 @@ The original persistence qualification remains valid for its narrow claim: direc
 - The Actor Gateway has the corresponding authenticated routes and a dedicated database reader. The Resource API uses the HTTPS Storage Metadata Gateway client for metadata create/read/deletion-pending/availability/deletion operations and forwards the caller's bearer token. Production storage fails closed if the Actor Gateway URL or provider-attestation secret is missing; it cannot silently fall back to direct runtime metadata access.
 - `storage_get_public_business_logo` remains the narrowly scoped public approved-logo lookup; this work does not broaden public storage access.
 
-**Disposable qualification passed:** the migrations applied to PostgreSQL 18. The expanded provider dual-proof qualification now exercised signed pending-object creation and metadata read; private object access for an authorized Business member and cross-business private-read denial; non-member creation denial; ordinary-member deletion denial; legitimate pending → available → deletion-pending → deleted lifecycle; invalid provider signature; expired attestation; provider-context substitution; wrong provider operation; provider metadata mismatch without state transition; cross-business actor; nonce replay across different pending objects; and invalid lifecycle state. Verifier/secret ACL checks confirmed neither runtime nor Actor Gateway can read the secret or directly execute the verifier, while only Actor Gateway can execute the transition wrappers. A separate five-function cutover rehearsal revoked PUBLIC/runtime execution, confirmed runtime direct calls were denied, verified the replacement Actor Gateway wrappers remained executable, and restored the exact original ACL snapshot. The expanded qualification step passed in run `43235502697`; the remaining repository-wide issuer and database checks in that exact-head run were still running at this checkpoint. The preceding complete workflow passed in run `43233465264`.
+**Disposable qualification passed:** the migrations applied to PostgreSQL 18. The expanded provider dual-proof qualification now exercised signed pending-object creation and metadata read; private object access for an authorized Business member and cross-business private-read denial; non-member creation denial; ordinary-member deletion denial; legitimate pending → available → deletion-pending → deleted lifecycle; invalid provider signature; expired attestation; provider-context substitution; wrong provider operation; provider metadata mismatch without state transition; cross-business actor; nonce replay across different pending objects; and invalid lifecycle state. Verifier/secret ACL checks confirmed neither runtime nor Actor Gateway can read the secret or directly execute the verifier, while only Actor Gateway can execute the transition wrappers. A separate five-function cutover rehearsal revoked PUBLIC, runtime, migrator and Actor Gateway execution, confirmed direct calls were denied for runtime/migrator/Actor Gateway logins, verified the five replacement Actor Gateway wrappers remained executable, and restored the original execution state. The expanded storage qualification and complete repository workflow passed in run `43237334881` (960/960 main test suite; both CI jobs passed).
 
 **Current status: SOURCE REMEDIATION COMPLETE; DISPOSABLE QUALIFICATION PASSED; PRODUCTION CUTOVER OPEN.** The five legacy direct runtime grants have not been revoked in production. No production migration, provider secret provisioning, role change or deployment occurred. Production cutover still requires the documented fresh verified backup, production role-administration access, final operational approval and a separately reviewed manual execution/rollback window.
 
