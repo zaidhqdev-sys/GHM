@@ -2513,3 +2513,30 @@ The earlier registration migration had a function-local path `ghm, pg_temp`; the
 **Qualification status:** the migration, startup verifier, and regression tests are committed but no exact-head PostgreSQL 18 CI evidence is available yet. The connector's combined-status endpoint returned no status checks for the inspected commit; that is not a pass. The disposable full migration chain must prove the owner preflight, ALTER FUNCTION loop, exact catalog string representation, all existing SECURITY DEFINER functions, and startup checks. If any owner preflight fails, stop and audit that owner rather than weakening the preflight.
 
 Latest source/test commit before this handover entry: `228cf68a0fda4c507a50af75d9e24ab2a946df07`. Issuer branch remains separate from open/unmerged PR #272. No production database, grants, roles, secrets, services, deployments, data, routing or paid resources were changed.
+
+
+## 2026-11-12 — exact-head issuer/Actor Gateway metadata qualification passed
+
+Exact branch HEAD `b0711ccebc4adb82fc24256a40a812d0335f8702` passed GitHub Actions run `43178029417`:
+- `quality`: success
+- `web-quality`: success
+- PostgreSQL 18.6 full migration chain: success, including migration `20261112090000_pin_security_definer_search_path.sql`
+- Isolated Authentication Issuer principal qualification: success
+- Isolated Actor Gateway principal qualification: success
+- Full test suite: success
+- Migration audit policy tests and runtime boundary verification: success
+- Guarded manual issuer cutover on disposable PostgreSQL: success
+- Issuer lifecycle, runtime-denial and database rollback qualification: success
+
+The run also proves the revised CI setup seeds the GHM schema under `ghm_schema_owner`, the migrator startup query reads both schema-owner authority fields, and the issuer manual cutover's role guard parses and executes with the corrected named dollar-quote delimiter.
+
+**Important qualification boundary:** this is disposable PostgreSQL evidence only. No production grant/cutover, role change, deployment, service configuration, secret, data, routing, or paid resource was changed. The issuer construction branch is still separate from upstream PR #272 and is not approved to merge independently. Production role/ownership inspection, fresh independently verified backup, transport/network topology, recovery-delivery readiness, cross-product client/service compatibility and separate founder approvals remain blockers.
+
+Previous failed exact-head attempts were not hidden or counted as passes:
+- The migration-principal query omitted the two schema-owner authority fields required by its assertion; the query and contract test were corrected.
+- The fresh CI database had no pre-existing `ghm` schema for the migrator preflight; CI now seeds it as owned by `ghm_schema_owner`.
+- Existing gateway and storage qualification scripts expected the old search_path; their expectations now require `pg_temp` last.
+- The manual issuer cutover had an unbalanced dollar-quote delimiter in the role preflight; it was corrected and a contract regression added.
+- Source-contract tests still expected a hard-coded role list after the verifier moved to an any-non-owner-grantee predicate; obsolete assertions were removed.
+
+Do not use any earlier intermediate run as exact-head evidence. The successful run SHA above is the current qualified source checkpoint.
