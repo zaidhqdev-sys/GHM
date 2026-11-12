@@ -60,6 +60,8 @@ const restoreOriginalAcl = async () => {
     for (const item of snapshots) {
       if (item.public_execute) await client.query(`GRANT EXECUTE ON FUNCTION ${item.signature} TO PUBLIC`);
       if (item.runtime_direct_execute) await client.query(`GRANT EXECUTE ON FUNCTION ${item.signature} TO ghm_runtime`);
+      if (item.migrator_direct_execute) await client.query(`GRANT EXECUTE ON FUNCTION ${item.signature} TO ghm_migrator`);
+      if (item.gateway_direct_execute) await client.query(`GRANT EXECUTE ON FUNCTION ${item.signature} TO ghm_actor_gateway`);
     }
   });
   cutoverApplied = false;
@@ -76,7 +78,11 @@ try {
       p.proname,
       COALESCE(bool_or(a.grantee = 0 AND a.privilege_type = 'EXECUTE'), false) AS public_execute,
       COALESCE(bool_or(a.grantee = runtime_role.oid AND a.privilege_type = 'EXECUTE'), false) AS runtime_direct_execute,
+      COALESCE(bool_or(a.grantee = migrator_role.oid AND a.privilege_type = 'EXECUTE'), false) AS migrator_direct_execute,
+      COALESCE(bool_or(a.grantee = gateway_role.oid AND a.privilege_type = 'EXECUTE'), false) AS gateway_direct_execute,
       has_function_privilege('ghm_runtime', p.oid, 'EXECUTE') AS runtime_execute,
+      has_function_privilege('ghm_migrator', p.oid, 'EXECUTE') AS migrator_execute,
+      has_function_privilege('ghm_actor_gateway', p.oid, 'EXECUTE') AS gateway_execute,
       (
         SELECT string_agg(format('NULL::%s', format_type(arg_type, NULL)), ', ' ORDER BY ord)
         FROM unnest(p.proargtypes::oid[]) WITH ORDINALITY AS args(arg_type, ord)
@@ -84,6 +90,8 @@ try {
     FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
     JOIN pg_roles runtime_role ON runtime_role.rolname = 'ghm_runtime'
+    JOIN pg_roles migrator_role ON migrator_role.rolname = 'ghm_migrator'
+    JOIN pg_roles gateway_role ON gateway_role.rolname = 'ghm_actor_gateway'
     CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) a
     WHERE n.nspname = 'ghm'
       AND p.proname = ANY($1::text[])
@@ -101,7 +109,7 @@ try {
 
   await withSchemaOwner(async client => {
     for (const item of snapshots) {
-      await client.query(`REVOKE ALL ON FUNCTION ${item.signature} FROM PUBLIC, ghm_runtime`);
+      await client.query(`REVOKE ALL ON FUNCTION ${item.signature} FROM PUBLIC, ghm_runtime, ghm_migrator, ghm_actor_gateway`);
     }
   });
   cutoverApplied = true;
@@ -111,25 +119,29 @@ try {
     SELECT
       p.oid::regprocedure::text AS signature,
       COALESCE(bool_or(a.grantee = 0 AND a.privilege_type = 'EXECUTE'), false) AS public_execute,
-      has_function_privilege('ghm_runtime', p.oid, 'EXECUTE') AS runtime_execute
+      has_function_privilege('ghm_runtime', p.oid, 'EXECUTE') AS runtime_execute,
+      has_function_privilege('ghm_migrator', p.oid, 'EXECUTE') AS migrator_execute,
+      has_function_privilege('ghm_actor_gateway', p.oid, 'EXECUTE') AS gateway_execute
     FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
     CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) a
     WHERE n.nspname='ghm' AND p.proname = ANY($1::text[])
     GROUP BY p.oid
   `, [names]);
-  if (after.rows.length !== snapshots.length || after.rows.some(row => row.public_execute || row.runtime_execute)) {
+  if (after.rows.length !== snapshots.length || after.rows.some(row => row.public_execute || row.runtime_execute || row.migrator_execute || row.gateway_execute)) {
     throw new Error(`Legacy runtime/PUBLIC execute grants remain after cutover: ${JSON.stringify(after.rows)}`);
   }
   console.log('PUBLIC + RUNTIME EXECUTE REVOKED ON ALL FIVE LEGACY STORAGE FUNCTIONS: PASS');
 
   for (const item of snapshots) {
-    let denied = false;
-    try { await runtime.query(`SELECT ghm.${item.proname}(${item.null_arguments})`); }
-    catch (error) { denied = error && typeof error === 'object' && 'code' in error && error.code === '42501'; }
-    if (!denied) throw new Error(`Runtime direct call was not denied for ${item.signature}`);
+    for (const [role, pool] of [['ghm_runtime', runtime], ['ghm_migrator', migrator], ['ghm_actor_gateway', gateway]]) {
+      let denied = false;
+      try { await pool.query(`SELECT ghm.${item.proname}(${item.null_arguments})`); }
+      catch (error) { denied = error && typeof error === 'object' && 'code' in error && error.code === '42501'; }
+      if (!denied) throw new Error(`${role} direct call was not denied for ${item.signature}`);
+    }
   }
-  console.log('RUNTIME DIRECT CALLS DENIED FOR ALL FIVE LEGACY STORAGE FUNCTIONS: PASS');
+  console.log('RUNTIME, MIGRATOR AND ACTOR GATEWAY DIRECT CALLS DENIED FOR ALL FIVE LEGACY FUNCTIONS: PASS');
 
   const wrapperAcl = await gateway.query(`
     SELECT
@@ -157,7 +169,10 @@ try {
   `, [names]);
   for (const original of snapshots) {
     const current = restored.rows.find(row => row.signature === original.signature);
-    if (!current || current.public_execute !== original.public_execute || current.runtime_execute !== original.runtime_execute) {
+    if (!current || current.public_execute !== original.public_execute
+      || current.runtime_execute !== original.runtime_execute
+      || current.migrator_execute !== original.migrator_execute
+      || current.gateway_execute !== original.gateway_execute) {
       throw new Error(`ACL rollback mismatch for ${original.signature}: ${JSON.stringify({ original, current })}`);
     }
   }
