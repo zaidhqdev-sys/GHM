@@ -22,3 +22,14 @@ test('issuer allow-list is applied after clearing current function grants', () =
   assert.ok(issuerCutover.includes('REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA ghm FROM ghm_auth_issuer'));
   assert.ok(issuerCutover.includes('GRANT EXECUTE ON FUNCTION ghm.auth_create_account'));
 });
+
+
+const businessMappingLinkMigration = fs.readFileSync(path.resolve(
+  process.cwd(),
+  'database/migrations/20261112060000_revoke_runtime_business_external_mapping_link.sql',
+), 'utf8');
+
+test('business external mapping creation remains an operator/migration capability', () => {
+  assert.match(businessMappingLinkMigration, /REVOKE ALL ON FUNCTION ghm\.auth_link_business_external_mapping\(text, text, bigint\)/);
+  assert.match(businessMappingLinkMigration, /FROM PUBLIC, ghm_runtime/);
+});
