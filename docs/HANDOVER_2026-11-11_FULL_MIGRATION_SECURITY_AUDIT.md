@@ -2246,3 +2246,8 @@ Open GHM PR stack snapshot:
 - PR #201 QuoteFlow legal acceptance remains parked under the founder's instruction to defer legal work.
 
 The branch list still includes the earlier standalone Connect/QuoteFlow construction branches created from `main`; the stacked branches above are the valid integration targets. The GitHub connector available in this session exposes no branch-delete operation, so those superseded branches have not been deleted. Do not continue work on them.
+
+
+### External client ingress constraint
+
+QuoteFlow's native mobile client calls the configured issuer URL directly from outside Render. A private-only issuer cannot serve it; a future deployment requires reviewed public HTTPS ingress or a separately approved public gateway. Connect's native bearer browser flow also calls the issuer origin directly and needs exact CORS allow-listing. Its optional browser-cookie flow uses the same-origin Vercel BFF and a server-side issuer upstream. Public issuer ingress must not imply a public database; the database path and TLS verification remain separate deployment blockers.
