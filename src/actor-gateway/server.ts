@@ -17,6 +17,7 @@ import { PostgresSavedBusinessGatewayReader } from './saved-business-reader';
 import { PostgresBusinessHoursGatewayReader } from './business-hours-reader';
 import { PostgresTrustScoreGatewayReader } from './trust-score-reader';
 import { PostgresBusinessLogoGatewayReader } from './business-logo-reader';
+import { PostgresStorageMetadataGatewayReader } from './storage-metadata-reader';
 import { PostgresConnectBusinessProvisioningReader } from './connect-business-provisioning-reader';
 import { assertActorGatewayDatabaseIdentity } from './database-principal';
 import { assertActorGatewayDatabasePrivileges, readActorGatewayDatabasePrivileges } from './database-privileges';
@@ -58,6 +59,7 @@ const app = createActorGatewayApp({
   businessHoursReader: new PostgresBusinessHoursGatewayReader(pool, capabilityAssertionSecret),
   trustScoreReader: new PostgresTrustScoreGatewayReader(pool, capabilityAssertionSecret),
   businessLogoReader: new PostgresBusinessLogoGatewayReader(pool, capabilityAssertionSecret),
+  storageMetadataReader: new PostgresStorageMetadataGatewayReader(pool, capabilityAssertionSecret),
   connectBusinessProvisioningReader: new PostgresConnectBusinessProvisioningReader(pool, capabilityAssertionSecret),
 });
 const server = http.createServer(app);
