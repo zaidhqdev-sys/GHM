@@ -36,7 +36,6 @@ export const assertActorGatewayDatabasePrivileges = (
 export const ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL = `
   WITH expected_signatures(signature) AS (
     SELECT unnest(ARRAY[
-      'ghm.assert_actor_gateway(bigint)',
       'ghm.assert_actor_gateway_capability(bigint, text, bigint, uuid, text, text)',
       'ghm.gateway_calculate_business_trust_score(bigint, bigint, uuid, text, text, bigint)',
       'ghm.gateway_create_capability_draft(bigint, bigint, uuid, text, text, text, text, text, uuid, integer, text, integer)',
