@@ -339,3 +339,12 @@ The preferred current design is to use the already-existing SQL-created `ghm_run
 Only revisit a separate SQL-created application login if there is a deliberate architecture change to support a separate login role plus a privilege role, including explicit changes to startup identity verification, role membership checks, CI, handovers and all consumers. That is not the current implementation contract.
 
 Do not create or alter any production login or membership as part of this clarification.
+### Render credential transition refinement — retain Dashboard default administrator
+
+After reconciling Amanda's guidance with the live/source principal contract, the preferred transition does **not** require replacing or deleting the current Dashboard-managed default credential.
+
+Keep the existing Dashboard-managed default user as the controlled database administrator, as Amanda recommended. GHM already has the SQL-created `ghm_runtime` LOGIN role, and the Resource API production configuration/startup verifier requires a direct `session_user=current_user=ghm_runtime` connection with no role memberships. Configure the Resource API with that existing login through `GHM_RUNTIME_DATABASE_URL` after its password/privileges and the service cutover are qualified.
+
+Do not create `ghm_app_user IN ROLE ghm_runtime` as a default solution: that login would not satisfy the current runtime startup identity/no-membership contract. Do not rotate/delete the current Dashboard-managed default user or create a replacement Dashboard administrator merely to achieve runtime separation. Amanda's optional point-2 sequence applies only if we deliberately choose to remove the Dashboard-managed default user; that is not needed for the current design.
+
+Revised safe sequence: (1) retain Dashboard default for administration; (2) read-only qualify existing `ghm_runtime` attributes, memberships, ACLs, ownership and dependencies; (3) use a controlled administrator session to establish/rotate only the `ghm_runtime` credential if needed; (4) configure `GHM_RUNTIME_DATABASE_URL` on Resource API only; (5) verify live `session_user=current_user=ghm_runtime` and startup checks; (6) retain separate Auth Issuer, Actor Gateway and Migrator identities. No production change is authorized by this refinement.
