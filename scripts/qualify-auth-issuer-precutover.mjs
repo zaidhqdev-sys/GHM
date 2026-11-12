@@ -27,7 +27,7 @@ const expectedRuntimeAuthFunctions = [
   'ghm.auth_validate_session(bigint)',
   'ghm.auth_rotate_refresh(bytea, bytea)',
   'ghm.auth_revoke_by_refresh_hash(bytea, text)',
-  'ghm.auth_issue_recovery(bigint, bytea, timestamptz)',
+  'ghm.auth_issue_recovery(bigint, bytea, timestamp with time zone)',
   'ghm.auth_redeem_recovery(bytea)',
   'ghm.auth_redeem_recovery_with_count(bytea)',
   'ghm.auth_reset_password_with_recovery(bytea, text, text, integer, integer, integer)',
