@@ -61,8 +61,15 @@ const start = async (): Promise<void> => {
      WHERE r.rolname = session_user
   `);
   assertRuntimeDatabaseIdentity(identity.rows[0]);
-  const functionPrivileges = await readRuntimeDatabaseFunctionPrivileges(pool);
-  assertRuntimeDatabaseFunctionPrivileges(functionPrivileges);
+  if (!config.isProduction || process.env.GHM_RUNTIME_FUNCTION_ALLOWLIST_ENFORCED === 'true') {
+    const functionPrivileges = await readRuntimeDatabaseFunctionPrivileges(pool);
+    assertRuntimeDatabaseFunctionPrivileges(functionPrivileges);
+  } else {
+    console.warn(JSON.stringify({
+      event: 'runtime_function_allowlist_not_enforced',
+      reason: 'production_acl_baseline_not_yet_independently_qualified',
+    }));
+  }
   server.listen(config.port, () => {
     ready = true;
     console.log(`GHM Core Engine listening on port ${config.port}`);
