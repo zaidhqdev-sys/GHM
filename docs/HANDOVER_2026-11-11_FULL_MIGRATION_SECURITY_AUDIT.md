@@ -2946,3 +2946,36 @@ Refreshed open PR metadata directly from GitHub to avoid relying on stale branch
 
 ### Integration decision
 No cross-product branch has been merged or rewritten. First complete GHM post-cutover inventory qualification, then compare issuer client contracts and changes against these exact product PR heads. Do not merge standalone issuer-origin branches merely because their independent CI passed.
+
+
+## 2026-11-13 — principal-boundary reconciliation review while post-cutover CI runs
+
+Continued the source-level review of the five database principals and the manual issuer cutover. This is a review checkpoint, not production evidence.
+
+### Current exact principal contracts in source
+
+- Resource API `ghm_runtime`: the runtime verifier uses a 43-function pre-cutover SECURITY DEFINER baseline and enumerates 512 reviewed combinations of the nine independent manual cutover groups. It rejects any runtime function-execution set that is not one of those exact reviewed stages. The Authentication Issuer group revokes 14 legacy runtime auth functions; the expected post-issuer runtime set is derived explicitly. The issuer's own startup verifier separately requires exactly two remaining runtime auth functions: `ghm.auth_lookup_external_identity(text,text)` and `ghm.auth_lookup_business_external_mapping(text,text)`.
+- Authentication Issuer `ghm_auth_issuer`: startup verifier requires exactly 10 executable functions, no direct relation privileges, no database/schema CREATE, no unsafe global/schema function defaults, no PUBLIC SECURITY DEFINER execution, no unsafe SECURITY DEFINER owner/search_path, and no unexpected non-owner grantee on its allow-list. The 10 are account creation, password lookup/rehash, session creation/refresh rotation/revocation, recovery issue/reset, and the two QuoteFlow migration-reset read/completion operations. It is intentionally not granted enrollment registration.
+- Actor Gateway `ghm_actor_gateway`: startup verifier requires the exact 33-function gateway allow-list, no direct relation privileges, no unsafe defaults, no PUBLIC-executable SECURITY DEFINER functions, no unsafe owners/search_paths, no unexpected direct function grantees, and no unexpected runtime EXECUTE on gateway functions. The signed-wrapper allow-list includes campaign/directory-review, business capability, registration/profile/supplier, saved-business, hours, trust-score, logo, and storage operations.
+- Migrator `ghm_migrator`: principal verifier requires LOGIN/NOINHERIT, no elevated role attributes, no direct relation/schema privileges, and exactly one controlled admin-option membership to non-login `ghm_schema_owner`; schema owner must have no direct members and only the bounded migrator admin membership. It has no general schema access before SET ROLE.
+- Payment provider `ghm_payment_provider`: disposable qualification script proves the provider identity, allows the PayFast-specific settlement function, denies generic settlement and all direct commercial-table privileges, verifies PayFast-only attempt read scope, provider binding, idempotency, terminal-attempt protection, and rollback. The whole-database inventory independently reports its direct function grants. The callback server currently checks provider identity at startup/readiness but does not run a complete exact function ACL verifier at startup. PayFast remains explicitly paused; no PayFast code or production state is changed in this continuation. Treat startup ACL verification as a pre-reactivation hardening gate, not as authorization to resume PayFast work.
+
+### Migration/operator authority cross-check
+
+Reviewed the migration history for external identity and QuoteFlow reset operations. `auth_link_external_identity`, `auth_bootstrap_external_identity`, and `auth_provision_migration_account` have explicit later migrations revoking runtime access; the latter is `20261111240000_revoke_runtime_quoteflow_migration_provisioning.sql`. QuoteFlow enrollment registration is revoked from PUBLIC/runtime by `20261112040000`, and additionally from the issuer in the manual cutover. The issuer can only look up and complete an existing approved enrollment. The runtime startup allow-list and issuer startup allow-list independently detect a return of these operations.
+
+### CI status at this checkpoint
+
+Run [43329488561](https://github.com/zaidhqdev-sys/GHM/actions/runs/43329488561), exact HEAD `0e986e448028a1a78e733b33b893b49721b2a8f4`:
+- `web-quality`: PASS.
+- `quality`: still in progress.
+- Completed through guarded disposable issuer privilege cutover; lifecycle/runtime-denial qualification and post-cutover inventory remain pending.
+- No artifact was yet published. Do not report the post-cutover inventory as captured or compared until the job completes and both JSON files are retrieved.
+
+### Outstanding work
+
+1. Complete run 43329488561; retrieve both pre/post SECURITY DEFINER inventory JSONs and reconcile exact function signatures, owner, ACL grantee/grantor/grantability, effective roles, PUBLIC execution, defaults, membership and service allow-lists.
+2. Resolve any post-cutover mismatch with an adversarial regression test and rerun exact-head CI.
+3. Keep PayFast startup ACL hardening parked until the explicit PayFast pause is lifted; preserve the current two-operation settlement boundary and do not resume integration.
+4. Continue Connect PR #68 / QuoteFlow PR #25 dependency-aware issuer integration after GHM's post-cutover inventory evidence is complete.
+5. Production cutover remains blocked; no PR merge, production role/grant change, Render deployment, secret, routing, traffic, backup or paid resource change occurred.
