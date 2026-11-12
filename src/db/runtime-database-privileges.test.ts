@@ -6,20 +6,27 @@ import {
   RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS,
   RUNTIME_POST_AUTH_ISSUER_FUNCTIONS,
   RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS,
+  RUNTIME_POST_REGISTRATION_IDENTITY_FUNCTIONS,
+  RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+  RUNTIME_POST_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+  RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
   RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL,
 } from './runtime-database-privileges';
 
-test('runtime startup accepts only the four reviewed pre/post gateway and issuer ACL states', () => {
-  assert.equal(RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length, 41);
-  assert.equal(RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS.length, 38);
-  assert.equal(RUNTIME_POST_AUTH_ISSUER_FUNCTIONS.length, 27);
-  assert.equal(RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS.length, 24);
-  for (const functions of [
-    RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS,
-    RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS,
-    RUNTIME_POST_AUTH_ISSUER_FUNCTIONS,
-    RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS,
-  ]) {
+const STAGES = [
+  RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS,
+  RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS,
+  RUNTIME_POST_AUTH_ISSUER_FUNCTIONS,
+  RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS,
+  RUNTIME_POST_REGISTRATION_IDENTITY_FUNCTIONS,
+  RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+  RUNTIME_POST_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+  RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+] as const;
+
+test('runtime startup accepts only the eight explicitly reviewed Campaign, issuer and registration cutover states', () => {
+  assert.deepEqual(STAGES.map(functions => functions.length), [43, 40, 29, 26, 41, 38, 27, 24]);
+  for (const functions of STAGES) {
     assert.doesNotThrow(() => assertRuntimeDatabaseFunctionPrivileges({
       executable_functions: [...functions],
     }));
@@ -47,13 +54,8 @@ test('issuer cutover removes exactly fourteen lifecycle functions and retains on
   );
 });
 
-test('runtime startup rejects added, missing or unexpected function EXECUTE grants in every stage', () => {
-  for (const functions of [
-    RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS,
-    RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS,
-    RUNTIME_POST_AUTH_ISSUER_FUNCTIONS,
-    RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS,
-  ]) {
+test('runtime startup rejects added, missing or unexpected function EXECUTE grants in every reviewed stage', () => {
+  for (const functions of STAGES) {
     assert.throws(
       () => assertRuntimeDatabaseFunctionPrivileges({
         executable_functions: [...functions, 'ghm.unreviewed_sensitive_operation(bigint)'],
@@ -69,16 +71,21 @@ test('runtime startup rejects added, missing or unexpected function EXECUTE gran
   }
 });
 
-test('registration identity functions are never granted to the Resource API runtime after their gateway migrations', () => {
-  for (const signature of [
+test('registration identity functions are accepted only before their explicit manual gateway cutover', () => {
+  const registration = [
     'ghm.read_business_registration_identity(bigint, bigint)',
     'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
-  ]) {
+  ];
+  for (const signature of registration) {
+    assert.ok((RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(signature));
+    assert.ok((RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(signature));
+    assert.ok((RUNTIME_POST_AUTH_ISSUER_FUNCTIONS as readonly string[]).includes(signature));
+    assert.ok((RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS as readonly string[]).includes(signature));
     for (const functions of [
-      RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS,
-      RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS,
-      RUNTIME_POST_AUTH_ISSUER_FUNCTIONS,
-      RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS,
+      RUNTIME_POST_REGISTRATION_IDENTITY_FUNCTIONS,
+      RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+      RUNTIME_POST_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
+      RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
     ]) {
       assert.ok(!(functions as readonly string[]).includes(signature), signature);
     }
@@ -89,7 +96,9 @@ test('startup inventory measures only SECURITY DEFINER EXECUTE privileges and re
   assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /p\.prosecdef/);
   assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /has_function_privilege\(session_user, p\.oid, 'EXECUTE'\)/);
   assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /expected_post_issuer/);
-  assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /expected_post_campaign_and_issuer/);
+  assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /expected_post_campaign_issuer/);
+  assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /expected_post_registration/);
+  assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /expected_post_all/);
 });
 
 test('Campaign and directory-review legacy signatures are absent only from states where their manual cutover is applied', () => {
@@ -102,5 +111,7 @@ test('Campaign and directory-review legacy signatures are absent only from state
     assert.ok(!(RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(signature));
     assert.ok((RUNTIME_POST_AUTH_ISSUER_FUNCTIONS as readonly string[]).includes(signature));
     assert.ok(!(RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS as readonly string[]).includes(signature));
+    assert.ok((RUNTIME_POST_REGISTRATION_IDENTITY_FUNCTIONS as readonly string[]).includes(signature));
+    assert.ok(!(RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS as readonly string[]).includes(signature));
   }
 });
