@@ -21,7 +21,6 @@ const createPersistence = (
   resetPasswordWithRecovery: async () => { throw new Error('unused'); },
   lookupPasswordByEmail: async () => null,
   createSessionWithRefresh: async () => { throw new Error('unused'); },
-  validateSession: async () => { throw new Error('unused'); },
   rotateRefresh: async () => { throw new Error('unused'); },
   issueRecovery: async () => { throw new Error('unused'); },
   redeemRecovery: async () => { throw new Error('unused'); },
