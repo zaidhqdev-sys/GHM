@@ -87,3 +87,28 @@ test('rejects PUBLIC EXECUTE on any SECURITY DEFINER function', () => {
     /public_executable_security_definer_functions/,
   );
 });
+
+
+test('accepts only the exact pre-migration and post-migration Campaign gateway function sets', () => {
+  const campaignReview = [
+    'ghm.gateway_create_campaign(bigint, bigint, uuid, text, text, bigint, text)',
+    'ghm.gateway_update_campaign(bigint, bigint, uuid, text, text, bigint, text, text)',
+    'ghm.gateway_get_business_directory_review_presentation(bigint, bigint, uuid, text, text, bigint)',
+  ];
+  const expected = [...leastPrivilege.expected_functions, ...campaignReview];
+  assert.doesNotThrow(() => assertActorGatewayDatabasePrivileges({
+    ...leastPrivilege,
+    expected_functions: expected,
+    executable_functions: expected.filter(signature => !campaignReview.includes(signature)),
+  }));
+  assert.doesNotThrow(() => assertActorGatewayDatabasePrivileges({
+    ...leastPrivilege,
+    expected_functions: expected,
+    executable_functions: expected,
+  }));
+  assert.throws(() => assertActorGatewayDatabasePrivileges({
+    ...leastPrivilege,
+    expected_functions: expected,
+    executable_functions: [...expected, 'ghm.gateway_unreviewed(bigint)'],
+  }), /gateway_function_allow_list_mismatch/);
+});
