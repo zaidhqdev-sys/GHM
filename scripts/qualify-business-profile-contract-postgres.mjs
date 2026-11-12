@@ -66,7 +66,7 @@ try {
       [marker + '-disabled'],
     );
     disabledAccountId = Number(disabled.rows[0].id);
-    await runtimePool.query('SELECT ghm.auth_disable_account($1)', [disabledAccountId]);
+    await migrator.query('SELECT ghm.auth_disable_account($1)', [disabledAccountId]);
     const business = await migrator.query(
       "INSERT INTO ghm.business (name, slug, verification_status, is_active) VALUES ($1, $2, 'unverified', true) RETURNING id",
       [marker, marker],
