@@ -3024,3 +3024,21 @@ Added a source-contract regression test requiring this final state restoration b
 Inspect run 43330073708 and retrieve the new artifact. Confirm the post-cutover inventory shows zero direct `ghm_runtime` EXECUTE grants on the 14 issuer-revoked auth lifecycle functions, exactly two runtime external identity lookups, exactly 10 issuer grants, 33 Actor Gateway grants and 2 payment-provider grants. Reconcile all signatures against the source allow-lists, then record any discrepancy as a blocker and add a regression test.
 
 No production database or roles were touched. No production cutover, merge, deployment, secrets, routing, traffic, backup or paid infrastructure change. PayFast remains paused.
+
+
+## 2026-11-13 — CI caught malformed qualification output; corrected
+
+Run [43330073708](https://github.com/zaidhqdev-sys/GHM/actions/runs/43330073708) failed before migrations/cutover because the new JSON summary object contained literal backslash-n text inserted by the patch, producing a Node.js syntax error at line 796 of `scripts/qualify-auth-issuer-cutover.mjs`. This was a qualification-script syntax defect; no disposable migration, cutover or inventory ran, and no production systems were touched.
+
+Corrected the summary object to use actual source newlines:
+- commit `2fe38cb56ca560cb57d145d8bcc37a574ac15a7a`.
+- exact-head run [43330297297](https://github.com/zaidhqdev-sys/GHM/actions/runs/43330297297).
+- both `quality` and `web-quality` were queued at handover time.
+
+The final-state ordering correction remains in place: rollback is tested, disposable fixtures are removed, guarded issuer cutover is reapplied, runtime/issuer exact allow-lists are rechecked, then CI captures the post-cutover inventory. Do not consider the correction validated until the new exact-head quality job reaches the lifecycle and inventory steps and both artifact reports are retrieved.
+
+### Immediate next action
+
+Inspect run 43330297297. If syntax passes but the final allow-list query/assertions fail, diagnose against the actual SQL ACLs and update the disposable regression, not production. Once the run passes, retrieve both inventory files and compare exact signatures/grantees/owners/default ACLs. Update this handover after each verified batch.
+
+No production mutation, merge, Render deploy, secret or routing change. PayFast remains paused.
