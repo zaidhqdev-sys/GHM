@@ -108,7 +108,6 @@ try {
       SELECT unnest(ARRAY[
         'ghm.auth_lookup_external_identity(text, text)',
         'ghm.auth_lookup_business_external_mapping(text, text)',
-        'ghm.auth_link_business_external_mapping(text, text, bigint)'
       ]::text[])
     )
     SELECT
@@ -201,6 +200,7 @@ try {
     'SELECT * FROM ghm.auth_lookup_quoteflow_migration_reset_enrollment(NULL::text)',
     'SELECT * FROM ghm.auth_complete_quoteflow_migration_reset(NULL::bytea, NULL::text, NULL::integer, NULL::integer, NULL::integer)',
     'SELECT * FROM ghm.auth_register_quoteflow_migration_reset_enrollment(NULL::bigint, NULL::text, NULL::text, NULL::text, NULL::text, NULL::text)',
+    'SELECT * FROM ghm.auth_link_business_external_mapping(NULL::text, NULL::text, NULL::bigint)',
   ];
   for (const sql of deniedCalls) await expectPermissionDenied(sql);
 
@@ -209,8 +209,6 @@ try {
     ['connect', `issuer-qualification-${randomUUID()}`],
   );
   assert.equal(connectLookup.rowCount, 0, 'Connect lookup-only external identity contract must remain available to runtime');
-  const connectBusinessLinkPrivilege = await runtimePool.query(`SELECT has_function_privilege(current_user, 'ghm.auth_link_business_external_mapping(text,text,bigint)', 'EXECUTE') AS allowed`);
-  assert.equal(connectBusinessLinkPrivilege.rows[0]?.allowed, true, 'Connect business provisioning still depends on runtime mapping link until a signed gateway transaction replaces it');
 
   const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
   const keys = loadEs256Keys({
