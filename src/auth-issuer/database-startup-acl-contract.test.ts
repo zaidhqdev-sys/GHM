@@ -35,3 +35,10 @@ test('issuer verifier checks every SECURITY DEFINER owner and pinned temporary-s
   assert.ok(privilegeSource.includes("pg_get_userbyid(p.proowner) IS DISTINCT FROM 'ghm_schema_owner'"));
   assert.ok(privilegeSource.includes("search_path=pg_catalog, ghm, pg_temp"));
 });
+
+
+test('issuer verifier rejects direct EXECUTE grants to every non-owner grantee outside the issuer', () => {
+  assert.ok(privilegeSource.includes('unsafe_function_grantees'));
+  assert.ok(privilegeSource.includes("acl.grantee <> 'ghm_auth_issuer'::regrole"));
+  assert.ok(privilegeSource.includes('aclexplode(COALESCE(p.proacl'));
+});
