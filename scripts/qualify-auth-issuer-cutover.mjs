@@ -302,7 +302,7 @@ try {
   );
 
   // Campaign/review cutover is applied earlier in this CI job. After the
-  // issuer cutover the runtime must match the combined 26-function allow-list.
+  // issuer cutover the runtime must match the combined 24-function allow-list.
   const runtimePrivilegesAfterIssuerCutover = await readRuntimeDatabaseFunctionPrivileges(runtimePool);
   try {
     assertRuntimeDatabaseFunctionPrivileges(runtimePrivilegesAfterIssuerCutover);
