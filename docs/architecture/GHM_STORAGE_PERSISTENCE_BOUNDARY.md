@@ -9,6 +9,7 @@ The storage metadata table is intentionally not directly writable by `ghm_runtim
 The legacy Resource API persistence boundary historically exposed five narrowly scoped GHM-owned PostgreSQL functions to `ghm_runtime`:
 
 - `ghm.storage_create_pending`
+- `ghm.storage_get_object`
 - `ghm.storage_mark_available`
 - `ghm.storage_mark_deletion_pending`
 - `ghm.storage_mark_deleted`
