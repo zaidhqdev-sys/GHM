@@ -2619,3 +2619,20 @@ This entry supersedes any implication that CI run `43181545588` at `405a220d408c
 - Reconcile every direct non-owner EXECUTE grant against a documented function/role exception matrix; include runtime, migrator, issuer, Actor Gateway, payment-provider and any unexpected role.
 - Adversarially test caller-controlled search_path and temporary-object shadowing against the complete function inventory, and inspect any extension/legacy SECURITY DEFINER definitions outside `ghm`.
 - Re-run exact-head PostgreSQL 18 CI on the latest code/test head after the coverage work. Production remains untouched; no cutover, merge, secret, role, grant, service, deployment, data or paid-resource change is authorized.
+
+
+## 2026-11-12 — Whole-database SECURITY DEFINER inventory tooling added
+
+Added a read-only catalog inventory to close the previous schema/allow-list coverage gap:
+
+- `scripts/audit-security-definer-authority.mjs`
+- `scripts/audit-security-definer-authority.test.mjs`
+- `npm run audit:security-definer-authority`
+
+The inventory is deliberately restricted to a local `ghm_disposable_test` database via `GHM_SECURITY_DEFINER_AUDIT_DATABASE_URL`; it rejects non-local hosts and any other database name. It does not issue DDL, GRANT/REVOKE, role changes, or data writes. It inventories SECURITY DEFINER functions/procedures in every non-system schema and records full signatures, definitions, owner, per-function settings/search_path, extension membership, direct ACL entries (grantee, grantor, EXECUTE, grant option), effective EXECUTE roles, all role membership edges, and global/schema function default ACLs. Output is explicitly marked `REVIEW_REQUIRED_NO_AUTOMATIC_APPROVAL`.
+
+The contract test is appended to the repository `npm test` command. This is tooling added to source control, **not a completed database inventory**: it has not yet been run against disposable PostgreSQL in this session, so no actual grant matrix or cross-schema findings are claimed. Do not convert the preliminary report into automatic allow/deny decisions until the output has been reviewed and every legitimate function-role grant is documented. Startup verifiers remain unchanged and production remains untouched.
+
+### Next required evidence
+
+Run `npm test` on this exact branch head, then run `npm run audit:security-definer-authority` with `GHM_SECURITY_DEFINER_AUDIT_DATABASE_URL` pointing only to local `ghm_disposable_test`. Preserve the JSON output as qualification evidence, inspect all SECURITY DEFINER bodies outside `ghm`, and construct the exact function-signature-to-role EXECUTE exception matrix from observed disposable catalog state plus migration intent. Only after that review should we decide whether to strengthen startup verifiers or add adversarial grants for every uncovered function/role combination. Exact-head CI is still required; no production cutover, merge or live catalog mutation is authorized.
