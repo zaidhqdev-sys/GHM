@@ -1331,3 +1331,15 @@ A stale read-only legacy-role qualification harness was corrected to align with 
 ### Runtime login contract clarification
 
 Use the existing SQL-created `ghm_runtime` LOGIN directly for Resource API connections unless the architecture and startup verifier are deliberately changed. The current production config requires `GHM_RUNTIME_DATABASE_URL`, and Resource API startup requires `session_user=current_user=ghm_runtime` with no role memberships. Amanda's illustrative `ghm_app_user IN ROLE ghm_runtime` example would not pass that existing contract; do not copy it verbatim or weaken the verifier implicitly. Provision/rotate the existing `ghm_runtime` credential only through a separately qualified and approved process. No production credential or role change has occurred.
+
+### 2026-11-12 — Render live role graph and trusted administrator membership contract
+
+Fresh read-only production catalog queries reconfirmed `session_user=ghm_app_user`, `current_user=ghm_db_user`, the `role=ghm_db_user` setting on `ghm_app_user`, and the administrator's ADMIN OPTION memberships. `ghm_runtime` and `ghm_actor_gateway` are SQL-created restricted logins. The administrator is a member of both; `ghm_runtime` cannot SET ROLE `ghm_actor_gateway`, while `ghm_db_user` can SET ROLE `ghm_runtime`. `ghm_auth_issuer` is not yet present in the production role catalog.
+
+Render's current service inventory has only `ghm-internal-runtime` as the production GHM web service. There is no separately deployed production Auth Issuer or Actor Gateway service yet. The old qualification and PayFast sandbox services remain non-target; PayFast stays paused.
+
+The old `no_role_memberships` startup checks rejected Render's trusted administrator membership and would have blocked real production service startup. Resource API runtime, Actor Gateway and Auth Issuer checks now enforce `no_untrusted_role_memberships`: service login cannot be a member of other roles; only `ghm_db_user` may be a member of the service role; any other member is rejected. Migrator now separately verifies that only `ghm_db_user` may be a member of `ghm_migrator`, and only `ghm_db_user`/`ghm_migrator` may be members of `ghm_schema_owner`.
+
+The Resource API runtime function EXECUTE verifier now recognises 43/40/29/26 function states across the Campaign/review and Authentication Issuer cutovers. The issuer qualification verifies the combined 26-function runtime state. The Campaign manual cutover duplicate transaction body and nested COMMIT were removed; its qualification now checks migrator/schema-owner identity and schema authority.
+
+Exact-head CI after these changes remains pending; see `docs/HANDOVER_2026-11-12_DATABASE_GRANT_AUTHORITY_REVIEW.md` for the detailed live catalog evidence, prior CI failures, exact corrections and latest CI checkpoint. Production remains unchanged: no role/grant/credential/env/deployment/service/data changes, no fresh verified backup, and no issuer/gateway service cutover. Retain Dashboard admin for controlled administration and use existing SQL-created `ghm_runtime` directly for the Resource API only after all remaining gates pass.
