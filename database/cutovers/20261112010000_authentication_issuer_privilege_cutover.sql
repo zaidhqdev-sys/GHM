@@ -54,6 +54,8 @@ REVOKE ALL ON FUNCTION ghm.auth_lookup_password_by_normalized_email(text)
   FROM PUBLIC, ghm_runtime;
 REVOKE ALL ON FUNCTION ghm.auth_set_password(bigint, text, text, text, integer, integer, integer)
   FROM PUBLIC, ghm_runtime;
+REVOKE ALL ON FUNCTION ghm.auth_rehash_password_if_unchanged(bigint, text, text, integer, integer, integer)
+  FROM PUBLIC, ghm_runtime;
 REVOKE ALL ON FUNCTION ghm.auth_create_session_with_refresh(bigint, bytea)
   FROM PUBLIC, ghm_runtime;
 REVOKE ALL ON FUNCTION ghm.auth_validate_session(bigint)
@@ -80,7 +82,7 @@ GRANT EXECUTE ON FUNCTION ghm.auth_create_account(text, text, text, text, text, 
   TO ghm_auth_issuer;
 GRANT EXECUTE ON FUNCTION ghm.auth_lookup_password_by_normalized_email(text)
   TO ghm_auth_issuer;
-GRANT EXECUTE ON FUNCTION ghm.auth_set_password(bigint, text, text, text, integer, integer, integer)
+GRANT EXECUTE ON FUNCTION ghm.auth_rehash_password_if_unchanged(bigint, text, text, integer, integer, integer)
   TO ghm_auth_issuer;
 GRANT EXECUTE ON FUNCTION ghm.auth_create_session_with_refresh(bigint, bytea)
   TO ghm_auth_issuer;
