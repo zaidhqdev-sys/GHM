@@ -1193,3 +1193,10 @@ This is source-level hardening awaiting exact-head PostgreSQL 18 CI. The inspect
 Exact HEAD `b0711ccebc4adb82fc24256a40a812d0335f8702` passed CI run `43178029417` (`quality` and `web-quality`). PostgreSQL 18.6 applied the full migration chain, including the SECURITY DEFINER owner/search_path migration; issuer and Actor Gateway principal qualification, full test suite, migration policy, runtime boundary, guarded disposable issuer cutover, issuer lifecycle/runtime-denial and database-only rollback all passed. The issuer cutover dollar-quote guard and revised temporary-safe path expectations are included.
 
 This is disposable qualification only. No production changes or paid resources. Upstream PR #272 remains open/unmerged; issuer branch remains dependent and is not independently mergeable.
+
+
+## 2026-11-12 — complete direct function-grantee enforcement passed
+
+Issuer and Actor Gateway startup ACL verifiers now reject direct EXECUTE grants to every non-owner principal except their respective dedicated login. Disposable PostgreSQL qualification temporarily grants issuer and gateway functions to `ghm_payment_provider`, proves both verifiers detect the grants, revokes them through the restricted migrator/schema-owner path, and confirms clean baselines.
+
+Exact source HEAD `1db5f78b8a0f0405586fc9ae2675f16732e9374e` passed CI run `43179755317` (`quality` and `web-quality`), including PostgreSQL 18.6 full migrations, principal checks, full suite, runtime boundary, guarded issuer cutover, lifecycle, runtime denials and database-only rollback. Disposable evidence only; production untouched and no paid resources.
