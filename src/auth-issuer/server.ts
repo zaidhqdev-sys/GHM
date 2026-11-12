@@ -9,6 +9,7 @@ import { createQuoteFlowMigrationResetCompletionService } from '../migrations/qu
 import { createAuthIssuerApp } from './app';
 import { authIssuerDatabaseSslConfig } from './database-ssl';
 import { assertAuthIssuerDatabaseIdentity } from './database-principal';
+import { assertAuthIssuerDatabasePrivileges } from './database-privileges';
 
 const required = (name: string): string => {
   const value = process.env[name]?.trim();
@@ -107,6 +108,114 @@ const start = async (): Promise<void> => {
   const databaseIdentity = identity.rows[0];
   if (!databaseIdentity) throw new Error('Authentication Issuer database identity could not be resolved');
   assertAuthIssuerDatabaseIdentity(databaseIdentity);
+
+  const privileges = await pool.query<{
+    schema_usage: boolean;
+    schema_create: boolean;
+    direct_relation_privileges: boolean;
+    executable_functions: string[];
+    expected_functions: string[];
+    unsafe_function_defaults: boolean;
+    runtime_can_execute_auth_lifecycle_functions: boolean;
+  }>(`
+    WITH expected_signatures(signature) AS (
+      SELECT unnest(ARRAY[
+        'ghm.auth_create_account(text, text, text, text, text, integer, integer, integer)',
+        'ghm.auth_lookup_password_by_normalized_email(text)',
+        'ghm.auth_rehash_password_if_unchanged(bigint, text, text, integer, integer, integer)',
+        'ghm.auth_create_session_with_refresh(bigint, bytea)',
+        'ghm.auth_rotate_refresh(bytea, bytea)',
+        'ghm.auth_revoke_by_refresh_hash(bytea, text)',
+        'ghm.auth_issue_recovery(bigint, bytea, timestamptz)',
+        'ghm.auth_reset_password_with_recovery(bytea, text, text, integer, integer, integer)',
+        'ghm.auth_lookup_quoteflow_migration_reset_enrollment(text)',
+        'ghm.auth_complete_quoteflow_migration_reset(bytea, text, integer, integer, integer)'
+      ]::text[])
+    ),
+    runtime_lifecycle_signatures(signature) AS (
+      SELECT unnest(ARRAY[
+        'ghm.auth_create_account(text, text, text, text, text, integer, integer, integer)',
+        'ghm.auth_lookup_password_by_normalized_email(text)',
+        'ghm.auth_set_password(bigint, text, text, text, integer, integer, integer)',
+        'ghm.auth_rehash_password_if_unchanged(bigint, text, text, integer, integer, integer)',
+        'ghm.auth_create_session_with_refresh(bigint, bytea)',
+        'ghm.auth_validate_session(bigint)',
+        'ghm.auth_rotate_refresh(bytea, bytea)',
+        'ghm.auth_revoke_by_refresh_hash(bytea, text)',
+        'ghm.auth_issue_recovery(bigint, bytea, timestamptz)',
+        'ghm.auth_redeem_recovery(bytea)',
+        'ghm.auth_redeem_recovery_with_count(bytea)',
+        'ghm.auth_reset_password_with_recovery(bytea, text, text, integer, integer, integer)',
+        'ghm.auth_lookup_quoteflow_migration_reset_enrollment(text)',
+        'ghm.auth_complete_quoteflow_migration_reset(bytea, text, integer, integer, integer)',
+        'ghm.auth_register_quoteflow_migration_reset_enrollment(bigint, text, text, text, text, text)'
+      ]::text[])
+    )
+    SELECT
+      has_schema_privilege(session_user, 'ghm', 'USAGE') AS schema_usage,
+      has_schema_privilege(session_user, 'ghm', 'CREATE') AS schema_create,
+      (
+        EXISTS (
+          SELECT 1
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            CROSS JOIN (VALUES ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'),
+                               ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')) AS p(privilege)
+           WHERE n.nspname = 'ghm'
+             AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+             AND has_table_privilege(session_user, c.oid, p.privilege)
+        )
+        OR EXISTS (
+          SELECT 1
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            CROSS JOIN (VALUES ('USAGE'), ('SELECT'), ('UPDATE')) AS p(privilege)
+           WHERE n.nspname = 'ghm'
+             AND c.relkind = 'S'
+             AND has_sequence_privilege(session_user, c.oid, p.privilege)
+        )
+      ) AS direct_relation_privileges,
+      ARRAY(
+        SELECT p.oid::regprocedure::text
+          FROM pg_proc p
+          JOIN pg_namespace n ON n.oid = p.pronamespace
+         WHERE n.nspname = 'ghm'
+           AND has_function_privilege(session_user, p.oid, 'EXECUTE')
+         ORDER BY 1
+      ) AS executable_functions,
+      ARRAY(
+        SELECT signature::regprocedure::text
+          FROM expected_signatures
+         ORDER BY 1
+      ) AS expected_functions,
+      (
+        NOT EXISTS (
+          SELECT 1
+            FROM pg_default_acl d
+           WHERE d.defaclrole = 'ghm_schema_owner'::regrole
+             AND d.defaclnamespace = 0
+             AND d.defaclobjtype = 'f'
+        )
+        OR EXISTS (
+          SELECT 1
+            FROM pg_default_acl d
+            CROSS JOIN LATERAL aclexplode(d.defaclacl) acl
+           WHERE d.defaclrole = 'ghm_schema_owner'::regrole
+             AND d.defaclnamespace = 0
+             AND d.defaclobjtype = 'f'
+             AND acl.privilege_type = 'EXECUTE'
+             AND acl.grantee IN (0, 'ghm_runtime'::regrole::oid, 'ghm_auth_issuer'::regrole::oid)
+        )
+      ) AS unsafe_function_defaults,
+      EXISTS (
+        SELECT 1
+          FROM runtime_lifecycle_signatures f
+         WHERE has_function_privilege('ghm_runtime', f.signature::regprocedure, 'EXECUTE')
+      ) AS runtime_can_execute_auth_lifecycle_functions
+  `);
+  const databasePrivileges = privileges.rows[0];
+  if (!databasePrivileges) throw new Error('Authentication Issuer database privileges could not be resolved');
+  assertAuthIssuerDatabasePrivileges(databasePrivileges);
 
   server.listen(port, () => {
     console.log(`GHM Authentication Issuer listening on port ${port}`);
