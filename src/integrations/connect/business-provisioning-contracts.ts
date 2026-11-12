@@ -18,3 +18,10 @@ export interface ConnectBusinessProvisioningGatewayClient {
     input: ConnectBusinessProvisioningInput,
   ): Promise<ConnectBusinessProvisioningResult>;
 }
+
+export interface ConnectBusinessProvisioningReader {
+  provisionOrResolve(
+    accountId: number,
+    input: ConnectBusinessProvisioningInput,
+  ): Promise<ConnectBusinessProvisioningResult>;
+}
