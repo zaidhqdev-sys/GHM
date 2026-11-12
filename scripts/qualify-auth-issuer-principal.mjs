@@ -49,7 +49,7 @@ try {
       FROM pg_proc p
       JOIN pg_namespace n ON n.oid = p.pronamespace
      WHERE n.nspname = 'ghm'
-       AND p.proname LIKE 'auth\\_%' ESCAPE '\\'
+       AND left(p.proname, 5) = 'auth_'
        AND has_function_privilege(session_user, p.oid, 'EXECUTE')
      ORDER BY p.oid::regprocedure::text
   `);
