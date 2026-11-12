@@ -85,7 +85,7 @@ test('unmapped Connect Business provisioning is delegated atomically to the sign
   const gateway = new FakeGateway(result('provisioned'));
   const adapter = new ConnectBusinessAdapter(gateway);
 
-  const provisioned = await adapter.provisionOrResolve(context, accessToken, {
+  const provisioned = await adapter.provisionOrResolve(accessToken, {
     externalBusinessId: '22222222-2222-4222-8222-222222222222',
     name: ' Acme Construction ',
   });
@@ -101,7 +101,7 @@ test('Connect Business identifier validation fails before calling the gateway', 
   const adapter = new ConnectBusinessAdapter(gateway);
 
   await assert.rejects(
-    () => adapter.provisionOrResolve(context, accessToken, {
+    () => adapter.provisionOrResolve(accessToken, {
       externalBusinessId: 'not-a-uuid',
       name: 'Acme Construction',
     }),
@@ -115,7 +115,7 @@ test('Connect Business provisioning requires the verified access token', async (
   const adapter = new ConnectBusinessAdapter(gateway);
 
   await assert.rejects(
-    () => adapter.provisionOrResolve(context, ' ', {
+    () => adapter.provisionOrResolve(' ', {
       externalBusinessId: '33333333-3333-4333-8333-333333333333',
       name: 'Blocked Business',
     }),
