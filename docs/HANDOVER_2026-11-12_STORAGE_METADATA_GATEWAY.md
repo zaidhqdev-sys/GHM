@@ -137,7 +137,7 @@ Inspected the full storage service, HTTP routes, storage tests, storage migratio
 
 Historical checkpoint note: at the time this paragraph was written, the dual-proof proposal was design-only. It was superseded by the provider-transition migration and transport implementation documented below. The secret table and wrappers now exist in source, but no provider secret has been provisioned and no migration has been applied to any database. Existing direct runtime function grants remain unchanged.
 
-## Provider-transition database stage added (not yet integrated)
+## Provider-transition database stage
 
 A second database migration now exists: `database/migrations/20261112150000_add_storage_provider_workflow_attestation.sql`.
 
@@ -184,7 +184,31 @@ Source integration has now been completed across the Resource API:
 - Added client transport tests and router fail-closed/token-forwarding tests; added the reader, signer and migration contract tests to the main `npm test` command.
 - The Actor Gateway app source was reconciled against the last clean pre-storage route version so the new storage route block appears once and the existing Trust Score, Business Hours and Saved Business routes remain exactly once. This removed a malformed duplicate tail introduced during earlier route insertion.
 
-**CI status:** earlier exact-head runs exposed and led to fixes for app route placement, missing Actor Gateway dependency typing and unavailable fetch test types. Those runs failed at TypeScript build and are not passing evidence. The latest source checkpoint is `50d87c0446fb90c031e7852bd24b4cb2c49b2e9d`; its CI run `43230405011` was queued when this handover update began. Re-check the exact latest branch HEAD and its full workflow result before treating build or tests as passed.
+**CI and qualification status:** the earlier exact-head failures exposed and led to fixes for app route placement, missing Actor Gateway dependency typing, unavailable fetch test types, the stale Business Logo source-contract assertion, and malformed/truncated storage migration SQL. The clean source checkpoint subsequently passed the complete migration set on PostgreSQL 18 and the full `npm test` suite (959/959) in run `43231658336`. A later exact-head run `43232525014` has also passed build, migrations, isolated Actor Gateway principal qualification, guarded provider-secret provisioning, and the new PostgreSQL 18 dual-proof qualification. The overall workflow is still running its remaining repository-wide qualifications; re-check the final conclusion before claiming complete CI.
 
-**Still open:** PostgreSQL 18 execution of the new migration; live disposable qualification of actor proof, provider proof, context substitution, stale timestamp, invalid signature, nonce replay, wrong database role, cross-tenant actor, invalid lifecycle state and legitimate upload/delete completion; runtime grant revocation and rollback; full issuer/Actor Gateway/database requalification; docs reconciliation before any merge. No production database, secrets, deployments, grants or roles have been changed. No PR has been merged.
+**Still open:** full end-to-end Resource API ↔ Actor Gateway ↔ PostgreSQL storage lifecycle qualification (including provider upload/head/read/delete against the actual provider), manual runtime-grant revocation and rollback qualification, full issuer/Actor Gateway/database requalification, final docs reconciliation, and founder approval before any merge. The PostgreSQL dual-proof qualification has passed for valid availability/deletion, invalid signature, expiry, context substitution, cross-business actor, nonce replay, invalid lifecycle state, and runtime wrapper EXECUTE denial. No production database, secrets, deployments, grants or roles have been changed. No PR has been merged.
+
+## PostgreSQL 18 dual-proof qualification results — 2026-11-12
+
+Added and wired `scripts/qualify-storage-provider-workflow-attestation-postgres.mjs` into CI immediately after isolated Actor Gateway principal qualification. CI now:
+
+1. Applies all migrations to disposable PostgreSQL 18.
+2. Provisions the provider secret using `GHM_MIGRATOR_DATABASE_URL` only, explicit local database identity, `SET LOCAL ROLE ghm_schema_owner`, and the dedicated mutation opt-in.
+3. Runs the adversarial provider-transition qualification through the actual `PostgresStorageMetadataGatewayReader` and the `ghm_actor_gateway` database login.
+4. Removes the disposable secret and all fixture rows afterward.
+
+The qualification passed on run `43232525014` for:
+- Legitimate availability transition with user actor proof plus Resource API provider proof.
+- Legitimate deletion completion with both proofs.
+- Invalid provider signature.
+- Expired provider attestation.
+- Provider context substitution.
+- Cross-business actor.
+- Replayed nonce reused with a separately valid signature for a different pending object.
+- Invalid lifecycle state.
+- `ghm_runtime` denied EXECUTE on both provider-transition wrappers.
+
+The provisioning script was tightened after its first CI attempt: it now uses the explicit migrator URL, not the qualification/admin URL, and still rejects non-local or incorrectly named targets. The first attempt was blocked by the identity guard and did not provision the secret. The subsequent run passed.
+
+**Important boundary:** this is database-wrapper qualification, not yet a complete external provider lifecycle or production cutover. Legacy runtime grants remain unchanged; no production secret has been created; no production migration or deployment has occurred.
 
