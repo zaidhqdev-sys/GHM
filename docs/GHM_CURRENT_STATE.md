@@ -938,3 +938,17 @@ Post-cutover output: exact 10-function issuer allow-list; zero direct GHM relati
 Final allow-list: account creation, password-hash lookup, conditional password rehash, session creation, refresh rotation, refresh-token logout, recovery issuance, token-bound email-preserving password reset, QuoteFlow enrollment lookup and QuoteFlow reset completion. General `auth_set_password` is not granted to issuer; only the QuoteFlow SECURITY DEFINER owner path uses it. Old redemption wrappers and unused session validation are excluded.
 
 The cutover SQL ran only on disposable CI PostgreSQL after all ordinary runtime tests. No production grants, roles, secrets, services, routing or deployments were changed. Current construction branch documentation commits are later than #3588 and require exact-head CI confirmation. Deployment/routing and product production env cutover remain outstanding.
+
+
+## 2026-11-12 — Authentication issuer isolation: Resource API no longer owns issuance routes
+
+Exact current construction head: 1cc09f83c236f9061e89dcf332c048845fd83185; GitHub Actions #3597 passed both quality and web-quality. Quality result: 896 tests passed, 0 failed; full migrations, all disposable PostgreSQL qualification steps, runtime boundary checks and the guarded manual issuer cutover/lifecycle qualification passed.
+
+The production Resource API entrypoint explicitly disables authentication issuer routes. With those routes disabled, the app does not construct auth persistence and does not load the refresh/recovery token pepper. Its bearer verifier loads public ES256 verification keys only. The isolated issuer is the only process expected to hold the signing private key, token pepper and dedicated issuer DB URL. Regression test: all eight issuer lifecycle/recovery/QuoteFlow reset routes return 404 on a Resource API instance with issuer routes disabled.
+
+Cross-product split-origin clients are implemented and exact-head CI passed:
+- GHM web: optional VITE_GHM_AUTH_ISSUER_BASE_URL for auth; VITE_GHM_API_BASE_URL for resources.
+- ZAID Connect: branch head 5b564c09148948b7a854bc73dbe920844b4b16ce, CI #293 passed. Native auth uses optional issuer URL; resources use the resource API URL. The server-only same-origin BFF routes only four browser auth operations to optional GHM_AUTH_ISSUER_URL; browser auth remains disabled by default.
+- QuoteFlow: branch head 321eb8d8322fcc1d07ce576d382bb4b34af1573f, CI #221 passed. Optional EXPO_PUBLIC_GHM_AUTH_ISSUER_URL applies only to auth; identity/resources remain on the resource API. Gate A remains disabled; Supabase coexistence unchanged.
+
+No client environment flags or issuer URLs have been enabled. Render issuer hosting/private networking remains unverified. Password recovery and QuoteFlow migration-reset delivery services are not wired into the issuer yet; their request routes remain unavailable (503), as before. End-to-end non-production service routing is the next gate. The guarded issuer privilege cutover remains manual-only and was applied only in disposable CI PostgreSQL. No production state was changed.

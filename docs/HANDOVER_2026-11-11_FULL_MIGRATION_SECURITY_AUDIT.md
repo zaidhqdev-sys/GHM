@@ -2038,3 +2038,37 @@ The general `auth_set_password` operation is no longer an issuer permission. It 
 The manual cutover was applied only to the disposable CI PostgreSQL database after the normal runtime test suite and all existing runtime qualifications. This proves the manual SQL and application boundary work together in isolation. It does **not** authorize applying the cutover to any live database.
 
 The current construction branch contains later handover/current-state documentation commits than code commit `68b571`; exact-current-head CI is still required before branch review. Actual issuer service deployment, Render networking/routing, client production configuration and end-to-end non-production routing remain outstanding. No production role/grant/secret/service/deployment was changed.
+
+
+## 2026-11-12 — Resource API issuer authority removed; cross-product routing contract verified
+
+### Resource API process boundary
+
+The latest construction batch removes the remaining authentication-issuer responsibilities from the ordinary Resource API process:
+
+- src/auth/ghm-bearer.ts now builds the default resource-token verifier from loadEs256VerificationKeys() and createAccessJwtVerifier(). Resource authentication requires public ES256 verification material only; it does not load the signing private key.
+- src/server.ts now creates the production Resource API with createApp({ authRoutesEnabled: false }).
+- src/http/app.ts registers issuer lifecycle routes only when explicitly enabled. With them disabled, it does not instantiate PostgresAuthPersistence, so the Resource API does not load GHM_AUTH_TOKEN_PEPPER.
+- The regression test requests all eight native, browser-independent auth lifecycle/recovery/QuoteFlow reset routes from a Resource API instance with issuer routes disabled and requires 404 for each.
+- The isolated Authentication Issuer remains the only process that loads the ES256 private signing key, token pepper and dedicated GHM_AUTH_ISSUER_DATABASE_URL.
+
+Exact current construction head 1cc09f83c236f9061e89dcf332c048845fd83185 passed GitHub Actions run #3597 (43134203950): quality and web-quality succeeded. The quality job passed 896 tests, 0 failures, the full migration chain, all existing disposable PostgreSQL qualifications, runtime boundary verification, the guarded issuer manual cutover against disposable PostgreSQL, and the issuer lifecycle/runtime-denial qualification. The new Resource API issuer-route isolation regression passed as test 247. This qualification is not a production cutover authorization.
+
+### Cross-product client routing — source and exact-head CI verified
+
+- GHM web: web/src/auth/ghm-auth-client.ts accepts separate baseUrl and authBaseUrl. VITE_GHM_AUTH_ISSUER_BASE_URL optionally selects the issuer for login/refresh/logout; VITE_GHM_API_BASE_URL remains the resource API origin for authenticated resource requests. Unset issuer URL falls back to the resource API origin.
+- ZAID Connect: construction branch construction/ghm-auth-issuer-origin-20261112, exact handover/test head 5b564c09148948b7a854bc73dbe920844b4b16ce, passed CI #293 (43129562750). Native bearer login/refresh/logout can use optional VITE_GHM_AUTH_ISSUER_BASE_URL; resource requests retain VITE_GHM_API_BASE_URL. The same-origin Vercel BFF uses server-only GHM_AUTH_ISSUER_URL for exactly four existing browser-cookie operations (register/login/refresh/logout); resource requests remain on GHM_INTERNAL_RUNTIME_URL. Browser-cookie mode remains disabled by default.
+- QuoteFlow: construction branch construction/ghm-auth-issuer-origin-20261112, exact handover/test head 321eb8d8322fcc1d07ce576d382bb4b34af1573f, passed CI #221 (43129565632). Optional EXPO_PUBLIC_GHM_AUTH_ISSUER_URL is used only for login/refresh/logout; identity/resource requests remain on the GHM resource API origin. Gate A remains disabled and Supabase coexistence is unchanged.
+
+These are source-level split-origin implementations and CI contract tests, not deployed end-to-end routing. No issuer URL, feature flag or product environment value was enabled.
+
+### Remaining non-production routing and deployment gates
+
+1. Confirm a no-cost, suitable Render service allocation and whether private networking is actually available for the intended issuer service. The read-only Render inventory still does not establish a dedicated issuer service or verified private route. Do not assume Free service networking or create a paid service.
+2. If private networking is unavailable, separately review a public HTTPS issuer ingress design, its CORS allow-lists, trusted proxy hop count, rate limiting, availability and origin restrictions. Do not place issuer private key, token pepper or issuer database URL in the Resource API environment.
+3. Provision only non-production issuer secrets and the isolated database principal after the service topology is confirmed; run issuer /readyz and startup role assertions.
+4. Exercise non-production registration/login/refresh/logout and resource authorization through all three clients, including Connect's native path and its separately disabled browser-cookie BFF path. Verify failure behavior and ensure identity/resource requests never route to the issuer.
+5. Password recovery delivery and QuoteFlow migration-reset recovery delivery remain unconfigured in the issuer entrypoint; those routes remain unavailable (503) until an existing approved delivery adapter is wired and qualified. Do not invent a mail provider or claim recovery delivery is live.
+6. Only after successful non-production end-to-end tests, a fresh independently verified production backup, Render role-model resolution, and explicit approval may the guarded manual issuer cutover be considered. The cutover file remains unapplied to every live database.
+
+No production database grants/roles, secrets, Render services/environment, routing, deployments, product flags, application data or payment settings were changed. PayFast remains paused pending sandbox access; approved legal-document work remains parked. No merge was performed.
