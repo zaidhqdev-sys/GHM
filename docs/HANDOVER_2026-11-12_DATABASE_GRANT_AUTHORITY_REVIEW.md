@@ -348,3 +348,111 @@ Keep the existing Dashboard-managed default user as the controlled database admi
 Do not create `ghm_app_user IN ROLE ghm_runtime` as a default solution: that login would not satisfy the current runtime startup identity/no-membership contract. Do not rotate/delete the current Dashboard-managed default user or create a replacement Dashboard administrator merely to achieve runtime separation. Amanda's optional point-2 sequence applies only if we deliberately choose to remove the Dashboard-managed default user; that is not needed for the current design.
 
 Revised safe sequence: (1) retain Dashboard default for administration; (2) read-only qualify existing `ghm_runtime` attributes, memberships, ACLs, ownership and dependencies; (3) use a controlled administrator session to establish/rotate only the `ghm_runtime` credential if needed; (4) configure `GHM_RUNTIME_DATABASE_URL` on Resource API only; (5) verify live `session_user=current_user=ghm_runtime` and startup checks; (6) retain separate Auth Issuer, Actor Gateway and Migrator identities. No production change is authorized by this refinement.
+---
+
+## 2026-11-12 continuation — Render catalog verification and administrator membership contract
+
+### Current Render production role graph (fresh read-only query)
+
+Queried the production Render PostgreSQL instance `ghm-db` / `ghm_db` again using read-only catalog SQL. No production changes were made.
+
+Observed connection identity:
+
+```
+current_database = ghm_db
+session_user     = ghm_app_user
+current_user     = ghm_db_user
+```
+
+Observed role attributes:
+
+- `ghm_db_user`: LOGIN, INHERIT, CREATEDB, CREATEROLE, non-superuser, no replication, no BYPASSRLS.
+- `ghm_app_user`: LOGIN, INHERIT, non-superuser, no CREATEDB/CREATEROLE/replication/BYPASSRLS.
+- `ghm_runtime`: LOGIN, NOINHERIT, non-superuser, no elevated attributes.
+- `ghm_actor_gateway`: LOGIN, NOINHERIT, non-superuser, no elevated attributes.
+- `ghm_migrator`: LOGIN, NOINHERIT, non-superuser, no elevated attributes.
+- `ghm_payment_provider`: LOGIN, NOINHERIT, non-superuser, no elevated attributes.
+- `ghm_schema_owner`: NOLOGIN, NOINHERIT, non-superuser, no elevated attributes.
+- `ghm_auth_issuer`: **not present** in the current production role catalog; its creation/provisioning has not occurred.
+
+Observed relevant memberships:
+
+- `ghm_db_user` is a member of `ghm_actor_gateway` with `ADMIN OPTION=true`, `SET=false`, `INHERIT=false`, grantor `postgres`.
+- `ghm_db_user` is a member of `ghm_runtime` with the original postgres-granted `ADMIN OPTION=true`, `SET=false`, `INHERIT=false` membership and a second membership granted by `ghm_db_user` with `SET=true`, `INHERIT=true`.
+- `ghm_db_user` is also a member of `ghm_migrator`, `ghm_payment_provider`, and `ghm_schema_owner` with `ADMIN OPTION=true`, `SET=false`, `INHERIT=false` postgres-granted memberships.
+- `ghm_migrator` is a member of `ghm_schema_owner` with `ADMIN OPTION=false`, `SET=true`, `INHERIT=false`.
+- `ghm_app_user` has a role-level setting `role=ghm_db_user` and a SET/INHERIT membership in `ghm_db_user`.
+
+Read-only `pg_has_role` checks confirmed:
+
+- `ghm_db_user` can SET ROLE `ghm_runtime`.
+- `ghm_db_user` currently cannot SET ROLE `ghm_actor_gateway` (`SET=false`), despite having ADMIN OPTION membership.
+- `ghm_runtime` cannot SET ROLE `ghm_actor_gateway` and has no membership in Actor Gateway, Migrator or Schema Owner.
+
+Therefore the production problem is the administrative default connection being used as the effective application identity, not evidence that `ghm_runtime` can currently assume Actor Gateway. The intended transition is to keep the Dashboard-managed default administrator for controlled administration and use the existing SQL-created `ghm_runtime` login directly for the Resource API.
+
+### Why the previous startup membership checks were incompatible with Render
+
+The earlier runtime, Actor Gateway and Authentication Issuer startup checks rejected any membership in either direction. That would reject the production roles because Render/PostgreSQL creates a trusted membership from the administrator (`ghm_db_user`) back to SQL-created service roles. It would prevent the current `ghm_runtime` and `ghm_actor_gateway` identities from passing startup in the real Render environment even though those service logins themselves are not members of other roles.
+
+Corrected the service identity contract to `no_untrusted_role_memberships`:
+
+- The service login itself must not be a member of any other role (`pg_auth_members.member = service_role` is rejected).
+- The only role permitted to be a member of the service login role is the trusted Render database administrator `ghm_db_user`.
+- Any other member of the service role causes startup rejection.
+- The service's own elevated attributes remain rejected, and its exact function/direct-object privilege checks remain unchanged.
+
+Applied this contract to Resource API runtime, Actor Gateway and Authentication Issuer startup checks, principal tests, startup SQL contract tests and principal qualification scripts. The manual Authentication Issuer privilege cutover now uses the same administrator-only membership exception; it will reject any member other than `ghm_db_user` and any membership where the service role itself is a member of another role.
+
+The migrator boundary is intentionally different: `ghm_migrator` must have exactly one direct membership, the SET-only/non-inheritable `ghm_schema_owner` path. Added checks that only `ghm_db_user` may be a member of `ghm_migrator`, and only `ghm_db_user` and `ghm_migrator` may be members of `ghm_schema_owner`.
+
+Fresh production catalog counts match this stricter migrator contract:
+
+```
+migrator_direct_membership_count       = 1
+migrator_untrusted_member_count        = 0
+schema_owner_direct_membership_count   = 0
+schema_owner_untrusted_member_count    = 0
+```
+
+### Render service inventory (read-only)
+
+Fresh Render service listing shows:
+
+- `ghm-internal-runtime` is the only current production GHM web service. It is on `main`, has auto-deploy OFF, and currently starts with `npm start`.
+- No separately deployed production Authentication Issuer service is present.
+- No separately deployed production Actor Gateway service is present.
+- `ghm-identity-qualification` remains an older qualification service; do not treat it as production target.
+- `ghm-payfast-sandbox-runtime` and `ghm-payfast-callback-sandbox` remain legacy sandbox services; PayFast remains paused and is excluded from this work.
+
+Repository source separation is therefore not yet a deployed service topology. The Actor Gateway and Authentication Issuer service creation/deployment, private routing, credentials, and service-level health verification remain cutover blockers. No Render service or environment variable was changed.
+
+### Runtime function EXECUTE allow-list staged-state gap closed in source
+
+The Resource API runtime function verifier previously accepted only the 43-function pre-cutover state and 40-function post-Campaign/review state. The Authentication Issuer cutover removes fourteen runtime authentication lifecycle functions, leaving only the two separately reviewed external identity/business mapping lookups. The old verifier would reject the valid post-issuer state once production enforcement was enabled.
+
+Added four exact reviewed states:
+
+- 43 functions: pre-Campaign/review and pre-issuer.
+- 40 functions: Campaign/review cutover only.
+- 29 functions: issuer cutover only.
+- 26 functions: combined Campaign/review plus issuer cutovers.
+
+Added unit tests for all four states and adversarial added/missing grants. The disposable Authentication Issuer cutover qualification now invokes the actual Resource API runtime startup allow-list verifier after the earlier Campaign/review cutover, proving the combined 26-function state.
+
+### Campaign manual cutover transaction defect and correction
+
+The Campaign/review manual cutover artifact had accidentally duplicated its transaction body. It contained an internal `COMMIT;DO $$` between the first and second copy. The qualification harness had also used an over-escaped transaction-stripping regular expression, so the nested transaction wrapper remained. This committed the outer `SET LOCAL ROLE ghm_schema_owner` transaction before the second DO block, causing the subsequent block to execute as `ghm_migrator` and fail with `permission denied for schema ghm`.
+
+Corrected the artifact to one transaction with one operator guard, one idempotent operation-allow-list extension, one set of wrapper definitions/grants/revokes and one final COMMIT. Corrected the qualification regex to strip the outer BEGIN/COMMIT wrappers correctly and added an explicit assertion that the manual cutover runs as `session_user=ghm_migrator`, `current_user=ghm_schema_owner`, with schema USAGE and CREATE.
+
+### Current exact-head CI checkpoint
+
+- Earlier failures are preserved as evidence: run `43257659768` exposed the malformed DO delimiter; later run `43289350381` exposed the duplicate transaction/COMMIT issue; run `43291439716` exposed stale principal qualification expecting the old `no_role_memberships` field.
+- The corresponding source, script, SQL and test corrections are now on `construction/auth-issuer-isolation-20261112`.
+- Exact current checkpoint at this handover append: commit `d2a619c3bfd037b7e165ccceb6a01e204de91ec7`; run `43291959904` has `web-quality` passed and `quality` still in progress.
+- Do not claim exact-head CI passed until the `quality` job and the combined issuer/runtime cutover qualification complete successfully on the latest branch HEAD.
+
+### Production safety
+
+No production role, membership, grant, role setting, credential, environment variable, service, migration, deployment, traffic or data was changed. The Render queries were read-only. The Dashboard administrator remains the current default; the Resource API is not yet cut over to `GHM_RUNTIME_DATABASE_URL`. No fresh independently verified production backup has been established in this continuation. PayFast remains paused.
