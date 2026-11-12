@@ -66,6 +66,8 @@ export const ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL = `
       'ghm.gateway_storage_create_pending(bigint, bigint, uuid, text, text, bigint, text, bigint, text, text, text, bigint, text, text)',
       'ghm.gateway_storage_get_object(bigint, bigint, uuid, text, text, bigint)',
       'ghm.gateway_storage_mark_deletion_pending(bigint, bigint, uuid, text, text, bigint)',
+      'ghm.gateway_storage_mark_available(bigint, bigint, uuid, text, text, bigint, uuid, text, text, bigint, text, text, text, bigint)',
+      'ghm.gateway_storage_mark_deleted(bigint, bigint, uuid, text, text, bigint, uuid, text, text, bigint, text)',
       'ghm.gateway_submit_business_capability_evidence(bigint, bigint, uuid, text, text, bigint, text, text, text, text, text, text, date, date, text)',
       'ghm.gateway_transition_business_capability_evidence(bigint, bigint, uuid, text, text, bigint, text, text)',
       'ghm.gateway_transition_business_capability_verification(bigint, bigint, uuid, text, text, bigint, text, text, text)',
