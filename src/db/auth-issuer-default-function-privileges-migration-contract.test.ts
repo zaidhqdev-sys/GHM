@@ -35,3 +35,9 @@ test('manual issuer cutover and rollback require the dedicated migrator/schema-o
     assert.ok(script.includes('issuer privilege operation requires session_user=ghm_migrator and current_user=ghm_schema_owner'));
   }
 });
+
+
+test('issuer startup ACL verifier inspects global and GHM-schema function defaults', () => {
+  const source = fs.readFileSync(path.resolve(process.cwd(), 'src/auth-issuer/database-privileges.ts'), 'utf8');
+  assert.match(source, /defaclnamespace = 0 OR d\.defaclnamespace = 'ghm'::regnamespace/);
+});
