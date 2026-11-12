@@ -1,10 +1,13 @@
 import 'dotenv/config';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { Client } from 'pg';
 
 // Read-only catalog inventory. Deliberately restricted to the disposable local
 // qualification database; this script never changes roles, grants, schemas or data.
-const url = process.env.GHM_SECURITY_DEFINER_AUDIT_DATABASE_URL?.trim();
-if (!url) throw new Error('Missing GHM_SECURITY_DEFINER_AUDIT_DATABASE_URL');
+const url = process.env.GHM_SECURITY_DEFINER_AUDIT_DATABASE_URL?.trim()
+  || process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
+if (!url) throw new Error('Missing GHM_SECURITY_DEFINER_AUDIT_DATABASE_URL or GHM_MIGRATOR_DATABASE_URL');
 const target = new URL(url);
 if (!['localhost', '127.0.0.1', '::1', '[::1]'].includes(target.hostname) || target.pathname !== '/ghm_disposable_test') {
   throw new Error('SECURITY DEFINER inventory is restricted to local ghm_disposable_test');
@@ -141,7 +144,7 @@ try {
     }
   }
 
-  process.stdout.write(JSON.stringify({
+  const report = {
     audit: 'GHM SECURITY DEFINER whole-database catalog inventory',
     version: 1,
     captured_at: new Date().toISOString(),
