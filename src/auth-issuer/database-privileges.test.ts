@@ -12,8 +12,14 @@ const leastPrivilege: AuthIssuerDatabasePrivileges = {
   executable_functions: ['ghm.auth_login(text)'],
   expected_functions: ['ghm.auth_login(text)'],
   unsafe_function_defaults: false,
-  runtime_executable_auth_functions: ['ghm.auth_lookup_external_identity(text, text)'],
-  expected_runtime_auth_functions: ['ghm.auth_lookup_external_identity(text, text)'],
+  runtime_executable_auth_functions: [
+    'ghm.auth_lookup_external_identity(text, text)',
+    'ghm.auth_lookup_business_external_mapping(text, text)',
+  ],
+  expected_runtime_auth_functions: [
+    'ghm.auth_lookup_external_identity(text, text)',
+    'ghm.auth_lookup_business_external_mapping(text, text)',
+  ],
 };
 
 test('accepts only the exact issuer function allow-list and isolated database privileges', () => {
@@ -38,7 +44,8 @@ test('rejects extra/missing issuer functions and unsafe future defaults', () => 
     { executable_functions: [...leastPrivilege.executable_functions, 'ghm.auth_unreviewed()'] },
     { executable_functions: [] },
     { unsafe_function_defaults: true },
-    { runtime_executable_auth_functions: ['ghm.auth_lookup_external_identity(text, text)', 'ghm.auth_create_account(text)'] },
+    { runtime_executable_auth_functions: ['ghm.auth_lookup_external_identity(text, text)'] },
+    { runtime_executable_auth_functions: [...leastPrivilege.runtime_executable_auth_functions, 'ghm.auth_create_account(text)'] },
   ]) {
     assert.throws(
       () => assertAuthIssuerDatabasePrivileges({ ...leastPrivilege, ...override }),
