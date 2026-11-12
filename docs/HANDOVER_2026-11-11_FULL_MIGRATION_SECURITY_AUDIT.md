@@ -2477,3 +2477,21 @@ Other current audit corrections:
 Latest source/test correction before this handover update: `419dd4470268b5811dd9197ba36c9e40b87f4b1b`. Re-fetch the branch head after the documentation commits and require full exact-head CI.
 
 No production ACL, role, secret, service, deployment, data or routing change was made. No paid resource was created.
+
+
+## 2026-11-12 — disposable schema-specific default-ACL adversarial fixture
+
+The default-ACL verifier correction is now covered by an actual PostgreSQL qualification fixture, not only source-text assertions.
+
+`scripts/qualify-auth-issuer-cutover.mjs` now:
+1. Confirms both issuer and Actor Gateway default-function ACL verifiers begin in a safe state.
+2. Uses the restricted migrator session and `SET LOCAL ROLE ghm_schema_owner` to grant function EXECUTE by schema-specific default privilege (`IN SCHEMA ghm`) to the unexpected non-owner role `postgres`.
+3. Confirms both verifiers report `unsafe_function_defaults=true`.
+4. Revokes the probe grant through the same controlled role path.
+5. Confirms both verifiers return to the safe baseline.
+
+The qualification uses the existing Actor Gateway database URL from the disposable CI environment and closes its pool with the other qualification pools. The probe runs only after the existing strict local `ghm_disposable_test` URL/database guard. It does not touch production.
+
+Static contract tests now ensure this adversarial fixture remains part of the issuer and Actor Gateway qualification. This test is committed but still requires a full exact-head PostgreSQL 18 CI run. The available GitHub workflow-run connector does not expose push-triggered run records for this branch, so do not claim it passed until a run is independently retrieved.
+
+Latest qualification-source/test commit before this handover update: `c2e345440978716bc221cbf8aa486dd9d8d173a6`. The issuer branch remains separate from open/unmerged upstream PR #272; no integration or merge is authorized.
