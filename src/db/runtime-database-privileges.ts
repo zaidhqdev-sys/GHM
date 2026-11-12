@@ -2,6 +2,8 @@ import type { Pool } from 'pg';
 
 export interface RuntimeDatabaseFunctionPrivileges {
   executable_functions: string[];
+  expected_pre_cutover_functions?: string[];
+  expected_post_campaign_review_functions?: string[];
 }
 
 // Exact pre-migration baseline from the disposable PostgreSQL 18.6 whole-database
@@ -67,23 +69,46 @@ export const RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS = RUNTIME_PRE_CAMPAIGN_REVIE
   .filter(signature => !(CAMPAIGN_REVIEW_LEGACY_FUNCTIONS as readonly string[]).includes(signature));
 
 export const RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL = `
-  SELECT ARRAY(
-    SELECT p.oid::regprocedure::text
-      FROM pg_catalog.pg_proc p
-      JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
-     WHERE n.nspname = 'ghm'
-       AND p.prosecdef
-       AND has_function_privilege(session_user, p.oid, 'EXECUTE')
-     ORDER BY 1
-  ) AS executable_functions
+  WITH expected_pre AS (
+    SELECT unnest($1::text[]) AS signature
+  ),
+  expected_post AS (
+    SELECT signature FROM expected_pre
+     WHERE NOT (signature = ANY($2::text[]))
+  )
+  SELECT
+    ARRAY(
+      SELECT p.oid::regprocedure::text
+        FROM pg_catalog.pg_proc p
+        JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname = 'ghm'
+         AND p.prosecdef
+         AND has_function_privilege(session_user, p.oid, 'EXECUTE')
+       ORDER BY 1
+    ) AS executable_functions,
+    ARRAY(
+      SELECT to_regprocedure(signature)::text
+        FROM expected_pre
+       WHERE to_regprocedure(signature) IS NOT NULL
+       ORDER BY 1
+    ) AS expected_pre_cutover_functions,
+    ARRAY(
+      SELECT to_regprocedure(signature)::text
+        FROM expected_post
+       WHERE to_regprocedure(signature) IS NOT NULL
+       ORDER BY 1
+    ) AS expected_post_campaign_review_functions
 `;
 
 export const assertRuntimeDatabaseFunctionPrivileges = (
   privileges: RuntimeDatabaseFunctionPrivileges,
 ): void => {
   const actual = [...privileges.executable_functions].sort();
-  const preCutover = [...RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS].sort();
-  const postCutover = [...RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS].sort();
+  const preCutover = [...(privileges.expected_pre_cutover_functions ?? RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS)].sort();
+  const postCutover = [...(privileges.expected_post_campaign_review_functions ?? RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS)].sort();
+  if (preCutover.length !== 43 || postCutover.length !== 40) {
+    throw new Error('Runtime database function allow-list signatures did not all resolve in this database');
+  }
   const matches = (expected: string[]) => JSON.stringify(actual) === JSON.stringify(expected);
   if (!matches(preCutover) && !matches(postCutover)) {
     throw new Error(
@@ -95,7 +120,10 @@ export const assertRuntimeDatabaseFunctionPrivileges = (
 export async function readRuntimeDatabaseFunctionPrivileges(
   pool: Pick<Pool, 'query'>,
 ): Promise<RuntimeDatabaseFunctionPrivileges> {
-  const result = await pool.query<RuntimeDatabaseFunctionPrivileges>(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL);
+  const result = await pool.query<RuntimeDatabaseFunctionPrivileges>(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, [
+    RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS,
+    CAMPAIGN_REVIEW_LEGACY_FUNCTIONS,
+  ]);
   if (!result.rows[0]) throw new Error('Runtime database function privileges could not be resolved');
   return result.rows[0];
 }
