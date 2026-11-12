@@ -242,3 +242,53 @@ The same exact-head run also passed:
 
 The complete repository-wide workflow for code head `dcbd0e317ba739e248674c73496ed0e50724c7e6` completed successfully in run `43233465264`, including the 959-test suite, storage provider dual-proof qualification, five-function storage grant revocation/rollback rehearsal, the remaining Actor Gateway signed-cutover qualifications, and the full auth issuer cutover qualification. The current branch head is `64b97062a63273cd80d42907f9f7fc65825b3f32` after this handover reconciliation; its exact-head workflow is `43233675132` and is running. Re-check that exact-head result before merging.
 
+
+
+## Continuation checkpoint — 2026-11-12 14:26 UTC
+
+This section supersedes earlier "not yet implemented" and "not yet qualified" checkpoints above. Those are retained as historical chronology, not current status.
+
+### Current storage implementation
+
+The five legacy metadata operations now route through the signed Storage Metadata Actor Gateway from the Resource API. The implementation includes actor-signed v2 assertions for create/read/deletion-pending and dual proof for provider-confirmed availability/deletion: the user actor assertion plus a separate Resource API HMAC attestation verified by PostgreSQL. The Actor Gateway does not possess the provider signing key. Production Resource API storage requires the Actor Gateway origin and provider-attestation secret and fails closed rather than falling back to direct runtime SQL.
+
+The disposable PostgreSQL 18 adversarial qualification has been expanded beyond the initial provider transition checks. It exercises:
+- Signed pending creation and metadata read.
+- Private object read by a member and denial of cross-business private read.
+- Non-member pending creation denial.
+- Ordinary member deletion-request denial.
+- Disabled actor denial even when that actor has an active administrator membership row.
+- Legitimate pending → available → deletion-pending → deleted lifecycle.
+- Invalid provider signature, expired attestation, context substitution, wrong provider operation, provider metadata mismatch without state transition, cross-business actor and nonce replay.
+- Legacy function grant revocation/rollback, including direct-call denial for runtime, migrator and Actor Gateway database logins while preserving the five replacement wrapper grants.
+
+### Latest CI failure and correction
+
+Exact-head run `43236598348` failed only at the PostgreSQL 18 storage provider dual-proof qualification. The log identified the test fixture attempting to insert account_status='inactive'. The authoritative lifecycle constraint from `20260921120000_extend_account_identity_auth_lifecycle.sql` permits only `active` and `disabled`. This was a fixture defect, not a production schema change or a weakening of the test.
+
+Corrected the fixture to `disabled` in commit `6bb280bf4d1793120a829ebb3687c7cab3b97179`. Exact-head CI run `43237111882` was triggered for that commit; at the time of this checkpoint, `web-quality` passed and the `quality` job was still running. Do not claim this run passed until its final conclusion is checked.
+
+### Grant cutover rehearsal refinement
+
+The disposable grant rehearsal at `scripts/qualify-storage-metadata-runtime-grant-revocation-postgres.mjs` now snapshots and revokes direct EXECUTE for PUBLIC, `ghm_runtime`, `ghm_migrator` and `ghm_actor_gateway` across the five legacy functions. It verifies all three database login roles are denied direct invocation, checks that the five replacement Actor Gateway wrapper grants remain, and restores the original execution state. The rehearsal remains localhost/disposable-only and uses the migrator `SET LOCAL ROLE ghm_schema_owner` path. It is not a production cutover script.
+
+The design document was updated to reflect this expanded principal coverage in commit `1a2605cbc53a0551d57857e4f6b073f5ac5a3747`.
+
+### Exact current checkpoint
+
+- Construction branch: `construction/auth-issuer-isolation-20261112`.
+- Branch HEAD after the latest documentation update must be queried before further edits or qualification claims.
+- Latest code-fix commit: `6bb280bf4d1793120a829ebb3687c7cab3b97179`.
+- Latest documentation commit: `1a2605cbc53a0551d57857e4f6b073f5ac5a3747`.
+- Latest exact-head CI known at this checkpoint: run `43237111882`, not yet complete.
+- The prior exact-head run `43236301670` passed before the disabled-actor fixture was added; do not use it as evidence for that new case.
+- No production database, grants, roles, secrets, deployments, provider credentials or traffic were changed.
+- No PR was merged. PR #272 remains a separate integration branch and must not be conflated with this construction branch.
+
+### Remaining work
+
+1. Check the exact-head CI for the disabled-actor fixture and grant-revocation refinement; fix any real failure and rerun.
+2. Reconcile all affected security, storage, issuer and durable handover docs against the current source and actual CI evidence. Historical checkpoint paragraphs must be clearly superseded rather than silently treated as current.
+3. Run the complete exact-head whole-database SECURITY DEFINER inventory and issuer/Actor Gateway qualification; retain the artifact and checksum.
+4. Review production blockers independently: Render role-administration access, a fresh independently verified backup, approved deployment/network/rollback plan, and production secret provisioning. Do not bypass them.
+5. Do not merge or perform production cutover. Founder approval and fully reconciled documentation remain mandatory.
