@@ -146,6 +146,9 @@ jobs:
       - name: Check auth issuer principal qualification script syntax
         run: node --check scripts/qualify-auth-issuer-principal.mjs
 
+      - name: Check auth issuer cutover qualification script syntax
+        run: node --check scripts/qualify-auth-issuer-cutover.mjs
+
       - name: Check storage qualification script syntax
         run: node --check scripts/qualify-storage-persistence.mjs
 
@@ -190,6 +193,14 @@ jobs:
 
       - name: Qualify isolated auth issuer database principal and empty privilege baseline
         run: npm run qualify:auth-issuer-principal
+
+      - name: Apply auth issuer allow-list in disposable PostgreSQL only
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d ghm_disposable_test -v ON_ERROR_STOP=1 -f scripts/fixtures/auth-issuer-disposable-qualification-grants.sql
+
+      - name: Qualify isolated auth issuer lifecycle and runtime denials on disposable PostgreSQL
+        run: npm run qualify:auth-issuer-cutover
 
       - name: Qualify isolated actor gateway database principal
         run: npm run qualify:actor-gateway-principal
