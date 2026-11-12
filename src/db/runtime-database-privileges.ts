@@ -82,6 +82,50 @@ const REGISTRATION_IDENTITY_LEGACY_FUNCTIONS = [
   'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
 ] as const;
 
+const CAPABILITY_GOVERNANCE_LEGACY_FUNCTIONS = [
+  'ghm.create_capability_draft(bigint, text, text, text, uuid, integer, text, integer)',
+  'ghm.update_capability_draft(bigint, uuid, text, text, text, uuid, integer, text, integer)',
+  'ghm.transition_capability_lifecycle(bigint, uuid, text, uuid, integer)',
+] as const;
+
+const BUSINESS_CAPABILITY_LEGACY_FUNCTIONS = [
+  'ghm.replace_business_capability_assertions(bigint, bigint, jsonb)',
+  'ghm.transition_business_capability_verification(bigint, text, text, bigint, text)',
+  'ghm.transition_business_capability_evidence(bigint, text, bigint, text)',
+] as const;
+
+const SAVED_BUSINESS_LEGACY_FUNCTIONS = [
+  'ghm.create_saved_business(bigint, bigint)',
+  'ghm.delete_saved_business(bigint, bigint)',
+] as const;
+
+const BUSINESS_HOURS_LEGACY_FUNCTIONS = [
+  'ghm.replace_business_hours(bigint, bigint, jsonb)',
+] as const;
+
+const TRUST_SCORE_LEGACY_FUNCTIONS = [
+  'ghm.calculate_business_trust_score(bigint, bigint)',
+] as const;
+
+const BUSINESS_LOGO_LEGACY_FUNCTIONS = [
+  'ghm.set_business_logo_object(bigint, bigint, bigint)',
+] as const;
+
+// Every independently qualified manual runtime cutover is represented here.
+// These are exact legacy signatures revoked by the corresponding SQL files in
+// database/cutovers/. No unrelated function is accepted as a stage transition.
+export const RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS = {
+  campaignReview: CAMPAIGN_REVIEW_LEGACY_FUNCTIONS,
+  authenticationIssuer: AUTH_ISSUER_REVOKED_RUNTIME_FUNCTIONS,
+  registrationIdentity: REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
+  capabilityGovernance: CAPABILITY_GOVERNANCE_LEGACY_FUNCTIONS,
+  businessCapabilityMutations: BUSINESS_CAPABILITY_LEGACY_FUNCTIONS,
+  savedBusiness: SAVED_BUSINESS_LEGACY_FUNCTIONS,
+  businessHours: BUSINESS_HOURS_LEGACY_FUNCTIONS,
+  trustScore: TRUST_SCORE_LEGACY_FUNCTIONS,
+  businessLogo: BUSINESS_LOGO_LEGACY_FUNCTIONS,
+} as const;
+
 const normalizeSignature = (signature: string): string => signature.replace(/,\s+/g, ',');
 const without = (source: readonly string[], removed: readonly string[]): string[] =>
   source.filter(signature => !(removed as readonly string[]).includes(signature));
@@ -108,16 +152,31 @@ export const RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_
   RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS, REGISTRATION_IDENTITY_LEGACY_FUNCTIONS,
 );
 
-const REVIEWED_RUNTIME_FUNCTION_STAGES = [
-  RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS,
-  RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS,
-  RUNTIME_POST_AUTH_ISSUER_FUNCTIONS,
-  RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS,
-  RUNTIME_POST_REGISTRATION_IDENTITY_FUNCTIONS,
-  RUNTIME_POST_CAMPAIGN_REVIEW_AND_REGISTRATION_IDENTITY_FUNCTIONS,
-  RUNTIME_POST_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
-  RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
-] as const;
+const cutoverGroups = Object.values(RUNTIME_MANUAL_CUTOVER_FUNCTION_GROUPS);
+const allCutoverSignatures = cutoverGroups.flat();
+const duplicateCutoverSignatures = allCutoverSignatures.filter(
+  (signature, index) => allCutoverSignatures.indexOf(signature) !== index,
+);
+const cutoverSignaturesOutsideBaseline = allCutoverSignatures.filter(
+  signature => !(RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(signature),
+);
+if (duplicateCutoverSignatures.length > 0 || cutoverSignaturesOutsideBaseline.length > 0) {
+  throw new Error('Runtime manual cutover groups overlap or contain signatures outside the reviewed baseline');
+}
+
+// There are 2^9 independently qualified manual cutover combinations. The
+// guard accepts only an exact combination of these reviewed revocations.
+const REVIEWED_RUNTIME_FUNCTION_STAGES = Array.from(
+  { length: 2 ** cutoverGroups.length },
+  (_, mask) => RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.filter(signature =>
+    !cutoverGroups.some((group, index) =>
+      (mask & (1 << index)) !== 0 && (group as readonly string[]).includes(signature),
+    ),
+  ),
+);
+
+export const RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS =
+  REVIEWED_RUNTIME_FUNCTION_STAGES[REVIEWED_RUNTIME_FUNCTION_STAGES.length - 1];
 
 export const RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL = `
   SELECT ARRAY(
@@ -138,9 +197,10 @@ export const assertRuntimeDatabaseFunctionPrivileges = (
   const stages = REVIEWED_RUNTIME_FUNCTION_STAGES.map(stage =>
     stage.map(normalizeSignature).sort(),
   );
-  const expectedLengths = [43, 40, 29, 26, 41, 38, 27, 24];
-  if (stages.some((stage, index) => stage.length !== expectedLengths[index])) {
-    throw new Error('Runtime database function allow-list signatures did not all resolve in this source revision');
+  if (RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length !== 43
+      || RUNTIME_POST_ALL_MANUAL_CUTOVERS_FUNCTIONS.length !== 13
+      || stages.length !== 512) {
+    throw new Error('Runtime database function cutover stage inventory is incomplete');
   }
   if (!stages.some(expected => JSON.stringify(actual) === JSON.stringify(expected))) {
     const diagnostics = stages.map((expected, index) => ({
