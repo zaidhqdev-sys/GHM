@@ -2334,3 +2334,66 @@ Render remains on `main` with auto-deploy OFF and live deployment `c7cf1eb`; no 
 PR #272 remains unmerged and its base is stale. The capability/Actor Gateway child PRs #268–#271 are stacked on unmerged parent branches. Their code must be reconciled into a mainline-based series rather than merging the aggregate stack. PR #243/#244 supplier classification and analytics form a separate feature stack. PR #264 is an open docs checkpoint whose base is also stale; inspect its content and relevance before deciding whether to close or rebase it.
 
 No production role, grant, membership, secret, environment variable, deployment, traffic, database data or application configuration was changed in this checkpoint.
+
+
+## 2026-11-12 22:40 UTC — mainline Resource API merge verified; Actor Gateway support-contract correction and issuer gap logged
+
+### Mainline post-merge validation
+
+PR #275 is merged as `ad4fea43f2eb7bf959042b9db77a9f86e6bb531b`. Exact mainline checks for that merge commit have all passed:
+- `quality` — success
+- `web-quality` — success
+- Cloudflare Pages — success
+
+Render remains unchanged: `GHM-Internal-Runtime` is on `main`, auto-deploy OFF, live deploy `c7cf1eb`. The merge did not deploy the new Resource API code.
+
+### PR #272 source audit: two production-role-contract corrections
+
+The Actor Gateway integration branch originally had two incompatible assumptions:
+1. The Actor Gateway startup check and qualification script rejected every role membership involving `ghm_actor_gateway`.
+2. The additive migration `20261110210000_add_actor_gateway_principal_guard.sql` also rejected every role membership involving that login.
+
+That contradicts the current Render-supported role graph, which includes only the controlled `ghm_db_user` administrative membership to the protected service role with `ADMIN=true`, `INHERIT=false`, and `SET=false`. The service login itself must not be a member of any other role.
+
+The integration branch now aligns all three layers:
+- startup principal query and TypeScript verifier;
+- initial database migration guard;
+- disposable PostgreSQL qualification script and unit/migration-contract tests.
+
+The check now also verifies database CONNECT, no database CREATE, schema USAGE, and no schema CREATE. The migration already grants `USAGE ON SCHEMA ghm` to `ghm_actor_gateway`; the startup check now verifies it is actually effective.
+
+Latest correction commits at time of writing:
+- `0972978714459b67f5a09f8ecae11eb91bc8c247` — Actor Gateway verifier
+- `7bd68b2fbd0cf88ceae6a81080d10e2405eebd07` — unit tests
+- `da7ed9dd9fe02c68f4c2a1a6b35efec6d12b0547` — startup identity query
+- `86533870d514918f50e353b06ab8edec8ee399f5` — disposable qualification
+- `9351c031ab70730374ceb0701c0db784f311f5f9` — migration guard
+- `b613237b4987413fe0d974ade6dca9d4df567c30` — migration contract test
+- `0a72f18470d21017d875a8bc56fb4d6ecc471f39` — test runner registration
+
+Exact-head CI run `43321773929` was still running at this checkpoint. Do not call the branch green until the full run completes successfully.
+
+### PR/branch state after refreshing stale bases
+
+- PR #272 was retargeted to the current mainline SHA `ad4fea43...`; GitHub reports it dirty/non-mergeable. Do not merge the 164-file integration stack as-is.
+- PR #250 was refreshed against current mainline and is also dirty/non-mergeable. PR #268 and #269 remain stacked behind it; #270 and #271 depend on supplier-classification and Business-profile parent branches.
+- The PR #272 diff overlaps the new Resource API principal work from PR #275. The current mainline Resource API principal files must be preserved during any future integration; do not overwrite them with the older versions on #272.
+- The supplier/analytics stack (#243/#244) and profile compatibility stack (#237/#271) remain separate workstreams. No stale child PR should be merged independently of its parent.
+
+### Critical remaining ADR-001 gap: no isolated Authentication Issuer
+
+The #272 branch has a public-key-only JWT verifier in Actor Gateway, but the ordinary Resource API still loads the ES256 private signing key:
+- `src/auth/foundation/access-jwt.ts` implements signing.
+- `src/auth/ghm-auth-service.ts` constructs `createAccessJwtService(loadEs256Keys())`.
+- `src/auth/ghm-bearer.ts` also loads `loadEs256Keys()` in the Resource API.
+- `src/http/auth-router.ts` still handles register/login/refresh/logout through the ordinary API process and its own persistence pool.
+- Password recovery/reset and QuoteFlow migration-reset operations also use the Resource API's AuthPersistence boundary.
+- No `src/auth-issuer/` process, dedicated issuer HTTP interface, or `ghm_auth_issuer` role provisioning/migration exists in the #272 tree.
+
+Therefore a compromised Resource API process can mint a valid JWT with a chosen account subject; Actor Gateway would accept that token and produce the database HMAC assertion. The gateway cannot independently authenticate an actor until private signing and credential/session operations are isolated behind a separately credentialed Authentication Issuer. PR #272 is not a complete implementation of ADR-001.
+
+This is a hard security/release gate, not a documentation-only omission. The next issuer work requires a service boundary, dedicated DB principal/privilege contract, service-to-service/client routing, private-key custody, auth route migration, recovery and QuoteFlow reset compatibility, and an operational hosting decision. Do not simply remove the Resource API private key before the issuer path is deployed and verified.
+
+### Safety boundary
+
+No production migration, cutover, grant, role membership, credential, Render environment variable, service branch, auto-deploy, deployment, application data or traffic changed. No PR #272, #250, #268–#271, #243/#244 or #237 merge occurred. PayFast and legal publication remain paused.
