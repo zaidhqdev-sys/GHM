@@ -897,3 +897,10 @@ Connect CI #292 and QuoteFlow CI #220 passed on their workflow-triggering commit
 Render inventory confirms the current `GHM-Internal-Runtime` service is a Free Frankfurt web service on `main`, build `npm ci && npm run build`, start `npm start`, health `/healthz`, auto-deploy disabled, public edge allow-list `0.0.0.0/0`. No dedicated Actor Gateway service appears in the current five-service inventory; only its source entrypoint/process contract is verified. Do not describe it as separately deployed until an actual service is found/created and qualified.
 
 Private service networking, trusted proxy chain, and an additional free service allocation remain unverified. Do not create services or change routing/secrets before these are confirmed. Detailed service inventory and next gates are in the security handover. No Render configuration was changed.
+
+
+## Issuer readiness and expanded ACL qualification (2026-11-12)
+
+The issuer now has separate liveness `/healthz` and DB-backed readiness `/readyz`; readiness returns 503 without a successful `SELECT 1` on its dedicated pool. Tests cover fail-closed and ready cases.
+
+The issuer ACL checks now inspect every GHM table/partition/view/materialized view/foreign table for direct privileges, not just credential tables. A variable rename regression caused #3544/#3545 to fail in the pre-grant qualification script; fixed in `f254435`. CI #3549 passed build, all migrations and the strengthened baseline; full suite and post-cutover issuer tests were still running at that checkpoint. Latest readiness and handover commits need exact-head CI.
