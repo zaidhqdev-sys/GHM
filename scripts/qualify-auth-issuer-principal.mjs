@@ -49,28 +49,20 @@ try {
     'new issuer principal must receive no auth-function EXECUTE privileges before the reviewed allow-list is granted',
   );
 
-  const secretTablePrivileges = await pool.query(`
+  const directRelationPrivileges = await pool.query(`
     SELECT c.relname AS table_name, privilege.privilege
       FROM pg_class c
       JOIN pg_namespace n ON n.oid = c.relnamespace
       CROSS JOIN (VALUES ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'), ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')) AS privilege(privilege)
      WHERE n.nspname = 'ghm'
-       AND c.relname = ANY(ARRAY[
-         'account_password_credential',
-         'refresh_credential',
-         'password_recovery_credential',
-         'authentication_session',
-         'account_external_identity',
-         'business_external_mapping'
-       ])
-       AND c.relkind IN ('r', 'p')
+       AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
        AND has_table_privilege(session_user, c.oid, privilege.privilege)
      ORDER BY c.relname, privilege.privilege
   `);
   assert.deepEqual(
     secretTablePrivileges.rows,
     [],
-    'issuer must not receive direct table privileges; all credential/session access remains through reviewed functions',
+    'issuer must not receive direct privileges on any GHM table/view; all access remains through reviewed SECURITY DEFINER functions',
   );
 
   process.stdout.write(JSON.stringify({
