@@ -1099,6 +1099,15 @@ The previous exact-head CI pass at `4abb42e` predates these changes and is not e
 
 ### 2026-11-12 — Actor Gateway exact database ACL guard
 
-Actor Gateway startup previously asserted its database login identity but did not verify its complete effective GHM function/relation ACL. Added a verifier for the exact 22-function migration allow-list, zero direct table/view/sequence privileges, schema USAGE without CREATE, no PUBLIC EXECUTE on its executable functions, no runtime EXECUTE on gateway-specific functions, and safe future-function defaults. The verifier is wired before the HTTP listener; disposable qualification now calls the same verifier and unit/source-contract regressions cover the boundary. The issuer's future-default check also treats grants to `ghm_actor_gateway` as unsafe.
+Actor Gateway startup previously asserted its database login identity but did not verify its complete effective GHM function/relation ACL. Added a verifier for the exact 21-function signed-operation allow-list, zero direct table/view/sequence privileges, schema USAGE without CREATE, no PUBLIC EXECUTE on its executable functions, no runtime EXECUTE on gateway-specific functions, and safe future-function defaults. The verifier is wired before the HTTP listener; disposable qualification now calls the same verifier and unit/source-contract regressions cover the boundary. The issuer's future-default check also treats grants to `ghm_actor_gateway` as unsafe.
 
 This is an enforcement/qualification change, not a grant change. Exact-head CI and disposable PostgreSQL Actor Gateway qualification are pending; do not claim the 22-function boundary qualified until they pass.
+
+
+### 2026-11-12 — Revoke unsigned Actor Gateway entry points
+
+Source review confirmed that ten obsolete functions remained executable by the Actor Gateway after signed-assertion overloads were introduced: the original `assert_actor_gateway(bigint)` helper plus nine older account-ID-based overloads. The newer migrations granted signed overloads but did not revoke these earlier grants.
+
+Added migration `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads.sql` to revoke PUBLIC, runtime, migrator and gateway execution from all ten old signatures. The exact gateway allow-list is now 21 signed/typed operations. Disposable qualification requires SQLSTATE 42501 for the unsigned helper and each old overload. This preserves schema-owner controlled maintenance and does not change production grants.
+
+Exact-head CI and disposable PostgreSQL qualification remain pending.
