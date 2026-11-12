@@ -8,12 +8,13 @@ import { createGhmAuthService } from '../dist/auth/ghm-auth-service.js';
 
 const issuerUrl = process.env.GHM_AUTH_ISSUER_DATABASE_URL?.trim();
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL?.trim();
+const migratorUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
 const expectedDatabase = process.env.GHM_QUALIFICATION_DATABASE_NAME;
-if (!issuerUrl || !runtimeUrl) throw new Error('Issuer and runtime qualification URLs are required');
+if (!issuerUrl || !runtimeUrl || !migratorUrl) throw new Error('Issuer, runtime and migrator qualification URLs are required');
 if (expectedDatabase !== 'ghm_disposable_test') {
   throw new Error('Auth issuer cutover qualification is restricted to ghm_disposable_test');
 }
-for (const [label, value] of [['issuer', issuerUrl], ['runtime', runtimeUrl]]) {
+for (const [label, value] of [['issuer', issuerUrl], ['runtime', runtimeUrl], ['migrator', migratorUrl]]) {
   const parsed = new URL(value);
   if (!['localhost', '127.0.0.1'].includes(parsed.hostname) || parsed.pathname !== '/ghm_disposable_test') {
     throw new Error(`Auth issuer qualification ${label} URL must target local ghm_disposable_test`);
@@ -22,6 +23,7 @@ for (const [label, value] of [['issuer', issuerUrl], ['runtime', runtimeUrl]]) {
 
 const issuerPool = new Pool({ connectionString: issuerUrl, ssl: false, max: 2, connectionTimeoutMillis: 5_000 });
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl: false, max: 1, connectionTimeoutMillis: 5_000 });
+const migratorPool = new Pool({ connectionString: migratorUrl, ssl: false, max: 1, connectionTimeoutMillis: 5_000 });
 
 const issuerOnlyFunctionNames = [
   'auth_create_account',
@@ -152,6 +154,68 @@ try {
   assert.equal(afterReset.accountId, registered.accountId);
   await authService.logout(afterReset.refreshToken);
 
+  const quoteFlowEmail = `auth-issuer-quoteflow-${randomUUID()}@example.test`;
+  const quoteFlowEmailNormalized = quoteFlowEmail.toLowerCase();
+  const quoteFlowSubject = `auth-issuer-quoteflow-${randomUUID()}`;
+  const ownerClient = await migratorPool.connect();
+  let quoteFlowAccountId;
+  try {
+    await ownerClient.query('BEGIN');
+    await ownerClient.query('SET LOCAL ROLE ghm_schema_owner');
+    const accountResult = await ownerClient.query(
+      `INSERT INTO ghm.account_identity (full_name, role, account_status, is_system_admin)
+       VALUES ($1, 'customer', 'active', false)
+       RETURNING id`,
+      ['QuoteFlow Issuer Qualification'],
+    );
+    quoteFlowAccountId = Number(accountResult.rows[0].id);
+    await ownerClient.query(
+      `INSERT INTO ghm.account_external_identity (provider, subject, account_id)
+       VALUES ('supabase', $1, $2)`,
+      [quoteFlowSubject, quoteFlowAccountId],
+    );
+    await ownerClient.query(
+      `INSERT INTO ghm.quoteflow_migration_reset_enrollment (
+         account_id, source_provider, source_subject, approved_email,
+         approved_email_normalized, source_evidence_reference, enrollment_status
+       ) VALUES ($1, 'supabase', $2, $3, $4, $5, 'reset_required')`,
+      [
+        quoteFlowAccountId,
+        quoteFlowSubject,
+        quoteFlowEmail,
+        quoteFlowEmailNormalized,
+        `qualification:auth-issuer:${randomUUID()}`,
+      ],
+    );
+    await ownerClient.query('COMMIT');
+  } catch (error) {
+    await ownerClient.query('ROLLBACK');
+    throw error;
+  } finally {
+    ownerClient.release();
+  }
+
+  const enrollment = await persistence.lookupQuoteFlowMigrationResetEnrollment(quoteFlowEmail);
+  assert.ok(enrollment);
+  assert.equal(enrollment.accountId, quoteFlowAccountId);
+  assert.equal(enrollment.approvedEmail, quoteFlowEmail);
+
+  const quoteFlowRecovery = await persistence.issueRecovery(quoteFlowAccountId, 30);
+  const completedMigrationReset = await persistence.completeQuoteFlowMigrationReset(
+    quoteFlowRecovery.recoveryTokenWire,
+    'QuoteFlowHorse4',
+  );
+  assert.equal(completedMigrationReset.accountId, quoteFlowAccountId);
+  assert.equal(completedMigrationReset.loginEmail, quoteFlowEmail);
+  assert.equal(await persistence.lookupQuoteFlowMigrationResetEnrollment(quoteFlowEmail), null);
+  await assert.rejects(
+    () => persistence.completeQuoteFlowMigrationReset(quoteFlowRecovery.recoveryTokenWire, 'QuoteFlowHorse5'),
+    (error) => error && error.code === 'RECOVERY_CREDENTIAL_INVALID',
+  );
+  const quoteFlowLogin = await authService.login(quoteFlowEmail, 'QuoteFlowHorse4');
+  assert.equal(quoteFlowLogin.accountId, quoteFlowAccountId);
+  await authService.logout(quoteFlowLogin.refreshToken);
+
   process.stdout.write(JSON.stringify({
     issuerAllowList: issuerOnlyFunctionNames.length,
     issuerDirectSecretTablePrivileges: 0,
@@ -159,7 +223,8 @@ try {
     connectLookup: 'preserved',
     registrationLoginRefreshLogout: 'passed',
     recoveryResetReplayAndSessionRevocation: 'passed',
+    quoteFlowMigrationReset: 'passed',
   }) + '\\n');
 } finally {
-  await Promise.all([issuerPool.end(), runtimePool.end()]);
+  await Promise.all([issuerPool.end(), runtimePool.end(), migratorPool.end()]);
 }
