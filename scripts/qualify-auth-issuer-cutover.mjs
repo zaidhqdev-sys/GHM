@@ -107,7 +107,7 @@ try {
     WITH expected(signature) AS (
       SELECT unnest(ARRAY[
         'ghm.auth_lookup_external_identity(text, text)',
-        'ghm.auth_lookup_business_external_mapping(text, text)',
+        'ghm.auth_lookup_business_external_mapping(text, text)'
       ]::text[])
     )
     SELECT
@@ -429,7 +429,7 @@ try {
         'ghm.auth_lookup_quoteflow_migration_reset_enrollment(text)',
         'ghm.auth_complete_quoteflow_migration_reset(bytea, text, integer, integer, integer)',
         'ghm.auth_lookup_external_identity(text, text)',
-        'ghm.auth_lookup_business_external_mapping(text, text)',
+        'ghm.auth_lookup_business_external_mapping(text, text)'
       ]::text[])
     )
     SELECT
