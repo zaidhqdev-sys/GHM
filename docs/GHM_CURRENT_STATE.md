@@ -965,3 +965,13 @@ The three product clients do not need issuer-to-resource private calls: only log
 No Render resources, service settings, secrets, database grants, deployments or product environment values were changed. The existing identity qualification service has not been repointed or redeployed. Do not use the live GHM database for a non-production issuer. A verified isolated non-production DB principal and safe service allocation are prerequisites. No paid service/database may be created. Free Render is not a production availability solution for auth.
 
 End-to-end non-production routing remains blocked until an isolated DB and safe service allocation are independently verified. Production cutover additionally requires fresh independently verified backup, approved role provisioning, successful non-production end-to-end routing, and explicit approval. PayFast remains paused; approved legal documents remain parked.
+
+
+### 2026-11-12 — Render Postgres inventory: no free isolated issuer database available
+
+Read-only Render inventory returned three databases:
+- ghm-db / ghm_db: production primary, available, paid 0.1c-256mb. Not a non-production target.
+- ghm-payfast-sandbox-db / ghm_payfast_sandbox_db: Free, but billing-suspended and expired 2026-11-08. Do not repurpose; it is reserved for PayFast sandbox qualification.
+- ghm-identity-qualification-20261018 / ghm_identity_qualification_20261018: available paid basic_256mb, 15 GB disk. Dedicated qualification DB, but ownership/consumers/roles/data contract not yet audited for issuer suitability.
+
+No available Free Postgres DB exists in the workspace. Hosted non-production issuer deployment is blocked unless an already-paid qualification DB is first audited and explicitly approved for reuse, or a free isolated DB becomes available. Do not connect issuer to production ghm_db, repurpose the identity qualification DB without approval, or create paid infrastructure. Continue disposable PostgreSQL CI qualification. No DB connection/query or mutation, grants, service settings or environment variables were changed in this inventory.
