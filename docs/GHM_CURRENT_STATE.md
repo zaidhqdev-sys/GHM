@@ -979,7 +979,7 @@ No available Free Postgres DB exists in the workspace. Hosted non-production iss
 
 ### PR #272 / Authentication Issuer branch ancestry (2026-11-12)
 
-PR #272 remains open/unmerged with green current checks. The issuer construction branch is 130 commits ahead and 0 behind PR #272's head, so the issuer work is layered directly on the Actor Gateway integration stack. Do not merge PR #272 independently underneath this branch or create a duplicate integration. Preserve the separate construction branch until issuer routing, deployment constraints, documentation and exact-head CI are fully reconciled.
+PR #272 remains open/unmerged with green current checks. The issuer construction branch is 140 commits ahead and 0 behind PR #272's head, so the issuer work is layered directly on the Actor Gateway integration stack. Do not merge PR #272 independently underneath this branch or create a duplicate integration. Preserve the separate construction branch until issuer routing, deployment constraints, documentation and exact-head CI are fully reconciled.
 
 
 The existing paid identity-qualification database could not be audited through the read-only Render Postgres connector because its IP allow-list is empty. No allow-list change was made. Its schema, roles, migration state, data and service consumers remain unknown; do not assume it is reusable or empty.
@@ -1018,7 +1018,7 @@ The issuer now wires QuoteFlow migration-reset completion and has an HTTP test t
 
 Full sequence, exact limitations and rollback prerequisites: `docs/architecture/AUTH_ISSUER_CUTOVER_AND_ROLLBACK_RUNBOOK.md`. Design-only; no production changes authorized.
 
-Issuer branch ancestry is 130 commits ahead and 0 behind `integration/capability-gateway-qualification-20261110`. PR #272 remains the upstream Actor Gateway integration; do not merge it independently underneath this dependent construction branch. Latest exact-head CI is pending; production remains unchanged.
+Issuer branch ancestry is 140 commits ahead and 0 behind `integration/capability-gateway-qualification-20261110`. PR #272 remains the upstream Actor Gateway integration; do not merge it independently underneath this dependent construction branch. Latest exact-head CI is pending; production remains unchanged.
 
 
 ### 2026-11-12 — Future GHM function default ACL
