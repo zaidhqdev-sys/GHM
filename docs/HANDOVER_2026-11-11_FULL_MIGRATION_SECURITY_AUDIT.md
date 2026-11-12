@@ -2203,3 +2203,15 @@ The issuer server now wires QuoteFlow migration-reset completion through `create
 A complete operational sequence and limitations are documented in `docs/architecture/AUTH_ISSUER_CUTOVER_AND_ROLLBACK_RUNBOOK.md`. The runbook is design-only and authorizes no production changes.
 
 The issuer branch remains directly based on `integration/capability-gateway-qualification-20261110`; latest comparison showed 130 commits ahead and 0 behind. PR #272 remains upstream and must not be merged independently underneath this dependent branch. Production remains unchanged. The exact latest branch head must pass CI before this batch is considered qualified.
+
+
+### PostgreSQL future-function default ACL closure
+
+The original schema-establishment migration configured default sequence usage for `ghm_runtime` but did not explicitly remove PostgreSQL's default `PUBLIC EXECUTE` privilege for future functions created by `ghm_schema_owner`. Current functions had individual grants/revocations, but that alone did not protect future functions from inheriting PUBLIC execution.
+
+Added migration `20261112050000_revoke_public_default_function_execution.sql`:
+`ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner IN SCHEMA ghm REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`.
+
+Added a source contract test and disposable PostgreSQL qualification that creates a probe function as `ghm_schema_owner`, verifies PUBLIC, `ghm_runtime` and `ghm_auth_issuer` have no implicit EXECUTE, then drops the probe in the same disposable transaction. Intended functions must receive explicit per-role grants. This is not a retroactive revoke; existing function ACLs remain controlled by their migrations and the manual issuer cutover.
+
+The issuer branch's latest code now also wires QuoteFlow migration-reset completion. Recovery-token *delivery* remains absent: generic password-recovery request and QuoteFlow migration-reset request return 503 until a delivery adapter is explicitly configured. The runbook records this as a go-live blocker.
