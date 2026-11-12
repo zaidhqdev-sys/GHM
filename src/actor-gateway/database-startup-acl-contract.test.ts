@@ -5,6 +5,7 @@ import test from 'node:test';
 
 const server = fs.readFileSync(path.resolve(process.cwd(), 'src/actor-gateway/server.ts'), 'utf8');
 const privilegeSource = fs.readFileSync(path.resolve(process.cwd(), 'src/actor-gateway/database-privileges.ts'), 'utf8');
+const qualificationSource = fs.readFileSync(path.resolve(process.cwd(), 'scripts/qualify-auth-issuer-cutover.mjs'), 'utf8');
 
 test('Actor Gateway verifies its exact database ACL before opening the HTTP listener', () => {
   const identityCheck = server.indexOf('assertActorGatewayDatabaseIdentity(identity.rows[0])');
@@ -36,4 +37,10 @@ test('Actor Gateway verifies its exact database ACL before opening the HTTP list
 
 test('Actor Gateway default ACL verifier rejects EXECUTE granted to any non-owner role', () => {
   assert.ok(privilegeSource.includes('acl.grantee <> d.defaclrole'));
+});
+
+
+test('disposable qualification proves Actor Gateway rejects unexpected schema-scoped default grants', () => {
+  assert.ok(qualificationSource.includes('actorWithUnexpectedDefault.unsafe_function_defaults'));
+  assert.ok(qualificationSource.includes('IN SCHEMA ghm GRANT EXECUTE ON FUNCTIONS TO postgres'));
 });
