@@ -242,3 +242,88 @@ This is a manual production cutover, not an instruction to deploy now.
 No production database, Render service, secret, provider bucket, deployment, traffic, role or grant has been changed. No PR has been merged. PR #272 remains separate. PayFast remains paused. Existing backup, Render role-administration, non-production R2, deployment/network/TLS/rollback and founder-approval blockers remain open.
 
 **Current finding status:** Campaign create/update and owner directory-review presentation are now routed through signed Actor Gateway database wrappers in source and have passed disposable PostgreSQL qualification. The broader 43-function review, production ACL reconciliation and production cutover remain open.
+
+
+---
+
+## 2026-11-12 — continuation after Render support confirmation: connection inventory
+
+### Render support resolution
+
+Render support representative Amanda confirmed in the 12 November support conversation that normal application execution should use SQL-created login role(s) outside the Render Dashboard-managed credential list. Dashboard-managed default credentials should remain for controlled database administration. Render confirmed that SQL-created roles are not managed/displayed by the Dashboard and their credentials must be supplied to connecting services through service environment variables.
+
+This resolves the support-guidance question. It does not mean the production change has happened.
+
+The original trigger remains explicit: `ghm_actor_gateway` was deliberately created and assigned as part of the security architecture. The production creator/admin relationship left `ghm_db_user` with ADMIN OPTION membership over it; attempts to revoke the postgres-granted membership did not remove it. The goal is to keep normal application execution unable to administer or undermine the Actor Gateway role. The production inspection at the time showed `SET=false` and `INHERIT=false` for that membership; do not claim that a successful gateway-role escalation was observed.
+
+### Active branch and mainline relationship
+
+- Active construction branch: `construction/auth-issuer-isolation-20261112`.
+- Checkpoint before this continuation: `5a871485604df83b89f2fd16dac64a08ff2e668c`.
+- This branch contains the newer Authentication Issuer, Actor Gateway, storage metadata gateway, manual issuer cutover/rollback qualification, and database grant-authority work.
+- It is not mainline and has no PR attached at this checkpoint.
+- PR #272 remains a separate, older integration branch; it is open/unmerged and must not be treated as the current implementation branch.
+- The current construction branch comparison against main reported 1,442 commits ahead and 4 behind (diverged). This is a dated Git comparison, not merge readiness. Do not merge, rebase, or stack PR #272 without reconciling the full dependency graph and exact-head CI.
+
+### Gate 1 — source-level database connection consumer inventory
+
+| Consumer | Connection variable / principal | Source finding |
+|---|---|---|
+| Resource API | `GHM_RUNTIME_DATABASE_URL` → `ghm_runtime` | Production config requires the explicit runtime URL; non-production retains `DATABASE_URL` fallback. Startup checks login/effective identity, role flags, memberships, database CONNECT/CREATE, schema USAGE/CREATE and (when enforced) SECURITY DEFINER function allow-list. |
+| Authentication Issuer | `GHM_AUTH_ISSUER_DATABASE_URL` → `ghm_auth_issuer` | Separate process/pool, dedicated principal and signing-key/refresh-pepper custody. Startup checks role identity and an exact ten-function allow-list, direct relation privileges, schema privileges and default function ACLs. |
+| Actor Gateway | `GHM_ACTOR_GATEWAY_DATABASE_URL` → `ghm_actor_gateway` | Separate process/pool and dedicated principal. Startup checks identity, role flags, memberships, direct relation privileges, schema privileges and an exact typed-operation function allow-list. |
+| Migration runner | `GHM_MIGRATOR_DATABASE_URL` → `ghm_migrator` | Separate pool. Verifies explicit target host/database and migrator identity, then performs `SET ROLE ghm_schema_owner`; migrator has a narrowly scoped SET-only owner path. |
+| PayFast callback | `PAYFAST_CALLBACK_DATABASE_URL` → `ghm_payment_provider` | Separate callback process/pool with startup identity check. PayFast remains paused; this is recorded for dependency completeness only and is not to be activated or tested as part of this work. |
+| Resource API feature repositories / storage | Shared Resource API `ghm_runtime` pool | These are not separate database logins. Storage's provider credentials are separate object-storage secrets, not another PostgreSQL principal. Storage metadata actor operations now use the Actor Gateway; the five-function storage grant revocation is a manual cutover only and has not been applied to production. |
+| Local CI / disposable qualification | Separate test URLs for runtime, issuer, gateway, payment provider and migrator | CI creates disposable PostgreSQL 18 principals. CI success is not evidence that Render production credentials/environment have been changed. |
+
+### Authentication issuer composition finding
+
+The active construction branch includes `src/auth-issuer/server.ts` and the dedicated `GHM_AUTH_ISSUER_DATABASE_URL` connection. The Resource API server composes `createApp({ authRoutesEnabled: false })`, while the issuer process composes the authentication service and persistence with its own pool. This is source-level implementation evidence, not a deployed issuer or live routing cutover.
+
+The existing external client route/proxy contract still has to be preserved across GHM web, Connect and QuoteFlow. Recovery-token delivery is not configured; request routes fail closed with 503. Do not add a paid email provider without approval.
+
+### Qualification harness and environment documentation correction
+
+The read-only `qualify:legacy-role-dependency` harness was stale: it required `DATABASE_URL` and expected the production config to require that generic variable, even though the active Resource API production config requires `GHM_RUNTIME_DATABASE_URL`. The harness now:
+- requires the migrator URL;
+- requires either the production runtime URL or the non-production fallback to be present for the measured run;
+- asserts that production config explicitly requires `GHM_RUNTIME_DATABASE_URL`;
+- asserts that the generic `DATABASE_URL` fallback remains non-production-only;
+- reports the correct runtime credential mapping.
+
+The root `.env.example` now documents `GHM_RUNTIME_DATABASE_URL` as the production Resource API URL and `DATABASE_URL` as a non-production fallback. No secret values were added.
+
+### Exact-head CI failure found and corrected
+
+The previous construction head `5a871485604df83b89f2fd16dac64a08ff2e668c` had Actions run [43257659768](https://github.com/zaidhqdev-sys/GHM/actions/runs/43257659768):
+- `web-quality`: passed.
+- `quality`: failed at the Campaign/directory-review signed gateway disposable PostgreSQL qualification.
+
+The failure was not a production database issue. The manual Campaign gateway cutover SQL contained an invalid anonymous DO delimiter (`DO $`), producing PostgreSQL syntax error 42601 when the disposable qualification applied the cutover. The cutover was corrected to use the matching named delimiter `$campaign_allowlist$` for both opening and closing tags.
+
+The follow-on commits also corrected the stale legacy-role qualification harness and `.env.example` runtime variable description. The new branch head after these corrections is `b164be2811ab3f69b9fd7ddd168ede5b7e6d0ac7`. Exact-head CI run [43287305460](https://github.com/zaidhqdev-sys/GHM/actions/runs/43287305460) was in progress when this handover update was prepared. Do not claim the correction is qualified until both `quality` and `web-quality` complete successfully on that exact head.
+
+### Remaining Gate 1 evidence limitations and Gate 2 next work
+
+Source-level connection consumers have been identified, but the following remain unverified:
+- Actual current Render environment-variable names and which service consumes each connection URL. Do not retrieve, print, or record secret values.
+- Actual live `session_user` / `current_user` for each deployed service after any future credential cutover.
+- Whether the dedicated issuer and Actor Gateway have been deployed/configured in Render; repository source is not proof of live service state.
+- Current live production grants, object ownership, default ACLs and effective privileges under the production roles. Disposable inventory is not a substitute.
+- Whether all service deployment start commands and routing configuration match the repository entrypoints. No Render Blueprint/deployment manifest is present in the repository tree.
+
+Gate 2 must reconcile the full production role graph, direct and transitive memberships, ADMIN/SET/INHERIT options, role settings, database/schema/object ACLs, SECURITY DEFINER function grants, default ACLs, object ownership and all service call paths. Use read-only production catalog evidence only. Keep the existing production backup and Render role-administration blockers in force.
+
+### Transport/TLS issue to preserve
+
+The Resource API and migration runner use `DATABASE_SSL=true` with `rejectUnauthorized:false`; the external gateway and issuer modes also currently permit TLS without certificate identity verification. This encrypts transport but does not authenticate the PostgreSQL server certificate. Do not describe it as fully verified TLS. The deployment topology must select and verify internal versus external connectivity, TLS mode, trusted network boundaries and certificate validation before production rollout.
+
+### Production and operational safety
+
+- No production database roles, memberships, grants, role settings, secrets, environment variables, migrations, deployments, Render services, traffic, or data were changed by this continuation.
+- No production cutover or rollback SQL was run.
+- No paid infrastructure was created.
+- PayFast remains paused.
+- The 4 November backup is stale for post-10 November changes; no fresh independently verified backup is established here.
+- Do not rotate/delete the Dashboard-managed default user or create the SQL replacement login until the administrator recovery route, role design, object/legacy ownership dependencies, exact service consumers and fresh backup are verified.
