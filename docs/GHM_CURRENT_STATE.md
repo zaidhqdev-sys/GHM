@@ -846,3 +846,8 @@ Issuer cutover is cross-repository:
 - QuoteFlow's GHM Gate A adapter is disabled by default. If enabled, `EXPO_PUBLIC_GHM_AUTH_BASE_URL` currently serves both auth endpoints and `/api/v1/identity`.
 
 Before GHM removes auth routes from Resource API, add separate auth issuer/resource base URLs in clients, split Connect's BFF issuer upstream from its resource upstream, preserve the optional browser mode's default-off behavior, and test all cross-repository contracts. No product repo, flag, environment or deployment was changed. Full paths and required compatibility sequence are in the security handover.
+
+
+## Latest predecessor CI result (2026-11-12)
+
+CI run #3493 completed successfully on predecessor commit `0f9349a`: both `quality` and `web-quality` passed, including the full build, migrations, tests and configured disposable PostgreSQL qualifications. Cross-product consumer-inventory commits were added afterward and are not covered by #3493. Current branch head therefore still needs exact-head CI confirmation.
