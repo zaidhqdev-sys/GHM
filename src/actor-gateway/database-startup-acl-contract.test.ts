@@ -35,5 +35,5 @@ test('Actor Gateway verifies its exact database ACL before opening the HTTP list
 
 
 test('Actor Gateway default ACL verifier rejects EXECUTE granted to any non-owner role', () => {
-  assert.match(privilegeSource, /acl\\.grantee <> d\\.defaclrole/);
+  assert.ok(privilegeSource.includes('acl.grantee <> d.defaclrole'));
 });
