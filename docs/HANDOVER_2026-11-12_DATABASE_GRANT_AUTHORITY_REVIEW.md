@@ -2313,3 +2313,24 @@ The first exact-head run `43319364059` on `4d4a062...` found one test-isolation 
 
 Correction commit: `df4453869d3cac8ba73d774877e0fbd9530732b2`.
 New exact-head CI run: `43319557839`; `web-quality` and Cloudflare Pages have passed, while `quality` was still running at the time of this note. Await its final result before declaring PR #275 qualified.
+
+
+## 2026-11-12 22:29 UTC — Resource API runtime principal PR merged
+
+PR #275 was marked ready after review of the exact diff and successful exact-head checks, then squash-merged:
+
+- PR: https://github.com/zaidhqdev-sys/GHM/pull/275
+- Exact head: `df4453869d3cac8ba73d774877e0fbd9530732b2`
+- Exact-head CI run `43319557839`: `quality` and `web-quality` passed; Cloudflare Pages also passed.
+- Merge commit: `ad4fea43f2eb7bf959042b9db77a9f86e6bb531b`
+- Mainline base parent: `744b91f030d5cfc9257685677aaff148cf1f9f43`.
+
+The merged Resource API now requires production `GHM_RUNTIME_DATABASE_URL` and performs the `ghm_runtime` least-privilege identity check before opening its HTTP listener. The test suite includes the runtime principal tests.
+
+The merge is code-only and is not a deployment. Immediately after merge, the new mainline commit's three checks (`quality`, `web-quality`, Cloudflare Pages) were in progress; verify their final exact-commit result before calling mainline post-merge validation complete.
+
+Render remains on `main` with auto-deploy OFF and live deployment `c7cf1eb`; no environment variable or credential was changed. Because `GHM_RUNTIME_DATABASE_URL` has not been provisioned in Render, do not manually deploy this mainline until the existing `ghm_runtime` connection string is safely configured and verified. The current deployment is unaffected.
+
+PR #272 remains unmerged and its base is stale. The capability/Actor Gateway child PRs #268–#271 are stacked on unmerged parent branches. Their code must be reconciled into a mainline-based series rather than merging the aggregate stack. PR #243/#244 supplier classification and analytics form a separate feature stack. PR #264 is an open docs checkpoint whose base is also stale; inspect its content and relevance before deciding whether to close or rebase it.
+
+No production role, grant, membership, secret, environment variable, deployment, traffic, database data or application configuration was changed in this checkpoint.
