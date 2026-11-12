@@ -125,3 +125,15 @@ The most recent observed GitHub workflow/status query for commit `b2805e10e7b4d2
 - A fresh exact-HEAD workflow/status lookup returned no workflow runs and no status checks. Treat CI as **not yet observed**, not passed.
 - No SQL was applied to disposable or production databases in this continuation. No grant revocation, service deployment, or merge occurred.
 
+## Provider-attestation design refinement and cleanup inventory
+
+Inspected the full storage service, HTTP routes, storage tests, storage migration contract tests, and the repository tree for storage/cleanup workers.
+
+- No scheduled/background storage cleanup worker or storage cleanup entry point was found in the current source tree.
+- Abandoned pending upload cleanup and deletion-pending retry are performed through the authenticated `StorageService.deleteObject` path; tests cover both behaviors. Do not add speculative system credentials.
+- Refined the provider transition design to require **dual proof**: the existing user actor v2 assertion (JWT actor + active owner/administrator membership) plus a separate Resource API HMAC attestation verified directly by PostgreSQL. The provider signing key must be unavailable to the Actor Gateway and its database login.
+- Proposed provider attestation is domain-separated (`ghm-storage-provider:v1`), short-lived, one-use, and bound to operation, object ID, stored tenant/business, provider key, and the provider evidence required for the transition.
+- The database secret provisioning path is still an unresolved prerequisite. Do not create the secret table and claim security until the operator provisioning route is designed, audited and tested. In particular, do not assume the migrator may read/insert into the protected secret table.
+
+This refinement is design-only; no provider transition wrapper, secret, secret table, transport header, or production configuration was created. The existing direct runtime function grants remain unchanged.
+
