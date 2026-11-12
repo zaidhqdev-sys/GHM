@@ -184,11 +184,11 @@ try {
       readActorGatewayDatabasePrivileges(actorGatewayPool),
     ]);
     assert.ok(
-      issuerWithUnexpectedGrant.unsafe_function_grantees.includes('ghm.auth_create_account(text, text, text, text, text, integer, integer, integer)'),
+      issuerWithUnexpectedGrant.unsafe_function_grantees.includes('ghm.auth_create_account(text,text,text,text,text,integer,integer,integer)'),
       'issuer verifier must report a direct grant to the non-allowlisted payment-provider principal',
     );
     assert.ok(
-      actorWithUnexpectedGrant.unsafe_function_grantees.includes('ghm.gateway_provision_connect_business(bigint, bigint, uuid, text, text, text, text, text)'),
+      actorWithUnexpectedGrant.unsafe_function_grantees.includes('ghm.gateway_provision_connect_business(bigint,bigint,uuid,text,text,text,text,text)'),
       'Actor Gateway verifier must report a direct grant to the non-allowlisted payment-provider principal',
     );
   } finally {
