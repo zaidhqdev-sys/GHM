@@ -5,7 +5,7 @@ BEGIN;
 CREATE OR REPLACE FUNCTION ghm.assert_actor_gateway_capability(
  p_actor bigint,p_operation text,p_issued bigint,p_nonce uuid,p_context text,p_signature text
 ) RETURNS bigint
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ghm
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog, ghm, pg_temp
 AS $$
 DECLARE v_secret bytea;v_expected bytea;v_provided bytea;v_payload text;v_diff integer:=0;v_i integer;
 BEGIN
@@ -46,7 +46,7 @@ BEGIN
 END;
 $$;
 ALTER FUNCTION ghm.assert_actor_gateway_capability(bigint,text,bigint,uuid,text,text) OWNER TO ghm_schema_owner;
-ALTER FUNCTION ghm.assert_actor_gateway_capability(bigint,text,bigint,uuid,text,text) SET search_path=pg_catalog,ghm;
+ALTER FUNCTION ghm.assert_actor_gateway_capability(bigint,text,bigint,uuid,text,text) SET search_path=pg_catalog, ghm, pg_temp;
 REVOKE ALL ON FUNCTION ghm.assert_actor_gateway_capability(bigint,text,bigint,uuid,text,text) FROM PUBLIC,ghm_runtime,ghm_migrator;
 GRANT EXECUTE ON FUNCTION ghm.assert_actor_gateway_capability(bigint,text,bigint,uuid,text,text) TO ghm_actor_gateway;
 
@@ -55,7 +55,7 @@ CREATE OR REPLACE FUNCTION ghm.gateway_storage_create_pending(
  p_business bigint,p_resource_type text,p_resource_id bigint,p_object_class text,
  p_provider_key text,p_content_type text,p_byte_size bigint,p_visibility text,p_original_filename text
 ) RETURNS ghm.storage_object
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ghm
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog, ghm, pg_temp
 AS $$
 DECLARE v_actor bigint;v_row ghm.storage_object;
 BEGIN
@@ -89,7 +89,7 @@ $$;
 CREATE OR REPLACE FUNCTION ghm.gateway_storage_get_object(
  p_actor bigint,p_issued bigint,p_nonce uuid,p_context text,p_signature text,p_object_id bigint
 ) RETURNS SETOF ghm.storage_object
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ghm
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog, ghm, pg_temp
 AS $$
 DECLARE v_actor bigint;
 BEGIN
@@ -119,7 +119,7 @@ $$;
 CREATE OR REPLACE FUNCTION ghm.gateway_storage_mark_deletion_pending(
  p_actor bigint,p_issued bigint,p_nonce uuid,p_context text,p_signature text,p_object_id bigint
 ) RETURNS ghm.storage_object
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ghm
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog, ghm, pg_temp
 AS $$
 DECLARE v_actor bigint;v_business bigint;v_row ghm.storage_object;
 BEGIN
@@ -142,9 +142,9 @@ $$;
 ALTER FUNCTION ghm.gateway_storage_create_pending(bigint,bigint,uuid,text,text,bigint,text,bigint,text,text,text,bigint,text,text) OWNER TO ghm_schema_owner;
 ALTER FUNCTION ghm.gateway_storage_get_object(bigint,bigint,uuid,text,text,bigint) OWNER TO ghm_schema_owner;
 ALTER FUNCTION ghm.gateway_storage_mark_deletion_pending(bigint,bigint,uuid,text,text,bigint) OWNER TO ghm_schema_owner;
-ALTER FUNCTION ghm.gateway_storage_create_pending(bigint,bigint,uuid,text,text,bigint,text,bigint,text,text,text,bigint,text,text) SET search_path=pg_catalog,ghm;
-ALTER FUNCTION ghm.gateway_storage_get_object(bigint,bigint,uuid,text,text,bigint) SET search_path=pg_catalog,ghm;
-ALTER FUNCTION ghm.gateway_storage_mark_deletion_pending(bigint,bigint,uuid,text,text,bigint) SET search_path=pg_catalog,ghm;
+ALTER FUNCTION ghm.gateway_storage_create_pending(bigint,bigint,uuid,text,text,bigint,text,bigint,text,text,text,bigint,text,text) SET search_path=pg_catalog, ghm, pg_temp;
+ALTER FUNCTION ghm.gateway_storage_get_object(bigint,bigint,uuid,text,text,bigint) SET search_path=pg_catalog, ghm, pg_temp;
+ALTER FUNCTION ghm.gateway_storage_mark_deletion_pending(bigint,bigint,uuid,text,text,bigint) SET search_path=pg_catalog, ghm, pg_temp;
 
 REVOKE ALL ON FUNCTION ghm.gateway_storage_create_pending(bigint,bigint,uuid,text,text,bigint,text,bigint,text,text,text,bigint,text,text) FROM PUBLIC,ghm_runtime,ghm_migrator;
 REVOKE ALL ON FUNCTION ghm.gateway_storage_get_object(bigint,bigint,uuid,text,text,bigint) FROM PUBLIC,ghm_runtime,ghm_migrator;
@@ -184,7 +184,7 @@ $$;
 CREATE OR REPLACE FUNCTION ghm.gateway_storage_get_object(
  p_actor bigint,p_issued bigint,p_nonce uuid,p_context text,p_signature text,p_object_id bigint
 ) RETURNS SETOF ghm.storage_object
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ghm
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog, ghm, pg_temp
 AS $$
 DECLARE v_actor bigint;
 BEGIN
@@ -214,7 +214,7 @@ $$;
 CREATE OR REPLACE FUNCTION ghm.gateway_storage_mark_deletion_pending(
  p_actor bigint,p_issued bigint,p_nonce uuid,p_context text,p_signature text,p_object_id bigint
 ) RETURNS ghm.storage_object
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ghm
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog, ghm, pg_temp
 AS $$
 DECLARE v_actor bigint;v_business bigint;v_row ghm.storage_object;
 BEGIN
@@ -237,9 +237,9 @@ $$;
 ALTER FUNCTION ghm.gateway_storage_create_pending(bigint,bigint,uuid,text,text,bigint,text,bigint,text,text,text,bigint,text,text) OWNER TO ghm_schema_owner;
 ALTER FUNCTION ghm.gateway_storage_get_object(bigint,bigint,uuid,text,text,bigint) OWNER TO ghm_schema_owner;
 ALTER FUNCTION ghm.gateway_storage_mark_deletion_pending(bigint,bigint,uuid,text,text,bigint) OWNER TO ghm_schema_owner;
-ALTER FUNCTION ghm.gateway_storage_create_pending(bigint,bigint,uuid,text,text,bigint,text,bigint,text,text,text,bigint,text,text) SET search_path=pg_catalog,ghm;
-ALTER FUNCTION ghm.gateway_storage_get_object(bigint,bigint,uuid,text,text,bigint) SET search_path=pg_catalog,ghm;
-ALTER FUNCTION ghm.gateway_storage_mark_deletion_pending(bigint,bigint,uuid,text,text,bigint) SET search_path=pg_catalog,ghm;
+ALTER FUNCTION ghm.gateway_storage_create_pending(bigint,bigint,uuid,text,text,bigint,text,bigint,text,text,text,bigint,text,text) SET search_path=pg_catalog, ghm, pg_temp;
+ALTER FUNCTION ghm.gateway_storage_get_object(bigint,bigint,uuid,text,text,bigint) SET search_path=pg_catalog, ghm, pg_temp;
+ALTER FUNCTION ghm.gateway_storage_mark_deletion_pending(bigint,bigint,uuid,text,text,bigint) SET search_path=pg_catalog, ghm, pg_temp;
 
 REVOKE ALL ON FUNCTION ghm.gateway_storage_create_pending(bigint,bigint,uuid,text,text,bigint,text,bigint,text,text,text,bigint,text,text) FROM PUBLIC,ghm_runtime,ghm_migrator;
 REVOKE ALL ON FUNCTION ghm.gateway_storage_get_object(bigint,bigint,uuid,text,text,bigint) FROM PUBLIC,ghm_runtime,ghm_migrator;
