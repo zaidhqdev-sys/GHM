@@ -50,3 +50,8 @@ test('disposable qualification probes and cleans up unexpected issuer function g
   assert.ok(qualificationSource.includes('issuerWithUnexpectedGrant.unsafe_function_grantees'));
   assert.ok(qualificationSource.includes('issuerAclAfterDirectProbe.unsafe_function_grantees'));
 });
+
+
+test('issuer default ACL verifier requires the global default ACL row, not merely a schema override', () => {
+  assert.match(privilegeSource, /NOT EXISTS \([\s\S]{0,240}defaclnamespace = 0[\s\S]{0,100}defaclobjtype = 'f'/);
+});
