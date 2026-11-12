@@ -108,7 +108,6 @@ try {
       SELECT unnest(ARRAY[
         'ghm.auth_lookup_external_identity(text, text)',
         'ghm.auth_lookup_business_external_mapping(text, text)',
-        'ghm.auth_link_business_external_mapping(text, text, bigint)',
       ]::text[])
     )
     SELECT
@@ -130,7 +129,7 @@ try {
   assert.deepEqual(
     runtimeAuthFunctions.rows[0].actual,
     runtimeAuthFunctions.rows[0].expected,
-    'Resource API runtime must retain exactly the three separately reviewed external identity/business-mapping auth functions after issuer cutover',
+    'Resource API runtime must retain exactly the two separately reviewed external identity lookup functions after issuer cutover',
   );
 
   const startupPrivileges = await readAuthIssuerDatabasePrivileges(issuerPool);
@@ -211,14 +210,6 @@ try {
   );
   assert.equal(connectLookup.rowCount, 0, 'Connect lookup-only external identity contract must remain available to runtime');
 
-  await assert.rejects(
-    () => runtimePool.query(
-      'SELECT * FROM ghm.auth_link_business_external_mapping($1, $2, $3)',
-      ['', '', null],
-    ),
-    (error) => error && error.code === 'P0001' && /provider must be non-blank/.test(error.message),
-    'Connect Business provisioning must retain only the separately reviewed mapping-link function until its signed gateway migration',
-  );
 
   const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
   const keys = loadEs256Keys({
