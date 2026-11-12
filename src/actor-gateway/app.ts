@@ -13,7 +13,7 @@ import type { SavedBusinessGatewayReader } from './saved-business-reader';
 import type { BusinessHoursGatewayReader } from './business-hours-reader';
 import type { TrustScoreGatewayReader } from './trust-score-reader';
 import type { BusinessLogoGatewayReader } from './business-logo-reader';
-import type { ConnectBusinessProvisioningReader } from './connect-business-provisioning-reader';
+import type { ConnectBusinessProvisioningReader } from '../integrations/connect/business-provisioning-contracts';
 
 export interface ActorGatewayAppOptions {
   rateLimitLimit?: number;
