@@ -4,41 +4,79 @@ import {
   assertRuntimeDatabaseFunctionPrivileges,
   RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS,
   RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS,
+  RUNTIME_POST_AUTH_ISSUER_FUNCTIONS,
+  RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS,
   RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL,
 } from './runtime-database-privileges';
 
-test('runtime startup accepts only the inventoried 43-function baseline or reviewed 40-function gateway cutover', () => {
+test('runtime startup accepts only the four reviewed pre/post gateway and issuer ACL states', () => {
   assert.equal(RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length, 43);
   assert.equal(RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS.length, 40);
-  assert.doesNotThrow(() => assertRuntimeDatabaseFunctionPrivileges({
-    executable_functions: [...RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS],
-  }));
-  assert.doesNotThrow(() => assertRuntimeDatabaseFunctionPrivileges({
-    executable_functions: [...RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS],
-  }));
+  assert.equal(RUNTIME_POST_AUTH_ISSUER_FUNCTIONS.length, 29);
+  assert.equal(RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS.length, 26);
+  for (const functions of [
+    RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS,
+    RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS,
+    RUNTIME_POST_AUTH_ISSUER_FUNCTIONS,
+    RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS,
+  ]) {
+    assert.doesNotThrow(() => assertRuntimeDatabaseFunctionPrivileges({
+      executable_functions: [...functions],
+    }));
+  }
 });
 
-test('runtime startup rejects added, missing or unexpected function EXECUTE grants', () => {
-  assert.throws(
-    () => assertRuntimeDatabaseFunctionPrivileges({
-      executable_functions: [...RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS, 'ghm.unreviewed_sensitive_operation(bigint)'],
-    }),
-    /Runtime database function EXECUTE allow-list mismatch/,
+test('issuer cutover removes exactly fourteen lifecycle functions and retains only the two reviewed runtime lookups', () => {
+  const removed = RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.filter(
+    signature => !(RUNTIME_POST_AUTH_ISSUER_FUNCTIONS as readonly string[]).includes(signature),
   );
-  assert.throws(
-    () => assertRuntimeDatabaseFunctionPrivileges({
-      executable_functions: RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS.filter(signature => !signature.startsWith('ghm.auth_create_account(')),
-    }),
-    /Runtime database function EXECUTE allow-list mismatch/,
+  assert.equal(removed.length, 14);
+  assert.deepEqual(
+    RUNTIME_POST_AUTH_ISSUER_FUNCTIONS.filter(signature => signature.startsWith('ghm.auth_')),
+    [
+      'ghm.auth_lookup_business_external_mapping(text, text)',
+      'ghm.auth_lookup_external_identity(text, text)',
+    ],
+  );
+  assert.deepEqual(
+    RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS.filter(signature => signature.startsWith('ghm.auth_')),
+    [
+      'ghm.auth_lookup_business_external_mapping(text, text)',
+      'ghm.auth_lookup_external_identity(text, text)',
+    ],
   );
 });
 
-test('startup inventory measures only SECURITY DEFINER EXECUTE privileges', () => {
+test('runtime startup rejects added, missing or unexpected function EXECUTE grants in every stage', () => {
+  for (const functions of [
+    RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS,
+    RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS,
+    RUNTIME_POST_AUTH_ISSUER_FUNCTIONS,
+    RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS,
+  ]) {
+    assert.throws(
+      () => assertRuntimeDatabaseFunctionPrivileges({
+        executable_functions: [...functions, 'ghm.unreviewed_sensitive_operation(bigint)'],
+      }),
+      /Runtime database function EXECUTE allow-list mismatch/,
+    );
+    assert.throws(
+      () => assertRuntimeDatabaseFunctionPrivileges({
+        executable_functions: functions.slice(1),
+      }),
+      /Runtime database function EXECUTE allow-list mismatch/,
+    );
+  }
+});
+
+test('startup inventory measures only SECURITY DEFINER EXECUTE privileges and resolves all staged states', () => {
   assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /p\.prosecdef/);
   assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /has_function_privilege\(session_user, p\.oid, 'EXECUTE'\)/);
+  assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /expected_post_issuer/);
+  assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /expected_post_campaign_and_issuer/);
 });
 
-test('Campaign and directory-review legacy signatures are absent only from the post-cutover state', () => {
+test('Campaign and directory-review legacy signatures are absent only from states where their manual cutover is applied', () => {
   for (const signature of [
     'ghm.create_campaign(bigint, bigint, text)',
     'ghm.update_campaign(bigint, bigint, text, text)',
@@ -46,5 +84,7 @@ test('Campaign and directory-review legacy signatures are absent only from the p
   ]) {
     assert.ok((RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(signature));
     assert.ok(!(RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS as readonly string[]).includes(signature));
+    assert.ok((RUNTIME_POST_AUTH_ISSUER_FUNCTIONS as readonly string[]).includes(signature));
+    assert.ok(!(RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS as readonly string[]).includes(signature));
   }
 });
