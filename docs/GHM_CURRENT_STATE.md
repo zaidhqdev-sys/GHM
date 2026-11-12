@@ -949,7 +949,7 @@ The production Resource API entrypoint explicitly disables authentication issuer
 Cross-product split-origin clients are implemented and exact-head CI passed:
 - GHM web: optional VITE_GHM_AUTH_ISSUER_BASE_URL for auth; VITE_GHM_API_BASE_URL for resources.
 - ZAID Connect: branch head 5b564c09148948b7a854bc73dbe920844b4b16ce, CI #293 passed. Native auth uses optional issuer URL; resources use the resource API URL. The server-only same-origin BFF routes only four browser auth operations to optional GHM_AUTH_ISSUER_URL; browser auth remains disabled by default.
-- QuoteFlow: branch head 321eb8d8322fcc1d07ce576d382bb4b34af1573f, CI #221 passed. Optional EXPO_PUBLIC_GHM_AUTH_ISSUER_URL applies only to auth; identity/resources remain on the resource API. Gate A remains disabled; Supabase coexistence unchanged.
+- Historical main-based QuoteFlow branch head 321eb8d8322fcc1d07ce576d382bb4b34af1573f passed CI #221; superseded by the PR #25-based dependent branch. Supabase coexistence described current main only, not the PR #25 stack.
 
 No client environment flags or issuer URLs have been enabled. Render issuer hosting/private networking remains unverified. Password recovery and QuoteFlow migration-reset delivery services are not wired into the issuer yet; their request routes remain unavailable (503), as before. End-to-end non-production service routing is the next gate. The guarded issuer privilege cutover remains manual-only and was applied only in disposable CI PostgreSQL. No production state was changed.
 
