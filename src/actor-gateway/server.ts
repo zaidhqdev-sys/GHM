@@ -18,6 +18,7 @@ import { PostgresBusinessHoursGatewayReader } from './business-hours-reader';
 import { PostgresTrustScoreGatewayReader } from './trust-score-reader';
 import { PostgresBusinessLogoGatewayReader } from './business-logo-reader';
 import { assertActorGatewayDatabaseIdentity } from './database-principal';
+import { assertActorGatewayDatabasePrivileges, readActorGatewayDatabasePrivileges } from './database-privileges';
 
 const required = (name: string): string => {
   const value = process.env[name]?.trim();
@@ -114,6 +115,8 @@ const start = async (): Promise<void> => {
      WHERE r.rolname = session_user
   `);
   assertActorGatewayDatabaseIdentity(identity.rows[0]);
+  const databasePrivileges = await readActorGatewayDatabasePrivileges(pool);
+  assertActorGatewayDatabasePrivileges(databasePrivileges);
   server.listen(port, () => {
     console.log(`GHM Actor Gateway listening on port ${port}`);
   });
