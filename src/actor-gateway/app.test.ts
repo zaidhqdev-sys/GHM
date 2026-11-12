@@ -767,6 +767,8 @@ test('storage metadata read and deletion routes bind actor to verified token and
     async createPending() { throw new Error('not used'); },
     async getObject(actor, objectId) { calls.push({ operation: 'read', actor, objectId }); return { id: String(objectId), status: 'available' } as never; },
     async markDeletionPending(actor, objectId) { calls.push({ operation: 'delete', actor, objectId }); return { id: String(objectId), status: 'deletion_pending' } as never; },
+    async markAvailable() { throw new Error('not used'); },
+    async markDeleted() { throw new Error('not used'); },
   };
   await withServer({
     async readOwnIdentity(accountId): Promise<ActorIdentity> {
