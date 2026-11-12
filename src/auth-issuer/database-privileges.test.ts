@@ -6,6 +6,8 @@ import {
 } from './database-privileges';
 
 const leastPrivilege: AuthIssuerDatabasePrivileges = {
+  database_connect_privilege: true,
+  database_create_privilege: false,
   schema_usage: true,
   schema_create: false,
   direct_relation_privileges: false,
@@ -28,6 +30,8 @@ test('accepts only the exact issuer function allow-list and isolated database pr
 
 test('rejects missing schema usage, schema CREATE and direct relation privileges', () => {
   for (const override of [
+    { database_connect_privilege: false },
+    { database_create_privilege: true },
     { schema_usage: false },
     { schema_create: true },
     { direct_relation_privileges: true },
