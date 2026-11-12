@@ -979,7 +979,7 @@ No available Free Postgres DB exists in the workspace. Hosted non-production iss
 
 ### PR #272 / Authentication Issuer branch ancestry (2026-11-12)
 
-PR #272 remains open/unmerged with green current checks. The issuer construction branch is 105 commits ahead and 0 behind PR #272's head, so the issuer work is layered directly on the Actor Gateway integration stack. Do not merge PR #272 independently underneath this branch or create a duplicate integration. Preserve the separate construction branch until issuer routing, deployment constraints, documentation and exact-head CI are fully reconciled.
+PR #272 remains open/unmerged with green current checks. The issuer construction branch is 130 commits ahead and 0 behind PR #272's head, so the issuer work is layered directly on the Actor Gateway integration stack. Do not merge PR #272 independently underneath this branch or create a duplicate integration. Preserve the separate construction branch until issuer routing, deployment constraints, documentation and exact-head CI are fully reconciled.
 
 
 The existing paid identity-qualification database could not be audited through the read-only Render Postgres connector because its IP allow-list is empty. No allow-list change was made. Its schema, roles, migration state, data and service consumers remain unknown; do not assume it is reusable or empty.
@@ -1004,3 +1004,18 @@ The issuer's production database SSL mode must be explicit. Current `external` m
 ### Production remains unchanged — issuer separation is not deployed
 
 Render's GHM-Internal-Runtime service still points to `main`, auto-deploy is disabled, and the latest live deployment inventory entry is `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf` (2026-11-10). The issuer-isolation branch and its split-origin clients have not been deployed. Production still uses its existing Resource API authentication arrangement. Do not remove current Resource API signing/token secrets or revoke current auth grants until an approved coordinated issuer cutover. No issuer service, production issuer role, env var or routing change has occurred.
+
+
+## 2026-11-12 — Issuer cutover/rollback hardening and recovery wiring
+
+Found and closed an overlooked runtime privilege: `ghm.auth_register_quoteflow_migration_reset_enrollment(bigint, text, text, text, text, text)` was still executable by `ghm_runtime`. Added migration `20261112040000_revoke_runtime_quoteflow_reset_enrollment_registration.sql`, manual issuer-cutover revocation for both runtime and issuer, disposable denial qualification, and a migration-contract regression. Enrollment creation remains a migrator/`ghm_schema_owner` operation.
+
+The issuer manual cutover now explicitly revokes schema `ghm` CREATE from `ghm_auth_issuer`. Qualification checks direct table/view and sequence privileges, schema CREATE, the exact issuer function allow-list, and runtime denials.
+
+Added `database/cutovers/20261112020000_authentication_issuer_privilege_rollback.sql`. It removes issuer auth-function/schema access and restores only the documented pre-cutover runtime auth-function allow-list. It does not restore migration-only functions or direct table/sequence privileges. Qualification executes this rollback only on disposable PostgreSQL and checks both role ACLs. It does not qualify service, secret, key, pepper or client-routing rollback.
+
+The issuer now wires QuoteFlow migration-reset completion and has an HTTP test that verifies approved email is used for post-completion login. Both generic password-recovery request and QuoteFlow migration-reset request remain 503 because no delivery adapter exists. Recovery delivery is therefore still a go-live blocker.
+
+Full sequence, exact limitations and rollback prerequisites: `docs/architecture/AUTH_ISSUER_CUTOVER_AND_ROLLBACK_RUNBOOK.md`. Design-only; no production changes authorized.
+
+Issuer branch ancestry is 130 commits ahead and 0 behind `integration/capability-gateway-qualification-20261110`. PR #272 remains the upstream Actor Gateway integration; do not merge it independently underneath this dependent construction branch. Latest exact-head CI is pending; production remains unchanged.
