@@ -26,6 +26,12 @@ test('inventory covers non-system SECURITY DEFINER routines, direct ACLs and eff
   assert.match(source, /pg_extension/);
   assert.match(source, /pg_auth_members/);
   assert.match(source, /pg_default_acl/);
+  assert.match(source, /pg_attribute/);
+  assert.match(source, /a\.attacl/);
+  assert.match(source, /aclexplode\(a\.attacl\)/);
+  assert.match(source, /has_column_privilege\(r\.oid, a\.attrelid, a\.attnum, 'INSERT'\)/);
+  assert.match(source, /has_column_privilege\(r\.oid, a\.attrelid, a\.attnum, 'UPDATE'\)/);
+  assert.match(source, /column_privileges: columnPrivileges/);
   assert.match(source, /pg_roles/);
   assert.match(source, /pg_namespace/);
   assert.match(source, /pg_database/);
