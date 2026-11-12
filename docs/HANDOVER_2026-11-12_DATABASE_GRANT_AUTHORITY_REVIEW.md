@@ -850,3 +850,50 @@ This storage work is not a new implementation task. The remaining storage gates 
 6. Continue appending every material finding, correction, CI result and production mutation status to this handover and the corresponding specialist handover.
 
 **Production state:** no production role, grant, credential, secret, environment variable, migration, service, deployment, storage bucket/object or application data was changed. No PR was merged. PayFast remains paused.
+
+
+---
+
+## Correction — `opportunity_capability_requirement` DELETE grant is intentional and required
+
+The prior entry describing the production DELETE grant as an unmapped likely-stale privilege is superseded by a deeper source trace completed after inspecting the dedicated Opportunity Requirements domain.
+
+### Actual caller found
+
+`src/resources/opportunity-requirements/repository.ts` implements `PgOpportunityRequirementsRepository.replaceOpportunityRequirements`. Within one `withAuthorizedTransaction`, it:
+
+1. Calls `assertOpportunityManager` for the authenticated creator or active owner/administrator of the owner Business.
+2. Validates all requested Capability IDs are active and selectable.
+3. Deletes the existing requirement set for that Opportunity:
+   `DELETE FROM ghm.opportunity_capability_requirement WHERE opportunity_id = $1`.
+4. Inserts the complete replacement set with server-derived `created_by`.
+5. Returns the canonical ordered set.
+
+The DELETE and all inserts share the same transaction, so a failure rolls the entire replacement back. The HTTP contract exposes complete replacement via `PUT /api/v1/opportunities/:opportunityId/requirements`; it does not expose arbitrary individual DELETE or arbitrary PATCH. The canonical domain contract `docs/architecture/OPPORTUNITY_CAPABILITY_REQUIREMENTS_CONTRACT.md` explicitly documents DELETE as a narrowly scoped runtime privilege required for atomic complete replacement.
+
+### Migration and qualification corroboration
+
+The original migration `database/migrations/20260914220000_create_opportunity_capability_requirements.sql` deliberately grants:
+- SELECT on the child relation;
+- column-scoped INSERT on the seven data/provenance columns;
+- DELETE on that relation only;
+- USAGE on its identity sequence.
+
+It expressly excludes blanket UPDATE and ALL privileges. The runtime qualification script `scripts/qualify-opportunity-requirements-runtime.mjs` connects separately as `ghm_runtime` for the application behavior and as `ghm_migrator`/SET ROLE `ghm_schema_owner` for fixture cleanup. Its cleanup DELETE is performed by the schema-owner cleanup client, not evidence that runtime DELETE is used only by test cleanup. The actual repository replacement path is the production caller.
+
+### Revised disposition
+
+- `DELETE ON ghm.opportunity_capability_requirement` is **required**, not stale.
+- It is narrowly scoped to the complete-replacement repository transaction and its manager authorization.
+- Do not revoke it, do not create a revocation migration, and do not classify it as excess direct DML.
+- The earlier suspicion was caused by examining the broader Opportunity repository rather than the separate `src/resources/opportunity-requirements/repository.ts` domain.
+
+This confirms the four non-SELECT relation DML grants mapped in the prior inventory are all explained by live source behavior:
+- Business INSERT — Business creation.
+- Business membership INSERT — initial owner membership.
+- Opportunity INSERT/UPDATE — Opportunity and Project-linked Opportunity create/update.
+- Opportunity capability requirement DELETE — atomic complete replacement of Opportunity requirements.
+
+This does not mean the overall Resource API direct-DML boundary is ideal or closed; it means the four grants must be retained until their respective replacement architecture is implemented and qualified. No privilege changes are proposed by this finding.
+
+**No production role, grant, data, credential, environment, migration, deployment or service was changed.**
