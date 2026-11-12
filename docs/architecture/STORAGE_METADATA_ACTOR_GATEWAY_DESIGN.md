@@ -83,3 +83,25 @@ Use disposable PostgreSQL 18.6 and the real migration chain. Tests must prove:
 - Do not change Saved Business semantics; it remains user favourites/bookmarks.
 - Do not merge the construction branch or conflate it with PR #272.
 - Production remains blocked independently by Render role-administration resolution, a fresh independently verified backup, and an approved deployment/network/rollback plan.
+
+## Critical separation: user authority versus trusted provider workflow
+
+A user bearer token alone must **not** authorize provider-completion transitions. Because the Actor Gateway is reachable over HTTPS, an authenticated manager could otherwise call a new `mark_available` endpoint directly and bypass the Resource API's provider HEAD/byte validation. Likewise, a direct user call to `mark_deleted` must not claim that the object-store deletion has already happened. The gateway must not treat "the Resource API normally checks this first" as proof.
+
+Use two distinct authorization classes:
+
+1. **Actor-authorized metadata operations:** create pending, metadata read, and request deletion-pending. These are bound to the verified GHM actor JWT, exact operation, object/business context and database membership/role predicates. The HTTP route may be user-reachable because the database wrapper independently enforces the user's actual authority.
+2. **Resource-service workflow transitions:** mark available and mark deleted. These must be inaccessible with only an end-user bearer token. Require an additional Resource API service-to-service attestation, distinct from the user's JWT and the database HMAC assertion. The attestation must be bound to operation, object ID, tenant/business, expected transition, provider verification result and short expiry/nonce; only the Resource API storage workflow may mint it after successful provider verification/deletion. The Actor Gateway validates this service attestation before producing the database v2 HMAC assertion. Do not expose these operations through ordinary user-authorized routes.
+
+The service attestation is an additional application-to-application trust boundary, not a substitute for the database's signed actor/tenant assertion. It must use a dedicated secret/configuration with strict startup validation, HTTPS, redirect rejection, bounded body size, short expiry, replay protection, and no logging of credentials. Do not reuse the public actor assertion secret as the service credential. If the existing deployment/network constraints cannot protect this channel adequately, pause implementation and return with a decision rather than silently exposing the transition endpoints.
+
+### System cleanup and provider deletion retry
+
+The current product lifecycle allows abandoned pending uploads to be cleaned up, and deletion retries may run without an interactive user. Do not invent a user actor for these operations. First enumerate every cleanup caller and decide whether it is an authenticated owner/admin action or a true background/system job. For a true system job, define a separate narrowly scoped service operation/credential that can only target eligible expired pending objects (and, if needed, retry deletion-pending objects after provider deletion) under explicit age/state predicates. It must not accept arbitrary Business/object IDs as unconstrained authority. Its own signed context and database-side invariants must be qualified. If no current background cleanup caller exists, do not build a speculative system API; retain the user-authorized manager cleanup path and document that scope.
+
+### Provider evidence must be explicit
+
+The Actor Gateway database wrapper cannot independently prove an object-store side effect merely from an object ID. The Resource API's provider HEAD/content/byte validation and successful provider delete must be represented by the separate service attestation above, or by a future independently verified provider callback/attestation design. The database wrapper should bind and consume that evidence exactly once, alongside the object and transition. A plain boolean such as `providerVerified: true` supplied in JSON is not evidence.
+
+This two-class design supersedes any reading of the earlier table that a normal user JWT alone may invoke all five operations. The implementation must not proceed with a user-callable `mark_available` or `mark_deleted` route.
+
