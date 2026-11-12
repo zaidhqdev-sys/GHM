@@ -103,7 +103,7 @@ export const AUTH_ISSUER_DATABASE_PRIVILEGES_SQL = `
           SELECT 1
             FROM pg_default_acl d
            WHERE d.defaclrole = 'ghm_schema_owner'::regrole
-             AND d.defaclnamespace = 0
+             AND (d.defaclnamespace = 0 OR d.defaclnamespace = 'ghm'::regnamespace)
              AND d.defaclobjtype = 'f'
         )
         OR EXISTS (
@@ -111,7 +111,7 @@ export const AUTH_ISSUER_DATABASE_PRIVILEGES_SQL = `
             FROM pg_default_acl d
             CROSS JOIN LATERAL aclexplode(d.defaclacl) acl
            WHERE d.defaclrole = 'ghm_schema_owner'::regrole
-             AND d.defaclnamespace = 0
+             AND (d.defaclnamespace = 0 OR d.defaclnamespace = 'ghm'::regnamespace)
              AND d.defaclobjtype = 'f'
              AND acl.privilege_type = 'EXECUTE'
              AND acl.grantee IN (0, 'ghm_runtime'::regrole::oid, 'ghm_auth_issuer'::regrole::oid,
