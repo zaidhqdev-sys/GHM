@@ -9,6 +9,7 @@ export interface AuthIssuerDatabasePrivileges {
   executable_functions: string[];
   expected_functions: string[];
   unsafe_function_defaults: boolean;
+  unsafe_security_definer_functions: string[];
   runtime_executable_auth_functions: string[];
   expected_runtime_auth_functions: string[];
 }
@@ -31,6 +32,7 @@ export const assertAuthIssuerDatabasePrivileges = (
     failures.push('issuer_function_allow_list_mismatch');
   }
   if (privileges.unsafe_function_defaults !== false) failures.push('unsafe_future_function_defaults');
+  if (privileges.unsafe_security_definer_functions.length !== 0) failures.push('unsafe_security_definer_functions');
   if (JSON.stringify(runtimeFunctions) !== JSON.stringify(expectedRuntimeFunctions)) {
     failures.push('resource_runtime_auth_function_allow_list_mismatch');
   }
@@ -117,6 +119,23 @@ export const AUTH_ISSUER_DATABASE_PRIVILEGES_SQL = `
              AND acl.grantee <> d.defaclrole
         )
       ) AS unsafe_function_defaults,
+      ARRAY(
+        SELECT p.oid::regprocedure::text
+          FROM pg_proc p
+          JOIN pg_namespace n ON n.oid = p.pronamespace
+         WHERE n.nspname = 'ghm'
+           AND p.prosecdef
+           AND (
+             pg_get_userbyid(p.proowner) IS DISTINCT FROM 'ghm_schema_owner'
+             OR NOT EXISTS (
+               SELECT 1
+                 FROM unnest(COALESCE(p.proconfig, ARRAY[]::text[])) AS setting
+                WHERE setting = 'search_path=pg_catalog, ghm, pg_temp'
+             )
+           )
+         ORDER BY 1
+      ) AS unsafe_security_definer_functions,
+
       ARRAY(
         SELECT p.oid::regprocedure::text
           FROM pg_proc p
