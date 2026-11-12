@@ -579,6 +579,8 @@ try {
     disposableDatabasePrivilegeRollback: 'passed',
     issuerStartupAclVerification: 'passed',
     globalAndSchemaScopedDefaultAclDenials: 'passed',
+    unexpectedDirectFunctionGrantDenials: 'passed',
+    securityDefinerOwnerAndTemporarySafeSearchPath: 'passed',
   }) + '\\n');
 } finally {
   await Promise.all([issuerPool.end(), runtimePool.end(), migratorPool.end(), actorGatewayPool.end()]);
