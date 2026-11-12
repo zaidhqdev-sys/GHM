@@ -1207,3 +1207,12 @@ Exact source HEAD `1db5f78b8a0f0405586fc9ae2675f16732e9374e` passed CI run `4317
 Authentication Issuer and Actor Gateway startup privilege verifiers now independently enumerate PUBLIC EXECUTE grants across every SECURITY DEFINER function in schema `ghm`, not merely the service's callable allow-list. Both reject any result. Tests cover assertion rejection, and disposable PostgreSQL qualification temporarily grants PUBLIC EXECUTE on one function from each service, proves detection, revokes the grants and verifies a clean baseline. This is still awaiting exact-head PostgreSQL 18 CI evidence.
 
 The audit remains scoped to GHM-schema SECURITY DEFINER functions; other schemas/extensions and function-body/dynamic-SQL safety need separate review. Latest code/test commit before this state update: `e4a644825824b61db0692c479a71edbdc23b2ebf`. Production untouched.
+
+
+## 2026-11-12 — pre-cutover runtime grant snapshot and rollback proof passed
+
+The CI now verifies the exact pre-issuer Resource API runtime auth-function set before applying manual issuer cutover. It requires the documented 16 functions, rejects unexpected direct grants, and explicitly preserves the documented `ghm_migrator` grant on `auth_lookup_business_external_mapping`. The subsequent disposable rollback test verifies those exact runtime grants are restored and issuer grants are removed.
+
+Both issuer and Actor Gateway default-ACL verifiers now require the global schema-owner function default ACL row to exist, while checking both global and schema-specific rows for non-owner grants.
+
+Exact HEAD `405a220d408cb3c2f176131173fedb9200f62635` passed CI run `43181545588` (`quality` and `web-quality`), including PostgreSQL 18.6 full migration, all tests, principal checks, pre-cutover snapshot, manual cutover, issuer lifecycle/runtime denials and database rollback. Disposable evidence only; production remains untouched.
