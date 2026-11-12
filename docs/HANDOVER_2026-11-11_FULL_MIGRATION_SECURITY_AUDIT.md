@@ -2124,3 +2124,16 @@ A Free public issuer could be used only as a temporary non-production qualificat
 Do not create a paid Render service, paid database, or other paid infrastructure. Do not use the live GHM database for a non-production issuer test. If no independently isolated non-production database and safe existing service allocation can be verified, keep end-to-end deployment blocked and continue with source-level and disposable-CI qualification.
 
 Production cutover remains blocked on a fresh independently verified backup, approved production role provisioning/cutover, successful non-production end-to-end routing, and explicit approval. No production state changed.
+
+
+### Database inventory — non-production issuer DB blocker confirmed (read-only)
+
+A new read-only Render Postgres inventory found exactly three databases:
+
+- ghm-db / database ghm_db: available, production primary, paid plan 0.1c-256mb. This is not a non-production issuer target.
+- ghm-payfast-sandbox-db / database ghm_payfast_sandbox_db: Free plan but suspended by billing, expiry 2026-11-08. It remains unavailable and is reserved for PayFast sandbox work; do not repurpose it.
+- ghm-identity-qualification-20261018 / database ghm_identity_qualification_20261018: available, paid basic_256mb, 15 GB disk. This is a dedicated qualification database, but its current consumers, role grants, data and service contract have not been audited for issuer use. Do not assume it is disposable or repurpose it.
+
+There is no available Free Postgres database in the current Render workspace inventory. Therefore the hosted non-production Authentication Issuer cannot currently be deployed with a verified isolated database without either using a paid existing resource or creating another database. Neither is authorized under the no-new-spend constraint. Do not connect the issuer to ghm_db, and do not repurpose the identity qualification DB without a separate read-only ownership/data/role audit and explicit founder approval.
+
+Continue using CI disposable PostgreSQL for issuer schema/grant/lifecycle qualification. Keep hosted end-to-end routing blocked. No database query, database mutation, role/grant change, service update, or environment write was performed during this inventory.
