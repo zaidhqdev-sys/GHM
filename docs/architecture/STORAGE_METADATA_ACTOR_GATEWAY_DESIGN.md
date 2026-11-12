@@ -105,3 +105,27 @@ The Actor Gateway database wrapper cannot independently prove an object-store si
 
 This two-class design supersedes any reading of the earlier table that a normal user JWT alone may invoke all five operations. The implementation must not proceed with a user-callable `mark_available` or `mark_deleted` route.
 
+## Refined provider-attestation contract
+
+The implementation target for the two provider-confirmed transitions is a dual-proof wrapper. The ordinary user JWT and the Resource API's provider-workflow proof establish different facts and neither substitutes for the other.
+
+### Database proof
+
+Add a dedicated `ghm.storage_provider_workflow_attestation_secret` singleton table and `ghm.storage_provider_workflow_attestation_nonce` replay table, both owned by `ghm_schema_owner`. Revoke all table access from `PUBLIC`, `ghm_runtime`, `ghm_actor_gateway` and `ghm_migrator`. Add a SECURITY DEFINER verifier `ghm.assert_storage_provider_workflow_attestation` callable only from the Actor Gateway database login. It verifies a canonical 32-byte HMAC-SHA256, exact operation, 60-second timestamp window, active one-use nonce and constant-time full 32-byte comparison. Its signed payload is domain-separated from the user actor assertion, for example `ghm-storage-provider:v1|<operation>|<issuedAt>|<nonce>|<hex-encoded-context>`.
+
+The secret must be provisioned independently to the Resource API signing environment and the database secret row through a documented, audited operator process. It must not be embedded in migrations, committed files, the Actor Gateway environment, or a general runtime database-readable table. Do not implement until the secure database secret-provisioning path is specified and tested; do not assume `ghm_migrator` can read or insert into the protected secret table.
+
+### Dual-proof transition wrappers
+
+- `gateway_storage_mark_available` receives the user actor v2 assertion plus the provider attestation. The actor assertion binds `objectId`, `checksum`, `providerKey`, `contentType`, `byteSize` and the actor operation `storage.metadata.mark_available`. The provider attestation binds the same fields plus the stored tenant/business ID and operation `storage.provider.mark_available`. The wrapper derives the tenant and canonical provider key from the stored row, compares every field to the row, requires an active owner/administrator membership for the actor, requires the row to be `pending`, consumes both nonces, then performs the transition.
+- `gateway_storage_mark_deleted` receives the user actor v2 assertion plus provider attestation. Both bind `objectId`, stored tenant/business ID and provider key; operations are `storage.metadata.mark_deleted` and `storage.provider.mark_deleted`. The wrapper derives tenant/provider key from the stored row, requires active owner/administrator membership, requires `deletion_pending`, consumes both nonces, then marks deleted.
+- The provider attestation is signed only after the Resource API has successfully performed the corresponding provider verification or deletion. A client-supplied boolean, user JWT claim, object ID alone, or gateway-generated signature is not acceptable proof.
+- Actor Gateway routes remain behind the verified user bearer middleware. The transition request carries the Resource API attestation in a dedicated header; the Actor Gateway does not possess the signing key and cannot mint a valid provider proof. It forwards the attestation fields unchanged to the database wrapper, where PostgreSQL performs the cryptographic verification.
+- The Resource API client must use HTTPS, reject redirects, bound request time and body size, never log the attestation, and fail closed if the Actor Gateway or proof is missing. The signing secret must not be sent in the request; only the short-lived signed attestation is sent.
+
+The database wrapper must compare the attested tenant and provider key to the stored row rather than trusting request arguments. The transition's row-state predicate prevents replaying a valid proof into a second state change. Both nonce stores independently prevent replay within their validity windows.
+
+### Cleanup caller inventory
+
+The current implementation exposes cleanup only through the authenticated storage delete workflow. `src/storage/service.test.ts` covers user-authorized cleanup of abandoned pending uploads and retry of deletion-pending objects. The repository tree contains no storage cleanup worker or scheduled storage cleanup entry point. Therefore do not add a system cleanup credential/API at this stage. Keep pending-object cleanup and deletion retry under the authenticated manager workflow; re-open this decision only if a real background caller is introduced and evidenced.
+
