@@ -1253,3 +1253,30 @@ Commits:
 The complete nine-cutover / 512-stage runtime allow-list implementation at `5729ac712f9dc9fac9abb47f38291b147e5ea159` passed both CI jobs (`quality` and `web-quality`; all 63 quality steps passed). The later three-function legacy authority cutover change at `50367880520ba02a8c2b5c5357e182741aa69c17` requires its own exact-head CI result before this added cutover coverage is considered qualified.
 
 **Production state unchanged:** no role, grant, migration, credential, environment variable, Render service, deployment, bucket, object or application data was changed. No PR was merged.
+
+
+---
+
+## 2026-11-12 continuation — legacy authority fixture qualification correction
+
+### First legacy-wrapper qualification attempt
+
+Exact-head run `43305177474` for implementation commit `50367880520ba02a8c2b5c5357e182741aa69c17`:
+- `web-quality`: passed.
+- `quality`: passed the build, all migrations, whole-database SECURITY DEFINER inventory, Actor Gateway/Auth Issuer principal qualification, storage dual-proof and grant rollback, Connect provisioning, Business registration, Opportunity marketplace, main test suite, Campaign/directory-review, Capability governance and all Business Capability/Saved Business/Hours/Trust Score/Business Logo gateway cutovers, Business profile, commercial settlement, migration audit policy, runtime boundary and exact pre-issuer ACL checks.
+- The final Auth Issuer cutover qualification failed at the new disposable fixture setup because `ghm.auth_revoke_all_sessions_for_account(bigint,text)` already exists in the current disposable migration chain (it simply is not part of the runtime's 43-function executable baseline).
+
+### Correction
+
+Updated `scripts/qualify-auth-issuer-cutover.mjs` in commit `2a5a976cca58f4148a75035d9933cb9764a47eef`:
+- Reuse an existing disposable legacy function without replacing its body.
+- Create a fixture only when the signature is absent.
+- In either case, grant the historical broad application/PUBLIC privileges to simulate the legacy production ACL, then reapply the manual issuer cutover.
+- Verify the cutover removes access and the rollback does not restore it.
+- Drop only fixtures created by this qualification script; preserve existing migration-created function definitions.
+
+This keeps the test isolated, avoids overwriting a migration-owned function and still exercises the conditional cutover revocations.
+
+### Current validation
+
+Exact-head CI for `2a5a976cca58f4148a75035d9933cb9764a47eef` is in progress. Do not claim the new legacy-wrapper qualification passes until both jobs finish.
