@@ -95,3 +95,18 @@ This removes the invalid escape pattern from the issuer-principal qualification 
 | Production cutover | Not authorized |
 
 **Next checkpoint:** resolve the SQL escape mismatch at the actual failing call site, rerun exact-head CI, and obtain a completed post-cutover authority inventory before considering any further integration.
+
+
+## Retry progress checkpoint — 2026-11-13
+
+The failed quality job from run `43330297297` was successfully re-requested using GitHub's job rerun action. The latest observed retry job is quality job `131582323714`; web-quality job `131582327237` completed successfully.
+
+At the latest status check:
+- Quality: `in_progress`.
+- 44 quality steps completed successfully.
+- No failed quality steps.
+- Current active step: 45, capability legacy RPC cutover and gateway-only access.
+- Issuer gates 56–60 (pre-issuer grant inspection, disposable manual cutover, issuer lifecycle/runtime denials, post-cutover SECURITY DEFINER inventory, inventory preservation) had not yet started.
+- This is not a final pass. Continue checking this same run until it completes; then inspect exact job logs and artifacts.
+
+Do not infer issuer qualification success from the green web-quality job or the successful earlier gateway steps. Confirm whether the rerun's checkout contains the post-failure branch corrections by inspecting its logs/commit identity once logs are available. If it does not, run a fresh workflow against the current construction branch HEAD rather than treating a rerun of the earlier commit as validation.
