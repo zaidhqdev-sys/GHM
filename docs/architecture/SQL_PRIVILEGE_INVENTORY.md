@@ -124,7 +124,7 @@ Actor Gateway's exact function allow-list is now 25 signed/typed operations. The
 The HTTP route `POST /v1/connect/businesses/provision-or-resolve` and the GHM-side HTTP adapter client are implemented. The adapter is not yet mounted in the main Connect service router; full product API wiring remains an integration gate, not a database permission gap.
 ## Actor Gateway database authority — 2026-11-12
 
-The dedicated `ghm_actor_gateway` login has an explicit 24-function signed/typed-operation allow-list established by the gateway migrations. It must not have direct table/view/sequence privileges or schema CREATE. The functions are SECURITY DEFINER operations owned by `ghm_schema_owner`, each with a fixed `search_path`, signed request-context validation and explicit grants to the gateway role.
+The dedicated `ghm_actor_gateway` login has an explicit 25-function signed/typed-operation allow-list established by the gateway migrations. It must not have direct table/view/sequence privileges or schema CREATE. The functions are SECURITY DEFINER operations owned by `ghm_schema_owner`, each with a fixed `search_path`, signed request-context validation and explicit grants to the gateway role.
 
 The current source now verifies at Actor Gateway startup, before opening the HTTP listener:
 - exact effective ordinary function set across the entire `ghm` schema (trigger-returning functions excluded);
@@ -134,7 +134,7 @@ The current source now verifies at Actor Gateway startup, before opening the HTT
 - no `ghm_runtime` EXECUTE on gateway-specific functions;
 - no unsafe global future-function defaults for PUBLIC, runtime, issuer, gateway, migrator or payment-provider roles.
 
-The disposable qualification script invokes the same verifier against the real `ghm_actor_gateway` login. This guard detects privilege drift; it does not change grants. The 24-function count is derived from the current migration GRANT statements and must be updated only alongside a reviewed typed operation, migration, tests and qualification evidence.
+The disposable qualification script invokes the same verifier against the real `ghm_actor_gateway` login. This guard detects privilege drift; it does not change grants. The 25-function count is derived from the current migration GRANT statements and must be updated only alongside a reviewed typed operation, migration, tests and qualification evidence.
 
 
-The migration history contains nine older account-ID overloads that were explicitly dropped by the later signed-assertion migrations. The only surviving unsigned helper was `assert_actor_gateway(bigint)`, which is not called by the current gateway code; migration `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads.sql` revokes PUBLIC, runtime, migrator and gateway execution from that helper. The exact current allow-list is 24 signed/typed operations, and disposable qualification verifies the unsigned helper returns SQLSTATE 42501.
+The migration history contains nine older account-ID overloads that were explicitly dropped by the later signed-assertion migrations. The only surviving unsigned helper was `assert_actor_gateway(bigint)`, which is not called by the current gateway code; migration `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads.sql` revokes PUBLIC, runtime, migrator and gateway execution from that helper. The exact current allow-list is 25 signed/typed operations, and disposable qualification verifies the unsigned helper returns SQLSTATE 42501.
