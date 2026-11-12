@@ -1280,3 +1280,29 @@ This keeps the test isolated, avoids overwriting a migration-owned function and 
 ### Current validation
 
 Exact-head CI for `2a5a976cca58f4148a75035d9933cb9764a47eef` is in progress. Do not claim the new legacy-wrapper qualification passes until both jobs finish.
+
+
+---
+
+## 2026-11-12 continuation — legacy auth authority revocation rehearsal reached rollback verification
+
+### Second fixture qualification run
+
+Exact-head run `43305676298` for `2a5a976cca58f4148a75035d9933cb9764a47eef`:
+- `web-quality`: passed.
+- `quality`: passed build, migrations, SECURITY DEFINER inventory, all 512 runtime cutover stage tests, storage dual-proof/rollback, Connect provisioning, Business registration, Opportunity marketplace, main test suite, Campaign/directory-review, Capability governance, Business Capability, Saved Business, Business Hours, Trust Score, Business Logo, Business profile, commercial settlement, migration audit, runtime boundary, exact pre-issuer grants and guarded issuer cutover.
+- The final issuer lifecycle qualification exercised the new legacy wrappers. The expected permission-denied calls for `auth_read_account_email`, `auth_read_connect_identity_authority` and `auth_revoke_all_sessions_for_account` were observed.
+- It then failed only in the post-rollback ACL verification query: that query used the `ghm_migrator` connection without `SET ROLE ghm_schema_owner`; the migrator has no direct schema USAGE, so PostgreSQL correctly returned permission denied for schema `ghm`. This is a test-query execution-context error, not a failed revocation or a production issue.
+
+### Correction
+
+Commit `6b1d3c4f180d0570a6836bfdb0e97f9a044c86c6` changes the post-rollback privilege verification to use a dedicated migrator client with `SET ROLE ghm_schema_owner`, then `RESET ROLE` and release. It does not widen any grants or change the migration cutover. Exact-head CI is required to confirm the corrected verification.
+
+### Migration ledger access clarification
+
+A follow-up read-only role-capability query confirmed:
+- `ghm_db_user` has no direct SELECT and no SET path to `ghm_schema_owner` for `ghm.ghm_schema_migrations`.
+- `ghm_migrator` has no direct SELECT on the ledger, but does have the SET path to `ghm_schema_owner` needed by the supported migration process.
+- The current Render default query identity therefore cannot read the ledger; a controlled migrator connection that performs `SET ROLE ghm_schema_owner` is the correct read-only route.
+
+No production role, grant, migration, credential, environment variable, service, deployment, ledger row or data was changed.
