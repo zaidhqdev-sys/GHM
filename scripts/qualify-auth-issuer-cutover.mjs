@@ -8,6 +8,7 @@ import { loadEs256Keys } from '../dist/auth/foundation/es256-keys.js';
 import { PostgresAuthPersistence } from '../dist/auth/foundation/persistence.js';
 import { createArgon2idPasswordHasher } from '../dist/auth/foundation/password.js';
 import { createGhmAuthService } from '../dist/auth/ghm-auth-service.js';
+import { assertAuthIssuerDatabasePrivileges, readAuthIssuerDatabasePrivileges } from '../dist/auth-issuer/database-privileges.js';
 
 const issuerUrl = process.env.GHM_AUTH_ISSUER_DATABASE_URL?.trim();
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL?.trim();
@@ -130,6 +131,12 @@ try {
     runtimeAuthFunctions.rows[0].actual,
     runtimeAuthFunctions.rows[0].expected,
     'Resource API runtime must retain only the three separately reviewed external identity/business-mapping auth functions after issuer cutover',
+  );
+
+  const startupPrivileges = await readAuthIssuerDatabasePrivileges(issuerPool);
+  assert.doesNotThrow(
+    () => assertAuthIssuerDatabasePrivileges(startupPrivileges),
+    'the exact production startup ACL verifier must accept the disposable post-cutover issuer/runtime roles',
   );
 
   const issuerFunctions = await issuerPool.query(`
@@ -451,6 +458,7 @@ try {
     recoveryResetReplayAndSessionRevocation: 'passed',
     quoteFlowMigrationReset: 'passed',
     disposableDatabasePrivilegeRollback: 'passed',
+    issuerStartupAclVerification: 'passed',
   }) + '\\n');
 } finally {
   await Promise.all([issuerPool.end(), runtimePool.end(), migratorPool.end()]);
