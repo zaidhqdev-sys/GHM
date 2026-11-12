@@ -432,6 +432,10 @@ try {
     await cleanupPool.query('BEGIN');
     await cleanupPool.query('SET LOCAL ROLE ghm_schema_owner');
     await cleanupPool.query(
+      'DELETE FROM ghm.business_external_mapping WHERE business_id = ANY($1::bigint[])',
+      [fixture.businessIds],
+    );
+    await cleanupPool.query(
       'DELETE FROM ghm.business WHERE id = ANY($1::bigint[])',
       [fixture.businessIds],
     );
