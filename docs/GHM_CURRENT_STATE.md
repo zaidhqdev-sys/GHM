@@ -1291,3 +1291,17 @@ All 24 signed Actor Gateway wrappers independently compare signed request contex
 
 
 Latest exact-head validation: branch HEAD `36fd0f63ec094a0603c3d3c272e04a456b2078a5` passed both CI jobs in run `43222978930` (55/55 quality steps). Its own inventory artifact (SHA-256 `504617d724670704e673ed22f4841069d02a19aceeca2674e9b6de9cdb73e64d`, captured 13:00:08 UTC) confirms 97 routines, 70 direct-grant findings, zero PUBLIC EXECUTE, and direct grants runtime 43 / gateway 25 / payment provider 2 / migrator 1. All routines are ghm-schema-owned, pinned and trusted. This supersedes the prior pending exact-head note.
+
+
+### 12 November 2026 continuation — latest grant-authority checkpoint
+
+The detailed current grant review and Campaign/directory-review remediation are maintained in [HANDOVER_2026-11-12_DATABASE_GRANT_AUTHORITY_REVIEW.md](./HANDOVER_2026-11-12_DATABASE_GRANT_AUTHORITY_REVIEW.md). Use that handover for the current branch and evidence; older grant counts and open-finding statements in this historical current-state document are retained for audit history and are superseded where the newer handover says so.
+
+At the new construction checkpoint:
+- Campaign create/update and owner directory-review presentation are moved behind signed Actor Gateway database wrappers.
+- Their three legacy runtime EXECUTE grants are revoked by a forward-only migration.
+- Disposable PostgreSQL 18 qualification covers active actor binding, cross-business denial, actor/target substitution, replay and disabled-account denial.
+- Resource API has a 43/40 exact SECURITY DEFINER EXECUTE allow-list for the inventoried pre/post migration states. Production enforcement remains gated until the production catalog is independently reconciled.
+- Production remains untouched; the migration is not approved for production application.
+
+Do not use the older 36fd0f63 checkpoint as the current branch HEAD. The linked November 12 grant-authority handover records the later source SHA, CI runs and remaining production gates.
