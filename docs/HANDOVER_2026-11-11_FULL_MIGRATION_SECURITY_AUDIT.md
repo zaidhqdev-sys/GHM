@@ -1463,3 +1463,46 @@ It does not yet prove that runtime is denied the remaining issuer-only operation
 ### Next construction work — no privilege cut yet
 
 Build the isolated issuer as a distinct process entrypoint and dependency graph, with separate runtime/issuer DB connection configuration, private key + pepper only in issuer config, and explicit public-key-only Resource API verification. Then define issuer-specific DB role and function grants from the final ACL matrix. Do not simply split routes into a different file while retaining one process/environment. Do not make production role/secret/deployment changes during construction qualification.
+
+
+## Follow-up — entrypoint and dependency-graph audit (2026-11-12)
+
+### Confirmed process entrypoints
+
+- Ordinary Resource API: `src/server.ts` imports `config`, `createApp` and the ordinary DB pool; calls `createApp()`; verifies `ghm_runtime` at startup; then listens on the configured port.
+- Actor Gateway: `src/actor-gateway/server.ts` has a separate entrypoint, separate `GHM_ACTOR_GATEWAY_DATABASE_URL`, startup role assertion for `ghm_actor_gateway`, and public-key-only JWT verification using `loadEs256VerificationKeys()` + `createAccessJwtVerifier()`. This is a sound existing separation pattern to follow.
+- Resource API `src/http/app.ts` still registers `registerAuthRoutes` and constructs `new PostgresAuthPersistence()` using its default pepper loader.
+- `src/http/auth-router.ts` lazily calls `createGhmAuthService()`; that factory defaults to `createAccessJwtService(loadEs256Keys())` and `createPostgresAuthPersistence()` defaults to the token pepper. Thus auth issuance is currently coupled to the ordinary Resource API process and ordinary runtime database principal.
+- `src/auth/foundation/access-jwt-verifier.ts`, `loadEs256VerificationKeys()`, and Actor Gateway provide the already-existing public-key-only verification components. Reuse these; do not introduce a second JWT format or key model.
+
+### Deployment/configuration gap
+
+The ordinary server's `config` currently exposes one `GHM_RUNTIME_DATABASE_URL` (production) / development DB URL. Actor Gateway has its own explicit DB URL. There is no auth issuer entrypoint, issuer-specific DB URL, issuer principal assertion, or issuer-specific secret loader in the current source tree.
+
+The package scripts expose `start`, `start:actor-gateway`, and no auth issuer start command. Therefore creating an issuer class or moving a route file alone would not create an isolation boundary. A separately launched process, separate service environment and independent DB connection are mandatory.
+
+### Important unresolved dependency question
+
+`src/http/app.ts` defaults to creating the auth persistence and password-reset service, but the production `src/server.ts` calls `createApp()` without injecting an auth service, recovery delivery service or QuoteFlow migration-reset services. The auth router's default auth-service factory exists, but the recovery/QuoteFlow services are optional dependencies and are not instantiated in this default composition. Before moving routes, trace how these services are intended to be supplied in deployment and whether current recovery routes are operationally enabled. Do not silently create a new email delivery integration or alter response behavior.
+
+### Existing code-level isolation pattern to reuse
+
+Actor Gateway startup already demonstrates:
+- dedicated entrypoint and process;
+- dedicated DB URL and connection pool;
+- explicit principal startup verification;
+- public-key-only JWT verification;
+- bounded HTTP server timeouts and controlled shutdown.
+
+The auth issuer should follow that pattern with its own `ghm_auth_issuer` principal and issuer-only secret loader. It must not import the general Resource API `config` module (which requires resource-specific environment settings), and the Resource API must not import issuer configuration or signing/pepper modules.
+
+### Construction gate
+
+Do not split auth routes yet until route ownership and recovery delivery configuration are resolved. First add an executable deployment contract test that fails if:
+- Resource API imports or constructs `PostgresAuthPersistence`;
+- Resource API imports `createAccessJwtService` / `loadEs256Keys`;
+- Resource API auth routes remain registered;
+- the issuer lacks its own database URL/principal assertion;
+- Resource API or Actor Gateway loads issuer-only token pepper/private signing key.
+
+Then build the isolated issuer entrypoint and route registration as one atomic construction change, update package scripts and service Blueprint/docs (not production), and run all auth HTTP + disposable PostgreSQL positive/negative tests.
