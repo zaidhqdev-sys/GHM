@@ -376,6 +376,7 @@ test('auth foundation persistence (database)', async (t) => {
     const s2 = await persistence.createSessionWithRefresh(accountId);
     const issued = await persistence.issueRecovery(accountId, 30);
     const email = `recovery-reset-${accountId}@example.test`;
+    await persistence.setPassword(accountId, email, 'Initial-Recovery-Password-123!');
 
     await assert.rejects(
       () => persistence.resetPasswordWithRecovery(
@@ -427,7 +428,10 @@ test('auth foundation persistence (database)', async (t) => {
     } finally {
       client.release();
     }
-    await assert.rejects(() => redeemRecoveryAsOwner(issued.recoveryTokenWire), AuthPersistenceError);
+    await assert.rejects(
+      () => redeemRecoveryAsOwner(issued.recoveryTokenWire),
+      (error: unknown) => (error as { code?: string }).code === 'P0001',
+    );
   });
 
 
