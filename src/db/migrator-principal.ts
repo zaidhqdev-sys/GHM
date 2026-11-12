@@ -2,6 +2,11 @@ export interface MigratorDatabaseIdentity {
   current_database: string;
   current_user: string;
   session_user: string;
+  database_connect_privilege: boolean;
+  database_create_privilege: boolean;
+  schema_usage: boolean;
+  schema_create: boolean;
+  direct_relation_privileges: boolean;
   migrator_rolcanlogin: boolean;
   migrator_rolinherit: boolean;
   migrator_rolsuper: boolean;
@@ -24,6 +29,11 @@ export const assertMigratorDatabaseIdentity = (identity: MigratorDatabaseIdentit
   if (!identity) throw new Error('Migration database principal could not be resolved');
 
   const expectedFlags: Partial<Record<keyof MigratorDatabaseIdentity, boolean | number>> = {
+    database_connect_privilege: true,
+    database_create_privilege: false,
+    schema_usage: false,
+    schema_create: false,
+    direct_relation_privileges: false,
     migrator_rolcanlogin: true,
     migrator_rolinherit: false,
     migrator_rolsuper: false,
