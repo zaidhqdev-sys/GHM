@@ -2074,3 +2074,78 @@ The known 21 INSERT table groups and 12 UPDATE table groups now have source-leve
 This is a source-callsite reconciliation, not permission approval. No production grants are proposed for removal until every caller and non-HTTP producer is accounted for and the replacement is deployed/qualified.
 
 **No production changes were made.** Only read-only catalog queries and GitHub source inspection occurred. No production grant, role, membership, migration, credential, secret, Render setting, deployment, route, traffic, or application data changed. No PR merged/closed. PayFast and legal publication remain paused.
+
+
+## 2026-11-12 22:20 UTC — production table-level ACL, sequence ACL and role-membership audit
+
+### 1. Table-level DML grants discovered outside the column matrix
+
+The direct table ACL snapshot for `ghm_runtime` (grantor `ghm_schema_owner`, no grant options) contains:
+
+| Object | Table-level privilege | Disposition |
+|---|---|---|
+| `business` | INSERT | Used by Business creation, whose columns extend beyond the column-ACL profile fields. |
+| `business_membership` | INSERT | Used by atomic Business + owner membership creation. |
+| `opportunity` | INSERT, UPDATE | Used by Opportunity/Project/Enquiry creation and lifecycle/edit operations; exact callers must continue to be considered with full table-level authority, not only column grants. |
+| `opportunity_capability_requirement` | DELETE | Used by the authorized replacement operation documented above. |
+
+There are also direct table-level SELECT grants on 38 relations and SELECT on the `project_public` view. The relation list is:
+`account_external_identity, account_identity, authentication_session, business, business_capability, business_category, business_category_assignment, business_hours, business_membership, business_offering, campaign, capability, commercial_payment_attempt, commercial_plan, commercial_plan_entitlement, commercial_plan_price, commercial_plan_version, connect_integration, country, currency, customer, enquiry, notification, opportunity, opportunity_capability_requirement, opportunity_participant, opportunity_type, project, project_quote, quote, quote_line_item, review, saved_business, support_request, support_request_message, trust_score`.
+
+The column-level grants supplement these table-level grants. Do not infer that the 156 INSERT/60 UPDATE rows alone describe the effective DML boundary.
+
+### 2. Sequence ACL snapshot
+
+The runtime has direct USAGE on 39 sequences and SELECT on 10 sequences; all are granted by `ghm_schema_owner` without grant option.
+
+The 39 USAGE sequence grants are:
+`account_external_identity_id_seq, account_external_mapping_id_seq, account_identity_id_seq, authentication_session_id_seq, business_capability_evidence_id_seq, business_capability_id_seq, business_category_assignment_id_seq, business_directory_review_event_id_seq, business_engagement_event_id_seq, business_external_mapping_id_seq, business_hours_id_seq, business_id_seq, business_membership_id_seq, campaign_id_seq, commercial_event_id_seq, commercial_payment_attempt_id_seq, commercial_subscription_id_seq, commercial_trial_id_seq, customer_id_seq, enquiry_id_seq, notification_id_seq, opportunity_capability_requirement_id_seq, opportunity_id_seq, opportunity_participant_id_seq, opportunity_type_id_seq, password_recovery_credential_id_seq, project_id_seq, project_quote_id_seq, quote_id_seq, quote_line_item_id_seq, quoteflow_migration_business_provisioning_audit_id_seq, quoteflow_migration_reset_enrollment_id_seq, refresh_credential_id_seq, review_id_seq, saved_business_id_seq, storage_object_id_seq, support_request_id_seq, support_request_message_id_seq, trust_score_id_seq`.
+
+The 10 sequences that additionally have SELECT are:
+`account_identity_id_seq, business_category_assignment_id_seq, business_engagement_event_id_seq, business_id_seq, business_membership_id_seq, enquiry_id_seq, opportunity_id_seq, opportunity_type_id_seq, project_id_seq, review_id_seq`.
+
+A dependency join between sequences and owning tables shows 16 of the USAGE-granted sequences have no matching direct table-level INSERT or column-level INSERT ACL for their owning table:
+`account_external_identity_id_seq, account_external_mapping_id_seq, account_identity_id_seq, authentication_session_id_seq, business_directory_review_event_id_seq, business_external_mapping_id_seq, business_hours_id_seq, campaign_id_seq, opportunity_type_id_seq, password_recovery_credential_id_seq, quoteflow_migration_business_provisioning_audit_id_seq, quoteflow_migration_reset_enrollment_id_seq, refresh_credential_id_seq, saved_business_id_seq, storage_object_id_seq, trust_score_id_seq`.
+
+This is a **candidate sequence overgrant list**, not an approved revoke list. Some sequences may be used by SECURITY DEFINER functions, triggers, or identity operations that do not require runtime table INSERT. Resolve each sequence to its exact source/function/trigger and deployed migration before proposing a revoke. The 23 remaining sequences do correspond to direct table-level or column-level INSERT authority.
+
+### 3. Critical production role-membership and role-attribute finding
+
+The live catalog returned the following role attributes:
+
+| Role | LOGIN | CREATEDB | CREATEROLE | INHERIT | Other relevant |
+|---|---:|---:|---:|---:|---|
+| `ghm_app_user` | yes | no | no | yes | Can SET ROLE to `ghm_db_user` through membership. |
+| `ghm_db_user` | yes | **yes** | **yes** | yes | Has admin-option memberships to multiple protected roles. |
+| `ghm_runtime` | yes | no | no | no | Intended Resource API role. |
+| `ghm_actor_gateway` | yes | no | no | no | Intended isolated gateway role. |
+| `ghm_migrator` | yes | no | no | no | Migration login. |
+| `ghm_payment_provider` | yes | no | no | no | Payment provider login; PayFast remains paused. |
+| `ghm_schema_owner` | no | no | no | no | Non-login schema owner. |
+
+The `pg_auth_members` snapshot further shows:
+
+- `ghm_app_user` is a member of `ghm_db_user` with `inherit_option=true` and `set_option=true`.
+- `ghm_db_user` has `admin_option=true` membership rows for `ghm_actor_gateway`, `ghm_migrator`, `ghm_payment_provider`, `ghm_schema_owner`, and `ghm_runtime` (the runtime membership also has a separate inherit-enabled row).
+- The memberships to gateway, migrator, payment provider and schema owner are not SET-enabled, but the admin option gives `ghm_db_user` authority to administer those memberships.
+- `ghm_db_user` is LOGIN, CREATEDB and CREATEROLE.
+
+This confirms the outstanding Render principal separation issue is not merely a theoretical grantor display. The application credential `ghm_app_user` can SET ROLE to `ghm_db_user`; that role has database/role creation attributes and admin-option membership authority over protected execution/migration/ownership principals.
+
+The production query session itself reported `session_user=ghm_app_user` and `current_user=ghm_db_user`. This is consistent with the app credential operating through the Dashboard-managed role and is not the intended final isolated principal model.
+
+**Do not attempt to fix this by revoking memberships, altering role attributes, rotating credentials, or changing Render service configuration in this qualification pass.** The previous Render support recommendation remains: normal app execution should move to SQL-created login(s) outside the Dashboard-managed credential list, with a planned principal cutover. The support escalation and provider/bootstrap authority issue must be resolved through the separately approved operational path.
+
+### 4. Query provenance
+
+All findings above came from read-only Render catalog queries against `ghm_db` at PostgreSQL 18.6 on `2026-11-12`. The application identity query returned `session_user=ghm_app_user`, `current_user=ghm_db_user`. No application row data was read.
+
+### 5. Priority changes to remaining audit plan
+
+1. Treat role membership/attributes and `ghm_db_user` as the critical production isolation blocker.
+2. Reconcile the 16 candidate sequence grants; do not revoke based on absence of direct INSERT alone.
+3. Keep table-level INSERT/UPDATE/DELETE grants distinct from column-level ACLs in the final effective-privilege report.
+4. Continue the full table-level SELECT inventory and exact runtime read-source mapping separately.
+5. Keep production Business Profile Actor Gateway migration/deployment and Business Engagement provenance as separate cutover gates.
+
+**No production mutation occurred.** No role attribute, membership, grant, sequence, migration, credential, secret, Render setting, service, deployment, application route, traffic, or application data changed. No PR was merged or closed. PayFast and legal publication remain paused.
