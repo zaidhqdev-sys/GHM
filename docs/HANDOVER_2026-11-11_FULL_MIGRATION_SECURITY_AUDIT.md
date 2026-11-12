@@ -2656,3 +2656,12 @@ The first workflow runs triggered by the successive audit commits were observed 
 ### Next decision gate
 
 Review the full report for every non-owner EXECUTE grant, PUBLIC execution, unsafe/unpinned search path, non-trusted language, unexpected schema/database CREATE or USAGE privilege, powerful role attributes, role membership path, extension-owned function, and function default ACL. Build a documented exact-signature × role permission matrix from that evidence and migration intent. Add adversarial grant/search-path/temporary-shadowing tests for any identified gaps. No production catalog access, privilege changes, merge or issuer cutover is authorized by this work.
+
+
+## 2026-11-12 — PUBLIC SECURITY DEFINER qualification assertion corrected
+
+The first Actions runs after the global PUBLIC-definer scan change failed at `scripts/qualify-auth-issuer-cutover.mjs:186`, with the assertion message `issuer verifier must report PUBLIC execution on any SECURITY DEFINER function`. The observed array contained both intentionally injected PUBLIC grants: `ghm.auth_create_account(...)` and `ghm.gateway_provision_connect_business(...)`. This was an outdated qualification expectation, not evidence that the baseline database had an unexpected PUBLIC grant: the probe explicitly GRANTed PUBLIC EXECUTE to both functions, and the issuer verifier correctly returned both because its new query intentionally enumerates every GHM SECURITY DEFINER function. The Actor Gateway verifier uses the same global scan and must return the same two injected signatures.
+
+Corrected the adversarial qualification to require both verifiers to report the complete two-function set (sorted), then require both arrays to be empty after the probe revokes both grants. Do not narrow the verifier back to service-local allow-lists. This preserves the intended cross-service protection and makes the test prove it. The earlier failed runs checked the previous assertion and do not qualify the corrected commit. Await the next exact-head PostgreSQL 18 CI run.
+
+The run failed at the final issuer cutover qualification before the new inventory CI step had been added; it therefore provides no evidence about the inventory runner. The new workflow now executes the inventory immediately after migrations and stores the report artifact. Inspect the new exact-head run's inventory step and artifact independently of the later issuer cutover step.
