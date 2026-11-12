@@ -5,6 +5,7 @@ import { loadEs256Keys } from '../auth/foundation/es256-keys';
 import { PostgresAuthPersistence } from '../auth/foundation/persistence';
 import { createGhmAuthService } from '../auth/ghm-auth-service';
 import { createPasswordResetService } from '../auth/password-reset';
+import { createQuoteFlowMigrationResetCompletionService } from '../migrations/quoteflow-migration-reset-completion';
 import { createAuthIssuerApp } from './app';
 import { authIssuerDatabaseSslConfig } from './database-ssl';
 import { assertAuthIssuerDatabaseIdentity } from './database-principal';
@@ -42,6 +43,7 @@ const app = createAuthIssuerApp({
   authService,
   authPersistence: persistence,
   passwordResetService: createPasswordResetService(persistence),
+  quoteFlowMigrationResetCompletionService: createQuoteFlowMigrationResetCompletionService(persistence),
   readinessCheck: async () => { await pool.query('SELECT 1'); },
 });
 const server = http.createServer(app);
