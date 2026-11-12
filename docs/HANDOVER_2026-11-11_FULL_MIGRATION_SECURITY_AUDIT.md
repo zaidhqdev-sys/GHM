@@ -2557,3 +2557,23 @@ The disposable issuer qualification now proves this behavior by temporarily gran
 **Exact-head qualification passed:** source HEAD `1db5f78b8a0f0405586fc9ae2675f16732e9374e`, CI run `43179755317`, both `quality` and `web-quality` success. PostgreSQL 18.6 full migrations, issuer and Actor Gateway principal checks, full test suite, runtime boundary, guarded disposable cutover, and issuer lifecycle/runtime-denial/database rollback all passed. The run includes both the unexpected direct-grant fixture and the schema-scoped default-ACL fixture.
 
 This remains disposable-only evidence. Production grants/cutover, roles, deployments, secrets, data, routing and paid services remain untouched. PR #272 and the issuer dependent branch remain unmerged. Production role/ownership resolution, fresh independently verified backup, transport/network topology, recovery delivery, cross-product compatibility and separate founder approvals remain blockers.
+
+
+## 2026-11-12 — PUBLIC execution audit for all SECURITY DEFINER functions
+
+The next database-boundary pass found that the existing privilege verifier checked PUBLIC execution for the service's callable function set, but the separate SECURITY DEFINER ownership/search-path audit did not independently report PUBLIC EXECUTE across every SECURITY DEFINER function in the GHM schema. A privileged function outside the current service allow-list could therefore have been omitted from that specific PUBLIC-execution finding.
+
+Both Authentication Issuer and Actor Gateway privilege verifiers now expose `public_executable_security_definer_functions`. The query expands each GHM function ACL and selects every SECURITY DEFINER function with EXECUTE granted to grantee OID 0 (PUBLIC). The least-privilege assertion rejects any non-empty result. This is separate from the existing owner and pinned-search-path check, and separate from each service's callable allow-list.
+
+Regression tests now reject a synthetic non-empty PUBLIC-definer result for each service. The disposable PostgreSQL qualification now:
+1. Starts by asserting the baseline has no PUBLIC-executable SECURITY DEFINER functions.
+2. Grants PUBLIC EXECUTE on one issuer and one Actor Gateway SECURITY DEFINER operation through the restricted migrator/schema-owner path.
+3. Confirms each verifier reports its respective function.
+4. Revokes both temporary PUBLIC grants.
+5. Confirms both verifiers return to an empty result.
+
+The probe is confined to the existing guarded disposable database. It is not production evidence until a complete exact-head PostgreSQL 18 CI run passes.
+
+This audit is limited to GHM-schema SECURITY DEFINER functions. It does not yet prove that extension-owned or other-schema SECURITY DEFINER functions are harmless, nor does it replace a full role-membership/ownership audit. Function bodies and dynamic SQL still require separate review for unsafe object resolution, dynamic execution and assumptions about caller-controlled values.
+
+Latest code/test commit before this handover update: `e4a644825824b61db0692c479a71edbdc23b2ebf`. Exact-head CI remains unverified; do not reuse earlier green workflow runs as qualification for these changes. No production change, merge, paid resource or external provider operation was made.
