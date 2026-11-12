@@ -64,21 +64,27 @@ try {
     await setup.query('SET LOCAL ROLE ghm_schema_owner');
     const owner = await setup.query("INSERT INTO ghm.account_identity(full_name,role) VALUES($1,'business') RETURNING id", [marker]);
     const outsider = await setup.query("INSERT INTO ghm.account_identity(full_name,role) VALUES($1,'business') RETURNING id", [marker + '-outsider']);
+    const member = await setup.query("INSERT INTO ghm.account_identity(full_name,role) VALUES($1,'business') RETURNING id", [marker + '-member']);
+    const nonmember = await setup.query("INSERT INTO ghm.account_identity(full_name,role) VALUES($1,'business') RETURNING id", [marker + '-nonmember']);
     const a = await setup.query("INSERT INTO ghm.business(name,slug,verification_status,is_verified,is_active) VALUES($1,$2,'approved',true,true) RETURNING id", [marker, marker]);
     const b = await setup.query("INSERT INTO ghm.business(name,slug,verification_status,is_verified,is_active) VALUES($1,$2,'approved',true,true) RETURNING id", [marker + '-other', marker + '-other']);
     const accountId = Number(owner.rows[0].id);
     const outsiderId = Number(outsider.rows[0].id);
+    const memberId = Number(member.rows[0].id);
+    const nonmemberId = Number(nonmember.rows[0].id);
     const businessId = Number(a.rows[0].id);
     const otherBusinessId = Number(b.rows[0].id);
     await setup.query(
-      "INSERT INTO ghm.business_membership(business_id,account_id,membership_role,membership_status,created_by) VALUES($1,$2,'owner','active',$2),($3,$4,'owner','active',$4)",
-      [businessId, accountId, otherBusinessId, outsiderId],
+      "INSERT INTO ghm.business_membership(business_id,account_id,membership_role,membership_status,created_by) VALUES($1,$2,'owner','active',$2),($3,$4,'owner','active',$4),($1,$5,'member','active',$2)",
+      [businessId, accountId, otherBusinessId, outsiderId, memberId],
     );
-    const insertObject = async (business, status, suffix) => {
-      const key = `media/logos/${business}/${randomUUID()}`;
+    const insertObject = async (business, status, suffix, visibility = 'public', objectClass = 'business_logo') => {
+      const key = objectClass === 'business_logo'
+        ? `media/logos/${business}/${randomUUID()}`
+        : `media/private/${business}/${randomUUID()}`;
       const result = await setup.query(
-        "INSERT INTO ghm.storage_object(tenant_business_id,resource_type,resource_id,object_class,provider_key,content_type,byte_size,visibility,status,available_at) VALUES($1,'business',$1,'business_logo',$2,'image/png',1024,'public',$3,CASE WHEN $3 IN ('available','deletion_pending') THEN clock_timestamp() ELSE NULL END) RETURNING id",
-        [business, key, status],
+        "INSERT INTO ghm.storage_object(tenant_business_id,resource_type,resource_id,object_class,provider_key,content_type,byte_size,visibility,status,available_at) VALUES($1,'business',$1,$2,$3,'image/png',1024,$4,$5,CASE WHEN $5 IN ('available','deletion_pending') THEN clock_timestamp() ELSE NULL END) RETURNING id",
+        [business, objectClass, key, visibility, status],
       );
       return { objectId: Number(result.rows[0].id), businessId: business, providerKey: key, status, suffix };
     };
@@ -89,8 +95,15 @@ try {
     const crossActorTarget = await insertObject(businessId, 'pending', 'cross-actor-target');
     const wrongState = await insertObject(businessId, 'available', 'wrong-state');
     const deletionTarget = await insertObject(businessId, 'deletion_pending', 'deletion-target');
+    const nonManagerDeletionTarget = await insertObject(businessId, 'pending', 'non-manager-deletion-target');
+    const metadataMismatchTarget = await insertObject(businessId, 'pending', 'metadata-mismatch-target');
+    const privateReadTarget = await insertObject(businessId, 'pending', 'private-read-target', 'private', 'business_document');
     await setup.query('COMMIT');
-    fixture = { accountId, outsiderId, businessId, otherBusinessId, availableTarget, replayTarget, replayTargetTwo, badSignatureTarget, crossActorTarget, wrongState, deletionTarget };
+    fixture = {
+      accountId, outsiderId, memberId, nonmemberId, businessId, otherBusinessId,
+      availableTarget, replayTarget, replayTargetTwo, badSignatureTarget, crossActorTarget,
+      wrongState, deletionTarget, nonManagerDeletionTarget, metadataMismatchTarget, privateReadTarget,
+    };
   } catch (error) {
     await setup.query('ROLLBACK').catch(() => undefined);
     throw error;
@@ -99,6 +112,43 @@ try {
   console.log('DISPOSABLE PROVIDER SECRET PROVISIONING: PASS');
 
   const reader = new PostgresStorageMetadataGatewayReader(gateway, actorSecret);
+
+  const createdKey = `media/logos/${fixture.businessId}/${randomUUID()}`;
+  const created = await reader.createPending(fixture.accountId, {
+    businessId: fixture.businessId, resourceType: 'business', resourceId: fixture.businessId,
+    objectClass: 'business_logo', providerKey: createdKey, contentType: 'image/png',
+    byteSize: 1024, visibility: 'public', originalFilename: null,
+  });
+  if (created.status !== 'pending') throw new Error('Legitimate signed metadata creation did not create a pending object');
+  const createdRead = await reader.getObject(fixture.accountId, Number(created.id));
+  if (!createdRead || createdRead.id !== created.id) throw new Error('Legitimate signed metadata read did not return the created object');
+  console.log('LEGITIMATE ACTOR-ASSERTED METADATA CREATE + READ: PASS');
+
+  const privateRead = await reader.getObject(fixture.accountId, fixture.privateReadTarget.objectId);
+  if (!privateRead) throw new Error('Business member could not read its private storage metadata');
+  const outsiderPrivateRead = await reader.getObject(fixture.outsiderId, fixture.privateReadTarget.objectId);
+  if (outsiderPrivateRead) throw new Error('Cross-business actor read a private storage object');
+  console.log('PRIVATE STORAGE METADATA CROSS-BUSINESS READ DENIED: PASS');
+
+  await expectDenied('Non-member pending-object creation', () => reader.createPending(fixture.nonmemberId, {
+    businessId: fixture.businessId, resourceType: 'business', resourceId: fixture.businessId,
+    objectClass: 'business_logo', providerKey: `media/logos/${fixture.businessId}/${randomUUID()}`,
+    contentType: 'image/png', byteSize: 1024, visibility: 'public', originalFilename: null,
+  }));
+  await expectDenied('Member without manager authority cannot request deletion', () =>
+    reader.markDeletionPending(fixture.memberId, fixture.nonManagerDeletionTarget.objectId));
+
+  const pendingDeletion = await reader.markDeletionPending(fixture.accountId, Number(created.id));
+  if (pendingDeletion.status !== 'deletion_pending') throw new Error('Legitimate owner deletion request did not enter deletion_pending');
+  const completedDeletion = await reader.markDeleted(
+    fixture.accountId, Number(created.id), createdKey,
+    proof('storage.provider.mark_deleted', {
+      businessId: fixture.businessId, objectId: Number(created.id), providerKey: createdKey,
+    }),
+  );
+  if (completedDeletion.status !== 'deleted') throw new Error('Legitimate created-object deletion lifecycle did not complete');
+  console.log('LEGITIMATE SIGNED CREATE → READ → DELETION → PROVIDER COMPLETION: PASS');
+
   const target = fixture.availableTarget;
   const availableProof = proof('storage.provider.mark_available', {
     businessId: target.businessId, objectId: target.objectId, providerKey: target.providerKey,
@@ -129,9 +179,13 @@ try {
     reader.markAvailable(fixture.accountId, secondObject.objectId, 'sha256:wrong-state', secondObject.providerKey, 'image/png', 1024, secondNonceProof));
 
   const deleteTarget = fixture.deletionTarget;
-  const deletionProof = proof('storage.provider.mark_deleted', {
+  const deletionContext = {
     businessId: deleteTarget.businessId, objectId: deleteTarget.objectId, providerKey: deleteTarget.providerKey,
-  });
+  };
+  await expectDenied('Wrong provider attestation operation', () =>
+    reader.markDeleted(fixture.accountId, deleteTarget.objectId, deleteTarget.providerKey,
+      proof('storage.provider.mark_available', deletionContext)));
+  const deletionProof = proof('storage.provider.mark_deleted', deletionContext);
   const deleted = await reader.markDeleted(fixture.accountId, deleteTarget.objectId, deleteTarget.providerKey, deletionProof);
   if (deleted.status !== 'deleted') throw new Error('Legitimate deletion completion did not complete');
   console.log('LEGITIMATE ACTOR + PROVIDER DUAL-PROOF DELETION: PASS');
@@ -174,6 +228,17 @@ try {
     }),
   ));
 
+  const mismatch = fixture.metadataMismatchTarget;
+  await expectDenied('Provider metadata mismatch', () => reader.markAvailable(
+    fixture.accountId, mismatch.objectId, 'sha256:mismatch', mismatch.providerKey, 'image/jpeg', 1024,
+    proof('storage.provider.mark_available', {
+      businessId: mismatch.businessId, objectId: mismatch.objectId, providerKey: mismatch.providerKey,
+      contentType: 'image/jpeg', byteSize: 1024, checksum: 'sha256:mismatch',
+    }),
+  ));
+  const mismatchRead = await reader.getObject(fixture.accountId, mismatch.objectId);
+  if (!mismatchRead || mismatchRead.status !== 'pending') throw new Error('Provider metadata mismatch changed the object lifecycle state');
+
   const runtimeDenied = await runtime.query(
     "SELECT " +
       "has_function_privilege('ghm_runtime','ghm.gateway_storage_mark_available(bigint,bigint,uuid,text,text,bigint,uuid,text,text,bigint,text,text,text,bigint)','EXECUTE') AS runtime_available_wrapper, " +
@@ -202,7 +267,7 @@ try {
     await cleanup.query('DELETE FROM ghm.storage_provider_workflow_attestation_secret WHERE singleton=true');
     if (fixture) {
       await cleanup.query('DELETE FROM ghm.business WHERE id IN ($1,$2)', [fixture.businessId, fixture.otherBusinessId]);
-      await cleanup.query('DELETE FROM ghm.account_identity WHERE id IN ($1,$2)', [fixture.accountId, fixture.outsiderId]);
+      await cleanup.query('DELETE FROM ghm.account_identity WHERE id IN ($1,$2,$3,$4)', [fixture.accountId, fixture.outsiderId, fixture.memberId, fixture.nonmemberId]);
     }
     await cleanup.query('COMMIT');
   } catch (error) {
