@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { toLegacyAuthContext } from '../../auth/ghm-auth-context';
+import { toLegacyAuthContext } from '../auth/ghm-auth-context';
 import { PostgresCampaignRepository } from './campaign/repository';
 import { PostgresDirectoryReviewRepository } from './directory-review/repository';
-import type { CampaignDirectoryReviewGatewayClient } from '../../http/campaign-directory-review-gateway-client';
+import type { CampaignDirectoryReviewGatewayClient } from '../http/campaign-directory-review-gateway-client';
 import type { Campaign } from './campaign/contracts';
 import type { DirectoryReviewPresentation } from './directory-review/contracts';
 
