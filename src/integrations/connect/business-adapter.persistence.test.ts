@@ -192,7 +192,7 @@ test('Connect Business provisioning: signed gateway atomicity, membership and is
 
     const retry = await reader.provisionOrResolve(winnerId, {
       externalBusinessId,
-      name: `${marker}-different-name-ignored`,
+      name: 'different-name-ignored',
     });
     assert.equal(retry.outcome, 'resolved');
     assert.equal(retry.business.id, winner.business.id);
