@@ -100,6 +100,17 @@ try {
     try {
       await client.query('BEGIN');
       await client.query('SET LOCAL ROLE ghm_schema_owner');
+      const operatorIdentity = await client.query(`
+        SELECT session_user, current_user,
+               has_schema_privilege(current_user, 'ghm', 'USAGE') AS schema_usage,
+               has_schema_privilege(current_user, 'ghm', 'CREATE') AS schema_create
+      `);
+      assert.deepEqual(operatorIdentity.rows[0], {
+        session_user: 'ghm_migrator',
+        current_user: 'ghm_schema_owner',
+        schema_usage: true,
+        schema_create: true,
+      }, 'manual cutover qualification must execute as migrator with schema-owner identity and schema authority');
       await client.query(sql);
       await client.query('COMMIT');
     } catch (error) {
