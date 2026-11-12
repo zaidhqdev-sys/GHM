@@ -13,7 +13,7 @@ BEGIN
 END;
 $operator_guard$;
 
-DO $
+DO $campaign_allowlist$
 DECLARE v_definition text;
 BEGIN
   SELECT pg_get_functiondef(
@@ -29,7 +29,7 @@ BEGIN
   );
   EXECUTE v_definition;
 END;
-$$;
+$campaign_allowlist$;
 
 CREATE OR REPLACE FUNCTION ghm.gateway_create_campaign(
  p_actor bigint,p_issued bigint,p_nonce uuid,p_context text,p_signature text,
