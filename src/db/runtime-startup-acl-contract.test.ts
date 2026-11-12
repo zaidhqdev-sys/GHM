@@ -15,3 +15,11 @@ test('Resource API verifies database CONNECT and schema usage without CREATE bef
   assert.match(server, /has_schema_privilege\(session_user, 'ghm', 'CREATE'\)/);
   assert.match(server, /NOT EXISTS\s*\([\s\S]*FROM pg_auth_members/);
 });
+
+
+test('Resource API verifies exact function EXECUTE allow-list before listening', () => {
+  const functionCheck = server.indexOf('assertRuntimeDatabaseFunctionPrivileges(functionPrivileges)');
+  const listen = server.indexOf('server.listen(config.port');
+  assert.ok(functionCheck >= 0 && listen > functionCheck, 'function EXECUTE allow-list must be checked before server.listen');
+  assert.match(server, /readRuntimeDatabaseFunctionPrivileges\(pool\)/);
+});
