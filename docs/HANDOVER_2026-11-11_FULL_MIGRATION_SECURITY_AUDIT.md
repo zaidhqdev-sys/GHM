@@ -2805,3 +2805,12 @@ The artifact explicitly requires human review of ownership, search paths, extens
 - The ghm schema ACL grants CREATE/USAGE only to ghm_schema_owner and USAGE to ghm_runtime, ghm_actor_gateway, and ghm_payment_provider; it has no PUBLIC or migrator USAGE/CREATE grant. The isolated issuer receives its schema access only in the guarded disposable issuer cutover rehearsal.
 - The global function default ACL grants EXECUTE only to ghm_schema_owner; no implicit PUBLIC/runtime/issuer function execution is introduced.
 - The public schema retains PostgreSQL's ordinary PUBLIC USAGE but not PUBLIC CREATE; this is separate from the ghm schema, which has no PUBLIC privilege.
+
+
+### Superseding inventory after storage public-read hardening — 2026-11-12 14:51 UTC
+
+The latest exact-head run 43241401707 passed both CI jobs and produced a refreshed whole-database inventory artifact (ID 13955835753). ZIP SHA-256: b0549ff7d1b339551f29d127d06496a3c7f853d54ea3e528bd81509f0e6b8dd2; contained JSON SHA-256: c20b8c75591b1cabf8f0e52d8028c8002d86da0105acb822351c42d1021926d1. It was captured without mutation from ghm_disposable_test on PostgreSQL 18.6 as ghm_migrator at 2026-11-12T14:51:19.189Z.
+
+The inventory remains 103 SECURITY DEFINER routines, all in ghm, all owned by ghm_schema_owner, all trusted languages and all pinned to pg_catalog, ghm, pg_temp. It finds zero PUBLIC EXECUTE grants and 75 preliminary non-owner grant findings. Direct grants remain runtime 43, Actor Gateway 30, payment provider 2, migrator 1. The updated gateway_storage_get_object definition now explicitly requires public Business Logo objects to be in available state for cross-business reads; the inventory body confirms that predicate. The 75 grants remain a human-reviewed role/function matrix, not automatic vulnerabilities or approvals. The artifact is a disposable pre-cutover baseline only.
+
+The same run proves the expanded public-read lifecycle rule: cross-business reads of pending, deletion_pending and deleted public objects are denied; available public Business Logo metadata remains readable; private object reads still require membership. The full 960-test suite, storage dual-proof, legacy grant rollback, issuer qualification and whole-database inventory all passed. No production grants or roles were changed.
