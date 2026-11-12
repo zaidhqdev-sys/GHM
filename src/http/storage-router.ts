@@ -4,6 +4,7 @@ import { withTenantTransaction } from "../db/authorized-transaction.js";
 import { pool } from "../db/pool.js";
 import { requireAuth } from "../auth/http.js";
 import { BusinessLogoGatewayError, type BusinessLogoGatewayClient } from "./business-logo-gateway-client.js";
+import { StorageMetadataGatewayError } from './storage-metadata-gateway-client.js';
 import type { StorageProvider } from "../storage/provider.js";
 import { createStorageService } from "../storage/service.js";
 import type { StorageMetadataStore, StorageService } from "../storage/service.js";
@@ -19,6 +20,13 @@ const objectIdParam = (value: unknown): string | null =>
   typeof value === "string" && /^[1-9]\d*$/.test(value) ? value : null;
 
 const handleStorageError = (error: unknown, res: Response): void => {
+  if (error instanceof StorageMetadataGatewayError) {
+    if (error.status === 401 || error.status === 403) { res.status(403).json({ error: 'forbidden' }); return; }
+    if (error.status === 404) { res.status(404).json({ error: 'not_found' }); return; }
+    if (error.status === 400) { res.status(400).json({ error: 'invalid_request' }); return; }
+    res.status(503).json({ error: 'service_unavailable' });
+    return;
+  }
   if (error instanceof BusinessLogoGatewayError) {
     if (error.status === 401 || error.status === 403) { res.status(403).json({ error: 'forbidden' }); return; }
     if (error.status === 404) { res.status(404).json({ error: 'not_found' }); return; }
@@ -51,6 +59,8 @@ export interface StorageRouteTestSeam {
   serviceForContext?: (context: AuthContext) => StorageService;
   bindBusinessLogoForContext?: (context: AuthContext, businessId: number, objectId: number | null) => Promise<number | null>;
   publicLogoKeyForBusiness?: (businessId: number) => Promise<string | null>;
+  storageMetadataGatewayStoreFactory?: (accessToken: string) => StorageMetadataStore;
+  storageMetadataGatewayRequired?: boolean;
 }
 
 export const registerStorageRoutes = (
@@ -62,9 +72,25 @@ export const registerStorageRoutes = (
   testSeam: StorageRouteTestSeam = {},
   businessLogoGatewayClient?: BusinessLogoGatewayClient,
   businessLogoGatewayRequired = false,
+  storageMetadataGatewayStoreFactory?: (accessToken: string) => StorageMetadataStore,
+  storageMetadataGatewayRequired = false,
 ): void => {
-  const metadataFor = (context: AuthContext): StorageMetadataStore =>
-    testSeam.metadataStoreForContext?.(context) ?? createPostgresStorageMetadataStore(context);
+  const accessTokenFor = (req: Request): string => {
+    const authorization = req.header('authorization');
+    return authorization?.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+  };
+  const metadataFor = (context: AuthContext, accessToken = ''): StorageMetadataStore => {
+    if (testSeam.metadataStoreForContext) return testSeam.metadataStoreForContext(context);
+    const factory = testSeam.storageMetadataGatewayStoreFactory ?? storageMetadataGatewayStoreFactory;
+    if (factory) {
+      if (!accessToken) throw new StorageMetadataGatewayError(401);
+      return factory(accessToken);
+    }
+    if (testSeam.storageMetadataGatewayRequired ?? storageMetadataGatewayRequired) {
+      throw new StorageMetadataGatewayError(503);
+    }
+    return createPostgresStorageMetadataStore(context);
+  };
 
   const bindLogo = async (context: AuthContext, businessId: number, objectId: number | null, accessToken: string): Promise<number | null> => {
     if (testSeam.bindBusinessLogoForContext) return testSeam.bindBusinessLogoForContext(context, businessId, objectId);
@@ -91,10 +117,10 @@ export const registerStorageRoutes = (
     return typeof result.rows[0]?.provider_key === "string" ? result.rows[0].provider_key : null;
   };
 
-  const serviceFor = (context: AuthContext): StorageService =>
+  const serviceFor = (context: AuthContext, accessToken = ''): StorageService =>
     testSeam.serviceForContext?.(context) ?? createStorageService({
       provider,
-      metadata: metadataFor(context),
+      metadata: metadataFor(context, accessToken),
       authorization: createPostgresStorageAuthorization(context),
       uploadGrantTtlSeconds,
       downloadGrantMaxTtlSeconds,
