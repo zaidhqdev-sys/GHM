@@ -26,6 +26,7 @@ export const isGhmAuthContext = (value: unknown): value is GhmAuthContext =>
 export const toLegacyAuthContext = (
   ghm: GhmAuthContext,
   role: GhmRole,
+  actorGatewayBearerToken?: string,
 ): AuthContext => {
   if (!isGhmAuthContext(ghm)) {
     throw new Error('Authentication required');
@@ -33,5 +34,14 @@ export const toLegacyAuthContext = (
   if (role !== 'admin' && role !== 'customer' && role !== 'business') {
     throw new Error('Authentication required');
   }
-  return Object.freeze({ userId: ghm.accountId, role });
+  const context: AuthContext = { userId: ghm.accountId, role };
+  if (actorGatewayBearerToken) {
+    Object.defineProperty(context, 'actorGatewayBearerToken', {
+      value: actorGatewayBearerToken,
+      enumerable: false,
+      configurable: false,
+      writable: false,
+    });
+  }
+  return Object.freeze(context);
 };
