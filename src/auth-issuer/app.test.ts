@@ -142,3 +142,37 @@ test('auth issuer requires explicit production proxy trust and rejects ambiguous
     else process.env.GHM_AUTH_ISSUER_TRUST_PROXY_HOPS = previousHops;
   }
 });
+
+
+test('auth issuer readiness fails closed without a database readiness check', async () => {
+  const app = createAuthIssuerApp({ authService, authPersistence: persistence, passwordResetService });
+  const server = app.listen(0);
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    const response = await fetch(`http://127.0.0.1:${address.port}/readyz`);
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { status: 'not_ready' });
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test('auth issuer readiness succeeds only after its database check succeeds', async () => {
+  const app = createAuthIssuerApp({
+    authService,
+    authPersistence: persistence,
+    passwordResetService,
+    readinessCheck: async () => undefined,
+  });
+  const server = app.listen(0);
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    const response = await fetch(`http://127.0.0.1:${address.port}/readyz`);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { status: 'ready' });
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
