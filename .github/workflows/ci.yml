@@ -193,6 +193,9 @@ jobs:
       - name: Check storage provider workflow qualification script syntax
         run: node --check scripts/qualify-storage-provider-workflow-attestation-postgres.mjs
 
+      - name: Check storage metadata runtime grant qualification script syntax
+        run: node --check scripts/qualify-storage-metadata-runtime-grant-revocation-postgres.mjs
+
       - name: Build
         run: npm run build
 
@@ -220,6 +223,11 @@ jobs:
         env:
           GHM_STORAGE_PROVIDER_ATTESTATION_ALLOW_MUTATIONS: 'true'
         run: node scripts/qualify-storage-provider-workflow-attestation-postgres.mjs
+
+      - name: Qualify legacy storage metadata grant revocation and rollback on disposable PostgreSQL
+        env:
+          GHM_STORAGE_QUALIFICATION_ALLOW_MUTATIONS: 'true'
+        run: node scripts/qualify-storage-metadata-runtime-grant-revocation-postgres.mjs
       - name: Qualify signed Connect Business provisioning, membership isolation and rollback
         run: npm run qualify:connect-business-provisioning-live
 
