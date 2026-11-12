@@ -45,5 +45,5 @@ test('issuer startup ACL verifier inspects global and GHM-schema function defaul
 
 test('issuer default ACL verifier rejects EXECUTE granted to any non-owner role', () => {
   const source = fs.readFileSync(path.resolve(process.cwd(), 'src/auth-issuer/database-privileges.ts'), 'utf8');
-  assert.match(source, /acl\\.grantee <> d\\.defaclrole/);
+  assert.ok(source.includes('acl.grantee <> d.defaclrole'));
 });
