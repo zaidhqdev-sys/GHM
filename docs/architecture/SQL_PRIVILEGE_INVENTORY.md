@@ -133,7 +133,7 @@ The current source now verifies at Actor Gateway startup, before opening the HTT
 - no `ghm_runtime` EXECUTE on gateway-specific functions;
 - no unsafe global future-function defaults for PUBLIC, runtime, issuer, gateway, migrator or payment-provider roles.
 
-The disposable qualification script invokes the same verifier against the real `ghm_actor_gateway` login. This guard detects privilege drift; it does not change grants. The 22-function count is derived from the current migration GRANT statements and must be updated only alongside a reviewed typed operation, migration, tests and qualification evidence.
+The disposable qualification script invokes the same verifier against the real `ghm_actor_gateway` login. This guard detects privilege drift; it does not change grants. The 21-function count is derived from the current migration GRANT statements and must be updated only alongside a reviewed typed operation, migration, tests and qualification evidence.
 
 
 The initial Actor Gateway migrations also granted ten obsolete unsigned entry points: `assert_actor_gateway(bigint)` plus nine older account-ID-based overloads. The later signed-assertion migrations introduced new signatures but did not revoke those original grants. Migration `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads.sql` now revokes PUBLIC, runtime, migrator and gateway execution from all ten. The disposable qualification probes each old signature for SQLSTATE 42501. These functions remain owned by `ghm_schema_owner` for controlled maintenance only.
