@@ -13,7 +13,7 @@ Runtime storage lifecycle mutations are exposed through four narrowly scoped GHM
 - `ghm.storage_mark_deletion_pending`
 - `ghm.storage_mark_deleted`
 
-The functions are controlled `SECURITY DEFINER` persistence boundaries owned by the non-login `ghm_schema_owner`, with fixed `search_path` and public execution revoked. They do not replace application authorization.
+These are the legacy direct-runtime persistence functions. They remain controlled `SECURITY DEFINER` functions owned by non-login `ghm_schema_owner`, with fixed `search_path` and PUBLIC execution revoked. They do not independently establish end-user identity. The current Resource API path now uses signed Actor Gateway wrappers; until the separately approved production cutover revokes the five legacy grants, `ghm_runtime` retains its historical direct EXECUTE privileges.
 
 ## Security boundary
 
@@ -35,7 +35,7 @@ The provider operation remains outside PostgreSQL. The application/storage adapt
 
 ## Authorization
 
-These persistence functions do not replace application authorization.
+These legacy persistence functions do not replace application authorization. The newer signed Actor Gateway wrappers provide the database-side actor and tenant authorization boundary for application requests.
 
 The storage service must authorize:
 
@@ -75,7 +75,7 @@ No object provider provisioning or product integration is included.
 
 ## Metadata lookup scope follow-up
 
-The source migration now replaces `storage_get_object(bigint)` with an account-aware `storage_get_object(bigint,bigint)`, checking active public business-logo visibility or active business membership and returning the same missing-object error for unauthorized IDs. The repository passes the authenticated `AuthContext.userId`, with a regression test asserting the second argument. The read-only audit SQL checks that the one-argument function is absent and the two-argument overload exists. This is defense in depth only; a shared runtime credential can supply arbitrary function parameters, so application-level membership authorization remains required. The migration is not applied to production or sandbox. Disposable database migration/lifecycle tests and real membership-backed integration tests remain required.
+Historical getter-scope checkpoint: migration `20261026120000_scope_storage_metadata_lookup.sql` replaces `storage_get_object(bigint)` with the account-aware `storage_get_object(bigint,bigint)`, checking active public business-logo visibility or active membership. That change remains defense in depth for the legacy function because a shared runtime credential can supply arbitrary parameters. The newer `gateway_storage_get_object` wrapper instead verifies the signed Actor Gateway assertion and binds the object ID to the authenticated actor. The Resource API now uses that wrapper through the Actor Gateway client in production. The five legacy direct-runtime grants remain a production cutover item; their revocation and exact rollback have been qualified on disposable PostgreSQL 18.
 
 
 ## 2026-11-12 security-boundary reconciliation — persistence is not actor authorization
