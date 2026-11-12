@@ -137,3 +137,8 @@ Exact source HEAD `b0711ccebc4adb82fc24256a40a812d0335f8702` passed CI run `4317
 ## Complete function grantee prerequisite
 
 The issuer and Actor Gateway startup verifiers now enumerate direct function ACL entries and require every allow-listed function to be executable only by its dedicated principal plus the function owner. Unexpected grants to PUBLIC, Resource API, migrator, payment-provider, or any other role fail closed. The disposable qualification adversarially grants issuer/gateway functions to `ghm_payment_provider`, verifies both failures, removes the grants and verifies clean baselines. Exact-head PostgreSQL 18.6 CI passed at `1db5f78b8a0f0405586fc9ae2675f16732e9374e` in run `43179755317`. This is not production authorization.
+
+
+## Pre-cutover grant snapshot and rollback baseline
+
+Before manual issuer cutover, run `scripts/qualify-auth-issuer-precutover.mjs` against the guarded disposable database. It asserts the exact 16-function Resource API runtime authentication allow-list and rejects direct auth-function grants to PUBLIC or unexpected principals. The only additional direct application-role grant accepted in this pre-cutover state is the explicitly documented `ghm_migrator` grant on `auth_lookup_business_external_mapping(text,text)`. The manual rollback qualification must then restore the same 16-function set, not a broader historical list. CI exact-head qualification passed at `405a220d408cb3c2f176131173fedb9200f62635`, run `43181545588`. This does not authorize production cutover.
