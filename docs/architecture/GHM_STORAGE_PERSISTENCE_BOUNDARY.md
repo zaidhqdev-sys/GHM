@@ -6,18 +6,18 @@
 
 The storage metadata table is intentionally not directly writable by `ghm_runtime`.
 
-Runtime storage lifecycle mutations are exposed through four narrowly scoped GHM-owned PostgreSQL functions:
+The legacy Resource API persistence boundary historically exposed five narrowly scoped GHM-owned PostgreSQL functions to `ghm_runtime`:
 
 - `ghm.storage_create_pending`
 - `ghm.storage_mark_available`
 - `ghm.storage_mark_deletion_pending`
 - `ghm.storage_mark_deleted`
 
-These are the legacy direct-runtime persistence functions. They remain controlled `SECURITY DEFINER` functions owned by non-login `ghm_schema_owner`, with fixed `search_path` and PUBLIC execution revoked. They do not independently establish end-user identity. The current Resource API path now uses signed Actor Gateway wrappers; until the separately approved production cutover revokes the five legacy grants, `ghm_runtime` retains its historical direct EXECUTE privileges.
+These are legacy direct-runtime persistence functions. They remain controlled `SECURITY DEFINER` functions owned by non-login `ghm_schema_owner`, with fixed `search_path = pg_catalog, ghm, pg_temp` and PUBLIC execution revoked. They do not independently establish end-user identity. The current Resource API path uses signed Actor Gateway wrappers; until the separately approved production cutover revokes the five legacy grants, `ghm_runtime` retains historical direct EXECUTE privileges. `ghm.storage_get_public_business_logo(bigint)` is a separate constrained public projection and is not part of the five-function cutover.
 
 ## Security boundary
 
-Direct table DML is denied to `ghm_runtime`; lifecycle execution is limited to the explicitly granted runtime function boundary.
+Direct table DML is denied to `ghm_runtime`. The legacy runtime function grants remain only for compatibility/rollback until production cutover; the active Resource API application path uses the signed Actor Gateway wrappers.
 
 Only the explicitly granted function executions are available to the runtime role.
 
@@ -31,7 +31,7 @@ The functions enforce the storage lifecycle:
 
 Invalid transitions fail closed.
 
-The provider operation remains outside PostgreSQL. The application/storage adapter must only call the completion/deletion transition after the corresponding provider operation has been verified.
+The provider operation remains outside PostgreSQL. The Resource API storage service verifies provider metadata/bytes and performs provider-first deletion ordering; it then signs a short-lived, one-use HMAC attestation. PostgreSQL independently verifies that attestation, bound to operation, object, tenant and provider metadata, before the Actor Gateway can complete the lifecycle transition.
 
 ## Authorization
 
@@ -47,7 +47,7 @@ The storage service must authorize:
 
 before invoking the persistence function.
 
-The database function is a persistence boundary, not an authorization shortcut.
+The legacy database functions are persistence boundaries, not authorization boundaries. The current signed gateway wrappers are the database authorization boundary: they bind the JWT-derived actor and request context to SQL arguments, enforce active-account and tenant membership/manager rules, and require separate provider proof for provider-confirmed transitions.
 
 ## Provider independence
 
@@ -57,7 +57,7 @@ No provider-specific credential, bucket, URL, or SDK type is persisted by this m
 
 ## Qualification required
 
-The persistence boundary was runtime-qualified on 2026-10-05: direct runtime DML denial, allowed lifecycle execution, invalid transition rejection, terminal deleted-state persistence, and restricted execution authority all passed.
+The narrow persistence boundary was runtime-qualified on 2026-10-05: direct runtime DML denial, allowed lifecycle execution, invalid transition rejection, terminal deleted-state persistence, and restricted execution authority all passed. The newer signed gateway and provider dual-proof boundary was separately qualified on disposable PostgreSQL 18 on 2026-11-12.
 
 Historical gate criteria:
 
@@ -75,7 +75,7 @@ No object provider provisioning or product integration is included.
 
 ## Metadata lookup scope follow-up
 
-Historical getter-scope checkpoint: migration `20261026120000_scope_storage_metadata_lookup.sql` replaces `storage_get_object(bigint)` with the account-aware `storage_get_object(bigint,bigint)`, checking active public business-logo visibility or active membership. That change remains defense in depth for the legacy function because a shared runtime credential can supply arbitrary parameters. The newer `gateway_storage_get_object` wrapper instead verifies the signed Actor Gateway assertion and binds the object ID to the authenticated actor. The Resource API now uses that wrapper through the Actor Gateway client in production. The five legacy direct-runtime grants remain a production cutover item; their revocation and exact rollback have been qualified on disposable PostgreSQL 18.
+Historical getter-scope checkpoint: migration `20261026120000_scope_storage_metadata_lookup.sql` replaces `storage_get_object(bigint)` with the account-aware `storage_get_object(bigint,bigint)`, checking active public business-logo visibility or active membership. That change remains defense in depth for the legacy function because a shared runtime credential can supply arbitrary parameters. The newer `gateway_storage_get_object` wrapper instead verifies the signed Actor Gateway assertion and binds the object ID to the authenticated actor. The Resource API now uses that wrapper through the Actor Gateway client in production. The five legacy direct-runtime grants remain a production cutover item; disposable PostgreSQL 18 qualification revokes PUBLIC/runtime/migrator/Actor Gateway direct EXECUTE, verifies all three application logins are denied direct calls, retains the five gateway wrapper grants, and restores the original execution state.
 
 
 ## 2026-11-12 security-boundary reconciliation — persistence is not actor authorization
@@ -90,7 +90,7 @@ The original persistence qualification remains valid for its narrow claim: direc
 - The Actor Gateway has the corresponding authenticated routes and a dedicated database reader. The Resource API uses the HTTPS Storage Metadata Gateway client for metadata create/read/deletion-pending/availability/deletion operations and forwards the caller's bearer token. Production storage fails closed if the Actor Gateway URL or provider-attestation secret is missing; it cannot silently fall back to direct runtime metadata access.
 - `storage_get_public_business_logo` remains the narrowly scoped public approved-logo lookup; this work does not broaden public storage access.
 
-**Disposable qualification passed:** the migrations applied to PostgreSQL 18. The expanded provider dual-proof qualification now exercised signed pending-object creation and metadata read; private object access for an authorized Business member and cross-business private-read denial; non-member creation denial; ordinary-member deletion denial; legitimate pending → available → deletion-pending → deleted lifecycle; invalid provider signature; expired attestation; provider-context substitution; wrong provider operation; provider metadata mismatch without state transition; cross-business actor; nonce replay across different pending objects; and invalid lifecycle state. Verifier/secret ACL checks confirmed neither runtime nor Actor Gateway can read the secret or directly execute the verifier, while only Actor Gateway can execute the transition wrappers. A separate five-function cutover rehearsal revoked PUBLIC/runtime execution, confirmed runtime direct calls were denied, verified the replacement Actor Gateway wrappers remained executable, and restored the exact original ACL snapshot. The expanded qualification step passed in run `43235502697`; the remaining repository-wide issuer and database checks in that exact-head run were still running at this checkpoint. The preceding complete workflow passed in run `43233465264`.
+**Disposable qualification passed:** the migrations applied to PostgreSQL 18. The expanded provider dual-proof qualification now exercised signed pending-object creation and metadata read; private object access for an authorized Business member and cross-business private-read denial; non-member creation denial; ordinary-member deletion denial; legitimate pending → available → deletion-pending → deleted lifecycle; invalid provider signature; expired attestation; provider-context substitution; wrong provider operation; provider metadata mismatch without state transition; cross-business actor; nonce replay across different pending objects; and invalid lifecycle state. Verifier/secret ACL checks confirmed neither runtime nor Actor Gateway can read the secret or directly execute the verifier, while only Actor Gateway can execute the transition wrappers. A separate five-function cutover rehearsal revoked PUBLIC, runtime, migrator and Actor Gateway execution, confirmed direct calls were denied for runtime/migrator/Actor Gateway logins, verified the replacement Actor Gateway wrappers remained executable, and restored the original execution state. The expanded storage qualification and complete repository workflow passed in run `43237334881` (960/960 main test suite; both CI jobs passed).
 
 **Current status: SOURCE REMEDIATION COMPLETE; DISPOSABLE QUALIFICATION PASSED; PRODUCTION CUTOVER OPEN.** The five legacy direct runtime grants have not been revoked in production. No production migration, provider secret provisioning, role change or deployment occurred. Production cutover still requires the documented fresh verified backup, production role-administration access, final operational approval and a separately reviewed manual execution/rollback window.
 
