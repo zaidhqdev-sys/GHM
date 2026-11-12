@@ -31,3 +31,10 @@ test('issuer verifies its exact database ACL boundary before opening the HTTP li
   assert.match(privilegeSource, /ghm_migrator/);
   assert.match(privilegeSource, /ghm_payment_provider/);
 });
+
+
+test('issuer verifier checks every SECURITY DEFINER owner and pinned temporary-safe search_path', () => {
+  assert.ok(privilegeSource.includes('unsafe_security_definer_functions'));
+  assert.ok(privilegeSource.includes("pg_get_userbyid(p.proowner) IS DISTINCT FROM 'ghm_schema_owner'"));
+  assert.ok(privilegeSource.includes("search_path=pg_catalog, ghm, pg_temp"));
+});
