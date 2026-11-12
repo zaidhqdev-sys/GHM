@@ -2417,3 +2417,16 @@ Two remaining gaps were verified:
 2. **Business Engagement / Analytics (#244):** This separate feature stack is not included in #272. Its current engagement repository performs a direct runtime INSERT into `ghm.business_engagement_event` with request-derived business/account attribution. The account ID comes from Resource API auth context, not an independently verified database actor. Keep PR #244 draft/unmerged until an issuer-verified Actor Gateway write/read path binds the actor and tenant and disposable PostgreSQL proves direct runtime spoofing is denied.
 
 No production changes occurred. The existing production service remains on `main`, auto-deploy OFF, live deploy `c7cf1eb`. No role/grant/membership, credentials, secrets, migrations, cutovers, deployment, data or traffic changed. PayFast and legal publication remain paused.
+
+
+### PR stack cleanup
+
+After verifying the current-mainline integration tree contains the component changes, the following stacked PRs were closed as superseded by the consolidated draft PR #272:
+- #237 — old Business profile compatibility contract; its 20261108140000 migration is superseded by the later 20261110265000 migration in #272.
+- #250 — capability catalogue governance.
+- #268 — capability catalogue cross-row invariants.
+- #269 — capability governance Actor Gateway.
+- #270 — supplier classification Actor Gateway.
+- #271 — Business profile Actor Gateway.
+
+Their branches were not deleted; their relevant code remains preserved in #272. PR #243 remains open because #244 is stacked on its supplier-classification base. PR #244 remains draft and unmerged: its Business Engagement / Analytics writes still use the Resource API runtime path and require issuer-verified Actor Gateway actor binding. PR #264 is an older documentation checkpoint with a stale base and has not been merged. PayFast #233 and legal acceptance #201 remain parked.
