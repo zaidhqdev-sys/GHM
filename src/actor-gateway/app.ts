@@ -13,6 +13,7 @@ import type { SavedBusinessGatewayReader } from './saved-business-reader';
 import type { BusinessHoursGatewayReader } from './business-hours-reader';
 import type { TrustScoreGatewayReader } from './trust-score-reader';
 import type { BusinessLogoGatewayReader } from './business-logo-reader';
+import type { ConnectBusinessProvisioningReader } from './connect-business-provisioning-reader';
 
 export interface ActorGatewayAppOptions {
   rateLimitLimit?: number;
@@ -31,6 +32,7 @@ export interface ActorGatewayDependencies {
   businessHoursReader?: BusinessHoursGatewayReader;
   trustScoreReader?: TrustScoreGatewayReader;
   businessLogoReader?: BusinessLogoGatewayReader;
+  connectBusinessProvisioningReader?: ConnectBusinessProvisioningReader;
 }
 
 const isSqlState = (error: unknown, code: string): boolean =>
@@ -80,6 +82,60 @@ export const createActorGatewayApp = (
 
   // Do not spend JSON parsing work on unauthenticated requests.
   app.use('/v1', express.json({ limit: '16kb' }));
+
+  app.post('/v1/connect/businesses/provision-or-resolve', async (req: Request, res: Response) => {
+    const accountId = res.locals.actorAccountId as number;
+    if (!dependencies.connectBusinessProvisioningReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    const body = req.body as Record<string, unknown>;
+    const keys = Object.keys(body);
+    const externalBusinessId = typeof body.externalBusinessId === 'string' ? body.externalBusinessId.trim().toLowerCase() : '';
+    const name = typeof body.name === 'string' ? body.name.trim() : '';
+    if (
+      keys.length !== 2 ||
+      keys.some(key => key !== 'externalBusinessId' && key !== 'name') ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(externalBusinessId) ||
+      !name || name.length > 200
+    ) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    try {
+      const result = await dependencies.connectBusinessProvisioningReader.provisionOrResolve(
+        accountId,
+        { externalBusinessId, name },
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      if (isSqlState(error, '42501')) {
+        res.status(403).json({ error: 'forbidden' });
+        return;
+      }
+      if (isSqlState(error, '22023')) {
+        res.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      if (isSqlState(error, '23505')) {
+        res.status(409).json({ error: 'conflict' });
+        return;
+      }
+      console.error(JSON.stringify({
+        event: 'actor_gateway_operation_failed',
+        operation: 'business.connect.provision',
+        error: {
+          name: error instanceof Error ? error.name : 'UnknownError',
+          code: isSqlState(error, '08000') ? '08000' : undefined,
+        },
+      }));
+      res.status(503).json({ error: 'service_unavailable' });
+    }
+  });
 
   app.get('/v1/actor/me', async (req: Request, res: Response) => {
     const accountId = res.locals.actorAccountId as number;
