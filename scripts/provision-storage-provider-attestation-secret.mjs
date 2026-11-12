@@ -5,6 +5,14 @@ const { Client } = pg;
 const databaseUrl = process.env.GHM_QUALIFICATION_DATABASE_URL;
 const encodedSecret = process.env.GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET;
 if (!databaseUrl) throw new Error('GHM_QUALIFICATION_DATABASE_URL is required; generic DATABASE_URL fallbacks are disabled');
+const qualificationUrl = new URL(databaseUrl);
+const expectedDatabase = process.env.GHM_QUALIFICATION_DATABASE_NAME?.trim() || 'ghm_disposable_test';
+if (!['localhost', '127.0.0.1', '::1'].includes(qualificationUrl.hostname)
+  || qualificationUrl.pathname !== `/${expectedDatabase}`
+  || qualificationUrl.search !== '' || qualificationUrl.hash !== ''
+  || !/(^|[_-])(qualification|qual|test|testing|disposable|sandbox)([_-]|$)/i.test(expectedDatabase)) {
+  throw new Error('Refusing secret provisioning: URL must target the explicitly named disposable database on localhost');
+}
 if (process.env.GHM_STORAGE_PROVIDER_ATTESTATION_ALLOW_MUTATIONS !== 'true') {
   throw new Error('Refusing secret provisioning; set GHM_STORAGE_PROVIDER_ATTESTATION_ALLOW_MUTATIONS=true only for a disposable qualification database');
 }
@@ -27,8 +35,8 @@ try {
   if (row.session_user !== 'ghm_migrator' || row.current_user !== 'ghm_migrator') {
     throw new Error('Refusing secret provisioning: expected session_user=current_user=ghm_migrator');
   }
-  if (!/(^|[_-])(qualification|qual|test|testing|disposable|sandbox)([_-]|$)/i.test(String(row.current_database))) {
-    throw new Error('Refusing secret provisioning: database name must clearly identify an approved disposable/qualification/sandbox database');
+  if (row.current_database !== expectedDatabase) {
+    throw new Error('Refusing secret provisioning: connected database does not match the explicit disposable database name');
   }
   await client.query('BEGIN');
   await client.query('SET LOCAL ROLE ghm_schema_owner');
