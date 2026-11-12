@@ -710,3 +710,72 @@ The `opportunity_capability_requirement` DELETE grant has not been tied to a sou
 5. Re-run the same read-only production catalog queries immediately before any future cutover; production remains on the older ACL state until an approved migration is applied after a fresh verified backup.
 
 **No production role, grant, ownership, credential, secret, environment variable, migration, deployment, application data or service was changed.**
+
+
+---
+
+## 2026-11-12 continuation — account profile reachability and unexplained Opportunity DELETE grant
+
+**Evidence:** source inspection on `integration/capability-gateway-qualification-20261110` and fresh read-only Render PostgreSQL 18 catalog queries against production `ghm_db`.  
+**Mutation:** none.
+
+### Account profile UPDATE: method exists, HTTP route does not
+
+The earlier finding needs a reachability correction.
+
+- `PostgresBusinessIdentityRepository.updateAccount` issues a direct UPDATE against `ghm.account_identity`.
+- `BusinessIdentityServiceImpl.updateOwnProfile` delegates to that repository method.
+- The inspected Resource API `src/http/app.ts` registers `GET /api/v1/profile` and calls `service.getOwnProfile`.
+- No `PATCH /api/v1/profile`, `PUT /api/v1/profile`, `updateOwnProfile`, or `updateAccount` HTTP route/callsite was found in the inspected `src/http/app.ts`.
+- The service method and repository method therefore appear currently unreachable through the inspected HTTP API. This is not evidence that a live production profile-update endpoint is broken; it is an unused/dead repository capability with an SQL statement that would fail under the current runtime ACL if called.
+
+Production effective privileges were rechecked: `ghm_runtime` has SELECT but not UPDATE on `ghm.account_identity`. Do not grant table UPDATE to support an endpoint that is not currently registered. If profile editing becomes a product requirement, implement an explicit authenticated route and narrow database operation (or gateway operation) together with tests and a privilege contract. Until then, track this as dead/unreachable code and remove or isolate it in a separately qualified source change rather than silently expanding production privileges.
+
+### Opportunity capability requirement DELETE: no current caller found in the inspected application surface
+
+A production ACL/grantor query confirmed:
+
+- Object: `ghm.opportunity_capability_requirement`
+- Grantee: `ghm_runtime`
+- Privileges: SELECT and DELETE
+- Grantor: `ghm_schema_owner`
+- Grant option: false
+
+The full production `ghm` routine-body scan found no function whose `prosrc` references `opportunity_capability_requirement`. The table has one non-internal trigger, `opportunity_capability_requirement_updated_at`, invoking ordinary trigger function `ghm.touch_opportunity_capability_requirement()`; no trigger-based DELETE requirement was identified.
+
+The inspected `src/resources/opportunity/repository.ts` reads this table to return capability requirements but contains no DELETE statement. The inspected Project repository also contained no delete path for this table. The source search performed in this pass did not find an application callsite for DELETE. The grant is therefore a strong candidate for legacy/stale privilege, but the review has not yet exhaustively covered every repository, background script, maintenance path, or product integration.
+
+**Decision:** do not revoke it yet. Complete the full repository/background-job/SQL migration search and confirm no operational consumer; then remove the direct DELETE grant in a forward-only disposable-qualified migration, with an explicit negative privilege assertion and all relevant integration tests.
+
+### Complete non-SELECT runtime object privilege snapshot
+
+A fresh ACL query enumerated every direct `ghm_runtime` object privilege other than SELECT in production `ghm`. The only relation DML grants are:
+
+| Relation | Direct privilege(s) | Current disposition |
+|---|---|---|
+| `business` | INSERT | Required by current direct Business creation path |
+| `business_membership` | INSERT | Required by current direct owner-membership creation path |
+| `opportunity` | INSERT, UPDATE | Required by current direct Opportunity and Project-linked Opportunity paths |
+| `opportunity_capability_requirement` | DELETE | Unmapped; likely legacy, retain pending exhaustive caller check |
+
+No relation UPDATE grant exists on `account_identity`. All 49 direct runtime sequence privileges are USAGE (some also SELECT); none has grant option. Every listed direct relation DML privilege is granted by `ghm_schema_owner` without grant option.
+
+This narrows the direct DML review substantially: the four relation entries above account for the non-SELECT relation DML observed for `ghm_runtime`; the remaining relation grants are read-only. Sequence USAGE is not table-write authority and must be reviewed separately against insert paths/sequence usage.
+
+### Updated disposition
+
+- Account profile UPDATE: source method exists but route/caller absent from inspected HTTP app; no production grant should be added.
+- Opportunity capability requirement DELETE: production grant verified, no current app repository or SECURITY DEFINER function caller found in inspected surfaces; remains unproven stale and must not yet be revoked.
+- Business INSERT / membership INSERT: mapped to direct create flow; required until replaced.
+- Opportunity INSERT / UPDATE: mapped to direct Opportunity and Project creation/update; required until replaced with transactionally equivalent operations.
+- Production direct relation DML surface is now reduced to the four entries above; all other direct runtime relation privileges in the captured inventory are SELECT.
+
+### Next work
+
+1. Expand the DELETE caller search to all repository files, jobs, maintenance scripts, migrations, and connected application integration paths. If none exists, prepare a forward-only disposable qualification for revoking only `DELETE ON ghm.opportunity_capability_requirement`.
+2. Review all INSERT/UPDATE callers and route authorization for Business, Opportunity and Project; preserve Project↔Opportunity atomicity.
+3. Continue function-by-function source mapping for all 46 production runtime SECURITY DEFINER grants, keeping current production and target construction branch ACL states separate.
+4. Continue storage metadata and legacy authentication boundary reconciliation.
+5. No production changes until the current source/ACL plan is fully qualified and a fresh verified production backup exists.
+
+**No production grants, roles, ownership, credentials, environment variables, migrations, deployment, service configuration or application data were changed.**
