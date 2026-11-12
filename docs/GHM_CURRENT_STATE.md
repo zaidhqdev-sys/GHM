@@ -1095,3 +1095,10 @@ A further source review found two gaps that were not covered by the earlier gree
 The Resource API runtime auth allow-list is now exactly two functions: `auth_lookup_external_identity` and `auth_lookup_business_external_mapping`. The issuer retains its separate exact ten-function allow-list. Rollback qualification restores the post-migration pre-issuer state and deliberately does not restore the stale provider-business mapping mutation grant.
 
 The previous exact-head CI pass at `4abb42e` predates these changes and is not evidence for this newer candidate. The current exact head must pass full CI and disposable PostgreSQL cutover/lifecycle/rollback qualification. No production grants, migrations, database state, service, secrets, deployment or routing were changed.
+
+
+### 2026-11-12 — Actor Gateway exact database ACL guard
+
+Actor Gateway startup previously asserted its database login identity but did not verify its complete effective GHM function/relation ACL. Added a verifier for the exact 22-function migration allow-list, zero direct table/view/sequence privileges, schema USAGE without CREATE, no PUBLIC EXECUTE on its executable functions, no runtime EXECUTE on gateway-specific functions, and safe future-function defaults. The verifier is wired before the HTTP listener; disposable qualification now calls the same verifier and unit/source-contract regressions cover the boundary. The issuer's future-default check also treats grants to `ghm_actor_gateway` as unsafe.
+
+This is an enforcement/qualification change, not a grant change. Exact-head CI and disposable PostgreSQL Actor Gateway qualification are pending; do not claim the 22-function boundary qualified until they pass.
