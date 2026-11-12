@@ -2027,3 +2027,50 @@ This pass has source-mapped the capability, evidence, category, offering, review
 The complete ACL matrix is now preserved above; continue mapping the remaining groups without duplicating already proven routes or tests.
 
 **Production safety:** only read-only Render catalog queries and GitHub source reads were performed. No production grants, roles, memberships, schema, data, secrets, configuration, Render services, deployment or traffic changed. No PR merged/closed. PayFast and legal publication remain paused.
+
+
+## 2026-11-12 22:15 UTC — remaining production INSERT/UPDATE caller mapping
+
+The following deployed-source mappings were verified against repository SQL at production ref `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`. They explain the production column groups without assuming any new permissions.
+
+| Table / ACL group | Deployed SQL caller | Key authorization / constraints |
+|---|---|---|
+| `customer` INSERT `account_id,name,phone,email` | `PostgresCustomerRepository.createCustomer` | Authorized transaction; caller account ID is `context.userId`. |
+| `customer` UPDATE `status,updated_at` | `setStatus` via archive/restore | Authorized transaction; admin or row predicate `account_id = context.userId`. |
+| `enquiry` INSERT (13 columns) | `PostgresEnquiryRepository.createEnquiry` | Requires eligible marketplace Business; atomically creates Opportunity, creator/owner/recipient participants and Enquiry in one authorized transaction. Exact Enquiry columns match ACL. |
+| `enquiry` UPDATE `status` | `updateReceivedEnquiryStatus` | Requires active Business owner through received-enquiry lookup before status update. |
+| `opportunity_participant` INSERT (6 columns) | Opportunity create, Project create, Enquiry create, and participant repository | Exact six-column tuple `opportunity_id, account_id, business_id, participation_role, participation_status, created_by`; caller-specific participant/manager checks. |
+| `opportunity_capability_requirement` INSERT (7 columns) + DELETE | `PostgresOpportunityRequirementsRepository.replaceRequirements` | Opportunity manager check; validates active/selectable capabilities; replacement is one authorized transaction. DELETE is required by this live replacement path and is not an unexplained legacy grant. |
+| `project` INSERT (9 columns) | `PostgresProjectRepository.createProject` | Creates linked Opportunity and creator participant atomically; project owner is authenticated `context.userId`. |
+| `project` UPDATE (10 columns) | `updateOwnedProject`, `transitionOpenProjectToInProgress` | Owner predicate `account_id=context.userId`; ordinary edits restricted to open Projects; transition helper only performs open → in_progress as part of accepted Project Quote. |
+| `project_quote` INSERT (11 columns) | `PostgresProjectQuoteRepository.create/submit` path | Active Business owner; target Project and Business eligibility validated. |
+| `project_quote` UPDATE (11 columns) | Update submission and accept/reject methods | Active Business owner for submission; Project owner/creator authority for accept/reject; row/status predicates and one transaction. Fields match the full granted UPDATE set. |
+| `quote` INSERT (8 columns) and `quote_line_item` INSERT (5 columns) | `PostgresQuoteRepository.createQuote` | Customer must belong to caller and be active; quote and line items created in one authorized transaction. |
+| `quote` UPDATE (5 columns) | `setQuoteStatus`, `setQuoteNotes` | Admin or row predicate `account_id=context.userId`; exact granted status/reminder/notes/timestamp fields. |
+| `notification` INSERT (5 columns) | `PostgresNotificationRepository.createNotification` | Recipient must exist; non-admin lead notification cannot target a different account; route checks registered operation and resource permission. |
+| `notification` UPDATE (2 columns) | mark one/all read methods | Strictly scoped to `user_id=context.userId`; only `is_read` and `read_at`. |
+| `support_request` INSERT (5 columns) + `support_request_message` INSERT (4 columns) | `createSupportRequest`, customer/admin reply methods | Customer/business role for request/reply; optional Business membership check; request owner check for customer; admin role for staff actions. |
+| `support_request` UPDATE (5 columns) | Admin status transition and customer/admin reply reopening | Admin-only status operation; replies lock request and update status/closure fields under the relevant requester/admin identity. |
+| `commercial_trial` INSERT (6 columns), `commercial_subscription` INSERT (7 columns), `commercial_event` INSERT (8 columns) | `activateTrial` | Business management access; active plan/version and trial eligibility checked; trial, subscription and audit event inserted together. |
+| `commercial_payment_attempt` INSERT (10 columns), `commercial_event` INSERT (8 columns) | payment preparation flow | Business management access, eligible price and idempotency; creates pending checkout attempt plus event. PayFast activation remains frozen; do not invoke this flow or interpret source presence as provider qualification. |
+
+### Additional conclusions from this pass
+
+- The Opportunity Requirements DELETE privilege is accounted for by an explicit replacement implementation. Retain it unless that application operation is redesigned and qualified.
+- Project create writes Opportunity and Opportunity Participant rows as well as Project; these are separate SQL statements in the same transaction. Their table-level/column-level privilege contracts must be considered separately from the Project column ACL.
+- The Commercial source has trial activation and pending payment-preparation paths. Their existence is not approval to enable PayFast. Provider activation and ITN processing remain paused pending sandbox access and the separately frozen payment qualification.
+- Notification's registered POST route is a real generic producer, but a full repository-wide producer/trigger inventory is still required before declaring it the only notification writer.
+- The production source contains no `business-engagement` resource/router; PR #244 is still the matching source for the live engagement table/ACL, so deployment/ledger provenance remains open.
+- The only account-identity direct UPDATE caller found in the deployed Business Identity repository writes `full_name, phone, avatar_ref, updated_at`. The extra `connect_role` and `business_operator_intent` ACL columns remain unmapped and require migration/trigger/source provenance review.
+
+### Status after this pass
+
+The known 21 INSERT table groups and 12 UPDATE table groups now have source-level candidate callers mapped, with the following unresolved exceptions/qualifications explicitly retained:
+1. `business_engagement_event`: live production object/grants but missing from deployed source snapshot and migration ledger inaccessible under read-only query principal.
+2. `account_identity.connect_role` and `business_operator_intent`: no direct UPDATE caller found in deployed Business Identity repository; require exhaustive producer and grant-origin review.
+3. Business profile writes use the SECURITY DEFINER `ghm.update_business_profile` path in production; construction has moved this to Actor Gateway and must not be treated as already deployed.
+4. Route wiring, table-level grants, sequence grants, trigger effects and migration application state still require separate reconciliation for each table.
+
+This is a source-callsite reconciliation, not permission approval. No production grants are proposed for removal until every caller and non-HTTP producer is accounted for and the replacement is deployed/qualified.
+
+**No production changes were made.** Only read-only catalog queries and GitHub source inspection occurred. No production grant, role, membership, migration, credential, secret, Render setting, deployment, route, traffic, or application data changed. No PR merged/closed. PayFast and legal publication remain paused.
