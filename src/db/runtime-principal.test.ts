@@ -5,6 +5,10 @@ import { assertRuntimeDatabaseIdentity, type RuntimeDatabaseIdentity } from './r
 const leastPrivilegeRuntime: RuntimeDatabaseIdentity = {
   session_user: 'ghm_runtime',
   current_user: 'ghm_runtime',
+  database_connect_privilege: true,
+  database_create_privilege: false,
+  schema_usage: true,
+  schema_create: false,
   rolcanlogin: true,
   rolinherit: false,
   rolsuper: false,
@@ -42,6 +46,10 @@ test('rejects an unexpected effective role even when the login is ghm_runtime', 
 
 test('rejects CREATEROLE and privileged role memberships', () => {
   for (const override of [
+    { database_connect_privilege: false },
+    { database_create_privilege: true },
+    { schema_usage: false },
+    { schema_create: true },
     { rolcreaterole: true },
     { rolsuper: true },
     { no_role_memberships: false },
