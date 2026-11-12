@@ -94,8 +94,8 @@ try {
 
   const applyManualCutover = async (path) => {
     const sql = readFileSync(path, 'utf8')
-      .replace(/^\\s*BEGIN;\\s*/i, '')
-      .replace(/\\s*COMMIT;\\s*$/i, '');
+      .replace(/^\\s*BEGIN;\\s*/im, '')
+      .replace(/^\\s*COMMIT;\\s*$/im, '');
     const client = await migrator.connect();
     try {
       await client.query('BEGIN');
@@ -174,8 +174,8 @@ try {
   // Rehearse the guarded rollback in a transaction and roll that transaction
   // back, restoring the post-cutover state for the remaining qualification.
   const rollbackSql = readFileSync('database/cutovers/20261112161000_campaign_directory_review_actor_gateway_rollback.sql', 'utf8')
-    .replace(/^\\s*BEGIN;\\s*/i, '')
-    .replace(/\\s*COMMIT;\\s*$/i, '');
+    .replace(/^\\s*BEGIN;\\s*/im, '')
+    .replace(/^\\s*COMMIT;\\s*$/im, '');
   const rollbackClient = await migrator.connect();
   try {
     await rollbackClient.query('BEGIN');
