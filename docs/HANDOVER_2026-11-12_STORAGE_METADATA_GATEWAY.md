@@ -56,3 +56,23 @@ The design is not implementation or qualification evidence. No code cutover, pro
 - Production cutover remains blocked by Render role-administration resolution, a fresh independently verified production backup, and approved deployment/network/rollback planning.
 - Preserve Saved Business as user favourites/bookmarks.
 - Keep local Windows command instructions in the user's established PowerShell transcript style when local sync/testing instructions are needed.
+
+## 2026-11-12 follow-up — provider transition trust boundary corrected
+
+A deeper threat-model check found an important design constraint before implementation: the Actor Gateway is HTTPS-reachable and its ordinary routes accept end-user bearer tokens. Therefore a user-callable `storage.metadata.mark_available` or `storage.metadata.mark_deleted` endpoint would let an authenticated manager bypass the Resource API's provider HEAD/byte validation or provider deletion ordering by calling the gateway directly.
+
+The design document now explicitly separates:
+- actor-authorized operations (pending creation, metadata read, deletion-pending request), with JWT-derived actor and database membership/role checks; and
+- provider-workflow transitions (mark available / mark deleted), which must require a separate short-lived, one-use Resource API service attestation bound to operation, object, tenant and provider-verification result. A normal user bearer token is insufficient.
+
+It also flags background cleanup as a separate authority question. The next implementation step must enumerate actual cleanup callers before defining a constrained system operation; do not invent broad system authority or allow arbitrary object IDs. If the current hosting/network constraints cannot secure the service attestation, pause and return with a design decision rather than expose user-callable lifecycle transitions.
+
+Relevant source facts:
+- `src/storage/repository.ts` invokes all five legacy functions.
+- `src/storage/service.ts` verifies provider HEAD metadata, actual byte length and image bytes before availability; deletion is provider-first after marking deletion-pending, with retry behavior.
+- `20261026120000_scope_storage_metadata_lookup.sql` is the migration that replaced the one-argument getter with `storage_get_object(bigint,bigint)`.
+- `20261110140000_allow_pending_storage_object_cleanup.sql` broadened deletion-pending to allow abandoned pending objects to enter the existing retryable deletion lifecycle.
+- `ghm.storage_get_public_business_logo(bigint)` remains a distinct constrained public projection, not part of the five-function revocation batch.
+
+This is a design-only refinement. No application code, database grants, migrations, production resources or deployments were changed. No security qualification or CI pass is claimed for the new documents.
+
