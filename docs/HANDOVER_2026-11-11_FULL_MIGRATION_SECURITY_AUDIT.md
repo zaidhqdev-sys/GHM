@@ -2352,33 +2352,16 @@ Correction:
 
 A cross-role review found that Actor Gateway startup enforced its database login identity, but did not verify the complete effective database function and relation privilege set. Its disposable qualification previously spot-checked selected functions and four authentication tables; it did not prove that the gateway had exactly its reviewed callable-function set or zero direct relation privileges across the whole GHM schema.
 
-The migration history granted 31 distinct gateway function signatures before cleanup: 21 signed/typed operations plus ten obsolete unsigned entry points (one unsigned identity helper and nine pre-signed overloads).
-- `assert_actor_gateway` and `assert_actor_gateway_capability`;
-- the typed identity, registration, capability governance/evidence, supplier classification, business profile, saved-business, business-hours, trust-score and business-logo operations.
+The migration history contains 31 distinct gateway function signatures across successive migration generations. Nine pre-signed overloads were explicitly dropped by migrations `20261111020000`, `20261111030000`, `20261111040000` and `20261111050000`. At the current pre-cleanup state, 22 functions remain executable by `ghm_actor_gateway`: 21 signed/typed operations plus one surviving unsigned helper, `assert_actor_gateway(bigint)`.
 
-Correction in progress:
-- Added `src/actor-gateway/database-privileges.ts` with the exact 21-function signed-operation allow-list and a PostgreSQL catalog verifier.
-- The verifier enumerates all ordinary executable functions in schema `ghm` for the gateway login (excluding trigger-returning functions), not merely functions matching a naming convention. It also checks no direct table/view/foreign-table/sequence privileges, schema USAGE without CREATE, no PUBLIC EXECUTE on gateway-executable functions, no runtime EXECUTE on gateway-specific functions, and safe future-function defaults.
-- Wired the verifier into `src/actor-gateway/server.ts` after database identity assertion and before `server.listen`.
-- Extended `scripts/qualify-actor-gateway-principal.mjs` to execute the same production verifier against the disposable PostgreSQL gateway login.
-- Added unit and startup source-contract regression tests.
-- Extended the issuer's future-default verifier to treat a default grant to `ghm_actor_gateway` as unsafe too.
-
-This is a stronger startup guard, not a permission change. The underlying migrations already define the 22 explicit grants; the new code verifies the effective result and fails closed on drift. Exact-head CI and the full Actor Gateway disposable qualification must pass before claiming this boundary is qualified. No production database, roles, grants, services, secrets, deployments, or routing changed.
-
-
-### Confirmed legacy unsigned gateway grants and revocation
-
-The migration source confirms ten of the 31 granted signatures were obsolete entry points:
-- `assert_actor_gateway(bigint)`, an unsigned helper that accepted an arbitrary active account ID and returned it; its own migration comment states it was not wired to feature RPCs.
-- Nine older overloads for self-identity, business-registration identity, capability governance, supplier classification and business-profile operations. Signed-assertion overloads were added later, but the old signatures retained their `ghm_actor_gateway` EXECUTE grants because later migrations granted the new signatures without revoking the old ones.
-
-These are not just hypothetical drift. The original migrations explicitly granted the old functions to `ghm_actor_gateway`; the later signed migrations do not revoke those old signatures. A compromised gateway process could therefore call those legacy entry points outside the signed request-context path.
+The surviving helper accepts an account ID and returns it if the account is active. Its original migration comment says it was not wired to feature RPCs. The current Actor Gateway uses `assert_actor_gateway_capability` with signed request context; no current application code calls the unsigned helper. The helper was still granted to `ghm_actor_gateway` and therefore remains an unnecessary entry point.
 
 Correction:
-- Added migration `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads.sql` to revoke PUBLIC, `ghm_runtime`, `ghm_migrator` and `ghm_actor_gateway` from all ten obsolete signatures, preserving `ghm_schema_owner` ownership for controlled maintenance.
+- Added migration `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads.sql` to revoke PUBLIC, `ghm_runtime`, `ghm_migrator` and `ghm_actor_gateway` from the one surviving `assert_actor_gateway(bigint)` helper, preserving `ghm_schema_owner` ownership for controlled maintenance.
 - Reduced the exact gateway allow-list from 22 to 21 signed/typed operations.
-- Changed the disposable qualification from positively invoking `assert_actor_gateway(bigint)` to requiring SQLSTATE `42501`, and added denial probes for all nine old overloads.
-- Added a migration contract test enumerating all ten revocations.
+- Changed disposable qualification to require SQLSTATE `42501` when the gateway attempts to call the unsigned helper.
+- Added a migration contract test for the surviving helper revocation.
+
+The nine previously obsolete overloads are already dropped and are not included in the new migration or denial probes. The latest exact-head CI must prove the migration applies cleanly and the 21-function startup verifier passes. Do not claim this closure before that run passes.
 
 The latest exact-head CI must prove the migration applies cleanly, the 21-function startup verifier passes, and all ten legacy entry points are denied. Do not claim this closure before that run passes.
