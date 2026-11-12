@@ -17,6 +17,7 @@ const leastPrivilege: ActorGatewayDatabasePrivileges = {
   runtime_executable_functions: [],
   unsafe_function_defaults: false,
   unsafe_security_definer_functions: [],
+  unsafe_function_grantees: [],
 };
 
 test('accepts only the exact Actor Gateway database function and relation boundary', () => {
@@ -61,5 +62,16 @@ test('rejects SECURITY DEFINER functions with unexpected owners or unsafe search
       unsafe_security_definer_functions: ['ghm.gateway_sensitive_operation()'],
     }),
     /unsafe_security_definer_functions/,
+  );
+});
+
+
+test('rejects Actor Gateway function grants to any non-owner principal other than the gateway', () => {
+  assert.throws(
+    () => assertActorGatewayDatabasePrivileges({
+      ...leastPrivilege,
+      unsafe_function_grantees: ['ghm.gateway_unreviewed()'],
+    }),
+    /unsafe_function_grantees/,
   );
 });
