@@ -1653,14 +1653,14 @@ The issuer route cutover has external product consumers, so it cannot be impleme
 
 - Current main has a Gate A GHM auth adapter, but it is explicitly disabled unless `EXPO_PUBLIC_GHM_AUTH_ENABLED=true` and `EXPO_PUBLIC_GHM_AUTH_BASE_URL` is set.
 - When enabled, `src/lib/ghmAuthClient.ts` uses one `baseUrl` for both native `/api/v1/auth/login|refresh|logout` and `/api/v1/identity`. Therefore the issuer extraction must split the auth issuer origin from the GHM resource/identity API origin before Gate A can be enabled against the new topology.
-- QuoteFlow's existing Supabase Auth coexistence contract remains unchanged by this GHM issuer work. Do not enable the Gate A flag or change Supabase coexistence as part of this task.
+- Current QuoteFlow main retains its existing Supabase Auth coexistence. However, open PR #25 replaces AuthContext with GHM-only auth and removes the Supabase client dependency; the dependent issuer-origin branch inherits that removal. With Gate A false on that PR stack, sign-in/sign-up are unavailable and there is no Supabase fallback. Do not merge PR #25 or its dependent branch until the issuer is live and Gate A is explicitly approved.
 
 ### Required consumer migration
 
 Before removing auth routes from the Resource API:
 1. Add a distinct auth issuer base URL to GHM web and Connect native auth clients; keep resource API base URLs unchanged.
 2. Add a distinct server-only issuer upstream to the Connect Vercel BFF for the four optional browser-cookie endpoints. Keep its allow-list, origin validation, body limits, cookie forwarding and no-redirect behavior.
-3. Add separate issuer/resource base URLs to QuoteFlow's GHM client; preserve its disabled-by-default Gate A flag and Supabase coexistence.
+3. Add separate issuer/resource base URLs to QuoteFlow's GHM client; preserve its disabled-by-default Gate A flag. Keep current main's Supabase coexistence unchanged, but treat PR #25's GHM-only auth stack as non-deployable while Gate A is disabled because it has no Supabase fallback.
 4. Keep public auth path contracts, token response shape, ES256 claims/TTL, refresh rotation, logout semantics, cookie attributes and error mapping unchanged.
 5. Add cross-repository contract tests and a staged non-production end-to-end plan before any product environment variable or deployment changes.
 
@@ -1811,7 +1811,7 @@ The GHM issuer-origin client split has now been implemented on isolated construc
 - Construction branch: `construction/ghm-auth-issuer-origin-20261112`.
 - Added optional `EXPO_PUBLIC_GHM_AUTH_ISSUER_URL`; its resolver falls back to existing `EXPO_PUBLIC_GHM_AUTH_BASE_URL`.
 - `ghmAuthClient` sends login/refresh/logout to the issuer URL, while `getIdentity` stays on the resource API URL. The adapter passes both origins explicitly.
-- Gate A remains disabled by default; Supabase Auth coexistence is unchanged. No environment flag was enabled.
+- Gate A remains disabled by default. This statement applied to the then-current main-based construction branch only; it did not describe PR #25's GHM-only stack. PR #25 removes Supabase Auth and has no fallback when Gate A is disabled. No environment flag was enabled.
 - Added a split-origin integration test and documented the optional env value.
 - CI run #220 passed typecheck and tests on commit `76c8e29dd5609af5026299aee4359bfc90caa74a`. The subsequent test commit `8f58bfb` has not yet triggered an exact-head CI run; recheck after the next branch push.
 
@@ -2058,7 +2058,7 @@ Exact current construction head 1cc09f83c236f9061e89dcf332c048845fd83185 passed 
 
 - GHM web: web/src/auth/ghm-auth-client.ts accepts separate baseUrl and authBaseUrl. VITE_GHM_AUTH_ISSUER_BASE_URL optionally selects the issuer for login/refresh/logout; VITE_GHM_API_BASE_URL remains the resource API origin for authenticated resource requests. Unset issuer URL falls back to the resource API origin.
 - ZAID Connect: construction branch construction/ghm-auth-issuer-origin-20261112, exact handover/test head 5b564c09148948b7a854bc73dbe920844b4b16ce, passed CI #293 (43129562750). Native bearer login/refresh/logout can use optional VITE_GHM_AUTH_ISSUER_BASE_URL; resource requests retain VITE_GHM_API_BASE_URL. The same-origin Vercel BFF uses server-only GHM_AUTH_ISSUER_URL for exactly four existing browser-cookie operations (register/login/refresh/logout); resource requests remain on GHM_INTERNAL_RUNTIME_URL. Browser-cookie mode remains disabled by default.
-- QuoteFlow: construction branch construction/ghm-auth-issuer-origin-20261112, exact handover/test head 321eb8d8322fcc1d07ce576d382bb4b34af1573f, passed CI #221 (43129565632). Optional EXPO_PUBLIC_GHM_AUTH_ISSUER_URL is used only for login/refresh/logout; identity/resource requests remain on the GHM resource API origin. Gate A remains disabled and Supabase coexistence is unchanged.
+- QuoteFlow: construction branch construction/ghm-auth-issuer-origin-20261112, exact handover/test head 321eb8d8322fcc1d07ce576d382bb4b34af1573f, passed CI #221 (43129565632). Optional EXPO_PUBLIC_GHM_AUTH_ISSUER_URL is used only for login/refresh/logout; identity/resource requests remain on the GHM resource API origin. This standalone main-based branch was superseded. Its Supabase coexistence note applied only to then-current main; the newer PR #25-based branch has no Supabase fallback when Gate A is disabled.
 
 These are source-level split-origin implementations and CI contract tests, not deployed end-to-end routing. No issuer URL, feature flag or product environment value was enabled.
 
