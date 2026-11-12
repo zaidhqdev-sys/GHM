@@ -1744,3 +1744,62 @@ The first correction changed the fixture from direct UPDATE to `ghm.auth_disable
 Final fixture setup now calls the existing `ghm.auth_disable_account($1)` SECURITY DEFINER lifecycle function using the disposable qualification connection after `SET ROLE ghm_schema_owner` under the dedicated `ghm_migrator` login. This preserves the invariant that account lifecycle changes occur only through the governed auth function, without reintroducing runtime EXECUTE or direct table UPDATE.
 
 Final correction commit: `12e75e8a142150c8ebb3dac1f1e0cda3ff871941`. Exact-head workflow run `43314592392` is still running at the time of this update. The prior fixture attempts are failed runs and are superseded; only the final exact-head CI result may qualify this change.
+
+
+---
+
+## 2026-11-12 continuation — registration identity cutover source and remaining PR dispositions
+
+### 1. Registration identity: PR #264 checkpoint is superseded by construction source
+
+PR #264 (`docs/gateway-registration-identity-checkpoint-20261110`) is a documentation-only checkpoint based on the earlier state after PR #263. Its patch says the Resource API still uses the legacy registration-identity read and that a fail-closed gateway client is the next step.
+
+That is now stale relative to construction HEAD `20660992490318eb9e8aafe40afd4db2401a1822`. Verified construction source:
+
+- `src/http/business-registration-identity-gateway-client.ts` provides the HTTP client.
+- `src/http/business-registration-identity-router.ts` routes both read and update through the gateway when configured and returns 503 rather than using legacy service methods when `gatewayRequired` is true.
+- `src/http/app.ts` constructs the client from `config.actorGatewayUrl` and registers the route with `gatewayRequired = config.isProduction || explicit test override`. Production therefore fails closed if the gateway is not configured.
+- `src/actor-gateway/app.ts` exposes GET and PUT registration-identity routes; actor identity comes from verified token middleware.
+- `src/actor-gateway/business-registration-identity-reader.ts` signs operation-specific v2 assertions binding actor, Business ID and update fields.
+- Migrations `20261110230000_add_gateway_business_registration_identity_read.sql`, `20261110233000_add_gateway_business_registration_identity_write.sql`, `20261111050000_bind_registration_and_self_identity_to_signed_gateway_actor.sql`, and `20261111060000_bind_gateway_assertions_to_request_context.sql` provide the SQL wrappers and signed request-context enforcement.
+- The manual cutover `database/cutovers/20261111020000_revoke_legacy_registration_identity_runtime.sql` is a separate artifact and is **not evidence it has been applied to production**.
+
+Disposition: registration identity GET/PUT source migration is present on construction branch; production deployment, configuration, and manual legacy-grant cutover remain separate gates. Do not merge stale PR #264 solely to import its historical checkpoint; its facts have been superseded by this handover and the current construction implementation. No PR was closed.
+
+### 2. Remaining open PR dispositions
+
+| PR | Disposition for this security qualification |
+|---|---|
+| #264 registration identity checkpoint | Documentation-only, superseded by construction source described above. Retain historical record; no code gap remains on construction for the gateway client/routes. Production cutover remains unproven. |
+| #201 QuoteFlow legal acceptance | Outside current security cutover. Legal documents and legal publication remain paused by owner direction until systems are stable. Do not merge, publish legal content, or enable acceptance workflow in this tranche. |
+| #233 PayFast timezone handling | Outside current security cutover. PayFast sandbox access is unavailable and payment activation remains frozen. Do not activate payment processing or treat this PR as payment qualification. |
+| #274 Render role separation handover | Keep as an open operational blocker record. Render support recommended SQL-created login(s) outside the Dashboard-managed credential list for normal app execution; production membership/admin-option authority still needs resolution. No role mutation here. |
+| #237/#271/#272 Business Profile stack | Preserve stacked dependency and exact-head construction implementation. No independent merge. |
+| #243/#270 and #243/#244 Marketplace stack | Preserve dependency order. PR #244 is still only proposed source for engagement-event DML, not proof of deployed production grant. |
+| #250/#268/#269 Capability Governance stack | Preserve dependency order. No independent merge. |
+
+### 3. Exact-head CI verification after fixture correction
+
+The disabled-account fixture's previous failed runs are superseded by the final fixture commit `12e75e8a142150c8ebb3dac1f1e0cda3ff871941`. Exact-head run `43314592392` completed successfully:
+- `quality` — success.
+- `web-quality` — success.
+
+The latest construction branch HEAD is the subsequent handover-only commit `20660992490318eb9e8aafe40afd4db2401a1822`. Its exact-head run `43314669620` also completed successfully:
+- `quality` — success.
+- `web-quality` — success.
+
+Thus the new Business Profile reader unit tests and disabled-account PostgreSQL adversarial fixture are included in a passing quality run. The disabled fixture is created through `ghm.auth_disable_account($1)` on the disposable qualification connection after setting `ghm_schema_owner`; this does not grant runtime execution or direct lifecycle-column DML. The PostgreSQL qualification step passed in the exact code-head run.
+
+### 4. Remaining security qualification boundary
+
+The existing PR/branch review confirms that much of the security work already exists; avoid recreating it. The remaining material gaps are not missing generic test suites:
+
+1. Retrieve the complete, row-level production column ACL snapshot (all 156 INSERT, 60 UPDATE and 7 SELECT entries) with grantor/grantee/column/grant-option fields. The current handover preserves counts and examples but not the full row matrix as an independently retrievable artifact.
+2. Reconcile every exact production column ACL row to the deployed production source commit, not just construction source. The existing table-level caller map and partial seven-file blob comparison are not sufficient to sign off all rows.
+3. Complete production-versus-construction mapping for all 21 INSERT and 12 UPDATE tables, including each exact written column list, repository method, service, route/internal producer and authorization predicate.
+4. Trace the account-identity profile update method and all production columns separately; current inspected app has no registered profile-update route, while deployed production ACLs include column UPDATE.
+5. Finish the full repository-wide notification producer search before relying on the single registered POST route as the only INSERT producer.
+6. Confirm production Actor Gateway deployment, environment variables, isolated database principal and migration state independently. Construction CI is not deployment evidence.
+7. Resolve Render's Dashboard-managed role membership/admin-option issue and fresh backup evidence before planning production principal cutover.
+
+**No production ACL, role, membership, migration, credential, secret, environment variable, Render service, deployment, traffic, bucket, object or application data was changed. No PR merged or closed. PayFast and legal publication remain paused.**
