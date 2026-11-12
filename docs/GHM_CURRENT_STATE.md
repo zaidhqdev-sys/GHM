@@ -911,3 +911,12 @@ The issuer ACL checks now inspect every GHM table/partition/view/materialized vi
 Added `database/cutovers/20261112010000_authentication_issuer_privilege_cutover.sql` as a manual-only cutover artifact. It preflights the dedicated issuer role, removes direct issuer relation/function privileges, revokes auth lifecycle functions from PUBLIC/runtime and grants the reviewed allow-list. CI #3553/#3554 passed the disposable qualification using this actual cutover SQL.
 
 A caller audit found `auth_validate_session` had no active production caller and was used only by database tests. Removed its persistence API method and issuer grant; database tests now call it under the schema-owner role. Runtime denial remains explicitly tested. The allow-list is reduced from 12 to 11 functions. CI #3557/#3558 are validating this reduced list and owner-only test path; wait for exact-head success before marking it qualified. The cutover SQL remains manual only and has not been applied to any live database.
+
+
+## Token-bound password reset correction (2026-11-12)
+
+Added migration `20261112020000_add_token_bound_password_recovery_reset.sql` with a one-time recovery-token-bound reset operation. It verifies the submitted normalized email matches the token's active account, refuses QuoteFlow migration-enrolled accounts, updates only password hash/Argon2 parameters (not login email), consumes the token and revokes all sessions atomically.
+
+Persistence now calls this single function. The email field remains in the HTTP contract as an account-binding check, not an email-change instruction. Standalone `redeemRecovery` was removed from the production persistence interface after caller audit found no active app caller; database tests invoke the legacy wrapper under schema-owner test credentials only.
+
+The issuer allow-list is now 10 functions: registration, password lookup, password set/rehash, session creation, refresh, logout, recovery issuance, token-bound password reset, QuoteFlow enrollment lookup and QuoteFlow completion. Legacy redemption wrappers are excluded and revoked at manual cutover. Exact-head CI #3571–#3573 is validating the migration, persistence changes, and reduced allow-list; prior runs found stale test mocks/Buffer typing, now corrected.
