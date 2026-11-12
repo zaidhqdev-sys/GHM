@@ -1,6 +1,6 @@
 # Connect Business Logo Storage → GHM Contract
 
-**Status:** Canonical GHM upload/bind/clear/public API lifecycle is implemented on GHM PR #272, but complete deployed non-production lifecycle qualification remains a hard gate. The database binding actor-provenance boundary is being moved behind the signed Actor Gateway; exact-head qualification is pending. The S3-compatible Cloudflare R2 provider path passed provider-level qualification on 2026-10-26, but deployed upload, public rendering and cleanup recovery are not yet qualified.
+**Status — reconciled 2026-11-12:** Source-level Business Logo upload/complete/access/delete/bind/clear/public routes and the signed Actor Gateway boundaries are implemented on the construction branch. The five storage metadata operations now use the signed Storage Metadata Actor Gateway; provider-confirmed transitions require separate Resource API HMAC proof verified by PostgreSQL. Disposable PostgreSQL 18 adversarial and grant-revocation/rollback qualification passed in CI run `43237334881` (960/960 tests; both CI jobs passed). This is not deployed end-to-end qualification. PR #272 remains a separate open/unmerged integration branch; this construction branch is not attached to it. Keep Connect upload/removal controls disabled until the complete deployed non-production journey passes against a dedicated non-production bucket.
 
 ## Purpose
 
@@ -18,9 +18,9 @@ The GHM-backed Connect profile editor now fails closed and disables upload/remov
 - Keep logo assets distinct from private verification/registration documents. A public logo must not imply that any other file in the same storage provider is public.
 - A legacy Supabase UUID path must not be rewritten as a numeric path by string substitution. Any existing-logo copy requires a separately verified canonical Business mapping and an idempotent data-migration plan.
 
-## Provider decision gate
+## Provider qualification and safety gate
 
-No storage provider is currently qualified by this contract. Before implementation, choose and document an object store/CDN supported by the deployment environment (for example, an approved S3-compatible object store or managed blob provider), and verify:
+The Cloudflare R2 S3-compatible adapter passed a bounded live provider data-path test on 2026-10-26 (signed upload, HEAD metadata, signed download, payload integrity and deletion). That test used the only bucket then created, `zaid-ghm-production`; the evidence explicitly does not establish that it is a dedicated non-production bucket. Do not run further mutation tests against it by default. A dedicated non-production bucket and deployment-managed test credentials are required before qualifying the full Resource API ↔ Actor Gateway ↔ PostgreSQL ↔ provider journey. The following requirements remain applicable:
 
 - server-side credentials are available to GHM without shipping them to the browser;
 - object keys are deterministic and tenant-scoped;
@@ -94,13 +94,13 @@ Candidate route: `DELETE /api/v1/businesses/:businessId/logo`.
 - Migration `20261106090000_business_logo_storage_binding.sql` adds `ghm.business.logo_storage_object_id`, a unique canonical reference to `ghm.storage_object`.
 - `ghm.set_business_logo_object(account_id, business_id, storage_object_id)` re-checks active owner/administrator membership and verifies tenant Business ID, resource identity, `business_logo` class, public visibility and available status before binding. It returns the previous object ID so the API can clean up after replacement.
 - `ghm.storage_get_public_business_logo(business_id)` returns only the provider key for an available public logo belonging to an active, verified and approved Business.
-- HTTP routes are being added for authenticated PUT/DELETE logo binding and anonymous public logo redirect through a short-lived provider download grant. Replacement/clear binds or clears the canonical reference before deleting the previous object; cleanup failures return HTTP 202 with a retry object ID.
+- Authenticated Business Logo binding/clear routes and the anonymous public-logo redirect route are implemented in source. Replacement/clear updates the canonical reference before deleting the previous object; cleanup failures remain observable/retryable. The storage router also exposes authenticated upload, completion, access-grant and deletion routes through the Storage Metadata Actor Gateway.
 - Business Identity, public Business profile and public Directory projections now return the GHM public logo route when a canonical logo object is bound.
 - These changes are construction-only on `integration/capability-gateway-qualification-20261110` in PR #272. Migrations and manual cutovers are qualified only against disposable CI PostgreSQL; no production database has been migrated and no provider bucket or credential has been changed.
 
-## Database actor-provenance remediation — in progress
+## Database actor-provenance remediation — source implemented and disposable-qualified
 
-The active HTTP binding route previously called `ghm.set_business_logo_object(account_id,business_id,storage_object_id)` directly using the Resource API's runtime database credential. The function trusts the supplied account ID for its membership check. PR #272 now adds a signed Actor Gateway wrapper (`business.logo.bind`) that binds the JWT-derived actor, Business ID and nullable object ID in the HMAC assertion; the Resource API forwards the original bearer token and production fails closed when the gateway is unavailable. A separate manual cutover revokes runtime EXECUTE on the legacy function. This batch is IMPLEMENTED / QUALIFICATION PENDING until its exact-head disposable PostgreSQL and full CI checks pass. Do not apply the manual cutover in production.
+The active HTTP binding route no longer relies solely on a caller-supplied account ID in the legacy `ghm.set_business_logo_object` function. The signed `business.logo.bind` Actor Gateway wrapper binds the JWT-derived actor, Business ID and nullable object ID in the HMAC assertion; the Resource API forwards the original bearer token and fails closed when the gateway is unavailable. Separately, the five storage metadata operations use signed actor assertions and provider dual proof. The source and disposable PostgreSQL 18 qualification passed in CI run `43237334881`. Legacy direct runtime grants remain until a separately approved production cutover; no production grants were changed.
 
 ## Remaining hard gate before Connect enables upload controls
 
@@ -111,8 +111,8 @@ The active HTTP binding route previously called `ghm.set_business_logo_object(ac
 
 
 
-## Additional shared storage metadata security gate
+## Additional shared storage metadata security gate — remediated in source, production cutover remains open
 
-The signed Business Logo binding wrapper is only one database-boundary control. A follow-on audit found the shared storage metadata SECURITY DEFINER functions still rely on application-side authorization and a trusted shared runtime credential: `storage_get_object(bigint,bigint)` accepts a caller-supplied account ID; `storage_create_pending` accepts tenant/resource identity; and the mark-available/deletion-pending/deleted lifecycle functions accept object IDs without a signed actor assertion. These functions are used by upload completion, access and deletion as well as logo flows. Existing storage qualification does not prove forged-actor or direct cross-tenant lifecycle resistance.
+The follow-on audit identified five legacy SECURITY DEFINER metadata functions that trusted application-side authorization and a shared runtime credential. The source remediation is now implemented: create/read/deletion-pending use signed Actor Gateway actor assertions; mark-available/mark-deleted require both actor proof and a separate Resource API HMAC provider attestation verified in PostgreSQL. The disposable PostgreSQL 18 qualification proves actor/tenant denials, provider proof validation/replay resistance, the legitimate metadata lifecycle, and a five-function direct-grant revocation/rollback rehearsal. See `docs/HANDOVER_2026-11-12_STORAGE_METADATA_GATEWAY.md` for exact evidence.
 
-This remains a separate OPEN GHM storage workstream. Do not revoke the existing storage lifecycle EXECUTE grants or claim the complete storage subsystem is security-qualified until the signed metadata gateway covers create/get/complete/cleanup transitions and all upload, public-read, replacement, clear and deletion flows pass disposable PostgreSQL qualification. The Business Logo binding cutover alone does not close this gate.
+The remaining hard gate is not source implementation: it is a complete deployed non-production Resource API ↔ Actor Gateway ↔ PostgreSQL ↔ provider lifecycle run, followed by separate production backup, role-administration, secret-provisioning and founder-approval gates. Do not revoke the production legacy grants or enable Connect logo upload/removal until those gates are satisfied.
