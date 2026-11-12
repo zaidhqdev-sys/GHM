@@ -1161,3 +1161,14 @@ The manual Authentication Issuer cutover and rollback scripts now independently 
 The migration-contract test covers both scripts. CI invokes the cutover through the dedicated migrator login, performs `SET ROLE ghm_schema_owner`, includes the manual SQL in the same psql session, and resets role afterward.
 
 The prior green run `43161326835` at `2b2014afff8dc605ab427a15256a41f89c70adab` predates this change and must not be used as qualification evidence for it. Latest known branch commit at this documentation update: `7569ea12d8261eff341fe06feae95e3aa7e11dba`; exact-head CI remains required. No production operation was performed.
+
+
+## 2026-11-12 — startup default-function ACL coverage correction
+
+Security review found that the Authentication Issuer and Actor Gateway startup ACL queries checked only global function default ACLs and a hard-coded list of known application-role grantees. They now inspect both global and GHM-schema-specific function defaults and reject EXECUTE grants to every non-owner grantee, including PUBLIC and unexpected roles. Regression source-contract checks cover both verifiers. Exact-head PostgreSQL 18 qualification is still required to validate catalog behavior against actual default-ACL fixtures.
+
+Manual issuer cutover and rollback SQL now fail closed unless the session login is `ghm_migrator` and the effective role is `ghm_schema_owner`. CI invokes cutover through that restricted identity in one psql session. Issuer allow-list: ten functions. Rollback Resource API authentication allow-list: fourteen functions; QuoteFlow migration-reset enrollment registration remains excluded.
+
+The issuer branch is separate from open/unmerged upstream PR #272. A live comparison during this audit reported 411 commits ahead and 0 behind the integration base; this is diagnostic only and is not merge readiness. The available GitHub workflow-run view did not expose push-triggered runs for this branch, so exact-head CI status is unverified. Previous green run `43161326835` predates these changes and is historical only.
+
+Latest source/test correction before this documentation update: `de794d763eb5b2c0641e34e920cd0d45434b6170`. Production remains untouched; no paid resource was created.
