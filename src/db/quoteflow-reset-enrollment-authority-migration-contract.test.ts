@@ -24,3 +24,40 @@ test('QuoteFlow reset enrollment registration is migration-only, not a runtime o
   assert.match(issuerQualification, /expected ghm_runtime to be denied/);
   assert.match(issuerQualification, /SET LOCAL ROLE ghm_schema_owner/);
 });
+
+const rollback = fs.readFileSync(path.resolve(
+  process.cwd(),
+  'database/cutovers/20261112020000_authentication_issuer_privilege_rollback.sql',
+), 'utf8');
+
+test('issuer cutover qualification covers sequences and prevents issuer schema DDL', () => {
+  const qualification = issuerQualification;
+  assert.match(qualification, /has_sequence_privilege/);
+  assert.match(qualification, /has_schema_privilege\(session_user, 'ghm', 'CREATE'\)/);
+  assert.match(qualification, /issuer must not receive direct privileges on any GHM sequence/);
+});
+
+test('database rollback revokes issuer authority and restores only reviewed Resource API auth grants', () => {
+  assert.match(rollback, /REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA ghm FROM ghm_auth_issuer/);
+  assert.match(rollback, /REVOKE USAGE ON SCHEMA ghm FROM ghm_auth_issuer/);
+  for (const functionName of [
+    'auth_create_account',
+    'auth_lookup_password_by_normalized_email',
+    'auth_set_password',
+    'auth_rehash_password_if_unchanged',
+    'auth_create_session_with_refresh',
+    'auth_validate_session',
+    'auth_rotate_refresh',
+    'auth_revoke_by_refresh_hash',
+    'auth_issue_recovery',
+    'auth_redeem_recovery',
+    'auth_redeem_recovery_with_count',
+    'auth_reset_password_with_recovery',
+    'auth_lookup_quoteflow_migration_reset_enrollment',
+    'auth_complete_quoteflow_migration_reset',
+  ]) {
+    assert.match(rollback, new RegExp('GRANT EXECUTE ON FUNCTION ghm\\\\.' + functionName + '[\\\\s\\\\S]*?TO ghm_runtime', 'i'));
+  }
+  assert.doesNotMatch(rollback, /auth_register_quoteflow_migration_reset_enrollment/);
+  assert.doesNotMatch(rollback, /GRANT (?:SELECT|INSERT|UPDATE|DELETE|ALL) ON (?:TABLE|SEQUENCE)/i);
+});
