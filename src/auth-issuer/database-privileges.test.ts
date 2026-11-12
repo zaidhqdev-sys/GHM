@@ -14,6 +14,7 @@ const leastPrivilege: AuthIssuerDatabasePrivileges = {
   executable_functions: ['ghm.auth_login(text)'],
   expected_functions: ['ghm.auth_login(text)'],
   unsafe_function_defaults: false,
+  unsafe_security_definer_functions: [],
   runtime_executable_auth_functions: [
     'ghm.auth_lookup_external_identity(text, text)',
     'ghm.auth_lookup_business_external_mapping(text, text)',
@@ -56,4 +57,15 @@ test('rejects extra/missing issuer functions and unsafe future defaults', () => 
       /database privileges failed least-privilege verification/,
     );
   }
+});
+
+
+test('rejects SECURITY DEFINER functions with unexpected owners or unsafe search_path', () => {
+  assert.throws(
+    () => assertAuthIssuerDatabasePrivileges({
+      ...leastPrivilege,
+      unsafe_security_definer_functions: ['ghm.auth_sensitive_operation()'],
+    }),
+    /unsafe_security_definer_functions/,
+  );
 });
