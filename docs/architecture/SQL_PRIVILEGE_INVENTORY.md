@@ -119,3 +119,18 @@ The Resource API runtime's remaining `ghm.auth_*` functions are deliberately loo
 The legacy migration `20260921130500_auth_link_business_external_mapping.sql` granted runtime EXECUTE on `auth_link_business_external_mapping(text,text,bigint)`. That SECURITY DEFINER function creates a provider-business mapping and does not independently prove caller membership/management or migration approval. Current Connect/commercial TypeScript request paths use lookup functions; no active request-path caller of the mutating function exists in the current branch source tree. Migration `20261112060000_revoke_runtime_business_external_mapping_link.sql` revokes PUBLIC and runtime EXECUTE. The controlled migrator/schema-owner path remains available.
 
 The issuer startup verifier checks the entire runtime `ghm.auth_*` executable set against exactly the two lookup functions, so any later auth-function grant drift fails startup. The disposable cutover qualification includes an explicit runtime denial probe for the mapping-link function and confirms rollback does not restore the stale grant.
+
+
+## Actor Gateway database authority — 2026-11-12
+
+The dedicated `ghm_actor_gateway` login has an explicit 22-function typed-operation allow-list established by the gateway migrations. It must not have direct table/view/sequence privileges or schema CREATE. The functions are SECURITY DEFINER operations owned by `ghm_schema_owner`, each with a fixed `search_path`, signed request-context validation and explicit grants to the gateway role.
+
+The current source now verifies at Actor Gateway startup, before opening the HTTP listener:
+- exact effective ordinary function set across the entire `ghm` schema (trigger-returning functions excluded);
+- zero direct GHM table/view/foreign-table/sequence privileges;
+- schema USAGE present and CREATE absent;
+- no PUBLIC EXECUTE on any function executable by the gateway;
+- no `ghm_runtime` EXECUTE on gateway-specific functions;
+- no unsafe global future-function defaults for PUBLIC, runtime, issuer, gateway, migrator or payment-provider roles.
+
+The disposable qualification script invokes the same verifier against the real `ghm_actor_gateway` login. This guard detects privilege drift; it does not change grants. The 22-function count is derived from the current migration GRANT statements and must be updated only alongside a reviewed typed operation, migration, tests and qualification evidence.
