@@ -239,3 +239,42 @@ test('auth issuer enforces the native login rate limit on the registered app ins
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 });
+
+
+test('auth issuer completes an approved QuoteFlow migration reset before issuing the standard login token pair', async () => {
+  const calls: Array<[string, string]> = [];
+  const quoteFlowMigrationResetCompletionService = {
+    complete: async (token: string, password: string) => {
+      calls.push([token, password]);
+      return { accountId: 42, loginEmail: 'approved@example.com' };
+    },
+  };
+  const app = createAuthIssuerApp({
+    authService,
+    authPersistence: persistence,
+    passwordResetService,
+    quoteFlowMigrationResetCompletionService,
+  });
+  const server = app.listen(0);
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/v1/auth/quoteflow-migration-reset/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: 'migration-token', password: 'NewPassword1' }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(calls, [['migration-token', 'NewPassword1']]);
+    assert.deepEqual(await response.json(), {
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      tokenType: 'Bearer',
+      expiresIn: 900,
+      sessionId: 1,
+      accountId: 2,
+    });
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
