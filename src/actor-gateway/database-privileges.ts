@@ -51,6 +51,7 @@ export const ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL = `
       'ghm.gateway_read_business_registration_identity(bigint, bigint, uuid, text, text, bigint)',
       'ghm.gateway_replace_business_capability_assertions(bigint, bigint, uuid, text, text, bigint, jsonb)',
       'ghm.gateway_replace_business_hours(bigint, bigint, uuid, text, text, bigint, jsonb)',
+      'ghm.gateway_provision_connect_business(bigint, bigint, uuid, text, text, text, text, text)',
       'ghm.gateway_set_business_logo_object(bigint, bigint, uuid, text, text, bigint, bigint)',
       'ghm.gateway_submit_business_capability_evidence(bigint, bigint, uuid, text, text, bigint, text, text, text, text, text, text, date, date, text)',
       'ghm.gateway_transition_business_capability_evidence(bigint, bigint, uuid, text, text, bigint, text, text)',
