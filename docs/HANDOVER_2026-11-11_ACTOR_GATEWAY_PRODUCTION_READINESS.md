@@ -399,3 +399,20 @@ The successful disposable qualification is evidence for the manual cutover desig
 6. Keep approved legal-document work out of this technical cutover.
 
 No production migration, privilege cutover, secret provisioning, deployment, role change or data mutation was performed. The new cutover is not applied. PR #272 remains open and unmerged. No paid infrastructure was introduced.
+
+
+## 2026-11-12 — dependent issuer and Actor Gateway ACL follow-up
+
+The current work has continued on dependent branch `construction/auth-issuer-isolation-20261112`, based on PR #272's `integration/capability-gateway-qualification-20261110`. Do not treat this as a new independent integration branch or merge PR #272 underneath it separately.
+
+Current security corrections:
+- Authentication Issuer startup now enforces the exact `ghm_auth_issuer` login/effective role, LOGIN/NOINHERIT, no elevated attributes and no role memberships before listener startup. It also enforces its exact ten-function allow-list, no direct relation privileges, schema USAGE without CREATE, and safe future-function defaults.
+- Actor Gateway startup now enforces its exact 24-function signed/typed allow-list across the full `ghm` schema, no direct table/view/sequence privileges, schema USAGE without CREATE, no PUBLIC EXECUTE on gateway-executable functions, no runtime EXECUTE on gateway-specific functions, and safe future-function defaults.
+- Nine historical pre-signed overloads were already dropped by earlier migrations. The remaining unused unsigned `ghm.assert_actor_gateway(bigint)` helper is now revoked from PUBLIC, runtime, migrator and gateway; current signed wrappers use `assert_actor_gateway_capability`.
+- Runtime's exact `ghm.auth_*` allow-list is now lookup-only: `auth_lookup_external_identity` and `auth_lookup_business_external_mapping`. The old `auth_link_business_external_mapping` SECURITY DEFINER mutation is revoked from PUBLIC and runtime; the controlled schema-owner/migrator path remains.
+- Future function default verification now treats PUBLIC, runtime, issuer, gateway, migrator and payment-provider grants as unsafe.
+- The manual issuer cutover and database-only rollback remain disposable-only. The rollback deliberately does not restore the obsolete business-mapping mutation grant or unsigned gateway helper.
+
+Current exact candidate head: `c877b67a39479ae2d7ac1f32b25f66363b6ba540`. Exact-head CI is still running/being corrected; do not claim the Actor Gateway principal qualification is green yet. The last actor-gateway diagnostic proved the 24-function effective ACL set, no direct relation access, no schema CREATE, no PUBLIC function execution, no runtime gateway-function execution, and safe future defaults. The failure after that diagnostic was a stale qualification assertion expecting the now-revoked unsigned helper to remain executable; the test was changed to require denial and the next exact-head run must confirm it.
+
+Production remains unchanged. No production migrations, grants, role changes, secrets, deployments, service creation or routing changes occurred. PR #272 remains open/unmerged. Fresh independently verified backup and Render role/ownership resolution remain blocking production gates. No paid infrastructure was introduced.
