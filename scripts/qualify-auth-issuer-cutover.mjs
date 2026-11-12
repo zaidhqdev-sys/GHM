@@ -31,7 +31,6 @@ const issuerOnlyFunctionNames = [
   'auth_lookup_password_by_normalized_email',
   'auth_set_password',
   'auth_create_session_with_refresh',
-  'auth_validate_session',
   'auth_rotate_refresh',
   'auth_revoke_by_refresh_hash',
   'auth_issue_recovery',
