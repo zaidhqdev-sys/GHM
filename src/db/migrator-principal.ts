@@ -11,6 +11,7 @@ export interface MigratorDatabaseIdentity {
   migrator_rolbypassrls: boolean;
   direct_membership_count: number;
   exact_schema_owner_membership: boolean;
+  schema_owner_direct_membership_count: number;
   schema_owner_rolcanlogin: boolean;
   schema_owner_rolsuper: boolean;
   schema_owner_rolcreatedb: boolean;
@@ -32,6 +33,7 @@ export const assertMigratorDatabaseIdentity = (identity: MigratorDatabaseIdentit
     migrator_rolbypassrls: false,
     direct_membership_count: 1,
     exact_schema_owner_membership: true,
+    schema_owner_direct_membership_count: 0,
     schema_owner_rolcanlogin: false,
     schema_owner_rolsuper: false,
     schema_owner_rolcreatedb: false,
