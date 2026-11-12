@@ -102,6 +102,36 @@ try {
     defaultPrivilegeClient.release();
   }
 
+  const runtimeAuthFunctions = await migratorPool.query(`
+    WITH expected(signature) AS (
+      SELECT unnest(ARRAY[
+        'ghm.auth_lookup_external_identity(text, text)',
+        'ghm.auth_link_business_external_mapping(text, text, bigint)',
+        'ghm.auth_lookup_business_external_mapping(text, text)'
+      ]::text[])
+    )
+    SELECT
+      ARRAY(
+        SELECT p.oid::regprocedure::text
+          FROM pg_proc p
+          JOIN pg_namespace n ON n.oid = p.pronamespace
+         WHERE n.nspname = 'ghm'
+           AND left(p.proname, 5) = 'auth_'
+           AND has_function_privilege('ghm_runtime', p.oid, 'EXECUTE')
+         ORDER BY 1
+      ) AS actual,
+      ARRAY(
+        SELECT signature::regprocedure::text
+          FROM expected
+         ORDER BY 1
+      ) AS expected
+  `);
+  assert.deepEqual(
+    runtimeAuthFunctions.rows[0].actual,
+    runtimeAuthFunctions.rows[0].expected,
+    'Resource API runtime must retain only the three separately reviewed external identity/business-mapping auth functions after issuer cutover',
+  );
+
   const issuerFunctions = await issuerPool.query(`
     SELECT p.proname
       FROM pg_proc p
@@ -369,48 +399,47 @@ try {
   assert.equal(Number(issuerAfterRollback.rows[0].count), 0, 'rollback must remove all issuer auth-function execution privileges');
 
   const runtimeRollbackFunctions = await migratorPool.query(`
-    SELECT p.proname
-      FROM pg_proc p
-      JOIN pg_namespace n ON n.oid = p.pronamespace
-     WHERE n.nspname = 'ghm'
-       AND p.proname = ANY($1::text[])
-       AND has_function_privilege('ghm_runtime', p.oid, 'EXECUTE')
-     ORDER BY p.proname
-  `, [[
-    'auth_create_account',
-    'auth_lookup_password_by_normalized_email',
-    'auth_set_password',
-    'auth_rehash_password_if_unchanged',
-    'auth_create_session_with_refresh',
-    'auth_validate_session',
-    'auth_rotate_refresh',
-    'auth_revoke_by_refresh_hash',
-    'auth_issue_recovery',
-    'auth_redeem_recovery',
-    'auth_redeem_recovery_with_count',
-    'auth_reset_password_with_recovery',
-    'auth_lookup_quoteflow_migration_reset_enrollment',
-    'auth_complete_quoteflow_migration_reset',
-  ]]);
+    WITH expected(signature) AS (
+      SELECT unnest(ARRAY[
+        'ghm.auth_create_account(text, text, text, text, text, integer, integer, integer)',
+        'ghm.auth_lookup_password_by_normalized_email(text)',
+        'ghm.auth_set_password(bigint, text, text, text, integer, integer, integer)',
+        'ghm.auth_rehash_password_if_unchanged(bigint, text, text, integer, integer, integer)',
+        'ghm.auth_create_session_with_refresh(bigint, bytea)',
+        'ghm.auth_validate_session(bigint)',
+        'ghm.auth_rotate_refresh(bytea, bytea)',
+        'ghm.auth_revoke_by_refresh_hash(bytea, text)',
+        'ghm.auth_issue_recovery(bigint, bytea, timestamptz)',
+        'ghm.auth_redeem_recovery(bytea)',
+        'ghm.auth_redeem_recovery_with_count(bytea)',
+        'ghm.auth_reset_password_with_recovery(bytea, text, text, integer, integer, integer)',
+        'ghm.auth_lookup_quoteflow_migration_reset_enrollment(text)',
+        'ghm.auth_complete_quoteflow_migration_reset(bytea, text, integer, integer, integer)',
+        'ghm.auth_lookup_external_identity(text, text)',
+        'ghm.auth_link_business_external_mapping(text, text, bigint)',
+        'ghm.auth_lookup_business_external_mapping(text, text)'
+      ]::text[])
+    )
+    SELECT
+      ARRAY(
+        SELECT p.oid::regprocedure::text
+          FROM pg_proc p
+          JOIN pg_namespace n ON n.oid = p.pronamespace
+         WHERE n.nspname = 'ghm'
+           AND left(p.proname, 5) = 'auth_'
+           AND has_function_privilege('ghm_runtime', p.oid, 'EXECUTE')
+         ORDER BY 1
+      ) AS actual,
+      ARRAY(
+        SELECT signature::regprocedure::text
+          FROM expected
+         ORDER BY 1
+      ) AS expected
+  `);
   assert.deepEqual(
-    runtimeRollbackFunctions.rows.map((row) => row.proname),
-    [
-      'auth_complete_quoteflow_migration_reset',
-      'auth_create_account',
-      'auth_create_session_with_refresh',
-      'auth_issue_recovery',
-      'auth_lookup_password_by_normalized_email',
-      'auth_lookup_quoteflow_migration_reset_enrollment',
-      'auth_redeem_recovery',
-      'auth_redeem_recovery_with_count',
-      'auth_rehash_password_if_unchanged',
-      'auth_reset_password_with_recovery',
-      'auth_revoke_by_refresh_hash',
-      'auth_rotate_refresh',
-      'auth_set_password',
-      'auth_validate_session',
-    ].sort(),
-    'rollback must restore exactly the documented legacy runtime auth function grants',
+    runtimeRollbackFunctions.rows[0].actual,
+    runtimeRollbackFunctions.rows[0].expected,
+    'rollback must restore exactly the documented pre-issuer Resource API auth function allow-list',
   );
 
   process.stdout.write(JSON.stringify({
