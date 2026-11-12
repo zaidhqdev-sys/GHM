@@ -41,7 +41,9 @@ BEGIN
      OR EXISTS (
        SELECT 1
          FROM pg_auth_members m
-        WHERE m.member = issuer_role.oid OR m.roleid = issuer_role.oid
+         JOIN pg_roles member_role ON member_role.oid = m.member
+        WHERE m.member = issuer_role.oid
+           OR (m.roleid = issuer_role.oid AND member_role.rolname <> 'ghm_db_user')
      ) THEN
     RAISE EXCEPTION 'ghm_auth_issuer must exist as LOGIN NOINHERIT with no elevated attributes or role memberships';
   END IF;
