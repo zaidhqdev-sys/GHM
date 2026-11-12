@@ -13,6 +13,10 @@ test('migration runner verifies the dedicated migrator role before SET ROLE', ()
   assert.match(migrationRunner, /membership\.admin_option = false/);
   assert.match(migrationRunner, /membership\.inherit_option = false/);
   assert.match(migrationRunner, /membership\.set_option = true/);
+  assert.match(migrationRunner, /has_database_privilege\('ghm_migrator'/);
+  assert.match(migrationRunner, /has_schema_privilege\('ghm_migrator'/);
+  assert.match(migrationRunner, /has_table_privilege\('ghm_migrator'/);
+  assert.match(migrationRunner, /has_sequence_privilege\('ghm_migrator'/);
   assert.match(migrationRunner, /direct_membership_count/);
   assert.match(migrationRunner, /schema_owner_direct_membership_count/);
   assert.match(migrationRunner, /migrator\.rolcreaterole AS migrator_rolcreaterole/);
