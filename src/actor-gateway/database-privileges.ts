@@ -147,7 +147,23 @@ export const ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL = `
            AND acl.privilege_type = 'EXECUTE'
            AND acl.grantee <> d.defaclrole
       )
-    ) AS unsafe_function_defaults
+    ) AS unsafe_function_defaults,
+    ARRAY(
+      SELECT p.oid::regprocedure::text
+        FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname = 'ghm'
+         AND p.prosecdef
+         AND (
+           pg_get_userbyid(p.proowner) IS DISTINCT FROM 'ghm_schema_owner'
+           OR NOT EXISTS (
+             SELECT 1
+               FROM unnest(COALESCE(p.proconfig, ARRAY[]::text[])) AS setting
+              WHERE setting = 'search_path=pg_catalog, ghm, pg_temp'
+           )
+         )
+       ORDER BY 1
+    ) AS unsafe_security_definer_functions
 `;
 
 export async function readActorGatewayDatabasePrivileges(
