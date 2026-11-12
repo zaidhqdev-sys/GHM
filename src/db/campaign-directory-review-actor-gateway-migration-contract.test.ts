@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const migration = readFileSync('database/migrations/20261112160000_add_signed_campaign_directory_review_actor_gateway.sql', 'utf8');
+const migration = readFileSync('database/cutovers/20261112160000_campaign_directory_review_actor_gateway.sql', 'utf8');
 const reader = readFileSync('src/actor-gateway/campaign-directory-review-reader.ts', 'utf8');
 
-test('Campaign and directory-review operations extend the shared signed actor assertion allow-list', () => {
+test('manual Campaign/review cutover extends the signed actor assertion allow-list', () => {
   for (const operation of ['campaign.create', 'campaign.update', 'directory_review.presentation.read']) {
     assert.ok(migration.includes(`'${operation}'`));
   }
@@ -29,7 +29,7 @@ test('directory-review presentation is read only through an actor-bound wrapper'
   assert.match(reader, /directory_review\.presentation\.read/);
 });
 
-test('gateway wrappers are granted only to Actor Gateway and legacy runtime grants are revoked', () => {
+test('manual cutover grants wrappers only to Actor Gateway and revokes legacy runtime grants', () => {
   for (const signature of [
     'gateway_create_campaign(bigint,bigint,uuid,text,text,bigint,text)',
     'gateway_update_campaign(bigint,bigint,uuid,text,text,bigint,text,text)',
