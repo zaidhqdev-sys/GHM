@@ -30,6 +30,9 @@ test('Actor Gateway verifies its exact database ACL before opening the HTTP list
   assert.match(privilegeSource, /ghm\.gateway_list_trust_scores/);
   assert.match(privilegeSource, /ghm\.gateway_provision_connect_business/);
   assert.match(privilegeSource, /ghm\.gateway_update_business_profile/);
+  assert.match(privilegeSource, /ghm\\.gateway_storage_create_pending/);
+  assert.match(privilegeSource, /ghm\\.gateway_storage_get_object/);
+  assert.match(privilegeSource, /ghm\\.gateway_storage_mark_deletion_pending/);
 });
 
 
