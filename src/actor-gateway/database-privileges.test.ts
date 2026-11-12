@@ -6,6 +6,8 @@ import {
 } from './database-privileges';
 
 const leastPrivilege: ActorGatewayDatabasePrivileges = {
+  database_connect_privilege: true,
+  database_create_privilege: false,
   schema_usage: true,
   schema_create: false,
   direct_relation_privileges: false,
@@ -22,6 +24,8 @@ test('accepts only the exact Actor Gateway database function and relation bounda
 
 test('rejects extra/missing executable functions and public/runtime grants', () => {
   for (const override of [
+    { database_connect_privilege: false },
+    { database_create_privilege: true },
     { executable_functions: [...leastPrivilege.executable_functions, 'ghm.unreviewed()'] },
     { executable_functions: [] },
     { public_executable_functions: ['ghm.gateway_unreviewed()'] },
