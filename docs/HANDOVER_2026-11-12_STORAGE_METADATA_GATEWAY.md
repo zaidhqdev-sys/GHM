@@ -216,3 +216,29 @@ A further ACL refinement now explicitly checks that neither `ghm_runtime` nor `g
 
 **Important boundary:** this is database-wrapper qualification, not yet a complete external provider lifecycle or production cutover. Legacy runtime grants remain unchanged; no production secret has been created; no production migration or deployment has occurred.
 
+## Legacy storage grant cutover and rollback qualification — 2026-11-12
+
+Added `scripts/qualify-storage-metadata-runtime-grant-revocation-postgres.mjs` and wired it into CI after provider dual-proof qualification.
+
+The script is strictly restricted to the explicit localhost disposable database, requires the storage mutation opt-in, verifies all three database identities, and uses the migrator's `SET LOCAL ROLE ghm_schema_owner` path.
+
+It discovers and snapshots the exact signatures and original ACLs for the five legacy SECURITY DEFINER storage functions:
+- `storage_create_pending`
+- `storage_get_object`
+- `storage_mark_available`
+- `storage_mark_deletion_pending`
+- `storage_mark_deleted`
+
+It then revokes PUBLIC and `ghm_runtime` execution in a committed disposable cutover, verifies the effective grants are gone, attempts direct calls using the runtime login and confirms SQLSTATE 42501, verifies all five Actor Gateway wrappers retain EXECUTE, and restores the original PUBLIC/direct-runtime grants exactly. A `finally` rollback path restores the snapshot if any assertion fails after the cutover.
+
+The new qualification step passed in run `43233465264`. This is a disposable cutover-and-rollback rehearsal only. The original production grants remain unchanged. Do not merge or run this script against production as an operational cutover.
+
+The same exact-head run also passed:
+- TypeScript build.
+- Full migration application to disposable PostgreSQL 18.
+- Whole-database SECURITY DEFINER inventory.
+- Provider secret provisioning and dual-proof adversarial qualification.
+- The legacy five-function revocation and rollback qualification.
+
+The remainder of the repository-wide workflow was still running at this checkpoint. The latest code head for this stage is `dcbd0e317ba739e248674c73496ed0e50724c7e6`; re-check its final workflow conclusion before treating all CI jobs as complete.
+
