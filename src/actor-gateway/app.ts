@@ -627,6 +627,77 @@ export const createActorGatewayApp = (
     }
   });
 
+  const parseProviderAttestation = (value: unknown): import('./storage-metadata-reader').StorageProviderWorkflowAttestation | null => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const attestation = value as Record<string, unknown>;
+    if (Object.keys(attestation).length !== 4
+      || !Number.isSafeInteger(attestation.issuedAt)
+      || typeof attestation.nonce !== 'string'
+      || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(attestation.nonce)
+      || typeof attestation.context !== 'string' || attestation.context.length > 32768
+      || typeof attestation.signature !== 'string' || !/^[0-9a-f]{64}$/.test(attestation.signature)) return null;
+    return {
+      issuedAt: Number(attestation.issuedAt),
+      nonce: attestation.nonce,
+      context: attestation.context,
+      signature: attestation.signature,
+    };
+  };
+
+  app.post('/v1/storage/metadata/:objectId/available', async (req: Request, res: Response) => {
+    const objectId = parseStorageObjectId(req.params.objectId);
+    const body = req.body as Record<string, unknown> | null;
+    const allowed = ['checksum', 'providerKey', 'contentType', 'byteSize', 'attestation'];
+    const attestation = parseProviderAttestation(body?.attestation);
+    if (objectId === null || !body || typeof body !== 'object' || Array.isArray(body)
+      || Object.keys(body).length !== allowed.length || Object.keys(body).some(key => !allowed.includes(key))
+      || (body.checksum !== null && typeof body.checksum !== 'string')
+      || typeof body.providerKey !== 'string'
+      || !['image/jpeg', 'image/png', 'image/webp'].includes(String(body.contentType))
+      || !Number.isSafeInteger(body.byteSize) || Number(body.byteSize) < 0 || Number(body.byteSize) > 2 * 1024 * 1024
+      || !attestation) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    if (!storageMetadataReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    try {
+      const object = await storageMetadataReader.markAvailable(
+        res.locals.actorAccountId as number, objectId, body.checksum as string | null,
+        body.providerKey, String(body.contentType), Number(body.byteSize), attestation,
+      );
+      res.status(200).json({ object });
+    } catch (error) {
+      storageGatewayFailure(error, res);
+    }
+  });
+
+  app.post('/v1/storage/metadata/:objectId/deleted', async (req: Request, res: Response) => {
+    const objectId = parseStorageObjectId(req.params.objectId);
+    const body = req.body as Record<string, unknown> | null;
+    const attestation = parseProviderAttestation(body?.attestation);
+    if (objectId === null || !body || typeof body !== 'object' || Array.isArray(body)
+      || Object.keys(body).length !== 2 || Object.keys(body).some(key => key !== 'providerKey' && key !== 'attestation')
+      || typeof body.providerKey !== 'string' || !attestation) {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    if (!storageMetadataReader) {
+      res.status(503).json({ error: 'service_unavailable' });
+      return;
+    }
+    try {
+      const object = await storageMetadataReader.markDeleted(
+        res.locals.actorAccountId as number, objectId, body.providerKey, attestation,
+      );
+      res.status(200).json({ object });
+    } catch (error) {
+      storageGatewayFailure(error, res);
+    }
+  });
+
   app.get('/v1/trust-scores', async (req: Request, res: Response) => {
     const trustLevel = req.query.trustLevel;
     if (typeof trustLevel !== 'string' || !['bronze', 'silver', 'gold', 'platinum'].includes(trustLevel)) {
