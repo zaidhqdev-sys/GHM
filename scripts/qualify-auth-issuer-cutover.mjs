@@ -84,7 +84,11 @@ try {
       FROM pg_proc p
      WHERE p.oid = 'ghm.auth_issuer_default_privilege_qualification()'::regprocedure
     `);
-    assert.deepEqual(defaultAcl.rows[0], {
+    assert.deepEqual({
+      public_execute: defaultAcl.rows[0].public_execute,
+      runtime_execute: defaultAcl.rows[0].runtime_execute,
+      issuer_execute: defaultAcl.rows[0].issuer_execute,
+    }, {
       public_execute: false,
       runtime_execute: false,
       issuer_execute: false,
