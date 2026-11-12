@@ -392,53 +392,6 @@ export class PostgresAuthPersistence implements AuthPersistence {
     };
   }
 
-  async linkBusinessExternalMapping(
-    provider: string,
-    externalBusinessId: string,
-    businessId: number,
-  ): Promise<LinkBusinessExternalMappingResult> {
-    try {
-      const result = await this.tx(async (client) =>
-        client.query(`SELECT * FROM ghm.auth_link_business_external_mapping($1, $2, $3)`, [
-          provider,
-          externalBusinessId,
-          businessId,
-        ]),
-      );
-      if (result.rowCount !== 1) {
-        throw new AuthPersistenceError('Link business external mapping failed');
-      }
-      const row = result.rows[0];
-      const outcome = String(row.outcome) as LinkBusinessExternalMappingOutcome;
-      if (outcome === 'business_not_found') {
-        return { outcome, mapping: null };
-      }
-      if (
-        outcome !== 'created' &&
-        outcome !== 'already_linked' &&
-        outcome !== 'conflict'
-      ) {
-        throw new AuthPersistenceError(
-          `Unexpected business link outcome: ${outcome}`,
-          'LINK_UNEXPECTED_OUTCOME',
-        );
-      }
-      return {
-        outcome,
-        mapping: {
-          id: Number(row.id),
-          provider: String(row.provider),
-          externalBusinessId: String(row.external_business_id),
-          businessId: Number(row.business_id),
-          createdAt: row.created_at,
-          updatedAt: row.updated_at,
-        },
-      };
-    } catch (error) {
-      throw mapPgError(error);
-    }
-  }
-
   async revokeSessionByRefreshToken(
     refreshTokenWire: string,
     reason: RevokeReason = 'logout',
