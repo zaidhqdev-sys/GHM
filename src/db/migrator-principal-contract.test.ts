@@ -24,3 +24,9 @@ test('migration runner verifies the dedicated migrator role before SET ROLE', ()
   assert.match(migrationRunner, /identity\.rows\[0\]\?\.current_user !== MIGRATION_OWNER_ROLE/);
   assert.match(migrationRunner, /identity\.rows\[0\]\?\.session_user !== 'ghm_migrator'/);
 });
+
+
+test('migration runner verifies schema-owner database CREATE and GHM schema ownership', () => {
+  assert.match(migrationRunner, /has_database_privilege\('ghm_schema_owner', current_database\(\), 'CREATE'\) AS schema_owner_database_create_privilege/);
+  assert.match(migrationRunner, /owned_schema\.nspowner = schema_owner\.oid/);
+});
