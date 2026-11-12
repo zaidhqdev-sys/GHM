@@ -1973,3 +1973,57 @@ With the full production matrix now preserved, continue by mapping the exact liv
 6. Check table-level ACLs, sequence ACLs and inherited membership separately; this snapshot is specifically the column ACL matrix.
 
 **No production mutation was performed.** The only production interaction was catalog inspection and read-only queries. No grant, role, membership, migration, secret, environment variable, Render service, deployment, traffic, or application data was changed. No PR was merged or closed. PayFast and legal publication remain paused.
+
+
+## 2026-11-12 22:10 UTC — production column ACL to deployed repository caller mapping
+
+Production source ref remains `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`. The following mappings were checked against the exact repository SQL and service code at that ref.
+
+### 1. Directly reconciled domains
+
+| Production table / ACL | Deployed source caller | Authorization / invariant | Finding |
+|---|---|---|---|
+| `business_capability` INSERT (8 columns) | `PostgresBusinessCapabilityRepository.createBusinessCapability` | Tenant transaction; owner/administrator membership; capability must be active and selectable. | Exact eight written columns match ACL. |
+| `business_capability_evidence` INSERT (11 columns) | `PostgresBusinessCapabilityEvidenceRepository.create` | Reads active Business Capability assertion; resolves tenant; owner/administrator required. | Exact eleven written columns match ACL. Evidence status transitions use `ghm.transition_business_capability_evidence` rather than direct UPDATE. |
+| `business_category_assignment` INSERT (4 columns), UPDATE `is_primary` | `assignBusinessCategory`, `setPrimaryBusinessCategory` | Tenant transaction; owner/administrator; category must be selectable; target assignment row locked before primary change. | INSERT and both UPDATE statements match exact column grants. |
+| `business_offering` INSERT (10 columns), UPDATE (9 columns) | `createBusinessOffering`, `updateBusinessOffering` | Active tenant membership; owner/administrator; update allow-list maps to exact SQL column names. | Exact INSERT/UPDATE column sets match ACL. |
+| `review` INSERT (10 columns), UPDATE moderation fields (5 columns) | `createReview`, `moderateReview` | Create requires active/verified/approved Business and excludes Business owner; moderation route is admin-only and only pending rows transition. | INSERT and moderation UPDATE fields match the ACL. |
+| `business.rating, business.review_count, business.updated_at` UPDATE | `refreshBusinessReviewAggregate` in review repository | Called after moderation approval; aggregate counts/averages only approved reviews. | All three granted columns are explicitly updated by the deployed review aggregate caller. |
+| `account_identity` UPDATE `full_name, phone, avatar_ref, updated_at` | `PostgresBusinessIdentityRepository.updateAccount` | Authenticated transaction, target account is `context.userId`; route/service exposes own-profile update. | Four columns match this method's SQL. |
+| `business` profile update | Production Business Identity repository calls `ghm.update_business_profile(actor, tenant_business, patch)`. | Tenant transaction; owner/administrator; strict profile-field allow-list; SECURITY DEFINER function performs governed update. | This is not a direct UPDATE covered by the three Business column grants; it is a separate privileged function path. |
+| `business_engagement_event` INSERT (5 columns), SELECT (7 columns) | PR #244's `PostgresBusinessEngagementRepository.record`; not present in production source ref. | PR code uses authenticated actor, approved/active Business, member self-engagement exclusion and transactional rate limit. | Live object/grants exist, but deployed route/repository is absent from production source ref; deployment/ledger provenance remains unresolved. |
+
+### 2. Account identity: excess/unmapped UPDATE columns
+
+The production account profile repository writes only:
+`full_name, phone, avatar_ref, updated_at`.
+
+The live production ACL additionally grants UPDATE on:
+- `connect_role`
+- `business_operator_intent`
+
+Neither column appears in the inspected production Business Identity repository UPDATE statement or its profile service mapping. A repository-wide code-search query for those exact identifiers returned no source matches, but that search result alone is not sufficient to prove no dynamic SQL, older mounted route, trigger or out-of-tree producer exists.
+
+Disposition: mark these two column grants **unmapped pending exhaustive source/route/trigger search**. Do not revoke them in production from this evidence alone. Trace their grant-origin migration, all routes and triggers, and confirm production deployment/source commit before deciding.
+
+### 3. Review aggregate execution nuance
+
+The review aggregate update is issued by the Resource API repository inside the authorized review transaction after a review moderation transition results in an approved review. It is not a database trigger. The query explicitly updates `rating`, `review_count` and `updated_at`; these three column ACLs are therefore accounted for by a live deployed caller.
+
+### 4. Capability evidence and verification authority nuance
+
+Evidence creation is direct INSERT with exact column set. Evidence verification itself is not a direct UPDATE: repository calls the SECURITY DEFINER transition function. Capability assertion verification similarly uses `ghm.transition_business_capability_verification`; the direct capability INSERT grant is used only for business owner/administrator assertion creation. This separation is intentional and should not be flattened into one direct-DML permission model.
+
+### 5. Still outstanding after this pass
+
+This pass has source-mapped the capability, evidence, category, offering, review aggregate, own-profile and Business profile domains. It has **not yet** completed all 21 INSERT and 12 UPDATE table mappings. Remaining domains requiring exact deployed route/source inspection include:
+- `customer`, `enquiry`, `notification`;
+- `opportunity_capability_requirement`, `opportunity_participant`;
+- `project`, `project_quote`;
+- `quote`, `quote_line_item`;
+- `support_request`, `support_request_message`;
+- `commercial_event`, `commercial_payment_attempt`, `commercial_subscription`, `commercial_trial`.
+
+The complete ACL matrix is now preserved above; continue mapping the remaining groups without duplicating already proven routes or tests.
+
+**Production safety:** only read-only Render catalog queries and GitHub source reads were performed. No production grants, roles, memberships, schema, data, secrets, configuration, Render services, deployment or traffic changed. No PR merged/closed. PayFast and legal publication remain paused.
