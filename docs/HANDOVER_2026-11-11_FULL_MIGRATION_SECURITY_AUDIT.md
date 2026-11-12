@@ -2307,7 +2307,7 @@ After recording the ACL correction, the handover and `docs/GHM_CURRENT_STATE.md`
 - No merge, production mutation, deployment, secret change, service creation, or paid spend occurred.
 
 
-## 2026-11-12 — Startup identity enforcement and business-mapping mutation closure
+## 2026-11-12 — Startup identity enforcement and Connect mapping dependency review
 
 ### Exact database identity must be enforced, not merely queried
 
@@ -2320,33 +2320,38 @@ Correction:
 - Fix commit: `0b7761eaf5cfeaabd16490474d483163fb488492`.
 - Source-contract regression commit: `607d0260b244adc21bd0b934b83699479865165c`.
 
-### Residual runtime permission: provider-business mapping mutation
+### Provider-business mapping mutation is an active Connect dependency and remains an open security gap
 
-The historical migration `20260921130500_auth_link_business_external_mapping.sql` grants `EXECUTE` to `ghm_runtime` on `ghm.auth_link_business_external_mapping(text,text,bigint)`. Its own SQL comment describes a controlled link of an existing GHM business to a provider business ID. The function accepts caller-supplied provider, external business ID and GHM business ID; its SQL verifies that the target business exists and mapping conflicts, but does not independently verify actor membership/management, integration identity, or approved migration provenance.
+The historical migration `20260921130500_auth_link_business_external_mapping.sql` grants `EXECUTE` to `ghm_runtime` on `ghm.auth_link_business_external_mapping(text,text,bigint)`. The SQL function verifies that the target Business exists and mapping conflicts, but does not independently verify actor membership/management, integration identity, or approved provisioning provenance.
 
-Current caller tracing on this branch:
-- `src/http/commercial-internal-router.ts` resolves the external business ID through `ghm.auth_lookup_business_external_mapping` (lookup only).
-- `src/integrations/connect/identity-adapter.ts` resolves person identity through `ghm.auth_lookup_external_identity` (lookup only).
-- The current source tree has no active TypeScript request-path caller of `auth_link_business_external_mapping`; the old business-adapter path recorded in the earlier audit is not present in this current branch tree.
-- The commercial payment preparation path needs business mapping lookup, not mapping creation. No product request path should be able to create or relink provider-business mappings.
+The current caller is present and active in this branch:
+- `src/integrations/connect/business-adapter.ts` implements `ConnectBusinessAdapter.provisionOrResolve`.
+- It requires an authenticated context and `assertRole(context, 'admin', 'business')`.
+- Inside one `withAuthorizedTransaction`, it serializes the external Business UUID, resolves an existing mapping or creates a canonical GHM Business and owner membership, then calls `auth_link_business_external_mapping` before committing.
+- `src/integrations/connect/business-adapter.persistence.test.ts` exercises this real runtime path, including concurrent same-external-ID provisioning, idempotent resolution, conflict behavior and transaction rollback.
 
-Correction:
-- Added automatic migration `20261112060000_revoke_runtime_business_external_mapping_link.sql`, revoking PUBLIC and `ghm_runtime` EXECUTE while leaving the controlled `ghm_migrator` → `ghm_schema_owner` path intact.
-- Added the same explicit revocation to the manual issuer cutover.
-- Reduced the startup-enforced Resource API `ghm.auth_*` allow-list from three to two: `auth_lookup_external_identity` and `auth_lookup_business_external_mapping`.
-- Added a disposable PostgreSQL denial probe for `ghm_runtime` attempting to call `auth_link_business_external_mapping`.
-- Updated rollback qualification so it does not restore this operator-only permission. Rollback restores the post-migration pre-issuer runtime state, not a stale historical grant from September.
-- Added a migration source-contract regression.
-- The historical three-function allow-list in earlier handover/current-state entries is superseded by this exact two-function contract.
+This means the previous proposed automatic revocation and manual-cutover revocation were incorrect: they would break a live Connect Business provisioning path. The test failure was valid product evidence, not an obsolete fixture.
+
+Correction to the attempted revocation:
+- Deleted the proposed migration `20261112060000_revoke_runtime_business_external_mapping_link.sql`; it is not part of the current migration chain.
+- Removed the explicit mapping-link REVOKE from the manual issuer cutover.
+- Restored `auth_link_business_external_mapping(text,text,bigint)` to the exact Resource API runtime auth-function allow-list.
+- Restored the runtime-positive permission assertion in issuer cutover qualification. The existing Connect persistence qualification continues to exercise the actual provisioning flow.
+- The runtime auth-function allow-list is therefore exactly three functions for now: `auth_lookup_external_identity`, `auth_lookup_business_external_mapping`, and `auth_link_business_external_mapping`.
+
+### Required remediation before revoking the mapping-link grant
+
+The permission remains a genuine database-boundary risk: a compromised `ghm_runtime` client can call the SECURITY DEFINER function directly with a caller-chosen provider, external Business ID and existing target Business ID, bypassing the application sequence that checks the verified actor and creates the owner membership.
+
+Do not solve this by moving only the function call to `ghm_migrator`, or by revoking runtime while the current adapter still uses it. The complete provisioning transaction must move behind a signed, database-verifiable operation (for example, a typed Actor Gateway operation that binds the verified actor, provider, external Business ID and canonical Business creation/membership/mapping in one atomic database operation). Preserve idempotency, concurrency serialization, existing mapping resolution and rollback behavior. Then remove the runtime mapping-link grant and prove direct runtime denial plus signed gateway positive/negative cases on disposable PostgreSQL.
 
 ### Current qualification state
 
-- Identity enforcement commits: `0b7761eaf5cfeaabd16490474d483163fb488492`, `607d0260b244adc21bd0b934b83699479865165c`.
-- Business mapping permission closure began at `8a5c3bb7d92c184d52ec76e58fc0c6d323a4eae0`; implementation, disposable denial, allow-list, regression and runbook commits follow on this same construction branch.
-- The last fully green exact head before these changes was `4abb42e029f774ec11b90705b59222d042ee5584`. It did not contain the identity enforcement or business-mapping revocation.
-- The newer exact head must pass the full migration chain, all tests, disposable issuer cutover/lifecycle/denials/rollback and web checks before this follow-up is considered qualified.
+- Issuer database identity enforcement commits: `0b7761eaf5cfeaabd16490474d483163fb488492`, `607d0260b244adc21bd0b934b83699479865165c`.
+- The attempted mapping-link revocation was removed before merge; no production or mainline change occurred.
+- The exact runtime auth allow-list is three functions until the Connect provisioning flow is migrated.
+- The latest exact-head CI must pass the complete migration chain, full tests, disposable Actor Gateway qualification, issuer cutover/lifecycle/rollback and web checks before this dependent branch is considered qualified.
 - No production database, grants, service, secrets, deployment, routing, paid resource, or client environment was changed.
-
 
 ## 2026-11-12 — Actor Gateway exact database ACL enforcement (in progress)
 
