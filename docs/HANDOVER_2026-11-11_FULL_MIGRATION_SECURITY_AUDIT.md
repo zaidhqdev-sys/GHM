@@ -2215,3 +2215,13 @@ Added migration `20261112050000_revoke_public_default_function_execution.sql`:
 Added a source contract test and disposable PostgreSQL qualification that creates a probe function as `ghm_schema_owner`, verifies PUBLIC, `ghm_runtime` and `ghm_auth_issuer` have no implicit EXECUTE, then drops the probe in the same disposable transaction. Intended functions must receive explicit per-role grants. This is not a retroactive revoke; existing function ACLs remain controlled by their migrations and the manual issuer cutover.
 
 The issuer branch's latest code now also wires QuoteFlow migration-reset completion. Recovery-token *delivery* remains absent: generic password-recovery request and QuoteFlow migration-reset request return 503 until a delivery adapter is explicitly configured. The runbook records this as a go-live blocker.
+
+### Exact-head qualification — issuer ACL/default ACL/rollback batch
+
+Exact construction head f678ea8d3a6f36556bd768318919134fa3241634 passed GitHub Actions #3648: both quality and web-quality succeeded. The main suite passed 900/900 and the additional disposable PostgreSQL qualification suite passed 15/15.
+
+The exact-head run covered the default-function-ACL probe, issuer exact allow-list and zero direct relation privileges, issuer schema CREATE denial, guarded manual cutover, runtime denials, QuoteFlow migration-reset completion route, fail-closed QuoteFlow reset request, and disposable database rollback. The default ACL probe created a temporary function as ghm_schema_owner and verified PUBLIC, ghm_runtime and ghm_auth_issuer all lacked implicit EXECUTE. It then dropped the probe in the disposable database.
+
+An intermediate run #3647 failed because the diagnostic query returned owner/ACL metadata in addition to the three boolean fields being compared. The underlying ACL values were already false for PUBLIC/runtime/issuer; the assertion was narrowed to compare only the intended booleans. #3648 is the successful exact-head rerun.
+
+This CI result qualifies construction code and disposable PostgreSQL only. It does not authorize production migration, grants, service creation, secret changes, routing, or deployment. The runbook remains design-only. Recovery email delivery is still unavailable and both recovery request routes remain 503 until an approved adapter exists.
