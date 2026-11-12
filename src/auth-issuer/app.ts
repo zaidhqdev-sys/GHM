@@ -17,11 +17,29 @@ export interface AuthIssuerAppDependencies {
   quoteFlowMigrationResetCompletionService?: QuoteFlowMigrationResetCompletionService;
 }
 
-const configuredOrigins = (): string[] =>
-  (process.env.GHM_AUTH_ISSUER_CORS_ORIGINS ?? '')
+const configuredOrigins = (): string[] => {
+  const origins = (process.env.GHM_AUTH_ISSUER_CORS_ORIGINS ?? '')
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean);
+  for (const origin of origins) {
+    try {
+      const parsed = new URL(origin);
+      const localDevelopmentOrigin =
+        parsed.protocol === 'http:' &&
+        (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1');
+      if (
+        parsed.origin !== origin ||
+        (parsed.protocol !== 'https:' && !localDevelopmentOrigin)
+      ) {
+        throw new Error('invalid origin');
+      }
+    } catch {
+      throw new Error('GHM_AUTH_ISSUER_CORS_ORIGINS must contain exact HTTPS origins (HTTP is allowed only for localhost)');
+    }
+  }
+  return [...new Set(origins)];
+};
 
 export const createAuthIssuerApp = (
   dependencies: AuthIssuerAppDependencies,
