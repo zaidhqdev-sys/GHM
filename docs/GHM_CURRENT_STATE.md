@@ -1153,3 +1153,11 @@ The following principal boundaries are enforced by application startup or the mi
 Exact-head disposable CI evidence: run `43161326835` at `2b2014afff8dc605ab427a15256a41f89c70adab` passed quality, web-quality, Cloudflare Pages, build, migrations, full suite, Connect Business provisioning, Actor Gateway cutovers, issuer cutover/lifecycle/runtime denials and database-only rollback. Runtime, issuer and Actor Gateway startup verifiers now assert database CONNECT without CREATE; runtime additionally requires GHM schema USAGE without CREATE.
 
 Before production migration/cutover, independently inspect live Render role attributes, memberships, membership options, database privileges, schema privileges, object ACLs and ownership against this matrix. Do not infer live compliance from disposable CI. No production changes or paid services were made.
+
+## 2026-11-12 — manual issuer SQL operator identity guard
+
+The manual Authentication Issuer cutover and rollback scripts now independently require `session_user=ghm_migrator` and `current_user=ghm_schema_owner` before changing privileges. The previous CI harness used a controlled role for rollback but the cutover step ran as disposable PostgreSQL superuser; the SQL artifacts themselves did not enforce the operator identity. Both scripts now fail closed on an unexpected caller.
+
+The migration-contract test covers both scripts. CI invokes the cutover through the dedicated migrator login, performs `SET ROLE ghm_schema_owner`, includes the manual SQL in the same psql session, and resets role afterward.
+
+The prior green run `43161326835` at `2b2014afff8dc605ab427a15256a41f89c70adab` predates this change and must not be used as qualification evidence for it. Latest known branch commit at this documentation update: `7569ea12d8261eff341fe06feae95e3aa7e11dba`; exact-head CI remains required. No production operation was performed.
