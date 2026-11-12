@@ -2174,3 +2174,75 @@ The following candidate sequence grants still need explicit owner/function/trigg
 Remaining unmapped candidates are `quoteflow_migration_business_provisioning_audit_id_seq` and `quoteflow_migration_reset_enrollment_id_seq`. The authentication-family sequences are mapped to auth lifecycle paths at a high level, but each surviving production function overload and any trigger dependency still needs exact verification. The directory-review sequence is written by the SECURITY DEFINER directory-review functions shown above; it is not in the unresolved sequence list.
 
 **Important:** sequence USAGE/SELECT revocation is not included in any change. The final cutover must be a separate reviewed migration with disposable qualification and rollback plan.
+
+
+---
+
+## 2026-11-12 22:20 UTC — Render support decision merged; production connection cutover remains outstanding
+
+### 1. Render support handover is now in mainline
+
+The docs-only support handover PR #274 was marked ready and squash-merged after its exact-head checks passed:
+
+- PR: https://github.com/zaidhqdev-sys/GHM/pull/274
+- Head: `987d1399d1e576a4d794e4e9d1d01814daea27aa`
+- Merge commit: `744b91f030d5cfc9257685677aaff148cf1f9f43`
+- Both `quality` and `web-quality` passed; Cloudflare Pages preview also passed.
+- Merged document: `docs/security/RENDER_ACTOR_GATEWAY_ROLE_SEPARATION_HANDOVER_2026-11-12.md`.
+
+The authoritative support recommendation is now documented in mainline: retain the Render Dashboard-managed default administrator for controlled administration; normal Resource API execution should connect directly as the already-existing SQL-created `ghm_runtime` login. Do not create an extra login in the runtime role, and do not rotate/delete the Dashboard administrator as a prerequisite.
+
+### 2. Current live production role facts reconfirmed read-only
+
+A new production catalog query on 12 November returned:
+- `session_user=ghm_app_user`
+- `current_user=ghm_db_user`
+- `ghm_runtime` is LOGIN/NOINHERIT and has no elevated role attributes.
+- `ghm_db_user` is LOGIN/INHERIT/CREATEDB/CREATEROLE and has the expected trusted administrator memberships.
+- `ghm_db_user` is a member of `ghm_runtime` with SET enabled, while the runtime login itself is not a member of another role.
+- `ghm_actor_gateway`, `ghm_migrator`, and `ghm_payment_provider` are LOGIN/NOINHERIT with no elevated role attributes.
+- `ghm_db_user` is the trusted administrator member of these service roles; its protected-role membership options remain ADMIN=true, INHERIT=false, SET=false for gateway/migrator/provider/schema-owner in the inspected rows.
+
+This supports the refined trust model recorded in PR #274: the administrator membership is trusted administrative authority; the service principal must have no untrusted memberships. The runtime application itself must authenticate directly as `ghm_runtime`, not as `ghm_app_user` with effective `ghm_db_user`.
+
+### 3. Construction source has the refined principal checks, but production mainline does not
+
+Verified in construction branch HEAD `e2ae77080e254b9dcbbe33ffb0b9d8debf1fb33f`:
+- Resource API startup checks `session_user=current_user=ghm_runtime`, LOGIN/NOINHERIT, no elevated role attributes, database CONNECT without CREATE, schema USAGE without CREATE, and no untrusted memberships. The trusted `ghm_db_user` membership is explicitly excluded from the untrusted-membership check.
+- Actor Gateway startup checks `session_user=current_user=ghm_actor_gateway`, role attributes and the same trusted-administrator-only inbound membership rule.
+- Authentication Issuer startup checks `session_user=current_user=ghm_auth_issuer`, role attributes and the same membership rule, plus its separate database privilege contract.
+- Tests reject Dashboard app/effective role identities, schema-owner substitution and untrusted role memberships.
+
+The exact-head construction CI run `43317737320` on `e2ae77080e254b9dcbbe33ffb0b9d8debf1fb33f` has now completed successfully: `quality` and `web-quality` passed, as did the Cloudflare Pages preview check.
+
+### 4. Production service is still on old mainline configuration
+
+The actual Render service `GHM-Internal-Runtime` was inspected read-only:
+- Service ID: `srv-damupsek1f9s73eq8kkg`
+- Branch: `main`
+- Auto deploy: OFF.
+- Health check: `/healthz`.
+- Region: Frankfurt.
+- Render plan: Free.
+- URL: `https://ghm-internal-runtime.onrender.com`.
+
+Mainline at the new merge commit `744b91f...` still has the older `src/config.ts` requiring `DATABASE_URL`, and `src/server.ts` only performs `SELECT 1` before listening; it does not run the new runtime principal assertion. In contrast, construction requires `GHM_RUNTIME_DATABASE_URL` in production and verifies the exact runtime login before listening.
+
+Therefore the production runtime cutover is **not done**. The merge of PR #274 only merges the support handover; it does not change service configuration, credentials, branch, database roles or deployment.
+
+### 5. PR #272 disposition
+
+PR #272 remains open and unmerged. It contains the broad unified Actor Gateway integration stack, including the runtime principal contract and manual legacy privilege cutovers. Its latest exact-head checks on `382c8880a89ccc0bf51b2b5daa4d9671f825cf8a` passed `quality`, `web-quality`, and Cloudflare Pages preview. GitHub reports the PR branch as non-mergeable/dirty against main, and it is a large stacked integration (672 commits / 164 files); it must not be merged blindly or treated as a small isolated patch.
+
+The integrated branch also has no separately deployed production Actor Gateway or Authentication Issuer service. Current Render inventory includes the existing GHM Internal Runtime and historical sandbox/qualification services, but no production gateway/issuer services. Do not create new paid services or repurpose sandbox services under current cost constraints. The unified gateway hosting/network decision remains an explicit release gate.
+
+### 6. Safe next actions
+
+1. Reconcile the construction branch's 672-commit integration history and its component PRs (#268–#272, plus #243/#244 where relevant) into a coherent, mainline-based, mergeable series. Do not merge the stack as-is.
+2. Preserve the production Resource API service's existing auto-deploy OFF state.
+3. Before any deployment, complete a source-to-runtime compatibility review of the Resource API and ensure its environment variable contract, startup principal assertion, TLS/network assumptions and health checks match the intended `ghm_runtime` login.
+4. Resolve how the separate Actor Gateway and Authentication Issuer are hosted without adding paid services or reviving sandbox infrastructure.
+5. Obtain a fresh verified production backup and exact rollback plan before any production privilege cutover.
+6. Do not change Render credentials, environment variables, role memberships, grants, service branch, auto-deploy, deployments or database objects during this qualification.
+
+**No production mutation occurred in this checkpoint.** The only production interaction was read-only role catalog inspection and Render service metadata retrieval. PR #274 was a documentation-only merge. No production credential, role, grant, membership, migration, secret, environment variable, service configuration, deployment, application data or traffic was changed. PayFast and legal publication remain paused.
