@@ -34,7 +34,7 @@ BEGIN
        'business.registration.read','business.registration.update',
        'business.capability.replace','business.capability.verify','business.capability.evidence.review','business.capability.evidence.submit',
        'saved_business.read','saved_business.create','saved_business.delete',
-       'business.hours.replace','business.hours.read','trust.score.calculate','business.logo.bind',
+       'business.hours.replace','business.hours.read','trust.score.calculate','trust.score.read','business.logo.bind',
        'business.connect.provision'
      )
      OR p_signature IS NULL OR p_signature !~ '^[0-9a-f]{64}$'
