@@ -21,6 +21,14 @@ test('inventory covers non-system SECURITY DEFINER routines, direct ACLs and eff
   assert.match(source, /pg_extension/);
   assert.match(source, /pg_auth_members/);
   assert.match(source, /pg_default_acl/);
+  assert.match(source, /pg_roles/);
+  assert.match(source, /pg_namespace/);
+  assert.match(source, /pg_database/);
+  assert.match(source, /pg_language/);
+  assert.match(source, /lanpltrusted/);
+  assert.match(source, /role_attributes: roles/);
+  assert.match(source, /schema_privileges: schemas/);
+  assert.match(source, /database_privileges: databaseAcls/);
   assert.match(source, /information_schema/);
   assert.match(source, /pg_%/);
 });
@@ -30,4 +38,6 @@ test('inventory distinguishes PUBLIC, owner and other direct grantees and report
   assert.match(source, /'grantable', acl\.is_grantable/);
   assert.match(source, /'grantor', grantor_role\.rolname/);
   assert.match(source, /'grantee', CASE WHEN acl\.grantee = 0/);
+  assert.match(source, /untrustedLanguage/);
+  assert.match(source, /trusted_language: !untrustedLanguage/);
 });
