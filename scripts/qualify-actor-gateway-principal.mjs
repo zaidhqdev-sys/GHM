@@ -188,9 +188,9 @@ try {
   assert.equal(functionState.rows[0].owner, 'ghm_schema_owner');
   assert.equal(functionState.rows[0].security_definer, true);
   assert.equal(functionState.rows[0].runtime_can_execute, false);
-  assert.equal(functionState.rows[0].gateway_can_execute, true);
+  assert.equal(functionState.rows[0].gateway_can_execute, false);
   assert.ok(functionState.rows[0].function_config?.includes('search_path=pg_catalog, ghm'));
-  console.log('GATEWAY FUNCTION OWNER, SEARCH PATH AND EXECUTE GRANTS: PASS');
+  console.log('UNUSED UNSIGNED HELPER IS OWNER-ONLY WITH FIXED SEARCH PATH: PASS');
 
   const tablePrivileges = await gatewayPool.query(`
     SELECT has_table_privilege(current_user, 'ghm.account_identity', 'SELECT') AS can_read_accounts,
