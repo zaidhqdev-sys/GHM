@@ -39,6 +39,12 @@ BEGIN
      AND r.used_at IS NULL
      AND r.revoked_at IS NULL
      AND r.expires_at > v_now
+     AND NOT EXISTS (
+       SELECT 1
+         FROM ghm.quoteflow_migration_reset_enrollment e
+        WHERE e.account_id = r.account_id
+          AND e.enrollment_status = 'reset_required'
+     )
    FOR UPDATE;
 
   IF NOT FOUND THEN
