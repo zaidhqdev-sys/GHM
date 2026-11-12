@@ -8,7 +8,7 @@
 
 The isolated Authentication Issuer implementation is being developed on the dependent branch `construction/auth-issuer-isolation-20261112`, stacked directly on `integration/capability-gateway-qualification-20261110` (PR #272). It is not mainline, deployed, or production-enabled. PR #272 remains open and unmerged; do not merge it independently underneath the dependent issuer branch.
 
-The issuer database boundary is designed around an exact ten-function issuer allow-list, zero direct GHM table/view/sequence privileges, schema USAGE without CREATE, safe schema-owner future-function defaults, and a separately verified two-function lookup-only Resource API auth allow-list. The manual issuer cutover and database-only rollback are disposable-PostgreSQL qualified on earlier exact heads; the latest dependent branch head must pass its own exact-head CI before this batch is considered qualified. The rollback does not restore binaries, signing keys, token pepper, secrets, routing, or deployments.
+The issuer database boundary is designed around an exact ten-function issuer allow-list, zero direct GHM table/view/sequence privileges, schema USAGE without CREATE, safe schema-owner future-function defaults, and a separately verified three-function Resource API auth-function allow-list. The third function, `auth_link_business_external_mapping`, remains a known Connect Business provisioning dependency and must not be revoked until the complete provisioning transaction moves behind a signed gateway operation. The manual issuer cutover and database-only rollback are disposable-PostgreSQL qualified on earlier exact heads; the latest dependent branch head must pass its own exact-head CI before this batch is considered qualified. The rollback does not restore binaries, signing keys, token pepper, secrets, routing, or deployments.
 
 Latest startup ACL regression checkpoint: head `8c6502a9faf8e31e66ca3afd07eb262c97f74d5c` failed the final issuer lifecycle qualification because the verifier counted trigger-returning functions as ordinary callable functions. The diagnostic showed the expected ten issuer functions and fourteen trigger functions; schema, relation, default ACL, and Resource API runtime checks were otherwise correct. The query now excludes trigger-returning functions and a source-contract regression protects that distinction. Fix commits are `c2ddd18d793b61fe20a017f26bfade8cdb0394a1` and `fe3b765e2e265817655359c9fd96977a3dca9179`; the handover-only follow-up is tracked in the current branch. Exact-head CI for the corrected head is pending and must be checked before any qualification claim.
 
@@ -1085,16 +1085,16 @@ Added a pure privilege verifier, unit tests, and a source contract test that ver
 Historical three-function runtime allow-list was superseded on 2026-11-12: startup now enforces the exact two-function lookup-only set (`auth_lookup_external_identity`, `auth_lookup_business_external_mapping`). Provider-business mapping creation is operator/migration-only.
 
 
-### 2026-11-12 — Startup identity enforcement and lookup-only business mapping
+### 2026-11-12 — Startup identity enforcement and Connect business mapping dependency
 
-A further source review found two gaps that were not covered by the earlier green issuer head:
+Issuer startup now enforces the exact database identity before opening the HTTP listener. A separate review found that `auth_link_business_external_mapping(text,text,bigint)` is actively called by `src/integrations/connect/business-adapter.ts` inside the Connect Business provisioning transaction. It is not an unused persistence operation.
 
-1. The issuer queried database identity at startup but did not call the existing `assertAuthIssuerDatabaseIdentity` verifier. Startup now enforces exact `session_user` / `current_user`, LOGIN / NOINHERIT, no elevated role attributes and no role memberships before opening the HTTP listener. A source-contract regression protects the call.
-2. `auth_link_business_external_mapping(text,text,bigint)` remained executable by `ghm_runtime` from its September grant despite being a controlled provider-business mapping operation. Current Connect/commercial source paths use lookup functions only; no active TypeScript request-path caller for the mutating function exists in this branch. Added migration `20261112060000_revoke_runtime_business_external_mapping_link.sql`, the same revocation in the manual issuer cutover, a disposable runtime permission-denial probe, and a migration contract regression.
+The attempted runtime revocation migration `20261112060000` was deleted, and the matching manual issuer cutover REVOKE was removed. The runtime auth-function allow-list remains exactly three functions: `auth_lookup_external_identity`, `auth_lookup_business_external_mapping`, and `auth_link_business_external_mapping`. The last is a genuine security gap because its SECURITY DEFINER SQL does not independently bind the caller to the target Business membership or signed integration provenance; however, revoking it now would break Connect provisioning.
 
-The Resource API runtime auth allow-list is now exactly two functions: `auth_lookup_external_identity` and `auth_lookup_business_external_mapping`. The issuer retains its separate exact ten-function allow-list. Rollback qualification restores the post-migration pre-issuer state and deliberately does not restore the stale provider-business mapping mutation grant.
+Required follow-up: move the complete Business creation, owner-membership and external-mapping transaction behind a signed, database-verifiable Actor Gateway operation, preserving atomicity, concurrency, idempotency and rollback. Only after that path is deployed and qualified may runtime EXECUTE be revoked. Do not move only the link call to the migrator or break the existing adapter.
 
-The previous exact-head CI pass at `4abb42e` predates these changes and is not evidence for this newer candidate. The current exact head must pass full CI and disposable PostgreSQL cutover/lifecycle/rollback qualification. No production grants, migrations, database state, service, secrets, deployment or routing were changed.
+No production grants or data were changed. The current exact branch still requires a fresh full CI run after these corrections.
+
 
 
 ### 2026-11-12 — Actor Gateway exact database ACL guard
