@@ -1604,3 +1604,71 @@ Qualification gaps:
 **Next actions:** add focused reader and HTTP route tests; add disposable PostgreSQL adversarial coverage for signed actor/context/nonce and membership authority; resolve/document `category` and years-limit contract differences; compare all Business profile ACL columns against the underlying function's actual UPDATE list and current production migration state.
 
 No production role/grant/migration/credential/environment/service/deployment/traffic/data changes. No merge. PayFast remains paused.
+
+
+---
+
+## 2026-11-12 continuation — PR/branch reconciliation and close-out of duplicate Business Profile gaps
+
+The previous gap list was checked against the actual PRs and construction branch. Several items were already implemented; the handover now records them as existing evidence rather than outstanding work.
+
+### Existing PR evidence reconciled
+
+| PR / branch | Existing implementation or evidence | CI / disposition |
+|---|---|---|
+| #237 `fix/business-profile-compat-contract-20261108` | Business Profile SQL compatibility migration, legacy presentation-field handling and disposable PostgreSQL qualification script. | Open draft PR; do not merge independently without its dependent gateway stack. |
+| #271 `security/business-profile-actor-gateway-20261110` | Resource API gateway client; route forwards bearer token; fails closed when gateway absent; Actor Gateway profile endpoint; verified token subject; actor gateway reader; HTTP and Actor Gateway tests. | PR commit `879b22a5a6a03033ff20cd44d258a58101dddec8` quality check passed (2026-11-10). |
+| #272 `integration/capability-gateway-qualification-20261110` | Integrated Business Profile signed wrapper, v2 context binding, request-context migration, disposable PostgreSQL profile qualification, CI step and package script. | Exact PR head `382c8880a89ccc0bf51b2b5daa4d9671f825cf8a` quality and web-quality passed (2026-11-12). |
+| #274 `docs/render-actor-gateway-role-separation-handover-20261112` | Records Render support's role separation recommendation and unresolved Dashboard-managed role membership authority issue. | Open documentation PR; no production role changes. |
+
+Related earlier gateway work #263–#267 is also present in the PR history: registration identity read/write and actor gateway self-identity/principal guard. These are separate completed/merged milestones, not new Business Profile test gaps.
+
+### Exact construction-head CI evidence before the additional test tranche
+
+Commit `f047cca4234fffdb6581e92e23413636ec980c5a` passed both `quality` and `web-quality` in run `43312771439`. The quality job ran the existing disposable PostgreSQL step `Qualify Business profile gateway and compatibility contract on disposable PostgreSQL` successfully (step 52), as well as the full TypeScript test suite (step 41).
+
+### Corrections to earlier gap statements
+
+1. **Actor Gateway HTTP route test:** already exists in `src/actor-gateway/app.test.ts` for verified token subject, valid patch forwarding, and missing bearer token rejection.
+2. **Resource API HTTP route tests:** already exist in `src/http/app.test.ts` for gateway forwarding and fail-closed 503 when gateway is absent. The client tests also cover gateway denial propagation without fallback.
+3. **PostgreSQL adversarial qualification:** already exists in `scripts/qualify-business-profile-contract-postgres.mjs` and is executed in CI. It tests runtime direct-RPC denial, gateway-wrapper denial for runtime, forged HMAC, altered patch context, target substitution, expired assertion, wrong operation, nonce replay, unsupported supplier classification, conflicting aliases, coordinate pairing, and member-role denial. The script also checks separate runtime, migrator and Actor Gateway session identities.
+4. The SQL assertion verifier checks active `account_identity.account_status='active'`; however, the profile-specific PostgreSQL script did not have a dedicated disabled-account fixture/assertion. The broader assertion framework's active-account requirement is not a substitute for an explicit profile-wrapper disabled-account regression.
+5. **No dedicated reader unit test** existed in the integrated branch. This was a genuine gap and is now added.
+6. **Category and years validation:** the Resource API parser deliberately exposes a narrower public contract than the underlying compatibility SQL function. SQL accepts `category` and up to 500 years; Resource API excludes `category` and caps `yearsInBusiness` at 100. The gateway's public endpoint also accepts `category` and relies on SQL validation for numeric bounds. This is a contract inconsistency to preserve/document and resolve deliberately, not a reason to broaden the public Resource API automatically.
+
+### New implementation added to current construction branch
+
+Added `src/actor-gateway/business-profile-reader.test.ts` with:
+- Exact wrapper SQL and parameter-order assertion.
+- Verified HMAC payload binding to actor, operation, target Business ID and exact patch.
+- Commit on success.
+- Rollback and client release on database denial.
+- Rejection of non-canonical or non-32-byte assertion secrets.
+
+Added the new reader test to the `npm test` command in `package.json`.
+
+Extended `scripts/qualify-business-profile-contract-postgres.mjs`:
+- Creates a disposable account with lifecycle status `disabled`.
+- Attempts a validly signed Business Profile update as that disabled account.
+- Requires the database to reject it with `Active actor account required`.
+- Cleans up the disabled fixture with the existing disposable test rows.
+
+These changes are on the construction branch, commits:
+- `22a2b8ee0d19e1d68cbb58b228e764a6458f67fb` — reader tests.
+- `a2b2a58ceae55f5f4bb4bf1bd35ed9fa836a2eca` — test runner includes reader tests.
+- `e72ce42b9cd44f5bab3468b8e485784b997b3c19` — disabled-account PostgreSQL regression.
+
+CI for the new commits was still running at the time of this handover update; do not report it passed until the exact final head's `quality` job confirms it. The earlier `f047cca` CI pass does not cover these new edits.
+
+### Updated Business Profile decision
+
+The Business Profile source architecture and most adversarial cases were already implemented in PRs #237, #271 and #272. The only new code added in this pass is the dedicated reader unit test and explicit disabled-account database regression. No duplicate HTTP suite or duplicate PostgreSQL qualification script was created.
+
+Still unresolved before any production permission revocation:
+- Confirm exact deployed migration/function state; construction branch/PR CI is not production evidence.
+- Map every production Business profile column ACL row to the exact SQL UPDATE list.
+- Decide whether the Resource API contract should expose `category` and whether the gateway's direct category acceptance is intentional.
+- Decide whether 100 years is a public API policy while 500 remains a database compatibility ceiling.
+- Resolve Render principal/role-membership administration and independently verified production backup prerequisites.
+
+**No production role, grant, migration, credential, secret, Render service, deployment, traffic or application data was changed. No PR merged. PayFast remains paused.**
