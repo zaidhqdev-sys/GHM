@@ -2372,19 +2372,23 @@ The nine previously obsolete overloads are already dropped and are not included 
 
 
 
-### Follow-up: retained Connect Business mapping grant (2026-11-12)
 
-A cross-check of the migration chain against the cutover verifier found a mismatch in the *qualification expectation*, not in the production cutover SQL:
+### Superseding follow-up: signed Connect Business provisioning closes the mapping-link runtime gap (2026-11-12)
 
-- Migration `20260921130500_auth_link_business_external_mapping.sql` explicitly grants `ghm_runtime` EXECUTE on `ghm.auth_link_business_external_mapping(text,text,bigint)`.
-- Migration `20261012000000_auth_lookup_business_external_mapping.sql` separately grants the lookup function.
-- The manual issuer cutover deliberately preserves the link function because the current Connect Business provisioning transaction still calls it. The cutover comment and architecture runbook already document this temporary exception pending a signed Actor Gateway provisioning operation.
-- The startup verifier's expected Resource API auth-function set already included all three functions (external identity lookup, business mapping lookup, business mapping link). However, the disposable cutover script's separate expected list and error assertion described only two, despite its comment claiming three. That made the independent qualification expectation inconsistent with the production startup verifier and actual migration grants.
+The prior section below this handover's earlier issuer checkpoints is superseded by the later Connect gateway work. Do not use its three-function runtime allow-list or its recommendation to preserve direct runtime mapping-link execution as current guidance.
 
-Correction on the dependent construction branch:
-- Updated `scripts/qualify-auth-issuer-cutover.mjs` so both post-cutover and post-rollback Resource API expected sets contain the exact three documented functions.
-- Added a positive runtime probe for the mapping-link function. It deliberately supplies invalid blank arguments and expects the function's own validation error (`P0001` / `provider must be non-blank`), proving the runtime can execute the function without performing a mapping write.
-- Kept the explicit runtime denials for all other reviewed auth lifecycle, bootstrap, migration and mapping functions.
-- No privilege grant was added or broadened by this test correction. The manual cutover remains unchanged.
+The dependent branch subsequently added:
+- Migration `20261112080000_signed_connect_business_provisioning_gateway.sql`, which adds the signed `business.connect.provision` Actor Gateway operation.
+- A single SECURITY DEFINER transaction that validates the signed actor assertion, binds the exact operation/context, requires an active business/admin actor, serializes concurrent provisioning by external Business ID, resolves existing mappings with membership checks, or atomically creates the canonical Business, owner membership and external mapping.
+- `gateway_provision_connect_business` is owned by `ghm_schema_owner` and executable only by `ghm_actor_gateway`.
+- The internal `auth_link_business_external_mapping` helper is revoked from PUBLIC, `ghm_runtime`, `ghm_migrator`, `ghm_actor_gateway`, `ghm_auth_issuer` and `ghm_payment_provider`. The signed SECURITY DEFINER gateway wrapper invokes it internally.
+- The manual Authentication Issuer cutover now also revokes direct runtime/application access to that helper. Its stale trailing SQL comment has been corrected to describe the signed gateway boundary.
+- The Resource API runtime's exact post-cutover auth-function allow-list is now **two** functions: `auth_lookup_external_identity` and `auth_lookup_business_external_mapping`. The Actor Gateway has the separate signed provisioning operation.
+- `scripts/qualify-auth-issuer-cutover.mjs` now expects exactly those two runtime auth functions after cutover and after database-only rollback, and retains an explicit runtime denial probe for `auth_link_business_external_mapping`.
+- The signed provisioning migration contract test asserts the signed operation, schema-owner ownership, Actor Gateway-only grant, atomic membership/mapping flow, and helper revocation.
 
-The previous exact-head CI on `4abb42e029f774ec11b90705b59222d042ee5584` passed its disposable cutover/lifecycle/rollback checks. The new qualification change is commit `a650c699ba6e7a4c800b80b5ec18c87c6992b490`; its exact-head CI must pass before this updated qualification is considered complete.
+Relevant implementation commits include `12f7b09f72` (issuer cutover helper revocation), `68136846d5` (Connect adapter routes provisioning through the signed gateway identity), `a650c699ba` (the initial qualification follow-up, subsequently corrected after discovering the signed gateway migration), and `4ef26bafdc` / `6fb40c1ff3` (corrected two-function qualification and SQL comment). Do not treat the initial three-function follow-up as current.
+
+The issuer cutover's database-only rollback still restores the documented pre-issuer Resource API auth-function set, not the obsolete business-mapping mutation path. The mapping-link helper remains unavailable to runtime after rollback because the signed gateway migration independently revoked it. The gateway remains a separate principal and its exact 24-function allow-list must continue to be checked independently.
+
+The latest corrected exact-head CI is pending. Do not claim the current dependent branch fully qualified until both required checks pass. No production grant, database, secret, service, deployment, routing or paid infrastructure was changed.
