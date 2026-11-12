@@ -1,6 +1,8 @@
 import type { Pool } from 'pg';
 
 export interface AuthIssuerDatabasePrivileges {
+  database_connect_privilege: boolean;
+  database_create_privilege: boolean;
   schema_usage: boolean;
   schema_create: boolean;
   direct_relation_privileges: boolean;
@@ -20,6 +22,8 @@ export const assertAuthIssuerDatabasePrivileges = (
   const expectedRuntimeFunctions = [...privileges.expected_runtime_auth_functions].sort();
   const failures: string[] = [];
 
+  if (privileges.database_connect_privilege !== true) failures.push('database_connect_missing');
+  if (privileges.database_create_privilege !== false) failures.push('database_create_granted');
   if (privileges.schema_usage !== true) failures.push('schema_usage_missing');
   if (privileges.schema_create !== false) failures.push('schema_create_granted');
   if (privileges.direct_relation_privileges !== false) failures.push('direct_relation_privileges');
@@ -55,6 +59,8 @@ export const AUTH_ISSUER_DATABASE_PRIVILEGES_SQL = `
       ]::text[])
     )
     SELECT
+      has_database_privilege(session_user, current_database(), 'CONNECT') AS database_connect_privilege,
+      has_database_privilege(session_user, current_database(), 'CREATE') AS database_create_privilege,
       has_schema_privilege(session_user, 'ghm', 'USAGE') AS schema_usage,
       has_schema_privilege(session_user, 'ghm', 'CREATE') AS schema_create,
       (
