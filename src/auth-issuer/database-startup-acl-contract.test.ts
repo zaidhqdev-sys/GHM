@@ -5,6 +5,7 @@ import test from 'node:test';
 
 const server = fs.readFileSync(path.resolve(process.cwd(), 'src/auth-issuer/server.ts'), 'utf8');
 const privilegeSource = fs.readFileSync(path.resolve(process.cwd(), 'src/auth-issuer/database-privileges.ts'), 'utf8');
+const qualificationSource = fs.readFileSync(path.resolve(process.cwd(), 'scripts/qualify-auth-issuer-cutover.mjs'), 'utf8');
 
 test('issuer verifies its exact database ACL boundary before opening the HTTP listener', () => {
   const verifierCall = server.indexOf('assertAuthIssuerDatabasePrivileges(databasePrivileges)');
