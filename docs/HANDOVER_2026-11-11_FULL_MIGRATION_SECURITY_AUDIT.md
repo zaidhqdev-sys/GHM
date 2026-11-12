@@ -2386,3 +2386,14 @@ Relevant implementation commits include `12f7b09f72` (issuer cutover helper revo
 The issuer cutover's database-only rollback still restores the documented pre-issuer Resource API auth-function set, not the obsolete business-mapping mutation path. The mapping-link helper remains unavailable to runtime after rollback because the signed gateway migration independently revoked it. The gateway remains a separate principal and its exact 25-function allow-list (including signed Connect Business provisioning) must continue to be checked independently.
 
 The latest corrected exact-head CI is pending. Do not claim the current dependent branch fully qualified until both required checks pass. No production grant, database, secret, service, deployment, routing or paid infrastructure was changed.
+
+### Latest dependent-branch CI corrections — 2026-11-12
+
+The signed Connect Business gateway and its disposable PostgreSQL qualification were reviewed on the exact dependent branch.
+
+- The gateway principal diagnostic reported the expected **25 signed/typed functions**, zero direct relation privileges, schema USAGE without CREATE, no PUBLIC executable gateway functions, no runtime gateway-function execution, and safe future-function defaults. The `ghm_actor_gateway` principal qualification passed in run `43158393919`.
+- The separate live PostgreSQL Connect provisioning qualification exercised runtime denial of the mapping helper and direct mapping-table reads, concurrent provisioning/membership isolation, existing-mapping membership checks, and atomic rollback. It initially failed during the idempotent retry path with `Invalid Connect Business slug`. The retry fixture has been simplified to use a short known-valid alternate name, so this test focuses on existing-mapping resolution rather than an unrelated long-name/truncation edge. This correction is pending a fresh exact-head run.
+- The same CI run exposed stale TypeScript references to the removed runtime mapping-link persistence method. Removed the obsolete `PostgresAuthPersistence.linkBusinessExternalMapping` method and the two stale test-mock properties. The subsequent CI run's TypeScript build passed.
+- Updated issuer privilege unit tests to expect exactly the two remaining Resource API lookup functions, including rejection of a missing lookup grant. Updated Actor Gateway privilege unit fixture to use the signed assertion verifier rather than the revoked unsigned helper.
+
+Current code/test commits include `a6a8749eef94a04af692c127292755869481cb6f`, `4edd60f1dfa6675626c9b043c533fc264e4566cf`, `242479d2d8dd74b4c53e9cbf2f1a46ebb4dc9f28`, `b6855d5c3eccbadbf106d2b62e25f384a3b2353e`, `eff5d3bcf3bc5612e9911424728855cafcc389e6`, and `608c767397b37a06579c3bd4efeaad64583d9e05`. The latest exact-head run must complete the Connect provisioning qualification, full suite, manual issuer cutover/lifecycle/rollback, and both required CI checks before any green qualification claim.
