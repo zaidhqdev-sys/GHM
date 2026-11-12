@@ -2726,3 +2726,10 @@ The only SECURITY DEFINER definition containing dynamic SQL is `ghm.update_busin
 ### Inventory superuser correction CI
 
 The first superuser-aware contract test run failed because its source-text regular expression was over-escaped; the implementation itself passed syntax and the inventory step. Corrected the test to match the emitted `'superuser', r.rolsuper` metadata and `entry.superuser !== true` filter. Exact-head run for the corrected test is pending; the earlier failure must not be described as an implementation/database qualification failure.
+
+
+### Corrected superuser-aware inventory result — CI passed
+
+The corrected superuser-aware inventory completed successfully on code/test HEAD `df7aba60df7eaf1a01a5b7b6811f5d4a5d9afe6e`, Actions run `43221800807`: both `quality` and `web-quality` passed, with 55/55 quality steps successful. The new artifact `security-definer-authority-inventory` (SHA-256 `ac619dc8b558ad7b828aaf50770c73f34b2d9973f2d51f8cb580af75557e47a1`) was retrieved and independently parsed. It reports 97 SECURITY DEFINER routines and 70 preliminary findings after excluding PostgreSQL superuser bypass from ordinary role findings. All 70 findings are attributable to direct non-owner application-role EXECUTE grants; no PUBLIC EXECUTE grants were found. Each of the 97 functions reports owner `ghm_schema_owner`, pinned search path, trusted language; all routines are in `ghm`. The superuser `postgres` remains explicitly listed separately for every routine. The 70 findings are not automatically safe or unsafe: they are the complete signature-level application grant set that still requires role-purpose justification. Counts by grantee remain Actor Gateway 25, Resource API runtime 43, payment provider 2, migrator 1.
+
+This corrected result supersedes the first artifact's misleading 97 preliminary findings. The earlier failure on the superuser metadata contract test was a test regex escaping error; the corrected test and full exact-code-head CI now pass. Subsequent handover documentation commits are being validated separately at the current branch HEAD.
