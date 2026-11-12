@@ -103,7 +103,7 @@ try {
     defaultPrivilegeClient.release();
   }
 
-  const runtimeAuthFunctions = await migratorPool.query(`
+  const runtimeAuthFunctions = await issuerPool.query(`
     WITH expected(signature) AS (
       SELECT unnest(ARRAY[
         'ghm.auth_lookup_external_identity(text, text)',
@@ -405,7 +405,11 @@ try {
   `);
   assert.equal(Number(issuerAfterRollback.rows[0].count), 0, 'rollback must remove all issuer auth-function execution privileges');
 
-  const runtimeRollbackFunctions = await migratorPool.query(`
+  const runtimeRollbackClient = await migratorPool.connect();
+  let runtimeRollbackFunctions;
+  try {
+    await runtimeRollbackClient.query('SET ROLE ghm_schema_owner');
+    runtimeRollbackFunctions = await runtimeRollbackClient.query(`
     WITH expected(signature) AS (
       SELECT unnest(ARRAY[
         'ghm.auth_create_account(text, text, text, text, text, integer, integer, integer)',
@@ -443,6 +447,10 @@ try {
          ORDER BY 1
       ) AS expected
   `);
+  } finally {
+    await runtimeRollbackClient.query('RESET ROLE');
+    runtimeRollbackClient.release();
+  }
   assert.deepEqual(
     runtimeRollbackFunctions.rows[0].actual,
     runtimeRollbackFunctions.rows[0].expected,
