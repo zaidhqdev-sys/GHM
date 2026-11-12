@@ -138,6 +138,14 @@ try {
   await expectDenied('Member without manager authority cannot request deletion', () =>
     reader.markDeletionPending(fixture.memberId, fixture.nonManagerDeletionTarget.objectId));
 
+  const createdAvailabilityProof = proof('storage.provider.mark_available', {
+    businessId: fixture.businessId, objectId: Number(created.id), providerKey: createdKey,
+    contentType: 'image/png', byteSize: 1024, checksum: 'sha256:created-object',
+  });
+  const createdAvailable = await reader.markAvailable(
+    fixture.accountId, Number(created.id), 'sha256:created-object', createdKey, 'image/png', 1024, createdAvailabilityProof,
+  );
+  if (createdAvailable.status !== 'available') throw new Error('Created pending object did not complete provider-verified availability');
   const pendingDeletion = await reader.markDeletionPending(fixture.accountId, Number(created.id));
   if (pendingDeletion.status !== 'deletion_pending') throw new Error('Legitimate owner deletion request did not enter deletion_pending');
   const completedDeletion = await reader.markDeleted(
