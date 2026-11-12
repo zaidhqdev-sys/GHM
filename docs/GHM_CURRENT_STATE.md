@@ -999,3 +999,8 @@ This is the qualified code/test head, not the latest documentation head. The lat
 Render Free Postgres is 1 GB, expires after 30 days, and only one Free Postgres database can be active per workspace. It could only serve as a temporary disposable qualification target, not durable issuer storage or a backup. None was available in the inventory; no new database was created.
 
 The issuer's production database SSL mode must be explicit. Current `external` mode encrypts with `rejectUnauthorized: false` and therefore does not authenticate the server certificate. `internal` mode disables TLS and is only appropriate after verifying a same-region Render private-network route. No production mode or deployment topology has been selected.
+
+
+### Production remains unchanged — issuer separation is not deployed
+
+Render's GHM-Internal-Runtime service still points to `main`, auto-deploy is disabled, and the latest live deployment inventory entry is `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf` (2026-11-10). The issuer-isolation branch and its split-origin clients have not been deployed. Production still uses its existing Resource API authentication arrangement. Do not remove current Resource API signing/token secrets or revoke current auth grants until an approved coordinated issuer cutover. No issuer service, production issuer role, env var or routing change has occurred.

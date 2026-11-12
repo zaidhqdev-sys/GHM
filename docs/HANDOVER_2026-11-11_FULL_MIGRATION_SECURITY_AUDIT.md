@@ -2175,3 +2175,10 @@ The latest test head is not the latest documentation head. Subsequent handover/s
 
 - Render Free Postgres is only 1 GB and expires 30 days after creation; only one Free Postgres instance may be active per workspace. It is suitable only as a temporary disposable qualification target, not a durable issuer database or backup strategy. There was no available Free Postgres instance in the workspace inventory. Creating one is a separate resource mutation and has not been authorized or attempted. Reference: https://render.com/docs/free.
 - Issuer database TLS configuration is explicit in production. The current `external` mode uses TLS with `rejectUnauthorized: false`, which encrypts the connection but does **not** authenticate the database server certificate. The `internal` mode disables TLS and is intended only for a verified same-region Render private-network path. No production mode has been selected; the actual issuer/database topology and acceptable transport protection must be reviewed before deployment. Do not describe external mode as certificate-verified TLS.
+
+
+### Production deployment status — do not confuse branch qualification with live cutover
+
+The Render `GHM-Internal-Runtime` service is still configured to deploy from `main`, with auto-deploy disabled. Its latest live deployment inventory entry is commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf` from 2026-11-10. The Authentication Issuer construction branch has not been deployed to Render. Therefore the issuer-route removal, public-key-only Resource API verifier, separate issuer process and client split-origin routing are **construction-branch code only**, not live production behavior.
+
+The current production Resource API remains on its existing deployed authentication arrangement until a coordinated, approved deployment and routing cutover. Do not remove its current signing/token secrets, alter its database grants, or point any production client at a new issuer based on CI success. No issuer service, production issuer principal, issuer environment values, or production routing was created or enabled.
