@@ -64,22 +64,31 @@ try {
     `);
     const defaultAcl = await defaultPrivilegeClient.query(`
       SELECT
+        pg_get_userbyid(p.proowner) AS function_owner,
+        p.proacl::text AS function_acl,
+        (SELECT d.defaclacl::text
+           FROM pg_default_acl d
+          WHERE d.defaclrole = p.proowner
+            AND d.defaclnamespace = 0
+            AND d.defaclobjtype = 'f') AS global_function_default_acl,
         EXISTS (
           SELECT 1
-            FROM pg_proc p
-            CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl
-           WHERE p.oid = 'ghm.auth_issuer_default_privilege_qualification()'::regprocedure
+            FROM pg_proc p2
+            CROSS JOIN LATERAL aclexplode(COALESCE(p2.proacl, acldefault('f', p2.proowner))) acl
+           WHERE p2.oid = p.oid
              AND acl.grantee = 0
              AND acl.privilege_type = 'EXECUTE'
         ) AS public_execute,
-        has_function_privilege('ghm_runtime', 'ghm.auth_issuer_default_privilege_qualification()', 'EXECUTE') AS runtime_execute,
-        has_function_privilege('ghm_auth_issuer', 'ghm.auth_issuer_default_privilege_qualification()', 'EXECUTE') AS issuer_execute
+        has_function_privilege('ghm_runtime', p.oid, 'EXECUTE') AS runtime_execute,
+        has_function_privilege('ghm_auth_issuer', p.oid, 'EXECUTE') AS issuer_execute
+      FROM pg_proc p
+     WHERE p.oid = 'ghm.auth_issuer_default_privilege_qualification()'::regprocedure
     `);
     assert.deepEqual(defaultAcl.rows[0], {
       public_execute: false,
       runtime_execute: false,
       issuer_execute: false,
-    }, 'new schema-owner functions must receive no implicit PUBLIC/runtime/issuer EXECUTE grants');
+    }, `new schema-owner functions must receive no implicit PUBLIC/runtime/issuer EXECUTE grants; ACL diagnostic=${JSON.stringify(defaultAcl.rows[0])}`);
     await defaultPrivilegeClient.query('DROP FUNCTION ghm.auth_issuer_default_privilege_qualification()');
     await defaultPrivilegeClient.query('COMMIT');
   } catch (error) {
