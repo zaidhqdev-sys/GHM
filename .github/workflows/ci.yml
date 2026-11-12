@@ -279,7 +279,7 @@ jobs:
         run: |
           psql -h localhost -U ghm_migrator -d ghm_disposable_test -v ON_ERROR_STOP=1 <<'SQL'
           SET ROLE ghm_schema_owner;
-          \\i database/cutovers/20261112010000_authentication_issuer_privilege_cutover.sql
+          \i database/cutovers/20261112010000_authentication_issuer_privilege_cutover.sql
           RESET ROLE;
           SQL
 
