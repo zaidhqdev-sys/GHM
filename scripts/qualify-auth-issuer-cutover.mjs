@@ -90,6 +90,7 @@ try {
     'SELECT * FROM ghm.auth_reset_password_with_recovery(NULL::bytea, NULL::text, NULL::text, NULL::integer, NULL::integer, NULL::integer)',
     'SELECT * FROM ghm.auth_lookup_quoteflow_migration_reset_enrollment(NULL::text)',
     'SELECT * FROM ghm.auth_complete_quoteflow_migration_reset(NULL::bytea, NULL::text, NULL::integer, NULL::integer, NULL::integer)',
+    'SELECT * FROM ghm.auth_register_quoteflow_migration_reset_enrollment(NULL::bigint, NULL::text, NULL::text, NULL::text, NULL::text, NULL::text)',
   ];
   for (const sql of deniedCalls) await expectPermissionDenied(sql);
 
@@ -228,11 +229,9 @@ try {
        VALUES ('supabase', $1, $2)`,
       [quoteFlowSubject, quoteFlowAccountId],
     );
-    await ownerClient.query(
-      `INSERT INTO ghm.quoteflow_migration_reset_enrollment (
-         account_id, source_provider, source_subject, approved_email,
-         approved_email_normalized, source_evidence_reference, enrollment_status
-       ) VALUES ($1, 'supabase', $2, $3, $4, $5, 'reset_required')`,
+    const enrollmentRegistration = await ownerClient.query(
+      `SELECT outcome, enrollment_id
+         FROM ghm.auth_register_quoteflow_migration_reset_enrollment($1, 'supabase', $2, $3, $4, $5)`,
       [
         quoteFlowAccountId,
         quoteFlowSubject,
@@ -241,6 +240,8 @@ try {
         `qualification:auth-issuer:${randomUUID()}`,
       ],
     );
+    assert.equal(enrollmentRegistration.rows[0].outcome, 'created');
+    assert.ok(Number(enrollmentRegistration.rows[0].enrollment_id) > 0);
     await ownerClient.query('COMMIT');
   } catch (error) {
     await ownerClient.query('ROLLBACK');
