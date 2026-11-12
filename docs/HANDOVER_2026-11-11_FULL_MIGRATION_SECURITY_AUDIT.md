@@ -1962,3 +1962,29 @@ The manual cutover revokes both old redemption wrappers from PUBLIC/runtime and 
 ### Qualification state
 
 Runs #3563 and #3553/#3554 validated earlier manual cutover versions, but not this new migration and 10-function allow-list. Runs #3571–#3573 are validating the new persistence API, tests, migration and cutover. Earlier failures in #3564–#3570 exposed stale test mocks and a token-pepper Buffer conversion in the owner-only fixture; these have been corrected. Do not claim the current reset change or 10-function allow-list qualified until exact-head CI passes.
+
+
+## Conditional password rehash — stale-login race closed in construction (2026-11-12)
+
+A further review of the login rehash path found a race not solved by issuer isolation alone: login verifies a password hash, then the old general `auth_set_password(account_id, email, new_hash...)` could overwrite a concurrent password reset that completed between verification and rehash.
+
+### New compare-and-swap operation
+
+Migration `20261112030000_add_conditional_password_rehash.sql` adds `auth_rehash_password_if_unchanged`. It updates only the password hash/Argon2 metadata and only where the active credential still contains the exact hash the login just verified. It does not accept an email or modify the login email.
+
+### Application behavior
+
+- `AuthPersistence.setPassword` was removed from the production persistence interface/implementation.
+- Added `rehashPasswordIfUnchanged(accountId, expectedPasswordHash, password)`.
+- Login calls the conditional operation after successful verification.
+- If the conditional update loses a race, login re-reads the current credential and verifies the supplied password again. It rejects stale credentials and does not issue a session if a password reset/change has won.
+- General `auth_set_password` remains available only to its SECURITY DEFINER owner path for the distinct QuoteFlow migration-reset operation; it is not an issuer grant and is revoked from runtime by the manual cutover.
+- The manual issuer allow-list now includes `auth_rehash_password_if_unchanged` and no longer includes `auth_set_password`.
+
+### New adversarial qualification
+
+The disposable issuer test now interleaves a password reset after the login has verified the old hash but before the rehash operation. It requires the stale login to fail, then proves the replacement password succeeds. This checks the actual lost-update race, not merely that a normal rehash works.
+
+### Current CI status
+
+The first run with the new reset and rehash migrations found an ambiguous `account_id` reference in the new token-bound reset function (the name also exists as a PL/pgSQL output variable). The credential update was qualified with an explicit table alias in `68b5713`. CI #3588 is validating the corrected migration, full persistence suite, manual cutover and issuer race test. Do not claim this batch qualified until the exact-head run passes.
