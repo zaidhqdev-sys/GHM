@@ -250,12 +250,11 @@ try {
   });
   console.log('GATEWAY HAS NO DIRECT ACCOUNT/AUTH TABLE ACCESS: PASS');
 
-  const accepted = await gatewayPool.query(
-    'SELECT ghm.assert_actor_gateway($1) AS actor_account_id',
-    [activeAccountId],
+  await expectSqlState(
+    () => gatewayPool.query('SELECT ghm.assert_actor_gateway($1)', [activeAccountId]),
+    '42501',
+    'unsigned actor identity helper is denied',
   );
-  assert.equal(Number(accepted.rows[0].actor_account_id), activeAccountId);
-  console.log('GATEWAY ACCEPTS ACTIVE TOKEN-SUBJECT CANDIDATE: PASS');
 
   const ownIdentity = await gatewayCall(activeAccountId,'actor.identity.read',
     'SELECT account_id, account_role, full_name FROM ghm.gateway_get_actor_identity($1,$2,$3,$4)');
