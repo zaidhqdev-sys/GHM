@@ -1375,3 +1375,10 @@ Current Connect PR #68 head is `2eadf761400bb5a644b5907e670aacb68526c81f` (draft
 Source-level reconciliation documented in the full security handover. Resource API runtime has 43 pre-cutover SECURITY DEFINER signatures and exact 512 reviewed manual-cutover combinations; issuer has an exact 10-function allow-list and permits only two runtime external-identity lookup functions; Actor Gateway has an exact 33-function signed-wrapper allow-list; migrator is limited to its controlled schema-owner SET path; payment provider qualification proves PayFast-only settlement and no direct table privileges. Payment callback startup currently checks identity but not the complete function ACL; this is a pre-reactivation hardening gate while PayFast remains paused, and no PayFast code was changed.
 
 Run `43329488561` on `0e986e448028a1a78e733b33b893b49721b2a8f4`: web-quality passed; quality is still in progress after the disposable manual issuer cutover, with issuer lifecycle and post-cutover whole-database inventory pending. No post-cutover report/artifact has yet been retrieved. No production change, merge, deployment, secret or routing change.
+
+
+## 2026-11-13 — post-cutover inventory ordering defect corrected
+
+Run `43329488561` passed both CI jobs, but inspection of its artifact found that the purported post-cutover inventory was captured after the qualification script had exercised rollback and left disposable PostgreSQL rolled back. Its 27 runtime direct grants (including 16 auth functions) and zero issuer grants therefore did not prove post-cutover state. Do not use the old comparison as cutover evidence.
+
+Updated the qualification script to reapply the guarded issuer cutover after rollback checks and fixture cleanup, verify the exact runtime and issuer allow-lists, and leave disposable PostgreSQL in cutover state for the subsequent inventory step. Added a source-contract regression test and corrected the final issuer allow-list SQL escape. Exact-head run `43330073708` on `6778b015b388f782c2d1bf9e77cbb03a65254fbe` is queued/in progress. Full evidence in security handover. No production changes or merges.
