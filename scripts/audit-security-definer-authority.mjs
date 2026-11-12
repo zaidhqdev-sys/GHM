@@ -211,7 +211,8 @@ try {
     const unsafeSearchPath = !(fn.function_settings ?? []).some((setting) =>
       setting === 'search_path=pg_catalog, ghm, pg_temp'
     );
-    if (nonOwnerExec.length || publicExec.length || unsafeSearchPath) {
+    const untrustedLanguage = fn.language_trusted !== true;
+    if (nonOwnerExec.length || publicExec.length || unsafeSearchPath || untrustedLanguage) {
       findings.push({
         signature: fn.identity_signature,
         schema: fn.schema_name,
@@ -219,6 +220,7 @@ try {
         non_owner_execute_grants: nonOwnerExec,
         public_execute_grants: publicExec,
         pinned_search_path: !unsafeSearchPath,
+        trusted_language: !untrustedLanguage,
       });
     }
   }
