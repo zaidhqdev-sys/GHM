@@ -2352,15 +2352,15 @@ Correction:
 
 A cross-role review found that Actor Gateway startup enforced its database login identity, but did not verify the complete effective database function and relation privilege set. Its disposable qualification previously spot-checked selected functions and four authentication tables; it did not prove that the gateway had exactly its reviewed callable-function set or zero direct relation privileges across the whole GHM schema.
 
-The migration history contains 31 distinct gateway function signatures across successive migration generations. Nine pre-signed overloads were explicitly dropped by migrations `20261111020000`, `20261111030000`, `20261111040000` and `20261111050000`. At the current pre-cleanup state, 22 functions remain executable by `ghm_actor_gateway`: 21 signed/typed operations plus one surviving unsigned helper, `assert_actor_gateway(bigint)`.
+The migration history contains 31 distinct gateway function signatures across successive migration generations. Nine pre-signed overloads were explicitly dropped by migrations `20261111020000`, `20261111030000`, `20261111040000` and `20261111050000`. At the current pre-cleanup state, 25 functions were executable by `ghm_actor_gateway`: 24 signed/typed operations plus one surviving unsigned helper, `assert_actor_gateway(bigint)`. The three later signed read projections are `gateway_get_business_hours`, `gateway_get_trust_score` and `gateway_list_trust_scores`.
 
 The surviving helper accepts an account ID and returns it if the account is active. Its original migration comment says it was not wired to feature RPCs. The current Actor Gateway uses `assert_actor_gateway_capability` with signed request context; no current application code calls the unsigned helper. The helper was still granted to `ghm_actor_gateway` and therefore remains an unnecessary entry point.
 
 Correction:
 - Added migration `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads.sql` to revoke PUBLIC, `ghm_runtime`, `ghm_migrator` and `ghm_actor_gateway` from the one surviving `assert_actor_gateway(bigint)` helper, preserving `ghm_schema_owner` ownership for controlled maintenance.
-- Reduced the exact gateway allow-list from 22 to 21 signed/typed operations.
+- Reduced the exact gateway allow-list from 25 to 24 signed/typed operations by revoking the unused unsigned helper. The three business-hours/trust-score read projections are included because their SQL validates signed request context and re-checks membership/public visibility.
 - Changed disposable qualification to require SQLSTATE `42501` when the gateway attempts to call the unsigned helper.
 - Added a migration contract test for the surviving helper revocation.
 
-The nine previously obsolete overloads are already dropped and are not included in the new migration or denial probes. The latest exact-head CI must prove the migration applies cleanly and the 21-function startup verifier passes. Do not claim this closure before that run passes.
+The nine previously obsolete overloads are already dropped and are not included in the new migration or denial probes. The latest exact-head CI must prove the migration applies cleanly and the 24-function startup verifier passes. Do not claim this closure before that run passes.
 
