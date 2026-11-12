@@ -311,7 +311,7 @@ try {
       FROM pg_proc p
       JOIN pg_namespace n ON n.oid = p.pronamespace
      WHERE n.nspname = 'ghm'
-       AND p.proname LIKE 'auth\\_%' ESCAPE '\\\\'
+       AND p.proname LIKE 'auth\\_%' ESCAPE '\\'
        AND has_function_privilege(session_user, p.oid, 'EXECUTE')
   `);
   assert.equal(Number(issuerAfterRollback.rows[0].count), 0, 'rollback must remove all issuer auth-function execution privileges');
