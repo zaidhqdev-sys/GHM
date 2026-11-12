@@ -166,7 +166,7 @@ COMMENT ON FUNCTION ghm.gateway_storage_mark_deletion_pending(bigint,bigint,uuid
 
 COMMIT;
 )
-    OR p_content_type NOT IN ('image/jpeg','image/png','image/webp')
+    OR p_content_type IS NULL OR p_content_type NOT IN ('image/jpeg','image/png','image/webp')
     OR p_byte_size IS NULL OR p_byte_size<0 OR p_byte_size>2097152
     OR (p_original_filename IS NOT NULL AND length(p_original_filename)>255) THEN
    RAISE EXCEPTION 'Invalid Business Logo storage metadata' USING ERRCODE='22023';
