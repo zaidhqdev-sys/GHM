@@ -2346,3 +2346,22 @@ Correction:
 - The last fully green exact head before these changes was `4abb42e029f774ec11b90705b59222d042ee5584`. It did not contain the identity enforcement or business-mapping revocation.
 - The newer exact head must pass the full migration chain, all tests, disposable issuer cutover/lifecycle/denials/rollback and web checks before this follow-up is considered qualified.
 - No production database, grants, service, secrets, deployment, routing, paid resource, or client environment was changed.
+
+
+## 2026-11-12 — Actor Gateway exact database ACL enforcement (in progress)
+
+A cross-role review found that Actor Gateway startup enforced its database login identity, but did not verify the complete effective database function and relation privilege set. Its disposable qualification previously spot-checked selected functions and four authentication tables; it did not prove that the gateway had exactly its reviewed callable-function set or zero direct relation privileges across the whole GHM schema.
+
+The migration history grants the gateway exactly 22 current functions:
+- `assert_actor_gateway` and `assert_actor_gateway_capability`;
+- the typed identity, registration, capability governance/evidence, supplier classification, business profile, saved-business, business-hours, trust-score and business-logo operations.
+
+Correction in progress:
+- Added `src/actor-gateway/database-privileges.ts` with the exact 22-function allow-list and a PostgreSQL catalog verifier.
+- The verifier enumerates all ordinary executable functions in schema `ghm` for the gateway login (excluding trigger-returning functions), not merely functions matching a naming convention. It also checks no direct table/view/foreign-table/sequence privileges, schema USAGE without CREATE, no PUBLIC EXECUTE on gateway-executable functions, no runtime EXECUTE on gateway-specific functions, and safe future-function defaults.
+- Wired the verifier into `src/actor-gateway/server.ts` after database identity assertion and before `server.listen`.
+- Extended `scripts/qualify-actor-gateway-principal.mjs` to execute the same production verifier against the disposable PostgreSQL gateway login.
+- Added unit and startup source-contract regression tests.
+- Extended the issuer's future-default verifier to treat a default grant to `ghm_actor_gateway` as unsafe too.
+
+This is a stronger startup guard, not a permission change. The underlying migrations already define the 22 explicit grants; the new code verifies the effective result and fails closed on drift. Exact-head CI and the full Actor Gateway disposable qualification must pass before claiming this boundary is qualified. No production database, roles, grants, services, secrets, deployments, or routing changed.
