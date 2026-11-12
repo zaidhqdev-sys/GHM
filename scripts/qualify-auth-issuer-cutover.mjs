@@ -163,6 +163,58 @@ try {
   assert.deepEqual(issuerAclAfterProbe.unsafe_security_definer_functions, [], 'issuer post-probe SECURITY DEFINER audit must remain clean');
   assert.deepEqual(actorAclAfterProbe.unsafe_security_definer_functions, [], 'Actor Gateway post-probe SECURITY DEFINER audit must remain clean');
 
+  // PUBLIC must never execute any SECURITY DEFINER function, including
+  // functions outside either service's own callable allow-list.
+  const publicDefinerProbe = await migratorPool.connect();
+  let publicDefinerProbeInstalled = false;
+  try {
+    await publicDefinerProbe.query('BEGIN');
+    await publicDefinerProbe.query('SET LOCAL ROLE ghm_schema_owner');
+    await publicDefinerProbe.query(
+      'GRANT EXECUTE ON FUNCTION ghm.auth_create_account(text, text, text, text, text, integer, integer, integer) TO PUBLIC',
+    );
+    await publicDefinerProbe.query(
+      'GRANT EXECUTE ON FUNCTION ghm.gateway_provision_connect_business(bigint, bigint, uuid, text, text, text, text, text) TO PUBLIC',
+    );
+    await publicDefinerProbe.query('COMMIT');
+    publicDefinerProbeInstalled = true;
+
+    const [issuerPublicDefiner, actorPublicDefiner] = await Promise.all([
+      readAuthIssuerDatabasePrivileges(issuerPool),
+      readActorGatewayDatabasePrivileges(actorGatewayPool),
+    ]);
+    assert.deepEqual(
+      issuerPublicDefiner.public_executable_security_definer_functions,
+      ['ghm.auth_create_account(text,text,text,text,text,integer,integer,integer)'],
+      'issuer verifier must report PUBLIC execution on any SECURITY DEFINER function',
+    );
+    assert.deepEqual(
+      actorPublicDefiner.public_executable_security_definer_functions,
+      ['ghm.gateway_provision_connect_business(bigint,bigint,uuid,text,text,text,text,text)'],
+      'Actor Gateway verifier must report PUBLIC execution on any SECURITY DEFINER function',
+    );
+  } finally {
+    if (publicDefinerProbeInstalled) {
+      await publicDefinerProbe.query('BEGIN');
+      await publicDefinerProbe.query('SET LOCAL ROLE ghm_schema_owner');
+      await publicDefinerProbe.query(
+        'REVOKE EXECUTE ON FUNCTION ghm.auth_create_account(text, text, text, text, text, integer, integer, integer) FROM PUBLIC',
+      );
+      await publicDefinerProbe.query(
+        'REVOKE EXECUTE ON FUNCTION ghm.gateway_provision_connect_business(bigint, bigint, uuid, text, text, text, text, text) FROM PUBLIC',
+      );
+      await publicDefinerProbe.query('COMMIT');
+    } else {
+      await publicDefinerProbe.query('ROLLBACK').catch(() => undefined);
+    }
+    publicDefinerProbe.release();
+  }
+
+  const issuerAfterPublicProbe = await readAuthIssuerDatabasePrivileges(issuerPool);
+  const actorAfterPublicProbe = await readActorGatewayDatabasePrivileges(actorGatewayPool);
+  assert.deepEqual(issuerAfterPublicProbe.public_executable_security_definer_functions, [], 'issuer PUBLIC definer probe must be fully cleaned up');
+  assert.deepEqual(actorAfterPublicProbe.public_executable_security_definer_functions, [], 'Actor Gateway PUBLIC definer probe must be fully cleaned up');
+
   // Prove both verifiers detect direct EXECUTE grants to a non-allowlisted
   // application role, not merely PUBLIC and ghm_runtime.
   const directAclProbe = await migratorPool.connect();
@@ -581,6 +633,7 @@ try {
     globalAndSchemaScopedDefaultAclDenials: 'passed',
     unexpectedDirectFunctionGrantDenials: 'passed',
     securityDefinerOwnerAndTemporarySafeSearchPath: 'passed',
+    noPublicSecurityDefinerExecution: 'passed',
   }) + '\\n');
 } finally {
   await Promise.all([issuerPool.end(), runtimePool.end(), migratorPool.end(), actorGatewayPool.end()]);
