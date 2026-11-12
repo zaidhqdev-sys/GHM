@@ -17,6 +17,7 @@ test('issuer verifies its exact database ACL boundary before opening the HTTP li
   assert.match(privilegeSource, /has_table_privilege\(session_user/);
   assert.match(privilegeSource, /has_sequence_privilege\(session_user/);
   assert.match(privilegeSource, /has_function_privilege\(session_user/);
+  assert.match(privilegeSource, /p\.prorettype <> 'trigger'::regtype/, 'callable-function allow-list must exclude trigger-returning functions');
   assert.match(privilegeSource, /runtime_executable_auth_functions/);
   assert.match(privilegeSource, /expected_runtime_auth_functions/);
   assert.match(privilegeSource, /ghm\.auth_lookup_external_identity/);
