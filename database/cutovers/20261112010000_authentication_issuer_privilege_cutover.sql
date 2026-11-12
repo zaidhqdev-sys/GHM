@@ -68,6 +68,10 @@ REVOKE ALL ON FUNCTION ghm.auth_redeem_recovery(bytea)
   FROM PUBLIC, ghm_runtime;
 REVOKE ALL ON FUNCTION ghm.auth_redeem_recovery_with_count(bytea)
   FROM PUBLIC, ghm_runtime;
+REVOKE ALL ON FUNCTION ghm.auth_redeem_recovery(bytea)
+  FROM PUBLIC, ghm_runtime;
+REVOKE ALL ON FUNCTION ghm.auth_reset_password_with_recovery(bytea, text, text, integer, integer, integer)
+  FROM PUBLIC, ghm_runtime;
 REVOKE ALL ON FUNCTION ghm.auth_lookup_quoteflow_migration_reset_enrollment(text)
   FROM PUBLIC, ghm_runtime;
 REVOKE ALL ON FUNCTION ghm.auth_complete_quoteflow_migration_reset(bytea, text, integer, integer, integer)
@@ -90,8 +94,6 @@ GRANT EXECUTE ON FUNCTION ghm.auth_issue_recovery(bigint, bytea, timestamptz)
   TO ghm_auth_issuer;
 GRANT EXECUTE ON FUNCTION ghm.auth_redeem_recovery(bytea)
   TO ghm_auth_issuer;
-GRANT EXECUTE ON FUNCTION ghm.auth_redeem_recovery_with_count(bytea)
-  TO ghm_auth_issuer;
 GRANT EXECUTE ON FUNCTION ghm.auth_lookup_quoteflow_migration_reset_enrollment(text)
   TO ghm_auth_issuer;
 GRANT EXECUTE ON FUNCTION ghm.auth_complete_quoteflow_migration_reset(bytea, text, integer, integer, integer)
@@ -102,3 +104,5 @@ GRANT EXECUTE ON FUNCTION ghm.auth_complete_quoteflow_migration_reset(bytea, tex
 -- resource integration and is not part of this issuer cutover.
 
 COMMIT;
+GRANT EXECUTE ON FUNCTION ghm.auth_reset_password_with_recovery(bytea, text, text, integer, integer, integer)
+  TO ghm_auth_issuer;
