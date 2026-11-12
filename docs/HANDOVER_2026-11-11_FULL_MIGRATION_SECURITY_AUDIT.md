@@ -2369,7 +2369,7 @@ This is a stronger startup guard, not a permission change. The underlying migrat
 
 ### Confirmed legacy unsigned gateway grants and revocation
 
-The migration source confirms the initial 22-function count included ten obsolete entry points:
+The migration source confirms ten of the 31 granted signatures were obsolete entry points:
 - `assert_actor_gateway(bigint)`, an unsigned helper that accepted an arbitrary active account ID and returned it; its own migration comment states it was not wired to feature RPCs.
 - Nine older overloads for self-identity, business-registration identity, capability governance, supplier classification and business-profile operations. Signed-assertion overloads were added later, but the old signatures retained their `ghm_actor_gateway` EXECUTE grants because later migrations granted the new signatures without revoking the old ones.
 
