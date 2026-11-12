@@ -827,3 +827,12 @@ Current route composition is now confirmed precisely:
 The issuer extraction must preserve current route availability and response behavior; it must not silently enable recovery or QuoteFlow routes. It must also move native and browser-cookie auth endpoints, rate limits, cookie policy, anti-enumeration and signing/token custody. Details and source evidence are in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
 
 No code, production config, secrets, grants, routes or services were changed.
+
+
+## External auth route/deployment contract (2026-11-12)
+
+The web client currently sends auth and resource requests to one API origin (`VITE_GHM_API_BASE_URL`, defaulting to GHM Internal Runtime). Auth paths include native JSON and browser-cookie variants; cookies use the existing same-origin `/api/ghm` path. Issuer extraction must preserve these public paths and browser cookie/CORS behavior through a separately designed edge/reverse-proxy routing layer or equivalent same-origin topology. A direct browser-visible second origin is not an acceptable unreviewed shortcut.
+
+No Render Blueprint, Dockerfile or deployment manifest is present in the GHM repository tree, so current service start/build commands, proxy/routing capability and network exposure cannot be inferred from source. Obtain the actual service configuration/inventory before specifying deployment. No Render changes or new services.
+
+Latest handover adds the full client route contract, cookie behavior, deployment evidence gap and compatibility test requirements. CI #3493 was still running its test suite and subsequent PostgreSQL qualification at the previous documentation head; the new handover commit will require exact-head CI recheck.
