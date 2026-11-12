@@ -169,6 +169,8 @@ export interface AppDependencies {
   readonly businessOfferingService?: BusinessOfferingService;
   readonly directoryService?: DirectoryService;
   readonly commercialService?: CommercialService;
+  /** Disable issuer-only routes in the ordinary Resource API process. */
+  readonly authRoutesEnabled?: boolean;
   readonly authService?: GhmAuthService;
   readonly authPersistence?: AuthPersistence;
   readonly passwordRecoveryService?: PasswordRecoveryService;
@@ -1089,18 +1091,22 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerBusinessCategoryRoutes(app, businessCategoryService, resourceAuthMiddleware);
   registerBusinessOfferingRoutes(app, businessOfferingService, resourceAuthMiddleware);
   registerCommercialRoutes(app, commercialService, resourceAuthMiddleware);
-  const authPersistence = dependencies.authPersistence ?? new PostgresAuthPersistence();
-  const passwordResetService =
-    dependencies.passwordResetService
-    ?? createPasswordResetService(authPersistence);
-  registerAuthRoutes(app, {
-    authService: dependencies.authService,
-    authPersistence,
-    passwordRecoveryService: dependencies.passwordRecoveryService,
-    passwordResetService,
-    quoteFlowMigrationResetRecoveryService: dependencies.quoteFlowMigrationResetRecoveryService,
-    quoteFlowMigrationResetCompletionService: dependencies.quoteFlowMigrationResetCompletionService,
-  } satisfies AuthRouterDependencies);
+  if (dependencies.authRoutesEnabled !== false) {
+    // Auth lifecycle routes belong to the isolated Authentication Issuer.
+    // Keep registration enabled for explicit test/embedded fixtures only.
+    const authPersistence = dependencies.authPersistence ?? new PostgresAuthPersistence();
+    const passwordResetService =
+      dependencies.passwordResetService
+      ?? createPasswordResetService(authPersistence);
+    registerAuthRoutes(app, {
+      authService: dependencies.authService,
+      authPersistence,
+      passwordRecoveryService: dependencies.passwordRecoveryService,
+      passwordResetService,
+      quoteFlowMigrationResetRecoveryService: dependencies.quoteFlowMigrationResetRecoveryService,
+      quoteFlowMigrationResetCompletionService: dependencies.quoteFlowMigrationResetCompletionService,
+    } satisfies AuthRouterDependencies);
+  }
   registerCommercialInternalRoutes(app);
   registerConnectServiceRoutes(app, {
     ...dependencies.connectService,
