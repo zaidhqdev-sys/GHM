@@ -34,8 +34,7 @@ const issuerOnlyFunctionNames = [
   'auth_rotate_refresh',
   'auth_revoke_by_refresh_hash',
   'auth_issue_recovery',
-  'auth_redeem_recovery',
-  'auth_redeem_recovery_with_count',
+  'auth_reset_password_with_recovery',
   'auth_lookup_quoteflow_migration_reset_enrollment',
   'auth_complete_quoteflow_migration_reset',
 ].sort();
@@ -87,6 +86,7 @@ try {
     'SELECT ghm.auth_issue_recovery(NULL::bigint, NULL::bytea, NULL::timestamptz)',
     'SELECT ghm.auth_redeem_recovery(NULL::bytea)',
     'SELECT * FROM ghm.auth_redeem_recovery_with_count(NULL::bytea)',
+    'SELECT * FROM ghm.auth_reset_password_with_recovery(NULL::bytea, NULL::text, NULL::text, NULL::integer, NULL::integer, NULL::integer)',
     'SELECT * FROM ghm.auth_lookup_quoteflow_migration_reset_enrollment(NULL::text)',
     'SELECT * FROM ghm.auth_complete_quoteflow_migration_reset(NULL::bytea, NULL::text, NULL::integer, NULL::integer, NULL::integer)',
   ];
@@ -143,6 +143,14 @@ try {
   await authService.logout(rotated.refreshToken);
 
   const recovery = await persistence.issueRecovery(registered.accountId, 30);
+  await assert.rejects(
+    () => persistence.resetPasswordWithRecovery(
+      recovery.recoveryTokenWire,
+      `mismatch+${email}`,
+      replacementPassword,
+    ),
+    (error) => error && error.code === 'RECOVERY_CREDENTIAL_INVALID',
+  );
   const reset = await persistence.resetPasswordWithRecovery(
     recovery.recoveryTokenWire,
     email,
