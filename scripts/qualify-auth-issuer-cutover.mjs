@@ -10,6 +10,7 @@ import { createArgon2idPasswordHasher } from '../dist/auth/foundation/password.j
 import { createGhmAuthService } from '../dist/auth/ghm-auth-service.js';
 import { assertAuthIssuerDatabasePrivileges, readAuthIssuerDatabasePrivileges } from '../dist/auth-issuer/database-privileges.js';
 import { readActorGatewayDatabasePrivileges } from '../dist/actor-gateway/database-privileges.js';
+import { assertRuntimeDatabaseFunctionPrivileges, readRuntimeDatabaseFunctionPrivileges } from '../dist/db/runtime-database-privileges.js';
 
 const issuerUrl = process.env.GHM_AUTH_ISSUER_DATABASE_URL?.trim();
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL?.trim();
@@ -299,6 +300,17 @@ try {
     runtimeAuthFunctions.rows[0].expected,
     'Resource API runtime must retain exactly the two separately reviewed external identity lookup functions after issuer cutover',
   );
+
+  // Campaign/review cutover is applied earlier in this CI job. After the
+  // issuer cutover the runtime must match the combined 26-function allow-list.
+  const runtimePrivilegesAfterIssuerCutover = await readRuntimeDatabaseFunctionPrivileges(runtimePool);
+  try {
+    assertRuntimeDatabaseFunctionPrivileges(runtimePrivilegesAfterIssuerCutover);
+  } catch (error) {
+    throw new Error(
+      `Resource API runtime startup ACL verifier rejected the combined Campaign + issuer post-cutover state: ${error instanceof Error ? error.message : 'unknown'}; state=${JSON.stringify(runtimePrivilegesAfterIssuerCutover)}`,
+    );
+  }
 
   const startupPrivileges = await readAuthIssuerDatabasePrivileges(issuerPool);
   try {
