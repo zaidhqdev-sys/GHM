@@ -54,3 +54,10 @@ test('manual rollback is guarded and restores the legacy runtime ACL while disab
   assert.match(rollback, /REVOKE ALL ON FUNCTION ghm\.gateway_update_campaign[\s\S]*?FROM ghm_actor_gateway/);
   assert.match(rollback, /REVOKE ALL ON FUNCTION ghm\.gateway_get_business_directory_review_presentation[\s\S]*?FROM ghm_actor_gateway/);
 });
+
+
+test('manual cutover refuses a partially extended assertion allow-list and is safe to reapply after rollback', () => {
+  assert.match(migration, /v_create AND v_update AND v_review/);
+  assert.match(migration, /ELSIF v_create OR v_update OR v_review/);
+  assert.match(migration, /Idempotent re-application after a rehearsed rollback/);
+});
