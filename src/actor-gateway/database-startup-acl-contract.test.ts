@@ -68,3 +68,11 @@ test('disposable qualification probes and cleans up unexpected Actor Gateway fun
 test('Actor Gateway default ACL verifier requires the global default ACL row, not merely a schema override', () => {
   assert.match(privilegeSource, /NOT EXISTS \([\s\S]{0,240}defaclnamespace = 0[\s\S]{0,100}defaclobjtype = 'f'/);
 });
+
+
+test('Actor Gateway qualification proves PUBLIC cannot execute SECURITY DEFINER operations', () => {
+  assert.ok(qualificationSource.includes('public_executable_security_definer_functions'));
+  assert.ok(qualificationSource.includes('issuerPublicDefiner'));
+  assert.ok(qualificationSource.includes('actorPublicDefiner'));
+  assert.ok(qualificationSource.includes('FROM PUBLIC'));
+});
