@@ -10,7 +10,7 @@ test('whole-database SECURITY DEFINER inventory is read-only and disposable-data
   assert.match(source, /localhost.*127\.0\.0\.1/);
   assert.match(source, /mutation: false/);
   assert.match(source, /REVIEW_REQUIRED_NO_AUTOMATIC_APPROVAL/);
-  assert.doesNotMatch(source, /(?:^|\\n)\\s*(?:GRANT|REVOKE|ALTER\\s+ROLE|CREATE\\s+ROLE|DROP\\s+ROLE|CREATE\\s+FUNCTION|ALTER\\s+FUNCTION|DROP\\s+FUNCTION)\\s+/i);
+  assert.doesNotMatch(source, /(?:^|\n)\s*(?:GRANT|REVOKE|ALTER\s+ROLE|CREATE\s+ROLE|DROP\s+ROLE|CREATE\s+FUNCTION|ALTER\s+FUNCTION|DROP\s+FUNCTION)\s+/i);
 });
 
 test('inventory covers non-system SECURITY DEFINER routines, direct ACLs and effective role grants', () => {
