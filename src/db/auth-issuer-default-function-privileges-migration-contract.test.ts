@@ -23,3 +23,11 @@ test('issuer allow-list is applied after clearing current function grants', () =
   assert.ok(issuerCutover.includes('GRANT EXECUTE ON FUNCTION ghm.auth_create_account'));
 });
 
+
+test('manual issuer cutover and rollback require the dedicated migrator/schema-owner identity', () => {
+  for (const script of [issuerCutover, issuerRollback]) {
+    assert.ok(script.includes("session_user IS DISTINCT FROM 'ghm_migrator'"));
+    assert.ok(script.includes("current_user IS DISTINCT FROM 'ghm_schema_owner'"));
+    assert.ok(script.includes('issuer privilege operation requires session_user=ghm_migrator and current_user=ghm_schema_owner'));
+  }
+});
