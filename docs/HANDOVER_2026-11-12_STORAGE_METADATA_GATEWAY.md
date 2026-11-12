@@ -135,7 +135,7 @@ Inspected the full storage service, HTTP routes, storage tests, storage migratio
 - Proposed provider attestation is domain-separated (`ghm-storage-provider:v1`), short-lived, one-use, and bound to operation, object ID, stored tenant/business, provider key, and the provider evidence required for the transition.
 - The database secret provisioning path is still an unresolved prerequisite. Do not create the secret table and claim security until the operator provisioning route is designed, audited and tested. In particular, do not assume the migrator may read/insert into the protected secret table.
 
-This refinement is design-only; no provider transition wrapper, secret, secret table, transport header, or production configuration was created. The existing direct runtime function grants remain unchanged.
+Historical checkpoint note: at the time this paragraph was written, the dual-proof proposal was design-only. It was superseded by the provider-transition migration and transport implementation documented below. The secret table and wrappers now exist in source, but no provider secret has been provisioned and no migration has been applied to any database. Existing direct runtime function grants remain unchanged.
 
 ## Provider-transition database stage added (not yet integrated)
 
@@ -149,7 +149,7 @@ It adds:
 
 A guarded disposable-only provisioning script was added at `scripts/provision-storage-provider-attestation-secret.mjs`. It requires an explicit qualification database URL and mutation opt-in, verifies `session_user=current_user=ghm_migrator`, checks the database name, uses `SET LOCAL ROLE ghm_schema_owner`, and never logs the secret value. This is a qualification/provisioning precedent only; it does not authorize production provisioning.
 
-**Still not complete:** the Resource API signer, service-attestation transport, Actor Gateway reader/route forwarding, and Storage Metadata Gateway client integration are not yet implemented. No provider secret was provisioned. No migration was applied. Legacy runtime grants remain. Do not interpret the wrappers as an active cutover.
+Historical implementation checkpoint: the signer, transport, Actor Gateway reader/routes and Resource API client were not yet implemented when this section was first recorded. They have since been added and wired into the Resource API storage router/app, as detailed below. No provider secret has been provisioned, no migration has been applied, and legacy runtime grants remain. Do not interpret the source implementation as an active or qualified cutover.
 
 Latest code commits for this provider stage:
 - `13392ac82502613f7533ade85e5d8773c6fafb20` — provider attestation tables, verifier and dual-proof wrappers.
@@ -171,5 +171,20 @@ Further implementation after the provider migration:
 - Added signer and provider-transition route tests.
 - CI workflow now syntax-checks the disposable-only provider secret provisioning script.
 
-**Important integration boundary:** the new Resource API client is not yet wired into `src/http/storage-router.ts` / `src/http/app.ts`, and the repository still uses direct `ghm.storage_*` calls. The Resource API signer secret has not been provisioned, no provider-attestation was generated in a live request, and neither the database migration nor provisioning script has been executed. This remains construction code, not a qualified cutover.
+**Integration checkpoint (source-level complete, qualification outstanding):** `src/http/storage-router.ts` now selects the Actor Gateway-backed metadata store, forwards the original caller bearer token across create/read/delete/complete/access/cleanup paths, and fails closed when the gateway is required but unavailable. `src/http/app.ts` constructs the client from `GHM_ACTOR_GATEWAY_URL` and `GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET`; production storage startup now requires both. The direct PostgreSQL metadata repository remains only as a non-required fallback for non-production/development. The signer secret has not been provisioned, no provider attestation has been exercised against PostgreSQL, and neither migration nor provisioning script has been executed. This remains construction code, not a qualified cutover.
+
+## Storage router and Resource API integration checkpoint — 2026-11-12
+
+Source integration has now been completed across the Resource API:
+
+- `src/http/storage-router.ts` accepts a per-request Storage Metadata Gateway store factory, extracts the existing caller bearer token, and passes it through the storage lifecycle. In required mode, missing bearer tokens are rejected and a missing gateway factory returns unavailable rather than falling back to the direct PostgreSQL repository.
+- `src/http/app.ts` constructs `HttpStorageMetadataGatewayClient` from the configured Actor Gateway origin and the separate provider-attestation secret. Production storage refuses startup if the Actor Gateway URL or provider secret is missing, and marks the metadata gateway as required.
+- `src/http/storage-metadata-gateway-client.ts` is now the Resource API transport for metadata create/read/deletion-pending/available/deleted operations.
+- `src/actor-gateway/app.ts` includes the metadata create/read/deletion-pending and dual-proof provider-transition routes, with the storage reader dependency declared on `ActorGatewayDependencies`.
+- Added client transport tests and router fail-closed/token-forwarding tests; added the reader, signer and migration contract tests to the main `npm test` command.
+- The Actor Gateway app source was reconciled against the last clean pre-storage route version so the new storage route block appears once and the existing Trust Score, Business Hours and Saved Business routes remain exactly once. This removed a malformed duplicate tail introduced during earlier route insertion.
+
+**CI status:** earlier exact-head runs exposed and led to fixes for app route placement, missing Actor Gateway dependency typing and unavailable fetch test types. Those runs failed at TypeScript build and are not passing evidence. The latest source checkpoint is `50d87c0446fb90c031e7852bd24b4cb2c49b2e9d`; its CI run `43230405011` was queued when this handover update began. Re-check the exact latest branch HEAD and its full workflow result before treating build or tests as passed.
+
+**Still open:** PostgreSQL 18 execution of the new migration; live disposable qualification of actor proof, provider proof, context substitution, stale timestamp, invalid signature, nonce replay, wrong database role, cross-tenant actor, invalid lifecycle state and legitimate upload/delete completion; runtime grant revocation and rollback; full issuer/Actor Gateway/database requalification; docs reconciliation before any merge. No production database, secrets, deployments, grants or roles have been changed. No PR has been merged.
 
