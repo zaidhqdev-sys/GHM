@@ -53,8 +53,7 @@ export const AUTH_ISSUER_DATABASE_PRIVILEGES_SQL = `
         'ghm.auth_lookup_quoteflow_migration_reset_enrollment(text)',
         'ghm.auth_complete_quoteflow_migration_reset(bytea, text, integer, integer, integer)'
       ]::text[])
-    ),
-
+    )
     SELECT
       has_schema_privilege(session_user, 'ghm', 'USAGE') AS schema_usage,
       has_schema_privilege(session_user, 'ghm', 'CREATE') AS schema_create,
