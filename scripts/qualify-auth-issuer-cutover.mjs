@@ -139,6 +139,42 @@ try {
   assert.equal(loginAfterRehash.accountId, registered.accountId);
   await authService.logout(loginAfterRehash.refreshToken);
 
+  const raceEmail = `auth-issuer-rehash-race-${randomUUID()}@example.test`;
+  const raceInitialPassword = 'BeforeResetHorse1';
+  const raceReplacementPassword = 'AfterResetHorse2';
+  const raceAccount = await authService.register({
+    fullName: 'Auth Issuer Rehash Race',
+    role: 'customer',
+    email: raceEmail,
+    password: raceInitialPassword,
+  });
+  await authService.logout(raceAccount.refreshToken);
+  let concurrentResetPerformed = false;
+  const racingHasher = {
+    hash: (password) => realHasher.hash(password),
+    verify: async (passwordHash, password) => {
+      const result = await realHasher.verify(passwordHash, password);
+      if (result.verified && !concurrentResetPerformed) {
+        concurrentResetPerformed = true;
+        const raceRecovery = await persistence.issueRecovery(raceAccount.accountId, 30);
+        await persistence.resetPasswordWithRecovery(
+          raceRecovery.recoveryTokenWire,
+          raceEmail,
+          raceReplacementPassword,
+        );
+      }
+      return { ...result, needsRehash: result.verified || result.needsRehash };
+    },
+  };
+  const racingLoginService = createGhmAuthService(persistence, jwtService, racingHasher);
+  await assert.rejects(
+    () => racingLoginService.login(raceEmail, raceInitialPassword),
+    (error) => error && error.code === 'INVALID_CREDENTIALS',
+  );
+  const raceLoginAfterReset = await authService.login(raceEmail, raceReplacementPassword);
+  assert.equal(raceLoginAfterReset.accountId, raceAccount.accountId);
+  await authService.logout(raceLoginAfterReset.refreshToken);
+
   const rotated = await authService.refresh(loggedIn.refreshToken);
   assert.equal(rotated.accountId, registered.accountId);
   await authService.logout(rotated.refreshToken);
@@ -239,7 +275,7 @@ try {
     issuerDirectRelationPrivileges: 0,
     runtimeIssuerFunctionDenials: deniedCalls.length,
     connectLookup: 'preserved',
-    registrationLoginPasswordRehashRefreshLogout: 'passed',
+    registrationLoginPasswordRehashConcurrentResetRefreshLogout: 'passed',
     recoveryResetReplayAndSessionRevocation: 'passed',
     quoteFlowMigrationReset: 'passed',
   }) + '\\n');
