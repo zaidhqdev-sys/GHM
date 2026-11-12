@@ -24,11 +24,17 @@ const STAGES = [
   RUNTIME_POST_CAMPAIGN_REVIEW_AUTH_ISSUER_AND_REGISTRATION_IDENTITY_FUNCTIONS,
 ] as const;
 
+const postgresSignature = (signature: string): string => signature.replace(/,\s+/g, ',');
+
 test('runtime startup accepts only the eight explicitly reviewed Campaign, issuer and registration cutover states', () => {
   assert.deepEqual(STAGES.map(functions => functions.length), [43, 40, 29, 26, 41, 38, 27, 24]);
   for (const functions of STAGES) {
     assert.doesNotThrow(() => assertRuntimeDatabaseFunctionPrivileges({
       executable_functions: [...functions],
+    }));
+    // PostgreSQL regprocedure::text renders argument lists without spaces after commas.
+    assert.doesNotThrow(() => assertRuntimeDatabaseFunctionPrivileges({
+      executable_functions: functions.map(postgresSignature),
     }));
   }
 });
@@ -58,13 +64,13 @@ test('runtime startup rejects added, missing or unexpected function EXECUTE gran
   for (const functions of STAGES) {
     assert.throws(
       () => assertRuntimeDatabaseFunctionPrivileges({
-        executable_functions: [...functions, 'ghm.unreviewed_sensitive_operation(bigint)'],
+        executable_functions: [...functions.map(postgresSignature), 'ghm.unreviewed_sensitive_operation(bigint)'],
       }),
       /Runtime database function EXECUTE allow-list mismatch/,
     );
     assert.throws(
       () => assertRuntimeDatabaseFunctionPrivileges({
-        executable_functions: functions.slice(1),
+        executable_functions: functions.slice(1).map(postgresSignature),
       }),
       /Runtime database function EXECUTE allow-list mismatch/,
     );
@@ -92,13 +98,11 @@ test('registration identity functions are accepted only before their explicit ma
   }
 });
 
-test('startup inventory measures only SECURITY DEFINER EXECUTE privileges and resolves all staged states', () => {
+test('startup inventory measures only SECURITY DEFINER EXECUTE privileges', () => {
   assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /p\.prosecdef/);
   assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /has_function_privilege\(session_user, p\.oid, 'EXECUTE'\)/);
-  assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /expected_post_issuer/);
-  assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /expected_post_campaign_issuer/);
-  assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /expected_post_registration/);
-  assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /expected_post_all/);
+  assert.match(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /n\.nspname = 'ghm'/);
+  assert.doesNotMatch(RUNTIME_DATABASE_FUNCTION_PRIVILEGES_SQL, /expected_post/);
 });
 
 test('Campaign and directory-review legacy signatures are absent only from states where their manual cutover is applied', () => {
