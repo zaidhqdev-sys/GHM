@@ -196,6 +196,8 @@ jobs:
 
       - name: Qualify isolated actor gateway database principal
         run: npm run qualify:actor-gateway-principal
+      - name: Qualify signed Connect Business provisioning, membership isolation and rollback
+        run: npm run qualify:connect-business-provisioning-live
 
       - name: Qualify Business registration forward migration against existing table
         run: node scripts/qualify-business-registration-forward-migration.mjs
