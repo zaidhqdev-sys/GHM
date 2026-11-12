@@ -25,6 +25,10 @@ const start = async (): Promise<void> => {
   const identity = await pool.query<{
     session_user: string;
     current_user: string;
+    database_connect_privilege: boolean;
+    database_create_privilege: boolean;
+    schema_usage: boolean;
+    schema_create: boolean;
     rolcanlogin: boolean;
     rolinherit: boolean;
     rolsuper: boolean;
@@ -36,6 +40,10 @@ const start = async (): Promise<void> => {
   }>(`
     SELECT session_user,
            current_user,
+           has_database_privilege(session_user, current_database(), 'CONNECT') AS database_connect_privilege,
+           has_database_privilege(session_user, current_database(), 'CREATE') AS database_create_privilege,
+           has_schema_privilege(session_user, 'ghm', 'USAGE') AS schema_usage,
+           has_schema_privilege(session_user, 'ghm', 'CREATE') AS schema_create,
            r.rolcanlogin,
            r.rolinherit,
            r.rolsuper,
