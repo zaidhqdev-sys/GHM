@@ -22,7 +22,7 @@ BEGIN
 END;
 $issuer_operator_guard$;
 
-DO $
+DO $issuer_role_guard$
 DECLARE
   issuer_role pg_roles%ROWTYPE;
 BEGIN
@@ -46,7 +46,7 @@ BEGIN
     RAISE EXCEPTION 'ghm_auth_issuer must exist as LOGIN NOINHERIT with no elevated attributes or role memberships';
   END IF;
 END;
-$$;
+$issuer_role_guard$;
 
 REVOKE CREATE ON SCHEMA ghm FROM ghm_auth_issuer;
 GRANT USAGE ON SCHEMA ghm TO ghm_auth_issuer;
