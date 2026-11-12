@@ -56,7 +56,9 @@ test('database rollback revokes issuer authority and restores only reviewed Reso
     'auth_lookup_quoteflow_migration_reset_enrollment',
     'auth_complete_quoteflow_migration_reset',
   ]) {
-    assert.match(rollback, new RegExp('GRANT EXECUTE ON FUNCTION ghm\\\\.' + functionName + '[\\\\s\\\\S]*?TO ghm_runtime', 'i'));
+    const grantIndex = rollback.indexOf(`GRANT EXECUTE ON FUNCTION ghm.${functionName}(`);
+    assert.notEqual(grantIndex, -1, `missing rollback grant for ${functionName}`);
+    assert.match(rollback.slice(grantIndex, grantIndex + 300), /TO ghm_runtime/);
   }
   assert.doesNotMatch(rollback, /auth_register_quoteflow_migration_reset_enrollment/);
   assert.doesNotMatch(rollback, /GRANT (?:SELECT|INSERT|UPDATE|DELETE|ALL) ON (?:TABLE|SEQUENCE)/i);
