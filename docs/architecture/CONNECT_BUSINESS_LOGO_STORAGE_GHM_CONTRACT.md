@@ -31,11 +31,11 @@ The Cloudflare R2 S3-compatible adapter passed a bounded live provider data-path
 
 Do not use ephemeral application-container disk as durable logo storage. Do not assume a provider is configured merely because the application can generate a URL.
 
-## Candidate operations
+## Implemented operations contract
 
 ### Upload/replace
 
-Candidate route: `PUT /api/v1/businesses/:businessId/logo`.
+Business Logo binding route: `PUT /api/v1/businesses/:businessId/logo`. The storage upload/completion/access/deletion routes are `POST /api/v1/storage/business-logos/upload`, `POST /api/v1/storage/objects/:objectId/complete`, `GET /api/v1/storage/objects/:objectId/access`, and `DELETE /api/v1/storage/objects/:objectId`.
 
 1. Authenticate the caller with GHM bearer auth.
 2. Parse the canonical numeric Business ID strictly (positive safe integer; no string coercion).
@@ -58,6 +58,8 @@ Candidate route: `DELETE /api/v1/businesses/:businessId/logo`.
 4. Do not restore a stale public reference when object cleanup fails; support a retry/cleanup job.
 
 ### Public projection
+
+Anonymous public logo route: `GET /api/v1/public/businesses/:businessId/logo`.
 
 - Public directory and saved-Business APIs may return a derived `logoUrl` only when it comes from the canonical GHM asset reference and trusted public origin.
 - No wildcard select after adding private asset fields.
