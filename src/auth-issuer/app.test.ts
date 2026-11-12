@@ -104,3 +104,41 @@ test('auth issuer allows only exact HTTPS or localhost CORS origins', () => {
     else process.env.GHM_AUTH_ISSUER_CORS_ORIGINS = previous;
   }
 });
+
+
+test('auth issuer requires explicit production proxy trust and rejects ambiguous hop counts', () => {
+  const previousNodeEnv = process.env.NODE_ENV;
+  const previousHops = process.env.GHM_AUTH_ISSUER_TRUST_PROXY_HOPS;
+  try {
+    process.env.NODE_ENV = 'production';
+    delete process.env.GHM_AUTH_ISSUER_TRUST_PROXY_HOPS;
+    assert.throws(
+      () => createAuthIssuerApp({ authService, authPersistence: persistence, passwordResetService }),
+      /must be explicitly set in production/,
+    );
+
+    for (const invalid of ['true', '-1', '1.5', '01', '11']) {
+      process.env.GHM_AUTH_ISSUER_TRUST_PROXY_HOPS = invalid;
+      assert.throws(
+        () => createAuthIssuerApp({ authService, authPersistence: persistence, passwordResetService }),
+        /must be an integer from 0 to 10/,
+      );
+    }
+
+    process.env.GHM_AUTH_ISSUER_TRUST_PROXY_HOPS = '0';
+    assert.equal(
+      createAuthIssuerApp({ authService, authPersistence: persistence, passwordResetService }).get('trust proxy'),
+      0,
+    );
+    process.env.GHM_AUTH_ISSUER_TRUST_PROXY_HOPS = '2';
+    assert.equal(
+      createAuthIssuerApp({ authService, authPersistence: persistence, passwordResetService }).get('trust proxy'),
+      2,
+    );
+  } finally {
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnv;
+    if (previousHops === undefined) delete process.env.GHM_AUTH_ISSUER_TRUST_PROXY_HOPS;
+    else process.env.GHM_AUTH_ISSUER_TRUST_PROXY_HOPS = previousHops;
+  }
+});
