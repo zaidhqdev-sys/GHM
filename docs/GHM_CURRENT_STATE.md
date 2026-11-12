@@ -1179,3 +1179,10 @@ Latest source/test correction before this documentation update: `419dd4470268b58
 The issuer cutover qualification now installs a temporary GHM-schema-specific function default EXECUTE grant for the unexpected non-owner role `postgres`, proves both Authentication Issuer and Actor Gateway startup verifiers reject it, revokes the probe grant through the restricted migrator/schema-owner path, and proves both return to a safe baseline. The fixture is confined to the guarded disposable `ghm_disposable_test` database and is covered by static source-contract tests. Exact-head PostgreSQL 18 CI remains unverified and is required before calling this qualified.
 
 Latest qualification-source/test commit before this state update: `c2e345440978716bc221cbf8aa486dd9d8d173a6`. No production changes or paid resources.
+
+
+## 2026-11-12 — SECURITY DEFINER owner and search_path enforcement
+
+Added manual-free migration `20261112090000_pin_security_definer_search_path.sql`. It fails closed if any GHM SECURITY DEFINER function is not owned by `ghm_schema_owner`, then pins every GHM SECURITY DEFINER function to `pg_catalog, ghm, pg_temp` so caller temporary objects cannot shadow trusted objects. Both issuer and Actor Gateway startup ACL verifiers now fail closed on any SECURITY DEFINER function with unexpected ownership or search_path; unit/source-contract tests and disposable qualification assertions were added.
+
+This is source-level hardening awaiting exact-head PostgreSQL 18 CI. The inspected commit status endpoint returned no status checks; do not claim qualification passed. Production remains untouched.
