@@ -132,6 +132,10 @@ try {
   if (outsiderPrivateRead) throw new Error('Cross-business actor read a private storage object');
   console.log('PRIVATE STORAGE METADATA CROSS-BUSINESS READ DENIED: PASS');
 
+  const pendingPublicRead = await reader.getObject(fixture.outsiderId, fixture.availableTarget.objectId);
+  if (pendingPublicRead) throw new Error('Cross-business actor read pending public storage metadata');
+  console.log('PENDING PUBLIC STORAGE METADATA CROSS-BUSINESS READ DENIED: PASS');
+
   await expectDenied('Non-member pending-object creation', () => reader.createPending(fixture.nonmemberId, {
     businessId: fixture.businessId, resourceType: 'business', resourceId: fixture.businessId,
     objectClass: 'business_logo', providerKey: `media/logos/${fixture.businessId}/${randomUUID()}`,
@@ -174,6 +178,11 @@ try {
   );
   if (available.status !== 'available') throw new Error('Legitimate availability transition did not complete');
   console.log('LEGITIMATE ACTOR + PROVIDER DUAL-PROOF AVAILABILITY: PASS');
+  const publicAvailableRead = await reader.getObject(fixture.outsiderId, target.objectId);
+  if (!publicAvailableRead || publicAvailableRead.status !== 'available') {
+    throw new Error('Available public Business Logo metadata was not readable through the public visibility exception');
+  }
+  console.log('AVAILABLE PUBLIC BUSINESS LOGO METADATA READ REMAINS PUBLIC: PASS');
 
   const replay = fixture.replayTarget;
   const replayNonce = randomUUID();
