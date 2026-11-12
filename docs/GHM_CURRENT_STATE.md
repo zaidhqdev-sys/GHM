@@ -851,3 +851,14 @@ Before GHM removes auth routes from Resource API, add separate auth issuer/resou
 ## Latest predecessor CI result (2026-11-12)
 
 CI run #3493 completed successfully on predecessor commit `0f9349a`: both `quality` and `web-quality` passed, including the full build, migrations, tests and configured disposable PostgreSQL qualifications. Cross-product consumer-inventory commits were added afterward and are not covered by #3493. Current branch head therefore still needs exact-head CI confirmation.
+
+
+## Isolated auth issuer construction status (2026-11-12)
+
+Construction branch: `construction/auth-issuer-isolation-20261112`.
+
+An initial separate issuer process/app now exists under `src/auth-issuer/`, with a dedicated DB URL/pool, strict startup role assertion (`ghm_auth_issuer`), explicit production DB SSL mode, issuer-only signing/pepper construction, existing auth router contract, and health endpoint. Added principal/SSL/app tests, a `start:auth-issuer` script, CI-only disposable role creation and issuer environment placeholders.
+
+This is not a cutover: Resource API still registers auth routes and retains its signing/pepper code path. The issuer DB login has no auth function grants yet; no privilege migration, deployment or product-client changes. Cross-product auth/resource URL separation and Connect BFF issuer upstream split remain required. Recovery delivery and QuoteFlow reset services remain unavailable by default.
+
+CI runs #3508–#3510 are still in progress / superseded while commits were being added. The latest run against the exact current head must complete successfully before claiming build/test qualification. Detailed implementation and remaining security gates are in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
