@@ -992,3 +992,10 @@ Code/test head `51e1faa9836d09c8cf8f6eae4b97a06e82467115`, GitHub Actions #3606:
 Current per-process auth route limits: register/login 10 per 15 minutes; password recovery and QuoteFlow migration-reset recovery request/completion 5 per 15 minutes; refresh 60 per 15 minutes; browser-cookie logout 60 per 15 minutes. These are process-local, not distributed or edge abuse controls. CORS is not authentication/authorization. Do not claim deployed proxy behavior until hop count is measured on the actual issuer ingress.
 
 This is the qualified code/test head, not the latest documentation head. The latest handover/state commit still requires exact-head CI.
+
+
+### Issuer database transport / temporary Free Postgres caveats
+
+Render Free Postgres is 1 GB, expires after 30 days, and only one Free Postgres database can be active per workspace. It could only serve as a temporary disposable qualification target, not durable issuer storage or a backup. None was available in the inventory; no new database was created.
+
+The issuer's production database SSL mode must be explicit. Current `external` mode encrypts with `rejectUnauthorized: false` and therefore does not authenticate the server certificate. `internal` mode disables TLS and is only appropriate after verifying a same-region Render private-network route. No production mode or deployment topology has been selected.

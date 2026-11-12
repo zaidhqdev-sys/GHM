@@ -2169,3 +2169,9 @@ Existing auth-router limits are per registered app process and per client-IP key
 These are in-process limits, not a distributed quota, account-level global limit, edge WAF, or DDoS defense. Proxy trust must be set from measured deployed request topology. CORS only controls compliant browsers; it is not an authorization boundary and does not constrain native clients or server-to-server calls.
 
 The latest test head is not the latest documentation head. Subsequent handover/state edits are being qualified separately; do not report them green until their exact-head CI completes.
+
+
+### Additional deployment constraints confirmed
+
+- Render Free Postgres is only 1 GB and expires 30 days after creation; only one Free Postgres instance may be active per workspace. It is suitable only as a temporary disposable qualification target, not a durable issuer database or backup strategy. There was no available Free Postgres instance in the workspace inventory. Creating one is a separate resource mutation and has not been authorized or attempted. Reference: https://render.com/docs/free.
+- Issuer database TLS configuration is explicit in production. The current `external` mode uses TLS with `rejectUnauthorized: false`, which encrypts the connection but does **not** authenticate the database server certificate. The `internal` mode disables TLS and is intended only for a verified same-region Render private-network path. No production mode has been selected; the actual issuer/database topology and acceptable transport protection must be reviewed before deployment. Do not describe external mode as certificate-verified TLS.
