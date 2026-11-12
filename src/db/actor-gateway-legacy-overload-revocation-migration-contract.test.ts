@@ -9,6 +9,7 @@ const migration = fs.readFileSync(path.resolve(
 ), 'utf8');
 
 const legacySignatures = [
+  'ghm.assert_actor_gateway(bigint)',
   'ghm.gateway_get_actor_identity(bigint)',
   'ghm.gateway_read_business_registration_identity(bigint, bigint)',
   'ghm.gateway_update_business_registration_identity(bigint, bigint, text, text, text)',
