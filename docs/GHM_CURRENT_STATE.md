@@ -1172,3 +1172,10 @@ Manual issuer cutover and rollback SQL now fail closed unless the session login 
 The issuer branch is separate from open/unmerged upstream PR #272. A live comparison during this audit reported 411 commits ahead and 0 behind the integration base; this is diagnostic only and is not merge readiness. The available GitHub workflow-run view did not expose push-triggered runs for this branch, so exact-head CI status is unverified. Previous green run `43161326835` predates these changes and is historical only.
 
 Latest source/test correction before this documentation update: `419dd4470268b5811dd9197ba36c9e40b87f4b1b`. Production remains untouched; no paid resource was created.
+
+
+## 2026-11-12 — schema-specific default-ACL adversarial qualification added
+
+The issuer cutover qualification now installs a temporary GHM-schema-specific function default EXECUTE grant for the unexpected non-owner role `postgres`, proves both Authentication Issuer and Actor Gateway startup verifiers reject it, revokes the probe grant through the restricted migrator/schema-owner path, and proves both return to a safe baseline. The fixture is confined to the guarded disposable `ghm_disposable_test` database and is covered by static source-contract tests. Exact-head PostgreSQL 18 CI remains unverified and is required before calling this qualified.
+
+Latest qualification-source/test commit before this state update: `c2e345440978716bc221cbf8aa486dd9d8d173a6`. No production changes or paid resources.
