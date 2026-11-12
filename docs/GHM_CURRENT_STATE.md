@@ -1089,7 +1089,7 @@ Historical checkpoint: the Resource API runtime's exact three-function allow-lis
 
 The runtime's provider-business mapping mutation has been moved behind `ghm.gateway_provision_connect_business`, a signed Actor Gateway operation. Migration `20261112080000_signed_connect_business_provisioning_gateway.sql` adds operation `business.connect.provision`, creates Business + owner membership + external mapping atomically, and resolves existing mappings only for an active member or system admin. It serializes by provider/external ID and locks actor/membership rows.
 
-The old `auth_link_business_external_mapping` SECURITY DEFINER function is now schema-owner-only; PUBLIC, runtime, migrator, Actor Gateway, issuer and payment-provider EXECUTE are revoked. Runtime's exact auth-function allow-list is now two lookups. Actor Gateway's exact signed/typed allow-list is now 25 functions.
+The old `auth_link_business_external_mapping` SECURITY DEFINER function is now schema-owner-only; PUBLIC, runtime, migrator, Actor Gateway, issuer and payment-provider EXECUTE are revoked. Runtime's exact auth-function allow-list is now two lookups. Actor Gateway's exact signed/typed allow-list is now 24 functions after revoking the unused unsigned helper.
 
 `ConnectBusinessAdapter` now calls the signed gateway HTTP client, and the Actor Gateway route, client tests, route tests, migration contract and live disposable PostgreSQL qualification are added. The adapter is not yet mounted in the main Connect service router; full product API wiring remains a separate integration gate. The new DB operation denies resolving an existing mapped Business without active membership (unless system admin), correcting the previous cross-business disclosure behavior.
 
