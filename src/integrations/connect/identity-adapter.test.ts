@@ -23,7 +23,6 @@ const createPersistence = (
   createSessionWithRefresh: async () => { throw new Error('unused'); },
   rotateRefresh: async () => { throw new Error('unused'); },
   issueRecovery: async () => { throw new Error('unused'); },
-  redeemRecovery: async () => { throw new Error('unused'); },
   lookupQuoteFlowMigrationResetEnrollment: async () => null,
   lookupExternalIdentity: lookup,
   linkBusinessExternalMapping: async () => { throw new Error('unused'); },
