@@ -5,7 +5,7 @@ import test from 'node:test';
 const migration = readFileSync('database/migrations/20261112140000_add_signed_storage_metadata_actor_gateway.sql', 'utf8');
 
 test('storage actor operations are allow-listed by the shared v2 assertion verifier', () => {
-  for (const operation of ['storage.metadata.create','storage.metadata.read','storage.metadata.mark_deletion_pending']) {
+  for (const operation of ['capability.list','business.capability.replace','saved_business.read','business.hours.replace','business.hours.read','trust.score.calculate','trust.score.read','business.logo.bind','business.connect.provision','storage.metadata.create','storage.metadata.read','storage.metadata.mark_deletion_pending']) {
     assert.ok(migration.includes(`'${operation}'`));
   }
   assert.ok(migration.includes('ghm-actor-gateway:v2|'));
