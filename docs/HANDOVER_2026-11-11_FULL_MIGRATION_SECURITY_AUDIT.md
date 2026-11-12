@@ -1785,3 +1785,43 @@ After #3528, the construction app was hardened to:
 - avoid guessing Render/proxy topology; the value must be set only after the actual trusted hop chain is verified.
 
 The latest exact-head CI run for these CORS/proxy changes is still in progress. Do not treat those later changes as qualified until the run completes.
+
+
+## Cross-repository issuer URL extraction — construction completed and CI passed (2026-11-12)
+
+The GHM issuer-origin client split has now been implemented on isolated construction branches in both consuming product repositories. No default origins or feature flags were changed; absent issuer URL configuration falls back to the existing GHM resource/API origin.
+
+### GHM web client
+
+- `web/src/api/config.ts` now has `getAuthIssuerBaseUrl()`, using optional `VITE_GHM_AUTH_ISSUER_BASE_URL` and falling back to `getApiBaseUrl()`.
+- `web/src/auth/ghm-auth-client.ts` sends register/login/refresh/logout to the issuer origin, while `apiFetch` continues using the resource API origin.
+- Added tests for fallback/configured origin selection and split auth/resource requests.
+- This branch's changes are in the GHM construction branch; the exact CI run for the full branch still needs final-head confirmation after subsequent commits.
+
+### ZAID Connect
+
+- Construction branch: `construction/ghm-auth-issuer-origin-20261112`.
+- Added `VITE_GHM_AUTH_ISSUER_BASE_URL` resolver; native bearer auth calls use it, while resource `apiFetch` remains on `VITE_GHM_API_BASE_URL`. Empty/unset issuer setting falls back to the resource URL.
+- Added `GHM_AUTH_ISSUER_URL` as an optional server-only upstream for the four browser-cookie auth endpoints in the Vercel BFF. The resource proxy continues to use `GHM_INTERNAL_RUNTIME_URL`. Existing browser-auth feature flag remains disabled by default; fixed allow-list, Origin checks, cookie forwarding and native-route blocking remain.
+- Added URL resolver and BFF upstream split tests; wired the contract test into the existing auth contract command.
+- CI run #292 passed the full Connect quality job on commit `8c77213f089b335cdcfa44d26303319d4ebe7555`. This run includes the issuer URL contract and proxy upstream test commits present before the workflow-triggering commit. Exact final branch head `5fedd4d` has not itself triggered a new CI run yet; recheck after the next branch push.
+
+### QuoteFlow
+
+- Construction branch: `construction/ghm-auth-issuer-origin-20261112`.
+- Added optional `EXPO_PUBLIC_GHM_AUTH_ISSUER_URL`; its resolver falls back to existing `EXPO_PUBLIC_GHM_AUTH_BASE_URL`.
+- `ghmAuthClient` sends login/refresh/logout to the issuer URL, while `getIdentity` stays on the resource API URL. The adapter passes both origins explicitly.
+- Gate A remains disabled by default; Supabase Auth coexistence is unchanged. No environment flag was enabled.
+- Added a split-origin integration test and documented the optional env value.
+- CI run #220 passed typecheck and tests on commit `76c8e29dd5609af5026299aee4359bfc90caa74a`. The subsequent test commit `8f58bfb` has not yet triggered an exact-head CI run; recheck after the next branch push.
+
+### Cutover remains blocked intentionally
+
+These are client-side construction changes only. No product deployment/environment variables, Vercel BFF secrets, issuer service, proxy routes, or DNS/custom domains were changed. All default behavior still uses the current GHM Internal Runtime origin. Before enabling a separate issuer URL, we still need:
+- Actual Render service configuration and network/private routing plan confirmed from the owner.
+- A same-origin ingress/proxy design for the GHM web client and Connect BFF that does not expose issuer credentials.
+- A QuoteFlow build-time env plan; its flag remains off.
+- Issuer DB principal allow-list and issuer service start-up qualification (disposable CI passes, production service not deployed).
+- End-to-end non-production tests across GHM web, Connect native and browser modes, and QuoteFlow Gate A before any production routing changes.
+
+No live service, database, secret, product environment, or feature flag has been changed.
