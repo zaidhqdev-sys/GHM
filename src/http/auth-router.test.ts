@@ -393,7 +393,7 @@ test('login issues ES256 access JWT with decimal sub and no role claim', async (
   const passwordHash = (await defaultPasswordHasher.hash('CorrectHorseBattery1')).passwordHash;
 
   const persistence: AuthPersistence = {
-    setPassword: async () => ({ passwordHash, argon2MemoryKib: 65536, argon2TimeCost: 3, argon2Parallelism: 1 }),
+    rehashPasswordIfUnchanged: async () => true,
     completeQuoteFlowMigrationReset: async () => ({ accountId: 42, loginEmail: 'user@example.com', revokedSessionCount: 0 }),
     resetPasswordWithRecovery: async () => ({ password: { passwordHash, argon2MemoryKib: 65536, argon2TimeCost: 3, argon2Parallelism: 1 }, revokedSessionCount: 0 }),
     lookupPasswordByEmail: async () => ({
