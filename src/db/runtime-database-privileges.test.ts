@@ -10,10 +10,10 @@ import {
 } from './runtime-database-privileges';
 
 test('runtime startup accepts only the four reviewed pre/post gateway and issuer ACL states', () => {
-  assert.equal(RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length, 43);
-  assert.equal(RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS.length, 40);
-  assert.equal(RUNTIME_POST_AUTH_ISSUER_FUNCTIONS.length, 29);
-  assert.equal(RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS.length, 26);
+  assert.equal(RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS.length, 41);
+  assert.equal(RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS.length, 38);
+  assert.equal(RUNTIME_POST_AUTH_ISSUER_FUNCTIONS.length, 27);
+  assert.equal(RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS.length, 24);
   for (const functions of [
     RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS,
     RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS,
@@ -66,6 +66,22 @@ test('runtime startup rejects added, missing or unexpected function EXECUTE gran
       }),
       /Runtime database function EXECUTE allow-list mismatch/,
     );
+  }
+});
+
+test('registration identity functions are never granted to the Resource API runtime after their gateway migrations', () => {
+  for (const signature of [
+    'ghm.read_business_registration_identity(bigint, bigint)',
+    'ghm.update_business_registration_identity(bigint, bigint, text, text, text)',
+  ]) {
+    for (const functions of [
+      RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS,
+      RUNTIME_POST_CAMPAIGN_REVIEW_FUNCTIONS,
+      RUNTIME_POST_AUTH_ISSUER_FUNCTIONS,
+      RUNTIME_POST_CAMPAIGN_REVIEW_AND_AUTH_ISSUER_FUNCTIONS,
+    ]) {
+      assert.ok(!(functions as readonly string[]).includes(signature), signature);
+    }
   }
 });
 
