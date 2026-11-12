@@ -109,18 +109,19 @@ Zaid Connect and QuoteFlow remain on their existing Supabase production backends
 
 ## Authentication and provider-business mapping function authority — 2026-11-12
 
-The isolated Authentication Issuer has a separate exact ten-function allow-list. It receives no direct GHM table/view/sequence privileges and no schema CREATE; startup verifies the database login/effective role and ACL set before opening the listener. See `AUTH_ISSUER_CUTOVER_AND_ROLLBACK_RUNBOOK.md` for the manual-only cutover and coordinated rollback boundaries.
+The isolated Authentication Issuer has a separate exact ten-function allow-list. It receives no direct GHM table/view/sequence privileges and no schema CREATE; startup verifies the database login/effective role and ACL set before opening the listener.
 
-The Resource API runtime's current `ghm.auth_*` executable set is exactly three functions:
+The Resource API runtime's current `ghm.auth_*` executable set is exactly two functions:
 - `ghm.auth_lookup_external_identity(text,text)` — Connect person identity lookup.
 - `ghm.auth_lookup_business_external_mapping(text,text)` — provider business ID to canonical GHM business ID lookup.
-- `ghm.auth_link_business_external_mapping(text,text,bigint)` — called by the existing `src/integrations/connect/business-adapter.ts` provisioning adapter and its live PostgreSQL qualification. The inspected `connect-service-router.ts` does not currently mount that adapter into an HTTP route. The adapter authenticates context, checks admin/business role, creates the canonical Business and owner membership, and links the external mapping in one transaction.
 
-The mutating SECURITY DEFINER function itself only verifies that the target Business exists and that the mapping is not conflicting. It does not independently prove caller membership/management or signed integration provenance. A compromised `ghm_runtime` database client can call it directly with a caller-chosen provider, external Business ID and existing Business ID. This is a real database-boundary gap, but the function is a dependency of the existing adapter and qualification path, though not currently wired to the inspected Connect HTTP router. Revoking it before replacing or removing that adapter would break the qualification path.
+The mutating helper `ghm.auth_link_business_external_mapping(text,text,bigint)` is no longer callable by any application role. Migration `20261112080000_signed_connect_business_provisioning_gateway.sql` revokes PUBLIC, runtime, migrator, Actor Gateway, issuer and payment-provider EXECUTE. It remains owned by `ghm_schema_owner` and is called only inside the signed `ghm.gateway_provision_connect_business` wrapper.
 
-The proposed migration `20261112060000_revoke_runtime_business_external_mapping_link.sql` was deleted before merge, and the corresponding REVOKE was removed from the manual issuer cutover. The issuer startup verifier therefore checks the runtime's exact three-function auth allow-list, including this currently required but unsafe mutation. It is explicitly not classified as lookup-only or security-closed.
+The wrapper validates signed operation `business.connect.provision`, checks active actor/business role, serializes external ID creation, creates Business + owner membership + mapping atomically, and returns existing mappings only to an active member or system admin. It locks actor and membership rows and rejects mapping races that do not create the exact expected mapping.
 
-Required remediation: move canonical Business creation, owner-membership creation and provider mapping into one signed, database-verifiable Actor Gateway operation, preserving transaction atomicity, external-ID concurrency serialization, idempotency, conflict behavior and rollback. Only after that full path is deployed and qualified should runtime EXECUTE be revoked. Do not substitute the migrator credential for a product request path.
+Actor Gateway's exact function allow-list is now 25 signed/typed operations. The disposable qualification proves concurrent provisioning creates one Business, an unrelated account cannot resolve it without membership, active members can resolve idempotently, runtime cannot call the helper or read mapping rows directly, and a forced mapping-insert failure rolls back Business and membership.
+
+The HTTP route `POST /v1/connect/businesses/provision-or-resolve` and the GHM-side HTTP adapter client are implemented. The adapter is not yet mounted in the main Connect service router; full product API wiring remains an integration gate, not a database permission gap.
 ## Actor Gateway database authority — 2026-11-12
 
 The dedicated `ghm_actor_gateway` login has an explicit 24-function signed/typed-operation allow-list established by the gateway migrations. It must not have direct table/view/sequence privileges or schema CREATE. The functions are SECURITY DEFINER operations owned by `ghm_schema_owner`, each with a fixed `search_path`, signed request-context validation and explicit grants to the gateway role.
