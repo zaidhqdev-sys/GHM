@@ -203,6 +203,52 @@ try {
      ORDER BY owner_role.rolname, schema_name, grantee, privilege
   `);
 
+  const columnPrivileges = await query(`
+    SELECT n.nspname AS schema_name,
+           c.relname AS relation_name,
+           c.relkind AS relation_kind,
+           owner_role.rolname AS owner,
+           a.attnum AS column_number,
+           a.attname AS column_name,
+           COALESCE(column_acl.entries, '[]'::jsonb) AS direct_acl,
+           COALESCE(effective_privileges.roles, '[]'::jsonb) AS effective_column_privileges
+      FROM pg_attribute a
+      JOIN pg_class c ON c.oid = a.attrelid
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      JOIN pg_roles owner_role ON owner_role.oid = c.relowner
+      LEFT JOIN LATERAL (
+        SELECT jsonb_agg(jsonb_build_object(
+          'grantee', CASE WHEN acl.grantee = 0 THEN 'PUBLIC' ELSE grantee_role.rolname END,
+          'grantor', grantor_role.rolname,
+          'privilege', acl.privilege_type,
+          'grantable', acl.is_grantable
+        ) ORDER BY acl.grantee, acl.privilege_type, acl.grantor) AS entries
+          FROM aclexplode(a.attacl) acl
+          LEFT JOIN pg_roles grantee_role ON grantee_role.oid = acl.grantee
+          LEFT JOIN pg_roles grantor_role ON grantor_role.oid = acl.grantor
+      ) column_acl ON true
+      LEFT JOIN LATERAL (
+        SELECT jsonb_agg(jsonb_build_object(
+          'role', r.rolname,
+          'select', has_column_privilege(r.oid, a.attrelid, a.attnum, 'SELECT'),
+          'insert', has_column_privilege(r.oid, a.attrelid, a.attnum, 'INSERT'),
+          'update', has_column_privilege(r.oid, a.attrelid, a.attnum, 'UPDATE'),
+          'references', has_column_privilege(r.oid, a.attrelid, a.attnum, 'REFERENCES')
+        ) ORDER BY r.rolname) AS roles
+          FROM pg_roles r
+         WHERE has_column_privilege(r.oid, a.attrelid, a.attnum, 'SELECT')
+            OR has_column_privilege(r.oid, a.attrelid, a.attnum, 'INSERT')
+            OR has_column_privilege(r.oid, a.attrelid, a.attnum, 'UPDATE')
+            OR has_column_privilege(r.oid, a.attrelid, a.attnum, 'REFERENCES')
+      ) effective_privileges ON true
+     WHERE a.attnum > 0
+       AND NOT a.attisdropped
+       AND a.attacl IS NOT NULL
+       AND n.nspname <> 'information_schema'
+       AND n.nspname NOT LIKE 'pg_%'
+     ORDER BY n.nspname, c.relname, a.attnum
+  `);
+
   const findings = [];
   for (const fn of functions) {
     const acl = fn.direct_acl ?? [];
@@ -249,6 +295,7 @@ try {
     role_attributes: roles,
     schema_privileges: schemas,
     database_privileges: databaseAcls,
+    column_privileges: columnPrivileges,
     function_default_acls: defaultAcls,
     preliminary_findings: findings,
     decision: 'REVIEW_REQUIRED_NO_AUTOMATIC_APPROVAL',
