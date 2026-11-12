@@ -66,17 +66,19 @@ try {
     const outsider = await setup.query("INSERT INTO ghm.account_identity(full_name,role) VALUES($1,'business') RETURNING id", [marker + '-outsider']);
     const member = await setup.query("INSERT INTO ghm.account_identity(full_name,role) VALUES($1,'business') RETURNING id", [marker + '-member']);
     const nonmember = await setup.query("INSERT INTO ghm.account_identity(full_name,role) VALUES($1,'business') RETURNING id", [marker + '-nonmember']);
+    const inactive = await setup.query("INSERT INTO ghm.account_identity(full_name,role,account_status) VALUES($1,'business','inactive') RETURNING id", [marker + '-inactive']);
     const a = await setup.query("INSERT INTO ghm.business(name,slug,verification_status,is_verified,is_active) VALUES($1,$2,'approved',true,true) RETURNING id", [marker, marker]);
     const b = await setup.query("INSERT INTO ghm.business(name,slug,verification_status,is_verified,is_active) VALUES($1,$2,'approved',true,true) RETURNING id", [marker + '-other', marker + '-other']);
     const accountId = Number(owner.rows[0].id);
     const outsiderId = Number(outsider.rows[0].id);
     const memberId = Number(member.rows[0].id);
     const nonmemberId = Number(nonmember.rows[0].id);
+    const inactiveId = Number(inactive.rows[0].id);
     const businessId = Number(a.rows[0].id);
     const otherBusinessId = Number(b.rows[0].id);
     await setup.query(
-      "INSERT INTO ghm.business_membership(business_id,account_id,membership_role,membership_status,created_by) VALUES($1,$2,'owner','active',$2),($3,$4,'owner','active',$4),($1,$5,'member','active',$2)",
-      [businessId, accountId, otherBusinessId, outsiderId, memberId],
+      "INSERT INTO ghm.business_membership(business_id,account_id,membership_role,membership_status,created_by) VALUES($1,$2,'owner','active',$2),($3,$4,'owner','active',$4),($1,$5,'member','active',$2),($1,$6,'administrator','active',$2)",
+      [businessId, accountId, otherBusinessId, outsiderId, memberId, inactiveId],
     );
     const insertObject = async (business, status, suffix, visibility = 'public', objectClass = 'business_logo') => {
       const key = objectClass === 'business_logo'
@@ -100,7 +102,7 @@ try {
     const privateReadTarget = await insertObject(businessId, 'pending', 'private-read-target', 'private', 'business_document');
     await setup.query('COMMIT');
     fixture = {
-      accountId, outsiderId, memberId, nonmemberId, businessId, otherBusinessId,
+      accountId, outsiderId, memberId, nonmemberId, inactiveId, businessId, otherBusinessId,
       availableTarget, replayTarget, replayTargetTwo, badSignatureTarget, crossActorTarget,
       wrongState, deletionTarget, nonManagerDeletionTarget, metadataMismatchTarget, privateReadTarget,
     };
@@ -131,6 +133,11 @@ try {
   console.log('PRIVATE STORAGE METADATA CROSS-BUSINESS READ DENIED: PASS');
 
   await expectDenied('Non-member pending-object creation', () => reader.createPending(fixture.nonmemberId, {
+    businessId: fixture.businessId, resourceType: 'business', resourceId: fixture.businessId,
+    objectClass: 'business_logo', providerKey: `media/logos/${fixture.businessId}/${randomUUID()}`,
+    contentType: 'image/png', byteSize: 1024, visibility: 'public', originalFilename: null,
+  }));
+  await expectDenied('Inactive actor with active administrator membership', () => reader.createPending(fixture.inactiveId, {
     businessId: fixture.businessId, resourceType: 'business', resourceId: fixture.businessId,
     objectClass: 'business_logo', providerKey: `media/logos/${fixture.businessId}/${randomUUID()}`,
     contentType: 'image/png', byteSize: 1024, visibility: 'public', originalFilename: null,
@@ -275,7 +282,7 @@ try {
     await cleanup.query('DELETE FROM ghm.storage_provider_workflow_attestation_secret WHERE singleton=true');
     if (fixture) {
       await cleanup.query('DELETE FROM ghm.business WHERE id IN ($1,$2)', [fixture.businessId, fixture.otherBusinessId]);
-      await cleanup.query('DELETE FROM ghm.account_identity WHERE id IN ($1,$2,$3,$4)', [fixture.accountId, fixture.outsiderId, fixture.memberId, fixture.nonmemberId]);
+      await cleanup.query('DELETE FROM ghm.account_identity WHERE id IN ($1,$2,$3,$4,$5)', [fixture.accountId, fixture.outsiderId, fixture.memberId, fixture.nonmemberId, fixture.inactiveId]);
     }
     await cleanup.query('COMMIT');
   } catch (error) {
