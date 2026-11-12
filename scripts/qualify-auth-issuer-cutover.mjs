@@ -114,6 +114,8 @@ try {
   assert.equal(baselineActorAcl.unsafe_function_defaults, false, 'Actor Gateway default function ACL baseline must be safe');
   assert.deepEqual(baselineIssuerAcl.unsafe_security_definer_functions, [], 'every GHM SECURITY DEFINER function must be schema-owner-owned with the pinned pg_temp-last search_path');
   assert.deepEqual(baselineActorAcl.unsafe_security_definer_functions, [], 'Actor Gateway verifier must reject unsafe GHM SECURITY DEFINER ownership or search_path');
+  assert.deepEqual(baselineIssuerAcl.unsafe_function_grantees, [], 'issuer-only functions must not be executable by any non-owner principal except ghm_auth_issuer');
+  assert.deepEqual(baselineActorAcl.unsafe_function_grantees, [], 'Actor Gateway functions must not be executable by any non-owner principal except ghm_actor_gateway');
 
   const schemaDefaultAclProbe = await migratorPool.connect();
   let schemaDefaultAclProbeInstalled = false;
@@ -160,6 +162,56 @@ try {
   assert.equal(actorAclAfterProbe.unsafe_function_defaults, false, 'Actor Gateway default ACL must return to its safe baseline after probe cleanup');
   assert.deepEqual(issuerAclAfterProbe.unsafe_security_definer_functions, [], 'issuer post-probe SECURITY DEFINER audit must remain clean');
   assert.deepEqual(actorAclAfterProbe.unsafe_security_definer_functions, [], 'Actor Gateway post-probe SECURITY DEFINER audit must remain clean');
+
+  // Prove both verifiers detect direct EXECUTE grants to a non-allowlisted
+  // application role, not merely PUBLIC and ghm_runtime.
+  const directAclProbe = await migratorPool.connect();
+  let directAclProbeInstalled = false;
+  try {
+    await directAclProbe.query('BEGIN');
+    await directAclProbe.query('SET LOCAL ROLE ghm_schema_owner');
+    await directAclProbe.query(
+      'GRANT EXECUTE ON FUNCTION ghm.auth_create_account(text, text, text, text, text, integer, integer, integer) TO ghm_payment_provider',
+    );
+    await directAclProbe.query(
+      'GRANT EXECUTE ON FUNCTION ghm.gateway_provision_connect_business(bigint, bigint, uuid, text, text, text, text, text) TO ghm_payment_provider',
+    );
+    await directAclProbe.query('COMMIT');
+    directAclProbeInstalled = true;
+
+    const [issuerWithUnexpectedGrant, actorWithUnexpectedGrant] = await Promise.all([
+      readAuthIssuerDatabasePrivileges(issuerPool),
+      readActorGatewayDatabasePrivileges(actorGatewayPool),
+    ]);
+    assert.ok(
+      issuerWithUnexpectedGrant.unsafe_function_grantees.includes('ghm.auth_create_account(text, text, text, text, text, integer, integer, integer)'),
+      'issuer verifier must report a direct grant to the non-allowlisted payment-provider principal',
+    );
+    assert.ok(
+      actorWithUnexpectedGrant.unsafe_function_grantees.includes('ghm.gateway_provision_connect_business(bigint, bigint, uuid, text, text, text, text, text)'),
+      'Actor Gateway verifier must report a direct grant to the non-allowlisted payment-provider principal',
+    );
+  } finally {
+    if (directAclProbeInstalled) {
+      await directAclProbe.query('BEGIN');
+      await directAclProbe.query('SET LOCAL ROLE ghm_schema_owner');
+      await directAclProbe.query(
+        'REVOKE EXECUTE ON FUNCTION ghm.auth_create_account(text, text, text, text, text, integer, integer, integer) FROM ghm_payment_provider',
+      );
+      await directAclProbe.query(
+        'REVOKE EXECUTE ON FUNCTION ghm.gateway_provision_connect_business(bigint, bigint, uuid, text, text, text, text, text) FROM ghm_payment_provider',
+      );
+      await directAclProbe.query('COMMIT');
+    } else {
+      await directAclProbe.query('ROLLBACK').catch(() => undefined);
+    }
+    directAclProbe.release();
+  }
+
+  const issuerAclAfterDirectProbe = await readAuthIssuerDatabasePrivileges(issuerPool);
+  const actorAclAfterDirectProbe = await readActorGatewayDatabasePrivileges(actorGatewayPool);
+  assert.deepEqual(issuerAclAfterDirectProbe.unsafe_function_grantees, [], 'issuer direct-grant probe must be fully cleaned up');
+  assert.deepEqual(actorAclAfterDirectProbe.unsafe_function_grantees, [], 'Actor Gateway direct-grant probe must be fully cleaned up');
 
   const runtimeAuthFunctions = await issuerPool.query(`
     WITH expected(signature) AS (
