@@ -1019,3 +1019,10 @@ The issuer now wires QuoteFlow migration-reset completion and has an HTTP test t
 Full sequence, exact limitations and rollback prerequisites: `docs/architecture/AUTH_ISSUER_CUTOVER_AND_ROLLBACK_RUNBOOK.md`. Design-only; no production changes authorized.
 
 Issuer branch ancestry is 130 commits ahead and 0 behind `integration/capability-gateway-qualification-20261110`. PR #272 remains the upstream Actor Gateway integration; do not merge it independently underneath this dependent construction branch. Latest exact-head CI is pending; production remains unchanged.
+
+
+### 2026-11-12 — Future GHM function default ACL
+
+Added migration `20261112050000_revoke_public_default_function_execution.sql` to revoke PostgreSQL's default PUBLIC EXECUTE privilege for future functions created by `ghm_schema_owner` in schema `ghm`. A disposable PostgreSQL probe function verifies PUBLIC, `ghm_runtime` and `ghm_auth_issuer` receive no implicit EXECUTE, then drops the function. This does not change existing function ACLs; existing functions remain governed by their explicit migrations/cutover.
+
+Issuer server wires QuoteFlow migration-reset completion; the reset request and generic recovery request remain unavailable (503) until a delivery adapter is configured. This is a go-live blocker, not a passing recovery delivery flow.
