@@ -274,6 +274,9 @@ jobs:
       - name: Runtime boundary verification
         run: npm run verify:runtime
 
+      - name: Qualify exact pre-issuer Resource API authentication grants
+        run: node scripts/qualify-auth-issuer-precutover.mjs
+
       - name: Apply guarded auth issuer manual cutover in disposable PostgreSQL only
         env:
           PGPASSWORD: migrator-test-password
