@@ -148,3 +148,97 @@ At the audited HEAD:
 - The existing fresh-backup, Render role-administration, deployment/network/TLS/rollback, external non-production R2, and founder-approval gates remain open.
 
 **Current conclusion:** the storage metadata actor/provider boundary is source-remediated and disposable-qualified. The whole-database inventory is complete for the audited GHM schema snapshot, but the application grant-authority review is **not closed**. Campaign and directory-review presentation require database actor binding, runtime function-grant drift detection is missing, and the migrator's explicit mapping lookup grant needs a necessity check.
+
+
+---
+
+## Continuation addendum — Campaign and directory-review actor binding
+
+**Updated:** 2026-11-12  
+**Implementation branch:** `construction/auth-issuer-isolation-20261112`  
+**Implementation HEAD at this checkpoint:** `1bd6ba2ab7fea7ae62585d0de8060d34e1e8c9ee`
+
+The two actor-binding findings recorded above have now been source-remediated. The original finding descriptions remain as historical evidence; their current status is superseded by this addendum.
+
+### Database migration and operation boundaries
+
+Forward migration:
+
+`database/migrations/20261112160000_add_signed_campaign_directory_review_actor_gateway.sql`
+
+It adds three SECURITY DEFINER wrappers:
+
+- `ghm.gateway_create_campaign(...)` — signed operation `campaign.create`.
+- `ghm.gateway_update_campaign(...)` — signed operation `campaign.update`.
+- `ghm.gateway_get_business_directory_review_presentation(...)` — signed operation `directory_review.presentation.read`.
+
+Each wrapper:
+- Verifies the full signed request context against the actual SQL arguments.
+- Calls `ghm.assert_actor_gateway_capability` and derives the actor from the verified, one-use assertion.
+- Passes only that verified actor into the legacy business operation.
+- Is owned by `ghm_schema_owner`, has pinned `pg_catalog, ghm, pg_temp` search path, and is executable by `ghm_actor_gateway` only among application principals.
+
+The migration extends the shared operation allow-list using a guarded `pg_get_functiondef` rewrite. It revokes the three legacy runtime grants for Campaign create, Campaign update and directory-review presentation. The owner-facing review presentation remains available through the gateway; Founder submission, queue and decision routes remain disabled.
+
+### Resource API and Actor Gateway integration
+
+- Added `PostgresCampaignDirectoryReviewGatewayReader` and the three authenticated Actor Gateway routes.
+- Added `HttpCampaignDirectoryReviewGatewayClient` and delegated Resource API Campaign create/update and owner directory-review presentation to it when configured.
+- Production Resource API fails closed if the gateway is required but unavailable.
+- The verified ES256 bearer is carried in a non-enumerable, non-writable `AuthContext.actorGatewayBearerToken` property. It is not serialized or included in ordinary context enumeration. Actor Gateway independently verifies the bearer and creates the signed database assertion; Resource API does not receive the assertion signing key.
+- Actor Gateway database startup allow-list now accepts exactly two staged states: its existing 30-function pre-migration set or the 33-function post-migration set. Missing new wrappers therefore do not prevent the gateway service from being staged before the migration.
+
+### Runtime function-grant drift detection
+
+Added `src/db/runtime-database-privileges.ts` and a pre-listen Resource API check.
+
+- Disposable PostgreSQL 18.6 baseline: 43 SECURITY DEFINER functions executable by `ghm_runtime`.
+- After this Campaign/review migration: 40.
+- The SQL normalizes expected signatures through PostgreSQL `to_regprocedure` and inventories actual executable SECURITY DEFINER functions from the live catalog.
+- Only those two exact states are accepted in non-production qualification.
+- **Production enforcement is deliberately gated** behind `GHM_RUNTIME_FUNCTION_ALLOWLIST_ENFORCED=true`. The 43/40 sets are derived from disposable PostgreSQL evidence, not an independently verified production catalog. Do not set the production flag until the production ACL inventory has been captured and reconciled.
+
+### Qualification evidence
+
+New tests and script:
+
+- `src/actor-gateway/campaign-directory-review-app.test.ts`
+- `src/resources/campaign-directory-review-gateway-repository.test.ts`
+- `src/db/campaign-directory-review-actor-gateway-migration-contract.test.ts`
+- `src/db/runtime-database-privileges.test.ts`
+- `scripts/qualify-campaign-directory-review-gateway-postgres.mjs`
+
+CI run [43254532210](https://github.com/zaidhqdev-sys/GHM/actions/runs/43254532210), exact HEAD `1bd6ba2ab7fea7ae62585d0de8060d34e1e8c9ee`, has passed:
+
+- TypeScript build.
+- Full disposable PostgreSQL migration application.
+- Actor Gateway principal and staged ACL qualification, including the runtime function allow-list check.
+- Test suite.
+- Campaign and directory-review PostgreSQL qualification.
+
+The new PostgreSQL qualification proves:
+- Legacy Campaign and directory-review functions are not executable by `ghm_runtime`.
+- Runtime cannot execute the new Actor Gateway wrappers.
+- Signed gateway Campaign creation/update and owner presentation reads succeed.
+- Creator provenance is bound to the signed actor.
+- Cross-business Campaign update and review presentation reads are denied.
+- Actor-ID substitution is denied for Campaign create, Campaign update and directory-review presentation.
+- Campaign request-target substitution and assertion replay are denied.
+- Disabled actors cannot read directory-review presentation.
+
+The overall quality job still has subsequent qualification steps in progress at this checkpoint; do not call the complete exact-head CI run passed until both quality and web-quality finish successfully.
+
+### Deployment sequencing and safety
+
+This is a manual production cutover, not an instruction to deploy now.
+
+1. Reconcile the actual production runtime and Actor Gateway catalogs and obtain the required independently verified backup.
+2. Stage the Actor Gateway build; its startup allow-list accepts the existing 30-function state.
+3. Coordinate the Resource API / Actor Gateway deployment and migration window. The migration revokes legacy runtime grants, so old Resource API instances cannot continue using the old direct functions. Do not permit mixed-version traffic through this transition.
+4. Apply the migration only after gateway service, URL, secrets, network and rollback readiness are verified.
+5. Restart Actor Gateway to verify the 33-function post-migration ACL.
+6. Deploy/enable Resource API gateway delegation and run live end-to-end qualification before reopening affected operations.
+
+No production database, Render service, secret, provider bucket, deployment, traffic, role or grant has been changed. No PR has been merged. PR #272 remains separate. PayFast remains paused. Existing backup, Render role-administration, non-production R2, deployment/network/TLS/rollback and founder-approval blockers remain open.
+
+**Current finding status:** Campaign create/update and owner directory-review presentation are now routed through signed Actor Gateway database wrappers in source and have passed disposable PostgreSQL qualification. The broader 43-function review, production ACL reconciliation and production cutover remain open.
