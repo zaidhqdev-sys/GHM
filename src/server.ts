@@ -4,7 +4,7 @@ import { createApp } from './http/app';
 import { pool } from './db/pool';
 import { assertRuntimeDatabaseIdentity } from './db/runtime-principal';
 
-const app = createApp();
+const app = createApp({ authRoutesEnabled: false });
 const server = http.createServer(app);
 server.requestTimeout = 30_000;
 server.headersTimeout = 10_000;
