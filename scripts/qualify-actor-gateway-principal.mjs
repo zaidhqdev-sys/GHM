@@ -3,6 +3,7 @@ import { createHmac, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { Pool } from 'pg';
+import { assertActorGatewayDatabasePrivileges, readActorGatewayDatabasePrivileges } from '../dist/actor-gateway/database-privileges.js';
 import 'dotenv/config';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL;
@@ -129,6 +130,9 @@ try {
   await identity(runtimePool, 'ghm_runtime');
   await identity(gatewayPool, 'ghm_actor_gateway');
   await identity(cleanupPool, 'ghm_migrator');
+  const gatewayPrivileges = await readActorGatewayDatabasePrivileges(gatewayPool);
+  assertActorGatewayDatabasePrivileges(gatewayPrivileges);
+  console.log('GATEWAY EXACT FUNCTION AND RELATION ACL ALLOW-LIST: PASS');
   const provision=await cleanupPool.connect();
   try { await provision.query('BEGIN'); await provision.query('SET LOCAL ROLE ghm_schema_owner'); await provision.query("INSERT INTO ghm.actor_gateway_capability_assertion_secret(singleton,secret) VALUES(true,$1) ON CONFLICT(singleton) DO UPDATE SET secret=EXCLUDED.secret",[Buffer.from(assertionSecret,'base64')]); await provision.query('COMMIT'); } catch(e) { await provision.query('ROLLBACK').catch(()=>{}); throw e; } finally { provision.release(); }
   console.log('DATABASE PRINCIPAL IDENTITY: PASS');
