@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { Pool } from 'pg';
 import { assertActorGatewayDatabasePrivileges, readActorGatewayDatabasePrivileges } from '../dist/actor-gateway/database-privileges.js';
+import { assertRuntimeDatabaseFunctionPrivileges, readRuntimeDatabaseFunctionPrivileges } from '../dist/db/runtime-database-privileges.js';
 import 'dotenv/config';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL;
@@ -130,6 +131,8 @@ try {
   await identity(runtimePool, 'ghm_runtime');
   await identity(gatewayPool, 'ghm_actor_gateway');
   await identity(cleanupPool, 'ghm_migrator');
+  assertRuntimeDatabaseFunctionPrivileges(await readRuntimeDatabaseFunctionPrivileges(runtimePool));
+  console.log('RESOURCE API RUNTIME EXACT FUNCTION EXECUTE ALLOW-LIST: PASS');
   const gatewayPrivileges = await readActorGatewayDatabasePrivileges(gatewayPool);
   console.log(`GATEWAY ACL DIAGNOSTIC: ${JSON.stringify(gatewayPrivileges)}`);
   assertActorGatewayDatabasePrivileges(gatewayPrivileges);
