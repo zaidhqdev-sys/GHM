@@ -37,7 +37,7 @@ The qualification creates one isolated probe object. The object is driven to the
 
 This qualification is intentionally provider-free and does not itself qualify provider credentials, object upload/download, signed URLs, tenant authorization, provider/object reconciliation, or backup/recovery.
 
-The later controlled live-provider data-path result is recorded separately in `docs/evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-05.md`; it qualifies real signed upload/download, provider metadata observation, payload integrity, and deletion for that bounded test. It does not close the following remaining gates:
+At the time of this 2026-10-05 provider-free persistence qualification, the later controlled live-provider data-path result was recorded separately in `docs/evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-05.md`; it qualified real signed upload/download, provider metadata observation, payload integrity, and deletion for that bounded test. The following list records the additional gates that remained open at that historical checkpoint; November 12 source and disposable PostgreSQL qualification updates are recorded later in this document:
 
 - full service-level tenant/resource authorization;
 - failed-operation recovery and orphan/provider reconciliation;
