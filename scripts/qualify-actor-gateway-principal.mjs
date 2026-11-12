@@ -133,6 +133,13 @@ try {
   await identity(cleanupPool, 'ghm_migrator');
   assertRuntimeDatabaseFunctionPrivileges(await readRuntimeDatabaseFunctionPrivileges(runtimePool));
   console.log('RESOURCE API RUNTIME EXACT FUNCTION EXECUTE ALLOW-LIST: PASS');
+  const mappingLookupAcl = await gatewayPool.query(`
+    SELECT has_function_privilege('ghm_runtime','ghm.auth_lookup_business_external_mapping(text,text)','EXECUTE') AS runtime_execute,
+           has_function_privilege('ghm_migrator','ghm.auth_lookup_business_external_mapping(text,text)','EXECUTE') AS migrator_execute
+  `);
+  assert.deepEqual(mappingLookupAcl.rows[0], { runtime_execute: true, migrator_execute: false });
+  console.log('BUSINESS EXTERNAL MAPPING LOOKUP ACL: runtime=yes migrator=no');
+
   const gatewayPrivileges = await readActorGatewayDatabasePrivileges(gatewayPool);
   console.log(`GATEWAY ACL DIAGNOSTIC: ${JSON.stringify(gatewayPrivileges)}`);
   assertActorGatewayDatabasePrivileges(gatewayPrivileges);
@@ -145,7 +152,36 @@ try {
   const disabledAccountId = await createFixtureAccount(`${fixture.marker}-disabled`, 'disabled');
   const otherOwnerAccountId = await createFixtureAccount(`${fixture.marker}-other-owner`);
   const businessId = await createFixtureBusiness(activeAccountId, 'primary');
+
   const otherBusinessId = await createFixtureBusiness(otherOwnerAccountId, 'other-owner');
+  const externalBusinessId = randomUUID();
+  const mappingFixture = await cleanupPool.connect();
+  try {
+    await mappingFixture.query('BEGIN');
+    await mappingFixture.query('SET LOCAL ROLE ghm_schema_owner');
+    await mappingFixture.query(
+      `INSERT INTO ghm.business_external_mapping(provider,external_business_id,business_id)
+       VALUES ('supabase',$1,$2)`,
+      [externalBusinessId, businessId],
+    );
+    await mappingFixture.query('COMMIT');
+  } catch (error) {
+    await mappingFixture.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally { mappingFixture.release(); }
+  const resolvedMapping = await runtimePool.query(
+    'SELECT * FROM ghm.auth_lookup_business_external_mapping($1,$2)',
+    ['supabase', externalBusinessId],
+  );
+  assert.equal(resolvedMapping.rowCount, 1);
+  assert.equal(Number(resolvedMapping.rows[0].business_id), businessId);
+  console.log('RUNTIME CONNECT BUSINESS MAPPING LOOKUP: PASS');
+  await expectSqlState(
+    () => cleanupPool.query('SELECT * FROM ghm.auth_lookup_business_external_mapping($1,$2)', ['supabase', externalBusinessId]),
+    '42501',
+    'migrator direct mapping lookup is denied',
+  );
+
 
   const roleState = await gatewayPool.query(`
     SELECT r.rolcanlogin,
