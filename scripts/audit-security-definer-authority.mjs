@@ -162,7 +162,20 @@ try {
       'Owner, search_path, extension membership and role membership require human review.',
       'This report is an inventory, not a migration or permission-change script.',
     ],
-  }, null, 2) + '\\n');
+  };
+  const outputPath = process.env.GHM_SECURITY_DEFINER_AUDIT_OUTPUT?.trim()
+    || path.resolve(process.cwd(), 'tmp/security-definer-authority-audit.json');
+  await fs.mkdir(path.dirname(outputPath), { recursive: true });
+  await fs.writeFile(outputPath, JSON.stringify(report, null, 2) + '\n', 'utf8');
+  process.stdout.write(JSON.stringify({
+    audit: report.audit,
+    database: server[0].database_name,
+    security_definer_routines: functions.length,
+    preliminary_findings: findings.length,
+    output_file: outputPath,
+    decision: report.decision,
+    mutation: false,
+  }, null, 2) + '\n');
 } finally {
   await client.end().catch(() => {});
 }
