@@ -1,21 +1,9 @@
 import type { Pool, PoolClient } from 'pg';
 import { createBusinessSlug } from '../resources/business-identity/repository';
 import type { BusinessIdentity } from '../resources/business-identity/contracts';
-import type { BusinessExternalMapping } from '../auth/foundation/types';
+import type { ConnectBusinessProvisioningInput, ConnectBusinessProvisioningResult } from '../integrations/connect/business-provisioning-contracts';
 import { createActorGatewayAssertion } from './request-assertion';
 
-export interface ConnectBusinessProvisioningResult {
-  outcome: 'resolved' | 'provisioned';
-  business: BusinessIdentity;
-  mapping: BusinessExternalMapping;
-}
-
-export interface ConnectBusinessProvisioningReader {
-  provisionOrResolve(
-    accountId: number,
-    input: { externalBusinessId: string; name: string },
-  ): Promise<ConnectBusinessProvisioningResult>;
-}
 
 type ConnectablePool = Pick<Pool, 'connect'>;
 type JsonRow = Record<string, unknown>;
@@ -49,7 +37,7 @@ const mapBusiness = (row: JsonRow): BusinessIdentity => ({
   updatedAt: new Date(String(row.updated_at)),
 });
 
-const mapMapping = (row: JsonRow): BusinessExternalMapping => ({
+const mapMapping = (row: JsonRow): ConnectBusinessProvisioningResult['mapping'] => ({
   id: Number(row.id),
   provider: String(row.provider),
   externalBusinessId: String(row.external_business_id),
@@ -79,7 +67,7 @@ export class PostgresConnectBusinessProvisioningReader implements ConnectBusines
 
   async provisionOrResolve(
     accountId: number,
-    input: { externalBusinessId: string; name: string },
+    input: ConnectBusinessProvisioningInput,
   ): Promise<ConnectBusinessProvisioningResult> {
     if (!Number.isSafeInteger(accountId) || accountId <= 0) {
       throw new Error('Actor account ID must be a positive safe integer');
