@@ -42,3 +42,10 @@ test('issuer verifier rejects direct EXECUTE grants to every non-owner grantee o
   assert.ok(privilegeSource.includes("acl.grantee <> 'ghm_auth_issuer'::regrole"));
   assert.ok(privilegeSource.includes('aclexplode(COALESCE(p.proacl'));
 });
+
+
+test('disposable qualification probes and cleans up unexpected issuer function grants', () => {
+  assert.ok(qualificationSource.includes('TO ghm_payment_provider'));
+  assert.ok(qualificationSource.includes('issuerWithUnexpectedGrant.unsafe_function_grantees'));
+  assert.ok(qualificationSource.includes('issuerAclAfterDirectProbe.unsafe_function_grantees'));
+});
