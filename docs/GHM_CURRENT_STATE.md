@@ -920,3 +920,10 @@ Added migration `20261112020000_add_token_bound_password_recovery_reset.sql` wit
 Persistence now calls this single function. The email field remains in the HTTP contract as an account-binding check, not an email-change instruction. Standalone `redeemRecovery` was removed from the production persistence interface after caller audit found no active app caller; database tests invoke the legacy wrapper under schema-owner test credentials only.
 
 The issuer allow-list is now 10 functions: registration, password lookup, password set/rehash, session creation, refresh, logout, recovery issuance, token-bound password reset, QuoteFlow enrollment lookup and QuoteFlow completion. Legacy redemption wrappers are excluded and revoked at manual cutover. Exact-head CI #3571–#3573 is validating the migration, persistence changes, and reduced allow-list; prior runs found stale test mocks/Buffer typing, now corrected.
+
+
+## Conditional password rehash and stale-login race protection (2026-11-12)
+
+Added migration `20261112030000_add_conditional_password_rehash.sql`. Login rehash now uses `auth_rehash_password_if_unchanged`, which updates only if the stored active credential hash still equals the hash verified by that login. If another reset wins the race, the issuer re-reads and re-verifies the current credential before issuing a session. This prevents stale login from restoring an old password.
+
+Removed general `setPassword` from the production persistence API; `auth_set_password` remains an owner-internal operation for the distinct QuoteFlow migration-reset function and is not granted to the issuer. Manual cutover grants conditional rehash instead. The disposable issuer script now includes an interleaved concurrent-reset/rehash adversarial scenario. CI #3588 is validating the corrected reset migration, rehash migration, test suite and manual cutover.
