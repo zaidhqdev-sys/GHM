@@ -56,7 +56,7 @@ The result must remain consistent with:
 - GHM database authority;
 - authorization/tenant-isolation contracts.
 
-This persistence-only qualification does not authorize provider provisioning by itself. Controlled non-production Cloudflare R2 provider data-path qualification was subsequently completed as recorded in `../evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-05.md`; production provider enablement and application wiring remain separately gated.
+This persistence-only qualification does not authorize provider provisioning by itself. Controlled non-production Cloudflare R2 provider data-path qualification was subsequently completed as recorded in `../evidence/STORAGE_LIVE_PROVIDER_QUALIFICATION_2026-10-05.md`. The November Resource API ↔ Actor Gateway storage metadata wiring is now implemented and passed disposable PostgreSQL 18 migration, adversarial dual-proof and legacy-grant rollback qualification. Production provider credential enablement and production revocation of the five legacy runtime grants remain separately gated.
 
 ## Qualification reconciliation — 2026-10-26
 
