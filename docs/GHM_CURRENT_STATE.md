@@ -770,3 +770,14 @@ The active Connect authorization route requires an existing external identity ma
 - No blind revocation: replacement issuer path and disposable-PostgreSQL positive/negative qualification must precede privilege changes.
 - No production changes, migrations, grants, secrets, deployments or data changes were made in this checkpoint.
 - Exact-head CI #3464/#3465 passed on predecessor head `6c25c96`; documentation has since advanced the branch to commit `2cd3f791ec850d60031047fd40d62d9ddbdfd3ec`. Recheck exact-head CI before any merge decision. Branch still requires reconciliation against the two commits newly on main.
+
+
+## Auth issuer follow-up — expanded scope (2026-11-12)
+
+The security handover now records the full initial runtime EXECUTE history, not only the three obvious account-ID writes. The issuer boundary must also account for password-hash lookup, account registration, refresh rotation, logout, recovery redemption/reset and QuoteFlow migration reset. External identity lookup/linking remains a separate call-path decision. Historical account/session admin grants and external identity link/bootstrap/QuoteFlow provisioning revocations already present in later migrations must be preserved and checked against the final catalog.
+
+A further contract test is required for password reset: HTTP currently accepts a recovery token plus an email value, and the persistence path uses that submitted email when updating the password credential. Confirm whether reset is allowed to change login email or must retain/bind the existing email; no behavior change has been made.
+
+Detailed caller trace, source paths, grant history, and next implementation sequence: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+Latest documentation-only branch commit at this update: `0812d0afea2e0b737ee524edcb05289cdcabdb78`. Earlier exact-head runs #3468/#3469 do not validate this newer commit. Recheck exact-head CI before any merge decision. No production changes or issuer provisioning are authorized by this checkpoint.
