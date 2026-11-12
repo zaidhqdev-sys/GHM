@@ -134,10 +134,11 @@ try {
   );
 
   const startupPrivileges = await readAuthIssuerDatabasePrivileges(issuerPool);
-  assert.doesNotThrow(
-    () => assertAuthIssuerDatabasePrivileges(startupPrivileges),
-    'the exact production startup ACL verifier must accept the disposable post-cutover issuer/runtime roles',
-  );
+  try {
+    assertAuthIssuerDatabasePrivileges(startupPrivileges);
+  } catch (error) {
+    throw new Error(`the exact production startup ACL verifier rejected disposable post-cutover roles: ${error instanceof Error ? error.message : 'unknown'}; state=${JSON.stringify(startupPrivileges)}`);
+  }
 
   const issuerFunctions = await issuerPool.query(`
     SELECT p.proname
