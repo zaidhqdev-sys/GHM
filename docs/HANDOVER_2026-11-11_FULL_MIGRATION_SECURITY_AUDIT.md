@@ -1625,3 +1625,8 @@ Current default service availability must be preserved: password reset exists; p
 ### Latest CI
 
 The documentation/current-state head `0f9349a14b7b5e3e4e2d1d3c05c83470330beb0b` triggered CI run #3493. `web-quality` passed. `quality` completed build and all migrations, and was still running the test suite and subsequent disposable PostgreSQL qualification steps at the time of this note. Exact-head CI remains pending until the job concludes.
+
+
+### CI follow-up after routing documentation
+
+CI run #3493 is for predecessor commit `0f9349a14b7b5e3e4e2d1d3c05c83470330beb0b`: `web-quality` passed; `quality` has not yet reported a final conclusion. The subsequent routing handover/current-state commits are later than that run and require exact-head CI confirmation. No code changes were made in this audit batch.
