@@ -20,7 +20,14 @@ test('migration runner verifies the dedicated migrator role before SET ROLE', ()
   assert.match(migrationRunner, /direct_membership_count/);
   assert.match(migrationRunner, /schema_owner_direct_membership_count/);
   assert.match(migrationRunner, /migrator_untrusted_member_count/);
+  assert.match(migrationRunner, /migrator_admin_member_count/);
+  assert.match(migrationRunner, /exact_migrator_admin_membership/);
+  assert.match(migrationRunner, /membership.admin_option = true/);
+  assert.match(migrationRunner, /membership.inherit_option = false/);
+  assert.match(migrationRunner, /membership.set_option = false/);
   assert.match(migrationRunner, /schema_owner_untrusted_member_count/);
+  assert.match(migrationRunner, /schema_owner_admin_member_count/);
+  assert.match(migrationRunner, /exact_schema_owner_admin_membership/);
   assert.match(migrationRunner, /member_role\.rolname <> 'ghm_db_user'/);
   assert.match(migrationRunner, /member_role\.rolname NOT IN \('ghm_db_user', 'ghm_migrator'\)/);
   assert.match(migrationRunner, /migrator\.rolcreaterole AS migrator_rolcreaterole/);
