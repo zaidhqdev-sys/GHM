@@ -13,6 +13,7 @@ import type { SavedBusinessGatewayReader } from './saved-business-reader';
 import type { BusinessHoursGatewayReader } from './business-hours-reader';
 import type { TrustScoreGatewayReader } from './trust-score-reader';
 import type { BusinessLogoGatewayReader } from './business-logo-reader';
+import type { StorageMetadataGatewayReader } from './storage-metadata-reader';
 import type { ConnectBusinessProvisioningReader } from '../integrations/connect/business-provisioning-contracts';
 
 export interface ActorGatewayAppOptions {
@@ -32,6 +33,7 @@ export interface ActorGatewayDependencies {
   businessHoursReader?: BusinessHoursGatewayReader;
   trustScoreReader?: TrustScoreGatewayReader;
   businessLogoReader?: BusinessLogoGatewayReader;
+  storageMetadataReader?: StorageMetadataGatewayReader;
   connectBusinessProvisioningReader?: ConnectBusinessProvisioningReader;
 }
 
