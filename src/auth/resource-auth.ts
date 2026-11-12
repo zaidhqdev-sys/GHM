@@ -23,7 +23,8 @@ export const resolveResourceAuthRole = (state: AccountAuthState): GhmRole => {
 export const authContextFromAccountState = (
   accountId: number,
   state: AccountAuthState,
-): AuthContext => toLegacyAuthContext({ accountId }, resolveResourceAuthRole(state));
+  actorGatewayBearerToken?: string,
+): AuthContext => toLegacyAuthContext({ accountId }, resolveResourceAuthRole(state), actorGatewayBearerToken);
 
 export interface ResourceAuthDependencies {
   readonly ghmAuthenticator?: GhmBearerAuthenticator;
