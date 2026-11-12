@@ -275,8 +275,13 @@ jobs:
 
       - name: Apply guarded auth issuer manual cutover in disposable PostgreSQL only
         env:
-          PGPASSWORD: postgres
-        run: psql -h localhost -U postgres -d ghm_disposable_test -v ON_ERROR_STOP=1 -f database/cutovers/20261112010000_authentication_issuer_privilege_cutover.sql
+          PGPASSWORD: migrator-test-password
+        run: |
+          psql -h localhost -U ghm_migrator -d ghm_disposable_test -v ON_ERROR_STOP=1 <<'SQL'
+          SET ROLE ghm_schema_owner;
+          \\i database/cutovers/20261112010000_authentication_issuer_privilege_cutover.sql
+          RESET ROLE;
+          SQL
 
       - name: Qualify isolated auth issuer lifecycle and runtime denials on disposable PostgreSQL
         run: npm run qualify:auth-issuer-cutover
