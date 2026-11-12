@@ -1834,3 +1834,46 @@ The product handover commits now trigger CI against the latest product branch he
 - QuoteFlow final construction handover commit: `321eb8d8322fcc1d07ce576d382bb4b34af1573f`.
 
 Wait for the new exact-head Connect and QuoteFlow workflows to finish before marking their branch heads qualified. Earlier #292/#220 results covered their workflow-triggering commits, not the later final test/handover commits.
+
+
+## Render service inventory — deployment topology verified (2026-11-12)
+
+The connected Render workspace inventory was inspected read-only. This resolves part of the earlier deployment evidence gap.
+
+### Current GHM Internal Runtime service
+
+- Service: `GHM-Internal-Runtime`
+- Service ID: `srv-damupsek1f9s73eq8kkg`
+- URL: `https://ghm-internal-runtime.onrender.com`
+- Repository: `zaidhqdev-sys/GHM`
+- Branch: `main`
+- Build: `npm ci && npm run build`
+- Start: `npm start`
+- Health check: `/healthz`
+- Plan: `free`
+- Region: Frankfurt
+- Auto deploy: disabled
+- Render IP allow-list: `0.0.0.0/0` (publicly reachable at Render edge)
+
+### Actor Gateway deployment status correction
+
+The Render workspace currently lists five services. None is named or configured as a dedicated GHM Actor Gateway service. Source has a separate Actor Gateway entrypoint and start script, but that does **not** prove the gateway has a separately deployed service. Earlier handover language referring to an existing separate Actor Gateway service was too strong; the verified fact is only a separate source entrypoint/process contract. Its actual deployment is not present in the current Render service inventory.
+
+### Network/topology implications
+
+- Current Resource API service is public at the Render edge. The inventory does not establish private service-to-service routing, internal DNS, trusted proxy hop count, or whether a new issuer can be reached privately.
+- Do not configure `GHM_AUTH_ISSUER_TRUST_PROXY_HOPS` based on assumption. Current Resource API and issuer need an explicit proxy/topology decision.
+- A separate issuer would be an additional Render service. The current Resource API is on the free plan, but actual availability/limits for an additional free service must be confirmed in Render before creating anything. No service was created.
+- Do not place issuer private key, token pepper or issuer DB URL in the current Resource API service environment. Its existing environment was not read or changed.
+- Because the current service auto-deploy is off, merging code alone would not deploy it; however, this is not a reason to merge before docs and qualification gates are satisfied.
+
+### Next deployment planning gate
+
+Before service creation, obtain/confirm:
+1. Whether Render offers a suitable free service allocation without paid spend.
+2. Private networking availability for this workspace/service type and region, or a separately reviewed authenticated public upstream design.
+3. Exact public routing arrangement for GHM web and Connect BFF.
+4. Health/readiness behavior and startup DB-role assertion.
+5. Required issuer database credential and exact grants after the migration has been reviewed; no current secret values were accessed.
+
+This is a read-only inventory correction. No Render service, database, environment variable, secret, routing rule, or deployment was modified.
