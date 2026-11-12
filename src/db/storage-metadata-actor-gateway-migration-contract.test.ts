@@ -10,30 +10,30 @@ test('storage actor operations are allow-listed by the shared v2 assertion verif
   }
   assert.ok(migration.includes('ghm-actor-gateway:v2|'));
   assert.match(migration, /Actor assertion replay detected/);
-  assert.match(migration, /FOR v_i IN 0\\.\\.31 LOOP/);
+  assert.match(migration, /FOR v_i IN 0\.\.31 LOOP/);
 });
 
 test('storage create binds every metadata argument to the signed context', () => {
-  assert.match(migration, /jsonb_build_object\\([\\s\\S]*?'businessId',p_business[\\s\\S]*?'originalFilename',p_original_filename[\\s\\S]*?\\)/);
+  assert.match(migration, /jsonb_build_object\([\s\S]*?'businessId',p_business[\s\S]*?'originalFilename',p_original_filename[\s\S]*?\)/);
   assert.match(migration, /p_resource_type<>'business'/);
   assert.match(migration, /p_resource_id IS DISTINCT FROM p_business/);
   assert.match(migration, /p_object_class<>'business_logo'/);
   assert.match(migration, /media\/logos\/'\|\|p_business::text/);
   assert.match(migration, /p_byte_size>2097152/);
-  assert.match(migration, /bm\\.membership_role IN \\('owner','administrator'\\)/);
+  assert.match(migration, /bm\.membership_role IN \('owner','administrator'\)/);
 });
 
 test('object read derives tenant from stored object and preserves public logo access', () => {
-  assert.match(migration, /jsonb_build_object\\('objectId',p_object_id\\)/);
-  assert.match(migration, /so\\.tenant_business_id/);
-  assert.match(migration, /so\\.visibility='public'[\\s\\S]*?so\\.object_class='business_logo'/);
-  assert.match(migration, /bm\\.account_id=v_actor/);
+  assert.match(migration, /jsonb_build_object\('objectId',p_object_id\)/);
+  assert.match(migration, /so\.tenant_business_id/);
+  assert.match(migration, /so\.visibility='public'[\s\S]*?so\.object_class='business_logo'/);
+  assert.match(migration, /bm\.account_id=v_actor/);
 });
 
 test('deletion request requires an active manager of the object tenant', () => {
   assert.match(migration, /storage\.metadata\.mark_deletion_pending/);
   assert.match(migration, /SELECT tenant_business_id INTO v_business FROM ghm\.storage_object WHERE id=p_object_id/);
-  assert.match(migration, /bm\.membership_role IN \\('owner','administrator'\\)/);
+  assert.match(migration, /bm\.membership_role IN \('owner','administrator'\)/);
   assert.match(migration, /ghm\.storage_mark_deletion_pending\(p_object_id\)/);
 });
 
