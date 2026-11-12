@@ -1,5 +1,7 @@
 # Handover — production storage getter permission fix (2026-10-28)
 
+> **Historical snapshot — superseded for current role/security decisions by** `docs/HANDOVER_2026-11-11_ACTOR_GATEWAY_PRODUCTION_READINESS.md` and `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md` (12 November follow-up). The role names, direct grants, and production verification recorded below describe 28 October 2026 only. Do not treat the old `ghm_app_user` / `ghm_db_user` effective-role arrangement as the current intended runtime identity. The later production role-administration finding remains unresolved. The scoped `storage_get_object` permission success is not proof that the broader storage metadata SECURITY DEFINER boundary is safe: the 12 November audit records five remaining non-public storage functions whose database-side actor/tenant/provider assertions are not yet qualified. No production storage grants should be changed from this historical note.
+
 ## Current status
 
 The production database permission gap for the scoped storage metadata getter has been corrected interactively.
