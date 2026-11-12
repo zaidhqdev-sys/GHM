@@ -84,3 +84,23 @@ test('auth issuer preserves unavailable optional recovery routes by default', as
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 });
+
+
+test('auth issuer allows only exact HTTPS or localhost CORS origins', () => {
+  const previous = process.env.GHM_AUTH_ISSUER_CORS_ORIGINS;
+  try {
+    process.env.GHM_AUTH_ISSUER_CORS_ORIGINS = 'https://connect.example, http://localhost:3000, https://connect.example';
+    assert.doesNotThrow(() => createAuthIssuerApp({ authService, authPersistence: persistence, passwordResetService }));
+
+    for (const invalid of ['*', 'null', 'http://untrusted.example', 'https://connect.example/path', 'https://user:pass@connect.example']) {
+      process.env.GHM_AUTH_ISSUER_CORS_ORIGINS = invalid;
+      assert.throws(
+        () => createAuthIssuerApp({ authService, authPersistence: persistence, passwordResetService }),
+        /must contain exact HTTPS origins/,
+      );
+    }
+  } finally {
+    if (previous === undefined) delete process.env.GHM_AUTH_ISSUER_CORS_ORIGINS;
+    else process.env.GHM_AUTH_ISSUER_CORS_ORIGINS = previous;
+  }
+});
