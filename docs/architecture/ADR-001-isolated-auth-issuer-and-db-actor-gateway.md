@@ -4,7 +4,7 @@
 - **Status:** APPROVED FOR ISOLATED DESIGN AND QUALIFICATION
 - **Decision owner:** GHM owner (approval recorded in project conversation on 2026-11-10)
 - **Implementation status:** Not implemented; no production provisioning or credential changes authorized
-- **2026-11-12 implementation note:** Actor Gateway and Authentication Issuer implementations now exist on unmerged construction branches. Exact Actor Gateway ACL startup enforcement is under qualification; this does not change the no-production-provisioning/credential/grant authorization. The current gateway allow-list is 21 signed/typed functions; migration `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads.sql` revokes the original unsigned identity helper and nine pre-signed overloads.
+- **2026-11-12 implementation note:** Actor Gateway and Authentication Issuer implementations now exist on unmerged construction branches. Exact Actor Gateway ACL startup enforcement is under qualification; this does not change the no-production-provisioning/credential/grant authorization. The current gateway allow-list is 21 signed/typed functions; nine older overloads were already dropped by later migrations, and migration `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads.sql` revokes the one surviving unused unsigned identity helper.
 - **Supersedes:** The undecided topology section in PR #251's proposal
 
 ## Context
