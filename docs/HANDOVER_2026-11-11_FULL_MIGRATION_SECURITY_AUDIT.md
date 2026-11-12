@@ -2324,13 +2324,14 @@ Correction:
 
 The historical migration `20260921130500_auth_link_business_external_mapping.sql` grants `EXECUTE` to `ghm_runtime` on `ghm.auth_link_business_external_mapping(text,text,bigint)`. The SQL function verifies that the target Business exists and mapping conflicts, but does not independently verify actor membership/management, integration identity, or approved provisioning provenance.
 
-The current caller is present and active in this branch:
+The current branch contains a Connect Business provisioning adapter and live PostgreSQL qualification path:
 - `src/integrations/connect/business-adapter.ts` implements `ConnectBusinessAdapter.provisionOrResolve`.
 - It requires an authenticated context and `assertRole(context, 'admin', 'business')`.
 - Inside one `withAuthorizedTransaction`, it serializes the external Business UUID, resolves an existing mapping or creates a canonical GHM Business and owner membership, then calls `auth_link_business_external_mapping` before committing.
-- `src/integrations/connect/business-adapter.persistence.test.ts` exercises this real runtime path, including concurrent same-external-ID provisioning, idempotent resolution, conflict behavior and transaction rollback.
+- `src/integrations/connect/business-adapter.persistence.test.ts` exercises this runtime-backed adapter path, including concurrent same-external-ID provisioning, idempotent resolution, conflict behavior and transaction rollback.
+- Important qualification: the inspected `ConnectServiceHttpDependencies` and `connect-service-router.ts` do not currently wire this adapter into a public HTTP route, and repository search did not find another production constructor. Treat it as an existing product integration component and qualification path, not as proof of a currently mounted production endpoint.
 
-This means the previous proposed automatic revocation and manual-cutover revocation were incorrect: they would break a live Connect Business provisioning path. The test failure was valid product evidence, not an obsolete fixture.
+The proposed revocation would break the adapter and its live PostgreSQL qualification. The test failure was valid evidence about the adapter's current database dependency, not an obsolete fixture. Since the route is not currently wired, the safer course is to replace the adapter with a signed Actor Gateway operation before it is exposed, then revoke runtime EXECUTE.
 
 Correction to the attempted revocation:
 - Deleted the proposed migration `20261112060000_revoke_runtime_business_external_mapping_link.sql`; it is not part of the current migration chain.
