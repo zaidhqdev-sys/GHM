@@ -11,6 +11,10 @@ const issuerCutover = fs.readFileSync(path.resolve(
   process.cwd(),
   'database/cutovers/20261112010000_authentication_issuer_privilege_cutover.sql',
 ), 'utf8');
+const issuerRollback = fs.readFileSync(path.resolve(
+  process.cwd(),
+  'database/cutovers/20261112020000_authentication_issuer_privilege_rollback.sql',
+), 'utf8');
 
 test('future GHM functions created by the schema owner do not inherit PUBLIC EXECUTE', () => {
   assert.ok(migration.includes('ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner'));
