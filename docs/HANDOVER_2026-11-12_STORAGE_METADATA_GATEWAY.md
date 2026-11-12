@@ -159,3 +159,17 @@ Latest code commits for this provider stage:
 - `3e6fbaebe300ed00bd0a6127677798c3982484b8` — guarded disposable secret provisioning script.
 - `66d92971cb1d14293c8c8ce4c600b5cd63ce303e` — actor assertion operation regression test includes both provider transitions.
 
+## Resource API attestation and gateway transport primitives added
+
+Further implementation after the provider migration:
+
+- `src/actor-gateway/storage-metadata-reader.ts` now forwards both user actor assertions and Resource API provider attestations for mark-available and mark-deleted operations.
+- `src/actor-gateway/app.ts` exposes authenticated provider-transition routes that validate the attestation envelope shape and pass it unchanged to the database reader. The Actor Gateway does not possess the provider signing key and does not verify or mint the provider signature.
+- `src/http/storage-provider-attestation.ts` creates domain-separated, one-use HMAC provider attestations.
+- `src/http/storage-metadata-gateway-client.ts` provides a bounded, HTTPS-origin-validated, redirect-rejecting HTTP client that forwards the user's bearer token and signs provider transition attestations from the Resource API environment. It fails construction if the provider signing key is missing or malformed.
+- `src/storage/service.ts` now passes the verified storage record as evidence to mark-available and mark-deleted metadata operations, so the client can bind provider proof to the tenant, provider key, content type and byte size.
+- Added signer and provider-transition route tests.
+- CI workflow now syntax-checks the disposable-only provider secret provisioning script.
+
+**Important integration boundary:** the new Resource API client is not yet wired into `src/http/storage-router.ts` / `src/http/app.ts`, and the repository still uses direct `ghm.storage_*` calls. The Resource API signer secret has not been provisioned, no provider-attestation was generated in a live request, and neither the database migration nor provisioning script has been executed. This remains construction code, not a qualified cutover.
+
