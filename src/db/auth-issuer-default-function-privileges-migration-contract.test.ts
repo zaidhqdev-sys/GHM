@@ -13,10 +13,12 @@ const issuerCutover = fs.readFileSync(path.resolve(
 ), 'utf8');
 
 test('future GHM functions created by the schema owner do not inherit PUBLIC EXECUTE', () => {
-  assert.match(migration, /ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner[\\s\\S]*?REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC/i);
+  assert.ok(migration.includes('ALTER DEFAULT PRIVILEGES FOR ROLE ghm_schema_owner'));
+  assert.ok(migration.includes('REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC'));
+  assert.doesNotMatch(migration, /IN SCHEMA ghm/);
 });
 
 test('issuer allow-list is applied after clearing current function grants', () => {
-  assert.match(issuerCutover, /REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA ghm FROM ghm_auth_issuer/i);
-  assert.match(issuerCutover, /GRANT EXECUTE ON FUNCTION ghm\\.auth_create_account/i);
+  assert.ok(issuerCutover.includes('REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA ghm FROM ghm_auth_issuer'));
+  assert.ok(issuerCutover.includes('GRANT EXECUTE ON FUNCTION ghm.auth_create_account'));
 });
