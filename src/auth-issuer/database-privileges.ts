@@ -109,7 +109,9 @@ export const AUTH_ISSUER_DATABASE_PRIVILEGES_SQL = `
              AND d.defaclobjtype = 'f'
              AND acl.privilege_type = 'EXECUTE'
              AND acl.grantee IN (0, 'ghm_runtime'::regrole::oid, 'ghm_auth_issuer'::regrole::oid,
-             'ghm_actor_gateway'::regrole::oid)
+             'ghm_actor_gateway'::regrole::oid,
+             'ghm_migrator'::regrole::oid,
+             'ghm_payment_provider'::regrole::oid)
         )
       ) AS unsafe_function_defaults,
       ARRAY(
