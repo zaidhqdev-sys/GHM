@@ -1306,3 +1306,95 @@ A follow-up read-only role-capability query confirmed:
 - The current Render default query identity therefore cannot read the ledger; a controlled migrator connection that performs `SET ROLE ghm_schema_owner` is the correct read-only route.
 
 No production role, grant, migration, credential, environment variable, service, deployment, ledger row or data was changed.
+
+
+---
+
+## 2026-11-12 continuation — Opportunity requirements DELETE caller confirmed; column-level ACL audit gap corrected
+
+**Evidence:** complete recursive repository tree/source inspection at construction branch head `02d340e960d6e40ffcdfbbd65cc44ed8340f58e7`, read-only Render PostgreSQL 18 catalog queries, and a new disposable-only inventory implementation.  
+**Production mutation:** none.
+
+### Correction: Opportunity requirements DELETE is required, not stale
+
+The prior suspicion that `DELETE ON ghm.opportunity_capability_requirement` might be an orphaned grant is withdrawn.
+
+The complete source path is:
+
+- `src/http/opportunity-requirements-router.ts` registers authenticated `PUT /api/v1/opportunities/:opportunityId/requirements`.
+- The route validates the replacement payload and calls `OpportunityRequirementsService.replaceOpportunityRequirements`.
+- `src/resources/opportunity-requirements/service.ts` delegates to the repository.
+- `src/resources/opportunity-requirements/repository.ts` calls `assertOpportunityManager`, verifies each capability is active/selectable, deletes the current rows for that Opportunity, inserts the replacement set and reads it back, all inside `withAuthorizedTransaction`.
+- The repository tests explicitly assert the DELETE and INSERT SQL.
+- Migration `20260914220000_create_opportunity_capability_requirements.sql` explicitly grants the runtime the required DELETE plus column-level INSERT, and comments that DELETE is limited to this child table because replacement semantics require removing the existing requirement set.
+
+This is an active, authorized replacement workflow. Production DELETE is required for the currently deployed Resource API path. **Do not revoke it** unless this operation is first moved to a new database/gateway boundary with equivalent authorization and transaction semantics and its old runtime permission is cut over in a separately qualified migration.
+
+### Important correction to earlier production inventory: table-level ACL queries omitted column ACLs
+
+The earlier statement that the only direct runtime relation DML was the four table-level entries (`business`, `business_membership`, `opportunity`, and the requirements DELETE) was incomplete. The earlier query inspected `pg_class.relacl` but did not enumerate `pg_attribute.attacl`. PostgreSQL column-level INSERT/UPDATE grants are independent ACL entries and must be counted.
+
+A fresh read-only query against production `ghm_db` / `ghm` enumerated all direct column ACLs:
+
+| Privilege | Direct runtime column ACL entries | Affected tables |
+|---|---:|---:|
+| INSERT | 156 | 21 |
+| UPDATE | 60 | 12 |
+| SELECT | 7 | 1 |
+
+All captured column grants were issued by `ghm_schema_owner` and have no grant option.
+
+Important examples include:
+
+- `account_identity`: UPDATE limited to `avatar_ref`, `business_operator_intent`, `connect_role`, `full_name`, `phone`, `updated_at`. This corrects the earlier table-level-only observation: the profile update repository method has column-level privileges, though its route/caller was not found in the inspected HTTP app.
+- `business`: UPDATE limited to `rating`, `review_count`, `updated_at`.
+- `opportunity_capability_requirement`: INSERT limited to `capability_id`, `created_by`, `description`, `importance`, `minimum_proficiency_level`, `opportunity_id`, `sort_order`; separate table-level DELETE grant supports the replacement workflow.
+- `project`: nine INSERT columns and ten UPDATE columns.
+- Other column-scoped DML occurs on Business Capability/evidence/category/offering, engagement events, commercial event/payment/subscription/trial, Customer, Enquiry, Notification, Opportunity participant, Project Quote, Quote/line item, Review and Support Request/message.
+
+The complete result set was retrieved from the production catalog in this pass. The compact aggregate above is not a substitute for the full per-column inventory in the updated audit artifact.
+
+### Durable audit tooling correction
+
+The existing read-only whole-database SECURITY DEFINER authority inventory `scripts/audit-security-definer-authority.mjs` previously covered routine ACLs, memberships, roles, schemas, database ACLs and function default ACLs, but omitted `pg_attribute.attacl`. It could therefore miss direct column-scoped DML grants in the disposable report.
+
+Added:
+- A per-column direct ACL inventory with grantee, grantor, privilege and grant option.
+- Effective per-role column privilege flags for SELECT, INSERT, UPDATE and REFERENCES.
+- Relation owner/kind, schema, column number/name and stable ordering.
+- Report field `column_privileges`.
+- Source-contract regression assertions for `pg_attribute`, `attacl`, `aclexplode(a.attacl)`, effective `has_column_privilege` checks and report inclusion.
+
+Commits:
+- `6a0872b501bcdb42407ab3fb28415e4424212262` — inventory implementation.
+- `86d5b0de599f19d54c528c1c5086df2f04d01ba6` — regression test.
+
+This script remains restricted to local `ghm_disposable_test`; it was not pointed at Render. Production column ACLs were inspected separately with read-only SQL.
+
+### Exact-head CI status
+
+After the audit tooling change, the construction branch head is `86d5b0de599f19d54c528c1c5086df2f04d01ba6`.
+
+- CI run `43308731060` for implementation commit `6a0872b501bcdb42407ab3fb28415e4424212262` was in progress at the time of this handover update.
+- CI run `43308735232` for exact head `86d5b0de599f19d54c528c1c5086df2f04d01ba6` was queued.
+- Prior exact-head CI on `02d340e960d6e40ffcdfbbd65cc44ed8340f58e7` passed both `quality` and `web-quality`; this does not qualify the new column inventory change.
+
+Do not claim the column inventory implementation is qualified until exact-head `quality` and `web-quality` both pass.
+
+### Updated dispositions
+
+- Opportunity requirements DELETE: **required by active PUT replacement route; retain**.
+- Opportunity requirements column INSERT: **required by the same replacement route; retain**.
+- Account identity profile column UPDATE: live DB grant exists; inspected HTTP app still has no matching update route/caller, so this is a source reachability question, not a missing production privilege.
+- The prior "only four direct DML relations" statement is superseded and must not be repeated. Production runtime has extensive column-level DML on 21 tables for INSERT and 12 tables for UPDATE; reconcile these grants table/column/caller by caller.
+- Whole-database authority audit now includes column ACLs; the report is still an inventory requiring human review, not an automatic permission approval or a production mutation script.
+
+### Next work
+
+1. Reconcile the 156 INSERT and 60 UPDATE column ACL entries against repository callsites, HTTP routes, background jobs and SQL wrappers. Distinguish intentional direct runtime paths from gateway-cutover targets.
+2. Confirm exact-head CI on `86d5b0de599f19d54c528c1c5086df2f04d01ba6`.
+3. Reconcile relation-level ACLs, column-level ACLs and effective privileges together; do not infer one from the other.
+4. Continue SECURITY DEFINER caller/actor authority mapping and compare the production inventory with the intended service-specific allow-lists.
+5. Keep all production changes gated on fresh independently verified backup, role/service readiness and separately approved deployment/cutover.
+
+**No production roles, grants, memberships, object ownership, credentials, secrets, Render environment, migrations, deployments, services or application data were changed.**
