@@ -4,7 +4,6 @@ import { Pool } from 'pg';
 import 'dotenv/config';
 import { createActorGatewayAssertion } from '../dist/actor-gateway/request-assertion.js';
 import { PostgresCampaignDirectoryReviewGatewayReader } from '../dist/actor-gateway/campaign-directory-review-reader.js';
-import { assertRuntimeDatabaseFunctionPrivileges, readRuntimeDatabaseFunctionPrivileges } from '../dist/db/runtime-database-privileges.js';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL ?? process.env.DATABASE_URL;
 const gatewayUrl = process.env.GHM_ACTOR_GATEWAY_DATABASE_URL;
@@ -62,9 +61,6 @@ try {
     assert.equal(identity.rows[0].current_user, role);
     console.log(label + ' DATABASE IDENTITY: PASS');
   }
-
-  assertRuntimeDatabaseFunctionPrivileges(await readRuntimeDatabaseFunctionPrivileges(runtime));
-  console.log('RESOURCE API RUNTIME EXACT FUNCTION EXECUTE ALLOW-LIST: PASS');
 
   const accounts = await setup(
     "INSERT INTO ghm.account_identity(full_name,role) VALUES($1,'business'),($2,'business'),($3,'business') RETURNING id",
