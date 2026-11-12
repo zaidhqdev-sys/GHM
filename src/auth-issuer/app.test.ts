@@ -286,3 +286,22 @@ test('auth issuer completes an approved QuoteFlow migration reset before issuing
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 });
+
+
+test('auth issuer fails closed for QuoteFlow reset requests until a delivery adapter is configured', async () => {
+  const app = createAuthIssuerApp({ authService, authPersistence: persistence, passwordResetService });
+  const server = app.listen(0);
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/v1/auth/quoteflow-migration-reset/request`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'approved@example.com' }),
+    });
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { error: 'service_unavailable' });
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
