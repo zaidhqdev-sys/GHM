@@ -803,3 +803,12 @@ The Actor Gateway already has the correct separate-process pattern: dedicated en
 No auth issuer entrypoint, issuer-specific DB URL, issuer role assertion, or issuer start script exists yet. Also, production `src/server.ts` currently calls `createApp()` without injecting password recovery delivery or QuoteFlow migration-reset services; determine intended deployment wiring before moving those routes. No new email provider or route behavior is assumed.
 
 Latest handover contains the process/dependency graph, source evidence, unresolved route-delivery question and implementation gate. CI runs #3478/#3479 passed both quality and web-quality on predecessor head `6a95966`; subsequent handover commits still need exact-head CI confirmation. No production or database privilege changes.
+
+
+## Corrected auth grant matrix (2026-11-12)
+
+A migration-by-migration review corrected the initial runtime grant summary. `auth_create_account` was separately granted in `20261004020000`; QuoteFlow enrollment lookup and atomic reset completion were separately granted in `20261004181000` and `20261004190000`; the external identity table lockdown migration `20261111210000` re-granted several helper functions, and later migrations revoked operator-only provisioning/link/bootstrap. Token-bound recovery redemption wrappers remain runtime-executable today, as do password-hash lookup, refresh, logout, account-ID session creation, account-ID recovery issuance, QuoteFlow reset lookup/completion. These are all issuer cutover targets.
+
+Retain runtime-only `auth_lookup_external_identity` for Connect's lookup-only adapter unless a replacement contract is qualified. Preserve the already-revoked operator/admin functions. Detailed corrected matrix and migration provenance are in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+CI run #3485 targets predecessor handover head `b9a35a5`: web-quality passed; quality was still in progress at the last check (Build step running). The latest matrix documentation commit will trigger a new exact-head run. No database grants have been changed.
