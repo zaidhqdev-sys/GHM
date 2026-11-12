@@ -1555,3 +1555,40 @@ Do not start by changing only `auth_set_password` grants. At minimum, the issuer
 The repository CI's disposable PostgreSQL migration job currently applies all migrations and existing auth persistence tests exercise the shared runtime. Add a dedicated auth issuer ACL qualification after the new principal exists. It must query `has_function_privilege` for PUBLIC, `ghm_runtime`, `ghm_actor_gateway`, `ghm_auth_issuer`, and owner/migrator as appropriate; include every exact overload and confirm no inherited role membership/default PUBLIC EXECUTE bypass. Positive issuer calls and negative runtime direct calls must be run with separate real database logins, not `SET ROLE` impersonation from one login.
 
 No grants have been changed in this follow-up.
+
+
+## Follow-up — correct service-topology authority and auth route availability (2026-11-12)
+
+### ADR-001 topology correction
+
+A re-read of the approved ADR resolves an ambiguity in earlier handover wording. ADR-001's **default is two distinct internal services**: an authentication issuer and a typed database actor gateway. Separate processes inside one deployment are an exception only if process, credential, network and deployment isolation are demonstrably equivalent. The earlier handover phrasing that treated a separate process as the default was too permissive; it is corrected here. No service is to be provisioned until a separate operational plan is reviewed and authorized.
+
+The existing Actor Gateway is the reference for a separately launched service and dedicated database URL/principal. The issuer should follow the distinct-service default and use its own database URL, role assertion, issuer-only secret configuration, signing key and refresh/recovery pepper. A same-deployment process split is not accepted merely because it has a separate entrypoint.
+
+### Exact current HTTP route behavior from source
+
+The previous note described missing recovery/QuoteFlow dependency injection as an unresolved deployment wiring question. The route-level behavior is now verified:
+
+- `src/http/app.ts` always constructs `new PostgresAuthPersistence()` by default and always registers `registerAuthRoutes`.
+- `PostgresAuthPersistence` evaluates its default `loadTokenPepper()` constructor argument immediately. Consequently the ordinary Resource API process requires and loads `GHM_AUTH_TOKEN_PEPPER` at app construction, not only when a login route is first called.
+- `src/http/auth-router.ts` lazily creates the default `GhmAuthService` for register/login/refresh/logout. That factory loads `GHM_JWT_ES256_PRIVATE_KEY_PEM` via `loadEs256Keys()` when first invoked.
+- Password reset is enabled by default: `app.ts` creates `createPasswordResetService(authPersistence)` when no dependency is injected, and the HTTP route calls it.
+- Password recovery request is deliberately unavailable unless a `PasswordRecoveryService` is injected; without it the route returns HTTP 503 `service_unavailable`. The app's default server does not inject one.
+- Both QuoteFlow migration-reset routes return HTTP 503 unless their respective recovery/completion services are injected. The default server does not inject them.
+- No password-recovery delivery adapter is instantiated by the default Resource API composition. The `PasswordRecoveryDelivery` interface is a port only; source does not establish a configured provider. Do not assume email delivery works or add a provider without a separate approved integration decision.
+- QuoteFlow migration reset completion currently commits the token-bound reset, then calls ordinary login with the returned email and submitted password to issue a session. The issuer move must preserve this contract or deliberately replace it with an atomic reset-and-session design that is proven compatible; do not accidentally introduce a failure window.
+
+### Practical consequence
+
+The issuer construction must not silently enable currently disabled recovery/QuoteFlow routes. Route availability and delivery remain explicit configuration dependencies. First preserve the current externally observable statuses and payloads; separately qualify a delivery adapter and service configuration if/when approved. Password reset's currently enabled route must remain supported and must be corrected to a token-bound credential update that does not implicitly change login email unless an explicit verified email-change contract is approved.
+
+### Corrected implementation gate
+
+1. Honor ADR-001's distinct-service default; if a process-only alternative is ever proposed, supply evidence for equivalent deployment/network/credential isolation and obtain architecture approval first.
+2. Keep ordinary Resource API startup independent of `GHM_AUTH_TOKEN_PEPPER`; it must not construct auth persistence or load issuer secrets.
+3. Move the complete authentication HTTP surface (native and browser-cookie variants) to the issuer, including rate limits, cookie origin/path/security policy, anti-enumeration and response compatibility.
+4. Keep recovery/QuoteFlow routes unavailable until their explicit service and delivery dependencies are configured; preserve current 503 behavior during initial extraction.
+5. Prove the issuer owns all credential, refresh/recovery and signing operations; Resource API and Actor Gateway retain only public-key verification.
+6. Do not change production service topology, environment variables, secrets, grants, routes or payment settings during this isolated construction work.
+
+No code or production configuration was changed in this follow-up.
