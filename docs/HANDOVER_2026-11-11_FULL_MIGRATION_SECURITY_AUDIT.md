@@ -1506,3 +1506,52 @@ Do not split auth routes yet until route ownership and recovery delivery configu
 - Resource API or Actor Gateway loads issuer-only token pepper/private signing key.
 
 Then build the isolated issuer entrypoint and route registration as one atomic construction change, update package scripts and service Blueprint/docs (not production), and run all auth HTTP + disposable PostgreSQL positive/negative tests.
+
+
+## Follow-up — corrected auth EXECUTE grant history and final-cutover targets (2026-11-12)
+
+The migration-by-migration pass found that the prior summary conflated original runtime grants with later grants. This section is the corrected history for the security-relevant functions reviewed. It is still not a substitute for querying the final live PostgreSQL ACL catalog.
+
+### Additional grant sources and later cuts
+
+- `20261004020000_create_auth_account_registration.sql` separately grants `ghm_runtime` EXECUTE on `auth_create_account(text,text,text,text,text,integer,integer,integer)`. This grant was not in the original `20260921130000` function list.
+- `20261004181000_add_quoteflow_migration_reset_enrollment_lookup.sql` grants runtime EXECUTE on `auth_lookup_quoteflow_migration_reset_enrollment(text)`.
+- `20261004190000_add_quoteflow_migration_reset_completion.sql` grants runtime EXECUTE on `auth_complete_quoteflow_migration_reset(bytea,text,integer,integer,integer)`. The function consumes a token and derives the account from the enrollment/recovery row, but it also performs password mutation and session revocation. It is still a privileged issuer lifecycle operation and should move behind the issuer boundary.
+- `20261111210000_revoke_runtime_account_external_identity_table_access.sql` re-grants runtime EXECUTE on external identity lookup, external identity link, external identity bootstrap and QuoteFlow migration account provisioning after revoking direct mapping-table/sequence access. Later migrations cut the privileged link/bootstrap/provision functions:
+  - `20261111240000` revokes `auth_provision_migration_account(text,text,text,text)` from PUBLIC and runtime.
+  - `20261111250000` revokes `auth_link_external_identity(text,text,bigint)` from PUBLIC and runtime.
+  - `20261111260000` revokes `auth_bootstrap_external_identity(text,text,text,text)` from PUBLIC and runtime.
+- `20261111230000` removes runtime access to the internal recovery redemption/revocation helper and broad account-ID session revocation, but deliberately retains public-to-runtime EXECUTE on the token-bound wrappers `auth_redeem_recovery(bytea)` and `auth_redeem_recovery_with_count(bytea)`. Both are issuer lifecycle operations; runtime EXECUTE should be cut only when the replacement issuer path is ready.
+- `auth_lookup_external_identity(text,text)` remains intentionally runtime-accessible for Connect's lookup-only identity adapter. Do not revoke it as part of the password issuer cutover without replacing Connect's consumer.
+- `auth_lookup_quoteflow_migration_reset_enrollment(text)` is currently runtime-accessible and returns the internal enrollment/account identifier to its service. Move it into the issuer; it is not a resource API read.
+- The current QuoteFlow reset completion function is token-bound and atomic, but still runs through the ordinary Resource API persistence pool and has runtime EXECUTE. Preserve its existing one-time token/enrollment/approved-email binding and transaction semantics while moving the caller.
+
+### Corrected target matrix
+
+| Function / capability | Current source evidence | Target after issuer cutover |
+|---|---|---|
+| `auth_create_account` | Separate registration migration grants runtime | issuer only |
+| `auth_lookup_password_by_normalized_email` | Original auth migration grants runtime; returns password hash | issuer only |
+| `auth_set_password` | Original auth migration grants runtime | issuer only; split into conditional rehash and token-bound reset/change operations if contract supports |
+| `auth_create_session_with_refresh` | Original auth migration grants runtime; accepts account ID | issuer only; remove arbitrary caller account-ID authority |
+| `auth_rotate_refresh` | Original auth migration grants runtime; token-bound | issuer only |
+| `auth_revoke_by_refresh_hash` | Original auth migration grants runtime; token-bound | issuer only |
+| `auth_issue_recovery` | Original auth migration grants runtime; accepts account ID | issuer only; derive account from eligible credential lookup |
+| `auth_redeem_recovery`, `auth_redeem_recovery_with_count` | Token-bound wrappers remain runtime-accessible | issuer only |
+| `auth_complete_quoteflow_migration_reset` | Token/enrollment-bound atomic function, runtime grant remains | issuer only |
+| `auth_lookup_quoteflow_migration_reset_enrollment` | Runtime grant remains | issuer only |
+| `auth_validate_session` | Runtime grant exists; persistence interface exposes it | remove from Resource API if unused; otherwise explicit separate read-only contract after caller trace |
+| `auth_lookup_external_identity` | Runtime grant remains; Connect adapter calls it | retain for lookup-only Connect integration unless replacement contract is qualified |
+| `auth_link_external_identity`, `auth_bootstrap_external_identity`, `auth_provision_migration_account` | Later migrations revoke runtime/PUBLIC | keep revoked; operator/migrator governance only |
+| `auth_revoke_session`, `auth_change_password`, `auth_disable_account`, `auth_revoke_all_sessions_for_account` | Later migrations revoke runtime/PUBLIC | keep revoked; no broad account-ID operation in ordinary runtime |
+| `auth_lookup_business_external_mapping`, `auth_link_business_external_mapping` | Separate business mapping integration | separate service/actor contract; not auth issuer by assumption |
+
+### Immediate implementation consequence
+
+Do not start by changing only `auth_set_password` grants. At minimum, the issuer cutover must include account creation, password hash lookup, session create, refresh rotation, refresh-token logout, recovery issuance/redemption/reset, QuoteFlow reset lookup/completion, password hash/pepper operations and ES256 signing. Connect external identity lookup is the deliberate exception. Existing migration/operator revocations must remain in force.
+
+### Effective ACL qualification required
+
+The repository CI's disposable PostgreSQL migration job currently applies all migrations and existing auth persistence tests exercise the shared runtime. Add a dedicated auth issuer ACL qualification after the new principal exists. It must query `has_function_privilege` for PUBLIC, `ghm_runtime`, `ghm_actor_gateway`, `ghm_auth_issuer`, and owner/migrator as appropriate; include every exact overload and confirm no inherited role membership/default PUBLIC EXECUTE bypass. Positive issuer calls and negative runtime direct calls must be run with separate real database logins, not `SET ROLE` impersonation from one login.
+
+No grants have been changed in this follow-up.
