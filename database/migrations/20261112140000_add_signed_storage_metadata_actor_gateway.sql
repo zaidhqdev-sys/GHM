@@ -110,6 +110,7 @@ BEGIN
      (
        so.visibility='public' AND so.resource_type='business'
        AND so.resource_id=so.tenant_business_id AND so.object_class='business_logo'
+       AND so.status='available'
        AND EXISTS(SELECT 1 FROM ghm.business b WHERE b.id=so.tenant_business_id AND b.is_active=true)
      )
      OR EXISTS(
