@@ -1356,3 +1356,10 @@ Connect issuer-origin branch exists at `e016f4e8fa241b65ec7f89330e88c18fd7f2d482
 ## 2026-11-12 23:26 UTC — startup ACL contract syntax correction
 
 Exact-head run `43328641760` failed in TypeScript build because the Actor Gateway startup ACL contract test had over-escaped regular-expression literals (TS1005 at lines 29–31 and 78). Web quality and Cloudflare preview passed; all database migration/inventory/qualification steps were skipped. Corrected the regex literals without weakening assertions in commit `acae5ea856fd8c695912d1990e4c8a27b0430c25`. New exact-head CI is pending. Full evidence is in the security handover. No production changes or merges.
+
+
+## 2026-11-12 23:29 UTC — Authentication Issuer qualification milestone
+
+Construction branch exact-head run `43328832429` passed `quality` and `web-quality` on `70671a19ae2f8f5d5f82121ed7d9d67f05b63e4b`, including PostgreSQL 18.7 disposable migrations, SECURITY DEFINER inventory, principal qualifications, guarded disposable issuer cutover, issuer lifecycle/runtime denial checks and full test suite. CI inventory artifact contained 103 SECURITY DEFINER routines and 75 preliminary non-owner EXECUTE findings (43 runtime, 30 Actor Gateway, 2 payment provider), with no PUBLIC execution, unsafe search_path, owner or language findings. These are inventory findings requiring exact signature-to-role reconciliation, not 75 automatically confirmed vulnerabilities. Artifact is pre-cutover only.
+
+Updated CI workflow in commit `89fb0461ddac3763d721d0bf8cb04c34457ff355` to capture a second whole-database inventory after the disposable issuer cutover; new run `43329351747` is pending at this note. See full security handover for evidence, interpretation and next comparison. No production mutation, deployment, secret change or merge.
