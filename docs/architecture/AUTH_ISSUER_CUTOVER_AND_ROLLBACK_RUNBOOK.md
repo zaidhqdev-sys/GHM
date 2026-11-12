@@ -127,3 +127,8 @@ The disposable CI applies the cutover through the same restricted migrator login
 ## SECURITY DEFINER metadata prerequisite
 
 Before issuer or Actor Gateway cutover, migration `20261112090000_pin_security_definer_search_path.sql` must be present in the fully qualified migration chain. It preflights every GHM SECURITY DEFINER function as owned by `ghm_schema_owner` and pins each function-local path to `pg_catalog, ghm, pg_temp`. Issuer and Actor Gateway startup checks independently enforce the same owner/path contract across all GHM SECURITY DEFINER functions, not only their callable allow-lists. Exact-head PostgreSQL 18 migration and startup qualification is mandatory; do not treat the source change or a prior green run as evidence. Unexpected function ownership is a hard stop, not a reason to relax the preflight.
+
+
+## Latest disposable qualification checkpoint (2026-11-12)
+
+Exact source HEAD `b0711ccebc4adb82fc24256a40a812d0335f8702` passed CI run `43178029417` (`quality` and `web-quality`), including PostgreSQL 18.6 full migration application, issuer and Actor Gateway principal checks, full tests, migration audit, runtime boundary, manual issuer cutover, issuer lifecycle/runtime denials and database-only rollback. This qualifies only the disposable environment. Production role ownership, fresh verified backup, TLS/network topology, recovery delivery, product-client compatibility and separate approvals remain required. Do not merge/deploy from this result alone.
