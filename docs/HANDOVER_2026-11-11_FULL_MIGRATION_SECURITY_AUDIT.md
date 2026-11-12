@@ -2694,3 +2694,35 @@ Function-body review found one SECURITY DEFINER routine containing dynamic SQL: 
 - Run the corrected superuser-aware inventory on the new exact HEAD, inspect its artifact, and repeat the full CI qualification.
 
 No production database, secrets, deployments, services, migrations or live grants were changed. No merge or cutover is authorized.
+
+
+## 2026-11-12 — Caller-supplied identity review: saved favourites and storage metadata
+
+The first SECURITY DEFINER body pass now distinguishes database-enforced identity from application-layer checks.
+
+### Saved Business (user favourites/bookmarks)
+
+The legacy `ghm.create_saved_business(p_account_id,p_business_id)` inserts the caller-supplied account ID without independently authenticating it; `ghm.delete_saved_business(p_account_id,p_saved_business_id)` deletes by the supplied account ID. The current signed Actor Gateway wrappers are the intended path, and the manual cutover `database/cutovers/20261111110000_revoke_legacy_saved_business_runtime.sql` revokes direct table/sequence access plus both legacy function grants from application principals. The disposable PostgreSQL cutover qualification exists. This feature remains users saving Businesses as favourites/bookmarks; this security work must preserve that behavior. Production cutover remains pending the documented deployment, role-model and fresh-backup gates. Until that cutover is applied, the legacy runtime SQL grant remains a residual identity-spoof surface even if the current application routes no longer call it.
+
+### Storage metadata — unresolved database-boundary gap
+
+The `ghm_runtime` role has direct EXECUTE on the following SECURITY DEFINER storage routines:
+
+- `ghm.storage_create_pending(bigint,text,bigint,text,text,text,bigint,text,text)`
+- `ghm.storage_get_object(bigint,bigint)`
+- `ghm.storage_mark_available(bigint,text)`
+- `ghm.storage_mark_deletion_pending(bigint)`
+- `ghm.storage_mark_deleted(bigint)`
+- `ghm.storage_get_public_business_logo(bigint)`
+
+The public-logo lookup is constrained to active, verified, approved public Business logos. The other five functions require further scrutiny: `storage_get_object` checks membership against a supplied `p_account_id`, but does not derive that identity from the database session; `storage_create_pending` accepts a supplied tenant Business ID and inserts metadata without a database-side membership check; and the three lifecycle functions mutate object status using only the supplied object ID/state, with no database-side actor, tenant, or provider assertion. Current application service code performs authorization before these calls, but that is not an independent database authorization boundary. A caller holding the shared `ghm_runtime` credential can invoke the SECURITY DEFINER functions directly and supply another account/business/object ID.
+
+This is an **open security finding**, not an approved exception. Do not revoke these grants blindly: the current storage service still uses them for upload completion/deletion flows, and no replacement storage principal or signed storage-operation gateway has yet been qualified. Trace all callers and provider-side verification first, then design a database-verifiable actor/operation/context assertion or a dedicated least-privilege storage principal/gateway. Qualification must prove cross-tenant read denial, cross-tenant pending-object creation denial, unauthorized state-transition denial, provider-object verification, and preservation of the current authorized storage workflow. The Actor Gateway's logo-binding operation does not by itself secure storage object creation or lifecycle transitions.
+
+### Dynamic SQL finding
+
+The only SECURITY DEFINER definition containing dynamic SQL is `ghm.update_business_profile`. The SQL statement is a fixed template; optional fragments are selected from fixed code-authored strings; user values are bound through `USING`; caller-controlled JSON keys are checked against a fixed allow-list. The current signed gateway wrapper additionally checks exact request context and rejects both `isSupplier` and `is_supplier`, preserving the separate supplier-classification operation. The profile qualification script contains database-level regression assertions for these denials.
+
+### Inventory superuser correction CI
+
+The first superuser-aware contract test run failed because its source-text regular expression was over-escaped; the implementation itself passed syntax and the inventory step. Corrected the test to match the emitted `'superuser', r.rolsuper` metadata and `entry.superuser !== true` filter. Exact-head run for the corrected test is pending; the earlier failure must not be described as an implementation/database qualification failure.
