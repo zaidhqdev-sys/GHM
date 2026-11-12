@@ -1877,3 +1877,14 @@ Before service creation, obtain/confirm:
 5. Required issuer database credential and exact grants after the migration has been reviewed; no current secret values were accessed.
 
 This is a read-only inventory correction. No Render service, database, environment variable, secret, routing rule, or deployment was modified.
+
+
+## Latest construction corrections — readiness and full-relation ACL check (2026-11-12)
+
+- Added issuer `/readyz`, backed by `SELECT 1` against the dedicated issuer pool. `/healthz` remains liveness-only. Readiness fails closed with 503 if no database check is wired or the check fails. Tests cover both states.
+- Strengthened both pre-grant and post-cutover ACL qualification to inspect all GHM tables, partitioned tables, views, materialized views and foreign tables, not only the named credential/session tables. The issuer must have no direct relation privileges; all access is through the reviewed SECURITY DEFINER function allow-list.
+- CI runs #3544/#3545 exposed a simple variable-name regression during this test expansion (`secretTablePrivileges` remained in one assertion after the query variable was renamed). The failure was in the qualification script, not a PostgreSQL permission finding. It was corrected in commit `f254435fa813bf4960e4cb10e6974413699cd5e4`.
+- Run #3549 on `f254435` has passed build, full migrations and the strengthened pre-grant all-relation baseline; the full existing suite and post-cutover lifecycle checks are still running.
+- The latest readiness changes and the follow-up handover commits are newer than #3549 and will need exact-head CI confirmation.
+
+No production changes.
