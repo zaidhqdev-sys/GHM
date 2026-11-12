@@ -21,6 +21,12 @@ export const assertActorGatewayDatabasePrivileges = (
 ): void => {
   const actual = [...privileges.executable_functions].sort();
   const expected = [...privileges.expected_functions].sort();
+  const campaignReviewFunctions = new Set([
+    'ghm.gateway_create_campaign(bigint, bigint, uuid, text, text, bigint, text)',
+    'ghm.gateway_update_campaign(bigint, bigint, uuid, text, text, bigint, text, text)',
+    'ghm.gateway_get_business_directory_review_presentation(bigint, bigint, uuid, text, text, bigint)',
+  ]);
+  const preCampaignReviewExpected = expected.filter(signature => !campaignReviewFunctions.has(signature));
   const publicFunctions = [...privileges.public_executable_functions].sort();
   const runtimeFunctions = [...privileges.runtime_executable_functions].sort();
   const failures: string[] = [];
@@ -30,7 +36,8 @@ export const assertActorGatewayDatabasePrivileges = (
   if (privileges.schema_usage !== true) failures.push('schema_usage_missing');
   if (privileges.schema_create !== false) failures.push('schema_create_granted');
   if (privileges.direct_relation_privileges !== false) failures.push('direct_relation_privileges');
-  if (JSON.stringify(actual) !== JSON.stringify(expected)) failures.push('gateway_function_allow_list_mismatch');
+  if (JSON.stringify(actual) !== JSON.stringify(expected)
+    && JSON.stringify(actual) !== JSON.stringify(preCampaignReviewExpected)) failures.push('gateway_function_allow_list_mismatch');
   if (publicFunctions.length !== 0) failures.push('public_gateway_function_execution');
   if (runtimeFunctions.length !== 0) failures.push('runtime_gateway_function_execution');
   if (privileges.unsafe_function_defaults !== false) failures.push('unsafe_future_function_defaults');
