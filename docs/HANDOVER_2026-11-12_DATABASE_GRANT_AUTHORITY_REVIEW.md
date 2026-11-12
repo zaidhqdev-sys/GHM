@@ -1179,3 +1179,77 @@ No role escalation was attempted. The default Render query connection is not the
 - Reconcile the ledger rows with the 12 production-only and 9 baseline-only runtime function differences before deciding whether migrations are unapplied, checksums diverged, or manual cutovers are pending.
 
 No role, membership, grant, ledger row, migration, credential, environment variable, service or production data was changed.
+
+
+---
+
+## 2026-11-12 continuation — deployed-main auth callers and legacy authority revocation gap
+
+### Actual production service release state
+
+A fresh Render service/deploy inventory confirmed the production web service:
+- Service: `ghm-internal-runtime`, ID `srv-damupsek1f9s73eq8kkg`.
+- Branch: `main`.
+- Auto-deploy: OFF.
+- Latest live deployment: `dep-dbpmv8jrjlhs73abkli0`.
+- Deployed commit: `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf` (10 November 2026).
+- No separate production Actor Gateway or Authentication Issuer web service appeared in the current Render service inventory.
+
+This is the live code context for the production grants. Do not apply the new branch's revocation migrations/cutovers while this older main deployment remains active.
+
+### Deployed-main callsites confirmed
+
+Source inspection at the exact deployed commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf` found active callers in `src/auth/foundation/persistence.ts` for:
+- `auth_revoke_session` — `revokeSession`.
+- `auth_revoke_all_sessions_for_account` — `revokeAllSessionsForAccount` and password-recovery reset.
+- `auth_change_password` — password change.
+- `auth_disable_account` — account disable.
+- `auth_bootstrap_external_identity` — Connect identity bootstrap.
+- `auth_link_external_identity` — external identity linking.
+- `auth_link_business_external_mapping` — Connect Business mapping creation.
+
+The deployed `src/resources/business-identity/repository.ts` also calls `ghm.update_business_profile` directly. The newer construction branch routes Business profile writes through the signed gateway client and its forward migration revokes direct runtime execution.
+
+These live callsites explain why the corresponding production grants still exist and why the forward revocations cannot be applied before the new application/service routing is deployed and verified. The migration files are not safe to apply independently against the current main deployment.
+
+### Legacy account authority functions — three additional cutover revocations added
+
+The production-only function set also contained three SECURITY DEFINER functions not present in the construction baseline and not yet explicitly revoked by the Auth Issuer cutover:
+
+- `ghm.auth_read_account_email(bigint)` — returns an active account's login email for a caller-supplied account ID.
+- `ghm.auth_read_connect_identity_authority(bigint)` — returns Connect role, operator intent, system-admin and founder-reviewer authority for a caller-supplied account ID.
+- `ghm.auth_revoke_all_sessions_for_account(bigint,text)` — revokes all sessions for a caller-supplied account ID.
+
+The deployed-main persistence layer actively uses the last function; the two read functions had no caller in the inspected deployed-main Auth Foundation, Auth HTTP, Connect identity/authorization or Resource API source files. They remain production grants regardless of whether a current caller is found.
+
+The construction branch no longer contains direct application callers for these three wrappers. The Auth Issuer uses its narrowly scoped lifecycle functions and owner-executed internal revocation helper; arbitrary account-ID reads and the legacy all-session wrapper are not part of its approved allow-list.
+
+Updated manual cutover `database/cutovers/20261112010000_authentication_issuer_privilege_cutover.sql` with a conditional `DO` block that revokes all privileges on these signatures from PUBLIC, `ghm_runtime`, `ghm_migrator`, `ghm_actor_gateway`, `ghm_auth_issuer` and `ghm_payment_provider` if the historical function exists. Conditional revocation is required because these legacy functions are present in the live production catalog but are not created by the current disposable migration chain.
+
+Updated the rollback comments to state explicitly that the three legacy account-ID authority functions are not restored. The rollback remains forward-safety-oriented: it restores the documented issuer runtime allow-list, not historical arbitrary-account administration/read grants.
+
+Extended `scripts/qualify-auth-issuer-cutover.mjs` to:
+1. Create disposable-only legacy function fixtures with broad grants to PUBLIC and every application principal.
+2. Reapply the guarded issuer cutover.
+3. Assert runtime, migrator, gateway, issuer and payment-provider access is denied.
+4. Include direct denial calls for all three legacy functions.
+5. Prove issuer rollback does not restore these privileges.
+6. Drop only the disposable fixtures after the assertions.
+
+Commits:
+- Conditional legacy authority revocations: `1a7bcf625400d262c9a3fda7f3a327d9dff8d708`.
+- Rollback scope documentation: `a914e248180540179ffdf046af0a71d3e168d7f7`.
+- Disposable legacy-function qualification: `50367880520ba02a8c2b5c5357e182741aa69c17`.
+
+### Corrected disposition of the 12 production-only functions
+
+- `auth_link_business_external_mapping` was already explicitly revoked by the issuer cutover; it is not an unassigned function.
+- `auth_read_account_email`, `auth_read_connect_identity_authority` and `auth_revoke_all_sessions_for_account` are now explicitly included in the conditional issuer cutover and disposable qualification.
+- The other production-only signatures have their corresponding forward migration/cutover dispositions recorded in the preceding section.
+- The current production application still calls several of these functions. Their grants must remain until the new Auth Issuer / Actor Gateway application deployment and routing are live and verified; then the coordinated migration/cutover can be applied.
+
+### Validation status
+
+The complete nine-cutover / 512-stage runtime allow-list implementation at `5729ac712f9dc9fac9abb47f38291b147e5ea159` passed both CI jobs (`quality` and `web-quality`; all 63 quality steps passed). The later three-function legacy authority cutover change at `50367880520ba02a8c2b5c5357e182741aa69c17` requires its own exact-head CI result before this added cutover coverage is considered qualified.
+
+**Production state unchanged:** no role, grant, migration, credential, environment variable, Render service, deployment, bucket, object or application data was changed. No PR was merged.
