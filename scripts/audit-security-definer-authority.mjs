@@ -208,17 +208,19 @@ try {
     const publicExec = acl.filter((entry) =>
       entry.privilege === 'EXECUTE' && entry.grantee === 'PUBLIC'
     );
+    const effectiveNonOwnerRoles = (fn.effective_execute_roles ?? []).filter((role) => role !== fn.owner);
     const unsafeSearchPath = !(fn.function_settings ?? []).some((setting) =>
       setting === 'search_path=pg_catalog, ghm, pg_temp'
     );
     const untrustedLanguage = fn.language_trusted !== true;
-    if (nonOwnerExec.length || publicExec.length || unsafeSearchPath || untrustedLanguage) {
+    if (nonOwnerExec.length || publicExec.length || effectiveNonOwnerRoles.length || unsafeSearchPath || untrustedLanguage) {
       findings.push({
         signature: fn.identity_signature,
         schema: fn.schema_name,
         owner: fn.owner,
         non_owner_execute_grants: nonOwnerExec,
         public_execute_grants: publicExec,
+        effective_non_owner_execute_roles: effectiveNonOwnerRoles,
         pinned_search_path: !unsafeSearchPath,
         trusted_language: !untrustedLanguage,
       });
