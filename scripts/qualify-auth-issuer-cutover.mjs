@@ -4,6 +4,7 @@ import { Pool } from 'pg';
 import { createAccessJwtService } from '../dist/auth/foundation/access-jwt.js';
 import { loadEs256Keys } from '../dist/auth/foundation/es256-keys.js';
 import { PostgresAuthPersistence } from '../dist/auth/foundation/persistence.js';
+import { createArgon2idPasswordHasher } from '../dist/auth/foundation/password.js';
 import { createGhmAuthService } from '../dist/auth/ghm-auth-service.js';
 
 const issuerUrl = process.env.GHM_AUTH_ISSUER_DATABASE_URL?.trim();
@@ -113,7 +114,8 @@ try {
     GHM_JWT_ES256_KID: 'auth-issuer-disposable',
   });
   const persistence = new PostgresAuthPersistence(issuerPool);
-  const authService = createGhmAuthService(persistence, createAccessJwtService(keys));
+  const jwtService = createAccessJwtService(keys);
+  const authService = createGhmAuthService(persistence, jwtService);
   const email = `auth-issuer-${randomUUID()}@example.test`;
   const initialPassword = 'CorrectHorse1';
   const replacementPassword = 'DifferentHorse2';
@@ -128,6 +130,22 @@ try {
 
   const loggedIn = await authService.login(email, initialPassword);
   assert.equal(loggedIn.accountId, registered.accountId);
+
+  const realHasher = createArgon2idPasswordHasher();
+  const forcedRehashHasher = {
+    hash: (password) => realHasher.hash(password),
+    verify: async (passwordHash, password) => {
+      const result = await realHasher.verify(passwordHash, password);
+      return { ...result, needsRehash: result.verified || result.needsRehash };
+    },
+  };
+  const rehashService = createGhmAuthService(persistence, jwtService, forcedRehashHasher);
+  const rehashedLogin = await rehashService.login(email, initialPassword);
+  assert.equal(rehashedLogin.accountId, registered.accountId);
+  await authService.logout(rehashedLogin.refreshToken);
+  const loginAfterRehash = await authService.login(email, initialPassword);
+  assert.equal(loginAfterRehash.accountId, registered.accountId);
+  await authService.logout(loginAfterRehash.refreshToken);
 
   const rotated = await authService.refresh(loggedIn.refreshToken);
   assert.equal(rotated.accountId, registered.accountId);
@@ -221,7 +239,7 @@ try {
     issuerDirectSecretTablePrivileges: 0,
     runtimeIssuerFunctionDenials: deniedCalls.length,
     connectLookup: 'preserved',
-    registrationLoginRefreshLogout: 'passed',
+    registrationLoginPasswordRehashRefreshLogout: 'passed',
     recoveryResetReplayAndSessionRevocation: 'passed',
     quoteFlowMigrationReset: 'passed',
   }) + '\\n');
