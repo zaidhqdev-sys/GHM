@@ -92,6 +92,42 @@ try {
     [businessId, ownerId, administratorId, otherBusinessId, outsiderId],
   );
 
+  const applyManualCutover = async (path) => {
+    const sql = readFileSync(path, 'utf8')
+      .replace(/^\\s*BEGIN;\\s*/i, '')
+      .replace(/\\s*COMMIT;\\s*$/i, '');
+    const client = await migrator.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SET LOCAL ROLE ghm_schema_owner');
+      await client.query(sql);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw error;
+    } finally { client.release(); }
+  };
+  const privilegeMatrix = async () => {
+    const result = await gateway.query(`
+      SELECT has_function_privilege('ghm_runtime','ghm.create_campaign(bigint,bigint,text)','EXECUTE') AS runtime_create,
+             has_function_privilege('ghm_runtime','ghm.update_campaign(bigint,bigint,text,text)','EXECUTE') AS runtime_update,
+             has_function_privilege('ghm_runtime','ghm.get_business_directory_review_presentation(bigint,bigint)','EXECUTE') AS runtime_review,
+             has_function_privilege('ghm_actor_gateway','ghm.gateway_create_campaign(bigint,bigint,uuid,text,text,bigint,text)','EXECUTE') AS gateway_create,
+             has_function_privilege('ghm_actor_gateway','ghm.gateway_update_campaign(bigint,bigint,uuid,text,text,bigint,text,text)','EXECUTE') AS gateway_update,
+             has_function_privilege('ghm_actor_gateway','ghm.gateway_get_business_directory_review_presentation(bigint,bigint,uuid,text,text,bigint)','EXECUTE') AS gateway_review
+    `);
+    return result.rows[0];
+  };
+
+  await applyManualCutover('database/cutovers/20261112160000_campaign_directory_review_actor_gateway.sql');
+  assertRuntimeDatabaseFunctionPrivileges(await readRuntimeDatabaseFunctionPrivileges(runtime));
+  assertActorGatewayDatabasePrivileges(await readActorGatewayDatabasePrivileges(gateway));
+  assert.deepEqual(await privilegeMatrix(), {
+    runtime_create: false, runtime_update: false, runtime_review: false,
+    gateway_create: true, gateway_update: true, gateway_review: true,
+  });
+  console.log('MANUAL CAMPAIGN/REVIEW CUTOVER ACL MATRIX: PASS');
+
   const acl = await gateway.query(`
     SELECT has_table_privilege('ghm_runtime','ghm.campaign','SELECT') AS runtime_campaign_read,
            has_function_privilege('ghm_runtime','ghm.create_campaign(bigint,bigint,text)','EXECUTE') AS runtime_legacy_create,
@@ -134,42 +170,6 @@ try {
     () => runtime.query('SELECT * FROM ghm.gateway_create_campaign(1,0,$1,$2,$3,1,$4)', [randomUUID(), '{}', '0'.repeat(64), 'runtime']),
     'RUNTIME ACTOR GATEWAY WRAPPER EXECUTE DENIED',
   );
-
-  const applyManualCutover = async (path) => {
-    const sql = readFileSync(path, 'utf8')
-      .replace(/^\\s*BEGIN;\\s*/i, '')
-      .replace(/\\s*COMMIT;\\s*$/i, '');
-    const client = await migrator.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query('SET LOCAL ROLE ghm_schema_owner');
-      await client.query(sql);
-      await client.query('COMMIT');
-    } catch (error) {
-      await client.query('ROLLBACK').catch(() => undefined);
-      throw error;
-    } finally { client.release(); }
-  };
-  const privilegeMatrix = async () => {
-    const result = await gateway.query(`
-      SELECT has_function_privilege('ghm_runtime','ghm.create_campaign(bigint,bigint,text)','EXECUTE') AS runtime_create,
-             has_function_privilege('ghm_runtime','ghm.update_campaign(bigint,bigint,text,text)','EXECUTE') AS runtime_update,
-             has_function_privilege('ghm_runtime','ghm.get_business_directory_review_presentation(bigint,bigint)','EXECUTE') AS runtime_review,
-             has_function_privilege('ghm_actor_gateway','ghm.gateway_create_campaign(bigint,bigint,uuid,text,text,bigint,text)','EXECUTE') AS gateway_create,
-             has_function_privilege('ghm_actor_gateway','ghm.gateway_update_campaign(bigint,bigint,uuid,text,text,bigint,text,text)','EXECUTE') AS gateway_update,
-             has_function_privilege('ghm_actor_gateway','ghm.gateway_get_business_directory_review_presentation(bigint,bigint,uuid,text,text,bigint)','EXECUTE') AS gateway_review
-    `);
-    return result.rows[0];
-  };
-
-  await applyManualCutover('database/cutovers/20261112160000_campaign_directory_review_actor_gateway.sql');
-  assertRuntimeDatabaseFunctionPrivileges(await readRuntimeDatabaseFunctionPrivileges(runtime));
-  assertActorGatewayDatabasePrivileges(await readActorGatewayDatabasePrivileges(gateway));
-  assert.deepEqual(await privilegeMatrix(), {
-    runtime_create: false, runtime_update: false, runtime_review: false,
-    gateway_create: true, gateway_update: true, gateway_review: true,
-  });
-  console.log('MANUAL CAMPAIGN/REVIEW CUTOVER ACL MATRIX: PASS');
 
   // Rehearse the guarded rollback in a transaction and roll that transaction
   // back, restoring the post-cutover state for the remaining qualification.
