@@ -153,7 +153,26 @@ export const createGhmAuthService = (
       }
 
       if (verified.needsRehash) {
-        await persistence.setPassword(credential.accountId, credential.loginEmail, password);
+        const rehashed = await persistence.rehashPasswordIfUnchanged(
+          credential.accountId,
+          credential.passwordHash,
+          password,
+        );
+        if (!rehashed) {
+          // A concurrent password change/reset may have won after verification.
+          // Re-read and verify the current credential before issuing any session.
+          const latest = await persistence.lookupPasswordByEmail(normalized.loginEmail);
+          if (
+            !latest ||
+            latest.accountId !== credential.accountId ||
+            latest.accountStatus !== 'active' ||
+            latest.credentialStatus !== 'active'
+          ) {
+            failCredentials();
+          }
+          const latestVerified = await passwordHasher.verify(latest.passwordHash, password);
+          if (!latestVerified.verified) failCredentials();
+        }
       }
 
       const session = await persistence.createSessionWithRefresh(credential.accountId);
