@@ -24,10 +24,13 @@ export interface GatewayStorageMetadataRow {
   visibility: string;
   status: string;
 }
+export interface StorageProviderWorkflowAttestation { issuedAt: number; nonce: string; context: string; signature: string; }
 export interface StorageMetadataGatewayReader {
   createPending(actor: number, input: GatewayStorageMetadataInput): Promise<GatewayStorageMetadataRow>;
   getObject(actor: number, objectId: number): Promise<GatewayStorageMetadataRow | null>;
   markDeletionPending(actor: number, objectId: number): Promise<GatewayStorageMetadataRow>;
+  markAvailable(actor: number, objectId: number, checksum: string | null, providerKey: string, contentType: string, byteSize: number, attestation: StorageProviderWorkflowAttestation): Promise<GatewayStorageMetadataRow>;
+  markDeleted(actor: number, objectId: number, providerKey: string, attestation: StorageProviderWorkflowAttestation): Promise<GatewayStorageMetadataRow>;
 }
 type ConnectablePool = Pick<Pool, 'connect'>;
 
@@ -94,4 +97,39 @@ export class PostgresStorageMetadataGatewayReader implements StorageMetadataGate
       return result.rows[0];
     });
   }
+  async markAvailable(
+    actor: number, objectId: number, checksum: string | null, providerKey: string,
+    contentType: string, byteSize: number, attestation: StorageProviderWorkflowAttestation,
+  ): Promise<GatewayStorageMetadataRow> {
+    return this.withClient(async client => {
+      const context = { objectId, checksum, providerKey, contentType, byteSize };
+      const assertion = createActorGatewayAssertion(this.key, actor, 'storage.metadata.mark_available', context);
+      const result = await client.query<GatewayStorageMetadataRow>(
+        'SELECT * FROM ghm.gateway_storage_mark_available($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)',
+        [actor, assertion.issuedAt, assertion.nonce, assertion.context, assertion.signature,
+          attestation.issuedAt, attestation.nonce, attestation.context, attestation.signature,
+          objectId, checksum, providerKey, contentType, byteSize],
+      );
+      if (result.rowCount !== 1) throw Object.assign(new Error('Storage availability transition denied'), { code: '42501' });
+      return result.rows[0];
+    });
+  }
+
+  async markDeleted(
+    actor: number, objectId: number, providerKey: string, attestation: StorageProviderWorkflowAttestation,
+  ): Promise<GatewayStorageMetadataRow> {
+    return this.withClient(async client => {
+      const context = { objectId, providerKey };
+      const assertion = createActorGatewayAssertion(this.key, actor, 'storage.metadata.mark_deleted', context);
+      const result = await client.query<GatewayStorageMetadataRow>(
+        'SELECT * FROM ghm.gateway_storage_mark_deleted($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
+        [actor, assertion.issuedAt, assertion.nonce, assertion.context, assertion.signature,
+          attestation.issuedAt, attestation.nonce, attestation.context, attestation.signature,
+          objectId, providerKey],
+      );
+      if (result.rowCount !== 1) throw Object.assign(new Error('Storage deletion completion denied'), { code: '42501' });
+      return result.rows[0];
+    });
+  }
+
 }
