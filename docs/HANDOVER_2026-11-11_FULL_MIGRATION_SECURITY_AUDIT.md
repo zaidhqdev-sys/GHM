@@ -2794,3 +2794,14 @@ Direct EXECUTE grant counts: `ghm_runtime` 43; `ghm_actor_gateway` 30; `ghm_paym
 This inventory is disposable-database evidence only, not proof of production catalog state. It was captured after the guarded issuer and other manual-cutover rehearsal scripts had restored their original ACL state, so it is a pre-cutover baseline: `ghm_auth_issuer` has no `ghm` schema USAGE/direct function grants in this snapshot by design. The CI workflow separately qualifies the ten-function issuer allow-list and guarded disposable cutover/rollback. It does not grant approval for the production storage cutover. Continue reviewing the 75 direct grants against the application grant matrix and operation contracts; do not treat the counts as vulnerabilities without examining each principal and call path.
 
 The complete workflow at head `fab9f6389d7a7e992dfc93786a42394bbb8064a1` passed in run `43238876670`, including both CI jobs and 960/960 main tests. The current branch has since received further documentation-only reconciliations; query its exact latest head/run before a final qualification claim.
+
+
+### Human review of inventory limitations — 2026-11-12
+
+The artifact explicitly requires human review of ownership, search paths, extension membership and role membership. Those checks were completed against the retrieved JSON:
+- All 103 routines are owned by ghm_schema_owner, reside in ghm, use trusted plpgsql/sql, and have exactly search_path=pg_catalog, ghm, pg_temp.
+- No SECURITY DEFINER routine has extension membership.
+- The only application-role membership is ghm_migrator → ghm_schema_owner, with INHERIT=false, SET=true, ADMIN OPTION=false. The schema owner is NOLOGIN; all application logins are non-superuser, non-BYPASSRLS, non-CREATEROLE and non-CREATEDB.
+- The ghm schema ACL grants CREATE/USAGE only to ghm_schema_owner and USAGE to ghm_runtime, ghm_actor_gateway, and ghm_payment_provider; it has no PUBLIC or migrator USAGE/CREATE grant. The isolated issuer receives its schema access only in the guarded disposable issuer cutover rehearsal.
+- The global function default ACL grants EXECUTE only to ghm_schema_owner; no implicit PUBLIC/runtime/issuer function execution is introduced.
+- The public schema retains PostgreSQL's ordinary PUBLIC USAGE but not PUBLIC CREATE; this is separate from the ghm schema, which has no PUBLIC privilege.
