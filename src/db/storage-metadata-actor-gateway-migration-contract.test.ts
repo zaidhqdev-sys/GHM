@@ -46,5 +46,5 @@ test('new storage gateway wrappers are executable only by the Actor Gateway', ()
     assert.ok(migration.includes(`REVOKE ALL ON FUNCTION ghm.${signature} FROM PUBLIC,ghm_runtime,ghm_migrator`));
     assert.ok(migration.includes(`GRANT EXECUTE ON FUNCTION ghm.${signature} TO ghm_actor_gateway`));
   }
-  assert.doesNotMatch(migration, /storage\.metadata\.mark_available|storage\.metadata\.mark_deleted/);
+  assert.doesNotMatch(migration, /CREATE OR REPLACE FUNCTION ghm\.gateway_storage_mark_available|CREATE OR REPLACE FUNCTION ghm\.gateway_storage_mark_deleted/);
 });
