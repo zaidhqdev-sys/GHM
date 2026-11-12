@@ -212,7 +212,7 @@ The provider qualification passed for:
 
 The provisioning script was tightened after its first CI attempt: it now uses the explicit migrator URL, not the qualification/admin URL, and still rejects non-local or incorrectly named targets. The first attempt was blocked by the identity guard and did not provision the secret. The subsequent run passed.
 
-A further ACL refinement now explicitly checks that neither `ghm_runtime` nor `ghm_actor_gateway` can directly execute the provider verifier or read the provider secret table, while only `ghm_actor_gateway` can execute the two transition wrappers. That expanded exact-head run is `43232859256` and remains in progress at this checkpoint.
+A further ACL refinement explicitly checks that neither `ghm_runtime` nor `ghm_actor_gateway` can directly execute the provider verifier or read the provider secret table, while only `ghm_actor_gateway` can execute the two transition wrappers. The expanded exact-head run `43232859256` completed successfully.
 
 **Important boundary:** this is database-wrapper qualification, not yet a complete external provider lifecycle or production cutover. Legacy runtime grants remain unchanged; no production secret has been created; no production migration or deployment has occurred.
 
@@ -240,5 +240,5 @@ The same exact-head run also passed:
 - Provider secret provisioning and dual-proof adversarial qualification.
 - The legacy five-function revocation and rollback qualification.
 
-The remainder of the repository-wide workflow was still running at this checkpoint. The latest code head for this stage is `dcbd0e317ba739e248674c73496ed0e50724c7e6`; re-check its final workflow conclusion before treating all CI jobs as complete.
+The complete repository-wide workflow for code head `dcbd0e317ba739e248674c73496ed0e50724c7e6` completed successfully in run `43233465264`, including the 959-test suite, storage provider dual-proof qualification, five-function storage grant revocation/rollback rehearsal, the remaining Actor Gateway signed-cutover qualifications, and the full auth issuer cutover qualification. The current branch head is `64b97062a63273cd80d42907f9f7fc65825b3f32` after this handover reconciliation; its exact-head workflow is `43233675132` and is running. Re-check that exact-head result before merging.
 
