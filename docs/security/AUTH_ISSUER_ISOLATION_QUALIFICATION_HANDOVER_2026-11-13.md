@@ -812,3 +812,28 @@ This is the remaining design coupling to the Render-managed administrator. It do
 5. The runtime connection switch and legacy grant revocations must be coordinated as one versioned, rollback-tested cutover. A connection-only change before the production ACL cutovers would leave direct legacy functions callable by the runtime login; revoking them before the corresponding application/gateway deployment would break live operations.
 
 No production credentials, role attributes, role memberships, ACLs, table/sequence grants, functions, data, migrations, environment variables or deployments were changed.
+
+
+## Migration authority guard decoupling — 2026-11-13 14:16 UTC
+
+The production role graph and Render support finding exposed a source-level coupling: `src/db/migrate.ts` and its identity verifier required `ghm_db_user` ADMIN OPTION membership over both `ghm_migrator` and `ghm_schema_owner`. This made the provider-managed Dashboard administrator a permanent migration-runner prerequisite, even though the intended authority path is the dedicated `ghm_migrator → ghm_schema_owner` SET membership.
+
+### Source correction on the stacked construction branch
+
+- The migration runner no longer references `ghm_db_user` or requires a Dashboard-admin membership over `ghm_migrator`.
+- The migrator must have exactly one direct membership: the explicit `ghm_schema_owner` membership with `ADMIN=false`, `INHERIT=false`, `SET=true`.
+- No other role may be a member of `ghm_migrator`.
+- `ghm_schema_owner` must have exactly one member (the migrator) and no direct memberships of its own.
+- The migrator retains no direct schema or relation privileges; after verification it explicitly SETs `ghm_schema_owner` and verifies the resulting effective identity.
+- Disposable CI bootstrap was changed so `ghm_db_user` receives trusted ADMIN OPTION memberships only for runtime, Actor Gateway, Authentication Issuer and Payment Provider principals; it is no longer granted membership over the migrator or schema owner.
+- Unit and source-contract tests now encode the isolated migrator/owner-only relationship.
+
+### Validation state
+
+The first CI attempts on intermediate sequential commits failed during TypeScript build because the unit-test fixture still described the removed admin membership fields. That fixture and the source-contract assertions were corrected. The current exact-head workflow is [43441019084](https://github.com/zaidhqdev-sys/GHM/actions/runs/43441019084) on `20a48eb0096c6897b06a20a1181dedfd50c12658`; at the time of this handover update it is still running, with no failures reported. Do not call this change qualified until the exact final head passes the complete PostgreSQL 18 migration and security qualification.
+
+### Production boundary
+
+This is source and disposable-CI work only. It does not remove the existing production postgres-granted memberships, change production roles or ACLs, provision/rotate migration credentials, change Render configuration, or run migrations against `ghm_db`. Production migration-ledger SELECT remains blocked through the currently available read-only Render connection. A separately authorized migration/audit credential path and provider/bootstrap authority plan are still required before production membership cleanup.
+
+No production role, membership, ACL, data, migration ledger, credential, Render environment, deployment, or traffic was changed.
