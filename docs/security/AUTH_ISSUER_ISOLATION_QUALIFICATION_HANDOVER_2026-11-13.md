@@ -1195,3 +1195,68 @@ This means the database network endpoint is not IP-restricted at the Render allo
 4. Keep the current network policy unchanged until the client inventory is complete.
 
 No Render IP allow-list, database setting, service, credential, role, membership, grant, migration or traffic was changed.
+
+
+## Correction: production column-level DML grants materially expand runtime authority — 2026-11-13 18:31 UTC
+
+The earlier relation inventory used `has_table_privilege` and did not include PostgreSQL column-level ACL entries. That was incomplete. A second catalog query over every `pg_attribute.attacl` entry now establishes the full effective direct column DML footprint for `ghm_runtime`.
+
+### Full column-level DML totals
+
+- INSERT: 156 column grants across 21 tables.
+- UPDATE: 60 column grants across 12 tables.
+- Every inspected column grant is directly granted to `ghm_runtime` by `ghm_schema_owner`, with no grant option.
+- This is in addition to relation-level INSERT/UPDATE/DELETE and does not include the runtime's SELECT grants or sequence grants.
+
+INSERT-capable tables:
+`business_capability`, `business_capability_evidence`, `business_category_assignment`, `business_engagement_event`, `business_offering`, `commercial_event`, `commercial_payment_attempt`, `commercial_subscription`, `commercial_trial`, `customer`, `enquiry`, `notification`, `opportunity_capability_requirement`, `opportunity_participant`, `project`, `project_quote`, `quote`, `quote_line_item`, `review`, `support_request`, `support_request_message`.
+
+UPDATE-capable tables:
+`account_identity`, `business`, `business_category_assignment`, `business_offering`, `customer`, `enquiry`, `notification`, `project`, `project_quote`, `quote`, `review`, `support_request`.
+
+The relation-level DML exceptions previously recorded remain:
+- `business`: INSERT
+- `business_membership`: INSERT
+- `opportunity`: INSERT and UPDATE
+- `opportunity_capability_requirement`: DELETE
+
+Column-level DML additionally includes INSERT on `opportunity_capability_requirement` and `project`, plus the UPDATE/INSERT tuples in the full table lists above. The table-level and column-level views must be treated as one ACL inventory; neither alone is complete.
+
+### Source consumer trace — representative direct SQL paths confirmed
+
+The construction branch still contains direct SQL writes in resource repositories, including:
+- `src/resources/business-identity/repository.ts`: inserts `business` and `business_membership`; updates authenticated `account_identity` profile columns.
+- `src/resources/opportunity/repository.ts`: inserts and updates `opportunity` after application-level membership/ownership checks.
+- `src/resources/opportunity-requirements/repository.ts`: deletes and inserts `opportunity_capability_requirement` after an application-level manager check.
+- `src/resources/project/repository.ts`: inserts `opportunity`, `opportunity_participant` and `project`; updates `project`.
+- `src/resources/business-capability/repository.ts`, `business-capability-evidence/repository.ts`, `business-category/repository.ts`, `business-offering/repository.ts`: direct inserts into their respective resource tables.
+- `src/resources/commercial/repository.ts`: direct inserts into commercial trial/subscription/event/payment-attempt records. PayFast activation remains frozen/out of scope; do not change these privileges until its separate business lifecycle and authority path is resolved.
+- `src/resources/customer/repository.ts`, `enquiry/repository.ts`, `notification/repository.ts`, `opportunity-participant/repository.ts`, `project-quote/repository.ts`, `quote/repository.ts`, `review/repository.ts`, `support-request/repository.ts`: direct resource inserts.
+
+`withAuthorizedTransaction` in `src/db/authorized-transaction.ts` validates an application `AuthContext` and opens a transaction; it does not establish a database-verifiable actor assertion or set an actor identity in PostgreSQL. Thus the current database grants rely on the Resource API's verified bearer-auth middleware and application checks. A holder of the runtime DB credential can issue direct SQL without those application checks. This is the central least-privilege/actor-binding gap to close in stages, not a finding that ordinary HTTP requests currently bypass their bearer authentication.
+
+The signed Actor Gateway already provides a pattern for selected trusted operations (e.g. Connect Business provisioning and capability/business metadata domains), but it does not yet replace all direct resource repository writes above. Do not infer gateway coverage merely because a route has a gateway client for a related read or mutation.
+
+### Startup enforcement gap
+
+`src/db/runtime-database-privileges.ts` currently verifies only the SECURITY DEFINER EXECUTE signature set. It does not inventory or enforce:
+- relation-level ACLs,
+- column-level ACLs,
+- sequence USAGE/SELECT/UPDATE,
+- schema/database privileges,
+- default ACLs.
+
+The current production startup gate therefore cannot detect the 156 INSERT and 60 UPDATE column grants. Add a complete relation/column/sequence privilege-stage contract with exact allowed tuples, and qualify it on disposable PostgreSQL before enabling production enforcement.
+
+### Next implementation sequence
+
+1. Create a source-to-ACL matrix for all 21 INSERT and 12 UPDATE tables, including exact repository call sites, actor/tenant predicate, and current gateway/function replacement status.
+2. Prioritize the high-risk Business/Business Membership, Opportunity/Project, review/moderation, and commercial lifecycle writes; keep PayFast frozen.
+3. For each write family, move the authorization predicate into a bounded SECURITY DEFINER operation or signed Actor Gateway assertion as appropriate; do not simply wrap arbitrary SQL with a generic function.
+4. Add tests proving forged account IDs, cross-tenant writes, inactive memberships, replayed assertions and unauthorized DML are denied by PostgreSQL itself.
+5. Revoke only the exact relation/column privileges after the replacement route is deployed and observed; retain a reviewed rollback file.
+6. Add exact ACL-stage startup checks for functions, relation privileges, column privileges, sequences and default ACLs.
+
+This correction supersedes the earlier statement that the runtime's only direct DML exceptions were four relation-level grants. The actual direct DML surface is broader because of column-level privileges.
+
+No production grant, ACL, relation, sequence, function, role, membership, migration, data, credential, Render setting, deployment or traffic was changed.
