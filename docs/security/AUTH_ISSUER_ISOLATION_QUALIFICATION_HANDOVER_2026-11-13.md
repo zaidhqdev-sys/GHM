@@ -1365,3 +1365,38 @@ The previous first-pass matrix was a navigation aid, not a verified SQL map. Thi
 Before writing any revocation migration, complete the writer inventory for every column ACL tuple (including the untraced engagement-event table), enumerate all callers of the concrete repository methods, and mark whether the operation is user-driven, trusted internal, provider-driven or admin-only. Then design fixed-purpose database operations for each actor-bound write family and qualify their grants on disposable PostgreSQL.
 
 No production permissions, roles, memberships, tables, sequences, functions, data, credentials, Render settings, deployments or traffic were changed.
+
+
+## Production investigation: business_engagement_event writer unresolved — 2026-11-13 18:45 UTC
+
+The previously untraced `business_engagement_event` INSERT grant has now been checked directly against production catalog dependencies and data.
+
+### Production facts confirmed (read-only)
+
+- Relation: `ghm.business_engagement_event`, ordinary table, owner `ghm_schema_owner`.
+- RLS and FORCE RLS are both disabled.
+- No non-internal triggers exist on the table.
+- No catalog-tracked dependent function or view was found.
+- Table contains 0 rows.
+- Runtime has no relation-level ACL on this table; its INSERT capability is column-level.
+- Column INSERT is granted directly to `ghm_runtime` on exactly: `business_id`, `account_id`, `event_type`, `event_context`, and `source`.
+- Runtime also has column SELECT on `id`, the five inserted columns, and `created_at`.
+- Backing sequence: `ghm.business_engagement_event_id_seq`, owned by `ghm_schema_owner`; runtime has USAGE and SELECT on it.
+
+### Interpretation and disposition
+
+The table is empty and has no trigger/function writer path visible in PostgreSQL's dependency catalog. That does not prove the application never writes it; dynamic SQL, application SQL, and external clients are not represented as catalog dependencies. The INSERT ACL therefore remains an unresolved direct-runtime grant until a full repository/route caller trace finds the writer or establishes that the feature is dead.
+
+Do not remove the INSERT/sequence grants solely because the table is empty. First establish whether any deployed application version or connected product still writes engagement events, and inspect the complete repository tree for the exact relation identifier (the available GitHub code-search index returned no matches, so absence from search results is not evidence of absence).
+
+If no active writer exists after route, deployment and connected-product verification, prepare a separately qualified revocation candidate for the five INSERT column grants and sequence USAGE; retain SELECT only if a demonstrated read consumer requires it. No such revocation has been prepared or applied yet.
+
+### Exact-head CI checkpoint
+
+The documentation/source-audit commit `a1dc2ff645672b143048bb647265ff6749545a74` has:
+- web-quality: 11/11 passed.
+- quality: was still running at 42/64 steps, in the disposable PostgreSQL system-admin capability catalogue governance qualification, with no failures reported at that observation.
+
+### Production safety
+
+All production queries in this investigation were catalog or aggregate read-only SELECTs. No production grants, roles, memberships, tables, sequences, functions, data, credentials, Render settings, deployments or traffic were changed.
