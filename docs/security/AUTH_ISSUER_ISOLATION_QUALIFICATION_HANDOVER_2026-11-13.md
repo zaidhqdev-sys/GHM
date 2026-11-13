@@ -530,3 +530,50 @@ The whole-database audit itself retains `REVIEW_REQUIRED_NO_AUTOMATIC_APPROVAL` 
 - Separately qualify the live production inventory and Project↔Opportunity reconciliation before any production cutover/merge decision, as already required by the project handover.
 
 No production database changes, deployments, merges or PR updates were performed by this qualification.
+
+
+## PR #272 scope and branch reconciliation review — 2026-11-13 00:58 UTC
+
+### PR #272 is explicitly the upstream Actor Gateway integration, not the issuer implementation
+
+Inspected the live PR metadata and complete description. PR #272 title is `chore(security): qualify unified Actor Gateway integration stack`. Its body explicitly states that:
+- the PR does not implement the isolated Authentication Issuer;
+- the Resource API still signs access tokens and runs auth lifecycle routes;
+- issuer separation is a hard security gate;
+- the issuer implementation is on a separate construction branch and must not be merged independently of the upstream architecture;
+- PR #272 is intentionally draft and unmerged.
+
+Therefore do not add the issuer qualification work to PR #272 as though it were a missing test-only patch. Its scope is the upstream Actor Gateway dependency. The correct integration shape is a separate issuer implementation PR stacked on top of PR #272 (or an equivalent branch containing its exact head), so the dependency remains explicit and reviewable.
+
+### Reconciliation facts confirmed from GitHub
+
+- PR #272 base: `main` at `ad4fea43f2eb7bf959042b9db77a9f86e6bb531b`.
+- PR #272 head: `integration/capability-gateway-qualification-20261110` at `c81e2bf2534febef9c5e49b39f60f85415f04ff1`.
+- Validated issuer construction head: `7199fe8315f98adc9549da6447751d50fc53cb42`.
+- Direct compare of construction head against PR head is `diverged`, with common merge base `d1bd49cde73bb4ef428da1f75fcd27b2b285ddd8`, construction side reporting 1,624 commits ahead and PR side 11 commits ahead. This is not a safe cherry-pick/fast-forward situation.
+- The construction head also differs from PR #272's base/main history. Do not merge the construction branch into PR #272 or force-update either branch.
+- PR #272 is five commits ahead of its base main and zero commits behind it; its live PR description is authoritative for its scope and dependency role.
+
+### Issuer implementation paths confirmed on the validated construction branch
+
+The issuer-specific implementation is present on the validated branch and absent from PR #272's base:
+- `src/auth-issuer/` (issuer app, server, database identity/privilege/SSL checks and tests);
+- manual-only issuer cutover and rollback SQL under `database/cutovers/`;
+- issuer qualification scripts and pre/post SECURITY DEFINER inventory/comparator scripts;
+- token-bound recovery reset, conditional password rehash and runtime auth privilege migration work;
+- Resource API auth-route disablement and persistence/auth service changes;
+- CI disposable PostgreSQL issuer principal and lifecycle qualification;
+- issuer cutover/rollback runbook and qualification handover.
+
+The existing PR already contains the upstream Actor Gateway work, but the validated construction branch also includes later Actor Gateway, storage, Connect provisioning and campaign changes that are not automatically part of the issuer-only scope. In particular, wholesale copying of `src/http/app.ts`, `src/server.ts`, `src/actor-gateway/*`, `package.json` or `.github/workflows/ci.yml` risks pulling unrelated later changes or overwriting PR-specific work. These files require targeted patch reconciliation, not full-file replacement.
+
+### Next integration plan
+
+1. Keep PR #272 untouched and draft.
+2. Create a new issuer integration branch whose parent is exactly PR #272 head `c81e2bf2534febef9c5e49b39f60f85415f04ff1`.
+3. Port the issuer-only implementation and its required SQL/tests/docs by reviewed file-level changes. For shared files, reconcile only the issuer-specific hunks against PR #272's versions; do not copy entire construction-branch files blindly.
+4. Preserve the already-passing construction-run evidence as qualification evidence for that exact construction head only. It does not validate the new stacked branch.
+5. Run fresh exact-head CI on the stacked branch, fix any integration regressions, and update this handover with the new branch/head/run IDs.
+6. Only then open a separate draft issuer PR stacked on #272. No merge or deployment is implied.
+
+No Git refs were changed during this review. No PR metadata, Render services, production database, credentials, deployments or traffic were changed.
