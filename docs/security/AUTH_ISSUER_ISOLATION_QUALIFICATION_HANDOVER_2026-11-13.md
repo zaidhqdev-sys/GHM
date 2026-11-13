@@ -1673,3 +1673,56 @@ Latest documentation head `b456edc163007313e6b72ab1104c2af7b416cf51`, run https:
 - quality: 40/64 steps passed; currently running the Campaign and directory-review signed actor gateway qualification on disposable PostgreSQL 18. No failures reported at this observation.
 
 No production roles, memberships, grants, schema, relations, sequences, functions, data, credentials, Render settings, deployments or traffic were changed. All production SQL was read-only.
+
+
+## Production SECURITY DEFINER and Actor Gateway cutover baseline — 2026-11-13 18:56 UTC
+
+A read-only production catalog inventory was executed against Render `ghm_db`. This is a live baseline, not an assertion that the current construction branch has already been deployed.
+
+### Deployment boundary
+
+The current Render service deployment remains commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf` from 2026-11-10. The current PR #276 construction branch is ahead of that deployment and automatic deploy remains OFF. Therefore differences between the new branch's intended migrations and live production must be tracked as a pending production cutover, not silently described as a failed migration on the deployed version.
+
+### SECURITY DEFINER inventory
+
+Live catalog:
+- 63 SECURITY DEFINER functions in schema `ghm`.
+- 50 direct non-owner EXECUTE ACL entries across the inventory.
+- 0 PUBLIC EXECUTE grants on those SECURITY DEFINER functions.
+- All 63 are owned by `ghm_schema_owner` (ownership guard query in the source migration requires this).
+- 60 functions do not yet have the exact hardened `search_path = pg_catalog, ghm, pg_temp`; many currently have `pg_catalog, ghm`, and a small number have legacy `ghm, pg_temp` orderings. Migration `20261112090000_pin_security_definer_search_path.sql` normalizes every GHM SECURITY DEFINER function to the explicit temporary-schema-safe order `pg_catalog, ghm, pg_temp`.
+
+The audit script's local-only restriction is deliberate: `scripts/audit-security-definer-acl.mjs` refuses any target other than localhost `ghm_disposable_test`. Do not weaken that restriction or repurpose it to connect directly to production. The live catalog comparison in this handover was performed through separate read-only provider query operations.
+
+### Exact Connect business-mapping helper discrepancy
+
+Production currently reports:
+- `ghm.auth_link_business_external_mapping(text,text,bigint)` exists and is owned by `ghm_schema_owner`.
+- `ghm_runtime` has effective EXECUTE on it.
+- Direct ACL entries include `ghm_runtime` and `ghm_schema_owner`.
+
+The construction migration `20261112080000_signed_connect_business_provisioning_gateway.sql` explicitly revokes EXECUTE from PUBLIC, `ghm_runtime`, `ghm_migrator`, `ghm_actor_gateway`, `ghm_auth_issuer` and `ghm_payment_provider`; the signed wrapper calls the helper as its SECURITY DEFINER owner. No later migration in the current source tree re-grants runtime access to this helper.
+
+This is a genuine live-versus-target ACL delta. Because production is still running the 2026-11-10 deployment and the signed provisioning migration belongs to the newer construction work, the likely explanation is that the production cutover has not yet applied this migration. The migration ledger could not be read with the read-only query observer (SELECT denied), so do not claim the migration's ledger status has been verified. Before production rollout, compare the migration ledger through the authorized migration/audit identity and run the disposable signed-provisioning qualification.
+
+### Actor Gateway live baseline — distinguish trigger functions
+
+Production has zero routines named `gateway_%` and zero SECURITY DEFINER routines named `gateway_%`. It also has zero direct Actor Gateway EXECUTE ACL entries on SECURITY DEFINER functions in schema `ghm`.
+
+A broad `has_function_privilege('ghm_actor_gateway', ...)` query initially counted 14 trigger functions executable via PostgreSQL's default PUBLIC trigger-function ACL. Those are trigger-returning routines, not callable Actor Gateway API operations, and are excluded from the Actor Gateway startup allow-list by design. Do not report those 14 as gateway operations.
+
+This confirms that the production database has not yet reached the branch's signed Actor Gateway operation surface. The branch's 25-operation gateway allow-list and migrations are pending cutover. Keep PayFast frozen and do not deploy as part of this audit.
+
+### Search-path interpretation
+
+The earlier audit count of unsafe paths is specifically measured against the new exact target `pg_catalog, ghm, pg_temp`. `pg_catalog, ghm` is pinned but does not explicitly place `pg_temp` last; PostgreSQL may search the temporary schema ahead of ordinary schemas when it is omitted. The normalization migration exists to close that temporary-object shadowing exposure. Do not characterize every path as unpinned: many are pinned but not yet temporary-schema-safe under the target invariant.
+
+### Next actions
+
+1. Finish the current exact-head CI and disposable PostgreSQL 18 qualification.
+2. Read the production migration ledger only through an authorized read-only migration identity; the current Render query observer is denied SELECT on `ghm.ghm_schema_migrations`.
+3. Reconcile the full production-versus-target function signature/ACL/search_path matrix, with explicit separation of trigger functions from callable operations.
+4. Qualify the signed Connect business provisioning wrapper and prove runtime denial of the helper before scheduling any production cutover.
+5. Keep the production rollout separate from the security construction PR; no deployment or role mutation is authorized by this catalog snapshot.
+
+No production roles, memberships, grants, function definitions, schema, relations, sequences, data, credentials, Render settings, deployments or traffic were changed. All production queries in this pass were read-only.
