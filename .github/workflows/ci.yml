@@ -334,12 +334,17 @@ jobs:
           GHM_SECURITY_DEFINER_AUDIT_OUTPUT: tmp/security-definer-authority-audit-post-issuer-cutover.json
         run: npm run audit:security-definer-authority
 
-      - name: Preserve pre- and post-cutover SECURITY DEFINER authority inventories
+      - name: Compare pre- and post-cutover SECURITY DEFINER authority inventories
+        run: |
+          node --test scripts/compare-security-definer-authority-inventories.test.mjs
+          node scripts/compare-security-definer-authority-inventories.mjs
+
+      - name: Preserve pre-, post-cutover and comparison evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: security-definer-authority-inventory
-          path: tmp/security-definer-authority-audit*.json
+          path: tmp/security-definer-authority*.json
           if-no-files-found: warn
           retention-days: 14
 
