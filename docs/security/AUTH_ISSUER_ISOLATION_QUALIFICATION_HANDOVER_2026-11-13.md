@@ -1321,3 +1321,47 @@ The exact production ACL inventory remains authoritative for table/column counts
 5. Add disposable PostgreSQL tests for direct-DML denial and continued API/gateway operation before writing any production cutover.
 
 Production remains read-only. No role, membership, relation/column/sequence ACL, function, migration, data, credential, Render setting, deployment or traffic was changed.
+
+
+## Source-to-ACL matrix correction — verified repository SQL — 2026-11-13 18:40 UTC
+
+The previous first-pass matrix was a navigation aid, not a verified SQL map. This follow-up inspected the actual repository files at PR #276 HEAD `61389e54384ce9433bb2651368f7ce81f998f6e2` and matched concrete INSERT/UPDATE/DELETE statements. The earlier mapping of `business_engagement_event` to a guessed repository path is not confirmed and must remain unresolved until its actual writer (or trigger) is identified.
+
+### Concrete direct write paths now confirmed
+
+| Table | Concrete source path and operation | Application-side authorization observed |
+|---|---|---|
+| `business` | `business-identity/repository.ts` — creates Business row | authenticated context; owner membership is created in same transaction; no DB actor assertion in this repository path |
+| `business_membership` | `business-identity/repository.ts` — creates initial owner membership | authenticated context user ID is used for account and created_by |
+| `account_identity` | `business-identity/repository.ts` — updates full_name, phone, avatar_ref | row predicate is `id = context.userId`; repository first requires the account |
+| `business_capability` | `business-capability/repository.ts` — inserts capability assertion | tenant resolution and business-management checks are in the repository path; later assertion replacement uses a SECURITY DEFINER function |
+| `business_capability_evidence` | `business-capability-evidence/repository.ts` — inserts evidence | loads parent capability and its business before insert; verification transition is delegated to `ghm.transition_business_capability_evidence` |
+| `business_category_assignment` | `business-category/repository.ts` — inserts and updates primary assignment | tenant/business authorization in repository path; confirm each update's exact role predicate in the full method before privilege reduction |
+| `business_offering` | `business-offering/repository.ts` — inserts and updates offering | tenant resolution; create requires owner/administrator; update locks target then checks tenant membership/role |
+| `commercial_trial`, `commercial_subscription`, `commercial_event`, `commercial_payment_attempt` | `commercial/repository.ts` — commercial lifecycle and payment preparation writes | business-management checks exist for owner-initiated operations; provider event provenance is a separate boundary. PayFast remains frozen and these grants are not candidates for removal until provider/lifecycle authority is redesigned |
+| `customer` | `customer/repository.ts` — inserts customer for `context.userId` | authenticated account ID is used as account_id |
+| `opportunity` | `enquiry/repository.ts`, `project/repository.ts`, and `opportunity/repository.ts` — create paths; opportunity repository also has owned-update path | owner/membership predicates are application-side; Project and Opportunity creation is transactional; DB actor assertion is not established by generic authorized transaction |
+| `opportunity_participant` | `enquiry/repository.ts`, `project/repository.ts`, `opportunity-participant/repository.ts` — creator/owner/recipient/participant inserts | composed with opportunity creation or explicit participant service checks; verify all account/business combinations before narrowing grants |
+| `enquiry` | `enquiry/repository.ts` — inserts enquiry after opportunity and participant creation | request context plus target business; confirm target business eligibility and public intake abuse controls |
+| `notification` | `notification/repository.ts` — inserts notification for supplied user_id | recipient identity is passed as input; verify every caller is trusted and cannot choose another account's recipient |
+| `opportunity_capability_requirement` | `opportunity-requirements/repository.ts` — deletes then inserts requirement set | `assertOpportunityManager` executes before replacement; replacement is transactional |
+| `project` | `project/repository.ts` — inserts Project with linked Opportunity and creator participant; updates Project | owner context and transaction; keep Project↔Opportunity atomicity intact |
+| `project_quote` | `project-quote/repository.ts` — inserts and updates quotes/status | project/business and quote lifecycle checks occur in service/repository path; inspect each transition predicate before revocation |
+| `quote`, `quote_line_item` | `quote/repository.ts` — inserts quote and line items | quote account_id uses context.userId; customer lookup and quote ownership must be preserved |
+| `review` | `review/repository.ts` — inserts review and updates moderation state; also updates aggregate Business rating | reviewer identity from context; moderation uses separate admin path; aggregate rating update is coupled to review operations |
+| `support_request` | `support-request/repository.ts` — inserts request; updates status and replies | create checks authenticated role/account and optional business membership; status/reply admin methods assert admin role |
+
+### Important implications
+
+1. The concrete source list proves that the ACL footprint is not merely an unused legacy grant set. Many grants currently back active repository writes.
+2. The `business` and `business_membership` direct insert path is especially sensitive: initial Business creation and owner membership are coupled in one transaction. The existing signed Connect provisioning gateway should be the replacement boundary for Connect provisioning, but confirm all GHM first-party business creation callers before changing grants.
+3. The `notification` insert accepts a recipient ID at repository boundary. Every caller must be traced to establish whether it is a trusted server-side event or a user-influenced request.
+4. The `business_engagement_event` column INSERT grant has not yet been tied to a concrete source repository in this pass. It remains an explicit unresolved writer/trigger investigation; do not guess its owner.
+5. `account_identity` is updated only with `id = context.userId` in the inspected repository method. It is a candidate for a narrow self-profile DB operation, not blanket UPDATE access.
+6. Several ACL tables have writes that are already split between direct SQL and SECURITY DEFINER functions. The replacement plan must distinguish those paths; do not remove all DML from a table if a remaining approved repository path still depends on it.
+
+### Immediate next technical step
+
+Before writing any revocation migration, complete the writer inventory for every column ACL tuple (including the untraced engagement-event table), enumerate all callers of the concrete repository methods, and mark whether the operation is user-driven, trusted internal, provider-driven or admin-only. Then design fixed-purpose database operations for each actor-bound write family and qualify their grants on disposable PostgreSQL.
+
+No production permissions, roles, memberships, tables, sequences, functions, data, credentials, Render settings, deployments or traffic were changed.
