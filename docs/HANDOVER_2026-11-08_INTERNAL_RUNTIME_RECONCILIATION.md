@@ -1,5 +1,7 @@
 # Handover — Internal Runtime Reconciliation (2026-11-08)
 
+> **Historical operational snapshot — superseded for current source, role, branch and production-readiness decisions by** `docs/GHM_CURRENT_STATE.md`, `docs/HANDOVER_2026-11-11_ACTOR_GATEWAY_PRODUCTION_READINESS.md`, and `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md` (12 November follow-up). The 8 November `main` SHA, Render deployment pointer, service configuration and PR queue below are historical observations. Do not use them as current state or replay their deployment sequence. The 12 November production role-administration blocker and storage SECURITY DEFINER finding remain open; production changes remain frozen.
+
 **Record timestamp:** 2026-11-08 12:48–13:00 UTC (reconstructed retrospectively)  
 **Repository baseline inspected:** `main` at `0e2c7c2181d457265a671a6f857140dd17faee97`  
 **Purpose:** Restore the missing operational record for the 2026-11-07 runtime deployment and the 2026-11-08 follow-up. This is an evidence-based reconstruction, not a claim that a contemporaneous handover was maintained.

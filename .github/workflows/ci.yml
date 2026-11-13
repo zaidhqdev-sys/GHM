@@ -6,6 +6,8 @@ on:
     branches:
       - main
       - integration/capability-gateway-qualification-20261110
+      - construction/auth-issuer-isolation-20261112
+      - construction/auth-issuer-stacked-on-pr272-20261113
   pull_request:
     branches:
       - main
@@ -36,6 +38,7 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgres://ghm_runtime:runtime-test-password@localhost:5432/ghm_disposable_test
       GHM_RUNTIME_DATABASE_URL: postgres://ghm_runtime:runtime-test-password@localhost:5432/ghm_disposable_test
+      GHM_AUTH_ISSUER_DATABASE_URL: postgres://ghm_auth_issuer:auth-issuer-test-password@localhost:5432/ghm_disposable_test
       GHM_ACTOR_GATEWAY_DATABASE_URL: postgres://ghm_actor_gateway:actor-gateway-test-password@localhost:5432/ghm_disposable_test
       GHM_PAYMENT_PROVIDER_DATABASE_URL: postgres://ghm_payment_provider:provider-test-password@localhost:5432/ghm_disposable_test
       GHM_MIGRATOR_DATABASE_URL: postgres://ghm_migrator:migrator-test-password@localhost:5432/ghm_disposable_test
@@ -52,6 +55,7 @@ jobs:
       CORS_ORIGINS: http://localhost:3000
       GHM_AUTH_TOKEN_PEPPER: ci-test-token-pepper-32-bytes-minimum-length-000
       GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET: cHJvdmlkZXItdGVzdC1zZWNyZXQtMzItYnl0ZS1rZXk=
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -70,17 +74,20 @@ jobs:
           PGPASSWORD: postgres
         run: |
           psql -h localhost -U postgres -d ghm_disposable_test -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE ghm_db_user LOGIN INHERIT CREATEDB CREATEROLE PASSWORD 'dashboard-admin-test-password';
           CREATE ROLE ghm_schema_owner NOLOGIN;
           CREATE ROLE ghm_migrator LOGIN NOINHERIT PASSWORD 'migrator-test-password';
-          GRANT ghm_schema_owner TO ghm_migrator;
+          GRANT ghm_schema_owner TO ghm_migrator WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;
           CREATE ROLE ghm_runtime LOGIN NOINHERIT PASSWORD 'runtime-test-password';
           CREATE ROLE ghm_actor_gateway LOGIN NOINHERIT PASSWORD 'actor-gateway-test-password';
-          CREATE ROLE ghm_db_user NOLOGIN;
-          GRANT ghm_actor_gateway TO ghm_db_user WITH ADMIN OPTION, INHERIT FALSE, SET FALSE;
+          CREATE ROLE ghm_auth_issuer LOGIN NOINHERIT PASSWORD 'auth-issuer-test-password';
           CREATE ROLE ghm_payment_provider LOGIN NOINHERIT PASSWORD 'provider-test-password';
-          GRANT CONNECT ON DATABASE ghm_disposable_test TO ghm_migrator, ghm_runtime, ghm_payment_provider, ghm_actor_gateway;
+          GRANT ghm_runtime, ghm_actor_gateway, ghm_auth_issuer, ghm_migrator, ghm_payment_provider, ghm_schema_owner
+            TO ghm_db_user WITH ADMIN TRUE, INHERIT FALSE, SET FALSE;
+          GRANT CONNECT ON DATABASE ghm_disposable_test TO ghm_db_user, ghm_migrator, ghm_runtime, ghm_payment_provider, ghm_actor_gateway, ghm_auth_issuer;
           GRANT CREATE ON DATABASE ghm_disposable_test TO ghm_schema_owner;
           GRANT USAGE, CREATE ON SCHEMA public TO ghm_schema_owner;
+          CREATE SCHEMA ghm AUTHORIZATION ghm_schema_owner;
           SQL
 
       - name: Reproduce PostgreSQL 18 delegated CREATEROLE membership behavior
@@ -142,6 +149,12 @@ jobs:
           DROP ROLE ghm_role_creator;
           SQL
 
+      - name: Check auth issuer principal qualification script syntax
+        run: node --check scripts/qualify-auth-issuer-principal.mjs
+
+      - name: Check auth issuer cutover qualification script syntax
+        run: node --check scripts/qualify-auth-issuer-cutover.mjs
+
       - name: Check storage qualification script syntax
         run: node --check scripts/qualify-storage-persistence.mjs
 
@@ -172,11 +185,23 @@ jobs:
       - name: Check Business Hours gateway cutover qualification script syntax
         run: node --check scripts/qualify-business-hours-gateway-cutover-postgres.mjs
 
+      - name: Check Campaign and directory-review gateway qualification script syntax
+        run: node --check scripts/qualify-campaign-directory-review-gateway-postgres.mjs
+
       - name: Check Trust Score gateway cutover qualification script syntax
         run: node --check scripts/qualify-trust-score-gateway-cutover-postgres.mjs
 
       - name: Check Business Logo gateway cutover qualification script syntax
         run: node --check scripts/qualify-business-logo-gateway-cutover-postgres.mjs
+
+      - name: Check storage provider attestation provisioning script syntax
+        run: node --check scripts/provision-storage-provider-attestation-secret.mjs
+
+      - name: Check storage provider workflow qualification script syntax
+        run: node --check scripts/qualify-storage-provider-workflow-attestation-postgres.mjs
+
+      - name: Check storage metadata runtime grant qualification script syntax
+        run: node --check scripts/qualify-storage-metadata-runtime-grant-revocation-postgres.mjs
 
       - name: Build
         run: npm run build
@@ -184,8 +209,31 @@ jobs:
       - name: Apply all migrations to disposable PostgreSQL
         run: npm run migrate
 
+      - name: Check whole-database SECURITY DEFINER inventory script syntax
+        run: node --check scripts/audit-security-definer-authority.mjs
+
+      - name: Qualify isolated auth issuer database principal and empty privilege baseline
+        run: npm run qualify:auth-issuer-principal
+
       - name: Qualify isolated actor gateway database principal
         run: npm run qualify:actor-gateway-principal
+
+      - name: Provision provider attestation secret in disposable PostgreSQL
+        env:
+          GHM_STORAGE_PROVIDER_ATTESTATION_ALLOW_MUTATIONS: 'true'
+        run: node scripts/provision-storage-provider-attestation-secret.mjs
+
+      - name: Qualify storage provider dual-proof transitions on disposable PostgreSQL
+        env:
+          GHM_STORAGE_PROVIDER_ATTESTATION_ALLOW_MUTATIONS: 'true'
+        run: node scripts/qualify-storage-provider-workflow-attestation-postgres.mjs
+
+      - name: Qualify legacy storage metadata grant revocation and rollback on disposable PostgreSQL
+        env:
+          GHM_STORAGE_QUALIFICATION_ALLOW_MUTATIONS: 'true'
+        run: node scripts/qualify-storage-metadata-runtime-grant-revocation-postgres.mjs
+      - name: Qualify signed Connect Business provisioning, membership isolation and rollback
+        run: npm run qualify:connect-business-provisioning-live
 
       - name: Qualify Business registration forward migration against existing table
         run: node scripts/qualify-business-registration-forward-migration.mjs
@@ -222,6 +270,9 @@ jobs:
       - name: Test suite
         run: npm test
 
+      - name: Qualify Campaign and directory-review signed actor gateway on disposable PostgreSQL
+        run: npm run qualify:campaign-directory-review-gateway
+
       - name: Qualify Business Capability lifecycle and two-session assertion replacement on disposable PostgreSQL
         run: npm run qualify:business-capability-lifecycle-runtime
 
@@ -239,6 +290,7 @@ jobs:
 
       - name: Qualify Business Hours signed gateway cutover on disposable PostgreSQL
         run: npm run qualify:business-hours-gateway-cutover
+
 
       - name: Qualify Trust Score signed gateway cutover on disposable PostgreSQL
         run: npm run qualify:trust-score-gateway-cutover
@@ -260,6 +312,42 @@ jobs:
 
       - name: Runtime boundary verification
         run: npm run verify:runtime
+
+      - name: Inventory SECURITY DEFINER authority immediately before issuer cutover
+        run: npm run audit:security-definer-authority
+
+      - name: Qualify exact pre-issuer Resource API authentication grants
+        run: node scripts/qualify-auth-issuer-precutover.mjs
+
+      - name: Apply guarded auth issuer manual cutover in disposable PostgreSQL only
+        env:
+          PGPASSWORD: migrator-test-password
+        run: >-
+          psql -h localhost -U ghm_migrator -d ghm_disposable_test -v ON_ERROR_STOP=1
+          -c 'SET ROLE ghm_schema_owner'
+          -f database/cutovers/20261112010000_authentication_issuer_privilege_cutover.sql
+          -c 'RESET ROLE'
+      - name: Qualify isolated auth issuer lifecycle and runtime denials on disposable PostgreSQL
+        run: npm run qualify:auth-issuer-cutover
+
+      - name: Inventory SECURITY DEFINER authority after disposable issuer cutover
+        env:
+          GHM_SECURITY_DEFINER_AUDIT_OUTPUT: tmp/security-definer-authority-audit-post-issuer-cutover.json
+        run: npm run audit:security-definer-authority
+
+      - name: Compare pre- and post-cutover SECURITY DEFINER authority inventories
+        run: |
+          node --test scripts/compare-security-definer-authority-inventories.test.mjs
+          node scripts/compare-security-definer-authority-inventories.mjs
+
+      - name: Preserve pre-, post-cutover and comparison evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-definer-authority-inventory
+          path: tmp/security-definer-authority*.json
+          if-no-files-found: warn
+          retention-days: 14
 
   web-quality:
     runs-on: ubuntu-latest

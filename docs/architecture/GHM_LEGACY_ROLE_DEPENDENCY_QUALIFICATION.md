@@ -35,13 +35,13 @@ The canonical target is a decision boundary, not a mutation authorization.
 
 ## Current source findings
 
-The current runtime pool is constructed from `config.databaseUrl`. On the unified Actor Gateway integration branch, production configuration requires `GHM_RUNTIME_DATABASE_URL`; non-production may use `GHM_RUNTIME_DATABASE_URL` or the legacy `DATABASE_URL` fallback.
+The current runtime pool is constructed from `config.databaseUrl`, which is sourced from `DATABASE_URL`.
 
 The migration runner independently requires `GHM_MIGRATOR_DATABASE_URL`, connects as `ghm_migrator`, and explicitly enters `ghm_schema_owner`.
 
 Authentication, password recovery, and QuoteFlow migration reset flows use the canonical `PostgresAuthPersistence` boundary rather than legacy `public.users` / `password_reset_tokens` persistence.
 
-Therefore the key dynamic question is whether the configured runtime credential actually resolves to `ghm_runtime`. Production must use `GHM_RUNTIME_DATABASE_URL`; `DATABASE_URL` is a non-production fallback only. The qualification script proves the runtime and migrator identities against the explicitly supplied database credentials without exposing connection strings.
+Therefore the key dynamic question is whether the configured `DATABASE_URL` actually resolves to `ghm_runtime`. The qualification script proves this against the live construction database without exposing credentials.
 
 ## Qualification rules
 
@@ -97,3 +97,14 @@ No result authorizes GRANT, REVOKE, ALTER ROLE, DROP ROLE, ownership changes, or
 ## Documentation reconciliation
 
 This contract reconciles the role-separation model, migration runner boundary, QuoteFlow existing-user migration boundary, and legacy-object disposition findings. The legacy role audit remains a separate evidence artifact and is not silently overwritten by this qualification.
+
+## 2026-11-12 reconciliation — exact migrator authority
+
+The canonical migrator boundary is now enforced by the migration runner, not only documented: before `SET ROLE`, it verifies `ghm_migrator` is LOGIN/NOINHERIT/no elevated attributes, has exactly one direct `ghm_schema_owner` membership with `ADMIN FALSE`, `INHERIT FALSE`, `SET TRUE`, and that `ghm_schema_owner` is NOLOGIN/non-elevated with no memberships. After activation it verifies `session_user = ghm_migrator` and `current_user = ghm_schema_owner`. CI explicitly constructs this membership and the full migration chain passes with the guard enabled.
+
+Disposable exact-head evidence: `465b8e034243c80bf7efe6cc6ea8b27705176760`, run `43160050121` passed. Production role flags/membership options must still be independently inspected in Render before the live migration runner is used. This remains read-only until separately authorized.
+## 2026-11-12 reconciliation — migrator direct privileges
+
+In addition to exact role flags and membership, the migration runner now verifies `ghm_migrator` has database CONNECT only: no database CREATE, no `ghm` schema USAGE/CREATE, and no direct GHM relation or sequence privileges. This ensures the migration process gains object authority only after explicitly entering `ghm_schema_owner`. The exact-head disposable qualification passed in run `43160516327` at `5a1b26ab65c69bab654ba3b1c4fc8610123481cd`.
+
+Production Render role flags, membership options and direct privileges still require independent inspection. No role or grant mutation is authorized by this evidence.

@@ -45,7 +45,7 @@ test("HTTP binding verifies completed object ownership and cleans replaced objec
   assert.match(storageRouter, /record\.objectClass !== "business_logo"/);
   assert.match(storageRouter, /record\.status !== "available"/);
   assert.match(storageRouter, /const previousObjectId = await bindLogo/);
-  assert.match(storageRouter, /await serviceFor\(context\)\.deleteObject/);
+  assert.match(storageRouter, /await serviceFor\(context, accessToken\)\.deleteObject/);
   assert.match(storageRouter, /cleanupPending/);
   assert.match(storageRouter, /cleanupObjectId: cleanupPending \? previousObjectId : null/);
 });

@@ -401,86 +401,50 @@ The successful disposable qualification is evidence for the manual cutover desig
 No production migration, privilege cutover, secret provisioning, deployment, role change or data mutation was performed. The new cutover is not applied. PR #272 remains open and unmerged. No paid infrastructure was introduced.
 
 
----
+## 2026-11-12 — dependent issuer and Actor Gateway ACL follow-up
 
-## 2026-11-12 22:34 UTC — Render support response reconciled; gateway startup principal gap found and corrected in construction
+The current work has continued on dependent branch `construction/auth-issuer-isolation-20261112`, based on PR #272's `integration/capability-gateway-qualification-20261110`. Do not treat this as a new independent integration branch or merge PR #272 underneath it separately.
 
-### Render support disposition
+Current security corrections:
+- Authentication Issuer startup now enforces the exact `ghm_auth_issuer` login/effective role, LOGIN/NOINHERIT, no elevated attributes and no role memberships before listener startup. It also enforces its exact ten-function allow-list, no direct relation privileges, schema USAGE without CREATE, and safe future-function defaults.
+- At this 11 November pre-storage checkpoint, Actor Gateway startup enforced its exact 25-function signed/typed allow-list across the full `ghm` schema. The five signed Storage Metadata Gateway wrappers added on 12 November expand the current exact allow-list to 30 functions; the refreshed 103-routine inventory confirms 30 direct Actor Gateway EXECUTE grants. The no-direct-table/view/sequence privilege, schema USAGE without CREATE, no PUBLIC EXECUTE, no runtime EXECUTE on gateway-specific functions, and safe future-function-default controls remain in force.
+- Nine historical pre-signed overloads were already dropped by earlier migrations. The remaining unused unsigned `ghm.assert_actor_gateway(bigint)` helper is now revoked from PUBLIC, runtime, migrator and gateway; current signed wrappers use `assert_actor_gateway_capability`.
+- Runtime's exact `ghm.auth_*` allow-list is now two lookup functions: `auth_lookup_external_identity` and `auth_lookup_business_external_mapping`. The mapping mutation helper is schema-owner-only and called inside the new signed `gateway_provision_connect_business` operation.
+- Future function default verification now treats PUBLIC, runtime, issuer, gateway, migrator and payment-provider grants as unsafe.
+- The manual issuer cutover and database-only rollback remain disposable-only. The cutover revokes the old business-mapping helper from application roles; the rollback does not restore it or the unsigned Actor Gateway helper.
 
-The prior section saying Render human support was still pending is superseded by the later support handover merged through PR #274. The supported application pattern is to keep the Render Dashboard-managed administrator for controlled administration and connect normal Resource API execution directly as the existing SQL-created `ghm_runtime` login. The Render support decision is documented in `docs/security/RENDER_ACTOR_GATEWAY_ROLE_SEPARATION_HANDOVER_2026-11-12.md` on mainline.
+Current exact candidate head at the time of this note: `c877b67a39479ae2d7ac1f32b25f66363b6ba540`. Exact-head CI is still running/being corrected; do not claim the Actor Gateway principal qualification is green yet. The last actor-gateway diagnostic proved the 24-function effective ACL set, no direct relation access, no schema CREATE, no PUBLIC function execution, no runtime gateway-function execution, and safe future defaults. The failure after that diagnostic was a stale qualification assertion expecting the now-revoked unsigned helper to remain executable; the test was changed to require denial and the next exact-head run must confirm it.
 
-### New source-level gap: Actor Gateway's startup membership check rejected the supported Render role graph
-
-The original Actor Gateway startup query treated every role membership involving `ghm_actor_gateway` as forbidden. Production catalog evidence and Render's support response establish one controlled administrative membership: `ghm_db_user` is a member of the protected service role with `ADMIN=true`, `INHERIT=false`, and `SET=false`. The gateway role itself must not be a member of any other role.
-
-The previous `no_role_memberships` assertion would therefore reject the actual supported Render role graph even when the application login is otherwise least-privileged. It also did not independently assert database CONNECT / no CREATE or `ghm` schema USAGE / no CREATE.
-
-### Correction committed to the integration branch
-
-The Actor Gateway principal verifier and startup catalog query now require:
-- `session_user=current_user=ghm_actor_gateway`;
-- LOGIN / NOINHERIT and no superuser, createdb, createrole, replication or bypass-RLS attributes;
-- database CONNECT and `ghm` schema USAGE;
-- no database CREATE or schema CREATE;
-- no membership granted to the gateway role itself;
-- if `ghm_db_user` is a member of `ghm_actor_gateway`, it must be exactly the supported `ADMIN=true, INHERIT=false, SET=false` relationship; all other inbound memberships are rejected.
-
-The principal unit tests and disposable PostgreSQL qualification script now cover the updated contract. The gateway principal test is included in the main `npm test` command.
-
-Relevant commits:
-- `0972978714459b67f5a09f8ecae11eb91bc8c247` — verifier
-- `7bd68b2fbd0cf88ceae6a81080d10e2405eebd07` — unit tests
-- `da7ed9dd9fe02c68f4c2a1a6b35efec6d12b0547` — startup query
-- `86533870d514918f50e353b06ab8edec8ee399f5` — disposable qualification script
-
-Exact-head CI run `43321348382` was queued at the time of this update; do not treat this correction as qualified until all required jobs pass.
-
-### Remaining architectural blocker: Authentication Issuer is not isolated in this PR
-
-A source audit of the integration branch confirms:
-- `src/auth/foundation/access-jwt.ts` still implements ES256 signing and loads `GHM_JWT_ES256_PRIVATE_KEY_PEM`.
-- `src/auth/ghm-bearer.ts` constructs `createAccessJwtService(loadEs256Keys())`, so the ordinary Resource API process still loads the signing private key.
-- `src/http/auth-router.ts` still invokes the ordinary `GhmAuthService` for register, login, refresh and logout.
-- No separate `src/auth-issuer/` process or issuer API exists in the PR #272 tree.
-
-Consequently, the Actor Gateway validates a JWT whose signing private key remains available to the ordinary Resource API. A compromised or abused Resource API process could mint a token with a chosen account subject and then ask the gateway to establish that actor context. The gateway's independent DB HMAC assertion does not fix this upstream issuer-trust issue because the gateway itself derives the actor from that JWT.
-
-This means PR #272 is **not yet a complete implementation of ADR-001** and must not be represented as closing the whole actor-authentication gap. The next security work must isolate credential verification/session operations and ES256 private signing behind a separately credentialed Authentication Issuer, while preserving the existing public JWT/refresh contract. Do not remove the private key from the Resource API until the issuer is deployed and all auth routes have a verified issuer path.
-
-### Deployment and production status
-
-No production change occurred. The Actor Gateway migration's principal guard grants `USAGE ON SCHEMA ghm` to `ghm_actor_gateway`; the startup check now verifies that required access. The production role currently lacks this schema USAGE in the read-only evidence, so the gateway cannot start until the approved migration is applied. Do not grant this manually during qualification.
-
-The PR remains unmerged, and the six-commit mainline divergence plus overlapping Resource API runtime-principal files require a controlled rebase/integration. The latest branch CI must pass before further disposition. The separate issuer and service-hosting/network plan remain release gates; do not create or repurpose Render services, change credentials, run migrations/cutovers, deploy or alter production grants.
+Production remains unchanged. No production migrations, grants, role changes, secrets, deployments, service creation or routing changes occurred. PR #272 remains open/unmerged. Fresh independently verified backup and Render role/ownership resolution remain blocking production gates. No paid infrastructure was introduced.
 
 
-## 2026-11-12 22:48 UTC — PR #272 rebased onto current mainline and exact-head CI passed
 
-The former 672-commit divergent branch was reconstructed as a clean current-mainline integration, preserving the latest Resource API principal enforcement and current Render support handover.
+### Superseding Connect Business provisioning closure — 2026-11-12
 
-- PR: https://github.com/zaidhqdev-sys/GHM/pull/272
-- Current head: `6712ac4e8c1ab04beb38bfcc110dfda08bf6529e`
-- Base: `ad4fea43f2eb7bf959042b9db77a9f86e6bb531b`
-- Compare: 4 commits ahead, 0 behind; GitHub reports mergeable/clean.
-- Exact-head run `43322730693`: `quality`, `web-quality`, and Cloudflare Pages all passed.
-- The PR was deliberately converted to draft after the Auth Issuer gap was confirmed. It remains open, unmerged and undeployed.
+The earlier three-function runtime dependency and proposed-grant-preservation note is historical and superseded by the signed gateway implementation later added to this dependent branch.
 
-The rebased tree preserves mainline `src/server.ts`, `src/db/runtime-principal.ts`, `src/db/runtime-principal.test.ts`, the current migration security audit handover and Render support handover. It retains the gateway-specific `.env.example`, configuration URL validation, gateway tests and scripts.
+Migration `20261112080000_signed_connect_business_provisioning_gateway.sql` introduces `business.connect.provision` and `gateway_provision_connect_business`. The SECURITY DEFINER operation validates the signed Actor Gateway assertion against the verified actor, operation, nonce, timestamp and canonical request context; requires an active business/admin actor; serializes concurrent provisioning by external Business ID; verifies active membership when resolving an existing mapping; and atomically creates the canonical GHM Business, owner membership and external mapping. It is owned by `ghm_schema_owner` and granted only to `ghm_actor_gateway`.
 
-The successful exact-head CI run includes:
-- Complete TypeScript build and unit test suite.
-- Full migration application to disposable PostgreSQL.
-- PostgreSQL 18 delegated CREATEROLE membership reproduction.
-- Actor Gateway principal qualification using the exact allowed `ghm_db_user` membership shape.
-- Gateway principal migration guard and startup contract.
-- Capability governance and manual cutover qualifications.
-- Business Capability, Saved Business, Business Hours, Trust Score, Business Logo, supplier classification and Business profile gateway qualifications.
-- Runtime-boundary and migration policy verification.
+The internal `auth_link_business_external_mapping` helper is revoked from PUBLIC, `ghm_runtime`, `ghm_migrator`, `ghm_actor_gateway`, `ghm_auth_issuer` and `ghm_payment_provider`. It is invoked inside the signed gateway's SECURITY DEFINER transaction, not directly by the Resource API runtime. The manual issuer cutover includes the matching runtime/application revocation. The Resource API runtime's exact auth-function set is now two lookup functions. The issuer qualification script expects those two functions after cutover and rollback and denies direct mapping-link execution.
 
-### Still blocked
+The SQL cutover's stale trailing comment and the issuer runbook have also been corrected. The initial qualification follow-up that temporarily added a three-function expectation was superseded before exact-head CI and must not be treated as current evidence.
 
-The Auth Issuer is not isolated: Resource API still loads the ES256 private signing key and owns auth/session/recovery routes. A compromised Resource API could mint a chosen-subject JWT accepted by Actor Gateway. This remains the primary ADR-001 security blocker.
+The signed gateway migration contract test checks the operation name, SECURITY DEFINER ownership, gateway-only grant, atomic membership/mapping path and revocation of the internal helper. The full disposable gateway qualification and the updated issuer cutover/lifecycle/rollback suite must both pass on the same exact branch head before this integration is considered qualified.
 
-The separate Business Engagement / Analytics feature stack (#244) is not included in this gateway integration. Its current Resource API implementation accepts account/business attribution through a direct runtime INSERT path. Do not merge or deploy that stack until the actor attribution is bound through an issuer-verified gateway operation and disposable PostgreSQL proves runtime spoofing is denied.
+Production remains unchanged. PR #272 and the dependent issuer branch remain open/unmerged. Fresh independently verified production backup, Render role/ownership resolution, reviewed network/TLS topology, recovery delivery and separate deployment/cutover approvals remain blocking gates. No paid infrastructure was introduced.
 
-No production role, grant, membership, secret, environment variable, migration, cutover, Render service, deployment, application data or traffic changed.
+
+## 2026-11-12 security audit follow-up
+
+This readiness handover remains the production-readiness record for PR #272 and its integration branch. The separate database-wide security inventory work is on `construction/auth-issuer-isolation-20261112`; it is not PR #272 and its CI must not be attributed to PR #272.
+
+The construction branch's latest validated code/documentation head at the time of this update was `36fd0f63ec094a0603c3d3c272e04a456b2078a5`, with both `quality` and `web-quality` passing in Actions run `43222978930` (55/55 quality steps). The retrieved PostgreSQL 18.6 disposable inventory contained 97 SECURITY DEFINER routines, all in `ghm`, all owned by `ghm_schema_owner`, all with the exact pinned search path `pg_catalog, ghm, pg_temp`, all using trusted languages, and zero PUBLIC EXECUTE grants. After correctly excluding PostgreSQL superuser bypass, 70 direct application-role grants remain for explicit review: runtime 43, Actor Gateway 25, payment provider 2, migrator 1. Artifact SHA-256: `504617d724670704e673ed22f4841069d02a19aceeca2674e9b6de9cdb73e64d`.
+
+A new unresolved source-level database boundary finding affects five non-public `ghm_runtime`-executable storage SECURITY DEFINER functions: pending-object creation, object metadata read, mark-available, mark-deletion-pending and mark-deleted. Their current application service performs tenant authorization and provider verification, but the SQL functions do not independently bind caller-supplied account/business/object IDs to a database-verifiable actor/provider assertion. Do not revoke their grants until a signed Actor Gateway storage-metadata path or another qualified least-privilege replacement is implemented. The public approved-business-logo lookup is separate and constrained. Saved Business remains favourites/bookmarks; its legacy direct RPCs are covered by a distinct signed gateway/manual cutover.
+
+The production blockers in this handover remain unchanged: Render's production role-administration/CREATEROLE/ADMIN OPTION issue is unresolved, the required fresh current-state backup/recovery gate is not evidenced, the Actor Gateway service/network/cost decision remains unresolved under the no-paid-infrastructure constraint, and no production role/grant/migration/deployment or manual cutover is authorized. PR #272 remains open/unmerged and not mergeable at the last inspection; do not merge it or the construction branch as part of this audit. See the full security handover for the exact grant reconciliation and storage remediation requirements.
+
+
+## Superseding storage metadata security status — 2026-11-12
+
+The five-function storage metadata finding described above is now source-remediated and has passed disposable PostgreSQL 18 adversarial qualification. The Resource API uses the signed Storage Metadata Actor Gateway; provider-confirmed transitions require a separate Resource API HMAC attestation verified by PostgreSQL. The disposable legacy grant revocation/rollback rehearsal now checks PUBLIC, `ghm_runtime`, `ghm_migrator`, and `ghm_actor_gateway`, proves direct-call denial for the three application logins, retains replacement wrapper grants, and restores the original execution state. See `docs/HANDOVER_2026-11-12_STORAGE_METADATA_GATEWAY.md` for exact commits, evidence, CI and open items. This supersedes the earlier statement that the storage gateway had not yet been implemented. Production grant revocation and production secret provisioning remain blocked; no production changes or merge are authorized.

@@ -71,6 +71,82 @@ test('auth foundation persistence (database)', async (t) => {
   let accountId = 0;
   const persistence = new PostgresAuthPersistence(runtimePool);
 
+  const setPasswordAsOwner = async (targetAccountId: number, email: string, password: string): Promise<void> => {
+    const { createArgon2idPasswordHasher } = await import('./password');
+    const hashed = await createArgon2idPasswordHasher().hash(password);
+    const normalizedEmail = email.trim().toLowerCase();
+    const client = await migratorPool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SET LOCAL ROLE ghm_schema_owner');
+      await client.query(
+        `SELECT ghm.auth_set_password($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          targetAccountId,
+          email,
+          normalizedEmail,
+          hashed.passwordHash,
+          hashed.argon2MemoryKib,
+          hashed.argon2TimeCost,
+          hashed.argon2Parallelism,
+        ],
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
+  };
+
+  const redeemRecoveryAsOwner = async (recoveryTokenWire: string): Promise<number> => {
+    const { decodeOpaqueTokenWire } = await import('./opaque-token');
+    const { protectOpaqueToken } = await import('./token-hmac');
+    const raw = decodeOpaqueTokenWire(recoveryTokenWire);
+    const tokenHash = protectOpaqueToken(Buffer.from(process.env.GHM_AUTH_TOKEN_PEPPER!, 'utf8'), 'recovery', raw);
+    const client = await migratorPool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SET LOCAL ROLE ghm_schema_owner');
+      const result = await client.query(
+        'SELECT ghm.auth_redeem_recovery($1) AS account_id',
+        [tokenHash],
+      );
+      await client.query('COMMIT');
+      return Number(result.rows[0].account_id);
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
+  };
+
+  const validateSessionAsOwner = async (sessionId: number) => {
+    const client = await migratorPool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SET LOCAL ROLE ghm_schema_owner');
+      const result = await client.query(
+        'SELECT * FROM ghm.auth_validate_session($1)',
+        [sessionId],
+      );
+      await client.query('COMMIT');
+      if (result.rowCount !== 1) throw new Error('Session validation fixture returned no row');
+      const row = result.rows[0];
+      return {
+        isUsable: Boolean(row.is_usable),
+        rejectReason: row.reject_reason ?? null,
+      };
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
+  };
+
   const linkExternalIdentityAsOwner = async (provider: string, subject: string, targetAccountId: number) => {
     const client = await migratorPool.connect();
     try {
@@ -185,7 +261,7 @@ test('auth foundation persistence (database)', async (t) => {
     assert.equal('raw' in created, false);
     assert.equal(decodeOpaqueTokenWire(created.refreshTokenWire).length, 32);
 
-    const usable = await persistence.validateSession(created.session.id);
+    const usable = await validateSessionAsOwner(created.session.id);
     assert.equal(usable.isUsable, true);
 
     const rotated = await persistence.rotateRefresh(created.refreshTokenWire);
@@ -198,7 +274,7 @@ test('auth foundation persistence (database)', async (t) => {
         error instanceof AuthPersistenceError && error.code === 'REFRESH_CREDENTIAL_REUSED',
     );
 
-    const afterReplay = await persistence.validateSession(created.session.id);
+    const afterReplay = await validateSessionAsOwner(created.session.id);
     assert.equal(afterReplay.isUsable, false);
     assert.equal(afterReplay.rejectReason, 'session_revoked');
 
@@ -225,7 +301,7 @@ test('auth foundation persistence (database)', async (t) => {
     } finally {
       client.release();
     }
-    const inactive = await persistence.validateSession(created.session.id);
+    const inactive = await validateSessionAsOwner(created.session.id);
     assert.equal(inactive.isUsable, false);
     assert.equal(inactive.rejectReason, 'inactivity_expired');
 
@@ -244,7 +320,7 @@ test('auth foundation persistence (database)', async (t) => {
     } finally {
       client2.release();
     }
-    const absolute = await persistence.validateSession(created2.session.id);
+    const absolute = await validateSessionAsOwner(created2.session.id);
     assert.equal(absolute.isUsable, false);
     assert.equal(absolute.rejectReason, 'absolute_expired');
   });
@@ -300,24 +376,23 @@ test('auth foundation persistence (database)', async (t) => {
     const issued = await persistence.issueRecovery(accountId, 30);
     assert.ok(issued.recoveryTokenWire.length > 0);
 
-    const redeemedAccount = await persistence.redeemRecovery(issued.recoveryTokenWire);
+    const redeemedAccount = await redeemRecoveryAsOwner(issued.recoveryTokenWire);
     assert.equal(redeemedAccount, accountId);
 
     await assert.rejects(
-      () => persistence.redeemRecovery(issued.recoveryTokenWire),
-      (error: unknown) =>
-        error instanceof AuthPersistenceError && error.code === 'RECOVERY_CREDENTIAL_INVALID',
+      () => redeemRecoveryAsOwner(issued.recoveryTokenWire),
+      (error: unknown) => (error as { code?: string }).code === 'P0001',
     );
 
-    const v1 = await persistence.validateSession(s1.session.id);
-    const v2 = await persistence.validateSession(s2.session.id);
+    const v1 = await validateSessionAsOwner(s1.session.id);
+    const v2 = await validateSessionAsOwner(s2.session.id);
     assert.equal(v1.isUsable, false);
     assert.equal(v2.isUsable, false);
 
     const again = await persistence.issueRecovery(accountId, 30);
     const concurrent = await Promise.allSettled([
-      persistence.redeemRecovery(again.recoveryTokenWire),
-      persistence.redeemRecovery(again.recoveryTokenWire),
+      redeemRecoveryAsOwner(again.recoveryTokenWire),
+      redeemRecoveryAsOwner(again.recoveryTokenWire),
     ]);
     assert.equal(concurrent.filter((r) => r.status === 'fulfilled').length, 1);
     assert.equal(concurrent.filter((r) => r.status === 'rejected').length, 1);
@@ -329,6 +404,17 @@ test('auth foundation persistence (database)', async (t) => {
     const s2 = await persistence.createSessionWithRefresh(accountId);
     const issued = await persistence.issueRecovery(accountId, 30);
     const email = `recovery-reset-${accountId}@example.test`;
+    await setPasswordAsOwner(accountId, email, 'Initial-Recovery-Password-123!');
+
+    await assert.rejects(
+      () => persistence.resetPasswordWithRecovery(
+        issued.recoveryTokenWire,
+        `mismatch+${email}`,
+        'New-Password-For-Recovery-123!',
+      ),
+      (error: unknown) =>
+        error instanceof AuthPersistenceError && error.code === 'RECOVERY_CREDENTIAL_INVALID',
+    );
 
     const reset = await persistence.resetPasswordWithRecovery(
       issued.recoveryTokenWire,
@@ -336,9 +422,10 @@ test('auth foundation persistence (database)', async (t) => {
       'New-Password-For-Recovery-123!',
     );
     assert.ok(reset.revokedSessionCount >= 2);
+    assert.equal(await persistence.lookupPasswordByEmail(email).then((credential) => credential?.loginEmail), email);
 
-    const v1 = await persistence.validateSession(s1.session.id);
-    const v2 = await persistence.validateSession(s2.session.id);
+    const v1 = await validateSessionAsOwner(s1.session.id);
+    const v2 = await validateSessionAsOwner(s2.session.id);
     assert.equal(v1.isUsable, false);
     assert.equal(v2.isUsable, false);
 
@@ -369,7 +456,10 @@ test('auth foundation persistence (database)', async (t) => {
     } finally {
       client.release();
     }
-    await assert.rejects(() => persistence.redeemRecovery(issued.recoveryTokenWire), AuthPersistenceError);
+    await assert.rejects(
+      () => redeemRecoveryAsOwner(issued.recoveryTokenWire),
+      (error: unknown) => (error as { code?: string }).code === 'P0001',
+    );
   });
 
 
@@ -552,140 +642,8 @@ test('auth foundation persistence (database)', async (t) => {
     }
   });
 
-  await t.test('link business external mapping: create, idempotent, conflict, missing, ACL', async () => {
-    const provider = `test-biz-${marker.slice(-12)}`;
-    const externalId = `ext-${marker}`;
-    let businessId = 0;
-    let otherBusinessId = 0;
-
-    const client = await migratorPool.connect();
-    try {
-      await client.query('SET ROLE ghm_schema_owner');
-      const b1 = await client.query(
-        `INSERT INTO ghm.business (name, slug, verification_status, is_active)
-         VALUES ($1, $2, 'unverified', true)
-         RETURNING id, verification_status, is_active`,
-        [`${marker}-biz-a`, `biz-${marker}-a`],
-      );
-      businessId = Number(b1.rows[0].id);
-      assert.equal(b1.rows[0].verification_status, 'unverified');
-      assert.equal(b1.rows[0].is_active, true);
-
-      const b2 = await client.query(
-        `INSERT INTO ghm.business (name, slug, verification_status, is_active)
-         VALUES ($1, $2, 'unverified', true)
-         RETURNING id`,
-        [`${marker}-biz-b`, `biz-${marker}-b`],
-      );
-      otherBusinessId = Number(b2.rows[0].id);
-    } finally {
-      client.release();
-    }
-
-    const created = await persistence.linkBusinessExternalMapping(provider, externalId, businessId);
-    assert.equal(created.outcome, 'created');
-    assert.equal(created.mapping?.businessId, businessId);
-    assert.equal(created.mapping?.provider, provider);
-    assert.equal(created.mapping?.externalBusinessId, externalId);
-
-    const again = await persistence.linkBusinessExternalMapping(provider, externalId, businessId);
-    assert.equal(again.outcome, 'already_linked');
-    assert.equal(again.mapping?.id, created.mapping?.id);
-
-    const conflict = await persistence.linkBusinessExternalMapping(provider, externalId, otherBusinessId);
-    assert.equal(conflict.outcome, 'conflict');
-    assert.equal(conflict.mapping?.businessId, businessId);
-
-    const missing = await persistence.linkBusinessExternalMapping(
-      provider,
-      `missing-${marker}`,
-      9_007_199_254_740_991,
-    );
-    assert.equal(missing.outcome, 'business_not_found');
-    assert.equal(missing.mapping, null);
-
-    await assert.rejects(
-      () => persistence.linkBusinessExternalMapping('  ', externalId, businessId),
-      AuthPersistenceError,
-    );
-    await assert.rejects(
-      () => persistence.linkBusinessExternalMapping(provider, '  ', businessId),
-      AuthPersistenceError,
-    );
-
-    // Concurrent same-key same business → deterministic created/already_linked; one row
-    const raceExternal = `race-${marker}`;
-    const raced = await Promise.all([
-      persistence.linkBusinessExternalMapping(provider, raceExternal, businessId),
-      persistence.linkBusinessExternalMapping(provider, raceExternal, businessId),
-    ]);
-    for (const result of raced) {
-      assert.ok(result.outcome === 'created' || result.outcome === 'already_linked');
-      assert.equal(result.mapping?.businessId, businessId);
-    }
-    assert.equal(raced.filter((r) => r.outcome === 'created').length >= 1, true);
-
-    const verify = await migratorPool.connect();
-    try {
-      await verify.query('SET ROLE ghm_schema_owner');
-      const count = await verify.query(
-        `SELECT count(*)::int AS n FROM ghm.business_external_mapping
-          WHERE provider = $1 AND external_business_id = $2`,
-        [provider, raceExternal],
-      );
-      assert.equal(count.rows[0].n, 1);
-
-      const membership = await verify.query(
-        `SELECT 1 FROM ghm.business_membership WHERE business_id = $1`,
-        [businessId],
-      );
-      assert.equal(membership.rowCount, 0);
-
-      const businessState = await verify.query(
-        `SELECT verification_status, is_active FROM ghm.business WHERE id = $1`,
-        [businessId],
-      );
-      assert.equal(businessState.rows[0].verification_status, 'unverified');
-      assert.equal(businessState.rows[0].is_active, true);
-
-      const meta = await verify.query<{ owner: string; prosecdef: boolean; search_path: string | null }>(`
-        SELECT pg_get_userbyid(p.proowner) AS owner,
-               p.prosecdef,
-               (SELECT option_value FROM pg_options_to_table(p.proconfig)
-                 WHERE option_name = 'search_path' LIMIT 1) AS search_path
-          FROM pg_proc p
-          JOIN pg_namespace n ON n.oid = p.pronamespace
-         WHERE n.nspname = 'ghm'
-           AND p.proname = 'auth_link_business_external_mapping'
-      `);
-      assert.equal(meta.rows[0]?.owner, 'ghm_schema_owner');
-      assert.equal(meta.rows[0]?.prosecdef, true);
-      assert.match(String(meta.rows[0]?.search_path ?? ''), /pg_catalog,\s*ghm/);
-    } finally {
-      verify.release();
-    }
-
-    const runtimeClient = await runtimePool.connect();
-    try {
-      await assert.rejects(
-        () =>
-          runtimeClient.query(
-            `INSERT INTO ghm.business_external_mapping (provider, external_business_id, business_id)
-             VALUES ($1, $2, $3)`,
-            [provider, `direct-${marker}`, businessId],
-          ),
-        (error: unknown) => {
-          const err = error as { code?: string; message?: string };
-          return err.code === '42501' || Boolean(err.message?.match(/permission denied/i));
-        },
-      );
-    } finally {
-      runtimeClient.release();
-    }
-  });
-
   await t.test('password set via DEFINER', async () => {
-    await persistence.setPassword(accountId, `user+${marker}@Example.COM`, 'CorrectHorseBattery1');
+    await setPasswordAsOwner(accountId, `user+${marker}@Example.COM`, 'CorrectHorseBattery1');
     const looked = await persistence.lookupPasswordByEmail(`user+${marker}@example.com`);
     assert.ok(looked);
     assert.equal(looked!.accountId, accountId);

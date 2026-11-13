@@ -134,6 +134,8 @@ import type { CommercialService } from '../resources/commercial/contracts';
 import { registerCommercialRoutes } from './commercial-router';
 import { registerStorageRoutes } from './storage-router';
 import { HttpBusinessLogoGatewayClient, type BusinessLogoGatewayClient } from './business-logo-gateway-client';
+import { HttpStorageMetadataGatewayClient } from './storage-metadata-gateway-client';
+import { HttpCampaignDirectoryReviewGatewayClient, type CampaignDirectoryReviewGatewayClient } from './campaign-directory-review-gateway-client';
 import { createStorageProvider } from '../storage/factory';
 
 
@@ -169,6 +171,8 @@ export interface AppDependencies {
   readonly businessOfferingService?: BusinessOfferingService;
   readonly directoryService?: DirectoryService;
   readonly commercialService?: CommercialService;
+  /** Disable issuer-only routes in the ordinary Resource API process. */
+  readonly authRoutesEnabled?: boolean;
   readonly authService?: GhmAuthService;
   readonly authPersistence?: AuthPersistence;
   readonly passwordRecoveryService?: PasswordRecoveryService;
@@ -180,6 +184,9 @@ export interface AppDependencies {
   readonly businessHoursGatewayRequired?: boolean;
   readonly businessLogoGatewayClient?: BusinessLogoGatewayClient;
   readonly businessLogoGatewayRequired?: boolean;
+  readonly storageMetadataGatewayRequired?: boolean;
+  readonly campaignDirectoryReviewGatewayClient?: CampaignDirectoryReviewGatewayClient;
+  readonly campaignDirectoryReviewGatewayRequired?: boolean;
   readonly savedBusinessGatewayClient?: SavedBusinessGatewayClient;
   readonly savedBusinessGatewayRequired?: boolean;
   readonly businessRegistrationIdentityGatewayClient?: BusinessRegistrationIdentityGatewayClient;
@@ -414,6 +421,19 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const businessHoursGatewayRequired = config.isProduction || dependencies.businessHoursGatewayRequired === true;
   const businessLogoGatewayClient = dependencies.businessLogoGatewayClient ?? (config.actorGatewayUrl ? new HttpBusinessLogoGatewayClient(config.actorGatewayUrl) : undefined);
   const businessLogoGatewayRequired = config.isProduction || dependencies.businessLogoGatewayRequired === true;
+  const storageProviderAttestationSecret = process.env.GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET?.trim() ?? '';
+  const storageMetadataGatewayRequired = config.isProduction || dependencies.storageMetadataGatewayRequired === true;
+  if (config.isProduction && config.storage && !config.actorGatewayUrl) {
+    throw new Error('GHM_ACTOR_GATEWAY_URL is required when production storage is enabled');
+  }
+  if (config.isProduction && config.storage && !storageProviderAttestationSecret) {
+    throw new Error('Missing required environment variable: GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET');
+  }
+  const storageMetadataGatewayStoreFactory = config.actorGatewayUrl && storageProviderAttestationSecret
+    ? (accessToken: string) => new HttpStorageMetadataGatewayClient(
+        config.actorGatewayUrl as string, accessToken, storageProviderAttestationSecret,
+      )
+    : undefined;
   const projectService = dependencies.projectService ?? new ProjectServiceImpl(new PostgresProjectRepository());
   const publicProjectService =
     dependencies.publicProjectService ??
@@ -421,9 +441,12 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const enquiryService =
     dependencies.enquiryService ??
     new EnquiryServiceImpl(new PostgresEnquiryRepository());
+  const campaignDirectoryReviewGatewayClient = dependencies.campaignDirectoryReviewGatewayClient
+    ?? (config.actorGatewayUrl ? new HttpCampaignDirectoryReviewGatewayClient(config.actorGatewayUrl) : undefined);
+  const campaignDirectoryReviewGatewayRequired = config.isProduction || dependencies.campaignDirectoryReviewGatewayRequired === true;
   const campaignService =
     dependencies.campaignService ??
-    new CampaignServiceImpl(new PostgresCampaignRepository());
+    new CampaignServiceImpl(new PostgresCampaignRepository(undefined, campaignDirectoryReviewGatewayClient, campaignDirectoryReviewGatewayRequired));
   const opportunityService =
     dependencies.opportunityService ??
     new OpportunityServiceImpl(new PostgresOpportunityRepository());
@@ -446,7 +469,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
     dependencies.businessCapabilityEvidenceService ??
     new BusinessCapabilityEvidenceServiceImpl(new PostgresBusinessCapabilityEvidenceRepository());
   const businessRegistrationIdentityService = dependencies.businessRegistrationIdentityService ?? new BusinessRegistrationIdentityServiceImpl(new PostgresBusinessRegistrationIdentityRepository());
-  const directoryReviewService = dependencies.directoryReviewService ?? new DirectoryReviewServiceImpl(new PostgresDirectoryReviewRepository());
+  const directoryReviewService = dependencies.directoryReviewService ?? new DirectoryReviewServiceImpl(new PostgresDirectoryReviewRepository(undefined, campaignDirectoryReviewGatewayClient, campaignDirectoryReviewGatewayRequired));
   const trustScoreService =
     dependencies.trustScoreService ??
     new TrustScoreServiceImpl(new PostgresTrustScoreRepository());
@@ -488,7 +511,12 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   app.use(express.json({ limit: '1mb' }));
 
   if (config.storage) {
-    registerStorageRoutes(app, createStorageProvider(config.storage), resourceAuthMiddleware, config.storage.uploadGrantTtlSeconds, config.storage.downloadGrantMaxTtlSeconds, undefined, businessLogoGatewayClient, businessLogoGatewayRequired);
+    registerStorageRoutes(
+      app, createStorageProvider(config.storage), resourceAuthMiddleware,
+      config.storage.uploadGrantTtlSeconds, config.storage.downloadGrantMaxTtlSeconds,
+      undefined, businessLogoGatewayClient, businessLogoGatewayRequired,
+      storageMetadataGatewayStoreFactory, storageMetadataGatewayRequired,
+    );
   }
 
   app.get('/', (_req: Request, res: Response) => {
@@ -1089,18 +1117,22 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerBusinessCategoryRoutes(app, businessCategoryService, resourceAuthMiddleware);
   registerBusinessOfferingRoutes(app, businessOfferingService, resourceAuthMiddleware);
   registerCommercialRoutes(app, commercialService, resourceAuthMiddleware);
-  const authPersistence = dependencies.authPersistence ?? new PostgresAuthPersistence();
-  const passwordResetService =
-    dependencies.passwordResetService
-    ?? createPasswordResetService(authPersistence);
-  registerAuthRoutes(app, {
-    authService: dependencies.authService,
-    authPersistence,
-    passwordRecoveryService: dependencies.passwordRecoveryService,
-    passwordResetService,
-    quoteFlowMigrationResetRecoveryService: dependencies.quoteFlowMigrationResetRecoveryService,
-    quoteFlowMigrationResetCompletionService: dependencies.quoteFlowMigrationResetCompletionService,
-  } satisfies AuthRouterDependencies);
+  if (dependencies.authRoutesEnabled !== false) {
+    // Auth lifecycle routes belong to the isolated Authentication Issuer.
+    // Keep registration enabled for explicit test/embedded fixtures only.
+    const authPersistence = dependencies.authPersistence ?? new PostgresAuthPersistence();
+    const passwordResetService =
+      dependencies.passwordResetService
+      ?? createPasswordResetService(authPersistence);
+    registerAuthRoutes(app, {
+      authService: dependencies.authService,
+      authPersistence,
+      passwordRecoveryService: dependencies.passwordRecoveryService,
+      passwordResetService,
+      quoteFlowMigrationResetRecoveryService: dependencies.quoteFlowMigrationResetRecoveryService,
+      quoteFlowMigrationResetCompletionService: dependencies.quoteFlowMigrationResetCompletionService,
+    } satisfies AuthRouterDependencies);
+  }
   registerCommercialInternalRoutes(app);
   registerConnectServiceRoutes(app, {
     ...dependencies.connectService,

@@ -1,5 +1,7 @@
 # Handover — production storage getter permission fix (2026-10-28)
 
+> **Historical snapshot — superseded for current role/security decisions by** `docs/HANDOVER_2026-11-11_ACTOR_GATEWAY_PRODUCTION_READINESS.md` and `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md` (12 November follow-up). The role names, direct grants, and production verification recorded below describe 28 October 2026 only. Do not treat the old `ghm_app_user` / `ghm_db_user` effective-role arrangement as the current intended runtime identity. The later production role-administration finding remains unresolved. The scoped `storage_get_object` permission success is not proof that the broader storage metadata SECURITY DEFINER boundary was safe. The 12 November continuation subsequently implemented the signed Storage Metadata Actor Gateway and passed disposable PostgreSQL 18 adversarial and five-function grant-revocation/rollback qualification. The five legacy direct runtime grants remain unchanged in production pending a separately approved cutover; no production storage grants should be changed from this historical note. See `docs/HANDOVER_2026-11-12_STORAGE_METADATA_GATEWAY.md`.
+
 ## Current status
 
 The production database permission gap for the scoped storage metadata getter has been corrected interactively.

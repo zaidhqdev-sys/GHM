@@ -3,6 +3,8 @@ import { createHmac, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { Pool } from 'pg';
+import { assertActorGatewayDatabasePrivileges, readActorGatewayDatabasePrivileges } from '../dist/actor-gateway/database-privileges.js';
+import { assertRuntimeDatabaseFunctionPrivileges, readRuntimeDatabaseFunctionPrivileges } from '../dist/db/runtime-database-privileges.js';
 import 'dotenv/config';
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL;
@@ -129,6 +131,19 @@ try {
   await identity(runtimePool, 'ghm_runtime');
   await identity(gatewayPool, 'ghm_actor_gateway');
   await identity(cleanupPool, 'ghm_migrator');
+  assertRuntimeDatabaseFunctionPrivileges(await readRuntimeDatabaseFunctionPrivileges(runtimePool));
+  console.log('RESOURCE API RUNTIME EXACT FUNCTION EXECUTE ALLOW-LIST: PASS');
+  const mappingLookupAcl = await gatewayPool.query(`
+    SELECT has_function_privilege('ghm_runtime','ghm.auth_lookup_business_external_mapping(text,text)','EXECUTE') AS runtime_execute,
+           has_function_privilege('ghm_migrator','ghm.auth_lookup_business_external_mapping(text,text)','EXECUTE') AS migrator_execute
+  `);
+  assert.deepEqual(mappingLookupAcl.rows[0], { runtime_execute: true, migrator_execute: false });
+  console.log('BUSINESS EXTERNAL MAPPING LOOKUP ACL: runtime=yes migrator=no');
+
+  const gatewayPrivileges = await readActorGatewayDatabasePrivileges(gatewayPool);
+  console.log(`GATEWAY ACL DIAGNOSTIC: ${JSON.stringify(gatewayPrivileges)}`);
+  assertActorGatewayDatabasePrivileges(gatewayPrivileges);
+  console.log('GATEWAY EXACT FUNCTION AND RELATION ACL ALLOW-LIST: PASS');
   const provision=await cleanupPool.connect();
   try { await provision.query('BEGIN'); await provision.query('SET LOCAL ROLE ghm_schema_owner'); await provision.query("INSERT INTO ghm.actor_gateway_capability_assertion_secret(singleton,secret) VALUES(true,$1) ON CONFLICT(singleton) DO UPDATE SET secret=EXCLUDED.secret",[Buffer.from(assertionSecret,'base64')]); await provision.query('COMMIT'); } catch(e) { await provision.query('ROLLBACK').catch(()=>{}); throw e; } finally { provision.release(); }
   console.log('DATABASE PRINCIPAL IDENTITY: PASS');
@@ -137,14 +152,39 @@ try {
   const disabledAccountId = await createFixtureAccount(`${fixture.marker}-disabled`, 'disabled');
   const otherOwnerAccountId = await createFixtureAccount(`${fixture.marker}-other-owner`);
   const businessId = await createFixtureBusiness(activeAccountId, 'primary');
+
   const otherBusinessId = await createFixtureBusiness(otherOwnerAccountId, 'other-owner');
+  const externalBusinessId = randomUUID();
+  const mappingFixture = await cleanupPool.connect();
+  try {
+    await mappingFixture.query('BEGIN');
+    await mappingFixture.query('SET LOCAL ROLE ghm_schema_owner');
+    await mappingFixture.query(
+      `INSERT INTO ghm.business_external_mapping(provider,external_business_id,business_id)
+       VALUES ('supabase',$1,$2)`,
+      [externalBusinessId, businessId],
+    );
+    await mappingFixture.query('COMMIT');
+  } catch (error) {
+    await mappingFixture.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally { mappingFixture.release(); }
+  const resolvedMapping = await runtimePool.query(
+    'SELECT * FROM ghm.auth_lookup_business_external_mapping($1,$2)',
+    ['supabase', externalBusinessId],
+  );
+  assert.equal(resolvedMapping.rowCount, 1);
+  assert.equal(Number(resolvedMapping.rows[0].business_id), businessId);
+  console.log('RUNTIME CONNECT BUSINESS MAPPING LOOKUP: PASS');
+  await expectSqlState(
+    () => cleanupPool.query('SELECT * FROM ghm.auth_lookup_business_external_mapping($1,$2)', ['supabase', externalBusinessId]),
+    '42501',
+    'migrator direct mapping lookup is denied',
+  );
+
 
   const roleState = await gatewayPool.query(`
-    SELECT has_database_privilege(current_user, current_database(), 'CONNECT') AS database_connect_privilege,
-           has_database_privilege(current_user, current_database(), 'CREATE') AS database_create_privilege,
-           has_schema_privilege(current_user, 'ghm', 'USAGE') AS schema_usage,
-           has_schema_privilege(current_user, 'ghm', 'CREATE') AS schema_create,
-           r.rolcanlogin,
+    SELECT r.rolcanlogin,
            r.rolinherit,
            r.rolsuper,
            r.rolcreatedb,
@@ -153,10 +193,10 @@ try {
            r.rolbypassrls,
            NOT EXISTS (
              SELECT 1
-               FROM pg_auth_members m
-               JOIN pg_roles member_role ON member_role.oid = m.member
-              WHERE m.member = r.oid
-                 OR (
+                FROM pg_auth_members m
+                JOIN pg_roles member_role ON member_role.oid = m.member
+               WHERE m.member = r.oid
+                  OR (
                    m.roleid = r.oid
                    AND (
                      member_role.rolname <> 'ghm_db_user'
@@ -171,10 +211,6 @@ try {
   `);
   assert.equal(roleState.rowCount, 1);
   assert.deepEqual(roleState.rows[0], {
-    database_connect_privilege: true,
-    database_create_privilege: false,
-    schema_usage: true,
-    schema_create: false,
     rolcanlogin: true,
     rolinherit: false,
     rolsuper: false,
@@ -202,9 +238,9 @@ try {
   assert.equal(functionState.rows[0].owner, 'ghm_schema_owner');
   assert.equal(functionState.rows[0].security_definer, true);
   assert.equal(functionState.rows[0].runtime_can_execute, false);
-  assert.equal(functionState.rows[0].gateway_can_execute, true);
-  assert.ok(functionState.rows[0].function_config?.includes('search_path=pg_catalog, ghm'));
-  console.log('GATEWAY FUNCTION OWNER, SEARCH PATH AND EXECUTE GRANTS: PASS');
+  assert.equal(functionState.rows[0].gateway_can_execute, false);
+  assert.ok(functionState.rows[0].function_config?.includes('search_path=pg_catalog, ghm, pg_temp'));
+  console.log('UNUSED UNSIGNED HELPER IS OWNER-ONLY WITH FIXED SEARCH PATH: PASS');
 
   const tablePrivileges = await gatewayPool.query(`
     SELECT has_table_privilege(current_user, 'ghm.account_identity', 'SELECT') AS can_read_accounts,
@@ -220,12 +256,11 @@ try {
   });
   console.log('GATEWAY HAS NO DIRECT ACCOUNT/AUTH TABLE ACCESS: PASS');
 
-  const accepted = await gatewayPool.query(
-    'SELECT ghm.assert_actor_gateway($1) AS actor_account_id',
-    [activeAccountId],
+  await expectSqlState(
+    () => gatewayPool.query('SELECT ghm.assert_actor_gateway($1)', [activeAccountId]),
+    '42501',
+    'unsigned actor identity helper is denied',
   );
-  assert.equal(Number(accepted.rows[0].actor_account_id), activeAccountId);
-  console.log('GATEWAY ACCEPTS ACTIVE TOKEN-SUBJECT CANDIDATE: PASS');
 
   const ownIdentity = await gatewayCall(activeAccountId,'actor.identity.read',
     'SELECT account_id, account_role, full_name FROM ghm.gateway_get_actor_identity($1,$2,$3,$4)');
@@ -347,11 +382,6 @@ try {
   console.log('REGISTRATION IDENTITY LEGACY RPC DENIAL AND SIGNED GATEWAY PRIVILEGE BOUNDARY PASS');
 
   await expectSqlState(
-    () => gatewayPool.query('SELECT ghm.assert_actor_gateway($1)', [disabledAccountId]),
-    '42501',
-    'DISABLED ACTOR DENIED',
-  );
-  await expectSqlState(
     () => gatewayCall(disabledAccountId,'business.registration.read','SELECT * FROM ghm.gateway_read_business_registration_identity($1,$2,$3,$4,$5)',[businessId]),
     '42501',
     'DISABLED ACTOR CANNOT READ REGISTRATION IDENTITY',
@@ -372,14 +402,9 @@ try {
     'CROSS-BUSINESS REGISTRATION IDENTITY WRITE DENIED',
   );
   await expectSqlState(
-    () => gatewayPool.query('SELECT ghm.assert_actor_gateway(0)'),
-    '22023',
-    'INVALID ACTOR ID DENIED',
-  );
-  await expectSqlState(
     () => runtimePool.query('SELECT ghm.assert_actor_gateway($1)', [activeAccountId]),
     '42501',
-    'ORDINARY RUNTIME CANNOT EXECUTE GATEWAY FUNCTION',
+    'ORDINARY RUNTIME CANNOT EXECUTE UNSIGNED IDENTITY HELPER',
   );
   await expectSqlState(
     () => runtimePool.query('SELECT * FROM ghm.gateway_get_actor_identity($1,$2,$3,$4,$5)', [activeAccountId,Math.floor(Date.now()/1000),randomUUID(),'{}','0'.repeat(64)]),
@@ -417,6 +442,10 @@ try {
   try {
     await cleanupPool.query('BEGIN');
     await cleanupPool.query('SET LOCAL ROLE ghm_schema_owner');
+    await cleanupPool.query(
+      'DELETE FROM ghm.business_external_mapping WHERE business_id = ANY($1::bigint[])',
+      [fixture.businessIds],
+    );
     await cleanupPool.query(
       'DELETE FROM ghm.business WHERE id = ANY($1::bigint[])',
       [fixture.businessIds],

@@ -1,6 +1,6 @@
 # GHM core release-readiness handover — 2026-11-10
 
-**Status:** ACTIVE WORKING HANDOVER — security foundation and non-deferred release work  
+**Status:** HISTORICAL SNAPSHOT — superseded by `docs/GHM_CURRENT_STATE.md`, `docs/HANDOVER_2026-11-11_ACTOR_GATEWAY_PRODUCTION_READINESS.md` (12 November follow-up), and `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`. Do not use its 10 November deployment commit or intermediate sequencing as current runtime/security status.  
 **Repository:** `zaidhqdev-sys/GHM`  
 **Documentation branch:** `docs/ghm-core-release-handover-20261110`  
 **Base:** `main` at `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`  
