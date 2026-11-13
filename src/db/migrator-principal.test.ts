@@ -73,6 +73,8 @@ test('rejects over-privileged migrator or login-capable schema owner roles', () 
     { schema_owner_rolsuper: true },
     { schema_owner_rolcreatedb: true },
     { schema_owner_rolcreaterole: true },
+    { schema_owner_rolreplication: true },
+    { schema_owner_rolbypassrls: true },
   ]) {
     assert.throws(
       () => assertMigratorDatabaseIdentity({ ...leastPrivilegeMigrator, ...override }),
