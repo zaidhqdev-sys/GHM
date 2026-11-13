@@ -690,3 +690,25 @@ This means the currently authored database architecture continues to depend on t
 **Release blocker / design decision required:** before any production Actor Gateway or Authentication Issuer cutover, revise and requalify the role-administration model so the normal application credential cannot SET ROLE into a CREATEROLE/CREATEDB database administrator, and the runtime principal cannot re-grant or administer gateway/issuer/migrator/owner memberships. The deployment/migration authority must be separately provisioned and controlled, without relying on the ordinary app credential's role chain. Do not simply remove the membership in production: the current migrations explicitly guard for it, and the service/migration credential dependencies must first be reworked and qualified.
 
 The existing Render support escalation and its recommendation remain part of the evidence. No attempt was made to SET ROLE, alter memberships, change credentials, or bypass the ledger ACL during this audit.
+
+
+## Corrected production role-membership provenance — 2026-11-13 14:05 UTC
+
+A second, more granular catalog query included membership grantors and PostgreSQL's effective `pg_has_role(..., 'SET')` results. This refines the earlier summary and must be used instead of a simplified one-row-per-role description.
+
+**Exact production membership rows**
+- `ghm_app_user → ghm_db_user`: granted by `postgres`, `INHERIT=true`, `SET=true`, `ADMIN=false`.
+- `ghm_db_user → ghm_runtime`: there are TWO distinct membership rows:
+  1. granted by `ghm_db_user`, `INHERIT=true`, `SET=true`, `ADMIN=false`;
+  2. granted by `postgres`, `INHERIT=false`, `SET=false`, `ADMIN=true`.
+- PostgreSQL's effective membership check confirms both `ghm_db_user` and `ghm_app_user` can SET ROLE to `ghm_runtime`. The first row is the direct SET-capable path; the second is the separately administered ADMIN OPTION path.
+- `ghm_db_user → ghm_actor_gateway`, `ghm_migrator`, `ghm_payment_provider`, and `ghm_schema_owner`: each has a `postgres`-granted `ADMIN=true`, `INHERIT=false`, `SET=false` row.
+- `ghm_migrator → ghm_schema_owner`: granted by `ghm_db_user`, `INHERIT=false`, `SET=true`, `ADMIN=false`. This is the intended migration DDL owner path and is separate from the normal application login.
+
+**Implications**
+1. The prior shorthand that `ghm_db_user` has only a non-SET membership into `ghm_runtime` was incomplete: the duplicate grantor-specific rows make its effective SET privilege true. The same applies to `ghm_app_user` through its SET-capable membership into `ghm_db_user`.
+2. The ADMIN OPTION memberships granted by `postgres` do not themselves permit SET ROLE under their recorded `SET=false` options, but they confer grant/revoke authority over the target roles. This is a separate risk from SET ROLE.
+3. The migration principal has a narrower intended path: it can SET ROLE to the non-login `ghm_schema_owner`, while its own table SELECT on `ghm_schema_migrations` is false. The schema owner itself has SELECT on that table, but the Render read-only query connector cannot choose an alternate session role or credentials.
+4. The production ledger is therefore not accessible through the available Render query action without a separate authorized connection as `ghm_schema_owner` (or another explicitly provisioned read-only audit principal). No attempt was made to assume role or alter grants.
+
+This correction is based on exact `pg_auth_members` grantor rows and PostgreSQL effective-role checks, not an inference from membership names.
