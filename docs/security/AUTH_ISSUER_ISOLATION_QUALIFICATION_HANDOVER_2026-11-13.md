@@ -2487,3 +2487,55 @@ The operator's original label for the service was “GHM Internal Runtime”. Th
 ### Change log policy
 
 Continue appending dated findings, actions, commits, CI results and explicit no-change statements to this handover after each meaningful work unit. Preserve this baseline as historical evidence; later Render changes must be recorded as a separate dated after-state rather than overwriting the supplied original values.
+
+
+## 2026-11-14 02:10 SAST — live Render topology and deployment-state reconciliation
+
+Read-only Render workspace inventory was retrieved directly for workspace `tea-d9svua6417fc73bhcutg`.
+
+### Current Render web services
+
+| Service | Render ID | Plan | Branch | Auto-deploy | Interpretation |
+|---|---|---|---|---|---|
+| `GHM-Internal-Runtime` | `srv-damupsek1f9s73eq8kkg` | Free | `main` | Off | Existing production Resource API; do not change without explicit reviewed plan. |
+| `ghm-identity-qualification` | `srv-dbahvenbtjjs73f83rlg` | Free | `integration/ghm-identity-merge-candidate-20261018` | On | Qualification-only service; not a production issuer or Actor Gateway. Do not repurpose. |
+| `ghm-payfast-sandbox-runtime` | `srv-db5vtgl9fdbs73eaclbg` | Free | `main` | On | Legacy sandbox runtime; PayFast remains excluded. |
+| `ghm-payfast-callback-sandbox` | `srv-dbma100u01pc738qpavg` | Free | `release/payfast-settlement-isolation-main-20261104` | Off | Legacy sandbox callback; not authorized as production provider service. |
+| `zaid-ai-workforce` | `srv-d9t1la7avr4c73fc46c0` | Free | separate repository | Off | Unrelated product service; not an available GHM security boundary. |
+
+### Current Render Postgres resources
+
+| Resource | Render ID | Database | Plan/status | Interpretation |
+|---|---|---|---|---|
+| `ghm-db` | `dpg-dag0sdtbedkc7389vi2g-a` | `ghm_db` | `0.1c-256mb`, available, PostgreSQL 18 | Production database. |
+| `ghm-payfast-sandbox-db` | `dpg-db4416vlk1mc73eocug0-a` | `ghm_payfast_sandbox_db` | Free, suspended by billing; expired 2026-11-08 | Retired sandbox; do not revive or use. |
+| `ghm-identity-qualification-20261018` | `dpg-dba0tu3rjlhs738fs2sg-a` | `ghm_identity_qualification_20261018` | `basic_256mb`, available | Qualification database; do not use for production. |
+
+### Important topology conclusion
+
+The only live GHM production application service is the existing Free `GHM-Internal-Runtime`. The two other GHM services are explicitly qualification and PayFast sandbox services. There is no separately provisioned production Actor Gateway or Authentication Issuer service, and no separate production database connection context has been established for either.
+
+The qualification service and qualification database are not repurposing candidates: they are already designated for qualification, and their credentials/data/branch are not approved for production identity traffic. The old PayFast services are not repurposing candidates either. The unrelated AI Workforce service is not part of GHM and cannot be treated as available infrastructure.
+
+The current Render inventory therefore confirms that the intended separate service topology cannot be deployed using an existing GHM production service. A new paid service is disallowed by the current cost constraint; no free/qualification service may be silently reassigned. The isolated service cutover remains blocked pending an explicitly approved architecture/hosting decision that preserves secret and database identity separation.
+
+### Production runtime deployment state independently checked
+
+Render deployment history for `GHM-Internal-Runtime` confirms:
+- Current live deployment: `dep-dbpmv8jrjlhs73abkli0`.
+- Commit: `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`.
+- Deployment completed 2026-11-10 19:26:11 UTC.
+- Trigger: manual.
+- Latest observed status: live.
+- Render service auto-deploy: off; trigger setting off.
+- Latest deployment history contains no deployment of the current PR #276 candidate.
+
+The handover documentation commit `514d738b72614d148d0e4c9d4547e53db2dfcf7e` currently has no combined-status entries returned by GitHub. This is not a passing CI result; it is an absence of reported statuses. No CI qualification is claimed for that documentation-only commit.
+
+### Vercel topology lookup limitation
+
+The connected Vercel account lists only the `zaid-technologies-website` project under team `team_6faNqq4JxLWBA4aR1SB8PspJ`; no `zaid-connect` or GHM project is visible in that account scope. The Connect repository itself was inspected read-only for caller/CORS behaviour, but its live Vercel environment variables could not be read or confirmed. Do not infer that the Vercel deployment is absent globally; only that it is not visible in the connected account scope used for this lookup.
+
+### No-change statement
+
+This was a read-only inventory and deployment-history check. No Render service, plan, environment variable, credential, database, deployment, auto-deploy setting, Vercel project or environment variable was changed.
