@@ -1951,3 +1951,26 @@ This establishes that there are currently no production Project or project-type 
 ### Updated release gate
 
 The data-level Project↔Opportunity reconciliation is complete with zero records and zero discrepancies. The production migration-ledger verification remains blocked on an authorized read-only identity. No privilege was granted to the observer and no production data or schema was changed.
+
+## 2026-11-13 19:14 UTC — final exact-head CI and production ledger ACL diagnosis
+
+The handover update at `fec8923302e629eb255f4cae2eaa1e96e39d9dc5` completed exact-head CI run **43489777884** successfully:
+- `quality`: 65/65 steps passed.
+- `web-quality`: 11/11 steps passed.
+- No failed steps.
+- Artifact `security-definer-authority-inventory` (ID `14068318776`) was retrieved and inspected. Its two whole-database snapshots and comparison agree with the previous exact-head run: 106 routines pre/post, 16 runtime auth grants pre-cutover, 10 issuer grants plus 2 runtime identity lookups post-cutover, 14 auth ACL identities changed, no routine identity changes, no unexplained non-issuer changes, and dedicated issuer lifecycle qualification passed. Both snapshots are explicitly from disposable database `ghm_disposable_test`, PostgreSQL 18.7, with `mutation=false`.
+
+### Additional production ledger catalog evidence
+
+Read-only inspection of `ghm.ghm_schema_migrations` established:
+- Relation owner: `ghm_schema_owner`.
+- Relation ACL is NULL (no explicit relation ACL entries; access is owner/default-derived).
+- `information_schema.role_table_grants` returned no grant rows for this relation.
+- Current observer is `session_user=ghm_app_user`, `current_user=ghm_db_user`; SELECT is denied.
+- Catalog role attributes observed: `ghm_db_user` has LOGIN, CREATEDB and CREATEROLE (not SUPERUSER); `ghm_app_user` and `ghm_migrator` have LOGIN without CREATEDB/CREATEROLE; `ghm_schema_owner` is NOLOGIN without those attributes.
+
+This confirms the ledger is owner-protected and the current observer is not an authorized ledger reader. It does not reveal applied migration versions/checksums. No grants, memberships, role attributes or table ACLs were changed. Do not elevate the application observer or use the powerful `ghm_db_user` identity for routine ledger access; obtain an approved read-only evidence path through the existing owner/provider process.
+
+### PR topology and merge gate
+
+At this checkpoint PR #276 is still a draft, based on `integration/capability-gateway-qualification-20261110` at `c81e2bf2534febef9c5e49b39f60f85415f04ff1`; PR #272 is still a draft against `main`. PR #276 must not be merged independently of its base integration series. Exact-head CI is green, but production ledger evidence and mainline integration/review remain outstanding. Production cutover, issuer role/service/secret provisioning, Render changes, deployments and traffic changes remain out of scope.
