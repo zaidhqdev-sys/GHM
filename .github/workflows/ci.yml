@@ -211,9 +211,6 @@ jobs:
       - name: Check whole-database SECURITY DEFINER inventory script syntax
         run: node --check scripts/audit-security-definer-authority.mjs
 
-      - name: Inventory SECURITY DEFINER authority across disposable PostgreSQL
-        run: npm run audit:security-definer-authority
-
       - name: Qualify isolated auth issuer database principal and empty privilege baseline
         run: npm run qualify:auth-issuer-principal
 
@@ -314,6 +311,9 @@ jobs:
 
       - name: Runtime boundary verification
         run: npm run verify:runtime
+
+      - name: Inventory SECURITY DEFINER authority immediately before issuer cutover
+        run: npm run audit:security-definer-authority
 
       - name: Qualify exact pre-issuer Resource API authentication grants
         run: node scripts/qualify-auth-issuer-precutover.mjs
