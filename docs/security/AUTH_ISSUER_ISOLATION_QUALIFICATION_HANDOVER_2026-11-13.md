@@ -426,3 +426,26 @@ Checked workflow runs associated with the handover commit `889dd960bf4f19af0ed42
 The next evidence requirement remains a new CI execution on the corrected branch head (or descendant), followed by inspection of the actual comparator CLI step and its generated JSON artifact. If a run is not automatically created by the branch push, trigger the configured CI workflow for this exact branch/commit through an authorized GitHub Actions dispatch mechanism; do not merge, deploy, or weaken the comparator to obtain a green result.
 
 No production activity has occurred.
+
+
+## Live CI confirmation — 2026-11-13 00:54 UTC
+
+The GitHub Actions API was queried directly (repository branch ref, branch workflow runs, individual run jobs, and PR #272 metadata). This supersedes the earlier uncertainty about whether a corrected-head run existed.
+
+### Confirmed exact-head run
+
+- Branch: `construction/auth-issuer-isolation-20261112`
+- Exact branch HEAD: `7199fe8315f98adc9549da6447751d50fc53cb42`
+- Workflow run: [43340538806](https://github.com/zaidhqdev-sys/GHM/actions/runs/43340538806)
+- Trigger: push
+- At 00:54 UTC: run `in_progress`; `web-quality` completed successfully; `quality` was at 39/64 successful steps with the full Test suite step still running.
+- Build, disposable PostgreSQL migrations, issuer principal baseline, Actor Gateway principal, storage provider secret provisioning, storage transitions, legacy storage grant revocation/rollback, Business provisioning and marketplace SQL qualification had passed.
+- The actual pre-cutover inventory, issuer cutover, post-cutover inventory, comparator CLI and evidence-preservation steps were still pending. No comparison result exists yet.
+
+### PR/branch identity discrepancy found
+
+The live PR #272 API response confirms PR #272 is open and draft, but its head ref is `integration/capability-gateway-qualification-20261110` at `c81e2bf2534febef9c5e49b39f60f85415f04ff1`, not the construction branch used for the corrected comparator commits and run 43340538806.
+
+Therefore run 43340538806 validates the construction branch HEAD, not the current PR #272 head. Do not describe it as PR-head validation. The corrected comparator commits and handover updates are currently on `construction/auth-issuer-isolation-20261112`. Reconcile/cherry-pick the validated changes to the intended PR branch only after reviewing the run and ensuring the PR branch ancestry/content relationship; do not force-push or merge blindly.
+
+Production remains untouched. PR #272 remains draft/open/unmerged.
