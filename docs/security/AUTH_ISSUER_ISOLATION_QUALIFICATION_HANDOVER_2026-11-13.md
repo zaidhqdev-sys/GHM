@@ -1895,3 +1895,45 @@ Run https://github.com/zaidhqdev-sys/GHM/actions/runs/43488222423 on preceding h
 - quality: 45/64 at observation, currently qualifying the Saved Business signed gateway cutover; no failure reported.
 
 No production roles, memberships, grants, function definitions, schema, data, credentials, Render settings, deployments or traffic were changed. This correction is source review and handover documentation only.
+
+## 2026-11-13 19:07 UTC — complete exact-head Authentication Issuer qualification
+
+Exact-head workflow **43488670407** completed successfully on commit `338f2b835e6626bee3473ab4840a45ad7040e74f` (PR #276):
+- `quality`: passed.
+- `web-quality`: passed.
+- The issuer-specific sequence all passed: isolated principal qualification; pre-cutover whole-database SECURITY DEFINER inventory; exact pre-issuer Resource API authentication grant allow-list; guarded manual cutover against disposable PostgreSQL only; isolated issuer lifecycle/runtime denial qualification; post-cutover inventory; strict pre/post inventory comparison; evidence preservation.
+- No failed workflow steps.
+
+### Retrieved and inspected evidence artifact
+
+Artifact: [security-definer-authority-inventory, ID 14068397949](https://github.com/zaidhqdev-sys/GHM/actions/runs/43488670407/artifacts/14068397949).
+
+Both inventories identify the target as `ghm_disposable_test`, PostgreSQL 18.7, session/current user `ghm_migrator`, and `mutation: false`. Each contains 106 SECURITY DEFINER routines, all owned by `ghm_schema_owner`, with all 106 normalized to `search_path=pg_catalog, ghm, pg_temp`.
+
+Pre/post result:
+- Pre-cutover auth-prefixed function ACLs: exactly 16 EXECUTE grants to `ghm_runtime`.
+- Post-cutover: exactly 10 EXECUTE grants to `ghm_auth_issuer` and exactly 2 retained runtime auth lookup grants (`auth_lookup_external_identity` and `auth_lookup_business_external_mapping`). The other legacy auth-prefixed routines have no direct runtime EXECUTE.
+- 14 auth routine ACL identities changed as part of the issuer cutover.
+- Routine identity set remained unchanged (106 before and after).
+- Non-issuer function definitions and ACLs unchanged.
+- Role memberships and role attributes unchanged.
+- Database privileges, column privileges and function default ACLs unchanged.
+- Only reviewed schema privilege delta: `ghm_auth_issuer` received schema USAGE; CREATE remained denied.
+- Unexplained non-issuer changes: 0.
+- Comparator decision: `STRUCTURAL_COMPARISON_PASSED; AUTH ISSUER ACLS REQUIRE DEDICATED CUTOVER QUALIFICATION`. The dedicated lifecycle/runtime-denial qualification also passed in the same workflow.
+
+This is disposable PostgreSQL qualification evidence only. It does not establish that the production issuer role exists, that production migrations are applied, or that a production issuer service/secret/client route is provisioned.
+
+### Current PR and production boundary
+
+PR #276 remains open and unmerged. It is stacked on PR #272's integration branch and must not be merged independently. No production database mutation, production role/ACL change, Render environment change, service deployment, traffic switch or credential provisioning occurred. Render auto-deploy remains OFF. PayFast remains out of scope.
+
+### Next release gates
+
+1. Obtain authorized read-only production migration-ledger evidence; the current production observer cannot SELECT the ledger.
+2. Reconcile the production migration state and production SECURITY DEFINER ACL inventory against this exact qualified migration sequence. Do not infer production state from the disposable artifact.
+3. Complete production-only Project↔Opportunity reconciliation before any mainline merge.
+4. Provision the isolated production Authentication Issuer role/service/secret through the controlled provider process, then independently verify its identity and health before any manual production cutover. No credentials or roles are to be improvised.
+5. Reconcile PR #276/#272 as a mainline-based integration series; preserve the already-merged Resource API runtime principal changes and avoid merging the current stacked aggregate blindly.
+
+No production roles, memberships, grants, function definitions, schema, data, credentials, Render settings, deployments or traffic were changed in this qualification.
