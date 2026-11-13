@@ -1990,3 +1990,59 @@ This confirms the observed membership/admin-option topology, but does not establ
 The preceding handover commit `fec8923302e629eb255f4cae2eaa1e96e39d9dc5` passed run `43489777884` (quality 65/65; web-quality 11/11). This new role-membership evidence update is commit `ea3e457c96d2f2f6be2c075435d938bbd87560d3`; its exact-head workflow `43490550377` has started and must be checked to completion before the latest documentation head is described as green.
 
 The production role membership issue remains a separate release blocker. Do not attempt to revoke the memberships from the app observer or change the provider-managed role graph in this workflow.
+
+
+## 2026-11-13 19:19 UTC — exact-head stacked integration qualification completed
+
+The latest handover/stacked integration commit `31c4181197770ae04cfdeabf21ca21d5f7c94795` on branch `construction/auth-issuer-stacked-on-pr272-20261113` completed GitHub Actions run [43490703193](https://github.com/zaidhqdev-sys/GHM/actions/runs/43490703193).
+
+### Exact checkout and workflow result
+
+The quality job log independently confirms that GitHub fetched and checked out the exact commit above on the expected construction branch.
+
+- `quality`: 65/65 steps completed successfully; no failed or skipped steps.
+- `web-quality`: 11/11 steps completed successfully; no failed or skipped steps.
+- The quality job completed the full disposable PostgreSQL migration chain, build and test suite; issuer principal qualification; Actor Gateway and storage/business qualifications; exact pre-issuer Resource API grant check; guarded manual issuer cutover against disposable PostgreSQL; issuer lifecycle/runtime-denial qualification; post-cutover SECURITY DEFINER inventory; strict pre/post comparison; and evidence preservation.
+- This is CI/disposable-database evidence only. It does not establish production role provisioning, production migration state, production ACL state after cutover, or a deployed issuer/gateway service.
+
+### Latest authority-inventory artifact
+
+GitHub artifact: [security-definer-authority-inventory, ID 14069067834](https://github.com/zaidhqdev-sys/GHM/actions/runs/43490703193/artifacts/14069067834).
+
+Artifact ZIP SHA-256 reported by GitHub:
+`2e5fffd3f0b05ee0619809ba98676a6487ddd81fc20db37506f4f34864dd67df`.
+
+Retrieved ZIP contains:
+- `security-definer-authority-audit.json` — pre-cutover snapshot; SHA-256 `d1f7a498e24405b248dda80c3502079e42224aac83d9a5d936a1d3ce9ef8c08b`.
+- `security-definer-authority-audit-post-issuer-cutover.json` — post-cutover snapshot; SHA-256 `30c1eafa0724fd14cc161a109febb60eae8d60f66b5e7e22d7df4e6a876671ad`.
+- `security-definer-authority-inventory-comparison.json` — comparison; SHA-256 `b3ea9cec33a9d711ea7e88ffb2033e053df02adbc43d6fd5e2eabafb526faf23`.
+
+Both snapshots identify `ghm_disposable_test`, PostgreSQL 18.7, `session_user=current_user=ghm_migrator`, and `mutation=false`. Each contains 106 SECURITY DEFINER routines.
+
+Comparison confirms:
+- Routine identity set unchanged: 106 before and after.
+- 14 issuer ACL identities changed.
+- Pre-cutover: 16 auth-prefixed routines have direct EXECUTE for `ghm_runtime`.
+- Post-cutover: 10 issuer functions have direct EXECUTE for `ghm_auth_issuer`; two identity lookup functions remain directly executable by `ghm_runtime`.
+- Non-issuer function definitions and ACLs unchanged.
+- Role memberships and role attributes unchanged.
+- Database privileges, column privileges and function default ACLs unchanged.
+- Reviewed schema delta is `ghm_auth_issuer` receiving schema USAGE only; CREATE remains denied.
+- Unexplained non-issuer changes: 0.
+- Comparator decision: `STRUCTURAL_COMPARISON_PASSED; AUTH ISSUER ACLS REQUIRE DEDICATED CUTOVER QUALIFICATION`; the dedicated issuer lifecycle/runtime-denial qualification also passed in this run.
+
+### Production release gates remain unchanged
+
+The successful disposable cutover does not authorize or prove a production cutover. The current production evidence still shows:
+- `ghm_db_user` has provider-granted ADMIN OPTION over `ghm_actor_gateway`, `ghm_migrator`, `ghm_payment_provider`, `ghm_runtime` and `ghm_schema_owner`; current SET/INHERIT flags do not mean the administrator currently has SET/INHERIT through those edges.
+- `ghm_app_user` is a member of `ghm_db_user`; the Render role-level setting makes the effective identity `ghm_db_user`.
+- `ghm_migrator` has SET-only membership in `ghm_schema_owner`.
+- The production migration ledger `ghm.ghm_schema_migrations` is owned by `ghm_schema_owner`; the current observer cannot SELECT it. Applied versions/checksums remain unverified.
+- Production Project↔Opportunity data reconciliation is complete: zero Projects, zero project-type Opportunities and zero discrepancies. This does not resolve the migration-ledger gate.
+- Production `ghm_auth_issuer` role and separate issuer service are not provisioned/verified. No issuer credentials, production service or secret are to be improvised.
+
+### Next action
+
+Continue with a read-only, source-backed reconciliation of the production role graph against the exact principal guards and manual cutover preconditions. Establish an authorized, non-mutating way to obtain the production migration-ledger versions/checksums through the existing provider/owner process. Do not grant the application observer ledger access, use it to assume roles, revoke provider-managed memberships, rotate credentials, execute production cutover SQL, change Render settings, deploy, or merge the stacked PRs as part of this checkpoint.
+
+PR #276 remains draft/unmerged and dependent on PR #272. Render auto-deploy remains OFF. Production roles, memberships, grants, schema, data, credentials, environment variables, services, deployments and traffic were not changed. PayFast remains paused and excluded.
