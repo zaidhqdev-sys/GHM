@@ -1572,3 +1572,45 @@ CI runs:
 ### Scope and production safety
 
 This is a code-level fail-closed guard correction and test expansion only. No production role, membership, grant, database object, data, credential, Render environment, deployment or traffic was changed. No production migration was attempted. PR #276 remains open and unmerged.
+
+
+## Exact migration assertion compared against live production — 2026-11-13 18:50 UTC
+
+A further read-only production query now evaluates the exact membership-count and role-attribute invariants enforced by the current `src/db/migrator-principal.ts` / `src/db/migrate.ts` contract. This confirms the remaining production mismatch precisely.
+
+### Role attributes
+
+Both roles have the intended attributes:
+- `ghm_migrator`: LOGIN, NOINHERIT, not SUPERUSER/CREATEDB/CREATEROLE/REPLICATION/BYPASSRLS.
+- `ghm_schema_owner`: NOLOGIN, not SUPERUSER/CREATEDB/CREATEROLE/REPLICATION/BYPASSRLS.
+
+Database/schema authority is also aligned:
+- `ghm_migrator`: CONNECT yes; database CREATE no; ghm schema USAGE no; ghm schema CREATE no.
+- `ghm_schema_owner`: database CREATE yes; owns schema `ghm`.
+
+### Exact membership counts
+
+| Current source invariant | Production observation | Result |
+|---|---:|---|
+| migrator direct membership count = 1 | 1 | pass |
+| migrator member count = 0 | 1 | **fail** |
+| exact migrator → schema-owner edge (NO ADMIN, NO INHERIT, SET) | yes | pass |
+| schema-owner direct membership count = 0 | 0 | pass |
+| schema-owner membership count = 1 | 2 | **fail** |
+
+The extra member of `ghm_migrator` and extra member of `ghm_schema_owner` are both `ghm_db_user`. The desired `ghm_migrator → ghm_schema_owner` edge itself remains correct: grantor `ghm_db_user`, ADMIN=false, INHERIT=false, SET=true.
+
+### Meaning
+
+The source assertion is now correctly fail-closed for the intended final topology, but it will reject the current production topology because `ghm_db_user` remains a member of both protected roles. The role attributes are not the remaining blocker; the extra membership edges are.
+
+Do not relax `migrator_member_count` or `schema_owner_membership_count` to make the current production topology pass. That would bless the unwanted bootstrap membership rather than fix the role graph. The appropriate next step is a provider-supported, controlled membership cleanup that preserves the migrator-to-owner SET-only edge and then re-runs the exact preflight. No production migration was attempted.
+
+### Exact-head CI status at this observation
+
+Commit `4c96572c0c01208d67b8e44fc4fbc18eb62c3a8a`, workflow https://github.com/zaidhqdev-sys/GHM/actions/runs/43486051101:
+- web-quality: passed, 11/11.
+- quality: 46/64 steps passed, currently executing Business Hours signed gateway cutover qualification against disposable PostgreSQL 18; no failures reported at this observation.
+- The prior intermediate duplicate-key failure was corrected; the latest exact-head quality job has progressed past TypeScript build and principal tests.
+
+No production roles, memberships, grants, schema, relations, sequences, functions, data, credentials, Render settings, deployments or traffic were changed. The production query was read-only.
