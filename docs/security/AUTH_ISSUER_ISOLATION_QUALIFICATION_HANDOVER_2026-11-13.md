@@ -1544,3 +1544,31 @@ The legacy admin-option edges are granted by `postgres`, not `ghm_db_user`. The 
 5. Continue disposable PostgreSQL 18 tests for the exact grantor, membership options, migration identity and negative cases.
 
 No production roles, memberships, grants, schema, relations, sequences, functions, data, credentials, environment variables, Render settings, deployments or traffic were changed. All database inspection was read-only.
+
+
+## Migration-principal assertion hardening — 2026-11-13 18:58 UTC
+
+A source review of the existing migration principal guard found that the SQL identity snapshot already collected `schema_owner_rolreplication` and `schema_owner_rolbypassrls`, but `assertMigratorDatabaseIdentity` did not include either field in its expected-false invariant map. This meant a future schema-owner role accidentally configured with REPLICATION or BYPASSRLS could pass the pure assertion despite the fields being queried.
+
+### Correction committed
+
+- Added explicit `schema_owner_rolreplication: false` and `schema_owner_rolbypassrls: false` checks to `assertMigratorDatabaseIdentity`.
+- Added negative unit cases proving either elevated flag is rejected.
+- Extended the migration-runner source contract test to require both role attributes to be selected from `pg_roles`.
+
+The schema-owner role is NOLOGIN and should also be non-superuser, non-CREATEDB, non-CREATEROLE, non-REPLICATION and non-BYPASSRLS. The migration role remains NOINHERIT with only its SET-only schema-owner membership.
+
+### Commits and qualification
+
+- Assertion correction: `d61908b7efb103a975e02d2459dd979c3e124bbe`
+- Duplicate cleanup: `a1d6656fc133c0e35e9a5b30bdc80b802ff67609`
+- Negative tests: `47c08fcddb210d411f7a1945ff6e7946b399c974`
+- Contract tests: `c081f05b66e6a805867a3487ef5072d74015ac65`
+
+CI runs:
+- Previous exact-head `00acfbe`: quality 64/64 and web-quality 11/11 passed — https://github.com/zaidhqdev-sys/GHM/actions/runs/43485512710
+- Latest assertion/test commits have new workflows queued/in progress; do not treat them as passed until the final branch HEAD has completed both jobs.
+
+### Scope and production safety
+
+This is a code-level fail-closed guard correction and test expansion only. No production role, membership, grant, database object, data, credential, Render environment, deployment or traffic was changed. No production migration was attempted. PR #276 remains open and unmerged.
