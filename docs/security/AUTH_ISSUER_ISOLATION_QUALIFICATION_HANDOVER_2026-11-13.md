@@ -1477,3 +1477,70 @@ For commit `c1485367fbb98af2a52e7e21936022febd92fb43`:
 - Workflow: https://github.com/zaidhqdev-sys/GHM/actions/runs/43484112233
 
 No production role, membership, grant, schema, relation, sequence, function, data, credential, Render setting, deployment or traffic was changed by this investigation. The catalog work consisted only of read-only SELECTs.
+
+
+## Runtime identity verification and membership grantor follow-up — 2026-11-13 18:55 UTC
+
+### Exact-head qualification
+
+The latest handover commit `ebf6396bbb230dc9d980c9989cee6ee550e2af26` completed successfully:
+- quality: passed (65/65 steps)
+- web-quality: passed (11/11 steps)
+- workflow: https://github.com/zaidhqdev-sys/GHM/actions/runs/43484488907
+
+PR #276 remains open; no merge was performed.
+
+### Render production service/deployment state
+
+Read-only Render inspection confirms:
+- service: `ghm-internal-runtime` (`srv-damupsek1f9s73eq8kkg`)
+- deployed branch: `main`
+- auto deploy: off
+- current live deployment: `dep-dbpmv8jrjlhs73abkli0`
+- deployed commit: `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`
+- deployment completed 2026-11-10 19:26 UTC
+- database: `ghm-db`, PostgreSQL 18, `ghm_db`
+
+No production deploy was triggered. Render application logs contained no entries in the inspected 2026-11-13 17:00–18:45 UTC window.
+
+### Actual runtime DB session status — important limitation
+
+A read-only `pg_stat_activity` query at 2026-11-13 18:55 UTC returned:
+- observer session: `ghm_app_user`
+- active `ghm_runtime` sessions: 0
+- active `ghm_migrator` sessions: 0
+
+This is not proof that the deployed application uses the wrong identity. The database query tool opens a separate connection and closes it after each query; the application pool may be idle, or the service may not have generated a request during the snapshot. It also means the live `ghm_runtime` session identity is **not yet independently verified**. The source-level startup guard remains the current evidence: production config requires `GHM_RUNTIME_DATABASE_URL`, and `assertRuntimeDatabaseIdentity` requires both `session_user` and `current_user` to equal `ghm_runtime`.
+
+Do not claim runtime identity verification complete until a safe, application-origin identity probe or contemporaneous database activity observation captures the actual application session. Do not expose connection strings or credentials to obtain this evidence.
+
+### Membership grantor audit — correction and additional edge
+
+A second read-only membership query captured grantors and exposed one additional membership edge omitted from the previous summary:
+
+| Member | Granted role | Grantor | ADMIN | INHERIT | SET |
+|---|---|---|---:|---:|---:|
+| ghm_db_user | ghm_actor_gateway | postgres | yes | no | no |
+| ghm_db_user | ghm_migrator | postgres | yes | no | no |
+| ghm_db_user | ghm_payment_provider | postgres | yes | no | no |
+| ghm_db_user | ghm_runtime | postgres | yes | no | no |
+| ghm_db_user | ghm_schema_owner | postgres | yes | no | no |
+| ghm_db_user | ghm_runtime | ghm_db_user | no | yes | yes |
+| ghm_migrator | ghm_schema_owner | ghm_db_user | no | no | yes |
+| ghm_app_user | ghm_db_user | postgres | no | yes | yes |
+| ghm_app_user | pg_read_all_stats | postgres | no | yes | yes |
+| ghm_app_user | pg_signal_backend | postgres | no | yes | yes |
+| ghm_db_user | pg_read_all_stats | postgres | no | yes | yes |
+| ghm_db_user | pg_signal_backend | postgres | no | yes | yes |
+
+The legacy admin-option edges are granted by `postgres`, not `ghm_db_user`. The migration membership `ghm_migrator → ghm_schema_owner` was granted by `ghm_db_user` and has SET but not ADMIN or INHERIT. This is important provider/cluster bootstrap provenance: do not assume that application credentials can revoke the postgres-granted edges. The `ghm_db_user → ghm_runtime` membership is an additional inherited/SET-capable path; its necessity must be checked against the dedicated runtime URL and the migration bootstrap contract. It must not be conflated with the ADMIN OPTION edge on the same role.
+
+### Updated next steps
+
+1. Keep the Render-managed `postgres`-granted ADMIN OPTION edges as provider/bootstrap remediation, not an app-session REVOKE task.
+2. Determine why `ghm_db_user` is a member of `ghm_runtime` and whether the migration/bootstrap contract depends on that edge.
+3. Confirm whether `ghm_migrator → ghm_schema_owner` grantor `ghm_db_user` is a deliberate supported migration bootstrap path; preserve SET-only/no-admin semantics.
+4. Obtain application-origin runtime identity evidence without exposing credentials or changing production.
+5. Continue disposable PostgreSQL 18 tests for the exact grantor, membership options, migration identity and negative cases.
+
+No production roles, memberships, grants, schema, relations, sequences, functions, data, credentials, environment variables, Render settings, deployments or traffic were changed. All database inspection was read-only.
