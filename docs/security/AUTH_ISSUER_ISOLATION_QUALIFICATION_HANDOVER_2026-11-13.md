@@ -200,3 +200,31 @@ The new test reads the issuer cutover script, issuer database privilege helper a
 This test is included in the existing `npm test` command via `node --test scripts/audit-security-definer-authority.test.mjs`; no separate workflow or additional infrastructure was introduced.
 
 The push is configured to trigger the existing CI workflow on this construction branch. A fresh workflow run and exact checkout SHA still need to be confirmed in Actions. The prior retry is not valid evidence because it checked out the old SHA `2fe38cb`. No PR, merge, production database operation, Render change or deployment was made.
+
+
+## Regression-test review correction — 2026-11-13
+
+A source review of the newly added test caught an issue in the test's own regular-expression escaping: the first committed version over-escaped the regex literals and would not match the intended SQL expressions. Corrected in commit `4751727863158d775d8fffdddd653d48dae0d57e`.
+
+The corrected test now contains actual JavaScript regex literals for:
+- rejecting a `LIKE ... ESCAPE` pattern;
+- counting the six safe auth-prefix predicates in the cutover script;
+- asserting the safe predicate in both the privilege helper and principal qualification script.
+
+The current source has been re-read from the branch and confirms six safe cutover predicates and no `LIKE`/`ESCAPE` tokens. The package `test` script explicitly invokes `node --test scripts/audit-security-definer-authority.test.mjs` after the build and existing qualification tests, so the guard is in the existing CI test path.
+
+### CI trigger status
+
+The branch's `.github/workflows/ci.yml` has a push trigger for this exact construction branch and a `workflow_dispatch` trigger. However, the GitHub connection currently exposes read-only workflow-run discovery and job retries, not workflow dispatch. For commits `1125a293...` and `47517278...`, the commit status API returned `pending` with zero statuses and the available PR-filtered workflow-run lookup returned no runs. Therefore no fresh CI run is confirmed.
+
+Do not call this regression test passed until a fresh run executes on the corrected HEAD. Do not retry the stale run from `2fe38cb`. The corrected branch remains isolated; do not open a PR to main as a CI workaround because the histories are divergent.
+
+## Current verified state after test correction
+
+- Cutover SQL: six reviewed `left(p.proname, 5) = 'auth_'` filters; no `LIKE` or `ESCAPE` in current cutover script.
+- Regression test: corrected and committed; not yet executed in CI.
+- Current construction branch HEAD at time of this note: `4751727863158d775d8fffdddd653d48dae0d57e`.
+- PR #272: open, draft, unmerged.
+- Issuer lifecycle/runtime-denial qualification: still pending fresh exact-head CI.
+- Post-cutover SECURITY DEFINER inventory: not yet proven to have executed on a fresh run.
+- Production: untouched.
