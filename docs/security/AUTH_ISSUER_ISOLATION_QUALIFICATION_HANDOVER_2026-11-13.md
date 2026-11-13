@@ -1043,3 +1043,27 @@ A read-only Render service inventory was checked against the candidate source.
 The issuer implementation is source-qualified, but it is not deployable as an isolated production service yet. Before the manual issuer privilege cutover, the team still needs a hosting decision that respects the existing no-extra-paid-service constraint, an approved role/password provisioning path, the issuer service's private signing-key custody, network restrictions, and verified client routing. Do not put the issuer process inside the existing Resource API process and call that isolation; the private key must not be accessible to the Resource API process.
 
 No Render service was created or updated, no role was provisioned, and no credential or secret was generated or changed.
+
+
+## Legacy application login role-escalation path confirmed — 2026-11-13 14:30 UTC
+
+A read-only PostgreSQL 18 membership/effective-privilege query confirmed an additional production boundary that must be treated as a release blocker.
+
+### Current legacy login graph
+
+- `ghm_app_user` is LOGIN INHERIT and has direct memberships:
+  - `ghm_app_user → ghm_db_user`: grantor `postgres`, ADMIN=false, INHERIT=true, SET=true.
+  - `ghm_app_user → pg_read_all_stats`: INHERIT=true, SET=true.
+  - `ghm_app_user → pg_signal_backend`: INHERIT=true, SET=true.
+- PostgreSQL confirms `pg_has_role('ghm_app_user','ghm_db_user','SET') = true`.
+- PostgreSQL confirms `pg_has_role('ghm_app_user','ghm_db_user','MEMBER') = true`.
+- The canonical `ghm_runtime` login is not a member of `ghm_db_user` and cannot SET ROLE to it.
+- The legacy `ghm_app_user`, `ghm_db_user` and canonical `ghm_runtime` identities currently report the same effective GHM object privilege counts (46 SECURITY DEFINER functions and 39 tables/views), but the legacy app login additionally has the ability to assume the provider-managed Dashboard-admin role.
+
+### Disposition
+
+Do not use `ghm_app_user` as the replacement Resource API credential. The intended runtime connection is a direct login as `ghm_runtime`, whose own role has no outbound membership path to `ghm_db_user`. The current Render service is still on old commit `c7cf1eb`, and its environment values are not exposed by the read-only service metadata; do not assume it is already using `GHM_RUNTIME_DATABASE_URL`. Verify the actual configured credential key and effective identity before any deployment.
+
+The `ghm_app_user → ghm_db_user` membership is provider-granted by `postgres`; an ordinary REVOKE from the Dashboard login has previously failed to remove provider-granted membership. This needs the existing Render support/provider authority path, not an application-side workaround. No role membership or credential was changed during this audit.
+
+This finding is separate from the `ghm_db_user → ghm_migrator/ghm_schema_owner` admin memberships addressed by the migrator redesign. Both provider-granted membership families must be explicitly dispositioned before production identity cutover.
