@@ -2551,3 +2551,14 @@ Read-only GitHub PR inspection confirms:
 - For current PR #276 head `5c5284259b4a6029066296816d7a824f7ff6bab2`, the connected GitHub workflow-run lookup returned no PR-triggered workflow runs and combined commit status returned no status entries. This is **not** a green CI result. No current-head CI qualification is claimed.
 
 No PR was merged, retargeted, rebased or otherwise modified in this check.
+
+
+### Historical production connection records reconciled with the latest supplied inventory
+
+The older `docs/operations/handover-production-db-and-render-2026-10-24.md` contains multiple dated environment snapshots and an earlier production configuration report. It records a production `ghm_db` connection in one section, while a later snapshot records the service's `DATABASE_URL` targeting the sandbox resource. The operator's latest 2026-11-13 inventory now explicitly confirms the current visible GHM-Internal-Runtime `DATABASE_URL` targets the suspended sandbox database. The latest operator-supplied inventory is the active baseline for present configuration; the October notes are historical evidence only.
+
+That October handover also records that a production `GHM_MIGRATOR_DATABASE_URL` had once been validated against `ghm_db`. The latest current inventory instead shows the Render service's `GHM_MIGRATOR_DATABASE_URL` points to the suspended sandbox. Therefore the historical production migrator credential cannot be assumed to remain configured, available, or valid. It must be re-established/verified separately before any production migration activity.
+
+Production `ghm_runtime` is a SQL-created login role already observed in the production database, but no current production connection URL/password for it is present in the operator-supplied inventory. The old sandbox `DATABASE_URL` must not be used to infer or recover that production credential. Provisioning or resetting the production `ghm_runtime` password requires a controlled administrator session and a separately recorded authorization/rollback procedure; no such action has been taken.
+
+This reconciles the chronology without overwriting the historical record or claiming a currently usable production runtime/migrator credential.
