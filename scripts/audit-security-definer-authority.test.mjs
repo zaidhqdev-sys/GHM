@@ -65,23 +65,23 @@ test('issuer qualification uses PostgreSQL-safe auth function prefix predicates'
   ]) {
     assert.doesNotMatch(
       source,
-      /\\bLIKE\\b[\\s\\S]{0,120}\\bESCAPE\\b/i,
+      /\bLIKE\b[\s\S]{0,120}\bESCAPE\b/i,
       `${name} must not use fragile LIKE/ESCAPE SQL prefix filters`,
     );
   }
 
   assert.ok(
-    (issuerCutoverSource.match(/left\\(p\\.proname, 5\\) = 'auth_'/g) ?? []).length >= 6,
+    (issuerCutoverSource.match(/left\(p\.proname, 5\) = 'auth_'/g) ?? []).length >= 6,
     'issuer cutover must use explicit PostgreSQL-safe auth_ prefix checks at all reviewed call sites',
   );
   assert.match(
     issuerPrivilegeSource,
-    /left\\(p\\.proname, 5\\) = 'auth_'/,
+    /left\(p\.proname, 5\) = 'auth_'/,
     'issuer privilege inventory must use the PostgreSQL-safe auth_ prefix predicate',
   );
   assert.match(
     issuerPrincipalSource,
-    /left\\(p\\.proname, 5\\) = 'auth_'/,
+    /left\(p\.proname, 5\) = 'auth_'/,
     'issuer principal qualification must use the PostgreSQL-safe auth_ prefix predicate',
   );
 });
