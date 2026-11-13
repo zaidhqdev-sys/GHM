@@ -177,3 +177,15 @@ After the push, retrieve the newly created workflow run and verify:
 3. post-cutover SECURITY DEFINER inventory step executes rather than skips;
 4. a fresh post-cutover artifact is produced and its contents/hash are retained;
 5. pre/post inventories are compared and unexplained authority changes are zero.
+
+
+### Push-trigger attempt result
+
+The handover-only push commit was created successfully:
+- Commit: `cd8b147e42f1edefe2f86bda5fd5ba727e259673`
+- Message: `docs(security): trigger exact-head issuer qualification`
+- Branch: `construction/auth-issuer-isolation-20261112`
+
+The branch workflow configuration includes a push trigger for this branch. However, immediately after the push, the connected GitHub interface returned no commit statuses and no associated workflow runs for this SHA. Its workflow-run lookup is limited to pull-request-triggered runs, so this interface cannot confirm whether the push-triggered workflow was queued. Do not state that a fresh run has started until a run ID is visible in GitHub Actions.
+
+Next: inspect the repository Actions page for a new run on SHA `cd8b147e42f1edefe2f86bda5fd5ba727e259673`. If no run exists, trigger the existing CI workflow manually using GitHub Actions `workflow_dispatch` for this branch. Do not create a PR to main as a workaround; the branch/main histories are divergent and the security stack must remain isolated.
