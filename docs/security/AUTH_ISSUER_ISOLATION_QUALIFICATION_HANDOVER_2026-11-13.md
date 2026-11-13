@@ -1260,3 +1260,64 @@ The current production startup gate therefore cannot detect the 156 INSERT and 6
 This correction supersedes the earlier statement that the runtime's only direct DML exceptions were four relation-level grants. The actual direct DML surface is broader because of column-level privileges.
 
 No production grant, ACL, relation, sequence, function, role, membership, migration, data, credential, Render setting, deployment or traffic was changed.
+
+
+## Exact-head CI and source-to-ACL work queue — 2026-11-13 18:35 UTC
+
+### Exact-head qualification result
+
+The full workflow for ACL-inventory handover commit c670897cfd7cd6f1a236cb1e2b4a025744cd8219 completed successfully:
+
+- quality: 65/65 steps passed.
+- web-quality: 11/11 steps passed.
+- Workflow: https://github.com/zaidhqdev-sys/GHM/actions/runs/43482171421
+
+No production deployment was triggered by this documentation-only commit.
+
+### Source-to-ACL matrix — first-pass ownership map
+
+This is a routing map for the next exact SQL/call-site audit. It is deliberately not a declaration that each table is exclusively written by one repository; the repository may write multiple related tables and a route may compose multiple repositories.
+
+| Production table with column DML | First source repository to inspect | Required authorization evidence before revocation |
+|---|---|---|
+| business_capability | src/resources/business-capability/repository.ts | Capability manager/owner scope; capability lifecycle; signed capability mutation gateway coverage |
+| business_capability_evidence | src/resources/business-capability-evidence/repository.ts | Evidence submitter identity, business scope, verification transitions and evidence object binding |
+| business_category_assignment | src/resources/business-category/repository.ts | Business membership/manager authority and allowed category lifecycle |
+| business_engagement_event | src/resources/business-engagement/repository.ts (confirm path) | Authenticated actor and business-scoped event attribution |
+| business_offering | src/resources/business-offering/repository.ts | Business membership, offering ownership and public/private visibility |
+| commercial_event | src/resources/commercial/repository.ts | Provider-authenticated event provenance and idempotency; PayFast remains frozen |
+| commercial_payment_attempt | src/resources/commercial/repository.ts | Payment-provider identity, attempt ownership and callback authenticity; PayFast remains frozen |
+| commercial_subscription | src/resources/commercial/repository.ts | Subscription lifecycle authority and verified provider event; do not activate payment |
+| commercial_trial | src/resources/commercial/repository.ts | Business owner/manager, trial eligibility and idempotent creation |
+| customer | src/resources/customer/repository.ts | Business tenant context and customer ownership |
+| enquiry | src/resources/enquiry/repository.ts | Public intake validation, target business scope and actor attribution |
+| notification | src/resources/notification/repository.ts | Recipient identity, tenant isolation and trusted event source |
+| opportunity_capability_requirement | src/resources/opportunity-requirements/repository.ts | Opportunity manager/owner check and requirement replacement atomicity |
+| opportunity_participant | src/resources/opportunity-participant/repository.ts | Opportunity participant eligibility and owner/manager scope |
+| project | src/resources/project/repository.ts | Project owner/business context; atomic Project↔Opportunity relation |
+| project_quote | src/resources/project-quote/repository.ts | Project tenant scope, quote authority and immutable lifecycle constraints |
+| quote | src/resources/quote/repository.ts | Customer/business scope, quote owner and status transition |
+| quote_line_item | src/resources/quote/repository.ts | Parent quote ownership and same-tenant consistency |
+| review | src/resources/review/repository.ts | Review author, target business, moderation authority and immutable review rules |
+| support_request | src/resources/support-request/repository.ts | Requester identity, assigned operator authority and tenant scope |
+| account_identity (UPDATE) | src/resources/business-identity/repository.ts / profile identity path (confirm) | Self-service account binding; only authenticated account's allowed profile fields |
+
+The exact production ACL inventory remains authoritative for table/column counts. The source paths above are prioritized starting points and several are explicitly marked for confirmation where the first-pass naming is not guaranteed by the repository tree.
+
+### Additional controls that the source matrix must capture
+
+- The current application withAuthorizedTransaction checks a valid application AuthContext but does not set a PostgreSQL actor identity. This means runtime-credential possession is a stronger threat than an ordinary authenticated HTTP caller.
+- Every write row must record: HTTP route, repository method, SQL columns, actor source, tenant predicate, lifecycle predicate, gateway/function replacement, and tests.
+- A generic SECURITY DEFINER wrapper around arbitrary SQL is not acceptable. Each replacement must have fixed parameters, fixed operation semantics, bounded row scope, explicit actor assertion verification and transaction-level replay protection where relevant.
+- The direct DML grant inventory must include relation-level ACL, column-level ACL and inherited privileges, not just has_table_privilege.
+- Sequence access must be paired to each INSERT path and reviewed separately; sequence USAGE alone does not authorize inserting into a table.
+
+### Next work order
+
+1. Confirm all 21 source paths against actual SQL statements (including any path outside src/resources).
+2. Extract exact columns and the complete actor/tenant predicate for every INSERT/UPDATE/DELETE.
+3. Mark already migrated signed Actor Gateway operations and remaining direct-resource operations separately.
+4. Build a staged relation/column/sequence allow-list only after the source mapping is complete.
+5. Add disposable PostgreSQL tests for direct-DML denial and continued API/gateway operation before writing any production cutover.
+
+Production remains read-only. No role, membership, relation/column/sequence ACL, function, migration, data, credential, Render setting, deployment or traffic was changed.
