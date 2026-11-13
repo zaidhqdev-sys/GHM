@@ -426,3 +426,42 @@ Checked workflow runs associated with the handover commit `889dd960bf4f19af0ed42
 The next evidence requirement remains a new CI execution on the corrected branch head (or descendant), followed by inspection of the actual comparator CLI step and its generated JSON artifact. If a run is not automatically created by the branch push, trigger the configured CI workflow for this exact branch/commit through an authorized GitHub Actions dispatch mechanism; do not merge, deploy, or weaken the comparator to obtain a green result.
 
 No production activity has occurred.
+
+
+## Stacked integration branch created — 2026-11-13 13:34 UTC
+
+### New branch and ancestry
+
+Created `construction/auth-issuer-stacked-on-pr272-20261113` from the exact live PR #272 head:
+
+- Parent/base commit: `c81e2bf2534febef9c5e49b39f60f85415f04ff1`
+- New integration snapshot commit: `9d14a6a84e09f8f41d6acbd0231517f6fbd60b5e`
+- The new commit has exactly one parent, PR #272 head `c81e2bf...`.
+- GitHub compare confirms the new branch is exactly 1 commit ahead and 0 behind PR #272, with 137 changed files.
+- PR #272 itself has not been modified.
+
+### What was ported
+
+The integration commit uses a Git tree built on the PR #272 tree and applies every file-level difference from the already-qualified construction snapshot `7199fe8315f98adc9549da6447751d50fc53cb42`. It applies 137 changed/added paths and preserves the one PR-head-only file `docs/security/RENDER_ACTOR_GATEWAY_ROLE_SEPARATION_HANDOVER_2026-11-12.md` rather than deleting it.
+
+This is intentionally a complete validated construction-snapshot integration, not a narrowly issuer-only cherry-pick. The 137-file delta includes Authentication Issuer source, SQL cutover/rollback, auth lifecycle migrations, runtime/migrator principal work, security inventory/comparator scripts, CI qualification, and subsequent Actor Gateway/storage qualification and supporting changes already present in the validated snapshot. This avoids silently mixing an older PR Actor Gateway implementation with an issuer tested against a newer gateway contract. The trade-off is broader scope than an issuer-only PR; the resulting diff must be reviewed and kept as a separate draft integration PR until all tests pass.
+
+The CI workflow was updated to include the new branch in its push triggers. The new branch was verified to contain that trigger.
+
+### Fresh CI started
+
+- Workflow run: [43434743430](https://github.com/zaidhqdev-sys/GHM/actions/runs/43434743430)
+- Event: push
+- Exact tested SHA at dispatch: `9d14a6a84e09f8f41d6acbd0231517f6fbd60b5e`
+- Initial state at 13:34 UTC: queued.
+
+This run validates the snapshot commit only. The present handover update will create a descendant commit and therefore requires its own exact-head CI run; do not treat run 43434743430 as validation of that later commit.
+
+### Gates remain closed
+
+- No production database operation or deployment.
+- No merge.
+- PR #272 remains open/draft and unchanged.
+- No new issuer PR has been opened yet.
+- Do not reuse construction-branch CI as proof for the stacked branch. Require fresh exact-head CI, including issuer pre/post inventory comparison and artifact retention.
+- Because the integrated delta includes more than issuer-only changes, inspect the new branch's changed paths and test output before deciding whether to split it into narrower PRs.
