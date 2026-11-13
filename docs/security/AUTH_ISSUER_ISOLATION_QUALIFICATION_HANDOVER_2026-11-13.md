@@ -1153,3 +1153,14 @@ The production global default ACL inventory includes PostgreSQL-owned defaults g
 5. Preserve a rollback plan and do not revoke production privileges until client routes and gateway service deployment are qualified.
 
 No production privilege, ACL, sequence, relation, function, role, membership, migration, data, credential, Render setting, deployment or traffic was changed.
+
+
+### Direct DML ACL grantor confirmation
+
+The five effective DML privileges listed above are explicit direct ACL entries granted by `ghm_schema_owner` to `ghm_runtime`, with no grant option. They are not inherited through `ghm_db_user` or another role. Exact tuples:
+- `ghm.business`: INSERT
+- `ghm.business_membership`: INSERT
+- `ghm.opportunity`: INSERT, UPDATE
+- `ghm.opportunity_capability_requirement`: DELETE
+
+This confirms the privilege cleanup must be an intentional owner-controlled migration/cutover after the associated direct SQL consumers are replaced, not merely a role-membership adjustment.
