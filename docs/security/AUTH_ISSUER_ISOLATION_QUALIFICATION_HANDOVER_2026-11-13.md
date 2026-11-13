@@ -2431,3 +2431,59 @@ A read-only source inspection of `zaidhqdev-sys/zaid-connect` mainline confirms 
 The operator-supplied GHM `CORS_ORIGINS` contains localhost and Cloudflare Pages origins but does not include the canonical Connect production origin `https://zaid-connect.vercel.app`. Therefore the supplied list is not yet demonstrably complete for Connect. Do not remove/add origins blindly: first establish which Connect auth/API mode is enabled in the production Vercel deployment and retain the exact canonical origin required by its active caller. Preview origins should remain narrowly scoped and temporary.
 
 Vercel project environment metadata could not be retrieved through the connected Vercel project lookup (project not found under the available scope), so the current value of `VITE_GHM_WEB_AUTH_ENABLED` and the Vercel `CONNECT_WEB_ORIGIN` were not independently verified. No Vercel variables were read or changed.
+
+
+## 2026-11-14 02:05 SAST — operator-supplied GHM-Internal-Runtime environment baseline (verbatim non-secret values)
+
+The operator explicitly requested that the complete environment inventory they supplied in chat be preserved in this handover and that the handover remain the running operational record. Values below preserve the supplied spelling and content. Secret values were already redacted by the operator and remain redacted here; no attempt was made to retrieve them.
+
+### Supplied current environment
+
+| Variable | Supplied value |
+|---|---|
+| `CORS_ORIGINS` | `http://localhost:5173,https://ghm-cu1.pages.dev,https://c135fd05.ghm-cu1.pages.dev` |
+| `DATABASE_SSL` | `true` |
+| `DATABASE_URL` | `postgresql://ghm_runtime:REDACTED@dpg-db4416vlk1mc73eocug0-a.frankfurt-postgres.render.com/ghm_payfast_sandbox_db` |
+| `GHM_AUTH_TOKEN_PEPPER` | `REDACTED` |
+| `GHM_JWT_ES256_KID` | `ghm-sandbox-20261012-01` |
+| `GHM_JWT_ES256_PRIVATE_KEY_PEM` | `REDACTED` |
+| `GHM_JWT_ES256_PUBLIC_KEY_PEM` | `REDACTED` |
+| `GHM_MIGRATION_DATABASE_HOST` | `dpg-db4416vlk1mc73eocug0-a.frankfurt-postgres.render.com` |
+| `GHM_MIGRATION_DATABASE_NAME` | `ghm_payfast_sandbox_db` |
+| `GHM_MIGRATOR_DATABASE_URL` | `postgresql://ghm_migrator:REDACTED@dpg-db4416vlk1mc73eocug0-a.frankfurt-postgres.render.com/ghm_payfast_sandbox_db` |
+| `GHM_NONPRODUCTION_DATABASE_NAME` | `ghm_payfast_sandbox_db` |
+| `GHM_QUALIFICATION_DATABASE_NAME` | `ghm_payfast_sandbox_db` |
+| `GHM_WEB_AUTH_ALLOWED_ORIGINS` | `https://zaid-connect-git-construction-ghm-iden-fe5b54-zaid-technologies.vercel.app` |
+| `INVITE_CODE` | `REDACTED` |
+| `NODE_ENV` | `production` |
+| `PAYFAST_CANCEL_URL` | `https://zaid-connect.vercel.app/` |
+| `PAYFAST_ENVIRONMENT` | `sandbox` |
+| `PAYFAST_MERCHANT_ID` | `REDACTED` |
+| `PAYFAST_MERCHANT_KEY` | `REDACTED` |
+| `PAYFAST_NOTIFY_URL` | `https://ghm-payfast-sandbox-runtime.onrender.com/api/v1/commercial/payfast/itn` |
+| `PAYFAST_PASSPHRASE` | `(blank; not setup)` |
+| `PAYFAST_RETURN_URL` | `https://zaid-connect.vercel.app/workspace/commercial/payment-return` |
+| `STORAGE_ACCESS_KEY_ID` | `REDACTED` |
+| `STORAGE_BUCKET` | `zaid-ghm-production` |
+| `STORAGE_DOWNLOAD_GRANT_MAX_TTL_SECONDS` | `3600` |
+| `STORAGE_ENDPOINT` | `https://REDACTED.r2.cloudflarestorage.com` |
+| `STORAGE_FORCE_PATH_STYLE` | `false` |
+| `STORAGE_PROVIDER` | `s3` |
+| `STORAGE_REGION` | `auto` |
+| `STORAGE_SECRET_ACCESS_KEY` | `REDACTED` |
+| `STORAGE_UPLOAD_GRANT_TTL_SECONDS` | `900` |
+
+The operator's original label for the service was “GHM Internal Runtime”. The supplied `DATABASE_URL` and `GHM_MIGRATOR_DATABASE_URL` both target the sandbox database and host. The original message contains no `GHM_RUNTIME_DATABASE_URL` entry.
+
+### Handling and provenance
+
+- This is the operator-supplied Render Environment inventory, received 2026-11-13 23:37 SAST (19:37 UTC).
+- It is an inventory copied by the operator, not a fresh API read-back of Render.
+- The passwords, tokens, signing key material, merchant credentials and R2 access credentials were redacted in the supplied content. Their actual values are intentionally not stored in Git.
+- The R2 endpoint hostname was redacted in the supplied content and remains redacted.
+- The blank PayFast passphrase is recorded as blank, not as a secret placeholder.
+- No environment variables were modified while recording this inventory.
+
+### Change log policy
+
+Continue appending dated findings, actions, commits, CI results and explicit no-change statements to this handover after each meaningful work unit. Preserve this baseline as historical evidence; later Render changes must be recorded as a separate dated after-state rather than overwriting the supplied original values.
