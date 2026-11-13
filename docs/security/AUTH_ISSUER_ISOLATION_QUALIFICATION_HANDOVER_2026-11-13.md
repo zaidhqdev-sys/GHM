@@ -1859,3 +1859,39 @@ Run https://github.com/zaidhqdev-sys/GHM/actions/runs/43487713624, exact handove
 5. No production ACL or role changes until these mismatches are resolved and the disposable qualification passes.
 
 No production roles, memberships, grants, function definitions, schema, data, credentials, Render settings, deployments or traffic were changed. The role lookup failure was read-only and did not mutate production.
+
+
+## Correction — six apparent legacy auth exceptions are already covered by migrations (2026-11-13 19:04 UTC)
+
+Re-opened the exact migration sources after the previous checkpoint's production-versus-branch comparison. The earlier statement that six functions remained unhandled was incorrect. All six have explicit, source-controlled runtime revocation migrations; they are not outstanding allow-list exceptions.
+
+| Function | Correct disposition | Source migration |
+|---|---|---|
+| `ghm.auth_change_password(bigint,bigint,text,text,text,integer,integer,integer)` | Unused account-ID operation; remove runtime EXECUTE | `20261111220000_revoke_unused_auth_runtime_entry_points.sql` |
+| `ghm.auth_disable_account(bigint)` | Unused account-ID operation; remove runtime EXECUTE | `20261111220000_revoke_unused_auth_runtime_entry_points.sql` |
+| `ghm.auth_revoke_session(bigint,text)` | Unused account/session-ID operation; remove runtime EXECUTE | `20261111220000_revoke_unused_auth_runtime_entry_points.sql` |
+| `ghm.auth_link_external_identity(text,text,bigint)` | Operator/migration-controlled linking; remove runtime EXECUTE | `20261111250000_revoke_runtime_external_identity_link.sql` |
+| `ghm.auth_bootstrap_external_identity(text,text,text,text)` | Operator/migration-controlled bootstrap; remove runtime EXECUTE | `20261111260000_revoke_runtime_external_identity_bootstrap.sql` |
+| `ghm.auth_provision_migration_account(text,text,text,text)` | QuoteFlow migration-only account provisioning; remove runtime EXECUTE | `20261111240000_revoke_runtime_quoteflow_migration_provisioning.sql` |
+
+Additional allow-list deltas are explicitly handled by:
+- `20261112040000_revoke_runtime_quoteflow_reset_enrollment_registration.sql` — removes the operator-only reset enrollment registration function from runtime.
+- `20261112080000_signed_connect_business_provisioning_gateway.sql` — removes direct runtime access to `auth_link_business_external_mapping`, retaining it as an internal helper of signed Connect Business provisioning.
+- The manual Authentication Issuer cutover conditionally removes three historical account-ID authority wrappers (`auth_read_account_email`, `auth_read_connect_identity_authority`, `auth_revoke_all_sessions_for_account`) where present.
+
+The six listed functions are therefore **not** reasons to expand the 16-function pre-issuer Resource API allow-list or create more revocation migrations. Their route/application disposition is consistent with the existing comments: the first three have no active HTTP/application callers; the latter three are operator/migration-only paths. The migration account provisioning service itself remains a governed migration workflow, not an ordinary runtime route.
+
+### Corrected outstanding verification
+
+1. The production catalog is still at the older deployed migration level; the current observer cannot SELECT the migration ledger. Therefore we have not established which of these source migrations are present in production.
+2. Run the complete migration sequence against the disposable PostgreSQL 18 database and require `qualify-auth-issuer-precutover.mjs` to prove exactly the documented 16 runtime auth functions.
+3. Verify that the six legacy functions above are denied to `ghm_runtime` after the applicable migrations, and that the dedicated `ghm_migrator → ghm_schema_owner` migration path remains functional where needed.
+4. Keep the manual issuer cutover separate; it must only be qualified after isolated issuer role provisioning and all client/resource route cutovers.
+
+### CI observation
+
+Run https://github.com/zaidhqdev-sys/GHM/actions/runs/43488222423 on preceding head `0bc51bef38c84e9364ebbdb49abfda75dcbfebb7`:
+- web-quality: passed 11/11.
+- quality: 45/64 at observation, currently qualifying the Saved Business signed gateway cutover; no failure reported.
+
+No production roles, memberships, grants, function definitions, schema, data, credentials, Render settings, deployments or traffic were changed. This correction is source review and handover documentation only.
