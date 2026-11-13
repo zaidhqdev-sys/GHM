@@ -1937,3 +1937,17 @@ PR #276 remains open and unmerged. It is stacked on PR #272's integration branch
 5. Reconcile PR #276/#272 as a mainline-based integration series; preserve the already-merged Resource API runtime principal changes and avoid merging the current stacked aggregate blindly.
 
 No production roles, memberships, grants, function definitions, schema, data, credentials, Render settings, deployments or traffic were changed in this qualification.
+
+## 2026-11-13 19:10 UTC — production Project↔Opportunity read-only reconciliation
+
+Queried the live Render production database `ghm_db` through the existing observer connection (`session_user=ghm_app_user`, `current_user=ghm_db_user`). All queries ran through the read-only database query interface.
+
+- Confirmed `ghm.project.opportunity_id` exists and references the canonical Opportunity model; the production schema exposes the expected Project, Opportunity and Opportunity Type columns.
+- Aggregate reconciliation returned: Projects 0; linked Projects 0; unlinked Projects 0; orphaned Project links 0; links to non-`project` Opportunity types 0; linked title/description/creator-account mismatches 0.
+- The separate project-type Opportunity count also returned no rows (zero project-type Opportunities).
+
+This establishes that there are currently no production Project or project-type Opportunity records requiring repair. It does **not** prove the historical migration ledger is complete: an attempted read of `ghm.ghm_schema_migrations` was denied with PostgreSQL SQLSTATE 42501 (permission denied). The table exists, but the observer cannot read its contents. The earlier probe against the guessed `public` ledger relation was not applicable; the actual table is in schema `ghm`.
+
+### Updated release gate
+
+The data-level Project↔Opportunity reconciliation is complete with zero records and zero discrepancies. The production migration-ledger verification remains blocked on an authorized read-only identity. No privilege was granted to the observer and no production data or schema was changed.
