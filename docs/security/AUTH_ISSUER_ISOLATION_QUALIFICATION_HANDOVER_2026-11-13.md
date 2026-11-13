@@ -2225,3 +2225,21 @@ The current `DATABASE_URL` must not be copied, repointed, or deleted until a sep
 6. After deployment, require service-originated startup evidence for database `ghm_db`, `session_user=current_user=ghm_runtime`, and all least-privilege checks before considering the runtime identity gate passed.
 
 No Render environment variables, credentials, services, deployments, database roles, memberships, grants, schema, data or traffic were changed by this investigation. The production Resource API remains deployed at `c7cf1eb`; auto-deploy remains OFF. PR #272/#276 remain unmerged. The suspended sandbox and PayFast remain excluded.
+
+
+### Production Render database resource metadata reconfirmed
+
+Read-only Render Postgres resource lookup confirms:
+- Resource: `ghm-db` (`dpg-dag0sdtbedkc7389vi2g-a`).
+- Database: `ghm_db`.
+- Region: Frankfurt.
+- PostgreSQL major version: 18.
+- Status: available; not suspended.
+- Render resource metadata's default `databaseUser` is `ghm_app_user`.
+
+That `databaseUser` field describes the Render-managed default database credential; it is not evidence that the application must use it, nor does it invalidate the separately cataloged `ghm_runtime` LOGIN role. The Resource API contract remains the explicit `ghm_runtime` login, and the service must authenticate with that role.
+
+The operator-provided current service inventory points at a different resource/database (`dpg-db4416vlk1mc73eocug0` / `ghm_payfast_sandbox_db`). The two resource IDs and database names are distinct. Do not copy that URL into production configuration.
+
+PR #275 merged contract was re-read: production requires `GHM_RUNTIME_DATABASE_URL`; `DATABASE_URL` is a non-production fallback only; startup fails closed unless `session_user=current_user=ghm_runtime` and the complete least-privilege verifier passes. No deployment is permitted until the production-target runtime URL is provisioned.
+
