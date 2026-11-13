@@ -371,3 +371,39 @@ Corrected the source to use a real line break and added a regression assertion c
 A fresh exact-head workflow run is required. The next gate is that comparator tests pass, the real pre/post comparison executes, and the report confirms only the reviewed `ghm_auth_issuer` schema USAGE delta with zero unexplained non-issuer changes. Do not weaken the comparator or infer a pass from successful issuer lifecycle tests.
 
 All database changes in this run were confined to disposable PostgreSQL. Production, Render and application traffic remain untouched. PR #272 remains draft and unmerged.
+
+
+## 2026-11-13 comparator retry findings and correction
+
+Inspected both fresh workflow runs named in the prior checkpoint:
+
+- Run `43339183651`: `web-quality` passed; `quality` failed.
+- Run `43339189049`: `web-quality` passed; `quality` failed.
+- In both runs the issuer lifecycle/cutover and disposable rollback checks completed successfully, and the post-cutover whole-database inventory step executed successfully.
+- Neither run produced a successful pre/post inventory comparison. The comparison stage was blocked by failures in the comparator unit-test file before the comparator's real CLI comparison step could run. No comparison report is accepted as evidence.
+
+### Exact test defects found in run 43339189049
+
+The comparator source syntax correction itself is present: the report-label object now has a normal line break between `schemaPrivileges` and `issuerSchemaGrant`.
+
+The newly added regression test introduced two independent test-fixture defects:
+1. It referenced `fs.readFileSync` without importing `node:fs` (`ReferenceError: fs is not defined`).
+2. The first successful-comparison fixture omitted the required `ghm` schema privilege inventory, so the comparator correctly rejected it with `pre/post inventories must both contain the ghm schema`.
+
+The other six comparator unit tests passed; these two failures are test defects, not evidence of a database authority mismatch. The real pre/post comparator has still not run.
+
+### Corrections committed to the same construction branch
+
+- `d309ca0bbfa7ae42107b151479d58aa67583cef4` — imports `node:fs` and supplies before/after `ghm` schema privilege fixtures to the successful issuer ACL comparison test.
+- `443bfe127b78c022381cb52cda11fa20fbb92656` — corrects the escaped-newline regression assertion so it checks for the literal malformed backslash-n sequence rather than an over-escaped pattern.
+
+The latest required action is a fresh exact-head CI run on the current branch HEAD `443bfe127b78c022381cb52cda11fa20fbb92656`. Confirm the run checks out that exact SHA. Require all comparator unit tests to pass, then require the actual CLI comparison step to execute against the pre/post inventory files and produce a report. The report must confirm:
+- unchanged SECURITY DEFINER routine identity set;
+- only the reviewed Authentication Issuer ACL changes;
+- exactly the non-grantable `ghm` schema USAGE grant for `ghm_auth_issuer`, with CREATE denied;
+- unchanged non-issuer function definitions/ACLs, role memberships/attributes, database/column/default ACLs and non-issuer findings;
+- `unexplainedNonIssuerChanges: 0`.
+
+Do not infer that the real comparison passed from passing unit tests or from successful inventory collection. Preserve the actual comparison artifact and hash in the next handover update.
+
+Production remains untouched. All database changes in these runs were confined to disposable PostgreSQL. No deployment or merge has been made; PR #272 remains draft/open/unmerged.
