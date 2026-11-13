@@ -712,3 +712,53 @@ A second, more granular catalog query included membership grantors and PostgreSQ
 4. The production ledger is therefore not accessible through the available Render query action without a separate authorized connection as `ghm_schema_owner` (or another explicitly provisioned read-only audit principal). No attempt was made to assume role or alter grants.
 
 This correction is based on exact `pg_auth_members` grantor rows and PostgreSQL effective-role checks, not an inference from membership names.
+
+
+## Role-setting verification and application-login separation plan — 2026-11-13 14:06 UTC
+
+### Role-level setting confirmed
+
+A read-only query of `pg_db_role_setting` confirmed the exact Render-managed setting:
+
+```
+role_name     = ghm_app_user
+database_name = ALL DATABASES
+setting       = role=ghm_db_user
+```
+
+This explains why a connection authenticated as `ghm_app_user` resolves to `current_user=ghm_db_user`. It is not merely a transient SET ROLE in the connection pool; it is a role-level setting configured for all databases. Do not attempt to clear this setting using the application connection: the setting is part of the Dashboard-managed default-user arrangement and must be handled through the Render administrator/rotation workflow.
+
+### Render support recommendation already confirmed
+
+The 2026-11-12 Render support handover records explicit support confirmation that normal application execution should move to SQL-created login(s) outside the Dashboard-managed credential list. Render also explained that SQL-created roles will not appear in the Dashboard/API and their credentials must be supplied to services through their own environment variables. Dashboard-managed credentials remain for database administration.
+
+### Intended target shape — design only, no production mutation
+
+The target must preserve the existing service count and database. It does not require a new paid database or Render service.
+
+- Retain a controlled Render-managed default administrator for Dashboard operations and recovery only.
+- Use SQL-created, service-specific LOGIN roles for normal application connections, each with no SUPERUSER, CREATEDB, CREATEROLE, REPLICATION, BYPASSRLS, or ADMIN OPTION over protected roles.
+- Where appropriate, grant a SQL-created application login membership in a NOLOGIN privilege role such as `ghm_runtime` using `INHERIT TRUE, SET FALSE`; that login inherits only the runtime's measured privileges and cannot SET ROLE into the privilege role. First qualify exact PostgreSQL 18 semantics and all direct grant paths.
+- Keep Actor Gateway, Authentication Issuer and Payment Provider as separate principals with their own exact function allow-lists; PayFast remains paused.
+- Keep `ghm_migrator` as the only application-adjacent migration login, with its explicit `SET ROLE ghm_schema_owner` path. Do not provide the migration credential to normal runtime services.
+- Make `ghm_runtime` NOLOGIN only after every runtime consumer has moved to its own SQL-created login and the existing runtime direct grants have been reconciled. This is a later, separately qualified step, not an immediate change.
+- Remove the `ghm_app_user` role setting/default-user relationship and legacy `ghm_app_user → ghm_db_user` path only through Render's supported administrator replacement/rotation sequence, after an independent Dashboard administrator and recovery path have been verified.
+- Resolve bootstrap `postgres`-granted ADMIN OPTION memberships through the provider/bootstrap authority path. Do not infer that the ordinary application connection can revoke them or assume the target roles.
+
+This plan is consistent with the existing role-separation runbook and Render support response. It is not executable SQL, has not been applied to production, and does not authorize changes to Render credentials or services.
+
+### Current Render service inventory (metadata only)
+
+The Render workspace service listing was inspected without reading environment-variable values:
+- `GHM-Internal-Runtime` is the current production GHM Resource API service, Frankfurt, with auto-deploy off.
+- `ghm-identity-qualification`, `ghm-payfast-sandbox-runtime`, and `ghm-payfast-callback-sandbox` are legacy qualification/sandbox services and are not the production migration target.
+- No new Render service or database was created. No service environment variables, deploy settings, credentials, or deployments were changed.
+
+### Exact-head CI at this handover update
+
+- Run [43438702236](https://github.com/zaidhqdev-sys/GHM/actions/runs/43438702236), head `5d5dcf1`: quality 65/65 and web-quality 11/11 passed.
+- Run [43438756496](https://github.com/zaidhqdev-sys/GHM/actions/runs/43438756496), head `b4dc44a`: quality 64/64 and web-quality 11/11 passed.
+- Latest handover head `9eff7cee58ef8e82f185d6b63c3d8da46bf7c2a0`, run [43439277662](https://github.com/zaidhqdev-sys/GHM/actions/runs/43439277662): web-quality 11/11 passed; quality is in progress at the signed Connect Business provisioning qualification step (33/64 steps passed, no failures reported).
+- Prior run [43438965542](https://github.com/zaidhqdev-sys/GHM/actions/runs/43438965542), head `7e3d895`: web-quality 11/11 passed; quality remains in progress (48/64 at the Business Logo gateway qualification step, no failures reported).
+
+Do not claim the latest exact-head quality job has passed until run 43439277662 completes. Earlier successful exact-head runs do not supersede the current handover commit's run.
