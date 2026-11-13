@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import fs from 'node:fs';
 import { compareInventories } from './compare-security-definer-authority-inventories.mjs';
 
 const fn = (name, schema = 'ghm') => ({
@@ -45,10 +46,23 @@ test('accepts issuer ACL-only changes while preserving all non-issuer authority'
   };
   const beforeRuntime = fn('read_project', 'ghm');
   const afterRuntime = structuredClone(beforeRuntime);
-  const result = compareInventories(
-    report([beforeIssuer, beforeRuntime]),
-    report([afterIssuer, afterRuntime]),
-  );
+  const before = report([beforeIssuer, beforeRuntime]);
+  const after = report([afterIssuer, afterRuntime]);
+  const issuerSchema = (usage) => ({
+    schema_name: 'ghm',
+    owner: 'ghm_schema_owner',
+    direct_acl: [
+      { grantee: 'ghm_schema_owner', grantor: 'ghm_schema_owner', privilege: 'USAGE', grantable: false },
+      ...(usage ? [{ grantee: 'ghm_auth_issuer', grantor: 'ghm_schema_owner', privilege: 'USAGE', grantable: false }] : []),
+    ],
+    effective_schema_privileges: [
+      { role: 'ghm_schema_owner', usage: true, create: true },
+      { role: 'ghm_auth_issuer', usage, create: false },
+    ],
+  });
+  before.schema_privileges = [issuerSchema(false)];
+  after.schema_privileges = [issuerSchema(true)];
+  const result = compareInventories(before, after);
   assert.equal(result.issuerAclChangesObserved, 1);
   assert.equal(result.unexplainedNonIssuerChanges, 0);
 });
