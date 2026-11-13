@@ -976,3 +976,45 @@ Exact implementation head `faaeb1c4600be07a814dde1aa93993132a1a24d5` passed GitH
 The subsequent handover/production-reconciliation head is `32d6b24c213fcc29517738f775125fcebcd7c608`; its exact-head CI run [43441631366](https://github.com/zaidhqdev-sys/GHM/actions/runs/43441631366) was still running at the time of this note. Do not call the latest documentation head green until that run completes.
 
 No production mutation occurred.
+
+
+## Latest exact-head qualification and Render deployment confirmation — 2026-11-13 14:24 UTC
+
+The latest handover/source tree head `868c41a912751c7bbaca23be8a1a83d761c3cde3` passed exact-head GitHub Actions run [43441944994](https://github.com/zaidhqdev-sys/GHM/actions/runs/43441944994):
+- `quality` — success, 65/65 steps.
+- `web-quality` — success, 11/11 steps.
+
+This includes the isolated migrator redesign, the corrected contract tests, production runtime ACL difference mapping and this handover update. Earlier intermediate commits failed on stale unit/source-contract assertions; those assertions were corrected, and the final exact head is green.
+
+### Render production service independently confirmed
+
+- Service: `GHM-Internal-Runtime` (`srv-damupsek1f9s73eq8kkg`)
+- Branch: `main`
+- Auto-deploy: OFF
+- Latest live deploy: `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`
+- No newer deployment was created during this session.
+
+The production database is still `ghm_db`, PostgreSQL 18, Frankfurt. The available Render query connection resolves to `session_user=ghm_app_user`, `current_user=ghm_db_user`. It cannot SELECT `ghm.ghm_schema_migrations`; catalog ACL inspection confirms SELECT is granted only to `ghm_schema_owner` among the audited roles. The migrator can reach that privilege only by its exact SET ROLE path, which the Render query connector does not use. I did not attempt to bypass this boundary.
+
+### Existing read-only ledger reconciliation path
+
+The repository already contains `scripts/forensic-migration-reconciliation.mjs`. It:
+- requires `GHM_MIGRATOR_DATABASE_URL`;
+- begins a READ ONLY transaction;
+- verifies `session_user=current_user=ghm_migrator` and the explicit `ghm_db` target;
+- SET ROLEs to `ghm_schema_owner` and verifies the resulting identity;
+- reads ledger rows and compares exact version/name/checksum provenance with repository migrations, production historical exceptions, retained history and pending-migration policy.
+
+This is the correct existing script for the remaining production-ledger evidence. It does not need a new service or a production write. The remaining limitation is access: this session has no authorized `ghm_migrator` connection string or supported Render query identity capable of taking that path. Do not expose or rotate credentials to work around it.
+
+### SECURITY DEFINER search-path source disposition
+
+Candidate migration `20261112090000_pin_security_definer_search_path.sql` preflights that every GHM SECURITY DEFINER routine is owned by `ghm_schema_owner`, then pins every such routine to `search_path = pg_catalog, ghm, pg_temp`. Current production catalog counts are:
+- `pg_catalog, ghm`: 54
+- `pg_catalog, ghm, pg_temp`: 5
+- `ghm, pg_temp`: 3
+- `ghm, pg_catalog`: 1
+
+Thus 58 of 63 production SECURITY DEFINER routines still need the candidate hardening migration. This is another migration-ledger-dependent production cutover gate; no search path was changed.
+
+No production SQL mutation, role/grant/membership change, migration, environment change, deploy, application data change or traffic change occurred.
