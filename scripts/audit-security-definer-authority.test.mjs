@@ -52,3 +52,36 @@ test('inventory distinguishes PUBLIC, owner and other direct grantees and report
   assert.match(source, /untrustedLanguage/);
   assert.match(source, /trusted_language: !untrustedLanguage/);
 });
+
+const issuerCutoverSource = fs.readFileSync(new URL('./qualify-auth-issuer-cutover.mjs', import.meta.url), 'utf8');
+const issuerPrivilegeSource = fs.readFileSync(new URL('../src/auth-issuer/database-privileges.ts', import.meta.url), 'utf8');
+const issuerPrincipalSource = fs.readFileSync(new URL('./qualify-auth-issuer-principal.mjs', import.meta.url), 'utf8');
+
+test('issuer qualification uses PostgreSQL-safe auth function prefix predicates', () => {
+  for (const [name, source] of [
+    ['issuer cutover qualification', issuerCutoverSource],
+    ['issuer privilege helper', issuerPrivilegeSource],
+    ['issuer principal qualification', issuerPrincipalSource],
+  ]) {
+    assert.doesNotMatch(
+      source,
+      /\\bLIKE\\b[\\s\\S]{0,120}\\bESCAPE\\b/i,
+      `${name} must not use fragile LIKE/ESCAPE SQL prefix filters`,
+    );
+  }
+
+  assert.ok(
+    (issuerCutoverSource.match(/left\\(p\\.proname, 5\\) = 'auth_'/g) ?? []).length >= 6,
+    'issuer cutover must use explicit PostgreSQL-safe auth_ prefix checks at all reviewed call sites',
+  );
+  assert.match(
+    issuerPrivilegeSource,
+    /left\\(p\\.proname, 5\\) = 'auth_'/,
+    'issuer privilege inventory must use the PostgreSQL-safe auth_ prefix predicate',
+  );
+  assert.match(
+    issuerPrincipalSource,
+    /left\\(p\\.proname, 5\\) = 'auth_'/,
+    'issuer principal qualification must use the PostgreSQL-safe auth_ prefix predicate',
+  );
+});
