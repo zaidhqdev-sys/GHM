@@ -2093,3 +2093,50 @@ Next safe evidence path:
 4. Only then mark the runtime identity gate complete.
 
 No Render service settings, environment variables, secrets, database roles, memberships, grants, schema, data, deployments or traffic were changed. Render auto-deploy remains OFF. The suspended sandbox and PayFast remain excluded. PR #272/#276 remain unmerged; no production cutover is authorized.
+
+
+## 2026-11-13 21:30 SAST — merged Resource API principal code is ahead of production
+
+### PR #275 merge state reconciled
+
+GitHub PR metadata confirms:
+- PR #274 (Render role-separation support handover): merged 2026-11-12; merge commit `744b91f030d5cfc9257685677aaff148cf1f9f43`.
+- PR #275 (Resource API runtime database login isolation): merged 2026-11-12; merge commit `ad4fea43f2eb7bf959042b9db77a9f86e6bb531b`.
+- PR #272: open, draft, unmerged; base `main`; head `c81e2bf2534febef9c5e49b39f60f85415f04ff1`.
+- PR #276: open, draft, unmerged; stacked on PR #272; current head `9d9c80060c4d8b2b3c859bfd7ea65499b21e083f`.
+
+PR #275's merged contract is explicit: production configuration requires `GHM_RUNTIME_DATABASE_URL`; `DATABASE_URL` is only a non-production fallback; Resource API startup must verify `session_user=current_user=ghm_runtime` and least privilege. Its PR body explicitly prohibited deployment until the runtime credential is provisioned through the controlled secret path and end-to-end identity is verified.
+
+### Critical deployment chronology
+
+Render's live Resource API service is still deployed from `main` at commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`, deployed on 2026-11-10 19:26Z.
+
+PR #275 was merged on 2026-11-12 at merge commit `ad4fea43f2eb7bf959042b9db77a9f86e6bb531b`, after that live deployment.
+
+Therefore the production service has **not deployed the merged PR #275 runtime-principal enforcement**. This is a stronger and more actionable conclusion than the earlier uncertainty about whether the live process adopted `GHM_RUNTIME_DATABASE_URL`: the currently deployed commit predates the code that makes that variable mandatory and verifies the runtime identity.
+
+Do not infer the current process's DB role from the source contract of a later main commit. The deployed service's database identity is still unproven, and the live deployment is demonstrably behind the merged security code.
+
+### Live role catalog rechecked (read-only)
+
+A fresh Render query reconfirmed:
+- `ghm_runtime`: LOGIN, NOINHERIT, no SUPERUSER/CREATEDB/CREATEROLE/REPLICATION/BYPASSRLS.
+- `ghm_app_user`: LOGIN, INHERIT, member of `ghm_db_user` (SET+INHERIT).
+- `ghm_db_user`: LOGIN, CREATEDB, CREATEROLE.
+- `ghm_db_user` retains provider-granted ADMIN OPTION over `ghm_actor_gateway`, `ghm_migrator`, `ghm_payment_provider`, `ghm_runtime`, and `ghm_schema_owner`, with INHERIT=false and SET=false on those provider-granted edges.
+- `ghm_db_user` also has a distinct non-admin SET+INHERIT membership in `ghm_runtime`.
+- `ghm_migrator` has SET-only membership in `ghm_schema_owner`.
+- The role graph is unchanged from the recorded provider-managed topology. No role or membership was modified.
+
+### Correct next gate
+
+The immediate blocker is now explicit: **controlled rollout of the already-merged PR #275 runtime identity enforcement**, not another source implementation.
+
+Before any production deployment:
+1. Verify that the existing `ghm_runtime` credential is available through the controlled secret-management path without exposing it.
+2. Verify that Render service configuration can supply `GHM_RUNTIME_DATABASE_URL` to the existing Resource API service without displaying or copying the secret.
+3. Confirm the exact deployment commit and fail-closed startup/rollback behavior.
+4. Confirm the production database grants and runtime startup verifier are compatible; no production grant changes are authorized by this note.
+5. Only after these checks, make a separately authorized deployment decision. Auto-deploy remains OFF.
+
+No environment variables, secrets, roles, memberships, grants, database objects, service settings, deployments or traffic were changed. The live service remains on `c7cf1eb`. PR #272/#276 remain drafts and unmerged. PayFast remains excluded.
