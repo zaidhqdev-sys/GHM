@@ -2608,3 +2608,22 @@ As of this review, no production-grade isolated hosting option has been demonstr
 5. current deployment/account access constraints.
 
 The secure default is to **hold the isolated service cutover**. Keep PR #272/#276 draft/unmerged, keep Render auto-deploy OFF, preserve the current deployed mainline and transitional auth secrets, and do not place gateway/issuer secrets on the Resource API. Revisit Cloudflare Workers only if the operator confirms account access and an acceptable cost/performance envelope; no assumption that Free tier is sufficient is permitted.
+
+
+### Cloudflare Worker compatibility detail — Argon2id is the decisive issuer concern
+
+Further source/documentation reconciliation found:
+- GHM's issuer calls `createArgon2idPasswordHasher()` and the repository dependency is `argon2@^0.41.1`.
+- Cloudflare documents Express support through `cloudflare:node` and `httpServerHandler`, so Express itself is not a categorical blocker.
+- Cloudflare Workers do not support arbitrary native Node add-ons; Cloudflare's runtime compatibility documentation distinguishes supported built-in APIs from non-functional shims, and its sandbox/runtime documentation explicitly notes native add-ons are unavailable.
+- A Workers deployment would therefore need a Workers-compatible Argon2id implementation (for example a reviewed WASM build), plus verification of the exact hash encoding/parameters and compatibility with existing stored hashes. It must not silently change the password hash algorithm or reset users.
+- The Free CPU budget remains 10 ms per request, which is an additional material risk for memory-hard Argon2id verification. Workers Paid raises CPU limits but has a $5/month minimum.
+
+References:
+- https://developers.cloudflare.com/workers/tutorials/deploy-an-express-app/
+- https://developers.cloudflare.com/workers/runtime-apis/nodejs/
+- https://developers.cloudflare.com/workers/platform/limits/
+- https://developers.cloudflare.com/workers/platform/pricing/
+- https://developers.cloudflare.com/workers/runtime-apis/webassembly/
+
+Thus Cloudflare remains a possible research track, not a validated no-cost drop-in host. Any prototype must first demonstrate exact Argon2id hash compatibility, timing/CPU limits, and isolated per-Worker database credentials without touching production data or credentials.
