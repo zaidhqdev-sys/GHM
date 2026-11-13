@@ -82,7 +82,7 @@ jobs:
           CREATE ROLE ghm_actor_gateway LOGIN NOINHERIT PASSWORD 'actor-gateway-test-password';
           CREATE ROLE ghm_auth_issuer LOGIN NOINHERIT PASSWORD 'auth-issuer-test-password';
           CREATE ROLE ghm_payment_provider LOGIN NOINHERIT PASSWORD 'provider-test-password';
-          GRANT ghm_runtime, ghm_actor_gateway, ghm_auth_issuer, ghm_migrator, ghm_payment_provider, ghm_schema_owner
+          GRANT ghm_runtime, ghm_actor_gateway, ghm_auth_issuer, ghm_payment_provider
             TO ghm_db_user WITH ADMIN TRUE, INHERIT FALSE, SET FALSE;
           GRANT CONNECT ON DATABASE ghm_disposable_test TO ghm_db_user, ghm_migrator, ghm_runtime, ghm_payment_provider, ghm_actor_gateway, ghm_auth_issuer;
           GRANT CREATE ON DATABASE ghm_disposable_test TO ghm_schema_owner;
