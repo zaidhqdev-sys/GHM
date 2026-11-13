@@ -881,3 +881,52 @@ The exact-head CI run `43441019084` reached the full test suite and reported one
 Those stale assertions were removed from `src/db/migrator-principal-contract.test.ts`. The independent fixture was also updated to the new exact contract (zero members of `ghm_migrator`, one member of `ghm_schema_owner`, and only the `ghm_migrator → ghm_schema_owner` SET path).
 
 The correction is on the same stacked construction branch. The new exact-head workflow is pending; no qualification claim is made until its final quality and web-quality jobs pass.
+
+
+## Production role graph and runtime function allow-list comparison — 2026-11-13 14:19 UTC
+
+A follow-up read-only production catalog check confirmed the current role graph and compared the exact `ghm_runtime` SECURITY DEFINER EXECUTE set to the candidate source's `RUNTIME_PRE_CAMPAIGN_REVIEW_FUNCTIONS`.
+
+### Current production migrator/owner membership rows
+
+- `ghm_db_user → ghm_migrator`: grantor `postgres`, ADMIN=true, INHERIT=false, SET=false.
+- `ghm_db_user → ghm_schema_owner`: grantor `postgres`, ADMIN=true, INHERIT=false, SET=false.
+- `ghm_migrator → ghm_schema_owner`: grantor `ghm_db_user`, ADMIN=false, INHERIT=false, SET=true.
+- `ghm_app_user → ghm_db_user`: grantor `postgres`, ADMIN=false, INHERIT=true, SET=true.
+- `ghm_migrator` has database CONNECT, no database CREATE, no `ghm` schema USAGE/CREATE, and no direct relation grants.
+- `ghm_schema_owner` is NOLOGIN, has database CREATE, and owns schema `ghm`.
+
+The new migrator guard intentionally rejects the current production graph because the two postgres-granted Dashboard-admin memberships remain. This is the expected fail-closed result until Render/provider bootstrap authority removes those memberships through its supported process. The direct migrator-to-owner SET path remains intact. No membership was changed.
+
+### Runtime function allow-list discrepancy
+
+The exact production runtime set contains 46 SECURITY DEFINER EXECUTE grants. The candidate source's reviewed pre-manual-cutover baseline contains 43 signatures.
+
+Set comparison found:
+- 12 production signatures absent from the source baseline:
+  - `ghm.auth_bootstrap_external_identity(text,text,text,text)`
+  - `ghm.auth_change_password(bigint,bigint,text,text,text,integer,integer,integer)`
+  - `ghm.auth_disable_account(bigint)`
+  - `ghm.auth_link_business_external_mapping(text,text,bigint)`
+  - `ghm.auth_link_external_identity(text,text,bigint)`
+  - `ghm.auth_provision_migration_account(text,text,text,text)`
+  - `ghm.auth_read_account_email(bigint)`
+  - `ghm.auth_read_connect_identity_authority(bigint)`
+  - `ghm.auth_register_quoteflow_migration_reset_enrollment(bigint,text,text,text,text,text)`
+  - `ghm.auth_revoke_all_sessions_for_account(bigint,text)`
+  - `ghm.auth_revoke_session(bigint,text)`
+  - `ghm.update_business_profile(bigint,bigint,jsonb)`
+- 9 signatures in the source baseline are absent from production:
+  - `ghm.auth_redeem_recovery_with_count(bytea)`
+  - `ghm.auth_rehash_password_if_unchanged(bigint,text,text,integer,integer,integer)`
+  - `ghm.auth_reset_password_with_recovery(bytea,text,text,integer,integer,integer)`
+  - `ghm.create_capability_draft(bigint,text,text,text,uuid,integer,text,integer)`
+  - `ghm.get_public_business_hours(bigint)`
+  - `ghm.get_public_trust_score(bigint)`
+  - `ghm.list_public_trust_scores(text)`
+  - `ghm.transition_capability_lifecycle(bigint,uuid,text,uuid,integer)`
+  - `ghm.update_capability_draft(bigint,uuid,text,text,text,uuid,integer,text,integer)`
+
+This is not a simple count adjustment: the function sets differ materially in both directions. Do not enable `GHM_RUNTIME_FUNCTION_ALLOWLIST_ENFORCED`, deploy the candidate startup contract, or revoke functions until each difference is traced to its migration provenance, source consumer and intended gateway/issuer cutover stage. The production runtime remains on its old live deployment, and the allow-list enforcement must remain disabled until this reconciliation is complete.
+
+No production function, grant, role, membership, search path, data, credential, service setting, deployment or traffic was changed.
