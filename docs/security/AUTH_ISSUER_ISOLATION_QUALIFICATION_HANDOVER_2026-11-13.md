@@ -659,3 +659,17 @@ Additional read-only checks against the same verified production `ghm_db` target
 - Treat this as production remediation scope requiring signature-by-signature owner/consumer review. Do not bulk-revoke runtime access or bulk-rewrite function search paths without dependency analysis and a tested migration/rollback.
 
 No production data, role, ACL, schema, migration, or service changes were made.
+
+
+## Production gateway/issuer deployment gap confirmed — 2026-11-13 14:01 UTC
+
+A focused production catalog query confirmed:
+- `ghm.gateway_*` routines: 0.
+- SECURITY DEFINER `ghm.gateway_*` routines: 0.
+- `ghm.gateway_storage_*` routines: 0.
+- `ghm.auth_*` routines: 29 (all 29 SECURITY DEFINER).
+- `ghm.storage_*` routines: 6.
+
+Together with the absence of the `ghm_auth_issuer` role and the absence of `ghm_actor_gateway` USAGE on schema `ghm`, production is still on the pre-gateway/pre-issuer database contract. The existence of the `ghm_actor_gateway` role alone is not evidence that the gateway SQL contract is deployed or usable. Do not point Connect or QuoteFlow at gateway/issuer endpoints until the dependent database cutovers have been separately qualified and deliberately deployed.
+
+This is a production-vs-qualification divergence, not a CI failure. The disposable branch qualification must not be described as production-ready.
