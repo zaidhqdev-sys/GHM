@@ -2328,3 +2328,92 @@ Current Resource API source still reads `PAYFAST_*` configuration for checkout p
 The environment has mixed state: production application/storage settings coexist with sandbox database endpoints, sandbox-labelled signing identity, preview-only web-auth origin and a retired PayFast callback URL. It is not safe to treat the service as production-configured merely because `NODE_ENV=production`, `DATABASE_SSL=true`, or the bucket name contains `production`.
 
 This handover is an evidence and sequencing update only. No Render environment variable, secret, credential, service, deployment, database role, membership, grant, schema, data, or traffic was changed. Render auto-deploy remains OFF. The suspended sandbox and PayFast remain excluded.
+
+
+## 2026-11-14 01:55 SAST — source-level environment consumer audit (PR #276 candidate)
+
+The complete operator-supplied GHM-Internal-Runtime environment inventory was traced against `main` and the current stacked PR #276 source, including Resource API configuration, migration runner, Actor Gateway, Authentication Issuer, storage and PayFast entry points. This section distinguishes the currently deployed `main` process from the future candidate topology; candidate-only requirements must not be treated as live service requirements until the candidate is deployed.
+
+### 1. Existing Resource API process — variables actually consumed
+
+| Supplied variable | Current source consumer | Classification |
+|---|---|---|
+| `NODE_ENV`, `PORT` | Resource API bootstrap/config | Keep. |
+| `DATABASE_SSL` | Resource API PostgreSQL pool | Keep true for current production external Render PostgreSQL connection. |
+| `DATABASE_URL` | Non-production fallback only in current PR #276 candidate; production config explicitly requires `GHM_RUNTIME_DATABASE_URL` | Current supplied value targets sandbox and is not an acceptable production connection. Do not copy it. |
+| `GHM_RUNTIME_DATABASE_URL` | Required by production Resource API config and runtime identity guard | Missing; must be provisioned for production `ghm_db` / `ghm_runtime` before candidate rollout. |
+| `INVITE_CODE` | Required Resource API config | Keep secret; no change in this DB/environment work. |
+| `CORS_ORIGINS` | Required Resource API config; applied to Express CORS middleware | Keep only verified browser origins required to call Resource API. The supplied localhost origin is development-only; the Cloudflare Pages canonical origin needs confirmation; the per-deployment preview origin is temporary. Connect's canonical browser origin must be explicitly assessed because Connect's bearer-token client calls the Resource API cross-origin. Do not replace the list until exact production callers are confirmed. |
+| `TRUST_PROXY` / `TRUST_PROXY_HOPS` | Resource API proxy/rate-limit configuration | Neither supplied. Confirm actual Render proxy hop topology and configure the explicit hop count rather than guessing. |
+| `STORAGE_*` | Resource API S3/R2 storage config | The supplied R2 endpoint, `auto` region, production bucket, S3 provider, TTLs and non-path-style setting are consistent with the storage contract. Retain pending ordinary storage qualification; secrets remain redacted. |
+| `GHM_ACTOR_GATEWAY_URL` | Optional gateway client URL; production storage startup in PR #276 requires it when storage is enabled | Missing. Candidate Resource API will fail startup with storage enabled until a real, secured Actor Gateway endpoint exists. |
+| `GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET` | Resource API storage metadata gateway workflow attestation | Missing. Candidate Resource API explicitly fails startup when production storage is enabled and this secret is absent. It must be a canonical base64 32-byte secret shared only with the authorized gateway workflow; do not invent or place it before the gateway is provisioned. |
+| `GHM_JWT_ES256_PUBLIC_KEY_PEM`, `GHM_JWT_ES256_KID` | Public token verification material | Present. Retain matching public key/KID on Resource API and Actor Gateway. The supplied KID is sandbox-labelled; do not rename/rotate independently of issuer key overlap and client compatibility. |
+| `GHM_JWT_ES256_PREVIOUS_PUBLIC_KEY_PEM`, `GHM_JWT_ES256_PREVIOUS_KID` | Optional previous-key overlap | Absent. Only add during an explicitly planned key rotation; both must be paired. |
+| `GHM_JWT_ES256_PRIVATE_KEY_PEM`, `GHM_AUTH_TOKEN_PEPPER` | Current deployed `main` still has legacy in-process issuer responsibilities; PR #276 target assigns these secrets to Authentication Issuer only | Transitional secrets. Do not delete from current live service before a separate issuer is deployed, provisioned, routed and end-to-end verified. Do not leave them on Resource API after successful isolated issuer cutover. |
+| `PAYFAST_*` | Resource API config and PayFast checkout preparation | Still consumed by current Resource API source. Existing merchant credentials can enable checkout generation; `PAYFAST_ENVIRONMENT=sandbox` and notify URL points to the retired sandbox callback. Payment activation remains frozen. Do not switch to live or redirect callback. A separate PayFast disablement/removal decision is needed before production DB cutover if checkout must be technically impossible. |
+| `GHM_WEB_AUTH_ALLOWED_ORIGINS`, `GHM_WEB_AUTH_COOKIE_PATH`, `GHM_WEB_AUTH_COOKIE_MAX_AGE_SECONDS` | Present in candidate `.env.example` as optional browser-cookie contract, but not read by current GHM Resource API or Auth Issuer server source inspected | No current GHM process consumer found. Likely belongs to the Connect same-origin BFF/proxy side or is a stale placeholder. Trace in the Connect repository before moving/removing; do not treat it as a substitute for Resource API `CORS_ORIGINS` or issuer `GHM_AUTH_ISSUER_CORS_ORIGINS`. |
+
+### 2. Variables that belong to a separate migration execution context
+
+| Supplied variable | Source consumer | Required action |
+|---|---|---|
+| `GHM_MIGRATOR_DATABASE_URL` | `src/db/migrate.ts` only | Current value targets sandbox. It must not be exposed to the ordinary Resource API process. Production migrations require a separate approved connection as `ghm_migrator` to `ghm_db`, used only by a controlled migration execution context. |
+| `GHM_MIGRATION_DATABASE_HOST` / `GHM_MIGRATION_DATABASE_NAME` | `src/db/migrate.ts` target guard | Current values identify sandbox. Keep with the controlled migration context only and set to the exact approved production host/database when a production migration is separately authorized. |
+| `GHM_NONPRODUCTION_DATABASE_NAME` / `GHM_QUALIFICATION_DATABASE_NAME` | No consumer found in current Resource API, Actor Gateway, Auth Issuer or migration runner source inspected | Remove-candidate from the production Resource API environment after confirming no external Render command/job references them. Never repoint these non-production/qualification markers to production. |
+
+The migration runner asserts the configured target host/database, authenticates as `ghm_migrator`, then SET ROLE `ghm_schema_owner`. It is not part of the normal `npm start` Resource API process. Do not store its credential on the public-facing API service merely for convenience.
+
+### 3. Actor Gateway — target service variables absent from supplied inventory
+
+The isolated Actor Gateway entry point requires:
+- `GHM_ACTOR_GATEWAY_DATABASE_URL` — dedicated production `ghm_actor_gateway` login on `ghm_db`.
+- `DATABASE_SSL_MODE` — service-specific TLS mode with verified topology.
+- `GHM_JWT_ES256_PUBLIC_KEY_PEM` and `GHM_JWT_ES256_KID` — public verification material only.
+- `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET` — required operation assertion secret.
+- `GHM_STORAGE_PROVIDER_WORKFLOW_ATTESTATION_SECRET` — required by the Resource API/gateway storage workflow when storage is enabled.
+- `PORT`, `NODE_ENV` as service runtime values.
+
+The supplied Resource API environment has no Actor Gateway URL, gateway database URL, assertion secret, or service-specific TLS setting. No separate production Actor Gateway service is present in the inspected Render service inventory. PR #272 explicitly records that a private Render service requires paid compute and that no additional paid service may be created or sandbox service repurposed under current constraints.
+
+**Result:** the Actor Gateway candidate is not deployable in the current Render topology. The production Resource API candidate also fails closed with storage enabled if its gateway URL and storage attestation secret are absent. Do not bypass those checks or point the URL at the Resource API itself.
+
+### 4. Authentication Issuer — target service variables absent from supplied inventory
+
+The isolated Authentication Issuer entry point requires:
+- `GHM_AUTH_ISSUER_DATABASE_URL` — dedicated `ghm_auth_issuer` login on production `ghm_db`.
+- `GHM_AUTH_ISSUER_DATABASE_SSL_MODE` — explicit service-specific TLS mode.
+- `GHM_AUTH_ISSUER_CORS_ORIGINS` — exact HTTPS origins for supported auth clients.
+- `GHM_AUTH_ISSUER_TRUST_PROXY_HOPS` — explicit verified proxy hop count in production.
+- `GHM_AUTH_TOKEN_PEPPER` and `GHM_JWT_ES256_PRIVATE_KEY_PEM` — issuer-only secrets.
+- Public ES256 verification key/KID as appropriate for issuer token issuance and verification.
+
+The supplied environment has the pepper/private key on the Resource API but no issuer DB URL, issuer TLS mode, issuer CORS list, or issuer proxy-hop configuration. No separate production Authentication Issuer service was present in the inspected Render service inventory. The current no-additional-paid-service constraint also blocks creating the separate service required by this architecture.
+
+**Result:** do not remove the current Resource API signing secrets yet; doing so would break the currently deployed mainline auth path. Conversely, do not deploy the PR #276 isolated issuer cutover until its dedicated process, database login, network path and client routing exist and are qualified. This is an infrastructure/topology blocker, not an environment-variable rename.
+
+### 5. PayFast callback — do not move its variables into the Resource API
+
+The callback entry point requires `PAYFAST_CALLBACK_DATABASE_URL`, `PAYFAST_CALLBACK_DATABASE_SSL`, `PAYFAST_MERCHANT_ID`, optional passphrase, explicit `PAYFAST_ENVIRONMENT`, and optional proxy-hop configuration. It authenticates as `ghm_payment_provider`. The supplied Resource API environment has no callback DB URL or callback TLS variable, and its `PAYFAST_NOTIFY_URL` points to the retired sandbox callback service.
+
+No callback service is present or authorized. Keep PayFast paused. Do not create a callback service, provision a provider credential, change notify URL, or switch to live as part of this reconciliation.
+
+### 6. Exact disposition summary
+
+**Keep on current Resource API for now:** `NODE_ENV`, `PORT`, `DATABASE_SSL`, `INVITE_CODE`, verified `CORS_ORIGINS`, verified proxy setting, production R2 `STORAGE_*`, public ES256 verification material, and current transitional issuer secrets until issuer cutover is actually possible.
+
+**Must be provisioned before a PR #275/#276 Resource API rollout:** `GHM_RUNTIME_DATABASE_URL` targeting `ghm_db` as `ghm_runtime`; and, because storage is enabled, a real `GHM_ACTOR_GATEWAY_URL` plus the shared workflow attestation secret after the gateway is provisioned.
+
+**Belongs outside the Resource API:** `GHM_MIGRATOR_DATABASE_URL` and its target-guard host/name; Actor Gateway DB URL/assertion secret; Authentication Issuer DB URL/private signing key/token pepper; PayFast callback DB URL/provider credential.
+
+**Remove-candidates after consumer and external-job confirmation:** `GHM_NONPRODUCTION_DATABASE_NAME`, `GHM_QUALIFICATION_DATABASE_NAME`, and the unused-on-GHM-process `GHM_WEB_AUTH_ALLOWED_ORIGINS` / cookie settings. The sandbox `DATABASE_URL`, migrator URL and migration target metadata must not be used for production; do not silently replace them with production values on the Resource API service.
+
+**Needs an explicit functional decision:** PayFast checkout variables/credentials; canonical CORS origin set; sandbox-labelled ES256 KID transition.
+
+### 7. Deployment feasibility conclusion
+
+The source-level audit shows the current environment is not simply missing a few production variable values. It is missing two required isolated service topologies (Actor Gateway and Authentication Issuer) and their dedicated database identities, secrets and network endpoints. The current Render cost constraint prohibits adding the separate paid services. The PR #276 candidate also deliberately fails closed for production storage if the Actor Gateway endpoint/attestation secret are absent.
+
+Therefore the correct next action is **not** to bulk-edit Render variables or deploy PR #276. First resolve the hosting/topology constraint without weakening service isolation. Until then, preserve the current deployed mainline and its transitional auth secrets, keep auto-deploy OFF, and do not deploy the stacked candidate. The runtime database URL remains a separate required correction, but by itself it does not make the full candidate deployable.
+
+No Render variables, secrets, services, deployments, database roles, memberships, grants, schema, data or traffic were changed by this source-level audit.
