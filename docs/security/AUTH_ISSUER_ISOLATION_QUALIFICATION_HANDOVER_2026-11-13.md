@@ -930,3 +930,49 @@ Set comparison found:
 This is not a simple count adjustment: the function sets differ materially in both directions. Do not enable `GHM_RUNTIME_FUNCTION_ALLOWLIST_ENFORCED`, deploy the candidate startup contract, or revoke functions until each difference is traced to its migration provenance, source consumer and intended gateway/issuer cutover stage. The production runtime remains on its old live deployment, and the allow-list enforcement must remain disabled until this reconciliation is complete.
 
 No production function, grant, role, membership, search path, data, credential, service setting, deployment or traffic was changed.
+
+
+## Source-to-production runtime function difference disposition — 2026-11-13 14:20 UTC
+
+The 12 production-only runtime functions and 9 source-baseline-only functions have now been traced to the candidate migration/cutover tree. The function-set divergence is explained by the production catalog being on an earlier schema/ACL state than the construction branch; it is not yet proof of which migration versions are recorded in the production ledger.
+
+### Production-only signatures — intended revocation path
+
+| Production-only function(s) | Candidate disposition |
+|---|---|
+| `auth_bootstrap_external_identity` | Migration `20261111260000_revoke_runtime_external_identity_bootstrap.sql` |
+| `auth_change_password`, `auth_disable_account`, `auth_revoke_session` | Migration `20261111220000_revoke_unused_auth_runtime_entry_points.sql` |
+| `auth_link_external_identity` | Migration `20261111250000_revoke_runtime_external_identity_link.sql` |
+| `auth_provision_migration_account` | Migration `20261111240000_revoke_runtime_quoteflow_migration_provisioning.sql` |
+| `auth_register_quoteflow_migration_reset_enrollment` | Migration `20261112040000_revoke_runtime_quoteflow_reset_enrollment_registration.sql` |
+| `update_business_profile` | Migration `20261110270000_gateway_business_profile_update.sql` |
+| `auth_link_business_external_mapping` | Manual Authentication Issuer cutover `20261112010000_authentication_issuer_privilege_cutover.sql` |
+| `auth_read_account_email`, `auth_read_connect_identity_authority`, `auth_revoke_all_sessions_for_account` | Conditional legacy-authority revocations in the same manual Authentication Issuer cutover |
+
+### Source-baseline-only signatures — candidate creation path
+
+| Source-only function(s) | Candidate creation migration |
+|---|---|
+| `auth_redeem_recovery_with_count` | `20261111230000_add_token_bound_recovery_revocation_result.sql` |
+| `auth_rehash_password_if_unchanged` | `20261112030000_add_conditional_password_rehash.sql` |
+| `auth_reset_password_with_recovery` | `20261112020000_add_token_bound_password_recovery_reset.sql` |
+| `create_capability_draft`, `update_capability_draft`, `transition_capability_lifecycle` | `20261110160000_add_admin_capability_catalogue_governance.sql` |
+| `get_public_business_hours` | `20261111140000_add_business_hours_read_projections.sql` |
+| `get_public_trust_score`, `list_public_trust_scores` | `20261111170000_add_trust_score_read_projections.sql` |
+
+### Disposition
+
+The source/migration paths account for every member of the 12/9 set difference. This narrows the issue from an unexplained ACL mismatch to a production migration/cutover reconciliation gate. It does **not** establish that all candidate migrations are applied or that the manual issuer cutover is safe to run. Production ledger rows/checksums remain unreadable via the available Render query identity, so exact applied-version provenance is still blocked.
+
+Do not bulk-update the production allow-list, run the manual issuer cutover, or revoke any production function. The next evidence step is to obtain a separately authorized read-only migration-ledger session and reconcile exact production versions/checksums with this source disposition, then produce a signature-by-signature cutover plan and rollback.
+
+### CI evidence for migrator redesign
+
+Exact implementation head `faaeb1c4600be07a814dde1aa93993132a1a24d5` passed GitHub Actions run [43441364402](https://github.com/zaidhqdev-sys/GHM/actions/runs/43441364402):
+- Quality: 65/65 steps passed.
+- Web quality: 11/11 steps passed.
+- The full disposable PostgreSQL 18 migration/security workflow completed successfully, including the isolated migrator contract without Dashboard-admin membership.
+
+The subsequent handover/production-reconciliation head is `32d6b24c213fcc29517738f775125fcebcd7c608`; its exact-head CI run [43441631366](https://github.com/zaidhqdev-sys/GHM/actions/runs/43441631366) was still running at the time of this note. Do not call the latest documentation head green until that run completes.
+
+No production mutation occurred.
