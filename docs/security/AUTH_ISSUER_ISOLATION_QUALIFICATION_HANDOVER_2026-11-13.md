@@ -1974,3 +1974,19 @@ This confirms the ledger is owner-protected and the current observer is not an a
 ### PR topology and merge gate
 
 At this checkpoint PR #276 is still a draft, based on `integration/capability-gateway-qualification-20261110` at `c81e2bf2534febef9c5e49b39f60f85415f04ff1`; PR #272 is still a draft against `main`. PR #276 must not be merged independently of its base integration series. Exact-head CI is green, but production ledger evidence and mainline integration/review remain outstanding. Production cutover, issuer role/service/secret provisioning, Render changes, deployments and traffic changes remain out of scope.
+
+## 2026-11-13 19:16 UTC — production role-membership boundary confirmed
+
+Additional read-only catalog inspection of production `pg_auth_members` confirms the production role topology is still a material cutover blocker:
+- `ghm_app_user` is a member of `ghm_db_user` (non-admin, SET allowed, inherited).
+- `ghm_db_user` has ADMIN OPTION (but no SET/INHERIT) over `ghm_actor_gateway`, `ghm_migrator`, `ghm_payment_provider`, `ghm_runtime`, and `ghm_schema_owner`; the grantor reported for these memberships is `postgres`.
+- `ghm_db_user` also has a separate non-admin, SET+INHERIT membership in `ghm_runtime`.
+- `ghm_migrator` is a member of `ghm_schema_owner` with SET allowed, no ADMIN OPTION, and no INHERIT.
+
+This confirms the observed membership/admin-option topology, but does not establish the provenance or provider-level reason for the postgres-granted memberships. It is consistent with the previously escalated role-separation concern. The migration identity has no direct SELECT on the ledger as currently evaluated; the owner role does. No SET ROLE was attempted, no memberships/role attributes/ACLs were changed, and no production cutover was performed.
+
+### Exact-head workflow after documentation-only update
+
+The preceding handover commit `fec8923302e629eb255f4cae2eaa1e96e39d9dc5` passed run `43489777884` (quality 65/65; web-quality 11/11). This new role-membership evidence update is commit `ea3e457c96d2f2f6be2c075435d938bbd87560d3`; its exact-head workflow `43490550377` has started and must be checked to completion before the latest documentation head is described as green.
+
+The production role membership issue remains a separate release blocker. Do not attempt to revoke the memberships from the app observer or change the provider-managed role graph in this workflow.
