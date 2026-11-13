@@ -534,3 +534,25 @@ This confirms the combined code snapshot on the stacked branch passes its exact-
 - Production-only inventory, the 58 preliminary whole-database findings, and Project↔Opportunity reconciliation remain outstanding before any production cutover.
 - PayFast remains out of implementation scope; the workflow's commercial settlement check was confined to disposable PostgreSQL and did not contact PayFast.
 - No production DB changes, Render deployments, merges, or PR #272 metadata changes were made.
+
+
+## Draft stacked PR opened — 2026-11-13 13:41 UTC
+
+Created draft PR [#276 — feat(security): stack isolated Authentication Issuer on Actor Gateway](https://github.com/zaidhqdev-sys/GHM/pull/276).
+
+- Head branch: `construction/auth-issuer-stacked-on-pr272-20261113`
+- Head at PR creation: `cc926fa5991ee393ab5222f0ca62cc2d621be183`
+- Base: PR #272 head branch `integration/capability-gateway-qualification-20261110`
+- Base SHA: `c81e2bf2534febef9c5e49b39f60f85415f04ff1`
+- Draft/open/unmerged.
+- PR #272 remains open/draft and unchanged.
+- PR #276 is explicitly dependent on #272 and must not merge independently of it.
+- PR creation response reported mergeable=false at creation time; no mergeability or merge approval is inferred from that field.
+
+The exact PR-head-at-creation SHA `cc926fa...` passed [push CI run 43435341377](https://github.com/zaidhqdev-sys/GHM/actions/runs/43435341377): quality 65/65, web-quality 11/11, 994 main tests passed, 8 comparator tests passed, disposable issuer qualification passed, 106 pre/post SECURITY DEFINER routines unchanged, 14 reviewed issuer ACL changes, and zero unexplained non-issuer changes. Artifact `14044006709`, ZIP SHA-256 `d4ec21cdd4c276267893bc53e5e53c8659d8a199acd18d69cc69ac2bc7793d63`.
+
+This handover update will advance the PR head and trigger another push/PR CI run. The PR-created SHA's successful push run remains valid for that exact SHA only; require the new head's own checks before treating PR #276 as fully green.
+
+The PR deliberately exposes the full 137-file coordinated snapshot delta (14,370 additions / 1,114 deletions) for scope review. It is broader than an issuer-only PR because the isolated issuer depends on the later qualified Actor Gateway/storage snapshot. Do not hide or silently drop those supporting changes. If scope is split, rerun exact-head qualification on each resulting integration state.
+
+Production inventory, the 58 preliminary whole-database findings, and Project↔Opportunity reconciliation remain outstanding release gates. No production DB changes, Render deployment, merge, or traffic switch occurred.
