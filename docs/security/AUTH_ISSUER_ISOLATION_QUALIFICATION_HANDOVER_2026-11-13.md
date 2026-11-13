@@ -2154,3 +2154,32 @@ The production catalog was also queried for the *target role's* effective databa
 This confirms the currently observed database grants and role graph satisfy these portions of PR #275's startup verifier. It does **not** prove the service has the correct password/connection string, that the process authenticates as `ghm_runtime`, or that the complete startup verifier passes.
 
 The role-level grant preconditions are therefore read-only verified; the service configuration and runtime identity remain outstanding.
+
+
+## 2026-11-13 21:35 SAST — reconcile historical Render environment inventory
+
+The 2026-10-24 operator-provided inventory is recorded in `docs/operations/handover-production-db-and-render-2026-10-24.md`. It states that production `GHM-Internal-Runtime` had:
+- `DATABASE_URL` targeting production database `ghm_db` with the `ghm_runtime` database user.
+- `GHM_MIGRATOR_DATABASE_URL` as a separate connection for `ghm_migrator`, added later to the same service.
+- The production migrator credential had already been validated and must not be substituted for the runtime URL.
+
+This is relevant pre-existing operator evidence that the production `DATABASE_URL` was intended to authenticate directly as `ghm_runtime`. It corrects the previous checkpoint's overly broad implication that a new runtime credential necessarily needs to be generated or rotated.
+
+### What this historical inventory does and does not establish
+
+- It records the variable names and safe connection-target metadata supplied by the operator on 2026-10-24.
+- It does **not** contain the password or complete connection URL, and it is not a live read-back of the current Render Environment page.
+- The later 2026-11-12/13 deployment and PR #275 records establish that production code now expects the explicit name `GHM_RUNTIME_DATABASE_URL`, while the live deployment remains on older commit `c7cf1eb`.
+- No evidence found in the handovers says the underlying production `DATABASE_URL` credential was rotated away from `ghm_runtime`; equally, the October inventory alone cannot prove that its current value has not changed since then.
+
+### Corrected next step — reuse the existing credential, do not rotate by default
+
+Do not create or rotate a `ghm_runtime` password merely to satisfy the new variable name.
+
+The preferred operational path is to preserve the existing `DATABASE_URL` value and make the explicit `GHM_RUNTIME_DATABASE_URL` key resolve to that same existing credential through a controlled Render configuration action, without reading the value into chat, Git, logs or tool output. The generic `DATABASE_URL` key should remain unchanged until the new deployment is verified and any later cleanup is separately planned.
+
+The available Render service-variable update operation can merge a supplied key/value without retrieving existing variables, but it cannot copy an unknown existing secret value by itself. The connected Render API surface currently exposes no safe read/list action for service variable values or a server-side same-service variable-copy operation. Do not guess interpolation syntax or submit a placeholder value. The remaining operational step is therefore to duplicate the existing `DATABASE_URL` value into `GHM_RUNTIME_DATABASE_URL` in the Render Dashboard's Environment page, keeping the value out of the conversation. Save without deploying first; verify both keys exist by name without revealing values; then separately authorize and execute the manual deployment decision.
+
+The runtime startup verifier remains the authoritative final check: it must observe `session_user=current_user=ghm_runtime` and all least-privilege flags before the API listens. If the old `DATABASE_URL` no longer authenticates as `ghm_runtime`, startup must fail closed; do not weaken the verifier.
+
+No Render variables, credentials, services, deployments, database roles, memberships, grants, data or traffic were changed by this reconciliation.
