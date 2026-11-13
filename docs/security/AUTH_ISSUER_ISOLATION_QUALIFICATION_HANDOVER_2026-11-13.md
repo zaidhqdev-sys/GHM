@@ -161,3 +161,19 @@ The three same-named inventory artifacts in this run are not accepted as post-cu
 Trigger a **new workflow run against the current construction branch HEAD**, not a rerun of the old job. Confirm the new run's checkout SHA is the current branch HEAD and that it includes the two safe predicates in the cutover script. Then require steps 56–60 to complete, including an executed step 59 and a newly produced post-cutover inventory artifact. Compare that artifact with the preserved pre-cutover inventory before considering the issuer qualification complete.
 
 No production changes are implicated: the failing run used `ghm_disposable_test` only. Production remains untouched and the integration PR remains draft/unmerged.
+
+
+## Fresh exact-head CI trigger — 2026-11-13
+
+The CI workflow definition on this construction branch explicitly includes a `push` trigger for `construction/auth-issuer-isolation-20261112` (as well as workflow_dispatch and PR triggers). The earlier rerun action reused the old run's original SHA `2fe38cb56ca560cb57d145d8bcc37a574ac15a7a`, so it could not validate the later fix.
+
+A new documentation commit is being pushed to this same construction branch to invoke its configured push workflow against the branch's current source. The expected source includes the safe auth-function prefix predicates in the cutover script at current lines 350, 389, 650, 686, 771 and 782. The new workflow's checkout SHA must be inspected before accepting its result.
+
+The branch is deliberately not being opened as a PR to `main`: a comparison against `main` reports a divergent history (1,599 commits ahead and 6 behind), so using a PR merely as a CI trigger would create an unsafe and misleading integration surface. No merge, production deployment, or production database operation is authorized.
+
+After the push, retrieve the newly created workflow run and verify:
+1. checkout SHA equals the pushed construction branch HEAD;
+2. all qualification steps pass, particularly issuer lifecycle/runtime denials;
+3. post-cutover SECURITY DEFINER inventory step executes rather than skips;
+4. a fresh post-cutover artifact is produced and its contents/hash are retained;
+5. pre/post inventories are compared and unexplained authority changes are zero.
