@@ -1164,3 +1164,34 @@ The five effective DML privileges listed above are explicit direct ACL entries g
 - `ghm.opportunity_capability_requirement`: DELETE
 
 This confirms the privilege cleanup must be an intentional owner-controlled migration/cutover after the associated direct SQL consumers are replaced, not merely a role-membership adjustment.
+
+
+## Render database network exposure inventory — 2026-11-13 18:25 UTC
+
+The Render Postgres inventory was checked directly.
+
+### Production database
+
+- Service: `ghm-db`
+- Database: `ghm_db`
+- PostgreSQL 18, Frankfurt
+- Status: available
+- Render database service ID: `dpg-dag0sdtbedkc7389vi2g-a`
+- Current provider IP allow-list: `0.0.0.0/0` (everywhere)
+- Connection pool: none
+
+This means the database network endpoint is not IP-restricted at the Render allow-list layer. This is not evidence of unauthenticated database access, but it broadens the network attack surface and should be narrowed after a complete inventory of legitimate clients and their stable egress ranges. Do not blindly restrict it: GHM runtime, administrative access, approved migrations, and any external clients must be accounted for first. TLS, credentials and PostgreSQL role grants remain separate security controls.
+
+### Other database resources
+
+- `ghm-payfast-sandbox-db` remains suspended for billing and expired; it is not part of this target.
+- `ghm-identity-qualification-20261018` is a separate available PostgreSQL 18 database with a 15 GB disk and its own allow-list. It was not used or modified for this production audit.
+
+### Required follow-up
+
+1. Enumerate every legitimate production client and stable egress address (Render service private networking where applicable, Vercel/Connect if direct DB access exists, owner/admin paths).
+2. Confirm whether the runtime uses Render's private hostname and whether the DB allow-list can be narrowed to private service networking plus explicit admin/migration sources.
+3. Plan and validate a lockout-safe allow-list change with a tested rollback path.
+4. Keep the current network policy unchanged until the client inventory is complete.
+
+No Render IP allow-list, database setting, service, credential, role, membership, grant, migration or traffic was changed.
