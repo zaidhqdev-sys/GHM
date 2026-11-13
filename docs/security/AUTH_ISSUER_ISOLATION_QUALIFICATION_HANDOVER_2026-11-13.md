@@ -1111,3 +1111,45 @@ This clarifies the direction of the `ghm_runtime` / `ghm_db_user` edge: it does 
 The runtime's 46 grants are still the old production state. The Actor Gateway and Authentication Issuer are not yet deployed and do not have their production database identities. The candidate manual issuer cutover must not be applied until service/client routing, production role provisioning, exact migration ledger provenance, backup/rollback and live function-stage reconciliation are all verified.
 
 No production role, membership, grant, function, relation, sequence, search path, migration, data, credential, Render setting, deployment or traffic was changed.
+
+
+## Production direct relation and sequence authority inventory — 2026-11-13 18:22 UTC
+
+A read-only effective-privilege inventory was collected for `ghm_runtime` across all production `ghm` relations and sequences. This is separate from the SECURITY DEFINER function ACL inventory.
+
+### Direct relation access
+
+The runtime has SELECT on 39 relations, with additional direct DML on four relations:
+
+| Relation | Additional direct privilege |
+|---|---|
+| `ghm.business` | INSERT |
+| `ghm.business_membership` | INSERT |
+| `ghm.opportunity` | INSERT and UPDATE |
+| `ghm.opportunity_capability_requirement` | DELETE |
+
+There is no direct runtime DELETE on other relations, no TRUNCATE, no REFERENCES and no TRIGGER privilege. Every listed relation is owned by `ghm_schema_owner`.
+
+These four DML exceptions are high-priority authority review items. Their direct DML grants bypass SECURITY DEFINER function boundaries and must be traced to the exact production application operations and actor/tenant checks before they can be removed. In particular, the INSERT grants on Business and Business Membership must be reconciled against the signed Connect Business provisioning gateway, and Opportunity INSERT/UPDATE plus requirement DELETE must be reconciled against the Project/Opportunity and capability-requirement APIs. Do not revoke them until those paths have a verified replacement and regression coverage.
+
+### Direct sequence access
+
+- Runtime has USAGE on 39/39 GHM sequences.
+- Runtime has SELECT on 10 sequences.
+- Runtime has UPDATE on zero sequences.
+
+Sequence SELECT exceptions include identity/business/membership, engagement, enquiry, opportunity, opportunity type, project and review identifiers. These privileges should be reviewed alongside direct table DML; do not infer that all 39 USAGE grants are required merely because the runtime can currently use them.
+
+### Function default ACL
+
+The production global default ACL inventory includes PostgreSQL-owned defaults granting EXECUTE to PUBLIC and `ghm_db_user`. The candidate migration `20261112050000_revoke_public_default_function_execution.sql` changes the defaults specifically for `ghm_schema_owner`, which is the owner of all 63 current GHM SECURITY DEFINER functions. Current direct function ACL has zero PUBLIC entries. Confirm the production default ACL owner/scope and exact migration-ledger state before claiming future function creation is protected; do not modify PostgreSQL provider defaults from this application cutover.
+
+### Required next implementation/reconciliation work
+
+1. Enumerate source call sites and tenant/actor authorization for the four direct DML exceptions.
+2. Compare their production grants with candidate gateway wrappers and exact migration/cutover files.
+3. Build a relation/sequence privilege stage contract analogous to the function allow-list; include exact allowed relation+privilege tuples, not only aggregate counts.
+4. Add disposable PostgreSQL tests proving forbidden direct DML fails while approved API/gateway operations continue.
+5. Preserve a rollback plan and do not revoke production privileges until client routes and gateway service deployment are qualified.
+
+No production privilege, ACL, sequence, relation, function, role, membership, migration, data, credential, Render setting, deployment or traffic was changed.
