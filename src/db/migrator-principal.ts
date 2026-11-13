@@ -58,8 +58,6 @@ export const assertMigratorDatabaseIdentity = (identity: MigratorDatabaseIdentit
     schema_owner_rolcreaterole: false,
     schema_owner_rolreplication: false,
     schema_owner_rolbypassrls: false,
-    schema_owner_rolreplication: false,
-    schema_owner_rolbypassrls: false,
   };
   const invalidFlags = Object.entries(expectedFlags)
     .filter(([key, expected]) => identity[key as keyof MigratorDatabaseIdentity] !== expected)
