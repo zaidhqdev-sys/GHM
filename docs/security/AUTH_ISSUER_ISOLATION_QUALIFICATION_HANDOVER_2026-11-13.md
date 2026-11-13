@@ -2183,3 +2183,45 @@ The available Render service-variable update operation can merge a supplied key/
 The runtime startup verifier remains the authoritative final check: it must observe `session_user=current_user=ghm_runtime` and all least-privilege flags before the API listens. If the old `DATABASE_URL` no longer authenticates as `ghm_runtime`, startup must fail closed; do not weaken the verifier.
 
 No Render variables, credentials, services, deployments, database roles, memberships, grants, data or traffic were changed by this reconciliation.
+
+
+## 2026-11-14 01:37 SAST — operator supplied complete Render environment inventory; prior credential-reuse conclusion withdrawn
+
+The operator supplied the complete visible environment-variable inventory for GHM-Internal-Runtime. This is direct current configuration evidence and supersedes the older 2026-10-24 handover assumption that the production `DATABASE_URL` targeted `ghm_db`.
+
+### Confirmed environment facts
+
+- `GHM_RUNTIME_DATABASE_URL` is **absent**.
+- `DATABASE_URL` is configured with username `ghm_runtime`, but its host is Render resource `dpg-db4416vlk1mc73eocug0` and its database is `ghm_payfast_sandbox_db`.
+- `GHM_MIGRATOR_DATABASE_URL` targets that same sandbox host/database.
+- `GHM_MIGRATION_DATABASE_HOST`, `GHM_MIGRATION_DATABASE_NAME`, `GHM_NONPRODUCTION_DATABASE_NAME`, and `GHM_QUALIFICATION_DATABASE_NAME` also identify the sandbox resource/database.
+- The environment includes `PAYFAST_ENVIRONMENT=sandbox` and a sandbox JWT key identifier. PayFast remains excluded from the current work; these values are recorded as configuration drift indicators only.
+- The supplied list contains no credential values in clear text; secrets were redacted by the operator.
+
+### Material correction to the previous checkpoint
+
+The prior 2026-11-13 note proposed copying the existing `DATABASE_URL` value into `GHM_RUNTIME_DATABASE_URL`. That recommendation is **withdrawn and must not be followed**. Although the username is `ghm_runtime`, the actual target is `ghm_payfast_sandbox_db`, not production `ghm_db`. Duplicating it would preserve the wrong database target and could make the production Resource API connect to the retired/suspended sandbox database.
+
+The historical 2026-10-24 operator inventory was stale or described a different configuration state. It is not authoritative for the current Render environment supplied on 2026-11-14.
+
+### Correct production configuration target
+
+The production Resource API must be configured to connect to the existing production PostgreSQL resource/database:
+- Render production PostgreSQL resource ID previously inspected: `dpg-dag0sdtbedkc7389vi2g-a`.
+- Production database: `ghm_db`.
+- Intended login: `ghm_runtime`.
+- Required explicit variable: `GHM_RUNTIME_DATABASE_URL`.
+- Required startup identity: `session_user=current_user=ghm_runtime`.
+
+The current `DATABASE_URL` must not be copied, repointed, or deleted until a separately controlled production configuration plan is established. The existing migrator URL is also pointed at sandbox and must not be reused as the runtime URL.
+
+### Next safe actions
+
+1. Treat this supplied inventory as the current baseline and correct the stale October handover assumption.
+2. Establish the approved production `ghm_runtime` credential/connection string for `ghm_db` through Render's controlled secret path. Do not expose the password or full URI in chat, Git, logs, or command output.
+3. Add `GHM_RUNTIME_DATABASE_URL` only with the production `ghm_db` target and existing approved `ghm_runtime` login. Do not change `DATABASE_URL` or migrator variables as part of this step.
+4. Keep Render auto-deploy OFF. Save configuration without deploying; independently verify the variable name and target metadata without revealing its secret.
+5. Review the complete PR #275 startup verifier and deployment/rollback plan against the production database. Only then make a separately authorized manual deployment decision.
+6. After deployment, require service-originated startup evidence for database `ghm_db`, `session_user=current_user=ghm_runtime`, and all least-privilege checks before considering the runtime identity gate passed.
+
+No Render environment variables, credentials, services, deployments, database roles, memberships, grants, schema, data or traffic were changed by this investigation. The production Resource API remains deployed at `c7cf1eb`; auto-deploy remains OFF. PR #272/#276 remain unmerged. The suspended sandbox and PayFast remain excluded.
