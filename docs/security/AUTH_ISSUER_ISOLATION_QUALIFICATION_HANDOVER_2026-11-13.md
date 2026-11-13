@@ -1018,3 +1018,28 @@ Candidate migration `20261112090000_pin_security_definer_search_path.sql` prefli
 Thus 58 of 63 production SECURITY DEFINER routines still need the candidate hardening migration. This is another migration-ledger-dependent production cutover gate; no search path was changed.
 
 No production SQL mutation, role/grant/membership change, migration, environment change, deploy, application data change or traffic change occurred.
+
+
+## Authentication Issuer deployment/provisioning gap confirmed — 2026-11-13 14:25 UTC
+
+A read-only Render service inventory was checked against the candidate source.
+
+### Candidate code exists
+
+- `src/auth-issuer/server.ts` is a separate HTTP process entry point.
+- `package.json` defines `start:auth-issuer = node dist/auth-issuer/server.js`.
+- The issuer has its own database identity/privilege verifier and separate `GHM_AUTH_ISSUER_DATABASE_URL` / SSL configuration.
+- The manual issuer cutover assumes `ghm_auth_issuer` already exists and has its bounded Render administrator membership.
+
+### Production infrastructure does not yet exist
+
+- Production `ghm_db` currently has no `ghm_auth_issuer` PostgreSQL role.
+- The candidate tree has no production issuer-role provisioning migration or dedicated provisioning script; CI creates the role directly in its disposable PostgreSQL fixture.
+- Render currently has `GHM-Internal-Runtime` on `main`, auto-deploy OFF, plus older qualification/PayFast services. There is no deployed Actor Gateway service or Authentication Issuer service.
+- The older qualification and PayFast sandbox services remain outside this target workstream and were not changed.
+
+### Release consequence
+
+The issuer implementation is source-qualified, but it is not deployable as an isolated production service yet. Before the manual issuer privilege cutover, the team still needs a hosting decision that respects the existing no-extra-paid-service constraint, an approved role/password provisioning path, the issuer service's private signing-key custody, network restrictions, and verified client routing. Do not put the issuer process inside the existing Resource API process and call that isolation; the private key must not be accessible to the Resource API process.
+
+No Render service was created or updated, no role was provisioned, and no credential or secret was generated or changed.
