@@ -228,3 +228,54 @@ Do not call this regression test passed until a fresh run executes on the correc
 - Issuer lifecycle/runtime-denial qualification: still pending fresh exact-head CI.
 - Post-cutover SECURITY DEFINER inventory: not yet proven to have executed on a fresh run.
 - Production: untouched.
+
+
+## 2026-11-13 exact-head issuer qualification passed; inventory comparison added
+
+### Fresh run evidence
+
+GitHub Actions run `43334838854` completed successfully on:
+- Branch: `construction/auth-issuer-isolation-20261112`
+- Exact checkout SHA: `835324eacce464aa09c08b2f445e1df7438bee2e`
+- Event: `push`
+- Quality: 64/64 steps passed.
+- Web quality: 11/11 steps passed.
+- No failed or skipped steps in either job.
+
+Critical issuer steps:
+- 56 exact pre-issuer Resource API authentication grants: passed.
+- 57 guarded manual issuer cutover on disposable PostgreSQL: passed.
+- 58 isolated issuer lifecycle and runtime denials: passed.
+- 59 post-cutover whole-database SECURITY DEFINER inventory: executed and passed.
+- 60 inventory artifact preservation: passed.
+
+The issuer qualification emitted:
+`issuerAllowList=10`, `issuerDirectRelationPrivileges=0`, `runtimeIssuerFunctionDenials=19`, `finalRuntimeAuthFunctionAllowList=2`, and passed registration/login/password rehash/concurrent reset/refresh/logout, recovery replay/session revocation, QuoteFlow migration reset, disposable rollback, startup ACL, default ACL, unexpected direct grants, SECURITY DEFINER ownership/search_path and PUBLIC execution checks.
+
+The post-cutover audit was read-only against `ghm_disposable_test`, reported 106 SECURITY DEFINER routines and 58 preliminary findings, and retained decision `REVIEW_REQUIRED_NO_AUTOMATIC_APPROVAL`. This is intentionally an inventory requiring review, not an automated approval. Artifact:
+- ID `13995824180`
+- URL: `https://github.com/zaidhqdev-sys/GHM/actions/runs/43334838854/artifacts/13995824180`
+- ZIP SHA-256: `fa474b49f29b541c26fc0894d37e881f0faa1b0b023e7985b85c3c9e1af4d5b9`
+
+### Evidence limitation discovered and addressed
+
+Although workflow step 60 uploaded both the pre- and post-cutover JSON files, source inspection showed that no machine comparison was performed. Step 60 was upload-only. Do not claim that the inventories had been compared or that unexplained authority differences were zero based on run 43334838854.
+
+Added:
+- `scripts/compare-security-definer-authority-inventories.mjs`
+- `scripts/compare-security-definer-authority-inventories.test.mjs`
+- CI step after the post-cutover inventory to run the comparison tests and compare the two generated JSON inventories.
+- Artifact glob expanded to preserve pre-cutover, post-cutover and comparison JSON together.
+
+The comparator enforces same disposable DB/server version, same SECURITY DEFINER routine identities/count, unchanged non-issuer function definitions/owners/ACLs, unchanged role memberships/attributes, schema/database/column/default ACLs, and unchanged non-issuer findings. It records the Authentication Issuer function ACL changes separately. Exact issuer allow-list and runtime-denial assertions remain enforced by the dedicated issuer cutover qualification.
+
+The comparator's output newline handling was corrected in commit `77ca5158f2b8bf68d732eca23e90a10981f3cf13`. The comparator, tests and CI integration are committed on this construction branch, but their execution is still pending a new exact-head Actions run.
+
+### Current boundaries and remaining gates
+
+- This run only mutated disposable PostgreSQL `ghm_disposable_test`; no production database, Render service, credentials, secrets, environment variables or application traffic were changed.
+- The manual SQL cutover is deliberately excluded from automatic migrations and its own comments state it must not be applied before the isolated issuer service, private routing/public ingress, client URLs, credentials and verified backup are ready.
+- Passing disposable qualification does not mean the Authentication Issuer is deployed or the production cutover is authorized.
+- PR #272 remains draft/unmerged and on its separate Actor Gateway integration branch. It explicitly retains issuer separation and hosting/network isolation as hard blockers.
+- Fresh exact-head CI for the new inventory comparator is required. The resulting comparison JSON must be inspected and its output must show zero unexplained non-issuer changes.
+- The whole-database inventory's 58 preliminary findings remain a review queue; no automatic approval is inferred.
