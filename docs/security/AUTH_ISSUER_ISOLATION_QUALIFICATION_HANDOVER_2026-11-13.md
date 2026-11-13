@@ -636,3 +636,26 @@ The production findings are a baseline, not a remediation instruction. Do not ru
 - Identify the production migration ledger table and compare applied migration IDs/checksums to the repository without modifying the ledger.
 - Reconcile production Project↔Opportunity links and orphans as a separate read-only report.
 - Compare the complete production SECURITY DEFINER signatures and ACLs against the migration history and approved function allow-list; the 63-vs-106 count is a material divergence to explain, not a pass/fail conclusion by itself.
+
+
+## Production migration-ledger access and Project↔Opportunity reconciliation — 2026-11-13 14:00 UTC
+
+Additional read-only checks against the same verified production `ghm_db` target:
+
+**Migration ledger**
+- Catalog inspection confirms `ghm.ghm_schema_migrations` exists with columns `version`, `name`, `checksum`, and `applied_at`.
+- The Render read-only query connection has `session_user=ghm_app_user`, `current_user=ghm_db_user`. A SELECT of the ledger rows was denied with PostgreSQL SQLSTATE `42501` (permission denied for table `ghm_schema_migrations`).
+- No attempt was made to SET ROLE, bypass the ACL, or use another credential. Production migration IDs/checksums therefore remain unverified through this read-only connection. Next evidence path is a read-only session authenticated as the already-provisioned migration principal, using the existing credential workflow; do not change grants just to make the audit query work.
+
+**Project↔Opportunity production-only reconciliation**
+- Read-only counts succeeded against `ghm.project` and `ghm.opportunity`; both tables have SELECT available to the query's effective database role and neither has row-level security enabled.
+- Production counts: 0 Projects, 0 Opportunities, 0 linked Projects, 0 Projects without an Opportunity, 0 dangling Project→Opportunity references, and 0 Opportunities without a Project.
+- Cross-check: production currently contains 22 `account_identity` rows and 16 `business` rows; `customer` and `quote` each have 0 rows.
+- This is a clean zero-row reconciliation for these two tables at capture time, not evidence that the application workflow is fully reconciled. It does not validate the Project creation API or explain why production currently has no Project/Opportunity rows.
+
+**More precise SECURITY DEFINER path inventory**
+- The 58 routines outside the exact qualified search path are mostly set to `search_path=pg_catalog, ghm`; two observed variants are `ghm, pg_temp` and `ghm, pg_catalog`. The exact required hardened value `pg_catalog, ghm, pg_temp` is absent on those 58 routines.
+- 49 routines have non-owner EXECUTE access (principally `ghm_runtime`; selected payment functions to `ghm_payment_provider`; external mapping lookup also to `ghm_migrator`). No PUBLIC EXECUTE was observed among the 63 SECURITY DEFINER routines.
+- Treat this as production remediation scope requiring signature-by-signature owner/consumer review. Do not bulk-revoke runtime access or bulk-rewrite function search paths without dependency analysis and a tested migration/rollback.
+
+No production data, role, ACL, schema, migration, or service changes were made.
