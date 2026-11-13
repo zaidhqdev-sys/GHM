@@ -78,6 +78,6 @@ test('rejects changes to issuer function definitions or ownership', () => {
 test('rejects missing or added SECURITY DEFINER routine identities', () => {
   assert.throws(
     () => compareInventories(report([fn('auth_create_account')]), report([fn('auth_create_account'), fn('read_project')])),
-    /routine_count/,
+    /must not add or remove SECURITY DEFINER routines/,
   );
 });
