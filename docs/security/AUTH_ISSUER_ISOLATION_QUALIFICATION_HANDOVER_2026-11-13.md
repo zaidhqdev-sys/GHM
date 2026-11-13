@@ -1787,3 +1787,75 @@ Run https://github.com/zaidhqdev-sys/GHM/actions/runs/43487403745 on exact hando
 5. Do not deploy or revoke production ACLs as part of this audit.
 
 No production ACLs, function definitions, roles, memberships, schema, data, credentials, Render settings, deployments or traffic were changed. All production queries were read-only.
+
+
+## Runtime grant-to-cutover reconciliation — production snapshot 2026-11-13 19:01 UTC
+
+Re-queried the live SECURITY DEFINER routines for effective `ghm_runtime` EXECUTE. This was read-only. It returns 46 effective runtime grants, matching the earlier aggregate, now grouped by exact routine identity.
+
+### Important Authentication Issuer pre-cutover mismatch
+
+The construction branch's `scripts/qualify-auth-issuer-precutover.mjs` requires an exact 16-function Resource API auth allow-list. The current production catalog instead has 24 auth-prefixed SECURITY DEFINER functions effectively executable by `ghm_runtime`.
+
+The eight additional production functions not in the pre-cutover allow-list are:
+- `ghm.auth_bootstrap_external_identity(text,text,text,text)`
+- `ghm.auth_change_password(bigint,bigint,text,text,text,integer,integer,integer)`
+- `ghm.auth_disable_account(bigint)`
+- `ghm.auth_link_business_external_mapping(text,text,bigint)`
+- `ghm.auth_link_external_identity(text,text,bigint)`
+- `ghm.auth_provision_migration_account(text,text,text,text)`
+- `ghm.auth_read_account_email(bigint)`
+- `ghm.auth_read_connect_identity_authority(bigint)`
+- `ghm.auth_register_quoteflow_migration_reset_enrollment(bigint,text,text,text,text,text)`
+- `ghm.auth_revoke_all_sessions_for_account(bigint,text)`
+- `ghm.auth_revoke_session(bigint,text)`
+
+Correction: the list above contains **11** functions, not eight; the live set is 24 while the pre-cutover allow-list is 16, but three of the eleven listed legacy functions are explicitly conditionally revoked by the issuer cutover and one is revoked by the dedicated QuoteFlow enrollment migration. Therefore the raw production-vs-precutover delta must be reconciled by migration sequence, not summarized as eight final retained extras. The following six functions are not explicitly revoked by the current issuer cutover or the QuoteFlow registration migration and need a caller/owner disposition before the pre-cutover exact allow-list can pass:
+- `auth_bootstrap_external_identity`
+- `auth_change_password`
+- `auth_disable_account`
+- `auth_link_external_identity`
+- `auth_provision_migration_account`
+- `auth_revoke_session`
+
+Do not blindly add these to the issuer or revoke them. Trace their active route callers and determine whether they remain Resource API responsibilities, require issuer ownership, or are obsolete legacy capabilities. In particular, `auth_change_password` and `auth_revoke_session` may be user-session-bound operations and must not be removed until their current call sites are understood.
+
+### Issuer role is not yet provisioned in production
+
+A read-only role-aware ACL query referencing `ghm_auth_issuer` failed with PostgreSQL `42704`: role `ghm_auth_issuer` does not exist in current production. The existing manual issuer cutover correctly guards for this role and intentionally does not create credentials. This is a separate provider/bootstrap prerequisite: provision the isolated least-privilege login and credential through the approved Render/provider process, then verify its attributes and bounded administrator membership before any cutover. No role was created.
+
+### Complete production runtime effective function groups
+
+- Auth-prefixed: 24.
+- Business profile/capability/saved-business/hours/logo/trust: 9 named by current grouping.
+- Campaign/directory review: 3.
+- Business registration identity: 2.
+- Storage metadata/public logo: 6.
+- Other capability helpers: 2.
+Total SECURITY DEFINER functions effectively executable by runtime: 46.
+
+The exact production runtime signature list was retrieved through read-only catalog SQL. Note that `auth_read_account_email`, `auth_read_connect_identity_authority` and `auth_revoke_all_sessions_for_account` are explicitly covered by conditional revocation in the manual issuer cutover; `auth_register_quoteflow_migration_reset_enrollment` is revoked by `20261112040000_revoke_runtime_quoteflow_reset_enrollment_registration.sql`. The other six named above require explicit route disposition.
+
+### Existing gateway/cutover coverage verified from source
+
+- Connect Business provisioning migration revokes direct runtime execution on `auth_link_business_external_mapping` and routes provisioning through the signed gateway wrapper.
+- Business profile qualification proves runtime direct RPC denial and tests forged, expired, replayed and context-mismatched assertions.
+- Storage gateway migrations create signed wrappers for five metadata lifecycle operations; their dedicated qualification snapshots and restores exact legacy ACLs on disposable PostgreSQL.
+- Campaign/directory-review manual cutover revokes the three legacy runtime functions and has direct runtime-denial tests.
+- Actor identity/registration migration and qualification already test runtime denial of the old identity helpers and unsigned gateway calls.
+
+### CI at this checkpoint
+
+Run https://github.com/zaidhqdev-sys/GHM/actions/runs/43487713624, exact handover head `0f685eb4bddb897e8f1f0d3736e4c7bc28a0262f`:
+- web-quality: passed 11/11.
+- quality: 57/64, currently executing `Qualify isolated auth issuer lifecycle and runtime denials on disposable PostgreSQL`; no failure reported at this observation.
+
+### Required next steps
+
+1. Reconcile the six unhandled auth routine callers and update either route ownership, the exact pre-cutover allow-list, or the cutover only where justified by source behavior.
+2. Provision `ghm_auth_issuer` through the approved provider/bootstrap path; never create it with application credentials or an untracked ad hoc SQL grant.
+3. Re-run the complete pre-cutover 16-function contract against a disposable clone with the full production baseline and migration sequence.
+4. Keep all cutovers manual and independently gated by route deployment, issuer service health, secret provisioning, client configuration and rollback readiness.
+5. No production ACL or role changes until these mismatches are resolved and the disposable qualification passes.
+
+No production roles, memberships, grants, function definitions, schema, data, credentials, Render settings, deployments or traffic were changed. The role lookup failure was read-only and did not mutate production.
