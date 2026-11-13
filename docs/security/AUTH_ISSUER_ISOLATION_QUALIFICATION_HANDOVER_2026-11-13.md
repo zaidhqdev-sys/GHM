@@ -407,3 +407,22 @@ The latest required action is a fresh exact-head CI run on the current branch HE
 Do not infer that the real comparison passed from passing unit tests or from successful inventory collection. Preserve the actual comparison artifact and hash in the next handover update.
 
 Production remains untouched. All database changes in these runs were confined to disposable PostgreSQL. No deployment or merge has been made; PR #272 remains draft/open/unmerged.
+
+
+## Follow-up inspection after comparator corrections
+
+Reviewed the full comparator implementation and all eight unit tests at branch HEAD after commits `d309ca0` and `443bfe1`.
+
+- The missing filesystem import is now present.
+- The successful comparison fixture now contains explicit before/after `ghm` schema inventories and the exact expected issuer USAGE grant.
+- The regression assertion now checks for the literal malformed escaped-newline source pattern.
+- The comparator remains deliberately strict: routine identity/count equality, issuer function non-ACL metadata equality, unchanged non-issuer function definitions/ACLs, role membership/attributes, database/column/default ACLs, all unrelated schema privileges, and non-issuer preliminary findings.
+- It requires the issuer's direct non-grantable `ghm` USAGE grant to be absent before and present after, and effective issuer schema privileges to change from USAGE=false/CREATE=false to USAGE=true/CREATE=false.
+
+### CI dispatch observation
+
+Checked workflow runs associated with the handover commit `889dd960bf4f19af0ed42723ef407d8fc00dd94e`; the commit-specific PR-run lookup returned no runs. Therefore no fresh exact-head result is currently available to claim. The prior failed runs remain failures on their earlier test source. The latest code and handover commits are on `construction/auth-issuer-isolation-20261112`; do not reuse older run results as validation of these corrections.
+
+The next evidence requirement remains a new CI execution on the corrected branch head (or descendant), followed by inspection of the actual comparator CLI step and its generated JSON artifact. If a run is not automatically created by the branch push, trigger the configured CI workflow for this exact branch/commit through an authorized GitHub Actions dispatch mechanism; do not merge, deploy, or weaken the comparator to obtain a green result.
+
+No production activity has occurred.
