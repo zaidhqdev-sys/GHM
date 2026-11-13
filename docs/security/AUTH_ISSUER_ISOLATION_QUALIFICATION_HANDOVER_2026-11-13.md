@@ -2627,3 +2627,104 @@ References:
 - https://developers.cloudflare.com/workers/runtime-apis/webassembly/
 
 Thus Cloudflare remains a possible research track, not a validated no-cost drop-in host. Any prototype must first demonstrate exact Argon2id hash compatibility, timing/CPU limits, and isolated per-Worker database credentials without touching production data or credentials.
+
+
+## 2026-11-14 02:35 SAST — owner decision: Cloudflare only while genuinely $0
+
+The operator approved investigating Cloudflare-hosted isolated services **only if they incur no cost until ZAID Technologies generates revenue**. This is a hard constraint, not permission to activate a paid plan.
+
+### Non-negotiable cost guardrails
+
+- Cloudflare Workers Free only.
+- Hyperdrive Free only.
+- No Workers Paid subscription (official minimum $5 USD/month).
+- No Cloudflare Containers: current official Containers pricing marks Free as unavailable (N/A); included usage is part of the Workers Paid $5/month plan.
+- No paid Render service, paid database, or new paid infrastructure.
+- No paid add-on, usage-based billable resource, automatic upgrade, or billing-plan change.
+- If a free-tier limit is reached, the relevant service must fail closed / stop accepting the affected operation; do not upgrade or incur charges.
+- Reassess paid infrastructure only after the operator explicitly confirms the business is generating revenue and separately approves a budget.
+
+Official current pricing/limits reviewed 2026-11-14:
+- Workers Free: 100,000 requests/day, 10 ms CPU per HTTP invocation, 128 MB memory; usage beyond included Free quotas fails rather than becoming a Workers Paid overage unless the account is upgraded.
+- Hyperdrive Free: 100,000 SQL statements/day; maximum ~20 origin DB connections per configuration; 10 configured databases per Free account.
+- Workers Paid minimum: $5/month.
+- Cloudflare Containers: Free is N/A; usage is included only in Workers Paid, so Containers cannot be used under this $0 mandate.
+
+References:
+- https://developers.cloudflare.com/workers/platform/limits/
+- https://developers.cloudflare.com/workers/platform/pricing/
+- https://developers.cloudflare.com/hyperdrive/platform/limits/
+- https://developers.cloudflare.com/containers/platform/pricing/
+- https://developers.cloudflare.com/containers/platform/limits/
+
+### Actor Gateway — viable technical prototype route, not deployed/qualified
+
+Cloudflare's current official docs recommend `pg@8.16.3+` with Hyperdrive for Workers. The current GHM repository pins `pg@^8.12.0`, below the documented minimum, so the Worker package must use a separate compatible dependency boundary or a separately reviewed dependency upgrade; do not assume the current dependency version works with Hyperdrive.
+
+Cloudflare documents:
+- PostgreSQL through Hyperdrive on Free.
+- `pg` support with `nodejs_compat`.
+- Node HTTP server support via `cloudflare:node` / `httpServerHandler`, enabling a possible adapter around the existing Express Actor Gateway app.
+
+This makes a dedicated Actor Gateway Worker a plausible no-new-compute-cost prototype, subject to all of the following before any deployment:
+1. Separate Hyperdrive configuration with only the `ghm_actor_gateway` database credential on the production `ghm_db`.
+2. Worker secret containing only public ES256 verification key/KID and the gateway capability assertion secret; never the issuer private key/token pepper.
+3. Port the existing Express/server startup safely to the Workers request lifecycle; do not run the Render `server.listen` bootstrap unchanged.
+4. Verify `pg` and all imported packages in the actual Workers runtime.
+5. Preserve every existing gateway identity, ACL, signed-assertion, replay, authorization and storage attestation guard.
+6. Test using a disposable PostgreSQL database and local Wrangler/Workers runtime first; no production database connection until separately approved.
+7. Confirm free quota behavior, no account upgrade, and no chargeable dependency (Containers, Paid Durable Object backends, paid observability, etc.).
+
+Official references:
+- https://developers.cloudflare.com/hyperdrive/examples/connect-to-postgres/postgres-drivers-and-libraries/node-postgres/
+- https://developers.cloudflare.com/hyperdrive/examples/connect-to-postgres/
+- https://developers.cloudflare.com/workers/runtime-apis/nodejs/http/
+
+No Worker, Hyperdrive configuration, database role, credential, DNS route, production connection or Cloudflare deployment was created or changed.
+
+### Authentication Issuer — hard Free-tier compute blocker identified
+
+The existing GHM password implementation is not a generic/lightweight hash. `src/auth/foundation/password.ts` uses native `argon2` with fixed parameters:
+- Argon2id.
+- Memory cost: 65,536 KiB (64 MiB).
+- Time cost: 3.
+- Parallelism: 1.
+- Hash output: 32 bytes.
+- Salt: 16 bytes.
+
+This is a security policy and compatibility contract. It must not be silently weakened to fit a hosting quota. The current dependency is `argon2@^0.41.1`, which is a native Node addon and cannot simply be assumed to run in Workers.
+
+A pure-WASM Argon2 implementation is a research possibility, but it must verify the exact PHC strings and the existing 64 MiB / t=3 / p=1 profile. One newly surfaced Workers-oriented package documents a maximum memory cost of 32 MiB, which is insufficient for GHM's current profile. Other WASM implementations require exact compatibility, memory, side-channel and performance review.
+
+Most importantly, Workers Free imposes 10 ms CPU per invocation. Argon2id is deliberately CPU- and memory-intensive; the current 64 MiB/t=3 profile has not been demonstrated to complete under that limit. Lowering memory/time cost or changing algorithms to fit Free is not acceptable without a separately approved security migration, and would risk existing password compatibility.
+
+Cloudflare Containers do not solve this under the cost mandate: official Containers pricing says Free is N/A and that included CPU/memory is part of the $5/month Workers Paid plan. Workers Paid is expressly disallowed for now.
+
+Therefore:
+- Do not deploy the Authentication Issuer to Workers Free yet.
+- Do not change password hashing parameters or existing password hashes.
+- Do not move issuer private key/token pepper into the Actor Gateway or Resource API.
+- Do not route authentication traffic to an unqualified Worker.
+- Research/benchmark a Workers-compatible Argon2id implementation only in a local/disposable environment, proving PHC interoperability and 64 MiB/t=3/p=1 performance within the 10 ms CPU budget. If it cannot meet that limit, record the issuer as blocked under the $0 constraint rather than weakening the password policy.
+
+Official references:
+- https://developers.cloudflare.com/workers/platform/limits/
+- https://developers.cloudflare.com/workers/runtime-apis/webassembly/
+- https://github.com/orgShtora-1/argon2w (published implementation documentation reports max 32 MiB; not accepted for current GHM parameters)
+- https://github.com/phi-ag/argon2 (WASM implementation surfaced for further review only; not qualified)
+
+### Corrected hosting conclusion
+
+The earlier generic possibility of using Cloudflare Workers for both isolated services is now narrowed:
+
+- Actor Gateway: plausible Workers Free + Hyperdrive route; prototype and qualify before production.
+- Authentication Issuer: not currently shown to fit Workers Free due the existing 64 MiB/t=3 Argon2id profile and 10 ms CPU ceiling. Remains blocked until exact compatibility/performance is proven.
+- Cloudflare Containers: excluded because not available on Free.
+- Render Free: excluded for production due sleep/availability limitations.
+- Any paid Cloudflare/Render path: excluded until the operator confirms revenue and approves spend.
+
+This is an architecture feasibility result, not an authorization to change production. Keep PR #272/#276 draft/unmerged, Render auto-deploy OFF, current Resource API unchanged, and PayFast paused.
+
+### No-change statement
+
+This checkpoint consisted of source inspection and official platform documentation research. No code, package manifests, lockfiles, Worker, Hyperdrive, Cloudflare setting, Render setting, database role, credential, migration, DNS record, deployment or production traffic was changed.
