@@ -604,3 +604,35 @@ PR #276 remains open/draft and unmerged; base PR #272 remains open/draft at `c81
 ## Next gate: production-only read-only inventory
 
 Proceed by identifying the existing Render `ghm-db` production Postgres instance and executing only the reviewed, read-only catalog inventory against that existing database. Do not create services/databases, deploy, alter roles/ACLs, run migrations, or execute cutover/rollback SQL. Capture server/database/session identity and compare production evidence to the disposable qualification without assuming they match. Production SECURITY DEFINER findings and Project↔Opportunity reconciliation remain separate release gates.
+
+
+## Production ghm-db read-only catalog inventory — 2026-11-13 13:58 UTC
+
+Executed a catalog-only SQL inventory through Render's read-only Postgres query operation against the existing production Render database. This did not use the local-only audit script (which deliberately refuses non-local targets); the catalog SELECTs were adapted into a single read-only query and returned production identity plus role, membership, SECURITY DEFINER, schema, database, column, and function-default-ACL inventories.
+
+**Target identity verified from Render and from the SQL connection**
+- Render service: `ghm-db`, resource `dpg-dag0sdtbedkc7389vi2g-a`
+- Database: `ghm_db`
+- PostgreSQL: 18.6
+- Session identity: `session_user=ghm_app_user`, `current_user=ghm_db_user`
+- Capture time: 2026-11-13 13:58 UTC
+- Render status: available, Frankfurt, existing primary database.
+- Query was read-only; no role, ACL, schema, data, migration or deployment changes were made.
+
+**Important production findings — release gate remains closed**
+1. `ghm_db_user` still has `CREATEROLE=true` and `CREATEDB=true`.
+2. `ghm_db_user` has `ADMIN OPTION` memberships in `ghm_actor_gateway`, `ghm_migrator`, `ghm_payment_provider`, `ghm_runtime`, and `ghm_schema_owner`. Those memberships have `INHERIT OPTION=false` and `SET OPTION=false`, but ADMIN OPTION is still present and is the grant/revoke authority issue previously escalated to Render support. This is not fixed by lack of SET ROLE.
+3. `ghm_app_user` is a member of `ghm_db_user` with `INHERIT OPTION=true` and `SET OPTION=true`; query connection resolves `current_user=ghm_db_user`. This effective connection identity must be accounted for in the authority model.
+4. Production does not currently list a `ghm_auth_issuer` role. The `ghm` schema ACL grants USAGE to `ghm_runtime` and `ghm_payment_provider`, not `ghm_actor_gateway` or `ghm_auth_issuer`. Therefore the isolated issuer cutover is not present in production and must not be inferred from disposable qualification.
+5. SECURITY DEFINER inventory: 63 routines (versus 106 in the disposable post-issuer qualification snapshot); 49 routines have non-owner EXECUTE grants/effective non-owner execution; 0 have PUBLIC EXECUTE; 58 do not have the exact pinned `search_path=pg_catalog, ghm, pg_temp` used by the qualification policy; all 63 use trusted languages.
+6. Column ACL inventory: 188 columns with explicit ACLs.
+7. Function default ACL rows include global defaults owned by `postgres`, including PUBLIC EXECUTE. These are distinct from the GHM schema-owner defaults and require provenance/owner review; do not automatically classify them as a GHM grant.
+8. `public` schema has PUBLIC USAGE and `ghm_db_user` CREATE/USAGE. `ghm` schema owner is `ghm_schema_owner`; its direct ACL currently grants USAGE to `ghm_runtime` and `ghm_payment_provider`.
+
+The production findings are a baseline, not a remediation instruction. Do not run the disposable cutover/rollback against production. First reconcile the production migration ledger and exact role provenance, then build a production-specific approved privilege plan that addresses the Render-managed role membership/ADMIN OPTION issue. Any production privilege mutation requires a separately reviewed, explicit cutover window and verified backup/rollback path. No production change is authorized by this inventory.
+
+## Next read-only checks
+
+- Identify the production migration ledger table and compare applied migration IDs/checksums to the repository without modifying the ledger.
+- Reconcile production Project↔Opportunity links and orphans as a separate read-only report.
+- Compare the complete production SECURITY DEFINER signatures and ACLs against the migration history and approved function allow-list; the 63-vs-106 count is a material divergence to explain, not a pass/fail conclusion by itself.
