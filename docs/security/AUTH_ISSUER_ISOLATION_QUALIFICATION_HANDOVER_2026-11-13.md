@@ -762,3 +762,53 @@ The Render workspace service listing was inspected without reading environment-v
 - Prior run [43438965542](https://github.com/zaidhqdev-sys/GHM/actions/runs/43438965542), head `7e3d895`: web-quality 11/11 passed; quality remains in progress (48/64 at the Business Logo gateway qualification step, no failures reported).
 
 Do not claim the latest exact-head quality job has passed until run 43439277662 completes. Earlier successful exact-head runs do not supersede the current handover commit's run.
+
+
+## Production ghm_runtime privilege baseline and code-path reconciliation — 2026-11-13 14:10 UTC
+
+A further read-only catalog inventory measured the already-existing production `ghm_runtime` principal directly, rather than assuming its grants from the disposable database.
+
+### Runtime principal attributes and effective authority
+
+- `ghm_runtime` is LOGIN, NOINHERIT, NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION, NOBYPASSRLS.
+- It has zero direct role memberships; two roles are direct members of it (the bootstrap `ghm_db_user` administration membership and the corresponding protected membership record).
+- It has database CONNECT, no database CREATE, `ghm` schema USAGE, and no schema CREATE.
+- It can execute 46 SECURITY DEFINER functions in `ghm`.
+- It has privileges on 39 tables and 39 sequences in `ghm`.
+- It has no direct path from `ghm_runtime` to `ghm_migrator` or `ghm_schema_owner` through membership (zero direct memberships).
+
+The production runtime role itself is a plausible replacement connection identity for the application from a *role-attribute/connection* perspective, but its current object/function grants are not yet the post-cutover security boundary. Do not equate the safe role attributes with a completed application authority cutover.
+
+### Critical production function inventory
+
+The production runtime still has direct EXECUTE on legacy functions that the current repository source has moved behind signed Actor Gateway wrappers, including:
+
+- 14 authentication lifecycle/enrollment operations (the manual issuer cutover remains unapplied).
+- Campaign create/update and owner directory-review presentation legacy functions.
+- Five private storage metadata lifecycle functions.
+- Business registration identity, capability governance, Business Capability, Saved Business, Business Hours, Trust Score and Business Logo legacy functions.
+- Other currently required runtime readers/operations.
+
+The runtime also has direct table/sequence privileges across the existing production `ghm` schema; the exact ACL listing was captured by the production catalog query and must be reconciled signature-by-signature and relation-by-relation against the intended cutover stages before changing connection credentials or revoking grants.
+
+### Source/runtime configuration cross-check
+
+Current branch `src/config.ts` already requires `GHM_RUNTIME_DATABASE_URL` in production; `src/db/pool.ts` uses that configured URL. It does not require the Render-managed `DATABASE_URL` in production. The prior production connection identity `session_user=ghm_app_user/current_user=ghm_db_user` therefore means the configured `GHM_RUNTIME_DATABASE_URL` currently resolves to the managed credential/role path, or the inspected running deployment is not yet on this branch's runtime config. The actual Render environment-variable values were not retrieved or exposed during this audit.
+
+Current `src/db/runtime-principal.ts` deliberately fails startup unless both `session_user` and `current_user` are exactly `ghm_runtime`, with no elevated role attributes, no schema/database CREATE, and no untrusted membership path. This confirms the intended runtime credential target is the existing SQL-created `ghm_runtime` login (or a separately qualified SQL-created login with an intentionally revised contract), not `ghm_app_user`/effective `ghm_db_user`.
+
+### Migration principal dependency that must be corrected in design
+
+Current `src/db/migrate.ts` and `src/db/migrator-principal.ts` explicitly expect `ghm_db_user` to retain ADMIN OPTION memberships over `ghm_migrator` and `ghm_schema_owner` (with INHERIT/SET false). They also expect the dedicated `ghm_migrator → ghm_schema_owner` SET path.
+
+This is the remaining design coupling to the Render-managed administrator. It does not mean the migrator needs to SET ROLE into `ghm_db_user`; rather, the migration startup contract insists that the provider-managed admin membership rows exist. Before any bootstrap-membership cleanup, revise this guard to an authority model that no longer requires normal application identity or its default-role chain to administer the migration/owner roles. Preserve the migrator's own exact owner SET path and ensure only the provider/bootstrap authority can provision/rotate the migration credential.
+
+### Safe sequencing conclusion
+
+1. Keep the current production connection and all grants untouched while the exact runtime ACL allow-list is reconciled.
+2. Complete the signed Actor Gateway / Authentication Issuer / storage / other manual cutover qualifications against the exact production catalog baseline. Production currently still exposes legacy direct runtime EXECUTE paths.
+3. Revise and qualify the migrator guard and provider-admin bootstrap model so `ghm_db_user` ADMIN OPTION is no longer a permanent application architecture prerequisite.
+4. Confirm the exact Render runtime credential key and deployment commit without exposing secret values; only then plan the service connection change to a SQL-created restricted login.
+5. The runtime connection switch and legacy grant revocations must be coordinated as one versioned, rollback-tested cutover. A connection-only change before the production ACL cutovers would leave direct legacy functions callable by the runtime login; revoking them before the corresponding application/gateway deployment would break live operations.
+
+No production credentials, role attributes, role memberships, ACLs, table/sequence grants, functions, data, migrations, environment variables or deployments were changed.
