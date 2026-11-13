@@ -673,3 +673,20 @@ A focused production catalog query confirmed:
 Together with the absence of the `ghm_auth_issuer` role and the absence of `ghm_actor_gateway` USAGE on schema `ghm`, production is still on the pre-gateway/pre-issuer database contract. The existence of the `ghm_actor_gateway` role alone is not evidence that the gateway SQL contract is deployed or usable. Do not point Connect or QuoteFlow at gateway/issuer endpoints until the dependent database cutovers have been separately qualified and deliberately deployed.
 
 This is a production-vs-qualification divergence, not a CI failure. The disposable branch qualification must not be described as production-ready.
+
+
+## Render role-authority design conflict — 2026-11-13 14:03 UTC
+
+Cross-checked the live production membership graph against the actual source migration guards and the prior Render support handover.
+
+- The production read-only connection authenticated as `ghm_app_user` but resolved `current_user=ghm_db_user`.
+- `ghm_app_user` has `ghm_db_user` membership with `INHERIT OPTION=true` and `SET OPTION=true`.
+- `ghm_db_user` is `CREATEROLE=true`, `CREATEDB=true`, and has `ADMIN OPTION=true` memberships over `ghm_actor_gateway`, `ghm_migrator`, `ghm_payment_provider`, `ghm_runtime`, and `ghm_schema_owner`.
+- The Actor Gateway principal-guard migration (`20261110210000_add_actor_gateway_principal_guard.sql`) explicitly requires the bounded `ghm_db_user → ghm_actor_gateway` ADMIN OPTION membership.
+- The Authentication Issuer manual cutover (`20261112010000_authentication_issuer_privilege_cutover.sql`) also explicitly requires `ghm_db_user → ghm_auth_issuer` ADMIN OPTION membership.
+
+This means the currently authored database architecture continues to depend on the Render-managed `ghm_db_user` as administrator of application principals, and the legacy `ghm_app_user → ghm_db_user` SET-capable path remains. That conflicts with the Render support recommendation already recorded in the 2026-11-12 grant-authority handover: move normal application execution to SQL-created login(s) outside the Dashboard-managed credential list.
+
+**Release blocker / design decision required:** before any production Actor Gateway or Authentication Issuer cutover, revise and requalify the role-administration model so the normal application credential cannot SET ROLE into a CREATEROLE/CREATEDB database administrator, and the runtime principal cannot re-grant or administer gateway/issuer/migrator/owner memberships. The deployment/migration authority must be separately provisioned and controlled, without relying on the ordinary app credential's role chain. Do not simply remove the membership in production: the current migrations explicitly guard for it, and the service/migration credential dependencies must first be reworked and qualified.
+
+The existing Render support escalation and its recommendation remain part of the evidence. No attempt was made to SET ROLE, alter memberships, change credentials, or bypass the ledger ACL during this audit.
