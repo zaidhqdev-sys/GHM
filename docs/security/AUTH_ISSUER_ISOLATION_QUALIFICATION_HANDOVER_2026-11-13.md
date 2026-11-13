@@ -2046,3 +2046,50 @@ The successful disposable cutover does not authorize or prove a production cutov
 Continue with a read-only, source-backed reconciliation of the production role graph against the exact principal guards and manual cutover preconditions. Establish an authorized, non-mutating way to obtain the production migration-ledger versions/checksums through the existing provider/owner process. Do not grant the application observer ledger access, use it to assume roles, revoke provider-managed memberships, rotate credentials, execute production cutover SQL, change Render settings, deploy, or merge the stacked PRs as part of this checkpoint.
 
 PR #276 remains draft/unmerged and dependent on PR #272. Render auto-deploy remains OFF. Production roles, memberships, grants, schema, data, credentials, environment variables, services, deployments and traffic were not changed. PayFast remains paused and excluded.
+
+
+## 2026-11-13 21:25 SAST — live Resource API identity verification attempt
+
+### Render control-plane state confirmed
+
+Read-only Render inspection confirms the production service is:
+
+- Service: `GHM-Internal-Runtime`
+- Service ID: `srv-damupsek1f9s73eq8kkg`
+- URL: `https://ghm-internal-runtime.onrender.com`
+- Branch: `main`
+- Auto-deploy: disabled (`autoDeploy=no`, trigger `off`)
+- Latest live deployment: `dep-dbpmv8jrjlhs73abkli0`
+- Deployed commit: `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`
+- Deployment completed: 2026-11-10 19:26:11Z
+- Health check path: `/healthz`
+
+The latest deployment logs independently confirm checkout of commit `c7cf1eb...`, successful build, and process startup. They do not print the database principal or the configured environment-variable names.
+
+### Important distinction: live identity is still NOT proven
+
+The service metadata endpoint does not expose its environment-variable names or values. No Render environment-variable read/list operation is available through the connected interface; no secret values were accessed or changed.
+
+A read-only `pg_stat_activity` sample taken through Render's database query connector showed only the connector's own active query session (`ghm_app_user`), with no distinct application connection at that instant. That observation is not evidence of the Resource API's database principal and must not be misattributed to the service.
+
+A separate read-only query through the Render database connector again returned:
+- database: `ghm_db`
+- `session_user=ghm_app_user`
+- `current_user=ghm_db_user`
+- PostgreSQL 18.6
+
+This is the connector's observer identity, not proof of the Resource API connection. The historical role-separation handover records the same managed connection identity and the required target `GHM_RUNTIME_DATABASE_URL` with `session_user=current_user=ghm_runtime`; the live service adoption remains unverified.
+
+The attempt to retrieve app logs for 2026-11-13 18:00–19:24Z returned no entries. The deployment startup log from 2026-11-10 contains only the generic server-listening message and no DB identity assertion output.
+
+### Current decision
+
+**Gate 1 remains OPEN: deployed Resource API database identity is not yet independently observed.** Source requirements and the merged runtime-principal design are not substitutes for runtime evidence.
+
+Next safe evidence path:
+1. Use an approved, non-secret-exposing Render configuration inspection to confirm whether `GHM_RUNTIME_DATABASE_URL` is configured on this service (never reveal its value).
+2. Obtain a service-originated, sanitized runtime identity assertion or startup diagnostic that reports only database name, `session_user`, `current_user`, and the expected role-membership/attribute checks.
+3. Confirm the assertion is emitted by the actual deployed Resource API process, not by the Render query connector or an unrelated service.
+4. Only then mark the runtime identity gate complete.
+
+No Render service settings, environment variables, secrets, database roles, memberships, grants, schema, data, deployments or traffic were changed. Render auto-deploy remains OFF. The suspended sandbox and PayFast remain excluded. PR #272/#276 remain unmerged; no production cutover is authorized.
