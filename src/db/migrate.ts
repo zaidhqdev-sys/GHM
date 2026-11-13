@@ -129,16 +129,6 @@ const migrate = async (): Promise<void> => {
         EXISTS (
           SELECT 1
             FROM pg_auth_members membership
-            JOIN pg_roles member_role ON member_role.oid = membership.member
-           WHERE membership.roleid = migrator.oid
-             AND member_role.rolname = 'ghm_db_user'
-             AND membership.admin_option = true
-             AND membership.inherit_option = false
-             AND membership.set_option = false
-        ) AS exact_migrator_admin_membership,
-        EXISTS (
-          SELECT 1
-            FROM pg_auth_members membership
            WHERE membership.member = migrator.oid
              AND membership.roleid = schema_owner.oid
              AND membership.admin_option = false
