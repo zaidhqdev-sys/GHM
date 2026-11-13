@@ -2140,3 +2140,17 @@ Before any production deployment:
 5. Only after these checks, make a separately authorized deployment decision. Auto-deploy remains OFF.
 
 No environment variables, secrets, roles, memberships, grants, database objects, service settings, deployments or traffic were changed. The live service remains on `c7cf1eb`. PR #272/#276 remain drafts and unmerged. PayFast remains excluded.
+
+
+### Runtime-role database grants checked independently (read-only)
+
+The production catalog was also queried for the *target role's* effective database/schema grants, without assuming the query connection was that role. Results for `ghm_runtime`:
+- Database CONNECT: true.
+- Database CREATE: false.
+- Schema `ghm` USAGE: true.
+- Schema `ghm` CREATE: false.
+- Runtime membership contract: true (no outbound memberships from `ghm_runtime`; only the trusted `ghm_db_user` inbound membership is allowed).
+
+This confirms the currently observed database grants and role graph satisfy these portions of PR #275's startup verifier. It does **not** prove the service has the correct password/connection string, that the process authenticates as `ghm_runtime`, or that the complete startup verifier passes.
+
+The role-level grant preconditions are therefore read-only verified; the service configuration and runtime identity remain outstanding.
