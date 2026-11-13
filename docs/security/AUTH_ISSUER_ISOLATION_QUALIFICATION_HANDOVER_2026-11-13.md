@@ -579,3 +579,28 @@ Live PR metadata rechecked:
 - Mergeability true is GitHub's conflict assessment only; it is not approval to merge.
 
 This confirms the PR-created head and its first handover update. No merge or deployment was performed. Production gates remain unchanged.
+
+
+## Exact-head qualification completed — 2026-11-13 13:56 UTC
+
+PR #276 head `6942986319a5b62ae511b426ee43b3637a991a28` completed [push workflow 43436320011](https://github.com/zaidhqdev-sys/GHM/actions/runs/43436320011) successfully.
+
+- Quality: 65/65 steps passed.
+- Web quality: 11/11 steps passed.
+- Main Node test suite: 994 passed, 0 failed, 0 skipped.
+- Additional post-suite Node checks: 4 passed, 0 failed.
+- Security-definer comparator tests: 8 passed, 0 failed.
+- Provenance/target-isolation tests: 15 passed, 0 failed.
+- Disposable PostgreSQL 18.7 issuer cutover/lifecycle checks completed, including issuer allow-list (10), zero direct relation privileges, 19 runtime issuer function denials, final runtime auth allow-list (2), startup ACL verification, global/schema default-ACL denials, unexpected direct-function grant denials, safe SECURITY DEFINER owner/search_path checks, no PUBLIC SECURITY DEFINER execution, and disposable rollback.
+- Pre/post catalog inventory: 106 SECURITY DEFINER routines on both sides; same routine identity set; 14 reviewed issuer ACL changes; non-issuer function definitions/ACLs unchanged; role memberships/attributes, database privileges, column privileges and function default ACLs unchanged; only reviewed schema delta was `ghm_auth_issuer` USAGE (CREATE denied); zero unexplained non-issuer changes.
+- Comparator decision: `STRUCTURAL_COMPARISON_PASSED; AUTH ISSUER ACLS REQUIRE DEDICATED CUTOVER QUALIFICATION`. The dedicated disposable issuer cutover qualification passed separately.
+- Audit's broad preliminary-finding count changed from 62 pre-cutover to 58 post-cutover because issuer function grants move from `ghm_runtime` to `ghm_auth_issuer`; do not interpret the raw count delta as four unrelated findings fixed. Comparator explicitly isolates issuer changes and reports non-issuer preliminary findings unchanged.
+- Artifact: [14043473438](https://github.com/zaidhqdev-sys/GHM/actions/runs/43436320011/artifacts/14043473438), `security-definer-authority-inventory.zip`, 80,050 bytes; ZIP SHA-256 `e1b3a5833bc4705db428c0af2ace3f60d5f90ab5466c2e13186440b0b3a9722a`. Retrieved and inspected its three JSON reports (pre-cutover inventory, post-cutover inventory, comparator).
+
+All qualification above ran against `ghm_disposable_test` on disposable PostgreSQL 18.7. It does not establish production state or authorize production changes. The inventory report explicitly records `mutation: false` and `REVIEW_REQUIRED_NO_AUTOMATIC_APPROVAL`.
+
+PR #276 remains open/draft and unmerged; base PR #272 remains open/draft at `c81e2bf2534febef9c5e49b39f60f85415f04ff1`. No Render deployment, production DB mutation, merge, or traffic switch occurred.
+
+## Next gate: production-only read-only inventory
+
+Proceed by identifying the existing Render `ghm-db` production Postgres instance and executing only the reviewed, read-only catalog inventory against that existing database. Do not create services/databases, deploy, alter roles/ACLs, run migrations, or execute cutover/rollback SQL. Capture server/database/session identity and compare production evidence to the disposable qualification without assuming they match. Production SECURITY DEFINER findings and Project↔Opportunity reconciliation remain separate release gates.
