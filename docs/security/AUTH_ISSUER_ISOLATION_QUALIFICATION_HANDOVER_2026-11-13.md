@@ -2562,3 +2562,49 @@ That October handover also records that a production `GHM_MIGRATOR_DATABASE_URL`
 Production `ghm_runtime` is a SQL-created login role already observed in the production database, but no current production connection URL/password for it is present in the operator-supplied inventory. The old sandbox `DATABASE_URL` must not be used to infer or recover that production credential. Provisioning or resetting the production `ghm_runtime` password requires a controlled administrator session and a separately recorded authorization/rollback procedure; no such action has been taken.
 
 This reconciles the chronology without overwriting the historical record or claiming a currently usable production runtime/migrator credential.
+
+
+## 2026-11-14 02:20 SAST — hosting alternatives researched against cost and security constraints
+
+Official platform documentation was checked to determine whether the missing isolated services can be hosted without creating another paid Render service or weakening isolation.
+
+### Render Free is not an acceptable production substitute
+
+Render's current official free deployment documentation explicitly says Free instances should not be used for production applications. Free web services spin down after 15 minutes without inbound traffic and can take about a minute to restart; free services cannot receive private network traffic and may restart at any time. See:
+- https://render.com/docs/free
+- https://render.com/docs/service-types
+
+The existing Render service inventory shows the qualification and PayFast services are Free. Creating or repurposing another Free web service would not provide a production-grade always-on isolated issuer/gateway. Do not use those services as a workaround.
+
+### Cloudflare Workers + Hyperdrive — technically possible, not yet qualified/approved
+
+Official Cloudflare documentation confirms:
+- Workers can run Express applications through `cloudflare:node` / `httpServerHandler`.
+- Hyperdrive supports PostgreSQL and the `pg` driver, with per-Worker Hyperdrive bindings and TLS modes including certificate validation.
+- Hyperdrive is included on Workers Free, currently limited to 100,000 database queries/day.
+- Workers Free is currently limited to 100,000 requests/day and 10 ms CPU per invocation; Workers Paid has a $5/month minimum account charge and higher CPU allowance.
+
+References:
+- https://developers.cloudflare.com/workers/tutorials/deploy-an-express-app/
+- https://developers.cloudflare.com/hyperdrive/examples/connect-to-postgres/
+- https://developers.cloudflare.com/hyperdrive/platform/pricing/
+- https://developers.cloudflare.com/hyperdrive/configuration/tls-ssl-certificates-for-hyperdrive/
+- https://developers.cloudflare.com/workers/platform/limits/
+- https://developers.cloudflare.com/workers/platform/pricing/
+
+The GHM Authentication Issuer currently uses Argon2id password hashing (`argon2` package) for registration/login and dummy verification. That CPU-intensive password operation makes the Workers Free 10 ms CPU ceiling a material qualification risk; it must not be assumed to fit. A Cloudflare Workers Paid plan would be a new $5/month minimum and is not approved under the present no-funds constraint. A dedicated Worker per trust boundary with separate Hyperdrive bindings/secrets could preserve process/secret isolation in principle, but would require a deliberate deployment adapter, database egress/TLS review, full Argon2id compatibility/performance tests, request-limit review, and explicit owner approval. No Cloudflare account, Worker, Hyperdrive, secret, database connection or deployment was changed.
+
+### Vercel — no connected project scope for GHM/Connect
+
+The connected Vercel account exposes only `zaid-technologies-website`; neither `zaid-connect` nor a GHM issuer/gateway project is visible in the authenticated team/account scope. Therefore a separate Vercel Node runtime is not currently an actionable hosting path from this connected session. Do not create a project or assume billing/plan entitlements without owner approval and access to the correct project/team.
+
+### Hosting decision
+
+As of this review, no production-grade isolated hosting option has been demonstrated that simultaneously satisfies:
+1. separate issuer and Actor Gateway secret/process boundaries;
+2. access to production `ghm_db` with distinct SQL-created logins;
+3. authenticated TLS/network requirements;
+4. existing no-additional-paid-Render-service and no-funds constraints;
+5. current deployment/account access constraints.
+
+The secure default is to **hold the isolated service cutover**. Keep PR #272/#276 draft/unmerged, keep Render auto-deploy OFF, preserve the current deployed mainline and transitional auth secrets, and do not place gateway/issuer secrets on the Resource API. Revisit Cloudflare Workers only if the operator confirms account access and an acceptable cost/performance envelope; no assumption that Free tier is sufficient is permitted.
