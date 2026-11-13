@@ -1726,3 +1726,64 @@ The earlier audit count of unsafe paths is specifically measured against the new
 5. Keep the production rollout separate from the security construction PR; no deployment or role mutation is authorized by this catalog snapshot.
 
 No production roles, memberships, grants, function definitions, schema, relations, sequences, data, credentials, Render settings, deployments or traffic were changed. All production queries in this pass were read-only.
+
+
+## Exact production SECURITY DEFINER ACL exception matrix — 2026-11-13 18:58 UTC
+
+Expanded the production read-only inventory from aggregate counts to exact signatures, ACL grantees, grantors and role-effective EXECUTE checks.
+
+### Function shape and ownership
+
+- 63 SECURITY DEFINER routines in `ghm`.
+- All 63 are ordinary functions (`prokind = 'f'`); no SECURITY DEFINER procedures.
+- All 63 are owned by `ghm_schema_owner`.
+- No extension-owned SECURITY DEFINER functions were found in `ghm`.
+- No PUBLIC EXECUTE ACL entries were found.
+- All 50 non-owner EXECUTE ACL entries are non-grantable and were granted by `ghm_schema_owner`.
+
+This validates that the current search-path migration's `ALTER FUNCTION` loop matches the live routine kinds; no `ALTER PROCEDURE` branch is needed for this production set.
+
+### Exact non-owner ACL distribution
+
+| ACL grantee | Count | Current role |
+|---|---:|---|
+| `ghm_runtime` | 46 | Application runtime |
+| `ghm_migrator` | 2 | Migration identity |
+| `ghm_payment_provider` | 2 | Payment integration |
+| PUBLIC | 0 | No public execution |
+| **Total** | **50** | |
+
+The two migration-only grants are:
+- `ghm.auth_lookup_account_external_mapping(text,text)`
+- `ghm.auth_lookup_business_external_mapping(text,text)`
+
+The two payment-provider grants are:
+- `ghm.commercial_apply_payfast_payment_result(bigint,text,text,text,text,text,text,timestamp with time zone,jsonb)`
+- `ghm.commercial_get_payfast_attempt(bigint)`
+
+The 46 runtime grants comprise the existing auth/session/recovery, identity mapping, Connect assertion, QuoteFlow migration reset, Business, directory review, campaign, trust-score and storage operations. The complete exact-signature query result is retained in the live audit record for this checkpoint; do not bulk-revoke this set. Each operation must be mapped to its replacement gateway/API path and tested before a future privilege change.
+
+### Connect mapping helper confirmed
+
+`ghm.auth_link_business_external_mapping(text,text,bigint)` has a direct EXECUTE ACL for `ghm_runtime` in production, granted by `ghm_schema_owner`, and `has_function_privilege('ghm_runtime', ...)` returns true. The new signed provisioning migration explicitly revokes this ACL. The signed wrapper is owned by `ghm_schema_owner`, so its internal helper invocation executes with owner authority; the caller remains `ghm_actor_gateway` and is authenticated by the signed assertion check.
+
+### Search-path migration scope confirmed
+
+All 63 SECURITY DEFINER routines in production are ordinary functions, so the migration's dynamic `ALTER FUNCTION <identity signature> SET search_path = pg_catalog, ghm, pg_temp` loop is compatible with the current catalog. No extension-owned function was detected. The 60 legacy search paths still require normalization; this pass did not alter them.
+
+### Latest exact-head CI
+
+Run https://github.com/zaidhqdev-sys/GHM/actions/runs/43487403745 on exact handover head `a153aca0f15a9a6c84a64826c6e28e0beaf6e068`:
+- web-quality: passed, 11/11.
+- quality: 39/64 steps passed and currently running the test suite; no failure reported at the observation.
+- PR #276 remains open and unmerged.
+
+### Outstanding
+
+1. Let exact-head quality finish and inspect any failure before proceeding.
+2. Complete per-signature source-to-production ACL disposition for the 46 runtime grants and the 2 migrator grants.
+3. Obtain production migration ledger evidence using an authorized read-only migration identity; current observer remains denied SELECT.
+4. Complete disposable PostgreSQL 18 tests for signed Connect provisioning, runtime denial of the helper, signature/replay failures and atomic rollback.
+5. Do not deploy or revoke production ACLs as part of this audit.
+
+No production ACLs, function definitions, roles, memberships, schema, data, credentials, Render settings, deployments or traffic were changed. All production queries were read-only.
