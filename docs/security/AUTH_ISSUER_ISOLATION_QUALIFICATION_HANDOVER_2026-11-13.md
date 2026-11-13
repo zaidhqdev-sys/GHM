@@ -449,3 +449,84 @@ The live PR #272 API response confirms PR #272 is open and draft, but its head r
 Therefore run 43340538806 validates the construction branch HEAD, not the current PR #272 head. Do not describe it as PR-head validation. The corrected comparator commits and handover updates are currently on `construction/auth-issuer-isolation-20261112`. Reconcile/cherry-pick the validated changes to the intended PR branch only after reviewing the run and ensuring the PR branch ancestry/content relationship; do not force-push or merge blindly.
 
 Production remains untouched. PR #272 remains draft/open/unmerged.
+
+
+## Exact-head issuer qualification and inventory comparison PASSED — 2026-11-13 00:55 UTC
+
+### Authoritative CI result
+
+- Workflow: [CI run 43340538806](https://github.com/zaidhqdev-sys/GHM/actions/runs/43340538806)
+- Branch: `construction/auth-issuer-isolation-20261112`
+- Exact HEAD: `7199fe8315f98adc9549da6447751d50fc53cb42`
+- Overall workflow: `success`
+- `quality`: `success`, all 65 steps completed successfully
+- `web-quality`: `success`
+- Test suite: 994 tests passed, 0 failed (plus separate test groups)
+- Comparator unit tests: 8 passed, 0 failed
+
+### Dedicated Authentication Issuer cutover qualification
+
+The `qualify:auth-issuer-cutover` step completed successfully on disposable PostgreSQL 18.7 and reported:
+
+- Issuer allow-list: 10 functions
+- Issuer direct relation privileges: 0
+- Runtime issuer-function denials: 19
+- Connect lookup compatibility: preserved
+- Registration/login/password rehash/concurrent reset/refresh/logout: passed
+- Recovery reset, replay protection and session revocation: passed
+- QuoteFlow migration reset: passed
+- Disposable database privilege rollback: passed
+- Final disposable state: issuer cutover active for post-cutover inventory
+- Final runtime auth-function allow-list: 2
+- Issuer startup ACL verification: passed
+- Global and schema-scoped default ACL denials: passed
+- Unexpected direct function grant denials: passed
+- SECURITY DEFINER owner and temporary-safe search_path: passed
+- No PUBLIC SECURITY DEFINER execution: passed
+
+The pre-cutover Resource API contract separately reported 16 pre-issuer runtime auth functions, zero unexpected auth-function grantees, and passed.
+
+### Actual pre/post inventory comparison
+
+The comparator CLI ran successfully after the eight unit tests. Its report states:
+
+- Database: `ghm_disposable_test`, PostgreSQL 18.7
+- SECURITY DEFINER routine count: 106 before and 106 after
+- Routine identity set: unchanged
+- 14 reviewed Authentication Issuer function ACL changes
+- Non-issuer function definitions and ACLs: unchanged
+- Role memberships and role attributes: unchanged
+- Schema privileges: unchanged except the reviewed issuer USAGE grant
+- Issuer schema grant: `ghm` USAGE only; CREATE denied
+- Database privileges, column privileges and function default ACLs: unchanged
+- Non-issuer preliminary findings: unchanged
+- `unexplainedNonIssuerChanges: 0`
+- Structural comparison: passed
+
+The comparator's decision string is intentionally `STRUCTURAL_COMPARISON_PASSED; AUTH ISSUER ACLS REQUIRE DEDICATED CUTOVER QUALIFICATION`. That is not a failed run: the dedicated cutover qualification immediately preceding the post-inventory step passed all assertions listed above. Read the two results together; do not rewrite the comparator's deliberately scoped decision as a standalone global approval.
+
+### Preserved evidence artifact
+
+GitHub Actions artifact:
+
+- Artifact ID: `13998987663`
+- Name: `security-definer-authority-inventory`
+- Workflow run: `43340538806`
+- Retention: 14 days
+- Contains pre-cutover inventory, post-cutover inventory and comparator JSON.
+
+SHA-256:
+- `security-definer-authority-audit.json`: `e682cf203b29a04902bd25b2281e2bae4f65ccc5ea24da5f54c319864fdb3ffb`
+- `security-definer-authority-audit-post-issuer-cutover.json`: `d2a8994fefc9173be2bdeae010a9511f28cc31f4f6a20fcd32c3edcf6121360b`
+- `security-definer-authority-inventory-comparison.json`: `b3ea9cec33a9d711ea7e88ffb2033e053df02adbc43d6fd5e2eabafb526faf23`
+
+The whole-database audit itself retains `REVIEW_REQUIRED_NO_AUTOMATIC_APPROVAL` with 58 preliminary findings. This qualification only establishes the isolated issuer cutover's scoped authority delta and successful dedicated runtime tests; it does not waive the separate review of those 58 findings or establish production equivalence.
+
+### Remaining branch and production gates
+
+- Construction branch exact-head CI is green.
+- PR #272 remains open/draft on a different branch, `integration/capability-gateway-qualification-20261110`, HEAD `c81e2bf2534febef9c5e49b39f60f85415f04ff1`. This run is not PR-head validation.
+- Next: inspect PR/construction branch ancestry and file/commit differences, then safely carry the validated comparator/handover changes to the intended PR branch without overwriting unrelated work.
+- Separately qualify the live production inventory and Project↔Opportunity reconciliation before any production cutover/merge decision, as already required by the project handover.
+
+No production database changes, deployments, merges or PR updates were performed by this qualification.
