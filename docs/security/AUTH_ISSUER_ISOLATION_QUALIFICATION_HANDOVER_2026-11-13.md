@@ -2539,3 +2539,15 @@ The connected Vercel account lists only the `zaid-technologies-website` project 
 ### No-change statement
 
 This was a read-only inventory and deployment-history check. No Render service, plan, environment variable, credential, database, deployment, auto-deploy setting, Vercel project or environment variable was changed.
+
+
+### PR integration status checked after the live inventory
+
+Read-only GitHub PR inspection confirms:
+- PR #272 remains open, draft and unmerged. Head `c81e2bf2534febef9c5e49b39f60f85415f04ff1`; base `main`.
+- PR #276 remains open, draft and unmerged. It stacks on PR #272 and currently points at `5c5284259b4a6029066296816d7a824f7ff6bab2` (this handover update).
+- PR #272's body records earlier exact-head successful runs, but it also explicitly states the Authentication Issuer isolation is not completed in #272 alone.
+- PR #276's body records successful exact-head qualification for earlier code head `cc926fa5991ee393ab5222f0ca62cc2d621be183`, including 65/65 quality, 11/11 web-quality, 994 passing main tests, 8 comparator tests, and disposable PostgreSQL issuer lifecycle/rollback qualification. Those results do not automatically qualify the later documentation-only head.
+- For current PR #276 head `5c5284259b4a6029066296816d7a824f7ff6bab2`, the connected GitHub workflow-run lookup returned no PR-triggered workflow runs and combined commit status returned no status entries. This is **not** a green CI result. No current-head CI qualification is claimed.
+
+No PR was merged, retargeted, rebased or otherwise modified in this check.
