@@ -142,3 +142,9 @@ test('rejects issuer schema CREATE or any unrelated schema privilege change', ()
   }];
   assert.throws(() => compareInventories(before, after), /schema authority beyond the reviewed/);
 });
+
+test('comparator report labels are valid source lines', () => {
+  const source = fs.readFileSync(new URL('./compare-security-definer-authority-inventories.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /\\\\n\s+issuerSchemaGrant/);
+  assert.match(source, /issuerSchemaGrant: 'ghm USAGE only; CREATE denied'/);
+});
