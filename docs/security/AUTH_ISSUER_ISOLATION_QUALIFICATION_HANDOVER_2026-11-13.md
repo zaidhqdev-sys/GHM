@@ -1067,3 +1067,47 @@ Do not use `ghm_app_user` as the replacement Resource API credential. The intend
 The `ghm_app_user → ghm_db_user` membership is provider-granted by `postgres`; an ordinary REVOKE from the Dashboard login has previously failed to remove provider-granted membership. This needs the existing Render support/provider authority path, not an application-side workaround. No role membership or credential was changed during this audit.
 
 This finding is separate from the `ghm_db_user → ghm_migrator/ghm_schema_owner` admin memberships addressed by the migrator redesign. Both provider-granted membership families must be explicitly dispositioned before production identity cutover.
+
+
+## Production SECURITY DEFINER ownership and explicit-grant reconciliation — 2026-11-13 18:18 UTC
+
+A new read-only catalog inventory was taken against production `ghm_db` (PostgreSQL 18). This records the full direct function ACL distribution, not just the effective runtime count.
+
+### Ownership and routine configuration
+
+- 63/63 GHM SECURITY DEFINER routines are owned by `ghm_schema_owner`.
+- Direct function ACL contains no PUBLIC EXECUTE entries.
+- No direct EXECUTE grant is grantable (zero `WITH GRANT OPTION` entries).
+- All 63 routines have explicit function-level `search_path` settings, but only 5/63 include `pg_temp` last. The other 58 remain candidates for the reviewed hardening migration.
+- Function ACL grantors for the non-owner grants are consistently `ghm_schema_owner`.
+
+### Exact non-owner function grants
+
+| Grantee | Explicit SECURITY DEFINER EXECUTE |
+|---|---:|
+| `ghm_runtime` | 46 |
+| `ghm_migrator` | 2 |
+| `ghm_payment_provider` | 2 |
+| `ghm_actor_gateway` | 0 |
+| `ghm_auth_issuer` | Role does not yet exist |
+
+The two migrator functions are the external identity and business external-mapping lookup helpers. The two payment-provider functions are the PayFast payment-result and attempt readers. PayFast remains out of scope and frozen; no payment grants were changed.
+
+The runtime's exact 46 signatures were enumerated and preserved in the query result for comparison with the source stage inventory. The 12/9 signature difference documented above remains; the source migrations explain intended changes, but production migration-ledger evidence is still required before a cutover stage can be asserted.
+
+### Important role-graph clarification
+
+The latest direct membership inventory confirms:
+- `ghm_runtime` is **not** a member of `ghm_db_user` and cannot SET ROLE to it.
+- `ghm_db_user` is a member of `ghm_runtime` with provider-granted ADMIN OPTION, but SET=false and INHERIT=false on that edge.
+- `ghm_app_user` remains a member of `ghm_db_user` with INHERIT=true and SET=true, so the legacy login can still assume the Dashboard-admin role.
+- `ghm_db_user` retains provider-granted ADMIN OPTION memberships over `ghm_actor_gateway`, `ghm_migrator`, `ghm_payment_provider`, `ghm_runtime` and `ghm_schema_owner`.
+- `ghm_migrator → ghm_schema_owner` remains the single direct migrator membership with SET=true, INHERIT=false, ADMIN=false.
+
+This clarifies the direction of the `ghm_runtime` / `ghm_db_user` edge: it does not give the runtime login the ability to assume `ghm_db_user`. It does give the Dashboard role provider-granted authority to administer the runtime role membership. The earlier finding about legacy `ghm_app_user` role escalation remains unchanged.
+
+### Current production gate
+
+The runtime's 46 grants are still the old production state. The Actor Gateway and Authentication Issuer are not yet deployed and do not have their production database identities. The candidate manual issuer cutover must not be applied until service/client routing, production role provisioning, exact migration ledger provenance, backup/rollback and live function-stage reconciliation are all verified.
+
+No production role, membership, grant, function, relation, sequence, search path, migration, data, credential, Render setting, deployment or traffic was changed.
