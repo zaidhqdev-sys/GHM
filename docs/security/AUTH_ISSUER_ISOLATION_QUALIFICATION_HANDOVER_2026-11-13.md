@@ -465,3 +465,72 @@ This run validates the snapshot commit only. The present handover update will cr
 - No new issuer PR has been opened yet.
 - Do not reuse construction-branch CI as proof for the stacked branch. Require fresh exact-head CI, including issuer pre/post inventory comparison and artifact retention.
 - Because the integrated delta includes more than issuer-only changes, inspect the new branch's changed paths and test output before deciding whether to split it into narrower PRs.
+
+
+## Stacked branch exact-head CI PASSED — 2026-11-13 13:38 UTC
+
+### Exact handover-head workflow
+
+- Branch: `construction/auth-issuer-stacked-on-pr272-20261113`
+- Exact tested HEAD: `88fb9a153ed22ba0cd3eccd9c0058ffd3f975506`
+- Workflow: [43434789412](https://github.com/zaidhqdev-sys/GHM/actions/runs/43434789412)
+- Trigger: push
+- Overall workflow: `success`
+- `quality`: `success`, 65/65 steps
+- `web-quality`: `success`, 11/11 steps
+- Main test suite: 994 passed, 0 failed
+- Comparator regression suite: 8 passed, 0 failed
+- No failed workflow steps.
+
+A preceding push run on parent snapshot commit `9d14a6a84e09f8f41d6acbd0231517f6fbd60b5e` also passed 65/65 quality steps and 11/11 web-quality steps. The latest run above validates the actual handover commit `88fb9a1`.
+
+### Integrated issuer qualification
+
+Disposable PostgreSQL 18.7 qualification passed:
+
+- Issuer allow-list: 10 functions.
+- Issuer direct relation privileges: 0.
+- Runtime issuer-function denials: 19.
+- Connect lookup compatibility: preserved.
+- Registration/login/password rehash/concurrent reset/refresh/logout: passed.
+- Recovery reset, replay protection and session revocation: passed.
+- QuoteFlow migration reset: passed.
+- Disposable privilege rollback: passed.
+- Final disposable state: issuer cutover active for post-cutover inventory.
+- Final Resource API runtime auth-function allow-list: 2.
+- Issuer startup ACL verification, global/schema default ACL denials, unexpected direct function grant denials, SECURITY DEFINER owner/search_path checks, and no-PUBLIC-execution checks: passed.
+
+### Exact-head pre/post inventory comparison
+
+- Database: `ghm_disposable_test`, PostgreSQL 18.7.
+- SECURITY DEFINER routines: 106 before and 106 after.
+- Routine identity set: unchanged.
+- Issuer ACL changes observed: 14.
+- Non-issuer function definitions and ACLs: unchanged.
+- Role memberships and role attributes: unchanged.
+- Schema privileges: unchanged except reviewed issuer `ghm` USAGE grant.
+- Issuer schema grant: USAGE only; CREATE denied.
+- Database privileges, column privileges and function default ACLs: unchanged.
+- Non-issuer preliminary findings: unchanged.
+- `unexplainedNonIssuerChanges: 0`.
+- Comparator decision: `STRUCTURAL_COMPARISON_PASSED; AUTH ISSUER ACLS REQUIRE DEDICATED CUTOVER QUALIFICATION`. The dedicated issuer cutover qualification immediately preceding this comparison passed, so the two scoped results together pass the issuer gate. The comparator does not independently grant global approval.
+
+### Evidence artifact for exact handover commit
+
+- Artifact ID: `14043681325`
+- Name: `security-definer-authority-inventory`
+- Run: `43434789412`
+- [Download artifact from GitHub Actions](https://github.com/zaidhqdev-sys/GHM/actions/runs/43434789412/artifacts/14043681325)
+- ZIP SHA-256: `b6a68ac5e8aef77ac517824c95135065793ea4e127919081c81c3d3b40a1938e`
+- Contents: pre-cutover inventory, post-cutover inventory, comparison JSON.
+
+### Remaining gates
+
+This confirms the combined code snapshot on the stacked branch passes its exact-head disposable CI. It does not authorize production or merging.
+
+- PR #272 remains unchanged, open and draft.
+- The stacked integration branch includes 137 source-snapshot file changes plus the preserved PR-only Render handover and current branch/handover updates; it is broader than issuer-only.
+- Next: inspect the complete 137-file PR diff and decide whether to keep as a coordinated integration PR or split independent storage/campaign work without changing tested behavior. Any resulting tree must receive fresh exact-head CI.
+- Production-only inventory, the 58 preliminary whole-database findings, and Project↔Opportunity reconciliation remain outstanding before any production cutover.
+- PayFast remains out of implementation scope; the workflow's commercial settlement check was confined to disposable PostgreSQL and did not contact PayFast.
+- No production DB changes, Render deployments, merges, or PR #272 metadata changes were made.
