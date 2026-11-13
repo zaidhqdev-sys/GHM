@@ -837,3 +837,47 @@ The first CI attempts on intermediate sequential commits failed during TypeScrip
 This is source and disposable-CI work only. It does not remove the existing production postgres-granted memberships, change production roles or ACLs, provision/rotate migration credentials, change Render configuration, or run migrations against `ghm_db`. Production migration-ledger SELECT remains blocked through the currently available read-only Render connection. A separately authorized migration/audit credential path and provider/bootstrap authority plan are still required before production membership cleanup.
 
 No production role, membership, ACL, data, migration ledger, credential, Render environment, deployment, or traffic was changed.
+
+
+## Production SECURITY DEFINER and relation ACL snapshot refreshed — 2026-11-13 14:17 UTC
+
+A new read-only query was run against the Render production database `ghm_db`. The connection reported `session_user=ghm_app_user` and `current_user=ghm_db_user`. The query did not change roles, grants, data or schema.
+
+### Exact production SECURITY DEFINER counts
+
+- 63 SECURITY DEFINER routines exist in schema `ghm`.
+- `ghm_runtime` can EXECUTE 46.
+- `ghm_actor_gateway` can EXECUTE 0.
+- `ghm_auth_issuer` does not exist in the production role catalog; issuer EXECUTE is therefore 0.
+- `ghm_migrator` can EXECUTE 2.
+- PUBLIC EXECUTE is present on 0 routines.
+- Only 5/63 have the exact hardened `search_path=pg_catalog, ghm, pg_temp`; 58/63 do not.
+
+This confirms the production database is still on the pre-Actor-Gateway/pre-Authentication-Issuer contract. The 46 runtime function grants remain a live compatibility/security boundary; do not bulk-revoke them before the gateway/issuer services and application routing are actually deployed.
+
+### Exact production relation ACL counts
+
+- Runtime has privileges on 39 GHM tables/views and 39 sequences.
+- The table ACLs are not blanket write access: the observed direct runtime writes are INSERT on `business`, `business_membership`, and `opportunity`; UPDATE on `opportunity`; and DELETE on `opportunity_capability_requirement`. The other listed relations are SELECT-only.
+- All 39 sequences have USAGE; 10 also have SELECT; none have UPDATE.
+
+The complete per-signature function list and per-relation ACL rows were returned by the read-only catalog queries during this session. These are current production observations, not a proposed grant plan. Each function and relation still needs an explicit source-consumer disposition before any cutover.
+
+### Important sequencing consequence
+
+The production database has no gateway EXECUTE grants and no issuer role, while the source candidate already expects gateway/issuer principals and has manual-only cutover SQL. A source/CI pass cannot be treated as a production deployment or migration. Keep the current Resource API production credential and grants unchanged until:
+1. the exact production ACL inventory is mapped to current application call sites and the approved post-cutover allow-lists;
+2. the issuer/gateway hosting and network boundary is feasible within the existing service/cost constraints;
+3. a separately authorized migrator/audit credential can inspect the migration ledger and execute only the approved migration plan;
+4. the provider/bootstrap role authority and verified backup/rollback path are settled.
+
+No production roles, memberships, ACLs, function definitions, search paths, relation grants, migration ledger rows, credentials, Render settings, deployments, application data or traffic were changed.
+
+
+## Migrator contract test correction — 2026-11-13 14:18 UTC
+
+The exact-head CI run `43441019084` reached the full test suite and reported one failure in the migration source-contract test: two assertions still expected the removed Dashboard-admin membership predicates. The migrator implementation and TypeScript build had passed; 993/994 tests passed.
+
+Those stale assertions were removed from `src/db/migrator-principal-contract.test.ts`. The independent fixture was also updated to the new exact contract (zero members of `ghm_migrator`, one member of `ghm_schema_owner`, and only the `ghm_migrator → ghm_schema_owner` SET path).
+
+The correction is on the same stacked construction branch. The new exact-head workflow is pending; no qualification claim is made until its final quality and web-quality jobs pass.
