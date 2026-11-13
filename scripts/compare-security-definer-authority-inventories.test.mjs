@@ -81,3 +81,64 @@ test('rejects missing or added SECURITY DEFINER routine identities', () => {
     /must not add or remove SECURITY DEFINER routines/,
   );
 });
+
+
+test('accepts only the reviewed issuer ghm schema USAGE grant', () => {
+  const schema = (issuerUsage) => ({
+    schema_name: 'ghm',
+    owner: 'ghm_schema_owner',
+    direct_acl: [
+      { grantee: 'ghm_schema_owner', grantor: 'ghm_schema_owner', privilege: 'USAGE', grantable: false },
+      { grantee: 'ghm_runtime', grantor: 'ghm_schema_owner', privilege: 'USAGE', grantable: false },
+      ...(issuerUsage ? [{ grantee: 'ghm_auth_issuer', grantor: 'ghm_schema_owner', privilege: 'USAGE', grantable: false }] : []),
+    ],
+    effective_schema_privileges: [
+      { role: 'ghm_schema_owner', usage: true, create: true },
+      { role: 'ghm_runtime', usage: true, create: false },
+      { role: 'ghm_auth_issuer', usage: issuerUsage, create: false },
+    ],
+  });
+  const before = report([fn('auth_create_account')]);
+  const after = report([{
+    ...fn('auth_create_account'),
+    direct_acl: [
+      { grantee: 'ghm_schema_owner', privilege: 'EXECUTE', grantable: false },
+      { grantee: 'ghm_auth_issuer', privilege: 'EXECUTE', grantable: false },
+    ],
+    effective_execute_roles: [
+      { role: 'ghm_schema_owner', superuser: false },
+      { role: 'ghm_auth_issuer', superuser: false },
+    ],
+  }]);
+  before.schema_privileges = [schema(false)];
+  after.schema_privileges = [schema(true)];
+  const result = compareInventories(before, after);
+  assert.equal(result.issuerSchemaGrant, 'ghm USAGE only; CREATE denied');
+});
+
+test('rejects issuer schema CREATE or any unrelated schema privilege change', () => {
+  const before = report([fn('auth_create_account')]);
+  const after = report([{
+    ...fn('auth_create_account'),
+    direct_acl: [{ grantee: 'ghm_auth_issuer', privilege: 'EXECUTE', grantable: false }],
+  }]);
+  const base = {
+    schema_name: 'ghm',
+    owner: 'ghm_schema_owner',
+    direct_acl: [{ grantee: 'ghm_schema_owner', grantor: 'ghm_schema_owner', privilege: 'USAGE', grantable: false }],
+    effective_schema_privileges: [
+      { role: 'ghm_schema_owner', usage: true, create: true },
+      { role: 'ghm_auth_issuer', usage: false, create: false },
+    ],
+  };
+  before.schema_privileges = [base];
+  after.schema_privileges = [{
+    ...base,
+    direct_acl: [...base.direct_acl, { grantee: 'ghm_auth_issuer', grantor: 'ghm_schema_owner', privilege: 'CREATE', grantable: false }],
+    effective_schema_privileges: [
+      { role: 'ghm_schema_owner', usage: true, create: true },
+      { role: 'ghm_auth_issuer', usage: true, create: true },
+    ],
+  }];
+  assert.throws(() => compareInventories(before, after), /schema authority beyond the reviewed/);
+});
