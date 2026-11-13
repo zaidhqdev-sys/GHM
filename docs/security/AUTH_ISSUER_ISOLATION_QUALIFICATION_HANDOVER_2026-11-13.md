@@ -356,3 +356,18 @@ Two focused regression tests were added: one accepts only the exact reviewed iss
 - Require the real comparison report to confirm the single expected issuer schema USAGE delta and zero unexplained non-issuer changes.
 - PR #272 remains open, draft and unmerged.
 - Production remains untouched; all database qualification evidence is from disposable local PostgreSQL only.
+
+
+## 2026-11-13 comparator syntax correction
+
+Exact-head run `43338682362` checked out `1ac512bfabad6f54b41b4a74b4a0c1a9c2de025d`. It completed the issuer database principal qualification, pre-cutover authority inventory, exact pre-issuer runtime grant contract, guarded disposable cutover, and issuer lifecycle/runtime-denial qualification successfully. The lifecycle report confirmed issuer allow-list 10, issuer direct relation privileges 0, runtime issuer function denials 19, final runtime auth-function allow-list 2, issuer startup ACL verification, default ACL denials, unexpected direct function grant denials, SECURITY DEFINER owner/search_path and PUBLIC execution checks, and disposable privilege rollback all passed.
+
+The comparator stage failed before executing the inventory comparison because the report-label object contained a literal escaped newline token, producing a JavaScript `SyntaxError: Invalid or unexpected token`. This is a comparator source syntax defect, not a PostgreSQL authority mismatch. No comparison report was produced; inventory comparison remains unqualified.
+
+Corrected the source to use a real line break and added a regression assertion checking the comparator report labels and malformed escaped-newline pattern. New commits:
+- comparator syntax fix: `4802bffd0544bf021ba1819c5351e1d58144efc7`
+- syntax regression test: `40da8b61e91d32be3694deb50145585eff4efdd1`
+
+A fresh exact-head workflow run is required. The next gate is that comparator tests pass, the real pre/post comparison executes, and the report confirms only the reviewed `ghm_auth_issuer` schema USAGE delta with zero unexplained non-issuer changes. Do not weaken the comparator or infer a pass from successful issuer lifecycle tests.
+
+All database changes in this run were confined to disposable PostgreSQL. Production, Render and application traffic remain untouched. PR #272 remains draft and unmerged.
