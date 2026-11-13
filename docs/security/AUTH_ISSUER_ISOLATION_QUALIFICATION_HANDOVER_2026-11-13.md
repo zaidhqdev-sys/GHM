@@ -1614,3 +1614,62 @@ Commit `4c96572c0c01208d67b8e44fc4fbc18eb62c3a8a`, workflow https://github.com/z
 - The prior intermediate duplicate-key failure was corrected; the latest exact-head quality job has progressed past TypeScript build and principal tests.
 
 No production roles, memberships, grants, schema, relations, sequences, functions, data, credentials, Render settings, deployments or traffic were changed. The production query was read-only.
+
+
+## Legacy-role dependency and runtime-membership exception reconciliation — 2026-11-13 18:53 UTC
+
+Reviewed the legacy role qualification harness, remediation audit, role-separation runbook, runtime principal guard and unit tests against the latest production catalog snapshot.
+
+### Canonical application and migration credential boundary — source verified
+
+- Production `src/config.ts` requires `GHM_RUNTIME_DATABASE_URL`; only non-production may fall back to `DATABASE_URL`.
+- `src/db/pool.ts` constructs the application pool from `config.databaseUrl`.
+- `src/server.ts` performs the principal check before the server begins listening.
+- The startup query requires both `session_user` and `current_user` to be `ghm_runtime`, verifies its role attributes and database/schema privileges, and checks role membership topology.
+- The migration runner independently requires `GHM_MIGRATOR_DATABASE_URL`, connects as `ghm_migrator`, validates its exact role/membership contract, and enters `ghm_schema_owner` with explicit SET ROLE.
+- The legacy dependency harness statically excludes executable/config references to `ghm_app_user` and `ghm_db_user`, and dynamically checks configured runtime/migrator credentials and role reachability. It is read-only and does not authorize role mutation.
+
+This corrects the earlier documentation shorthand that described runtime as using `DATABASE_URL`: in production the required variable is `GHM_RUNTIME_DATABASE_URL`; `DATABASE_URL` is only a non-production fallback.
+
+### Runtime's explicit legacy bootstrap-membership exception
+
+The production runtime startup SQL deliberately permits the isolated `ghm_db_user → ghm_runtime` membership edge while rejecting other unexpected memberships. Its runtime-principal unit test explicitly describes this as the isolated Render administrator membership.
+
+Production catalog evidence for that edge:
+- grantor: `ghm_db_user`
+- ADMIN OPTION: true
+- INHERIT OPTION: false
+- SET OPTION: false
+
+This means the legacy administrator can administer the membership edge, but the edge does not currently provide inheritance or SET ROLE capability to `ghm_runtime` from `ghm_db_user`. Do not misstate it as a runtime inherited authority path. It remains an administrative membership dependency that must be resolved through the provider/bootstrap authority path.
+
+The production runtime guard's special case is deliberate compatibility with the current Render-managed bootstrap topology. Do not remove that exception from source until provider-supported cleanup is ready and the exact production role graph has been reconciled; otherwise the next runtime startup would fail closed.
+
+### Existing read-only qualification gates
+
+The legacy dependency contract explicitly requires:
+1. runtime URL resolves to `ghm_runtime`;
+2. migrator URL resolves to `ghm_migrator`;
+3. runtime has no transitive path to migrator or schema owner;
+4. migrator retains its schema-owner SET path;
+5. runtime and migrator are distinct identities;
+6. no executable/config dependency on legacy role names;
+7. auth, recovery and QuoteFlow migration reset use canonical GHM persistence;
+8. no mutation.
+
+The older legacy-role remediation audit also inventories ownership, schema/table/database privileges and transitive role paths, and explicitly says not to mutate until runtime/migration/recovery dependencies, two legacy `public.users` rows and object ownership are reconciled. This remains the correct order. The two legacy public user rows must not be deleted or inferred by email.
+
+### Production versus source status
+
+- The intended source contract for migration topology is stricter than the current production topology: production has the additional `ghm_db_user` membership in `ghm_migrator` and `ghm_schema_owner`, both with ADMIN OPTION.
+- The runtime has its separately documented and source-tested Render bootstrap exception on `ghm_db_user → ghm_runtime`.
+- Provider-granted ADMIN OPTION edges were granted by `postgres`; application credentials are not the correct remediation authority.
+- No evidence in this pass establishes that the deployed process has opened a DB connection as `ghm_runtime`; source/startup guard and configured variable requirement are verified, live application-origin identity remains outstanding.
+
+### Exact-head CI status
+
+Latest documentation head `b456edc163007313e6b72ab1104c2af7b416cf51`, run https://github.com/zaidhqdev-sys/GHM/actions/runs/43486429850:
+- web-quality: passed, 11/11.
+- quality: 40/64 steps passed; currently running the Campaign and directory-review signed actor gateway qualification on disposable PostgreSQL 18. No failures reported at this observation.
+
+No production roles, memberships, grants, schema, relations, sequences, functions, data, credentials, Render settings, deployments or traffic were changed. All production SQL was read-only.
