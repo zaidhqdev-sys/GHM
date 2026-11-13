@@ -121,13 +121,13 @@ async function main() {
   ]);
   const report = compareInventories(JSON.parse(preText), JSON.parse(postText));
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
-  await fs.writeFile(outputPath, JSON.stringify(report, null, 2) + '\\n', 'utf8');
-  process.stdout.write(JSON.stringify({ ...report, output_file: outputPath }, null, 2) + '\\n');
+  await fs.writeFile(outputPath, JSON.stringify(report, null, 2) + '\n', 'utf8');
+  process.stdout.write(JSON.stringify({ ...report, output_file: outputPath }, null, 2) + '\n');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   main().catch((error) => {
-    process.stderr.write(`SECURITY DEFINER INVENTORY COMPARISON FAILED: ${error instanceof Error ? error.message : String(error)}\\n`);
+    process.stderr.write(`SECURITY DEFINER INVENTORY COMPARISON FAILED: ${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;
   });
 }
