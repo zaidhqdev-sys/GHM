@@ -2243,3 +2243,88 @@ The operator-provided current service inventory points at a different resource/d
 
 PR #275 merged contract was re-read: production requires `GHM_RUNTIME_DATABASE_URL`; `DATABASE_URL` is a non-production fallback only; startup fails closed unless `session_user=current_user=ghm_runtime` and the complete least-privilege verifier passes. No deployment is permitted until the production-target runtime URL is provisioned.
 
+
+
+## 2026-11-14 01:45 SAST — full GHM-Internal-Runtime environment reconciliation
+
+The operator correctly identified that this is a broader sandbox-to-production environment drift issue, not only a missing runtime URL. The complete variable inventory supplied on 2026-11-13 has been reconciled against current `main` source, `.env.example`, the production configuration contract, the isolated issuer ADR/runbook, and the PayFast isolation ADR.
+
+No secret values are reproduced here.
+
+### A. Database target drift — critical
+
+| Current variable | Supplied target/value | Assessment / intended handling |
+|---|---|---|
+| `DATABASE_URL` | `ghm_runtime` on sandbox resource `dpg-db4416vlk1mc73eocug0-a`, DB `ghm_payfast_sandbox_db` | Wrong target for the production Resource API. Do not copy or deploy. Preserve temporarily until a controlled config change replaces its role in the new contract. |
+| `GHM_RUNTIME_DATABASE_URL` | Absent | Mandatory in production per merged PR #275 and current `src/config.ts`. Must target production resource `dpg-dag0sdtbedkc7389vi2g-a`, DB `ghm_db`, login `ghm_runtime`. |
+| `GHM_MIGRATOR_DATABASE_URL` | `ghm_migrator` on sandbox resource, DB `ghm_payfast_sandbox_db` | Wrong target for production migrations. Must not be used for Resource API. A production migrator connection is a separate credential and must be provisioned/verified through the controlled migration path; do not overwrite it blindly. |
+| `GHM_MIGRATION_DATABASE_HOST` / `GHM_MIGRATION_DATABASE_NAME` | Sandbox host/name | Sandbox metadata, not present in current `.env.example` or the Resource API config contract. Determine whether any live process/script consumes them before removal. |
+| `GHM_NONPRODUCTION_DATABASE_NAME` / `GHM_QUALIFICATION_DATABASE_NAME` | Sandbox DB name | Non-production/qualification metadata, not part of the current Resource API config contract. Do not point these at production. Determine whether consumed by a live process before removal. |
+
+The current production database resource was independently reconfirmed as Render `ghm-db`, ID `dpg-dag0sdtbedkc7389vi2g-a`, database `ghm_db`, PostgreSQL 18. The service-supplied database host is a different Render resource and database. Do not revive or reuse the suspended sandbox.
+
+### B. Authentication and signing material — cutover-dependent
+
+| Current variable | Supplied state | Assessment / intended handling |
+|---|---|---|
+| `GHM_JWT_ES256_KID` | `ghm-sandbox-20261012-01` | Sandbox-labelled key ID remains in the current service. Do not rename or rotate in isolation: existing JWTs and client verifiers depend on the key ID/public key relationship. Plan key-ID transition with issuer cutover and overlap/previous-key support. |
+| `GHM_JWT_ES256_PRIVATE_KEY_PEM` | Present (redacted) | Issuer-only secret under the approved isolated issuer ADR. It must ultimately exist only in the Authentication Issuer service, not ordinary Resource API or Actor Gateway. Do not remove from current live Resource API until issuer service, credentials, routing and client compatibility are deployed and verified. |
+| `GHM_JWT_ES256_PUBLIC_KEY_PEM` | Present (redacted) | Public verification material is expected on Resource API and Actor Gateway; retain the verified public key and matching KID for verifier use. |
+| `GHM_AUTH_TOKEN_PEPPER` | Present (redacted) | Refresh-token/issuer secret under the isolated issuer ADR; ultimately issuer-only. Do not remove before issuer cutover and confirmation that no Resource API path still needs it. |
+| `GHM_WEB_AUTH_ALLOWED_ORIGINS` | One Connect preview deployment URL | Not part of current Resource API `src/config.ts` or `.env.example` configuration contract. It is preview-scoped rather than the canonical Connect production origin. Trace its actual consumer before changing/removing; do not assume it configures `CORS_ORIGINS`. |
+| `INVITE_CODE` | Present (redacted) | Required by current Resource API config. Keep secret; rotate only through a deliberate invite-code lifecycle decision, not as part of database target correction. |
+
+The current production Resource API has not deployed PR #275 or the isolated Authentication Issuer cutover. The issuer cutover runbook explicitly says not to remove issuer-only secrets or revoke old auth paths until issuer service readiness, routing and client compatibility are verified. The present private key/pepper placement is therefore a known transitional-state issue, not an instruction to delete them immediately.
+
+### C. Origins and browser access — canonical-origin review required
+
+| Variable | Supplied state | Assessment |
+|---|---|---|
+| `CORS_ORIGINS` | localhost:5173; `ghm-cu1.pages.dev`; one Cloudflare Pages deployment URL | Contains a local development origin and Cloudflare Pages origins. Validate which Pages origin is the canonical deployed GHM frontend and whether the deployment-specific URL is still required. Do not add wildcard origins. |
+| `GHM_WEB_AUTH_ALLOWED_ORIGINS` | Connect Preview URL only | Preview-only value; does not include the canonical Connect production origin in the supplied list. Its consumer must be traced before deciding whether it belongs on this service or a different web-auth/BFF component. |
+
+Current `src/config.ts` parses `CORS_ORIGINS` as an explicit comma-separated list of absolute HTTP(S) origins, rejects wildcard and path-bearing entries, and `src/http/app.ts` applies it to the Resource API CORS middleware. The Connect preview allow-list must not be confused with this Resource API CORS setting.
+
+### D. PayFast — preserve the pause; isolate from core runtime
+
+| Variable group | Supplied state | Assessment |
+|---|---|---|
+| `PAYFAST_ENVIRONMENT` | `sandbox` | Sandbox mode remains configured. Sandbox service/database is unavailable/retired for this work. Do not switch to `live`. |
+| Merchant ID/key and passphrase | Sandbox merchant credentials present; passphrase blank | Keep out of source and handovers. Do not rotate, validate, or repurpose while PayFast is paused. |
+| Return/cancel URLs | Connect production URL paths | URLs alone do not make the payment environment production-ready. |
+| Notify URL | Old `ghm-payfast-sandbox-runtime` callback URL | Stale callback destination; points to the retired sandbox service. Do not redirect to production until PayFast sandbox access returns and the separate provider callback service is explicitly qualified and approved. |
+
+Current Resource API source still reads `PAYFAST_*` configuration for checkout preparation. The separate callback process requires `PAYFAST_CALLBACK_DATABASE_URL` and `ghm_payment_provider`; its credential must never be put on the ordinary Resource API. The PayFast isolation ADR confirms this service boundary. Keep payment activation frozen and do not use the sandbox merchant settings for live processing.
+
+### E. Storage and general runtime — mostly production-aligned
+
+| Variable | Supplied state | Assessment |
+|---|---|---|
+| `STORAGE_PROVIDER` | `s3` | Matches current provider contract. |
+| `STORAGE_ENDPOINT` | Cloudflare R2 HTTPS endpoint | Production-shaped configuration; retain pending normal storage verification. |
+| `STORAGE_REGION` | `auto` | Correct for Cloudflare R2. |
+| `STORAGE_BUCKET` | `zaid-ghm-production` | Explicitly production-named bucket; do not change as part of database reconciliation. |
+| `STORAGE_ACCESS_KEY_ID` / `STORAGE_SECRET_ACCESS_KEY` | Present (redacted) | Keep secret; do not disclose or rotate without evidence. |
+| `STORAGE_FORCE_PATH_STYLE` | `false` | Consistent with the supplied R2 configuration; current storage config accepts the boolean. |
+| `STORAGE_UPLOAD_GRANT_TTL_SECONDS` | 900 | Matches current source variable name and default contract. |
+| `STORAGE_DOWNLOAD_GRANT_MAX_TTL_SECONDS` | 3600 | Matches current source variable name and default contract. |
+| `DATABASE_SSL` | `true` | Correct production requirement. |
+| `NODE_ENV` | `production` | Correct for the production service. |
+
+### F. Safe reconciliation order — no changes made
+
+1. **Do not bulk-replace the environment.** Preserve the supplied inventory as the baseline.
+2. First establish the production Resource API URL for `ghm_runtime` against `ghm_db`; verify its target metadata without exposing the password.
+3. Establish the production migrator URL independently for `ghm_migrator`; keep it separate from the runtime URL and do not run migrations as part of this environment correction.
+4. Add the required `GHM_RUNTIME_DATABASE_URL` and keep auto-deploy OFF. Do not delete or repoint old `DATABASE_URL` until the deployed code and rollback plan are settled.
+5. Resolve canonical GHM frontend and Connect origins against their actual production deployments, then update `CORS_ORIGINS` and any separately consumed web-auth allow-list only with proven origins.
+6. Keep PayFast variables frozen and explicitly non-live. Do not point callbacks at a production provider service or enable payment processing.
+7. Plan Authentication Issuer provisioning/cutover separately. Only after it is live and client-compatible should issuer private key/pepper be removed from Resource API and the sandbox-labelled KID transition be performed.
+8. Remove obsolete sandbox metadata variables only after a repository/runtime consumer audit proves they are unused. Do not point qualification variables at production.
+9. After configuration changes, manually deploy an exact reviewed commit with auto-deploy still OFF, then verify database identity, health, CORS, storage and auth smoke tests. PayFast remains out of scope.
+
+### Overall conclusion
+
+The environment has mixed state: production application/storage settings coexist with sandbox database endpoints, sandbox-labelled signing identity, preview-only web-auth origin and a retired PayFast callback URL. It is not safe to treat the service as production-configured merely because `NODE_ENV=production`, `DATABASE_SSL=true`, or the bucket name contains `production`.
+
+This handover is an evidence and sequencing update only. No Render environment variable, secret, credential, service, deployment, database role, membership, grant, schema, data, or traffic was changed. Render auto-deploy remains OFF. The suspended sandbox and PayFast remain excluded.
