@@ -307,3 +307,52 @@ Exact-head workflow run 43336223388 checked out `4a9fce1f0bf2f38d94815d370d3c58e
 Correction committed in `7259de499cee34ccff476886f385020befe31146` (`fix(security): capture issuer baseline after all qualifications`): moved the baseline inventory from immediately after migrations to immediately before the exact pre-issuer grants/cutover sequence, after all other qualification work. This ensures the before/after comparison isolates only the issuer cutover.
 
 Next gate: wait for and inspect exact-head CI on the corrected commit. Require all comparator tests and the real comparison to pass; inspect the generated comparison JSON and artifact. Expected structural result is 106 routines on both sides, identical identity set, issuer ACL changes observed, and zero unexplained non-issuer changes. No production database, Render service, credentials, deployment or merge was touched.
+
+
+## 2026-11-13 authority comparison diagnosis and correction
+
+### Exact evidence from failed run 43337128977
+
+The failed run checked out construction commit `7259de499cee34ccff476886f385020befe31146`. Its quality job reached the real inventory comparison after the dedicated issuer cutover qualification and post-cutover inventory both passed. The comparator's five tests passed; the real comparison then failed because it treated every schema privilege as immutable.
+
+Downloaded and inspected artifact `13997189067` (`security-definer-authority-inventory`), which contains both pre- and post-cutover JSON reports. Both reports identify:
+- Database: `ghm_disposable_test`
+- PostgreSQL: `18.7`
+- Audit connection: `session_user=ghm_migrator`, `current_user=ghm_migrator`
+
+The inventory proves the exact expected change:
+- Pre-cutover `ghm` schema direct ACL had no `ghm_auth_issuer` entry; effective issuer privilege was `USAGE=false, CREATE=false`.
+- Post-cutover `ghm` schema direct ACL has exactly `ghm_auth_issuer / USAGE / grantable=false`, granted by `ghm_schema_owner`; effective issuer privilege is `USAGE=true, CREATE=false`.
+- Every other direct and effective `ghm` schema privilege is identical.
+- The `public` schema ACL and effective privileges are identical in the two actual JSON reports.
+- Role memberships, role attributes, database privileges, column privileges and function default ACLs are identical.
+- The issuer startup/lifecycle verifier passed in this run, consistent with the post-cutover grant.
+
+This corrects the earlier interpretation of the truncated CI diff: the cutover did not remove issuer USAGE, and there is no unexplained `public` schema change. The real comparator rejected the intended, explicitly reviewed `ghm_auth_issuer` schema USAGE grant because it compared the whole `schema_privileges` section as if the issuer grant were forbidden.
+
+### Comparator correction committed
+
+Changed:
+- `scripts/compare-security-definer-authority-inventories.mjs`
+- `scripts/compare-security-definer-authority-inventories.test.mjs`
+
+Commits:
+- Comparator: `96bfd6c11a2c75614a1e29696119cbb5e98a2a47`
+- Regression tests: `486c8a9349191b29f1456f2ab16d6418ad124d0e`
+
+The comparator now:
+1. Continues to require role memberships, role attributes, database privileges, column privileges and default function ACLs to remain byte-for-byte equivalent after canonicalization.
+2. Normalizes only the `ghm_auth_issuer` entry in the `ghm` schema privilege section, and requires every other schema ACL/effective privilege to remain unchanged.
+3. Requires the pre-cutover inventory to have no direct issuer `ghm` USAGE grant and effective issuer `USAGE=false, CREATE=false`.
+4. Requires the post-cutover inventory to have exactly one non-grantable direct issuer `USAGE` grant from `ghm_schema_owner`, with effective `USAGE=true, CREATE=false`.
+5. Rejects issuer schema CREATE and all unrelated schema privilege changes.
+
+Two focused regression tests were added: one accepts only the exact reviewed issuer schema USAGE delta; the other rejects issuer CREATE or any unrelated schema privilege change. Existing strict comparisons and non-issuer routine checks remain intact.
+
+### Current state and next validation
+
+- Current construction branch HEAD: `486c8a9349191b29f1456f2ab16d6418ad124d0e`.
+- Fresh exact-head CI has not yet been observed for these comparator changes. Do not claim the comparator correction or full qualification has passed until a new run checks out this exact HEAD and completes both quality and web-quality.
+- Require the real comparison report to confirm the single expected issuer schema USAGE delta and zero unexplained non-issuer changes.
+- PR #272 remains open, draft and unmerged.
+- Production remains untouched; all database qualification evidence is from disposable local PostgreSQL only.
