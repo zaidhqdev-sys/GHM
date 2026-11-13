@@ -2417,3 +2417,17 @@ The source-level audit shows the current environment is not simply missing a few
 Therefore the correct next action is **not** to bulk-edit Render variables or deploy PR #276. First resolve the hosting/topology constraint without weakening service isolation. Until then, preserve the current deployed mainline and its transitional auth secrets, keep auto-deploy OFF, and do not deploy the stacked candidate. The runtime database URL remains a separate required correction, but by itself it does not make the full candidate deployable.
 
 No Render variables, secrets, services, deployments, database roles, memberships, grants, schema, data or traffic were changed by this source-level audit.
+
+
+### 8. ZAID Connect cross-origin caller audit — CORS origin must be reconciled
+
+A read-only source inspection of `zaidhqdev-sys/zaid-connect` mainline confirms two GHM access modes:
+
+- The legacy bearer-token client calls `https://ghm-internal-runtime.onrender.com` directly from the browser. Such browser requests require the canonical Connect production origin in GHM Resource API `CORS_ORIGINS`.
+- The same-origin browser-auth/proxy path uses Vercel `/api/ghm/*`. The proxy requires `CONNECT_WEB_ORIGIN` and `GHM_INTERNAL_RUNTIME_URL`; it forwards the configured canonical Connect origin as the upstream `Origin` header. The GHM Resource API must also allow that exact canonical origin when this path is used.
+- The proxy supports explicitly constrained same-origin Vercel preview hosts; it does not make arbitrary preview origins trusted.
+- `GHM_WEB_AUTH_ALLOWED_ORIGINS` is not the control used by this Vercel proxy implementation. The proxy uses its own `CONNECT_WEB_ORIGIN` and validates preview origins from the request host. The variable on the supplied GHM service has no GHM source consumer identified.
+
+The operator-supplied GHM `CORS_ORIGINS` contains localhost and Cloudflare Pages origins but does not include the canonical Connect production origin `https://zaid-connect.vercel.app`. Therefore the supplied list is not yet demonstrably complete for Connect. Do not remove/add origins blindly: first establish which Connect auth/API mode is enabled in the production Vercel deployment and retain the exact canonical origin required by its active caller. Preview origins should remain narrowly scoped and temporary.
+
+Vercel project environment metadata could not be retrieved through the connected Vercel project lookup (project not found under the available scope), so the current value of `VITE_GHM_WEB_AUTH_ENABLED` and the Vercel `CONNECT_WEB_ORIGIN` were not independently verified. No Vercel variables were read or changed.
