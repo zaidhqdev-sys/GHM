@@ -70,7 +70,6 @@ export function compareInventories(pre, post) {
   const stableSections = [
     'role_memberships',
     'role_attributes',
-    'schema_privileges',
     'database_privileges',
     'column_privileges',
     'function_default_acls',
@@ -79,6 +78,47 @@ export function compareInventories(pre, post) {
     assert.equal(canonical(pre[section] ?? []), canonical(post[section] ?? []),
       `issuer cutover unexpectedly changed ${section}`);
   }
+
+  // The reviewed issuer cutover intentionally adds only USAGE on schema ghm.
+  // Compare every other schema ACL/effective privilege unchanged, then prove
+  // the exact issuer grant is absent before and present after the cutover.
+  const normalizeSchemaPrivileges = (report) => (report.schema_privileges ?? []).map((schema) => {
+    if (schema.schema_name !== 'ghm') return schema;
+    return {
+      ...schema,
+      direct_acl: (schema.direct_acl ?? []).filter((entry) =>
+        !(entry.grantee === 'ghm_auth_issuer' && entry.privilege === 'USAGE')),
+      effective_schema_privileges: (schema.effective_schema_privileges ?? []).filter((entry) =>
+        entry.role !== 'ghm_auth_issuer'),
+    };
+  });
+  assert.equal(canonical(normalizeSchemaPrivileges(pre)), canonical(normalizeSchemaPrivileges(post)),
+    'issuer cutover changed schema authority beyond the reviewed ghm_auth_issuer USAGE grant');
+
+  const ghmSchema = (report) => (report.schema_privileges ?? [])
+    .find((schema) => schema.schema_name === 'ghm');
+  const beforeGhm = ghmSchema(pre);
+  const afterGhm = ghmSchema(post);
+  assert.ok(beforeGhm && afterGhm, 'pre/post inventories must both contain the ghm schema');
+  const issuerUsageAcl = (schema) => (schema.direct_acl ?? []).filter((entry) =>
+    entry.grantee === 'ghm_auth_issuer' && entry.privilege === 'USAGE');
+  assert.deepEqual(issuerUsageAcl(beforeGhm), [],
+    'issuer must not already have a direct ghm schema USAGE grant before cutover');
+  assert.deepEqual(issuerUsageAcl(afterGhm), [{
+    grantee: 'ghm_auth_issuer',
+    grantor: 'ghm_schema_owner',
+    privilege: 'USAGE',
+    grantable: false,
+  }], 'cutover must add exactly the non-grantable ghm schema USAGE grant to the issuer');
+  const beforeIssuerSchema = (beforeGhm.effective_schema_privileges ?? [])
+    .find((entry) => entry.role === 'ghm_auth_issuer');
+  const afterIssuerSchema = (afterGhm.effective_schema_privileges ?? [])
+    .find((entry) => entry.role === 'ghm_auth_issuer');
+  assert.deepEqual(beforeIssuerSchema, { role: 'ghm_auth_issuer', usage: false, create: false },
+    'issuer must not have effective ghm schema access before cutover');
+  assert.deepEqual(afterIssuerSchema, { role: 'ghm_auth_issuer', usage: true, create: false },
+    'issuer must have effective ghm schema USAGE and no CREATE after cutover');
+
 
   const nonIssuerFindings = (report) => (report.preliminary_findings ?? [])
     .filter((finding) => !String(finding.signature ?? '').startsWith('ghm.auth_'));
@@ -97,7 +137,7 @@ export function compareInventories(pre, post) {
     nonIssuerFunctionDefinitionsAndAcls: 'unchanged',
     roleMemberships: 'unchanged',
     roleAttributes: 'unchanged',
-    schemaPrivileges: 'unchanged',
+    schemaPrivileges: 'unchanged except reviewed ghm_auth_issuer USAGE grant',\n    issuerSchemaGrant: 'ghm USAGE only; CREATE denied',
     databasePrivileges: 'unchanged',
     columnPrivileges: 'unchanged',
     functionDefaultAcls: 'unchanged',
