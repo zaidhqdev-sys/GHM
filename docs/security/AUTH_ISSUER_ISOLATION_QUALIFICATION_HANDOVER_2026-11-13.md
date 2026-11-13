@@ -1400,3 +1400,80 @@ The documentation/source-audit commit `a1dc2ff645672b143048bb647265ff6749545a74`
 ### Production safety
 
 All production queries in this investigation were catalog or aggregate read-only SELECTs. No production grants, roles, memberships, tables, sequences, functions, data, credentials, Render settings, deployments or traffic were changed.
+
+
+## Production role-membership reconciliation — read-only snapshot — 2026-11-13 18:50 UTC
+
+A fresh read-only catalog snapshot was taken against Render production database `ghm_db`. This materially confirms why the migration-principal contract must be reconciled before any production migration attempt.
+
+### Important interpretation correction
+
+The Render query connection reported `session_user = ghm_app_user` and `current_user = ghm_db_user`. This is the identity of the administrative/query connection used for this catalog inspection. It is **not evidence that the deployed GHM application pool is connected as either role**. The application source explicitly uses `GHM_RUNTIME_DATABASE_URL` in production, and `src/db/runtime-principal.ts` requires both session_user and current_user to be `ghm_runtime`. The actual runtime connection identity must be verified separately through its own startup evidence or a safe application-origin identity probe.
+
+### Production role attributes
+
+| Role | LOGIN | INHERIT | CREATEDB | CREATEROLE | SUPERUSER | BYPASSRLS |
+|---|---:|---:|---:|---:|---:|---:|
+| ghm_db_user | yes | yes | yes | yes | no | no |
+| ghm_app_user | yes | yes | no | no | no | no |
+| ghm_migrator | yes | no | no | no | no | no |
+| ghm_schema_owner | no | no | no | no | no | no |
+| ghm_runtime | yes | no | no | no | no | no |
+| ghm_actor_gateway | yes | no | no | no | no | no |
+
+The `ghm_schema_owner` role owns schema `ghm` and has database CREATE. This is intentional for the controlled migration `SET ROLE` path; it is NOLOGIN and has no elevated role attributes.
+
+### Membership edges and options observed
+
+| Member | Granted role | ADMIN OPTION | INHERIT OPTION | SET OPTION |
+|---|---|---:|---:|---:|
+| ghm_app_user | ghm_db_user | no | yes | yes |
+| ghm_db_user | ghm_migrator | yes | no | no |
+| ghm_db_user | ghm_schema_owner | yes | no | no |
+| ghm_db_user | ghm_actor_gateway | yes | no | no |
+| ghm_db_user | ghm_runtime | yes | no | no |
+| ghm_db_user | ghm_payment_provider | yes | no | no |
+| ghm_migrator | ghm_schema_owner | no | no | yes |
+
+Also present: membership of `ghm_app_user` and `ghm_db_user` in PostgreSQL's `pg_read_all_stats` and `pg_signal_backend` roles. The exact grantor for these edges should be captured in the next catalog pass.
+
+### Consequences for the migration-principal assertion
+
+The current `assertMigratorDatabaseIdentity` contract requires:
+- exactly one direct membership for `ghm_migrator`;
+- zero members of `ghm_migrator`;
+- exactly one member of `ghm_schema_owner` (the migrator);
+- zero direct memberships granted to `ghm_schema_owner`;
+- exactly the non-inheritable, SET-only migrator → schema-owner membership.
+
+The observed production membership graph violates at least two of those required invariants:
+- `ghm_db_user` is an additional member of `ghm_migrator`;
+- `ghm_db_user` is an additional member of `ghm_schema_owner`.
+
+Both edges carry ADMIN OPTION, even though INHERIT and SET are false. Thus the production graph is inconsistent with the exact least-privilege migrator contract, and `ghm_db_user` can administer these memberships. Its CREATEROLE and CREATEDB attributes make it a high-authority bootstrap/admin identity. This is a role-graph issue, not evidence that the GHM runtime process is using this principal.
+
+The `ghm_db_user → ghm_actor_gateway`, `ghm_runtime`, and `ghm_payment_provider` ADMIN OPTION edges are also unnecessary for ordinary application operation and must be included in the managed-role ownership/support remediation plan. Do not revoke them through the application connection: previous attempts showed that the managed/admin membership is not removable by the current app connection and Render support has already been engaged.
+
+### Existing source contract is directionally correct
+
+`src/db/migrate.ts` connects with the dedicated `GHM_MIGRATOR_DATABASE_URL`, checks the complete migrator/schema-owner membership contract, then performs `SET ROLE ghm_schema_owner` and verifies `current_user = ghm_schema_owner` and `session_user = ghm_migrator` before applying migrations.
+
+`src/config.ts` requires `GHM_RUNTIME_DATABASE_URL` for production. `src/server.ts` calls `assertRuntimeDatabaseIdentity`, which requires the runtime login and effective user both to be `ghm_runtime`. Preserve this separation.
+
+### Required remediation path
+
+1. Confirm the deployed migration job's actual connection identity and whether the exact principal assertion currently blocks a production migration attempt; do not trigger a production migration merely to test it.
+2. Capture membership grantors and provider-managed ownership metadata for all listed edges.
+3. Obtain the managed database provider's supported procedure to remove the legacy `ghm_db_user` ADMIN OPTION edges without weakening Render's control plane or breaking the existing migration SET ROLE path.
+4. Ensure the final graph contains only `ghm_migrator → ghm_schema_owner` (NOINHERIT, SET allowed, ADMIN disallowed) for migration authority. Remove legacy `ghm_db_user` membership edges only through a supported controlled operation.
+5. Qualify this exact graph in disposable PostgreSQL 18, including negative tests for admin-option membership, unexpected members and unexpected role attributes.
+6. Separately verify the deployed application's real `ghm_runtime` session identity; do not infer it from the administrative Render query session.
+
+### Current CI status at checkpoint
+
+For commit `c1485367fbb98af2a52e7e21936022febd92fb43`:
+- web-quality: 11/11 passed.
+- quality: 39/64 steps passed and the test suite was running; no failures were reported at this observation.
+- Workflow: https://github.com/zaidhqdev-sys/GHM/actions/runs/43484112233
+
+No production role, membership, grant, schema, relation, sequence, function, data, credential, Render setting, deployment or traffic was changed by this investigation. The catalog work consisted only of read-only SELECTs.
