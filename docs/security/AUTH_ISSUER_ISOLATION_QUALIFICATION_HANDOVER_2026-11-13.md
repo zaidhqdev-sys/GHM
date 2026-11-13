@@ -117,3 +117,47 @@ Do not infer issuer qualification success from the green web-quality job or the 
 A subsequent poll of the same retry shows 48 successful quality steps, zero failed steps, and step 49 (Trust Score signed gateway cutover) active. The issuer-specific steps 56–60 remain pending. Web quality remains passed. The workflow has not completed; do not interpret these intermediate results as issuer qualification success.
 
 Two existing workflow artifacts named `security-definer-authority-inventory` were listed by GitHub, created at 23:39:13Z and 23:49:14Z. Their timestamps precede completion of the retry's issuer-specific steps, so they are not accepted as evidence of the retry's post-cutover inventory. Confirm provenance and exact contents after the run completes; require a newly produced post-cutover artifact from step 59/60.
+
+
+## 2026-11-13 retry failure — root cause confirmed
+
+The retried quality job `131582323714` has completed and failed at step 58, `Qualify isolated auth issuer lifecycle and runtime denials on disposable PostgreSQL`.
+
+### Critical provenance correction
+
+The retry did **not** test the latest construction branch. Its checkout log records:
+- Branch: `construction/auth-issuer-isolation-20261112`
+- Checked-out commit: `2fe38cb56ca560cb57d145d8bcc37a574ac15a7a`
+
+This is the original failing commit, before the subsequent branch corrections and handover commits. Therefore rerunning that old job cannot validate the fixes.
+
+### Exact failure source now identified
+
+The PostgreSQL log pinpoints the SQL statement:
+`p.proname LIKE 'auth\\_%' ESCAPE '\\\\'`.
+
+Comparing the exact checked-out commit `2fe38cb` against the current construction branch source identifies the stale expressions in `scripts/qualify-auth-issuer-cutover.mjs`:
+- Original line 389: issuer startup ACL check.
+- Original line 771: final runtime auth-function allow-list check.
+
+The current construction branch version of that script (blob SHA `3f94dca1a958e970ca1aca67e39a4e8cc7fd99a9`) replaces **both** with the equivalent safe predicate `left(p.proname, 5) = 'auth_'`. It contains no remaining `LIKE` or `ESCAPE` expressions; the same six auth-prefix checks use `left(...)`.
+
+The current helper `src/auth-issuer/database-privileges.ts` also uses `left(p.proname, 5) = 'auth_'`. The earlier source fix in commit `ecbcc3f` to the principal qualification script was not the actual fix for this step-58 SQL failure.
+
+### Step results for old-SHA retry
+
+- Step 56 exact pre-issuer Resource API grants: passed.
+- Step 57 guarded manual cutover on disposable PostgreSQL: passed.
+- Step 58 issuer lifecycle/runtime denials: failed with PostgreSQL SQLSTATE 22025 (invalid escape string).
+- Step 59 post-cutover SECURITY DEFINER inventory: skipped.
+- Step 60 artifact-preservation step: success, but does not prove a post-cutover inventory was produced.
+- Web quality: passed.
+- Overall quality: failed.
+
+The three same-named inventory artifacts in this run are not accepted as post-cutover evidence. In particular, step 59 was skipped.
+
+### Required next action
+
+Trigger a **new workflow run against the current construction branch HEAD**, not a rerun of the old job. Confirm the new run's checkout SHA is the current branch HEAD and that it includes the two safe predicates in the cutover script. Then require steps 56–60 to complete, including an executed step 59 and a newly produced post-cutover inventory artifact. Compare that artifact with the preserved pre-cutover inventory before considering the issuer qualification complete.
+
+No production changes are implicated: the failing run used `ghm_disposable_test` only. Production remains untouched and the integration PR remains draft/unmerged.
