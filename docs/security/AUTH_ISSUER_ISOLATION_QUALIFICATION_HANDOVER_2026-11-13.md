@@ -2728,3 +2728,47 @@ This is an architecture feasibility result, not an authorization to change produ
 ### No-change statement
 
 This checkpoint consisted of source inspection and official platform documentation research. No code, package manifests, lockfiles, Worker, Hyperdrive, Cloudflare setting, Render setting, database role, credential, migration, DNS record, deployment or production traffic was changed.
+
+
+## 2026-11-14 02:45 SAST — owner $0 approval recorded; current Cloudflare quota verified
+
+The operator explicitly approved proceeding with Cloudflare only on the condition that it costs **$0 until the company generates revenue**. This authorizes research and local/disposable qualification only. It does not authorize paid-plan activation, billable usage, production DB access, production secret transfer, DNS changes or production traffic cutover.
+
+### Official Cloudflare pricing/limits rechecked
+
+As of 2026-11-14:
+- Workers Free: 100,000 requests/day across the account, 10 ms CPU/request, 128 MB memory. On limit exhaustion, Workers terminate/return limit errors; no automatic upgrade is authorized.
+- Hyperdrive Free: 100,000 SQL statements/day. Exceeding the Free limit causes further Hyperdrive operations to fail; it does not require enabling Workers Paid.
+- Workers Paid minimum: $5/month. Explicitly prohibited under the current owner instruction.
+- Cloudflare Containers: the current official developer documentation says Free = N/A and Containers compute is included with Workers Paid ($5/month). The general Cloudflare marketing pricing page has a conflicting Free allowance summary; for this implementation decision, use the product-specific Containers developer pricing page and treat Containers as unavailable at $0. No Containers deployment.
+- Cloudflare Free Worker route behavior for security-critical routes must be fail-closed on quota exhaustion. Never configure fail-open for authentication or Actor Gateway routes.
+
+References:
+- https://developers.cloudflare.com/workers/platform/limits/
+- https://developers.cloudflare.com/workers/platform/pricing/
+- https://developers.cloudflare.com/hyperdrive/platform/pricing/
+- https://developers.cloudflare.com/containers/platform/pricing/
+
+### Confirmed code-level constraints
+
+The exact construction branch source was inspected:
+- src/auth/foundation/password.ts uses native argon2.
+- Parameters are fixed at 65,536 KiB memory (64 MiB), time cost 3, parallelism 1, 32-byte output, 16-byte salt.
+- package.json currently pins argon2@^0.41.1 and pg@^8.12.0.
+- src/auth-issuer/server.ts and src/actor-gateway/server.ts are Node HTTP servers which instantiate pg.Pool, perform database principal/privilege checks at startup, and call server.listen. They cannot be copied unchanged into a Worker module.
+- The Worker-compatible gateway path requires an explicit Worker request adapter and Hyperdrive-aware database pool integration. Cloudflare's current Hyperdrive Node-postgres guidance recommends pg@8.16.3+; the existing pg@^8.12.0 dependency is below that documented recommendation.
+
+### Implementation sequence approved under $0 guardrail
+
+1. **Local Actor Gateway Worker adapter prototype:** create a separate Worker entry point/package boundary; preserve existing gateway app/guards, use a Worker request lifecycle, and bind a disposable PostgreSQL database through local development configuration. No Cloudflare account changes or production DB credentials.
+2. **Actor Gateway qualification:** run existing gateway identity/privilege/assertion/replay/storage test suite plus Worker-runtime compatibility and Hyperdrive adapter tests. Only proceed if all pass.
+3. **Authentication Issuer feasibility spike:** test a Workers-compatible Argon2id implementation against existing PHC hashes and exact 64 MiB/t=3/p=1 settings. Measure CPU under Workers Free limit. If any required auth path exceeds 10 ms CPU, stop; do not lower the password policy.
+4. **Free-tier Cloudflare setup:** only after local prototype passes, ask the operator to verify their Cloudflare account is on Workers Free and has no paid add-ons/upgrade requirement. Give exact step-by-step dashboard instructions. Do not deploy until the account and billing state are confirmed.
+5. **Production identity provisioning and connection:** separate authorization step. Create/use only the dedicated production DB roles and Hyperdrive credentials after the Worker is qualified and the owner approves a specific cutover. Never place administrator, runtime, migrator, issuer or gateway credentials in the wrong Worker.
+6. **Gradual production rollout:** not yet authorized; requires a new production cutover runbook, rollback procedure, readiness tests, origin/route plan, and exact CI qualification.
+
+### Immediate next work
+
+Begin with the local Actor Gateway Worker adapter design/prototype. Keep Authentication Issuer blocked until exact Argon2id CPU compatibility is proven. The current GHM Resource API, Render service, database, keys, users, traffic and PayFast remain unchanged.
+
+No Cloudflare account, billing plan, Worker, Hyperdrive, secret, DNS record or production connection was changed in this checkpoint.
