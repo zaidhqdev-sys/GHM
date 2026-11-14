@@ -3234,3 +3234,40 @@ No password algorithm, cost parameter, existing stored hash, production issuer o
 The first local Worker Argon2 benchmark request did not return within the initial run's expected window. Because the Workers local runtime may execute WASM on the same event loop, an in-process JavaScript timeout is not a sufficient hard stop if the WASM computation blocks the event loop.
 
 The CI step now uses an external OS-level `timeout --kill-after=5s 90s` around the benchmark process. A 90-second timeout is recorded as `local_worker_benchmark_exceeded_90s_timeout`, not silently interpreted as a passing measurement. The script also writes progress stages (`starting_worker`, `worker_ready`, `operation_started`, `operation_completed`) so uploaded artifacts identify where execution stopped. The 10 ms Worker CPU budget remains explicit in Wrangler config.
+
+
+## 2026-11-14 04:45 SAST — Argon2id WASM compatibility PASS, Free CPU feasibility NO-GO
+
+The PHC interoperability artifact from run `43535797694` was downloaded and inspected. It proves bidirectional compatibility at the exact GHM profile:
+- Native GHM Argon2id PHC verified successfully by hash-wasm.
+- hash-wasm Argon2id PHC verified successfully by native `argon2`.
+- PHC parameters confirmed: `$argon2id$v=19$m=65536,t=3,p=1$`.
+- No password policy or hash-format changes.
+
+### Measured Node 22 WASM timings
+
+| Operation | Measured time | Free Worker CPU budget |
+|---|---:|---:|
+| Native GHM Argon2id hash | 146.62 ms | 10 ms |
+| hash-wasm verify native PHC | 317.27 ms | 10 ms |
+| hash-wasm generate PHC | 275.15 ms | 10 ms |
+
+The WASM verify and hash operations measured approximately 31.7x and 27.5x the Workers Free 10 ms CPU allowance, respectively. These are GitHub Actions Node 22 measurements, not Cloudflare production timings, so they are not a formal Cloudflare benchmark. They nevertheless show that this implementation is nowhere near the Free CPU budget. A production Worker would need an extraordinary 27–32x speedup to fit, which has not been demonstrated.
+
+### Local Worker runtime attempt
+
+The separate local Worker benchmark was configured with `limits.cpu_ms=10`, but the Argon2 operation did not return within the diagnostic window. This is not treated as a measured Cloudflare CPU result; local Workerd execution did not provide a usable timing. The hanging Worker benchmark harness was removed from CI to avoid leaving runners blocked. The Node/WASM PHC compatibility benchmark remains, records timings and classifies them against the 10 ms Free budget.
+
+### Architecture decision
+
+**Do not deploy the Authentication Issuer to Workers Free using hash-wasm or weaken GHM's Argon2id settings.** The issuer remains blocked under the current $0 infrastructure constraint.
+
+- Do not lower memory from 64 MiB, time cost from 3, or change parallelism/algorithm.
+- Do not migrate stored password hashes or force password resets.
+- Do not move the private signing key or token pepper into the Actor Gateway or Resource API as a workaround.
+- Do not enable Workers Paid ($5/month) or Containers.
+- Revisit the issuer host only after revenue and explicit budget approval, or if a materially faster Workers-compatible Argon2id implementation is independently demonstrated at the exact existing profile.
+
+The Actor Gateway Worker remains locally qualified and can be considered for a separately controlled production cutover once production database identity, Hyperdrive connectivity, TLS and routing are qualified. That would not complete Authentication Issuer isolation; the existing issuer remains a documented transitional boundary.
+
+No production database, Render configuration, Cloudflare account, billing plan, Worker deployment, DNS, secret, password hash or authentication traffic was changed.
