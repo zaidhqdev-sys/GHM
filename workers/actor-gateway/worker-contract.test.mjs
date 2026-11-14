@@ -17,6 +17,10 @@ test('Worker requires a Hyperdrive binding and isolated gateway capability secre
   assert.match(worker, /workerEnv\.HYPERDRIVE\?\.connectionString/);
   assert.match(worker, /GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET/);
   assert.equal(wrangler.hyperdrive[0].binding, 'HYPERDRIVE');
+  assert.equal(wrangler.ratelimits[0].name, 'ACTOR_GATEWAY_RATE_LIMITER');
+  assert.equal(wrangler.ratelimits[0].simple.limit, 120);
+  assert.equal(wrangler.ratelimits[0].simple.period, 60);
+  assert.match(worker, /edgeRateLimiter\.limit\(\{ key: `actor:\$\{accountId\}` \}\)/);
 });
 
 test('Worker only loads public ES256 verification material', () => {
