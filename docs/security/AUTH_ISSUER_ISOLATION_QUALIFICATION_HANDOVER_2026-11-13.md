@@ -3594,3 +3594,18 @@ The Worker-specific JSON parser was hardened without changing the shared Node/Re
 - Source commits: `e15cb634e6aacf43cadd89159a6bd439390436ea` and `1e4a5d4d6786db5260f0b41b6e3b4775a1ee9e8c`.
 
 This is source-level remediation only. Exact-head CI, Worker bundle, TypeScript check and local Workerd/Hyperdrive smoke must pass before calling the correction qualified. No production or Cloudflare account changes have been made.
+
+
+### Worker transient-startup retry correction — 2026-11-14
+
+A second adapter reliability issue was found while reviewing the startup lifecycle. The module-level `initialization` promise previously remained rejected after a transient Hyperdrive connection or startup ACL failure. Every later request in the same isolate would therefore return 503 without retrying initialization.
+
+Correction:
+- Attach a rejection handler to the shared initialization promise.
+- Clear `initialization` when startup fails, then rethrow so the current request still fails closed with 503.
+- A later request may retry initialization using the current Worker bindings.
+- Add a Worker contract regression test that asserts failed initialization is cleared before the error is rethrown.
+
+This does not bypass startup identity/ACL checks. Each retry must pass the same checks before the listener is created. Source commits: `067a3012ffcd391f207f3ca4bc634f7a6d89b2a2` and `5c9dba91dc66bf51c6e4441eb7b4852641faa4f3`.
+
+The PR #277 exact-head CI remains the qualification gate for both Worker hardening changes. No production change was made.
