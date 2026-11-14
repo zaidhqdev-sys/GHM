@@ -2461,3 +2461,8 @@ The security qualification handover now contains the exact four-function compari
 - Four noncanonical signatures were inspected in production. Founder bootstrap and account creation bodies match their source migrations; Connect identity-authority function provenance is unresolved; Business Hours replacement matches its base migration and retains the legacy runtime grant until its explicit manual cutover.
 - Business Hours manual cutover remains prohibited until Actor Gateway deployment/qualification, role identity verification and fresh independently verified backup exist. No cutover or permission change occurred.
 - Do not repeat the four-function definition fetch or aggregate search-path count. Continue with the unresolved identity-authority provenance and the remaining 53/other function source comparison, then obtain ledger evidence through the existing read-only audit path.
+
+
+### 2026-11-14 follow-up — later SECURITY DEFINER migration declarations
+
+The security qualification handover now records the bounded 2026-11-12 migration-source review. In brief: migrations 20261112020000, 20261112030000 and 20261112080000 create SECURITY DEFINER routines with 'pg_catalog, ghm' before the 20261112090000 all-functions normalization migration; later 20261112140000 and 20261112150000 use the canonical 'pg_catalog, ghm, pg_temp'. The live 53/5/3/1 distribution cannot be explained by declarations alone. The production read-only migration ledger is required to determine whether normalization is absent or later DDL drifted. Do not repeat this source-file review unless new migration commits are introduced.
