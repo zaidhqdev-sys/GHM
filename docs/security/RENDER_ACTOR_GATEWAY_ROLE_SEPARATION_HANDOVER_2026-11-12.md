@@ -398,3 +398,16 @@ The seven pending versions are `20261110100000`, `20261110120000`, `202611101400
 No production schema/data, ledger, grants, roles, memberships, Render configuration or deployments were changed. Keep the Resource API on `ghm_runtime`, retain separate controlled migrator identity, keep Render auto-deploy OFF, and keep PayFast paused. The next gate is production-only Project↔Opportunity reconciliation, performed read-only before any migration execution or deployment decision.
 
 Status: **PRODUCTION MIGRATION RECONCILIATION PASS_WITH_PENDING; SEVEN EXPLICIT PENDING MIGRATIONS; NO PRODUCTION CHANGES.**
+
+
+## 2026-11-14 — production Project↔Opportunity reconciliation (read-only)
+
+The production-only reconciliation ran against Render `ghm-db` / `ghm_db` with a read-only query connection identified as `session_user=ghm_app_user`, `current_user=ghm_db_user`, `row_security=on`. The relevant Project and Opportunity tables have RLS disabled and no row policies. Counts were: `ghm.project=0`, `ghm.opportunity=0`, `ghm.project_quote=0`, while `ghm.account_identity=22`. Thus the database is not empty and the zero Project/Opportunity counts are not attributable to RLS filtering.
+
+The active canonical Opportunity type is `code='project'`, `id=11`. The `project.opportunity_id` column exists. The `project_opportunity_fk` constraint is validated and references `ghm.opportunity(id)` with `ON DELETE RESTRICT`; the partial unique index `project_opportunity_unique` is unique, valid and ready. No live rows exist to test creator/account, opportunity-type, title, description, budget or atomic creation correspondence. All row-level mismatch diagnostics returned zero because there are no Project rows; do not represent those as sample-level validation.
+
+The Render query principal was denied SELECT on `ghm.ghm_schema_migrations`, preserving the separate migration-ledger authority boundary. No grants were changed; the live ledger audit was already performed through `ghm_migrator` and `ghm_schema_owner` in a read-only transaction.
+
+Conclusion: **NO PRODUCTION PROJECT OR OPPORTUNITY ROWS TO RECONCILE; STRUCTURAL LINK IS PRESENT AND VALID; LIVE-ROW ATOMICITY REMAINS UNEXERCISED.** No production data, schema, ledger, roles, grants, memberships, Render settings or deployments were changed. The seven allowlisted migrations remain pending and unapplied; Render auto-deploy stays OFF; PayFast stays paused.
+
+Next gate is a read-only, migration-by-migration review of dependencies, current production object state, privilege requirements, lock/transaction behavior, idempotency and rollback/forward recovery. This data reconciliation is not authorization to apply migrations or deploy.
