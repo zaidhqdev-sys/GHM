@@ -3271,3 +3271,15 @@ The separate local Worker benchmark was configured with `limits.cpu_ms=10`, but 
 The Actor Gateway Worker remains locally qualified and can be considered for a separately controlled production cutover once production database identity, Hyperdrive connectivity, TLS and routing are qualified. That would not complete Authentication Issuer isolation; the existing issuer remains a documented transitional boundary.
 
 No production database, Render configuration, Cloudflare account, billing plan, Worker deployment, DNS, secret, password hash or authentication traffic was changed.
+
+
+### CI efficiency and benchmark evidence retention
+
+The Worker-local Argon2 execution harness has been removed from the CI path because it stalled without returning a reliable measurement under the local 10 ms CPU configuration. The standalone bidirectional PHC compatibility/performance script remains in CI; it reports the exact GHM parameters, interoperability checks, measured WASM timings and whether both operations exceed the 10 ms Free budget. The measured report is preserved immediately as an artifact.
+
+The CI workflow now:
+- Uses a concurrency group per workflow/ref with `cancel-in-progress: true` to avoid accumulating redundant same-branch runs.
+- Ignores documentation-only changes for push and pull-request triggers, while source/workflow changes still trigger qualification.
+- Retains explicit manual `workflow_dispatch` support.
+
+This is intended to keep the qualification pipeline useful while handover-only commits no longer start the full PostgreSQL/security suite.
