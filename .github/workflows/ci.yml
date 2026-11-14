@@ -8,6 +8,7 @@ on:
       - integration/capability-gateway-qualification-20261110
       - construction/auth-issuer-isolation-20261112
       - construction/auth-issuer-stacked-on-pr272-20261113
+      - security/actor-gateway-worker-body-limit-20261114
     paths-ignore:
       - '**/*.md'
       - 'docs/**'
