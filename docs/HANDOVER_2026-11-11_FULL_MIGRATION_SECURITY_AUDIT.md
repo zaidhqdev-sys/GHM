@@ -3244,3 +3244,37 @@ No production schema/data, migration ledger, role, grant, membership, Render env
 The production migration inventory/reconciliation gate is now **PASS_WITH_PENDING**. Next task: perform the separately required production-only Project↔Opportunity reconciliation, using read-only production queries and the existing verified controlled access path. Do not apply pending migrations, merge unrelated work or deploy until that reconciliation and its findings have been reviewed.
 
 Status: **PRODUCTION FORENSIC MIGRATION RECONCILIATION PASSED; SEVEN MIGRATIONS EXPLICITLY PENDING; NO PRODUCTION CHANGES.**
+
+
+## 2026-11-14 — production Project↔Opportunity reconciliation (read-only)
+
+Following the passing migration audit, a production-only Project↔Opportunity reconciliation was performed against Render Postgres `ghm-db` / database `ghm_db` using the Render query integration's read-only transaction. The query connection identified as `session_user=ghm_app_user`, `current_user=ghm_db_user`, with `row_security=on`. The relevant `ghm.project`, `ghm.opportunity` and `ghm.opportunity_type` tables have RLS disabled and no row policies, so the zero counts below are not explained by row-level filtering. The production account_identity table returned 22 rows, confirming this is not an entirely empty database.
+
+### Live data result
+
+- `ghm.project`: **0** rows.
+- `ghm.opportunity`: **0** rows.
+- `ghm.project_quote`: **0** rows.
+- `ghm.account_identity`: **22** rows.
+- `ghm.opportunity_type` contains the active canonical `project` type: `id=11`, code `project`, name `Project`.
+- Project link diagnostics: 0 projects without a link, 0 dangling links, 0 links to a non-project opportunity type, 0 creator/account mismatches, and 0 title, description or budget mismatches. These zero diagnostic counts are consistent with there being no Project rows; they do not constitute sample-level validation of a live Project/Opportunity pair.
+
+### Structural relationship result
+
+- `ghm.project.opportunity_id` exists and is nullable (allowing historical/unlinked rows if any later exist).
+- `project_opportunity_fk` is present, validated, and references `ghm.opportunity(id)` with `ON DELETE RESTRICT`.
+- `project_opportunity_unique` is present and confirmed unique, valid and ready; it enforces at most one Project per non-null Opportunity.
+- The `project` / `opportunity` tables are owned by `ghm_schema_owner`; RLS is disabled and no policies are defined on these two tables.
+- The Render query principal was denied SELECT on `ghm.ghm_schema_migrations`; that is consistent with the separate controlled ledger-reader boundary. The migration ledger was already reconciled through the verified `ghm_migrator` → `ghm_schema_owner` read-only path. No privilege was widened to work around this denial.
+
+### Conclusion and limitations
+
+There are currently **no production Project or Opportunity records to pair or repair**. The production-only data reconciliation therefore closes as **NO ROWS TO RECONCILE**. The structural FK and unique index are installed and valid. Since there are no live rows, production data cannot yet prove creator/account correspondence, type correctness, or atomic creation behavior on an actual record. Those remain application-path/qualification checks, not reasons to insert synthetic production data.
+
+All queries were read-only. No production rows, schema objects, migration ledger entries, roles, grants, memberships, Render environment values, service settings or deployments were changed. Render auto-deploy remains OFF; PayFast remains paused; the seven migrations recorded in the production pending allowlist remain unapplied.
+
+### Next gate
+
+Review the seven explicitly pending migrations one by one for dependencies, current production object state, privilege requirements, lock/transaction behavior, idempotency and rollback/forward-recovery strategy. Keep this review read-only until a controlled execution plan is complete. Do not treat the absence of Project/Opportunity data as authorization to run migrations or deploy.
+
+Status: **PRODUCTION PROJECT↔OPPORTUNITY DATA RECONCILIATION CLOSED — NO ROWS TO RECONCILE; STRUCTURAL LINK VALID; LIVE-ROW ATOMICITY NOT EXERCISED.**
