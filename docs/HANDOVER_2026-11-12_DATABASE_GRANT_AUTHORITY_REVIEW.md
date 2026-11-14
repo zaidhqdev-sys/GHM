@@ -2451,3 +2451,13 @@ Fresh read-only catalog evidence from Render 'ghm-db' / 'ghm_db' confirms:
 ### Correction — existing non-mutating ledger audit command, 2026-11-14
 
 The repository already contains the required non-mutating ledger audit: 'npm run audit:migrations' -> 'scripts/forensic-migration-reconciliation.mjs'. It starts a READ ONLY transaction, validates the 'ghm_migrator' session, SET ROLEs to 'ghm_schema_owner', reads ledger version/name/checksum/applied_at, and compares the live ledger against repository and production provenance/pending allowlists. It does not apply SQL. Do not add a duplicate tool or use 'npm run migrate' for audit. The outstanding blocker is an authorized production invocation path with the existing migrator credential; Render currently exposes only 'ghm-internal-runtime' as the production GHM web service, and service metadata does not establish that the migrator URL is configured. Do not add it to the app service or expose its value as a shortcut. Production ledger head/checksums remain unknown until the existing audit is safely run.
+
+
+### 2026-11-14 source-to-production SECURITY DEFINER reconciliation checkpoint
+
+The security qualification handover now contains the exact four-function comparison and must be treated as the detailed source of truth. Summary for this grant-authority handover:
+
+- The repository contains '20261112090000_pin_security_definer_search_path.sql', which normalizes every GHM SECURITY DEFINER function to 'pg_catalog, ghm, pg_temp' after asserting schema-owner ownership. Production catalog remains split 53 ('pg_catalog, ghm'), 5 canonical, 3 ('ghm, pg_temp'), and 1 ('ghm, pg_catalog'). Until the read-only production migration ledger is available, this is a catalog/source discrepancy, not proof that the migration is pending.
+- Four noncanonical signatures were inspected in production. Founder bootstrap and account creation bodies match their source migrations; Connect identity-authority function provenance is unresolved; Business Hours replacement matches its base migration and retains the legacy runtime grant until its explicit manual cutover.
+- Business Hours manual cutover remains prohibited until Actor Gateway deployment/qualification, role identity verification and fresh independently verified backup exist. No cutover or permission change occurred.
+- Do not repeat the four-function definition fetch or aggregate search-path count. Continue with the unresolved identity-authority provenance and the remaining 53/other function source comparison, then obtain ledger evidence through the existing read-only audit path.
