@@ -2631,3 +2631,58 @@ No credential value was copied into this handover or displayed. The existing `.e
 This is the appropriate audit mode because it compares live missing migrations against the repository's explicit production pending allowlist. It is read-only; it does not apply migrations. Capture the full JSON result (with no connection-string values) and append its exact verdict/counts to this handover. If authority validation fails, stop and investigate the identity/connection target; do not modify grants or credentials.
 
 Status at note creation: live audit not yet executed. No production or local configuration mutation.
+
+
+### 2026-11-14 — authoritative live production migration audit
+
+The operator ran the existing `npm run audit:migrations:predeploy` from `C:\\GHM`, using the already-present local `.env`. The credential value was not displayed or copied. This is the first successful connection through the dedicated production migration identity.
+
+**Authority result: PASS**
+- Expected database and actual database: `ghm_db`.
+- `session_user = ghm_migrator` and initial `current_user = ghm_migrator`.
+- `SET ROLE ghm_schema_owner` succeeded.
+- After role switch: `current_user = ghm_schema_owner`, `session_user = ghm_migrator`.
+- Transaction was explicitly `BEGIN READ ONLY`; script rolls it back after the audit.
+- This proves the existing local migrator connection path is functional and the live ledger was read under the intended authority. It does not authorize any migration or role change.
+
+**Live ledger reconciliation**
+| Check | Live result |
+|---|---:|
+| Repository migration files | 98 |
+| Live ledger rows | 105 |
+| Canonical checksum matches | 24 |
+| Supported legacy CRLF matches | 62 |
+| Approved historical checksum matches | 9 |
+| Repository migrations absent from live ledger | 3 |
+| Unexplained checksum mismatches | 0 |
+| Migration name mismatches | 0 |
+| Ledger-only entries | 10 |
+| Approved retained historical entries | 10/10 |
+| Unrecognized ledger-only entries | 0 |
+| Orphaned historical exceptions | 0 |
+| Redundant historical exceptions | 7 |
+| Invalid retained-history records | 0 |
+
+The three and only three repository migrations absent from the live ledger are:
+- `20261110100000_create_account_onboarding_progress`
+- `20261110120000_create_business_relationship_outcome_read_models`
+- `20261110140000_allow_pending_storage_object_cleanup`
+
+All ten ledger-only entries are recognised retained history. No checksum mismatch, name mismatch, unrecognised extra, orphaned exception, or invalid retained-history record was reported.
+
+**Why the verdict is INVESTIGATE**
+The production pending manifest currently expects exactly one item:
+`20261109210000_deactivate_unrecognized_public_directory_records`.
+That migration is not missing from live production; it is already represented in the live ledger. The actual missing set is the three 2026-11-10 migrations listed above. Therefore `pending_allowlist_match=false` and the audit verdict is `INVESTIGATE`, despite the authority and other reconciliation checks passing.
+
+The policy test in `scripts/migration-audit-checksum.test.mjs` explicitly pins the production pending manifest to the same 2026-11-09 migration (the test appears twice in the file). This confirms the manifest/test are intentionally constrained in source, but does not explain why the live production state differs. Do not edit the manifest or its test yet. First inspect the migration introduction/release history and intended deployment sequencing for the three 2026-11-10 migrations, then determine whether these are legitimately pending for a future release or whether the manifest/test were not updated when production advanced. Do not apply them merely to make the audit pass.
+
+**Disposition**
+- Live migration ledger authority: **VERIFIED**.
+- Ledger checksum/name/retained-history consistency: **PASS**.
+- Production pending-manifest alignment: **FAIL / INVESTIGATE** (one exact-set mismatch).
+- Overall audit: **INVESTIGATE**.
+- No production SQL, migration, data, role, grant, credential, environment, Render service, or deployment was changed.
+- Existing PR #277 remains open and draft; its exact head at this checkpoint is `d470f1b28963ec2b6b4fc209616bf77ea7108b5a`. CI run `43629112926` completed successfully. No merge or deployment was performed.
+
+**Next action:** trace the three 2026-11-10 migration files through Git history/PRs and their release/deploy sequencing; preserve the exact live audit output above. Decide manifest semantics only after that provenance check.
