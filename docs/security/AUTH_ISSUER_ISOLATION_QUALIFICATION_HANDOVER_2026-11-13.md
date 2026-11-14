@@ -4034,3 +4034,20 @@ The previously recorded operator-supplied Render variable inventory was compared
 **Release/deployment mismatch:** Render currently runs `c7cf1eb`, while current `main` source includes a later runtime-principal startup verifier and expects `GHM_RUNTIME_DATABASE_URL`. PR #277 is still a draft stacked on #276/#272; it is not a production release candidate. Do not treat current main source as proof that the deployed `c7cf1eb` binary has identical config behavior, and do not deploy the stack to resolve an environment mismatch.
 
 **Next safe work:** (1) inspect the exact deployed commit's config contract and the merge stack dependency order; (2) complete a source-only consumer search for the historical migration/origin variables; (3) obtain live Render Environment values through the dashboard without copying secrets into chat; then compare key names and non-secret targets to the documented inventory. Only after that should we prepare a proposed change list. No environment edit, service restart, deploy, database access/mutation, role/grant change, credential rotation, payment change, or paid resource was performed in this checkpoint.
+
+
+### 2026-11-14 13:25 UTC — exact deployed-commit environment contract correction
+
+The previous 13:05 audit mixed the current `main` source contract with the currently deployed Render binary. This section supersedes that part of the earlier note for the live service.
+
+**Exact deployed source verified:** Render's latest live deployment is `dep-dbpmv8jrjlhs73abkli0`, commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf` (2026-11-10 19:25 UTC). I fetched `src/config.ts` and `src/server.ts` at that exact commit.
+
+- Deployed `src/config.ts` requires `DATABASE_URL` (not `GHM_RUNTIME_DATABASE_URL`), requires `INVITE_CODE` and `CORS_ORIGINS`, enforces `DATABASE_SSL=true` in production, and accepts `TRUST_PROXY=true` as one trusted hop. It does not require the later `GHM_RUNTIME_DATABASE_URL` contract.
+- Deployed `src/server.ts` only runs `SELECT 1` before listening. It does **not** include the later `assertRuntimeDatabaseIdentity` startup check.
+- Therefore, the supplied historic inventory's presence of `DATABASE_URL` is structurally aligned with the deployed commit's variable name, although its target is the retired `ghm_payfast_sandbox_db`. That target remains unacceptable for the intended production system of record. The prior statement that the live deployed binary requires `GHM_RUNTIME_DATABASE_URL` was incorrect; that requirement applies to later current-main source, not deployed `c7cf1eb`.
+- This distinction does not clear the production database-role problem. The deployed app still connects using the supplied connection string and production role findings remain unresolved. Do not repoint `DATABASE_URL` to `ghm_db` or restart/deploy until a dedicated least-privilege runtime identity, grants, verified backup/restore, migration state and cutover plan are ready.
+- Current Render service metadata confirms service `GHM-Internal-Runtime`, branch `main`, auto-deploy OFF, one instance, Frankfurt, plan `free`, health check `/healthz`, and allowlist `0.0.0.0/0`. Latest live deploy remains `c7cf1eb`. No service/environment/deploy change was made.
+
+**Bounded source search for historic names:** repository code search returned no indexed matches for `GHM_WEB_AUTH_ALLOWED_ORIGINS`, `GHM_MIGRATION_DATABASE_HOST`, `GHM_MIGRATION_DATABASE_NAME`, `GHM_NONPRODUCTION_DATABASE_NAME`, `GHM_QUALIFICATION_DATABASE_NAME`, or `GHM_MIGRATOR_DATABASE_URL`. Treat this as no indexed source matches, not proof that no scripts, historical refs, workflow secrets or external consumers use them. Preserve them pending any removal decision; do not rewrite their values.
+
+**Correct next step:** continue source-only mapping of the deployed `c7cf1eb` config consumers and establish the safe target runtime-principal cutover. No environment edits, DB access/mutation, deployment, restart, role/grant change, credential rotation, payment change or paid resource was used for this checkpoint.
