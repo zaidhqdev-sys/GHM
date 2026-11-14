@@ -2857,3 +2857,25 @@ These are source-level checks only. They do not prove that the adapter runs unde
 ### No-change statement
 
 No Cloudflare account, plan, Worker deployment, Hyperdrive resource, production DB connection, DB role, credential, secret, DNS record, route, production environment variable or production traffic was changed. Render auto-deploy remains OFF. PayFast remains excluded. PR #272/#276 remain draft/unmerged.
+
+
+### First Worker adapter CI result — exact tested source head passed
+
+GitHub Actions run **43531629356** (run #4569) completed successfully for exact commit:
+`5f2da3bb8863c6465e7904981c5544eab5d62c78`
+
+- Quality job: passed.
+- Web-quality job: passed.
+- Root TypeScript build: passed.
+- Complete repository test suite: passed. This includes the new Worker TypeScript type-check and six Worker source-contract tests.
+- Disposable PostgreSQL migration and security qualification sequence: passed.
+- Web build, web tests, dependency audit and toolchain checks: passed.
+- No failed steps.
+
+Run: https://github.com/zaidhqdev-sys/GHM/actions/runs/43531629356
+
+This is a real exact-head CI pass, but it is not yet a Cloudflare runtime/Hyperdrive integration qualification. The workflow has now been extended with a pinned Wrangler 4.0.0 `deploy --dry-run` bundle step (no deployment) so the next exact-head run also validates the Worker bundle. The newer workflow change is commit `ddfec0204f0e7aafdbfa64e8fb00318056f77168`; its CI run must be checked separately and is not yet claimed green.
+
+### CI qualification boundary
+
+The passed run used the existing GitHub Actions disposable PostgreSQL 18 service. It did not connect to production `ghm-db`, did not provision Hyperdrive, did not execute in Cloudflare's production runtime, and did not deploy or publish a Worker. The all-zero Hyperdrive ID remains a placeholder. Do not interpret CI success as authorization to deploy.
