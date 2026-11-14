@@ -4260,3 +4260,12 @@ The backup status remains: Render export creation confirmed; owner download path
 ### Operator command-format correction — 2026-11-14
 
 The owner corrected the assistant for not following the established PowerShell transcript layout. For all future Windows command instructions, use the handover's established copy/paste transcript style: each command line begins with `PS C:\GHM>`, continuation lines begin with `>>`, and section headers use `Write-Host`. Do not present generic fenced PowerShell blocks or omit the prompt prefixes. Keep commands in the requested order and avoid asking the owner to infer where to run them. This is an interaction-format requirement; no technical state changed.
+
+
+### PowerShell command presentation clarification — 2026-11-14
+
+The owner pasted literal `PS C:\GHM>` and `>>` prompt markers into PowerShell, causing PowerShell to attempt to execute `PS` (resolved as Get-Process) and return positional-parameter errors. The assistant's previous instruction was ambiguous and caused this.
+
+**Correct convention for future operator commands:** follow the existing handover's fenced `powershell` command-block style. Include executable commands only inside the block; do NOT include transcript prompt markers (`PS C:\GHM>`, `PS C:\GHM-main>`) or continuation markers (`>>`) in the copyable block. If a prompt is shown outside a block for context, explicitly say it is not part of the command. Keep `Write-Host` section headers and commands in execution order. Use the actual current working directory the owner specifies (currently `C:\GHM-main`), not a mismatched prompt path.
+
+The archive verification commands previously supplied were not executed because prompt text was pasted literally. No archive file was modified. The next retry should use the handover's command-only fenced PowerShell style, then capture metadata, SHA-256 and `tar -tzf` listing. No production or backup state changed.
