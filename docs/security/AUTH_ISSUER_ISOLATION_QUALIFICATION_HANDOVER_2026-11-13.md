@@ -4872,3 +4872,25 @@ No production/local database, role, membership, ACL, function, credential, envir
 **Next:** verify GitHub's exact-head CI for PR #276 after these two commits, then re-check that PR #277 inherits the corrected base. If CI exposes a failure, diagnose and update this same handover before proceeding. Production migration/backup/credential/role gates remain unchanged.
 
 No production/local database, role, membership, ACL, credential, environment variable, service, migration, deployment, payment flow, backup, or paid resource was changed.
+
+
+### Additional fail-closed hardening — gateway function grant-option denial — 2026-11-14
+
+Re-read the handover before continuing. After the missing-signature correction, a further ACL review found that the gateway function-grantee inventory allowed the gateway role's own EXECUTE ACL entry without explicitly rejecting `WITH GRANT OPTION`.
+
+**Correction committed to PR #276 branch:**
+- The gateway ACL query now treats a grantable EXECUTE entry for `ghm_actor_gateway` as an unsafe function grantee.
+- The owner remains the only other allowed ACL grantee; owner authority is intrinsic to ownership.
+- Added a test asserting that the catalog query includes the grant-option check.
+
+Commit sequence now on PR #276 branch:
+- `dcc2725fd1bbd1bb43ca0b8f2717353ca19ad98b` — static required signature list; missing required gateway routines now fail closed.
+- `315c296a1835818fccaa3226654076e2633dbfc2` — regression test for missing required signatures.
+- `42f684386b07929e0d47ca8670563283d999644a` — reject gateway EXECUTE grant option.
+- `4240aea637a579bb0a71e451ecf253aa01f48ee8` — regression test for grant-option denial.
+
+**CI status:** the earlier run for the previous intermediate head was superseded/cancelled when another commit arrived. The latest exact-head run must be checked after GitHub Actions schedules it; no pass is claimed yet.
+
+**Scope and safety:** this is a source/test-only change on the existing stacked PR branch. It does not change production grants or database state. The accepted Render administrator membership exception remains explicitly documented and is not modified here.
+
+No production/local database, role, membership, ACL, credential, environment variable, service, migration, deployment, payment flow, backup, or paid resource was changed.
