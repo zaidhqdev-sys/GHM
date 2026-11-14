@@ -165,7 +165,17 @@ try {
                      OR m.set_option IS DISTINCT FROM false
                    )
                  )
-           ) AS no_untrusted_role_memberships
+           ) AS no_untrusted_role_memberships,
+           EXISTS (
+             SELECT 1
+               FROM pg_auth_members m
+               JOIN pg_roles member_role ON member_role.oid = m.member
+              WHERE m.roleid = r.oid
+                AND member_role.rolname = 'ghm_db_user'
+                AND m.admin_option IS TRUE
+                AND m.inherit_option IS FALSE
+                AND m.set_option IS FALSE
+           ) AS trusted_admin_membership
       FROM pg_roles r
      WHERE r.rolname = 'ghm_actor_gateway'
   `);
@@ -183,8 +193,9 @@ try {
     rolreplication: false,
     rolbypassrls: false,
     no_untrusted_role_memberships: true,
+    trusted_admin_membership: true,
   });
-  console.log('GATEWAY LOGIN LEAST-PRIVILEGE ATTRIBUTES: PASS');
+  console.log('GATEWAY LOGIN LEAST-PRIVILEGE ATTRIBUTES AND TRUSTED ADMIN BOUNDARY: PASS');
 
   const functionState = await gatewayPool.query(`
     SELECT pg_get_userbyid(p.proowner) AS owner,
