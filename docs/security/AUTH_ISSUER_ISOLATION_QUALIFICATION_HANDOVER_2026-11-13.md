@@ -4986,3 +4986,28 @@ This is the first successful exact-head CI after the fail-closed static function
 PR #277 has been synchronized to include this PR #276 head as an ancestor. Its own exact-head CI is still required after the synchronization and handover commit. Both PRs remain draft and no merge/deploy has occurred.
 
 No production/local database, role, membership, ACL, credential, environment variable, service, migration, deployment, payment flow, backup, or paid resource was changed.
+
+
+### PR #277 synchronized-stack exact-head CI passed — 2026-11-14
+
+Re-read the latest handover before recording this result.
+
+**GitHub Actions run `43611838955`: PASS**
+- Exact head: `2556e8d8cb691ff08da521bf0fc8cb411b048312`
+- PR #277 branch includes PR #276's corrected static function inventory, signature normalization, grant-option denial, and tests.
+- `quality`: 73/73 steps passed.
+- `web-quality`: 11/11 steps passed.
+- Overall run conclusion: `success`.
+
+This exact-head run includes successful Actor Gateway database principal/ACL qualification, Worker bundling and local Workers runtime smoke tests, the full unit/integration test suite, all disposable PostgreSQL gateway cutover/tenant checks, and the auth issuer isolation/authority comparison steps. All qualification used disposable CI PostgreSQL; no production database was targeted.
+
+**Current stack position:**
+- PR #272 remains open/draft prerequisite.
+- PR #276 remains open/draft and its exact-head CI passed in run `43611550656` (73/73 quality, 11/11 web-quality).
+- PR #277 remains open/draft and its synchronized exact-head CI passed in run `43611838955` (73/73 quality, 11/11 web-quality).
+- PR #277 is 85 commits ahead and 0 behind its updated PR #276 base.
+- No PR has been merged; no deployment, Worker publication, Render change, production migration, or credential/role/ACL change has occurred.
+
+**Decision:** the latest code stack now has green exact-head CI after the gateway verifier corrections. This removes the previously identified source/qualification blocker for the verifier itself, but it does not close the production operational gates: verified restore route, production migration-ledger audit, production role/admin boundary disposition, approved no-cost runtime/Hyperdrive topology, production environment reconciliation, and staged cutover/rollback plan. Keep the PRs draft until the remaining review and release sequence is complete.
+
+No production/local database, role, membership, ACL, credential, environment variable, service, migration, deployment, payment flow, backup, or paid resource was changed.
