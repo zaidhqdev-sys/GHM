@@ -3971,3 +3971,24 @@ The Worker implementation is present at 'workers/actor-gateway/index.ts' with co
 **Source review boundary:** after '20261112090000_pin_security_definer_search_path.sql', the repository has only three later migration files in the current migration tree. The two later files that create SECURITY DEFINER routines ('20261112140000' and '20261112150000') explicitly use the canonical 'pg_catalog, ghm, pg_temp' setting; the third contains no function DDL. This rules out later current migration declarations as the explanation for the observed 53/5/3/1 live distribution, but does not distinguish unapplied normalization from post-migration manual/catalog drift. Ledger evidence remains necessary.
 
 Do not repeat the Worker code inspection or the aggregate production path count. Next: preserve the successful exact-head CI result; continue source comparison only where unresolved; arrange the read-only production ledger audit through the approved owner-controlled path; do not deploy Worker or execute any production cutover until production gateway role/schema/routine contract and backup prerequisites are independently established.
+
+
+### Connect identity-authority provenance and production audit runbook — 2026-11-14
+
+Follow-up work completed on 2026-11-14:
+
+**Historical source provenance:** The exact symbol 'auth_read_connect_identity_authority' and close variants were searched in the repository's indexed code search; no result was returned. The earlier bounded review of current 'database/migrations' and 'database/cutovers' also did not locate a creating migration. The live production function definition was already captured in the previous checkpoint. Current conclusion: this is a production-observed routine with unresolved source provenance. Do not infer its creation version, migration checksum, or that it was manually created. Do not drop, replace, revoke, or grant it based on the missing source match. Future investigation should use historical Git refs/PRs or an approved backup/catalog archive, not repeat current-tree symbol searches.
+
+**Production audit runbook verified from source:** 'package.json' maps 'npm run audit:migrations' to 'node scripts/forensic-migration-reconciliation.mjs'. The script reads 'GHM_MIGRATOR_DATABASE_URL' and defaults 'GHM_MIGRATION_AUDIT_DATABASE' to 'ghm_db'. It starts 'BEGIN READ ONLY', verifies both 'session_user' and 'current_user' are 'ghm_migrator', verifies membership/SET ROLE to 'ghm_schema_owner', reads 'ghm.ghm_schema_migrations', and always issues 'ROLLBACK'. It does not apply migrations. Do not use 'npm run migrate'. Do not use 'audit:migrations:predeploy' for this task because it adds pending-migration allowance and is intended for an explicitly audited pre-deploy target.
+
+**Owner-controlled PowerShell procedure (only if a dedicated migrator URL is already securely available locally):**
+
+1. Open the existing clean GHM checkout at 'C:\GHM-main' or the approved checkout containing this exact branch/commit. Do not create another branch or copy secrets into files.
+2. Confirm the checked-out commit and working tree before running: 'git status --short --branch' and 'git rev-parse HEAD'. The runbook/ledger audit itself is read-only; it does not require deployment.
+3. Set the target only: '$env:GHM_MIGRATION_AUDIT_DATABASE = "ghm_db"'. Ensure 'GHM_MIGRATOR_DATABASE_URL' is already present in the local process environment from the owner's approved secret store. Never paste it into chat, shell transcript, command history, handover, issue or PR.
+4. Run 'npm run audit:migrations'. Do not run the mutating migration command. Capture only the JSON report and redact connection details if any tool output includes them.
+5. Clear the target override after the run: 'Remove-Item Env:GHM_MIGRATION_AUDIT_DATABASE -ErrorAction SilentlyContinue'. Do not print or echo the URL.
+
+If 'GHM_MIGRATOR_DATABASE_URL' is not already available, STOP. No new production credential, role membership, database grant, Render environment variable, service or paid resource is authorized by this investigation. Do not substitute 'ghm_db_user' or 'ghm_app_user'; the script intentionally rejects them. The next decision then belongs to the owner because a usable dedicated migrator credential is a prerequisite, not something to manufacture through the app runtime.
+
+No production query was attempted with a non-migrator identity in this checkpoint, and no production data/permissions/functions/configuration were changed. PR #277 remains the single working branch.
