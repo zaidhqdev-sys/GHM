@@ -4369,3 +4369,16 @@ The owner ran the read-only local capacity/listener inspection.
 **Next read-only checks:** query port 5432 and 5433 independently using `psql -X -v ON_ERROR_STOP=1` for `version()`, `current_database()`, `session_user`, and `inet_server_port()`; query `pg_database` for names/owners/sizes and `pg_roles` for the current login's CREATEDB capability. Also map listener PIDs to process command lines. No service start/stop, database creation, restore, production connection, or paid resource is authorized at this stage.
 
 No local or production database contents were changed.
+
+
+### Local restore target selection — next read-only instance identification
+
+The capacity preflight shows 314.19 GB free and two existing PostgreSQL Windows services (17 and 18), listening on 5432 and 5433. The service-to-port mapping and existing database inventory are not yet verified. No restore target has been selected.
+
+The next operator step is strictly read-only:
+- Query `127.0.0.1:5432` and `127.0.0.1:5433` independently using `psql -w` (never prompt for or paste a password) to report server version, current database, session user, server port, existing database names/owners/sizes, and whether the current login has CREATEDB.
+- Map the two listener PIDs to `postgres.exe` command lines using `Win32_Process`.
+- If either connection fails, stop and report the exact error; do not change authentication or create a role.
+- Do not create any database, start/stop services, restore, or connect to production.
+
+This will allow selection of the existing PostgreSQL 18 instance only if the actual server version, existing databases, and available isolated target name are confirmed. Existing local qualification databases (including any prior `ghm_payfast_qualification`) must be preserved.
