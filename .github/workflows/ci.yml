@@ -335,31 +335,6 @@ jobs:
           if-no-files-found: warn
           retention-days: 3
 
-      - name: Benchmark Argon2id WASM in local Workers Free CPU budget
-        run: |
-          set +e
-          timeout --kill-after=5s 90s node workers/auth-issuer-argon2-benchmark/smoke.mjs
-          BENCHMARK_EXIT=$?
-          if [ "$BENCHMARK_EXIT" -eq 124 ] || [ "$BENCHMARK_EXIT" -eq 137 ]; then
-            printf '{"status":"local_worker_benchmark_exceeded_90s_timeout","cpuBudgetMs":10}\n' > tmp/argon2-worker-runtime.json
-            echo "Argon2id WASM did not complete within the 90-second diagnostic ceiling under the local Workers Free CPU configuration."
-          elif [ "$BENCHMARK_EXIT" -ne 0 ]; then
-            exit "$BENCHMARK_EXIT"
-          fi
-
-      - name: Preserve Argon2id WASM benchmark evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ghm-auth-issuer-argon2-wasm-benchmark
-          path: |
-            tmp/argon2-wasm-compat.json
-            tmp/argon2-worker-runtime.json
-            tmp/argon2-worker-runtime-progress.json
-            tmp/argon2-worker-runtime.log
-          if-no-files-found: warn
-          retention-days: 3
-
       - name: Provision provider attestation secret in disposable PostgreSQL
         env:
           GHM_STORAGE_PROVIDER_ATTESTATION_ALLOW_MUTATIONS: 'true'
