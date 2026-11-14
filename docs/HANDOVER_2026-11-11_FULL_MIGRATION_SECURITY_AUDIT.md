@@ -2580,3 +2580,40 @@ Earlier operator-provided Render inventory recorded the following names: `CORS_O
 6. Validate the final environment without exposing secrets; verify startup/readiness and DB identity. Only then separately decide whether a manual deploy is appropriate.
 
 No environment variable, secret, role, database, service, deployment, route, or paid resource was changed by this investigation. This entry records the agreed full-reset approach and source-derived requirements, not completion of the reset.
+
+
+## 2026-11-14 — Local environment target and configuration inventory
+
+Operator supplied a masked, read-only inventory from `C:\\GHM\\.env`. No secret values were shared.
+
+### Local database URL targets
+
+All three local database URLs resolve to the production Render PostgreSQL host `dpg-dag0sdtbedkc7389vi2g-a.frankfurt-postgres.render.com`, database `ghm_db`, with distinct logins:
+
+| Variable | Login | Database/host result |
+|---|---|---|
+| `DATABASE_URL` | `ghm_app_user` | `ghm_db` / production `ghm-db` |
+| `GHM_RUNTIME_DATABASE_URL` | `ghm_runtime` | `ghm_db` / production `ghm-db` |
+| `GHM_MIGRATOR_DATABASE_URL` | `ghm_migrator` | `ghm_db` / production `ghm-db` |
+
+This confirms the intended target and credential separation in the local file only. It does **not** establish that all three credentials authenticate successfully. The previously recorded read-only authentication failure for the local `ghm_runtime` URL remains unresolved; do not treat the URL's correct host/database/login as proof that its password is valid.
+
+### Local configuration findings
+
+- `DATABASE_SSL=true` is present and matches the production requirement.
+- `CORS_ORIGINS` is absent. This is a required Resource API setting; the final value must be recovered from the approved frontend origin inventory, not guessed.
+- `NODE_ENV` and `PORT` are absent locally. This is not itself a production defect in the local development file; Render production must explicitly set `NODE_ENV=production`. The platform may supply `PORT`.
+- `TRUST_PROXY` and `TRUST_PROXY_HOPS` are absent locally. Do not infer a production value without confirming the service's proxy topology and accepted setting.
+- `GHM_JWT_ES256_KID=ghm-local-qualification` is a qualification identifier and is not an accepted production KID. Confirm the production issuer/verifier key pair and its matching KID from the trusted secret/key source before changing either environment.
+- `STORAGE_ENDPOINT` points to the existing Cloudflare R2 endpoint and the local inventory includes the corresponding storage bucket, region, and credential variables. Preserve these only after confirming they are the approved production storage configuration; never expose the access key or secret.
+- `S3_ENDPOINT=http://localhost:9000` is a local MinIO value and is not consumed by the inspected current storage loader. It must not be carried into the production runtime manifest.
+- `GHM_NONPRODUCTION_DATABASE_HOST` still points to the retired sandbox host `dpg-db4416vlk1mc73eocug0-a.frankfurt-postgres.render.com`; remove it from the production runtime manifest unless a current, explicitly separate non-production process still requires it.
+- `GHM_MIGRATION_DATABASE_NAME=ghm_db` and `GHM_MIGRATION_DATABASE_HOST=dpg-dag0sdtbedkc7389vi2g-a.frankfurt-postgres.render.com/ghm_db` are local migration-tool metadata, not a substitute for the migration connection URL. Keep them only if current migration tooling consumes them and ensure they identify the production database deliberately.
+
+### Historical variable review
+
+A current-mainline GitHub code search for `JWT_SECRET` returned no matches. The historical Render variable `JWT_SECRET` therefore has no confirmed consumer in the current mainline source sweep; mark it as a removal candidate, subject to a complete repository-wide config/runtime audit before deleting it from Render.
+
+### Execution status
+
+This is an inventory and handover update only. No Render variable, local file, credential, database role, database, service, deployment, or paid resource was changed. The next required input is the complete current variable-name list from the Render `ghm-internal-runtime` Environment page, followed by a single consolidated manifest. The production runtime password mismatch, approved CORS origins, production ES256 KID/key pairing, proxy setting, and storage acceptance remain open gates. Keep auto-deploy disabled until the coordinated manifest is applied and validated.
