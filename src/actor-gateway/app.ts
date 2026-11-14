@@ -20,6 +20,7 @@ import type { CampaignDirectoryReviewGatewayReader } from './campaign-directory-
 export interface ActorGatewayAppOptions {
   rateLimitLimit?: number;
   rateLimitWindowMs?: number;
+  rateLimitDecision?: (accountId: number) => Promise<boolean>;
 }
 
 export interface ActorGatewayDependencies {
@@ -64,7 +65,21 @@ export const createActorGatewayApp = (
     try {
       const accountId = dependencies.verifier.verify(authorization.slice('Bearer '.length).trim()).accountId;
       res.locals.actorAccountId = accountId;
-      next();
+      if (!options.rateLimitDecision) {
+        next();
+        return;
+      }
+      void options.rateLimitDecision(accountId).then((allowed) => {
+        if (!allowed) {
+          res.status(429).json({ error: 'rate_limited' });
+          return;
+        }
+        next();
+      }).catch(() => {
+        // The Worker edge limiter is an additional abuse-control layer. If it
+        // cannot be reached, fail closed instead of silently disabling it.
+        res.status(503).json({ error: 'service_unavailable' });
+      });
     } catch {
       res.status(401).json({ error: 'unauthorized' });
     }
@@ -75,6 +90,7 @@ export const createActorGatewayApp = (
     limit: options.rateLimitLimit ?? 120,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
+    skip: () => Boolean(options.rateLimitDecision),
     keyGenerator: (_req, res) => {
       const accountId = res.locals.actorAccountId;
       return Number.isSafeInteger(accountId) ? `actor:${accountId}` : 'actor:unverified';
