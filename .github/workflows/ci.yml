@@ -16,6 +16,7 @@ on:
     branches:
       - main
       - feat/ghm-capability-evidence-admin-20261105
+      - construction/auth-issuer-stacked-on-pr272-20261113
     paths-ignore:
       - '**/*.md'
       - 'docs/**'
