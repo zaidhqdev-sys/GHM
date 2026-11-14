@@ -3684,3 +3684,35 @@ The Worker and issuer disposable qualification results do not override this find
 The role inventory did not prove whether the 'ghm_db_user' ADMIN OPTION memberships can be safely removed from the current application session; that earlier attempted revoke did not resolve the membership. Do not repeat it. Render support's prior escalation remains relevant.
 
 **Current production disposition:** read-only findings confirmed; privilege remediation blocked pending recovery evidence and complete authority/dependency mapping. No paid infrastructure was created or modified.
+
+
+### Production Actor Gateway ACL compatibility — read-only check, 2026-11-14
+
+Additional read-only checks were run against the same Render ghm_db instance to compare the live grants with the Worker startup contract in workers/actor-gateway/index.ts and src/actor-gateway/database-privileges.ts.
+
+#### Current Render query connection identity
+
+The Render read-only query session reported database 'ghm_db', session_user 'ghm_app_user', and current_user 'ghm_db_user'. This confirms the current queried application connection path still resolves to the legacy privileged principal; it is not the identity required by the new Worker adapter.
+
+#### Actor Gateway role ACL versus Worker contract
+
+Live effective privilege checks for 'ghm_actor_gateway' returned:
+- USAGE on schema 'ghm': false.
+- CREATE on schema 'ghm': false.
+- Executable SECURITY DEFINER functions in schema 'ghm': 0.
+- Executable Actor Gateway contract functions (assert_actor_gateway / assert_actor_gateway_capability / gateway_* non-trigger functions): 0.
+- The only 14 ghm functions visible to the earlier broad EXECUTE check were trigger-returning functions; they are not the adapter's callable gateway contract.
+
+The Worker startup contract requires schema USAGE, no schema CREATE, no direct relation privileges, and the exact expected Actor Gateway function allow-list. The live production ACL therefore does not satisfy the Worker startup contract. The Worker would fail closed at startup if connected using the dedicated 'ghm_actor_gateway' login with the currently observed grants. This is a production integration blocker, not a reason to weaken or bypass the Worker checks.
+
+#### Related ownership and authority inventory
+
+- Database 'ghm_db' is owned by 'ghm_schema_owner'; this role consequently has database CREATE (schema creation) privilege, despite its NOLOGIN role attributes.
+- Schema 'ghm' is owned by 'ghm_schema_owner'. Schema 'public' is owned by 'ghm_db_user'.
+- In schema 'ghm', 'ghm_schema_owner' owns 59 ordinary tables, 48 sequences, 1 view and the associated indexes/toast objects reported by pg_class.
+- 'ghm_schema_owner' owns 63 SECURITY DEFINER functions in schema 'ghm'. The current check counted 46 of those as executable by 'ghm_runtime' and 46 as executable by 'ghm_app_user'/'ghm_db_user'.
+- The only default ACL row returned for the reviewed principals was a schema-owner default sequence ACL in schema 'ghm' granting USAGE to 'ghm_runtime'. No function default ACL row was returned for 'ghm_schema_owner'.
+
+#### Disposition
+
+Do not add schema USAGE or function grants ad hoc. First reconcile the intended migration-defined gateway function allow-list, exact grantors/ACLs, direct relation grants, ownership, default ACLs and the current production connection string. The production role and Worker adapter cutover must be designed together, with a verified restore point and rollback. Do not weaken the adapter startup checks to accommodate the current production ACL.
