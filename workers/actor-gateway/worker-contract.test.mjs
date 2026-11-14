@@ -55,3 +55,16 @@ test('Worker does not configure or create a paid Cloudflare product', () => {
   assert.equal(wrangler.queues, undefined);
   assert.equal(wrangler.placement, undefined);
 });
+
+test('Worker rejects oversized JSON immediately and drains without buffering', () => {
+  const dataHandler = worker.match(/request\.on\('data',[\s\S]*?\n  \}\);/)?.[0] ?? '';
+  assert.match(dataHandler, /totalBytes > MAX_JSON_BODY_BYTES/);
+  assert.match(dataHandler, /completed = true/);
+  assert.match(dataHandler, /response\.status\(413\)\.json\(\{ error: 'payload_too_large' \}\)/);
+  assert.match(dataHandler, /request\.resume\(\)/);
+  assert.ok(
+    dataHandler.indexOf('response.status(413)') < dataHandler.indexOf('request.resume()'),
+    '413 must be sent as soon as the threshold is crossed',
+  );
+  assert.match(dataHandler, /chunks\.length = 0/);
+});
