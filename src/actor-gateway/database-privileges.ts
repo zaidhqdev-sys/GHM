@@ -199,8 +199,14 @@ export const ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL = `
         FROM gateway_functions f
         CROSS JOIN LATERAL aclexplode(COALESCE(f.proacl, acldefault('f', f.proowner))) acl
        WHERE acl.privilege_type = 'EXECUTE'
-         AND acl.grantee <> f.proowner
-         AND acl.grantee <> 'ghm_actor_gateway'::regrole
+         AND (
+           acl.grantee <> f.proowner
+           AND acl.grantee <> 'ghm_actor_gateway'::regrole
+           OR (
+             acl.grantee = 'ghm_actor_gateway'::regrole
+             AND acl.is_grantable
+           )
+         )
        ORDER BY 1
     ) AS unsafe_function_grantees
 `;
