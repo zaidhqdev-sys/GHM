@@ -4843,3 +4843,32 @@ Pre-work handover check completed: the immediately preceding entry records the d
 5. a no-cost hosting/network/credential topology and an independently approved cutover/rollback plan.
 
 No production/local database, role, membership, ACL, function, credential, environment variable, service, migration, deployment, payment flow, backup, or paid resource was changed.
+
+
+### Follow-up — fail-closed required gateway function inventory — 2026-11-14
+
+**Pre-work handover check:** reviewed the latest handover and PR stack state before editing. This checkpoint corrects a concrete weakness in the startup ACL verifier; it does not repeat the prior signed-assertion or role-membership investigation.
+
+**Issue found in PR #276:** the gateway privilege query built `expected_functions` by selecting only expected signatures for which `to_regprocedure(signature)` already existed. That meant a required gateway SQL function missing from the database could be silently removed from the expected list, allowing the actual-vs-expected comparison to pass if the same function was also absent from the gateway's executable set. This weakened the claimed exact allow-list.
+
+**Correction committed to the PR #276 base branch:**
+- `src/actor-gateway/database-privileges.ts` now returns the complete static reviewed signature list as `expected_functions`, without filtering missing database functions through `to_regprocedure`.
+- The existing comparison therefore fails closed when any required non-optional gateway function is absent.
+- The three Campaign/Directory Review signatures retain the explicitly documented all-three-present or all-three-absent compatibility rule. Missing any other required signature is a startup failure.
+- Added a unit/source-contract test in `src/actor-gateway/database-privileges.test.ts` to prevent reintroducing the existence-filter behavior.
+
+**Commits on PR #276 branch `construction/auth-issuer-stacked-on-pr272-20261113`:**
+- Implementation: `dcc2725fd1bbd1bb43ca0b8f2717353ca19ad98b`
+- Test: `315c296a1835818fccaa3226654076e2633dbfc2`
+
+**Review of the broader verifier after this fix:**
+- Startup runs the database identity check, then reads and validates gateway database privileges, and only then opens the HTTP listener.
+- It checks database CONNECT/no CREATE; schema USAGE/no CREATE; no direct table/view/materialized-view/foreign-table privileges; no direct sequence privileges; exact gateway executable-function signatures; no PUBLIC gateway function execution; no runtime execution of gateway/assertion functions; safe global and schema-specific default function ACLs; no PUBLIC EXECUTE on any SECURITY DEFINER function; all SECURITY DEFINER functions owned by `ghm_schema_owner` with pinned `pg_catalog, ghm, pg_temp`; and no gateway-function EXECUTE grantees other than the gateway and owner.
+- The membership predicate allows only the documented trusted Render administrator `ghm_db_user` as a member of the service role with ADMIN=true, INHERIT=false, SET=false, and rejects other membership edges/options. This is a deliberately accepted administrator trust exception, not proof the service role has zero memberships.
+- The current implementation checks privileges on objects in schema `ghm`; it does not claim to inventory privileges on unrelated schemas or server-level roles.
+
+**Important qualification status:** the code and test commits have been pushed to PR #276's branch. No CI result for the new exact head has yet been confirmed in this checkpoint. Do not describe the fix as test-passed until the new workflow run completes. PR #276/#277 remain open and draft; the stack remains dependent on PR #272. No merge/deploy is authorized by this code correction.
+
+**Next:** verify GitHub's exact-head CI for PR #276 after these two commits, then re-check that PR #277 inherits the corrected base. If CI exposes a failure, diagnose and update this same handover before proceeding. Production migration/backup/credential/role gates remain unchanged.
+
+No production/local database, role, membership, ACL, credential, environment variable, service, migration, deployment, payment flow, backup, or paid resource was changed.
