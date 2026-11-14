@@ -316,3 +316,11 @@ The active GHM construction branch now applies this `no_untrusted_role_membershi
 The production role catalog currently does not contain `ghm_auth_issuer`; the separate issuer service is not yet deployed. The current Render service inventory has `ghm-internal-runtime` as the only production GHM web service; no separate production Actor Gateway or Authentication Issuer service exists yet.
 
 This confirms the original security objective: normal Resource API execution must use the existing SQL-created `ghm_runtime` login, not the Dashboard-managed `ghm_app_user`/effective `ghm_db_user` connection. The administrator's membership is an administrative trust relationship, not a reason to expose that administrator connection to application code.
+
+## 2026-11-15 — cross-branch reconciliation correction
+
+The issuer stack review identified that #272's newer trusted-administrator migration and qualification were not drop-in replacements for #276's versions. The #276 qualification includes additional Resource API runtime function ACL and Business external-mapping lookup checks. The corrected #276/#277 integration preserves those tests and adds an explicit `ghm_db_user` membership assertion with ADMIN=true, INHERIT=false, SET=false. The #276 issuer-specific full audit handover is also preserved rather than overwritten by the shorter #272 copy.
+
+The correction is recorded in the #276 and #277 handovers and their respective branch commits. The CI fixture on #276/#277 now grants the Dashboard administrator only the Actor Gateway membership; it does not grant runtime, issuer or payment-provider roles to that administrator.
+
+Current #272 head at the time of this entry was `b39b679bb2dec1d863f077b39ea3022a0c7525a8`. #272 remains open/draft and GitHub reports mergeable=false. No exact-head CI has qualified this head. Do not merge until branch ancestry is reconciled, issuer separation is qualified, and full exact-head CI passes. No production changes were made.
