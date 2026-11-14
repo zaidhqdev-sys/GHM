@@ -2930,3 +2930,17 @@ The Worker static contract test now checks the declared binding and 120/60 confi
 ### No-change statement
 
 No Cloudflare account, binding, Worker, Hyperdrive, production database credential, secret, route, DNS record or production traffic was changed. The Rate Limiting binding exists only as repository configuration and local/CI build input until a later, separately approved free-tier setup.
+
+
+### Local Workers runtime + disposable Hyperdrive smoke test added to CI
+
+The CI workflow has now been extended beyond static checks and Wrangler bundling. After migrations and Actor Gateway principal qualification, it will:
+1. Generate an ephemeral P-256 keypair in the GitHub runner and expose only the public key to local Worker secrets.
+2. Write a temporary ignored `.dev.vars` file containing the disposable JWT public key/KID and existing disposable gateway assertion secret.
+3. Start Wrangler `4.36.0 dev --local` using the configured local Hyperdrive connection string to the GitHub Actions PostgreSQL 18 service.
+4. Exercise `/healthz`, which requires Worker initialization to establish the Hyperdrive connection and pass the exact Actor Gateway database identity and full ACL checks before the Node HTTP server starts.
+5. Fail the job and print the Wrangler log if startup/health is not successful; remove the temporary `.dev.vars` file on exit.
+
+The private ephemeral test key remains in the runner's temporary directory and is not passed to the Worker; no production key is involved. The Worker receives public verification material only.
+
+This is a disposable CI test design, not yet a passing result. The next exact-head CI run must validate that Wrangler's local Rate Limiting binding, Worker Node HTTP bridge, Hyperdrive local connection, and PostgreSQL startup ACL checks all work together. No production database or Cloudflare account is used.
