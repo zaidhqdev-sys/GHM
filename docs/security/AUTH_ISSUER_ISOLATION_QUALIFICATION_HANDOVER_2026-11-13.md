@@ -4567,3 +4567,34 @@ A source-level comparison was made against the exact Render-deployed commit `c7c
 **Decision remains unchanged:** no Render environment edits, no credential rotation, no role/membership/ACL changes, no migration, no deploy, and no production cutover. Before main can be deployed safely, the production `ghm_runtime` identity and its memberships/schema/database privileges must be proven against the current main startup contract; the existing runtime connection remains `ghm_app_user` / effective `ghm_db_user`, and the supplied environment inventory still shows `DATABASE_URL` targeting the retired sandbox DB. The exact current production role inventory was freshly reconfirmed in the preceding checkpoint.
 
 No production or local database, role, grant, credential, environment, service, migration, deployment, or backup was changed.
+
+
+### Mainline runtime handoff and Render service metadata re-check — 2026-11-14
+
+Additional correction/confirmation after inspecting current `main` and re-reading the live Render service metadata.
+
+**Current mainline `.env.example`:**
+- Documents `GHM_RUNTIME_DATABASE_URL` as the production Resource API connection, authenticating directly as `ghm_runtime`.
+- Documents `DATABASE_URL` as non-production fallback only.
+- Documents `GHM_MIGRATOR_DATABASE_URL` as a standalone migration connection using the dedicated `ghm_migrator` login.
+- These are blank template entries, not actual Render secret values and not evidence that production environment variables have been set.
+
+**Current mainline runtime source:**
+- Production config requires `GHM_RUNTIME_DATABASE_URL`; production does not fall back to `DATABASE_URL`.
+- Server startup verifies `session_user=current_user=ghm_runtime`, database CONNECT without CREATE, `ghm` schema USAGE without CREATE, LOGIN/NOINHERIT, no elevated role attributes, and the approved role-membership condition before readiness.
+- Current mainline does not include the 43-function SECURITY DEFINER allow-list file reviewed on the separate security construction branch. Correct any implication that the 43/46 function-set diff is a mainline startup gate; it remains a separate construction-branch qualification artifact.
+
+**Live Render service metadata re-read (read-only):**
+- Service: `GHM-Internal-Runtime`, ID `srv-damupsek1f9s73eq8kkg`.
+- Branch: `main`.
+- Auto deploy: OFF (`autoDeployTrigger=off`).
+- Service plan: Free; build plan metadata: starter.
+- Region: Frankfurt.
+- Health check: `/healthz`.
+- URL: `https://ghm-internal-runtime.onrender.com`.
+- Service is not suspended.
+- Render service metadata does not expose the environment variable values; the operator-provided environment inventory remains the source for those values. No claim is made that secrets were read back through the API.
+
+**Operational implication:** the currently live service remains on the last confirmed deployed commit `c7cf1eb` (which requires `DATABASE_URL`), while current GitHub mainline expects `GHM_RUNTIME_DATABASE_URL` and rejects the old fallback in production. Auto-deploy remains off, so a mainline source update alone does not deploy. Do not manually deploy or edit either database URL until a coordinated role/credential, migration, backup and rollback plan has passed its gates.
+
+No environment values were read or changed through the service metadata call. No deployment, restart, credential, database, role, grant, migration, or paid resource was changed.
