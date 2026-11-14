@@ -2879,3 +2879,18 @@ This is a real exact-head CI pass, but it is not yet a Cloudflare runtime/Hyperd
 ### CI qualification boundary
 
 The passed run used the existing GitHub Actions disposable PostgreSQL 18 service. It did not connect to production `ghm-db`, did not provision Hyperdrive, did not execute in Cloudflare's production runtime, and did not deploy or publish a Worker. The all-zero Hyperdrive ID remains a placeholder. Do not interpret CI success as authorization to deploy.
+
+
+### Wrangler Worker bundle dry-run — passed
+
+The CI workflow now invokes pinned Wrangler `4.0.0` with `deploy --dry-run`, using the placeholder-only local Worker config. No Cloudflare credentials are provided and no deploy/upload command is executed.
+
+Run `43531950923`, exact workflow-change commit `ddfec0204f0e7aafdbfa64e8fb00318056f77168`:
+- Root build passed.
+- Wrangler Actor Gateway Worker bundle dry-run passed.
+- The quality job then proceeded to disposable PostgreSQL migrations/qualification; the overall workflow was still in progress at the time of this handover update.
+- No Wrangler deployment or Cloudflare account operation occurred.
+
+A second push run `43531961783` is testing the latest documentation head `3f1170aca9af6fad0cd97dd1d6242250bc4be3fb`; its Worker bundle step was in progress when checked. The earlier exact source head `5f2da3bb8863c6465e7904981c5544eab5d62c78` already passed both quality and web-quality jobs in run `43531629356`.
+
+The Worker is therefore source-typechecked, static-contract-tested, and now successfully bundled by Wrangler in dry-run mode. Actual Workers runtime execution and Hyperdrive-to-Postgres integration remain outstanding.
