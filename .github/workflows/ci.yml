@@ -8,10 +8,20 @@ on:
       - integration/capability-gateway-qualification-20261110
       - construction/auth-issuer-isolation-20261112
       - construction/auth-issuer-stacked-on-pr272-20261113
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
   pull_request:
     branches:
       - main
       - feat/ghm-capability-evidence-admin-20261105
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+
+concurrency:
+  group: ghm-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
