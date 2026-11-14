@@ -2944,3 +2944,16 @@ The CI workflow has now been extended beyond static checks and Wrangler bundling
 The private ephemeral test key remains in the runner's temporary directory and is not passed to the Worker; no production key is involved. The Worker receives public verification material only.
 
 This is a disposable CI test design, not yet a passing result. The next exact-head CI run must validate that Wrangler's local Rate Limiting binding, Worker Node HTTP bridge, Hyperdrive local connection, and PostgreSQL startup ACL checks all work together. No production database or Cloudflare account is used.
+
+
+### First local Workers runtime smoke attempt — failed; diagnosis open
+
+GitHub Actions run `43532286311` reached the new local Worker smoke step after:
+- Root build success.
+- Wrangler `4.36.0` bundle dry-run success.
+- Disposable PostgreSQL 18 migrations success.
+- Actor Gateway principal qualification success.
+
+The local Wrangler/Hyperdrive Worker smoke step then failed immediately (step duration approximately two seconds). The job's step conclusion is failure. The connected GitHub workflow-run interface exposes the job/step conclusion but not the text log contents, and this run had no uploaded diagnostic artifact. Therefore the failure cause is **not yet established**; I will not guess whether it is Wrangler local binding support, Worker startup, database ACL, or the local database connection.
+
+Corrective diagnostic change committed: `c6b80031f991342b1d94ac2f8338a524c372f410`. The workflow now uploads only `wrangler.log` and `health.json` as a short-retention artifact after the smoke step, even when it fails. It deliberately does not upload the ephemeral private test key or `.dev.vars`. The next run will provide inspectable failure evidence. No production credentials or data are involved.
