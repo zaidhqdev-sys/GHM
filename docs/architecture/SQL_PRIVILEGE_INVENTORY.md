@@ -181,3 +181,19 @@ ACL counts for the same scope: PUBLIC EXECUTE 0; 'ghm_runtime' EXECUTE 46; effec
 The count deliberately excludes trigger-returning routines using 'p.prorettype <> trigger'::regtype. An earlier broad count of 63 included a trigger-returning routine; use 62 for comparable inventory going forward.
 
 The repository's 'scripts/audit-security-definer-authority.mjs' is deliberately restricted to local 'ghm_disposable_test'; it must not be pointed at production or have its guard weakened. The production 'npm run audit:migrations' path is a separate read-only ledger reconciliation tool, but an approved production invocation path is still unresolved.
+
+
+### Source reconciliation of four non-canonical SECURITY DEFINER search paths — 2026-11-14
+
+The four routines outside the exact canonical 'pg_catalog, ghm, pg_temp' setting were compared against production definitions and repository source:
+
+- 'auth_bootstrap_founder_system_admin(text)' matches '20261005211000_correct_founder_system_admin_bootstrap_existing_account.sql'; owner-only EXECUTE is expected and observed.
+- 'auth_create_account(...)' matches '20261004020000_create_auth_account_registration.sql'; 'ghm_runtime' EXECUTE is expected and observed.
+- 'auth_read_connect_identity_authority(bigint)' has a live definition and runtime EXECUTE, but its creating migration was not located in the bounded source review. Provenance remains unresolved.
+- 'replace_business_hours(bigint,bigint,jsonb)' matches '20260916223000_create_business_hours.sql'; runtime EXECUTE is expected in the base migration and is intentionally retained by '20261111130000_add_signed_business_hours_gateway.sql' until the separate manual cutover.
+
+The exact intended normalization exists in '20261112090000_pin_security_definer_search_path.sql' (blob 'd0d3ce9eb9d76ac23ba6ec9d8f27df7ec30f73df'). It checks owner='ghm_schema_owner' and sets every GHM SECURITY DEFINER routine to 'pg_catalog, ghm, pg_temp'. It explains that omitting explicit 'pg_temp' allows PostgreSQL to search the session temporary schema before ordinary schemas.
+
+Effective-path nuance: the 3 routines set to 'ghm, pg_temp' implicitly search 'pg_catalog' before those entries and explicitly place temporary schema last; they are effectively temp-safe but non-canonical. The one 'ghm, pg_catalog' routine is not equivalent: it omits explicit temp and puts 'ghm' ahead of 'pg_catalog'. The 53 'pg_catalog, ghm' routines omit explicit temp. The 5 canonical routines already match.
+
+The live catalogue is inconsistent with the all-routine normalized state intended by the migration, but without a live ledger result we cannot decide whether the migration is unapplied or catalog drift occurred later. Production ledger head/checksums remain unverified. Do not run the manual Business Hours cutover: its source explicitly requires a qualified deployed Actor Gateway, verified identities and a fresh independently verified backup. No production change was made.
