@@ -68,3 +68,10 @@ test('Worker rejects oversized JSON immediately and drains without buffering', (
   );
   assert.match(dataHandler, /chunks\.length = 0/);
 });
+
+test('Worker clears failed initialization so transient startup errors can be retried', () => {
+  assert.match(
+    worker,
+    /initialization = \(async \(\) => \{[\s\S]*?\}\)\(\)\.catch\(\(error: unknown\) => \{[\s\S]*?initialization = undefined;[\s\S]*?throw error;/,
+  );
+});
