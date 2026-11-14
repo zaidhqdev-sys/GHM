@@ -4704,3 +4704,25 @@ The prior shorthand “57 not exact” was imprecise. The accurate current inven
 **Decision:** this inventory is descriptive evidence only. It does not establish which functions are required, unused, vulnerable, or safe to revoke. Do not mass-normalize search_path or change grants. Continue function-by-function source/migration provenance and caller analysis, prioritizing the reversed-order `replace_business_hours` routine and the two other `ghm, pg_temp` functions whose source has not yet been tied to a current-main migration. The runtime's lack of CREATE on schema `ghm` is already confirmed; retain that invariant.
 
 No production/local database, function, ACL, credential, environment, service, migration, deployment, or backup was changed.
+
+
+### Follow-up — all four noncanonical SECURITY DEFINER search_path settings matched to source migrations — 2026-11-14
+
+The four function settings outside the two canonical patterns have now been traced to exact migration source files on current main or the historical identity PR:
+
+- `ghm.auth_bootstrap_founder_system_admin(text)` → `20261005211000_correct_founder_system_admin_bootstrap_existing_account.sql`; source explicitly sets `ghm, pg_temp`.
+- `ghm.auth_create_account(text,text,text,text,text,integer,integer,integer)` → `20261004020000_create_auth_account_registration.sql`; source explicitly sets `ghm, pg_temp`.
+- `ghm.auth_read_connect_identity_authority(bigint)` → historical PR #137 migration `20261016100000_add_connect_identity_authority_contract.sql`; source explicitly sets `ghm, pg_temp`. PR #137 was closed unmerged; the consolidated PR #142 was also closed unmerged. The migration is therefore historically sourced but not on current main.
+- `ghm.replace_business_hours(bigint,bigint,jsonb)` → `20260916223000_create_business_hours.sql`; source explicitly sets `ghm, pg_catalog`.
+
+Thus all 63 production SECURITY DEFINER routines now have a known search_path setting, and every noncanonical setting in the current inventory has a matching migration source. This does **not** by itself establish that all 63 definitions are byte-identical to the current source or that their ledger records/checksums match.
+
+**Fresh schema-creation authority check** (read-only):
+- `ghm_runtime`: schema USAGE true, CREATE false, not a member of `ghm_schema_owner`, cannot SET ROLE `ghm_schema_owner`.
+- `ghm_db_user` and `ghm_app_user`: schema CREATE false and cannot SET ROLE `ghm_schema_owner`, despite their recorded membership relation to `ghm_schema_owner`.
+- `ghm_actor_gateway`: no schema USAGE/CREATE and no schema-owner membership.
+- `ghm_migrator`: schema USAGE/CREATE false, can SET ROLE `ghm_schema_owner` as designed.
+
+**Risk assessment refinement:** `replace_business_hours` does place `ghm` before `pg_catalog`, which is less conservative than the canonical pattern. However, the inspected runtime/admin identities have no CREATE privilege on `ghm` and cannot SET ROLE `ghm_schema_owner`; the current evidence does not establish an exploitable object-shadowing path. Preserve it as a hardening review item, not a confirmed vulnerability. Do not rewrite it or mass-normalize function settings without a tested migration and production approval.
+
+No production/local database, routine, schema privilege, role, ACL, credential, environment, service, migration, deployment, or backup was changed.
