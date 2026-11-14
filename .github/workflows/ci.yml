@@ -286,6 +286,21 @@ jobs:
             console.log('CLOUDFLARE WORKERS LOCAL RUNTIME + HYPERDRIVE + DATABASE STARTUP ACL: PASS');
           "
 
+          INVALID_JSON_STATUS=$(curl --silent --show-error --output tmp/actor-gateway-worker/invalid-json.json --write-out '%{http_code}' \
+            --header 'content-type: application/json' --data-binary '{' \
+            http://127.0.0.1:8787/v1/actor/me)
+          if [ "$INVALID_JSON_STATUS" != "400" ]; then
+            cat tmp/actor-gateway-worker/wrangler.log
+            cat tmp/actor-gateway-worker/invalid-json.json
+            exit 1
+          fi
+          node --input-type=module -e "
+            import fs from 'node:fs';
+            const invalid = JSON.parse(fs.readFileSync('tmp/actor-gateway-worker/invalid-json.json', 'utf8'));
+            if (invalid.error !== 'invalid_request') throw new Error('Unexpected Worker JSON parser response');
+            console.log('CLOUDFLARE WORKER JSON PARSER INVALID-BODY REJECTION: PASS');
+          "
+
       - name: Preserve Actor Gateway Worker smoke diagnostics
         if: always()
         uses: actions/upload-artifact@v4
