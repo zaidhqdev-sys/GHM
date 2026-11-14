@@ -3045,3 +3045,17 @@ Corrected the alias to the repository-root path:
 Commit: `27745e02bf7bdcaab93a157e8fd32e12bc59cfae`.
 
 This is a configuration path correction only. The next CI run will re-run the Worker bundle and local runtime tests; no pass is claimed yet.
+
+
+### Wrangler alias packaging correction
+
+The previous relative-path correction still failed: Wrangler's alias plugin resolves replacement modules through Node's package resolution rooted at the Worker project root. Relative alias strings were being resolved from the Wrangler CLI module, not from the Wrangler config directory.
+
+The replacement is now a proper local package:
+- Package: `ghm-worker-body-parser-stub`
+- Source: `workers/actor-gateway/body-parser-worker-stub/index.cjs`
+- Local package manifest: `workers/actor-gateway/body-parser-worker-stub/package.json`
+- Added as a local devDependency in `package.json` and `package-lock.json`.
+- Wrangler alias now uses the package specifier `"body-parser": "ghm-worker-body-parser-stub"`, which Node package resolution can find from the project root.
+
+This avoids path ambiguity and keeps the stub available only through the Worker bundler alias; the regular Node/Render runtime still resolves the real Express body-parser dependency. Exact-head CI must validate npm ci, Worker bundling, and runtime smoke before this workaround is accepted.
