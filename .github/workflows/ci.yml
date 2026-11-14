@@ -326,6 +326,15 @@ jobs:
       - name: Qualify Argon2id WASM and native PHC interoperability
         run: node workers/auth-issuer-argon2-benchmark/compat.mjs
 
+      - name: Preserve Argon2id PHC interoperability evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ghm-auth-issuer-argon2-phc-compatibility
+          path: tmp/argon2-wasm-compat.json
+          if-no-files-found: warn
+          retention-days: 3
+
       - name: Benchmark Argon2id WASM in local Workers Free CPU budget
         run: node workers/auth-issuer-argon2-benchmark/smoke.mjs
 
