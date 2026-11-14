@@ -4382,3 +4382,20 @@ The next operator step is strictly read-only:
 - Do not create any database, start/stop services, restore, or connect to production.
 
 This will allow selection of the existing PostgreSQL 18 instance only if the actual server version, existing databases, and available isolated target name are confirmed. Existing local qualification databases (including any prior `ghm_payfast_qualification`) must be preserved.
+
+
+### Local PostgreSQL inventory blocked by password authentication — 2026-11-14
+
+The owner ran the read-only port-specific `psql -w` checks against localhost ports 5432 and 5433. Both instances returned:
+
+`fe_sendauth: no password supplied`
+
+This is an authentication prerequisite failure, not evidence that either PostgreSQL instance is unavailable or corrupt. The `-w` flag correctly prevented interactive password prompts. No credentials were supplied in chat and none should be pasted into chat.
+
+The process inspection returned postgres.exe PIDs but blank CommandLine fields, so it did not map processes to ports/versions.
+
+**Decision:** do not bypass local PostgreSQL authentication, edit `pg_hba.conf`, reset local role passwords, create roles, or alter either instance. Do not guess credentials. The local restore test remains blocked pending a safe way to use an already-existing local administrator credential.
+
+**Next low-risk check:** inspect whether an existing per-user `%APPDATA%\postgresql\pgpass.conf` or `%APPDATA%\postgresql\.pgpass` exists (report only existence and metadata; never print its contents), and inspect the configured `port` lines from the two known PostgreSQL config files under `C:\Program Files\PostgreSQL\17\data\postgresql.conf` and `C:\Program Files\PostgreSQL\18\data\postgresql.conf`. If an existing password file is present, retry the read-only inventory with `-w`; otherwise stop and request a user-directed local credential method without transmitting secrets. Do not use production credentials for local restore qualification.
+
+No database, role, credential, service, configuration, backup archive, or production resource was changed.
