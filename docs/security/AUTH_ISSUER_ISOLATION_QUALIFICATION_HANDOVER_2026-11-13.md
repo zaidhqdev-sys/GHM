@@ -4683,3 +4683,24 @@ Fresh production read-only catalog evidence confirms the reviewer table exists w
 **Next gate:** obtain the approved `ghm_migrator` production connection through an existing secure operator credential store, then run only `npm run audit:migrations` locally. This should settle whether migration `20261016100000_add_connect_identity_authority_contract` is recorded and checksum-consistent. If the credential does not already exist, stop rather than create/rotate credentials or alter roles; keep production unchanged.
 
 No production/local database, table, function, ACL, credential, environment, service, migration, deployment, or backup was changed.
+
+
+### Fresh production SECURITY DEFINER search_path inventory — 2026-11-14
+
+A read-only production catalog query enumerated all SECURITY DEFINER routines in schema `ghm`, their owners, function-level search_path settings, and whether `ghm_runtime` has EXECUTE.
+
+**Fresh count: 63 routines**, all owned by `ghm_schema_owner`. All 63 have a function-level search_path setting (none rely on an unset function-level search_path).
+
+Breakdown:
+- **54** use `search_path=pg_catalog, ghm`.
+- **5** use `search_path=pg_catalog, ghm, pg_temp`.
+- **3** use `search_path=ghm, pg_temp` (includes `auth_bootstrap_founder_system_admin`, `auth_create_account`, and `auth_read_connect_identity_authority`).
+- **1** uses `search_path=ghm, pg_catalog`: `ghm.replace_business_hours(bigint,bigint,jsonb)`.
+
+The prior shorthand “57 not exact” was imprecise. The accurate current inventory is 59 with `pg_catalog` first, 3 with `ghm, pg_temp`, and 1 with `ghm` before `pg_catalog`. The three `ghm, pg_temp` settings match the historical Connect identity migration for `auth_read_connect_identity_authority` and should not be mislabeled as unexplained; the other two routines require their own source/migration provenance checks. The reversed order on `replace_business_hours` is a specific review item because `ghm` precedes `pg_catalog`; do not change it without tracing its exact migration and confirming schema CREATE/ownership assumptions.
+
+**Runtime EXECUTE distribution:** 46 of the 63 functions are executable by `ghm_runtime`; the remaining 17 are not. This agrees with the previously captured 46 count. All functions are owned by `ghm_schema_owner`.
+
+**Decision:** this inventory is descriptive evidence only. It does not establish which functions are required, unused, vulnerable, or safe to revoke. Do not mass-normalize search_path or change grants. Continue function-by-function source/migration provenance and caller analysis, prioritizing the reversed-order `replace_business_hours` routine and the two other `ghm, pg_temp` functions whose source has not yet been tied to a current-main migration. The runtime's lack of CREATE on schema `ghm` is already confirmed; retain that invariant.
+
+No production/local database, function, ACL, credential, environment, service, migration, deployment, or backup was changed.
