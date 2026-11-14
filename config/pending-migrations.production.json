@@ -1,6 +1,30 @@
 [
   {
-    "version": "20261109210000",
-    "name": "deactivate_unrecognized_public_directory_records"
+    "version": "20261110100000",
+    "name": "create_account_onboarding_progress"
+  },
+  {
+    "version": "20261110120000",
+    "name": "create_business_relationship_outcome_read_models"
+  },
+  {
+    "version": "20261110140000",
+    "name": "allow_pending_storage_object_cleanup"
+  },
+  {
+    "version": "20261110210000",
+    "name": "add_actor_gateway_principal_guard"
+  },
+  {
+    "version": "20261110220000",
+    "name": "add_actor_gateway_self_identity_read"
+  },
+  {
+    "version": "20261110230000",
+    "name": "add_gateway_business_registration_identity_read"
+  },
+  {
+    "version": "20261110233000",
+    "name": "add_gateway_business_registration_identity_write"
   }
 ]
