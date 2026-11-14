@@ -19,7 +19,7 @@ export interface ActorGatewayDatabasePrivileges {
 export const assertActorGatewayDatabasePrivileges = (
   privileges: ActorGatewayDatabasePrivileges,
 ): void => {
-  const normalizeSignature = (signature: string): string => signature.replace(/,\\s*/g, ',');
+  const normalizeSignature = (signature: string): string => signature.replace(/,\s*/g, ',');
   const actual = privileges.executable_functions.map(normalizeSignature).sort();
   const expected = privileges.expected_functions.map(normalizeSignature).sort();
   const campaignReviewFunctions = new Set([
