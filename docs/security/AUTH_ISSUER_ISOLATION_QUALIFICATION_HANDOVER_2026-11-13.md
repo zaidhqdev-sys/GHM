@@ -5026,3 +5026,74 @@ The handover-only follow-up commit `09e9c245acbe79466f4b2ae1bca370e8703ef896` wa
 The synchronized PR #277 branch now compares against PR #276 as `ahead`, 88 commits ahead, 0 behind, with merge base `aa86fa1346daf922d3c80c27f2bf5beb697bafbb`. Its six intended changed paths remain unchanged.
 
 This is the latest exact-head CI evidence for the PR #277 stack. PR #272, #276 and #277 all remain open/draft and unmerged. Production gates remain open as listed above; green disposable CI does not authorize production role changes, migrations, environment edits, Worker publication, or deployment.
+
+
+### Exact deployed-commit production SECURITY DEFINER caller map — 2026-11-14
+
+Re-read the latest handover before continuing. Earlier entries had a partial current-main caller spot-check and a separate 63-function production catalog inventory. This checkpoint adds a targeted caller map against the exact Render-deployed source commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`, using a fresh read-only production catalog query for the exact 46 SECURITY DEFINER functions executable by `ghm_runtime`.
+
+**Fresh production query confirmed:**
+- 46 SECURITY DEFINER functions executable by `ghm_runtime`.
+- All 46 are owned by `ghm_schema_owner`.
+- Function-level settings and definition MD5 fingerprints were retrieved from the production catalog.
+- No SQL writes were possible through the Render read-only query interface.
+
+**Direct deployed-source call sites found (42/46):**
+
+Authentication persistence in `src/auth/foundation/persistence.ts` directly calls:
+- `auth_bootstrap_external_identity`
+- `auth_change_password`
+- `auth_complete_quoteflow_migration_reset`
+- `auth_create_account`
+- `auth_create_session_with_refresh`
+- `auth_disable_account`
+- `auth_issue_recovery`
+- `auth_link_external_identity`
+- `auth_lookup_external_identity`
+- `auth_lookup_password_by_normalized_email`
+- `auth_lookup_quoteflow_migration_reset_enrollment`
+- `auth_redeem_recovery`
+- `auth_revoke_all_sessions_for_account`
+- `auth_revoke_by_refresh_hash`
+- `auth_revoke_session`
+- `auth_rotate_refresh`
+- `auth_set_password`
+- `auth_validate_session`
+
+Additional authentication/Connect callers:
+- `auth_link_business_external_mapping` — `src/integrations/connect/business-adapter.ts` and `src/auth/foundation/persistence.ts`.
+- `auth_lookup_business_external_mapping` — `src/http/commercial-internal-router.ts`; the route resolves legacy Supabase external business IDs to GHM business IDs.
+- `connect_service_assertion_consume` — `src/integrations/connect/service-assertion-replay.ts`.
+
+Resource callers:
+- `is_business_capability_publicly_evidence_eligible`, `replace_business_capability_assertions`, `transition_business_capability_verification` — `src/resources/business-capability/repository.ts`.
+- `transition_business_capability_evidence` — `src/resources/business-capability-evidence/repository.ts`.
+- `replace_business_hours` — `src/resources/business-hours/repository.ts`.
+- `update_business_profile` — `src/resources/business-identity/repository.ts`.
+- `read_business_registration_identity`, `update_business_registration_identity` — `src/resources/business-registration-identity/repository.ts`.
+- `create_campaign`, `update_campaign` — `src/resources/campaign/repository.ts`.
+- `get_business_directory_review_presentation` — `src/resources/directory-review/repository.ts`.
+- `create_saved_business`, `delete_saved_business` — `src/resources/saved-business/repository.ts`.
+- `calculate_business_trust_score` — `src/resources/trust-score/repository.ts`.
+- `storage_create_pending`, `storage_get_object`, `storage_mark_available`, `storage_mark_deleted`, `storage_mark_deletion_pending` — `src/storage/repository.ts`.
+- `set_business_logo_object`, `storage_get_public_business_logo` — `src/http/storage-router.ts`.
+
+**Four functions without a direct caller found in the inspected deployed application source:**
+1. `auth_provision_migration_account(text,text,text,text)`
+2. `auth_read_account_email(bigint)`
+3. `auth_read_connect_identity_authority(bigint)`
+4. `auth_register_quoteflow_migration_reset_enrollment(bigint,text,text,text,text,text)`
+
+The live definitions were retrieved read-only:
+- `auth_provision_migration_account` provisions a Supabase external identity into an active GHM account, constrained to the customer/business roles and protected by an advisory transaction lock.
+- `auth_read_account_email` returns the active login email for an account ID.
+- `auth_read_connect_identity_authority` returns Connect role, business-operator intent, system-admin status and founder directory-reviewer status. Its exact source migration is historical PR #137, closed unmerged; the corresponding current/historical application caller was not found in the inspected identity adapter, Connect router, or auth persistence files.
+- `auth_register_quoteflow_migration_reset_enrollment` registers a controlled QuoteFlow reset enrollment only when the account is active and the Supabase external identity mapping matches.
+
+The migration-related names and definitions suggest specialized migration/authority surfaces, but this does not establish that they are unused. Some callers may be external, historical, indirect, or outside the inspected source files. Do not revoke or change grants for these functions based on this result.
+
+**Scope limitation:** this is a direct-call map for the deployed commit and the inspected authentication persistence, Connect adapters, resource repositories, storage repository, and selected HTTP routers. It is not a proof that all 46 functions have no other indirect/external callers. The earlier current-main spot-check remains separate; deployed `c7cf1eb`, current `main`, and construction PR branches must not be conflated.
+
+**Decision:** preserve all current production grants. The 42 direct call matches establish concrete usage and rule out treating those routines as unused. The four unresolved functions require caller/provenance evidence before any ACL proposal. The production migration ledger remains the authority for whether the associated migration versions/checksums were applied, and is still blocked on the approved `ghm_migrator` credential/role path.
+
+No production/local database, function, ACL, role, membership, credential, environment, service, migration, deployment, payment flow, backup, or paid resource was changed.
