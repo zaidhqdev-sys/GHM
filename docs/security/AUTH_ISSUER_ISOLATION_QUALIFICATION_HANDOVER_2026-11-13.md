@@ -4399,3 +4399,22 @@ The process inspection returned postgres.exe PIDs but blank CommandLine fields, 
 **Next low-risk check:** inspect whether an existing per-user `%APPDATA%\postgresql\pgpass.conf` or `%APPDATA%\postgresql\.pgpass` exists (report only existence and metadata; never print its contents), and inspect the configured `port` lines from the two known PostgreSQL config files under `C:\Program Files\PostgreSQL\17\data\postgresql.conf` and `C:\Program Files\PostgreSQL\18\data\postgresql.conf`. If an existing password file is present, retry the read-only inventory with `-w`; otherwise stop and request a user-directed local credential method without transmitting secrets. Do not use production credentials for local restore qualification.
 
 No database, role, credential, service, configuration, backup archive, or production resource was changed.
+
+
+### Local PostgreSQL instance mapping confirmed; restore test deferred safely — 2026-11-14
+
+The owner checked the existing password-file locations and both PostgreSQL configuration files.
+
+**Confirmed:**
+- PostgreSQL 17 config: `C:\Program Files\PostgreSQL\17\data\postgresql.conf`, configured `port = 5432`.
+- PostgreSQL 18 config: `C:\Program Files\PostgreSQL\18\data\postgresql.conf`, configured `port = 5433`.
+- Neither `%APPDATA%\postgresql\pgpass.conf` nor `%APPDATA%\postgresql\.pgpass` exists.
+- Prior no-password connection attempts to both local instances failed with `fe_sendauth: no password supplied`.
+- Both Windows services are Running; local disk capacity is ample (314.19 GB free).
+- The production export's extracted PostgreSQL 18.6 directory-format TOC parses successfully (760 TOC entries in archive header; 770 lines returned by `pg_restore --list`).
+
+**Decision:** defer the local restore test. There is no existing local password file and no verified local administrative credential path. Do not change local authentication, reset passwords, edit `pg_hba.conf`, create roles, or use production credentials merely to force a restore. No local database or service was changed.
+
+**Backup gate assessment:** the November 14 production export has strong integrity/readability evidence: Render export record, local file presence (81,507 bytes), SHA-256 `2341471A3D0890A1B0E26D356BE7FB121385FDD3A33B8340658CB290CBC749F4`, successful outer gzip/tar listing and extraction, and successful PostgreSQL 18.6 directory-format TOC parsing. A full restore test remains unperformed. Keep this explicit limitation in all subsequent decisions; do not describe backup/restore as fully qualified.
+
+**Proceeding order:** stop spending time trying to gain local database access. Continue with the next independent read-only production gate: migration-ledger authority/evidence. Revisit restore testing only if an existing, owner-approved local PostgreSQL credential route becomes available without altering authentication or incurring cost. Production credentials and migration secrets must never be pasted into chat.
