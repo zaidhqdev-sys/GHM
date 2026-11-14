@@ -4321,3 +4321,30 @@ Official source: https://render.com/docs/postgresql-backups (section "Restoring 
 **Next safe step:** extract the archive into a newly created, dedicated inspection folder under the existing Windows TEMP directory. The command must stop if that folder already exists, preserve the original archive, and extract only the outer tarball. Then locate `toc.dat` and run `pg_restore --list` against its parent directory. Do not connect to any database or perform a restore yet. Before any later local restore, explicitly verify local service ports and free disk space; the previous output was inconclusive.
 
 **Current backup status:** file existence, size (81,507 bytes), archive listing, and SHA-256 (`2341471A3D0890A1B0E26D356BE7FB121385FDD3A33B8340658CB290CBC749F4`) are owner-verified. PostgreSQL TOC validation remains pending after correct extraction. Restore test remains pending. No production or local database contents were modified; the archive itself remains unchanged.
+
+
+### Render production export PostgreSQL TOC validation passed — 2026-11-14
+
+The owner successfully extracted the outer Render `.dir.tar.gz` archive into the isolated new temporary directory:
+
+`C:\Users\zaidh\AppData\Local\Temp\GHM-production-export-inspection-20261114\2026-11-14T14_26Z\ghm_db`
+
+The owner then ran `pg_restore --list` against that extracted directory.
+
+**Verified output:**
+- TOC validation passed.
+- Directory format: `DIRECTORY`.
+- Database name recorded in archive metadata: `ghm_db`.
+- TOC entries reported: **770** (archive header reports **760 TOC Entries**; output includes the TOC header/selection metadata as well, so preserve both exact reported figures rather than reconciling by assumption).
+- Dumped from PostgreSQL **18.6**.
+- Dumped by pg_dump **18.6**.
+- Dump version: `1.16-0`.
+- Compression: none.
+- Archive timestamp: `2026-11-14 14:28:34`.
+- Owner-provided excerpt includes `ghm` and `public` schemas and functions owned by `ghm_schema_owner`.
+
+**Recovery evidence status:** Render export creation confirmed; local file exists (81,507 bytes); archive listing passed; SHA-256 recorded as `2341471A3D0890A1B0E26D356BE7FB121385FDD3A33B8340658CB290CBC749F4`; outer archive extracted to a new isolated TEMP directory; PostgreSQL directory-format TOC successfully parsed by pg_restore 18.6. This is a strong logical-backup readability/structure verification, but still not a restore test and does not prove all data blocks can be restored.
+
+**Next step:** read-only local capacity and listener inspection before deciding whether a no-cost isolated restore can be attempted. The previous service query showed PostgreSQL 17 and 18 Windows services Running but did not return usable listener rows or free disk numbers. Do not start/stop services, create a database, run pg_restore -d, or connect to production. Confirm the extracted directory size, free disk on C:, PostgreSQL 17/18 port bindings, and whether the existing PostgreSQL 18 local instance has enough capacity for a separate restore. If capacity is inadequate or ambiguous, stop without provisioning anything.
+
+No production database, Render resource, local database, credential, role/grant, environment, migration, deployment, or original archive was changed in this checkpoint.
