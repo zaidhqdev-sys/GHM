@@ -2663,3 +2663,42 @@ The later operator-provided Render observation additionally confirms a `DATABASE
 The historical list is a real inventory already supplied by the operator, but it is not a fresh read of today's Render page. The only latest Render value independently reconfirmed in this session is `DATABASE_URL` pointing at the retired sandbox database. For the other Render variables, preserve their historical presence as evidence and do not pretend their current values have been re-read.
 
 No environment variables or secrets have been changed. This comparison is the consolidated working manifest; unresolved target values remain explicitly gated rather than guessed. Keep Render auto-deploy disabled.
+
+
+## 2026-11-14 — Local .env cleanup executed and verified
+
+Operator executed the approved local-only cleanup in `C:\\GHM\\.env`. The command created timestamped backups before each edit. The operator supplied the resulting variable-name inventory; no secret values were displayed.
+
+### Removed and verified absent
+
+- `FRONTEND_URL` — localhost-only value; not consumed by the inspected current Resource API configuration.
+- `S3_ENDPOINT` — localhost MinIO endpoint; not consumed by the current storage configuration loader.
+- `GHM_NONPRODUCTION_DATABASE_HOST` — points to the retired sandbox PostgreSQL host.
+- `JWT_SECRET` — removed in a second backed-up edit. Current-mainline source search found no `JWT_SECRET` consumer; the inspected ES256 key loader and token-HMAC loader use the current GHM key/pepper variables instead. This is a current-mainline finding, not a guarantee about external or untracked scripts.
+
+Backups created locally:
+- `C:\\GHM\\.env.before-cleanup-20261114-214134.bak`
+- `C:\\GHM\\.env.before-jwt-secret-removal-20261114-214300.bak`
+
+### Verified remaining local variable names
+
+`DATABASE_URL`, `INVITE_CODE`, `GHM_RUNTIME_DATABASE_URL`, `GHM_MIGRATOR_DATABASE_URL`, `DATABASE_SSL`, `GHM_AUTH_TOKEN_PEPPER`, `GHM_JWT_ES256_PRIVATE_KEY_PEM`, `GHM_JWT_ES256_PUBLIC_KEY_PEM`, `GHM_JWT_ES256_KID`, `STORAGE_REGION`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`, `STORAGE_ENDPOINT`, `GHM_MIGRATION_DATABASE_NAME`, `GHM_MIGRATION_DATABASE_HOST`.
+
+### Remaining-variable consumer checks
+
+Inspected current-mainline source:
+- `src/db/migrate.ts` reads `GHM_MIGRATOR_DATABASE_URL`, `GHM_MIGRATION_DATABASE_NAME`, `GHM_MIGRATION_DATABASE_HOST`, `DATABASE_SSL`, and `NODE_ENV`. The two migration target metadata values are deliberate guard inputs; do not remove them from the local migration environment.
+- `scripts/forensic-migration-reconciliation.mjs` reads `GHM_MIGRATOR_DATABASE_URL` and `DATABASE_SSL`.
+- `scripts/capture-postgres-catalog.mjs` reads `DATABASE_URL`; therefore retain it while this catalog evidence script remains in use.
+- `scripts/test-env.cjs` loads dotenv and uses `DATABASE_URL` as a test fallback when no other test/runtime DB URL is supplied.
+- `src/auth/foundation/es256-keys.ts` requires the active private PEM, public PEM, and KID for issuer key loading; its verification-only loader requires the public PEM and KID.
+- `src/auth/foundation/token-hmac.ts` requires `GHM_AUTH_TOKEN_PEPPER` with at least 32 bytes.
+- Current storage loader requires the complete region/bucket/access-key/secret-key set when storage is enabled; `STORAGE_ENDPOINT` is optional. Keep the configured R2 set intact pending explicit confirmation that local qualification no longer needs storage.
+
+### Important unresolved safety point
+
+The remaining local `GHM_RUNTIME_DATABASE_URL` is known to target the production `ghm_db` database, and the local file does not set `NODE_ENV`. Since the current config prefers `GHM_RUNTIME_DATABASE_URL` when present even outside production, running the application locally with this `.env` can target the production database. The previously observed password-authentication failure remains unresolved. Do not run the local application or migration commands against this URL as a casual smoke test; next isolate the local development/test environment from production credentials while preserving the approved read-only production audit workflow. No DB writes were performed as part of this cleanup.
+
+### Execution boundary
+
+Only the user's local `C:\\GHM\\.env` was edited. No Render variable, secret, database, role, deployment, service, route, or paid resource was changed. Render auto-deploy remains OFF. PayFast remains paused.
