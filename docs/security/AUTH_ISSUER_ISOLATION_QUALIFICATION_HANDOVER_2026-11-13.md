@@ -4451,3 +4451,38 @@ These are repository-side policy/configuration counts only. They are not a live 
 **Decision:** the static audit path is understood and is read-only by construction, but a production ledger audit cannot be run until an already-authorized `ghm_migrator` connection secret is available in an approved local operator context. Continue with source-side reconciliation only; do not weaken the authority contract or bypass the missing credential.
 
 No database connection was attempted in this checkpoint. No production/local database, role, grant, credential, environment variable, service, migration, deployment, or backup was changed.
+
+
+### Runtime and migrator source contracts — static comparison — 2026-11-14
+
+The next source-side gate was reviewed without connecting to production.
+
+**Runtime identity contract** (`src/db/runtime-principal.ts`):
+- Both `session_user` and `current_user` must be exactly `ghm_runtime`.
+- Must have database CONNECT, but not database CREATE.
+- Must have `ghm` schema USAGE, but not CREATE.
+- Must LOGIN, but must not INHERIT, SUPERUSER, CREATEDB, CREATEROLE, REPLICATION, or BYPASSRLS.
+- Must have no untrusted role memberships.
+
+**Runtime SECURITY DEFINER EXECUTE contract** (`src/db/runtime-database-privileges.ts`):
+- The static pre-manual-cutover baseline contains **43 exact SECURITY DEFINER function signatures**.
+- Nine independently qualified manual cutover groups define **512 reviewed combinations** (2^9).
+- The fully cut-over state contains **13 exact signatures**.
+- Startup inventory measures SECURITY DEFINER routines in schema `ghm` executable by `session_user`.
+- The source file explicitly says its 43-function baseline came from a disposable PostgreSQL 18.6 inventory and production enforcement remains gated until the production catalog is captured and reconciled.
+
+**Important production comparison:** previous production read-only catalog evidence recorded 46 effective SECURITY DEFINER function EXECUTE grants for `ghm_runtime` (and 46 effective for the then-current app/effective identity). That count is not an exact signature comparison against the branch's 43-signature disposable baseline. Do not infer which signatures differ from counts alone. This is another reason not to deploy the newer startup guard or change grants until an exact production catalog inventory is available and reviewed.
+
+**Migrator principal contract** (`src/db/migrator-principal.ts` and `src/db/migrate.ts`):
+- Dedicated login `ghm_migrator`, with no superuser, CREATEDB, CREATEROLE, REPLICATION, BYPASSRLS or INHERIT.
+- CONNECT only; no direct `ghm` schema USAGE/CREATE and no direct relation privileges.
+- Exactly one direct membership, into `ghm_schema_owner`, with ADMIN false, INHERIT false, SET true.
+- No memberships granted to other roles from `ghm_migrator`.
+- `ghm_schema_owner` must be NOLOGIN and own schema `ghm`; it must have database CREATE; it must have no direct memberships.
+- Migration runner checks these invariants before `SET ROLE ghm_schema_owner`, verifies the exact session/effective identity, and checks the explicitly approved database target.
+
+**Production role-graph comparison:** previous production read-only membership inventory records `ghm_migrator` granted to `ghm_db_user` (that is, `ghm_db_user` is a member of `ghm_migrator`), with ADMIN OPTION. This means the production role graph does not match the source migrator contract's `migrator_member_count = 0` expectation. The production `ghm_migrator` credential/audit connection must not be treated as qualified until the membership graph is reconciled through an approved procedure. Do not attempt to fix memberships from the application identity.
+
+**Decision:** source contracts reinforce the no-cutover decision. Keep production runtime/env/roles untouched. The next useful evidence is a complete read-only production catalog and role-membership capture using an already-authorized administrative read-only context, then compare exact function signatures, attributes, memberships, and grants against these source contracts. The existing Render app query identity has previously been unable to read the migration ledger, and the dedicated migrator connection is not presently available through an approved local secret path.
+
+No database connection, SQL mutation, role/grant change, credential operation, environment edit, deployment, or migration was performed in this checkpoint.
