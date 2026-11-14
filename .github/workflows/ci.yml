@@ -208,7 +208,7 @@ jobs:
 
       - name: Bundle Actor Gateway Cloudflare Worker without deploying
         run: >-
-          npx --yes wrangler@4.0.0 deploy --dry-run
+          npx --yes wrangler@4.36.0 deploy --dry-run
           --outdir tmp/actor-gateway-worker-build
           --config workers/actor-gateway/wrangler.jsonc
 
