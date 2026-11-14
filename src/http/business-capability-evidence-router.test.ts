@@ -5,9 +5,10 @@ import { createApp } from './app';
 import { httpTestAuth, tokenFor } from './test-resource-auth';
 import type { AuthContext } from '../auth/authorization';
 import type { BusinessCapabilityEvidence, BusinessCapabilityEvidenceService } from '../resources/business-capability-evidence/contracts';
+import { BusinessCapabilityEvidenceServiceImpl } from '../resources/business-capability-evidence/service';
 
-const start = async (service: BusinessCapabilityEvidenceService) => {
-  const server = http.createServer(createApp({resourceAuthMiddleware:httpTestAuth,businessCapabilityEvidenceService:service}));
+const start = async (service: BusinessCapabilityEvidenceService, capabilityMutationGatewayClient?: unknown, capabilityMutationGatewayRequired = false) => {
+  const server = http.createServer(createApp({resourceAuthMiddleware:httpTestAuth,businessCapabilityEvidenceService:service,capabilityMutationGatewayClient:capabilityMutationGatewayClient as never,capabilityMutationGatewayRequired}));
   await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));
   const address=server.address(); assert.ok(address && typeof address!=='string');
   return {server,baseUrl:`http://127.0.0.1:${address.port}`};
@@ -40,9 +41,10 @@ test('customer cannot submit Capability evidence',async()=>{
  } finally {await new Promise<void>(resolve=>server.close(()=>resolve()));}
 });
 
-test('evidence submission rejects unbounded or non-HTTPS references before service execution',async()=>{
+test('evidence submission rejects unbounded or non-HTTPS references in the service validation boundary',async()=>{
  let called=false;
- const service={create:async()=>{called=true;return {} as BusinessCapabilityEvidence;}} as unknown as BusinessCapabilityEvidenceService;
+ const repository={create:async()=>{called=true;return {} as BusinessCapabilityEvidence;},listForBusiness:async()=>[],listForVerification:async()=>[],review:async()=>({} as BusinessCapabilityEvidence)};
+ const service=new BusinessCapabilityEvidenceServiceImpl(repository);
  const {server,baseUrl}=await start(service);
  try {
   const response=await fetch(`${baseUrl}/api/v1/business-capability-evidence`,{method:'POST',headers:{authorization:`Bearer ${tokenFor({userId:42,role:'business'})}`,'content-type':'application/json'},body:JSON.stringify({businessCapabilityId:12,evidenceType:'certification',title:'Certificate',evidenceUrl:'http://unsafe.test/doc'})});
@@ -71,14 +73,71 @@ test('admin review accepts verify, reject and revoke decisions only through revi
  } finally {await new Promise<void>(resolve=>server.close(()=>resolve()));}
 });
 
-test('business role cannot access admin verification queue or moderation service',async()=>{
- let listed=false,reviewed=false;
- const service={listForVerification:async()=>{listed=true;return[];},review:async()=>{reviewed=true;return{};}} as unknown as BusinessCapabilityEvidenceService;
+test('business role can list only business-scoped evidence and cannot access moderation',async()=>{
+ let pendingListed=false,businessListed=false,reviewed=false;
+ const repository={create:async()=>({} as BusinessCapabilityEvidence),listForBusiness:async()=>{businessListed=true;return[];},listForVerification:async()=>{pendingListed=true;return[];},review:async()=>{reviewed=true;return{} as BusinessCapabilityEvidence;}};
+ const service=new BusinessCapabilityEvidenceServiceImpl(repository);
  const {server,baseUrl}=await start(service);
  try {
   const headers={authorization:`Bearer ${tokenFor({userId:42,role:'business'})}`};
-  const list=await fetch(`${baseUrl}/api/v1/business-capability-evidence`,{headers});
+  const list=await fetch(`${baseUrl}/api/v1/business-capability-evidence?businessId=55`,{headers});
   const review=await fetch(`${baseUrl}/api/v1/business-capability-evidence/91/review`,{method:'PATCH',headers:{...headers,'content-type':'application/json'},body:JSON.stringify({decision:'verified'})});
-  assert.equal(list.status,403);assert.equal(review.status,403);assert.equal(listed,false);assert.equal(reviewed,false);
+  assert.equal(list.status,200);assert.equal(review.status,403);assert.equal(businessListed,true);assert.equal(pendingListed,false);assert.equal(reviewed,false);
  } finally {await new Promise<void>(resolve=>server.close(()=>resolve()));}
+});
+
+test('evidence submission forwards the verified bearer token to the signed gateway and preserves the DTO response',async()=>{
+ const token=tokenFor({userId:42,role:'business'});let received:any;
+ const service={create:async()=>{throw new Error('legacy evidence create must not run');}} as unknown as BusinessCapabilityEvidenceService;
+ const gateway={submitEvidence:async(t:string,input:unknown)=>{received={token:t,input};return{evidence:fixture({userId:42,role:'business'})};}};
+ const {server,baseUrl}=await start(service,gateway,true);
+ try{
+  const input={businessCapabilityId:12,evidenceType:'certification',title:'Signed certificate',visibility:'private'};
+  const response=await fetch(`${baseUrl}/api/v1/business-capability-evidence`,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},body:JSON.stringify(input)});
+  assert.equal(response.status,201);assert.equal(received.token,token);assert.deepEqual(received.input,input);
+  const body=await response.json() as {evidence:BusinessCapabilityEvidence};assert.equal(body.evidence.id,91);
+ }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
+});
+
+test('evidence review forwards the verified admin bearer token to the signed gateway',async()=>{
+ const token=tokenFor({userId:99,role:'admin'});let received:any;
+ const service={review:async()=>{throw new Error('legacy evidence review must not run');}} as unknown as BusinessCapabilityEvidenceService;
+ const gateway={reviewEvidence:async(t:string,id:number,decision:string,reason:string|null)=>{received={token:t,id,decision,reason};return{evidence:fixture({userId:42,role:'business'})};}};
+ const {server,baseUrl}=await start(service,gateway,true);
+ try{
+  const response=await fetch(`${baseUrl}/api/v1/business-capability-evidence/91/review`,{method:'PATCH',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},body:JSON.stringify({decision:'verified',reason:null})});
+  assert.equal(response.status,200);assert.deepEqual(received,{token,id:91,decision:'verified',reason:null});
+ }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
+});
+
+test('evidence mutation fails closed when gateway is required but unavailable',async()=>{
+ let called=false;
+ const service={create:async()=>{called=true;return fixture({userId:42,role:'business'});}} as unknown as BusinessCapabilityEvidenceService;
+ const {server,baseUrl}=await start(service,undefined,true);
+ try{
+  const response=await fetch(`${baseUrl}/api/v1/business-capability-evidence`,{method:'POST',headers:{authorization:`Bearer ${tokenFor({userId:42,role:'business'})}`,'content-type':'application/json'},body:JSON.stringify({businessCapabilityId:12,evidenceType:'certification',title:'Certificate'})});
+  assert.equal(response.status,503);assert.equal(called,false);
+ }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
+});
+
+test('business role cannot invoke the signed evidence review gateway',async()=>{
+ let called=false;
+ const service={review:async()=>{throw new Error('legacy review must not run');}} as unknown as BusinessCapabilityEvidenceService;
+ const gateway={reviewEvidence:async()=>{called=true;return{evidence:fixture({userId:42,role:'business'})};}};
+ const {server,baseUrl}=await start(service,gateway,true);
+ try{
+  const response=await fetch(`${baseUrl}/api/v1/business-capability-evidence/91/review`,{method:'PATCH',headers:{authorization:`Bearer ${tokenFor({userId:42,role:'business'})}`,'content-type':'application/json'},body:JSON.stringify({decision:'verified',reason:null})});
+  assert.equal(response.status,403);assert.equal(called,false);
+ }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
+});
+
+test('admin role cannot invoke the Business evidence submission gateway',async()=>{
+ let called=false;
+ const service={create:async()=>{throw new Error('legacy create must not run');}} as unknown as BusinessCapabilityEvidenceService;
+ const gateway={submitEvidence:async()=>{called=true;return{evidence:fixture({userId:99,role:'admin'})};}};
+ const {server,baseUrl}=await start(service,gateway,true);
+ try{
+  const response=await fetch(`${baseUrl}/api/v1/business-capability-evidence`,{method:'POST',headers:{authorization:`Bearer ${tokenFor({userId:99,role:'admin'})}`,'content-type':'application/json'},body:JSON.stringify({businessCapabilityId:12,evidenceType:'certification',title:'Certificate'})});
+  assert.equal(response.status,403);assert.equal(called,false);
+ }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
 });

@@ -5,6 +5,7 @@ import test from 'node:test';
 
 const migration = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261105230000_create_founder_directory_review.sql'), 'utf8');
 const reconciliationMigration = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261107211500_reconcile_business_profile_and_founder_authority.sql'), 'utf8');
+const founderReviewCloseMigration = fs.readFileSync(path.resolve(process.cwd(), 'database/migrations/20261109140000_close_evidence_and_founder_review_authority.sql'), 'utf8');
 const migrationRunner = fs.readFileSync(path.resolve(process.cwd(), 'src/db/migrate.ts'), 'utf8');
 // Static assertions protect the private Founder authority and publication boundary.
 const businessIdentity = fs.readFileSync(path.resolve(process.cwd(), 'src/resources/business-identity/public-repository.ts'), 'utf8');
@@ -46,4 +47,14 @@ test('reconciliation migration leaves transaction boundaries to the migration ru
   assert.match(migrationRunner, /await client\.query\('BEGIN'\)/);
   assert.match(migrationRunner, /await client\.query\('COMMIT'\)/);
   assert.doesNotMatch(reconciliationMigration, /^\s*(BEGIN|COMMIT|ROLLBACK)\s*;/im);
+});
+
+
+test('founder review write RPCs are revoked while the owner presentation read remains separately available', () => {
+  assert.match(founderReviewCloseMigration, /CREATE OR REPLACE FUNCTION ghm\.is_directory_listing_founder_reviewer\(p_account_id bigint\)[\s\S]*SELECT false/);
+  assert.match(founderReviewCloseMigration, /REVOKE ALL ON FUNCTION ghm\.is_directory_listing_founder_reviewer\(bigint\)[\s\S]*FROM PUBLIC, ghm_runtime/);
+  assert.match(founderReviewCloseMigration, /REVOKE ALL ON FUNCTION ghm\.submit_business_directory_review\(bigint, bigint\)[\s\S]*FROM PUBLIC, ghm_runtime/);
+  assert.match(founderReviewCloseMigration, /REVOKE ALL ON FUNCTION ghm\.list_businesses_for_directory_review\(bigint, text, integer, integer\)[\s\S]*FROM PUBLIC, ghm_runtime/);
+  assert.match(founderReviewCloseMigration, /REVOKE ALL ON FUNCTION ghm\.review_business_directory_listing\(bigint, bigint, text, text\)[\s\S]*FROM PUBLIC, ghm_runtime/);
+  assert.doesNotMatch(founderReviewCloseMigration, /REVOKE ALL ON FUNCTION ghm\.get_business_directory_review_presentation/);
 });

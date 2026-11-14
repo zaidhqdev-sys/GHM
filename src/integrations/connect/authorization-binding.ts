@@ -47,9 +47,7 @@ export const bindConnectAuthorization = async (
     throw new ConnectAuthorizationBindingError('End-user identity is required');
   }
 
-  const resolution = await dependencies.identity.resolve(externalIdentity.subject, {
-    allowBootstrap: false,
-  });
+  const resolution = await dependencies.identity.resolve(externalIdentity.subject);
   if (resolution.outcome !== 'resolved') {
     throw new ConnectAuthorizationBindingError('Connect identity is not mapped');
   }

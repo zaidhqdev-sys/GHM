@@ -6,6 +6,8 @@ import type {
   Capability,
   CapabilityId,
   CapabilityRepository,
+  CapabilityDraftInput,
+  CapabilityLifecycle,
 } from './contracts.js';
 
 const CAPABILITY_COLUMNS = `
@@ -136,6 +138,61 @@ export class PgCapabilityRepository implements CapabilityRepository {
       (client) => findActiveCapabilities(client),
       this.transactionPool,
     );
+  }
+
+  async listGoverned(context: AuthContext): Promise<Capability[]> {
+    return withAuthorizedTransaction(
+      context,
+      async (client) => {
+        const result = await client.query(
+          `SELECT ${CAPABILITY_COLUMNS}
+           FROM ghm.capability
+           ORDER BY taxonomy_version DESC, sort_order, name, id`,
+        );
+        return result.rows.map(mapCapability);
+      },
+      this.transactionPool,
+    );
+  }
+
+  async createDraft(context: AuthContext, input: CapabilityDraftInput): Promise<Capability> {
+    return withAuthorizedTransaction(context, async client => {
+      const result = await client.query(
+        `SELECT * FROM ghm.create_capability_draft($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [context.userId, input.name, input.slug, input.description ?? null,
+          input.parentId ?? null, input.sortOrder ?? 0, input.sourceReference ?? null, 1],
+      );
+      return mapCapability(result.rows[0]);
+    }, this.transactionPool);
+  }
+
+  async updateDraft(context: AuthContext, capabilityId: CapabilityId, input: CapabilityDraftInput): Promise<Capability> {
+    assertCapabilityId(capabilityId);
+    return withAuthorizedTransaction(context, async client => {
+      const result = await client.query(
+        `SELECT * FROM ghm.update_capability_draft($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        [context.userId, capabilityId, input.name, input.slug, input.description ?? null,
+          input.parentId ?? null, input.sortOrder ?? 0, input.sourceReference ?? null, 1],
+      );
+      return mapCapability(result.rows[0]);
+    }, this.transactionPool);
+  }
+
+  async transition(
+    context: AuthContext,
+    capabilityId: CapabilityId,
+    targetStatus: CapabilityLifecycle,
+    replacedByCapabilityId: CapabilityId | null = null,
+  ): Promise<Capability> {
+    assertCapabilityId(capabilityId);
+    if (replacedByCapabilityId !== null) assertCapabilityId(replacedByCapabilityId);
+    return withAuthorizedTransaction(context, async client => {
+      const result = await client.query(
+        `SELECT * FROM ghm.transition_capability_lifecycle($1,$2,$3,$4,$5)`,
+        [context.userId, capabilityId, targetStatus, replacedByCapabilityId, 1],
+      );
+      return mapCapability(result.rows[0]);
+    }, this.transactionPool);
   }
 
   async listSelectableCapabilities(

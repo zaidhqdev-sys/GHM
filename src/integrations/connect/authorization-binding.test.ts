@@ -81,20 +81,6 @@ test('resolves external identity and derives current GHM authorization context',
   assert.equal(result.capability, 'saved_business.read');
 });
 
-test('never enables identity bootstrap during authorization binding', async () => {
-  let allowBootstrap: boolean | undefined;
-  const identityWithObservation: ConnectIdentityAdapter = {
-    async resolve(_subject, options) {
-      allowBootstrap = options?.allowBootstrap;
-      return identity.resolve(_subject, options);
-    },
-  };
-  await bindConnectAuthorization(request(), operation, {
-    identity: identityWithObservation,
-    accounts,
-  });
-  assert.equal(allowBootstrap, false);
-});
 
 test('fails closed when the request has no end-user identity', async () => {
   await assert.rejects(

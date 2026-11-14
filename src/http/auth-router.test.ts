@@ -435,37 +435,10 @@ test('login issues ES256 access JWT with decimal sub and no role claim', async (
     rotateRefresh: async () => {
       throw new Error('unused');
     },
-    revokeSession: async () => true,
-    revokeAllSessionsForAccount: async () => 0,
-    changePassword: async () => ({
-      password: { passwordHash, argon2MemoryKib: 65536, argon2TimeCost: 3, argon2Parallelism: 1 },
-      revokedSessionCount: 0,
-    }),
-    disableAccount: async () => undefined,
     issueRecovery: async () => ({ recoveryTokenWire: 'x', credentialId: 1, expiresAt: new Date() }),
     redeemRecovery: async () => 1,
     lookupQuoteFlowMigrationResetEnrollment: async () => null,
     lookupExternalIdentity: async () => null,
-    bootstrapExternalIdentity: async () => ({
-      id: 1,
-      provider: 'p',
-      subject: 's',
-      accountId: 1,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      created: true,
-    }),
-    linkExternalIdentity: async () => ({
-      outcome: 'created' as const,
-      mapping: {
-        id: 1,
-        provider: 'supabase',
-        subject: 's',
-        accountId: 1,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    }),
     linkBusinessExternalMapping: async () => ({
       outcome: 'created' as const,
       mapping: {

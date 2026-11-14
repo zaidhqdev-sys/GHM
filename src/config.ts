@@ -1,3 +1,4 @@
+import { assertActorGatewayBaseUrl } from './http/actor-gateway-url';
 import { loadStorageRuntimeConfig } from "./storage/config";
 import 'dotenv/config';
 
@@ -5,10 +6,10 @@ const isProduction = process.env.NODE_ENV === 'production';
 const databaseSsl = process.env.DATABASE_SSL === 'true';
 const actorGatewayUrl = process.env.GHM_ACTOR_GATEWAY_URL?.trim() || null;
 if (actorGatewayUrl) {
-  let parsed: URL;
-  try { parsed = new URL(actorGatewayUrl); } catch { throw new Error('GHM_ACTOR_GATEWAY_URL must be a valid absolute URL'); }
-  if ((parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(parsed.hostname))) || parsed.pathname !== '/' || parsed.search || parsed.hash) {
-    throw new Error('GHM_ACTOR_GATEWAY_URL must be an HTTPS origin');
+  try {
+    assertActorGatewayBaseUrl(actorGatewayUrl);
+  } catch {
+    throw new Error('GHM_ACTOR_GATEWAY_URL must be a credential-free HTTPS origin');
   }
 }
 

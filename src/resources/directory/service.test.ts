@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { DirectoryServiceImpl } from './service.js';
-import type { DirectoryRepository } from './contracts.js';
+import type { DirectoryQuery, DirectoryRepository } from './contracts.js';
 
 const repository = (result = {
   items: [],
@@ -26,7 +26,7 @@ test('directory service applies default pagination and normalizes blank query', 
   });
 
   const result = await service.search({ q: '   ', page: 1, pageSize: 20 });
-  assert.deepEqual(received, { q: undefined, category: undefined, province: undefined, city: undefined, latitude: undefined, longitude: undefined, radiusKm: undefined, sort: 'rating', page: 1, pageSize: 20 });
+  assert.deepEqual(received, { q: undefined, category: undefined, province: undefined, city: undefined, latitude: undefined, longitude: undefined, radiusKm: undefined, businessType: undefined, sort: 'rating', page: 1, pageSize: 20 });
   assert.equal(result.total, 0);
 });
 
@@ -81,6 +81,18 @@ test('directory service validates paired coordinates and radius requirements', a
 test('directory service normalizes supported location and ordering filters', async () => {
   let received: unknown;
   const service = new DirectoryServiceImpl({ search: async query => { received = query; return { items: [], page: query.page, pageSize: query.pageSize, total: 0 }; } });
-  await service.search({ province: ' KwaZulu-Natal ', city: ' Durban ', latitude: -29.85, longitude: 31.02, radiusKm: 25, sort: 'distance', page: 1, pageSize: 20 });
-  assert.deepEqual(received, { q: undefined, category: undefined, province: 'KwaZulu-Natal', city: 'Durban', latitude: -29.85, longitude: 31.02, radiusKm: 25, sort: 'distance', page: 1, pageSize: 20 });
+  await service.search({ province: ' KwaZulu-Natal ', city: ' Durban ', latitude: -29.85, longitude: 31.02, radiusKm: 25, businessType: undefined, sort: 'distance', page: 1, pageSize: 20 });
+  assert.deepEqual(received, { q: undefined, category: undefined, province: 'KwaZulu-Natal', city: 'Durban', latitude: -29.85, longitude: 31.02, radiusKm: 25, businessType: undefined, sort: 'distance', page: 1, pageSize: 20 });
+});
+
+
+test('directory service normalizes supplier and contractor filters', async () => {
+  const received: Array<DirectoryQuery['businessType']> = [];
+  const service = new DirectoryServiceImpl({
+    search: async query => { received.push(query.businessType); return { items: [], page: query.page, pageSize: query.pageSize, total: 0 }; },
+  });
+  await service.search({ businessType: 'suppliers', page: 1, pageSize: 20 });
+  await service.search({ businessType: 'contractors', page: 1, pageSize: 20 });
+  assert.deepEqual(received, ['suppliers', 'contractors']);
+  await assert.rejects(() => service.search({ businessType: 'other' as never, page: 1, pageSize: 20 }), /businessType must be suppliers or contractors/);
 });

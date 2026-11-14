@@ -14,6 +14,7 @@ export interface PublicBusiness {
   readonly longitude?: number | null;
   readonly whatsapp?: string | null;
   readonly website?: string | null;
+  readonly isSupplier?: boolean;
   readonly logoUrl?: string | null;
   readonly rating: number;
   readonly reviewCount: number;

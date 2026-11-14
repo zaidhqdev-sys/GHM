@@ -58,3 +58,29 @@ Business Hours is **QUALIFIED / CLOSED** for this construction slice.
 Do not reopen this resource unless new evidence demonstrates regression or a separately authorized lifecycle/exception capability requires a new contract.
 
 This closure does not authorize production migration, Supabase data movement, credential changes, DNS/routing changes, provider cutover, shadow qualification, or production replacement of Zaid Connect or QuoteFlow.
+
+
+## Database actor-provenance and read-boundary qualification — PASS (2026-11-11)
+
+The earlier application-path qualification above remains valid, but it did not prove the database actor boundary. The signed Actor Gateway replacement and read projections have now been implemented and qualified separately.
+
+Implementation head: `67d7049ec2f8fa8727475158558fb23f8724ab0d`.
+
+GitHub Actions run [#3166](https://github.com/zaidhqdev-sys/GHM/actions/runs/43093547768) completed successfully with `quality` and `web-quality` passed. It includes the full test suite, complete migrations and `Qualify Business Hours signed gateway cutover on disposable PostgreSQL`.
+
+The disposable PostgreSQL qualification applied the manual cutover only to localhost disposable CI PostgreSQL and explicitly proved:
+
+- runtime direct SELECT on `ghm.business_hours` denied;
+- runtime sequence access denied;
+- legacy `ghm.replace_business_hours` EXECUTE denied;
+- signed gateway replacement succeeds and `created_by` derives from the verified actor;
+- signed member read succeeds for an active Business member;
+- unrelated-account member read is denied;
+- approved public Business Hours projection remains available through `ghm.get_public_business_hours`;
+- actor substitution, request-target substitution and assertion replay are denied;
+- runtime cannot execute gateway-only read or replacement wrappers;
+- post-cutover function/table ACL matrix passes.
+
+The application now forwards authenticated member GET and PUT requests through the Actor Gateway, preserving the existing Business Hours route and schedule behavior. Public reads use the SECURITY DEFINER visibility-filtered projection, preserving the active + verified + approved public directory boundary.
+
+**Revised status:** Business Hours database actor provenance and read boundary are IMPLEMENTED / QUALIFIED on the exact head above. The previous direct runtime SELECT and sequence grants remain in historical migrations but are revoked by the separate manual cutover; that cutover was exercised only in disposable CI PostgreSQL. It has NOT been applied to production. Production cutover remains separately gated by Render role-model resolution, a fresh independently verified production backup, and explicit rollout approval. No production data, permissions or services were changed.

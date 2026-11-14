@@ -32,7 +32,7 @@ export const resourceRegistry: readonly ResourceDefinition[] = [
   { resource: 'business_capability', operations: ['read', 'readPublic', 'create', 'transition'] },
   { resource: 'business_capability_evidence', operations: ['read', 'create', 'readPending', 'transition'] },
   { resource: 'business_registration_identity', operations: ['read', 'update'] },
-  { resource: 'directory_review', operations: ['read', 'create', 'transition'] },
+  { resource: 'directory_review', operations: ['read'] },
   { resource: 'business_category', operations: ['read', 'readPublic'] },
   { resource: 'business_category_assignment', operations: ['read', 'create', 'update'] },
   { resource: 'business_offering', operations: ['read', 'readPublic', 'create', 'update'] },
@@ -55,6 +55,7 @@ export const resourceRegistry: readonly ResourceDefinition[] = [
   { resource: 'onboarding', operations: ['read', 'create', 'update'] },
   { resource: 'business_relationship', operations: ['read'] },
   { resource: 'outcome', operations: ['read'] },
+  { resource: 'capability_catalogue', operations: ['read', 'create', 'update', 'transition'] },
 ];
 
 export const isRegisteredOperation = (resource: Resource, operation: ResourceOperation): boolean =>

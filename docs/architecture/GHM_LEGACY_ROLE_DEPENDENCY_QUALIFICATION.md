@@ -35,13 +35,13 @@ The canonical target is a decision boundary, not a mutation authorization.
 
 ## Current source findings
 
-The current runtime pool is constructed from `config.databaseUrl`, which is sourced from `DATABASE_URL`.
+The current runtime pool is constructed from `config.databaseUrl`. On the unified Actor Gateway integration branch, production configuration requires `GHM_RUNTIME_DATABASE_URL`; non-production may use `GHM_RUNTIME_DATABASE_URL` or the legacy `DATABASE_URL` fallback.
 
 The migration runner independently requires `GHM_MIGRATOR_DATABASE_URL`, connects as `ghm_migrator`, and explicitly enters `ghm_schema_owner`.
 
 Authentication, password recovery, and QuoteFlow migration reset flows use the canonical `PostgresAuthPersistence` boundary rather than legacy `public.users` / `password_reset_tokens` persistence.
 
-Therefore the key dynamic question is whether the configured `DATABASE_URL` actually resolves to `ghm_runtime`. The qualification script proves this against the live construction database without exposing credentials.
+Therefore the key dynamic question is whether the configured runtime credential actually resolves to `ghm_runtime`. Production must use `GHM_RUNTIME_DATABASE_URL`; `DATABASE_URL` is a non-production fallback only. The qualification script proves the runtime and migrator identities against the explicitly supplied database credentials without exposing connection strings.
 
 ## Qualification rules
 

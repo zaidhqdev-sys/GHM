@@ -3,6 +3,7 @@ import { AuthContext, canAccessResource } from '../auth/authorization';
 import { requireAuth } from '../auth/http';
 import type { TrustLevel, TrustScoreService } from '../resources/trust-score/contracts';
 import { isRegisteredOperation } from '../resources/registry';
+import { TrustScoreGatewayError, type TrustScoreGatewayClient } from './trust-score-gateway-client';
 
 const routeParam = (value: string | string[]): string | null =>
   typeof value === 'string' ? value : null;
@@ -46,6 +47,13 @@ const requireTrustScorePublicAccess = (
 };
 
 const handleError = (error: unknown, res: Response): void => {
+  if (error instanceof TrustScoreGatewayError) {
+    if (error.status === 401 || error.status === 403) { res.status(403).json({ error: 'forbidden' }); return; }
+    if (error.status === 404) { res.status(404).json({ error: 'not_found' }); return; }
+    if (error.status === 400) { res.status(400).json({ error: 'invalid_request' }); return; }
+    res.status(503).json({ error: 'service_unavailable' });
+    return;
+  }
   if (error instanceof Error) {
     if (
       error.message === 'businessId must be a positive integer'
@@ -67,6 +75,8 @@ export const registerTrustScoreRoutes = (
   app: Express,
   service: TrustScoreService,
   authMiddleware: RequestHandler = requireAuth,
+  gatewayClient?: TrustScoreGatewayClient,
+  gatewayRequired = false,
 ): void => {
   app.get(
     '/api/v1/public/trust-scores',
@@ -124,6 +134,14 @@ export const registerTrustScoreRoutes = (
           return;
         }
 
+        if (gatewayClient) {
+          const authorization = req.header('authorization');
+          if (!authorization?.startsWith('Bearer ') || !authorization.slice(7).trim()) { res.status(401).json({ error: 'unauthorized' }); return; }
+          const trustScores = await gatewayClient.list(authorization.slice(7).trim(), trustLevel);
+          res.status(200).json({ trustScores });
+          return;
+        }
+        if (gatewayRequired) { res.status(503).json({ error: 'service_unavailable' }); return; }
         const trustScores = await service.listByTrustLevel(context, trustLevel);
         res.status(200).json({ trustScores });
       } catch (error) {
@@ -146,6 +164,15 @@ export const registerTrustScoreRoutes = (
           return;
         }
 
+        if (gatewayClient) {
+          const authorization = req.header('authorization');
+          if (!authorization?.startsWith('Bearer ') || !authorization.slice(7).trim()) { res.status(401).json({ error: 'unauthorized' }); return; }
+          const trustScore = await gatewayClient.get(authorization.slice(7).trim(), businessId);
+          if (!trustScore) { res.status(404).json({ error: 'not_found' }); return; }
+          res.status(200).json({ trustScore });
+          return;
+        }
+        if (gatewayRequired) { res.status(503).json({ error: 'service_unavailable' }); return; }
         const trustScore = await service.getTrustScore(context, businessId);
         if (!trustScore) {
           res.status(404).json({ error: 'not_found' });
@@ -173,9 +200,36 @@ export const registerTrustScoreRoutes = (
           return;
         }
 
+        if (gatewayClient) {
+          const authorization = req.header('authorization');
+          if (!authorization?.startsWith('Bearer ') || !authorization.slice(7).trim()) {
+            res.status(401).json({ error: 'unauthorized' });
+            return;
+          }
+          const trustScore = await gatewayClient.calculate(authorization.slice(7).trim(), businessId);
+          res.status(200).json({ trustScore });
+          return;
+        }
+        if (gatewayRequired) {
+          res.status(503).json({ error: 'service_unavailable' });
+          return;
+        }
         const trustScore = await service.calculateTrustScore(context, businessId);
         res.status(200).json({ trustScore });
       } catch (error) {
+        if (error instanceof TrustScoreGatewayError) {
+          if (error.status === 401 || error.status === 403) {
+            res.status(403).json({ error: 'forbidden' });
+            return;
+          }
+          if (error.status === 404) { res.status(404).json({ error: 'not_found' }); return; }
+          if (error.status === 400) {
+            res.status(400).json({ error: 'invalid_request' });
+            return;
+          }
+          res.status(503).json({ error: 'service_unavailable' });
+          return;
+        }
         handleError(error, res);
       }
     },

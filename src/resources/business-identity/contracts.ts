@@ -32,6 +32,7 @@ export interface BusinessIdentity {
   readonly longitude?: number | null;
   readonly whatsapp?: string | null;
   readonly website?: string | null;
+  readonly isSupplier?: boolean;
   readonly avatarLetter?: string | null;
   readonly avatarColor?: string | null;
   readonly yearsInBusiness?: number | null;
@@ -99,6 +100,7 @@ export interface UpdateBusinessProfileInput {
   readonly avatarLetter?: string | null;
   readonly avatarColor?: string | null;
   readonly yearsInBusiness?: number;
+  readonly isSupplier?: boolean;
 }
 
 export interface BusinessIdentityRepository {

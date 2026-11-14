@@ -6,6 +6,7 @@ import { registerStorageRoutes } from "./storage-router.js";
 import type { StorageProvider } from "../storage/provider.js";
 import { createStorageService } from "../storage/service.js";
 import type { StorageMetadataRecord, StorageService } from "../storage/service.js";
+import type { BusinessLogoGatewayClient } from "./business-logo-gateway-client.js";
 
 const baseProvider = {} as StorageProvider;
 
@@ -15,6 +16,8 @@ async function withServer(
     provider?: StorageProvider;
     authenticated?: boolean;
     seam?: Parameters<typeof registerStorageRoutes>[5];
+    gatewayClient?: BusinessLogoGatewayClient;
+    gatewayRequired?: boolean;
   } = {},
 ): Promise<void> {
   const app = express();
@@ -25,7 +28,7 @@ async function withServer(
         next();
       }
     : (_req: express.Request, res: express.Response) => { res.status(401).json({ error: "unauthorized" }); };
-  registerStorageRoutes(app, options.provider ?? baseProvider, authMiddleware, 900, 3600, options.seam);
+  registerStorageRoutes(app, options.provider ?? baseProvider, authMiddleware, 900, 3600, options.seam, options.gatewayClient, options.gatewayRequired);
   const server: Server = createServer(app);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
@@ -313,4 +316,44 @@ test("Business logo upload, validation, binding, public access, replacement and 
     assert.ok(calls.includes(`bind:${second}`));
     assert.ok(calls.includes("bind:null"));
   }, { authenticated: true, provider, seam });
+});
+
+
+test("Business logo binding forwards the verified bearer token through the gateway client", async () => {
+  let received: { token: string; businessId: number; objectId: number | null } | undefined;
+  const gatewayClient: BusinessLogoGatewayClient = {
+    bind: async (token, businessId, objectId) => {
+      received = { token, businessId, objectId };
+      return 18;
+    },
+  };
+  const seam = {
+    metadataStoreForContext: () => ({ getById: async () => logoRecord() }) as never,
+    serviceForContext: () => ({ deleteObject: async () => undefined }) as never,
+  };
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/v1/businesses/12/logo`, {
+      method: "PUT",
+      headers: { authorization: "Bearer verified-access-token", "content-type": "application/json" },
+      body: JSON.stringify({ objectId: 21 }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(received, { token: "verified-access-token", businessId: 12, objectId: 21 });
+    assert.deepEqual(await response.json(), { businessId: 12, logoObjectId: 21, cleanupPending: false, cleanupObjectId: null });
+  }, { authenticated: true, seam, gatewayClient, gatewayRequired: true });
+});
+
+test("Business logo binding fails closed when the gateway is required but unavailable", async () => {
+  const seam = {
+    metadataStoreForContext: () => ({ getById: async () => logoRecord() }) as never,
+  };
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/v1/businesses/12/logo`, {
+      method: "PUT",
+      headers: { authorization: "Bearer verified-access-token", "content-type": "application/json" },
+      body: JSON.stringify({ objectId: 21 }),
+    });
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { error: "service_unavailable" });
+  }, { authenticated: true, seam, gatewayRequired: true });
 });

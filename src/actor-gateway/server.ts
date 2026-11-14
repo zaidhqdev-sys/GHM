@@ -1,5 +1,6 @@
 import http from 'http';
 import { Pool } from 'pg';
+import { actorGatewayDatabaseSslConfig } from './database-ssl';
 import { createAccessJwtVerifier } from '../auth/foundation/access-jwt-verifier';
 import {
   loadEs256VerificationKeys,
@@ -8,6 +9,15 @@ import {
 import { createActorGatewayApp } from './app';
 import { PostgresActorIdentityReader } from './actor-identity-reader';
 import { PostgresBusinessRegistrationIdentityReader } from './business-registration-identity-reader';
+import { PostgresCapabilityGovernanceReader } from './capability-governance-reader';
+import { PostgresSupplierClassificationReader } from './supplier-classification-reader';
+import { PostgresBusinessProfileReader } from './business-profile-reader';
+import { PostgresGatewayCapabilityMutationReader } from './business-capability-mutation-reader';
+import { PostgresSavedBusinessGatewayReader } from './saved-business-reader';
+import { PostgresBusinessHoursGatewayReader } from './business-hours-reader';
+import { PostgresTrustScoreGatewayReader } from './trust-score-reader';
+import { PostgresBusinessLogoGatewayReader } from './business-logo-reader';
+import { assertActorGatewayDatabaseIdentity } from './database-principal';
 
 const required = (name: string): string => {
   const value = process.env[name]?.trim();
@@ -16,10 +26,7 @@ const required = (name: string): string => {
 };
 
 const isProduction = process.env.NODE_ENV === 'production';
-const databaseSsl = process.env.DATABASE_SSL === 'true';
-if (isProduction && !databaseSsl) {
-  throw new Error('DATABASE_SSL must be true in production');
-}
+const databaseSsl = actorGatewayDatabaseSslConfig(process.env.DATABASE_SSL_MODE, isProduction);
 
 const databaseUrl = required('GHM_ACTOR_GATEWAY_DATABASE_URL');
 const port = Number.parseInt(process.env.PORT ?? '10000', 10);
@@ -29,17 +36,26 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 
 const keys = loadEs256VerificationKeys();
 const verifier = createAccessJwtVerifier(verificationKeyMapFromPublicKeys(keys));
+const capabilityAssertionSecret = required('GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET');
 const pool = new Pool({
   connectionString: databaseUrl,
-  ssl: databaseSsl ? { rejectUnauthorized: false } : false,
+  ssl: databaseSsl,
   max: 10,
   connectionTimeoutMillis: 5_000,
   idleTimeoutMillis: 30_000,
 });
 const app = createActorGatewayApp({
   verifier,
-  actorIdentityReader: new PostgresActorIdentityReader(pool),
-  businessRegistrationIdentityReader: new PostgresBusinessRegistrationIdentityReader(pool),
+  actorIdentityReader: new PostgresActorIdentityReader(pool, capabilityAssertionSecret),
+  businessRegistrationIdentityReader: new PostgresBusinessRegistrationIdentityReader(pool, capabilityAssertionSecret),
+  capabilityGovernanceReader: new PostgresCapabilityGovernanceReader(pool, capabilityAssertionSecret),
+  supplierClassificationReader: new PostgresSupplierClassificationReader(pool, capabilityAssertionSecret),
+  businessProfileReader: new PostgresBusinessProfileReader(pool, capabilityAssertionSecret),
+  businessCapabilityMutationReader: new PostgresGatewayCapabilityMutationReader(pool, capabilityAssertionSecret),
+  savedBusinessReader: new PostgresSavedBusinessGatewayReader(pool, capabilityAssertionSecret),
+  businessHoursReader: new PostgresBusinessHoursGatewayReader(pool, capabilityAssertionSecret),
+  trustScoreReader: new PostgresTrustScoreGatewayReader(pool, capabilityAssertionSecret),
+  businessLogoReader: new PostgresBusinessLogoGatewayReader(pool, capabilityAssertionSecret),
 });
 const server = http.createServer(app);
 server.requestTimeout = 10_000;
@@ -68,10 +84,56 @@ process.on('unhandledRejection', (reason: unknown) => {
 });
 
 const start = async (): Promise<void> => {
-  const identity = await pool.query('SELECT current_database() AS database_name, session_user, current_user');
-  if (identity.rows[0]?.session_user !== 'ghm_actor_gateway' || identity.rows[0]?.current_user !== 'ghm_actor_gateway') {
-    throw new Error('Actor gateway database login identity mismatch');
-  }
+  const identity = await pool.query<{
+    session_user: string;
+    current_user: string;
+    database_connect_privilege: boolean;
+    database_create_privilege: boolean;
+    schema_usage: boolean;
+    schema_create: boolean;
+    rolcanlogin: boolean;
+    rolinherit: boolean;
+    rolsuper: boolean;
+    rolcreatedb: boolean;
+    rolcreaterole: boolean;
+    rolreplication: boolean;
+    rolbypassrls: boolean;
+    no_untrusted_role_memberships: boolean;
+  }>(`
+    SELECT session_user,
+           current_user,
+           has_database_privilege(session_user, current_database(), 'CONNECT') AS database_connect_privilege,
+           has_database_privilege(session_user, current_database(), 'CREATE') AS database_create_privilege,
+           has_schema_privilege(session_user, 'ghm', 'USAGE') AS schema_usage,
+           has_schema_privilege(session_user, 'ghm', 'CREATE') AS schema_create,
+           r.rolcanlogin,
+           r.rolinherit,
+           r.rolsuper,
+           r.rolcreatedb,
+           r.rolcreaterole,
+           r.rolreplication,
+           r.rolbypassrls,
+           NOT EXISTS (
+             SELECT 1
+               FROM pg_auth_members m
+               JOIN pg_roles member_role ON member_role.oid = m.member
+              WHERE m.member = r.oid
+                 OR (
+                   m.roleid = r.oid
+                   AND (
+                     member_role.rolname <> 'ghm_db_user'
+                     OR m.admin_option IS DISTINCT FROM true
+                     OR m.inherit_option IS DISTINCT FROM false
+                     OR m.set_option IS DISTINCT FROM false
+                   )
+                 )
+           ) AS no_untrusted_role_memberships
+      FROM pg_roles r
+     WHERE r.rolname = session_user
+  `);
+  const databaseIdentity = identity.rows[0];
+  if (!databaseIdentity) throw new Error('Actor Gateway database identity could not be resolved');
+  assertActorGatewayDatabaseIdentity(databaseIdentity);
   server.listen(port, () => {
     console.log(`GHM Actor Gateway listening on port ${port}`);
   });

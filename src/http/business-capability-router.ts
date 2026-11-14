@@ -3,6 +3,7 @@ import { AuthContext, canAccessResource } from '../auth/authorization';
 import { requireAuth } from '../auth/http';
 import type { BusinessCapabilityService, CreateBusinessCapabilityInput } from '../resources/business-capability/contracts';
 import { isRegisteredOperation } from '../resources/registry';
+import { CapabilityMutationGatewayError, type HttpCapabilityMutationGatewayClient } from './capability-mutation-gateway-client';
 
 const routeParam = (value: string | string[]): string | null =>
   typeof value === 'string' ? value : null;
@@ -132,6 +133,8 @@ export const registerBusinessCapabilityRoutes = (
   app: Express,
   service: BusinessCapabilityService,
   authMiddleware: RequestHandler = requireAuth,
+  gatewayClient?: HttpCapabilityMutationGatewayClient,
+  gatewayRequired = false,
 ): void => {
   app.put(
     '/api/v1/business-capabilities',
@@ -154,12 +157,17 @@ export const registerBusinessCapabilityRoutes = (
           return value;
         });
         if (assertions.some(item => item === null)) { res.status(400).json({ error: 'invalid_request' }); return; }
-        const capabilities = await service.replaceBusinessCapabilities(
-          context, body.businessId as number,
-          assertions as unknown as import('../resources/business-capability/contracts').ReplaceBusinessCapabilityAssertionInput[],
-        );
+        if (gatewayClient || gatewayRequired) {
+          const authorization=req.header('authorization');
+          if(!authorization?.startsWith('Bearer ')||!authorization.slice(7).trim()){res.status(401).json({error:'unauthorized'});return;}
+          if(!gatewayClient){res.status(503).json({error:'service_unavailable'});return;}
+          const result=await gatewayClient.replace(authorization.slice(7).trim(),body.businessId as number,assertions as unknown as import('../resources/business-capability/contracts').ReplaceBusinessCapabilityAssertionInput[]);
+          res.status(200).json(result);return;
+        }
+        const capabilities = await service.replaceBusinessCapabilities(context, body.businessId as number,
+          assertions as unknown as import('../resources/business-capability/contracts').ReplaceBusinessCapabilityAssertionInput[]);
         res.status(200).json({ capabilities });
-      } catch (error) { handleError(error, res); }
+      } catch (error) { if(error instanceof CapabilityMutationGatewayError){res.status(error.status===400?400:error.status===403||error.status===404?404:503).json({error:error.status===400?'invalid_request':error.status===403||error.status===404?'not_found':'service_unavailable'});return;} if(gatewayClient||gatewayRequired){res.status(503).json({error:'service_unavailable'});return;} handleError(error, res); }
     },
   );
 
@@ -208,6 +216,23 @@ export const registerBusinessCapabilityRoutes = (
       }
     },
   );
+
+  app.patch('/api/v1/business-capabilities/:businessCapabilityId/verification',authMiddleware,async(req:Request,res:Response)=>{
+    try{
+      const context=req.authContext as AuthContext;const id=routeParam(req.params.businessCapabilityId);const businessCapabilityId=id===null?null:positiveIntegerId(id);const body=req.body as Record<string,unknown>|null;
+      const statuses=['unverified','pending','verified','rejected','revoked','expired'];
+      if(businessCapabilityId===null||!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).some(k=>!['expectedStatus','targetStatus','reason'].includes(k))||!statuses.includes(String(body.expectedStatus))||!statuses.includes(String(body.targetStatus))||(body.reason!=null&&typeof body.reason!=='string')){res.status(400).json({error:'invalid_request'});return;}
+      if(gatewayClient||gatewayRequired){
+        if(context.role!=='admin'){res.status(403).json({error:'forbidden'});return;}
+        const authorization=req.header('authorization');if(!authorization?.startsWith('Bearer ')||!authorization.slice(7).trim()){res.status(401).json({error:'unauthorized'});return;}
+        if(!gatewayClient){res.status(503).json({error:'service_unavailable'});return;}
+        const result=await gatewayClient.verify(authorization.slice(7).trim(),businessCapabilityId,body.expectedStatus as never,body.targetStatus as never,(body.reason as string|null|undefined)??null);
+        res.status(200).json(result);return;
+      }
+      const capability=await service.transitionBusinessCapabilityVerification(context,{businessCapabilityId,expectedStatus:body.expectedStatus as never,targetStatus:body.targetStatus as never,reason:body.reason as string|null|undefined});
+      res.status(200).json({capability});
+    }catch(error){if(error instanceof CapabilityMutationGatewayError){res.status(error.status===400?400:error.status===403||error.status===404?404:503).json({error:error.status===400?'invalid_request':error.status===403||error.status===404?'not_found':'service_unavailable'});return;}if(gatewayClient||gatewayRequired){res.status(503).json({error:'service_unavailable'});return;}handleError(error,res);}
+  });
 
   app.post(
     '/api/v1/business-capabilities',
