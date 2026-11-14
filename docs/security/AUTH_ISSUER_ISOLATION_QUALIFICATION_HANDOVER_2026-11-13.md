@@ -3532,3 +3532,51 @@ The Render environment update will restart the existing service even though repo
 - Latest handover branch head: `475d19d388b7f7d6f9c47dcb6d78990433eceedc`.
 - Latest source/workflow qualification: run `43536273084`, exact tested source/workflow commit `30d418d2498f765ac87f2c050dc4f18b0b46df36`, quality 73/73 and web-quality 11/11. Subsequent commits are documentation-only and are excluded from full CI by the workflow's paths-ignore rule.
 - No PR was merged, no Render auto-deploy was enabled, and no production change was performed.
+
+
+## 2026-11-14 — Actor Gateway Worker adapter qualification and review
+
+### Scope and implementation recovered
+
+The Actor Gateway Worker adapter is present in this stacked integration branch under `workers/actor-gateway/`. It is a separate Cloudflare entry point over the existing GHM Actor Gateway implementation; the Node/Render entry point and shared security readers remain unchanged.
+
+Reviewed files:
+- `workers/actor-gateway/index.ts`: Cloudflare Node HTTP bridge, Worker-specific bounded JSON parser, Hyperdrive-backed node-postgres client adapter, public-key-only ES256 verification, signed database assertion secret, edge rate-limit binding, and startup database identity/ACL verification before the listener is made available.
+- `workers/actor-gateway/wrangler.jsonc`: Workers Node compatibility, Hyperdrive and rate-limit bindings, no Workers.dev hostname, no preview URLs, observability disabled, and a local disposable connection string / placeholder Hyperdrive ID for local qualification only.
+- `workers/actor-gateway/worker-contract.test.mjs`: static contract checks for the adapter, secret boundary, startup ordering, fail-closed behavior and disabled public routes.
+- `workers/actor-gateway/tsconfig.json` and `cloudflare-node.d.ts`: isolated Worker type-check boundary.
+
+The Worker receives only ES256 public verification material. It does not load the issuer private signing key, token pepper, or issuer database URL. The capability assertion HMAC secret is a distinct gateway secret required by the existing database assertion wrappers.
+
+### Exact qualification evidence
+
+GitHub Actions run [43536273084](https://github.com/zaidhqdev-sys/GHM/actions/runs/43536273084) completed successfully on exact source/workflow commit `30d418d2498f765ac87f2c050dc4f18b0b46df36`:
+- `quality`: passed, including Worker bundle dry-run, Worker local-runtime smoke, disposable PostgreSQL principal/ACL checks, full migration chain and test suite.
+- `web-quality`: passed.
+- Step 27, `Bundle Actor Gateway Cloudflare Worker without deploying`: passed.
+- Step 33, `Smoke-test Actor Gateway in local Cloudflare Workers runtime`: passed.
+- The smoke step exercised local Wrangler/Workerd, the local Hyperdrive binding to disposable PostgreSQL, startup principal/ACL verification, `/healthz`, and invalid JSON rejection with HTTP 400.
+- The Worker TypeScript check and Worker contract test are included in the repository test script executed by the quality job.
+
+The current PR #276 head is `b573b92c061630e440dc9dec76720d98c6d4fca5`. A Git comparison against the qualified commit reports 7 commits ahead, 0 behind, with the only changed file being this handover document. Therefore the Worker source and CI workflow tested by run 43536273084 are unchanged at the current PR head. The seven documentation-only commits themselves have not rerun the full suite by design.
+
+### Production and cost boundary
+
+This is local/disposable qualification and a non-deploying bundle check only. It does not prove a live Cloudflare-to-Render Hyperdrive connection, production TLS identity, production Actor Gateway database privileges, secret provisioning, domain routing, or production traffic behavior.
+
+No Cloudflare Worker was deployed. No Hyperdrive resource was created or modified. No Cloudflare route, DNS record, secret, billing plan or account setting was changed. No production database role, grant, credential, migration, Render environment variable, service or deployment was changed.
+
+Cloudflare's current Hyperdrive pricing documentation states that Hyperdrive is included on Workers Free with a limit of 100,000 database queries per day; exceeding a Free limit causes further operations of that type to fail rather than silently authorizing a paid upgrade. Workers Paid remains prohibited under the current zero-cost constraint. Source: https://developers.cloudflare.com/hyperdrive/platform/pricing/
+
+### Review item before production consideration
+
+The Worker-specific JSON parser currently emits the 413 response for an oversized body only from the request `end` handler. It stops buffering after the 16 KiB threshold, but a client that continues or stalls the upload can delay the response until the stream ends. Harden this to reject as soon as the limit is crossed, and add a regression test for the oversized-body path. This is a Worker adapter hardening item; do not alter the shared Node/Render parser.
+
+### Remaining gates
+
+1. Harden and test early oversized-body rejection without changing Node/Render behavior.
+2. Re-run exact-head Worker typecheck, contract tests, Wrangler bundle dry-run and local Workerd/Hyperdrive smoke on the corrected source.
+3. Keep production Hyperdrive connectivity, TLS identity, production Actor Gateway role/ACL, and route configuration as separate read-only/design gates until the production role and migration/backup reconciliation is complete.
+4. Do not deploy, create Hyperdrive resources, provision production secrets, attach a domain, or route traffic without a separately recorded zero-cost and rollback-qualified plan.
+
+**Current disposition:** Worker adapter source is locally qualified on the unchanged source commit; production connectivity and deployment are not qualified or authorized. Authentication Issuer isolation remains a separate security gate and must not be represented as completed by the Worker work.
