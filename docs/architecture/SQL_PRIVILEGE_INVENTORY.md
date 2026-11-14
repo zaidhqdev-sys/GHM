@@ -151,3 +151,14 @@ Read-only Render PostgreSQL catalog queries against 'ghm_db' report:
 - The migration ledger remains unreadable to the application query principal; do not grant it SELECT. Use the existing read-only migrator audit path once a safe production invocation is available.
 
 No production changes were made during this catalogue capture. This snapshot is diagnostic, not an approved privilege cutover.
+
+
+### Production SECURITY DEFINER ACL and search_path inventory — 2026-11-14
+
+Read-only live catalog counts for non-trigger SECURITY DEFINER routines in 'ghm': 62 total; 5 have exact 'search_path=pg_catalog, ghm, pg_temp'; 57 do not; 8 have any configured path explicitly including 'pg_temp'. PUBLIC EXECUTE is 0. 'ghm_runtime' EXECUTE is 46 and 'ghm_app_user' effective EXECUTE is also 46 due to inherited role authority. 'ghm_payment_provider' EXECUTE is 2; 'ghm_actor_gateway' EXECUTE is 0. All 62 are owned by 'ghm_schema_owner' and use trusted languages.
+
+The non-exact group is not homogeneous: observed paths include 'pg_catalog, ghm' (no explicit pg_temp), 'ghm, pg_catalog' (schema order differs), and 'ghm, pg_temp' (pg_catalog absent). These require per-routine source/definition and migration comparison. Do not bulk alter or classify all 57 identically.
+
+The schema-scoped function default ACL for 'ghm_schema_owner' grants EXECUTE to 'ghm_runtime' only. The global function default ACL for 'postgres' includes PUBLIC and 'ghm_db_user' EXECUTE; this is a future-object creation risk distinct from current routines, whose live PUBLIC EXECUTE count is zero. Migration-created functions must run under the intended owner and reviewed defaults.
+
+No production grants, definitions, function settings, defaults, roles or objects were changed.
