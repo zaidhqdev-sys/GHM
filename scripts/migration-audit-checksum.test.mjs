@@ -87,8 +87,15 @@ test('PayFast applied migration checksums are registered as exact historical pro
 
 test('production pending allowance is pinned to the reviewed pending migration set', () => {
   const pending = JSON.parse(readFileSync(new URL('../config/pending-migrations.production.json', import.meta.url), 'utf8'));
-  assert.equal(pending.length, 1);
-  assert.ok(pending.some((item) => item.version === '20261109210000' && item.name === 'deactivate_unrecognized_public_directory_records'));
+  assert.deepEqual(pending, [
+    { version: '20261110100000', name: 'create_account_onboarding_progress' },
+    { version: '20261110120000', name: 'create_business_relationship_outcome_read_models' },
+    { version: '20261110140000', name: 'allow_pending_storage_object_cleanup' },
+    { version: '20261110210000', name: 'add_actor_gateway_principal_guard' },
+    { version: '20261110220000', name: 'add_actor_gateway_self_identity_read' },
+    { version: '20261110230000', name: 'add_gateway_business_registration_identity_read' },
+    { version: '20261110233000', name: 'add_gateway_business_registration_identity_write' },
+  ]);
 });
 
 test('production and qualification audit targets resolve to separate provenance manifests', () => {
@@ -128,6 +135,13 @@ test('PayFast historical exceptions are qualification-only', () => {
 
 test('production pending allowance is pinned to the reviewed pending migration set', () => {
   const pending = JSON.parse(readFileSync(new URL('../config/pending-migrations.production.json', import.meta.url), 'utf8'));
-  assert.equal(pending.length, 1);
-  assert.ok(pending.some((item) => item.version === '20261109210000' && item.name === 'deactivate_unrecognized_public_directory_records'));
+  assert.deepEqual(pending, [
+    { version: '20261110100000', name: 'create_account_onboarding_progress' },
+    { version: '20261110120000', name: 'create_business_relationship_outcome_read_models' },
+    { version: '20261110140000', name: 'allow_pending_storage_object_cleanup' },
+    { version: '20261110210000', name: 'add_actor_gateway_principal_guard' },
+    { version: '20261110220000', name: 'add_actor_gateway_self_identity_read' },
+    { version: '20261110230000', name: 'add_gateway_business_registration_identity_read' },
+    { version: '20261110233000', name: 'add_gateway_business_registration_identity_write' },
+  ]);
 });
