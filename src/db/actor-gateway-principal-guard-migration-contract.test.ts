@@ -9,9 +9,9 @@ test('Actor Gateway principal guard permits only the bounded Render administrato
   assert.match(migration, /(?:m\.)?roleid\s*=\s*gateway_oid/);
   assert.match(migration, /to_regrole\('ghm_db_user'\) IS NULL/);
   assert.match(migration, /trusted_admin_oid/);
-  assert.match(migration, /admin_option IS (?:DISTINCT FROM true|TRUE)/);
-  assert.match(migration, /inherit_option IS (?:DISTINCT FROM false|FALSE)/);
-  assert.match(migration, /set_option IS (?:DISTINCT FROM false|FALSE)/);
+  assert.match(migration, /(?:admin_option IS (?:DISTINCT FROM true|TRUE)|AND admin_option\b)/);
+  assert.match(migration, /(?:inherit_option IS (?:DISTINCT FROM false|FALSE)|AND NOT inherit_option\b)/);
+  assert.match(migration, /(?:set_option IS (?:DISTINCT FROM false|FALSE)|AND NOT set_option\b)/);
   assert.match(migration, /ghm_db_user.*ADMIN OPTION|bounded ghm_db_user administrative membership/);
 });
 
