@@ -3034,3 +3034,14 @@ The first CI build after introducing the Worker-native parser failed. Source rev
 - The Worker content-type regular expression had been double-escaped in the generated TypeScript source.
 
 Both are corrected in commits `d08baa804d4ebef430d20bf443e9cae85a4645da` and `ef8acec38496b3abf1c097efa2d4c1aeefb06418`. The exact app-import commit is recorded in GitHub history immediately before the Worker regex fix. The next exact-head CI build must confirm these corrections; no pass is claimed.
+
+
+### Worker body-parser alias resolution correction
+
+The first Wrangler bundle attempt after adding the Worker-only body-parser stub failed because Wrangler resolves `alias` replacement paths relative to the repository working directory, not relative to the Wrangler config file. The alias initially used `./body-parser-worker-stub.cjs`, which could not be found from the repository root.
+
+Corrected the alias to the repository-root path:
+`./workers/actor-gateway/body-parser-worker-stub.cjs`
+Commit: `27745e02bf7bdcaab93a157e8fd32e12bc59cfae`.
+
+This is a configuration path correction only. The next CI run will re-run the Worker bundle and local runtime tests; no pass is claimed yet.
