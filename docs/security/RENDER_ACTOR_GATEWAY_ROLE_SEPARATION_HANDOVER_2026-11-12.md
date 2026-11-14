@@ -411,3 +411,24 @@ The Render query principal was denied SELECT on `ghm.ghm_schema_migrations`, pre
 Conclusion: **NO PRODUCTION PROJECT OR OPPORTUNITY ROWS TO RECONCILE; STRUCTURAL LINK IS PRESENT AND VALID; LIVE-ROW ATOMICITY REMAINS UNEXERCISED.** No production data, schema, ledger, roles, grants, memberships, Render settings or deployments were changed. The seven allowlisted migrations remain pending and unapplied; Render auto-deploy stays OFF; PayFast stays paused.
 
 Next gate is a read-only, migration-by-migration review of dependencies, current production object state, privilege requirements, lock/transaction behavior, idempotency and rollback/forward recovery. This data reconciliation is not authorization to apply migrations or deploy.
+
+
+## 2026-11-15 — seven pending migration production preflight
+
+A read-only catalog review was completed against Render `ghm-db` / `ghm_db`. No production writes or DDL were performed.
+
+- Onboarding migration `20261110100000`: account FK target exists; destination table absent. Account-scoped repository and runtime DML grants are present in source. Schema-ready, unapplied.
+- Relationship/outcome migration `20261110120000`: business, opportunity and account FK targets exist; all four destination tables absent. Seed rows are deterministic and runtime grants are SELECT-only. Schema-ready, unapplied.
+- Storage cleanup migration `20261110140000`: **blocked**. Production CHECK constraint requires `available_at IS NOT NULL` for `deletion_pending`, while pending rows have NULL. Proposed function transitions pending rows without setting `available_at`; that path would fail the CHECK. Do not apply as written. Correct lifecycle semantics and tests first.
+- Actor gateway guard `20261110210000`: gateway role and trusted Render administrator membership match the migration's required guard at audit time. Assertion function absent. Recheck role state immediately before any future execution.
+- Gateway self-identity read `20261110220000`: depends on guard; function absent.
+- Gateway registration read `20261110230000`: underlying schema-owner-owned SECURITY DEFINER read function exists and is runtime-executable; gateway wrapper absent.
+- Gateway registration write `20261110233000`: underlying schema-owner-owned SECURITY DEFINER write function exists and is runtime-executable; gateway wrapper absent. Migration replaces ambiguous `ON CONFLICT (business_id)` with the named PK constraint and preserves the legacy runtime grant pending cutover.
+
+The production runtime has no direct table privileges on `storage_object` or `business_registration_identity`; current lifecycle/registration access is through SECURITY DEFINER functions. The four service roles retain NOINHERIT/non-elevated attributes, schema owner is NOLOGIN, and trusted administrator membership was not altered.
+
+Render service inventory shows `ghm-internal-runtime` tracks main with auto-deploy OFF. No dedicated production Actor Gateway service was present in the inventory. Actor Gateway code requires a separate `GHM_ACTOR_GATEWAY_DATABASE_URL`, ES256 public verification keys, TLS, and checks its actual session/current_user. Resource API gateway routing is optional and only activates with `GHM_ACTOR_GATEWAY_URL`; do not set it or revoke legacy runtime function grants before gateway deployment and cutover qualification.
+
+The seven-entry production pending allowlist remains intact. Recommended sequencing: fix and test the storage transition; exact-head CI and disposable PostgreSQL full-chain qualification; repeat live read-only preflight; establish and verify gateway service before any gateway cutover; then separately review a controlled migration execution plan. No migration or deployment authorization is implied.
+
+Status: **READ-ONLY REVIEW COMPLETE; STORAGE MIGRATION BLOCKED; REMAINING MIGRATIONS HAVE IDENTIFIED PREREQUISITES; NONE APPLIED.**
