@@ -692,3 +692,71 @@ The candidate implementation and disposable qualification do not mean the issuer
 
 ### Next action
 Keep #272/#276/#277 as the sole existing implementation stack. Perform a source-level, file-by-file mainline reconciliation against current `main` and update the stack's handover with a minimal integration delta and remaining exact-head tests. Separately retain the issuer hosting/Argon2id no-cost NO-GO and production ACL/ledger gates. No duplicate implementation work and no production action.
+
+
+## 2026-11-15 — issuer stack continuation: refreshed GitHub reconciliation
+
+This entry supersedes the earlier divergence counts in the preceding 2026-11-15 issuer-stack note. It is based on a fresh read of the current PR records, branch search, commit comparisons, workflow runs, and this handover on 2026-11-15. No source branch, PR, production database, Render setting, credential, deployment, Cloudflare resource, DNS record, or traffic route was changed during this check.
+
+### Current branch ancestry and divergence
+
+The stack's common base is still `ad4fea43f2eb7bf959042b9db77a9f86e6bb531b`. Current `main` is exactly 50 commits ahead of that base. GitHub commit comparison currently reports:
+
+| Comparison | Ahead | Behind | Merge base |
+|---|---:|---:|---|
+| #272 head `c81e2bf2534febef9c5e49b39f60f85415f04ff1` vs current main | 5 | 50 | `ad4fea43f2eb7bf959042b9db77a9f86e6bb531b` |
+| #276 head `aa86fa1346daf922d3c80c27f2bf5beb697bafbb` vs current main | 178 | 50 | `ad4fea43f2eb7bf959042b9db77a9f86e6bb531b` |
+| #277 head `0ae3f3bf68e85535e0a90fcc0d2666405571ccb7` vs current main | 279 | 50 | `ad4fea43f2eb7bf959042b9db77a9f86e6bb531b` |
+| #272 to #276 | 173 | 0 | #272 head |
+| #276 to #277 | 101 | 0 | #276 head |
+
+The earlier 47-commit behind count is stale; the current comparison is 50. #272's PR description says it was rebased to the common base, not to the latest main tip. Do not describe it as current-main-aligned. #276 remains strictly stacked on #272, and #277 remains strictly stacked on #276.
+
+### PR and related branch inventory
+
+| PR | Current state | Current head / branch | Decision |
+|---|---|---|---|
+| #272 Actor Gateway integration | Open, draft | `c81e2bf2534febef9c5e49b39f60f85415f04ff1` / `integration/capability-gateway-qualification-20261110` | Preserve as stack base; reconcile 50 mainline commits |
+| #276 Authentication Issuer | Open, draft | `aa86fa1346daf922d3c80c27f2bf5beb697bafbb` / `construction/auth-issuer-stacked-on-pr272-20261113` | Preserve as issuer candidate; do not merge independently |
+| #277 Worker hardening | Open, draft | `0ae3f3bf68e85535e0a90fcc0d2666405571ccb7` / `security/actor-gateway-worker-body-limit-20261114` | Preserve at top of stack; do not merge independently |
+| #274 Amanda / Render support handover | Merged | `docs/render-actor-gateway-role-separation-handover-20261112` | Completed evidence; reference, do not recreate |
+| #275 Resource API runtime login | Merged | `security/resource-api-runtime-principal-20261112` | Completed dependency; preserve its `GHM_RUNTIME_DATABASE_URL` / `ghm_runtime` contract |
+| #278 trusted Render administrator membership guard | Merged | `fix/actor-gateway-trusted-admin-membership` | Completed source/fixture correction; retain sole `ghm_db_user` ADMIN-only, NOINHERIT, NOSET membership rule |
+| #279 storage pending-deletion lifecycle | Merged | `fix/storage-pending-deletion-lifecycle` | Completed source/test correction; production migration remains unapplied |
+
+The earlier issuer construction branches still exist: `construction/auth-issuer-isolation-20261112` and `security/isolated-issuer-db-gateway-adr-20261110`. They are historical alternatives, not a reason to create or revive another issuer implementation. The active stack remains #272 → #276 → #277.
+
+### Fresh CI evidence
+
+- #272 head `c81e2bf...`: PR workflow run `43323461117` completed successfully.
+- #277 head `0ae3f3b...`: PR workflow run `43630510673` completed successfully.
+- #276 head `aa86fa1...`: the recorded handover evidence identifies exact-head run `43611550656` as quality + web-quality passed. The commit-triggered workflow lookup returned no PR-triggered runs for this SHA, so retain the recorded run reference but do not claim the separate lookup independently reconfirmed it.
+- #276's previously recorded issuer qualification remains 994 passing tests, 8 comparator tests, disposable PostgreSQL 18.7 lifecycle/cutover/rollback, and SECURITY DEFINER comparison of 106 routines with 14 reviewed issuer ACL changes and zero unexplained non-issuer changes.
+
+A green check on any of these historical heads does not qualify a reconciled or rebased head.
+
+### Mainline reconciliation scope now known
+
+GitHub's aggregate file comparisons report 162 changed paths for #272 vs current main, 285 for #276 vs current main, and 285 for #277 vs current main. The #272→#276 incremental delta is 148 paths; #276→#277 is 7 paths. These are comparison deltas, not a claim that every path should be copied wholesale.
+
+Current main has specifically advanced in the areas that intersect the stack:
+- `.github/workflows/ci.yml` and its qualification workflow;
+- production pending-migration allowlist and migration audit/checksum contract;
+- storage pending-cleanup migration and lifecycle contract tests (including merged #279);
+- Actor Gateway principal guard and qualification fixture (including merged #278);
+- the full migration/security handover, ADR implementation plan, and this Render role-separation handover;
+- Worker body parser and contract tests on #277.
+
+The stack must be reconciled by file and behavior, not by blindly merging the 178/279-commit snapshots or copying entire files. In particular, do not overwrite current-main migration allowlists, production audit logic, storage lifecycle fixes, trusted administrator membership guard, or Amanda/Render evidence with older versions from the stack. For each overlapping path, compare the current-main version with #272, then #276, then #277 and retain the newer mainline behavior unless the stack contains a necessary issuer/gateway change that can be ported without regression.
+
+### Amanda conversation — authoritative reference
+
+PR #274 is merged and records the full 2026-11-12 Render support conversation. Amanda's final confirmation at **2026-11-12 18:46:53Z** was:
+
+> I'm always happy to assist. Yes in this use case I would recommend moving normal app execution to SQL-created login (or logins) outside the Dashboard managed credential list.
+
+The same handover records the refined decision: retain the Render Dashboard-managed default credential for controlled administration; use the existing SQL-created `ghm_runtime` directly for Resource API execution; keep `ghm_migrator` separate for controlled migration tooling. Do not rotate/delete the Dashboard administrator, create a replacement login, or copy Amanda's illustrative SQL as a shortcut. PR #275 implements the Resource API runtime identity contract and is already merged. Keep linking PR #274 and this section from future issuer/security handovers rather than paraphrasing the support guidance without its source.
+
+### Next safe action
+
+Continue read-only, file-by-file reconciliation from current `main` against #272, then the #276 incremental delta, then the #277 seven-path delta. Produce a path-level classification (already present on main / mainline fix must be preserved / stack-only required change / genuine conflict / obsolete or superseded) before editing source. Update this handover with that inventory and exact-head qualification plan. Do not create a branch, rebase, retarget, merge, deploy, change production grants, run migrations, provision hosting, or incur paid cost as part of this reconciliation step.
