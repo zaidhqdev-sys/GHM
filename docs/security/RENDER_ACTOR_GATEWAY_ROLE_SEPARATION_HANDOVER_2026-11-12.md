@@ -432,3 +432,14 @@ Render service inventory shows `ghm-internal-runtime` tracks main with auto-depl
 The seven-entry production pending allowlist remains intact. Recommended sequencing: fix and test the storage transition; exact-head CI and disposable PostgreSQL full-chain qualification; repeat live read-only preflight; establish and verify gateway service before any gateway cutover; then separately review a controlled migration execution plan. No migration or deployment authorization is implied.
 
 Status: **READ-ONLY REVIEW COMPLETE; STORAGE MIGRATION BLOCKED; REMAINING MIGRATIONS HAVE IDENTIFIED PREREQUISITES; NONE APPLIED.**
+
+
+## 2026-11-15 — storage lifecycle blocker corrected in PR #279
+
+The pending storage cleanup migration had a confirmed CHECK-constraint defect: `pending` uploads have NULL `available_at`, while the previous `deletion_pending` lifecycle branch required it to be non-NULL. PR #279 updates the lifecycle constraint to permit either existing timestamp state while requiring `deleted_at IS NULL`; the transition function updates only `status`, preserving timestamps. Its contract test checks both the constraint and timestamp-preserving UPDATE.
+
+PR: https://github.com/zaidhqdev-sys/GHM/pull/279
+Branch: `fix/storage-pending-deletion-lifecycle`
+CI run `43650628452` was in progress when recorded; no passing result is claimed.
+
+No production migration, role, grant, data, environment, or deployment was changed. The gateway deployment boundary and the other pending-migration gates remain as previously documented. The storage correction must pass exact-head CI and disposable full-chain migration qualification before production use.
