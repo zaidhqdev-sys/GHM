@@ -2482,3 +2482,70 @@ The production migration audit is read-only and requires the pre-existing 'ghm_m
 The exact Connect identity-authority function symbol has no result in repository indexed code search; the bounded current migration/cutover source review did not find its creating migration. It remains a production-observed object with unresolved historical provenance. Do not infer its origin or alter its ACL/definition. Resolve only through historical Git refs/PRs or an approved backup/catalog archive.
 
 The read-only production migration audit is 'npm run audit:migrations'. It requires an already available dedicated 'GHM_MIGRATOR_DATABASE_URL', verifies 'session_user=current_user=ghm_migrator', checks SET ROLE 'ghm_schema_owner', uses 'BEGIN READ ONLY', reads the migration ledger, and rolls back. If the dedicated URL is not already securely available to the owner locally, stop and report the prerequisite; do not create/rotate credentials, substitute app roles, or add a Render service. Detailed PowerShell procedure and safety conditions are in the security qualification handover.
+
+
+## 2026-11-14 — production migration ledger backup reconciliation
+
+### Evidence source and scope
+
+A local, read-only comparison was run from `C:\\GHM-main` against the extracted ledger COPY data at:
+
+`C:\\Users\\zaidh\\AppData\\Local\\Temp\\GHM-production-migration-ledger-20261114.sql`
+
+The extracted backup ledger contains **105 rows**. Its latest recorded migration is `20261109210000_deactivate_unrecognized_public_directory_records`, applied at `2026-11-09 20:50:23 UTC`. This is the backup's recorded state only; it is not proof of the live production ledger state on 2026-11-14.
+
+The local repository snapshot used by the script contained **98 migration files** (correcting the earlier narrative count of 102 for this exact run). Results:
+
+| Check | Result |
+|---|---:|
+| Repository migrations | 98 |
+| Backup ledger rows | 105 |
+| Canonical LF checksum matches | 24 |
+| Supported legacy CRLF checksum matches | 62 |
+| Registered historical checksum matches | 9 |
+| Repository migrations absent from backup ledger | 3 |
+| Unexplained checksum mismatches | 0 |
+| Migration name mismatches | 0 |
+| Ledger-only historical entries | 10 |
+| Verified retained historical entries | 10/10 |
+| Unrecognized ledger-only entries | 0 |
+
+The three repository migrations absent from this backup snapshot are:
+
+- `20261110100000_create_account_onboarding_progress`
+- `20261110120000_create_business_relationship_outcome_read_models`
+- `20261110140000_allow_pending_storage_object_cleanup`
+
+The seven additional Actor Gateway migration versions mentioned in an earlier narrative do not appear in this exact 98-file `main` snapshot. Do not carry that earlier seven-item list forward as the result of this run.
+
+### Manifest and exception findings
+
+The current `main` version of `config/pending-migrations.production.json` contains only `20261109210000_deactivate_unrecognized_public_directory_records`, even though that version is present in the backup ledger. The three migrations listed above are absent from the backup ledger and are not represented in that pending manifest.
+
+Seven historical provenance exception entries classify as `REDUNDANT` because their registered checksum equals current repository bytes. The other nine entries are retained as historical provenance. This is a classification result, not authorization to delete or rewrite provenance records.
+
+**No manifest, migration, exception file, SQL, or production data was changed.** Do not silently rewrite the pending manifest or remove the seven redundant provenance records. First establish the live ledger state and determine the intended semantics of the production pending manifest against the exact release tree.
+
+### Live production access check — 2026-11-14
+
+Render account inventory confirmed the production target is the existing available PostgreSQL 18 service `ghm-db`, database `ghm_db` (service ID `dpg-dag0sdtbedkc7389vi2g-a`). The sandbox database is suspended and was not used.
+
+A read-only query through the existing Render Postgres query path confirmed:
+
+- `session_user = ghm_app_user`
+- `current_user = ghm_db_user`
+- `ghm.ghm_schema_migrations` exists
+- `has_table_privilege(current_user, 'ghm.ghm_schema_migrations', 'SELECT') = false`
+
+Therefore the live migration ledger remains **unverified** through this application/admin query identity. No role switch, grant, migration, or database mutation was attempted.
+
+The current PR #277 description also records that the approved `npm run audit:migrations` path uses a read-only transaction and the `ghm_migrator` / `ghm_schema_owner` authority path, while the application query identity cannot read the ledger. Use that established audit path only when its required authority is legitimately available; do not add migrator credentials to the app service or weaken database ACLs to make the audit work.
+
+### Disposition / next gate
+
+- Backup snapshot checksum reconciliation: **PASS for checksum/name consistency**, with three missing repository migrations and a pending-manifest discrepancy still to resolve.
+- Live production migration ledger: **NOT VERIFIED**.
+- Production migrations, role grants, Render environment/deployment, and application data: **UNCHANGED**.
+- No paid service or sandbox revival was created or requested.
+
+Next: obtain the live production ledger through the approved migration-authority audit path, compare the exact live rows against the same repository/manifest/provenance set, then reconcile the three migrations and pending manifest. Keep the security PR stack draft/unmerged and do not run production migrations as part of this audit.
