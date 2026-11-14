@@ -138,3 +138,16 @@ The disposable qualification script invokes the same verifier against the real `
 
 
 The migration history contains nine older account-ID overloads that were explicitly dropped by the later signed-assertion migrations. The only surviving unsigned helper was `assert_actor_gateway(bigint)`, which is not called by the current gateway code; migration `20261112070000_revoke_legacy_unsigned_actor_gateway_overloads.sql` revokes PUBLIC, runtime, migrator and gateway execution from that helper. The exact current allow-list is 33 signed/typed operations, and disposable qualification verifies the unsigned helper returns SQLSTATE 42501.
+
+
+### Production Actor Gateway live catalogue snapshot — 2026-11-14
+
+Read-only Render PostgreSQL catalog queries against 'ghm_db' report:
+
+- Schema 'ghm' is owned by 'ghm_schema_owner'; its ACL grants USAGE/CREATE to owner, USAGE to 'ghm_runtime' and 'ghm_payment_provider'; 'ghm_actor_gateway' has neither USAGE nor CREATE.
+- Actor Gateway contract routine count is zero (no 'assert_actor_gateway', 'assert_actor_gateway_capability' or 'gateway_*' routines); executable routine count for 'ghm_actor_gateway' is zero. The reviewed application contract currently expects 33 signatures, allowing the three campaign-review signatures to be absent together for the earlier pre-campaign subset.
+- There are 62 SECURITY DEFINER routines, all owned by 'ghm_schema_owner'; 5 have the exact pinned search_path 'pg_catalog, ghm, pg_temp'. The other 57 require per-routine comparison against the full reviewed authority inventory; do not infer they are unsafe solely from this aggregate count.
+- Existing relation-level checks found zero direct table/sequence privileges for 'ghm_actor_gateway'. The absence of those direct privileges is correct but insufficient without schema USAGE and the signed function allow-list.
+- The migration ledger remains unreadable to the application query principal; do not grant it SELECT. Use the existing read-only migrator audit path once a safe production invocation is available.
+
+No production changes were made during this catalogue capture. This snapshot is diagnostic, not an approved privilege cutover.
