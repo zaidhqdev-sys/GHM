@@ -2957,3 +2957,22 @@ GitHub Actions run `43532286311` reached the new local Worker smoke step after:
 The local Wrangler/Hyperdrive Worker smoke step then failed immediately (step duration approximately two seconds). The job's step conclusion is failure. The connected GitHub workflow-run interface exposes the job/step conclusion but not the text log contents, and this run had no uploaded diagnostic artifact. Therefore the failure cause is **not yet established**; I will not guess whether it is Wrangler local binding support, Worker startup, database ACL, or the local database connection.
 
 Corrective diagnostic change committed: `c6b80031f991342b1d94ac2f8338a524c372f410`. The workflow now uploads only `wrangler.log` and `health.json` as a short-retention artifact after the smoke step, even when it fails. It deliberately does not upload the ephemeral private test key or `.dev.vars`. The next run will provide inspectable failure evidence. No production credentials or data are involved.
+
+
+### Runtime smoke root cause identified — Wrangler runtime was stale
+
+The uploaded diagnostic artifact from run `43532472479` (artifact `14087931918`) was downloaded and inspected.
+
+Exact runtime output:
+- Wrangler `4.36.0` warned that the latest Workers Runtime compatibility date it supported was `2025-09-06`, while the Worker requested `2026-11-14`.
+- It then failed to start the Worker with `Uncaught Error: No such module "node:fs"`.
+- The local binding inventory showed Hyperdrive, the Rate Limiting binding, and all three expected Worker environment variables were loaded successfully.
+
+Official Cloudflare documentation confirms `node:fs` is available under Node.js compatibility and that compatibility dates from `2026-08-04` enable the newer Node.js compatibility implementation by default. The failure was therefore caused by using a Wrangler/Workers Runtime build too old to implement the requested 2026 compatibility date, not evidence that GHM itself requires removing filesystem APIs.
+
+References:
+- https://developers.cloudflare.com/workers/runtime-apis/nodejs/fs/
+- https://developers.cloudflare.com/workers/configuration/compatibility-flags/
+- https://developers.cloudflare.com/changelog/post/2026-08-04-nodejs-compat-default/
+
+Corrective change: the CI Wrangler pin has been advanced from `4.36.0` to `4.162.0`, the version explicitly identified by the failing runtime as the current available update. This remains a local dry-run/runtime-only toolchain change; it does not deploy anything or change account billing. The next CI run must confirm that the newer runtime starts the Worker and reaches the disposable PostgreSQL health check. No pass is claimed yet.
