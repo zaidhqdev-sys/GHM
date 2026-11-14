@@ -515,3 +515,26 @@ This is consistent with all four gateway migrations remaining unapplied; it is n
 A fresh Render workspace service inventory returned five web services. The only production GHM API is `ghm-internal-runtime` (main, auto-deploy OFF). Other GHM services are the legacy PayFast sandbox runtime/callback and the identity qualification service on the historical integration branch; these are not production Actor Gateway targets. No dedicated production Actor Gateway service exists in the current inventory. The separate `zaid-ai-workforce` service belongs to another repository and is not a GHM gateway target.
 
 No service was created, repurposed, or deployed. Given the standing no-new-paid-service constraint, do not create a dedicated Render service or repurpose sandbox services as a workaround. The gateway service/credential isolation and HTTP cutover therefore remain an explicit architecture/resource blocker; do not apply the gateway-dependent migrations or configure `GHM_ACTOR_GATEWAY_URL` until a no-cost, security-equivalent hosting arrangement is established and separately qualified. Keep the legacy Resource API path unchanged in the meantime.
+
+
+## 2026-11-15 — read-only production preflight of onboarding and relationship/outcome migrations
+
+Reviewed the exact main-branch SQL for pending migrations `20261110100000` and `20261110120000`, then checked their prerequisites against the live `ghm_db` catalog through Render's read-only query path.
+
+### `20261110100000_create_account_onboarding_progress.sql`
+- Target table `ghm.account_onboarding_progress` is absent, so the migration will not collide with an existing table.
+- Referenced `ghm.account_identity(id)` exists with its primary key.
+- `ghm_schema_owner` exists as the non-login schema owner; `ghm_runtime` and `ghm_migrator` are distinct NOINHERIT logins.
+- The reviewed SQL assigns table ownership to `ghm_schema_owner`, grants runtime SELECT/INSERT/UPDATE and sequence USAGE/SELECT, and withholds DELETE/TRUNCATE/REFERENCES/TRIGGER from runtime.
+- The table's unique identity, journey/step/status/lifecycle/time checks and account/journey index are present in the reviewed source.
+- No conflicting table, sequence, or existing onboarding rows were found because the target table is absent.
+
+### `20261110120000_create_business_relationship_outcome_read_models.sql`
+- All four target tables (`relationship_type`, `business_relationship`, `outcome_type`, `outcome`) are absent.
+- Referenced production tables `business`, `opportunity`, and `account_identity` exist; their referenced IDs are primary keys. Existing Opportunity foreign keys also confirm the production schema's established Business/account identity references.
+- The SQL creates the relationship/outcome type catalogs, business relationship and outcome records, indexes and restrictive foreign-key relationships. Its two seed inserts are bounded by unique `(code, version)` constraints and `ON CONFLICT DO NOTHING`.
+- Ownership is assigned to `ghm_schema_owner`; runtime receives SELECT only and no INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER.
+- No target table or seed data exists yet; this is a first application, not a repair or backfill.
+
+### Result and gate
+Both migrations have **catalog-level preconditions satisfied** and no name collision detected. This is a read-only structural preflight, not a full migration execution simulation against production data, and not authorization to apply either migration. The migrations remain in the seven-entry production pending allowlist. Apply only at the later controlled migration window after full dependency ordering and the remaining pending-migration review are complete. No production data, schema, roles, grants, or deployment changed in this check.
