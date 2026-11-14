@@ -2749,3 +2749,63 @@ Read-only source inspection was performed against the exact live deployment comm
 This confirms concrete deployed API/storage code paths depend on the three missing/stale migration effects. It is not just a theoretical risk from commit ancestry. No live HTTP request or data-changing test was sent; impact is established from exact deployed source plus read-only production catalog evidence.
 
 **Disposition:** treat these as active production source/schema mismatches. Keep migration execution blocked until the backup/restore evidence gate and a reviewed ordered migration plan are satisfied. In particular, the relationship/outcome migration creates four tables and seed rows; onboarding creates a table/index/grants; storage migration replaces a SECURITY DEFINER function. These should be reviewed and qualified as one ordered release unit, with preflight checks for existing objects, ownership, ACLs, dependencies and exact function body, followed by postflight ledger/checksum/catalog verification. No changes were made.
+
+
+## 2026-11-14 — environment audit continuity correction and source crosswalk
+
+The earlier handover already completed the **Gate 1 source-level database connection consumer inventory** (see 12-Nov continuation, “Gate 1 — source-level database connection consumer inventory”). Do not restart that audit or present it as outstanding. The 13-Nov operator-pasted Render environment inventory is recorded in `docs/HANDOVER_2026-11-08_INTERNAL_RUNTIME_RECONCILIATION.md`, appended 14-Nov. This section joins those two existing evidence sets and records source findings verified against current `main`.
+
+### Existing audit already completed
+
+The source-level database connection map is established:
+- Resource API: `GHM_RUNTIME_DATABASE_URL` → direct `ghm_runtime` login.
+- Auth Issuer: `GHM_AUTH_ISSUER_DATABASE_URL` → direct `ghm_auth_issuer` login (construction code; no production issuer service is deployed).
+- Actor Gateway: `GHM_ACTOR_GATEWAY_DATABASE_URL` → direct `ghm_actor_gateway` login (construction code; no production gateway service is deployed).
+- Migration runner: `GHM_MIGRATOR_DATABASE_URL` → direct `ghm_migrator`, then `SET ROLE ghm_schema_owner`.
+- PayFast callback: `PAYFAST_CALLBACK_DATABASE_URL` → `ghm_payment_provider` (paused; not part of this cleanup).
+
+This is a source-consumer audit, not evidence that those separate service variables/services are provisioned in Render. Current Render production inventory still has only `GHM-Internal-Runtime` as the GHM application service. Do not create additional services or place issuer/gateway/provider database URLs into the Resource API.
+
+### Confirmed variable-to-source crosswalk
+
+Verified in current `main` source files `src/config.ts`, `src/server.ts`, `src/auth/ghm-bearer.ts`, `src/auth/ghm-auth-service.ts`, `src/auth/foundation/es256-keys.ts`, `src/auth/foundation/token-hmac.ts`, `src/actor-gateway/server.ts`, `src/storage/config.ts`, and `src/payfast-callback-server.ts`:
+
+| Existing Render variable | Source consumer / meaning | Cleanup disposition |
+|---|---|---|
+| `DATABASE_URL` | Current deployed commit `c7cf1eb...` requires it. Current main uses it only as non-production fallback; production requires `GHM_RUNTIME_DATABASE_URL`. | **First critical correction.** The recorded value points at expired `ghm_payfast_sandbox_db`. Do not deploy current main until a correct production `GHM_RUNTIME_DATABASE_URL` is independently verified as `session_user=current_user=ghm_runtime` on `ghm_db`. For the existing live deployment, the legacy `DATABASE_URL` also needs a safe bridge to the same verified production runtime connection before any deployment/cutover. |
+| `DATABASE_SSL` | Required true by Resource API production config; also used by Actor Gateway and PayFast callback DB pools. | Retain `true`; do not weaken TLS requirement. Certificate identity validation remains a separate open TLS/network decision in the handover. |
+| `GHM_AUTH_TOKEN_PEPPER` | `src/auth/foundation/token-hmac.ts`; HMAC-SHA256 protects opaque refresh/recovery tokens. | Active authentication secret dependency in the current mainline auth service. Retain in the current Resource API until a separately qualified issuer cutover proves the new issuer owns this secret and the runtime no longer consumes it. Never rotate/copy during environment cleanup. |
+| `GHM_JWT_ES256_PRIVATE_KEY_PEM` | `loadEs256Keys()` used by current `src/auth/ghm-bearer.ts` and `src/auth/ghm-auth-service.ts`; current mainline Resource API still signs and verifies ES256 tokens. | **Still required by the current live Resource API auth implementation.** Do not remove or move it yet. The isolated issuer design intends to move private signing capability out of the Resource API, but no production issuer service/cutover exists. |
+| `GHM_JWT_ES256_PUBLIC_KEY_PEM`, `GHM_JWT_ES256_KID` | Active key pair/identifier loaded by `src/auth/foundation/es256-keys.ts`; the current Resource API requires all three active key values. Actor Gateway verifier also consumes public key + KID. | Retain current active key configuration. The sandbox-labelled KID `ghm-sandbox-20261012-01` is a naming/provenance concern, not proof that the key is invalid or can be safely replaced. Do not generate/rotate keys as part of this cleanup. |
+| `GHM_JWT_ES256_PREVIOUS_PUBLIC_KEY_PEM`, `GHM_JWT_ES256_PREVIOUS_KID` | Optional previous public verification pair; must be set together or both empty. | Not in the operator-pasted inventory. Do not invent or add them. |
+| `CORS_ORIGINS` | Required by Resource API config and used by HTTP CORS middleware. | Existing values include localhost and Cloudflare Pages origins. Keep until exact production frontend origins and current traffic dependencies are reconciled; then remove development/preview origins from production. |
+| `INVITE_CODE` | Required by Resource API config; construction/runtime invite gate. | Retain current secret; no rotation or disclosure. |
+| `NODE_ENV`, `PORT` | Process mode/listener configuration. | Retain `production`; Render owns `PORT` injection, so do not hardcode a port. |
+| `TRUST_PROXY` / `TRUST_PROXY_HOPS` | Resource API proxy/rate-limit trust parsing. | Neither appeared in the supplied Render inventory. Do not set a hop count until Render's actual proxy chain is verified; existing source keeps legacy boolean compatibility. |
+| `STORAGE_PROVIDER`, `STORAGE_ENDPOINT`, `STORAGE_REGION`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`, `STORAGE_FORCE_PATH_STYLE`, `STORAGE_UPLOAD_GRANT_TTL_SECONDS`, `STORAGE_DOWNLOAD_GRANT_MAX_TTL_SECONDS` | Loaded together by `src/storage/config.ts` when any storage setting is present; S3-compatible object-storage provider. These are not PostgreSQL credentials. | No `STORAGE_*` values were present in the supplied 13-Nov inventory. Their live Render presence/value is unknown. Do not invent or remove; determine whether storage is configured and where the bucket/provider lives before any change. |
+| `GHM_ACTOR_GATEWAY_URL` | Optional Resource API → Actor Gateway HTTPS origin. | Not present in the supplied inventory. Leave unset until the gateway service is actually deployed and end-to-end verified; no legacy fallback is allowed when set and gateway calls fail closed. |
+| `GHM_MIGRATION_DATABASE_HOST`, `GHM_MIGRATION_DATABASE_NAME`, `GHM_NONPRODUCTION_DATABASE_NAME`, `GHM_QUALIFICATION_DATABASE_NAME` | Not consumed by current Resource API `src/config.ts` or the current runtime DB-pool construction. These are legacy/qualification metadata, not the five canonical service connection variables in the source inventory. | Their recorded values point at expired sandbox. Do not redirect them to production. They are candidates for removal from the production Resource API service after one final repository-wide consumer check; they are not needed to make the current Resource API connect to `ghm_db`. |
+| `GHM_MIGRATOR_DATABASE_URL` | Dedicated migration runner / forensic audit; never the Resource API pool. | Recorded Render value points at expired sandbox and should not live on the Resource API service. The operator's local `C:\\GHM\\.env` separately has a working production migrator URL, proven by the successful read-only audit on 14-Nov. Preserve the local value; do not copy it to Render. |
+| `GHM_WEB_AUTH_ALLOWED_ORIGINS` | Browser-auth cookie origin gate from a separate construction feature; not consumed by the current mainline Resource API `src/config.ts`. | Recorded value is an obsolete Connect Preview origin. Browser-auth is not activated/qualified and no current production runtime setting should depend on this Preview origin. Remove from the production runtime only after confirming the deployed `c7cf1eb` source has no browser-auth route consumer; do not move it into `CORS_ORIGINS`. |
+| `PAYFAST_*` | Resource API PayFast config in current mainline; callback service separately consumes `PAYFAST_CALLBACK_DATABASE_URL`, callback SSL/trust-proxy and merchant settings. | Owner has paused PayFast until sandbox access returns. Freeze all PayFast variables and callback targets; do not change, remove, test, or migrate them in this environment cleanup. The stale callback URL is known but intentionally deferred. |
+
+### Current mainline vs live deployment — do not conflate
+
+- Live Render deployment remains `c7cf1eb...`; its source config reads `DATABASE_URL` and still uses the existing Resource API ES256 signer/verifier path.
+- Current `main` requires `GHM_RUNTIME_DATABASE_URL` for production, enforces the `ghm_runtime` principal at startup, and retains `DATABASE_URL` only for non-production.
+- Current `main` still includes `GHM_AUTH_TOKEN_PEPPER` and private ES256 key use in the Resource API auth implementation. The isolated Auth Issuer exists as construction architecture/source on its own workstream, but no production issuer service/credential/route cutover is deployed.
+- The Actor Gateway source requires `GHM_ACTOR_GATEWAY_DATABASE_URL` and public ES256 key material, but no production Actor Gateway service is deployed. Do not populate its connection URL on the Resource API.
+- The PayFast callback source requires a separate `PAYFAST_CALLBACK_DATABASE_URL` and `ghm_payment_provider`; no production callback service is in the current service inventory and PayFast is paused.
+
+### Execution order — continue from existing audit, not restart it
+
+1. **Resolve the one blocking database target first.** Confirm whether the production `ghm_runtime` credential/connection string already exists in an owner-controlled local secret store without printing it. Verify it read-only against `ghm_db` with `session_user=current_user=ghm_runtime`. The local migrator URL is not a substitute. If the runtime credential is not already available, stop and record that exact blocker; do not reset passwords or alter roles in this pass.
+2. Once the correct production runtime URL exists, stage the exact bridge needed for the live `c7cf1eb` config and the `GHM_RUNTIME_DATABASE_URL` needed by current main. Do not set either variable to the dashboard default `ghm_db_user`, the old sandbox credential, or the migrator URL.
+3. After that connection is proven, remove only the four obsolete sandbox metadata variables from the production Resource API service, plus the stale `GHM_WEB_AUTH_ALLOWED_ORIGINS` only if the deployed-source consumer check confirms it is unused. Do not remove JWT/pepper values or PayFast values.
+4. Reconcile `CORS_ORIGINS` using the actual production domains from GHM web, ZAID Connect and QuoteFlow deployment config; no Preview/localhost entries should remain in the production allowlist unless an explicitly approved operator tool requires them.
+5. Determine the actual storage provider/bucket configuration and whether `STORAGE_*` variables are absent or simply omitted from the pasted inventory. Do not disable storage by accident.
+6. Keep Render auto-deploy off. Environment changes and source deployment are separate; do not deploy until the required production variables are verified and the migration/source-schema blocker is separately resolved.
+
+**Audit status correction:** source-level DB connection inventory and the principal/consumer mapping are already complete in the 12-Nov handover. The 13-Nov Render variable values are also preserved in the 8-Nov handover. Remaining work is the targeted crosswalk/production runtime credential verification and controlled environment cleanup—not a new broad environment audit.
+
+**No-change boundary:** this update is documentation/source inspection only. No Render variable, secret, database credential, role, grant, migration, deployment, service, payment setting or application traffic was changed.
