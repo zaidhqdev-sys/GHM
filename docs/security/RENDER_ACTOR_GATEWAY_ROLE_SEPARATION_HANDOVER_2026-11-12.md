@@ -332,3 +332,16 @@ The existing design refinement remains authoritative and consistent with Amanda'
 A production archive ledger extract inspected on 2026-11-14 contains 105 migration rows through `20261109210000` (`deactivate_unrecognized_public_directory_records`, applied 2026-11-09 20:50:23.763528+00). Treat this as a backup snapshot/reconciliation baseline, not as a live ledger query.
 
 No production database or Render changes were made during the timeout test. Continue with local non-secret URL metadata and DNS/TCP diagnostics before retrying the controlled migrator connection.
+
+
+## 2026-11-14 continuation — SQL-created service login connectivity confirmed
+
+The production migrator endpoint has now passed both non-secret route diagnostics and a hidden-input PostgreSQL identity-only connection test.
+
+- Runtime and migrator URLs resolve to the same intended production Render PostgreSQL host, port 5432 and database `ghm_db`; DNS and TCP checks passed for both.
+- The migrator authenticated successfully with `session_user = current_user = ghm_migrator`.
+- The query returned only `current_database()`, `session_user` and `current_user`.
+
+This confirms the local migrator credential can authenticate to the intended production database. It does not yet qualify the SET-only membership to `ghm_schema_owner` or the ledger read path. The next step is a read-only transaction with `SET LOCAL ROLE ghm_schema_owner`, identity confirmation, and a bounded SELECT from `ghm.ghm_schema_migrations`, followed by ROLLBACK.
+
+The earlier connection-timeout observation is superseded by this successful identity test. No role membership, grants, data, Render environment variables, deployment settings or services were changed.
