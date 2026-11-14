@@ -4969,3 +4969,20 @@ Merge commit: `55980051d41a7a88956214987d6ad61f562ec0fb`.
 The latest PR #276 CI run for `aa86fa1346daf922d3c80c27f2bf5beb697bafbb` was still in progress at the time of this note. PR #277 will require its own exact-head CI after synchronization. Both PRs remain draft; no merge or deployment was performed.
 
 No production/local database, role, membership, ACL, credential, environment variable, service, migration, deployment, payment flow, backup, or paid resource was changed.
+
+
+### Exact-head qualification passed after gateway ACL corrections — 2026-11-14
+
+Re-read the handover before recording the result. The latest PR #276 head at this checkpoint is `aa86fa1346daf922d3c80c27f2bf5beb697bafbb`.
+
+**GitHub Actions run `43611550656`: PASS**
+- Exact head: `aa86fa1346daf922d3c80c27f2bf5beb697bafbb`
+- `quality`: completed successfully; all steps passed, including disposable PostgreSQL migrations, isolated Auth Issuer and Actor Gateway principal qualification, Actor Gateway signed-operation qualification, the full test suite, and subsequent migration/authority comparison checks.
+- `web-quality`: passed.
+- Run conclusion: `success`.
+
+This is the first successful exact-head CI after the fail-closed static function inventory, signature normalization, and grant-option denial corrections. It validates the PR #276 branch on disposable CI infrastructure only; it is not a production database qualification or deployment.
+
+PR #277 has been synchronized to include this PR #276 head as an ancestor. Its own exact-head CI is still required after the synchronization and handover commit. Both PRs remain draft and no merge/deploy has occurred.
+
+No production/local database, role, membership, ACL, credential, environment variable, service, migration, deployment, payment flow, backup, or paid resource was changed.
