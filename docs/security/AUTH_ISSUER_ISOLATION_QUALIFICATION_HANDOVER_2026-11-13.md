@@ -4079,3 +4079,32 @@ This source-only pass is pinned to the exact Render live commit `c7cf1ebaf4db591
 **Operational checks:** Render health path is `/healthz`. In deployed `src/http/app.ts`, that route returns HTTP 200; deployed `src/server.ts` only begins listening after the shared pool's `SELECT 1` succeeds. No environment change, restart, deployment, database query/mutation, credential rotation, role change, PayFast change, or paid resource was made.
 
 **Next safe task:** inspect the deployed Connect BFF's exact server-side GHM auth origin/cookie contract and compare its production + preview origins to the two GHM allowlists. This can be done source-only; do not ask the operator to re-paste the already supplied Render inventory.
+
+
+### 2026-11-14 13:54 UTC — Connect BFF/browser-auth origin contract traced
+
+Inspected current Connect default-branch source at commit `84d7edb64346f1b698f9b76bcb54d2e653df1292` (same content hashes confirmed by default-ref fetch for the relevant files):
+
+- `api/ghm/[...path].js` — BFF handler (blob `4780b0d9ed61b32f33cc5add027cd97129affadf`).
+- `src/lib/ghmAuth.js` — active auth facade (blob `eba5e42b51092553fe64a91ab53a9299e7bfdc75`).
+- `src/features/authentication/ghmWebAuthClient.js` — browser-cookie client (blob `89bba9d2423f27721fe20b8a9e4e856f3a6ea5c1`).
+
+**BFF contract (source-confirmed):**
+- Server-only Vercel variables: `CONNECT_WEB_ORIGIN` and `GHM_INTERNAL_RUNTIME_URL`. Missing/invalid values return `503 auth_proxy_not_configured`.
+- `CONNECT_WEB_ORIGIN` must be an exact HTTPS origin (no path/query/hash). The canonical production site origin is `https://zaid-connect.vercel.app`; this is a known public deployment origin, not a read-back of the current Vercel env value.
+- Preview requests are accepted only for same-origin hosts matching `zaid-connect-[a-z0-9-]+-zaid-technologies.vercel.app`; for trusted preview requests the BFF still sends `CONNECT_WEB_ORIGIN` as the upstream Origin header. For browser-auth requests it always sends `CONNECT_WEB_ORIGIN` as Origin, regardless of whether the inbound host is canonical or a trusted preview alias.
+- Therefore GHM's `GHM_WEB_AUTH_ALLOWED_ORIGINS` must contain the exact configured `CONNECT_WEB_ORIGIN` value. It should not be populated with a wildcard or a list of every preview URL merely because the BFF accepts trusted preview hosts. A preview environment that intentionally uses a different `CONNECT_WEB_ORIGIN` needs a matching isolated GHM non-production allowlist.
+- The BFF only forwards browser auth routes `register/login/refresh/logout` to `/api/v1/auth/web/*`; it blocks native auth route forwarding. It forwards Cookie and Set-Cookie only for browser-auth routes, forwards bearer Authorization only when validly shaped, pins upstream to `GHM_INTERNAL_RUNTIME_URL`, restricts methods/paths, caps JSON bodies at 1 MiB, uses a 10-second upstream timeout and manual redirects.
+- The web client calls same-origin `/api/ghm/auth/web`, uses `credentials: same-origin`, keeps access token in memory and does not store refresh credentials in browser storage when the feature is enabled.
+- In `src/lib/ghmAuth.js`, `VITE_GHM_WEB_AUTH_ENABLED` must equal `true` at build time to activate this client; otherwise the legacy native bearer client remains active and stores its refresh token in sessionStorage. This is code state, not proof of the current Vercel production build flag.
+
+**GHM-side values required for this contract:** deployed GHM browser auth requires:
+- `GHM_WEB_AUTH_ALLOWED_ORIGINS`: exact `CONNECT_WEB_ORIGIN` value used by the BFF.
+- `GHM_WEB_AUTH_COOKIE_PATH=/api/ghm`.
+- `GHM_WEB_AUTH_COOKIE_MAX_AGE_SECONDS`: integer 60–2,592,000, to be selected as a deliberate bounded session policy; do not invent or set a value in this audit.
+
+The previously supplied Render inventory includes a single preview deployment origin in `GHM_WEB_AUTH_ALLOWED_ORIGINS`, but does not include the required cookie path or max-age. That historic preview value is not sufficient evidence for production BFF alignment. Do not overwrite it until current Vercel Production/Preview settings and the intended isolated qualification flow are verified.
+
+**Vercel read-back limitation:** attempted read-only project/env discovery using the connected Vercel account/team `ZAID Technologies` (`team_6faNqq4JxLWBA4aR1SB8PspJ`) returned no `zaid-connect` project in that team scope (project lookup 404; project search empty). No environment values were decrypted or changed. This does not prove the project is deleted; it means the currently connected Vercel team scope cannot establish its live environment configuration. Do not claim the production env values or feature flag have been read. The repo source is verified; live Vercel scope still needs resolving before any configuration decision.
+
+**Correct next action:** continue source-level confirmation of Connect deployment domains/project ownership and identify the Vercel project scope that actually owns `zaid-connect`; then read only environment variable names, targets and branch scopes (no decrypt). No Vercel env change, deployment, GHM Render change, database operation, credential rotation, PayFast change, or paid resource was made.
