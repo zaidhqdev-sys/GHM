@@ -2593,3 +2593,19 @@ This proves the application connection can assume the migrator role, but it does
 The remaining task is to establish an actual direct login as the existing `ghm_migrator` principal using its already-provisioned credential/connection configuration, if one exists. Inspect the existing secret/connection configuration through the authorized Render dashboard or existing operator-controlled local configuration; do not expose credential values in chat or add a new credential to the application service. If no such credential/configuration exists, record that as the blocker and design a narrowly scoped, owner-approved provisioning step separately before running the read-only audit.
 
 No password, membership, role attribute, environment variable, service configuration, or database data was changed. Production remains unverified.
+
+
+### Correction — PostgreSQL membership flags distinguish membership from SET ROLE
+
+A subsequent read-only inspection of `pg_auth_members` exposed an important distinction. The earlier `pg_has_role(..., 'member') = true` results establish membership only; they do **not** establish the ability to execute `SET ROLE`.
+
+Exact production membership rows:
+
+| Granted role | Member | ADMIN OPTION | INHERIT OPTION | SET OPTION | Grantor |
+|---|---|---:|---:|---:|---|
+| `ghm_migrator` | `ghm_db_user` | true | false | false | `postgres` |
+| `ghm_schema_owner` | `ghm_db_user` | true | false | false | `postgres` |
+
+Therefore `ghm_db_user` cannot assume either `ghm_migrator` or `ghm_schema_owner` through these memberships. The previous wording that the application connection "can assume" these roles was incorrect and is superseded by this flag-level evidence. The audit's `SET ROLE ghm_schema_owner` step cannot be satisfied from this application connection. The membership's ADMIN OPTION remains a separate high-authority concern already tracked in the role-separation handover; no change was made here.
+
+The only valid audit route remains a direct authenticated connection whose `session_user` and initial `current_user` are both `ghm_migrator`, with the expected SET capability from that principal to `ghm_schema_owner`. No password or role mutation was attempted.
