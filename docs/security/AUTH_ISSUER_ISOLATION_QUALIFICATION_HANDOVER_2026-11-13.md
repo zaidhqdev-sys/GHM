@@ -3012,3 +3012,16 @@ with the first application dependency frame in `iconv-lite/lib/index.js`, import
 This is a second, distinct runtime compatibility issue. The previous missing `node:fs` problem was resolved by using a current Wrangler runtime and Node 22. The remaining issue is CommonJS/Node stream interoperability in the Express body-parser/iconv-lite dependency chain under workerd.
 
 I am testing the immediately preceding stable Wrangler `4.161.0` (rather than the just-published `4.162.0`) with the same Node 22 runtime to distinguish a new runtime regression from a general Express dependency incompatibility. No production traffic or credentials are involved.
+
+
+### Express body-parser incompatibility — Worker-specific bounded JSON parser introduced
+
+The smoke test repeated under Wrangler `4.161.0` and produced the same `require_streams(...) is not a function` error from Express's `body-parser -> raw-body -> iconv-lite` dependency chain. This confirms it is not specific to Wrangler 4.162.0.
+
+The Worker adapter now avoids loading that unsupported body-parser chain:
+- Added a Wrangler module alias mapping `body-parser` to `workers/actor-gateway/body-parser-worker-stub.cjs`. The stub deliberately fails if any body-parser method is accidentally invoked.
+- Added injectable `jsonBodyParser` to the existing Actor Gateway app options. Normal Node/Render execution continues to use the original `express.json({ limit: '16kb' })`.
+- The Cloudflare Worker supplies its own bounded JSON parser using the Node HTTP request data/end/error events and Buffer. It enforces the same 16 KiB limit, only processes `application/json`, accepts JSON objects/arrays, returns 413 for oversize payloads and 400 for malformed/primitive JSON, and fails closed.
+- Added static Worker contract assertions and an app test proving that the injected parser is used.
+
+This is a compatibility boundary, not a relaxation of request validation. The Express body-parser stub is only selected by the Worker Wrangler config; the Render/Node runtime path remains unchanged. The next Wrangler bundle and local runtime smoke must prove the alias is applied and that no other unsupported dependency fails during startup. No success is claimed yet.
