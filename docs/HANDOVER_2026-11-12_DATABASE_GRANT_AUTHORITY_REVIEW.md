@@ -2686,3 +2686,37 @@ The policy test in `scripts/migration-audit-checksum.test.mjs` explicitly pins t
 - Existing PR #277 remains open and draft; its exact head at this checkpoint is `d470f1b28963ec2b6b4fc209616bf77ea7108b5a`. CI run `43629112926` completed successfully. No merge or deployment was performed.
 
 **Next action:** trace the three 2026-11-10 migration files through Git history/PRs and their release/deploy sequencing; preserve the exact live audit output above. Decide manifest semantics only after that provenance check.
+
+
+### 2026-11-14 — trace pending migrations to deployed runtime and live schema
+
+The three live-missing migrations were traced to their source commits and compared with the currently live Render deployment.
+
+**Source and deployment ancestry**
+- `20261110100000_create_account_onboarding_progress` was introduced in commit `8590bf04298b8c62f82b902a07a7b65a0c19334c` (2026-11-10), adding the onboarding progress table and its runtime read/insert/update grants.
+- `20261110120000_create_business_relationship_outcome_read_models` was introduced in commit `d0070c96dec33c71b8145584143866ed5c9b4d7b` (2026-11-10), adding `relationship_type`, `business_relationship`, `outcome_type`, `outcome`, their indexes, and seed rows.
+- `20261110140000_allow_pending_storage_object_cleanup` was introduced in commit `bd69850693f75da6e3a5d98462ed436323662ad5` (2026-11-10), replacing `ghm.storage_mark_deletion_pending(bigint)` so it accepts both `pending` and `available` storage objects and grants runtime EXECUTE.
+- GitHub ancestry comparisons against the currently live Render deployment commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf` show all three source commits are ancestors of that deployment. Therefore the deployed application source includes these feature/migration changes.
+- Render confirms `GHM-Internal-Runtime` is still on `main`, auto-deploy is off, and the live deployment remains `c7cf1eb...` from 2026-11-10. No new deployment was triggered.
+
+**Read-only live schema check**
+A read-only catalog query on production `ghm_db` returned:
+- `ghm.account_onboarding_progress`: **absent**
+- `ghm.relationship_type`: **absent**
+- `ghm.business_relationship`: **absent**
+- `ghm.outcome_type`: **absent**
+- `ghm.outcome`: **absent**
+- `ghm.storage_mark_deletion_pending(bigint)`: **present**
+
+The present storage function is owned by `ghm_schema_owner`, is SECURITY DEFINER, has `search_path=pg_catalog, ghm`, and ACL `ghm_schema_owner=X, ghm_runtime=X` with no PUBLIC grant. However its live definition is the older implementation:
+- live condition: `status = 'available'` only
+- live exception: `storage object is not available or does not exist`
+
+The pending migration's expected definition accepts `status IN ('pending', 'available')` and has a corresponding updated exception. Thus the function exists but its live body does **not** match the 2026-11-10 migration source.
+
+**Risk interpretation**
+This is no longer merely a pending-manifest bookkeeping discrepancy. The deployed application commit includes all three feature changes, while the live database is missing five required read-model/onboarding tables and retains an older storage cleanup function body. This establishes a source/schema deployment mismatch. Depending on whether the affected routes are exercised, onboarding and relationship/outcome API operations may fail against missing relations; storage cleanup of pending uploads will not have the intended new transition behavior.
+
+The migration ledger says all three migrations are absent, and the live catalog confirms their effects are absent or stale. Do not mark these as applied, alter the manifest to hide the discrepancy, or run migrations yet. First map the deployed runtime's callers/routes and verify migration execution order, dependencies, idempotency, and the existing production backup/restore gate. Then prepare a staged, migration-only remediation plan with preflight and postflight checks. No migration, DDL, data, ACL, role, credential, Render environment, service, or deployment change has been made.
+
+**Current status:** migration authority and live ledger are verified; the three migration gaps are confirmed against the live catalog; production source/schema alignment is a release blocker. Preserve this as a production issue, not as a harmless manifest-only mismatch.
