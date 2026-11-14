@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
 import { handleAsNodeRequest } from 'cloudflare:node';
 import { Client, type Pool, type PoolClient } from 'pg';
+import type { RequestHandler } from 'express';
 import { createAccessJwtVerifier } from '../../src/auth/foundation/access-jwt-verifier';
 import {
   loadEs256VerificationKeys,
@@ -54,6 +55,72 @@ const required = (value: string | undefined, name: string): string => {
   const normalized = value?.trim();
   if (!normalized) throw new Error(`Missing required Worker binding or secret: ${name}`);
   return normalized;
+};
+
+const MAX_JSON_BODY_BYTES = 16 * 1024;
+
+/**
+ * Express's bundled body-parser -> raw-body -> iconv-lite chain is not
+ * compatible with the current Workers Node stream bridge. The Worker uses
+ * this bounded JSON-only parser instead. Node/Render keeps Express's standard
+ * body-parser path. This middleware preserves the app's 16 KiB JSON limit and
+ * strict object/array parsing behavior without iconv-lite.
+ */
+const workerJsonBodyParser: RequestHandler = (request, response, next) => {
+  const contentType = request.headers['content-type'];
+  if (typeof contentType !== 'string' || !/^application\\/json(?:\\s*;|$)/i.test(contentType)) {
+    next();
+    return;
+  }
+
+  const chunks: Buffer[] = [];
+  let totalBytes = 0;
+  let tooLarge = false;
+  let completed = false;
+
+  request.on('data', (chunk: Buffer | string) => {
+    if (tooLarge) return;
+    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    totalBytes += bytes.length;
+    if (totalBytes > MAX_JSON_BODY_BYTES) {
+      tooLarge = true;
+      chunks.length = 0;
+      return;
+    }
+    chunks.push(bytes);
+  });
+
+  request.on('end', () => {
+    if (completed) return;
+    completed = true;
+    if (tooLarge) {
+      response.status(413).json({ error: 'payload_too_large' });
+      return;
+    }
+    const raw = Buffer.concat(chunks).toString('utf8').trim();
+    if (!raw) {
+      request.body = {};
+      next();
+      return;
+    }
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (parsed === null || typeof parsed !== 'object') {
+        response.status(400).json({ error: 'invalid_request' });
+        return;
+      }
+      request.body = parsed;
+      next();
+    } catch {
+      response.status(400).json({ error: 'invalid_request' });
+    }
+  });
+
+  request.on('error', () => {
+    if (completed || response.headersSent) return;
+    completed = true;
+    response.status(400).json({ error: 'invalid_request' });
+  });
 };
 
 /**
@@ -189,6 +256,7 @@ const initialize = (workerEnv: ActorGatewayWorkerEnv): Promise<void> => {
           const decision = await edgeRateLimiter.limit({ key: `actor:${accountId}` });
           return decision.success;
         },
+        jsonBodyParser: workerJsonBodyParser,
       });
 
       actorGatewayServer = createServer(app);
