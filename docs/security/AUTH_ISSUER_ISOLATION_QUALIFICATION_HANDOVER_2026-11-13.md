@@ -4226,3 +4226,19 @@ The owner inspected the existing production `ghm-db` Recovery page and supplied 
 **Sources checked:** Render Postgres recovery documentation (https://render.com/docs/postgresql-backups), Render Postgres creation/connection docs (https://render.com/docs/postgresql-creating-connecting), and Render pricing page (https://render.com/pricing). These describe on-demand exports as a feature of paid Postgres; the dashboard itself confirms the current instance's PITR and export controls.
 
 No database restore, export, service creation, plan upgrade, role/grant change, credential change, environment edit, deployment or production mutation was performed in this checkpoint.
+
+
+### Fresh production logical export created — 2026-11-14
+
+The owner supplied an updated screenshot/text from the existing `ghm-db` Recovery page. It now shows one completed export:
+
+- Database: `ghm-db` / `ghm_db`
+- Created: November 14, 2026 at 4:26 PM (as displayed by Render Dashboard)
+- File type: `.dir.tar.gz`
+- Export list count: 1
+
+**Evidence status:** Render Dashboard confirms the export job produced a file entry. The archive has not yet been downloaded or inspected locally in this workflow. Its file size, archive integrity, contents, and restoreability are therefore not yet verified. Do not describe this as a restore-tested backup.
+
+**Next safe step:** owner downloads the completed `.dir.tar.gz` file using the file link in the Render Recovery page and saves it to the existing local backup location (no new cloud storage/service). Then inspect local file existence, size, and archive listing without extracting over existing files and without restoring to production. Preserve the original archive unchanged. Record a checksum and retain a second local copy only if existing storage permits without cost. A separate restore test remains uncompleted; do not create a new Render database or trigger PITR restore because that could incur charges.
+
+No restore, database/service creation, upgrade, production credential/role/grant change, environment edit, migration, or deployment was performed in this checkpoint.
