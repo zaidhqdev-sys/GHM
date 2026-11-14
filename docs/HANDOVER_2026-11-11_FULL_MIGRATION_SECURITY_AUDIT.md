@@ -3116,3 +3116,36 @@ Using the verified migrator connection, run a read-only transaction that:
 5. rolls back.
 
 If the role switch or ledger SELECT fails, capture the SQLSTATE and exact error without widening grants. Do not restore/import the archive snapshot. No production permissions, data, Render variables, deployment settings or services were changed by this connection test.
+
+
+## 2026-11-14 continuation — live production migrator ledger qualification
+
+The controlled read-only migrator ledger test has now passed against the live Render production database.
+
+Verified sequence and identities:
+- Connected to `ghm_db` with `session_user = current_user = ghm_migrator`.
+- Began a `READ ONLY` transaction successfully.
+- `SET LOCAL ROLE ghm_schema_owner` succeeded.
+- After the role switch, `session_user = ghm_migrator` and `current_user = ghm_schema_owner`, exactly as intended.
+- Read `ghm.ghm_schema_migrations` successfully.
+- Explicit `ROLLBACK` succeeded.
+
+Live ledger result:
+- Row count: **105**.
+- First version: `00000000000000`.
+- Latest version: `20261109210000`.
+- Latest applied timestamp: `2026-11-09 20:50:23.763Z`.
+- Latest migration name: `deactivate_unrecognized_public_directory_records`.
+
+The live production result matches the previously inspected 105-row archive snapshot at the first/latest version and latest timestamp. The archive remains a backup reference only; no restore/import was performed.
+
+This closes the local migrator connection, authentication, SET-only schema-owner role switch and live ledger read qualification. It does **not** yet reconcile all 105 live ledger rows against the current repository migration files, establish the status of every manual cutover, or prove production object/Project↔Opportunity data reconciliation.
+
+No production DDL/DML, grants, role memberships, secrets, Render variables, deployment settings or service deployments were changed. The test transaction was rolled back.
+
+### Next reconciliation work
+
+1. Compare all 105 live ledger versions/names/checksums with the current repository migration inventory and the approved retained/extra migration register.
+2. Identify missing repository migrations, unexpected live entries, checksum mismatches and approved manual-cutover entries separately.
+3. Keep PayFast-related migration entries visible but do not activate or change PayFast functionality while its sandbox remains unavailable.
+4. Only after the migration ledger reconciliation is complete, proceed to the separately required production-only Project↔Opportunity reconciliation. Do not merge/deploy based solely on matching row counts.
