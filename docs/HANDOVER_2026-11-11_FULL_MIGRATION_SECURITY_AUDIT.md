@@ -2617,3 +2617,49 @@ A current-mainline GitHub code search for `JWT_SECRET` returned no matches. The 
 ### Execution status
 
 This is an inventory and handover update only. No Render variable, local file, credential, database role, database, service, deployment, or paid resource was changed. The next required input is the complete current variable-name list from the Render `ghm-internal-runtime` Environment page, followed by a single consolidated manifest. The production runtime password mismatch, approved CORS origins, production ES256 KID/key pairing, proxy setting, and storage acceptance remain open gates. Keep auto-deploy disabled until the coordinated manifest is applied and validated.
+
+
+## 2026-11-14 — Correction: use the existing Render inventory; do not request it again
+
+The prior handover already contained the historical operator-provided Render Environment variable-name inventory. The follow-up request for the same names was unnecessary. Use this recorded inventory as the baseline:
+
+`CORS_ORIGINS`, `DATABASE_SSL`, `GHM_AUTH_TOKEN_PEPPER`, `GHM_JWT_ES256_KID`, `GHM_JWT_ES256_PRIVATE_KEY_PEM`, `GHM_JWT_ES256_PUBLIC_KEY_PEM`, `INVITE_CODE`, `JWT_SECRET`, `NODE_ENV`, and `TRUST_PROXY`.
+
+The later operator-provided Render observation additionally confirms a `DATABASE_URL` variable, currently targeting the retired `ghm_payfast_sandbox_db` with login `ghm_runtime`. Treat that as the current known Render DB variable, not as a valid production target.
+
+### Consolidated comparison using existing evidence
+
+| Variable | Historical Render inventory | Local `C:\\GHM\\.env` inventory | Reconciliation disposition |
+|---|---|---|---|
+| `DATABASE_URL` | Present; latest Render observation points to sandbox DB as `ghm_runtime` | Present; production `ghm_db` as `ghm_app_user` | Replace Render with the approved production app URL only if the deployed Resource API contract needs this compatibility variable; production runtime must use `GHM_RUNTIME_DATABASE_URL` |
+| `GHM_RUNTIME_DATABASE_URL` | Not present in historical Render inventory | Present; production `ghm_db` as `ghm_runtime` | Add to Render after trusted credential validation; resolve known authentication failure first |
+| `GHM_MIGRATOR_DATABASE_URL` | Not present in historical Render inventory | Present; production `ghm_db` as `ghm_migrator` | Do not add to Resource API unless the deployed service runs migrations; keep migration credentials out of runtime |
+| `CORS_ORIGINS` | Present | Missing | Retain/add in Render; recover approved production origins from existing accepted Connect/QuoteFlow deployment configuration |
+| `DATABASE_SSL` | Present | Present, `true` | Retain as `true` |
+| `GHM_AUTH_TOKEN_PEPPER` | Present | Present | Retain existing trusted secret; verify required length without displaying it |
+| `GHM_JWT_ES256_KID` | Present | Present but value is `ghm-local-qualification` | Replace local qualification KID with the production KID paired with the production keypair; verify Render's current value from its trusted secret source |
+| `GHM_JWT_ES256_PRIVATE_KEY_PEM` | Present | Present | Retain issuer private key only if this Resource API is the issuer process; verify it matches the production public key |
+| `GHM_JWT_ES256_PUBLIC_KEY_PEM` | Present | Present | Retain matching production public key |
+| `INVITE_CODE` | Present | Present | Retain trusted existing value; do not rotate or disclose |
+| `JWT_SECRET` | Present historically | Not included in the supplied local inventory | Removal candidate: current-mainline GitHub search returned no matches; remove only after confirming no runtime/deploy script or external consumer depends on it |
+| `NODE_ENV` | Present | Missing | Render target must be `production`; local dev may omit or set its own development value |
+| `TRUST_PROXY` | Present | Missing | Preserve only the already accepted production proxy setting; verify before altering |
+| `PORT` | Not in historical inventory | Missing | Render platform normally supplies this; no manual value needed unless service config explicitly requires one |
+| `TRUST_PROXY_HOPS` | Not in historical inventory | Missing | Do not add unless replacing legacy `TRUST_PROXY` with a topology-verified hop count |
+| `GHM_ACTOR_GATEWAY_URL` | Not in historical inventory | Missing | Optional in Resource API parser; add only if current deployed feature path requires the separately deployed gateway |
+| `STORAGE_PROVIDER` | Not in historical inventory | Missing | Optional; current loader defaults to S3 when storage is enabled |
+| `STORAGE_ENDPOINT` | Not in historical inventory | Present; Cloudflare R2 endpoint | Keep only after confirming approved production R2 configuration and required credential/bucket/region set |
+| `STORAGE_REGION` | Not in historical inventory | Present; `auto` | Keep with approved R2 configuration |
+| `STORAGE_BUCKET` | Not in historical inventory | Present; `zaid-ghm-production` | Keep with approved R2 configuration |
+| `STORAGE_ACCESS_KEY_ID` | Not in historical inventory | Present | Secret; preserve only from trusted existing source |
+| `STORAGE_SECRET_ACCESS_KEY` | Not in historical inventory | Present | Secret; preserve only from trusted existing source |
+| `S3_ENDPOINT` | Not in historical inventory | Present; localhost MinIO | Remove from production manifest; not consumed by current storage loader |
+| `GHM_NONPRODUCTION_DATABASE_HOST` | Not in historical inventory | Present; retired sandbox host | Remove from production runtime manifest |
+| `GHM_JWT_ES256_PREVIOUS_PUBLIC_KEY_PEM` / `GHM_JWT_ES256_PREVIOUS_KID` | Not in historical inventory | Not in supplied inventory | Optional pair only; retain only if an active token-verification overlap is approved |
+| `GHM_MIGRATION_DATABASE_NAME` / `GHM_MIGRATION_DATABASE_HOST` | Not in historical inventory | Present; production migration metadata | Local tooling metadata only; verify actual consumer; not Resource API variables |
+
+### Important distinction
+
+The historical list is a real inventory already supplied by the operator, but it is not a fresh read of today's Render page. The only latest Render value independently reconfirmed in this session is `DATABASE_URL` pointing at the retired sandbox database. For the other Render variables, preserve their historical presence as evidence and do not pretend their current values have been re-read.
+
+No environment variables or secrets have been changed. This comparison is the consolidated working manifest; unresolved target values remain explicitly gated rather than guessed. Keep Render auto-deploy disabled.
