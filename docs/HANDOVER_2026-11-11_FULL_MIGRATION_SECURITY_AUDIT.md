@@ -3051,3 +3051,43 @@ Next use the existing `ghm_migrator` connection path and its permitted SET ROLE 
 ### Render release state rechecked after PR #278 merge
 
 A fresh Render service inspection after the merge confirms the production target `GHM-Internal-Runtime` (`srv-damupsek1f9s73eq8kkg`) still has auto-deploy OFF (`autoDeploy=no`, trigger `off`), tracks `main`, and retains `/healthz` as its configured health check. The latest service events still show the 2026-11-10 successful deployment; no deployment event was created by PR #278 or the subsequent handover commits. The service remains unsuspended. No production release has been started.
+
+
+## 2026-11-15 — Migrator ledger read timed out; Amanda support guidance reconciled
+
+The operator attempted a hidden-input local read-only connection using the existing `GHM_MIGRATOR_DATABASE_URL` and the script verified the database identity before setting `SET LOCAL ROLE ghm_schema_owner`. The connection attempt ended with:
+
+- `LEDGER READ: FAILED`
+- Error code: unavailable
+- Error message: `timeout expired`
+
+This is a connection timeout, not a PostgreSQL password-authentication error (such as SQLSTATE 28P01), and the script did not reach the identity check, `SET LOCAL ROLE`, or ledger SELECT. No production data, permissions, role memberships, migrations, or deployment were changed. The local migrator URL's correctness and network reachability remain unverified. Do not infer that `ghm_migrator` is invalid or that its membership is wrong from this timeout.
+
+### Amanda / Render support guidance re-read
+
+Re-read the complete support record in `docs/security/RENDER_ACTOR_GATEWAY_ROLE_SEPARATION_HANDOVER_2026-11-12.md`. Amanda's explicit final recommendation (2026-11-12 18:46:53Z) was to move normal application execution to SQL-created login(s) outside Render's Dashboard-managed credential list. Her detailed guidance was to keep the Dashboard-managed default user as the database administrator and create separate service logins directly in PostgreSQL. SQL-created roles are not managed/listed by Render; their credentials must be managed by the connecting service in its environment.
+
+The existing implementation refinement in that support handover remains the chosen architecture:
+- Keep the current Render Dashboard-managed default credential as controlled administrator; do not rotate/delete it as a prerequisite.
+- Resource API uses the already SQL-created `ghm_runtime` directly through `GHM_RUNTIME_DATABASE_URL`. The hidden-input connection test has now passed as `ghm_db` / `ghm_runtime`.
+- Migrator remains a separate SQL-created `ghm_migrator` login and must use its own controlled credential path; do not put it back into the Resource API environment.
+- `ghm_migrator` has the documented SET-only membership in `ghm_schema_owner`; the intended read path is a read-only transaction followed by `SET LOCAL ROLE ghm_schema_owner`, then SELECT from the ledger.
+- Do not copy Amanda's illustrative `CREATE ROLE ghm_app_user ... IN ROLE ghm_runtime` example. It was not an approved command and would not satisfy the current Resource API's strict `session_user=current_user=ghm_runtime` startup contract.
+
+### Existing production backup ledger evidence recovered
+
+The Library file `Pasted text(20261114-183753).txt` contains the extracted `TABLE DATA ghm.ghm_schema_migrations` entry from the production archive inspected on 2026-11-14. Parsing its COPY rows gives 105 ledger entries. The earliest row is `00000000000000 create_migration_ledger`; the latest row is `20261109210000 deactivate_unrecognized_public_directory_records`, applied at `2026-11-09 20:50:23.763528+00`.
+
+This is a valuable production-backup snapshot and a reconciliation baseline, but it is not a live query and must not be represented as the current live ledger. It does, however, mean the ledger is not wholly unknown while the migrator connection path is being diagnosed. Preserve the archive as evidence; do not restore it or import its rows into production.
+
+### Next safe diagnostic
+
+Do not keep retrying a full ledger query blindly. First validate the local migrator URL's non-secret connection metadata (username should be `ghm_migrator`, database `ghm_db`, expected Render Postgres hostname and port) and DNS/TCP reachability without printing credentials. Compare the endpoint host with the successfully tested runtime URL. If the endpoint is correct and TCP is reachable, retry the identity-only connection with a longer timeout before attempting the read-only `SET LOCAL ROLE` and ledger SELECT. Never paste either URL into chat.
+
+Current status:
+- Runtime URL authentication: PASS (`ghm_db`, `ghm_runtime`).
+- Migrator URL connection: TIMEOUT; not authenticated/verified.
+- Live migration ledger query: NOT RUN.
+- Backup ledger snapshot: 105 rows through migration `20261109210000` (2026-11-14 archive extraction).
+- Amanda support direction: CONFIRMED and unchanged.
+- Production roles/grants/data/migrations/environment/deployment: UNCHANGED.
