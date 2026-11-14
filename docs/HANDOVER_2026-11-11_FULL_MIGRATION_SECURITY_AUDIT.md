@@ -3278,3 +3278,38 @@ All queries were read-only. No production rows, schema objects, migration ledger
 Review the seven explicitly pending migrations one by one for dependencies, current production object state, privilege requirements, lock/transaction behavior, idempotency and rollback/forward-recovery strategy. Keep this review read-only until a controlled execution plan is complete. Do not treat the absence of Project/Opportunity data as authorization to run migrations or deploy.
 
 Status: **PRODUCTION PROJECT↔OPPORTUNITY DATA RECONCILIATION CLOSED — NO ROWS TO RECONCILE; STRUCTURAL LINK VALID; LIVE-ROW ATOMICITY NOT EXERCISED.**
+
+
+## 2026-11-15 — read-only qualification of seven pending production migrations
+
+Production database: Render `ghm-db` / `ghm_db`. All catalog queries used Render's read-only query interface. No migration was executed. No production data, schema, migration ledger, role, grant, Render environment, service setting, or deployment was changed.
+
+### Live production baseline and pending object state
+
+- Existing dependencies confirmed: `ghm.account_identity`, `ghm.business`, `ghm.business_membership`, `ghm.opportunity`, `ghm.storage_object`, and `ghm.business_registration_identity`.
+- Not present in production at audit time: `account_onboarding_progress`, `relationship_type`, `business_relationship`, `outcome_type`, and `outcome`.
+- `ghm_runtime`, `ghm_migrator`, `ghm_actor_gateway`, and `ghm_schema_owner` remain LOGIN/NOINHERIT and non-superuser/non-BYPASSRLS; `ghm_schema_owner` is NOLOGIN. The trusted Render administrator's role memberships remain unchanged.
+- Existing storage and private registration tables are owned by `ghm_schema_owner`; runtime has no direct table privileges on either.
+- Existing registration read/write functions are SECURITY DEFINER, owned by `ghm_schema_owner`, pinned to `pg_catalog, ghm`, and executable by `ghm_runtime`. Gateway wrapper functions and `ghm.assert_actor_gateway(bigint)` do not yet exist in production.
+- Production query principal could not read `ghm.ghm_schema_migrations`; the separate migrator-ledger boundary remains intact.
+
+### Per-migration disposition
+
+1. `20261110100000_create_account_onboarding_progress` — **SCHEMA-READY, NOT APPLIED**. The account FK target exists. The table is absent. The SQL creates an account-scoped unique key and lifecycle checks, grants runtime SELECT/INSERT/UPDATE plus sequence usage, and withholds DELETE/TRUNCATE. Application repository operations use `context.userId` as account_id within an authorized transaction. Review still required for application permission-registry wiring and live runtime sequence ACL after application.
+2. `20261110120000_create_business_relationship_outcome_read_models` — **SCHEMA-READY, NOT APPLIED**. All referenced production parents exist: business, opportunity, and account_identity. Four target tables are absent. Seed inserts are deterministic by `(code, version)` and use `ON CONFLICT DO NOTHING`. Runtime receives SELECT only; relationship/outcome repository checks active Business membership before reading. No seed rows or business data were written.
+3. `20261110140000_allow_pending_storage_object_cleanup` — **BLOCKED; DO NOT APPLY AS WRITTEN**. Existing `storage_object_lifecycle_check` requires `available_at IS NOT NULL` for `deletion_pending`, while pending objects have `available_at IS NULL`. The proposed function updates status to `deletion_pending` for both pending and available rows without changing `available_at`, so the pending-object path violates the existing CHECK constraint. Production currently has the prior SECURITY DEFINER function owned by `ghm_schema_owner`, pinned search_path, and runtime EXECUTE; runtime has no direct storage_object table privileges. Correct the state transition and tests before this migration can be considered. Preserve lifecycle semantics; do not invent an availability timestamp.
+4. `20261110210000_add_actor_gateway_principal_guard` — **PREREQUISITES PRESENT, NOT APPLIED**. Production has the gateway LOGIN/NOINHERIT role with no elevated attributes and only the trusted Render administrator membership (ADMIN OPTION true, INHERIT false, SET false). The migration's catalog guard matches the observed role configuration. It creates `assert_actor_gateway` and grants gateway schema usage/function execution; neither is present yet. Requalify immediately before execution because the guard is state-sensitive.
+5. `20261110220000_add_actor_gateway_self_identity_read` — **DEPENDENT ON #4, NOT APPLIED**. Requires `assert_actor_gateway`; creates a gateway-only identity read wrapper. Production does not currently have either function. Runtime is explicitly denied EXECUTE by the migration.
+6. `20261110230000_add_gateway_business_registration_identity_read` — **DEPENDENT ON #4 AND EXISTING REGISTRATION READ FUNCTION, NOT APPLIED**. The underlying `read_business_registration_identity(bigint,bigint)` exists, is SECURITY DEFINER, schema-owner-owned, pinned search_path, and runtime-executable. Gateway wrapper is absent. The Resource API source has an optional gateway client, but actual production environment wiring and a deployed gateway service have not been established here.
+7. `20261110233000_add_gateway_business_registration_identity_write` — **DEPENDENT ON #4 AND EXISTING REGISTRATION WRITE FUNCTION, NOT APPLIED**. Existing write function is SECURITY DEFINER, schema-owner-owned, pinned search_path and runtime-executable. Gateway wrapper is absent. The migration corrects the ambiguous ON CONFLICT target to the named primary-key constraint and preserves the existing runtime grant pending a separate cutover. Gateway service code calls this wrapper; the gateway service must be deployed and verified before any Resource API cutover.
+
+### Important deployment / execution sequencing
+
+- Render inventory confirms `ghm-internal-runtime` tracks `main` with auto-deploy OFF. Existing PayFast sandbox and identity qualification services are not the production gateway target. No dedicated Actor Gateway Render service was present in the service inventory.
+- Actor Gateway source requires `GHM_ACTOR_GATEWAY_DATABASE_URL`, ES256 verification keys, `DATABASE_SSL=true` in production, and verifies that its database session/current user are both `ghm_actor_gateway`. No gateway service deployment or production readiness was confirmed.
+- The Resource API only routes registration identity through the gateway when `GHM_ACTOR_GATEWAY_URL` is configured; otherwise it uses the legacy runtime SQL path. Do not change this env var or revoke legacy grants until the gateway is separately deployed, verified, and cutover-tested.
+- The production pending allowlist remains exactly these seven unapplied migrations. Do not remove entries merely because they are under review.
+- The storage migration is a hard blocker to the seven-migration batch. Correct its lifecycle contract and qualification tests first; do not apply the remaining migrations as an improvised partial batch.
+- Recommended safe sequence after correction: exact-head CI/disposable PostgreSQL migration chain; re-run read-only production preflight and role guard; confirm gateway service deployment/configuration and health; execute only through a separately reviewed controlled migration plan; then verify live functions, ACLs, constraints and runtime readiness. No execution or deployment authorization is implied by this audit.
+
+Status: **READ-ONLY REVIEW COMPLETE; 2 SCHEMA-READY, 3 GATEWAY-DEPENDENT, 1 STORAGE BLOCKER, 1 DEPENDENT GATEWAY GUARD. NO MIGRATIONS APPLIED.**
