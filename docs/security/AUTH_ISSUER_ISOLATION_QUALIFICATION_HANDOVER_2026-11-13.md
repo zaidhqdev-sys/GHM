@@ -3620,3 +3620,23 @@ The PR #277 exact-head CI remains the qualification gate for both Worker hardeni
 - The CI workflow's push branch allow-list was extended only on this feature branch so its source changes can receive an exact-head run without opening a misleading PR against main.
 - The GitHub combined-status lookup and PR-filtered workflow-run lookup returned no run/status for this SHA at the time of inspection. A fresh exact-head CI run is therefore **not yet confirmed**. Do not mark the Worker corrections qualified until the run is visible and both quality jobs complete.
 - PR #277 remains draft and unmerged; it is stacked on the existing issuer/Actor Gateway integration. No production or Cloudflare account changes were made.
+
+
+### Exact-head Worker hardening qualification completed — 2026-11-14
+
+GitHub Actions run [43549310157](https://github.com/zaidhqdev-sys/GHM/actions/runs/43549310157) completed successfully on exact PR #277 head `09ecb58add2f3c68d0acdc26299d320d5c169d1a`.
+
+Final results:
+- `quality`: **73/73 steps passed**.
+- `web-quality`: **11/11 steps passed**.
+- Worker TypeScript and contract checks passed as part of the quality workflow.
+- Wrangler Cloudflare Worker bundle dry-run passed.
+- Local Workerd + disposable Hyperdrive smoke passed, including startup database identity/ACL checks, health endpoint and malformed JSON rejection.
+- Disposable PostgreSQL migrations, Actor Gateway and Authentication Issuer principal qualification, full test suite, issuer lifecycle/runtime denials, and before/after SECURITY DEFINER authority inventory comparison all passed.
+- No failed steps.
+
+This run qualifies the current Worker hardening source and the full stacked disposable qualification suite. It does not establish live Cloudflare-to-Render Hyperdrive connectivity, production TLS/ACL identity, production role separation, production secret provisioning, DNS/routes, or production traffic behavior.
+
+PR #277 remains an open draft, unmerged, stacked on `construction/auth-issuer-stacked-on-pr272-20261113`. It must not be merged independently of its parent security integration. The PR description's earlier "Validation pending" text is superseded by this completed exact-head run.
+
+No production database, grants, credentials, Render environment/services/deployments, Cloudflare resources, DNS, secrets, billing settings or traffic routes were changed. No paid service was created.
