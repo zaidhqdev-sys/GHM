@@ -29,11 +29,20 @@ BEGIN
 
   IF EXISTS (
     SELECT 1
-      FROM pg_auth_members
-     WHERE member = gateway_oid
-        OR roleid = gateway_oid
+      FROM pg_auth_members m
+      JOIN pg_roles member_role ON member_role.oid = m.member
+     WHERE m.member = gateway_oid
+        OR (
+          m.roleid = gateway_oid
+          AND (
+            member_role.rolname <> 'ghm_db_user'
+            OR m.admin_option IS DISTINCT FROM true
+            OR m.inherit_option IS DISTINCT FROM false
+            OR m.set_option IS DISTINCT FROM false
+          )
+        )
   ) THEN
-    RAISE EXCEPTION 'ghm_actor_gateway must not participate in role membership';
+    RAISE EXCEPTION 'ghm_actor_gateway may only have the bounded ghm_db_user administrative membership (ADMIN true, INHERIT false, SET false)';
   END IF;
 END;
 $$;

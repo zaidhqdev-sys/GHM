@@ -1,6 +1,6 @@
 # GHM Current State — Authoritative Documentation Reconciliation
 
-**Status:** CURRENT / AUTHORITATIVE DOCUMENTATION INDEX — mainline reconciled 2026-10-13; dependency-refresh candidate recorded 2026-11-06
+**Status:** CURRENT / AUTHORITATIVE DOCUMENTATION INDEX — mainline reconciliation baseline 2026-10-13; Actor Gateway consolidation is under review in unmerged PR #272 (2026-11-11).
 **Repository authority:** consolidated `main`
 **Reconciliation history:** the PR #125 baseline (`01bd40dabe0b0f02bb30d2f78267a0414d3d8356`) was followed by PR #126 (`aef8ecdeee241d31827f6fc42730f9a61f1ddea4`), PR #127 (`6afb428d452012d9860ca50c2b0066f0768b184c`), PR #128 (`671c41be0b2446dd5c56c709c4aa3cb2e15e7d81`), PR #129 (`9af7901b0baecbdc4b307f3a0a93e1643f006ca6`), and PR #130 (`14c805cfd749ed50493523972fdd0a7c359bbfce`), all merged on 2026-10-13. These SHAs identify historical reconciliation milestones, not live pointers to deployed Render code or database state. The earlier `1f2b10d0850095311614c5b5f9531eb8b7cce860` checksum-normalization commit is historical provenance. PR #130 subsequently merged into `main` as `14c805cfd749ed50493523972fdd0a7c359bbfce`; pre-merge checkpoint language retained below is historical only.
 
@@ -358,3 +358,496 @@ PR #266 qualification correction: follow-up logs pinpointed the ambiguity inside
 - Exact-head CI passed quality, web-quality and Cloudflare Pages. Quality included build, full test suite, full disposable migration chain, gateway principal qualification, positive/negative gateway write/read tests, migration audit and runtime boundary verification.
 - No production URL, Render gateway service, credentials, role/grant cutover or deployment changed. The legacy runtime write grant remains until gateway deployment and end-to-end verification are separately completed.
 - Next: provision isolated gateway service only after dedicated gateway DB credentials and public ES256 verification keys are securely available; deploy gateway before setting resource API URL; verify end-to-end GET/PUT and only then plan legacy grant revocation separately. Continue actor-bound migration for other RPCs.
+
+## Unified Actor Gateway security integration — 2026-11-11
+
+Draft integration PR #272 consolidates the capability governance stack (#250/#268/#269), supplier-classification stack (#243/#270), and Business profile stack (#237/#271). It now preserves the latest main-branch Actor Gateway foundation, including registration identity read/write and HTTP routing through the gateway client, while wiring capability governance, supplier classification and Business profile readers into the same gateway process.
+
+The migration chain includes the dedicated gateway principal and identity/registration wrappers, capability governance wrappers, supplier-classification cutover, Business profile compatibility reconciliation at 20261110265000, and Business profile gateway cutover at 20261110270000. The compatibility reconciliation is deliberately ordered after 20261109100000 because that earlier presentation migration replaced the legacy profile function and dropped category/supplier/alias compatibility.
+
+The main-base reconciled branch passed exact-head CI run #42919101125 on commit 48cde68566196903b44655c71dc5e2a800e5fc17: build, all migrations, full tests, actor-gateway-principal qualification, capability/supplier/profile PostgreSQL authorization qualifications, registration identity qualification, migration audit, runtime boundary verification, web-quality and Cloudflare Pages.
+
+Capability governance remains staged: its original three SECURITY DEFINER RPCs still grant EXECUTE to ghm_runtime. Do not revoke those grants until the Actor Gateway is deployed/configured and capability routes are verified. A separate capability cutover migration with direct runtime-denial tests remains required.
+
+No production migrations, grant/role changes, Render service/environment changes, deployments, data mutations or catalogue activation occurred. PayFast remains paused; legal-document work remains parked. See [HANDOVER_2026-11-10_ACTOR_GATEWAY_INTEGRATION.md](HANDOVER_2026-11-10_ACTOR_GATEWAY_INTEGRATION.md).
+
+## Capability legacy-RPC cutover qualification added
+A separate disposable-only qualification now applies `database/cutovers/20261111010000_revoke_legacy_capability_governance_runtime.sql` using the schema-owner role, then verifies direct legacy RPC calls are denied to both `ghm_runtime` and `ghm_actor_gateway`, runtime cannot execute gateway wrappers, and the isolated gateway can still list and create capabilities through gateway wrappers. It is wired as `npm run qualify:capability-governance-cutover` in CI after the pre-cutover capability qualification. The script refuses to run unless the qualification database is `ghm_disposable_test` on `localhost`. This is test-only application; the cutover file remains outside the migration directory and is not production-applied.
+
+Latest exact-head checkpoint: unified Actor Gateway branch commit `fbee5509ea197d277e9d2fbc9d997bb61a6c66d9` passed GitHub Actions run #42923701476 (`quality` and `web-quality`). The disposable-only capability cutover qualification passed direct runtime/gateway legacy create/update/transition denials and positive gateway list/create/update/transition checks. No production cutover was applied. Full details: `HANDOVER_2026-11-10_ACTOR_GATEWAY_INTEGRATION.md`.
+
+2026-11-11: Capability administration is now fail-closed when `GHM_ACTOR_GATEWAY_URL` is missing. Admin list/create/update/transition routes return 503 and never invoke the legacy CapabilityService; regression tests cover all four operations. Latest exact-head CI is pending. See `HANDOVER_2026-11-10_ACTOR_GATEWAY_INTEGRATION.md`.
+
+## 2026-11-11 database-verifiable capability actor assertions
+A review of `20261110210000_add_actor_gateway_principal_guard.sql` and the existing disposable qualification exposed a genuine trust gap: `ghm.assert_actor_gateway(bigint)` proved only that the SQL session used the isolated gateway login and that the supplied account was active. It did not prove that the account ID came from the ES256-verified JWT. A direct holder of the gateway DB credential could therefore claim another active account (subject to feature authorization).
+
+A forward-only migration, `20261111020000_bind_capability_gateway_actor_to_signed_assertion.sql`, now introduces a capability-specific HMAC assertion boundary:
+- The gateway signs a short-lived assertion over actor ID, exact capability operation, issue time and one-use nonce using a dedicated 32-byte secret.
+- PostgreSQL verifies HMAC-SHA256, a 60-second time window, active account status, and one-use nonce replay protection.
+- The HMAC secret table is owned by `ghm_schema_owner` and revoked from PUBLIC, runtime, gateway and migrator roles; the isolated gateway login cannot read the signing key.
+- Capability list/create/update/transition wrappers each bind the signed assertion to their own operation. Old unsigned gateway wrapper signatures are dropped.
+- The Actor Gateway process now requires `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET`; the reader creates unique signed assertions for each operation.
+- Disposable PostgreSQL qualification provisions only its test key and tests valid admin access, non-admin denial, forged-signature denial, replay denial and cross-operation assertion denial.
+
+The signing key must be independently generated and provisioned to the gateway secret store and the protected database secret table through a controlled owner-only process. Never commit or reuse the CI test key. This change currently hardens **capability governance wrappers only**; the other gateway feature wrappers still need an equivalent independent database assertion review before their own production cutovers.
+
+The new migration and qualification passed exact-head CI run #42934869090 on commit `637d29219dfbfc910f5c2dcf8db0713c3d28c929`; both quality and web-quality passed. No production migration, secret provisioning, role/grant change, Render service/environment change or deployment has occurred. The CI key is disposable-test-only.
+
+## Signed capability actor assertion exact-head CI result
+The first signed-assertion implementation passed exact-head GitHub Actions run #42934869090 on commit `637d29219dfbfc910f5c2dcf8db0713c3d28c929`. Both `quality` and `web-quality` passed. The disposable PostgreSQL qualification explicitly passed forged-HMAC denial, replay denial, cross-operation assertion denial, valid admin list/create/update/transition, non-admin denial, and the existing manual legacy RPC cutover denial/gateway-positive checks. Full migration chain, build, complete test suite, supplier classification, Business profile, commercial settlement, migration audit and runtime boundary also passed. The CI signing key is test-only and publicly defined for disposable qualification; it is not a production secret.
+
+The CI result covers capability governance assertions only. The current gateway database assertion model for supplier classification, Business profile and registration identity has not yet been upgraded to the same database-verifiable actor proof. Their own production legacy access cutovers remain blocked pending equivalent analysis and qualification. No production key was generated or provisioned, no production migration/role/grant change was applied, and no Render service/environment or deployment was changed.
+
+## Supplier classification actor assertion hardening — 2026-11-11
+The supplier classification wrapper had the same database trust gap as capability governance: it checked the gateway login and accepted a caller-supplied active actor ID. A new forward-only migration `20261111030000_bind_supplier_gateway_actor_to_signed_assertion.sql` reuses the protected 32-byte HMAC key and one-use nonce store, binds the assertion to `supplier.classification.update`, replaces the unsigned wrapper signature, and denies runtime/migrator/public execution. The gateway reader signs the verified JWT subject for every supplier update. Disposable PostgreSQL qualification provisions the test key, verifies the runtime cannot execute the new wrapper, rejects forged signatures, and preserves owner/member authorization tests. Exact-head CI for this supplier extension is pending. The secret remains test-only in CI; no production secret, database migration, Render environment or deployment has been changed.
+
+
+## Signed supplier actor assertion exact-head CI result
+The supplier signed-assertion extension passed exact-head GitHub Actions run #42935773452 on commit `37b8d5527d9338bd239177e453d740e8ab968619`. Both `quality` and `web-quality` passed. The full disposable PostgreSQL migration chain, TypeScript build, complete test suite, capability signed-assertion qualification, capability legacy cutover qualification, supplier classification qualification (including the new signed wrapper and forged-signature denial), Business profile qualification, commercial settlement qualification, migration audit and runtime boundary verification all passed. No production secret was generated/provisioned; no production migration, grant/role change, Render environment/service change or deployment occurred.
+
+The remaining gateway wrappers for Business profile, registration identity and actor self-identity still use the earlier gateway-login-plus-caller-ID assertion and need the same independent database proof review before those paths can be considered closed for production. Do not apply their legacy access cutovers until that work and deployment verification are complete.
+
+## Business profile actor assertion hardening — 2026-11-11
+Business profile updates had the same caller-supplied actor gap. New forward-only migration `20261111040000_bind_business_profile_gateway_actor_to_signed_assertion.sql` binds the database wrapper to `business.profile.update` using the protected HMAC secret, 60-second validity and one-use nonce verifier. The gateway reader signs the verified JWT subject; the unsigned wrapper signature is removed. Disposable qualification provisions only the CI test key, checks runtime execute denial, forged assertion denial, and preserves legacy field/alias compatibility and membership authorization coverage. Exact-head CI is pending. Registration identity and actor self-identity still use the older assertion and remain open security gates. No production secret or infrastructure change has been made.
+
+## Registration identity and actor self-read assertion hardening — 2026-11-11
+The Business registration identity GET/PUT wrappers and actor self-identity wrapper also relied on the gateway login plus caller-supplied actor ID. A new forward-only migration `20261111050000_bind_registration_and_self_identity_to_signed_gateway_actor.sql` replaces all three unsigned wrapper signatures. Each now requires a one-use HMAC assertion bound to its exact operation (`business.registration.read`, `business.registration.update`, `actor.identity.read`). The readers sign only the account ID derived from the verified ES256 JWT. The disposable actor-gateway principal qualification now provisions the CI-only key, checks valid self/read/write and cross-business/disabled-actor denials, forged self-read assertion denial and runtime EXECUTE denial. Exact-head CI is pending. This is not a production key or production migration.
+
+## Unified signed actor assertion exact-head validation — 2026-11-11
+The final unified database-verifiable actor assertion implementation passed exact-head GitHub Actions run #42937910774 on commit `d53f3dbda81a30d0c865586763b09da77d68f354`. Both `quality` and `web-quality` passed. The disposable migration chain and full test suite passed. PostgreSQL qualifications passed for:
+- Capability list/create/update/transition: valid admin assertions; forged signature, replay, cross-operation and non-admin denials; legacy cutover runtime/gateway denials and gateway wrapper positives.
+- Supplier classification: valid owner update, member denial, invalid value denial, runtime direct/wrapper denial and forged signature denial.
+- Business profile: runtime direct/wrapper denial, forged assertion denial, current snake_case and historical camelCase compatibility, alias/coordinate validation and member authorization.
+- Actor self-identity and Business registration identity GET/PUT: valid operations, forged assertion denial, disabled actor and cross-business denials, runtime wrapper execution denial.
+- Migration audit and runtime boundary checks.
+
+All gateway feature wrappers now use a one-use HMAC-SHA256 assertion bound to the exact operation, account ID, issue time and nonce. PostgreSQL verifies the signature using a protected 32-byte secret unavailable to `ghm_actor_gateway`, enforces a 60-second window, active actor, and replay prevention. The gateway signs only the actor ID obtained from its verified ES256 token. A qualification bug caused by PostgreSQL evaluating a composite-returning function multiple times through `(function()).*` was corrected by selecting from the function in `FROM`, so each signed mutation consumes exactly one assertion.
+
+This is still **disposable qualification only**. No production signing key was generated/provisioned, no production migration or grant/role change occurred, no Render service/environment was changed, and no deployment or production cutover was performed. Production readiness still requires secret custody/rotation design, dedicated gateway service and private networking, deployment, end-to-end checks, and separately authorized legacy grant cutovers. PR #272 remains open and unmerged.
+
+## Current Actor Gateway integration and production-readiness status — 2026-11-11
+
+This section supersedes earlier dated Actor Gateway progress notes below wherever they describe pending CI, incomplete signed assertions, optional production gateway fallback, or an older PR/draft state. Those entries remain historical checkpoints, not current instructions.
+
+- **Current integration:** [PR #272 — Unified Actor Gateway](https://github.com/zaidhqdev-sys/GHM/pull/272), branch `integration/capability-gateway-qualification-20261110`, is open, ready for review (not draft), unmerged, and based on `main`. It consolidates the capability-governance stack (#250/#268/#269), supplier-classification stack (#243/#270), Business-profile stack (#237/#271), and the already-merged registration identity foundation. The stacked predecessor PRs remain open/unmerged; do not merge them independently while #272 is the consolidated candidate.
+- **Latest exact-head validation:** branch head `3f0602a59b3ef1e0af485156c22994159d970c26` passed both `quality` and `web-quality` in [GitHub Actions run #43057033042](https://github.com/zaidhqdev-sys/GHM/actions/runs/43057033042). The run includes build, complete tests, disposable PostgreSQL migration and authorization qualifications, gateway principal qualification, and web quality. This is CI/disposable qualification, not production qualification.
+- **Signed actor assertions:** all current gateway feature wrappers (capability governance, supplier classification, Business profile, registration identity, and actor self-identity) require one-use HMAC-SHA256 assertions bound to account ID, exact operation, issue time, and nonce. The gateway signs only the actor ID obtained from its ES256-verified GHM access token. The protected database secret remains unprovisioned in production; CI keys are disposable only.
+- **Fail-closed routing:** capability administration, supplier classification, Business profile writes, and Business registration identity GET/PUT use the Actor Gateway boundary. In production, missing gateway configuration must fail closed; registration identity has an explicit non-overridable production requirement. Do not restore a legacy direct-database fallback.
+- **Critical live database blocker:** read-only inspection found broad CREATEROLE/ADMIN OPTION authority associated with the effective production application role and a PostgreSQL 18 automatic postgres-granted ADMIN membership on `ghm_actor_gateway`. Keep migration guards strict. Render human support has been contacted and the response is pending; no production role/grant change is authorized or performed.
+- **Backup protection:** no 10 November pre-role-change recovery point has been verified. The only identified Render backup and readable local archive are dated 4 November; neither is an adequate recovery point for subsequent work. Do not perform production role, privilege, migration, or deployment changes until a fresh current backup is obtained and its integrity/recoverability is verified.
+- **Cost constraint:** no paid Render services, upgrades, or recurring infrastructure spend until product revenue can fund them. If free-tier hosting cannot meet security and availability requirements, keep production rollout blocked rather than weakening controls.
+- **Production status:** no Actor Gateway service deployment, production HMAC secret provisioning, production migration, manual legacy grant cutover, or PR merge has occurred. Existing legacy access grants remain untouched pending a proven gateway path and separate authorization.
+
+The detailed operational evidence, support escalation, backup warning, and next-step sequence are maintained in [HANDOVER_2026-11-11_ACTOR_GATEWAY_PRODUCTION_READINESS.md](./HANDOVER_2026-11-11_ACTOR_GATEWAY_PRODUCTION_READINESS.md). This PR branch is not yet mainline authority; the above records the current candidate and must not be read as proof that production is migrated.
+
+
+## 2026-11-11 — v2 request-context-bound Actor Gateway assertions
+
+This section supersedes the earlier dated notes above that describe the database assertion as binding only the actor ID, operation, issue time and nonce. That was the previous design; it is no longer the current PR candidate.
+
+The source review identified that an otherwise valid, unused one-use assertion could be presented with a different business ID, capability ID or payload because the HMAC did not include those arguments. The wrapper's own authorization checks still applied, but the signed proof was not tied to the exact request. This was corrected in forward-only migration `20261111060000_bind_gateway_assertions_to_request_context.sql` and the matching gateway readers:
+
+- Assertions now use version `ghm-actor-gateway:v2` and sign actor ID, exact operation, issue time, nonce, and the UTF-8 bytes of a serialized request-context object.
+- Each database wrapper recomputes the expected JSONB context from its actual SQL arguments and rejects a mismatch before performing the operation. This binds capability IDs and draft/transition fields, supplier business ID and boolean, Business profile business ID and full patch, registration business ID and all registration fields, and the empty context for self-identity/list operations.
+- The database verifier enforces an explicit nine-operation allowlist, rejects a null operation, caps context size at 32 KiB, retains the 60-second validity window, checks the full 32-byte HMAC before branching, and retains one-use nonce replay protection.
+- The gateway readers create the assertion context and pass it with the signature in the same database transaction. The serialized context is signed exactly as sent; PostgreSQL's JSONB comparison verifies semantic equality with the actual arguments.
+- The Business profile database wrapper now rejects both `isSupplier` and `is_supplier`. Supplier classification can only use its dedicated signed operation, not the profile wrapper.
+- Disposable qualifications now explicitly attempt capability argument substitution, registration target substitution, registration payload substitution, profile patch substitution, and supplier boolean substitution. Those mismatches must fail with SQLSTATE 42501 before the mutation.
+- The actor-principal, capability catalogue, legacy capability cutover, supplier-classification and Business profile qualification scripts have all been updated to call the v2 signatures. The CI qualification does not retain old wrapper signatures as a compatibility escape hatch.
+
+**Validation:** exact code head `5a846df7f8d107eb1c2c99654b11c344bd7ed06a` passed both `quality` and `web-quality` in [GitHub Actions run #43065388570](https://github.com/zaidhqdev-sys/GHM/actions/runs/43065388570). This run applied the complete migration chain to disposable PostgreSQL 18, built the project, passed the full test suite, gateway-principal qualification, capability catalogue qualification, disposable legacy cutover qualification, supplier classification qualification, Business profile qualification, commercial settlement qualification, migration audit and runtime boundary verification.
+
+**Scope and remaining blockers:** this is repository code and disposable CI only. No production migration, HMAC secret provisioning, role/grant change, Render service/environment change, deployment, or manual legacy grant cutover has occurred. The live production role model remains blocked on Render's response. No verified 10 November backup exists; the 4 November recovery point is stale and must not be used as a rollback point for later work. No paid infrastructure is permitted until revenue can fund it. PR #272 remains open and unmerged.
+
+
+## 2026-11-11 — nonce retention boundary and HMAC rotation review
+
+A further review found that the nonce row expiry had been calculated as `issued_at + 60 seconds`, while the verifier accepts assertions within a 60-second clock-skew window. Near the end of that acceptance window, cleanup could therefore consider a nonce expired before the assertion itself was fully outside the accepted window. The nonce expiry is now calculated as `GREATEST(clock_timestamp(), to_timestamp(issued_at)) + interval '60 seconds'`, so the nonce remains stored for at least 60 seconds after first acceptance, including for assertions whose issue time is near the edge of the accepted past/future window.
+
+- Applied the corrected retention expression in all four ordered migrations that define the v1 assertion verifier and in the final v2 request-context migration. This keeps intermediate migration states safe if a later migration fails.
+- Added an index on `ghm.actor_gateway_capability_assertion_nonce(expires_at)` so expiry cleanup does not require a full table scan as request volume grows.
+- Added migration-contract checks across all four earlier definitions and the final v2 definition.
+- Extended the disposable actor-gateway qualification: it signs an assertion with an issue time 30 seconds in the past, executes it, and verifies the nonce remains stored for more than 58 seconds from the time of the check. This distinguishes the corrected retention from the old issue-time-based expiry.
+
+**Validation:** current code head `7213dcc280da652d8913944136e3b312fb7e0638` passed both `quality` and `web-quality` in [GitHub Actions run #43067027027](https://github.com/zaidhqdev-sys/GHM/actions/runs/43067027027). The run applied the complete PostgreSQL 18 migration chain, passed the full test suite and all actor-gateway, capability, supplier, Business profile, registration, cutover and runtime-boundary qualifications.
+
+### HMAC assertion-key rotation limitation
+
+The current HMAC verifier uses one protected singleton secret row and one gateway environment secret; unlike the ES256 verifier, it has no key ID or previous-key overlap. A rotation is therefore currently a coordinated maintenance-window operation: stop the gateway, update the protected database secret and gateway environment secret as a matched pair, restart, then verify the signed path before restoring traffic. Do not rotate one side while the gateway is serving requests. Before production provisioning, the rotation and rollback procedure must be documented and the previous secret held in approved secure custody; alternatively, add key IDs and dual-key verification before production if no-downtime rotation is required. No production HMAC secret has been generated or provisioned, so this is a design gate, not a live outage.
+
+No production migration, role/grant change, secret provisioning, Render service/environment change, deployment, or manual legacy cutover occurred. PR #272 remains open and unmerged. The production database privilege issue and missing fresh backup remain blockers; no paid infrastructure is permitted until revenue can fund it.
+
+
+## Actor Gateway request-context substitution qualification — 2026-11-11
+
+The v2 signed request-context implementation is present in migration `20261111060000_bind_gateway_assertions_to_request_context.sql`. Its database wrappers compare signed context against actual SQL arguments. The disposable qualification scripts have been extended with independent negative cases for capability update target and payload substitution, capability lifecycle target and transition-payload substitution, supplier Business-ID substitution, and Business-profile Business-ID substitution. Existing capability-create, supplier-boolean, and profile-patch substitution checks remain.
+
+These newly added negative cases are pending exact-head CI and must not be described as passed until the full disposable PostgreSQL qualification and both CI jobs succeed on the latest PR head. Production remains blocked on Render's supported role-model resolution and a fresh verified backup; the 4 November backup is not a valid pre-change recovery point for the 10 November role work. PR #272 remains open and unmerged. No production state or paid infrastructure was changed.
+
+
+## Actor Gateway request-context substitution qualification — exact-head pass (2026-11-11)
+
+Exact PR head `b7f3f2f2d8a9d18a023af86bf7a88f7e40016c6d` passed GitHub Actions run #2862 (`43071811499`): both `quality` and `web-quality` succeeded. The disposable PostgreSQL qualification included the new capability update target/payload, capability lifecycle target/status, supplier Business-ID, and Business profile Business-ID substitution negative tests, alongside the existing creation-payload, supplier-boolean, and profile-patch substitution cases. Full build, migrations, test suite, capability governance/lifecycle, supplier, Business profile, payment settlement, migration policy, and runtime-boundary checks passed.
+
+This is bounded evidence for the exercised code and disposable database fixtures, not a declaration of overall production readiness. PR #272 remains open and unmerged. Render role-model resolution and a fresh verified backup remain production blockers; the 4 November backup is not a valid pre-change recovery point for the 10 November role work. No production state or paid infrastructure was changed.
+
+
+## Actor Gateway qualification extension — registration update target substitution (2026-11-11, CI pending)
+
+The disposable actor-gateway principal qualification now also signs a Business registration update for one fixture Business and attempts to invoke it against a second fixture Business ID. The expected result is SQLSTATE `42501`. Existing registration read target-transplant and registration update payload-substitution cases remain. This new negative case is pending exact-head CI and is not yet reported as passing. No production state or paid infrastructure was changed.
+
+
+## Actor Gateway registration update target substitution — exact-head pass (2026-11-11)
+
+The new registration update target-substitution negative case passed on exact PR head `cd591533b5130b560c58ffefc268fe416bbfa59c`, GitHub Actions run #2870 (`43074793542`). Both `quality` and `web-quality` succeeded. The disposable actor-gateway principal qualification rejected an update assertion signed for one Business when invoked with a second Business ID (SQLSTATE `42501`). Existing registration read target-transplant and update payload-substitution cases also passed.
+
+This is evidence for the tested path, not a blanket production-readiness claim. PR #272 remains open and unmerged. Production role-model resolution from Render and a fresh verified backup remain blockers. No production state or paid infrastructure was changed.
+
+
+## 2026-11-11 — Cloudflare Pages pull-request preview status
+
+The Cloudflare Pages integration has reported a successful **pull-request preview deployment** for commit `29d95abb600fbaa341fd0e08c17dd7bbd2e91fd7`, preview URL: https://16db3a85.ghm-cu1.pages.dev. This is a PR preview, not evidence of a production-domain deployment or production traffic cutover. The preview is an externally hosted build generated by the repository's Cloudflare Pages integration; distinguish it from Render Actor Gateway service deployment and from a production release.
+
+At this check, PR #272 remained open and unmerged. Exact-head GitHub Actions run #2873 (`43075067314`) was still in progress: `web-quality` had passed and `quality` was progressing through disposable PostgreSQL qualifications. No production migration, role/grant change, secret provisioning, Render service change, or paid infrastructure was introduced.
+
+
+## Actor Gateway registration legacy RPC cutover — added, CI pending (2026-11-11)
+
+Read-only source review found that `ghm.read_business_registration_identity` and `ghm.update_business_registration_identity` remained executable by `ghm_runtime` despite the new signed gateway wrappers. The production HTTP route fails closed, but direct database EXECUTE would remain a bypass for a compromised runtime process.
+
+Added manual cutover `database/cutovers/20261111020000_revoke_legacy_registration_identity_runtime.sql` to revoke direct legacy function execution from PUBLIC, runtime, migrator and gateway roles while preserving gateway wrapper execution as `ghm_actor_gateway`. Disposable qualification now applies the cutover and checks that runtime direct calls are denied while signed gateway calls remain functional. The migration-contract test guards the cutover contents.
+
+New cutover qualification is pending exact-head CI. The SQL is manual-only and has not been applied to production. Production remains blocked on Render role-model resolution and a fresh verified backup. No production state or paid infrastructure changed.
+
+
+## Registration legacy RPC cutover — exact-head qualification passed (2026-11-11)
+
+Exact code/test head `9f69d17ef362cc01e45fe151609101893104747a` passed GitHub Actions run #2891 (`43076550978`), with both `quality` and `web-quality` successful. The disposable Actor Gateway principal qualification applied `database/cutovers/20261111020000_revoke_legacy_registration_identity_runtime.sql`, denied direct legacy registration read/write execution to `ghm_runtime`, and confirmed signed gateway registration read/write still worked. Full build, migrations, test suite, all other PostgreSQL qualifications, migration policy and runtime-boundary checks passed.
+
+Cloudflare Pages reported a successful PR preview for this commit at https://7d9a60be.ghm-cu1.pages.dev. Preview only; no production release. PR #272 remains open and unmerged. The manual cutover has not been applied to production. Render role-model resolution and a fresh verified backup remain release blockers. No production state or paid infrastructure changed.
+
+
+## 2026-11-11 — follow-on legacy RPC actor-binding gaps remain open
+
+At the time of this source audit, three remaining SECURITY DEFINER functions were executable by `ghm_runtime` and trusted a caller-supplied actor/verifier ID:
+- `ghm.replace_business_capability_assertions(bigint,bigint,jsonb)`
+- `ghm.transition_business_capability_verification(bigint,text,text,bigint,text)`
+- `ghm.transition_business_capability_evidence(bigint,text,bigint,text)`
+
+Their membership/admin/self-verification rules are meaningful, but do not cryptographically prove that the supplied ID is the authenticated caller if the runtime database credential is compromised. Existing HTTP routes do check the verified JWT context and service role; direct database EXECUTE bypasses those checks. Evidence submission's direct runtime INSERT with `submitted_by=context.userId` was a separate path identified in that same audit; it is now included in the signed gateway implementation and manual cutover qualified below. Founder directory review remains deliberately disabled and its runtime review EXECUTE grants are revoked.
+
+Remediation required signed gateway operations, bearer-token forwarding from existing routes, fail-closed clients, exact-context assertions, disposable PostgreSQL negative tests and a manual-only privilege cutover. That implementation and its exact-head disposable qualification are now complete; the earlier statement that no implementation existed is superseded by the status below. The manual-only cutover remains unapplied in production. See `docs/HANDOVER_2026-11-11_ACTOR_GATEWAY_PRODUCTION_READINESS.md` for full details. Production remains untouched; Render role-model resolution and a fresh verified backup remain release blockers.
+
+
+## 2026-11-11 — Business Capability mutation Actor Gateway qualification passed
+
+Latest qualification head `ccb194905d320602c476e54808ce1985b901f39d` passed GitHub Actions run #3013 (`43087190865`) with both `quality` and `web-quality` successful.
+
+The branch now implements signed gateway wrappers and authenticated Actor Gateway routes for Business Capability assertion replacement, administrator verification, evidence review and evidence submission. The gateway derives actor/verifier/submitted_by identity from the verified JWT actor and binds the full operation payload to the v2 HMAC assertion context. Evidence DTOs are returned by the SECURITY DEFINER gateway wrappers; the Actor Gateway database principal does not need direct evidence-table SELECT.
+
+The exact-head checks passed:
+- TypeScript build, full migration application and complete test suite.
+- Resource API tests for bearer-token forwarding to all four signed gateway operations, role checks and fail-closed behavior when the gateway is required but unavailable.
+- Disposable PostgreSQL manual cutover qualification: runtime cannot execute the legacy mutation RPCs or any of the four new signed gateway wrapper functions, insert evidence rows directly, or access the evidence sequence.
+- Signed gateway replacement, administrator verification, evidence submission and administrator evidence review remain successful after the cutover.
+- Payload/target substitution, replay, non-management membership, non-admin verification and non-admin evidence review denials.
+- Actor provenance, evidence DTO compatibility and post-cutover role privilege matrix.
+- Migration audit policy and runtime boundary verification.
+
+The disposable qualification applies `database/cutovers/20261111030000_revoke_legacy_business_capability_runtime_mutations.sql` only to the CI disposable database. It has not been applied to production.
+
+Production remains untouched. PR #272 remains open and unmerged. Render role-model support and a fresh verified production backup remain release blockers. No paid infrastructure was introduced.
+
+
+## 2026-11-11 — broader migration security inventory in progress
+
+A full recursive repository-tree inventory was started on PR #272. At audited source head `ee753ba8c6cb4a48c3ff1d46c1fe9fde6eaadbf2`, the tree contained 115 SQL migration files. A first-pass scan across the full migration directory identified additional actor-ID SECURITY DEFINER candidates outside the already qualified Actor Gateway batch: Business Hours replacement, Saved Business create/delete, Campaign create/update and Trust Score calculation. Their current application repositories pass the authenticated `AuthContext.userId`, but the legacy SQL functions accept that ID as a caller-supplied argument and still require effective ACL/cutover reconciliation.
+
+The scan also identified direct runtime SELECT/INSERT/UPDATE grants on `ghm.account_onboarding_progress`; its current repository derives account_id from AuthContext, but the database ACL does not enforce per-account ownership. Storage deletion's SECURITY DEFINER persistence function is currently called only after actor-scoped metadata retrieval and application authorization; all callers and the direct-runtime threat model still need reconciliation. Auth lifecycle functions are also under review; preserve login, registration, refresh and recovery flows while tracing server-only call paths.
+
+Detailed evidence and next steps are recorded in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`. This is a first-pass inventory, not a completed audit or proof of effective final ACLs. No production changes or manual cutovers were performed. PR #272 remains open and unmerged; the handover update is on its branch. Earlier CI results are not assumed to qualify the new documentation head. Production still requires Render role-model resolution and a fresh independently verified backup. PayFast and approved legal-document work remain parked.
+
+
+## 2026-11-11 — Saved Business database actor-provenance qualification corrected
+
+A security re-review found that the historical Saved Business PASS proves the tested application path, not database-level tenant isolation. `ghm_runtime` can directly SELECT `ghm.saved_business` across accounts and can execute legacy SECURITY DEFINER create/delete functions that trust caller-supplied account IDs. Existing cross-account tests use another AuthContext through the repository and do not exercise direct runtime SQL. `docs/architecture/SAVED_BUSINESS_QUALIFICATION.md` now marks database actor provenance OPEN / NOT QUALIFIED while preserving the historical application-path PASS.
+
+The next implementation batch is specified in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`: authenticated Actor Gateway list/get/create/delete; signed v2 assertions binding actor, operation and full context; gateway-only SECURITY DEFINER wrappers; production fail-closed Resource API forwarding; manual-only cutover revoking direct runtime SELECT and legacy function execution; disposable PostgreSQL negative/positive qualification. The existing Saved Business contract, eligibility, duplicate semantics, DTOs and ordering must remain unchanged. No code implementation or production cutover is claimed yet.
+
+Latest handover commit: `e6fe13f5ba939a6219a56255e99b9c6c10cf5e19`. PR #272 remains open and unmerged. Recheck exact-head CI before treating this documentation head as qualified. Production remains blocked on Render role-model resolution and a fresh independently verified backup.
+
+
+## 2026-11-11 — Saved Business signed Actor Gateway implementation in progress
+
+The database actor-provenance remediation is no longer design-only. PR #272 now contains the signed v2 HMAC migration wrappers for Saved Business list/get/create/delete, the separate manual-only runtime cutover, Actor Gateway reader/routes, Resource API bearer-forwarding client/router integration, route/client and SQL contract tests, and a disposable PostgreSQL cutover qualification script wired into CI. The gateway derives the actor from the verified ES256 access-token subject; callers cannot submit an account ID. The manual cutover revokes direct runtime table reads and legacy mutation function execution but remains unapplied outside disposable CI.
+
+Status is IMPLEMENTED / QUALIFICATION PENDING. No successful exact-head CI or new disposable PostgreSQL qualification result has yet been observed at this checkpoint. Saved Business's historic application-path PASS is retained, but database actor provenance remains OPEN until exact-head CI and disposable PostgreSQL positive/negative tests pass. Details: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md` and corrected `docs/architecture/SAVED_BUSINESS_QUALIFICATION.md`.
+
+No production database permissions, migration, secrets, services or application data were changed. PR #272 remains open and unmerged. Production remains blocked on Render role-model resolution and a fresh independently verified backup.
+
+
+## 2026-11-11 — Saved Business gateway cutover qualification runner wired into CI
+
+The new disposable PostgreSQL runner is now included in CI. It verifies runtime, gateway and migrator identity separation; applies the manual Saved Business cutover only to disposable PostgreSQL; denies runtime direct table SELECT (including column-level SELECT), legacy create/delete function execution and sequence access; verifies gateway-only wrapper privileges; and exercises signed list/get/create/delete, cross-account isolation, actor substitution, payload/target substitution and replay denial. Latest implementation/test/CI wiring commit is `b51e12bc684ed8e88b34815dbd128f51ec4c18e4`; exact-head GitHub Actions run #3067 (`43089884203`) was in progress at the time of this note. No qualification pass is claimed until the full run succeeds.
+
+Production remains untouched. Manual cutover is not authorized for production. PR #272 remains open and unmerged.
+
+
+## 2026-11-11 — Saved Business qualification harness failure and correction
+
+The first Saved Business cutover qualification attempt failed in its catalog inspection after the manual cutover had successfully denied runtime direct table reads, legacy mutation RPCs and sequence access. The inspection query ran as `ghm_migrator` after `SET ROLE ghm_schema_owner` had ended, so PostgreSQL denied schema resolution. This was a harness failure, not a security pass. The runner was corrected to perform table/column/function privilege introspection through the schema-owner role, strip nested BEGIN/COMMIT when applying the manual cutover inside its controlled test transaction, and use a separate eligible Business fixture for nonce replay tests so the uniqueness constraint cannot mask replay validation.
+
+Latest runner fix: `55665af44e741829ff72f07580b73119339d3f53`; exact-head GitHub Actions run #3083 (`43090261075`) was in progress at this checkpoint. Await the new Saved Business cutover qualification step; no pass is claimed. Full detail: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+
+## 2026-11-11 — Saved Business database actor gateway qualified
+
+Implementation head `55665af44e741829ff72f07580b73119339d3f53` passed GitHub Actions run #3083 (`43090261075`): both `quality` and `web-quality` succeeded. The full build/test suite and new disposable PostgreSQL Saved Business cutover qualification passed. The qualification applied the manual cutover only to disposable PostgreSQL and proved runtime direct table/column SELECT, legacy create/delete RPC execution and sequence access denied; signed gateway list/get/create/delete succeeded; cross-account isolation held; actor substitution, assertion replay and request-target substitution were denied. Resource API tests cover bearer forwarding and fail-closed behavior.
+
+Saved Business database actor provenance is now IMPLEMENTED / QUALIFIED. Its qualification record is `docs/architecture/SAVED_BUSINESS_QUALIFICATION.md`; full evidence and the earlier harness correction are in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`. The production cutover remains unapplied and separately gated by Render role-model resolution, a fresh independently verified production backup and explicit approval. No production changes were made. PR #272 remains open and unmerged.
+
+
+## 2026-11-11 — Follow-on database actor-provenance findings
+
+Source audit at the current PR head confirmed runtime-callable SECURITY DEFINER functions still trust caller-supplied `p_account_id` for Business Hours replacement, Trust Score calculation, Campaign create/update and Business Logo binding. Runtime also has direct SELECT on Business Hours, Trust Score and Campaign tables, bypassing application membership/public-projection filters when the database credential is used directly. These are OPEN database-boundary findings; existing resource qualification proves application paths, not forged-actor resistance or row-scoped database reads. Full evidence and exact migration/source paths: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+No implementation or production privilege change was made for these findings. Next work is a bounded gateway migration beginning with one resource family, then matching direct-read revocation only after its authorized read projection is implemented and qualified. Campaign contract wording also needs reconciliation: current HTTP router exists despite a stale historical 'no HTTP routes' sentence. Business Logo full upload/replace/clear lifecycle remains unqualified. No production cutover, no merge.
+
+
+## 2026-11-11 — Business Hours signed replacement gateway implementation
+
+The first bounded follow-on remediation now routes Business Hours replacement through a JWT-authenticated Actor Gateway and signed v2 database assertion. The new gateway wrapper binds the authenticated actor, target Business ID and exact schedule payload; it delegates to the existing domain function with the verified actor. Production fails closed if the gateway is unavailable/unconfigured. The separate manual cutover revokes legacy runtime execution only after qualification and approval. A disposable PostgreSQL runner and CI step have been added, but exact-head qualification is still pending.
+
+The Business Hours direct table SELECT grant has intentionally not been revoked yet because authorized member and public reads still use the Resource API repository. This remains an OPEN read-boundary finding pending a separate projection/gateway design. No production changes, no merge. Full implementation details and qualification criteria: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+
+## 2026-11-11 — Business Hours signed replacement gateway qualified
+
+Business Hours mutation actor provenance passed on implementation head `b4663cb95e90b5f6633c871356b8c818c7a86814`, GitHub Actions run #3134 (`43092443886`): `quality` and `web-quality` both passed, including the full test suite and disposable PostgreSQL cutover qualification. Logs explicitly confirm legacy runtime replacement denied, signed replacement and actor provenance passed, actor/target substitution and nonce replay denied, runtime cannot execute the gateway wrapper, and the post-cutover function ACL is correct. Manual cutover ran only on disposable localhost PostgreSQL. Full evidence: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+Business Hours replacement is IMPLEMENTED / QUALIFIED. Direct runtime SELECT remains OPEN and intentionally unchanged because member/public read paths still require a gateway projection. Current branch head advanced to `b24c820e` for an additional reader HMAC test and npm test inclusion; exact-head CI is pending. No production changes, no production cutover, no merge.
+
+
+### Business Hours exact-head CI confirmation
+
+Follow-up head `b24c820e3221e06aa85cbf9bf43a24dba6ccba35`, including the reader HMAC/context/rollback tests in `npm test`, passed exact-head GitHub Actions run #3136 (`43092456034`): both `quality` and `web-quality` succeeded. The Business Hours replacement mutation remains IMPLEMENTED / QUALIFIED. Direct runtime table SELECT remains OPEN pending a separately qualified member/public read projection. Production remains untouched.
+
+
+## 2026-11-11 — Business Hours database boundary fully qualified
+
+Business Hours signed replacement, authenticated member read and approved public read projection are now IMPLEMENTED / QUALIFIED on exact head `67d7049ec2f8fa8727475158558fb23f8724ab0d`, GitHub Actions run #3166 (`43093547768`): both quality jobs, full test suite, migration chain and disposable PostgreSQL qualification passed. The qualification proved runtime direct table SELECT, sequence access and legacy replacement EXECUTE denied; signed mutation/member read succeeded; cross-account read, actor substitution, target substitution and assertion replay were denied; approved public schedule projection remained available; and runtime could not execute gateway-only wrappers.
+
+Manual cutover revokes runtime direct table SELECT, sequence access and legacy replacement EXECUTE but was applied only to disposable CI PostgreSQL. It remains unapplied in production. Production remains blocked on Render role-model resolution, a fresh independently verified backup and explicit approval. Detailed evidence: `docs/architecture/BUSINESS_HOURS_QUALIFICATION.md` and `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+No production changes and no merge.
+
+
+## 2026-11-11 — Trust Score signed calculation gateway implementation
+
+Trust Score calculation now has a signed Actor Gateway path: `trust.score.calculate` assertion, gateway-only SQL wrapper binding verified actor + exact Business ID, JWT-derived Actor Gateway route, Resource API bearer-forwarding client, production fail-closed behavior, manual-only legacy EXECUTE revocation, and disposable PostgreSQL qualification script/CI wiring. Migration contract and reader HMAC/rollback tests are included in `npm test`.
+
+Status: IMPLEMENTED / QUALIFICATION PENDING on head `34172a7057a56ed027a0baead9640a3a835f7b59`, GitHub Actions run #3198 pending. Do not close until exact-head CI and disposable PostgreSQL qualification pass. Direct runtime SELECT on `ghm.trust_score` remains OPEN and unchanged pending safe public/member read projections. No production changes or merge.
+
+
+## 2026-11-11 — Campaign contract HTTP wording reconciled
+
+Corrected stale contradictory wording in `docs/architecture/CAMPAIGN_OPERATION_CONTRACT.md`: the bounded authenticated Campaign `read` / `create` / `update` HTTP routes are separately approved and implemented, despite older section 12/14 language claiming no HTTP routes. The contract now preserves no public/anonymous read and prohibits additional routes beyond the approved bounded surface. No runtime code changed.
+
+
+## 2026-11-11 — Trust Score calculation actor gateway qualified
+
+Trust Score calculation passed exact-head GitHub Actions run #3198 (`43094248583`) on implementation head `34172a7057a56ed027a0baead9640a3a835f7b59`. Both quality jobs, full test suite, complete migration chain and disposable PostgreSQL cutover qualification passed. The logs confirm legacy runtime calculation EXECUTE denied, signed calculation + actor provenance passed, actor/target substitution and assertion replay denied, runtime gateway-wrapper EXECUTE denied, and post-cutover function ACL passed. Manual cutover was applied only to disposable CI PostgreSQL.
+
+Trust Score calculation mutation is IMPLEMENTED / QUALIFIED. Direct runtime SELECT on `ghm.trust_score` remains OPEN pending public/member read projections. Evidence: `docs/architecture/TRUST_SCORE_QUALIFICATION.md` and the full security handover. Production remains untouched; no merge.
+
+
+## 2026-11-11 — Business Logo binding gateway implementation
+
+Audit confirmed active Business Logo PUT/DELETE routes call the SECURITY DEFINER `ghm.set_business_logo_object` directly with `context.userId` from the Resource API runtime. A signed Actor Gateway path now binds the verified actor, Business ID and nullable storage object ID; the original bearer token is forwarded, production fails closed, and the existing object validation / cleanup flow remains in place. A separate manual-only cutover revokes runtime EXECUTE on the legacy binding function; the approved public logo getter remains available.
+
+Status: IMPLEMENTED / QUALIFICATION PENDING. Disposable PostgreSQL runner and CI step are wired; wait for exact-head test suite and qualification pass. No production changes or merge.
+
+
+## 2026-11-11 — Trust Score read-boundary implementation in progress
+
+Trust Score direct-read replacement is now implemented but not yet qualified. Signed `trust.score.read` gateway get/list operations preserve active + verified + approved public visibility and active owner/administrator member visibility. Public runtime reads use SECURITY DEFINER `get_public_trust_score` / `list_public_trust_scores` projections. The manual cutover now revokes runtime direct SELECT and sequence access as well as legacy calculation EXECUTE. Resource API authenticated GET routes forward the bearer token through the Actor Gateway and fail closed in production. Disposable qualification now checks private member visibility, unrelated-account denial, public projections, and direct runtime SELECT/sequence denial.
+
+Status: IMPLEMENTED / QUALIFICATION PENDING; exact-head CI pending. The earlier Trust Score calculation mutation-only qualification remains passed but does not cover this new read boundary. No production changes or cutover. Full evidence: `docs/architecture/TRUST_SCORE_QUALIFICATION.md` and `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+
+## 2026-11-11 — Shared storage metadata actor boundary identified
+
+The active storage metadata layer still relies on the shared runtime credential being trusted. `storage_get_object(bigint,bigint)` accepts caller-supplied account ID; `storage_create_pending` accepts caller-supplied tenant/resource identity; and `storage_mark_available`, `storage_mark_deletion_pending`, `storage_mark_deleted` accept object IDs without a signed actor assertion. The application enforces tenant/membership checks before invoking them, but direct runtime callers can bypass those checks. Existing storage qualification does not test forged actor or direct cross-tenant lifecycle calls. This is a separate OPEN workstream and is NOT closed by the Business Logo binding gateway. Full source evidence and next steps: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+Do not revoke current storage lifecycle function EXECUTE until the complete upload/complete/access/delete flows have signed gateway replacements and disposable PostgreSQL qualification. No production changes.
+
+
+## Saved Business product semantics
+
+Saved Business is the user's personal favourites/bookmarks feature: users save a Business for quick access later. The signed gateway implementation preserves save/remove/list/retrieve for the user's own favourites and does not turn it into a Business-owned or administrative feature. Full handover clarification is in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+
+## 2026-11-11 — Full migration security inventory checkpoint
+
+Recursive branch inventory at the 2026-11-11 22:55 UTC checkpoint: 125 migration SQL files + 7 manual cutover SQL files (the additional migration restricts runtime execution of QuoteFlow migration-only account provisioning). Source marker scan identified open groups beyond the signed gateway batches: (1) storage metadata lifecycle SECURITY DEFINER functions still runtime-executable and dependent on app authorization; (2) Campaign create/update SECURITY DEFINER functions accept caller-supplied account IDs and Campaign table SELECT is runtime granted, though the live router derives actor from AuthContext; (3) internal authentication SECURITY DEFINER functions accept account/session IDs but serve pre-JWT login/registration/refresh/recovery flows and require a separate internal-auth authority review, not a blind Actor Gateway conversion. Historical directory/capability grants must be reconciled with later cutovers and actual role memberships. Provider/payment settlement and Connect integration final ACLs also need effective-grant verification.
+
+This is a migration-source marker inventory, NOT a completed effective ACL audit. Production grants, PUBLIC inheritance, role memberships, default privileges, function ownership and runtime call reachability remain to be reconciled against disposable PostgreSQL. Proposed storage signed gateway migration/cutover failed to commit because GitHub returned a retriable write error; no storage implementation is present on the branch. Full details: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+
+## 2026-11-11 — Internal authentication authority audit: QuoteFlow migration provisioning
+
+The full migration-security handover now records a source-traced authority finding: `auth_provision_migration_account(text,text,text,text)` is explicitly migration-only, but earlier migrations and the later external-identity table ACL migration granted it to `ghm_runtime`. The only concrete direct caller found was the disposable database qualification script; no production HTTP route or concrete application migration-store wiring was found in the inspected source tree. The TypeScript migration service is an abstraction, not proof of a live production caller.
+
+A bounded migration now revokes PUBLIC and runtime EXECUTE while preserving the `ghm_schema_owner`-owned function for controlled migrator use. The DB qualification runner has been changed to require runtime denial and perform provisioning through a migrator connection with `SET LOCAL ROLE ghm_schema_owner`. This preserves idempotency, provider validation, concurrency and rollback checks without exposing the migration primitive to the application role.
+
+**Status: IMPLEMENTED ON OPEN PR BRANCH / EXACT-HEAD QUALIFICATION PENDING.** PR #272 remains open and unmerged. The current code/test head before this handover-only documentation commit is `1478452aad96dc42bce3fc8d95c4fe832b51e19e`; that head had no workflow run returned by the commit-run lookup. The earlier success run #43105997182 belongs to the previous head and does not qualify this change. No production ACL, database, role, deployment, secret or data was changed.
+
+`auth_bootstrap_external_identity` and `auth_link_external_identity` remain separate open questions. Connect authorization binding explicitly sets `allowBootstrap:false`; migration reconciliation remains an abstraction without concrete production store wiring found in the inspected source tree, while existing persistence DB tests exercise external linking through runtime. Do not revoke either function until their intended callers and effective ACLs are reconciled. Continue the full auth ACL review without breaking login, registration, refresh, logout, password recovery or QuoteFlow reset.
+
+Detailed caller evidence, exact migration/script paths, commit SHAs and next actions are in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`. The 125/7 count is the PR branch inventory, not a claim that all effective ACLs or all repository documentation are fully reconciled.
+
+
+
+## 2026-11-11 — Correction: migration provisioning qualification is now part of npm test
+
+The earlier checkpoint's claim that CI already invoked the migration provisioning DB qualifier was incorrect. The command existed in `package.json` but was not called by `.github/workflows/ci.yml`. This has now been corrected by appending a syntax check and the DB qualifier to the existing `npm test` command, which CI already runs after applying migrations. The qualifier accepts the workflow's `GHM_QUALIFICATION_DATABASE_URL` as its runtime URL and skips only when both DB URLs are absent locally. Cleanup uses separate parameterized statements.
+
+Latest code/test head: `942203c53c94e81dabdef76895ac2220d48dbb25`. Exact-head workflow run #43115856824 was queued at the checkpoint; no pass is claimed. Earlier successful branch runs predate the qualification wiring. Full correction and exact commits are in the migration-security handover. No production changes.
+
+
+
+## 2026-11-11 — Internal-auth call-path audit and provisioning qualification correction
+
+The detailed handover now maps the live pre-JWT callers for account registration, password lookup/rehash, session creation, refresh rotation, recovery issuance/redemption, logout and QuoteFlow migration reset. Several functions still accept account/session identifiers even though their legitimate application callers derive those values only after password verification, token possession or enrollment lookup. Preserve these flows; do not blanket-revoke the remaining auth RPCs. A dedicated internal-auth authority design and database qualification are still required.
+
+The first CI run after adding the migration-provisioning DB qualifier passed the normal test suite (884/884) but the new script failed because it expected `ghm_db` while CI correctly uses `ghm_disposable_test`. Corrected to use the configured qualification/migration database name in commit `c71f795d92a5a500fd544420dad1845553d9a5f9`. Exact-head runs #43116108337 and #43116117596 were still in progress at the checkpoint; no qualification pass is claimed. See the full security handover for call paths and exact evidence.
+
+
+
+## 2026-11-11 — QuoteFlow migration provisioning DB qualifier passed inside npm test
+
+The bounded runtime EXECUTE revocation for `auth_provision_migration_account` is now covered by the integrated database qualification. On code/test head `c71f795d92a5a500fd544420dad1845553d9a5f9`, run #43116117596 completed the `Test suite` step successfully. The npm test command now runs the normal 884-test suite, syntax-checks the dedicated provisioning DB qualifier, and executes it using CI's disposable runtime/migrator URLs. The overall workflow remains in progress in later qualification steps; do not treat the whole PR as fully qualified yet. Subsequent documentation-only commits advanced PR head to `cd7eff3a907e5b68621c46f85aea7c89873328a5`. Full detail is in the security handover.
+
+
+
+## 2026-11-11 — QuoteFlow migration provisioning runtime ACL remediation qualified
+
+The new migration-only account provisioning privilege boundary passed exact-head GitHub Actions PR run #43116117596 on code/test head `c71f795d92a5a500fd544420dad1845553d9a5f9`. Both `quality` and `web-quality` succeeded, including the complete disposable migration chain, full 884-test suite, and the new DB qualification integrated into `npm test`. The qualification proves runtime EXECUTE denial and direct-call rejection while the migrator/owner path retains account+mapping creation, idempotency, provider validation, concurrency and rollback.
+
+Status: IMPLEMENTED / DISPOSABLE QUALIFICATION PASS; PRODUCTION CUTOVER NOT PERFORMED. PR #272 remains open and unmerged. This evidence is for code/test head `c71f795d`; subsequent commits were documentation-only and require their own CI check. No production roles, grants, database, secrets, deployment or data changed. Full evidence: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+
+
+## 2026-11-11 — External identity linking moved to migrator authority
+
+A separate source-traced finding showed `auth_link_external_identity(provider, subject, account_id)` accepts a caller-selected account ID and has no active Connect authorization-binding caller. The active Connect path performs identity lookup and sets `allowBootstrap:false`; QuoteFlow migration reconciliation currently exposes only a store abstraction, with no concrete production store wiring found. The general runtime AuthPersistence interface/method and its DB tests were the concrete runtime call path.
+
+A new migration revokes PUBLIC and runtime EXECUTE. The runtime AuthPersistence link method has been removed; database tests now call the SQL function using the migrator connection after `SET LOCAL ROLE ghm_schema_owner`, preserve all existing link semantics, and assert runtime direct calls are denied. Obsolete test mocks were removed.
+
+Current code/test head `6c6e20ca7d276c1153e2775968472d13a3d0ea08`: build, 126-migration disposable apply, full test suite, and web-quality all passed in run #43116910520; later disposable qualification steps were still running at this checkpoint. Inventory: 126 SQL migrations + 7 manual cutover SQL files. PR #272 remains open/unmerged. No production changes. The full handover records exact paths, commits and remaining bootstrap/internal-auth work.
+
+
+
+## 2026-11-11 — External identity link runtime ACL remediation qualified
+
+The runtime EXECUTE revocation for `auth_link_external_identity(text,text,bigint)` and removal from the general runtime AuthPersistence interface passed exact code/test head `6c6e20ca7d276c1153e2775968472d13a3d0ea08`, GitHub Actions run #43116918303. Both quality jobs passed, including all 126 migrations on disposable PostgreSQL, the full test suite, and existing disposable gateway qualifications. DB tests prove runtime direct invocation denied and migrator/owner linking still succeeds with all prior linking semantics retained.
+
+Status: IMPLEMENTED / DISPOSABLE QUALIFICATION PASS; PRODUCTION CUTOVER NOT PERFORMED. The subsequent documentation-only PR head is `aff86bd0e05b41cfbb4a8496c4ff1b69bd29cd77`; its exact-head CI was still in progress. PR #272 remains open/unmerged. No production changes. Full evidence is in the security handover.
+
+
+
+## 2026-11-12 — External identity bootstrap runtime authority removed
+
+The active Connect authorization route requires an existing external identity mapping and does not bootstrap accounts. Removed the unused bootstrap method from AuthPersistence/PostgresAuthPersistence and the Connect identity adapter; identity resolution is now lookup-only. Added migration `20261111260000_revoke_runtime_external_identity_bootstrap.sql` to revoke PUBLIC and `ghm_runtime` EXECUTE while preserving controlled schema-owner/migrator provisioning. Database ACL tests assert runtime cannot execute or directly invoke the function. No accounts/mappings, production ACLs or data were changed. PR #272 head `be08e9db8ac7fcf8602f2d6988518ae021597bfb` awaits exact-head CI; prior run #3441 applies only to its parent head. Current recursive tree count: 127 SQL migrations + 7 manual cutovers. Full source evidence and qualification gate are recorded in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+
+## Security audit checkpoint — internal authentication issuer (2026-11-12)
+
+- PR #272 remains the active, unmerged Actor Gateway/security integration. Its internal-auth follow-up is recorded in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+- Confirmed callers: registration and login create sessions after account creation or successful password verification; password rehash uses the verified credential lookup; recovery issuance follows normalized-email lookup and active-status checks; password reset and QuoteFlow migration reset derive the account from redeemed token records.
+- Confirmed remaining database authority gap: `ghm_runtime` retains EXECUTE on `auth_set_password`, `auth_create_session_with_refresh`, and `auth_issue_recovery`, whose account-ID arguments do not independently prove those upstream checks occurred.
+- ADR-001 is the governing approved design: isolated authentication issuer with dedicated DB principal and signing/pepper custody, separate typed actor gateway, no caller-writable GUC/temp-table proof and no generic SQL proxy. ADR approval covers isolated design/qualification only; it does not authorize production provisioning or changes.
+- No blind revocation: replacement issuer path and disposable-PostgreSQL positive/negative qualification must precede privilege changes.
+- No production changes, migrations, grants, secrets, deployments or data changes were made in this checkpoint.
+- Exact-head CI #3464/#3465 passed on predecessor head `6c25c96`; documentation has since advanced the branch to commit `2cd3f791ec850d60031047fd40d62d9ddbdfd3ec`. Recheck exact-head CI before any merge decision. Branch still requires reconciliation against the two commits newly on main.
+
+
+## Auth issuer follow-up — expanded scope (2026-11-12)
+
+The security handover now records the full initial runtime EXECUTE history, not only the three obvious account-ID writes. The issuer boundary must also account for password-hash lookup, account registration, refresh rotation, logout, recovery redemption/reset and QuoteFlow migration reset. External identity lookup/linking remains a separate call-path decision. Historical account/session admin grants and external identity link/bootstrap/QuoteFlow provisioning revocations already present in later migrations must be preserved and checked against the final catalog.
+
+A further contract test is required for password reset: HTTP currently accepts a recovery token plus an email value, and the persistence path uses that submitted email when updating the password credential. Confirm whether reset is allowed to change login email or must retain/bind the existing email; no behavior change has been made.
+
+Detailed caller trace, source paths, grant history, and next implementation sequence: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+Latest documentation-only branch commit at this update: `0812d0afea2e0b737ee524edcb05289cdcabdb78`. Earlier exact-head runs #3468/#3469 do not validate this newer commit. Recheck exact-head CI before any merge decision. No production changes or issuer provisioning are authorized by this checkpoint.
+
+
+## Proposed internal auth issuer implementation boundary (2026-11-12)
+
+The detailed security handover now records the proposed isolation shape and typed database-operation direction. Current auth routes are still registered inside the ordinary Resource API process and use its normal runtime persistence pool; therefore ADR-001's isolated issuer is not yet implemented. The intended boundary is a separate issuer process with its own `ghm_auth_issuer` NOINHERIT login, exact EXECUTE allow-list, ES256 private key and refresh pepper. None of those credentials belong in the ordinary Resource API.
+
+The boundary covers account/credential creation and lookup, password mutation/rehash, session creation, refresh rotation, logout, recovery issuance/redemption/reset and QuoteFlow migration reset. Keep Actor Gateway credentials separate. Preserve external identity lookup contracts. Prefer token/credential-derived SQL targets over caller-supplied account IDs; reset must not silently replace login email through the generic password setter.
+
+This is a proposed construction design only. No issuer service, database role, migration, grants, production secrets or deployment have been created. Effective ACL reconciliation and disposable-PostgreSQL issuer/runtime positive-negative qualification are required before privilege changes.
+
+Detailed source trace and proposed operation matrix: `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+
+## Auth issuer source/entrypoint audit (2026-11-12)
+
+The latest pass confirms the issue is both database authority and process/secret isolation. The ordinary Resource API's `src/server.ts` launches `createApp()`; `src/http/app.ts` registers auth routes and constructs `PostgresAuthPersistence()`; the auth router lazily creates the service whose default factory loads the ES256 private key. Persistence defaults to loading the refresh/recovery token pepper. The ordinary API therefore owns code paths for credential verification, refresh/recovery token protection and JWT signing.
+
+The Actor Gateway already has the correct separate-process pattern: dedicated entrypoint, dedicated DB URL/principal, startup identity assertion and public-key-only JWT verification. Reuse its public-key verifier/key loader in the Resource API; do not introduce a new token format.
+
+No auth issuer entrypoint, issuer-specific DB URL, issuer role assertion, or issuer start script exists yet. Also, production `src/server.ts` currently calls `createApp()` without injecting password recovery delivery or QuoteFlow migration-reset services; determine intended deployment wiring before moving those routes. No new email provider or route behavior is assumed.
+
+Latest handover contains the process/dependency graph, source evidence, unresolved route-delivery question and implementation gate. CI runs #3478/#3479 passed both quality and web-quality on predecessor head `6a95966`; subsequent handover commits still need exact-head CI confirmation. No production or database privilege changes.
+
+
+## Corrected auth grant matrix (2026-11-12)
+
+A migration-by-migration review corrected the initial runtime grant summary. `auth_create_account` was separately granted in `20261004020000`; QuoteFlow enrollment lookup and atomic reset completion were separately granted in `20261004181000` and `20261004190000`; the external identity table lockdown migration `20261111210000` re-granted several helper functions, and later migrations revoked operator-only provisioning/link/bootstrap. Token-bound recovery redemption wrappers remain runtime-executable today, as do password-hash lookup, refresh, logout, account-ID session creation, account-ID recovery issuance, QuoteFlow reset lookup/completion. These are all issuer cutover targets.
+
+Retain runtime-only `auth_lookup_external_identity` for Connect's lookup-only adapter unless a replacement contract is qualified. Preserve the already-revoked operator/admin functions. Detailed corrected matrix and migration provenance are in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+CI run #3485 targets predecessor handover head `b9a35a5`: web-quality passed; quality was still in progress at the last check (Build step running). The latest matrix documentation commit will trigger a new exact-head run. No database grants have been changed.
+
+
+## Auth issuer topology and route availability correction (2026-11-12)
+
+ADR-001's default is **two distinct internal services**, not merely separate processes in one deployment. A process-only alternative requires demonstrable equivalent process, credential, network and deployment isolation plus architecture approval. No service provisioning is authorized.
+
+Current route composition is now confirmed precisely:
+- Resource API constructs `PostgresAuthPersistence` by default, immediately loading `GHM_AUTH_TOKEN_PEPPER`.
+- Register/login/refresh/logout lazily load the ES256 private signing key through the default auth-service factory.
+- Password reset is enabled by default.
+- Password-recovery request and both QuoteFlow migration-reset routes return 503 unless their explicit services are injected; the default server injects none, and no recovery delivery adapter is configured in the default composition.
+
+The issuer extraction must preserve current route availability and response behavior; it must not silently enable recovery or QuoteFlow routes. It must also move native and browser-cookie auth endpoints, rate limits, cookie policy, anti-enumeration and signing/token custody. Details and source evidence are in `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`.
+
+No code, production config, secrets, grants, routes or services were changed.
+
+
+## External auth route/deployment contract (2026-11-12)
+
+The web client currently sends auth and resource requests to one API origin (`VITE_GHM_API_BASE_URL`, defaulting to GHM Internal Runtime). Auth paths include native JSON and browser-cookie variants; cookies use the existing same-origin `/api/ghm` path. Issuer extraction must preserve these public paths and browser cookie/CORS behavior through a separately designed edge/reverse-proxy routing layer or equivalent same-origin topology. A direct browser-visible second origin is not an acceptable unreviewed shortcut.
+
+No Render Blueprint, Dockerfile or deployment manifest is present in the GHM repository tree, so current service start/build commands, proxy/routing capability and network exposure cannot be inferred from source. Obtain the actual service configuration/inventory before specifying deployment. No Render changes or new services.
+
+Latest handover adds the full client route contract, cookie behavior, deployment evidence gap and compatibility test requirements. CI #3493 was still running its test suite and subsequent PostgreSQL qualification at the previous documentation head; the new handover commit will require exact-head CI recheck.
+
+
+## Product auth consumer inventory (2026-11-12)
+
+Issuer cutover is cross-repository:
+- GHM web uses one `VITE_GHM_API_BASE_URL` for resource and native auth traffic.
+- Connect native auth currently uses `VITE_GHM_API_BASE_URL` direct to GHM Runtime. Optional browser-cookie auth is feature-flagged off by default and uses a same-origin Vercel BFF with one `GHM_INTERNAL_RUNTIME_URL` upstream.
+- QuoteFlow's GHM Gate A adapter is disabled by default. If enabled, `EXPO_PUBLIC_GHM_AUTH_BASE_URL` currently serves both auth endpoints and `/api/v1/identity`.
+
+Before GHM removes auth routes from Resource API, add separate auth issuer/resource base URLs in clients, split Connect's BFF issuer upstream from its resource upstream, preserve the optional browser mode's default-off behavior, and test all cross-repository contracts. No product repo, flag, environment or deployment was changed. Full paths and required compatibility sequence are in the security handover.
+
+
+## Latest predecessor CI result (2026-11-12)
+
+CI run #3493 completed successfully on predecessor commit `0f9349a`: both `quality` and `web-quality` passed, including the full build, migrations, tests and configured disposable PostgreSQL qualifications. Cross-product consumer-inventory commits were added afterward and are not covered by #3493. Current branch head therefore still needs exact-head CI confirmation.

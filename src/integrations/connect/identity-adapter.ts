@@ -11,34 +11,21 @@ export type ConnectIdentityResolution =
       readonly created: false;
     }
   | {
-      readonly outcome: 'bootstrapped';
-      readonly mapping: ExternalIdentityMapping;
-      readonly created: true;
-    }
-  | {
       readonly outcome: 'unmapped';
       readonly mapping: null;
       readonly created: false;
     };
 
-export interface ConnectIdentityBootstrapOptions {
-  readonly allowBootstrap: boolean;
-  readonly fullName?: string | null;
-  readonly role?: 'customer' | 'business';
-}
-
 /**
  * Connect identity adapter.
  *
  * This is deliberately a domain/integration seam, not an HTTP endpoint.
- * The caller is expected to be an already-governed Connect integration boundary.
+ * Identity resolution is lookup-only. New GHM accounts and external mappings
+ * must be provisioned through the separately governed account/migration path.
  * No Supabase JWT is accepted or verified here.
  */
 export interface ConnectIdentityAdapter {
-  resolve(
-    subject: string,
-    options?: ConnectIdentityBootstrapOptions,
-  ): Promise<ConnectIdentityResolution>;
+  resolve(subject: string): Promise<ConnectIdentityResolution>;
 }
 
 const validateSubject = (subject: string): string => {
@@ -51,10 +38,7 @@ const validateSubject = (subject: string): string => {
 export class ConnectIdentityAdapterImpl implements ConnectIdentityAdapter {
   constructor(private readonly persistence: AuthPersistence) {}
 
-  async resolve(
-    subject: string,
-    options: ConnectIdentityBootstrapOptions = { allowBootstrap: false },
-  ): Promise<ConnectIdentityResolution> {
+  async resolve(subject: string): Promise<ConnectIdentityResolution> {
     const normalizedSubject = validateSubject(subject);
     const existing = await this.persistence.lookupExternalIdentity(
       EXTERNAL_IDENTITY_PROVIDER_SUPABASE,
@@ -65,19 +49,6 @@ export class ConnectIdentityAdapterImpl implements ConnectIdentityAdapter {
       return { outcome: 'resolved', mapping: existing, created: false };
     }
 
-    if (!options.allowBootstrap) {
-      return { outcome: 'unmapped', mapping: null, created: false };
-    }
-
-    const bootstrapped = await this.persistence.bootstrapExternalIdentity(
-      EXTERNAL_IDENTITY_PROVIDER_SUPABASE,
-      normalizedSubject,
-      options.fullName ?? null,
-      options.role ?? 'customer',
-    );
-
-    return bootstrapped.created
-      ? { outcome: 'bootstrapped', mapping: bootstrapped, created: true }
-      : { outcome: 'resolved', mapping: bootstrapped, created: false };
+    return { outcome: 'unmapped', mapping: null, created: false };
   }
 }

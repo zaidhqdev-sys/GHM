@@ -36,6 +36,7 @@ const probeAuthSchemaReady = async (): Promise<boolean> => {
         AND to_regprocedure('ghm.auth_create_account(text,text,text,text,text,integer,integer,integer)') IS NOT NULL
         AND to_regprocedure('ghm.auth_link_external_identity(text,text,bigint)') IS NOT NULL
         AND to_regprocedure('ghm.auth_link_business_external_mapping(text,text,bigint)') IS NOT NULL
+        AND to_regprocedure('ghm.auth_redeem_recovery_with_count(bytea)') IS NOT NULL
         AS ready
     `);
     return Boolean(result.rows[0]?.ready);
@@ -69,6 +70,25 @@ test('auth foundation persistence (database)', async (t) => {
   const marker = `ghm-auth-foundation-${randomUUID()}`;
   let accountId = 0;
   const persistence = new PostgresAuthPersistence(runtimePool);
+
+  const linkExternalIdentityAsOwner = async (provider: string, subject: string, targetAccountId: number) => {
+    const client = await migratorPool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SET LOCAL ROLE ghm_schema_owner');
+      const result = await client.query(
+        'SELECT * FROM ghm.auth_link_external_identity($1, $2, $3)',
+        [provider, subject, targetAccountId],
+      );
+      await client.query('COMMIT');
+      return result.rows[0];
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
+  };
 
   t.after(async () => {
     const client = await migratorPool.connect();
@@ -229,25 +249,48 @@ test('auth foundation persistence (database)', async (t) => {
     assert.equal(absolute.rejectReason, 'absolute_expired');
   });
 
-  await t.test('disable account rejects further sessions and revokes existing', async () => {
-    const created = await persistence.createSessionWithRefresh(accountId);
-    await persistence.disableAccount(accountId);
-    const validation = await persistence.validateSession(created.session.id);
-    assert.equal(validation.isUsable, false);
-    assert.ok(
-      validation.rejectReason === 'account_disabled' || validation.rejectReason === 'session_revoked',
-    );
-    await assert.rejects(() => persistence.createSessionWithRefresh(accountId), AuthPersistenceError);
-
-    const client = await migratorPool.connect();
+  await t.test('unused account/session administration RPCs are not executable by runtime', async () => {
+    const runtimeClient = await runtimePool.connect();
     try {
-      await client.query('SET ROLE ghm_schema_owner');
-      await client.query(
-        `UPDATE ghm.account_identity SET account_status = 'active', updated_at = now() WHERE id = $1`,
-        [accountId],
+      const privileges = await runtimeClient.query(`
+        SELECT
+          has_function_privilege(current_user, 'ghm.auth_revoke_session(bigint,text)', 'EXECUTE') AS can_revoke_session,
+          has_function_privilege(current_user, 'ghm.auth_change_password(bigint,bigint,text,text,text,integer,integer,integer)', 'EXECUTE') AS can_change_password,
+          has_function_privilege(current_user, 'ghm.auth_disable_account(bigint)', 'EXECUTE') AS can_disable_account,
+          has_function_privilege(current_user, 'ghm.auth_revoke_all_sessions_for_account(bigint,text)', 'EXECUTE') AS can_revoke_all_sessions
+      `);
+      assert.deepEqual(privileges.rows[0], {
+        can_revoke_session: false,
+        can_change_password: false,
+        can_disable_account: false,
+        can_revoke_all_sessions: false,
+      });
+
+      const denied = (error: unknown) => {
+        const err = error as { code?: string; message?: string };
+        return err.code === '42501' || Boolean(err.message?.match(/permission denied/i));
+      };
+      await assert.rejects(
+        () => runtimeClient.query('SELECT ghm.auth_revoke_session($1,$2)', [1, 'logout']),
+        denied,
+      );
+      await assert.rejects(
+        () => runtimeClient.query(
+          'SELECT ghm.auth_change_password($1,$2,$3,$4,$5,$6,$7,$8)',
+          [1, 1, 'user@example.test', 'user@example.test', 'not-a-real-hash', null, null, null],
+        ),
+        denied,
+      );
+      await assert.rejects(
+        () => runtimeClient.query('SELECT ghm.auth_disable_account($1)', [1]),
+        denied,
+      );
+      await assert.rejects(
+        () => runtimeClient.query('SELECT ghm.auth_revoke_all_sessions_for_account($1,$2)', [1, 'password_recovery']),
+        denied,
       );
     } finally {
-      client.release();
+      runtimeClient.release();
     }
   });
 
@@ -280,6 +323,37 @@ test('auth foundation persistence (database)', async (t) => {
     assert.equal(concurrent.filter((r) => r.status === 'rejected').length, 1);
   });
 
+
+  await t.test('password recovery returns the session-family revocation count without a direct account-ID RPC', async () => {
+    const s1 = await persistence.createSessionWithRefresh(accountId);
+    const s2 = await persistence.createSessionWithRefresh(accountId);
+    const issued = await persistence.issueRecovery(accountId, 30);
+    const email = `recovery-reset-${accountId}@example.test`;
+
+    const reset = await persistence.resetPasswordWithRecovery(
+      issued.recoveryTokenWire,
+      email,
+      'New-Password-For-Recovery-123!',
+    );
+    assert.ok(reset.revokedSessionCount >= 2);
+
+    const v1 = await persistence.validateSession(s1.session.id);
+    const v2 = await persistence.validateSession(s2.session.id);
+    assert.equal(v1.isUsable, false);
+    assert.equal(v2.isUsable, false);
+
+    await assert.rejects(
+      () => persistence.resetPasswordWithRecovery(
+        issued.recoveryTokenWire,
+        email,
+        'Another-Password-123!',
+      ),
+      (error: unknown) =>
+        error instanceof AuthPersistenceError && error.code === 'RECOVERY_CREDENTIAL_INVALID',
+    );
+  });
+
+
   await t.test('expired recovery fails', async () => {
     const issued = await persistence.issueRecovery(accountId, 30);
     const client = await migratorPool.connect();
@@ -298,35 +372,6 @@ test('auth foundation persistence (database)', async (t) => {
     await assert.rejects(() => persistence.redeemRecovery(issued.recoveryTokenWire), AuthPersistenceError);
   });
 
-  await t.test('external identity lookup/bootstrap is idempotent and non-admin', async () => {
-    const provider = `test-provider-${marker}`;
-    const subject = `subject-${marker}`;
-    const first = await persistence.bootstrapExternalIdentity(provider, subject, marker, 'customer');
-    assert.equal(first.created, true);
-    assert.ok(first.accountId > 0);
-    const second = await persistence.bootstrapExternalIdentity(provider, subject, marker, 'customer');
-    assert.equal(second.created, false);
-    assert.equal(second.accountId, first.accountId);
-    const looked = await persistence.lookupExternalIdentity(provider, subject);
-    assert.equal(looked?.accountId, first.accountId);
-
-    const client = await migratorPool.connect();
-    try {
-      await client.query('SET ROLE ghm_schema_owner');
-      const admin = await client.query(
-        `SELECT is_system_admin FROM ghm.account_identity WHERE id = $1`,
-        [first.accountId],
-      );
-      assert.equal(admin.rows[0].is_system_admin, false);
-      const membership = await client.query(
-        `SELECT 1 FROM ghm.business_membership WHERE account_id = $1`,
-        [first.accountId],
-      );
-      assert.equal(membership.rowCount, 0);
-    } finally {
-      client.release();
-    }
-  });
 
   await t.test('link external identity: create, idempotent, conflict, missing account', async () => {
     const { EXTERNAL_IDENTITY_PROVIDER_SUPABASE } = await import('./types');
@@ -334,16 +379,16 @@ test('auth foundation persistence (database)', async (t) => {
     const subjectA = `link-a-${marker}`;
     const subjectB = `link-b-${marker}`;
 
-    const created = await persistence.linkExternalIdentity(provider, subjectA, accountId);
+    const created = await linkExternalIdentityAsOwner(provider, subjectA, accountId);
     assert.equal(created.outcome, 'created');
-    assert.equal(created.mapping?.accountId, accountId);
-    assert.equal(created.mapping?.provider, provider);
-    assert.equal(created.mapping?.subject, subjectA);
+    assert.equal(Number(created.account_id), accountId);
+    assert.equal(created.provider, provider);
+    assert.equal(created.subject, subjectA);
 
-    const again = await persistence.linkExternalIdentity(provider, subjectA, accountId);
+    const again = await linkExternalIdentityAsOwner(provider, subjectA, accountId);
     assert.equal(again.outcome, 'already_linked');
-    assert.equal(again.mapping?.id, created.mapping?.id);
-    assert.equal(again.mapping?.accountId, accountId);
+    assert.equal(again.id, created.id);
+    assert.equal(Number(again.account_id), accountId);
 
     const client = await migratorPool.connect();
     let otherAccountId = 0;
@@ -367,19 +412,20 @@ test('auth foundation persistence (database)', async (t) => {
       client.release();
     }
 
-    const conflict = await persistence.linkExternalIdentity(provider, subjectA, otherAccountId);
+    const conflict = await linkExternalIdentityAsOwner(provider, subjectA, otherAccountId);
     assert.equal(conflict.outcome, 'conflict');
-    assert.equal(conflict.mapping?.accountId, accountId);
-    assert.notEqual(conflict.mapping?.accountId, otherAccountId);
+    assert.equal(Number(conflict.account_id), accountId);
+    assert.notEqual(Number(conflict.account_id), otherAccountId);
 
-    const missing = await persistence.linkExternalIdentity(provider, `missing-${marker}`, 9_007_199_254_740_991);
+    const missing = await linkExternalIdentityAsOwner(provider, `missing-${marker}`, 9_007_199_254_740_991);
     assert.equal(missing.outcome, 'account_not_found');
-    assert.equal(missing.mapping, null);
+    assert.equal(missing.id, null);
+    assert.equal(missing.account_id, null);
 
     // Cross-product: two distinct supabase subjects → same GHM account (explicit link only)
-    const secondSubject = await persistence.linkExternalIdentity(provider, subjectB, accountId);
+    const secondSubject = await linkExternalIdentityAsOwner(provider, subjectB, accountId);
     assert.equal(secondSubject.outcome, 'created');
-    assert.equal(secondSubject.mapping?.accountId, accountId);
+    assert.equal(Number(secondSubject.account_id), accountId);
 
     const lookedA = await persistence.lookupExternalIdentity(provider, subjectA);
     const lookedB = await persistence.lookupExternalIdentity(provider, subjectB);
@@ -408,9 +454,9 @@ test('auth foundation persistence (database)', async (t) => {
       client.release();
     }
 
-    const linked = await persistence.linkExternalIdentity(provider, subject, disabledId);
+    const linked = await linkExternalIdentityAsOwner(provider, subject, disabledId);
     assert.equal(linked.outcome, 'created');
-    assert.equal(linked.mapping?.accountId, disabledId);
+    assert.equal(Number(linked.account_id), disabledId);
 
     const verify = await migratorPool.connect();
     try {
@@ -426,31 +472,61 @@ test('auth foundation persistence (database)', async (t) => {
     }
   });
 
-  await t.test('link external identity: runtime cannot INSERT table; can EXECUTE function', async () => {
+  await t.test('link external identity: runtime cannot read, mutate, create, or bootstrap mappings; migrator owner can link', async () => {
     const { EXTERNAL_IDENTITY_PROVIDER_SUPABASE } = await import('./types');
     const provider = EXTERNAL_IDENTITY_PROVIDER_SUPABASE;
     const subject = `acl-${marker}`;
 
     const runtimeClient = await runtimePool.connect();
     try {
-      await assert.rejects(
-        () =>
-          runtimeClient.query(
-            `INSERT INTO ghm.account_external_identity (provider, subject, account_id)
-             VALUES ($1, $2, $3)`,
-            [provider, subject, accountId],
-          ),
-        (error: unknown) => {
-          const err = error as { code?: string; message?: string };
-          return err.code === '42501' || Boolean(err.message?.match(/permission denied/i));
-        },
-      );
+      const privileges = await runtimeClient.query(`
+        SELECT
+          has_table_privilege(current_user, 'ghm.account_external_identity', 'SELECT') AS can_select,
+          has_table_privilege(current_user, 'ghm.account_external_identity', 'INSERT') AS can_insert,
+          has_table_privilege(current_user, 'ghm.account_external_identity', 'UPDATE') AS can_update,
+          has_table_privilege(current_user, 'ghm.account_external_identity', 'DELETE') AS can_delete,
+          has_sequence_privilege(current_user, 'ghm.account_external_identity_id_seq', 'USAGE') AS can_use_sequence,
+          has_function_privilege(current_user, 'ghm.auth_link_external_identity(text,text,bigint)', 'EXECUTE') AS can_link,
+          has_function_privilege(current_user, 'ghm.auth_bootstrap_external_identity(text,text,text,text)', 'EXECUTE') AS can_bootstrap
+      `);
+      assert.deepEqual(privileges.rows[0], {
+        can_select: false,
+        can_insert: false,
+        can_update: false,
+        can_delete: false,
+        can_use_sequence: false,
+        can_link: false,
+        can_bootstrap: false,
+      });
+
+      for (const sql of [
+        'SELECT * FROM ghm.account_external_identity',
+        `SELECT * FROM ghm.auth_link_external_identity('supabase', 'runtime-forged-subject', ${accountId})`,
+        `SELECT * FROM ghm.auth_bootstrap_external_identity('supabase', 'runtime-bootstrap-subject', 'Runtime Bootstrap', 'customer')`,
+        `INSERT INTO ghm.account_external_identity (provider, subject, account_id)
+         VALUES ('supabase', 'direct-runtime-insert', ${accountId})`,
+        "SELECT nextval('ghm.account_external_identity_id_seq')",
+      ]) {
+        await assert.rejects(
+          () => runtimeClient.query(sql),
+          (error: unknown) => {
+            const err = error as { code?: string; message?: string };
+            return err.code === '42501' || Boolean(err.message?.match(/permission denied/i));
+          },
+        );
+      }
     } finally {
       runtimeClient.release();
     }
 
-    const viaFunction = await persistence.linkExternalIdentity(provider, subject, accountId);
+    await assert.rejects(
+      runtimePool.query('SELECT * FROM ghm.auth_link_external_identity($1, $2, $3)', [provider, subject, accountId]),
+      /permission denied|insufficient_privilege/i,
+    );
+    const viaFunction = await linkExternalIdentityAsOwner(provider, subject, accountId);
     assert.equal(viaFunction.outcome, 'created');
+    const lookedUp = await persistence.lookupExternalIdentity(provider, subject);
+    assert.equal(lookedUp?.accountId, accountId);
 
     const owner = await migratorPool.connect();
     try {

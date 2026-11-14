@@ -8,6 +8,9 @@ import { ACCESS_JWT_AUD, ACCESS_JWT_ISS } from '../auth/foundation/access-jwt-ve
 import { createActorGatewayApp } from './app';
 import type { ActorIdentity, ActorIdentityReader } from './actor-identity-reader';
 import type { BusinessRegistrationIdentityReader } from './business-registration-identity-reader';
+import type { SupplierClassificationReader } from './supplier-classification-reader';
+import type { BusinessProfileReader } from './business-profile-reader';
+import type { SavedBusinessGatewayReader } from './saved-business-reader';
 
 const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
 const privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
@@ -35,12 +38,24 @@ const withServer = async (
   reader: ActorIdentityReader,
   work: (baseUrl: string) => Promise<void>,
   businessRegistrationIdentityReader?: BusinessRegistrationIdentityReader,
+  capabilityGovernanceReader?: import('./capability-governance-reader').CapabilityGovernanceReader,
+  supplierClassificationReader?: SupplierClassificationReader,
+  businessProfileReader?: BusinessProfileReader,
+  options: import('./app').ActorGatewayAppOptions = {},
+  requestVerifier: import('../auth/foundation/access-jwt-verifier').AccessJwtVerifier = verifier,
+  businessCapabilityMutationReader?: import('./business-capability-mutation-reader').GatewayCapabilityMutationReader,
+  savedBusinessReader?: SavedBusinessGatewayReader,
 ): Promise<void> => {
   const server = http.createServer(createActorGatewayApp({
-    verifier,
+    verifier: requestVerifier,
     actorIdentityReader: reader,
     businessRegistrationIdentityReader,
-  }));
+    capabilityGovernanceReader,
+    supplierClassificationReader,
+    businessProfileReader,
+    businessCapabilityMutationReader,
+    savedBusinessReader,
+  }, options));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('Actor gateway test server did not start');
@@ -65,6 +80,60 @@ test('actor gateway health endpoint is process-only and does not query actor ide
     assert.deepEqual(await response.json(), { status: 'ok' });
   });
   assert.equal(calls, 0);
+});
+
+test('actor gateway rate limits each verified account without trusting caller-supplied identity', async () => {
+  const calls: number[] = [];
+  const reader: ActorIdentityReader = {
+    async readOwnIdentity(accountId: number): Promise<ActorIdentity> {
+      calls.push(accountId);
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  };
+  await withServer(reader, async (baseUrl) => {
+    const request = (accountId: number) => fetch(`${baseUrl}/v1/actor/me`, {
+      headers: { authorization: `Bearer ${sign(accountId)}` },
+    });
+    const first = await request(42);
+    assert.equal(first.status, 200);
+    const second = await request(42);
+    assert.equal(second.status, 200);
+    const limited = await request(42);
+    assert.equal(limited.status, 429);
+    assert.deepEqual(await limited.json(), { error: 'rate_limited' });
+
+    const otherAccount = await request(43);
+    assert.equal(otherAccount.status, 200);
+
+    const health = await fetch(`${baseUrl}/healthz`);
+    assert.equal(health.status, 200);
+  }, undefined, undefined, undefined, undefined, { rateLimitLimit: 2, rateLimitWindowMs: 60_000 });
+  assert.deepEqual(calls, [42, 42, 43]);
+});
+
+test('actor gateway verifies each bearer token once and reuses its verified account identity', async () => {
+  let verifications = 0;
+  const countingVerifier = {
+    verify(token: string) {
+      verifications += 1;
+      return verifier.verify(token);
+    },
+  };
+  const received: number[] = [];
+  const reader: ActorIdentityReader = {
+    async readOwnIdentity(accountId: number): Promise<ActorIdentity> {
+      received.push(accountId);
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  };
+  await withServer(reader, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/actor/me`, {
+      headers: { authorization: `Bearer ${sign(42)}` },
+    });
+    assert.equal(response.status, 200);
+  }, undefined, undefined, undefined, undefined, {}, countingVerifier);
+  assert.equal(verifications, 1);
+  assert.deepEqual(received, [42]);
 });
 
 test('actor gateway rejects missing and invalid bearer tokens before database access', async () => {
@@ -341,4 +410,231 @@ test('actor gateway registration identity write hides membership denial as not f
     assert.equal(response.status, 404);
     assert.deepEqual(await response.json(), { error: 'not_found' });
   }, businessReader);
+});
+
+
+test('actor gateway capability administration derives the actor only from verified token subject', async () => {
+  const received: Array<{operation:string;accountId:number}> = [];
+  const capability = {
+    id:'11111111-1111-4111-8111-111111111111',parentId:null,name:'Example',slug:'example',description:null,
+    sortOrder:0,lifecycleStatus:'draft' as const,taxonomyVersion:1,effectiveFrom:null,effectiveTo:null,
+    sourceAuthority:'GHM System Administration',sourceReference:null,replacedByCapabilityId:null,isSelectable:false,
+    createdAt:new Date('2026-11-10T20:00:00.000Z'),updatedAt:new Date('2026-11-10T20:00:00.000Z'),
+  };
+  const capabilityReader = {
+    async list(accountId:number){received.push({operation:'list',accountId});return [capability];},
+    async createDraft(accountId:number,input:unknown){received.push({operation:'create',accountId});return capability;},
+    async updateDraft(accountId:number,id:string,input:unknown){received.push({operation:'update',accountId});return capability;},
+    async transition(accountId:number,id:string,status:string,replacementId?:string|null){received.push({operation:'transition',accountId});return capability;},
+  };
+  const identityReader: ActorIdentityReader = {
+    async readOwnIdentity(accountId:number):Promise<ActorIdentity>{return {accountId,role:'admin',fullName:'Verified Admin'};},
+  };
+  await withServer(identityReader, async baseUrl => {
+    const response=await fetch(`${baseUrl}/v1/admin/capabilities?accountId=999`,{headers:{authorization:`Bearer ${sign(42)}`}});
+    assert.equal(response.status,200);
+    const payload=await response.json() as {capabilities:Array<{id:string}>};
+    assert.equal(payload.capabilities[0].id,capability.id);
+    const missing=await fetch(`${baseUrl}/v1/admin/capabilities`);
+    assert.equal(missing.status,401);
+  }, undefined, capabilityReader as never);
+  assert.deepEqual(received,[{operation:'list',accountId:42}]);
+});
+
+test('supplier classification gateway derives actor from verified token subject', async () => {
+  const calls: Array<{ accountId: number; businessId: number; isSupplier: boolean }> = [];
+  const reader: SupplierClassificationReader = {
+    async updateSupplierClassification(accountId, businessId, isSupplier) {
+      calls.push({ accountId, businessId, isSupplier });
+      return { businessId, isSupplier };
+    },
+  };
+  await withServer({
+    async readOwnIdentity(accountId): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  }, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/businesses/73/supplier-classification?accountId=999`, {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ isSupplier: true }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { supplierClassification: { businessId: 73, isSupplier: true } });
+    const invalid = await fetch(`${baseUrl}/v1/businesses/73/supplier-classification`, {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ isSupplier: false, accountId: 999 }),
+    });
+    assert.equal(invalid.status, 400);
+  }, undefined, undefined, reader);
+  assert.deepEqual(calls, [{ accountId: 42, businessId: 73, isSupplier: true }]);
+});
+
+test('supplier classification gateway rejects missing bearer token before database access', async () => {
+  let calls = 0;
+  const reader: SupplierClassificationReader = {
+    async updateSupplierClassification() {
+      calls += 1;
+      return { businessId: 73, isSupplier: true };
+    },
+  };
+  await withServer({
+    async readOwnIdentity(accountId): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: null };
+    },
+  }, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/businesses/73/supplier-classification`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ isSupplier: true }),
+    });
+    assert.equal(response.status, 401);
+  }, undefined, undefined, reader);
+  assert.equal(calls, 0);
+});
+
+test('Business profile gateway derives actor from verified token subject', async () => {
+  const calls: Array<{ accountId: number; businessId: number; patch: Record<string, unknown> }> = [];
+  const reader: BusinessProfileReader = {
+    async updateBusinessProfile(accountId, businessId, patch) {
+      calls.push({ accountId, businessId, patch });
+      return { businessId };
+    },
+  };
+  await withServer({
+    async readOwnIdentity(accountId): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  }, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/businesses/73/profile`, {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Updated name', physicalAddress: 'Durban', accountId: 999 }),
+    });
+    assert.equal(response.status, 400);
+    const supplierViaProfile = await fetch(`${baseUrl}/v1/businesses/73/profile`, {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ isSupplier: true }),
+    });
+    assert.equal(supplierViaProfile.status, 400);
+    const valid = await fetch(`${baseUrl}/v1/businesses/73/profile`, {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Updated name', physicalAddress: 'Durban' }),
+    });
+    assert.equal(valid.status, 200);
+    assert.deepEqual(await valid.json(), { businessProfile: { businessId: 73 } });
+  }, undefined, undefined, undefined, reader);
+  assert.deepEqual(calls, [{ accountId: 42, businessId: 73, patch: { name: 'Updated name', physicalAddress: 'Durban' } }]);
+});
+
+test('Business profile gateway rejects missing bearer token before database access', async () => {
+  let calls = 0;
+  const reader: BusinessProfileReader = {
+    async updateBusinessProfile(_accountId, businessId) {
+      calls += 1;
+      return { businessId };
+    },
+  };
+  await withServer({
+    async readOwnIdentity(accountId): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: null };
+    },
+  }, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/businesses/73/profile`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Updated name' }),
+    });
+    assert.equal(response.status, 401);
+  }, undefined, undefined, undefined, reader);
+  assert.equal(calls, 0);
+});
+
+test('actor gateway derives evidence submitter from verified bearer token',async()=>{
+ let received:any;
+ const identity:ActorIdentityReader={async readOwnIdentity(accountId){return{accountId,role:'business',fullName:'Actor'}}};
+ const mutation:import('./business-capability-mutation-reader').GatewayCapabilityMutationReader={
+  async replace(){return[]},async verify(){throw new Error('unused')},async reviewEvidence(){throw new Error('unused')},
+  async submitEvidence(actor,input){received={actor,input};return{} as never;}
+ };
+ await withServer(identity,async baseUrl=>{
+  const response=await fetch(`${baseUrl}/v1/business-capability-evidence`,{method:'POST',headers:{authorization:`Bearer ${sign(42)}`,'content-type':'application/json'},body:JSON.stringify({businessCapabilityId:12,evidenceType:'certification',title:'Certificate'})});
+  assert.equal(response.status,201);
+ },undefined,undefined,undefined,undefined,{},verifier,mutation);
+ assert.equal(received.actor,42);assert.equal(received.input.businessCapabilityId,12);
+});
+test('actor gateway rejects evidence submitter identity and unknown fields from request body',async()=>{
+ let called=false;
+ const identity:ActorIdentityReader={async readOwnIdentity(accountId){return{accountId,role:'business',fullName:'Actor'}}};
+ const mutation:import('./business-capability-mutation-reader').GatewayCapabilityMutationReader={
+  async replace(){return[]},async verify(){throw new Error('unused')},async reviewEvidence(){throw new Error('unused')},async submitEvidence(){called=true;return{} as never;}
+ };
+ await withServer(identity,async baseUrl=>{
+  const response=await fetch(`${baseUrl}/v1/business-capability-evidence`,{method:'POST',headers:{authorization:`Bearer ${sign(42)}`,'content-type':'application/json'},body:JSON.stringify({businessCapabilityId:12,evidenceType:'certification',title:'Certificate',submittedBy:999})});
+  assert.equal(response.status,400);
+ },undefined,undefined,undefined,undefined,{},verifier,mutation);
+ assert.equal(called,false);
+});
+
+
+test('saved business gateway derives owner from verified JWT and rejects caller-supplied account fields', async () => {
+  const calls: Array<{ operation: string; actor: number; id?: number }> = [];
+  const reader: SavedBusinessGatewayReader = {
+    async list(actor) {
+      calls.push({ operation: 'list', actor });
+      return [{ id: 1, accountId: actor, businessId: 77, createdAt: new Date('2026-11-11T00:00:00.000Z') }];
+    },
+    async get(actor, id) {
+      calls.push({ operation: 'get', actor, id });
+      return null;
+    },
+    async create(actor, businessId) {
+      calls.push({ operation: 'create', actor, id: businessId });
+      return { id: 2, accountId: actor, businessId, createdAt: new Date('2026-11-11T00:00:00.000Z') };
+    },
+    async delete(actor, id) {
+      calls.push({ operation: 'delete', actor, id });
+      return true;
+    },
+  };
+
+  await withServer({
+    async readOwnIdentity(accountId) {
+      return { accountId, role: 'customer', fullName: 'Test' };
+    },
+  }, async (baseUrl) => {
+    const headers = { authorization: `Bearer ${sign(42)}`, 'content-type': 'application/json' };
+    const list = await fetch(`${baseUrl}/v1/saved-businesses?accountId=999`, { headers });
+    assert.equal(list.status, 200);
+    const listBody = await list.json() as { savedBusinesses: Array<{ accountId: number }> };
+    assert.equal(listBody.savedBusinesses[0].accountId, 42);
+
+    const create = await fetch(`${baseUrl}/v1/saved-businesses`, {
+      method: 'POST', headers, body: JSON.stringify({ businessId: 77, accountId: 999 }),
+    });
+    assert.equal(create.status, 400);
+
+    const validCreate = await fetch(`${baseUrl}/v1/saved-businesses`, {
+      method: 'POST', headers, body: JSON.stringify({ businessId: 77 }),
+    });
+    assert.equal(validCreate.status, 201);
+    const created = await validCreate.json() as { savedBusiness: { accountId: number } };
+    assert.equal(created.savedBusiness.accountId, 42);
+
+    const get = await fetch(`${baseUrl}/v1/saved-businesses/12`, { headers });
+    assert.equal(get.status, 404);
+
+    const remove = await fetch(`${baseUrl}/v1/saved-businesses/12`, { method: 'DELETE', headers });
+    assert.equal(remove.status, 204);
+  }, undefined, undefined, undefined, undefined, {}, verifier, undefined, reader);
+
+  assert.deepEqual(calls, [
+    { operation: 'list', actor: 42 },
+    { operation: 'create', actor: 42, id: 77 },
+    { operation: 'get', actor: 42, id: 12 },
+    { operation: 'delete', actor: 42, id: 12 },
+  ]);
 });

@@ -47,7 +47,7 @@ export class PostgresBusinessHoursRepository implements BusinessHoursRepository 
     try {
       await assertPublicBusiness(client, businessId);
       const result = await client.query(
-        `SELECT ${COLUMNS} FROM ghm.business_hours WHERE business_id = $1 ORDER BY day_of_week ASC, id ASC`,
+        `SELECT ${COLUMNS} FROM ghm.get_public_business_hours($1) ORDER BY day_of_week ASC, id ASC`,
         [businessId],
       );
       return result.rows.map(mapBusinessHours);
@@ -59,7 +59,7 @@ export class PostgresBusinessHoursRepository implements BusinessHoursRepository 
   async getBusinessHours(context: AuthContext, businessId: number): Promise<BusinessHours[]> {
     return withTenantTransaction(context, businessId, async client => {
       const result = await client.query(
-        `SELECT ${COLUMNS} FROM ghm.business_hours WHERE business_id = $1 ORDER BY day_of_week ASC, id ASC`,
+        `SELECT ${COLUMNS} FROM ghm.get_public_business_hours($1) ORDER BY day_of_week ASC, id ASC`,
         [businessId],
       );
       return result.rows.map(mapBusinessHours);

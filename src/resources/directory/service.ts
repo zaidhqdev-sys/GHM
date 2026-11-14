@@ -48,6 +48,12 @@ const normalizeRadius = (value: unknown): number | undefined => {
   return value;
 };
 
+const normalizeBusinessType = (value: unknown): DirectoryQuery['businessType'] => {
+  if (value === undefined) return undefined;
+  if (value !== 'suppliers' && value !== 'contractors') throw new Error('businessType must be suppliers or contractors');
+  return value;
+};
+
 const normalizeSort = (value: unknown): DirectoryQuery['sort'] => {
   if (value === undefined) return 'rating';
   if (value !== 'rating' && value !== 'reviews' && value !== 'newest' && value !== 'distance') throw new Error('sort must be rating, reviews, newest, or distance');
@@ -80,6 +86,7 @@ export class DirectoryServiceImpl implements DirectoryService {
       latitude: normalizeCoordinate(query.latitude, 'latitude', -90, 90),
       longitude: normalizeCoordinate(query.longitude, 'longitude', -180, 180),
       radiusKm: normalizeRadius(query.radiusKm),
+      businessType: normalizeBusinessType(query.businessType),
       sort: normalizeSort(query.sort),
       page: normalizePage(query.page),
       pageSize: normalizePageSize(query.pageSize),

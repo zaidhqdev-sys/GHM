@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - integration/capability-gateway-qualification-20261110
   pull_request:
     branches:
       - main
@@ -35,8 +36,8 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgres://ghm_runtime:runtime-test-password@localhost:5432/ghm_disposable_test
       GHM_RUNTIME_DATABASE_URL: postgres://ghm_runtime:runtime-test-password@localhost:5432/ghm_disposable_test
+      GHM_ACTOR_GATEWAY_DATABASE_URL: postgres://ghm_actor_gateway:actor-gateway-test-password@localhost:5432/ghm_disposable_test
       GHM_PAYMENT_PROVIDER_DATABASE_URL: postgres://ghm_payment_provider:provider-test-password@localhost:5432/ghm_disposable_test
-      GHM_ACTOR_GATEWAY_DATABASE_URL: postgres://ghm_actor_gateway:gateway-test-password@localhost:5432/ghm_disposable_test
       GHM_MIGRATOR_DATABASE_URL: postgres://ghm_migrator:migrator-test-password@localhost:5432/ghm_disposable_test
       GHM_MIGRATION_DATABASE_NAME: ghm_disposable_test
       GHM_MIGRATION_DATABASE_HOST: localhost
@@ -50,6 +51,7 @@ jobs:
       INVITE_CODE: test-invite-code
       CORS_ORIGINS: http://localhost:3000
       GHM_AUTH_TOKEN_PEPPER: ci-test-token-pepper-32-bytes-minimum-length-000
+      GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -72,15 +74,109 @@ jobs:
           CREATE ROLE ghm_migrator LOGIN NOINHERIT PASSWORD 'migrator-test-password';
           GRANT ghm_schema_owner TO ghm_migrator;
           CREATE ROLE ghm_runtime LOGIN NOINHERIT PASSWORD 'runtime-test-password';
+          CREATE ROLE ghm_actor_gateway LOGIN NOINHERIT PASSWORD 'actor-gateway-test-password';
+          CREATE ROLE ghm_db_user NOLOGIN;
+          GRANT ghm_actor_gateway TO ghm_db_user WITH ADMIN OPTION, INHERIT FALSE, SET FALSE;
           CREATE ROLE ghm_payment_provider LOGIN NOINHERIT PASSWORD 'provider-test-password';
-          CREATE ROLE ghm_actor_gateway LOGIN NOINHERIT PASSWORD 'gateway-test-password';
           GRANT CONNECT ON DATABASE ghm_disposable_test TO ghm_migrator, ghm_runtime, ghm_payment_provider, ghm_actor_gateway;
           GRANT CREATE ON DATABASE ghm_disposable_test TO ghm_schema_owner;
           GRANT USAGE, CREATE ON SCHEMA public TO ghm_schema_owner;
           SQL
 
+      - name: Reproduce PostgreSQL 18 delegated CREATEROLE membership behavior
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d ghm_disposable_test -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE ghm_role_creator NOLOGIN CREATEROLE;
+          SET ROLE ghm_role_creator;
+          CREATE ROLE ghm_role_created LOGIN NOINHERIT;
+          RESET ROLE;
+
+          DO $do$
+          DECLARE
+            membership record;
+          BEGIN
+            SELECT pg_get_userbyid(m.grantor) AS grantor,
+                   m.admin_option,
+                   m.set_option,
+                   m.inherit_option
+              INTO membership
+              FROM pg_auth_members m
+              JOIN pg_roles member_role ON member_role.oid = m.member
+              JOIN pg_roles granted_role ON granted_role.oid = m.roleid
+             WHERE member_role.rolname = 'ghm_role_creator'
+               AND granted_role.rolname = 'ghm_role_created';
+
+            IF membership IS NULL
+               OR membership.grantor <> 'postgres'
+               OR membership.admin_option IS DISTINCT FROM true
+               OR membership.set_option IS DISTINCT FROM false
+               OR membership.inherit_option IS DISTINCT FROM false THEN
+              RAISE EXCEPTION 'Unexpected PostgreSQL 18 delegated CREATEROLE membership: %', membership;
+            END IF;
+          END
+          $do$;
+
+          SET ROLE ghm_role_creator;
+          REVOKE ghm_role_created FROM ghm_role_creator;
+          RESET ROLE;
+
+          DO $do$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1
+                FROM pg_auth_members m
+                JOIN pg_roles member_role ON member_role.oid = m.member
+                JOIN pg_roles granted_role ON granted_role.oid = m.roleid
+               WHERE member_role.rolname = 'ghm_role_creator'
+                 AND granted_role.rolname = 'ghm_role_created'
+                 AND m.grantor = 'postgres'::regrole
+            ) THEN
+              RAISE EXCEPTION 'Delegated creator unexpectedly revoked postgres-granted membership';
+            END IF;
+          END
+          $do$;
+
+          DROP ROLE ghm_role_created;
+          DROP ROLE ghm_role_creator;
+          SQL
+
       - name: Check storage qualification script syntax
         run: node --check scripts/qualify-storage-persistence.mjs
+
+      - name: Check Business profile qualification script syntax
+        run: node --check scripts/qualify-business-profile-contract-postgres.mjs
+
+      - name: Check supplier classification qualification script syntax
+        run: node --check scripts/qualify-business-supplier-classification-postgres.mjs
+
+      - name: Check capability governance qualification script syntax
+        run: node --check scripts/qualify-capability-catalogue-governance.mjs
+
+      - name: Check signed capability actor assertion qualification syntax
+        run: node --check scripts/qualify-capability-catalogue-governance.mjs
+
+      - name: Check signed gateway principal qualification syntax
+        run: node --check scripts/qualify-actor-gateway-principal.mjs
+
+      - name: Check capability governance cutover qualification script syntax
+        run: node --check scripts/qualify-capability-governance-cutover-postgres.mjs
+
+      - name: Check Business Capability gateway cutover qualification script syntax
+        run: node --check scripts/qualify-business-capability-gateway-cutover-postgres.mjs
+
+      - name: Check Saved Business gateway cutover qualification script syntax
+        run: node --check scripts/qualify-saved-business-gateway-cutover-postgres.mjs
+
+      - name: Check Business Hours gateway cutover qualification script syntax
+        run: node --check scripts/qualify-business-hours-gateway-cutover-postgres.mjs
+
+      - name: Check Trust Score gateway cutover qualification script syntax
+        run: node --check scripts/qualify-trust-score-gateway-cutover-postgres.mjs
+
+      - name: Check Business Logo gateway cutover qualification script syntax
+        run: node --check scripts/qualify-business-logo-gateway-cutover-postgres.mjs
 
       - name: Build
         run: npm run build
@@ -128,6 +224,33 @@ jobs:
 
       - name: Qualify Business Capability lifecycle and two-session assertion replacement on disposable PostgreSQL
         run: npm run qualify:business-capability-lifecycle-runtime
+
+      - name: Qualify system-admin Capability catalogue governance on disposable PostgreSQL
+        run: npm run qualify:capability-catalogue-governance
+
+      - name: Qualify capability legacy RPC cutover and gateway-only access on disposable PostgreSQL
+        run: npm run qualify:capability-governance-cutover
+
+      - name: Qualify Business Capability signed gateway cutover on disposable PostgreSQL
+        run: npm run qualify:business-capability-gateway-cutover
+
+      - name: Qualify Saved Business signed gateway cutover on disposable PostgreSQL
+        run: npm run qualify:saved-business-gateway-cutover
+
+      - name: Qualify Business Hours signed gateway cutover on disposable PostgreSQL
+        run: npm run qualify:business-hours-gateway-cutover
+
+      - name: Qualify Trust Score signed gateway cutover on disposable PostgreSQL
+        run: npm run qualify:trust-score-gateway-cutover
+
+      - name: Qualify Business Logo signed gateway cutover on disposable PostgreSQL
+        run: npm run qualify:business-logo-gateway-cutover
+
+      - name: Qualify GHM supplier classification and membership authorization on disposable PostgreSQL
+        run: npm run qualify:business-supplier-classification
+
+      - name: Qualify Business profile gateway and compatibility contract on disposable PostgreSQL
+        run: npm run qualify:business-profile-contract
 
       - name: Qualify commercial payment settlement identities against disposable PostgreSQL
         run: npm run build && node scripts/qualify-commercial-payment-result-runtime.mjs

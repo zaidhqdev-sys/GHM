@@ -11,11 +11,14 @@ import type { PublicBusinessService } from '../resources/business-identity/publi
 import { PostgresBusinessHoursRepository } from '../resources/business-hours/repository';
 import { BusinessHoursServiceImpl } from '../resources/business-hours/service';
 import { BusinessHoursService } from '../resources/business-hours/contracts';
+import { HttpBusinessHoursGatewayClient, BusinessHoursGatewayError, type BusinessHoursGatewayClient } from './business-hours-gateway-client';
 import { PostgresProjectRepository } from '../resources/project/repository';
 import { ProjectServiceImpl } from '../resources/project/service';
 import { CreateProjectInput, ProjectService, UpdateProjectInput } from '../resources/project/contracts';
 import { isRegisteredOperation, ResourceOperation } from '../resources/registry';
 import { config } from '../config';
+import { HttpSupplierClassificationGatewayClient, SupplierClassificationGatewayError, type SupplierClassificationGatewayClient } from './supplier-classification-gateway-client';
+import { HttpBusinessProfileGatewayClient, BusinessProfileGatewayError, type BusinessProfileGatewayClient } from './business-profile-gateway-client';
 import { PostgresPublicProjectRepository } from '../resources/project/public-repository';
 import { PublicProjectServiceImpl } from '../resources/project/public-service';
 import { PublicProjectService } from '../resources/project/public-contracts';
@@ -48,6 +51,7 @@ import { registerCampaignRoutes } from './campaign-router';
 import { registerOpportunityRoutes } from './opportunity-router';
 import { registerAuthRoutes, type AuthRouterDependencies } from './auth-router';
 import { registerSavedBusinessRoutes } from './saved-business-router';
+import { HttpSavedBusinessGatewayClient, type SavedBusinessGatewayClient } from './saved-business-gateway-client';
 import { PostgresOnboardingProgressRepository } from '../resources/onboarding/repository';
 import { DefaultOnboardingProgressService } from '../resources/onboarding/service';
 import type { OnboardingProgressService } from '../resources/onboarding/contracts';
@@ -59,7 +63,10 @@ import { registerRelationshipsOutcomesRoutes } from './relationships-outcomes-ro
 import { registerBusinessCapabilityRoutes } from './business-capability-router';
 import { PgCapabilityRepository } from '../resources/capability/repository';
 import { CapabilityServiceImpl } from '../resources/capability/service';
+import type { CapabilityService } from '../resources/capability/contracts';
 import { registerCapabilityCatalogueRoutes } from './capability-catalogue-router';
+import { HttpCapabilityGovernanceGatewayClient } from './capability-governance-gateway-client';
+import { HttpCapabilityMutationGatewayClient } from './capability-mutation-gateway-client';
 import { PostgresBusinessCapabilityEvidenceRepository } from '../resources/business-capability-evidence/repository';
 import { BusinessCapabilityEvidenceServiceImpl } from '../resources/business-capability-evidence/service';
 import type { BusinessCapabilityEvidenceService } from '../resources/business-capability-evidence/contracts';
@@ -74,6 +81,7 @@ import { DirectoryReviewServiceImpl } from '../resources/directory-review/servic
 import type { DirectoryReviewService } from '../resources/directory-review/contracts';
 import { registerDirectoryReviewRoutes } from './directory-review-router';
 import { registerTrustScoreRoutes } from './trust-score-router';
+import { HttpTrustScoreGatewayClient, type TrustScoreGatewayClient } from './trust-score-gateway-client';
 import { registerSupportRequestRoutes } from './support-request-router';
 import { registerReviewRoutes } from './review-router';
 import type { GhmAuthService } from '../auth/ghm-auth-service';
@@ -125,6 +133,7 @@ import { PostgresCommercialRepository } from '../resources/commercial/repository
 import type { CommercialService } from '../resources/commercial/contracts';
 import { registerCommercialRoutes } from './commercial-router';
 import { registerStorageRoutes } from './storage-router';
+import { HttpBusinessLogoGatewayClient, type BusinessLogoGatewayClient } from './business-logo-gateway-client';
 import { createStorageProvider } from '../storage/factory';
 
 
@@ -141,11 +150,13 @@ export interface AppDependencies {
   readonly onboardingService?: OnboardingProgressService;
   readonly relationshipsOutcomesService?: RelationshipsOutcomesService;
   readonly businessCapabilityService?: BusinessCapabilityService;
+  readonly capabilityService?: CapabilityService;
   readonly businessCapabilityEvidenceService?: BusinessCapabilityEvidenceService;
   readonly businessRegistrationIdentityService?: BusinessRegistrationIdentityService;
-  readonly businessRegistrationIdentityGatewayClient?: BusinessRegistrationIdentityGatewayClient;
   readonly directoryReviewService?: DirectoryReviewService;
   readonly trustScoreService?: TrustScoreService;
+  readonly trustScoreGatewayClient?: TrustScoreGatewayClient;
+  readonly trustScoreGatewayRequired?: boolean;
   readonly supportRequestService?: SupportRequestService;
   readonly reviewService?: ReviewService;
   readonly projectQuoteService?: ProjectQuoteService;
@@ -165,6 +176,18 @@ export interface AppDependencies {
   readonly quoteFlowMigrationResetRecoveryService?: QuoteFlowMigrationResetRecoveryService;
   readonly quoteFlowMigrationResetCompletionService?: QuoteFlowMigrationResetCompletionService;
   readonly resourceAuthMiddleware?: import('express').RequestHandler;
+  readonly businessHoursGatewayClient?: BusinessHoursGatewayClient;
+  readonly businessHoursGatewayRequired?: boolean;
+  readonly businessLogoGatewayClient?: BusinessLogoGatewayClient;
+  readonly businessLogoGatewayRequired?: boolean;
+  readonly savedBusinessGatewayClient?: SavedBusinessGatewayClient;
+  readonly savedBusinessGatewayRequired?: boolean;
+  readonly businessRegistrationIdentityGatewayClient?: BusinessRegistrationIdentityGatewayClient;
+  readonly businessRegistrationIdentityGatewayRequired?: boolean;
+  readonly supplierClassificationGatewayClient?: SupplierClassificationGatewayClient;
+  readonly businessProfileGatewayClient?: BusinessProfileGatewayClient;
+  readonly capabilityMutationGatewayClient?: HttpCapabilityMutationGatewayClient;
+  readonly capabilityMutationGatewayRequired?: boolean;
   readonly connectService?: Omit<ConnectServiceHttpDependencies, 'savedBusinesses'>;
 }
 
@@ -208,7 +231,7 @@ const parseCreateBusinessInput = (body: unknown): { name: string } | null => {
 const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | null => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   const input = body as Record<string, unknown>;
-  const allowed = new Set(['name', 'slug', 'description', 'phone', 'email', 'province', 'city', 'physicalAddress', 'latitude', 'longitude', 'whatsapp', 'website', 'avatarLetter', 'avatarColor', 'yearsInBusiness']);
+  const allowed = new Set(['name', 'slug', 'description', 'phone', 'email', 'province', 'city', 'physicalAddress', 'latitude', 'longitude', 'whatsapp', 'website', 'avatarLetter', 'avatarColor', 'yearsInBusiness', 'isSupplier']);
   const keys = Object.keys(input);
   if (keys.length === 0 || keys.some((key) => !allowed.has(key))) return null;
   if (Object.hasOwn(input, 'name') && (typeof input.name !== 'string' || !input.name.trim())) return null;
@@ -225,6 +248,7 @@ const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | n
   if (Object.hasOwn(input, 'avatarLetter') && input.avatarLetter !== null && (typeof input.avatarLetter !== 'string' || input.avatarLetter.trim().length > 3)) return null;
   if (Object.hasOwn(input, 'avatarColor') && input.avatarColor !== null && (typeof input.avatarColor !== 'string' || input.avatarColor.trim().length > 32)) return null;
   if (Object.hasOwn(input, 'yearsInBusiness') && (typeof input.yearsInBusiness !== 'number' || !Number.isInteger(input.yearsInBusiness) || input.yearsInBusiness < 0 || input.yearsInBusiness > 100)) return null;
+  if (Object.hasOwn(input, 'isSupplier') && typeof input.isSupplier !== 'boolean') return null;
   if (Object.hasOwn(input, 'latitude') !== Object.hasOwn(input, 'longitude')) return null;
   return {
     ...(Object.hasOwn(input, 'name') ? { name: input.name as string } : {}),
@@ -242,6 +266,7 @@ const parseUpdateBusinessInput = (body: unknown): UpdateBusinessProfileInput | n
     ...(Object.hasOwn(input, 'avatarLetter') ? { avatarLetter: input.avatarLetter as string | null } : {}),
     ...(Object.hasOwn(input, 'avatarColor') ? { avatarColor: input.avatarColor as string | null } : {}),
     ...(Object.hasOwn(input, 'yearsInBusiness') ? { yearsInBusiness: input.yearsInBusiness as number } : {}),
+    ...(Object.hasOwn(input, 'isSupplier') ? { isSupplier: input.isSupplier as boolean } : {}),
   };
 };
 
@@ -378,10 +403,17 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const app = express();
   const resourceAuthMiddleware = dependencies.resourceAuthMiddleware ?? requireAuth;
   const service = dependencies.businessIdentityService ?? new BusinessIdentityServiceImpl(new PostgresBusinessIdentityRepository());
+  const supplierClassificationGatewayClient = dependencies.supplierClassificationGatewayClient ?? (config.actorGatewayUrl ? new HttpSupplierClassificationGatewayClient(config.actorGatewayUrl) : undefined);
+  const businessProfileGatewayClient = dependencies.businessProfileGatewayClient ?? (config.actorGatewayUrl ? new HttpBusinessProfileGatewayClient(config.actorGatewayUrl) : undefined);
   const publicBusinessService = dependencies.publicBusinessService ?? new PublicBusinessServiceImpl(new PostgresPublicBusinessRepository());
   const businessHoursService =
     dependencies.businessHoursService
     ?? new BusinessHoursServiceImpl(new PostgresBusinessHoursRepository());
+  const businessHoursGatewayClient = dependencies.businessHoursGatewayClient
+    ?? (config.actorGatewayUrl ? new HttpBusinessHoursGatewayClient(config.actorGatewayUrl) : undefined);
+  const businessHoursGatewayRequired = config.isProduction || dependencies.businessHoursGatewayRequired === true;
+  const businessLogoGatewayClient = dependencies.businessLogoGatewayClient ?? (config.actorGatewayUrl ? new HttpBusinessLogoGatewayClient(config.actorGatewayUrl) : undefined);
+  const businessLogoGatewayRequired = config.isProduction || dependencies.businessLogoGatewayRequired === true;
   const projectService = dependencies.projectService ?? new ProjectServiceImpl(new PostgresProjectRepository());
   const publicProjectService =
     dependencies.publicProjectService ??
@@ -398,11 +430,18 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const savedBusinessService =
     dependencies.savedBusinessService ??
     new SavedBusinessServiceImpl(new PostgresSavedBusinessRepository());
+  const savedBusinessGatewayClient = dependencies.savedBusinessGatewayClient
+    ?? (config.actorGatewayUrl ? new HttpSavedBusinessGatewayClient(config.actorGatewayUrl) : undefined);
+  const savedBusinessGatewayRequired = config.isProduction || dependencies.savedBusinessGatewayRequired === true;
   const onboardingService = dependencies.onboardingService ?? new DefaultOnboardingProgressService(new PostgresOnboardingProgressRepository());
   const relationshipsOutcomesService = dependencies.relationshipsOutcomesService ?? new DefaultRelationshipsOutcomesService(new PostgresRelationshipsOutcomesRepository());
   const businessCapabilityService =
     dependencies.businessCapabilityService ??
     new BusinessCapabilityServiceImpl(new PostgresBusinessCapabilityRepository());
+  const capabilityService = dependencies.capabilityService ?? new CapabilityServiceImpl(new PgCapabilityRepository());
+  const capabilityGovernanceGatewayClient = config.actorGatewayUrl ? new HttpCapabilityGovernanceGatewayClient(config.actorGatewayUrl) : undefined;
+  const capabilityMutationGatewayClient = dependencies.capabilityMutationGatewayClient ?? (config.actorGatewayUrl ? new HttpCapabilityMutationGatewayClient(config.actorGatewayUrl) : undefined);
+  const capabilityMutationGatewayRequired = config.isProduction || dependencies.capabilityMutationGatewayRequired === true;
   const businessCapabilityEvidenceService =
     dependencies.businessCapabilityEvidenceService ??
     new BusinessCapabilityEvidenceServiceImpl(new PostgresBusinessCapabilityEvidenceRepository());
@@ -411,6 +450,9 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   const trustScoreService =
     dependencies.trustScoreService ??
     new TrustScoreServiceImpl(new PostgresTrustScoreRepository());
+  const trustScoreGatewayClient = dependencies.trustScoreGatewayClient
+    ?? (config.actorGatewayUrl ? new HttpTrustScoreGatewayClient(config.actorGatewayUrl) : undefined);
+  const trustScoreGatewayRequired = config.isProduction || dependencies.trustScoreGatewayRequired === true;
   const supportRequestService =
     dependencies.supportRequestService ??
     new SupportRequestServiceImpl(new PostgresSupportRequestRepository());
@@ -446,7 +488,7 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   app.use(express.json({ limit: '1mb' }));
 
   if (config.storage) {
-    registerStorageRoutes(app, createStorageProvider(config.storage), resourceAuthMiddleware, config.storage.uploadGrantTtlSeconds, config.storage.downloadGrantMaxTtlSeconds);
+    registerStorageRoutes(app, createStorageProvider(config.storage), resourceAuthMiddleware, config.storage.uploadGrantTtlSeconds, config.storage.downloadGrantMaxTtlSeconds, undefined, businessLogoGatewayClient, businessLogoGatewayRequired);
   }
 
   app.get('/', (_req: Request, res: Response) => {
@@ -777,9 +819,35 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
           return;
         }
         const validHours = hours.filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+        if (businessHoursGatewayClient) {
+          const authorization = req.header('authorization');
+          if (!authorization?.startsWith('Bearer ') || !authorization.slice(7).trim()) {
+            res.status(401).json({ error: 'unauthorized' });
+            return;
+          }
+          const updated = await businessHoursGatewayClient.replace(authorization.slice(7).trim(), { businessId, hours: validHours });
+          res.status(200).json({ hours: updated });
+          return;
+        }
+        if (businessHoursGatewayRequired) {
+          res.status(503).json({ error: 'service_unavailable' });
+          return;
+        }
         const updated = await businessHoursService.replaceBusinessHours(context, { businessId, hours: validHours });
         res.status(200).json({ hours: updated });
       } catch (error) {
+        if (error instanceof BusinessHoursGatewayError) {
+          if (error.status === 401 || error.status === 403 || error.status === 404) {
+            res.status(403).json({ error: 'forbidden' });
+            return;
+          }
+          if (error.status === 400) {
+            res.status(400).json({ error: 'invalid_request' });
+            return;
+          }
+          res.status(503).json({ error: 'service_unavailable' });
+          return;
+        }
         if (error instanceof Error && (
           error.message.includes('Business Hours') ||
           error.message.includes('day') ||
@@ -807,6 +875,20 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         const businessId = businessIdValue === null ? null : positiveIntegerId(businessIdValue);
         if (businessId === null) {
           res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+        if (businessHoursGatewayClient) {
+          const authorization = req.header('authorization');
+          if (!authorization?.startsWith('Bearer ') || !authorization.slice(7).trim()) {
+            res.status(401).json({ error: 'unauthorized' });
+            return;
+          }
+          const hours = await businessHoursGatewayClient.list(authorization.slice(7).trim(), businessId);
+          res.status(200).json({ hours });
+          return;
+        }
+        if (businessHoursGatewayRequired) {
+          res.status(503).json({ error: 'service_unavailable' });
           return;
         }
         const hours = await businessHoursService.getBusinessHours(context, businessId);
@@ -876,9 +958,54 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
         res.status(400).json({ error: 'invalid_request' });
         return;
       }
-      const business = await service.updateBusiness(context, businessId, input);
+      if (input.isSupplier !== undefined) {
+        if (Object.keys(input).length !== 1) {
+          res.status(400).json({ error: 'invalid_request' });
+          return;
+        }
+        if (!supplierClassificationGatewayClient) {
+          res.status(503).json({ error: 'service_unavailable' });
+          return;
+        }
+        const authorization = req.header('authorization');
+        if (!authorization?.startsWith('Bearer ') || !authorization.slice(7).trim()) {
+          res.status(401).json({ error: 'unauthorized' });
+          return;
+        }
+        await supplierClassificationGatewayClient.update(authorization.slice(7).trim(), businessId, input.isSupplier);
+        const business = await service.getManagedBusiness(context, businessId);
+        if (!business) {
+          res.status(404).json({ error: 'not_found' });
+          return;
+        }
+        res.status(200).json({ business });
+        return;
+      }
+      if (!businessProfileGatewayClient) {
+        res.status(503).json({ error: 'service_unavailable' });
+        return;
+      }
+      const profileAuthorization = req.header('authorization');
+      if (!profileAuthorization?.startsWith('Bearer ') || !profileAuthorization.slice(7).trim()) {
+        res.status(401).json({ error: 'unauthorized' });
+        return;
+      }
+      await businessProfileGatewayClient.update(profileAuthorization.slice(7).trim(), businessId, input as unknown as Record<string, unknown>);
+      const business = await service.getManagedBusiness(context, businessId);
+      if (!business) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
       res.status(200).json({ business });
     } catch (error) {
+      if (error instanceof SupplierClassificationGatewayError || error instanceof BusinessProfileGatewayError) {
+        if (error.status === 401 || error.status === 403) { res.status(403).json({ error: 'forbidden' }); return; }
+        if (error.status === 400) { res.status(400).json({ error: 'invalid_request' }); return; }
+        if (error.status === 404) { res.status(404).json({ error: 'not_found' }); return; }
+        if (error.status === 409) { res.status(409).json({ error: 'conflict' }); return; }
+        res.status(503).json({ error: 'service_unavailable' });
+        return;
+      }
       handleError(error, res);
     }
   });
@@ -940,17 +1067,17 @@ export const createApp = (dependencies: AppDependencies = {}): express.Express =
   registerEnquiryRoutes(app, enquiryService, resourceAuthMiddleware);
   registerCampaignRoutes(app, campaignService, resourceAuthMiddleware);
   registerOpportunityRoutes(app, opportunityService, resourceAuthMiddleware);
-  registerSavedBusinessRoutes(app, savedBusinessService, resourceAuthMiddleware);
+  registerSavedBusinessRoutes(app, savedBusinessService, resourceAuthMiddleware, savedBusinessGatewayClient, savedBusinessGatewayRequired);
   registerOnboardingRoutes(app, onboardingService, resourceAuthMiddleware);
   registerRelationshipsOutcomesRoutes(app, relationshipsOutcomesService, resourceAuthMiddleware);
-  registerBusinessCapabilityRoutes(app, businessCapabilityService, resourceAuthMiddleware);
-  registerCapabilityCatalogueRoutes(app, new CapabilityServiceImpl(new PgCapabilityRepository()), resourceAuthMiddleware);
-  registerBusinessCapabilityEvidenceRoutes(app, businessCapabilityEvidenceService, resourceAuthMiddleware);
+  registerBusinessCapabilityRoutes(app, businessCapabilityService, resourceAuthMiddleware, capabilityMutationGatewayClient, capabilityMutationGatewayRequired);
+  registerCapabilityCatalogueRoutes(app, capabilityService, resourceAuthMiddleware, capabilityGovernanceGatewayClient);
+  registerBusinessCapabilityEvidenceRoutes(app, businessCapabilityEvidenceService, resourceAuthMiddleware, capabilityMutationGatewayClient, capabilityMutationGatewayRequired);
   const businessRegistrationIdentityGatewayClient = dependencies.businessRegistrationIdentityGatewayClient
     ?? (config.actorGatewayUrl ? new HttpBusinessRegistrationIdentityGatewayClient(config.actorGatewayUrl) : undefined);
-  registerBusinessRegistrationIdentityRoutes(app, businessRegistrationIdentityService, resourceAuthMiddleware, businessRegistrationIdentityGatewayClient);
+  registerBusinessRegistrationIdentityRoutes(app, businessRegistrationIdentityService, resourceAuthMiddleware, businessRegistrationIdentityGatewayClient, config.isProduction || dependencies.businessRegistrationIdentityGatewayRequired === true);
   registerDirectoryReviewRoutes(app, directoryReviewService, resourceAuthMiddleware);
-  registerTrustScoreRoutes(app, trustScoreService, resourceAuthMiddleware);
+  registerTrustScoreRoutes(app, trustScoreService, resourceAuthMiddleware, trustScoreGatewayClient, trustScoreGatewayRequired);
   registerSupportRequestRoutes(app, supportRequestService, resourceAuthMiddleware);
   registerReviewRoutes(app, reviewService, resourceAuthMiddleware);
   registerProjectQuoteRoutes(app, projectQuoteService, resourceAuthMiddleware);
