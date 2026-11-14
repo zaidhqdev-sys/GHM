@@ -4418,3 +4418,36 @@ The owner checked the existing password-file locations and both PostgreSQL confi
 **Backup gate assessment:** the November 14 production export has strong integrity/readability evidence: Render export record, local file presence (81,507 bytes), SHA-256 `2341471A3D0890A1B0E26D356BE7FB121385FDD3A33B8340658CB290CBC749F4`, successful outer gzip/tar listing and extraction, and successful PostgreSQL 18.6 directory-format TOC parsing. A full restore test remains unperformed. Keep this explicit limitation in all subsequent decisions; do not describe backup/restore as fully qualified.
 
 **Proceeding order:** stop spending time trying to gain local database access. Continue with the next independent read-only production gate: migration-ledger authority/evidence. Revisit restore testing only if an existing, owner-approved local PostgreSQL credential route becomes available without altering authentication or incurring cost. Production credentials and migration secrets must never be pasted into chat.
+
+
+### Production migration-audit path — static source and policy review — 2026-11-14
+
+After deferring local restore testing because no approved local PostgreSQL credential path exists, the next independent gate was reviewed from the current construction branch without connecting to any database.
+
+**Audit implementation:** `scripts/forensic-migration-reconciliation.mjs`, invoked by package script `npm run audit:migrations`.
+
+**Connection and authority contract confirmed in source:**
+1. Loads existing local environment via `dotenv/config`.
+2. Requires `GHM_MIGRATOR_DATABASE_URL`; fails closed if absent.
+3. Defaults expected database to `ghm_db` via `GHM_MIGRATION_AUDIT_DATABASE`.
+4. Resolves the production target only when database is `ghm_db`; production target files are selected by the explicit resolver.
+5. Connects using the supplied migrator connection string; TLS is enabled only when `DATABASE_SSL=true`.
+6. Starts `BEGIN READ ONLY`.
+7. Verifies both `current_user` and `session_user` are `ghm_migrator`, database is `ghm_db`, and the migrator can set role `ghm_schema_owner`.
+8. Executes `SET ROLE ghm_schema_owner` and verifies the effective/session identities again.
+9. Reads only `ghm.ghm_schema_migrations` and repository migration/config files.
+10. Always rolls back the transaction in `finally`; it does not apply migrations.
+
+**Important command distinction:** use only `npm run audit:migrations` for the forensic production audit. Do not use `npm run audit:migrations:predeploy` because it passes `--allow-pending` and has different semantics. Do not run `npm run migrate`.
+
+**Current branch's production audit policy files (static counts):**
+- `config/historical-migration-provenance-exceptions.production.json`: 16 historical checksum provenance records.
+- `config/retained-historical-migrations.production.json`: 10 retained historical migration records.
+- `config/pending-migrations.production.json`: 1 explicitly allowlisted pending migration (`20261109210000_deactivate_unrecognized_public_directory_records`).
+These are repository-side policy/configuration counts only. They are not a live ledger audit and do not prove the production ledger currently matches.
+
+**Credential availability:** the previous local preflight recorded `GHM_MIGRATOR_DATABASE_URL` absent from the local process environment. No existing authorized local password file was found for the local PostgreSQL instances. Do not create, rotate, request, or paste a credential into chat; do not substitute `ghm_db_user` or `ghm_app_user`; do not add a migration URL to the production runtime service. The script is intentionally identity-gated and must run with the dedicated `ghm_migrator` login against production `ghm_db`.
+
+**Decision:** the static audit path is understood and is read-only by construction, but a production ledger audit cannot be run until an already-authorized `ghm_migrator` connection secret is available in an approved local operator context. Continue with source-side reconciliation only; do not weaken the authority contract or bypass the missing credential.
+
+No database connection was attempted in this checkpoint. No production/local database, role, grant, credential, environment variable, service, migration, deployment, or backup was changed.
