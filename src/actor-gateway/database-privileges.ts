@@ -126,10 +126,9 @@ export const ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL = `
       SELECT signature FROM gateway_functions ORDER BY signature
     ) AS executable_functions,
     ARRAY(
-      SELECT to_regprocedure(signature)::text
+      SELECT signature
         FROM expected_signatures
-       WHERE to_regprocedure(signature) IS NOT NULL
-       ORDER BY 1
+       ORDER BY signature
     ) AS expected_functions,
     ARRAY(
       SELECT f.signature
