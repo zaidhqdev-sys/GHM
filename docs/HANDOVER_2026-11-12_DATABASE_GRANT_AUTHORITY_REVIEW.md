@@ -2475,3 +2475,10 @@ Exact-head CI run '43594131250' for commit 'c105c690c570dd3035bd1ae265f3464c2a61
 The Worker uses 'workers/actor-gateway/index.ts' and 'workers/actor-gateway/wrangler.jsonc'. The config retains a placeholder Hyperdrive ID/local disposable URL and must not be deployed as-is. The existing Render Node entry point remains unchanged.
 
 The production migration audit is read-only and requires the pre-existing 'ghm_migrator' login URL plus SET ROLE 'ghm_schema_owner'; current GitHub CI only provisions disposable credentials and no production migration runner exists in Render. Do not add services or place credentials in application env/docs/chat. Owner-controlled one-off local execution is the candidate only if the owner already holds the migrator credential. No production state changed.
+
+
+### 2026-11-14 Connect identity-authority provenance closure and audit runbook
+
+The exact Connect identity-authority function symbol has no result in repository indexed code search; the bounded current migration/cutover source review did not find its creating migration. It remains a production-observed object with unresolved historical provenance. Do not infer its origin or alter its ACL/definition. Resolve only through historical Git refs/PRs or an approved backup/catalog archive.
+
+The read-only production migration audit is 'npm run audit:migrations'. It requires an already available dedicated 'GHM_MIGRATOR_DATABASE_URL', verifies 'session_user=current_user=ghm_migrator', checks SET ROLE 'ghm_schema_owner', uses 'BEGIN READ ONLY', reads the migration ledger, and rolls back. If the dedicated URL is not already securely available to the owner locally, stop and report the prerequisite; do not create/rotate credentials, substitute app roles, or add a Render service. Detailed PowerShell procedure and safety conditions are in the security qualification handover.
