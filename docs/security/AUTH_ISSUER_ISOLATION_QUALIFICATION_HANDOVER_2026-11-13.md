@@ -3640,3 +3640,47 @@ This run qualifies the current Worker hardening source and the full stacked disp
 PR #277 remains an open draft, unmerged, stacked on `construction/auth-issuer-stacked-on-pr272-20261113`. It must not be merged independently of its parent security integration. The PR description's earlier "Validation pending" text is superseded by this completed exact-head run.
 
 No production database, grants, credentials, Render environment/services/deployments, Cloudflare resources, DNS, secrets, billing settings or traffic routes were changed. No paid service was created.
+
+
+### Live production Render role inventory — read-only verification, 2026-11-14
+
+Read-only inspection was performed directly against the Render PostgreSQL instance:
+- Render service: 'ghm-db'
+- Render Postgres ID: 'dpg-dag0sdtbedkc7389vi2g-a'
+- Database: 'ghm_db'
+- PostgreSQL major version: 18
+- Query method: Render read-only SQL transaction. No DDL, DML, grants, revocations, credential changes or connection setting changes were issued.
+
+#### Observed role attributes
+
+- 'ghm_db_user': LOGIN, INHERIT, CREATEDB and CREATEROLE; not superuser, not replication, not BYPASSRLS.
+- 'ghm_app_user': LOGIN, INHERIT; no CREATEDB/CREATEROLE/superuser/replication/BYPASSRLS.
+- 'ghm_actor_gateway': LOGIN, NOINHERIT; no CREATEDB/CREATEROLE/superuser/replication/BYPASSRLS.
+- 'ghm_runtime': LOGIN, NOINHERIT; no elevated role attributes above.
+- 'ghm_migrator': LOGIN, NOINHERIT; no elevated role attributes above.
+- 'ghm_payment_provider': LOGIN, NOINHERIT; no elevated role attributes above.
+- 'ghm_schema_owner': NOLOGIN, NOINHERIT; no elevated role attributes above.
+- 'ghm_auth_issuer' was not present in the returned production role inventory.
+
+#### Observed production role memberships
+
+The live pg_auth_members query returned:
+- 'ghm_app_user' is a member of 'ghm_db_user' (grantor 'postgres').
+- 'ghm_db_user' has ADMIN OPTION over 'ghm_actor_gateway', 'ghm_migrator', 'ghm_payment_provider', 'ghm_runtime', and 'ghm_schema_owner' (grantor 'postgres').
+- An additional 'ghm_db_user' to 'ghm_runtime' membership row exists with grantor 'ghm_db_user', no ADMIN OPTION, INHERIT true and SET true.
+- 'ghm_migrator' is a member of 'ghm_schema_owner' (grantor 'ghm_db_user'), with INHERIT false and SET true.
+- The query also returned expected platform memberships in 'pg_read_all_stats' and 'pg_signal_backend'.
+
+#### Security interpretation and hold
+
+Production role separation remains NOT QUALIFIED. In particular, the production connection principal 'ghm_db_user' has database/role creation attributes and delegated ADMIN OPTION over the security principals that are intended to be separated. 'ghm_app_user' inherits membership in that principal. This is a live production authority boundary, not a disposable-test failure.
+
+The Worker and issuer disposable qualification results do not override this finding. No production changes were made. Do not attempt REVOKE, ALTER ROLE, role recreation, credential rotation, connection-string changes, Render environment updates or deployment until all of the following are established:
+1. A current, verified production backup and tested restoration path (the previously identified Nov 4 backup alone is not sufficient evidence of current recoverability).
+2. A complete dependency map of ownership, grants, default privileges, SECURITY DEFINER functions, connection pool/session role assumptions, and application runtime usage for each affected role.
+3. A staged, reversible migration/role-transition plan that preserves application availability and has a clear rollback route.
+4. The exact intended production login principals and their least-privilege effective grants, verified read-only before and after the controlled cutover.
+
+The role inventory did not prove whether the 'ghm_db_user' ADMIN OPTION memberships can be safely removed from the current application session; that earlier attempted revoke did not resolve the membership. Do not repeat it. Render support's prior escalation remains relevant.
+
+**Current production disposition:** read-only findings confirmed; privilege remediation blocked pending recovery evidence and complete authority/dependency mapping. No paid infrastructure was created or modified.
