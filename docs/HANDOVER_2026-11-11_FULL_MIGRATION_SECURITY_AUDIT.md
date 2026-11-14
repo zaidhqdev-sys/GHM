@@ -3046,3 +3046,8 @@ Next use the existing `ghm_migrator` connection path and its permitted SET ROLE 
 - Production migration ledger count/checksum reconciliation: BLOCKED pending controlled migrator/owner read-only query.
 - Production migration, deployment, Render environment, roles/grants and data: UNCHANGED.
 - Render auto-deploy remains OFF. PayFast remains paused. No paid resources added.
+
+
+### Render release state rechecked after PR #278 merge
+
+A fresh Render service inspection after the merge confirms the production target `GHM-Internal-Runtime` (`srv-damupsek1f9s73eq8kkg`) still has auto-deploy OFF (`autoDeploy=no`, trigger `off`), tracks `main`, and retains `/healthz` as its configured health check. The latest service events still show the 2026-11-10 successful deployment; no deployment event was created by PR #278 or the subsequent handover commits. The service remains unsuspended. No production release has been started.
