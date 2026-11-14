@@ -2757,3 +2757,64 @@ Do not add local tooling or separate-process variables to the Resource API servi
 6. The current Render integration cannot read environment values or list current environment names. The current full Render inventory must be reviewed in the service Environment page before any replace-all operation. Prefer a controlled merge update if preserving unknown existing values.
 
 Operator's stated goal: establish one final correct Internal Runtime environment and then stop repeated value changes. Keep auto-deploy OFF; no deploy until the complete manifest is populated, applied once, and validated. No Render environment value or secret has been changed by this inspection.
+
+## 2026-11-14 — Corrected live GHM Internal Runtime environment inventory supplied by operator
+
+Correction: the previous inspection and discussion mistakenly used the GHM Identity Qualification service as a point of reference for environment values. The operator has now supplied the complete current environment-variable name/value inventory for the actual ghm-internal-runtime service, with secrets redacted. This is the authoritative supplied snapshot for the current reconciliation; prior assumptions that the Render environment contained only DATABASE_URL, lacked GHM_MIGRATOR_DATABASE_URL, or had an unknown production KID are superseded.
+
+Target service remains Render service ID srv-damupsek1f9s73eq8kkg, service slug ghm-internal-runtime, Frankfurt, auto-deploy OFF. No Render values have been changed.
+
+### Operator-supplied current inventory (secret values intentionally redacted)
+
+- CORS_ORIGINS=http://localhost:5173,https://ghm-cu1.pages.dev,https://c135fd05.ghm-cu1.pages.dev,https://zaid-connect.vercel.app
+- DATABASE_SSL=true
+- DATABASE_URL=postgresql://ghm_runtime:<redacted>@dpg-dag0sdtbedkc7389vi2g-a.frankfurt-postgres.render.com/ghm_db
+- GHM_AUTH_TOKEN_PEPPER=<redacted>
+- GHM_JWT_ES256_KID=ghm-es256-20260922-1e9b770b7589
+- GHM_JWT_ES256_PRIVATE_KEY_PEM=<redacted>
+- GHM_JWT_ES256_PUBLIC_KEY_PEM=<redacted>
+- GHM_MIGRATOR_DATABASE_URL=postgresql://ghm_migrator:<redacted>@dpg-dag0sdtbedkc7389vi2g-a.frankfurt-postgres.render.com/ghm_db
+- INVITE_CODE=<redacted>
+- NODE_ENV=development
+- PAYFAST_CANCEL_URL=https://zaid-connect.vercel.app/
+- PAYFAST_ENVIRONMENT=sandbox
+- PAYFAST_MERCHANT_ID=<redacted>
+- PAYFAST_MERCHANT_KEY=<redacted>
+- PAYFAST_NOTIFY_URL=https://ghm-internal-runtime.onrender.com/api/v1/commercial/payfast/itn
+- PAYFAST_PASSPHRASE= (blank / not set)
+- PAYFAST_RETURN_URL=https://zaid-connect.vercel.app/workspace/commercial/payment-return
+- STORAGE_ACCESS_KEY_ID=<redacted>
+- STORAGE_BUCKET=zaid-ghm-production
+- STORAGE_DOWNLOAD_GRANT_MAX_TTL_SECONDS=3600
+- STORAGE_ENDPOINT=https://a9b80a604a1ac4e9b26ecdac2fde7d5e.r2.cloudflarestorage.com
+- STORAGE_FORCE_PATH_STYLE=true
+- STORAGE_PROVIDER=s3
+- STORAGE_REGION=auto
+- STORAGE_SECRET_ACCESS_KEY=<redacted>
+- STORAGE_UPLOAD_GRANT_TTL_SECONDS=900
+- TRUST_PROXY=true
+
+### Comparison against current mainline code
+
+- src/config.ts: when NODE_ENV=production, the Resource API requires GHM_RUNTIME_DATABASE_URL; it does not fall back to DATABASE_URL in production. Outside production, it uses GHM_RUNTIME_DATABASE_URL if set, otherwise required DATABASE_URL. Therefore the current NODE_ENV=development plus DATABASE_URL arrangement selects the correct host/database/login but is not the production configuration. Final correction requires setting NODE_ENV=production and providing GHM_RUNTIME_DATABASE_URL with the same verified runtime credential. Do not remove or rename anything until the coordinated update is ready.
+- The supplied DATABASE_URL target is confirmed as host dpg-dag0sdtbedkc7389vi2g-a.frankfurt-postgres.render.com, database ghm_db, login ghm_runtime. Password value is redacted and has not been authenticated in this inspection.
+- GHM_MIGRATOR_DATABASE_URL targets the same production database with the distinct ghm_migrator login. The migration script src/db/migrate.ts consumes this variable and the migration target guard inputs, but the service's npm start command is node dist/server.js; it does not invoke the migration command. This makes the migrator credential unnecessary in the long-running Resource API environment and increases credential exposure if retained there. Remove it from the runtime service only as part of the agreed single coordinated environment update; keep it in controlled migration operator context.
+- DATABASE_SSL=true and TRUST_PROXY=true match current production security requirements/legacy proxy parsing. TRUST_PROXY=true maps to one trusted hop; no topology change is proposed here.
+- CORS_ORIGINS is present and syntactically valid. It includes localhost plus the Cloudflare Pages production hostname, a specific Cloudflare Pages deployment hostname, and the Zaid Connect Vercel hostname. For production hardening, localhost should not remain in the final production allowlist. Retain the two Cloudflare entries only if the named deployment hostname is still intentionally used; retain the Zaid Connect origin. Confirm whether the specific Cloudflare deployment hostname is still required before the final one-time change.
+- The supplied production KID is ghm-es256-20260922-1e9b770b7589; it supersedes the earlier mistaken comparison with local ghm-local-qualification. Preserve this KID and its existing matching production public/private keypair as a unit. Do not replace with local qualification key material.
+- GHM_AUTH_TOKEN_PEPPER and INVITE_CODE are already present as redacted production values. Preserve both exactly; do not copy local values over them.
+- Storage config is complete: provider s3, region auto, bucket zaid-ghm-production, R2 endpoint, path-style true, upload TTL 900 seconds, download max TTL 3600 seconds, and both access credentials present (redacted). These settings satisfy the current storage config loader. Preserve them exactly for the final environment.
+- PayFast values are currently configured in this service with PAYFAST_ENVIRONMENT=sandbox; passphrase is blank. The Resource API parser reads these fields, but the user has explicitly paused PayFast work until PayFast sandbox access returns. Do not switch to live, test payment activation, rotate credentials, or change callback values in this environment reconciliation. Record them as present-but-paused; revisit only after the user says PayFast sandbox access has returned.
+
+### One-time final correction plan — not yet applied
+
+1. Change NODE_ENV from development to production.
+2. Add GHM_RUNTIME_DATABASE_URL using the exact existing DATABASE_URL connection string (same host, database, login and password), after credential verification. Do not echo the secret in chat.
+3. Remove DATABASE_URL from the service after the new production variable is in place; the Resource API production config requires the named runtime URL. Keep local/tooling DATABASE_URL in the local file as needed.
+4. Remove GHM_MIGRATOR_DATABASE_URL from the long-running Resource API service; retain it only in the controlled migration operator environment.
+5. Remove http://localhost:5173 from production CORS_ORIGINS. Keep https://ghm-cu1.pages.dev and https://zaid-connect.vercel.app; keep the specific https://c135fd05.ghm-cu1.pages.dev only if still required.
+6. Preserve all other existing production secrets and storage settings exactly as supplied; do not replace them with local .env values.
+7. Leave all PayFast settings unchanged and paused.
+8. Keep Render auto-deploy OFF. Apply once, validate config/health, then freeze; do not deploy until the coordinated plan is explicitly approved.
+
+No environment variable, secret, deployment, database, role, or service was modified as part of this comparison.
