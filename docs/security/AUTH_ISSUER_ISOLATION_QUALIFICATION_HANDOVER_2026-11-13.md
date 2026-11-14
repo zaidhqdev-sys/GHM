@@ -4946,3 +4946,26 @@ The previous test run also confirms:
 - the exact function list alone failed due to formatting normalization.
 
 A new exact-head CI run for `aa86fa1346daf922d3c80c27f2bf5beb697bafbb` must be checked before declaring the verifier qualified. No production state changed.
+
+
+### PR #277 branch synchronization with corrected PR #276 base — 2026-11-14
+
+Re-read the handover before changing branch state. PR #276 now contains the missing-signature fail-closed correction, PostgreSQL signature normalization, grant-option denial, and associated tests. PR #277 was still based on the earlier PR #276 head and GitHub compare showed it was 8 commits behind and diverged.
+
+Synchronized the existing PR #277 branch without discarding its Worker hardening changes:
+- Built a merge tree from the latest PR #276 base branch.
+- Reapplied the six paths changed by PR #277 relative to its former base: CI workflow, two handover/inventory documents, this security handover, Worker implementation, and Worker contract test.
+- Created a two-parent merge commit with the previous PR #277 head and latest PR #276 head.
+- Updated the existing PR #277 branch using a fast-forward ref update.
+
+Merge commit: `55980051d41a7a88956214987d6ad61f562ec0fb`.
+
+**Verified after synchronization:**
+- PR #277 remains open/draft and still targets PR #276's branch.
+- GitHub compare now reports PR #277 branch `ahead`, 85 commits ahead, 0 behind; merge base equals the latest PR #276 head `aa86fa1346daf922d3c80c27f2bf5beb697bafbb`.
+- The six intended PR #277 file changes remain the only diff against its updated base.
+- No source changes from PR #276 were lost; they are now ancestors of PR #277.
+
+The latest PR #276 CI run for `aa86fa1346daf922d3c80c27f2bf5beb697bafbb` was still in progress at the time of this note. PR #277 will require its own exact-head CI after synchronization. Both PRs remain draft; no merge or deployment was performed.
+
+No production/local database, role, membership, ACL, credential, environment variable, service, migration, deployment, payment flow, backup, or paid resource was changed.
