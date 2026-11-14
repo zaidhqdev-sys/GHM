@@ -3744,3 +3744,21 @@ Read-only catalog inspection now distinguishes missing objects from merely missi
 - 'ghm.ghm_schema_migrations' exists, but its rows are not readable through the current application query identity (42501).
 
 This confirms the production database does not currently contain the Actor Gateway SQL objects required by the source branch. The exact migration ledger head cannot be read with the current connection, so we cannot yet distinguish an unapplied migration range from later manual object removal. Do not assume the migrations have been applied, and do not apply them directly as a shortcut. Reconcile the ledger using the approved migration-authority path, compare every expected migration checksum, and first establish a verified current backup and restoration route. Production remains on its current legacy application path until that reconciliation and controlled cutover are complete.
+
+
+### Cloudflare zero-cost hosting assessment — documentation review, 2026-11-14
+
+Reviewed current official Cloudflare documentation (pricing pages last updated June/October 2026; Workers limits last updated 13 November 2026):
+- Workers Free includes 100,000 incoming requests per day and a 10 ms CPU-time limit per invocation.
+- Hyperdrive is included on Workers Free with 100,000 database statements per day; the daily quota resets at 00:00 UTC and further operations fail when the free limit is exceeded. A statement includes reads and writes.
+- The Workers Paid plan has a minimum account charge of USD 5/month and is prohibited by the current cost constraint.
+- The Cloudflare Rate Limiting binding API is available in Workers; its documentation describes limits as approximate and separately applied in each Cloudflare location. It must be treated as abuse mitigation, not a globally strict security quota.
+- Current Worker configuration deliberately has workers_dev=false, preview_urls=false and observability disabled; its Hyperdrive ID is a placeholder and its local connection string targets disposable PostgreSQL only. No Cloudflare Worker, Hyperdrive resource, rate-limit binding, secret, route, DNS record or paid plan has been provisioned or changed.
+
+Zero-cost feasibility is plausible on the Workers Free plan within the published limits, but it is not yet account-verified or deployment-qualified. Do not upgrade to Workers Paid. Before any resource creation, confirm the account remains on Free, check that rate-limit namespace ID 41001 is unused within the account, and confirm a suitable domain/route and external Render PostgreSQL TLS/network path. Keep production deployment blocked by the missing production gateway SQL objects, unresolved production authority/backup gates, and absence of a deployed dedicated gateway service.
+
+Official references:
+- https://developers.cloudflare.com/hyperdrive/platform/pricing/
+- https://developers.cloudflare.com/workers/platform/pricing/
+- https://developers.cloudflare.com/workers/platform/limits/
+- https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/
