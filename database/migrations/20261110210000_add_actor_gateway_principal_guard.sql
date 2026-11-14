@@ -5,6 +5,7 @@
 DO $$
 DECLARE
   gateway_oid oid;
+  trusted_admin_oid oid;
   gateway_role pg_roles%ROWTYPE;
 BEGIN
   IF to_regrole('ghm_actor_gateway') IS NULL THEN
@@ -12,6 +13,12 @@ BEGIN
   END IF;
 
   gateway_oid := to_regrole('ghm_actor_gateway')::oid;
+
+  IF to_regrole('ghm_db_user') IS NULL THEN
+    RAISE EXCEPTION 'trusted Render administrator ghm_db_user must exist before applying this migration';
+  END IF;
+
+  trusted_admin_oid := to_regrole('ghm_db_user')::oid;
 
   SELECT * INTO gateway_role
     FROM pg_roles
@@ -27,22 +34,29 @@ BEGIN
     RAISE EXCEPTION 'ghm_actor_gateway must be LOGIN NOINHERIT and have no elevated role attributes';
   END IF;
 
+  -- Render retains ghm_db_user as the trusted administrator. It may hold
+  -- ADMIN OPTION on the gateway role, but must not inherit or SET ROLE to it.
+  -- No service login may be a member of the gateway role, and the gateway
+  -- login itself may not be a member of any other role.
   IF EXISTS (
     SELECT 1
-      FROM pg_auth_members m
-      JOIN pg_roles member_role ON member_role.oid = m.member
-     WHERE m.member = gateway_oid
-        OR (
-          m.roleid = gateway_oid
-          AND (
-            member_role.rolname <> 'ghm_db_user'
-            OR m.admin_option IS DISTINCT FROM true
-            OR m.inherit_option IS DISTINCT FROM false
-            OR m.set_option IS DISTINCT FROM false
-          )
-        )
+      FROM pg_auth_members
+     WHERE member = gateway_oid
+        OR (roleid = gateway_oid AND member <> trusted_admin_oid)
   ) THEN
-    RAISE EXCEPTION 'ghm_actor_gateway may only have the bounded ghm_db_user administrative membership (ADMIN true, INHERIT false, SET false)';
+    RAISE EXCEPTION 'ghm_actor_gateway may only be granted to trusted administrator ghm_db_user';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+      FROM pg_auth_members
+     WHERE roleid = gateway_oid
+       AND member = trusted_admin_oid
+       AND admin_option
+       AND NOT inherit_option
+       AND NOT set_option
+  ) THEN
+    RAISE EXCEPTION 'ghm_actor_gateway requires ghm_db_user ADMIN OPTION without INHERIT or SET';
   END IF;
 END;
 $$;
