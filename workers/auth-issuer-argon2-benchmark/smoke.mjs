@@ -11,6 +11,11 @@ let log = '';
 let worker;
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const writeProgress = (stage, details = {}) => {
+  fs.mkdirSync('tmp', { recursive: true });
+  fs.writeFileSync('tmp/argon2-worker-runtime-progress.json', JSON.stringify({ stage, ...details }, null, 2));
+};
+
 const writeReport = (report) => {
   report.workerLog = log;
   fs.writeFileSync('tmp/argon2-worker-runtime.json', JSON.stringify(report, null, 2));
@@ -18,6 +23,7 @@ const writeReport = (report) => {
 };
 
 try {
+  writeProgress('starting_worker');
   worker = spawn('npx', [
     '--yes',
     'wrangler@4.161.0',
@@ -55,9 +61,11 @@ try {
     await wait(1000);
   }
   if (!ready) throw new Error('Argon2 benchmark Worker did not become ready');
+  writeProgress('worker_ready');
 
   const results = [];
   for (const operation of ['verify', 'hash']) {
+    writeProgress('operation_started', { operation });
     let response;
     try {
       const controller = new AbortController();
@@ -112,6 +120,7 @@ try {
         valid: body.valid,
         elapsedMs: body.elapsedMs,
       });
+      writeProgress('operation_completed', { operation, elapsedMs: body.elapsedMs, valid: body.valid });
     } else {
       const nativeVerifiesWasm = await argon2.verify(body.hash, PASSWORD);
       results.push({
@@ -121,6 +130,7 @@ try {
         elapsedMs: body.elapsedMs,
         profile: body.profile,
       });
+      writeProgress('operation_completed', { operation, elapsedMs: body.elapsedMs, nativeVerifiesWasm });
     }
   }
 
