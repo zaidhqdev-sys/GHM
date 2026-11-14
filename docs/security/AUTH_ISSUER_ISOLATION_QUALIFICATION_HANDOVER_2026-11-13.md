@@ -4255,3 +4255,8 @@ This is an operator-reported Windows host path, not a file accessible to the ass
 **Next verification:** run the read-only PowerShell checks on the owner's Windows machine against this exact path. Confirm existence and size, calculate SHA-256, then list archive entries with Windows `tar -tzf` (no extraction). Do not move, rename, overwrite, or delete the archive or any previous backup. If `tar -tzf` fails, preserve the original and report the exact error; do not attempt repair or restore.
 
 The backup status remains: Render export creation confirmed; owner download path reported; local integrity and contents not yet verified; restore test not performed. No production restore or paid recovery resource is authorized.
+
+
+### Operator command-format correction — 2026-11-14
+
+The owner corrected the assistant for not following the established PowerShell transcript layout. For all future Windows command instructions, use the handover's established copy/paste transcript style: each command line begins with `PS C:\GHM>`, continuation lines begin with `>>`, and section headers use `Write-Host`. Do not present generic fenced PowerShell blocks or omit the prompt prefixes. Keep commands in the requested order and avoid asking the owner to infer where to run them. This is an interaction-format requirement; no technical state changed.
