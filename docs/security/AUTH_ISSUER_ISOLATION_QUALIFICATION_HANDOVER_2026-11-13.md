@@ -3059,3 +3059,19 @@ The replacement is now a proper local package:
 - Wrangler alias now uses the package specifier `"body-parser": "ghm-worker-body-parser-stub"`, which Node package resolution can find from the project root.
 
 This avoids path ambiguity and keeps the stub available only through the Worker bundler alias; the regular Node/Render runtime still resolves the real Express body-parser dependency. Exact-head CI must validate npm ci, Worker bundling, and runtime smoke before this workaround is accepted.
+
+
+### First successful local Worker + Hyperdrive startup — parser assertion initially unauthenticated
+
+Run `43533834824` (source head `76c219f77660b7beee4a0d113de98c42f01e79d9`) produced:
+- Root build: passed.
+- Wrangler bundle dry-run: passed after the body-parser alias was changed to a local npm package.
+- Disposable PostgreSQL migrations: passed.
+- Actor Gateway database principal qualification: passed.
+- Local Wrangler/Workers runtime: started successfully.
+- Hyperdrive connected to the disposable PostgreSQL service.
+- Worker startup identity and full database ACL verification passed; `GET /healthz` returned HTTP 200 with `{"status":"ok"}`.
+
+The smoke job still concluded failure because the subsequent malformed-JSON test request was unauthenticated. The Actor Gateway correctly returned HTTP 401 before reaching its JSON parser; the test incorrectly expected 400. The diagnostic log proves Worker startup and database ACL checks are now working. This is a test sequencing issue, not a Worker startup failure.
+
+Corrective CI change: generate a short-lived ES256 test token using the ephemeral CI-only private key and send it with the malformed JSON request. This allows the request to pass JWT verification and the local edge rate-limit binding, then exercise the Worker-native parser. The private key and test token remain in runner temp files and are not included in uploaded artifacts. The next exact-head run must confirm the parser returns HTTP 400 and complete the remaining qualification suite.
