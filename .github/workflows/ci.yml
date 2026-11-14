@@ -320,6 +320,27 @@ jobs:
           if-no-files-found: warn
           retention-days: 3
 
+      - name: Install isolated Argon2id WASM benchmark dependency
+        run: npm install --prefix workers/auth-issuer-argon2-benchmark --no-save --package-lock=false --ignore-scripts --no-audit --no-fund
+
+      - name: Qualify Argon2id WASM and native PHC interoperability
+        run: node workers/auth-issuer-argon2-benchmark/compat.mjs
+
+      - name: Benchmark Argon2id WASM in local Workers Free CPU budget
+        run: node workers/auth-issuer-argon2-benchmark/smoke.mjs
+
+      - name: Preserve Argon2id WASM benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ghm-auth-issuer-argon2-wasm-benchmark
+          path: |
+            tmp/argon2-wasm-compat.json
+            tmp/argon2-worker-runtime.json
+            tmp/argon2-worker-runtime.log
+          if-no-files-found: warn
+          retention-days: 3
+
       - name: Provision provider attestation secret in disposable PostgreSQL
         env:
           GHM_STORAGE_PROVIDER_ATTESTATION_ALLOW_MUTATIONS: 'true'
