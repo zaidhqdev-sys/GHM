@@ -19,13 +19,14 @@ export interface ActorGatewayDatabasePrivileges {
 export const assertActorGatewayDatabasePrivileges = (
   privileges: ActorGatewayDatabasePrivileges,
 ): void => {
-  const actual = [...privileges.executable_functions].sort();
-  const expected = [...privileges.expected_functions].sort();
+  const normalizeSignature = (signature: string): string => signature.replace(/,\s*/g, ',');
+  const actual = privileges.executable_functions.map(normalizeSignature).sort();
+  const expected = privileges.expected_functions.map(normalizeSignature).sort();
   const campaignReviewFunctions = new Set([
     'ghm.gateway_create_campaign(bigint, bigint, uuid, text, text, bigint, text)',
     'ghm.gateway_update_campaign(bigint, bigint, uuid, text, text, bigint, text, text)',
     'ghm.gateway_get_business_directory_review_presentation(bigint, bigint, uuid, text, text, bigint)',
-  ]);
+  ].map(normalizeSignature));
   const preCampaignReviewExpected = expected.filter(signature => !campaignReviewFunctions.has(signature));
   const publicFunctions = [...privileges.public_executable_functions].sort();
   const runtimeFunctions = [...privileges.runtime_executable_functions].sort();
@@ -126,10 +127,9 @@ export const ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL = `
       SELECT signature FROM gateway_functions ORDER BY signature
     ) AS executable_functions,
     ARRAY(
-      SELECT to_regprocedure(signature)::text
+      SELECT signature
         FROM expected_signatures
-       WHERE to_regprocedure(signature) IS NOT NULL
-       ORDER BY 1
+       ORDER BY signature
     ) AS expected_functions,
     ARRAY(
       SELECT f.signature
@@ -200,8 +200,14 @@ export const ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL = `
         FROM gateway_functions f
         CROSS JOIN LATERAL aclexplode(COALESCE(f.proacl, acldefault('f', f.proowner))) acl
        WHERE acl.privilege_type = 'EXECUTE'
-         AND acl.grantee <> f.proowner
-         AND acl.grantee <> 'ghm_actor_gateway'::regrole
+         AND (
+           acl.grantee <> f.proowner
+           AND acl.grantee <> 'ghm_actor_gateway'::regrole
+           OR (
+             acl.grantee = 'ghm_actor_gateway'::regrole
+             AND acl.is_grantable
+           )
+         )
        ORDER BY 1
     ) AS unsafe_function_grantees
 `;
