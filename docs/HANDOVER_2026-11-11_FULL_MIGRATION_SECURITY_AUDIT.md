@@ -2888,3 +2888,39 @@ Exact-head CI evidence was not available for `d9b4a620229cc5eef3493394128355a3c4
 Keep Render auto-deploy OFF. Do not change the verified environment again, do not re-add `DATABASE_URL` or `GHM_MIGRATOR_DATABASE_URL` to the long-running Resource API environment, and do not run migrations as part of this credential test. Once the release candidate is qualified, deploy deliberately and inspect startup logs and `/healthz`.
 
 No deployment, database data change, migration, role/grant change, service change, or paid-resource change was made during this verification. PayFast remains paused and untouched.
+
+
+## 2026-11-15 — Static release-gate review: production Actor Gateway role membership blocks migration
+
+After the operator said proceed, the current `main` release candidate was reviewed against the production role-separation handover and the exact Actor Gateway migration source. No deployment or migration was run.
+
+### Confirmed source-level requirements
+
+- `src/server.ts` does not mark the Resource API ready until it connects to PostgreSQL, executes the runtime identity catalog query, passes `assertRuntimeDatabaseIdentity`, and executes `SELECT 1`.
+- The runtime identity contract requires `session_user = current_user = ghm_runtime`, LOGIN, NOINHERIT, no elevated role attributes, CONNECT and schema USAGE, no database/schema CREATE, and no untrusted role memberships.
+- `src/db/runtime-principal.ts` explicitly rejects any mismatch. Therefore the successful local read-only URL test proves authentication only; it does not prove the production startup verifier will pass.
+- The first Actor Gateway migration `20261110210000_add_actor_gateway_principal_guard.sql` requires `ghm_actor_gateway` to be LOGIN NOINHERIT, non-elevated, and to have **no role memberships in either direction**. Its catalog guard rejects any `pg_auth_members` row where the gateway role is either the member or the granted role.
+- The CI workflow runs build, the complete migration chain on disposable PostgreSQL, Actor Gateway principal qualification, the full test suite, migration policy tests, and runtime boundary verification. Its push trigger is configured for `main`; however the available connector lookup did not provide a main-push workflow run or check suite for the newest docs commit. Do not infer exact-head CI success or failure from the empty PR-filtered workflow lookup.
+
+### Production-specific conflict already documented
+
+The existing production handover `docs/security/RENDER_ACTOR_GATEWAY_ROLE_SEPARATION_HANDOVER_2026-11-12.md` records read-only production catalog evidence that the trusted Render administrator/effective `ghm_db_user` has ADMIN OPTION membership in `ghm_actor_gateway` (as well as other service roles). That administrator membership is intentionally retained for Render administration. However, the current Actor Gateway principal migration's no-membership guard is stricter: it rejects the administrator's membership in `ghm_actor_gateway` too.
+
+Therefore the first Actor Gateway migration is expected to fail on the currently documented production role graph unless this discrepancy is resolved. This is a source-to-production-contract conflict, not permission to revoke the administrator membership. The role separation handover records that Render support was involved and that administrator role changes require a controlled supported path. No role membership has been changed.
+
+### Required resolution before any production migration/deployment
+
+1. Re-read the current live production `pg_auth_members` rows for `ghm_actor_gateway` and `ghm_runtime` using the explicitly selected Render workspace and the existing `ghm-db` instance. Keep this read-only.
+2. Preserve the Render-managed administrator relationship. Decide whether the migration guard should permit only the documented trusted administrator as the sole member of the gateway role while still rejecting all service-login memberships, or whether Render support must provide a supported administrator-membership correction. Do not silently weaken the guard.
+3. Add disposable PostgreSQL tests for the exact intended production role graph, including the trusted administrator membership and negative tests for gateway/service-role memberships.
+4. Run the complete CI/qualification on the exact candidate head and verify the production migration ledger/role prerequisites before any migration.
+5. Only after all gates pass, plan a deliberate deployment. Render auto-deploy remains OFF.
+
+### Current disposition
+
+- Runtime URL authentication: PASS (`ghm_db`, `ghm_runtime`, read-only SELECT).
+- Production Resource API startup verifier: NOT YET VERIFIED against live role/catalog privileges.
+- Actor Gateway production migration compatibility: BLOCKED by documented administrator membership vs migration no-membership guard.
+- Exact-head main-push CI evidence: NOT AVAILABLE through the currently exposed PR-filtered workflow-run lookup; do not call this a CI failure.
+- Production migration, deployment, role/grant changes: NOT RUN.
+- No paid resources added. PayFast remains paused and unchanged.
