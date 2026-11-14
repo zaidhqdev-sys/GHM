@@ -2772,3 +2772,88 @@ The exact construction branch source was inspected:
 Begin with the local Actor Gateway Worker adapter design/prototype. Keep Authentication Issuer blocked until exact Argon2id CPU compatibility is proven. The current GHM Resource API, Render service, database, keys, users, traffic and PayFast remain unchanged.
 
 No Cloudflare account, billing plan, Worker, Hyperdrive, secret, DNS record or production connection was changed in this checkpoint.
+
+
+## 2026-11-14 03:15 SAST — first Cloudflare Actor Gateway Worker adapter committed (prototype only)
+
+Owner decision remains: Cloudflare infrastructure must remain $0 until revenue; no paid plan, no Containers, no production database access, no production secret transfer, and no production traffic cutover.
+
+### Source files added
+
+A first isolated Worker adapter has been added on the existing construction branch:
+
+- `workers/actor-gateway/index.ts`
+- `workers/actor-gateway/wrangler.jsonc`
+- `workers/actor-gateway/tsconfig.json`
+- `workers/actor-gateway/cloudflare-node.d.ts`
+- `workers/actor-gateway/worker-contract.test.mjs`
+
+The adapter reuses the existing `createActorGatewayApp` and all existing Postgres gateway readers rather than duplicating route logic. It maps:
+- Hyperdrive `HYPERDRIVE.connectionString` to a short-lived node-postgres Client.
+- Public ES256 verification key and KID to the existing public-key-only token verifier.
+- `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET` to the existing signed actor assertion readers.
+
+The Worker does not declare or load:
+- `GHM_JWT_ES256_PRIVATE_KEY_PEM`
+- `GHM_AUTH_TOKEN_PEPPER`
+- `GHM_AUTH_ISSUER_DATABASE_URL`
+- Render Resource API or migrator database URLs.
+
+The adapter performs the existing exact Actor Gateway session/current-user and role-membership identity check, then calls the existing full database ACL verifier. The internal HTTP server is not started until both checks pass. Startup errors are logged without secret/connection detail and return a no-store 503. It uses Cloudflare's `handleAsNodeRequest` adapter to route Worker requests into the existing Express app.
+
+### Hyperdrive client boundary
+
+The gateway reader classes use the `Pool.connect()` / `PoolClient.query()` / `release()` contract. The Worker adapter supplies a narrow adapter which creates one `pg.Client` per reader transaction and closes it on release. Hyperdrive owns the remote connection pool; the Worker does not retain its own pool/socket between operations. Startup identity/ACL qualification uses a separate short-lived client.
+
+Official Cloudflare Hyperdrive documentation (retrieved 2026-11-14) recommends node-postgres `pg@8.16.3` or later and demonstrates creating a Client per request using `env.HYPERDRIVE.connectionString`. The repository lockfile already resolved `pg@8.23.0`, so the previous statement that the resolved lockfile version was below the Hyperdrive minimum was inaccurate. The declared dependency range was `^8.12.0`, however, which permitted a future lockfile refresh to resolve a version below the documented minimum. Both `package.json` and the lockfile root metadata have now been tightened to `^8.16.3`; the currently resolved package remains `8.23.0`. No driver code or database schema was changed by this dependency-range correction.
+
+Official references:
+- https://developers.cloudflare.com/hyperdrive/examples/connect-to-postgres/
+- https://developers.cloudflare.com/workers/runtime-apis/nodejs/http/
+- https://developers.cloudflare.com/workers/runtime-apis/nodejs/
+
+### Wrangler configuration guardrails
+
+The local Worker configuration:
+- Uses compatibility date `2026-11-14` and `nodejs_compat`.
+- Declares one Hyperdrive binding named `HYPERDRIVE`.
+- Contains a clearly non-production all-zero placeholder Hyperdrive ID.
+- Contains only a dummy local disposable PostgreSQL connection string for local development.
+- Sets `workers_dev=false` and `preview_urls=false`.
+- Disables observability by default to avoid unintended paid/retention add-ons.
+- Does not configure Containers, Queues, Durable Objects, routes, custom domains or any paid product.
+
+The placeholder ID is deliberately not a usable production Hyperdrive ID. This configuration is not deployable until a separately approved free-tier Hyperdrive resource exists and its ID is substituted. No such resource has been created.
+
+### Qualification coverage added
+
+A separate Worker TypeScript configuration and static contract tests have been added. The root test command now includes:
+- Worker adapter TypeScript type-check.
+- Worker contract tests for request adapter, Hyperdrive binding, public-key-only secret boundary, DB identity/ACL-before-listener ordering, fail-closed startup, disabled preview/public routes, and absence of paid Cloudflare product configuration.
+
+These are source-level checks only. They do not prove that the adapter runs under the real Cloudflare runtime, that the installed `pg` build works with Hyperdrive, that PostgreSQL TLS/network access is possible, or that production database ACL checks pass.
+
+### Known open qualification risks
+
+1. **Cloudflare runtime execution not yet proven.** Must run a local Wrangler/Workers runtime smoke test and the complete Actor Gateway route/security suite against a disposable PostgreSQL 18 database.
+2. **Per-isolate rate limiting.** Existing `express-rate-limit` MemoryStore is isolate-local and not a global account-wide quota across multiple Worker isolates. It is an abuse-control layer, not an authorization boundary; before production, design a $0-compatible edge/account rate-limit control or explicitly qualify the residual risk. Do not add a paid Durable Object.
+3. **Hyperdrive and Render connectivity.** No production Hyperdrive has been configured. Confirm Render PostgreSQL external TLS/network compatibility only against disposable test resources first; do not use production credentials in the prototype.
+4. **Storage provider workflow attestation.** The existing gateway readers require storage workflow attestations. The adapter must preserve the separate attestation secret flow and prove it does not expose the secret to clients.
+5. **HTTP server lifecycle.** The Worker creates a single module-lifetime Node HTTP server only after database checks. Verify concurrency, isolate restart, initialization failure/retry and request body handling in the actual Workers runtime.
+6. **Build toolchain.** Wrangler is not yet pinned as a repository dependency and no Worker bundling/dry-run has been completed. Pin a known Wrangler toolchain in a subsequent reviewed change before CI/runtime qualification.
+
+### Current qualification status
+
+- Worker adapter source: committed, prototype only.
+- Root TypeScript build: not yet run against this commit.
+- Worker TypeScript check: not yet run.
+- Worker contract tests: not yet run.
+- Wrangler dry-run: not yet run.
+- Local Workers runtime smoke: not yet run.
+- Disposable PostgreSQL Actor Gateway qualification: not yet rerun through the Worker adapter.
+- Production deployment / Hyperdrive / secrets / DNS: not created.
+- Production GHM database and Render runtime: unchanged.
+
+### No-change statement
+
+No Cloudflare account, plan, Worker deployment, Hyperdrive resource, production DB connection, DB role, credential, secret, DNS record, route, production environment variable or production traffic was changed. Render auto-deploy remains OFF. PayFast remains excluded. PR #272/#276 remain draft/unmerged.
