@@ -363,3 +363,23 @@ The live ledger contains 105 rows, from `00000000000000` through `20261109210000
 This verifies the migrator's intended SET-only membership and read path without granting direct ledger SELECT to the Render query principal or widening any privileges. No production role, membership, grant, data, environment variable, service or deployment was changed.
 
 Next work belongs to migration reconciliation: compare the live 105-row ledger against the current repository migration inventory and approved retained/manual-cutover register. Keep the live-ledger evidence distinct from the archive snapshot.
+
+
+## 2026-11-14 continuation — production migration audit and pending allowlist
+
+The live production forensic audit completed using `ghm_migrator` on `ghm_db` within a read-only transaction. It successfully switched to `ghm_schema_owner` for the ledger read while retaining `session_user=ghm_migrator`, then rolled back. Authority checks passed; no production permissions, roles, data, Render configuration or deployments were changed.
+
+The repository had 102 migration files and production had 105 ledger rows. Reconciliation found 24 canonical matches, 62 supported CRLF matches and 9 approved historical matches. Ten extra ledger entries all matched the retained-history register. There were zero unexplained checksum mismatches, zero name mismatches, zero unrecognized extras, zero orphaned exceptions and zero invalid retained-history entries. Seven historical exceptions were redundant because their hashes match current repository bytes; they remain preserved as provenance for now.
+
+The seven repository migrations absent from the live production ledger are:
+- `20261110100000_create_account_onboarding_progress.sql`
+- `20261110120000_create_business_relationship_outcome_read_models.sql`
+- `20261110140000_allow_pending_storage_object_cleanup.sql`
+- `20261110210000_add_actor_gateway_principal_guard.sql`
+- `20261110220000_add_actor_gateway_self_identity_read.sql`
+- `20261110230000_add_gateway_business_registration_identity_read.sql`
+- `20261110233000_add_gateway_business_registration_identity_write.sql`
+
+The initial audit verdict was `INVESTIGATE` only because the production pending allowlist still named `20261109210000 deactivate_unrecognized_public_directory_records`, already present in the live ledger, rather than these seven absent migrations. The allowlist was corrected on main in commit `0c65eb1fcce287d82f895a234193691ef114943a` to list exactly the seven observed absent version/name pairs. This is an audit-config correction only: none of the seven migrations was applied, and the correction is not authorization to apply them.
+
+The audit must be rerun read-only against the updated mainline before a final verdict is recorded. Until then, migration audit status is **pending final rerun**. Preserve the established separation: Resource API uses `ghm_runtime`; migrator remains a separate controlled identity; no deployment or production privilege change is part of this step. Following a clean rerun, continue with production-only Project↔Opportunity reconciliation. PayFast remains paused.
