@@ -3152,3 +3152,61 @@ The handover-only commit `2c3c7706ec72eb63b8cab99a9b996e2f303e271e` was independ
 - The exact Worker bundle, local runtime, Hyperdrive, database ACL, authenticated JSON parser, 998-test suite and 6 Worker contract tests all passed.
 
 The resulting handover update is committed separately; no application source changed after the qualified source head. Continue treating the Actor Gateway as locally qualified but not production-deployed.
+
+
+## 2026-11-14 04:20 SAST — Authentication Issuer Argon2id WASM feasibility spike added
+
+The next phase tests whether the current GHM password policy can run in a Cloudflare Worker under the Free 10 ms CPU limit without weakening password security.
+
+### Existing GHM password contract (must remain unchanged)
+
+From `src/auth/foundation/password.ts`:
+- Algorithm: Argon2id v1.3.
+- Memory: 65,536 KiB (64 MiB).
+- Time cost: 3.
+- Parallelism: 1.
+- Hash length: 32 bytes.
+- Salt length: 16 bytes.
+- Existing native implementation: `argon2` npm package.
+- Existing stored hash format: standard PHC string.
+
+No parameter reduction, algorithm switch, hash rewrite, or user password reset is permitted to fit a hosting limit.
+
+### WASM candidates assessed
+
+- `@hallaxius/argon2w` advertises standard PHC compatibility and a Cloudflare Workers export, but its documented `memoryCost` maximum is 32,768 KiB. It cannot verify GHM's current 65,536 KiB hashes under its published input limits; excluded for this policy.
+- `hash-wasm@4.13.0` supports Argon2id, PHC-encoded output, verification, and a 65,536 KiB memory setting. It is selected for a compatibility/performance spike only, not accepted as the production password implementation.
+
+References:
+- https://github.com/Daninet/hash-wasm
+- https://www.npmjs.com/package/hash-wasm
+- https://github.com/orgShtora-1/argon2w
+- https://developers.cloudflare.com/workers/platform/limits/
+
+### Benchmark files added
+
+- `workers/auth-issuer-argon2-benchmark/package.json`
+- `workers/auth-issuer-argon2-benchmark/wrangler.jsonc`
+- `workers/auth-issuer-argon2-benchmark/index.ts`
+- `workers/auth-issuer-argon2-benchmark/compat.mjs`
+- `workers/auth-issuer-argon2-benchmark/smoke.mjs`
+
+The benchmark Worker is isolated from the production app and contains no database bindings, secrets, routes or production credentials. Its Wrangler config explicitly sets `limits.cpu_ms=10`, disables public/preview routes and disables observability.
+
+The CI feasibility test:
+1. Installs hash-wasm only inside the benchmark package, without changing the root dependency lockfile.
+2. Generates a native GHM-profile Argon2id PHC string using the existing native `argon2` package.
+3. Verifies the native PHC using hash-wasm at the exact 64 MiB/t=3/p=1 profile.
+4. Generates a hash using hash-wasm and verifies that PHC using native `argon2`.
+5. Starts the local Workers runtime with a 10 ms CPU budget.
+6. Measures Worker-side hash verification and generation separately.
+7. Records whether operations complete, exceed 10 ms, or fail under the local Worker CPU budget.
+8. Uploads the benchmark result and runtime logs as a short-retention CI artifact.
+
+This benchmark is intentionally non-gating for the overall GHM suite when the result is simply over budget: an over-budget result is an architectural blocker to record, not a reason to weaken Argon2id. PHC interoperability failures or unexpected runtime errors remain test failures.
+
+### Current status
+
+The benchmark source and CI steps are committed, but no compatibility or performance result is claimed yet. The next exact-head CI run will determine whether hash-wasm can interoperate with existing GHM PHC strings and whether its 64 MiB/t=3/p=1 operations fit the Free Worker CPU limit. A local measurement below 10 ms would still be only a candidate; final confirmation would require a controlled Cloudflare Free runtime test before any production use.
+
+No Cloudflare account, billing plan, Worker deployment, production secret, production database connection or authentication traffic was changed.
