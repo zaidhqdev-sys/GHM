@@ -4171,3 +4171,32 @@ PR #277 remains open and draft, stacked on #276 and #272. Keep the full stack un
 After recording the successful CI result, this handover update advanced PR #277's branch head from qualified source commit `0ae8958a52fe5e25c56e8540d361b6cb41d6d826` to documentation commit `b246ef559c1e3005abbb07e4594db66a9c411017`.
 
 GitHub compare confirms exactly one commit ahead and exactly one changed file: this handover, with 19 additions and zero deletions. No Worker source, application source, migration, test, Wrangler configuration or CI workflow file changed. Therefore run `43602763599` remains the exact-head qualification for all executable source and workflow content currently in PR #277; the later head movement is documentation-only. PR #277 remains open/draft and stacked on #276/#272.
+
+
+### Production backup and recovery capability check — 2026-11-14 14:22 UTC
+
+This checkpoint was performed after rereading the current handover sections covering production backup evidence, migration authority, Render role separation, and the deployed runtime environment. It does not repeat the prior role/catalog or migration-source audits.
+
+**Fresh Render workspace metadata read (read-only):**
+- Workspace: ZAID Technologies, `tea-d9svua6417fc73bhcutg`.
+- Production PostgreSQL: `ghm-db`, resource `dpg-dag0sdtbedkc7389vi2g-a`, database `ghm_db`, PostgreSQL 18, Frankfurt, status Available, plan `0.1c-256mb`, 1 GB disk, no HA, no read replicas, no connection pool.
+- The retired `ghm-payfast-sandbox-db` remains suspended for billing and expired 2026-11-08. It is not a backup or recovery target.
+- The separate `ghm-identity-qualification-20261018` database is a qualification resource, not a production backup.
+- The Render metadata API response does not expose backup/export inventory or recovery-point timestamps. No backup was triggered, no restore was started, and no resource was created.
+
+**Official Render recovery documentation reviewed:**
+- Render documents PITR for paid Postgres instances; the recovery window is 3 days for Hobby workspaces and 7 days for Pro+ workspaces. PITR is not available for Free compute instances.
+- Render on-demand logical exports are available from the database Recovery page and are retained for seven days. Render documents that Free compute instances cannot create these exports.
+- PITR creates a separate recovery database; that instance is billable while it exists. A recovery must be validated before any service connection is switched.
+- These general product rules do not establish that a particular recovery point is currently available for this database. The live Recovery page must be inspected.
+- Official documentation: https://render.com/docs/postgresql-backups
+
+**Disposition:**
+- Existing handover evidence still does not establish a fresh production export, an available PITR recovery point, or a successful restore test.
+- The existing Nov 4 local tar backup mentioned in earlier handover context is not accepted as a verified current restore point; its contents, provenance, integrity and restore test are not established here.
+- Do not upgrade plans, create a recovery instance, create a new database, or initiate a restore. These could incur costs and are outside the zero-additional-cost constraint.
+- Do not proceed with `ghm_runtime` password changes, Render environment edits, migrations, grants, role changes, or runtime cutover until backup evidence and the migration-authority gate are resolved.
+
+**Next operator check (read-only, no cost):** open the existing `ghm-db` Dashboard page, select **Recovery**, and inspect whether the page shows (a) an available PITR window and its earliest/latest timestamps, and (b) any completed logical export with its timestamp/status. Do not click Create export, Restore Database, upgrade, or start any recovery. Report only the visible availability/timestamps/status; do not share connection strings or secrets. If the Recovery page reports the database is ineligible, capture the exact non-secret wording. A metadata API snapshot is not a substitute for this check.
+
+No production database, backup, restore, role, grant, credential, Render environment, deployment, or paid resource was changed in this checkpoint.
