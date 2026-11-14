@@ -2702,3 +2702,58 @@ The remaining local `GHM_RUNTIME_DATABASE_URL` is known to target the production
 ### Execution boundary
 
 Only the user's local `C:\\GHM\\.env` was edited. No Render variable, secret, database, role, deployment, service, route, or paid resource was changed. Render auto-deploy remains OFF. PayFast remains paused.
+
+
+## 2026-11-14 — Render Internal Runtime identified for final environment freeze
+
+Live Render account inspection confirms the target service:
+- Service: `GHM-Internal-Runtime` (slug `ghm-internal-runtime`)
+- Service ID: `srv-damupsek1f9s73eq8kkg`
+- Environment ID: `evm-d9t1la7qj5pc73dludsg`
+- Region: Frankfurt
+- Start command: `npm start`
+- Health check: `/healthz`
+- Auto-deploy: OFF (`autoDeploy=no`, trigger `off`)
+- Service remains active; no deployment or environment mutation was made during this inspection.
+
+The Render service detail API does not return environment variable values or the current variable-name inventory. The previously recorded Render inventory therefore remains historical evidence, not a fresh complete snapshot. The available Render integration exposes an environment update action but not an environment read/list action. Do not use a replace-all update until the current environment inventory and final values are reconciled.
+
+### Final Resource API environment target — draft for freeze
+
+Runtime-owned variables:
+- `NODE_ENV=production`
+- `DATABASE_SSL=true`
+- `GHM_RUNTIME_DATABASE_URL=postgresql://ghm_runtime:<verified production credential>@dpg-dag0sdtbedkc7389vi2g-a.frankfurt-postgres.render.com/ghm_db`
+- `CORS_ORIGINS=<exact approved production web origins>`
+- `INVITE_CODE=<preserve the existing accepted production Render secret>`
+- `TRUST_PROXY=true` (historical accepted Render inventory; parser maps this to one trusted hop; do not change absent a verified topology reason)
+- `GHM_AUTH_TOKEN_PEPPER=<preserve the existing accepted production Render secret; changing it may invalidate existing opaque-token hashes>`
+- `GHM_JWT_ES256_PRIVATE_KEY_PEM=<preserve existing production issuer private key only if this service remains the issuer>`
+- `GHM_JWT_ES256_PUBLIC_KEY_PEM=<matching existing production public key>`
+- `GHM_JWT_ES256_KID=<matching existing production KID>`
+
+Storage configuration, if retaining the existing production R2-backed storage path:
+- `STORAGE_REGION=auto`
+- `STORAGE_BUCKET=zaid-ghm-production`
+- `STORAGE_ENDPOINT=https://a9b80a604a1ac4e9b26ecdac2fde7d5e.r2.cloudflarestorage.com`
+- `STORAGE_ACCESS_KEY_ID=<copy the existing local R2 access key directly into Render; never disclose it in chat>`
+- `STORAGE_SECRET_ACCESS_KEY=<copy the existing local R2 secret directly into Render; never disclose it in chat>`
+
+Do not add local tooling or separate-process variables to the Resource API service:
+- `DATABASE_URL` (local catalog capture/test fallback; production Resource API uses `GHM_RUNTIME_DATABASE_URL`)
+- `GHM_MIGRATOR_DATABASE_URL`, `GHM_MIGRATION_DATABASE_NAME`, `GHM_MIGRATION_DATABASE_HOST` (migration-only credentials/target guard)
+- Actor Gateway database URL (separate principal/process)
+- PayFast callback variables (separate, paused process)
+- `JWT_SECRET` (removed locally; no current-mainline consumer found)
+- `FRONTEND_URL`, `S3_ENDPOINT`, `GHM_NONPRODUCTION_DATABASE_HOST` (removed locally)
+
+### Freeze blockers — do not guess or silently substitute
+
+1. Local `GHM_RUNTIME_DATABASE_URL` targets the correct production host/database/login, but its password failed authentication. The runtime credential must be recovered from a trusted source or reset through an explicitly approved, controlled production credential operation before setting Render.
+2. Local `GHM_JWT_ES256_KID=ghm-local-qualification` is not a production KID. Do not copy local ES256 key material/KID into production. Preserve the existing Render production keypair/KID as a matched set, subject to confirming the deployed process is still the issuer.
+3. Local `.env` has no `CORS_ORIGINS`. Preserve the existing accepted Render origin list; do not replace it with an incomplete guess.
+4. Preserve the existing Render `INVITE_CODE` and `GHM_AUTH_TOKEN_PEPPER` rather than replacing them with local values. These are behavior/security-sensitive production secrets.
+5. Storage values in local `.env` point to the named production R2 bucket/endpoint. The two storage credentials are not visible to this assistant; copy them locally into Render only if this R2 configuration is confirmed as the intended production storage binding.
+6. The current Render integration cannot read environment values or list current environment names. The current full Render inventory must be reviewed in the service Environment page before any replace-all operation. Prefer a controlled merge update if preserving unknown existing values.
+
+Operator's stated goal: establish one final correct Internal Runtime environment and then stop repeated value changes. Keep auto-deploy OFF; no deploy until the complete manifest is populated, applied once, and validated. No Render environment value or secret has been changed by this inspection.
