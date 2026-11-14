@@ -4348,3 +4348,24 @@ The owner then ran `pg_restore --list` against that extracted directory.
 **Next step:** read-only local capacity and listener inspection before deciding whether a no-cost isolated restore can be attempted. The previous service query showed PostgreSQL 17 and 18 Windows services Running but did not return usable listener rows or free disk numbers. Do not start/stop services, create a database, run pg_restore -d, or connect to production. Confirm the extracted directory size, free disk on C:, PostgreSQL 17/18 port bindings, and whether the existing PostgreSQL 18 local instance has enough capacity for a separate restore. If capacity is inadequate or ambiguous, stop without provisioning anything.
 
 No production database, Render resource, local database, credential, role/grant, environment, migration, deployment, or original archive was changed in this checkpoint.
+
+
+### Local isolated-restore capacity preflight — 2026-11-14
+
+The owner ran the read-only local capacity/listener inspection.
+
+**Observed:**
+- Extracted PostgreSQL dump directory: **65 files**, approximately **0.001 GB**.
+- C: drive free space: **314.19 GB** of **474.53 GB**.
+- PostgreSQL Windows services 17 and 18 are both Running.
+- Service 17 data directory: `C:\Program Files\PostgreSQL\17\data`.
+- Service 18 data directory: `C:\Program Files\PostgreSQL\18\data`.
+- Both services run as `NT AUTHORITY\NetworkService`.
+- Local listeners: port **5432** PID **6856**; port **5433** PID **6672**, bound on IPv4 wildcard and IPv6 wildcard.
+- PostgreSQL processes are present. The output does not yet map each PID conclusively to its service/version/data directory; service paths suggest the two installed versions but we must verify by querying each listener before selecting a restore target.
+
+**Assessment:** local disk capacity is ample relative to the compressed/extracted dump footprint. A no-cost isolated local restore appears feasible in principle. However, do not create a database or run `pg_restore` yet. First identify which PostgreSQL version owns each listener, inspect each instance's existing database names and confirm there is no collision with the proposed isolated restore database. Existing local qualification databases and data must be preserved.
+
+**Next read-only checks:** query port 5432 and 5433 independently using `psql -X -v ON_ERROR_STOP=1` for `version()`, `current_database()`, `session_user`, and `inet_server_port()`; query `pg_database` for names/owners/sizes and `pg_roles` for the current login's CREATEDB capability. Also map listener PIDs to process command lines. No service start/stop, database creation, restore, production connection, or paid resource is authorized at this stage.
+
+No local or production database contents were changed.
