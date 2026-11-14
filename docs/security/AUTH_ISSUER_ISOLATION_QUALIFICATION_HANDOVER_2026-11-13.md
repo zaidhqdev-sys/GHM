@@ -3462,3 +3462,64 @@ At deployed commit `c7cf1eb`:
 - `GHM_NONPRODUCTION_DATABASE_NAME` and `GHM_QUALIFICATION_DATABASE_NAME`: no consumer found in the deployed core config or migration runner inspected so far. They may be referenced by qualification scripts; keep them until the broader script consumer audit is complete rather than deleting or repointing them.
 
 The supplied environment is therefore not a single interchangeable set of "database variables": runtime and migrator connections have distinct source consumers, and qualification/guard values must remain distinct from production targets.
+
+
+## Operator action pending — provision and verify production ghm_runtime credential
+
+This is the next required Render action. It is deliberately limited to rotating the password of the existing least-privilege `ghm_runtime` login and verifying a read-only connection. It does not grant new privileges, alter memberships, run migrations or change application traffic.
+
+### PowerShell password generation (keep the value local)
+
+```powershell
+Write-Host "=== Generate production ghm_runtime password ==="
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$bytes = New-Object byte[] 32
+$rng.GetBytes($bytes)
+$runtimePassword = -join ($bytes | ForEach-Object { $_.ToString('x2') })
+$rng.Dispose()
+$runtimePassword
+```
+
+The output is a 64-character hex password. Do not paste it into ChatGPT, GitHub, a handover, or screenshots.
+
+### Render Dashboard SQL action
+
+1. Open the existing Render PostgreSQL resource `ghm-db` (database `ghm_db`, resource ID `dpg-dag0sdtbedkc7389vi2g-a`).
+2. Confirm its status is Available and open its Query/SQL console.
+3. Confirm the selected database is `ghm_db`.
+4. Run the following statement, replacing the placeholder with the locally generated hex value:
+
+```sql
+ALTER ROLE ghm_runtime WITH PASSWORD 'PASTE_LOCAL_64_CHARACTER_HEX_VALUE';
+```
+
+5. Do not change role attributes, memberships, grants, schema ownership or any other role.
+
+If Render rejects the statement or the Query console is read-only, stop and record the exact non-secret error. Do not try a different role or alter the administrator memberships.
+
+### Verify the credential from the operator's Windows machine
+
+Copy the exact external hostname shown by Render under `ghm-db` > Connect. The expected Render hostname follows the resource ID, but use the exact value displayed in the dashboard.
+
+```powershell
+Write-Host "=== Verify direct production runtime login ==="
+$dbHost = "PASTE_EXACT_GHM_DB_EXTERNAL_HOST"
+$env:PGPASSWORD = $runtimePassword
+psql "host=$dbHost port=5432 dbname=ghm_db user=ghm_runtime sslmode=require" -X -v ON_ERROR_STOP=1 -c "SELECT current_database() AS database_name, session_user, current_user, has_schema_privilege(current_user, 'ghm', 'USAGE') AS ghm_usage, has_schema_privilege(current_user, 'ghm', 'CREATE') AS ghm_create;"
+Remove-Item Env:PGPASSWORD
+```
+
+Expected non-secret result:
+- database_name = `ghm_db`
+- session_user = `ghm_runtime`
+- current_user = `ghm_runtime`
+- ghm_usage = `true`
+- ghm_create = `false`
+
+This proves the restricted login connects directly without assuming `ghm_db_user` or another role.
+
+### After verification — do not perform until the psql result is confirmed
+
+Only after the direct psql check succeeds, update GHM-Internal-Runtime's `DATABASE_URL` to the production `ghm_runtime` URL. Keep `DATABASE_SSL=true`. The current live deployment `c7cf1eb` reads `DATABASE_URL`; do not add only `GHM_RUNTIME_DATABASE_URL` yet because that name is required by the unmerged construction branch, not the deployed source. The migrator URL and migration host/name remain unchanged until a separate production migration credential and ledger-read procedure are ready.
+
+The Render environment update will restart the existing service even though repository auto-deploy is OFF. No service environment change has yet been made.
