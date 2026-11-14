@@ -3415,3 +3415,19 @@ Do not blindly add origins or guess cookie lifetimes. Before enabling or migrati
 5. Test both the direct bearer-token API and same-origin cookie proxy independently.
 
 No GHM or Vercel environment variable, CORS policy, cookie setting, route, deployment or user session was changed.
+
+
+### Latest source/workflow CI after Argon2 feasibility changes
+
+Run `43536273084` tested exact commit `30d418d2498f765ac87f2c050dc4f18b0b46df36`:
+- Quality: **73/73 passed**.
+- Web-quality: **11/11 passed**.
+- No failed steps.
+- The bidirectional Argon2id PHC compatibility step passed and the benchmark report was preserved.
+- The local 10 ms Worker benchmark that stalled was removed from the CI path; its incomplete execution is not treated as a performance measurement.
+- The Node/WASM timings remain the current evidence for rejecting `hash-wasm` as a Free-tier candidate at the unchanged GHM password profile.
+
+Run:
+https://github.com/zaidhqdev-sys/GHM/actions/runs/43536273084
+
+Subsequent handover-only commits do not trigger the full CI suite by design; the latest source/workflow commit above remains the qualified code head.
