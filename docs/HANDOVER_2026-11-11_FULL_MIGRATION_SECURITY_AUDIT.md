@@ -3313,3 +3313,40 @@ Production database: Render `ghm-db` / `ghm_db`. All catalog queries used Render
 - Recommended safe sequence after correction: exact-head CI/disposable PostgreSQL migration chain; re-run read-only production preflight and role guard; confirm gateway service deployment/configuration and health; execute only through a separately reviewed controlled migration plan; then verify live functions, ACLs, constraints and runtime readiness. No execution or deployment authorization is implied by this audit.
 
 Status: **READ-ONLY REVIEW COMPLETE; 2 SCHEMA-READY, 3 GATEWAY-DEPENDENT, 1 STORAGE BLOCKER, 1 DEPENDENT GATEWAY GUARD. NO MIGRATIONS APPLIED.**
+
+
+## 2026-11-15 — storage pending-deletion lifecycle correction (PR #279)
+
+The production preflight identified that the existing `storage_object_lifecycle_check` rejected a pending upload transitioning to `deletion_pending`: pending rows have `available_at IS NULL`, but the old deletion_pending branch required a non-NULL timestamp. The application intentionally allows deletion of both pending and available uploads.
+
+A focused branch `fix/storage-pending-deletion-lifecycle` and PR #279 were created: https://github.com/zaidhqdev-sys/GHM/pull/279
+
+The migration `20261110140000_allow_pending_storage_object_cleanup.sql` now replaces the lifecycle CHECK so:
+- pending still requires `available_at IS NULL` and `deleted_at IS NULL`;
+- available still requires `available_at IS NOT NULL` and `deleted_at IS NULL`;
+- deletion_pending requires `deleted_at IS NULL` but preserves either NULL (never completed upload) or non-NULL (previously available upload) `available_at`;
+- deleted still requires `deleted_at IS NOT NULL`.
+
+The SECURITY DEFINER cleanup function changes only `status`; it does not fabricate/alter `available_at` or `deleted_at`. The contract test now asserts the constraint replacement and preservation of both timestamps. The existing `npm test` script explicitly includes this contract test.
+
+Commits: migration correction `54aff274c94a052c841b8780450b065210235471`; contract test `2bf024748aac64cdcbdf5b3eaf9de3beaebf68be`. PR #279 CI run `43650628452` was observed in progress at the time of this entry. No CI pass is claimed yet.
+
+Production remains unchanged: the migration was not executed, the seven-entry pending allowlist was not changed, and no Render deployment or setting change was made. The correction must pass exact-head CI and disposable PostgreSQL full-chain qualification before any production migration execution plan is considered.
+
+
+## 2026-11-15 — PR #279 CI failure isolated to stale pending-migration policy assertions
+
+Exact-head CI run `43650672189` completed with failure in the `Migration audit policy tests` step. The build, full disposable PostgreSQL migration chain, isolated actor-gateway qualification, Business registration forward-migration qualification, storage getter qualification, Opportunity marketplace SQL, storage lifecycle/tenant authorization qualification, full application test suite, Business Capability lifecycle qualification, commercial payment settlement identity qualification, and web-quality job all passed.
+
+The failure was not in the storage lifecycle correction. Two duplicated tests in `scripts/migration-audit-checksum.test.mjs` still asserted that the production pending manifest had exactly one entry (`20261109210000`). That assertion predated the reviewed production audit, which confirmed seven exact pending repository migrations and zero unexplained mismatches. The current seven-entry allowlist is deliberate and matches the live production ledger; it must not be collapsed back to the stale one-entry expectation.
+
+Corrected both duplicate test assertions to deep-compare the exact seven reviewed pending versions/names:
+- `20261110100000 create_account_onboarding_progress`
+- `20261110120000 create_business_relationship_outcome_read_models`
+- `20261110140000 allow_pending_storage_object_cleanup`
+- `20261110210000 add_actor_gateway_principal_guard`
+- `20261110220000 add_actor_gateway_self_identity_read`
+- `20261110230000 add_gateway_business_registration_identity_read`
+- `20261110233000 add_gateway_business_registration_identity_write`
+
+Fix committed on the PR branch as `7bf6afddf803a78f2e90e50a532d028dd657253e`. This is test-policy alignment only; no migration SQL, production allowlist, production data, role, grant, Render environment, or deployment was changed. A fresh exact-head CI run is required before merge or production action.
