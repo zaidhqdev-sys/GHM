@@ -3427,3 +3427,31 @@ Reviewed the exact main-branch SQL for pending migrations `20261110100000` and `
 
 ### Result and gate
 Both migrations have **catalog-level preconditions satisfied** and no name collision detected. This is a read-only structural preflight, not a full migration execution simulation against production data, and not authorization to apply either migration. The migrations remain in the seven-entry production pending allowlist. Apply only at the later controlled migration window after full dependency ordering and the remaining pending-migration review are complete. No production data, schema, roles, grants, or deployment changed in this check.
+
+
+## 2026-11-15 — production Project↔Opportunity reconciliation completed (read-only)
+
+Completed the required production-only reconciliation against Render `ghm-db` / `ghm_db`. The query used aggregate counts and joins only; no Project or Opportunity row contents were returned or modified.
+
+### Live production results
+- Total `ghm.project` rows: **0**.
+- Projects without an Opportunity link: **0**.
+- Invalid links (missing Opportunity or non-`project` Opportunity type): **0**.
+- Project/Opportunity creator-account mismatches: **0**.
+- Total Opportunities with active `project` type: **0**.
+- Project-type Opportunities without a Project: **0**.
+- Projects with active creator participant: **0**.
+- Projects missing the expected active creator participant: **0**.
+- Active `project` Opportunity type definitions: **1** (one total, active).
+- Existing `project_opportunity_fk` restrictive foreign key: **present**.
+- Existing partial unique `project_opportunity_unique` index: **present**.
+
+This is a clean zero-row production baseline: there are no historical Project or project-type Opportunity records requiring a backfill, repair, deduplication, or ownership reconciliation. The canonical creation path in current main creates the project-type Opportunity, creator participant, and Project with its `opportunity_id` inside one authorized transaction; if any insert fails, the transaction rolls back. The current Project repository source and the migration contract test both enforce this relation.
+
+### Actor Gateway principal migration prerequisite recheck
+A separate read-only catalog check confirmed `ghm_actor_gateway` exists as LOGIN NOINHERIT, with SUPERUSER/CREATEDB/CREATEROLE/REPLICATION/BYPASSRLS all false. It has no role memberships. Its only incoming membership is from trusted `ghm_db_user` with ADMIN OPTION true, INHERIT false, SET false. The `ghm_schema_owner` non-login role exists; `ghm_migrator` has SET-only membership in it. This satisfies the principal/membership predicate in pending migration `20261110210000`. Existing legacy registration read/write and storage deletion functions remain SECURITY DEFINER, owned by `ghm_schema_owner`, pinned to `pg_catalog, ghm`, executable by `ghm_runtime`, and not executable by PUBLIC. The gateway role has no execute privilege on those legacy functions.
+
+### Disposition
+Production Project↔Opportunity reconciliation is **PASS — zero-row baseline; no backfill required**. The link constraint and unique index are already live. This closes the previously outstanding production-only data reconciliation gate.
+
+This does not authorize applying the seven pending migrations or switching runtime traffic to Actor Gateway. The gateway service/HTTP cutover hosting blocker remains. No production data, schema, role, grant, environment variable, or deployment was changed by these checks.
