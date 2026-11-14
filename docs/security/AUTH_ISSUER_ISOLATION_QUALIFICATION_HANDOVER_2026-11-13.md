@@ -4767,3 +4767,38 @@ Inspected current-main application files:
 **Decision:** continue read-only source mapping. No grants should be changed based on this partial call-site inventory. The production migration-ledger audit, full source-to-live function definition/checksum reconciliation, and proof of the exact deployed runtime caller surface remain open.
 
 No production/local database, routine, ACL, role, membership, credential, environment, service, migration, deployment, payment flow, or paid resource was changed.
+
+
+### Deployed-vs-main Actor Gateway and runtime startup boundary — 2026-11-14
+
+Re-read the latest handover before this comparison. The preceding checkpoints already recorded the production role/function inventory, partial current-main caller mapping, backup readability evidence, and the c7cf1eb vs main divergence. This checkpoint extends the source comparison to the exact mainline runtime/gateway entrypoints.
+
+**Version boundary verified:**
+- Render's last confirmed deployed commit remains c7cf1ebaf4db5912983bfa45bd42747c0854cfaf.
+- GitHub main is 6d6a6699ceb5e59d77c31d87ce512992ced188da, 21 commits ahead of that deployment with no commits behind.
+- The exact deployed c7cf1eb source predates the new src/actor-gateway/ service, src/db/runtime-principal.ts, and the current mainline GHM_RUNTIME_DATABASE_URL configuration/startup identity check. Those are not live protections until a separately approved, coordinated release is deployed.
+
+**Current-main Resource API runtime startup:**
+- src/config.ts requires GHM_RUNTIME_DATABASE_URL in production; DATABASE_URL is only a non-production fallback.
+- src/server.ts queries session/current identity, database CONNECT/CREATE, schema USAGE/CREATE, role attributes and membership predicates before opening the listener.
+- assertRuntimeDatabaseIdentity requires both session_user and current_user to be ghm_runtime, LOGIN/NOINHERIT, no elevated attributes, database CONNECT without CREATE, schema USAGE without CREATE, and the approved membership predicate.
+- This is a mainline code contract, not a deployed runtime check. The production role attributes were previously shown to satisfy these predicates, but the live connection URI/password and service environment do not yet prove the service will connect as ghm_runtime.
+
+**Current-main Actor Gateway entrypoint:**
+- src/actor-gateway/app.ts exposes three typed routes only: GET /v1/actor/me, GET /v1/businesses/:businessId/registration-identity, and PUT /v1/businesses/:businessId/registration-identity.
+- Each route independently verifies the ES256 access token and derives the account ID from its verified subject. No caller-supplied account ID is accepted over HTTP.
+- The gateway has no generic SQL, arbitrary function-name, arbitrary table, or caller-selected actor endpoint.
+- src/actor-gateway/server.ts requires GHM_ACTOR_GATEWAY_DATABASE_URL, requires TLS in production, loads public verification keys, and at startup verifies session_user=current_user=ghm_actor_gateway.
+- **Important limitation in this mainline version:** the gateway server startup shown in current main checks database login identity only. It does not perform the later construction-branch exact function-allow-list / zero-direct-relation-privilege / default-ACL verifier described in the 2026-11-11 security audit. Do not conflate that later construction-branch verifier with current-main code or assume it runs in production.
+- The current-main initial migration 20261110210000_add_actor_gateway_principal_guard.sql defines assert_actor_gateway(bigint), which checks the dedicated DB login and active account, but accepts an account ID argument. The historical migration comment requires the caller to derive it from a verified token. Later signed-assertion/capability work in the construction/qualification stack must be assessed as a separate version before selecting the production trust model; do not claim the later signed contract is already in main or deployed.
+- The current mainline gateway remains an initial narrow vertical slice, not the complete 24/25-operation capability gateway or a production-ready shared actor boundary.
+
+**PR stack status rechecked from GitHub:**
+- PR #272 is open/draft, head c81e2bf2534febef9c5e49b39f60f85415f04ff1, base main.
+- PR #276 is open/draft, head 34358452458478a973d3c7dc18b6abf434935e49, based on #272.
+- PR #277 is open/draft, head 65171c0b66860e33e7d67505231b1fd5e6d2c6ff, based on #276.
+- These are a dependent stack. Do not merge #277 or #276 independently of prerequisites; do not treat draft branch qualification as a production deployment or as current-main behavior.
+
+**Decision:** keep production unchanged. The correct next source task is to complete the exact deployed-commit caller map for the production 46-function EXECUTE surface and separately inspect the latest #272/#276 stack's signed assertion and exact ACL verifier. Only after that can a safe, coherent mainline/stack decision be made. Production role/environment/credential cutover, gateway service provisioning, migrations, grants and deployment remain blocked on the existing backup/restore, migration-ledger and operational gates.
+
+No production/local database, role, membership, ACL, function, credential, environment variable, service, migration, deployment, payment flow, backup, or paid resource was changed.
