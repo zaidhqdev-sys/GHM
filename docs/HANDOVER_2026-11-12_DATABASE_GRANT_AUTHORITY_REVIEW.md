@@ -2430,3 +2430,55 @@ After verifying the current-mainline integration tree contains the component cha
 - #271 — Business profile Actor Gateway.
 
 Their branches were not deleted; their relevant code remains preserved in #272. PR #243 remains open because #244 is stacked on its supplier-classification base. PR #244 remains draft and unmerged: its Business Engagement / Analytics writes still use the Resource API runtime path and require issuer-verified Actor Gateway actor binding. PR #264 is an older documentation checkpoint with a stale base and has not been merged. PayFast #233 and legal acceptance #201 remain parked.
+
+
+---
+
+### 2026-11-14 — refreshed production role authority and migration-ledger access path
+
+Fresh read-only catalog evidence from Render 'ghm-db' / 'ghm_db' confirms:
+
+1. 'ghm.ghm_schema_migrations' exists, is owned by 'ghm_schema_owner', and has NULL relation ACL. 'ghm_app_user'/'ghm_db_user' and 'ghm_migrator' cannot SELECT it directly; 'ghm_migrator' also has no direct 'ghm' schema USAGE. This is consistent with the least-privilege migration-runner design, not proof that the ledger is absent.
+2. 'src/db/migrate.ts' is the intended read/apply authority path: it connects with 'GHM_MIGRATOR_DATABASE_URL', asserts 'session_user=current_user=ghm_migrator', verifies the exact SET-only membership to 'ghm_schema_owner', executes 'SET ROLE ghm_schema_owner', then reads 'version, checksum' from the resolved ledger table. It also applies pending migrations, so the normal command is NOT a read-only audit command and must not be run against production to inspect the ledger.
+3. The current read-only Render query identity remains 'session_user=ghm_app_user', 'current_user=ghm_db_user'. The query connector accepts a single prepared statement; a combined 'SET LOCAL ROLE; SELECT' was rejected with 42601 before execution. No role change or database mutation occurred.
+4. Current direct membership rows include five PostgreSQL-granted ADMIN OPTION memberships from 'ghm_db_user' to 'ghm_actor_gateway', 'ghm_migrator', 'ghm_payment_provider', 'ghm_runtime', and 'ghm_schema_owner' (all INHERIT=false, SET=false). A separate 'ghm_db_user'-granted membership gives 'ghm_db_user' → 'ghm_runtime' INHERIT/SET true without ADMIN OPTION. 'ghm_migrator' → 'ghm_schema_owner' is INHERIT=false, SET=true, ADMIN=false. 'ghm_app_user' → 'ghm_db_user' is INHERIT/SET true, ADMIN=false.
+5. 'ghm_db_user' remains LOGIN/INHERIT with CREATEDB and CREATEROLE; 'ghm_app_user' inherits its authority. These exact paths and duplicate runtime grants need to be considered together in any future role cutover. No membership, role attribute, grant, ownership, schema, migration or data was changed.
+6. Render Postgres metadata: PostgreSQL 18, available, Frankfurt, plan '0.1c-256mb', 1 GB disk, no HA, no connection pool, and external allowlist '0.0.0.0/0'. This is not proof of a fresh backup or successful restore. The existing 4 November backup remains stale per prior handover; backup/restore is still a hard gate.
+
+**Disposition:** migration ledger access must be obtained through a dedicated read-only audit mode that preserves the migrator identity and owner role, not by granting SELECT to runtime or the Render default user. The existing migration runner is mutating and must not be invoked in production for this purpose. Implement/qualify a non-mutating ledger-audit command against disposable PostgreSQL first; only then decide whether a controlled production audit invocation is safe and available. Until then the production migration head/checksums remain unknown.
+
+
+### Correction — existing non-mutating ledger audit command, 2026-11-14
+
+The repository already contains the required non-mutating ledger audit: 'npm run audit:migrations' -> 'scripts/forensic-migration-reconciliation.mjs'. It starts a READ ONLY transaction, validates the 'ghm_migrator' session, SET ROLEs to 'ghm_schema_owner', reads ledger version/name/checksum/applied_at, and compares the live ledger against repository and production provenance/pending allowlists. It does not apply SQL. Do not add a duplicate tool or use 'npm run migrate' for audit. The outstanding blocker is an authorized production invocation path with the existing migrator credential; Render currently exposes only 'ghm-internal-runtime' as the production GHM web service, and service metadata does not establish that the migrator URL is configured. Do not add it to the app service or expose its value as a shortcut. Production ledger head/checksums remain unknown until the existing audit is safely run.
+
+
+### 2026-11-14 source-to-production SECURITY DEFINER reconciliation checkpoint
+
+The security qualification handover now contains the exact four-function comparison and must be treated as the detailed source of truth. Summary for this grant-authority handover:
+
+- The repository contains '20261112090000_pin_security_definer_search_path.sql', which normalizes every GHM SECURITY DEFINER function to 'pg_catalog, ghm, pg_temp' after asserting schema-owner ownership. Production catalog remains split 53 ('pg_catalog, ghm'), 5 canonical, 3 ('ghm, pg_temp'), and 1 ('ghm, pg_catalog'). Until the read-only production migration ledger is available, this is a catalog/source discrepancy, not proof that the migration is pending.
+- Four noncanonical signatures were inspected in production. Founder bootstrap and account creation bodies match their source migrations; Connect identity-authority function provenance is unresolved; Business Hours replacement matches its base migration and retains the legacy runtime grant until its explicit manual cutover.
+- Business Hours manual cutover remains prohibited until Actor Gateway deployment/qualification, role identity verification and fresh independently verified backup exist. No cutover or permission change occurred.
+- Do not repeat the four-function definition fetch or aggregate search-path count. Continue with the unresolved identity-authority provenance and the remaining 53/other function source comparison, then obtain ledger evidence through the existing read-only audit path.
+
+
+### 2026-11-14 follow-up — later SECURITY DEFINER migration declarations
+
+The security qualification handover now records the bounded 2026-11-12 migration-source review. In brief: migrations 20261112020000, 20261112030000 and 20261112080000 create SECURITY DEFINER routines with 'pg_catalog, ghm' before the 20261112090000 all-functions normalization migration; later 20261112140000 and 20261112150000 use the canonical 'pg_catalog, ghm, pg_temp'. The live 53/5/3/1 distribution cannot be explained by declarations alone. The production read-only migration ledger is required to determine whether normalization is absent or later DDL drifted. Do not repeat this source-file review unless new migration commits are introduced.
+
+
+### 2026-11-14 Worker qualification and production migration audit boundary
+
+Exact-head CI run '43594131250' for commit 'c105c690c570dd3035bd1ae265f3464c2a61526d' passed both quality and web-quality jobs. It includes Worker bundle without deployment, local Cloudflare runtime smoke, disposable DB Actor Gateway principal checks, all gateway cutover qualifications and issuer post-cutover inventory comparison. This is disposable/local qualification only; no production Worker deployment or production SQL occurred.
+
+The Worker uses 'workers/actor-gateway/index.ts' and 'workers/actor-gateway/wrangler.jsonc'. The config retains a placeholder Hyperdrive ID/local disposable URL and must not be deployed as-is. The existing Render Node entry point remains unchanged.
+
+The production migration audit is read-only and requires the pre-existing 'ghm_migrator' login URL plus SET ROLE 'ghm_schema_owner'; current GitHub CI only provisions disposable credentials and no production migration runner exists in Render. Do not add services or place credentials in application env/docs/chat. Owner-controlled one-off local execution is the candidate only if the owner already holds the migrator credential. No production state changed.
+
+
+### 2026-11-14 Connect identity-authority provenance closure and audit runbook
+
+The exact Connect identity-authority function symbol has no result in repository indexed code search; the bounded current migration/cutover source review did not find its creating migration. It remains a production-observed object with unresolved historical provenance. Do not infer its origin or alter its ACL/definition. Resolve only through historical Git refs/PRs or an approved backup/catalog archive.
+
+The read-only production migration audit is 'npm run audit:migrations'. It requires an already available dedicated 'GHM_MIGRATOR_DATABASE_URL', verifies 'session_user=current_user=ghm_migrator', checks SET ROLE 'ghm_schema_owner', uses 'BEGIN READ ONLY', reads the migration ledger, and rolls back. If the dedicated URL is not already securely available to the owner locally, stop and report the prerequisite; do not create/rotate credentials, substitute app roles, or add a Render service. Detailed PowerShell procedure and safety conditions are in the security qualification handover.

@@ -3580,3 +3580,457 @@ The Worker-specific JSON parser currently emits the 413 response for an oversize
 4. Do not deploy, create Hyperdrive resources, provision production secrets, attach a domain, or route traffic without a separately recorded zero-cost and rollback-qualified plan.
 
 **Current disposition:** Worker adapter source is locally qualified on the unchanged source commit; production connectivity and deployment are not qualified or authorized. Authentication Issuer isolation remains a separate security gate and must not be represented as completed by the Worker work.
+
+
+### Worker oversized-body early rejection correction — 2026-11-14
+
+The Worker-specific JSON parser was hardened without changing the shared Node/Render parser.
+
+- When the streamed JSON body crosses 16 KiB, the middleware now marks the request complete, clears buffered chunks, immediately sends HTTP 413 `payload_too_large`, and resumes/drains the request stream without retaining further bytes.
+- The later `end` handler returns immediately because the request has already been completed; it cannot emit a second response.
+- The Worker contract test now asserts that the 413 response is in the data-event threshold branch, that completion is marked, that buffered chunks are cleared, and that stream draining follows the immediate response.
+- Changed files: `workers/actor-gateway/index.ts` and `workers/actor-gateway/worker-contract.test.mjs`.
+- Branch: `security/actor-gateway-worker-body-limit-20261114`.
+- Source commits: `e15cb634e6aacf43cadd89159a6bd439390436ea` and `1e4a5d4d6786db5260f0b41b6e3b4775a1ee9e8c`.
+
+This is source-level remediation only. Exact-head CI, Worker bundle, TypeScript check and local Workerd/Hyperdrive smoke must pass before calling the correction qualified. No production or Cloudflare account changes have been made.
+
+
+### Worker transient-startup retry correction — 2026-11-14
+
+A second adapter reliability issue was found while reviewing the startup lifecycle. The module-level `initialization` promise previously remained rejected after a transient Hyperdrive connection or startup ACL failure. Every later request in the same isolate would therefore return 503 without retrying initialization.
+
+Correction:
+- Attach a rejection handler to the shared initialization promise.
+- Clear `initialization` when startup fails, then rethrow so the current request still fails closed with 503.
+- A later request may retry initialization using the current Worker bindings.
+- Add a Worker contract regression test that asserts failed initialization is cleared before the error is rethrown.
+
+This does not bypass startup identity/ACL checks. Each retry must pass the same checks before the listener is created. Source commits: `067a3012ffcd391f207f3ca4bc634f7a6d89b2a2` and `5c9dba91dc66bf51c6e4441eb7b4852641faa4f3`.
+
+The PR #277 exact-head CI remains the qualification gate for both Worker hardening changes. No production change was made.
+
+
+### Worker hardening PR and exact-head CI trigger — 2026-11-14
+
+- Draft PR #277: https://github.com/zaidhqdev-sys/GHM/pull/277
+- Head branch: `security/actor-gateway-worker-body-limit-20261114`
+- Parent/base branch: `construction/auth-issuer-stacked-on-pr272-20261113`
+- Latest source/workflow head at this checkpoint: `c95c3f3cf06ccdb7d7233518dace37e7addb368f`.
+- The CI workflow's push branch allow-list was extended only on this feature branch so its source changes can receive an exact-head run without opening a misleading PR against main.
+- The GitHub combined-status lookup and PR-filtered workflow-run lookup returned no run/status for this SHA at the time of inspection. A fresh exact-head CI run is therefore **not yet confirmed**. Do not mark the Worker corrections qualified until the run is visible and both quality jobs complete.
+- PR #277 remains draft and unmerged; it is stacked on the existing issuer/Actor Gateway integration. No production or Cloudflare account changes were made.
+
+
+### Exact-head Worker hardening qualification completed — 2026-11-14
+
+GitHub Actions run [43549310157](https://github.com/zaidhqdev-sys/GHM/actions/runs/43549310157) completed successfully on exact PR #277 head `09ecb58add2f3c68d0acdc26299d320d5c169d1a`.
+
+Final results:
+- `quality`: **73/73 steps passed**.
+- `web-quality`: **11/11 steps passed**.
+- Worker TypeScript and contract checks passed as part of the quality workflow.
+- Wrangler Cloudflare Worker bundle dry-run passed.
+- Local Workerd + disposable Hyperdrive smoke passed, including startup database identity/ACL checks, health endpoint and malformed JSON rejection.
+- Disposable PostgreSQL migrations, Actor Gateway and Authentication Issuer principal qualification, full test suite, issuer lifecycle/runtime denials, and before/after SECURITY DEFINER authority inventory comparison all passed.
+- No failed steps.
+
+This run qualifies the current Worker hardening source and the full stacked disposable qualification suite. It does not establish live Cloudflare-to-Render Hyperdrive connectivity, production TLS/ACL identity, production role separation, production secret provisioning, DNS/routes, or production traffic behavior.
+
+PR #277 remains an open draft, unmerged, stacked on `construction/auth-issuer-stacked-on-pr272-20261113`. It must not be merged independently of its parent security integration. The PR description's earlier "Validation pending" text is superseded by this completed exact-head run.
+
+No production database, grants, credentials, Render environment/services/deployments, Cloudflare resources, DNS, secrets, billing settings or traffic routes were changed. No paid service was created.
+
+
+### Live production Render role inventory — read-only verification, 2026-11-14
+
+Read-only inspection was performed directly against the Render PostgreSQL instance:
+- Render service: 'ghm-db'
+- Render Postgres ID: 'dpg-dag0sdtbedkc7389vi2g-a'
+- Database: 'ghm_db'
+- PostgreSQL major version: 18
+- Query method: Render read-only SQL transaction. No DDL, DML, grants, revocations, credential changes or connection setting changes were issued.
+
+#### Observed role attributes
+
+- 'ghm_db_user': LOGIN, INHERIT, CREATEDB and CREATEROLE; not superuser, not replication, not BYPASSRLS.
+- 'ghm_app_user': LOGIN, INHERIT; no CREATEDB/CREATEROLE/superuser/replication/BYPASSRLS.
+- 'ghm_actor_gateway': LOGIN, NOINHERIT; no CREATEDB/CREATEROLE/superuser/replication/BYPASSRLS.
+- 'ghm_runtime': LOGIN, NOINHERIT; no elevated role attributes above.
+- 'ghm_migrator': LOGIN, NOINHERIT; no elevated role attributes above.
+- 'ghm_payment_provider': LOGIN, NOINHERIT; no elevated role attributes above.
+- 'ghm_schema_owner': NOLOGIN, NOINHERIT; no elevated role attributes above.
+- 'ghm_auth_issuer' was not present in the returned production role inventory.
+
+#### Observed production role memberships
+
+The live pg_auth_members query returned:
+- 'ghm_app_user' is a member of 'ghm_db_user' (grantor 'postgres').
+- 'ghm_db_user' has ADMIN OPTION over 'ghm_actor_gateway', 'ghm_migrator', 'ghm_payment_provider', 'ghm_runtime', and 'ghm_schema_owner' (grantor 'postgres').
+- An additional 'ghm_db_user' to 'ghm_runtime' membership row exists with grantor 'ghm_db_user', no ADMIN OPTION, INHERIT true and SET true.
+- 'ghm_migrator' is a member of 'ghm_schema_owner' (grantor 'ghm_db_user'), with INHERIT false and SET true.
+- The query also returned expected platform memberships in 'pg_read_all_stats' and 'pg_signal_backend'.
+
+#### Security interpretation and hold
+
+Production role separation remains NOT QUALIFIED. In particular, the production connection principal 'ghm_db_user' has database/role creation attributes and delegated ADMIN OPTION over the security principals that are intended to be separated. 'ghm_app_user' inherits membership in that principal. This is a live production authority boundary, not a disposable-test failure.
+
+The Worker and issuer disposable qualification results do not override this finding. No production changes were made. Do not attempt REVOKE, ALTER ROLE, role recreation, credential rotation, connection-string changes, Render environment updates or deployment until all of the following are established:
+1. A current, verified production backup and tested restoration path (the previously identified Nov 4 backup alone is not sufficient evidence of current recoverability).
+2. A complete dependency map of ownership, grants, default privileges, SECURITY DEFINER functions, connection pool/session role assumptions, and application runtime usage for each affected role.
+3. A staged, reversible migration/role-transition plan that preserves application availability and has a clear rollback route.
+4. The exact intended production login principals and their least-privilege effective grants, verified read-only before and after the controlled cutover.
+
+The role inventory did not prove whether the 'ghm_db_user' ADMIN OPTION memberships can be safely removed from the current application session; that earlier attempted revoke did not resolve the membership. Do not repeat it. Render support's prior escalation remains relevant.
+
+**Current production disposition:** read-only findings confirmed; privilege remediation blocked pending recovery evidence and complete authority/dependency mapping. No paid infrastructure was created or modified.
+
+
+### Production Actor Gateway ACL compatibility — read-only check, 2026-11-14
+
+Additional read-only checks were run against the same Render ghm_db instance to compare the live grants with the Worker startup contract in workers/actor-gateway/index.ts and src/actor-gateway/database-privileges.ts.
+
+#### Current Render query connection identity
+
+The Render read-only query session reported database 'ghm_db', session_user 'ghm_app_user', and current_user 'ghm_db_user'. This confirms the current queried application connection path still resolves to the legacy privileged principal; it is not the identity required by the new Worker adapter.
+
+#### Actor Gateway role ACL versus Worker contract
+
+Live effective privilege checks for 'ghm_actor_gateway' returned:
+- USAGE on schema 'ghm': false.
+- CREATE on schema 'ghm': false.
+- Executable SECURITY DEFINER functions in schema 'ghm': 0.
+- Executable Actor Gateway contract functions (assert_actor_gateway / assert_actor_gateway_capability / gateway_* non-trigger functions): 0.
+- The only 14 ghm functions visible to the earlier broad EXECUTE check were trigger-returning functions; they are not the adapter's callable gateway contract.
+
+The Worker startup contract requires schema USAGE, no schema CREATE, no direct relation privileges, and the exact expected Actor Gateway function allow-list. The live production ACL therefore does not satisfy the Worker startup contract. The Worker would fail closed at startup if connected using the dedicated 'ghm_actor_gateway' login with the currently observed grants. This is a production integration blocker, not a reason to weaken or bypass the Worker checks.
+
+#### Related ownership and authority inventory
+
+- Database 'ghm_db' is owned by 'ghm_schema_owner'; this role consequently has database CREATE (schema creation) privilege, despite its NOLOGIN role attributes.
+- Schema 'ghm' is owned by 'ghm_schema_owner'. Schema 'public' is owned by 'ghm_db_user'.
+- In schema 'ghm', 'ghm_schema_owner' owns 59 ordinary tables, 48 sequences, 1 view and the associated indexes/toast objects reported by pg_class.
+- 'ghm_schema_owner' owns 63 SECURITY DEFINER functions in schema 'ghm'. The current check counted 46 of those as executable by 'ghm_runtime' and 46 as executable by 'ghm_app_user'/'ghm_db_user'.
+- The only default ACL row returned for the reviewed principals was a schema-owner default sequence ACL in schema 'ghm' granting USAGE to 'ghm_runtime'. No function default ACL row was returned for 'ghm_schema_owner'.
+
+#### Disposition
+
+Do not add schema USAGE or function grants ad hoc. First reconcile the intended migration-defined gateway function allow-list, exact grantors/ACLs, direct relation grants, ownership, default ACLs and the current production connection string. The production role and Worker adapter cutover must be designed together, with a verified restore point and rollback. Do not weaken the adapter startup checks to accommodate the current production ACL.
+
+
+### Additional production ACL and migration-evidence limits — 2026-11-14
+
+Further read-only checks confirmed 'ghm_actor_gateway' has zero direct privileges on ordinary/partitioned tables, views, materialized views, foreign tables, and sequences in schema 'ghm'. This part of the intended least-privilege contract is satisfied.
+
+However, schema USAGE is absent and the exact callable signed gateway allow-list is absent (zero executable 'gateway_*' / assertion contract functions), so the Worker startup ACL contract still fails. This is not a case for adding broad direct relation grants; the intended remedy must be the exact migration-defined schema USAGE and function allow-list after the production authority cutover is understood.
+
+The Render read-only query connection (session_user 'ghm_app_user', current_user 'ghm_db_user') could not SELECT from 'ghm.ghm_schema_migrations' (PostgreSQL 42501 permission denied). This is consistent with application roles not having migration-ledger read access. Therefore this connection cannot establish the production migration ledger's latest applied version/checksum. Do not infer the migration head from schema object presence. A separate approved migration-authority/backup-backed evidence path is required to reconcile the production ledger without granting runtime access.
+
+
+### Source allow-list documentation reconciliation — 2026-11-14
+
+Cross-checking the live ACL findings against the exact source startup verifier found a stale count in docs/architecture/SQL_PRIVILEGE_INVENTORY.md. The current Actor Gateway verifier in src/actor-gateway/database-privileges.ts defines 33 exact signed/typed gateway function signatures (including the assertion function); the architecture inventory still said 25. The four stale references were corrected to 33 in the existing PR #277 branch. This is documentation-only; no migration or ACL was changed. The Worker contract remains fail-closed against production until all 33 expected signatures and schema USAGE are present and the full startup verifier passes.
+
+
+### Production Actor Gateway migration objects absent — read-only confirmation, 2026-11-14
+
+Read-only catalog inspection now distinguishes missing objects from merely missing grants. In production schema 'ghm':
+- Count of current source-contract 'gateway_*' non-trigger functions: 0.
+- Count of SECURITY DEFINER 'gateway_*' non-trigger functions: 0.
+- 'ghm.assert_actor_gateway_capability(bigint,text,bigint,uuid,text,text)' is absent.
+- The earlier 'ghm.assert_actor_gateway(bigint)' helper is absent.
+- 'ghm.actor_gateway_capability_assertion_nonce' table is absent.
+- 'ghm.actor_gateway_capability_assertion_secret' table is absent.
+- 'ghm.ghm_schema_migrations' exists, but its rows are not readable through the current application query identity (42501).
+
+This confirms the production database does not currently contain the Actor Gateway SQL objects required by the source branch. The exact migration ledger head cannot be read with the current connection, so we cannot yet distinguish an unapplied migration range from later manual object removal. Do not assume the migrations have been applied, and do not apply them directly as a shortcut. Reconcile the ledger using the approved migration-authority path, compare every expected migration checksum, and first establish a verified current backup and restoration route. Production remains on its current legacy application path until that reconciliation and controlled cutover are complete.
+
+
+### Cloudflare zero-cost hosting assessment — documentation review, 2026-11-14
+
+Reviewed current official Cloudflare documentation (pricing pages last updated June/October 2026; Workers limits last updated 13 November 2026):
+- Workers Free includes 100,000 incoming requests per day and a 10 ms CPU-time limit per invocation.
+- Hyperdrive is included on Workers Free with 100,000 database statements per day; the daily quota resets at 00:00 UTC and further operations fail when the free limit is exceeded. A statement includes reads and writes.
+- The Workers Paid plan has a minimum account charge of USD 5/month and is prohibited by the current cost constraint.
+- The Cloudflare Rate Limiting binding API is available in Workers; its documentation describes limits as approximate and separately applied in each Cloudflare location. It must be treated as abuse mitigation, not a globally strict security quota.
+- Current Worker configuration deliberately has workers_dev=false, preview_urls=false and observability disabled; its Hyperdrive ID is a placeholder and its local connection string targets disposable PostgreSQL only. No Cloudflare Worker, Hyperdrive resource, rate-limit binding, secret, route, DNS record or paid plan has been provisioned or changed.
+
+Zero-cost feasibility is plausible on the Workers Free plan within the published limits, but it is not yet account-verified or deployment-qualified. Do not upgrade to Workers Paid. Before any resource creation, confirm the account remains on Free, check that rate-limit namespace ID 41001 is unused within the account, and confirm a suitable domain/route and external Render PostgreSQL TLS/network path. Keep production deployment blocked by the missing production gateway SQL objects, unresolved production authority/backup gates, and absence of a deployed dedicated gateway service.
+
+Official references:
+- https://developers.cloudflare.com/hyperdrive/platform/pricing/
+- https://developers.cloudflare.com/workers/platform/pricing/
+- https://developers.cloudflare.com/workers/platform/limits/
+- https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/
+
+
+### Exact open-stream oversized-body runtime qualification — 2026-11-14
+
+Added a real local Workerd/HTTP regression to the existing .github/workflows/ci.yml smoke step. The test opens a chunked POST to '/v1/actor/me', writes 16 KiB + 1 byte, deliberately does not end the request stream, and requires HTTP 413 with 'payload_too_large' within 1.5 seconds. This verifies the Worker responds before request end rather than merely asserting source-code ordering.
+
+Exact-head GitHub Actions run [43550565894](https://github.com/zaidhqdev-sys/GHM/actions/runs/43550565894) completed successfully on workflow/source commit 'bc7f2afa15aa4cb2483cf7f489fbfb6ce8d893bd':
+- 'quality': 73/73 passed, including the updated local Cloudflare Workers + disposable Hyperdrive smoke step.
+- 'web-quality': 11/11 passed.
+- The Worker bundle dry-run, database startup ACL checks, malformed JSON rejection, and the new open-stream oversized-body 413 check all passed within the quality job.
+- No failed steps.
+
+This is the new Worker hardening qualification run. The earlier run 43549310157 remains valid for the previous source state; run 43550565894 is the evidence for the added open-stream test. No production DB, role, grant, secret, Render service/environment/deployment, Cloudflare resource, DNS/route, or paid plan was changed.
+
+
+### Render PostgreSQL ↔ Cloudflare Hyperdrive network compatibility — documentation review, 2026-11-14
+
+Reviewed official Cloudflare and Render connection documentation:
+- Cloudflare Hyperdrive supports PostgreSQL through node-postgres 'pg' (minimum supported version 8.16.3) and supports PostgreSQL versions through 18.x.
+- Hyperdrive PostgreSQL TLS defaults to 'require'; its documented 'require' mode validates the server certificate using WebPKI. Render external PostgreSQL connections require TLS 1.2+ and accept 'sslmode=require'. The production Hyperdrive origin must use the Render external hostname/URL, not a Render internal hostname; the local Wrangler connection string remains disposable-only.
+- Cloudflare documents a maximum of 20 origin connections for a Free Hyperdrive account. This is compatible with a carefully bounded Worker pool, but the exact production pool and Render database connection budget still need calculation.
+- The live Render metadata currently shows the production ghm-db external IP allowlist as 0.0.0.0/0 ('everywhere'). This makes external Hyperdrive reachability plausible, but it is broad internet exposure and is not an approved final security posture. Do not change it until Cloudflare Hyperdrive egress requirements and Render-supported allowlist options are verified; do not leave it described as a hardened allowlist.
+
+This supports protocol/TLS compatibility at the documentation level only. No Hyperdrive connection to production has been attempted. No Hyperdrive resource, secret, connection URL, allowlist, DNS, route, Worker deployment or Cloudflare plan was created or changed.
+
+Official references:
+- https://developers.cloudflare.com/hyperdrive/examples/connect-to-postgres/
+- https://developers.cloudflare.com/hyperdrive/reference/supported-databases-and-features/
+- https://developers.cloudflare.com/hyperdrive/platform/pricing/
+- https://render.com/docs/postgresql-creating-connecting
+
+
+### Production migration-ledger authority path and current role graph — 2026-11-14
+
+Fresh read-only Render catalog queries against production 'ghm-db' / database 'ghm_db' (PostgreSQL 18) reconfirmed the following:
+
+- The migration ledger is 'ghm.ghm_schema_migrations', owned by 'ghm_schema_owner'. Its relation ACL is NULL (no explicit grants). The current query identity ('session_user=ghm_app_user', 'current_user=ghm_db_user') has no SELECT privilege. 'ghm_migrator' also has no direct schema USAGE or ledger SELECT, by design.
+- The source migration runner in 'src/db/migrate.ts' uses 'GHM_MIGRATOR_DATABASE_URL', verifies the login as 'ghm_migrator', then executes 'SET ROLE ghm_schema_owner' before resolving and reading the ledger's version/name/checksum rows. Its principal guard explicitly requires no direct 'ghm' schema USAGE and no direct relation/sequence privileges for the migrator, plus the exact SET-only owner membership. Therefore the intended authoritative ledger inspection path is the approved migrator identity/runner, not the Resource API connection. The live Render service inventory/environment does not currently prove that a production migrator credential is provisioned or safely available; do not print or request secret values.
+- The read-only Render query tool accepts one prepared SQL statement per call. A two-command 'SET LOCAL ROLE; SELECT ...' attempt was rejected with PostgreSQL 42601 before execution. No role was changed and no ledger data was read. No workaround or ad hoc grant was applied.
+
+The current role membership rows were captured with grantor and all three membership options:
+
+| Granted role | Member | Grantor | ADMIN | INHERIT | SET |
+|---|---|---|---:|---:|---:|
+| 'ghm_actor_gateway' | 'ghm_db_user' | 'postgres' | true | false | false |
+| 'ghm_migrator' | 'ghm_db_user' | 'postgres' | true | false | false |
+| 'ghm_payment_provider' | 'ghm_db_user' | 'postgres' | true | false | false |
+| 'ghm_runtime' | 'ghm_db_user' | 'postgres' | true | false | false |
+| 'ghm_schema_owner' | 'ghm_db_user' | 'postgres' | true | false | false |
+| 'ghm_runtime' | 'ghm_db_user' | 'ghm_db_user' | false | true | true |
+| 'ghm_schema_owner' | 'ghm_migrator' | 'ghm_db_user' | false | false | true |
+| 'ghm_db_user' | 'ghm_app_user' | 'postgres' | false | true | true |
+
+'ghm_db_user' remains LOGIN/INHERIT with CREATEDB and CREATEROLE, and has ADMIN OPTION over the five sensitive roles above. 'ghm_app_user' inherits 'ghm_db_user'. The duplicate runtime membership rows are distinct grant paths and must both be accounted for. These are read-only findings; no membership or role changes were made.
+
+Render metadata for 'ghm-db' reports PostgreSQL 18, status available, region Frankfurt, plan '0.1c-256mb', 1 GB disk, no HA, no connection pool, and external IP allowlist '0.0.0.0/0'. This is a current metadata snapshot, not a backup/restore verification. The broad external allowlist remains a network-hardening issue; do not change it until the Hyperdrive egress design is verified.
+
+**Next authoritative step:** establish a safe, approved way to run the existing migration runner in read-only/audit mode using the exact production 'ghm_migrator' credential, or a separately approved equivalent that preserves the same identity checks. It must emit only the ledger version/name/checksum inventory and compare it against repository migrations without applying pending SQL. Do not weaken the runner's identity contract, grant the Resource API access to the ledger, run the ordinary mutating migration command, or attempt a production cutover. First verify current backup/restore evidence and the exact production migrator connection target.
+
+
+### Existing read-only forensic migration audit located — 2026-11-14
+
+A source inspection found that the safe audit path already exists; no duplicate audit command is needed:
+
+- 'npm run audit:migrations' runs 'scripts/forensic-migration-reconciliation.mjs'.
+- It connects with 'GHM_MIGRATOR_DATABASE_URL', begins a 'READ ONLY' transaction, checks 'session_user=current_user=ghm_migrator' and the expected database, executes 'SET ROLE ghm_schema_owner', verifies the effective identity, and reads only ledger 'version/name/checksum/applied_at'. It does not execute migration SQL or write to the ledger.
+- It compares every live ledger row against repository migration versions/names and canonical SHA-256, supported legacy CRLF checksums, documented historical exceptions, retained historical entries and the production pending-migration allowlist. Its normal production mode reports pending migrations as INVESTIGATE; 'npm run audit:migrations:predeploy' is the explicit allow-pending comparison mode.
+- The script chooses the production-only exception/retained/pending config when database is 'ghm_db'; the target guard rejects unsupported database/target combinations. The normal command is an audit, unlike 'npm run migrate'.
+
+This resolves the earlier assumption that a new read-only audit mode must be built. The remaining blocker is credential/runner availability, not missing source functionality. Current Render service inventory shows only 'ghm-internal-runtime' as the production GHM web service (branch 'main', auto-deploy off, /healthz); there is no dedicated production migrator service or Actor Gateway service. Render service metadata does not expose environment-variable names or prove that 'GHM_MIGRATOR_DATABASE_URL' is configured. Do not inspect or print secret values. The current app service is not an approved place to add or expose the migrator credential.
+
+No production audit was executed: the available Render read-only query identity cannot read the ledger, and no safe production migrator invocation/credential has been established. The next step is to identify an existing authorized operator execution path for the already-existing read-only command, or establish one only after checking it requires no additional paid service and does not expose the secret. Until then, exact production migration head/checksums remain unknown. No source code, runtime configuration, service, environment variable, migration, grant or database data was changed by this finding.
+
+
+### Fresh production gateway catalogue recheck — 2026-11-14
+
+A further read-only PostgreSQL catalog pass on production 'ghm_db' confirmed the live state without relying on the migration ledger:
+
+- 'ghm_actor_gateway' has no USAGE or CREATE on schema 'ghm'. It has no direct privileges on 'ghm' tables/sequences from the earlier relation privilege audit.
+- The exact Actor Gateway startup contract expects 33 signed gateway function signatures (with a compatibility allowance for the three campaign-review functions being absent together). Production has **zero** routines matching 'assert_actor_gateway', 'assert_actor_gateway_capability', or the 'gateway_*' contract namespace. 'ghm_actor_gateway' has **zero executable routines**. The only two routines whose names match the broader gateway/assertion/nonce search are unrelated legacy 'connect_service_assertion_consume(...)' and 'replace_business_capability_assertions(...)'.
+- Production currently has 62 SECURITY DEFINER routines. All 62 are owned by 'ghm_schema_owner'; 5 have the exact pinned 'search_path=pg_catalog, ghm, pg_temp' configuration. This count alone does not prove the remaining 57 are unsafe: their complete per-routine config/ACL comparison must be reconciled against the reviewed authority inventory before any changes. No SECURITY DEFINER routine was changed.
+- The migration ledger exists, is owned by 'ghm_schema_owner', and has no direct relation ACL. The audit query identity cannot read it. The existing read-only migration audit remains the only approved route to exact production migration versions/checksums.
+
+This makes the immediate live prerequisite explicit: production Actor Gateway is not merely missing one grant; the schema USAGE and entire signed gateway routine contract are absent. Do not fix by granting broad EXECUTE or by manually creating routines. Reconcile the live migration ledger and reviewed catalog inventory first. No production objects, grants, roles, data, credentials or runtime configuration were changed.
+
+
+### SECURITY DEFINER ACL and search_path deep inventory — 2026-11-14
+
+A second read-only production catalog pass enumerated all 62 non-trigger SECURITY DEFINER routines in schema 'ghm' (the prior count is reproducible when excluding trigger-returning functions). Exact aggregate results:
+
+| Measure | Production count |
+|---|---:|
+| SECURITY DEFINER routines | 62 |
+| Exact reviewed search_path 'pg_catalog, ghm, pg_temp' | 5 |
+| Not exact reviewed search_path | 57 |
+| Any configured search_path explicitly including 'pg_temp' | 8 |
+| PUBLIC EXECUTE | 0 |
+| 'ghm_runtime' EXECUTE | 46 |
+| 'ghm_app_user' effective EXECUTE | 46 |
+| 'ghm_payment_provider' EXECUTE | 2 |
+| 'ghm_actor_gateway' EXECUTE | 0 |
+
+All 62 are owned by 'ghm_schema_owner' and use trusted SQL or PL/pgSQL languages. No PUBLIC EXECUTE grant was found. The 57 non-exact settings are not yet approved as safe: most use 'search_path=pg_catalog, ghm' (which omits explicit 'pg_temp'); one observed function uses 'search_path=ghm, pg_catalog', and others use 'search_path=ghm, pg_temp'. Exact per-function settings and definitions must be compared to the repository's approved migration history before proposing remediation. Do not bulk ALTER FUNCTION or assume all 57 have the same risk.
+
+The role ACL inventory also shows the 46 runtime-executable SECURITY DEFINER routines are effectively executable by 'ghm_app_user' because the application user inherits 'ghm_db_user', which in turn inherits 'ghm_runtime'. This is an additional consequence of the production role graph and must be included in the planned runtime authority cutover. Payment-provider-only routines remain separate (2); Actor Gateway routines remain absent (0).
+
+Default function ACLs are also differentiated by object creator: 'ghm_schema_owner' has a schema-scoped default ACL granting EXECUTE to 'ghm_runtime' only; PostgreSQL's global default function ACL for 'postgres' includes PUBLIC EXECUTE and 'ghm_db_user'. The latter is not evidence that current SECURITY DEFINER routines have PUBLIC EXECUTE (the live routine ACL query found zero); it is a prospective default risk for functions created by 'postgres' and must be accounted for in any future migration execution path. No defaults or grants were changed.
+
+No function definitions, owners, ACLs, search_path settings, role memberships, or database objects were modified. This remains a diagnostic inventory pending exact migration reconciliation and definition-by-definition review.
+
+
+### Investigation closure register — SECURITY DEFINER production inventory, 2026-11-14
+
+This section is the durable record for future sessions. Re-read this register and the SQL privilege inventory before repeating production catalog queries. The aggregate and exact path distribution below were captured from production 'ghm_db' using read-only Render catalog queries on 2026-11-14. No database state was changed.
+
+**Exact non-trigger SECURITY DEFINER search_path distribution (62 routines):**
+
+| Configured function setting | Count | Disposition |
+|---|---:|---|
+| 'search_path=pg_catalog, ghm' | 53 | Missing explicit 'pg_temp'; inspect definition/temporary-object exposure and compare migration intent individually. |
+| 'search_path=pg_catalog, ghm, pg_temp' | 5 | Matches the exact reviewed path. |
+| 'search_path=ghm, pg_temp' | 3 | 'pg_catalog' absent and schema resolution order differs; individually review. |
+| 'search_path=ghm, pg_catalog' | 1 | Schema resolution order differs; individually review. |
+| **Total** | **62** | No blanket ALTER FUNCTION is approved. |
+
+This replaces the earlier approximate description that the 57 non-exact routines were mostly one category: the exact distribution is now 53 + 5 + 3 + 1. It also resolves the earlier 62-versus-63 count discrepancy: the authoritative comparable count is 62 non-trigger SECURITY DEFINER functions in schema 'ghm'; one earlier broad aggregate included a trigger-returning routine. Keep the scope predicate 'p.prorettype <> trigger'::regtype' when reproducing the 62 count.
+
+**ACL/effective execution snapshot (same scope):** PUBLIC EXECUTE 0; 'ghm_runtime' EXECUTE 46; effective 'ghm_app_user' EXECUTE 46; 'ghm_payment_provider' EXECUTE 2; 'ghm_actor_gateway' EXECUTE 0. All 62 are owned by 'ghm_schema_owner'. The 46 effective app-user executions follow the current role inheritance path; they are not 46 direct grants to 'ghm_app_user'. No current function definitions, grants, settings, memberships, owners or default ACLs were changed.
+
+**Known interpretation and non-repeat instructions:**
+1. Do not rerun aggregate counts just to reconfirm them. The current exact result is 62 routines with path groups 53/5/3/1 and ACL counts above.
+2. Do not assume the 53 routines with 'pg_catalog, ghm' are automatically vulnerable solely because explicit 'pg_temp' is absent. Review PostgreSQL's actual name-resolution/temp-schema behavior and each function's body/qualified references before deciding.
+3. The three 'ghm, pg_temp' and one 'ghm, pg_catalog' routines are distinct cases, not members of the 53 group. Inspect their function bodies and migration provenance separately.
+4. The current repository script 'scripts/audit-security-definer-authority.mjs' explicitly refuses any target except local 'ghm_disposable_test'. It is a disposable qualification/reporting tool, not a production audit runner. Do not weaken its target guard or point it at production.
+5. The production migration ledger remains unreadable through the available app query identity. The separate 'npm run audit:migrations' script is read-only and validates the production migrator identity, but no approved invocation path/credential has been established. Do not use 'npm run migrate' for inspection.
+6. Production Actor Gateway SQL contract remains absent: zero expected gateway routines, no schema USAGE for 'ghm_actor_gateway', zero executable routines for that role. Do not manually create functions or grant broad EXECUTE.
+7. Current role membership, 5 ADMIN OPTION memberships held by 'ghm_db_user', inherited application/runtime path, and global 'postgres' default function ACL are already recorded in the sections above. Do not repeat discovery queries unless the database has changed or a new source/migration commit makes comparison necessary.
+
+**Next useful work is not another aggregate catalog pass.** Build a source-to-production comparison of the 62 exact signatures, definitions, per-function ACLs and 'proconfig' against repository migration history and the approved SQL privilege inventory. Because production ledger provenance is still unknown, mark matches as source-compatible/observed rather than claiming migration application. Prioritize the four nonstandard search-path routines, then the 53 missing explicit 'pg_temp' cases, with a per-function rationale. Any eventual remediation must be a reviewed migration, qualified on disposable PostgreSQL, backed up, and separately approved for production.
+
+
+### Source-to-production SECURITY DEFINER comparison — first four non-standard cases, 2026-11-14
+
+This is the next durable checkpoint. The previous production inventory is not to be repeated. A read-only production query retrieved the exact function definitions, owners, direct ACLs and 'proconfig' for all four routines in the non-standard path groups. Repository source was then checked on branch 'security/actor-gateway-worker-body-limit-20261114'. No production state was changed.
+
+**Exact source matches found:**
+
+| Production signature | Production path | Repository source | Source comparison / ACL |
+|---|---|---|---|
+| 'ghm.auth_bootstrap_founder_system_admin(text)' | 'ghm, pg_temp' | 'database/migrations/20261005211000_correct_founder_system_admin_bootstrap_existing_account.sql' (blob 'ee3d17e71be187374e249a05b867c2592b0be269') | Body matches the promotion-only function. Owner-only EXECUTE; runtime revoked in source and production ACL is owner-only. |
+| 'ghm.auth_create_account(text,text,text,text,text,integer,integer,integer)' | 'ghm, pg_temp' | 'database/migrations/20261004020000_create_auth_account_registration.sql' (blob '9b737df2e1fedd57cfa79f061f6f255dd1952471') | Body matches account + password credential registration. Source grants runtime EXECUTE; production ACL shows owner and 'ghm_runtime'. |
+| 'ghm.auth_read_connect_identity_authority(bigint)' | 'ghm, pg_temp' | Exact creating migration not located in the targeted source review | Production definition is schema-qualified for its table references and reports only identity/Connect authority fields. Owner and runtime ACL present. Do not claim source provenance or migration application until located. |
+| 'ghm.replace_business_hours(bigint,bigint,jsonb)' | 'ghm, pg_catalog' | 'database/migrations/20260916223000_create_business_hours.sql' (blob 'ef4f0b07b9f46ca14081494dc5e1b77ecc6dd0c7') | Body matches the Business Hours replacement primitive. Source grants runtime EXECUTE; production ACL shows owner and 'ghm_runtime'. The later signed gateway wrapper migration deliberately leaves this legacy grant in place until a separate manual cutover. |
+
+**Critical normalization migration found:** 'database/migrations/20261112090000_pin_security_definer_search_path.sql' (blob 'd0d3ce9eb9d76ac23ba6ec9d8f27df7ec30f73df') contains a preflight requiring every 'ghm' SECURITY DEFINER routine to be owned by 'ghm_schema_owner', then iterates over every such function and executes 'ALTER FUNCTION ... SET search_path = pg_catalog, ghm, pg_temp'. Its comment explicitly explains that when 'pg_temp' is omitted PostgreSQL implicitly searches the temporary schema before ordinary schemas; explicitly placing it last prevents caller-created temporary relations shadowing privileged function references.
+
+**Interpretation of the exact production path groups:**
+
+- The 53 routines with 'search_path=pg_catalog, ghm' omit explicit 'pg_temp'. This is the concrete temp-object shadowing concern described by the repository normalization migration.
+- The 3 routines with 'search_path=ghm, pg_temp' have 'pg_catalog' implicitly searched before ordinary path entries because it is not explicitly listed; 'pg_temp' is explicitly last. Their effective ordering is therefore temporary-schema-safe, although they do not match the repository's canonical explicit setting.
+- The single 'search_path=ghm, pg_catalog' routine is different: it omits explicit 'pg_temp' and places 'pg_catalog' after 'ghm'. It needs the canonical normalization; do not group it with the 3 safe-effective 'ghm, pg_temp' cases.
+- The 5 routines already on 'pg_catalog, ghm, pg_temp' match the canonical setting.
+
+The production catalog therefore does not currently show the all-functions normalized state intended by migration '20261112090000'. Because the production migration ledger is still unreadable through the app query principal, we cannot yet distinguish 'migration not applied' from post-migration catalog drift or later recreation. Do not state that the migration is definitely pending until the existing read-only production migration audit is run.
+
+**Business Hours cutover relationship:** 'database/migrations/20261111130000_add_signed_business_hours_gateway.sql' creates the signed 'gateway_replace_business_hours' wrapper but explicitly says the old runtime grant remains until separate manual cutover approval. 'database/cutovers/20261111130000_revoke_legacy_business_hours_runtime.sql' is marked MANUAL CUTOVER ONLY and requires deployed/qualified Actor Gateway, verified role identities, and a fresh independently verified production backup before revoking 'ghm_runtime' EXECUTE and direct table/sequence access. None of those cutover statements were run. Production currently still exposes the legacy function to 'ghm_runtime'; this is known and must remain a cutover gate, not be silently changed during this investigation.
+
+**Next work (do not repeat completed discovery):**
+1. Locate the creating migration/provenance for 'auth_read_connect_identity_authority(bigint)' or record it as an unresolved historical object after a bounded search of source migrations/cutovers.
+2. Use the existing production read-only migration audit to determine whether '20261112090000_pin_security_definer_search_path.sql' is in the live ledger; do not use the ordinary mutating migration runner.
+3. Compare all remaining SECURITY DEFINER signatures/definitions/ACLs against their source migrations and the normalization migration. Keep observed live state separate from ledger-confirmed migration state.
+4. Do not execute the Business Hours manual cutover until its explicit deployment, identity and backup prerequisites are satisfied.
+
+No role, grant, function, setting, migration, data, service, environment variable or deployment was changed. All production queries in this checkpoint were read-only.
+
+
+### Post-normalization migration review — later function creators, 2026-11-14
+
+A bounded source review of all 2026-11-12 migration files was performed after locating '20261112090000_pin_security_definer_search_path.sql'. This prevents a false assumption that the canonical pin migration is the only source of live path settings.
+
+**Later migrations inspected (ordered by version):**
+
+- '20261112020000_add_token_bound_password_recovery_reset.sql' creates/replaces 'ghm.auth_reset_password_with_recovery(...)' with 'SET search_path = pg_catalog, ghm' (no explicit 'pg_temp').
+- '20261112030000_add_conditional_password_rehash.sql' creates/replaces 'ghm.auth_rehash_password_if_unchanged(...)' with 'SET search_path = pg_catalog, ghm' (no explicit 'pg_temp').
+- '20261112080000_signed_connect_business_provisioning_gateway.sql' creates/replaces 'ghm.assert_actor_gateway_capability(...)' and 'ghm.gateway_provision_connect_business(...)' with 'SET search_path = pg_catalog, ghm' (no explicit 'pg_temp').
+- '20261112090000_pin_security_definer_search_path.sql' then normalizes all GHM SECURITY DEFINER routines to 'pg_catalog, ghm, pg_temp'.
+- Later '20261112140000_add_signed_storage_metadata_actor_gateway.sql' and '20261112150000_add_storage_provider_workflow_attestation.sql' explicitly create/alter their new gateway routines with 'pg_catalog, ghm, pg_temp'.
+
+This establishes a source-level inconsistency: several functions introduced immediately before the canonical pin migration omit explicit 'pg_temp', while later gateway migrations correctly include it. If the pin migration is applied after those earlier migrations, it should normalize their functions too. Therefore the live 53/5/3/1 distribution still cannot be explained by the source declarations alone. The likely possibilities remain: the pin migration is absent from production ledger, later DDL reintroduced old definitions, or an external/manual change occurred. The production ledger and function definition checksums are needed to distinguish them. Do not claim one cause without that evidence.
+
+**No new production query is needed to rediscover this source fact.** Keep these file-level findings as completed. The remaining next step is the already-recorded read-only production migration audit, followed by a bounded check for later function replacements after the pin migration. No source or production database changes were made in this checkpoint.
+
+
+### Actor Gateway Worker and exact-head CI checkpoint — 2026-11-14
+
+Exact-head GitHub Actions run **43594131250** completed successfully for commit 'c105c690c570dd3035bd1ae265f3464c2a61526d' on the existing branch 'security/actor-gateway-worker-body-limit-20261114'. Both jobs passed:
+
+- 'quality' job '132444920860': build; Cloudflare Worker bundle without deployment; Worker bundle diagnostics preserved; disposable PostgreSQL migrations; isolated Actor Gateway principal qualification; local Cloudflare Workers runtime smoke test; full test suite; all vertical gateway cutovers on disposable PostgreSQL; issuer pre/post-cutover qualification and SECURITY DEFINER inventory comparison. Every listed step passed, including the post-cutover inventory and comparison (unlike the earlier failed issuer run).
+- 'web-quality' job '132444920672': build, tests, dependency audit and security-sensitive toolchain checks all passed.
+
+The Worker implementation is present at 'workers/actor-gateway/index.ts' with configuration 'workers/actor-gateway/wrangler.jsonc'. It wraps the existing 'createActorGatewayApp' implementation using Cloudflare's Node HTTP bridge, Hyperdrive connection binding, per-account edge rate-limit binding, public ES256 verification keys only, and the isolated gateway capability assertion secret. The Worker checks database session identity and its complete ACL before opening the listener; startup errors return 503 and clear initialization for a later retry. Its JSON parser enforces a 16 KiB cap and immediately returns 413 when exceeded, draining without buffering. Render's existing Node entry point is untouched.
+
+**Deployment status:** bundle and local Worker smoke qualification only; no Cloudflare deployment or production database connection was performed. The checked-in 'wrangler.jsonc' intentionally has a placeholder Hyperdrive ID and local disposable connection string; production binding IDs/secrets are not configured in this repository. Do not deploy this configuration as-is. No new Cloudflare product/service was provisioned, no production credentials were changed, and no Render service or production runtime configuration was changed.
+
+**Migration audit execution remains a separate blocker:** 'npm run audit:migrations' runs 'scripts/forensic-migration-reconciliation.mjs'. It requires 'GHM_MIGRATOR_DATABASE_URL', targets 'ghm_db' by default, opens 'BEGIN READ ONLY', verifies both 'session_user' and 'current_user' are 'ghm_migrator', requires 'ghm_migrator' to SET ROLE 'ghm_schema_owner', reads the ledger, then rolls back. It does not mutate migration state. The ordinary 'npm run migrate' is not an acceptable substitute. Existing GitHub CI injects only a disposable 'ghm_disposable_test' URL; no production secret or approved production invocation is configured in that workflow. Render service inventory shows the existing 'ghm-internal-runtime' has auto-deploy off and runs the normal Node server; no separate production migration runner exists. Do not add a service or expose credentials to the application runtime. A one-off, owner-controlled local PowerShell invocation with the existing migrator credential is the candidate path, but only if that credential is already available to the owner; do not ask for it in chat or store it in a handover.
+
+**Source review boundary:** after '20261112090000_pin_security_definer_search_path.sql', the repository has only three later migration files in the current migration tree. The two later files that create SECURITY DEFINER routines ('20261112140000' and '20261112150000') explicitly use the canonical 'pg_catalog, ghm, pg_temp' setting; the third contains no function DDL. This rules out later current migration declarations as the explanation for the observed 53/5/3/1 live distribution, but does not distinguish unapplied normalization from post-migration manual/catalog drift. Ledger evidence remains necessary.
+
+Do not repeat the Worker code inspection or the aggregate production path count. Next: preserve the successful exact-head CI result; continue source comparison only where unresolved; arrange the read-only production ledger audit through the approved owner-controlled path; do not deploy Worker or execute any production cutover until production gateway role/schema/routine contract and backup prerequisites are independently established.
+
+
+### Connect identity-authority provenance and production audit runbook — 2026-11-14
+
+Follow-up work completed on 2026-11-14:
+
+**Historical source provenance:** The exact symbol 'auth_read_connect_identity_authority' and close variants were searched in the repository's indexed code search; no result was returned. The earlier bounded review of current 'database/migrations' and 'database/cutovers' also did not locate a creating migration. The live production function definition was already captured in the previous checkpoint. Current conclusion: this is a production-observed routine with unresolved source provenance. Do not infer its creation version, migration checksum, or that it was manually created. Do not drop, replace, revoke, or grant it based on the missing source match. Future investigation should use historical Git refs/PRs or an approved backup/catalog archive, not repeat current-tree symbol searches.
+
+**Production audit runbook verified from source:** 'package.json' maps 'npm run audit:migrations' to 'node scripts/forensic-migration-reconciliation.mjs'. The script reads 'GHM_MIGRATOR_DATABASE_URL' and defaults 'GHM_MIGRATION_AUDIT_DATABASE' to 'ghm_db'. It starts 'BEGIN READ ONLY', verifies both 'session_user' and 'current_user' are 'ghm_migrator', verifies membership/SET ROLE to 'ghm_schema_owner', reads 'ghm.ghm_schema_migrations', and always issues 'ROLLBACK'. It does not apply migrations. Do not use 'npm run migrate'. Do not use 'audit:migrations:predeploy' for this task because it adds pending-migration allowance and is intended for an explicitly audited pre-deploy target.
+
+**Owner-controlled PowerShell procedure (only if a dedicated migrator URL is already securely available locally):**
+
+1. Open the existing clean GHM checkout at 'C:\GHM-main' or the approved checkout containing this exact branch/commit. Do not create another branch or copy secrets into files.
+2. Confirm the checked-out commit and working tree before running: 'git status --short --branch' and 'git rev-parse HEAD'. The runbook/ledger audit itself is read-only; it does not require deployment.
+3. Set the target only: '$env:GHM_MIGRATION_AUDIT_DATABASE = "ghm_db"'. Ensure 'GHM_MIGRATOR_DATABASE_URL' is already present in the local process environment from the owner's approved secret store. Never paste it into chat, shell transcript, command history, handover, issue or PR.
+4. Run 'npm run audit:migrations'. Do not run the mutating migration command. Capture only the JSON report and redact connection details if any tool output includes them.
+5. Clear the target override after the run: 'Remove-Item Env:GHM_MIGRATION_AUDIT_DATABASE -ErrorAction SilentlyContinue'. Do not print or echo the URL.
+
+If 'GHM_MIGRATOR_DATABASE_URL' is not already available, STOP. No new production credential, role membership, database grant, Render environment variable, service or paid resource is authorized by this investigation. Do not substitute 'ghm_db_user' or 'ghm_app_user'; the script intentionally rejects them. The next decision then belongs to the owner because a usable dedicated migrator credential is a prerequisite, not something to manufacture through the app runtime.
+
+No production query was attempted with a non-migrator identity in this checkpoint, and no production data/permissions/functions/configuration were changed. PR #277 remains the single working branch.
+
+
+### Local production-ledger audit preflight — 2026-11-14
+
+The owner ran the documented preflight in the existing local checkout. Captured output:
+
+- Checkout: `C:\\GHM-main`
+- Branch: `main`
+- HEAD: `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`
+- Working tree: one untracked file, `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak`
+- `GHM_MIGRATION_AUDIT_DATABASE=ghm_db` was set for the preflight.
+- Presence check for `GHM_MIGRATOR_DATABASE_URL`: **false**.
+
+**Disposition:** the production migration audit was not run. The preflight did not invoke a database command; no production query or mutation occurred. Do not substitute `ghm_db_user` or `ghm_app_user`, and do not create/rotate credentials, add a Render variable, or expose a secret in chat to bypass the missing prerequisite. Leave the untracked backup untouched.
+
+**Next path:** continue repository-side historical provenance investigation and other source-only qualification while the dedicated migrator credential remains unavailable. The live migration-ledger question (whether `20261112090000_pin_security_definer_search_path.sql` is recorded in production) remains unresolved and must not be inferred from the local checkout or disposable CI. The owner can resume the one-off read-only audit only when the existing dedicated migrator credential is already available through the approved local secret store.
+
+No production database access, role/grant change, migration, deployment, Render configuration change, or paid resource was used for this preflight.
+
+
+### Internal Runtime environment contract audit — 2026-11-14 13:05 UTC
+
+The previously recorded operator-supplied Render variable inventory was compared against the current repository `main` source and the live Render service metadata. This is a source-contract audit, not a live Environment-page read-back.
+
+**Current deployed service context (metadata):** `GHM-Internal-Runtime` / service `srv-damupsek1f9s73eq8kkg`, URL `https://ghm-internal-runtime.onrender.com`, branch `main`, deployed commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`, auto-deploy OFF. Render metadata does not expose its key/value Environment collection through the available service read action. No values were changed.
+
+**Confirmed current `main` source contract:**
+
+- `src/config.ts` requires `GHM_RUNTIME_DATABASE_URL` whenever `NODE_ENV=production`. It does not use `DATABASE_URL` as a production fallback. The supplied inventory has no `GHM_RUNTIME_DATABASE_URL`; its `DATABASE_URL` instead points to the retired sandbox database. Therefore the supplied inventory is incompatible with the current production source contract. Do not add or repoint it until the exact release commit, production role and ACL checks, and approved database endpoint/credential are reconciled.
+- `src/server.ts` performs a startup identity/privilege assertion before listening. It expects the session principal to satisfy the current `ghm_runtime` least-privilege contract, including database CONNECT without CREATE, schema USAGE without CREATE, safe role attributes and no untrusted role memberships. A database URL alone is insufficient: current production role state recorded elsewhere in this handover does not meet the intended isolation boundary. A restart with an unqualified principal may fail closed.
+- `CORS_ORIGINS` is required, parsed as exact HTTP(S) origins, rejects wildcards, and is passed to the API CORS middleware. The supplied list contains localhost and Cloudflare Pages origins but not `https://zaid-connect.vercel.app`. Do not append an origin until actual current production browser callers and required preview origins are confirmed; do not remove existing origins blindly.
+- `TRUST_PROXY=true` is still accepted as legacy compatibility and resolves to one trusted hop. Current source prefers `TRUST_PROXY_HOPS`, but its value must be selected from verified Render proxy topology, not guessed. No change is justified from the supplied inventory alone.
+- Storage configuration is actively parsed by `src/storage/config.ts`. If any storage variable is present, region, bucket, access key and secret key are required; the endpoint must be HTTPS; TTLs are bounded to 3600 seconds. The supplied R2 settings are structurally consistent with the documented S3/R2 contract (region `auto`, bucket `zaid-ghm-production`, HTTPS endpoint with host redacted, TTLs 900/3600, force-path-style false). Preserve these settings; do not expose or rotate credentials.
+- PayFast configuration is consumed by `src/config.ts` and checkout generation. `PAYFAST_ENVIRONMENT=sandbox` selects the sandbox checkout URL; `PAYFAST_NOTIFY_URL` still points at the retired sandbox callback service. This is intentionally frozen: do not switch to live, redirect callbacks, or alter merchant values while PayFast sandbox access is unavailable and payment activation remains frozen.
+- The current source ES256 key loader supports `GHM_JWT_ES256_KID`, active private/public key pair, and optional paired previous public key/KID for overlap. The supplied active KID is sandbox-labelled, but that label alone does not prove key material is invalid or safe to rotate. The Resource API's current mainline configuration does not itself establish an issuer cutover; the issuer/Actor Gateway PR stack is not deployed. Do not rename KID or rotate key material without a verified issuer/token compatibility and overlap plan.
+- The supplied `GHM_WEB_AUTH_ALLOWED_ORIGINS` and migration host/name variables were not found in the inspected current mainline runtime config/server path. This is not proof they are unused by every historical/deployment script; retain them pending a bounded repository-wide consumer/provenance check. In particular, do not set `GHM_MIGRATION_DATABASE_NAME`, `GHM_NONPRODUCTION_DATABASE_NAME`, or `GHM_QUALIFICATION_DATABASE_NAME` to production.
+- `GHM_MIGRATOR_DATABASE_URL` is a migration-authority credential, not an application runtime credential. Its supplied value targets the retired sandbox database. Do not repoint it, add it to the app service, or run migrations. The production read-only ledger audit remains blocked because the dedicated migrator URL was absent from the owner's local process environment at the documented preflight.
+- The current source `.env.example` documents the runtime and isolated gateway variables. It deliberately separates `GHM_RUNTIME_DATABASE_URL`, `GHM_MIGRATOR_DATABASE_URL`, and `GHM_ACTOR_GATEWAY_DATABASE_URL`; never place the latter two in the Resource API service.
+
+**Release/deployment mismatch:** Render currently runs `c7cf1eb`, while current `main` source includes a later runtime-principal startup verifier and expects `GHM_RUNTIME_DATABASE_URL`. PR #277 is still a draft stacked on #276/#272; it is not a production release candidate. Do not treat current main source as proof that the deployed `c7cf1eb` binary has identical config behavior, and do not deploy the stack to resolve an environment mismatch.
+
+**Next safe work:** (1) inspect the exact deployed commit's config contract and the merge stack dependency order; (2) complete a source-only consumer search for the historical migration/origin variables; (3) obtain live Render Environment values through the dashboard without copying secrets into chat; then compare key names and non-secret targets to the documented inventory. Only after that should we prepare a proposed change list. No environment edit, service restart, deploy, database access/mutation, role/grant change, credential rotation, payment change, or paid resource was performed in this checkpoint.
