@@ -4286,3 +4286,19 @@ The owner ran the command-only PowerShell block from `C:\GHM-main` against the e
 **Current recovery evidence status:** Render export creation confirmed; owner download path confirmed; file existence and 81,507-byte size confirmed by owner console; archive listing via `tar -tzf` appears successful; SHA-256 pending; restore test not performed. This is a positive archive readability check, not a restore test.
 
 **Next minimal check:** run only `Get-FileHash` against the same path and return its output. Do not repeat the archive listing or extract/modify the file unless a later issue requires it. No production database, Render service, credentials, roles, grants, environment, migration, or deployment changed.
+
+
+### Production export SHA-256 verified and recorded — 2026-11-14
+
+The owner supplied the successful output of `Get-FileHash -Algorithm SHA256` for the downloaded Render logical export.
+
+- File: `C:\Users\zaidh\Downloads\2026-11-14T14_26Z.dir.tar.gz`
+- Size previously observed: **81,507 bytes**
+- SHA-256: **`2341471A3D0890A1B0E26D356BE7FB121385FDD3A33B8340658CB290CBC749F4`**
+- Archive listing: `tar -tzf` completed and showed `./2026-11-14T14:26Z/ghm_db/`, `toc.dat`, and numerous numbered `.dat` members.
+
+**Evidence classification:** local file existence, size, archive listing/readability, and SHA-256 are confirmed by owner-supplied PowerShell output. The checksum is recorded for future integrity comparisons. This does not establish restoreability or a successful restore test. The export is a verified local logical archive at the time of hashing; preserve the original unchanged.
+
+**Next gate:** review whether an existing no-cost local PostgreSQL 18 environment and sufficient disk space are already available to perform a non-production restore test. Do not create a new Render database or any paid resource. Before any local restore, inspect archive metadata/member count and available local PostgreSQL service/port/disk state, then propose an isolated local target that cannot connect to production. If the existing local environment is not available or has insufficient capacity, leave restore testing open rather than provisioning anything.
+
+No production database, Render resource, role/grant, credential, environment variable, migration, deployment, or archive content was changed.
