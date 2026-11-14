@@ -3283,3 +3283,90 @@ The CI workflow now:
 - Retains explicit manual `workflow_dispatch` support.
 
 This is intended to keep the qualification pipeline useful while handover-only commits no longer start the full PostgreSQL/security suite.
+
+
+## 2026-11-14 05:10 SAST — fresh production ghm_db role, ACL and runtime-target audit
+
+Read-only inspection was performed through the Render workspace connector against production Postgres resource `dpg-dag0sdtbedkc7389vi2g-a`.
+
+### Production database metadata
+
+- Render resource: `ghm-db`
+- Database: `ghm_db`
+- PostgreSQL: 18
+- Region: Frankfurt
+- Plan: existing `0.1c-256mb`
+- Status: available
+- Render default database user: `ghm_app_user`
+- IP allow-list: `0.0.0.0/0` (broad external access; hardening item, unchanged)
+
+### Render SQL connector identity and default role setting
+
+A read-only SQL session reports:
+- `current_database() = ghm_db`
+- `session_user = ghm_app_user`
+- `current_user = ghm_db_user`
+- `current_setting('role') = ghm_db_user`
+
+The catalog contains a global `pg_db_role_setting` entry for `ghm_app_user`: `role=ghm_db_user` (not limited to one database). The membership from `ghm_app_user` to `ghm_db_user` is `INHERIT=true`, `SET=true`, `ADMIN=false`.
+
+The `ghm_db_user` role itself is not superuser, but has `CREATEDB=true` and `CREATEROLE=true`. It also has administrative membership options over protected service roles. Consequently, any client authenticating as `ghm_app_user` receives the configured `ghm_db_user` role by default and runs with its elevated authority. This is a serious credential-boundary risk for any application configured to use the default Render database user.
+
+**Important attribution:** this is the identity used by the Render SQL connector session. It is not proof that the GHM-Internal-Runtime application itself currently connects as `ghm_app_user`; the operator-supplied `DATABASE_URL` instead names `ghm_runtime` and targets the suspended sandbox. Do not conflate the Render dashboard/query connector identity with the application connection.
+
+### Duplicate administrator-to-runtime membership
+
+Production `pg_auth_members` contains two grants making `ghm_db_user` a member of `ghm_runtime`:
+
+| Grantor | ADMIN | INHERIT | SET | Assessment |
+|---|---:|---:|---:|---|
+| `postgres` | true | false | false | Intended controlled administrative membership |
+| `ghm_db_user` | false | true | true | Unintended/redundant membership; permits role assumption and inheritance |
+
+The second grant conflicts with the intended rule that the administrator must not inherit or SET into the service runtime role. It must be reconciled in a separately qualified production privilege change. No revocation was performed.
+
+### Production service-role state
+
+| Role | Login | Key findings |
+|---|---:|---|
+| `ghm_runtime` | yes | NOINHERIT; no superuser/createdb/createrole/replication/bypassrls. Has ghm schema USAGE, no CREATE; 39 table SELECT, 3 INSERT, 1 UPDATE, 1 DELETE grants; 47 routine EXECUTE grants. |
+| `ghm_actor_gateway` | yes | Restricted role attributes, but no ghm schema USAGE, no ghm routine grants, and no Actor Gateway SQL functions found in production. Not production-operational. |
+| `ghm_migrator` | yes | Restricted login; can SET ROLE to `ghm_schema_owner` (membership has SET=true, INHERIT=false). It is the intended migration principal. |
+| `ghm_schema_owner` | no | Owns the migration ledger and schema objects; non-login. |
+| `ghm_payment_provider` | yes | Role exists; PayFast remains paused. |
+| `ghm_auth_issuer` | no | No production role by this name was found. Issuer DB identity is not provisioned. |
+
+The expected Actor Gateway entry points are absent, including the actor assertion, actor identity lookup and gateway supplier/business-profile write functions. This confirms the production database is not yet at the Actor Gateway migration cutover state even though the login role exists. The local disposable database qualification does not imply these functions or grants exist in production.
+
+### Production migration ledger access
+
+The table `ghm.ghm_schema_migrations` exists and is owned by `ghm_schema_owner`. Its ACL is owner-only. The current Render SQL connector session (`ghm_db_user`) and `ghm_app_user` cannot SELECT it; `ghm_migrator` cannot SELECT without first executing its authorized `SET ROLE ghm_schema_owner` transition. This is consistent with the intended ownership boundary, but means the migration ledger count/version list has **not** been read in this session. Do not infer that the production migration ledger is empty or complete. Obtain it through the dedicated migrator connection and authorized owner-role transition.
+
+### Current deployed code versus the construction branch — correct variable name
+
+The current Render GHM-Internal-Runtime live deployment remains commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`. Its `src/config.ts` reads `DATABASE_URL` for the runtime pool. Its `src/db/migrate.ts` reads `GHM_MIGRATOR_DATABASE_URL`, `GHM_MIGRATION_DATABASE_HOST` and `GHM_MIGRATION_DATABASE_NAME` for migration execution/target checks.
+
+The current deployed `/healthz` handler returns `{status:"ok"}` without checking database connectivity. Therefore the earlier HTTP 200 health check is not evidence that the runtime can reach its configured database.
+
+The operator-supplied 2026-11-13 environment baseline has:
+- `DATABASE_URL` -> host/resource `dpg-db4416vlk1mc73eocug0-a`, database `ghm_payfast_sandbox_db` (suspended/expired).
+- `GHM_MIGRATOR_DATABASE_URL` -> same suspended sandbox host/database.
+- `GHM_MIGRATION_DATABASE_HOST` -> same suspended sandbox host.
+- `GHM_MIGRATION_DATABASE_NAME` -> `ghm_payfast_sandbox_db`.
+
+Thus the currently deployed code is configured to use the retired sandbox for both runtime and migration connections, based on the operator-supplied live environment inventory. Database-backed routes are at risk of connection failure even while `/healthz` returns 200. This is a configuration diagnosis from the supplied variable values and deployed source; no live application database request was executed.
+
+The draft construction branch for PR #276 has changed the runtime variable contract to require `GHM_RUNTIME_DATABASE_URL`. That branch is not deployed. **Do not add only `GHM_RUNTIME_DATABASE_URL` to the current live service and assume it will be used:** the deployed `c7cf1eb` source reads `DATABASE_URL`. The final variable migration must be coordinated with the exact source deployment. The production runtime URL must target `ghm_db` using the restricted `ghm_runtime` login; the production migrator URL must separately target `ghm_db` using `ghm_migrator`.
+
+The migration host/name and nonproduction/qualification guard variables must be handled according to their source consumers. Do not simply replace all sandbox-named safety variables with production values or delete them before reviewing the target guard.
+
+### Next production-safe sequence
+
+1. Complete the source consumer audit and settle the exact runtime/migrator environment contract for the candidate deployment.
+2. Prepare controlled password provisioning for the existing production `ghm_runtime` and `ghm_migrator` logins; passwords must be generated/stored in Render and never pasted into chat or Git.
+3. Prepare a least-privilege correction for the global `ghm_app_user` default role setting and duplicate `ghm_db_user` -> `ghm_runtime` grant, preserving a supported Dashboard-managed administrator path.
+4. Obtain migration ledger evidence through `ghm_migrator` with `SET ROLE ghm_schema_owner`.
+5. Apply/qualify the production Actor Gateway SQL migrations only after exact source, ledger, ACL and rollback evidence are reconciled.
+6. Only then prepare a Cloudflare Free Hyperdrive production connection and route plan.
+
+No production role, membership, ACL, password, database, migration, Render environment variable, service, deployment, Cloudflare account, DNS or traffic was changed during this audit.
