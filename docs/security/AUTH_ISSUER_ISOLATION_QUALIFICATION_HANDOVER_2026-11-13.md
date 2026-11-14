@@ -2894,3 +2894,39 @@ Run `43531950923`, exact workflow-change commit `ddfec0204f0e7aafdbfa64e8fb00318
 A second push run `43531961783` is testing the latest documentation head `3f1170aca9af6fad0cd97dd1d6242250bc4be3fb`; its Worker bundle step was in progress when checked. The earlier exact source head `5f2da3bb8863c6465e7904981c5544eab5d62c78` already passed both quality and web-quality jobs in run `43531629356`.
 
 The Worker is therefore source-typechecked, static-contract-tested, and now successfully bundled by Wrangler in dry-run mode. Actual Workers runtime execution and Hyperdrive-to-Postgres integration remain outstanding.
+
+
+## 2026-11-14 03:35 SAST — replace isolate-only rate-limit reliance with Cloudflare Free Rate Limiting API
+
+A follow-up review identified that Express's default MemoryStore is isolate-local and therefore cannot provide account-level coordination across multiple Worker isolates. Cloudflare's official Workers Rate Limiting binding API is available as an additional Free-tier edge control; its documented behavior is approximate and per Cloudflare location, not a strict global counter.
+
+### Implementation
+
+- Added optional `rateLimitDecision(accountId)` support to the existing Actor Gateway Express app.
+- JWT is verified first; the account ID is taken only from the verified token subject.
+- The Worker calls `ACTOR_GATEWAY_RATE_LIMITER.limit({ key: "actor:<verified-account-id>" })` before protected route execution.
+- A denied decision returns HTTP 429 before any database reader runs.
+- An unavailable limiter returns HTTP 503; it never silently bypasses the edge control.
+- When the edge decision callback is configured, the Express in-memory limiter is skipped to avoid applying a second isolate-local account limit. Existing Node/Render tests without the callback retain their previous MemoryStore behavior.
+- Wrangler config declares a Free Rate Limiting binding: 120 requests / 60 seconds per verified actor key and Cloudflare location.
+- Wrangler dry-run toolchain was raised from 4.0.0 to 4.36.0 because Cloudflare's Rate Limiting API documentation requires Wrangler 4.36.0 or later.
+
+Official reference:
+- https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/
+
+### Accuracy and security boundary
+
+Cloudflare documents that its Rate Limiting API is approximate and each limit is enforced separately in each Cloudflare location; requests can exceed the configured threshold while counters update. This is an abuse-control layer, not a strict global quota, authorization decision, or replacement for database authorization. Signed actor assertions and SQL privilege checks remain authoritative. If strict cross-region global rate enforcement becomes a requirement, it needs a separately evaluated design; do not add a paid Durable Object under the $0 mandate.
+
+### Additional tests
+
+Added three application tests proving:
+1. Edge limiter receives the verified token account ID.
+2. A denied edge decision returns 429 before database access.
+3. An edge limiter error fails closed with 503 before database access.
+
+The Worker static contract test now checks the declared binding and 120/60 configuration. These tests await the next CI run; no pass is claimed yet.
+
+### No-change statement
+
+No Cloudflare account, binding, Worker, Hyperdrive, production database credential, secret, route, DNS record or production traffic was changed. The Rate Limiting binding exists only as repository configuration and local/CI build input until a later, separately approved free-tier setup.
