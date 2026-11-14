@@ -129,3 +129,8 @@ test('requires every reviewed gateway signature even when a required function is
     /ghm\\.gateway_storage_mark_deleted\\(/,
   );
 });
+
+
+test('rejects EXECUTE grant option on Actor Gateway functions', () => {
+  assert.match(ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL, /acl\\.is_grantable/);
+});
