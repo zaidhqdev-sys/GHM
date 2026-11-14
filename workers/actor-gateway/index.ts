@@ -267,7 +267,13 @@ const initialize = (workerEnv: ActorGatewayWorkerEnv): Promise<void> => {
 
       actorGatewayServer = createServer(app);
       actorGatewayServer.listen(INTERNAL_HTTP_PORT);
-    })();
+    })().catch((error: unknown) => {
+      // A transient Hyperdrive/ACL startup failure must not poison this
+      // isolate forever. Fail this request closed, then allow a later fetch
+      // to retry initialization with the current bindings.
+      initialization = undefined;
+      throw error;
+    });
   }
   return initialization;
 };
