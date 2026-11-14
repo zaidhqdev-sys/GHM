@@ -813,3 +813,55 @@ The issuer candidate remains a no-go for production deployment under the current
 5. Only after all three are qualified, assess merge order and deployment separately. A successful GitHub merge does not authorize production migration, role grants, secrets, hosting or traffic changes.
 
 No PR has been merged and no deployment has been initiated.
+
+
+## 2026-11-15 — second reconciliation pass: current PR heads and trusted-admin CI fixture
+
+A fresh read of PR metadata after the previous handover update shows:
+- #272 current head `b39b679bb2dec1d863f077b39ea3022a0c7525a8`, still draft/open, mergeable=false, base `main`.
+- #276 still draft/open, mergeable=false, based on #272.
+- #277 still draft/open, mergeable=true at its metadata snapshot, based on #276.
+- No PR was merged and no production deployment was attempted.
+
+### Mainline-only file reconciliation
+
+The seven mainline-only paths previously identified have now been copied into the existing #276 branch, and then into the existing #277 branch. This preserves:
+- production pending-migration allowlist;
+- pending-storage-cleanup lifecycle migration and contract test;
+- current ADR-001 implementation/qualification plan;
+- current Render/Actor Gateway role-separation handover;
+- migration audit checksum policy tests;
+- Worker body-parser test stub.
+
+The #276 branch also received the #272 trusted-admin migration, qualification script and full migration/security audit handover as follow-up content updates. The #277 branch received the same three #272 files. These are content reconciliations; the branches have not been rebased or had their commit ancestry rewritten.
+
+### CI role fixture correction
+
+The existing #276/#277 CI fixtures created `ghm_db_user` as a member with ADMIN OPTION over four roles: `ghm_runtime`, `ghm_actor_gateway`, `ghm_auth_issuer`, and `ghm_payment_provider`. That does not match the current mainline trusted Render administrator boundary.
+
+Both #276 and #277 CI workflows have been changed to preserve the existing LOGIN test principal but grant it membership in **only** `ghm_actor_gateway`, with the exact PostgreSQL 18 options:
+- ADMIN = true
+- INHERIT = false
+- SET = false
+
+The fixture retains separate issuer, runtime, migrator and payment-provider principals without granting those roles to the Dashboard administrator. This aligns disposable qualification with the merged #278 correction and the current mainline fixture. The issuer/Worker qualification steps remain in the workflow; the workflow was not replaced with main's shorter workflow.
+
+### Current branch graph — important limitation
+
+After the content updates, GitHub's commit graph still reports:
+- #272 vs main: 8 ahead / 52 behind (common base `ad4fea43f2eb7bf959042b9db77a9f86e6bb531b`).
+- #276 vs #272: 184 ahead / 3 behind (merge base #272's earlier head `c81e2bf2534febef9c5e49b39f60f85415f04ff1`).
+- #277 vs #276: 112 ahead / 11 behind (merge base #276's earlier head `aa86fa1346daf922d3c80c27f2bf5beb697bafbb`).
+
+The file-level content has been copied, but the branch commit ancestry is still behind. The #276 and #277 branch heads must not be represented as ancestry-synchronized or merge-ready merely because selected files match. The remaining behind paths include handover/authority inventory files as well as the selected worker source/test delta. Preserve #277's intentional Worker implementation in `workers/actor-gateway/index.ts` and `workers/actor-gateway/worker-contract.test.mjs`; do not overwrite those with #276 versions.
+
+### CI status and next actions
+
+- #272/#276 exact-head workflow lookup returned no PR-triggered run for the latest file-update commits; exact-head CI remains unproven.
+- #277's previous CI run `43654564276` was queued against a prior head; it cannot qualify later commits. New exact-head runs are required after all branch synchronization is complete.
+- Do not merge #272 while the issuer stack is not qualified: #272's PR body explicitly makes isolated issuer separation a hard authentication security gate.
+- Next, finish syncing the remaining #276-only handover/authority-inventory files into #277 while preserving the two Worker-specific source/test files. Then reconcile the four overlapping mainline/stack paths and review all changed migrations/role assertions.
+- The #272-to-main integration still requires a proper ancestry update / mergeability resolution. Do not force-move a PR branch to main or overwrite the 8 gateway implementation commits to make the behind count disappear.
+- Once the complete stack is synchronized, run full exact-head CI on all three PR heads. Only then proceed to merge in dependency order and plan deployment separately.
+
+No production migration, role/grant, secret, credential, Render service/environment, Cloudflare resource, DNS, route or traffic was changed. No paid infrastructure was created.
