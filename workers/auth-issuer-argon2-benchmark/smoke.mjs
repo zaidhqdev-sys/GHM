@@ -35,7 +35,7 @@ try {
     String(PORT),
     '--config',
     'workers/auth-issuer-argon2-benchmark/wrangler.jsonc',
-  ], { cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'] });
+  ], { cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'], detached: true });
 
   worker.stdout.on('data', (chunk) => {
     log += chunk.toString();
@@ -158,7 +158,20 @@ try {
   });
   process.exitCode = 1;
 } finally {
-  if (worker && worker.exitCode === null) {
-    worker.kill('SIGTERM');
+  if (worker && worker.exitCode === null && worker.pid) {
+    try {
+      process.kill(-worker.pid, 'SIGTERM');
+    } catch {
+      worker.kill('SIGTERM');
+    }
+    await Promise.race([
+      new Promise((resolve) => worker.once('exit', resolve)),
+      wait(3000),
+    ]);
+    try {
+      process.kill(-worker.pid, 'SIGKILL');
+    } catch {
+      // Process group already exited.
+    }
   }
 }
