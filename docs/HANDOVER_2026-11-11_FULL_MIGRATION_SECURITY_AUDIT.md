@@ -2852,3 +2852,39 @@ Therefore:
 4. After credential verification, perform the planned deployment deliberately (auto-deploy remains OFF), then inspect startup logs and `/healthz`. If startup fails, stop and diagnose rather than making repeated speculative environment edits.
 
 No database data, roles, grants, migrations, application code, paid resources, or deployment were changed during this verification. PayFast remains paused and unchanged.
+
+
+## 2026-11-15 — Runtime credential authenticated; deployment held for release qualification
+
+The operator successfully ran the file-based, hidden-input PowerShell credential test against the exact value copied from the saved Render `GHM_RUNTIME_DATABASE_URL`. The temporary JavaScript test file was removed by the script's `finally` block, and the environment variable was cleared from the PowerShell process.
+
+Read-only connection result:
+
+- `CONNECTION: SUCCESS`
+- `database_name = ghm_db`
+- `connected_as = ghm_runtime`
+
+This proves the saved runtime URL authenticates to the intended production database as the intended least-privilege runtime login. The test executed only a `SELECT current_database(), current_user`; it did not modify database state and did not expose the credential in chat. The credential verification gate is therefore cleared.
+
+### Deployment/release check after credential verification
+
+Live Render inspection of the correct service `GHM-Internal-Runtime` (`srv-damupsek1f9s73eq8kkg`) confirms:
+
+- Linked repository: `zaidhqdev-sys/GHM`
+- Configured branch: `main`
+- Auto-deploy remains OFF (`autoDeploy=no`, trigger `off`)
+- Health check path: `/healthz`
+- Last live deployment remains commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`, completed successfully on 2026-11-10.
+- No deployment was triggered during this check.
+
+GitHub comparison from deployed commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf` to the newest repository commit returned by commit search, `d9b4a620229cc5eef3493394128355a3c4e253c6`, reports 29 commits ahead and 0 behind. The intervening diff is not documentation-only: it includes Actor Gateway services, database migrations, authentication changes, configuration changes, server wiring, tests, CI workflow changes and substantial handover/architecture documentation. The newest commit itself is the handover documentation update.
+
+Exact-head CI evidence was not available for `d9b4a620229cc5eef3493394128355a3c4e253c6`: the GitHub combined status lookup returned no statuses, and the commit workflow-run lookup returned no workflow runs. This does not establish that the 29-commit release candidate is qualified.
+
+### Release decision
+
+**Do not trigger the Render deployment yet.** Successful database authentication alone is not sufficient to deploy the 29-commit code delta. First establish the intended release candidate and verify exact-head CI/qualification for the commit intended for production. In particular, reconcile the Actor Gateway migrations and application changes against the production migration/role cutover plan before applying any new migration or runtime code.
+
+Keep Render auto-deploy OFF. Do not change the verified environment again, do not re-add `DATABASE_URL` or `GHM_MIGRATOR_DATABASE_URL` to the long-running Resource API environment, and do not run migrations as part of this credential test. Once the release candidate is qualified, deploy deliberately and inspect startup logs and `/healthz`.
+
+No deployment, database data change, migration, role/grant change, service change, or paid-resource change was made during this verification. PayFast remains paused and untouched.
