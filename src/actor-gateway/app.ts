@@ -21,6 +21,7 @@ export interface ActorGatewayAppOptions {
   rateLimitLimit?: number;
   rateLimitWindowMs?: number;
   rateLimitDecision?: (accountId: number) => Promise<boolean>;
+  jsonBodyParser?: RequestHandler;
 }
 
 export interface ActorGatewayDependencies {
@@ -101,7 +102,7 @@ export const createActorGatewayApp = (
   }));
 
   // Do not spend JSON parsing work on unauthenticated requests.
-  app.use('/v1', express.json({ limit: '16kb' }));
+  app.use('/v1', options.jsonBodyParser ?? express.json({ limit: '16kb' }));
 
   app.post('/v1/connect/businesses/provision-or-resolve', async (req: Request, res: Response) => {
     const accountId = res.locals.actorAccountId as number;
