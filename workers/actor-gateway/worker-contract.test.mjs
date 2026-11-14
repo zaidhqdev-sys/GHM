@@ -20,7 +20,7 @@ test('Worker requires a Hyperdrive binding and isolated gateway capability secre
   assert.equal(wrangler.ratelimits[0].name, 'ACTOR_GATEWAY_RATE_LIMITER');
   assert.equal(wrangler.ratelimits[0].simple.limit, 120);
   assert.equal(wrangler.ratelimits[0].simple.period, 60);
-  assert.equal(wrangler.alias['body-parser'], './body-parser-worker-stub.cjs');
+  assert.equal(wrangler.alias['body-parser'], 'ghm-worker-body-parser-stub');
   assert.match(worker, /jsonBodyParser: workerJsonBodyParser/);
   assert.match(worker, /MAX_JSON_BODY_BYTES = 16 \* 1024/);
   assert.match(worker, /edgeRateLimiter\.limit\(\{ key: `actor:\$\{accountId\}` \}\)/);
