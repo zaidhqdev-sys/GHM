@@ -2519,3 +2519,64 @@ Previously captured read-only production catalog evidence still reports `ghm_run
 5. Verify runtime health and database identity after the controlled change.
 
 No Render environment variable, database role/password, grant, deployment, routing, data, service or paid resource was changed during this investigation. No sandbox service/database was resumed. No credential value is stored in this handover.
+
+
+## 2026-11-14 — complete Internal Runtime environment reconciliation decision and source contract
+
+Founder/operator decision: stop piecemeal variable troubleshooting. Reconcile the entire existing `ghm-internal-runtime` environment against the current production code contract and the accepted production values already recorded in the handovers. Produce one canonical manifest and synchronize Render with local `C:\GHM\.env`. Remove obsolete sandbox references. Do not perform partial edits or deploy during inventory/manifest preparation.
+
+### Confirmed current Render observation (operator-provided)
+
+The Environment page currently shows:
+- `DATABASE_URL` targeting host `dpg-db4416vlk1mc73eocug0-a.frankfurt-postgres.render.com`, database `ghm_payfast_sandbox_db`, login `ghm_runtime` (password redacted).
+- Operator reports no `GHM_RUNTIME_DATABASE_URL` variable.
+- No secret value is recorded in this handover.
+
+### Current mainline Resource API configuration contract (source-verified)
+
+Inspected `src/config.ts` at mainline blob `a6accd59db1f221cadc521bd469afdfc0536df0e` and `src/storage/config.ts` at `88f45ea6f8c145ffc389bf0d454aab0245732307`.
+
+For the **production Resource API / GHM Internal Runtime**:
+- `NODE_ENV=production` selects production parsing.
+- `GHM_RUNTIME_DATABASE_URL` is mandatory in production. `DATABASE_URL` is only used as a non-production fallback when `GHM_RUNTIME_DATABASE_URL` is absent. Therefore the currently observed Render `DATABASE_URL` alone does not satisfy the production database configuration contract.
+- `DATABASE_SSL=true` is mandatory in production.
+- `INVITE_CODE` is mandatory.
+- `CORS_ORIGINS` is mandatory, must contain at least one valid absolute HTTP(S) origin, and must not contain wildcard `*`.
+- Proxy configuration supports `TRUST_PROXY_HOPS` (integer 0–10) or legacy `TRUST_PROXY=true` (mapped to one trusted hop); use the already verified topology/accepted setting, do not guess.
+- `GHM_ACTOR_GATEWAY_URL` is optional in the parser, but if set must be an HTTPS origin (localhost HTTP is allowed for local development only). Its production requirement depends on the approved rollout/code path and must be checked against the actual deployed source/feature usage before deciding whether it belongs in the final manifest.
+- Storage is optional as a whole. If any storage variable is configured, the loader requires `STORAGE_REGION`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY_ID`, and `STORAGE_SECRET_ACCESS_KEY`; optional `STORAGE_ENDPOINT` must be HTTPS; `STORAGE_PROVIDER` defaults to `s3`; TTLs default to 900/3600 seconds and are capped at 3600. Preserve accepted existing storage values only if this runtime currently uses storage.
+- PayFast config fields are optional in this Resource API parser; environment defaults to `sandbox`. PayFast is paused by founder decision and must not be activated or have credentials/callbacks changed as part of this environment reconciliation.
+
+### Authentication key contract (source-verified)
+
+Inspected `src/auth/foundation/es256-keys.ts` at `e60524677a16feb9e0b47ad1c1117c926a3fc92d` and `src/auth/foundation/token-hmac.ts` at `d73366fa03c507e975ef5422e55da2db5f412f86`:
+- Active ES256 issuer key loader requires `GHM_JWT_ES256_PRIVATE_KEY_PEM`, `GHM_JWT_ES256_PUBLIC_KEY_PEM`, and `GHM_JWT_ES256_KID`.
+- Optional previous verification key pair: `GHM_JWT_ES256_PREVIOUS_PUBLIC_KEY_PEM` and `GHM_JWT_ES256_PREVIOUS_KID`; both must be present together or both absent.
+- Public-only verifier processes require the public key and active KID; they must not receive the issuer private key. This distinction is important if the service role/process has changed.
+- `GHM_AUTH_TOKEN_PEPPER` is required by the opaque-token HMAC loader and must provide at least 32 bytes.
+- Historical Render inventory also included `JWT_SECRET`; do not retain it automatically. Confirm whether any current mainline production code still consumes it before removing it from the final manifest. The ES256 key loader is the current inspected key contract.
+
+### Separate service contracts — do not mix into Resource API manifest
+
+Inspected `src/actor-gateway/server.ts` at `54a9ea1e96683bddc21599ce1e8773492840654a`:
+- A separately deployed Actor Gateway process requires `GHM_ACTOR_GATEWAY_DATABASE_URL`, `GHM_JWT_ES256_PUBLIC_KEY_PEM`, and `GHM_JWT_ES256_KID`; it must connect as `ghm_actor_gateway`.
+- It also requires production `DATABASE_SSL=true`; `NODE_ENV` and `PORT` are read.
+- Do not put `GHM_ACTOR_GATEWAY_DATABASE_URL` into the Resource API service unless its actual process contract requires it. Do not give the Resource API the gateway-only DB credential.
+
+Inspected `src/payfast-callback-server.ts` at `1f4bf05e4cdadc7880d5fce6e6495b4270a4de3f`:
+- PayFast callback is a separate process with its own `PAYFAST_CALLBACK_DATABASE_URL`, `PAYFAST_MERCHANT_ID`, `PAYFAST_PASSPHRASE`, callback TLS and trust-proxy variables. It is out of scope and remains paused; do not transfer these variables to the Internal Runtime.
+
+### Historical accepted inventory recovered
+
+Earlier operator-provided Render inventory recorded the following names: `CORS_ORIGINS`, `DATABASE_SSL`, `GHM_AUTH_TOKEN_PEPPER`, `GHM_JWT_ES256_KID`, `GHM_JWT_ES256_PRIVATE_KEY_PEM`, `GHM_JWT_ES256_PUBLIC_KEY_PEM`, `INVITE_CODE`, `JWT_SECRET`, `NODE_ENV`, and `TRUST_PROXY`. Secret values were redacted in the historical record; do not recreate or rotate them from memory. A production-shaped `DATABASE_URL` for `ghm_runtime` / `ghm_db` was also provided historically, but its password failed a read-only authentication test on 2026-11-14. Do not copy that password into Render or local configuration as an assumed valid credential.
+
+### Reconciliation execution gates
+
+1. Finish a complete current-mainline environment-name sweep for the Resource API and compare with Render's actual variable-name inventory and local `C:\GHM\.env`.
+2. Build a single manifest with columns: variable, source-code requirement, Render current state, local current state, accepted target, secret/non-secret, owner/process, and action (retain/update/remove/missing).
+3. Recover accepted non-secret values from existing handovers and user-provided evidence. Recover secret values only from their trusted existing source; never print them, paste them into chat, or commit them.
+4. Resolve the production `ghm_runtime` credential mismatch through the approved credential source/controlled rotation before writing either Render or local URL.
+5. Update the existing Render service and local `.env` as one coordinated change set, removing obsolete sandbox URLs and duplicate/obsolete names. Keep auto-deploy disabled.
+6. Validate the final environment without exposing secrets; verify startup/readiness and DB identity. Only then separately decide whether a manual deploy is appropriate.
+
+No environment variable, secret, role, database, service, deployment, route, or paid resource was changed by this investigation. This entry records the agreed full-reset approach and source-derived requirements, not completion of the reset.
