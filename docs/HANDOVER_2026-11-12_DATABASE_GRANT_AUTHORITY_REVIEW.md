@@ -2430,3 +2430,19 @@ After verifying the current-mainline integration tree contains the component cha
 - #271 — Business profile Actor Gateway.
 
 Their branches were not deleted; their relevant code remains preserved in #272. PR #243 remains open because #244 is stacked on its supplier-classification base. PR #244 remains draft and unmerged: its Business Engagement / Analytics writes still use the Resource API runtime path and require issuer-verified Actor Gateway actor binding. PR #264 is an older documentation checkpoint with a stale base and has not been merged. PayFast #233 and legal acceptance #201 remain parked.
+
+
+---
+
+### 2026-11-14 — refreshed production role authority and migration-ledger access path
+
+Fresh read-only catalog evidence from Render 'ghm-db' / 'ghm_db' confirms:
+
+1. 'ghm.ghm_schema_migrations' exists, is owned by 'ghm_schema_owner', and has NULL relation ACL. 'ghm_app_user'/'ghm_db_user' and 'ghm_migrator' cannot SELECT it directly; 'ghm_migrator' also has no direct 'ghm' schema USAGE. This is consistent with the least-privilege migration-runner design, not proof that the ledger is absent.
+2. 'src/db/migrate.ts' is the intended read/apply authority path: it connects with 'GHM_MIGRATOR_DATABASE_URL', asserts 'session_user=current_user=ghm_migrator', verifies the exact SET-only membership to 'ghm_schema_owner', executes 'SET ROLE ghm_schema_owner', then reads 'version, checksum' from the resolved ledger table. It also applies pending migrations, so the normal command is NOT a read-only audit command and must not be run against production to inspect the ledger.
+3. The current read-only Render query identity remains 'session_user=ghm_app_user', 'current_user=ghm_db_user'. The query connector accepts a single prepared statement; a combined 'SET LOCAL ROLE; SELECT' was rejected with 42601 before execution. No role change or database mutation occurred.
+4. Current direct membership rows include five PostgreSQL-granted ADMIN OPTION memberships from 'ghm_db_user' to 'ghm_actor_gateway', 'ghm_migrator', 'ghm_payment_provider', 'ghm_runtime', and 'ghm_schema_owner' (all INHERIT=false, SET=false). A separate 'ghm_db_user'-granted membership gives 'ghm_db_user' → 'ghm_runtime' INHERIT/SET true without ADMIN OPTION. 'ghm_migrator' → 'ghm_schema_owner' is INHERIT=false, SET=true, ADMIN=false. 'ghm_app_user' → 'ghm_db_user' is INHERIT/SET true, ADMIN=false.
+5. 'ghm_db_user' remains LOGIN/INHERIT with CREATEDB and CREATEROLE; 'ghm_app_user' inherits its authority. These exact paths and duplicate runtime grants need to be considered together in any future role cutover. No membership, role attribute, grant, ownership, schema, migration or data was changed.
+6. Render Postgres metadata: PostgreSQL 18, available, Frankfurt, plan '0.1c-256mb', 1 GB disk, no HA, no connection pool, and external allowlist '0.0.0.0/0'. This is not proof of a fresh backup or successful restore. The existing 4 November backup remains stale per prior handover; backup/restore is still a hard gate.
+
+**Disposition:** migration ledger access must be obtained through a dedicated read-only audit mode that preserves the migrator identity and owner role, not by granting SELECT to runtime or the Render default user. The existing migration runner is mutating and must not be invoked in production for this purpose. Implement/qualify a non-mutating ledger-audit command against disposable PostgreSQL first; only then decide whether a controlled production audit invocation is safe and available. Until then the production migration head/checksums remain unknown.
