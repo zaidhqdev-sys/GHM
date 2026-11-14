@@ -907,3 +907,25 @@ test('actor gateway fails closed when the edge limiter is unavailable', async ()
   });
   assert.equal(databaseCalls, 0);
 });
+
+
+test('actor gateway accepts an injected Worker-compatible JSON body parser', async () => {
+  let parserCalls = 0;
+  const reader: ActorIdentityReader = {
+    async readOwnIdentity(accountId: number): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  };
+  await withServer(reader, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/actor/me`, {
+      headers: { authorization: `Bearer ${sign(76)}` },
+    });
+    assert.equal(response.status, 200);
+  }, undefined, undefined, undefined, undefined, {
+    jsonBodyParser: (_request, _response, next) => {
+      parserCalls += 1;
+      next();
+    },
+  });
+  assert.equal(parserCalls, 1);
+});
