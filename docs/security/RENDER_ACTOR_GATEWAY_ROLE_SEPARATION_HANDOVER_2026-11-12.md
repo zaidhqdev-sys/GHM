@@ -383,3 +383,18 @@ The seven repository migrations absent from the live production ledger are:
 The initial audit verdict was `INVESTIGATE` only because the production pending allowlist still named `20261109210000 deactivate_unrecognized_public_directory_records`, already present in the live ledger, rather than these seven absent migrations. The allowlist was corrected on main in commit `0c65eb1fcce287d82f895a234193691ef114943a` to list exactly the seven observed absent version/name pairs. This is an audit-config correction only: none of the seven migrations was applied, and the correction is not authorization to apply them.
 
 The audit must be rerun read-only against the updated mainline before a final verdict is recorded. Until then, migration audit status is **pending final rerun**. Preserve the established separation: Resource API uses `ghm_runtime`; migrator remains a separate controlled identity; no deployment or production privilege change is part of this step. Following a clean rerun, continue with production-only Project↔Opportunity reconciliation. PayFast remains paused.
+
+
+## 2026-11-14 — final live production migration reconciliation: PASS_WITH_PENDING
+
+The corrected production pending allowlist was fetched into `C:\\GHM-main` by fast-forward. The local recovery backup `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak` remains present and untouched.
+
+The live production forensic audit was rerun against `ghm_db` with `ghm_migrator`. Authority checks passed; the read-only transaction switched to `ghm_schema_owner` for the ledger read while retaining `session_user=ghm_migrator`, and the audit rolled back. Result: **`PASS_WITH_PENDING`**, exit code **0**.
+
+Production inventory: 102 repository migration files, 105 live ledger rows, 24 canonical matches, 62 supported CRLF matches, 9 approved historical matches, and exactly 7 pending migrations. The corrected allowlist matched exactly (0 mismatch). There were 0 unexplained checksum mismatches, 0 name mismatches, 10 approved retained-history extras, 0 unrecognized extras, 0 orphaned exceptions and 0 invalid retained-history entries. Seven redundant historical exception hashes remain preserved as provenance; no cleanup was performed.
+
+The seven pending versions are `20261110100000`, `20261110120000`, `20261110140000`, `20261110210000`, `20261110220000`, `20261110230000`, and `20261110233000`. Their migration names and exact filenames are recorded in the full migration/security handover. None was applied by this audit or authorized for execution.
+
+No production schema/data, ledger, grants, roles, memberships, Render configuration or deployments were changed. Keep the Resource API on `ghm_runtime`, retain separate controlled migrator identity, keep Render auto-deploy OFF, and keep PayFast paused. The next gate is production-only Project↔Opportunity reconciliation, performed read-only before any migration execution or deployment decision.
+
+Status: **PRODUCTION MIGRATION RECONCILIATION PASS_WITH_PENDING; SEVEN EXPLICIT PENDING MIGRATIONS; NO PRODUCTION CHANGES.**
