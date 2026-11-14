@@ -3015,3 +3015,34 @@ The Render query integration's administrator/effective `ghm_db_user` connection 
 A direct count query therefore failed with SQLSTATE 42501. No permission was granted or changed. Do not widen the ledger ACL merely for inspection. To complete the production ledger audit, use the existing controlled migration-owner connection path (the `ghm_migrator` login with its permitted `SET ROLE ghm_schema_owner` workflow) for a read-only ledger query, without adding its credential to the Resource API environment or exposing it in chat. The Render query integration cannot perform that SET ROLE because the Render administrator's membership is deliberately SET=false.
 
 The ledger count/checksum reconciliation remains outstanding. This is a separate gate from the confirmed runtime role boundary and PR #278.
+
+
+### PR #278 exact-head CI passed and fix merged — 2026-11-15
+
+GitHub Actions run `43647038889` (`CI`, run #4761) was returned for exact PR head `8141e1e24652933a0e7d6313c9f25a14918f214a`. Both jobs completed successfully:
+
+- `quality`: PASS — build, full disposable PostgreSQL migration chain, Actor Gateway principal qualification using the restricted trusted-administrator role graph, forward-migration qualification, full test suite, migration audit policy tests and runtime boundary verification all passed.
+- `web-quality`: PASS — web build, tests, dependency audit and security-sensitive toolchain verification passed.
+
+PR #278 was mergeable and was squash-merged successfully. Merge commit: `e78422560b35be3d8fdc3d08387b6c3f47ce5883`.
+
+This resolves the source-level contradiction between the production-supported `ghm_db_user` ADMIN OPTION membership and the former all-memberships-prohibited Actor Gateway migration guard. The guard now accepts only the trusted administrator membership with ADMIN OPTION true, INHERIT false and SET false; it still rejects gateway membership in any role and every other member of the gateway role. Disposable CI now models and asserts this exact contract.
+
+The PR's Cloudflare Pages preview also reported success, but the authoritative qualification evidence is the successful GitHub Actions run above.
+
+### Remaining production gate — migration ledger
+
+The production ledger `ghm.ghm_schema_migrations` remains unreadable through the Render query integration's `ghm_db_user` session because the table is owned by `ghm_schema_owner` and has owner-only default ACL. The query integration cannot SET ROLE to `ghm_schema_owner` because its administrator membership has SET=false. A direct SELECT returned SQLSTATE 42501. No grants were changed.
+
+Next use the existing `ghm_migrator` connection path and its permitted SET ROLE `ghm_schema_owner` workflow for a read-only count/version/checksum query. Do not add the migrator URL back to the Resource API environment and do not broaden the ledger ACL.
+
+### Updated disposition
+
+- Runtime URL authentication: PASS.
+- Live production runtime role attributes/effective privileges and no-untrusted-membership predicate: PASS by read-only catalog checks.
+- Actor Gateway trusted administrator membership contract: PASS against live catalog and now reflected in merged source.
+- PR #278 exact-head CI and web-quality: PASS.
+- PR #278 merged: YES (`e78422560b35be3d8fdc3d08387b6c3f47ce5883`).
+- Production migration ledger count/checksum reconciliation: BLOCKED pending controlled migrator/owner read-only query.
+- Production migration, deployment, Render environment, roles/grants and data: UNCHANGED.
+- Render auto-deploy remains OFF. PayFast remains paused. No paid resources added.
