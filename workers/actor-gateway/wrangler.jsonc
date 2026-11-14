@@ -28,6 +28,6 @@
     }
   ],
   "alias": {
-    "body-parser": "./body-parser-worker-stub.cjs"
+    "body-parser": "./workers/actor-gateway/body-parser-worker-stub.cjs"
   }
 }
