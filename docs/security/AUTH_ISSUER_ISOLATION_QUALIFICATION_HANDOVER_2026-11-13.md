@@ -3716,3 +3716,12 @@ The Worker startup contract requires schema USAGE, no schema CREATE, no direct r
 #### Disposition
 
 Do not add schema USAGE or function grants ad hoc. First reconcile the intended migration-defined gateway function allow-list, exact grantors/ACLs, direct relation grants, ownership, default ACLs and the current production connection string. The production role and Worker adapter cutover must be designed together, with a verified restore point and rollback. Do not weaken the adapter startup checks to accommodate the current production ACL.
+
+
+### Additional production ACL and migration-evidence limits — 2026-11-14
+
+Further read-only checks confirmed 'ghm_actor_gateway' has zero direct privileges on ordinary/partitioned tables, views, materialized views, foreign tables, and sequences in schema 'ghm'. This part of the intended least-privilege contract is satisfied.
+
+However, schema USAGE is absent and the exact callable signed gateway allow-list is absent (zero executable 'gateway_*' / assertion contract functions), so the Worker startup ACL contract still fails. This is not a case for adding broad direct relation grants; the intended remedy must be the exact migration-defined schema USAGE and function allow-list after the production authority cutover is understood.
+
+The Render read-only query connection (session_user 'ghm_app_user', current_user 'ghm_db_user') could not SELECT from 'ghm.ghm_schema_migrations' (PostgreSQL 42501 permission denied). This is consistent with application roles not having migration-ledger read access. Therefore this connection cannot establish the production migration ledger's latest applied version/checksum. Do not infer the migration head from schema object presence. A separate approved migration-authority/backup-backed evidence path is required to reconcile the production ledger without granting runtime access.
