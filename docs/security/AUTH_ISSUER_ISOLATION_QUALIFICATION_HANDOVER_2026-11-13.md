@@ -4645,3 +4645,24 @@ A read-only production catalog query retrieved the exact definitions, owners, SE
 **Decision:** do not drop, revoke, rewrite, or change grants/search_path on this function based only on the missing source match. It is SECURITY DEFINER and participates in Connect identity authority, so it needs historical source/PR/migration provenance and caller-path analysis before any decision. Its presence and exact definition are now recorded as a separate production authority-reconciliation item.
 
 No production/local database, routine, ACL, credential, environment, service, migration, deployment, or backup was changed.
+
+
+### Correction — production Connect authority function has historical PR provenance — 2026-11-14
+
+The earlier statement that `ghm.auth_read_connect_identity_authority(bigint)` had no source provenance was too broad. A historical source has now been located.
+
+**Historical source found:** GHM PR #137, branch `construction/identity-resolution-api-20261016`, head `3d394112c973a027a0e1a271f80c172b8d7385b8`, includes migration `database/migrations/20261016100000_add_connect_identity_authority_contract.sql`. The exact PR file patch defines the same function signature, return shape, SECURITY DEFINER mode, `SET search_path = ghm, pg_temp`, owner `ghm_schema_owner`, PUBLIC revoke, and `ghm_runtime` EXECUTE grant as the live production function definition captured above. This establishes a strong exact-source match.
+
+**Important qualification:** GitHub API reports PR #137 was **closed unmerged** (`merged=false`, closed 2026-10-21). The same PR's migration adds:
+- `account_identity.connect_role` (nullable text),
+- `account_identity.business_operator_intent` (boolean NOT NULL DEFAULT false),
+- `ghm.connect_founder_directory_reviewer` and its constraints,
+- `ghm.auth_read_connect_identity_authority(bigint)`.
+
+A fresh read-only production catalog query confirms those exact columns and reviewer table/columns/constraints exist. It also confirms no effective SELECT/INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER privilege for `ghm_runtime`, `ghm_db_user`, or `ghm_app_user` on the reviewer table. This matches the migration's explicit revoke from PUBLIC and `ghm_runtime`; no direct table access was granted to the inspected application/admin identities.
+
+**Revised assessment:** the function is no longer unattributed to any known source. Its live definition and schema objects match the migration in a historically closed, unmerged PR. The unresolved issue is now **deployment/migration provenance and ledger reconciliation**: how the migration from closed-unmerged PR #137 reached production, which exact commit/migration runner applied it, whether the ledger records it, and whether the same migration bytes/checksum were used. The function's `search_path=ghm, pg_temp` is intentional in that historical migration, not an unexplained live-only deviation. It still warrants a security review of the exact historical migration and caller path, but do not rewrite or revoke it on the basis of the earlier mistaken provenance gap.
+
+**Next evidence needed:** retrieve PR #137's full historical head/commit context and migration checksum; reconcile with the production migration ledger via the dedicated approved forensic audit when its credential path is available; inspect the exact Connect identity repository call path and current use of the returned authority projection. No mutation is authorized.
+
+No production/local database, function, table, ACL, credential, environment, service, migration, deployment, or backup was changed.
