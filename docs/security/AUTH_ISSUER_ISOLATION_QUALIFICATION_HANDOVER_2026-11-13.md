@@ -4108,3 +4108,27 @@ The previously supplied Render inventory includes a single preview deployment or
 **Vercel read-back limitation:** attempted read-only project/env discovery using the connected Vercel account/team `ZAID Technologies` (`team_6faNqq4JxLWBA4aR1SB8PspJ`) returned no `zaid-connect` project in that team scope (project lookup 404; project search empty). No environment values were decrypted or changed. This does not prove the project is deleted; it means the currently connected Vercel team scope cannot establish its live environment configuration. Do not claim the production env values or feature flag have been read. The repo source is verified; live Vercel scope still needs resolving before any configuration decision.
 
 **Correct next action:** continue source-level confirmation of Connect deployment domains/project ownership and identify the Vercel project scope that actually owns `zaid-connect`; then read only environment variable names, targets and branch scopes (no decrypt). No Vercel env change, deployment, GHM Render change, database operation, credential rotation, PayFast change, or paid resource was made.
+
+
+### 2026-11-14 13:57 UTC — Vercel project-scope discovery and historical Preview env evidence
+
+Continued the read-only Vercel discovery and reconciled it against Connect's own durable handover.
+
+**Connected Vercel account/team inventory:**
+- Authenticated Vercel team list returns one team: ZAID Technologies, slug `zaid-technologies`, ID `team_6faNqq4JxLWBA4aR1SB8PspJ`.
+- Listing all projects in both the authenticated-user scope and that team scope returns exactly one project: `zaid-technologies-website` (ID `prj_SQA7cRlVD0IEneyN8EhD8aNGJukA`). No `zaid-connect` project is present in the accessible project inventory.
+- Explicit lookup of `zaid-connect` returns 404 in that team scope. Search by project name returns no results.
+- Deployment listing for app `zaid-connect` returns zero in user and team scopes. Alias listing for `zaid-connect.vercel.app` returns zero in user and team scopes.
+- The team's registered-domain listing includes `zaidtechnologies.co.za`; this does not establish ownership/scope of the `zaid-connect.vercel.app` deployment.
+- No env-variable listing or decryption was performed because the Connect project could not be resolved in the accessible scope. No project, deployment, alias or environment was created, changed or deleted.
+
+**Existing Connect handover cross-check:** read `zaidhqdev-sys/zaid-connect/docs/06_Implementation/GHM_BACKEND_MIGRATION_HANDOVER_2026-10-13.md` at main (blob `a74d2e5d44734555e6beb876d6121400e0d94e96`). Its sections 27–28 record that the previously inspected `CONNECT_WEB_ORIGIN` and `GHM_INTERNAL_RUNTIME_URL` values were **branch-scoped Preview values for the obsolete branch** `construction/ghm-identity-adapter-only-20261016`, and that no Production values were found in that earlier read-only listing. They explicitly say not to copy those values to a new qualification branch or assume they apply to the current production deployment. This historical finding is now corroborated by the current connected account's inability to resolve the Connect project, but does not establish that the project is deleted or that no other Vercel account/team owns it.
+
+**Configuration decision (unchanged):**
+- Do not populate GHM `GHM_WEB_AUTH_ALLOWED_ORIGINS` from the stale Preview origin.
+- Do not invent `CONNECT_WEB_ORIGIN`, `GHM_INTERNAL_RUNTIME_URL`, cookie max-age or production env values.
+- Do not enable `VITE_GHM_WEB_AUTH_ENABLED` or claim HttpOnly browser sessions are active.
+- Browser-auth remains an opt-in, unqualified transport. The current code path is source/test evidence only; no runtime E2E/deployment evidence exists.
+- Next dependency is access to the Vercel account/team/project scope that actually owns the Connect deployment, or an owner-provided non-secret project ID/scope reference. Do not ask for credentials or secret values. Once scope resolves, inspect env variable names and target scopes only (no decrypt).
+
+No Render/Vercel configuration changes, deployments, restarts, DB operations, role/grant changes, credential rotation, payment changes, or paid resources were used for this checkpoint.
