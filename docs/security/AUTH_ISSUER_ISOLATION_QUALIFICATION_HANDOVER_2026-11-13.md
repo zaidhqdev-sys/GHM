@@ -3210,3 +3210,20 @@ This benchmark is intentionally non-gating for the overall GHM suite when the re
 The benchmark source and CI steps are committed, but no compatibility or performance result is claimed yet. The next exact-head CI run will determine whether hash-wasm can interoperate with existing GHM PHC strings and whether its 64 MiB/t=3/p=1 operations fit the Free Worker CPU limit. A local measurement below 10 ms would still be only a candidate; final confirmation would require a controlled Cloudflare Free runtime test before any production use.
 
 No Cloudflare account, billing plan, Worker deployment, production secret, production database connection or authentication traffic was changed.
+
+
+### Argon2id WASM PHC interoperability — passed; Worker CPU benchmark pending
+
+The first CI run `43535196133` completed:
+- Isolated `hash-wasm@4.13.0` installation: passed.
+- Native GHM Argon2id hash generation at 65,536 KiB / t=3 / p=1 / 32-byte tag / 16-byte salt: passed.
+- hash-wasm verification of the native PHC string: passed.
+- hash-wasm generation at the exact same profile: passed.
+- Native `argon2.verify` verification of the hash-wasm PHC string: passed.
+- PHC profile check (`$argon2id$v=19$m=65536,t=3,p=1$`): passed.
+
+This establishes bidirectional PHC interoperability at the exact GHM password parameters in Node/WASM. It does not yet prove Cloudflare Worker performance.
+
+The subsequent local Workers benchmark step did not return during the initial run's diagnostic window. It is still running; the cause and CPU result are not established. I have bounded each local Worker request with a hard 20-second diagnostic timeout and will record timeout/operation errors instead of leaving CI hung. The workflow now also uploads the PHC interoperability report immediately after that step, so it remains available even if the Worker benchmark stalls.
+
+No password algorithm, cost parameter, existing stored hash, production issuer or user account was changed.
