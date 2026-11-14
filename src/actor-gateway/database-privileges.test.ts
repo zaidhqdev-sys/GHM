@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL,
   assertActorGatewayDatabasePrivileges,
   type ActorGatewayDatabasePrivileges,
 } from './database-privileges';
@@ -111,4 +112,20 @@ test('accepts only the exact pre-migration and post-migration Campaign gateway f
     expected_functions: expected,
     executable_functions: [...expected, 'ghm.gateway_unreviewed(bigint)'],
   }), /gateway_function_allow_list_mismatch/);
+});
+
+
+test('requires every reviewed gateway signature even when a required function is absent', () => {
+  assert.match(
+    ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL,
+    /SELECT signature\\s+FROM expected_signatures\\s+ORDER BY signature\\s+\\) AS expected_functions/,
+  );
+  assert.doesNotMatch(
+    ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL,
+    /WHERE to_regprocedure\\(signature\\) IS NOT NULL/,
+  );
+  assert.match(
+    ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL,
+    /ghm\\.gateway_storage_mark_deleted\\(/,
+  );
 });
