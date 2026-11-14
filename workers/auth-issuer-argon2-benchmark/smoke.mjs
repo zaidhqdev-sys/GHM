@@ -60,15 +60,30 @@ try {
   for (const operation of ['verify', 'hash']) {
     let response;
     try {
-      response = await fetch(`${BASE_URL}/${operation}`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          password: PASSWORD,
-          ...(operation === 'verify' ? { hash: nativeHash } : {}),
-        }),
-        signal: AbortSignal.timeout(20_000),
+      const controller = new AbortController();
+      let timeoutHandle;
+      const timeout = new Promise((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+          controller.abort();
+          reject(new Error('Worker Argon2 operation exceeded 20 second diagnostic timeout'));
+        }, 20_000);
       });
+      try {
+        response = await Promise.race([
+          fetch(`${BASE_URL}/${operation}`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              password: PASSWORD,
+              ...(operation === 'verify' ? { hash: nativeHash } : {}),
+            }),
+            signal: controller.signal,
+          }),
+          timeout,
+        ]);
+      } finally {
+        clearTimeout(timeoutHandle);
+      }
     } catch (error) {
       results.push({
         operation,
