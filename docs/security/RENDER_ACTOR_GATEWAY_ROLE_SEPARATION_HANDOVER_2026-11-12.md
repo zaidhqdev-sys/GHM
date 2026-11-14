@@ -960,3 +960,35 @@ The #276 workflow was also corrected to include \`integration/capability-gateway
 Wait for all six current runs to complete, inspect any failures at job/log level, fix the underlying cause, and rerun exact heads. Then complete the final #272→#276→#277 ancestry refresh using the latest branch refs. GitHub currently reports the three PRs as mergeable, but that is not a substitute for green exact-head CI.
 
 Do not merge or deploy until all exact-head checks pass. The issuer remains blocked from production deployment under the current $0 hosting/Argon2id constraint. No production migration, role/grant, secret, credential, Render, Cloudflare, DNS or traffic change was made.
+
+
+## 2026-11-15 — final ancestry refresh after contract-test correction
+
+The migration contract test was corrected a second time after exact-head CI showed the canonical migration uses boolean predicates (\`AND admin_option\`, \`AND NOT inherit_option\`, \`AND NOT set_option\`) rather than the earlier explicit \`IS TRUE/IS FALSE\` spellings. The updated test now accepts both semantically equivalent forms used by the mainline migration and the additive issuer-stack migration. The migration itself was not weakened or changed to satisfy a brittle regex.
+
+Corrected test commits:
+- #272 code/test head: \`bdd844ca9f7be04a3804064cf16dacddae0a09a4\`
+- #276 code/test head: \`773ffa2f6c363bdef8933f58b0dc01b0df992f3a\`
+- #277 code/test head: \`552fd50d715623b656692ff98dc4705fbe7cb8d1\`
+
+The branch ancestry has now been refreshed again with merge commits that preserve the respective branch trees:
+- #272 latest branch tip: \`f0d558c0a1718cb429b1ff83ffa36f0c4f277ba0\` (merge parent includes latest main \`bd987c52d3d63015e26fee6ba03777b8b9576ca5\`).
+- #276 latest branch tip: \`b7a91ce6806832ac39cd517ba7d67773c07edcc7\` (merge parent includes latest #272 \`f0d558c...\`).
+- #277 latest branch tip: \`45f34db87a604239fea75143de0715928c6ca85c\` (merge parent includes latest #276 \`b7a91ce...\`).
+
+GitHub ancestry comparisons now report:
+- main → #272: 23 ahead / 0 behind;
+- #272 → #276: 198 ahead / 0 behind;
+- #276 → #277: 132 ahead / 0 behind.
+
+Each latest branch tip is a tree-preserving merge commit after its corresponding code/test head. The current exact source trees under CI are the code/test heads listed above; the later merge commits add ancestry only and do not change those trees.
+
+### Latest CI runs
+
+- #272: PR run \`43655387979\` and push run \`43655384453\`, both in progress at last check; web-quality has passed on both, quality is still running.
+- #276: push run \`43655387365\` in progress; web-quality has passed and quality is still running. The matching PR run was cancelled when the stacked base advanced; push run is retained as the exact code/test tree check.
+- #277: push run \`43655390463\` in progress; web-quality has passed and quality is still running. The matching PR run was cancelled when the stacked base advanced; push run is retained as the exact code/test tree check.
+
+The preceding #272 runs failed only on the outdated SQL regex expectation; the corrected test is now on the current code/test trees. Do not mark the current runs passed until the quality jobs finish successfully and all qualification steps complete.
+
+All three PRs currently report mergeable=true and all three branch comparisons are zero-behind. This resolves the prior ancestry/mergeability blocker, but not the CI, issuer hosting, or production cutover gates. Keep PRs draft and unmerged until exact-tree CI is green. No production migration, role/grant, secret, credential, Render, Cloudflare, DNS, route or traffic change was made.
