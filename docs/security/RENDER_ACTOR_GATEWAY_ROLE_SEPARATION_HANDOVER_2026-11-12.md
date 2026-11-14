@@ -345,3 +345,21 @@ The production migrator endpoint has now passed both non-secret route diagnostic
 This confirms the local migrator credential can authenticate to the intended production database. It does not yet qualify the SET-only membership to `ghm_schema_owner` or the ledger read path. The next step is a read-only transaction with `SET LOCAL ROLE ghm_schema_owner`, identity confirmation, and a bounded SELECT from `ghm.ghm_schema_migrations`, followed by ROLLBACK.
 
 The earlier connection-timeout observation is superseded by this successful identity test. No role membership, grants, data, Render environment variables, deployment settings or services were changed.
+
+
+## 2026-11-14 continuation — live migrator schema-owner path verified
+
+The hidden-input production test has now verified the complete intended read-only migration-ledger access path:
+
+- Initial connection: `ghm_db`, `session_user = current_user = ghm_migrator`.
+- Transaction mode: `READ ONLY`.
+- `SET LOCAL ROLE ghm_schema_owner`: SUCCESS.
+- Post-switch identity: `session_user = ghm_migrator`, `current_user = ghm_schema_owner`.
+- Ledger relation `ghm.ghm_schema_migrations`: SELECT SUCCESS.
+- Explicit transaction `ROLLBACK`: SUCCESS.
+
+The live ledger contains 105 rows, from `00000000000000` through `20261109210000`; latest applied timestamp is `2026-11-09 20:50:23.763Z`. This matches the previously inspected archive snapshot's key ledger boundaries.
+
+This verifies the migrator's intended SET-only membership and read path without granting direct ledger SELECT to the Render query principal or widening any privileges. No production role, membership, grant, data, environment variable, service or deployment was changed.
+
+Next work belongs to migration reconciliation: compare the live 105-row ledger against the current repository migration inventory and approved retained/manual-cutover register. Keep the live-ledger evidence distinct from the archive snapshot.
