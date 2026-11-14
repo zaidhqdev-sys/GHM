@@ -3075,3 +3075,17 @@ Run `43533834824` (source head `76c219f77660b7beee4a0d113de98c42f01e79d9`) produ
 The smoke job still concluded failure because the subsequent malformed-JSON test request was unauthenticated. The Actor Gateway correctly returned HTTP 401 before reaching its JSON parser; the test incorrectly expected 400. The diagnostic log proves Worker startup and database ACL checks are now working. This is a test sequencing issue, not a Worker startup failure.
 
 Corrective CI change: generate a short-lived ES256 test token using the ephemeral CI-only private key and send it with the malformed JSON request. This allows the request to pass JWT verification and the local edge rate-limit binding, then exercise the Worker-native parser. The private key and test token remain in runner temp files and are not included in uploaded artifacts. The next exact-head run must confirm the parser returns HTTP 400 and complete the remaining qualification suite.
+
+
+### Runtime smoke now passes; full test suite exposed a separate failure
+
+GitHub Actions run `43534053528` (exact source head `fc545c488662f0484e142367db0806889d47f564`) confirms:
+- Worker TypeScript build and Wrangler bundle passed.
+- Disposable PostgreSQL migrations and Actor Gateway principal qualification passed.
+- Local Workers runtime started.
+- Hyperdrive connected to disposable PostgreSQL.
+- Startup database identity and ACL checks passed.
+- `GET /healthz` returned 200.
+- The authenticated malformed-JSON request returned the expected HTTP 400; the local Worker smoke step passed.
+
+The workflow later failed in the full `npm test` step. The connected GitHub job interface exposes only the step conclusion, not the test output. A diagnostic change now captures the complete test output in `tmp/test-suite.log` and uploads it as a short-retention artifact even on failure. The next run will identify the exact failing assertion or Worker type-check issue. No green full CI claim is made yet.
