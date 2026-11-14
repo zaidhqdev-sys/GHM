@@ -3370,3 +3370,48 @@ The migration host/name and nonproduction/qualification guard variables must be 
 6. Only then prepare a Cloudflare Free Hyperdrive production connection and route plan.
 
 No production role, membership, ACL, password, database, migration, Render environment variable, service, deployment, Cloudflare account, DNS or traffic was changed during this audit.
+
+
+## 2026-11-14 05:25 SAST — production Connect browser-auth and CORS configuration audit
+
+Read-only inspection of the deployed GHM source at `c7cf1eb` and ZAID Connect `main` confirms the following configuration contract.
+
+### GHM browser-cookie auth requirements
+
+The deployed `src/http/auth-router.ts` builds browser-cookie configuration from:
+- `GHM_WEB_AUTH_ALLOWED_ORIGINS`
+- `GHM_WEB_AUTH_COOKIE_PATH`
+- `GHM_WEB_AUTH_COOKIE_MAX_AGE_SECONDS`
+
+It returns `browser_auth_not_configured` (HTTP 503) unless:
+- at least one allowed origin is configured;
+- each origin is a valid exact HTTPS origin (or localhost for development);
+- cookie path is exactly `/api/ghm`;
+- max age is an integer between 60 and 2,592,000 seconds.
+
+The operator-supplied GHM-Internal-Runtime inventory contains `GHM_WEB_AUTH_ALLOWED_ORIGINS` with only the Connect preview origin, but does **not** contain `GHM_WEB_AUTH_COOKIE_PATH` or `GHM_WEB_AUTH_COOKIE_MAX_AGE_SECONDS`. Therefore browser-cookie auth is not configured in the supplied baseline and those endpoints will return 503. Even if the missing cookie settings are later added, the canonical production Connect origin `https://zaid-connect.vercel.app` is not currently in the supplied allow-list, so production browser-auth requests would be rejected with 403.
+
+### ZAID Connect proxy requirements
+
+The Connect mainline proxy `api/ghm/[...path].js` requires Vercel-side:
+- `CONNECT_WEB_ORIGIN`
+- `GHM_INTERNAL_RUNTIME_URL`
+
+It maps same-origin `/api/ghm/auth/web/*` requests to GHM `/api/v1/auth/web/*`, forwards cookies, and sets the upstream `Origin` to `CONNECT_WEB_ORIGIN`. Thus, when the production proxy is enabled, the GHM `GHM_WEB_AUTH_ALLOWED_ORIGINS` list must include the exact canonical production origin. The proxy also constrains preview origins to trusted same-origin Vercel preview hosts.
+
+The Vercel project environment could not be read in the connected Vercel account scope, so the live values of `CONNECT_WEB_ORIGIN`, `GHM_INTERNAL_RUNTIME_URL` and any Connect feature flag enabling the browser-auth client remain unverified. The source confirms the contract, not the live toggle state.
+
+### Direct bearer-token browser API CORS
+
+The deployed GHM `src/config.ts` parses `CORS_ORIGINS`, and `src/http/app.ts` applies that allow-list to browser API responses. The supplied list contains localhost and two Cloudflare Pages origins, but not `https://zaid-connect.vercel.app`. Direct browser requests from the production Connect origin therefore do not have a matching CORS allow-list entry. Server-to-server proxy requests are distinct from direct browser requests, but the cookie-auth route has its own exact Origin gate described above.
+
+### Required before Connect auth cutover
+
+Do not blindly add origins or guess cookie lifetimes. Before enabling or migrating the Connect browser-auth path:
+1. Confirm whether the production Connect feature flag is enabled.
+2. Confirm the actual Vercel `CONNECT_WEB_ORIGIN` and `GHM_INTERNAL_RUNTIME_URL` values.
+3. Decide the intended cookie max age and confirm `/api/ghm` path.
+4. Add only the canonical production origin to the appropriate GHM origin controls; retain preview origins only where needed.
+5. Test both the direct bearer-token API and same-origin cookie proxy independently.
+
+No GHM or Vercel environment variable, CORS policy, cookie setting, route, deployment or user session was changed.
