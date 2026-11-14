@@ -3775,3 +3775,20 @@ Exact-head GitHub Actions run [43550565894](https://github.com/zaidhqdev-sys/GHM
 - No failed steps.
 
 This is the new Worker hardening qualification run. The earlier run 43549310157 remains valid for the previous source state; run 43550565894 is the evidence for the added open-stream test. No production DB, role, grant, secret, Render service/environment/deployment, Cloudflare resource, DNS/route, or paid plan was changed.
+
+
+### Render PostgreSQL ↔ Cloudflare Hyperdrive network compatibility — documentation review, 2026-11-14
+
+Reviewed official Cloudflare and Render connection documentation:
+- Cloudflare Hyperdrive supports PostgreSQL through node-postgres 'pg' (minimum supported version 8.16.3) and supports PostgreSQL versions through 18.x.
+- Hyperdrive PostgreSQL TLS defaults to 'require'; its documented 'require' mode validates the server certificate using WebPKI. Render external PostgreSQL connections require TLS 1.2+ and accept 'sslmode=require'. The production Hyperdrive origin must use the Render external hostname/URL, not a Render internal hostname; the local Wrangler connection string remains disposable-only.
+- Cloudflare documents a maximum of 20 origin connections for a Free Hyperdrive account. This is compatible with a carefully bounded Worker pool, but the exact production pool and Render database connection budget still need calculation.
+- The live Render metadata currently shows the production ghm-db external IP allowlist as 0.0.0.0/0 ('everywhere'). This makes external Hyperdrive reachability plausible, but it is broad internet exposure and is not an approved final security posture. Do not change it until Cloudflare Hyperdrive egress requirements and Render-supported allowlist options are verified; do not leave it described as a hardened allowlist.
+
+This supports protocol/TLS compatibility at the documentation level only. No Hyperdrive connection to production has been attempted. No Hyperdrive resource, secret, connection URL, allowlist, DNS, route, Worker deployment or Cloudflare plan was created or changed.
+
+Official references:
+- https://developers.cloudflare.com/hyperdrive/examples/connect-to-postgres/
+- https://developers.cloudflare.com/hyperdrive/reference/supported-databases-and-features/
+- https://developers.cloudflare.com/hyperdrive/platform/pricing/
+- https://render.com/docs/postgresql-creating-connecting
