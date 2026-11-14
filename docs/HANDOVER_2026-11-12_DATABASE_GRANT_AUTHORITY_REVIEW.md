@@ -2609,3 +2609,25 @@ Exact production membership rows:
 Therefore `ghm_db_user` cannot assume either `ghm_migrator` or `ghm_schema_owner` through these memberships. The previous wording that the application connection "can assume" these roles was incorrect and is superseded by this flag-level evidence. The audit's `SET ROLE ghm_schema_owner` step cannot be satisfied from this application connection. The membership's ADMIN OPTION remains a separate high-authority concern already tracked in the role-separation handover; no change was made here.
 
 The only valid audit route remains a direct authenticated connection whose `session_user` and initial `current_user` are both `ghm_migrator`, with the expected SET capability from that principal to `ghm_schema_owner`. No password or role mutation was attempted.
+
+
+### 2026-11-14 — existing local migrator URL identified
+
+Operator confirmed that the existing `GHM_MIGRATOR_DATABASE_URL` is already present in the local `.env` file at line 7. This supersedes the earlier statement that no dedicated migrator credential/configuration had been established.
+
+The authoritative script `scripts/forensic-migration-reconciliation.mjs` begins with `import 'dotenv/config'`, reads `GHM_MIGRATOR_DATABASE_URL` from the repository-root `.env`, and enforces:
+
+- initial `session_user = ghm_migrator`
+- initial `current_user = ghm_migrator`
+- expected database `ghm_db`
+- `ghm_migrator` can SET ROLE to `ghm_schema_owner`
+- post-switch `current_user = ghm_schema_owner`, while `session_user = ghm_migrator`
+- a `BEGIN READ ONLY` transaction, rolled back after the ledger comparison
+
+No credential value was copied into this handover or displayed. The existing `.env` was not changed. The next action is to run the existing production pre-deploy audit from the repository root using the already-present local `.env`:
+
+`npm run audit:migrations:predeploy`
+
+This is the appropriate audit mode because it compares live missing migrations against the repository's explicit production pending allowlist. It is read-only; it does not apply migrations. Capture the full JSON result (with no connection-string values) and append its exact verdict/counts to this handover. If authority validation fails, stop and investigate the identity/connection target; do not modify grants or credentials.
+
+Status at note creation: live audit not yet executed. No production or local configuration mutation.
