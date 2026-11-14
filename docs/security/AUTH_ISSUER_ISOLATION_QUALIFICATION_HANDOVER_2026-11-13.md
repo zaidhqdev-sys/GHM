@@ -3033,4 +3033,4 @@ The first CI build after introducing the Worker-native parser failed. Source rev
 - The shared app's Express import did not yet include the newly referenced `RequestHandler` type.
 - The Worker content-type regular expression had been double-escaped in the generated TypeScript source.
 
-Both are corrected in commits `<app-import-fix>` and `ef8acec38496b3abf1c097efa2d4c1aeefb06418`. The exact app-import commit is recorded in GitHub history immediately before the Worker regex fix. The next exact-head CI build must confirm these corrections; no pass is claimed.
+Both are corrected in commits `d08baa804d4ebef430d20bf443e9cae85a4645da` and `ef8acec38496b3abf1c097efa2d4c1aeefb06418`. The exact app-import commit is recorded in GitHub history immediately before the Worker regex fix. The next exact-head CI build must confirm these corrections; no pass is claimed.
