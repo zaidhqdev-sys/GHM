@@ -4894,3 +4894,14 @@ Commit sequence now on PR #276 branch:
 **Scope and safety:** this is a source/test-only change on the existing stacked PR branch. It does not change production grants or database state. The accepted Render administrator membership exception remains explicitly documented and is not modified here.
 
 No production/local database, role, membership, ACL, credential, environment variable, service, migration, deployment, payment flow, backup, or paid resource was changed.
+
+
+### CI diagnosis — regression-test regex escaping corrected — 2026-11-14
+
+Re-read the latest handover before this update. The exact-head CI run `43611015304` (head `315c296a1835818fccaa3226654076e2633dbfc2`) and the follow-up run `43611141488` (head `4240aea637a579bb0a71e451ecf253aa01f48ee8`) both failed at TypeScript Build, before the broader qualification steps. The specific errors were in the newly added source-contract test: malformed double-escaped regular-expression delimiters at lines 121 and 129.
+
+Corrected the test regex escaping in commit `97ce7e11b613424e536ba9a0beb4f7468f63b94d`. The corrected expressions now use valid single regex escapes for whitespace, parentheses and dots. This is a test-only correction; production code is unchanged.
+
+A new exact-head workflow run was created for `97ce7e11b613424e536ba9a0beb4f7468f63b94d` (run `43611224349`) and was in progress at the time of this note. Do not claim CI passed until that run completes. If it fails, inspect the exact failing step/log and continue on the same PR branch.
+
+No production/local database, role, membership, ACL, credential, environment variable, service, migration, deployment, payment flow, backup, or paid resource was changed.
