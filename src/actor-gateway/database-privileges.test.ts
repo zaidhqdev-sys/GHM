@@ -134,3 +134,11 @@ test('requires every reviewed gateway signature even when a required function is
 test('rejects EXECUTE grant option on Actor Gateway functions', () => {
   assert.match(ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL, /acl\.is_grantable/);
 });
+
+
+test('normalizes PostgreSQL regprocedure comma spacing before exact comparison', () => {
+  assert.doesNotThrow(() => assertActorGatewayDatabasePrivileges({
+    ...leastPrivilege,
+    executable_functions: ['ghm.assert_actor_gateway_capability(bigint,text,bigint,uuid,text,text)'],
+  }));
+});
