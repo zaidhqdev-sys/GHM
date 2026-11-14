@@ -4051,3 +4051,31 @@ The previous 13:05 audit mixed the current `main` source contract with the curre
 **Bounded source search for historic names:** repository code search returned no indexed matches for `GHM_WEB_AUTH_ALLOWED_ORIGINS`, `GHM_MIGRATION_DATABASE_HOST`, `GHM_MIGRATION_DATABASE_NAME`, `GHM_NONPRODUCTION_DATABASE_NAME`, `GHM_QUALIFICATION_DATABASE_NAME`, or `GHM_MIGRATOR_DATABASE_URL`. Treat this as no indexed source matches, not proof that no scripts, historical refs, workflow secrets or external consumers use them. Preserve them pending any removal decision; do not rewrite their values.
 
 **Correct next step:** continue source-only mapping of the deployed `c7cf1eb` config consumers and establish the safe target runtime-principal cutover. No environment edits, DB access/mutation, deployment, restart, role/grant change, credential rotation, payment change or paid resource was used for this checkpoint.
+
+
+### 2026-11-14 13:50 UTC — deployed Resource API database and browser-auth consumer map
+
+This source-only pass is pinned to the exact Render live commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`. It corrects an earlier over-broad repository search conclusion: `GHM_WEB_AUTH_ALLOWED_ORIGINS` **is actively consumed** by the deployed browser-auth route.
+
+**Database connection blast radius**
+
+- `src/config.ts` requires `DATABASE_URL` and parses `DATABASE_SSL`.
+- `src/db/pool.ts` constructs the single shared `pg.Pool` from `config.databaseUrl` and TLS setting.
+- `src/server.ts` imports that pool and performs `SELECT 1` before opening the HTTP listener.
+- `src/http/app.ts` constructs the Resource API's Postgres repositories over their shared default pool (including Business identity/hours, Projects, Opportunities, Quotes, Customers, Notifications, Commercial, onboarding, directory, reviews and related resources). The deployed service does not have a per-resource database URL or a second application pool.
+- Therefore changing `DATABASE_URL` changes the database authority for the entire Resource API, not one isolated module. The current supplied target is the retired sandbox database. Do not repoint it to `ghm_db` until the dedicated runtime principal, its complete read/write/function privileges, ownership and SECURITY DEFINER dependencies, production migration state, backup/restore evidence, and reversible cutover plan are established.
+
+**Environment variables actively consumed by deployed code**
+
+- `NODE_ENV`, `PORT`, `DATABASE_URL`, `DATABASE_SSL`, `INVITE_CODE`, `CORS_ORIGINS`, `TRUST_PROXY` / optional `TRUST_PROXY_HOPS`: `src/config.ts`.
+- `STORAGE_PROVIDER`, `STORAGE_ENDPOINT`, `STORAGE_REGION`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`, `STORAGE_FORCE_PATH_STYLE`, `STORAGE_UPLOAD_GRANT_TTL_SECONDS`, `STORAGE_DOWNLOAD_GRANT_MAX_TTL_SECONDS`: `src/storage/config.ts`, loaded by `src/config.ts`. The previously supplied R2 values satisfy the visible shape/limits; preserve them.
+- `PAYFAST_ENVIRONMENT`, `PAYFAST_MERCHANT_ID`, `PAYFAST_MERCHANT_KEY`, `PAYFAST_PASSPHRASE`, `PAYFAST_RETURN_URL`, `PAYFAST_CANCEL_URL`, `PAYFAST_NOTIFY_URL`: parsed in `src/config.ts`. Leave the sandbox integration frozen as previously directed.
+- `GHM_JWT_ES256_PRIVATE_KEY_PEM`, `GHM_JWT_ES256_PUBLIC_KEY_PEM`, `GHM_JWT_ES256_KID`, optional paired `GHM_JWT_ES256_PREVIOUS_PUBLIC_KEY_PEM` + `GHM_JWT_ES256_PREVIOUS_KID`: `src/auth/foundation/es256-keys.ts`, loaded by deployed bearer-auth and auth-service paths. Existing supplied active key trio is therefore in use; do not rotate or rename it based only on the sandbox-labelled KID.
+- `GHM_WEB_AUTH_ALLOWED_ORIGINS`, `GHM_WEB_AUTH_COOKIE_PATH`, `GHM_WEB_AUTH_COOKIE_MAX_AGE_SECONDS`: `src/http/auth-router.ts` browser-cookie auth configuration. All three are read at request time. The allowed origins must be exact origins; cookie path must equal `/api/ghm`; max age must be an integer from 60 to 2,592,000 seconds. If any validation fails or the values are absent, browser-only auth endpoints fail closed with `503 browser_auth_not_configured`. The supplied inventory includes only `GHM_WEB_AUTH_ALLOWED_ORIGINS` (one Vercel preview origin) and does not include the cookie path or max-age values. That is a real configuration gap to resolve against the actual Connect BFF deployment contract; do not invent a production origin or values. Preserve the supplied preview origin until current BFF and preview callers are reconciled.
+- `INVITE_CODE` is required at startup; the value remains secret and is not repeated here.
+
+**CORS and browser-auth are separate allowlists:** `CORS_ORIGINS` is applied globally by Express CORS middleware. The three `GHM_WEB_AUTH_*` settings separately gate the browser refresh-cookie endpoints. Adding the Connect production origin to global CORS alone would not enable browser cookie auth; both allowlists and cookie settings must be deliberately reconciled with the actual Connect BFF origin and deployment topology.
+
+**Operational checks:** Render health path is `/healthz`. In deployed `src/http/app.ts`, that route returns HTTP 200; deployed `src/server.ts` only begins listening after the shared pool's `SELECT 1` succeeds. No environment change, restart, deployment, database query/mutation, credential rotation, role change, PayFast change, or paid resource was made.
+
+**Next safe task:** inspect the deployed Connect BFF's exact server-side GHM auth origin/cookie contract and compare its production + preview origins to the two GHM allowlists. This can be done source-only; do not ask the operator to re-paste the already supplied Render inventory.
