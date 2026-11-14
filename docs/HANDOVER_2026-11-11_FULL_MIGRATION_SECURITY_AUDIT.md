@@ -3200,3 +3200,47 @@ The allowlist update was committed directly to main as **`0c65eb1fcce287d82f895a
 - Preserve the untracked `.bak` recovery file in the local checkout.
 
 Status: **LIVE LEDGER RECONCILED WITH SEVEN EXPLICITLY PENDING REPOSITORY MIGRATIONS; ALLOWLIST CORRECTED; FINAL RERUN PENDING.**
+
+
+## 2026-11-14 — final live production migration reconciliation: PASS_WITH_PENDING
+
+The local `C:\\GHM-main` checkout was fast-forwarded to the updated mainline containing the corrected production pending allowlist. The existing untracked recovery backup `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak` was explicitly checked and remained present.
+
+The production forensic reconciliation was rerun against live `ghm_db` using the separate `ghm_migrator` credential. The authority section passed: expected database `ghm_db`, `session_user=ghm_migrator`, `current_user=ghm_migrator` before role switch, `can_set_schema_owner=true`; after role switch `session_user` remained `ghm_migrator` and `current_user=ghm_schema_owner`. The script uses a read-only transaction and rolled back. The audit returned exit code **0** and verdict **`PASS_WITH_PENDING`**.
+
+### Verified counts
+
+- Repository migration files: **102**.
+- Live production ledger rows: **105**.
+- Canonical checksum matches: **24**.
+- Supported legacy CRLF checksum matches: **62**.
+- Approved historical checksum matches: **9**.
+- Explicitly pending repository migrations: **7**.
+- Pending allowlist match: **true**; mismatch count **0**.
+- Unexplained checksum mismatches: **0**.
+- Name mismatches: **0**.
+- Extra ledger rows: **10**, all approved retained historical entries.
+- Unrecognized extra rows: **0**.
+- Orphaned historical exceptions: **0**.
+- Redundant historical exceptions: **7** (preserved; no cleanup performed).
+- Invalid retained-history entries: **0**.
+
+The exact seven pending migrations are:
+
+1. `20261110100000_create_account_onboarding_progress.sql`
+2. `20261110120000_create_business_relationship_outcome_read_models.sql`
+3. `20261110140000_allow_pending_storage_object_cleanup.sql`
+4. `20261110210000_add_actor_gateway_principal_guard.sql`
+5. `20261110220000_add_actor_gateway_self_identity_read.sql`
+6. `20261110230000_add_gateway_business_registration_identity_read.sql`
+7. `20261110233000_add_gateway_business_registration_identity_write.sql`
+
+The corrected production pending allowlist is in mainline commit `0c65eb1fcce287d82f895a234193691ef114943a`. The audit confirms that this list exactly matches the seven repository migrations absent from the live ledger. This is an audit reconciliation only. **None of these migrations has been applied or approved for execution by this result.**
+
+### Safety and next work
+
+No production schema/data, migration ledger, role, grant, membership, Render environment, service setting or deployment was changed by this read-only audit. PayFast remains paused. Render auto-deploy remains OFF. Preserve the untracked `.bak` recovery file.
+
+The production migration inventory/reconciliation gate is now **PASS_WITH_PENDING**. Next task: perform the separately required production-only Project↔Opportunity reconciliation, using read-only production queries and the existing verified controlled access path. Do not apply pending migrations, merge unrelated work or deploy until that reconciliation and its findings have been reviewed.
+
+Status: **PRODUCTION FORENSIC MIGRATION RECONCILIATION PASSED; SEVEN MIGRATIONS EXPLICITLY PENDING; NO PRODUCTION CHANGES.**
