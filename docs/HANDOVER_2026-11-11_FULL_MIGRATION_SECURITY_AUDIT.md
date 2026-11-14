@@ -2818,3 +2818,37 @@ Target service remains Render service ID srv-damupsek1f9s73eq8kkg, service slug 
 8. Keep Render auto-deploy OFF. Apply once, validate config/health, then freeze; do not deploy until the coordinated plan is explicitly approved.
 
 No environment variable, secret, deployment, database, role, or service was modified as part of this comparison.
+
+
+## 2026-11-14 — Internal Runtime environment edit saved; deployment deliberately held
+
+Operator confirmed the coordinated Render Environment edit was saved using **Save only**. No deployment option was selected. The intended changes reported by the operator were:
+
+- Removed `DATABASE_URL`
+- Removed `GHM_MIGRATOR_DATABASE_URL`
+- Added `GHM_RUNTIME_DATABASE_URL`
+- Changed `NODE_ENV` to `production`
+- Updated `CORS_ORIGINS`
+
+The operator did not know whether `https://c135fd05.ghm-cu1.pages.dev` remains an active Connect deployment. It was therefore retained in the saved CORS allowlist pending evidence; do not remove it based on assumption. The operator was previously advised to retain it temporarily while its use is investigated.
+
+### Live Render state checked after the save
+
+- Correct service checked: `ghm-internal-runtime`, ID `srv-damupsek1f9s73eq8kkg`, environment `evm-d9t1la7qj5pc73dludsg`, Frankfurt.
+- Render service detail still reports `autoDeploy=no`, trigger `off`; service is not suspended.
+- Render service events show the last deployment completed successfully on 2026-11-10. No deployment event corresponding to the 2026-11-14 environment edit was present in the returned event history.
+- The service details API does not expose environment values, so this check does not independently verify the saved key/value pairs. The operator's confirmation is the source for the save.
+- Read-only query to the actual Render Postgres instance confirmed `current_database() = ghm_db`, PostgreSQL 18.6, with the query connection authenticated as `ghm_db_user`.
+- Read-only role inventory confirmed `ghm_runtime` and `ghm_migrator` both exist as LOGIN roles; both have NOINHERIT, and neither has SUPERUSER, CREATEDB or CREATEROLE. This query was executed using Render's database integration principal, **not** the new `GHM_RUNTIME_DATABASE_URL`.
+
+### Deployment gate remains open
+
+The runtime credential has not yet been authenticated using the exact newly saved `GHM_RUNTIME_DATABASE_URL`. A prior local attempt using the local copy of that URL failed password authentication; that failure does not prove the current Render-saved URL is wrong, because the local credential may be stale or differ from the current Render `DATABASE_URL` secret. The read-only Render database query above also does not prove the runtime credential works.
+
+Therefore:
+1. Do not trigger a deploy yet.
+2. Do not re-add the migrator URL to the Resource API environment; it is not used by `npm start`.
+3. Before deploying, verify the new runtime URL through a controlled connection test that does not print or disclose its password. Prefer a test using the actual saved Render secret or another secure source; do not ask the operator to paste the secret into chat.
+4. After credential verification, perform the planned deployment deliberately (auto-deploy remains OFF), then inspect startup logs and `/healthz`. If startup fails, stop and diagnose rather than making repeated speculative environment edits.
+
+No database data, roles, grants, migrations, application code, paid resources, or deployment were changed during this verification. PayFast remains paused and unchanged.
