@@ -3091,3 +3091,28 @@ Current status:
 - Backup ledger snapshot: 105 rows through migration `20261109210000` (2026-11-14 archive extraction).
 - Amanda support direction: CONFIRMED and unchanged.
 - Production roles/grants/data/migrations/environment/deployment: UNCHANGED.
+
+
+## 2026-11-14 continuation — production migrator authentication and route verification
+
+A fresh hidden-input, read-only local connection test using the current `GHM_MIGRATOR_DATABASE_URL` succeeded against the production Render PostgreSQL endpoint:
+
+- Database: `ghm_db`
+- `session_user = ghm_migrator`
+- `current_user = ghm_migrator`
+- PostgreSQL authentication: SUCCESS.
+
+Separate non-secret endpoint diagnostics for both the runtime and migrator URLs confirmed the same production host, port 5432 and database, with DNS resolution and TCP connectivity successful. These route checks do not themselves prove authentication; the identity-only test above does.
+
+This supersedes the earlier local migrator connection timeout as the latest connection result. The test executed only a connection and identity SELECT. It did not execute `SET ROLE`, read the migration ledger, or change production state.
+
+### Next controlled read-only qualification
+
+Using the verified migrator connection, run a read-only transaction that:
+1. begins `READ ONLY`;
+2. executes `SET LOCAL ROLE ghm_schema_owner`;
+3. confirms `session_user` remains `ghm_migrator` while `current_user` becomes `ghm_schema_owner`;
+4. selects a bounded ledger summary/recent entries from `ghm.ghm_schema_migrations`;
+5. rolls back.
+
+If the role switch or ledger SELECT fails, capture the SQLSTATE and exact error without widening grants. Do not restore/import the archive snapshot. No production permissions, data, Render variables, deployment settings or services were changed by this connection test.
