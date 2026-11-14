@@ -4802,3 +4802,44 @@ Re-read the latest handover before this comparison. The preceding checkpoints al
 **Decision:** keep production unchanged. The correct next source task is to complete the exact deployed-commit caller map for the production 46-function EXECUTE surface and separately inspect the latest #272/#276 stack's signed assertion and exact ACL verifier. Only after that can a safe, coherent mainline/stack decision be made. Production role/environment/credential cutover, gateway service provisioning, migrations, grants and deployment remain blocked on the existing backup/restore, migration-ledger and operational gates.
 
 No production/local database, role, membership, ACL, function, credential, environment variable, service, migration, deployment, payment flow, backup, or paid resource was changed.
+
+
+### Latest Actor Gateway qualification-stack trust-boundary review — 2026-11-14
+
+Pre-work handover check completed: the immediately preceding entry records the deployed-vs-main startup distinction and the open production gates. This entry adds a targeted review of the latest #272 capability-gateway construction branch, its database principal assertion, and the qualification script. No source code or migrations were changed.
+
+**Latest construction branch inspected:** PR #272 head c81e2bf2534febef9c5e49b39f60f85415f04ff1 (open/draft, base main). PR #276 and #277 remain dependent draft PRs on top of it.
+
+**Signed actor assertion mechanism:**
+- The gateway request-assertion module creates a short-lived HMAC-SHA256 assertion using a 32-byte GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET.
+- The signed payload binds protocol/version (ghm-actor-gateway:v2), verified account ID, closed operation name, issued-at time, unique nonce, and canonical JSON operation context.
+- The gateway reader creates this assertion only after independently verifying the ES256 bearer token and deriving the account ID from its subject.
+- The database operation receives the account ID plus assertion metadata/signature; the protected SQL function verifies the signature, operation/context binding, time window and nonce before applying the operation. This is materially stronger than the original unsigned assert_actor_gateway(bigint) helper.
+- The qualification script includes forged-signature denial and transaction/nonce retention checks for the early typed operations. The full exact-head CI evidence and the later 24-operation qualification claims remain tied to the branch/run recorded in the security audit, not production.
+
+**Important correction — gateway DB role membership is not actually zero:**
+- The latest construction-branch assertActorGatewayDatabaseIdentity permits a narrowly specified membership edge from ghm_db_user to ghm_actor_gateway: ADMIN TRUE, INHERIT FALSE, SET FALSE.
+- The SQL predicate explicitly allows that edge and rejects other memberships/options.
+- This reflects the recorded Render role-separation support constraint, but it is an exception to ADR-001's original statement that the gateway login must have no role memberships and must not be assumable/inheritable by the ordinary runtime.
+- Because ghm_db_user has CREATEROLE and the gateway membership has ADMIN OPTION, this is a material control-plane authority path: ghm_db_user can administer membership grants involving the gateway role, even though it cannot inherit or SET the gateway role under the recorded membership options. Do not describe the gateway as having zero memberships or as fully independent of ghm_db_user.
+- Production previously showed the same membership shape. This means the latest construction-branch startup predicate appears designed to accept the current Render exception, not to eliminate it. It does not resolve the broader issue that ghm_db_user remains over-privileged with CREATEROLE and ADMIN OPTION over multiple sensitive roles.
+
+**Gateway startup enforcement gap:**
+- The inspected #272 src/actor-gateway/server.ts runs assertActorGatewayDatabaseIdentity, which verifies login identity, role attributes, database/schema privileges and the special membership predicate.
+- It does not run a complete startup verifier for the exact gateway SECURITY DEFINER function allow-list, zero direct relation/sequence privileges across all GHM objects, or global and schema-specific default EXECUTE privileges.
+- scripts/qualify-actor-gateway-principal.mjs provides disposable qualification checks, including role attributes, selected function owner/search_path/EXECUTE checks, selected account/auth table denial checks, and typed-operation adversarial tests. Those qualification checks are not a live startup ACL guard and are not equivalent to a full catalog-wide exact allow-list check.
+- The broader handover's later audit history records that prior qualification initially missed the complete function/relation/default-ACL contract and that subsequent work tightened parts of the disposable checks. The exact final qualification script and exact-head CI must be rechecked before relying on any stated full allow-list result. Do not claim the production gateway has this contract: production currently has no gateway SQL objects/ACLs deployed.
+
+**Production implications:**
+- Production ghm_actor_gateway currently has no schema USAGE, no gateway function contract, and no gateway direct table privileges, as recorded in earlier catalog evidence. It is not deployable as-is.
+- The role graph still has the ghm_db_user ADMIN OPTION membership edge to the gateway role, plus CREATEROLE and ADMIN OPTION over other sensitive roles. No membership revocation or role change is authorized from this checkpoint.
+- The gateway HMAC assertion secret, gateway database URL, and public ES256 key configuration are not provisioned in a production gateway service. No service exists and none should be created under the current no-new-cost constraint.
+
+**Decision:** the signed assertion design is a meaningful improvement over the initial account-ID-only helper, but the construction branch is not yet production-ready. Before considering merge or production rollout, the dependent stack must demonstrate:
+1. an explicit owner-accepted disposition for the ghm_db_user → ghm_actor_gateway ADMIN OPTION exception, including a safer replacement/control-plane boundary if possible;
+2. complete startup-time exact function allow-list verification, no direct relation/sequence privileges, and global plus schema-specific default-ACL checks;
+3. exact-head qualification of all signed gateway operations, including replay, forged assertion, operation/context substitution, transaction rollback, connection reuse, tenant membership and disabled-account cases;
+4. production migration ledger reconciliation and backup/restore gate completion;
+5. a no-cost hosting/network/credential topology and an independently approved cutover/rollback plan.
+
+No production/local database, role, membership, ACL, function, credential, environment variable, service, migration, deployment, payment flow, backup, or paid resource was changed.
