@@ -118,19 +118,19 @@ test('accepts only the exact pre-migration and post-migration Campaign gateway f
 test('requires every reviewed gateway signature even when a required function is absent', () => {
   assert.match(
     ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL,
-    /SELECT signature\\s+FROM expected_signatures\\s+ORDER BY signature\\s+\\) AS expected_functions/,
+    /SELECT signature\s+FROM expected_signatures\s+ORDER BY signature\s+\) AS expected_functions/,
   );
   assert.doesNotMatch(
     ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL,
-    /WHERE to_regprocedure\\(signature\\) IS NOT NULL/,
+    /WHERE to_regprocedure\(signature\) IS NOT NULL/,
   );
   assert.match(
     ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL,
-    /ghm\\.gateway_storage_mark_deleted\\(/,
+    /ghm\.gateway_storage_mark_deleted\(/,
   );
 });
 
 
 test('rejects EXECUTE grant option on Actor Gateway functions', () => {
-  assert.match(ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL, /acl\\.is_grantable/);
+  assert.match(ACTOR_GATEWAY_DATABASE_PRIVILEGES_SQL, /acl\.is_grantable/);
 });
