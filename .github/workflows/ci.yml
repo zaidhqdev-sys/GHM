@@ -320,6 +320,50 @@ jobs:
             console.log('CLOUDFLARE WORKER JSON PARSER INVALID-BODY REJECTION: PASS');
           "
 
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          import http from 'node:http';
+
+          const token = fs.readFileSync('tmp/actor-gateway-worker/test-token.txt', 'utf8').trim();
+          const result = await new Promise((resolve, reject) => {
+            let request;
+            const timeout = setTimeout(() => {
+              request?.destroy();
+              reject(new Error('Worker did not return 413 before the request stream ended'));
+            }, 1500);
+            request = http.request({
+              hostname: '127.0.0.1',
+              port: 8787,
+              path: '/v1/actor/me',
+              method: 'POST',
+              headers: {
+                'content-type': 'application/json',
+                authorization: 'Bearer ' + token,
+                'transfer-encoding': 'chunked'
+              }
+            }, (response) => {
+              const chunks = [];
+              response.on('data', (chunk) => chunks.push(chunk));
+              response.on('end', () => {
+                clearTimeout(timeout);
+                request.destroy();
+                resolve({ status: response.statusCode, body: Buffer.concat(chunks).toString('utf8') });
+              });
+            });
+            request.on('error', (error) => {
+              clearTimeout(timeout);
+              reject(error);
+            });
+            // Deliberately leave the request open. The Worker must answer
+            // after this chunk crosses 16 KiB, before receiving stream end.
+            request.write('x'.repeat(16 * 1024 + 1));
+          });
+          assert.equal(result.status, 413);
+          assert.equal(JSON.parse(result.body).error, 'payload_too_large');
+          console.log('CLOUDFLARE WORKER IMMEDIATE OVERSIZED-BODY REJECTION: PASS');
+          NODE
+
       - name: Preserve Actor Gateway Worker smoke diagnostics
         if: always()
         uses: actions/upload-artifact@v4
