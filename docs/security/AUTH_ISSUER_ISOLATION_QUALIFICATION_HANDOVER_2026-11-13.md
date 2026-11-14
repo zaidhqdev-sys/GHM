@@ -4927,3 +4927,22 @@ A new exact-head workflow was created for the implementation commit (`4361140546
 This failure confirms the stricter check is exercising the full function contract rather than silently ignoring missing entries. No production change was made.
 
 No production/local database, role, membership, ACL, credential, environment variable, service, migration, deployment, payment flow, backup, or paid resource was changed.
+
+
+### Second CI diagnosis — signature normalizer regex corrected — 2026-11-14
+
+Re-read the handover before this update. Exact-head run `43611421165` for commit `6763e9f3111c4745bb24c31df355fad24baccd85` passed the build and migrations, then failed the Actor Gateway ACL qualification. The diagnostic confirmed the only difference remained the three optional Campaign/Directory Review functions; all 30 required gateway signatures were present.
+
+The normalization implementation itself had been emitted with an over-escaped regex, so it did not remove comma-following whitespace. Corrected it to the actual whitespace matcher `/,s*/g` in commit `aa86fa1346daf922d3c80c27f2bf5beb697bafbb`. The unit test for PostgreSQL's comma-free signature representation was already present.
+
+The previous test run also confirms:
+- database identity and role isolation checks passed;
+- database CONNECT/schema privileges passed;
+- no direct relation or sequence privileges passed;
+- PUBLIC/runtime function execution checks passed;
+- default function ACL checks passed;
+- SECURITY DEFINER owner/search_path checks passed;
+- function-grantee and grant-option checks passed;
+- the exact function list alone failed due to formatting normalization.
+
+A new exact-head CI run for `aa86fa1346daf922d3c80c27f2bf5beb697bafbb` must be checked before declaring the verifier qualified. No production state changed.
