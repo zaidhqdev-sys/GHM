@@ -2477,3 +2477,45 @@ Other current audit corrections:
 Latest source/test correction before this handover update: `de794d763eb5b2c0641e34e920cd0d45434b6170`. Re-fetch the branch head after the documentation commits and require full exact-head CI.
 
 No production ACL, role, secret, service, deployment, data or routing change was made. No paid resource was created.
+
+
+## 2026-11-14 — Render Internal Runtime database-target discrepancy
+
+A live operator-provided inspection of the Render **ghm-internal-runtime** Environment page established that the service currently has a single database connection variable:
+
+- Variable: `DATABASE_URL`
+- Host: `dpg-db4416vlk1mc73eocug0-a.frankfurt-postgres.render.com`
+- Database: `ghm_payfast_sandbox_db`
+- Login: `ghm_runtime`
+- Password: redacted by operator; no secret recorded here.
+- No separate `GHM_RUNTIME_DATABASE_URL` variable is present in the service environment.
+
+This is a confirmed stale sandbox target. The sandbox database is suspended/expired and is not the production target. The deployed Internal Runtime is therefore configured to point at the old sandbox database, not production `ghm-db` / `ghm_db`. Do not deploy or assume runtime database connectivity is healthy until this is corrected and verified.
+
+Local inspection of `C:\GHM\.env` found exactly one `GHM_RUNTIME_DATABASE_URL` definition. Its parsed URL targets:
+- Host: `dpg-dag0sdtbedkc7389vi2g-a.frankfurt-postgres.render.com`
+- Database: `ghm_db`
+- Login: `ghm_runtime`
+- Password present; secret deliberately not recorded.
+- URL parsed successfully; password length 13; no percent encoding, whitespace, or tested reserved characters (`+`, `@`, `#`, `:`).
+
+A read-only Node PostgreSQL connection attempt to this local production target reached PostgreSQL but failed with password authentication failure for `ghm_runtime`. This does **not** yet establish whether the local password is stale, whether the service has a different intended credential source, or whether the production login password needs rotation. Do not copy the local URL into Render: its password has not authenticated.
+
+Render metadata independently reconfirmed the production Postgres instance:
+- Service/database: `ghm-db` / `ghm_db`
+- Instance: `dpg-dag0sdtbedkc7389vi2g-a`
+- PostgreSQL 18, Frankfurt, status available/not suspended.
+- Render metadata reports database user `ghm_app_user`; this is instance metadata and does not validate the separate `ghm_runtime` login password.
+
+Previously captured read-only production catalog evidence still reports `ghm_runtime` as LOGIN, NOINHERIT and without SUPERUSER/CREATEDB/CREATEROLE/REPLICATION/BYPASSRLS. It also showed CONNECT permitted, CREATE denied at database level, and USAGE but not CREATE on schema `ghm`. These role/privilege facts do not validate its password or the deployed service's connection target.
+
+**Current finding:** production runtime configuration is demonstrably stale (sandbox URL), while the local production URL has an unresolved authentication failure. These are separate issues and must not be conflated.
+
+**Next controlled steps:**
+1. Establish the authoritative production connection credential for `ghm_runtime` from a trusted existing source or an explicitly planned credential rotation.
+2. Confirm the intended Render internal/private connection address and exact database/login for `ghm-db`.
+3. Only then update the existing `ghm-internal-runtime` `DATABASE_URL` (no additional variable or paid service unless the application contract proves it is required).
+4. Keep auto-deploy disabled; make no deploy until the environment target and credential are verified.
+5. Verify runtime health and database identity after the controlled change.
+
+No Render environment variable, database role/password, grant, deployment, routing, data, service or paid resource was changed during this investigation. No sandbox service/database was resumed. No credential value is stored in this handover.
