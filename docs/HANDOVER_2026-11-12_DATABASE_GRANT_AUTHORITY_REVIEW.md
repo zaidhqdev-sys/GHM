@@ -2466,3 +2466,12 @@ The security qualification handover now contains the exact four-function compari
 ### 2026-11-14 follow-up — later SECURITY DEFINER migration declarations
 
 The security qualification handover now records the bounded 2026-11-12 migration-source review. In brief: migrations 20261112020000, 20261112030000 and 20261112080000 create SECURITY DEFINER routines with 'pg_catalog, ghm' before the 20261112090000 all-functions normalization migration; later 20261112140000 and 20261112150000 use the canonical 'pg_catalog, ghm, pg_temp'. The live 53/5/3/1 distribution cannot be explained by declarations alone. The production read-only migration ledger is required to determine whether normalization is absent or later DDL drifted. Do not repeat this source-file review unless new migration commits are introduced.
+
+
+### 2026-11-14 Worker qualification and production migration audit boundary
+
+Exact-head CI run '43594131250' for commit 'c105c690c570dd3035bd1ae265f3464c2a61526d' passed both quality and web-quality jobs. It includes Worker bundle without deployment, local Cloudflare runtime smoke, disposable DB Actor Gateway principal checks, all gateway cutover qualifications and issuer post-cutover inventory comparison. This is disposable/local qualification only; no production Worker deployment or production SQL occurred.
+
+The Worker uses 'workers/actor-gateway/index.ts' and 'workers/actor-gateway/wrangler.jsonc'. The config retains a placeholder Hyperdrive ID/local disposable URL and must not be deployed as-is. The existing Render Node entry point remains unchanged.
+
+The production migration audit is read-only and requires the pre-existing 'ghm_migrator' login URL plus SET ROLE 'ghm_schema_owner'; current GitHub CI only provisions disposable credentials and no production migration runner exists in Render. Do not add services or place credentials in application env/docs/chat. Owner-controlled one-off local execution is the candidate only if the owner already holds the migrator credential. No production state changed.
