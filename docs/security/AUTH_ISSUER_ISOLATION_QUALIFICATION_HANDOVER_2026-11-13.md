@@ -3089,3 +3089,14 @@ GitHub Actions run `43534053528` (exact source head `fc545c488662f0484e142367db0
 - The authenticated malformed-JSON request returned the expected HTTP 400; the local Worker smoke step passed.
 
 The workflow later failed in the full `npm test` step. The connected GitHub job interface exposes only the step conclusion, not the test output. A diagnostic change now captures the complete test output in `tmp/test-suite.log` and uploads it as a short-retention artifact even on failure. The next run will identify the exact failing assertion or Worker type-check issue. No green full CI claim is made yet.
+
+
+### Full test-suite failure diagnosed — stale static assertion only
+
+The uploaded test log from run `43534285873` was inspected. Results:
+- Existing repository suite: **998 passed, 0 failed**.
+- Worker TypeScript type-check: passed.
+- Worker contract tests: 5 passed, 1 failed.
+- The sole failure was a stale expected Wrangler alias value in `worker-contract.test.mjs`: it still expected `./body-parser-worker-stub.cjs`, while the actual config correctly uses the local package specifier `ghm-worker-body-parser-stub`.
+
+Corrected in commit `7e3b832002b216a498e0964f10028622fdaf9f5c`. This is a test expectation correction only; the package alias, Worker bundle, runtime startup, Hyperdrive, and database ACL smoke had already passed in that run. The next exact-head CI run must confirm all 6 Worker contract tests and the full quality/web-quality jobs pass.
