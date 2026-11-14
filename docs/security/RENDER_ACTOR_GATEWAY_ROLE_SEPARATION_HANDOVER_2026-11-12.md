@@ -906,3 +906,57 @@ Do not merge any of the three PRs yet. The immediate blockers are:
 5. Production migration, role/ACL, backup/restore, TLS identity, secret custody and cutover gates remain separate.
 
 No production database, role, grant, secret, credential, Render setting/service, deployment, Cloudflare resource, DNS, route or traffic was changed.
+
+
+## 2026-11-15 — merge ancestry and first exact-head CI feedback
+
+### Mainline ancestry reconciliation completed for #272
+
+A synthetic Git merge commit was created with the reconciled #272 tree and two parents: the existing #272 head and current main. This preserves all gateway implementation while making current main an ancestor:
+- Merge commit: \`427236f092ddc4d51ddcfd6db0d94ddd84b37f7c\`
+- Parents: prior #272 \`9411a37adf445c6e32832d91f7238d78e62ba75e\` and main \`857fc78202389c920d95a1e9e72fd23abb38aada\`.
+- GitHub compare now reports main → #272 as **18 ahead / 0 behind**.
+
+The #272 tree includes all 11 paths changed on main since the common base. The 7 mainline-only paths were copied in; the overlapping CI, migration, qualification, and handover paths were reconciled deliberately. The #272 CI workflow retains its broader gateway qualification and uses the explicit PostgreSQL 18 trusted-admin membership grants.
+
+### Stacked ancestry reconciliation
+
+Two merge commits were also created:
+- #276 merge commit \`89afff8da78fcedd24fb40d5dc98fdf587497ff8\` joins the issuer branch with the then-current #272 head.
+- #276 follow-up merge commit \`cd505efc6f34760a375d1cf2cbd0d52fe26cf698\` joins it with the refreshed mainline-integrated #272 head.
+- #277 merge commits \`7ab1a2304e78de456338894db24fc631c413d113\` and \`23f6942e00ca3df0000cf89e5d64ae4d73d7b0ac\` carry the issuer ancestry into the Worker stack.
+
+After those commits, GitHub compared #272→#276 as 192 ahead / 0 behind and #276→#277 as 126 ahead / 0 behind. These comparisons were recorded before the latest qualification-test correction. A further #276 ancestry merge commit was created (\`5b7532fe51d84cfb36532b20f3a416f0b7d2c9cc\`) but its branch-ref update was rejected by the GitHub connector with a transient GraphQL error. It is **not** on the #276 branch; do not treat it as applied. Current #276 and #277 branches therefore need a final ancestry refresh after the new qualification-test commits.
+
+### Exact-head CI failure found and isolated
+
+The first CI run on mainline-integrated #272 commit \`427236f...\` failed the quality job, while web-quality passed. The test suite reported 887 passed / 1 failed (888 total). The sole failure was the contract test “Actor Gateway principal guard permits only the bounded Render administrator membership”: it expected the older SQL aliases \`m.member\` / \`m.roleid\`, but the reconciled migration uses unqualified catalog columns in its stricter trusted-administrator check.
+
+This is a stale test expectation, not evidence of a runtime database failure. The migration's trusted-admin existence and exact membership-option checks are retained. The test has been updated to assert the actual semantics:
+- trusted administrator role must exist;
+- the gateway membership guard is bound to \`gateway_oid\`;
+- \`trusted_admin_oid\` is used;
+- ADMIN true, INHERIT false, SET false are enforced;
+- elevated gateway login attributes remain denied.
+
+The corrected contract test was committed to all three branches:
+- #272: \`bbc5693e4992a1553262d6d06edd0a96299cbc39\`
+- #276: \`07ebdba04c3c02e6b2c07f3a44dbb72b430d194a\`
+- #277: \`085ccc4a99162c666aff5e4a6c5593e1ac5cadb6\`
+
+### Current exact-head CI runs
+
+All three PRs now have new exact-head push and pull-request CI runs in progress:
+- #272 \`bbc5693...\`: PR run \`43655209277\`, push run \`43655204588\`.
+- #276 \`07ebdba...\`: PR run \`43655212264\`, push run \`43655207679\`.
+- #277 \`085ccc4...\`: PR run \`43655216462\`, push run \`43655211280\`.
+
+These are in progress, not passed. The earlier failure remains recorded and must not be hidden.
+
+The #276 workflow was also corrected to include \`integration/capability-gateway-qualification-20261110\` as a pull-request base branch; #277 retains both the #276 and #272 base branches. This ensures stacked PRs receive their own CI instead of silently missing PR-triggered checks.
+
+### Next release gate
+
+Wait for all six current runs to complete, inspect any failures at job/log level, fix the underlying cause, and rerun exact heads. Then complete the final #272→#276→#277 ancestry refresh using the latest branch refs. GitHub currently reports the three PRs as mergeable, but that is not a substitute for green exact-head CI.
+
+Do not merge or deploy until all exact-head checks pass. The issuer remains blocked from production deployment under the current $0 hosting/Argon2id constraint. No production migration, role/grant, secret, credential, Render, Cloudflare, DNS or traffic change was made.
