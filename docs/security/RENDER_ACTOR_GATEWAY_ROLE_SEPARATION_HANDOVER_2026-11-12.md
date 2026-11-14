@@ -477,3 +477,25 @@ PR #279, `fix(storage): preserve pending upload lifecycle during deletion cleanu
 This merge changes repository code only. No production migration was applied, no production data/roles/grants were changed, and no Render deployment was initiated. Render `ghm-internal-runtime` auto-deploy remains OFF. The seven production-pending migrations remain an explicit deployment gate and are not represented as applied. Preserve the existing local recovery backup `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak`; it was not modified or removed.
 
 Next gates remain: production-only Project↔Opportunity reconciliation, review/qualification of the seven pending migrations against the live production schema and dependencies, and the remaining production role/security and runtime readiness checks before any deliberate migration or deployment.
+
+
+## 2026-11-15 — requalification of pending storage deletion migration after PR #279
+
+After PR #279 merged, re-read `database/migrations/20261110140000_allow_pending_storage_object_cleanup.sql` from main and compared it with the live production definition using Render's read-only Postgres query path.
+
+### Repository correction verified
+The merged migration now:
+- adjusts `storage_object_lifecycle_check` so `deletion_pending` permits either NULL or non-NULL `available_at`, while still requiring `deleted_at IS NULL`;
+- preserves `available_at` during the transition;
+- changes `storage_mark_deletion_pending(bigint)` to accept both `pending` and `available` source states;
+- retains SECURITY DEFINER, pinned `pg_catalog, ghm` search_path, owner `ghm_schema_owner`, and EXECUTE grant only to `ghm_runtime` (PUBLIC and `ghm_migrator` revoked).
+
+The exact-head PR #279 disposable PostgreSQL storage lifecycle/tenant authorization qualification passed, along with the full migration chain and full test suite.
+
+### Live production comparison
+The live `ghm.storage_object_lifecycle_check` is still the older definition: `deletion_pending` requires `available_at IS NOT NULL`. The live `ghm.storage_mark_deletion_pending(bigint)` still updates only rows with `status='available'` and raises the old “not available” error. Therefore migration `20261110140000` is still unapplied in production and the live behavior has not changed.
+
+The read-only Render query principal was denied SELECT on `ghm.storage_object` when attempting a status/count distribution. This is an expected privilege boundary; no grant was widened and no alternate elevated query path was used. No production object rows were read or changed by that failed query.
+
+### Disposition
+The original pending-upload CHECK-constraint defect is corrected in repository SQL and passed disposable qualification. Reclassify migration `20261110140000` from **BLOCKED AS WRITTEN** to **REMEDIATED IN SOURCE; PRODUCTION APPLICATION STILL PENDING**. This is not production approval or authorization to apply it. Recheck its preconditions and execution order at the controlled migration gate. No production migration, schema, data, role, grant, Render environment or deployment was changed in this review.
