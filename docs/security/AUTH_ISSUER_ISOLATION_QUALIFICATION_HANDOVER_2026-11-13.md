@@ -4666,3 +4666,20 @@ A fresh read-only production catalog query confirms those exact columns and revi
 **Next evidence needed:** retrieve PR #137's full historical head/commit context and migration checksum; reconcile with the production migration ledger via the dedicated approved forensic audit when its credential path is available; inspect the exact Connect identity repository call path and current use of the returned authority projection. No mutation is authorized.
 
 No production/local database, function, table, ACL, credential, environment, service, migration, deployment, or backup was changed.
+
+
+### Historical candidate disposition and reviewer-table access check — 2026-11-14
+
+Further GitHub history confirms:
+- PR #137 was closed unmerged on 2026-10-21 because its identity implementation was superseded by consolidated candidate PR #142.
+- PR #142 (`integration/ghm-identity-merge-candidate-20261018`) was also closed unmerged on 2026-11-10. Its recorded successful live identity qualification was against the retired `ghm-identity-qualification` sandbox database/service, not production.
+- PR #142's historical comments explicitly state the successful sandbox HTTP qualification did not establish production readiness and that production changes were not made.
+- The exact migration source for `auth_read_connect_identity_authority` is therefore present in historical unmerged construction/candidate branches, but neither PR establishes that this migration was merged into main or formally released to production.
+
+Fresh production read-only catalog evidence confirms the reviewer table exists with the exact columns/constraints from PR #137's migration. The query identity has no effective reviewer-table privileges. A direct read-only `count(*)` attempt failed with SQLSTATE 42501 (permission denied), as expected from the least-privilege boundary. No attempt was made to bypass it.
+
+**Revised production migration provenance conclusion:** the production function/table are byte/structure-consistent with a known historical candidate migration, but the route by which those objects entered the production database is still not established. Because the migration ledger remains inaccessible to the existing Render query identity and the dedicated forensic migrator connection is unavailable, we cannot currently determine whether the ledger records this migration or whether it was applied from a historical branch, a prior manual action, or another deployment path. Do not infer a production release from sandbox CI or closed PR history.
+
+**Next gate:** obtain the approved `ghm_migrator` production connection through an existing secure operator credential store, then run only `npm run audit:migrations` locally. This should settle whether migration `20261016100000_add_connect_identity_authority_contract` is recorded and checksum-consistent. If the credential does not already exist, stop rather than create/rotate credentials or alter roles; keep production unchanged.
+
+No production/local database, table, function, ACL, credential, environment, service, migration, deployment, or backup was changed.
