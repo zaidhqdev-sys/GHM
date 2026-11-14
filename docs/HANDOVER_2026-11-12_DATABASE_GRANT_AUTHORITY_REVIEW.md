@@ -2720,3 +2720,32 @@ This is no longer merely a pending-manifest bookkeeping discrepancy. The deploye
 The migration ledger says all three migrations are absent, and the live catalog confirms their effects are absent or stale. Do not mark these as applied, alter the manifest to hide the discrepancy, or run migrations yet. First map the deployed runtime's callers/routes and verify migration execution order, dependencies, idempotency, and the existing production backup/restore gate. Then prepare a staged, migration-only remediation plan with preflight and postflight checks. No migration, DDL, data, ACL, role, credential, Render environment, service, or deployment change has been made.
 
 **Current status:** migration authority and live ledger are verified; the three migration gaps are confirmed against the live catalog; production source/schema alignment is a release blocker. Preserve this as a production issue, not as a harmless manifest-only mismatch.
+
+
+### 2026-11-14 — deployed caller/route impact confirmed
+
+Read-only source inspection was performed against the exact live deployment commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`, not merely current main.
+
+**Onboarding**
+- The deployed `src/resources/onboarding/repository.ts` directly SELECTs and INSERTs/UPDATEs `ghm.account_onboarding_progress`.
+- The deployed HTTP router exposes:
+  - `GET /api/v1/onboarding/progress`
+  - `POST /api/v1/onboarding/progress/start`
+  - `POST /api/v1/onboarding/progress/complete`
+  - `POST /api/v1/onboarding/progress/dismiss`
+- Production catalog confirms the required table is absent. Any authorised request reaching the repository will fail with a missing-relation database error, which the router converts to HTTP 500.
+
+**Business relationship/outcome reads**
+- The deployed `src/resources/relationships-outcomes/repository.ts` directly queries `ghm.business_relationship`, `ghm.relationship_type`, `ghm.outcome`, and `ghm.outcome_type`.
+- The deployed HTTP router exposes:
+  - `GET /api/v1/businesses/:businessId/relationships`
+  - `GET /api/v1/businesses/:businessId/outcomes`
+- Production catalog confirms all four required tables are absent. Any authorised request reaching these repository paths will fail with a missing-relation database error, which the router converts to HTTP 500.
+
+**Storage cleanup**
+- The deployed storage repository calls `ghm.storage_mark_deletion_pending($1)`.
+- Production has the function, but its live definition only accepts `status = 'available'`. The deployed source migration changes it to accept both `pending` and `available`. Pending-upload cleanup therefore does not have the deployed source's intended database behavior.
+
+This confirms concrete deployed API/storage code paths depend on the three missing/stale migration effects. It is not just a theoretical risk from commit ancestry. No live HTTP request or data-changing test was sent; impact is established from exact deployed source plus read-only production catalog evidence.
+
+**Disposition:** treat these as active production source/schema mismatches. Keep migration execution blocked until the backup/restore evidence gate and a reviewed ordered migration plan are satisfied. In particular, the relationship/outcome migration creates four tables and seed rows; onboarding creates a table/index/grants; storage migration replaces a SECURITY DEFINER function. These should be reviewed and qualified as one ordered release unit, with preflight checks for existing objects, ownership, ACLs, dependencies and exact function body, followed by postflight ledger/checksum/catalog verification. No changes were made.
