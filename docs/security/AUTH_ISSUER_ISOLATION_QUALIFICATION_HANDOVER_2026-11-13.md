@@ -2996,3 +2996,19 @@ The diagnostic artifact from run `43532758846` (artifact `14088281226`) was down
 This is a CI toolchain mismatch, not a GHM source or Cloudflare service defect.
 
 Corrective change committed: `33b64e2691f3f6511bf6f95657738af56109fe14`. The GHM quality job now uses Node.js 22, which satisfies Wrangler 4.162.0 while remaining within the repository's `node >=20` engine contract. The separate web-quality job remains on Node.js 20. The next exact-head CI run must confirm the bundle and local runtime smoke tests; no success is claimed yet.
+
+
+### Node 22 resolved Wrangler bundling; runtime now reaches Express CommonJS incompatibility
+
+The run using Node 22 and Wrangler 4.162.0 (exact source head `33b64e2691f3f6511bf6f95657738af56109fe14`) produced:
+- Root build: passed.
+- Wrangler bundle dry-run: passed.
+- Local Worker startup: failed while loading Express's `body-parser` dependency chain.
+
+The uploaded runtime log reports:
+`Uncaught TypeError: require_streams(...) is not a function`
+with the first application dependency frame in `iconv-lite/lib/index.js`, imported through `raw-body` and `body-parser`.
+
+This is a second, distinct runtime compatibility issue. The previous missing `node:fs` problem was resolved by using a current Wrangler runtime and Node 22. The remaining issue is CommonJS/Node stream interoperability in the Express body-parser/iconv-lite dependency chain under workerd.
+
+I am testing the immediately preceding stable Wrangler `4.161.0` (rather than the just-published `4.162.0`) with the same Node 22 runtime to distinguish a new runtime regression from a general Express dependency incompatibility. No production traffic or credentials are involved.
