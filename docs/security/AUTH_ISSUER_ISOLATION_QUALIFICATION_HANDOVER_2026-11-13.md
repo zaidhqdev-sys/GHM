@@ -3025,3 +3025,12 @@ The Worker adapter now avoids loading that unsupported body-parser chain:
 - Added static Worker contract assertions and an app test proving that the injected parser is used.
 
 This is a compatibility boundary, not a relaxation of request validation. The Express body-parser stub is only selected by the Worker Wrangler config; the Render/Node runtime path remains unchanged. The next Wrangler bundle and local runtime smoke must prove the alias is applied and that no other unsupported dependency fails during startup. No success is claimed yet.
+
+
+### Build correction before next Worker runtime attempt
+
+The first CI build after introducing the Worker-native parser failed. Source review found two implementation mistakes in that change:
+- The shared app's Express import did not yet include the newly referenced `RequestHandler` type.
+- The Worker content-type regular expression had been double-escaped in the generated TypeScript source.
+
+Both are corrected in commits `<app-import-fix>` and `ef8acec38496b3abf1c097efa2d4c1aeefb06418`. The exact app-import commit is recorded in GitHub history immediately before the Worker regex fix. The next exact-head CI build must confirm these corrections; no pass is claimed.
