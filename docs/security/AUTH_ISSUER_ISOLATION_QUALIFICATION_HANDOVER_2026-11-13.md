@@ -4242,3 +4242,16 @@ The owner supplied an updated screenshot/text from the existing `ghm-db` Recover
 **Next safe step:** owner downloads the completed `.dir.tar.gz` file using the file link in the Render Recovery page and saves it to the existing local backup location (no new cloud storage/service). Then inspect local file existence, size, and archive listing without extracting over existing files and without restoring to production. Preserve the original archive unchanged. Record a checksum and retain a second local copy only if existing storage permits without cost. A separate restore test remains uncompleted; do not create a new Render database or trigger PITR restore because that could incur charges.
 
 No restore, database/service creation, upgrade, production credential/role/grant change, environment edit, migration, or deployment was performed in this checkpoint.
+
+
+### Owner download location recorded — production logical export — 2026-11-14
+
+The owner reports downloading the Render Recovery export to:
+
+`C:\Users\zaidh\Downloads\2026-11-14T14_26Z.dir.tar.gz`
+
+This is an operator-reported Windows host path, not a file accessible to the assistant's execution container. The archive has not been independently inspected by the assistant. No file size, SHA-256, archive listing, or archive integrity result is claimed at this stage.
+
+**Next verification:** run the read-only PowerShell checks on the owner's Windows machine against this exact path. Confirm existence and size, calculate SHA-256, then list archive entries with Windows `tar -tzf` (no extraction). Do not move, rename, overwrite, or delete the archive or any previous backup. If `tar -tzf` fails, preserve the original and report the exact error; do not attempt repair or restore.
+
+The backup status remains: Render export creation confirmed; owner download path reported; local integrity and contents not yet verified; restore test not performed. No production restore or paid recovery resource is authorized.
