@@ -2549,3 +2549,18 @@ The current PR #277 description also records that the approved `npm run audit:mi
 - No paid service or sandbox revival was created or requested.
 
 Next: obtain the live production ledger through the approved migration-authority audit path, compare the exact live rows against the same repository/manifest/provenance set, then reconcile the three migrations and pending manifest. Keep the security PR stack draft/unmerged and do not run production migrations as part of this audit.
+
+
+### Follow-up clarification — pending-allowlist semantics and CI
+
+Inspection of `scripts/forensic-migration-reconciliation.mjs`, `scripts/migration-audit-checksum.mjs`, `scripts/migration-audit-checksum.test.mjs`, and `package.json` confirms:
+
+- `npm run audit:migrations` requires `GHM_MIGRATOR_DATABASE_URL` and runs the forensic reconciliation in a read-only transaction, verifies both session/effective identity as `ghm_migrator`, then SET ROLEs to `ghm_schema_owner`.
+- `npm run audit:migrations:predeploy` adds the explicit production `--allow-pending` mode. In that mode, the actual repository migrations absent from the live ledger must exactly equal `config/pending-migrations.production.json`.
+- The production pending-manifest policy test explicitly pins the current one-entry list to `20261109210000_deactivate_unrecognized_public_directory_records`. Do not change that policy merely because the 2026-11-14 backup snapshot contains that migration row.
+- The backup ledger's latest timestamp is 2026-11-09, while the three absent repository migration versions are dated 2026-11-10. The backup is therefore demonstrably older than those repository migrations; their absence from that backup is not evidence they are absent from live production.
+- The backup comparison script's direct pending-list comparison is a useful discrepancy report, but it is not a substitute for the authoritative audit script's production identity/ledger check.
+
+The existing Render service inventory shows the production `GHM-Internal-Runtime` is on `main` with auto-deploy off. Render's service-details response did not expose environment-variable values or names, so this inspection did not establish whether a migrator URL exists there. Do not add one to the application service. The existing PR #277 handover separately records that no approved production migrator invocation path/credential is currently established.
+
+The documentation commit `7b54dc44a98fce51b4647e72d8fe07293ee71681` triggered CI run `43628479985`; latest observed state at this checkpoint is `in_progress`. No result is inferred before completion.
