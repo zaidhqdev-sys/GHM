@@ -5097,3 +5097,45 @@ The migration-related names and definitions suggest specialized migration/author
 **Decision:** preserve all current production grants. The 42 direct call matches establish concrete usage and rule out treating those routines as unused. The four unresolved functions require caller/provenance evidence before any ACL proposal. The production migration ledger remains the authority for whether the associated migration versions/checksums were applied, and is still blocked on the approved `ghm_migrator` credential/role path.
 
 No production/local database, function, ACL, role, membership, credential, environment, service, migration, deployment, payment flow, backup, or paid resource was changed.
+
+
+### Four unmatched production functions — live definitions, ACLs and migration provenance — 2026-11-14
+
+Re-read the latest handover before this follow-up. The prior checkpoint mapped direct callers for 42 of the 46 deployed production runtime SECURITY DEFINER functions. This checkpoint deepens the evidence for the four unmatched functions; it does not change their grants.
+
+A fresh read-only production catalog query retrieved exact definitions and ACLs for all four:
+- All four are SECURITY DEFINER, owned by `ghm_schema_owner`.
+- All four have an explicit EXECUTE grant to `ghm_runtime`.
+- All four have owner EXECUTE; no PUBLIC grant was present.
+- None of the runtime grants is grantable.
+
+**Source/provenance findings:**
+
+1. `ghm.auth_provision_migration_account(text,text,text,text)`
+   - Exact current-main source migrations exist: `20261004030000_create_quoteflow_migration_account_provisioning.sql` and corrective `20261004040000_reconcile_quoteflow_migration_account_provisioning.sql`.
+   - Both explicitly revoke PUBLIC, grant EXECUTE to `ghm_runtime`, and revoke direct runtime INSERT/UPDATE/DELETE on `account_identity` and `account_external_identity`.
+   - The function only accepts provider `supabase`, validates nonblank subject and customer/business role, uses an advisory transaction lock, and atomically creates the account plus exact external identity mapping. Its migration comment describes it as migration-only.
+   - No direct call was found in the inspected deployed GHM application source, including the QuoteFlow migration helper modules. The migration-only grant may have been intended for a separate/older operator workflow; that caller is not established.
+
+2. `ghm.auth_register_quoteflow_migration_reset_enrollment(bigint,text,text,text,text,text)`
+   - Exact current-main migration: `20261004180000_create_quoteflow_migration_reset_enrollment.sql`.
+   - The migration explicitly revokes PUBLIC, grants EXECUTE to `ghm_runtime`, and revokes direct runtime DML on the enrollment table.
+   - The function requires an active account, a matching Supabase external identity mapping, approved email evidence and a nonblank source-evidence reference. It is idempotent for an exact match and rejects conflicting enrollments.
+   - No direct caller was found in the inspected deployed GHM application or QuoteFlow migration helper modules. This is a migration-only authority surface with an unresolved caller, not a proven unused routine.
+
+3. `ghm.auth_read_connect_identity_authority(bigint)`
+   - Historical source migration is PR #137, `20261016100000_add_connect_identity_authority_contract.sql`; PR #137 and superseding candidate PR #142 were both closed unmerged.
+   - The live function matches that historical migration's definition and `search_path=ghm, pg_temp`, and is executable by `ghm_runtime`.
+   - No direct caller was found in deployed Connect identity adapter/router/auth persistence files or the inspected PR #137 identity adapter/router/auth persistence files.
+   - Production schema objects/columns from the same historical migration exist, but the production migration ledger is inaccessible to the current Render query identity. How this closed-unmerged candidate's objects entered production remains unresolved.
+
+4. `ghm.auth_read_account_email(bigint)`
+   - Live definition is a STABLE SECURITY DEFINER SQL function returning the active login email for a supplied account ID.
+   - It is owned by `ghm_schema_owner`, pinned to `pg_catalog, ghm`, and EXECUTE is granted to `ghm_runtime`.
+   - Exact name/signature search in current main's source and migration tree did not find a source migration or caller. Its historical provenance and intended consumer remain unattributed.
+
+**Decision:** no ACL or function changes. The four routines remain in the unresolved caller/provenance queue. In particular, the two QuoteFlow/Supabase migration functions have explicit source migrations but no located caller; the Connect authority function has historical candidate provenance but no located caller; and the account-email reader has neither current-main source provenance nor a located caller. Do not revoke them merely because the direct deployed-source map did not find a call.
+
+**Next useful read-only step:** inspect the external integration contracts and historical PR/branch consumers for these four surfaces, while preserving the migration-ledger audit as the definitive authority for production migration provenance. The approved `ghm_migrator` credential remains unavailable; do not bypass it or use the ordinary Render query identity to read the ledger.
+
+No production/local database, function, ACL, role, membership, credential, environment, service, migration, deployment, payment flow, backup, or paid resource was changed.
