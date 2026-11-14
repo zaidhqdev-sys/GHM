@@ -3762,3 +3762,16 @@ Official references:
 - https://developers.cloudflare.com/workers/platform/pricing/
 - https://developers.cloudflare.com/workers/platform/limits/
 - https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/
+
+
+### Exact open-stream oversized-body runtime qualification — 2026-11-14
+
+Added a real local Workerd/HTTP regression to the existing .github/workflows/ci.yml smoke step. The test opens a chunked POST to '/v1/actor/me', writes 16 KiB + 1 byte, deliberately does not end the request stream, and requires HTTP 413 with 'payload_too_large' within 1.5 seconds. This verifies the Worker responds before request end rather than merely asserting source-code ordering.
+
+Exact-head GitHub Actions run [43550565894](https://github.com/zaidhqdev-sys/GHM/actions/runs/43550565894) completed successfully on workflow/source commit 'bc7f2afa15aa4cb2483cf7f489fbfb6ce8d893bd':
+- 'quality': 73/73 passed, including the updated local Cloudflare Workers + disposable Hyperdrive smoke step.
+- 'web-quality': 11/11 passed.
+- The Worker bundle dry-run, database startup ACL checks, malformed JSON rejection, and the new open-stream oversized-body 413 check all passed within the quality job.
+- No failed steps.
+
+This is the new Worker hardening qualification run. The earlier run 43549310157 remains valid for the previous source state; run 43550565894 is the evidence for the added open-stream test. No production DB, role, grant, secret, Render service/environment/deployment, Cloudflare resource, DNS/route, or paid plan was changed.
