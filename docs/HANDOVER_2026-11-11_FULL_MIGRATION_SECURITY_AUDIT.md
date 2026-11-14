@@ -2999,3 +2999,19 @@ The PR is open and reported mergeable. Its Cloudflare Pages preview deployment s
 - Production roles, grants, data, migrations, Render environment, services and deployment: UNCHANGED.
 
 Keep Render auto-deploy OFF. Do not run production migrations or deploy until PR #278 exact-head CI passes and the production migration ledger/preflight has been reconciled. PayFast remains paused; no new paid resource was created.
+
+
+### Production migration ledger access check — 2026-11-15
+
+The live production catalog confirms the migration ledger relation is `ghm.ghm_schema_migrations`, owned by `ghm_schema_owner`. Its columns are `version`, `name`, `checksum`, and `applied_at`.
+
+The Render query integration's administrator/effective `ghm_db_user` connection cannot SELECT this table. Catalog privilege inspection returned:
+- ledger owner: `ghm_schema_owner`
+- `ghm_db_user` SELECT: false
+- current query user SELECT: false
+- `ghm_migrator` SELECT: false (the migrator accesses owner objects through its SET ROLE `ghm_schema_owner` path, not direct inherited SELECT)
+- table ACL: NULL (owner-only defaults)
+
+A direct count query therefore failed with SQLSTATE 42501. No permission was granted or changed. Do not widen the ledger ACL merely for inspection. To complete the production ledger audit, use the existing controlled migration-owner connection path (the `ghm_migrator` login with its permitted `SET ROLE ghm_schema_owner` workflow) for a read-only ledger query, without adding its credential to the Resource API environment or exposing it in chat. The Render query integration cannot perform that SET ROLE because the Render administrator's membership is deliberately SET=false.
+
+The ledger count/checksum reconciliation remains outstanding. This is a separate gate from the confirmed runtime role boundary and PR #278.
