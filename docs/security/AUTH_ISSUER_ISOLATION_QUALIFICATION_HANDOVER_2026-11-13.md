@@ -3846,3 +3846,28 @@ A further read-only PostgreSQL catalog pass on production 'ghm_db' confirmed the
 - The migration ledger exists, is owned by 'ghm_schema_owner', and has no direct relation ACL. The audit query identity cannot read it. The existing read-only migration audit remains the only approved route to exact production migration versions/checksums.
 
 This makes the immediate live prerequisite explicit: production Actor Gateway is not merely missing one grant; the schema USAGE and entire signed gateway routine contract are absent. Do not fix by granting broad EXECUTE or by manually creating routines. Reconcile the live migration ledger and reviewed catalog inventory first. No production objects, grants, roles, data, credentials or runtime configuration were changed.
+
+
+### SECURITY DEFINER ACL and search_path deep inventory — 2026-11-14
+
+A second read-only production catalog pass enumerated all 62 non-trigger SECURITY DEFINER routines in schema 'ghm' (the prior count is reproducible when excluding trigger-returning functions). Exact aggregate results:
+
+| Measure | Production count |
+|---|---:|
+| SECURITY DEFINER routines | 62 |
+| Exact reviewed search_path 'pg_catalog, ghm, pg_temp' | 5 |
+| Not exact reviewed search_path | 57 |
+| Any configured search_path explicitly including 'pg_temp' | 8 |
+| PUBLIC EXECUTE | 0 |
+| 'ghm_runtime' EXECUTE | 46 |
+| 'ghm_app_user' effective EXECUTE | 46 |
+| 'ghm_payment_provider' EXECUTE | 2 |
+| 'ghm_actor_gateway' EXECUTE | 0 |
+
+All 62 are owned by 'ghm_schema_owner' and use trusted SQL or PL/pgSQL languages. No PUBLIC EXECUTE grant was found. The 57 non-exact settings are not yet approved as safe: most use 'search_path=pg_catalog, ghm' (which omits explicit 'pg_temp'); one observed function uses 'search_path=ghm, pg_catalog', and others use 'search_path=ghm, pg_temp'. Exact per-function settings and definitions must be compared to the repository's approved migration history before proposing remediation. Do not bulk ALTER FUNCTION or assume all 57 have the same risk.
+
+The role ACL inventory also shows the 46 runtime-executable SECURITY DEFINER routines are effectively executable by 'ghm_app_user' because the application user inherits 'ghm_db_user', which in turn inherits 'ghm_runtime'. This is an additional consequence of the production role graph and must be included in the planned runtime authority cutover. Payment-provider-only routines remain separate (2); Actor Gateway routines remain absent (0).
+
+Default function ACLs are also differentiated by object creator: 'ghm_schema_owner' has a schema-scoped default ACL granting EXECUTE to 'ghm_runtime' only; PostgreSQL's global default function ACL for 'postgres' includes PUBLIC EXECUTE and 'ghm_db_user'. The latter is not evidence that current SECURITY DEFINER routines have PUBLIC EXECUTE (the live routine ACL query found zero); it is a prospective default risk for functions created by 'postgres' and must be accounted for in any future migration execution path. No defaults or grants were changed.
+
+No function definitions, owners, ACLs, search_path settings, role memberships, or database objects were modified. This remains a diagnostic inventory pending exact migration reconciliation and definition-by-definition review.
