@@ -3901,3 +3901,38 @@ This replaces the earlier approximate description that the 57 non-exact routines
 7. Current role membership, 5 ADMIN OPTION memberships held by 'ghm_db_user', inherited application/runtime path, and global 'postgres' default function ACL are already recorded in the sections above. Do not repeat discovery queries unless the database has changed or a new source/migration commit makes comparison necessary.
 
 **Next useful work is not another aggregate catalog pass.** Build a source-to-production comparison of the 62 exact signatures, definitions, per-function ACLs and 'proconfig' against repository migration history and the approved SQL privilege inventory. Because production ledger provenance is still unknown, mark matches as source-compatible/observed rather than claiming migration application. Prioritize the four nonstandard search-path routines, then the 53 missing explicit 'pg_temp' cases, with a per-function rationale. Any eventual remediation must be a reviewed migration, qualified on disposable PostgreSQL, backed up, and separately approved for production.
+
+
+### Source-to-production SECURITY DEFINER comparison — first four non-standard cases, 2026-11-14
+
+This is the next durable checkpoint. The previous production inventory is not to be repeated. A read-only production query retrieved the exact function definitions, owners, direct ACLs and 'proconfig' for all four routines in the non-standard path groups. Repository source was then checked on branch 'security/actor-gateway-worker-body-limit-20261114'. No production state was changed.
+
+**Exact source matches found:**
+
+| Production signature | Production path | Repository source | Source comparison / ACL |
+|---|---|---|---|
+| 'ghm.auth_bootstrap_founder_system_admin(text)' | 'ghm, pg_temp' | 'database/migrations/20261005211000_correct_founder_system_admin_bootstrap_existing_account.sql' (blob 'ee3d17e71be187374e249a05b867c2592b0be269') | Body matches the promotion-only function. Owner-only EXECUTE; runtime revoked in source and production ACL is owner-only. |
+| 'ghm.auth_create_account(text,text,text,text,text,integer,integer,integer)' | 'ghm, pg_temp' | 'database/migrations/20261004020000_create_auth_account_registration.sql' (blob '9b737df2e1fedd57cfa79f061f6f255dd1952471') | Body matches account + password credential registration. Source grants runtime EXECUTE; production ACL shows owner and 'ghm_runtime'. |
+| 'ghm.auth_read_connect_identity_authority(bigint)' | 'ghm, pg_temp' | Exact creating migration not located in the targeted source review | Production definition is schema-qualified for its table references and reports only identity/Connect authority fields. Owner and runtime ACL present. Do not claim source provenance or migration application until located. |
+| 'ghm.replace_business_hours(bigint,bigint,jsonb)' | 'ghm, pg_catalog' | 'database/migrations/20260916223000_create_business_hours.sql' (blob 'ef4f0b07b9f46ca14081494dc5e1b77ecc6dd0c7') | Body matches the Business Hours replacement primitive. Source grants runtime EXECUTE; production ACL shows owner and 'ghm_runtime'. The later signed gateway wrapper migration deliberately leaves this legacy grant in place until a separate manual cutover. |
+
+**Critical normalization migration found:** 'database/migrations/20261112090000_pin_security_definer_search_path.sql' (blob 'd0d3ce9eb9d76ac23ba6ec9d8f27df7ec30f73df') contains a preflight requiring every 'ghm' SECURITY DEFINER routine to be owned by 'ghm_schema_owner', then iterates over every such function and executes 'ALTER FUNCTION ... SET search_path = pg_catalog, ghm, pg_temp'. Its comment explicitly explains that when 'pg_temp' is omitted PostgreSQL implicitly searches the temporary schema before ordinary schemas; explicitly placing it last prevents caller-created temporary relations shadowing privileged function references.
+
+**Interpretation of the exact production path groups:**
+
+- The 53 routines with 'search_path=pg_catalog, ghm' omit explicit 'pg_temp'. This is the concrete temp-object shadowing concern described by the repository normalization migration.
+- The 3 routines with 'search_path=ghm, pg_temp' have 'pg_catalog' implicitly searched before ordinary path entries because it is not explicitly listed; 'pg_temp' is explicitly last. Their effective ordering is therefore temporary-schema-safe, although they do not match the repository's canonical explicit setting.
+- The single 'search_path=ghm, pg_catalog' routine is different: it omits explicit 'pg_temp' and places 'pg_catalog' after 'ghm'. It needs the canonical normalization; do not group it with the 3 safe-effective 'ghm, pg_temp' cases.
+- The 5 routines already on 'pg_catalog, ghm, pg_temp' match the canonical setting.
+
+The production catalog therefore does not currently show the all-functions normalized state intended by migration '20261112090000'. Because the production migration ledger is still unreadable through the app query principal, we cannot yet distinguish 'migration not applied' from post-migration catalog drift or later recreation. Do not state that the migration is definitely pending until the existing read-only production migration audit is run.
+
+**Business Hours cutover relationship:** 'database/migrations/20261111130000_add_signed_business_hours_gateway.sql' creates the signed 'gateway_replace_business_hours' wrapper but explicitly says the old runtime grant remains until separate manual cutover approval. 'database/cutovers/20261111130000_revoke_legacy_business_hours_runtime.sql' is marked MANUAL CUTOVER ONLY and requires deployed/qualified Actor Gateway, verified role identities, and a fresh independently verified production backup before revoking 'ghm_runtime' EXECUTE and direct table/sequence access. None of those cutover statements were run. Production currently still exposes the legacy function to 'ghm_runtime'; this is known and must remain a cutover gate, not be silently changed during this investigation.
+
+**Next work (do not repeat completed discovery):**
+1. Locate the creating migration/provenance for 'auth_read_connect_identity_authority(bigint)' or record it as an unresolved historical object after a bounded search of source migrations/cutovers.
+2. Use the existing production read-only migration audit to determine whether '20261112090000_pin_security_definer_search_path.sql' is in the live ledger; do not use the ordinary mutating migration runner.
+3. Compare all remaining SECURITY DEFINER signatures/definitions/ACLs against their source migrations and the normalization migration. Keep observed live state separate from ledger-confirmed migration state.
+4. Do not execute the Business Hours manual cutover until its explicit deployment, identity and backup prerequisites are satisfied.
+
+No role, grant, function, setting, migration, data, service, environment variable or deployment was changed. All production queries in this checkpoint were read-only.
