@@ -3730,3 +3730,17 @@ The Render read-only query connection (session_user 'ghm_app_user', current_user
 ### Source allow-list documentation reconciliation — 2026-11-14
 
 Cross-checking the live ACL findings against the exact source startup verifier found a stale count in docs/architecture/SQL_PRIVILEGE_INVENTORY.md. The current Actor Gateway verifier in src/actor-gateway/database-privileges.ts defines 33 exact signed/typed gateway function signatures (including the assertion function); the architecture inventory still said 25. The four stale references were corrected to 33 in the existing PR #277 branch. This is documentation-only; no migration or ACL was changed. The Worker contract remains fail-closed against production until all 33 expected signatures and schema USAGE are present and the full startup verifier passes.
+
+
+### Production Actor Gateway migration objects absent — read-only confirmation, 2026-11-14
+
+Read-only catalog inspection now distinguishes missing objects from merely missing grants. In production schema 'ghm':
+- Count of current source-contract 'gateway_*' non-trigger functions: 0.
+- Count of SECURITY DEFINER 'gateway_*' non-trigger functions: 0.
+- 'ghm.assert_actor_gateway_capability(bigint,text,bigint,uuid,text,text)' is absent.
+- The earlier 'ghm.assert_actor_gateway(bigint)' helper is absent.
+- 'ghm.actor_gateway_capability_assertion_nonce' table is absent.
+- 'ghm.actor_gateway_capability_assertion_secret' table is absent.
+- 'ghm.ghm_schema_migrations' exists, but its rows are not readable through the current application query identity (42501).
+
+This confirms the production database does not currently contain the Actor Gateway SQL objects required by the source branch. The exact migration ledger head cannot be read with the current connection, so we cannot yet distinguish an unapplied migration range from later manual object removal. Do not assume the migrations have been applied, and do not apply them directly as a shortcut. Reconcile the ledger using the approved migration-authority path, compare every expected migration checksum, and first establish a verified current backup and restoration route. Production remains on its current legacy application path until that reconciliation and controlled cutover are complete.
