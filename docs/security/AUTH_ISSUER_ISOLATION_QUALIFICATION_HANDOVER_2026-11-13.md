@@ -2983,3 +2983,16 @@ Corrective change: the CI Wrangler pin has been advanced from `4.36.0` to `4.162
 The first CI run using Wrangler `4.162.0` (run `43532654073`, source commit `bf3db4fa14a55ab3668cd61ee0ca90bc7728361a`) passed the application build but its Worker bundle dry-run step failed. The job interface exposed the failure conclusion but not the underlying step output. This is separate from the prior local runtime failure caused by the old 2025 runtime.
 
 The bundle step has now been changed to capture its stdout/stderr in `tmp/actor-gateway-worker-build/wrangler-bundle.log` and upload that file as a short-retention artifact even on failure. The next run will provide the exact cause. No deployment occurred.
+
+
+### Wrangler 4.162.0 bundle failure root cause — Node 20 is below its engine requirement
+
+The diagnostic artifact from run `43532758846` (artifact `14088281226`) was downloaded and inspected. It gives the exact error:
+
+- Wrangler `4.162.0` requires Node.js `>=22.12.0`.
+- The GitHub Actions quality job was still using Node.js `20.20.2`.
+- npm emitted EBADENGINE warnings and Wrangler exited with: `Wrangler requires at least Node.js v22.12.0. You are using v20.20.2.`
+
+This is a CI toolchain mismatch, not a GHM source or Cloudflare service defect.
+
+Corrective change committed: `33b64e2691f3f6511bf6f95657738af56109fe14`. The GHM quality job now uses Node.js 22, which satisfies Wrangler 4.162.0 while remaining within the repository's `node >=20` engine contract. The separate web-quality job remains on Node.js 20. The next exact-head CI run must confirm the bundle and local runtime smoke tests; no success is claimed yet.
