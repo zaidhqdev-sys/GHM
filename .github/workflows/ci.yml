@@ -209,7 +209,7 @@ jobs:
       - name: Bundle Actor Gateway Cloudflare Worker without deploying
         run: |
           mkdir -p tmp/actor-gateway-worker-build
-          npx --yes wrangler@4.162.0 deploy --dry-run \
+          npx --yes wrangler@4.161.0 deploy --dry-run \
             --outdir tmp/actor-gateway-worker-build \
             --config workers/actor-gateway/wrangler.jsonc \
             > tmp/actor-gateway-worker-build/wrangler-bundle.log 2>&1 || {
@@ -254,7 +254,7 @@ jobs:
             `GHM_JWT_ES256_PUBLIC_KEY_PEM="${pem}"\nGHM_JWT_ES256_KID="ghm-worker-ci"\nGHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET="${secret}"\n`,
             { mode: 0o600 });
           NODE
-          npx --yes wrangler@4.162.0 dev --local --ip 127.0.0.1 --port 8787 \
+          npx --yes wrangler@4.161.0 dev --local --ip 127.0.0.1 --port 8787 \
             --config workers/actor-gateway/wrangler.jsonc \
             > tmp/actor-gateway-worker/wrangler.log 2>&1 &
           WORKER_PID=$!
