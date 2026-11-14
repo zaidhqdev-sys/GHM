@@ -4302,3 +4302,22 @@ The owner supplied the successful output of `Get-FileHash -Algorithm SHA256` for
 **Next gate:** review whether an existing no-cost local PostgreSQL 18 environment and sufficient disk space are already available to perform a non-production restore test. Do not create a new Render database or any paid resource. Before any local restore, inspect archive metadata/member count and available local PostgreSQL service/port/disk state, then propose an isolated local target that cannot connect to production. If the existing local environment is not available or has insufficient capacity, leave restore testing open rather than provisioning anything.
 
 No production database, Render resource, role/grant, credential, environment variable, migration, deployment, or archive content was changed.
+
+
+### Local export inspection — correct Render archive packaging identified — 2026-11-14
+
+The owner ran the local PostgreSQL tooling preflight from `C:\GHM-main`.
+
+**Observed:**
+- `psql` and `pg_restore` are both PostgreSQL **18.6**.
+- Windows services `postgresql-x64-17` and `postgresql-x64-18` are both Running.
+- The supplied console output did not provide readable port-listener rows or disk free-space values; those two checks are inconclusive and must be re-run with explicit formatted output before a local restore.
+- `pg_restore --list <file.dir.tar.gz>` returned: `input file does not appear to be a valid tar archive`.
+
+**Root cause established from Render's official instructions:** Render's `.dir.tar.gz` is a gzip-compressed outer tar archive containing a PostgreSQL directory-format dump. Render's documented restore procedure first extracts it with `tar -zxvf`, then runs `pg_restore --format=directory` against the extracted database directory. Therefore the direct `pg_restore --list` attempt against the compressed outer file was the wrong invocation and is not evidence of corruption. The earlier successful `tar -tzf` listing showing `2026-11-14T14:26Z/ghm_db/toc.dat` supports this expected structure.
+
+Official source: https://render.com/docs/postgresql-backups (section "Restoring from a logical backup"). Render specifically documents extraction followed by directory-format `pg_restore`.
+
+**Next safe step:** extract the archive into a newly created, dedicated inspection folder under the existing Windows TEMP directory. The command must stop if that folder already exists, preserve the original archive, and extract only the outer tarball. Then locate `toc.dat` and run `pg_restore --list` against its parent directory. Do not connect to any database or perform a restore yet. Before any later local restore, explicitly verify local service ports and free disk space; the previous output was inconclusive.
+
+**Current backup status:** file existence, size (81,507 bytes), archive listing, and SHA-256 (`2341471A3D0890A1B0E26D356BE7FB121385FDD3A33B8340658CB290CBC749F4`) are owner-verified. PostgreSQL TOC validation remains pending after correct extraction. Restore test remains pending. No production or local database contents were modified; the archive itself remains unchanged.
