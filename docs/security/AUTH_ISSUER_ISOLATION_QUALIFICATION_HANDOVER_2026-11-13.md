@@ -3936,3 +3936,20 @@ The production catalog therefore does not currently show the all-functions norma
 4. Do not execute the Business Hours manual cutover until its explicit deployment, identity and backup prerequisites are satisfied.
 
 No role, grant, function, setting, migration, data, service, environment variable or deployment was changed. All production queries in this checkpoint were read-only.
+
+
+### Post-normalization migration review — later function creators, 2026-11-14
+
+A bounded source review of all 2026-11-12 migration files was performed after locating '20261112090000_pin_security_definer_search_path.sql'. This prevents a false assumption that the canonical pin migration is the only source of live path settings.
+
+**Later migrations inspected (ordered by version):**
+
+- '20261112020000_add_token_bound_password_recovery_reset.sql' creates/replaces 'ghm.auth_reset_password_with_recovery(...)' with 'SET search_path = pg_catalog, ghm' (no explicit 'pg_temp').
+- '20261112030000_add_conditional_password_rehash.sql' creates/replaces 'ghm.auth_rehash_password_if_unchanged(...)' with 'SET search_path = pg_catalog, ghm' (no explicit 'pg_temp').
+- '20261112080000_signed_connect_business_provisioning_gateway.sql' creates/replaces 'ghm.assert_actor_gateway_capability(...)' and 'ghm.gateway_provision_connect_business(...)' with 'SET search_path = pg_catalog, ghm' (no explicit 'pg_temp').
+- '20261112090000_pin_security_definer_search_path.sql' then normalizes all GHM SECURITY DEFINER routines to 'pg_catalog, ghm, pg_temp'.
+- Later '20261112140000_add_signed_storage_metadata_actor_gateway.sql' and '20261112150000_add_storage_provider_workflow_attestation.sql' explicitly create/alter their new gateway routines with 'pg_catalog, ghm, pg_temp'.
+
+This establishes a source-level inconsistency: several functions introduced immediately before the canonical pin migration omit explicit 'pg_temp', while later gateway migrations correctly include it. If the pin migration is applied after those earlier migrations, it should normalize their functions too. Therefore the live 53/5/3/1 distribution still cannot be explained by the source declarations alone. The likely possibilities remain: the pin migration is absent from production ledger, later DDL reintroduced old definitions, or an external/manual change occurred. The production ledger and function definition checksums are needed to distinguish them. Do not claim one cause without that evidence.
+
+**No new production query is needed to rediscover this source fact.** Keep these file-level findings as completed. The remaining next step is the already-recorded read-only production migration audit, followed by a bounded check for later function replacements after the pin migration. No source or production database changes were made in this checkpoint.
