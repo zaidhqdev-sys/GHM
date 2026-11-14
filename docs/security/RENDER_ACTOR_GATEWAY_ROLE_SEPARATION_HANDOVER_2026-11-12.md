@@ -760,3 +760,56 @@ The same handover records the refined decision: retain the Render Dashboard-mana
 ### Next safe action
 
 Continue read-only, file-by-file reconciliation from current `main` against #272, then the #276 incremental delta, then the #277 seven-path delta. Produce a path-level classification (already present on main / mainline fix must be preserved / stack-only required change / genuine conflict / obsolete or superseded) before editing source. Update this handover with that inventory and exact-head qualification plan. Do not create a branch, rebase, retarget, merge, deploy, change production grants, run migrations, provision hosting, or incur paid cost as part of this reconciliation step.
+
+
+## 2026-11-15 — active integration work and current blockers
+
+The follow-up release review confirmed that the 2026-11-15 comparison counts must be refreshed after the handover commit: current main is now at `bd67665dc72d9a5b0dc8d852013db1cfa2f7e681`, 51 commits beyond common base `ad4fea43f2eb7bf959042b9db77a9f86e6bb531b`. #272 head `c81e2bf...` is 5 ahead / 51 behind; #276 head `aa86fa1...` is 178 ahead / 51 behind; #277 head `0ae3f3b...` is 279 ahead / 51 behind. All three remain open draft PRs. #272 is now reported mergeable=false. Do not merge any stale head.
+
+### Mainline overlap is narrower than aggregate tree-diff counts
+
+A merge-base comparison of current main against the issuer stack found only four paths modified on both sides:
+- `.github/workflows/ci.yml`
+- `database/migrations/20261110210000_add_actor_gateway_principal_guard.sql`
+- `docs/HANDOVER_2026-11-11_FULL_MIGRATION_SECURITY_AUDIT.md`
+- `scripts/qualify-actor-gateway-principal.mjs`
+
+The remaining mainline-only paths that must be retained when integrating #276/#277 are:
+- `config/pending-migrations.production.json`
+- `database/migrations/20261110140000_allow_pending_storage_object_cleanup.sql`
+- `docs/architecture/ADR-001_IMPLEMENTATION_AND_QUALIFICATION_PLAN.md`
+- `docs/security/RENDER_ACTOR_GATEWAY_ROLE_SEPARATION_HANDOVER_2026-11-12.md`
+- `scripts/migration-audit-checksum.test.mjs`
+- `src/db/storage-pending-cleanup-migration-contract.test.ts`
+- `workers/actor-gateway/body-parser-worker-stub.cjs`
+
+The shared storage migration path is a real semantic conflict: main contains the lifecycle constraint required for pending-object cleanup; the stack version contains only a function replacement and is stale. Preserve main's exact migration and test. Likewise preserve the mainline production pending-migration allowlist and checksum policy tests. The full security audit handover on main contains newer production findings and must replace the older stack copy, not be overwritten by it.
+
+### Actor Gateway trusted administrator guard reconciliation
+
+The mainline migration `20261110210000_add_actor_gateway_principal_guard.sql` explicitly requires `ghm_db_user` to exist and enforces exactly the observed bounded membership (`ADMIN=true, INHERIT=false, SET=false`). The stack migration omitted the explicit existence check but did enforce the bounded options via a catalog join. The mainline migration is now the selected canonical version.
+
+The #272 branch was updated with three sequential commits:
+- `9ffebd1ce52bd680c5810d0fdefede899f9bb662` — copied canonical mainline gateway principal guard migration.
+- `8a754ad846934b5f7300fa5ec2f097950b3fc253` — updated the existing gateway principal qualification to explicitly assert the trusted administrator membership options.
+- `b39b679bb2dec1d863f077b39ea3022a0c7525a8` — copied the current-main full migration/security audit handover.
+
+These changes were made only on the existing #272 branch. No new branch was created. No production database, role, credential, Render service/environment, deployment, Cloudflare resource, or traffic was changed.
+
+Important: #276 and #277 still point to their prior base/head history and do not yet contain these three #272 follow-up commits. The stack ancestry must be repaired in order before qualification. The connector's workflow lookup only returns pull_request-triggered runs; it returned no runs for the new #272 commit, so exact-head CI is not yet evidenced. Do not claim these updates passed.
+
+### CI reconciliation and release gates
+
+The stack CI workflow contains important issuer, worker, Argon2id compatibility, storage attestation and disposable cutover qualifications. Do not replace it wholesale with main's shorter CI workflow. Its PostgreSQL role fixture and principal qualification must be reconciled to the latest mainline #278/#272 contract. Current main's CI explicitly creates the bounded Render administrator membership and uses the latest role fixture; retain that behavior while keeping issuer/worker qualification steps.
+
+The issuer candidate remains a no-go for production deployment under the current $0 constraint: its recorded Workers Free Argon2id benchmark failed the existing GHM password profile budget. Do not weaken Argon2id, create paid Render services, or switch hosting. The Worker PR's local Workerd/Hyperdrive smoke is not evidence of live production connectivity. The production Actor Gateway role/function ACL and production migration ledger findings remain separate release blockers.
+
+### Immediate next sequence
+
+1. Bring the three #272 reconciliation commits into the #276 branch without dropping the #276 issuer work; then bring the reconciled #276 state into #277. Preserve the existing PR stack and do not merge #276/#277 independently.
+2. Port the seven mainline-only paths above into #276 and #277 (including the exact storage lifecycle migration/test and production pending allowlist).
+3. Reconcile the four overlapping paths semantically, especially CI workflow role setup and the trusted-admin fixture.
+4. Obtain full exact-head CI on the resulting #272, #276 and #277 heads. A historic green run is not enough.
+5. Only after all three are qualified, assess merge order and deployment separately. A successful GitHub merge does not authorize production migration, role grants, secrets, hosting or traffic changes.
+
+No PR has been merged and no deployment has been initiated.
