@@ -4540,3 +4540,30 @@ This is consistent with the designed pattern of logging in as `ghm_migrator`, th
 **Decision / next step:** production role and runtime function state are freshly confirmed, but production is not ready for credential transition, grant changes, migration, or deployment. The forensic migration audit itself remains blocked until an approved `ghm_migrator` connection secret is available in a local operator context. Do not use the Render read-only query identity as a substitute. Continue source/deployed-version reconciliation and preserve the current production state.
 
 No database, role, membership, ACL, credential, environment variable, service, migration, deployment, or backup was changed in this checkpoint.
+
+
+### Deployed source vs current mainline correction — 2026-11-14
+
+A source-level comparison was made against the exact Render-deployed commit `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf` and the current GitHub `main` branch.
+
+**Deployed commit `c7cf1eb`:**
+- `src/config.ts` requires `DATABASE_URL`.
+- `src/db/pool.ts` builds the shared Resource API pool from that `DATABASE_URL`.
+- `src/server.ts` performs `SELECT 1` before listening but does not assert the runtime principal.
+- The deployed startup does not require `GHM_RUNTIME_DATABASE_URL` and does not run `assertRuntimeDatabaseIdentity`.
+- This confirms why changing `DATABASE_URL` or adding only `GHM_RUNTIME_DATABASE_URL` without a coordinated code/role/environment cutover would be unsafe.
+
+**Current GitHub `main`:**
+- `src/config.ts` uses `GHM_RUNTIME_DATABASE_URL` in production; non-production may fall back to `DATABASE_URL`.
+- `src/server.ts` imports and runs `assertRuntimeDatabaseIdentity` before readiness, requiring `session_user=current_user=ghm_runtime` and the least-privilege role/schema/database flags.
+- `src/db/runtime-principal.ts` exists on main.
+- `src/db/runtime-database-privileges.ts` and `src/db/migrator-principal.ts` do **not** exist on current main (404 on fetch). The 43-function exact SECURITY DEFINER baseline and strict migrator principal contract reviewed in the previous note belong to the security construction branch, not current mainline. They must not be represented as active mainline startup checks.
+- Current main's `src/db/migrate.ts` still uses `GHM_MIGRATOR_DATABASE_URL`, `SET ROLE ghm_schema_owner`, and checks final session/effective identity, but does not contain the newer strict `assertMigratorDatabaseIdentity` guard from the security construction branch.
+
+**GitHub comparison:** current `main` is **21 commits ahead** of the exact deployed commit `c7cf1eb`, with no commits behind in that comparison. This is source divergence, not evidence that Render has deployed main. Render remains on `c7cf1eb` per the last confirmed live deployment.
+
+**Correction to prior static function-count comparison:** the 43-signature baseline is a construction-branch/disposable-database contract. The production 46-signature inventory is useful raw production evidence, but the two-way signature diff must not be treated as a current-main startup failure because current main does not contain or enforce that function allow-list. Retain the diff as a source-branch qualification artifact only. The mainline runtime gate currently is the `ghm_runtime` connection identity/least-privilege assertion.
+
+**Decision remains unchanged:** no Render environment edits, no credential rotation, no role/membership/ACL changes, no migration, no deploy, and no production cutover. Before main can be deployed safely, the production `ghm_runtime` identity and its memberships/schema/database privileges must be proven against the current main startup contract; the existing runtime connection remains `ghm_app_user` / effective `ghm_db_user`, and the supplied environment inventory still shows `DATABASE_URL` targeting the retired sandbox DB. The exact current production role inventory was freshly reconfirmed in the preceding checkpoint.
+
+No production or local database, role, grant, credential, environment, service, migration, deployment, or backup was changed.
