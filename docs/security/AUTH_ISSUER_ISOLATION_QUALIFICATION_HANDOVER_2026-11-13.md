@@ -4598,3 +4598,30 @@ Additional correction/confirmation after inspecting current `main` and re-readin
 **Operational implication:** the currently live service remains on the last confirmed deployed commit `c7cf1eb` (which requires `DATABASE_URL`), while current GitHub mainline expects `GHM_RUNTIME_DATABASE_URL` and rejects the old fallback in production. Auto-deploy remains off, so a mainline source update alone does not deploy. Do not manually deploy or edit either database URL until a coordinated role/credential, migration, backup and rollback plan has passed its gates.
 
 No environment values were read or changed through the service metadata call. No deployment, restart, credential, database, role, grant, migration, or paid resource was changed.
+
+
+### Production ghm_runtime principal checked against current main startup identity contract — 2026-11-14
+
+A fresh read-only Render PostgreSQL query evaluated the exact identity/privilege predicates used by current mainline `src/server.ts` for the existing production role `ghm_runtime`.
+
+**Observed production role result:**
+- LOGIN: true
+- INHERIT: false
+- SUPERUSER: false
+- CREATEDB: false
+- CREATEROLE: false
+- REPLICATION: false
+- BYPASSRLS: false
+- Database CONNECT: true
+- Database CREATE: false
+- `ghm` schema USAGE: true
+- `ghm` schema CREATE: false
+- Mainline `no_untrusted_role_memberships` predicate: true
+
+**Result:** the existing production `ghm_runtime` role's attributes and effective database/schema privileges pass the current mainline startup identity contract as evaluated from the production catalog. This is an important positive finding.
+
+**Still unresolved:** this does not prove the deployed service is connecting as `ghm_runtime`, does not establish the password/connection URI for this SQL-created login, and does not show that `GHM_RUNTIME_DATABASE_URL` is present in Render. The owner-provided Render environment inventory still has `DATABASE_URL` pointing to the retired sandbox resource and does not contain a confirmed `GHM_RUNTIME_DATABASE_URL`. The live deployed code at `c7cf1eb` still reads `DATABASE_URL`; current main requires `GHM_RUNTIME_DATABASE_URL`. Do not set or rotate credentials, change env values, or deploy based solely on this role-attribute pass.
+
+**Migration gate remains separate:** `ghm_migrator` has the required direct membership to set `ghm_schema_owner` and has CONNECT/no direct schema privileges, but production still shows `ghm_db_user` as a member of `ghm_migrator` with ADMIN OPTION. The strict migrator principal contract therefore remains unsatisfied, and no approved migrator connection URI is available to run the forensic ledger audit.
+
+No production role, membership, privilege, credential, environment variable, service, migration, deployment, or backup was changed.
