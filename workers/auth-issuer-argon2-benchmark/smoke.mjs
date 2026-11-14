@@ -67,13 +67,14 @@ try {
           password: PASSWORD,
           ...(operation === 'verify' ? { hash: nativeHash } : {}),
         }),
-        signal: AbortSignal.timeout(120_000),
+        signal: AbortSignal.timeout(20_000),
       });
     } catch (error) {
       results.push({
         operation,
         outcome: 'worker_request_failed',
         error: error instanceof Error ? error.message : 'unknown_error',
+        timeoutSeconds: 20,
       });
       continue;
     }
