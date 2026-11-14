@@ -3992,3 +3992,21 @@ Follow-up work completed on 2026-11-14:
 If 'GHM_MIGRATOR_DATABASE_URL' is not already available, STOP. No new production credential, role membership, database grant, Render environment variable, service or paid resource is authorized by this investigation. Do not substitute 'ghm_db_user' or 'ghm_app_user'; the script intentionally rejects them. The next decision then belongs to the owner because a usable dedicated migrator credential is a prerequisite, not something to manufacture through the app runtime.
 
 No production query was attempted with a non-migrator identity in this checkpoint, and no production data/permissions/functions/configuration were changed. PR #277 remains the single working branch.
+
+
+### Local production-ledger audit preflight — 2026-11-14
+
+The owner ran the documented preflight in the existing local checkout. Captured output:
+
+- Checkout: `C:\\GHM-main`
+- Branch: `main`
+- HEAD: `c7cf1ebaf4db5912983bfa45bd42747c0854cfaf`
+- Working tree: one untracked file, `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak`
+- `GHM_MIGRATION_AUDIT_DATABASE=ghm_db` was set for the preflight.
+- Presence check for `GHM_MIGRATOR_DATABASE_URL`: **false**.
+
+**Disposition:** the production migration audit was not run. The preflight did not invoke a database command; no production query or mutation occurred. Do not substitute `ghm_db_user` or `ghm_app_user`, and do not create/rotate credentials, add a Render variable, or expose a secret in chat to bypass the missing prerequisite. Leave the untracked backup untouched.
+
+**Next path:** continue repository-side historical provenance investigation and other source-only qualification while the dedicated migrator credential remains unavailable. The live migration-ledger question (whether `20261112090000_pin_security_definer_search_path.sql` is recorded in production) remains unresolved and must not be inferred from the local checkout or disposable CI. The owner can resume the one-off read-only audit only when the existing dedicated migrator credential is already available through the approved local secret store.
+
+No production database access, role/grant change, migration, deployment, Render configuration change, or paid resource was used for this preflight.
