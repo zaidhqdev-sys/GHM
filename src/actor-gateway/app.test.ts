@@ -845,3 +845,65 @@ test('provider transition routes require a typed one-use attestation and forward
   ]);
   assert.deepEqual(calls[0].attestation, attestation);
 });
+
+
+test('actor gateway applies the optional account-scoped edge limiter after JWT verification', async () => {
+  const limitedAccounts: number[] = [];
+  const reader: ActorIdentityReader = {
+    async readOwnIdentity(accountId: number): Promise<ActorIdentity> {
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  };
+  await withServer(reader, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/actor/me`, {
+      headers: { authorization: `Bearer ${sign(73)}` },
+    });
+    assert.equal(response.status, 200);
+  }, undefined, undefined, undefined, undefined, {
+    rateLimitDecision: async (accountId) => {
+      limitedAccounts.push(accountId);
+      return true;
+    },
+  });
+  assert.deepEqual(limitedAccounts, [73]);
+});
+
+test('actor gateway rejects an edge-limited account before database access', async () => {
+  let databaseCalls = 0;
+  const reader: ActorIdentityReader = {
+    async readOwnIdentity(accountId: number): Promise<ActorIdentity> {
+      databaseCalls += 1;
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  };
+  await withServer(reader, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/actor/me`, {
+      headers: { authorization: `Bearer ${sign(74)}` },
+    });
+    assert.equal(response.status, 429);
+    assert.deepEqual(await response.json(), { error: 'rate_limited' });
+  }, undefined, undefined, undefined, undefined, {
+    rateLimitDecision: async () => false,
+  });
+  assert.equal(databaseCalls, 0);
+});
+
+test('actor gateway fails closed when the edge limiter is unavailable', async () => {
+  let databaseCalls = 0;
+  const reader: ActorIdentityReader = {
+    async readOwnIdentity(accountId: number): Promise<ActorIdentity> {
+      databaseCalls += 1;
+      return { accountId, role: 'business', fullName: 'Verified Actor' };
+    },
+  };
+  await withServer(reader, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/v1/actor/me`, {
+      headers: { authorization: `Bearer ${sign(75)}` },
+    });
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { error: 'service_unavailable' });
+  }, undefined, undefined, undefined, undefined, {
+    rateLimitDecision: async () => { throw new Error('limiter unavailable'); },
+  });
+  assert.equal(databaseCalls, 0);
+});
