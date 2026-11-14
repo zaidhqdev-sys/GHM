@@ -3141,3 +3141,14 @@ The Worker adapter now runs in the local Cloudflare Workers runtime, can reach a
 - Authentication Issuer is still not hosted; Argon2id 64 MiB/t=3/p=1 Free CPU compatibility remains unresolved.
 
 The current local Worker prototype is now green at exact-head CI. Keep PR #272/#276 draft/unmerged, Render auto-deploy OFF, and PayFast excluded.
+
+
+## 2026-11-14 04:05 SAST — latest documentation-head CI also green
+
+The handover-only commit `2c3c7706ec72eb63b8cab99a9b996e2f303e271e` was independently checked by run `43534569203`:
+- Quality: 70/70 steps passed.
+- Web-quality: 11/11 steps passed.
+- No failed or skipped steps.
+- The exact Worker bundle, local runtime, Hyperdrive, database ACL, authenticated JSON parser, 998-test suite and 6 Worker contract tests all passed.
+
+The resulting handover update is committed separately; no application source changed after the qualified source head. Continue treating the Actor Gateway as locally qualified but not production-deployed.
