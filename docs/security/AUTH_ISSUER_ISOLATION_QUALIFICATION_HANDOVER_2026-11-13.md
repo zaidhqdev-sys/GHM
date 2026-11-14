@@ -3227,3 +3227,10 @@ This establishes bidirectional PHC interoperability at the exact GHM password pa
 The subsequent local Workers benchmark step did not return during the initial run's diagnostic window. It is still running; the cause and CPU result are not established. I have bounded each local Worker request with a hard 20-second diagnostic timeout and will record timeout/operation errors instead of leaving CI hung. The workflow now also uploads the PHC interoperability report immediately after that step, so it remains available even if the Worker benchmark stalls.
 
 No password algorithm, cost parameter, existing stored hash, production issuer or user account was changed.
+
+
+### Argon2id Worker benchmark execution bounded
+
+The first local Worker Argon2 benchmark request did not return within the initial run's expected window. Because the Workers local runtime may execute WASM on the same event loop, an in-process JavaScript timeout is not a sufficient hard stop if the WASM computation blocks the event loop.
+
+The CI step now uses an external OS-level `timeout --kill-after=5s 90s` around the benchmark process. A 90-second timeout is recorded as `local_worker_benchmark_exceeded_90s_timeout`, not silently interpreted as a passing measurement. The script also writes progress stages (`starting_worker`, `worker_ready`, `operation_started`, `operation_completed`) so uploaded artifacts identify where execution stopped. The 10 ms Worker CPU budget remains explicit in Wrangler config.
