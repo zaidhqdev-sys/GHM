@@ -3431,3 +3431,34 @@ Run:
 https://github.com/zaidhqdev-sys/GHM/actions/runs/43536273084
 
 Subsequent handover-only commits do not trigger the full CI suite by design; the latest source/workflow commit above remains the qualified code head.
+
+
+### Latest Argon2id WASM artifact — authoritative timing update
+
+The latest preserved artifact from run `43536273084` was downloaded and inspected:
+- PHC interoperability: both directions passed.
+- Exact profile: Argon2id v=19, m=65,536 KiB, t=3, p=1, 32-byte tag, 16-byte salt.
+- Native hash: 110.94 ms.
+- WASM verification: 183.88 ms.
+- WASM generation: 173.62 ms.
+- 10 ms Free CPU comparison: verification 18.4x over; generation 17.4x over.
+- Artifact status: `phc_compatible_but_over_free_cpu_budget`.
+
+These latest values supersede the earlier slower measurements from run `43535797694`; the conclusion is unchanged. The local Worker runtime attempt did not yield a valid timing, so the Node 22 measurements are evidence of a large performance gap, not a formal Cloudflare production benchmark.
+
+### Deployed-main environment consumer map — confirmed source references
+
+At deployed commit `c7cf1eb`:
+- `DATABASE_URL`: required by `src/config.ts` and used by the Resource API pool in `src/db/pool.ts`.
+- `DATABASE_SSL`: controls TLS configuration for the pool.
+- `GHM_MIGRATOR_DATABASE_URL`, `GHM_MIGRATION_DATABASE_HOST`, `GHM_MIGRATION_DATABASE_NAME`: consumed by `src/db/migrate.ts` for the dedicated migrator connection and explicit target guard.
+- `CORS_ORIGINS`: parsed by `src/config.ts` and applied by the HTTP app.
+- `GHM_WEB_AUTH_ALLOWED_ORIGINS`: consumed by `src/http/auth-router.ts` for exact browser-cookie Origin validation.
+- `GHM_WEB_AUTH_COOKIE_PATH` and `GHM_WEB_AUTH_COOKIE_MAX_AGE_SECONDS`: also required by that browser-cookie config but absent from the operator-supplied environment inventory.
+- `PAYFAST_*`: loaded by the commercial config; PayFast remains paused.
+- `STORAGE_*`: loaded by storage config.
+- `GHM_JWT_ES256_PRIVATE_KEY_PEM`, `GHM_JWT_ES256_PUBLIC_KEY_PEM`, `GHM_JWT_ES256_KID`: required by ES256 key loading. The supplied KID `ghm-sandbox-20261012-01` is sandbox-labelled; the redacted key pair cannot be independently classified here.
+- `GHM_RUNTIME_DATABASE_URL`: not read by deployed `c7cf1eb`; it is the new runtime variable required by the draft construction branch, not by the live deployment.
+- `GHM_NONPRODUCTION_DATABASE_NAME` and `GHM_QUALIFICATION_DATABASE_NAME`: no consumer found in the deployed core config or migration runner inspected so far. They may be referenced by qualification scripts; keep them until the broader script consumer audit is complete rather than deleting or repointing them.
+
+The supplied environment is therefore not a single interchangeable set of "database variables": runtime and migrator connections have distinct source consumers, and qualification/guard values must remain distinct from production targets.
