@@ -4625,3 +4625,23 @@ A fresh read-only Render PostgreSQL query evaluated the exact identity/privilege
 **Migration gate remains separate:** `ghm_migrator` has the required direct membership to set `ghm_schema_owner` and has CONNECT/no direct schema privileges, but production still shows `ghm_db_user` as a member of `ghm_migrator` with ADMIN OPTION. The strict migrator principal contract therefore remains unsatisfied, and no approved migrator connection URI is available to run the forensic ledger audit.
 
 No production role, membership, privilege, credential, environment variable, service, migration, deployment, or backup was changed.
+
+
+### Production SECURITY DEFINER provenance spot-check — 2026-11-14
+
+A read-only production catalog query retrieved the exact definitions, owners, SECURITY DEFINER flags, per-function settings, and ACLs for three functions previously identified as important.
+
+**Confirmed migration provenance for two functions:**
+- `ghm.auth_bootstrap_external_identity(text,text,text,text)`: owned by `ghm_schema_owner`, SECURITY DEFINER, pinned `search_path=pg_catalog, ghm`, ACL grants EXECUTE to `ghm_schema_owner` and `ghm_runtime`. Its definition matches the implementation in mainline migration `20260921130000_create_auth_runtime_functions.sql`.
+- `ghm.auth_provision_migration_account(text,text,text,text)`: owned by `ghm_schema_owner`, SECURITY DEFINER, pinned `search_path=pg_catalog, ghm, pg_temp`, ACL grants EXECUTE to `ghm_schema_owner` and `ghm_runtime`. Its implementation matches the current mainline migration `20261004040000_reconcile_quoteflow_migration_account_provisioning.sql` (the corrective version).
+
+**Unresolved production function provenance:**
+- `ghm.auth_read_connect_identity_authority(bigint)` exists in production, is owned by `ghm_schema_owner`, SECURITY DEFINER, and is executable by `ghm_runtime`.
+- Its ACL is `{ghm_schema_owner=X/ghm_schema_owner,ghm_runtime=X/ghm_schema_owner}`.
+- Its function-level setting is `search_path=ghm, pg_temp`, rather than the pinned `pg_catalog, ghm` pattern used by the two migration-backed functions above.
+- It reads `account_identity.connect_role`, `business_operator_intent`, `is_system_admin`, and active rows in `connect_founder_directory_reviewer`, returning a JSON authority projection.
+- Exact signature/name search in the current mainline repository tree and migration candidates did not find this function. It therefore remains **unattributed to a current-main migration or source file**. This is a provenance gap, not proof that the routine is malicious or unused.
+
+**Decision:** do not drop, revoke, rewrite, or change grants/search_path on this function based only on the missing source match. It is SECURITY DEFINER and participates in Connect identity authority, so it needs historical source/PR/migration provenance and caller-path analysis before any decision. Its presence and exact definition are now recorded as a separate production authority-reconciliation item.
+
+No production/local database, routine, ACL, credential, environment, service, migration, deployment, or backup was changed.
