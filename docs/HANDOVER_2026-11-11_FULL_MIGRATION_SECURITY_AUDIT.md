@@ -3350,3 +3350,19 @@ Corrected both duplicate test assertions to deep-compare the exact seven reviewe
 - `20261110233000 add_gateway_business_registration_identity_write`
 
 Fix committed on the PR branch as `7bf6afddf803a78f2e90e50a532d028dd657253e`. This is test-policy alignment only; no migration SQL, production allowlist, production data, role, grant, Render environment, or deployment was changed. A fresh exact-head CI run is required before merge or production action.
+
+
+## 2026-11-15 — PR #279 storage pending-deletion lifecycle fix merged after exact-head CI
+
+PR #279, `fix(storage): preserve pending upload lifecycle during deletion cleanup`, passed the complete exact-head CI run and was squash-merged.
+
+- Reviewed PR head: `72f7ba7d3561614590d8f9a9a0bc29583fd27fea`.
+- Exact-head CI run: `43650900241` — conclusion `success`.
+- `quality`: passed, including build, disposable PostgreSQL full migration chain, isolated actor-gateway principal, Business registration forward migration, storage getter, Opportunity marketplace SQL, storage lifecycle/tenant authorization, full test suite, Business Capability lifecycle/two-session assertion replacement, commercial payment settlement identities, migration audit policy tests, and runtime boundary verification.
+- `web-quality`: passed, including web build/tests, dependency audit, and toolchain verification.
+- Earlier stale pending-migration policy assertions were corrected to pin the seven reviewed production pending migrations; the correction is included in the final tested head.
+- Squash merge commit: `20a873af736ea19554021414f65d37cb68a02b64`.
+
+This merge changes repository code only. No production migration was applied, no production data/roles/grants were changed, and no Render deployment was initiated. Render `ghm-internal-runtime` auto-deploy remains OFF. The seven production-pending migrations remain an explicit deployment gate and are not represented as applied. Preserve the existing local recovery backup `database/migrations/20261026120000_scope_storage_metadata_lookup.sql.before-ledger-recovery.bak`; it was not modified or removed.
+
+Next gates remain: production-only Project↔Opportunity reconciliation, review/qualification of the seven pending migrations against the live production schema and dependencies, and the remaining production role/security and runtime readiness checks before any deliberate migration or deployment.
