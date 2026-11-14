@@ -39,8 +39,16 @@ if (!wasmVerifiesNative || !nativeVerifiesWasm || !profileMatches) {
 
 fs.mkdirSync('tmp', { recursive: true });
 fs.writeFileSync('tmp/argon2-native-test-hash.txt', nativeHash, { mode: 0o600 });
+const freeCpuBudgetMs = 10;
+const wasmVerifyWithinFreeCpuBudget = wasmVerifyMs <= freeCpuBudgetMs;
+const wasmHashWithinFreeCpuBudget = wasmHashMs <= freeCpuBudgetMs;
 fs.writeFileSync('tmp/argon2-wasm-compat.json', JSON.stringify({
-  status: 'compatible',
+  status: wasmVerifyWithinFreeCpuBudget && wasmHashWithinFreeCpuBudget
+    ? 'phc_compatible_within_free_cpu_budget'
+    : 'phc_compatible_but_over_free_cpu_budget',
+  freeCpuBudgetMs,
+  wasmVerifyWithinFreeCpuBudget,
+  wasmHashWithinFreeCpuBudget,
   profile: 'argon2id-m65536-t3-p1-h32-s16',
   wasmVerifiesNative,
   nativeVerifiesWasm,
