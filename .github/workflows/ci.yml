@@ -309,6 +309,7 @@ jobs:
           path: |
             tmp/actor-gateway-worker/wrangler.log
             tmp/actor-gateway-worker/health.json
+            tmp/actor-gateway-worker/invalid-json.json
           if-no-files-found: warn
           retention-days: 3
 
