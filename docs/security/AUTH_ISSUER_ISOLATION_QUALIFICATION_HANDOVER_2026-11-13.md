@@ -3609,3 +3609,14 @@ Correction:
 This does not bypass startup identity/ACL checks. Each retry must pass the same checks before the listener is created. Source commits: `067a3012ffcd391f207f3ca4bc634f7a6d89b2a2` and `5c9dba91dc66bf51c6e4441eb7b4852641faa4f3`.
 
 The PR #277 exact-head CI remains the qualification gate for both Worker hardening changes. No production change was made.
+
+
+### Worker hardening PR and exact-head CI trigger — 2026-11-14
+
+- Draft PR #277: https://github.com/zaidhqdev-sys/GHM/pull/277
+- Head branch: `security/actor-gateway-worker-body-limit-20261114`
+- Parent/base branch: `construction/auth-issuer-stacked-on-pr272-20261113`
+- Latest source/workflow head at this checkpoint: `c95c3f3cf06ccdb7d7233518dace37e7addb368f`.
+- The CI workflow's push branch allow-list was extended only on this feature branch so its source changes can receive an exact-head run without opening a misleading PR against main.
+- The GitHub combined-status lookup and PR-filtered workflow-run lookup returned no run/status for this SHA at the time of inspection. A fresh exact-head CI run is therefore **not yet confirmed**. Do not mark the Worker corrections qualified until the run is visible and both quality jobs complete.
+- PR #277 remains draft and unmerged; it is stacked on the existing issuer/Actor Gateway integration. No production or Cloudflare account changes were made.
