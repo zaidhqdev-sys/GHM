@@ -224,6 +224,54 @@ jobs:
       - name: Qualify isolated actor gateway database principal
         run: npm run qualify:actor-gateway-principal
 
+      - name: Smoke-test Actor Gateway in local Cloudflare Workers runtime
+        env:
+          GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET: ${{ env.GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET }}
+        run: |
+          mkdir -p tmp/actor-gateway-worker
+          openssl ecparam -name prime256v1 -genkey -noout -out tmp/actor-gateway-worker/ci-private.pem
+          openssl pkey -in tmp/actor-gateway-worker/ci-private.pem -pubout -out tmp/actor-gateway-worker/ci-public.pem
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const pem = fs.readFileSync('tmp/actor-gateway-worker/ci-public.pem', 'utf8').trim().replace(/\n/g, '\\n');
+          const secret = process.env.GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET;
+          if (!secret) throw new Error('Missing disposable Actor Gateway assertion test secret');
+          fs.writeFileSync('workers/actor-gateway/.dev.vars',
+            `GHM_JWT_ES256_PUBLIC_KEY_PEM="${pem}"\nGHM_JWT_ES256_KID="ghm-worker-ci"\nGHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET="${secret}"\n`,
+            { mode: 0o600 });
+          NODE
+          npx --yes wrangler@4.36.0 dev --local --ip 127.0.0.1 --port 8787
+            --config workers/actor-gateway/wrangler.jsonc
+            > tmp/actor-gateway-worker/wrangler.log 2>&1 &
+          WORKER_PID=$!
+          cleanup() {
+            kill "$WORKER_PID" 2>/dev/null || true
+            rm -f workers/actor-gateway/.dev.vars
+          }
+          trap cleanup EXIT
+          READY=0
+          for attempt in $(seq 1 45); do
+            if curl --silent --show-error --fail http://127.0.0.1:8787/healthz > tmp/actor-gateway-worker/health.json; then
+              READY=1
+              break
+            fi
+            if ! kill -0 "$WORKER_PID" 2>/dev/null; then
+              cat tmp/actor-gateway-worker/wrangler.log
+              exit 1
+            fi
+            sleep 2
+          done
+          if [ "$READY" -ne 1 ]; then
+            cat tmp/actor-gateway-worker/wrangler.log
+            exit 1
+          fi
+          node --input-type=module -e "
+            import fs from 'node:fs';
+            const health = JSON.parse(fs.readFileSync('tmp/actor-gateway-worker/health.json', 'utf8'));
+            if (health.status !== 'ok') throw new Error('Unexpected Worker health response');
+            console.log('CLOUDFLARE WORKERS LOCAL RUNTIME + HYPERDRIVE + DATABASE STARTUP ACL: PASS');
+          "
+
       - name: Provision provider attestation secret in disposable PostgreSQL
         env:
           GHM_STORAGE_PROVIDER_ATTESTATION_ALLOW_MUTATIONS: 'true'
