@@ -4486,3 +4486,57 @@ The next source-side gate was reviewed without connecting to production.
 **Decision:** source contracts reinforce the no-cutover decision. Keep production runtime/env/roles untouched. The next useful evidence is a complete read-only production catalog and role-membership capture using an already-authorized administrative read-only context, then compare exact function signatures, attributes, memberships, and grants against these source contracts. The existing Render app query identity has previously been unable to read the migration ledger, and the dedicated migrator connection is not presently available through an approved local secret path.
 
 No database connection, SQL mutation, role/grant change, credential operation, environment edit, deployment, or migration was performed in this checkpoint.
+
+
+### Fresh Render production role graph and exact runtime EXECUTE comparison — 2026-11-14
+
+A new read-only SQL inspection was run against the existing Render PostgreSQL resource `dpg-dag0sdtbedkc7389vi2g-a` (`ghm_db`) using the Render read-only query interface. No SQL writes were possible through this query path.
+
+**Connection identity confirmed:**
+- `current_database = ghm_db`
+- `session_user = ghm_app_user`
+- `current_user = ghm_db_user`
+
+**Fresh role attributes:**
+- `ghm_db_user`: LOGIN, INHERIT, CREATEDB, CREATEROLE; not SUPERUSER/REPLICATION/BYPASSRLS.
+- `ghm_app_user`: LOGIN, INHERIT; no elevated role attributes.
+- `ghm_runtime`: LOGIN, NOINHERIT; no SUPERUSER/CREATEDB/CREATEROLE/REPLICATION/BYPASSRLS.
+- `ghm_migrator`: LOGIN, NOINHERIT; no SUPERUSER/CREATEDB/CREATEROLE/REPLICATION/BYPASSRLS.
+- `ghm_schema_owner`: NOLOGIN, NOINHERIT; no elevated role attributes.
+- `ghm_actor_gateway` and `ghm_payment_provider`: LOGIN, NOINHERIT; no elevated role attributes.
+
+**Fresh membership graph (granted role → member):**
+- `ghm_actor_gateway` → `ghm_db_user`: ADMIN true, INHERIT false, SET false, grantor postgres.
+- `ghm_migrator` → `ghm_db_user`: ADMIN true, INHERIT false, SET false, grantor postgres.
+- `ghm_payment_provider` → `ghm_db_user`: ADMIN true, INHERIT false, SET false, grantor postgres.
+- `ghm_runtime` → `ghm_db_user`: duplicate memberships remain: one ADMIN true / INHERIT false / SET false (grantor postgres), and one ADMIN false / INHERIT true / SET true (grantor ghm_db_user).
+- `ghm_schema_owner` → `ghm_db_user`: ADMIN true, INHERIT false, SET false, grantor postgres.
+- `ghm_schema_owner` → `ghm_migrator`: ADMIN false, INHERIT false, SET true, grantor ghm_db_user.
+- `ghm_db_user` → `ghm_app_user`: ADMIN false, INHERIT true, SET true, grantor postgres.
+- System memberships `pg_read_all_stats` and `pg_signal_backend` are also present for app/admin roles.
+
+This confirms the earlier production membership findings remain present. In particular, `ghm_db_user` is still a member of `ghm_migrator` with ADMIN OPTION; this contradicts the source migrator principal contract's requirement that `ghm_migrator` have zero members (`migrator_member_count = 0`). Do not change this membership from the app/admin query identity.
+
+**Fresh SECURITY DEFINER EXECUTE counts:**
+- `ghm_runtime`: 46
+- `ghm_db_user`: 46
+- `ghm_app_user`: 46
+
+An exact signature comparison was then performed between the 46 production `ghm_runtime` executable SECURITY DEFINER functions and the 43-signature static source baseline in `src/db/runtime-database-privileges.ts` on this construction branch:
+- Source baseline: 43 signatures.
+- Production: 46 signatures.
+- Production signatures absent from source baseline: 12.
+- Source signatures absent from production: 9.
+
+The exact two-way signature difference was captured during the audit. It includes production-only functions such as `auth_bootstrap_external_identity`, `auth_change_password`, `auth_disable_account`, `auth_provision_migration_account`, `auth_read_connect_identity_authority`, and `update_business_profile`; source-only functions include `auth_redeem_recovery_with_count`, `auth_rehash_password_if_unchanged`, `auth_reset_password_with_recovery`, `get_public_business_hours`, `get_public_trust_score`, and capability-draft lifecycle functions. Do not infer that the difference is a simple three extra grants: the sets differ in both directions. The source baseline explicitly originated from a disposable PostgreSQL 18.6 inventory and is not production-approved. Do not deploy its startup enforcement or modify grants until the production signatures are reconciled against current code, deployed code, migration history, and gateway ownership.
+
+**Migration ledger visibility / authority:**
+- Ledger relation owner: `ghm_schema_owner`.
+- Ledger ACL: NULL (no explicit relation ACL).
+- Current query identity `ghm_db_user`: `ghm` schema USAGE true, ledger SELECT false.
+- `ghm_migrator`: database CONNECT true, database CREATE false, `ghm` schema USAGE false, schema CREATE false, ledger SELECT false, membership in `ghm_schema_owner` true, SET privilege true.
+This is consistent with the designed pattern of logging in as `ghm_migrator`, then `SET ROLE ghm_schema_owner` inside the read-only forensic audit. However, the extra membership granted to `ghm_db_user` from `ghm_migrator` still violates the dedicated migrator source contract.
+
+**Decision / next step:** production role and runtime function state are freshly confirmed, but production is not ready for credential transition, grant changes, migration, or deployment. The forensic migration audit itself remains blocked until an approved `ghm_migrator` connection secret is available in a local operator context. Do not use the Render read-only query identity as a substitute. Continue source/deployed-version reconciliation and preserve the current production state.
+
+No database, role, membership, ACL, credential, environment variable, service, migration, deployment, or backup was changed in this checkpoint.
