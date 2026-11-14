@@ -240,8 +240,8 @@ jobs:
             `GHM_JWT_ES256_PUBLIC_KEY_PEM="${pem}"\nGHM_JWT_ES256_KID="ghm-worker-ci"\nGHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET="${secret}"\n`,
             { mode: 0o600 });
           NODE
-          npx --yes wrangler@4.36.0 dev --local --ip 127.0.0.1 --port 8787
-            --config workers/actor-gateway/wrangler.jsonc
+          npx --yes wrangler@4.36.0 dev --local --ip 127.0.0.1 --port 8787 \
+            --config workers/actor-gateway/wrangler.jsonc \
             > tmp/actor-gateway-worker/wrangler.log 2>&1 &
           WORKER_PID=$!
           cleanup() {
