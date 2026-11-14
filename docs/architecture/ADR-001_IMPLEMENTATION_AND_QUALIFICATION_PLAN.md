@@ -263,3 +263,103 @@ PR #266 merged as `a2c734348c3132396121c74d232eafb2794541d1`. Gateway now expose
 The gateway-only write wrapper calls `ghm.assert_actor_gateway` and is executable only by `ghm_actor_gateway`. The additive migration fixes a pre-existing `ON CONFLICT (business_id)` ambiguity by naming `business_registration_identity_pkey`, while preserving the legacy runtime EXECUTE grant. Exact-head CI passed build, full suite, disposable migration chain, gateway principal and operation qualification, migration audit, runtime boundary, web-quality and Cloudflare Pages.
 
 No production gateway service, URL, credential, role/grant cutover, migration execution or deployment occurred. Next: securely provision the isolated gateway service and its dedicated DB login/public ES256 keys, deploy gateway before enabling the resource API URL, complete end-to-end GET/PUT tests, then separately plan legacy grant revocation. Other feature RPCs and auth issuer isolation remain pending.
+
+
+## 2026-11-15 — Authentication issuer caller and persistence boundary inventory
+
+### Existing public authentication routes (current main)
+The current `src/http/auth-router.ts` registers these routes directly on the ordinary Resource API:
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/logout`
+- `POST /api/v1/auth/password-recovery/request`
+- `POST /api/v1/auth/password-recovery/reset`
+- `POST /api/v1/auth/quoteflow-migration-reset/request`
+- `POST /api/v1/auth/quoteflow-migration-reset/complete`
+- Browser BFF routes: `/api/v1/auth/web/register`, `/login`, `/refresh`, and `/logout`.
+
+These routes are registered by `src/http/app.ts` and use `PostgresAuthPersistence` on the Resource API process unless dependencies are injected. This is not an isolated issuer or reverse proxy.
+
+### Issuer responsibilities currently mixed into Resource API
+- `GhmAuthService` verifies password credentials, rehashes credentials, creates sessions, rotates opaque refresh credentials, revokes sessions, and signs ES256 access JWTs.
+- `PostgresAuthPersistence` loads the refresh-token pepper and directly calls SECURITY DEFINER auth functions.
+- `loadEs256Keys()` requires `GHM_JWT_ES256_PRIVATE_KEY_PEM`, public key and KID in the same process that constructs the auth service.
+- Browser refresh-cookie policy, origin allow-list, rate limits, anti-enumeration response behavior and logout cookie clearing are implemented in the current auth router and must be preserved exactly during extraction.
+- QuoteFlow migration-reset request/completion is coupled to the existing auth route; completion performs the atomic reset and then logs in to issue a fresh token pair. It must not be omitted from issuer compatibility planning.
+- Connect's `ConnectIdentityAdapterImpl` directly uses `AuthPersistence` for external identity lookup/bootstrap. This is a non-HTTP caller that must be moved behind a narrowly authenticated issuer integration contract or retired after a caller audit; simply moving the HTTP router would leave credential/identity authority in Resource API.
+
+### Persistence operations inventoried
+The persistence adapter calls the following database functions (exact function names are in `src/auth/foundation/persistence.ts`):
+- Account/credential: `auth_create_account`, `auth_set_password`, `auth_lookup_password_by_normalized_email`.
+- Session/refresh: `auth_create_session_with_refresh`, `auth_validate_session`, `auth_rotate_refresh`, `auth_revoke_session`, `auth_revoke_all_sessions_for_account`, `auth_revoke_by_refresh_hash`.
+- Recovery: `auth_issue_recovery`, `auth_redeem_recovery`, `auth_complete_quoteflow_migration_reset`.
+- External identity: `auth_lookup_external_identity`, `auth_bootstrap_external_identity`, `auth_link_external_identity`, `auth_link_business_external_mapping`.
+
+The adapter also performs a multi-call transaction for normal password recovery/reset: redeem recovery token, set password, and revoke all sessions. These steps must remain atomic when moved. It hashes Argon2 passwords in the service and protects opaque refresh/recovery tokens with a pepper; both password and pepper custody must move with issuer persistence.
+
+### Critical SQL authority finding
+The existing auth foundation migrations grant multiple auth SECURITY DEFINER functions to `ghm_runtime`. Examples verified in current migration source include `auth_set_password`, `auth_lookup_password_by_normalized_email`, and `auth_create_account`. Other session/recovery functions are likewise designed around caller-supplied account/session IDs. Therefore, separating the Node process alone would NOT complete the ADR boundary: ordinary Resource API's database identity currently retains auth mutation/credential function EXECUTE authority. A later additive migration must establish issuer-only grants and prove that `ghm_runtime` cannot invoke issuer-only operations, but only after all direct callers have moved and exact behavior is qualified.
+
+### Readiness and next implementation slice
+- Do not extract the router blindly: first define an issuer-owned application interface that preserves the existing native and browser contracts, recovery delivery, QuoteFlow reset and Connect external identity integration.
+- Introduce an issuer-specific pool/persistence dependency that cannot fall back to the Resource API's default `DATABASE_URL`/pool. Require exact `session_user=current_user` issuer identity and least-privilege startup checks, analogous to the runtime/gateway identity guards.
+- Split signing-key loading so issuer alone can load the private key; resource and gateway processes must load public verification material only. The current general `createAccessJwtService` defaults to the private-key loader and must not be imported by Resource API after extraction.
+- Build disposable-PostgreSQL adversarial tests proving `ghm_runtime` cannot call issuer-only functions or mutate sessions/credentials, while issuer positive paths preserve token/session compatibility.
+- No code, production database, grants, environment, deployment, or Render service changed in this inventory step.
+
+
+## 2026-11-15 — Existing Authentication Issuer implementation and stacked PR reconciliation
+
+### Correction to the preceding mainline-only inventory
+The previous 2026-11-15 note correctly described what is absent from `main`, but its wording that an issuer implementation still needed to be built was incomplete. A substantial isolated Authentication Issuer implementation already exists in the unmerged construction stack. **Do not create another issuer implementation branch or repeat this work.** The distinction is:
+- `main` does not yet contain the isolated issuer implementation.
+- Draft PR #276 contains the issuer candidate, database principal/ACL enforcement, manual-only privilege cutover and rollback scripts, token-bound recovery reset, conditional password rehash, qualification scripts, and broad integration changes.
+- PR #276 is stacked on the unified Actor Gateway integration PR #272; PR #277 adds Worker-only body-parser/startup hardening on top of #276.
+
+### Existing branch/PR inventory verified against GitHub
+| PR | Branch | Current head | State | Exact-head checks |
+|---|---|---|---|---|
+| #272 unified Actor Gateway integration | `integration/capability-gateway-qualification-20261110` | `c81e2bf2534febef9c5e49b39f60f85415f04ff1` | Open, draft | Quality + web-quality passed |
+| #276 isolated Authentication Issuer stack | `construction/auth-issuer-stacked-on-pr272-20261113` | `aa86fa1346daf922d3c80c27f2bf5beb697bafbb` | Open, draft | Run `43611550656`: quality + web-quality passed |
+| #277 Worker hardening | `security/actor-gateway-worker-body-limit-20261114` | `0ae3f3bf68e85535e0a90fcc0d2666405571ccb7` | Open, draft | Run `43630510673`: quality + web-quality passed |
+
+PR #276's recorded qualification includes 994 passing tests, 0 failures, 8 comparator tests passing, disposable PostgreSQL 18.7 issuer lifecycle/cutover/rollback qualification, and a SECURITY DEFINER pre/post comparison of 106 routines with 14 reviewed issuer ACL changes and zero unexplained non-issuer changes. Its current head also has successful exact-head quality and web-quality checks. PR #277's exact current head has successful quality, web-quality and Cloudflare Pages checks. PR #272's current head has successful quality and web-quality checks.
+
+The earlier dedicated branch `construction/auth-issuer-isolation-20261112` also exists; it is an earlier issuer construction line. The current stacked PR #276 is the coordinated integration candidate. Do not revive or duplicate the older branch without a specific file-level reason.
+
+### What is already implemented in the PR #276 candidate
+- Separate `src/auth-issuer/server.ts` and `src/auth-issuer/app.ts` process/application entry points.
+- Dedicated `GHM_AUTH_ISSUER_DATABASE_URL` and exact `ghm_auth_issuer` login identity contract.
+- Startup identity, database SSL and strict function/relation/default-ACL allow-list checks.
+- Existing auth HTTP contract hosted by the issuer app, including browser auth and QuoteFlow migration-reset flows.
+- Resource API auth persistence changes and Connect identity adapter changes intended to remove direct issuer persistence dependencies.
+- Issuer-only manual SQL privilege cutover and rollback artifacts under `database/cutovers/` (not auto-applied migrations).
+- Token-bound password recovery reset and conditional password rehash migrations.
+- Disposable PostgreSQL principal, ACL, lifecycle, cutover/rollback and SECURITY DEFINER authority comparison scripts.
+- Cloudflare Actor Gateway Worker adapter and its local qualification; PR #277 hardens immediate oversized-body rejection and startup retry behavior.
+
+### Important exact-head / branch ancestry findings
+Current `main` at this check is `8cbc806326d5c9180af2e7c48c7f3332743f56a3`. It has advanced materially beyond the stacked PR base:
+- #272 compared with current main: diverged; 5 commits ahead, 47 behind; merge base `ad4fea43f2eb7bf959042b9db77a9f86e6bb531b`.
+- #276 compared with current main: diverged; 178 commits ahead, 47 behind; merge base is the same `ad4fea43f2eb7bf959042b9db77a9f86e6bb531b`.
+- #276 remains based on #272, and #277 remains based on #276.
+
+The exact-head CI successes are real evidence for those candidate commits, but they do not remove the 47-commit mainline divergence. **Do not merge, rebase, retarget or cherry-pick this broad 178-commit stack blindly.** The next repository task is a controlled integration reconciliation: compare current main against #272/#276, identify which mainline commits/files have been superseded or changed, and prepare a minimal conflict-aware integration plan that preserves the qualified stack's exact tested source. Retest the resulting exact head; old CI cannot qualify a changed merge/rebase result.
+
+### Current $0 deployment blocker — issuer hosting and Argon2id
+The candidate implementation and disposable qualification do not mean the issuer can be deployed under the present cost constraint:
+- The current Render inventory has no dedicated production issuer service. The existing qualification service is not to be repurposed.
+- The candidate issuer is a Node process with native Argon2 dependency and a dedicated PostgreSQL login. The Cloudflare Worker prototype is for the Actor Gateway, not a ready issuer host.
+- The recorded Workers-compatible `hash-wasm` implementation passed bidirectional PHC compatibility but failed the Free CPU budget at the exact existing GHM Argon2id profile (m=65,536 KiB, t=3, p=1); generation and verification measurements materially exceed 10 ms. Do not weaken the password profile or deploy that benchmark implementation.
+- Therefore the isolated issuer remains **not deployable at $0** with the currently qualified hosting options. No paid Render service or Workers Paid plan is authorized.
+
+### Production gates remain separate and open
+- Production has no `ghm_auth_issuer` role/service provisioned.
+- Production gateway/issuer SQL functions and the seven pending migrations are not yet applied; the production migration ledger has been read through the authorized migrator path and the separate audit result is PASS_WITH_PENDING, not permission to apply migrations.
+- Production whole-database ACL/role authority, backup/restore evidence and network exposure still require the documented controlled remediation plan.
+- Production service secrets, issuer private key/pepper custody, Cloudflare Hyperdrive, TLS identity, domains/routes and client routing have not been provisioned or switched.
+- No production cutover SQL, migration, grants, secrets, Render settings, Cloudflare resources, DNS or traffic were changed during this reconciliation.
+
+### Next action
+Keep #272/#276/#277 as the sole existing implementation stack. Perform a source-level, file-by-file mainline reconciliation against current `main` and update the stack's handover with a minimal integration delta and remaining exact-head tests. Separately retain the issuer hosting/Argon2id no-cost NO-GO and production ACL/ledger gates. No duplicate implementation work and no production action.
