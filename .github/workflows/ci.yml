@@ -207,10 +207,24 @@ jobs:
         run: npm run build
 
       - name: Bundle Actor Gateway Cloudflare Worker without deploying
-        run: >-
-          npx --yes wrangler@4.162.0 deploy --dry-run
-          --outdir tmp/actor-gateway-worker-build
-          --config workers/actor-gateway/wrangler.jsonc
+        run: |
+          mkdir -p tmp/actor-gateway-worker-build
+          npx --yes wrangler@4.162.0 deploy --dry-run \
+            --outdir tmp/actor-gateway-worker-build \
+            --config workers/actor-gateway/wrangler.jsonc \
+            > tmp/actor-gateway-worker-build/wrangler-bundle.log 2>&1 || {
+              cat tmp/actor-gateway-worker-build/wrangler-bundle.log
+              exit 1
+            }
+
+      - name: Preserve Actor Gateway Worker bundle diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: actor-gateway-worker-bundle-diagnostics
+          path: tmp/actor-gateway-worker-build/wrangler-bundle.log
+          if-no-files-found: warn
+          retention-days: 3
 
       - name: Apply all migrations to disposable PostgreSQL
         run: npm run migrate
