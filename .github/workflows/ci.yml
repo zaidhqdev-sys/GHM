@@ -272,6 +272,17 @@ jobs:
             console.log('CLOUDFLARE WORKERS LOCAL RUNTIME + HYPERDRIVE + DATABASE STARTUP ACL: PASS');
           "
 
+      - name: Preserve Actor Gateway Worker smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: actor-gateway-worker-smoke-diagnostics
+          path: |
+            tmp/actor-gateway-worker/wrangler.log
+            tmp/actor-gateway-worker/health.json
+          if-no-files-found: warn
+          retention-days: 3
+
       - name: Provision provider attestation secret in disposable PostgreSQL
         env:
           GHM_STORAGE_PROVIDER_ATTESTATION_ALLOW_MUTATIONS: 'true'
