@@ -4905,3 +4905,25 @@ Corrected the test regex escaping in commit `97ce7e11b613424e536ba9a0beb4f7468f6
 A new exact-head workflow run was created for `97ce7e11b613424e536ba9a0beb4f7468f63b94d` (run `43611224349`) and was in progress at the time of this note. Do not claim CI passed until that run completes. If it fails, inspect the exact failing step/log and continue on the same PR branch.
 
 No production/local database, role, membership, ACL, credential, environment variable, service, migration, deployment, payment flow, backup, or paid resource was changed.
+
+
+### CI diagnosis — static signature comparison canonicalization — 2026-11-14
+
+Re-read the latest handover before continuing. The corrected test regex allowed the next exact-head run (`43611224349`, head `97ce7e11b613424e536ba9a0beb4f7468f63b94d`) to progress through TypeScript Build and disposable migrations, but the Actor Gateway principal qualification then correctly failed the stricter required-function comparison.
+
+**Failure evidence:** the diagnostic showed that the three Campaign/Directory Review functions were absent together, which is an allowed pre-cutover compatibility state. The actual PostgreSQL `regprocedure::text` signatures omit spaces after commas, whereas the static expected signatures contained comma-space formatting. This was a formatting mismatch, not a missing required non-Campaign function.
+
+**Correction:**
+- Added canonical signature normalization before comparing actual and expected arrays: remove whitespace following commas.
+- Apply the same normalization to the three optional Campaign/Directory Review signatures before evaluating the all-present/all-absent compatibility condition.
+- Added a unit test using PostgreSQL's comma-free `regprocedure::text` representation.
+
+Commits on PR #276 branch:
+- `f7d9413231203efb7ecf732847b5f1cb771f2882` — normalize signatures before exact comparison.
+- `6763e9f3111c4745bb24c31df355fad24baccd85` — regression test for PostgreSQL signature formatting.
+
+A new exact-head workflow was created for the implementation commit (`43611405464`, head `f7d9413231203efb7ecf732847b5f1cb771f2882`); it was in progress at the time of this note. The test-only follow-up commit may trigger a newer run. Do not claim success until the latest run for the latest branch head completes.
+
+This failure confirms the stricter check is exercising the full function contract rather than silently ignoring missing entries. No production change was made.
+
+No production/local database, role, membership, ACL, credential, environment variable, service, migration, deployment, payment flow, backup, or paid resource was changed.
