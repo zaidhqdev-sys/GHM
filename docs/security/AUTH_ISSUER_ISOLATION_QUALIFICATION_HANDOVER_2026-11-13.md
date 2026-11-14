@@ -4200,3 +4200,29 @@ This checkpoint was performed after rereading the current handover sections cove
 **Next operator check (read-only, no cost):** open the existing `ghm-db` Dashboard page, select **Recovery**, and inspect whether the page shows (a) an available PITR window and its earliest/latest timestamps, and (b) any completed logical export with its timestamp/status. Do not click Create export, Restore Database, upgrade, or start any recovery. Report only the visible availability/timestamps/status; do not share connection strings or secrets. If the Recovery page reports the database is ineligible, capture the exact non-secret wording. A metadata API snapshot is not a substitute for this check.
 
 No production database, backup, restore, role, grant, credential, Render environment, deployment, or paid resource was changed in this checkpoint.
+
+
+### Owner-provided Render Recovery page evidence — 2026-11-14 14:24 UTC
+
+The owner inspected the existing production `ghm-db` Recovery page and supplied its visible contents. This closes the question of whether the Recovery page exposes PITR for the current instance.
+
+**Observed directly in the owner-provided Dashboard view:**
+- Point-in-Time Recovery is available.
+- Render states: "You can choose to restore from any timestamp in the past 3 days."
+- The page presents a **Restore database** action and a Pro upgrade prompt to extend the recovery window to 7 days.
+- The Export section says a complete logical backup can be exported and that export files are retained for at least 7 days.
+- The page presents **Create export**. The supplied view does not show a completed export row or a completed export timestamp.
+- The owner also saw a Render infrastructure maintenance notice for 2026-11-18 04:00 GMT+2 / 02:00 UTC. This is recorded as a platform notice, not evidence of a GHM database migration or outage.
+
+**Interpretation:**
+- PITR capability is confirmed for production `ghm-db`, with a rolling 3-day window. The screenshot/text supplied does not expose exact earliest/latest restorable timestamps, so do not invent them.
+- A completed logical export is still not evidenced. PITR is an automatic recovery capability, not a separately downloaded owner-held export.
+- Render's official documentation states that paid Postgres instances include on-demand logical exports, retained for seven days; the dashboard action creates a compressed directory-format archive. No additional database/service needs to be created for this operation. The current `ghm-db` compute plan is paid `0.1c-256mb`. No documentation found indicates a separate per-export charge, but this should not be represented as a guarantee beyond Render's published feature description.
+- PITR restore creates a separate database instance and is billable; do not initiate it under the current no-additional-cost constraint.
+- No Restore database, Create export, Upgrade, or other dashboard action was clicked as part of this evidence capture.
+
+**Next action:** ask the owner to click **Create export** on the existing `ghm-db` Recovery page only if they accept initiating the included on-demand logical export feature. Wait for the export to complete, then download the resulting `.dir.tar.gz` archive to the existing local backup location and verify file presence, size, and archive listing without restoring it into production. Do not create a new Render database for restore testing. A verified export improves recoverability but does not satisfy the full restore-test gate; record that limitation explicitly. Do not begin credential, environment, role, migration or runtime cutover work until backup and migration-authority gates are addressed.
+
+**Sources checked:** Render Postgres recovery documentation (https://render.com/docs/postgresql-backups), Render Postgres creation/connection docs (https://render.com/docs/postgresql-creating-connecting), and Render pricing page (https://render.com/pricing). These describe on-demand exports as a feature of paid Postgres; the dashboard itself confirms the current instance's PITR and export controls.
+
+No database restore, export, service creation, plan upgrade, role/grant change, credential change, environment edit, deployment or production mutation was performed in this checkpoint.
