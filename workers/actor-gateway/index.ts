@@ -29,12 +29,17 @@ import {
   readActorGatewayDatabasePrivileges,
 } from '../../src/actor-gateway/database-privileges';
 
+interface RateLimitBinding {
+  limit(options: { key: string }): Promise<{ success: boolean }>;
+}
+
 interface HyperdriveBinding {
   connectionString: string;
 }
 
 interface ActorGatewayWorkerEnv {
   HYPERDRIVE?: HyperdriveBinding;
+  ACTOR_GATEWAY_RATE_LIMITER?: RateLimitBinding;
   GHM_JWT_ES256_PUBLIC_KEY_PEM?: string;
   GHM_JWT_ES256_KID?: string;
   GHM_JWT_ES256_PREVIOUS_PUBLIC_KEY_PEM?: string;
@@ -88,6 +93,8 @@ const initialize = (workerEnv: ActorGatewayWorkerEnv): Promise<void> => {
         workerEnv.HYPERDRIVE?.connectionString,
         'HYPERDRIVE.connectionString',
       );
+      const edgeRateLimiter = workerEnv.ACTOR_GATEWAY_RATE_LIMITER;
+      if (!edgeRateLimiter) throw new Error('Missing required Worker binding: ACTOR_GATEWAY_RATE_LIMITER');
       const capabilityAssertionSecret = required(
         workerEnv.GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET,
         'GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET',
@@ -177,6 +184,11 @@ const initialize = (workerEnv: ActorGatewayWorkerEnv): Promise<void> => {
         storageMetadataReader: new PostgresStorageMetadataGatewayReader(pool, capabilityAssertionSecret),
         connectBusinessProvisioningReader: new PostgresConnectBusinessProvisioningReader(pool, capabilityAssertionSecret),
         campaignDirectoryReviewReader: new PostgresCampaignDirectoryReviewGatewayReader(pool, capabilityAssertionSecret),
+      }, {
+        rateLimitDecision: async (accountId) => {
+          const decision = await edgeRateLimiter.limit({ key: `actor:${accountId}` });
+          return decision.success;
+        },
       });
 
       actorGatewayServer = createServer(app);
