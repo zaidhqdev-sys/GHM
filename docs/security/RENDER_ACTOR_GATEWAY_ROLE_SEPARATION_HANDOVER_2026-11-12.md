@@ -865,3 +865,44 @@ The file-level content has been copied, but the branch commit ancestry is still 
 - Once the complete stack is synchronized, run full exact-head CI on all three PR heads. Only then proceed to merge in dependency order and plan deployment separately.
 
 No production migration, role/grant, secret, credential, Render service/environment, Cloudflare resource, DNS, route or traffic was changed. No paid infrastructure was created.
+
+
+## 2026-11-15 — correction to file-level issuer reconciliation (preserve all security evidence)
+
+A deeper diff review found that the first attempt to copy the #272 gateway principal migration, qualification script and full audit handover directly into #276 would have removed #276-specific evidence. This was caught before merge or deployment and has been corrected.
+
+### Preserved and reconciled source
+- Restored #276's original gateway migration as the base. Added the explicit existence check for trusted administrator `ghm_db_user` and an explicit requirement for its `ADMIN=true, INHERIT=false, SET=false` membership. Retained #276's bounded membership guard and the gateway function definition/grants.
+- Restored #276's original `qualify-actor-gateway-principal.mjs` as the base. Preserved Resource API runtime function EXECUTE allow-list checks, Business external-mapping lookup ACL/fixture checks, gateway ACL diagnostics, and existing principal/fixture denials. Added a separate `trusted_admin_membership` assertion for the exact three PostgreSQL 18 membership options.
+- Restored #276's issuer-specific full migration/security audit handover from the original validated candidate and appended a correction record. The shorter #272 copy is not used as a replacement for issuer-specific evidence.
+- Propagated the corrected migration, qualification script and full audit handover into #277.
+
+Corrective #276 commits:
+- `b4b558da5869e4217369e0acd15c7527b31b02ec` — additive gateway migration guard.
+- `0598fcc006f7dab5f90bb306d3b4090810096edf` — additive principal qualification assertion preserving existing runtime/mapping checks.
+- `dd4a509afb9231a38950dc1b78765b83c36598e6` — restored issuer-specific audit handover and appended correction.
+
+Corrective #277 commits:
+- `3e6fc5453e6169d2b7362b89567b37341a8c7eed` — corrected gateway migration.
+- `529f545b855019909757b2b48160f1bfef099a38` — corrected principal qualification.
+- `0213b3b8d8d83621d20c5920eb305dc78cede3c9` — restored issuer-specific audit handover.
+- `4fe42a1f373d292a02b70b3d20d570852f637a77` — refreshed Render/Actor Gateway handover.
+
+### Latest PR heads and merge state
+- #272: `b39b679bb2dec1d863f077b39ea3022a0c7525a8`, open/draft, mergeable=false.
+- #276: `dd4a509afb9231a38950dc1b78765b83c36598e6`, open/draft, mergeable=false.
+- #277: `4fe42a1f373d292a02b70b3d20d570852f637a77`, open/draft, mergeable=true at GitHub's latest metadata snapshot.
+
+The #277 mergeable flag is not equivalent to qualification or readiness. The PR branch remains 15 commits behind #276 in Git ancestry; #276 remains 3 commits behind the current #272 branch in ancestry. Selected file contents have been reconciled, but the ancestry has not. The existing GitHub connector exposes no safe branch-update/rebase operation, and no force-ref movement or replacement branch has been attempted.
+
+No exact-head CI currently qualifies the latest #272/#276/#277 heads. Historical green runs and the earlier queued #277 run do not qualify these changed commits. The CI workflow fixture has been corrected to grant the Render administrator membership only in `ghm_actor_gateway`, with ADMIN true, INHERIT false, SET false, while retaining issuer/runtime/migrator/provider identities and issuer/Worker qualification steps.
+
+### Release decision
+Do not merge any of the three PRs yet. The immediate blockers are:
+1. #272 and #276 report mergeable=false.
+2. Branch ancestry is not synchronized, despite selected file reconciliation.
+3. Exact-head CI and disposable PostgreSQL qualification are still required.
+4. The issuer still has no qualified $0 production hosting solution; do not weaken Argon2id or provision paid compute.
+5. Production migration, role/ACL, backup/restore, TLS identity, secret custody and cutover gates remain separate.
+
+No production database, role, grant, secret, credential, Render setting/service, deployment, Cloudflare resource, DNS, route or traffic was changed.
