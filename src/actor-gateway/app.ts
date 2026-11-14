@@ -1,4 +1,4 @@
-import express, { type Express, type Request, type Response, type NextFunction } from 'express';
+import express, { type Express, type Request, type Response, type NextFunction, type RequestHandler } from 'express';
 import rateLimit from 'express-rate-limit';
 import {
   type AccessJwtVerifier,
