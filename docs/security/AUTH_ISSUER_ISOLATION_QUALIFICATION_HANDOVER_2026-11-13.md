@@ -3100,3 +3100,44 @@ The uploaded test log from run `43534285873` was inspected. Results:
 - The sole failure was a stale expected Wrangler alias value in `worker-contract.test.mjs`: it still expected `./body-parser-worker-stub.cjs`, while the actual config correctly uses the local package specifier `ghm-worker-body-parser-stub`.
 
 Corrected in commit `7e3b832002b216a498e0964f10028622fdaf9f5c`. This is a test expectation correction only; the package alias, Worker bundle, runtime startup, Hyperdrive, and database ACL smoke had already passed in that run. The next exact-head CI run must confirm all 6 Worker contract tests and the full quality/web-quality jobs pass.
+
+
+## 2026-11-14 03:55 SAST — Actor Gateway Cloudflare Worker local qualification PASS
+
+Exact latest handover/source commit: `2c3c7706ec72eb63b8cab99a9b996e2f303e271e`.
+
+GitHub Actions run **43534569203** completed successfully:
+- Quality: **70/70 steps passed**, no failures.
+- Web-quality: **11/11 steps passed**, no failures.
+- Root TypeScript build: passed.
+- Wrangler `4.161.0` Worker bundle dry-run: passed; no deployment/upload.
+- Disposable PostgreSQL 18 migrations: passed.
+- Isolated Actor Gateway database principal qualification: passed.
+- Local Wrangler/Workers runtime smoke: passed.
+- Hyperdrive local connection to the disposable PostgreSQL service: passed.
+- Actor Gateway startup identity and full ACL verification before listener creation: passed.
+- `GET /healthz`: HTTP 200, `{"status":"ok"}`.
+- Authenticated malformed JSON request: HTTP 400, `{"error":"invalid_request"}`, proving the Worker-specific bounded JSON parser runs after JWT authentication and edge rate-limit evaluation.
+- Full existing repository suite: 998 tests passed, 0 failed.
+- Worker TypeScript type-check: passed.
+- Worker source contract tests: 6/6 passed.
+- Additional disposable gateway, Connect provisioning, capability, storage, marketplace and issuer qualification stages: passed.
+
+Run:
+https://github.com/zaidhqdev-sys/GHM/actions/runs/43534569203
+
+### What this proves
+
+The Worker adapter now runs in the local Cloudflare Workers runtime, can reach a disposable PostgreSQL database through Hyperdrive, verifies the dedicated Actor Gateway SQL identity and ACL before accepting requests, enforces the configured edge rate-limit binding, and handles JSON requests without Express's incompatible body-parser/iconv-lite chain.
+
+### What this does not prove
+
+- No Cloudflare account or Free-tier Hyperdrive resource has been created.
+- No production database credential or Hyperdrive connection has been used.
+- No Worker was deployed, routed or exposed publicly.
+- No production database role, ACL, environment variable, DNS, or traffic was changed.
+- Rate Limiting API is approximate/per-location, not a strict global counter.
+- Production connectivity, TLS/network allow-list behavior and live credential separation still require a separately approved production qualification.
+- Authentication Issuer is still not hosted; Argon2id 64 MiB/t=3/p=1 Free CPU compatibility remains unresolved.
+
+The current local Worker prototype is now green at exact-head CI. Keep PR #272/#276 draft/unmerged, Render auto-deploy OFF, and PayFast excluded.
