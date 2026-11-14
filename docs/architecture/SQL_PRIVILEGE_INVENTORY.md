@@ -202,3 +202,14 @@ The live catalogue is inconsistent with the all-routine normalized state intende
 ### Post-normalization migration source consistency note — 2026-11-14
 
 Source review confirms migrations '20261112020000', '20261112030000' and '20261112080000' create SECURITY DEFINER routines with 'search_path=pg_catalog, ghm' (no explicit 'pg_temp') immediately before '20261112090000_pin_security_definer_search_path.sql', which loops over all GHM SECURITY DEFINER routines and normalizes them to 'pg_catalog, ghm, pg_temp'. Later '20261112140000' and '20261112150000' gateway/storage migrations explicitly use the canonical setting. Therefore live path groups cannot be attributed solely to current CREATE FUNCTION declarations: determine whether the pin migration was applied or later definitions reintroduced settings using the read-only production migration ledger and bounded post-pin DDL review. No production changes.
+
+
+### 2026-11-14 Worker qualification and migration audit execution boundary
+
+Exact-head CI run '43594131250' on 'c105c690c570dd3035bd1ae265f3464c2a61526d' passed both quality and web-quality jobs. Quality included Cloudflare Worker bundle without deploy, local Worker runtime smoke test, disposable PostgreSQL Actor Gateway principal and all gateway/issuer cutover qualification. No production DB was used.
+
+Worker source/config: 'workers/actor-gateway/index.ts' and 'workers/actor-gateway/wrangler.jsonc'. It wraps the existing app; requires Hyperdrive, edge rate limiter, public ES256 keys and gateway capability assertion secret; performs startup DB identity/ACL checks; 16 KiB JSON body cap; startup fail-closed 503. Render Node entry remains unchanged. Wrangler config contains placeholder Hyperdrive ID and local disposable DB URL; it is not production-deployable and was not deployed.
+
+The production read-only migration audit requires 'GHM_MIGRATOR_DATABASE_URL', exact login/session identity 'ghm_migrator', and 'SET ROLE ghm_schema_owner'. It uses 'BEGIN READ ONLY' and rolls back. Existing CI only configures disposable 'ghm_disposable_test'; no production audit secret/invocation is configured. No dedicated production migration runner exists in the Render service inventory. Do not repurpose the application runtime, add a paid service, or use the mutating migration command. Candidate is owner-controlled one-off local execution if the owner already has the migrator credential; never place credentials in chat or docs.
+
+The current source tree has only three migrations after '20261112090000_pin_security_definer_search_path.sql'; the two that create SECURITY DEFINER functions explicitly set canonical 'pg_catalog, ghm, pg_temp'. This does not explain live drift without ledger provenance. Keep production catalog state read-only until that ledger audit is complete.
