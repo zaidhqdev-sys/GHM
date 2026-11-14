@@ -162,3 +162,22 @@ The non-exact group is not homogeneous: observed paths include 'pg_catalog, ghm'
 The schema-scoped function default ACL for 'ghm_schema_owner' grants EXECUTE to 'ghm_runtime' only. The global function default ACL for 'postgres' includes PUBLIC and 'ghm_db_user' EXECUTE; this is a future-object creation risk distinct from current routines, whose live PUBLIC EXECUTE count is zero. Migration-created functions must run under the intended owner and reviewed defaults.
 
 No production grants, definitions, function settings, defaults, roles or objects were changed.
+
+
+### Exact production SECURITY DEFINER search_path distribution — 2026-11-14
+
+The authoritative production snapshot covers 62 non-trigger SECURITY DEFINER functions in 'ghm':
+
+| Function setting | Count |
+|---|---:|
+| 'search_path=pg_catalog, ghm' | 53 |
+| 'search_path=pg_catalog, ghm, pg_temp' | 5 |
+| 'search_path=ghm, pg_temp' | 3 |
+| 'search_path=ghm, pg_catalog' | 1 |
+| **Total** | **62** |
+
+ACL counts for the same scope: PUBLIC EXECUTE 0; 'ghm_runtime' EXECUTE 46; effective 'ghm_app_user' EXECUTE 46 through inherited membership; 'ghm_payment_provider' EXECUTE 2; 'ghm_actor_gateway' EXECUTE 0. All are owned by 'ghm_schema_owner'. The 57 non-exact functions are not a homogeneous group. Review each signature/body/proconfig and migration provenance; no bulk search_path alteration is approved.
+
+The count deliberately excludes trigger-returning routines using 'p.prorettype <> trigger'::regtype. An earlier broad count of 63 included a trigger-returning routine; use 62 for comparable inventory going forward.
+
+The repository's 'scripts/audit-security-definer-authority.mjs' is deliberately restricted to local 'ghm_disposable_test'; it must not be pointed at production or have its guard weakened. The production 'npm run audit:migrations' path is a separate read-only ledger reconciliation tool, but an approved production invocation path is still unresolved.
