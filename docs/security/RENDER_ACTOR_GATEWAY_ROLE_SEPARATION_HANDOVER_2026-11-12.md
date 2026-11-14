@@ -592,3 +592,47 @@ No-cost constraint: do not create another paid Render service. Do not repurpose 
 
 ### Actions taken
 Read-only inspection of Render service inventory, current service settings/events, current main source entry points, key loader, gateway adapter/router wiring, gateway SQL migrations, and ADR. No production DB changes, grants, secrets, service settings, deployments, or restarts.
+
+
+## 2026-11-15 — Authentication issuer caller and persistence boundary inventory
+
+### Existing public authentication routes (current main)
+The current `src/http/auth-router.ts` registers these routes directly on the ordinary Resource API:
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/logout`
+- `POST /api/v1/auth/password-recovery/request`
+- `POST /api/v1/auth/password-recovery/reset`
+- `POST /api/v1/auth/quoteflow-migration-reset/request`
+- `POST /api/v1/auth/quoteflow-migration-reset/complete`
+- Browser BFF routes: `/api/v1/auth/web/register`, `/login`, `/refresh`, and `/logout`.
+
+These routes are registered by `src/http/app.ts` and use `PostgresAuthPersistence` on the Resource API process unless dependencies are injected. This is not an isolated issuer or reverse proxy.
+
+### Issuer responsibilities currently mixed into Resource API
+- `GhmAuthService` verifies password credentials, rehashes credentials, creates sessions, rotates opaque refresh credentials, revokes sessions, and signs ES256 access JWTs.
+- `PostgresAuthPersistence` loads the refresh-token pepper and directly calls SECURITY DEFINER auth functions.
+- `loadEs256Keys()` requires `GHM_JWT_ES256_PRIVATE_KEY_PEM`, public key and KID in the same process that constructs the auth service.
+- Browser refresh-cookie policy, origin allow-list, rate limits, anti-enumeration response behavior and logout cookie clearing are implemented in the current auth router and must be preserved exactly during extraction.
+- QuoteFlow migration-reset request/completion is coupled to the existing auth route; completion performs the atomic reset and then logs in to issue a fresh token pair. It must not be omitted from issuer compatibility planning.
+- Connect's `ConnectIdentityAdapterImpl` directly uses `AuthPersistence` for external identity lookup/bootstrap. This is a non-HTTP caller that must be moved behind a narrowly authenticated issuer integration contract or retired after a caller audit; simply moving the HTTP router would leave credential/identity authority in Resource API.
+
+### Persistence operations inventoried
+The persistence adapter calls the following database functions (exact function names are in `src/auth/foundation/persistence.ts`):
+- Account/credential: `auth_create_account`, `auth_set_password`, `auth_lookup_password_by_normalized_email`.
+- Session/refresh: `auth_create_session_with_refresh`, `auth_validate_session`, `auth_rotate_refresh`, `auth_revoke_session`, `auth_revoke_all_sessions_for_account`, `auth_revoke_by_refresh_hash`.
+- Recovery: `auth_issue_recovery`, `auth_redeem_recovery`, `auth_complete_quoteflow_migration_reset`.
+- External identity: `auth_lookup_external_identity`, `auth_bootstrap_external_identity`, `auth_link_external_identity`, `auth_link_business_external_mapping`.
+
+The adapter also performs a multi-call transaction for normal password recovery/reset: redeem recovery token, set password, and revoke all sessions. These steps must remain atomic when moved. It hashes Argon2 passwords in the service and protects opaque refresh/recovery tokens with a pepper; both password and pepper custody must move with issuer persistence.
+
+### Critical SQL authority finding
+The existing auth foundation migrations grant multiple auth SECURITY DEFINER functions to `ghm_runtime`. Examples verified in current migration source include `auth_set_password`, `auth_lookup_password_by_normalized_email`, and `auth_create_account`. Other session/recovery functions are likewise designed around caller-supplied account/session IDs. Therefore, separating the Node process alone would NOT complete the ADR boundary: ordinary Resource API's database identity currently retains auth mutation/credential function EXECUTE authority. A later additive migration must establish issuer-only grants and prove that `ghm_runtime` cannot invoke issuer-only operations, but only after all direct callers have moved and exact behavior is qualified.
+
+### Readiness and next implementation slice
+- Do not extract the router blindly: first define an issuer-owned application interface that preserves the existing native and browser contracts, recovery delivery, QuoteFlow reset and Connect external identity integration.
+- Introduce an issuer-specific pool/persistence dependency that cannot fall back to the Resource API's default `DATABASE_URL`/pool. Require exact `session_user=current_user` issuer identity and least-privilege startup checks, analogous to the runtime/gateway identity guards.
+- Split signing-key loading so issuer alone can load the private key; resource and gateway processes must load public verification material only. The current general `createAccessJwtService` defaults to the private-key loader and must not be imported by Resource API after extraction.
+- Build disposable-PostgreSQL adversarial tests proving `ghm_runtime` cannot call issuer-only functions or mutate sessions/credentials, while issuer positive paths preserve token/session compatibility.
+- No code, production database, grants, environment, deployment, or Render service changed in this inventory step.
