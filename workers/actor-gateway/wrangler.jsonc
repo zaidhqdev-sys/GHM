@@ -26,5 +26,8 @@
         "period": 60
       }
     }
-  ]
+  ],
+  "alias": {
+    "body-parser": "./body-parser-worker-stub.cjs"
+  }
 }
