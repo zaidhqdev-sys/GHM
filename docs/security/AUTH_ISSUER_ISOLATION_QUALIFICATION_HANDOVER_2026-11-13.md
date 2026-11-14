@@ -4269,3 +4269,20 @@ The owner pasted literal `PS C:\GHM>` and `>>` prompt markers into PowerShell, c
 **Correct convention for future operator commands:** follow the existing handover's fenced `powershell` command-block style. Include executable commands only inside the block; do NOT include transcript prompt markers (`PS C:\GHM>`, `PS C:\GHM-main>`) or continuation markers (`>>`) in the copyable block. If a prompt is shown outside a block for context, explicitly say it is not part of the command. Keep `Write-Host` section headers and commands in execution order. Use the actual current working directory the owner specifies (currently `C:\GHM-main`), not a mismatched prompt path.
 
 The archive verification commands previously supplied were not executed because prompt text was pasted literally. No archive file was modified. The next retry should use the handover's command-only fenced PowerShell style, then capture metadata, SHA-256 and `tar -tzf` listing. No production or backup state changed.
+
+
+### Production export local verification — first pass — 2026-11-14
+
+The owner ran the command-only PowerShell block from `C:\GHM-main` against the exact downloaded Render export.
+
+**Observed output:**
+- File exists at `C:\Users\zaidh\Downloads\2026-11-14T14_26Z.dir.tar.gz`.
+- File size: **81,507 bytes**.
+- Last-write time displayed as `2026/11/14 14...` (the supplied console output truncates the time).
+- `tar -tzf` listed the archive successfully. The listing begins with `./2026-11-14T14:26Z/ghm_db/`, includes `toc.dat` and numerous numbered `.dat` data files. The command returned to the PowerShell prompt without showing the validation exception; treat the archive listing as successful for this pass.
+- The `Get-FileHash` section produced no visible hash output in the supplied transcript. Therefore SHA-256 is **not yet recorded**; do not invent a checksum.
+- The archive member listing is partial in the conversation output and no full member count was computed.
+
+**Current recovery evidence status:** Render export creation confirmed; owner download path confirmed; file existence and 81,507-byte size confirmed by owner console; archive listing via `tar -tzf` appears successful; SHA-256 pending; restore test not performed. This is a positive archive readability check, not a restore test.
+
+**Next minimal check:** run only `Get-FileHash` against the same path and return its output. Do not repeat the archive listing or extract/modify the file unless a later issue requires it. No production database, Render service, credentials, roles, grants, environment, migration, or deployment changed.
