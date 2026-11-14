@@ -2924,3 +2924,78 @@ Therefore the first Actor Gateway migration is expected to fail on the currently
 - Exact-head main-push CI evidence: NOT AVAILABLE through the currently exposed PR-filtered workflow-run lookup; do not call this a CI failure.
 - Production migration, deployment, role/grant changes: NOT RUN.
 - No paid resources added. PayFast remains paused and unchanged.
+
+
+## 2026-11-15 — Live production role catalog checked; Actor Gateway guard correction opened as PR #278
+
+The user confirmed the Render workspace `ZAID Technologies` (`tea-d9svua6417fc73bhcutg`). All database queries below used the primary production Render PostgreSQL instance `ghm-db` (`dpg-dag0sdtbedkc7389vi2g-a`), database `ghm_db`, PostgreSQL 18, Frankfurt. The Render query tool wraps each statement in a read-only transaction. No production write was executed.
+
+### Live production role attributes
+
+The live catalog query returned:
+
+| Role | LOGIN | INHERIT | SUPERUSER | CREATEDB | CREATEROLE | REPLICATION | BYPASSRLS |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `ghm_actor_gateway` | true | false | false | false | false | false | false |
+| `ghm_runtime` | true | false | false | false | false | false | false |
+| `ghm_migrator` | true | false | false | false | false | false | false |
+| `ghm_payment_provider` | true | false | false | false | false | false | false |
+| `ghm_schema_owner` | false | false | false | false | false | false | false |
+| `ghm_db_user` | true | true | false | true | true | false | false |
+| `ghm_app_user` | true | true | false | false | false | false | false |
+
+### Live production membership rows
+
+The role membership query returned these relevant grants:
+
+| Granted role | Member | ADMIN OPTION | INHERIT | SET |
+|---|---|---:|---:|---:|
+| `ghm_actor_gateway` | `ghm_db_user` | true | false | false |
+| `ghm_migrator` | `ghm_db_user` | true | false | false |
+| `ghm_payment_provider` | `ghm_db_user` | true | false | false |
+| `ghm_runtime` | `ghm_db_user` | true | false | false |
+| `ghm_runtime` | `ghm_db_user` | false | true | true |
+| `ghm_schema_owner` | `ghm_db_user` | true | false | false |
+| `ghm_schema_owner` | `ghm_migrator` | false | false | true |
+
+For `ghm_actor_gateway`, `ghm_db_user` is the only member. The gateway login itself is not a member of any other role. The administrator's gateway membership is ADMIN OPTION only, with INHERIT and SET disabled. Preserve this supported Render administrator relationship; do not revoke it to satisfy an over-strict migration guard.
+
+### Live runtime effective privilege check
+
+A separate read-only catalog query against the production database returned:
+
+- Database: `ghm_db`
+- Runtime role: CONNECT true; database CREATE false
+- Schema `ghm`: USAGE true; CREATE false
+- Runtime membership in `ghm_actor_gateway`: MEMBER false, USAGE false, SET false
+- Runtime membership in `ghm_migrator`: false
+- Runtime membership in `ghm_schema_owner`: false
+
+The query connection itself used the Render administrator context (`session_user=ghm_app_user`, `current_user=ghm_db_user`); these are catalog privilege checks for `ghm_runtime`, not proof of an actual application startup session.
+
+A further live predicate matching the Resource API's `no_untrusted_role_memberships` SQL returned true for `ghm_runtime`, alongside LOGIN true, NOINHERIT true, all elevated attributes false, CONNECT true, schema USAGE true, and database/schema CREATE false. Combined with the separately successful hidden-input runtime URL test (`ghm_db`, `ghm_runtime`), the available catalog evidence now matches the Resource API startup identity contract. The actual deployed process has not yet been restarted or tested against the newly saved environment, so production readiness remains unconfirmed until a deliberate deployment and health check.
+
+### Source/CI correction prepared — PR #278
+
+Opened [PR #278](https://github.com/zaidhqdev-sys/GHM/pull/278), branch `fix/actor-gateway-trusted-admin-membership`, head `8141e1e24652933a0e7d6313c9f25a14918f214a`.
+
+Changes:
+- Migration `20261110210000_add_actor_gateway_principal_guard.sql` now explicitly requires the trusted `ghm_db_user` administrator and permits only its documented ADMIN OPTION membership in `ghm_actor_gateway`, with INHERIT and SET disabled.
+- It continues rejecting any membership where `ghm_actor_gateway` itself is the member, and any other member of the gateway role.
+- The disposable CI role setup now creates `ghm_db_user` and grants the same restricted administrator membership.
+- `scripts/qualify-actor-gateway-principal.mjs` now asserts both no untrusted memberships and the required restricted trusted-administrator membership.
+
+The PR is open and reported mergeable. Its Cloudflare Pages preview deployment succeeded on commit `5151ecb`. The available GitHub status lookup returned no commit statuses and the workflow-run lookup returned no PR-triggered workflow runs at the time checked; therefore exact-head CI is still PENDING/NOT VERIFIED, not passed. Do not merge or deploy based on the Cloudflare preview alone.
+
+### Current gates
+
+- Runtime credential authentication: PASS.
+- Live runtime role attributes and effective database/schema privileges: PASS by read-only catalog checks.
+- Live runtime membership boundary: PASS by read-only catalog checks.
+- Live Actor Gateway administrator membership semantics: CONFIRMED and now modelled explicitly in PR #278.
+- PR #278 exact-head CI: PENDING / no workflow evidence returned.
+- Production migration ledger reconciliation and migration prerequisites: STILL REQUIRED before applying migrations.
+- Production deployment and `/healthz` / `/readyz` checks: NOT RUN.
+- Production roles, grants, data, migrations, Render environment, services and deployment: UNCHANGED.
+
+Keep Render auto-deploy OFF. Do not run production migrations or deploy until PR #278 exact-head CI passes and the production migration ledger/preflight has been reconciled. PayFast remains paused; no new paid resource was created.
