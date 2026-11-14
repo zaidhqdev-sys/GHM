@@ -13,8 +13,6 @@ import type {
   AuthenticationSessionRecord,
   CreateSessionWithRefreshResult,
   ExternalIdentityMapping,
-  LinkBusinessExternalMappingOutcome,
-  LinkBusinessExternalMappingResult,
   PasswordCredentialLookup,
   PasswordHashResult,
   RotateRefreshResult,
@@ -78,18 +76,6 @@ const mapPgError = (error: unknown): AuthPersistenceError => {
   throw new AuthPersistenceError('Auth persistence operation failed');
 };
 
-export interface SessionValidationResult {
-  sessionId: number;
-  accountId: number | null;
-  sessionStatus: string | null;
-  accountStatus: string | null;
-  createdAt: Date | null;
-  lastSeenAt: Date | null;
-  absoluteExpiresAt: Date | null;
-  isUsable: boolean;
-  rejectReason: string | null;
-}
-
 export interface CreateSessionResult extends CreateSessionWithRefreshResult {
   /** Raw refresh wire token — return to issuer only; never persist */
   refreshTokenWire: string;
@@ -106,13 +92,11 @@ export interface CreateAccountResult {
 
 export interface AuthPersistence {
   createAccount?(fullName: string | null, role: 'customer' | 'business', email: string, password: string): Promise<CreateAccountResult>;
-  setPassword(accountId: number, email: string, password: string): Promise<PasswordHashResult>;
+  rehashPasswordIfUnchanged(accountId: number, expectedPasswordHash: string, password: string): Promise<boolean>;
   lookupPasswordByEmail(email: string): Promise<(PasswordCredentialLookup & { accountStatus: string }) | null>;
   createSessionWithRefresh(accountId: number): Promise<CreateSessionResult>;
-  validateSession(sessionId: number): Promise<SessionValidationResult>;
   rotateRefresh(refreshTokenWire: string): Promise<RotateRefreshPersistenceResult>;
   issueRecovery(accountId: number, ttlMinutes?: number): Promise<{ recoveryTokenWire: string; credentialId: number; expiresAt: Date }>;
-  redeemRecovery(recoveryTokenWire: string): Promise<number>;
   resetPasswordWithRecovery(
     recoveryTokenWire: string,
     email: string,
@@ -121,11 +105,6 @@ export interface AuthPersistence {
   lookupQuoteFlowMigrationResetEnrollment(email: string): Promise<{ enrollmentId: number; accountId: number; approvedEmail: string } | null>;
   completeQuoteFlowMigrationReset(recoveryTokenWire: string, password: string): Promise<{ accountId: number; loginEmail: string; revokedSessionCount: number }>;
   lookupExternalIdentity(provider: string, subject: string): Promise<ExternalIdentityMapping | null>;
-  linkBusinessExternalMapping(
-    provider: string,
-    externalBusinessId: string,
-    businessId: number,
-  ): Promise<LinkBusinessExternalMappingResult>;
   revokeSessionByRefreshToken(refreshTokenWire: string, reason?: RevokeReason): Promise<{ found: boolean; sessionId: number | null; accountId: number | null }>;
 }
 
@@ -176,28 +155,30 @@ export class PostgresAuthPersistence implements AuthPersistence {
     }
   }
 
-  async setPassword(accountId: number, email: string, password: string): Promise<PasswordHashResult> {
-    const normalized = normalizeLoginEmail(email);
+  async rehashPasswordIfUnchanged(
+    accountId: number,
+    expectedPasswordHash: string,
+    password: string,
+  ): Promise<boolean> {
     const hashed = await this.passwordHasher.hash(password);
     try {
-      await this.tx(async (client) => {
-        await client.query(
-          `SELECT ghm.auth_set_password($1, $2, $3, $4, $5, $6, $7)`,
+      const result = await this.tx(async (client) =>
+        client.query<{ updated: boolean }>(
+          `SELECT ghm.auth_rehash_password_if_unchanged($1, $2, $3, $4, $5, $6) AS updated`,
           [
             accountId,
-            normalized.loginEmail,
-            normalized.loginEmailNormalized,
+            expectedPasswordHash,
             hashed.passwordHash,
             hashed.argon2MemoryKib,
             hashed.argon2TimeCost,
             hashed.argon2Parallelism,
           ],
-        );
-      });
+        ),
+      );
+      return result.rows[0]?.updated === true;
     } catch (error) {
       throw mapPgError(error);
     }
-    return hashed;
   }
 
   async lookupPasswordByEmail(
@@ -245,27 +226,6 @@ export class PostgresAuthPersistence implements AuthPersistence {
     } catch (error) {
       throw mapPgError(error);
     }
-  }
-
-  async validateSession(sessionId: number): Promise<SessionValidationResult> {
-    const result = await this.tx(async (client) =>
-      client.query(`SELECT * FROM ghm.auth_validate_session($1)`, [sessionId]),
-    );
-    if (result.rowCount !== 1) {
-      throw new AuthPersistenceError('Session validation failed');
-    }
-    const row = result.rows[0];
-    return {
-      sessionId: Number(row.session_id),
-      accountId: row.account_id == null ? null : Number(row.account_id),
-      sessionStatus: row.session_status ?? null,
-      accountStatus: row.account_status ?? null,
-      createdAt: row.created_at ?? null,
-      lastSeenAt: row.last_seen_at ?? null,
-      absoluteExpiresAt: row.absolute_expires_at ?? null,
-      isUsable: Boolean(row.is_usable),
-      rejectReason: row.reject_reason ?? null,
-    };
   }
 
   async rotateRefresh(refreshTokenWire: string): Promise<RotateRefreshPersistenceResult> {
@@ -329,19 +289,6 @@ export class PostgresAuthPersistence implements AuthPersistence {
     }
   }
 
-  async redeemRecovery(recoveryTokenWire: string): Promise<number> {
-    const raw = decodeOpaqueTokenWire(recoveryTokenWire);
-    const tokenHash = protectOpaqueToken(this.pepper, 'recovery', raw);
-    try {
-      const result = await this.tx(async (client) =>
-        client.query(`SELECT ghm.auth_redeem_recovery($1) AS account_id`, [tokenHash]),
-      );
-      return Number(result.rows[0].account_id);
-    } catch (error) {
-      throw mapPgError(error);
-    }
-  }
-
   async resetPasswordWithRecovery(
     recoveryTokenWire: string,
     email: string,
@@ -352,33 +299,27 @@ export class PostgresAuthPersistence implements AuthPersistence {
     const normalized = normalizeLoginEmail(email);
     const hashed = await this.passwordHasher.hash(password);
     try {
-      const result = await this.tx(async (client) => {
-        const redeemed = await client.query<{ account_id: string | number; revoked_session_count: number | string }>(
-          `SELECT account_id, revoked_session_count FROM ghm.auth_redeem_recovery_with_count($1)`,
-          [tokenHash],
-        );
-        if (redeemed.rowCount !== 1) {
-          throw new AuthPersistenceError('Recovery credential invalid', 'RECOVERY_CREDENTIAL_INVALID');
-        }
-        const accountId = Number(redeemed.rows[0].account_id);
-        const passwordResult = await client.query(
-          `SELECT ghm.auth_set_password($1, $2, $3, $4, $5, $6, $7) AS ok`,
+      const result = await this.tx(async (client) =>
+        client.query(
+          `SELECT account_id, revoked_session_count
+             FROM ghm.auth_reset_password_with_recovery($1, $2, $3, $4, $5, $6)`,
           [
-            accountId,
-            normalized.loginEmail,
+            tokenHash,
             normalized.loginEmailNormalized,
             hashed.passwordHash,
             hashed.argon2MemoryKib,
             hashed.argon2TimeCost,
             hashed.argon2Parallelism,
           ],
-        );
-        if (passwordResult.rowCount !== 1) {
-          throw new AuthPersistenceError('Password reset failed');
-        }
-        return Number(redeemed.rows[0].revoked_session_count ?? 0);
-      });
-      return { password: hashed, revokedSessionCount: result };
+        ),
+      );
+      if (result.rowCount !== 1) {
+        throw new AuthPersistenceError('Recovery credential invalid', 'RECOVERY_CREDENTIAL_INVALID');
+      }
+      return {
+        password: hashed,
+        revokedSessionCount: Number(result.rows[0].revoked_session_count ?? 0),
+      };
     } catch (error) {
       throw mapPgError(error);
     }
@@ -449,53 +390,6 @@ export class PostgresAuthPersistence implements AuthPersistence {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
-  }
-
-  async linkBusinessExternalMapping(
-    provider: string,
-    externalBusinessId: string,
-    businessId: number,
-  ): Promise<LinkBusinessExternalMappingResult> {
-    try {
-      const result = await this.tx(async (client) =>
-        client.query(`SELECT * FROM ghm.auth_link_business_external_mapping($1, $2, $3)`, [
-          provider,
-          externalBusinessId,
-          businessId,
-        ]),
-      );
-      if (result.rowCount !== 1) {
-        throw new AuthPersistenceError('Link business external mapping failed');
-      }
-      const row = result.rows[0];
-      const outcome = String(row.outcome) as LinkBusinessExternalMappingOutcome;
-      if (outcome === 'business_not_found') {
-        return { outcome, mapping: null };
-      }
-      if (
-        outcome !== 'created' &&
-        outcome !== 'already_linked' &&
-        outcome !== 'conflict'
-      ) {
-        throw new AuthPersistenceError(
-          `Unexpected business link outcome: ${outcome}`,
-          'LINK_UNEXPECTED_OUTCOME',
-        );
-      }
-      return {
-        outcome,
-        mapping: {
-          id: Number(row.id),
-          provider: String(row.provider),
-          externalBusinessId: String(row.external_business_id),
-          businessId: Number(row.business_id),
-          createdAt: row.created_at,
-          updatedAt: row.updated_at,
-        },
-      };
-    } catch (error) {
-      throw mapPgError(error);
-    }
   }
 
   async revokeSessionByRefreshToken(

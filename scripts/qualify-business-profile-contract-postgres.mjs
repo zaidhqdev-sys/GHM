@@ -16,6 +16,7 @@ const gatewayPool = new Pool({ connectionString: gatewayUrl, ssl });
 const marker = `ghm-profile-contract-${randomUUID()}`;
 let accountId;
 let memberAccountId;
+let disabledAccountId;
 let businessId;
 const usedNonces = new Set();
 const freshNonce = () => { let nonce; do { nonce=randomUUID(); } while (usedNonces.has(nonce)); usedNonces.add(nonce); return nonce; };
@@ -60,6 +61,12 @@ try {
       [marker + '-member'],
     );
     memberAccountId = Number(member.rows[0].id);
+    const disabled = await migrator.query(
+      "INSERT INTO ghm.account_identity (full_name, role) VALUES ($1, 'business') RETURNING id",
+      [marker + '-disabled'],
+    );
+    disabledAccountId = Number(disabled.rows[0].id);
+    await migrator.query('SELECT ghm.auth_disable_account($1)', [disabledAccountId]);
     const business = await migrator.query(
       "INSERT INTO ghm.business (name, slug, verification_status, is_active) VALUES ($1, $2, 'unverified', true) RETURNING id",
       [marker, marker],
@@ -225,16 +232,22 @@ try {
   );
   console.log('GATEWAY MEMBER AUTHORIZATION ENFORCEMENT PASS');
 
+  await assert.rejects(
+    () => gatewayCall(disabledAccountId,{ description: 'Disabled actor must be denied' }),
+    /Active actor account required/,
+  );
+  console.log('GATEWAY DISABLED ACTOR AUTHORIZATION ENFORCEMENT PASS');
+
   console.log('GHM BUSINESS PROFILE CONTRACT POSTGRES QUALIFICATION: PASS');
 } finally {
-  if (accountId && memberAccountId && businessId) {
+  if (accountId && memberAccountId && disabledAccountId && businessId) {
     const cleanup = await migratorPool.connect();
     try {
       await cleanup.query('SET ROLE ghm_schema_owner');
       await cleanup.query('BEGIN');
       await cleanup.query('DELETE FROM ghm.business_membership WHERE business_id = $1', [businessId]);
       await cleanup.query('DELETE FROM ghm.business WHERE id = $1', [businessId]);
-      await cleanup.query('DELETE FROM ghm.account_identity WHERE id IN ($1, $2)', [accountId, memberAccountId]);
+      await cleanup.query('DELETE FROM ghm.account_identity WHERE id IN ($1, $2, $3)', [accountId, memberAccountId, disabledAccountId]);
       await cleanup.query('COMMIT');
       console.log('PROFILE CONTRACT FIXTURE CLEANUP PASS');
     } catch (error) {

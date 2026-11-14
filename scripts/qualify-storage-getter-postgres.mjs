@@ -63,7 +63,7 @@ try {
   assert(fn.scoped_exists === true && fn.legacy_absent === true, "Expected scoped getter and no legacy unscoped overload");
   assert(fn.function_owner === "ghm_schema_owner", `Unexpected getter owner: ${fn.function_owner}`);
   assert(fn.security_definer === true, "Scoped getter must remain SECURITY DEFINER");
-  assert(Array.isArray(fn.function_config) && fn.function_config.includes("search_path=pg_catalog, ghm"),
+  assert(Array.isArray(fn.function_config) && fn.function_config.includes("search_path=pg_catalog, ghm, pg_temp"),
     `Unexpected scoped getter search_path: ${JSON.stringify(fn.function_config)}`);
   assert(fn.runtime_execute === true, "ghm_runtime lacks EXECUTE on the scoped getter");
   assert(fn.public_execute === false, "PUBLIC unexpectedly has EXECUTE on the scoped getter");

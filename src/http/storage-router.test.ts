@@ -7,6 +7,7 @@ import type { StorageProvider } from "../storage/provider.js";
 import { createStorageService } from "../storage/service.js";
 import type { StorageMetadataRecord, StorageService } from "../storage/service.js";
 import type { BusinessLogoGatewayClient } from "./business-logo-gateway-client.js";
+import type { StorageMetadataStore } from "../storage/service.js";
 
 const baseProvider = {} as StorageProvider;
 
@@ -18,6 +19,8 @@ async function withServer(
     seam?: Parameters<typeof registerStorageRoutes>[5];
     gatewayClient?: BusinessLogoGatewayClient;
     gatewayRequired?: boolean;
+    metadataGatewayFactory?: (accessToken: string) => StorageMetadataStore;
+    metadataGatewayRequired?: boolean;
   } = {},
 ): Promise<void> {
   const app = express();
@@ -28,7 +31,7 @@ async function withServer(
         next();
       }
     : (_req: express.Request, res: express.Response) => { res.status(401).json({ error: "unauthorized" }); };
-  registerStorageRoutes(app, options.provider ?? baseProvider, authMiddleware, 900, 3600, options.seam, options.gatewayClient, options.gatewayRequired);
+  registerStorageRoutes(app, options.provider ?? baseProvider, authMiddleware, 900, 3600, options.seam, options.gatewayClient, options.gatewayRequired, options.metadataGatewayFactory, options.metadataGatewayRequired);
   const server: Server = createServer(app);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
@@ -356,4 +359,46 @@ test("Business logo binding fails closed when the gateway is required but unavai
     assert.equal(response.status, 503);
     assert.deepEqual(await response.json(), { error: "service_unavailable" });
   }, { authenticated: true, seam, gatewayRequired: true });
+});
+
+
+test('required storage metadata gateway rejects missing bearer token and never falls back to direct repository', async () => {
+  let factoryCalls = 0;
+  await withServer(async (baseUrl) => {
+    const missing = await fetch(`${baseUrl}/api/v1/businesses/12/logo`, {
+      method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ objectId: 21 }),
+    });
+    assert.equal(missing.status, 401);
+    const withToken = await fetch(`${baseUrl}/api/v1/businesses/12/logo`, {
+      method: 'PUT',
+      headers: { authorization: 'Bearer caller-token', 'content-type': 'application/json' },
+      body: JSON.stringify({ objectId: 21 }),
+    });
+    assert.equal(withToken.status, 503);
+    assert.equal(factoryCalls, 0);
+  }, { authenticated: true, metadataGatewayRequired: true });
+});
+
+test('storage metadata gateway receives the original caller bearer token', async () => {
+  const received: string[] = [];
+  const seam = {
+    bindBusinessLogoForContext: async () => null,
+  };
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/v1/businesses/12/logo`, {
+      method: 'PUT',
+      headers: { authorization: 'Bearer original-user-token', 'content-type': 'application/json' },
+      body: JSON.stringify({ objectId: 21 }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(received, ['original-user-token']);
+  }, {
+    authenticated: true,
+    seam,
+    metadataGatewayFactory: (token) => {
+      received.push(token);
+      return { getById: async () => logoRecord() } as unknown as StorageMetadataStore;
+    },
+    metadataGatewayRequired: true,
+  });
 });

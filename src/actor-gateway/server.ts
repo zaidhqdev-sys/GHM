@@ -17,7 +17,11 @@ import { PostgresSavedBusinessGatewayReader } from './saved-business-reader';
 import { PostgresBusinessHoursGatewayReader } from './business-hours-reader';
 import { PostgresTrustScoreGatewayReader } from './trust-score-reader';
 import { PostgresBusinessLogoGatewayReader } from './business-logo-reader';
+import { PostgresStorageMetadataGatewayReader } from './storage-metadata-reader';
+import { PostgresConnectBusinessProvisioningReader } from './connect-business-provisioning-reader';
+import { PostgresCampaignDirectoryReviewGatewayReader } from './campaign-directory-review-reader';
 import { assertActorGatewayDatabaseIdentity } from './database-principal';
+import { assertActorGatewayDatabasePrivileges, readActorGatewayDatabasePrivileges } from './database-privileges';
 
 const required = (name: string): string => {
   const value = process.env[name]?.trim();
@@ -56,6 +60,9 @@ const app = createActorGatewayApp({
   businessHoursReader: new PostgresBusinessHoursGatewayReader(pool, capabilityAssertionSecret),
   trustScoreReader: new PostgresTrustScoreGatewayReader(pool, capabilityAssertionSecret),
   businessLogoReader: new PostgresBusinessLogoGatewayReader(pool, capabilityAssertionSecret),
+  storageMetadataReader: new PostgresStorageMetadataGatewayReader(pool, capabilityAssertionSecret),
+  connectBusinessProvisioningReader: new PostgresConnectBusinessProvisioningReader(pool, capabilityAssertionSecret),
+  campaignDirectoryReviewReader: new PostgresCampaignDirectoryReviewGatewayReader(pool, capabilityAssertionSecret),
 });
 const server = http.createServer(app);
 server.requestTimeout = 10_000;
@@ -87,10 +94,6 @@ const start = async (): Promise<void> => {
   const identity = await pool.query<{
     session_user: string;
     current_user: string;
-    database_connect_privilege: boolean;
-    database_create_privilege: boolean;
-    schema_usage: boolean;
-    schema_create: boolean;
     rolcanlogin: boolean;
     rolinherit: boolean;
     rolsuper: boolean;
@@ -102,10 +105,6 @@ const start = async (): Promise<void> => {
   }>(`
     SELECT session_user,
            current_user,
-           has_database_privilege(session_user, current_database(), 'CONNECT') AS database_connect_privilege,
-           has_database_privilege(session_user, current_database(), 'CREATE') AS database_create_privilege,
-           has_schema_privilege(session_user, 'ghm', 'USAGE') AS schema_usage,
-           has_schema_privilege(session_user, 'ghm', 'CREATE') AS schema_create,
            r.rolcanlogin,
            r.rolinherit,
            r.rolsuper,
@@ -131,9 +130,9 @@ const start = async (): Promise<void> => {
       FROM pg_roles r
      WHERE r.rolname = session_user
   `);
-  const databaseIdentity = identity.rows[0];
-  if (!databaseIdentity) throw new Error('Actor Gateway database identity could not be resolved');
-  assertActorGatewayDatabaseIdentity(databaseIdentity);
+  assertActorGatewayDatabaseIdentity(identity.rows[0]);
+  const databasePrivileges = await readActorGatewayDatabasePrivileges(pool);
+  assertActorGatewayDatabasePrivileges(databasePrivileges);
   server.listen(port, () => {
     console.log(`GHM Actor Gateway listening on port ${port}`);
   });

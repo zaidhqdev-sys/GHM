@@ -5,12 +5,13 @@
 
 import type { Request } from 'express';
 import type { PoolClient } from 'pg';
+import { AccessJwtError, type AccessJwtVerifier } from './foundation/access-jwt-verifier';
 import {
-  AccessJwtError,
-  createAccessJwtService,
-  type AccessJwtService,
-} from './foundation/access-jwt';
-import { loadEs256Keys, type LoadedEs256Keys } from './foundation/es256-keys';
+  loadEs256VerificationKeys,
+  verificationKeyMapFromPublicKeys,
+  type LoadedEs256Keys,
+} from './foundation/es256-keys';
+import { createAccessJwtVerifier } from './foundation/access-jwt-verifier';
 import type { GhmAuthContext } from './ghm-auth-context';
 import type { GhmRole } from './authorization';
 
@@ -71,10 +72,14 @@ const defaultAccountStore = (): AccountAuthStateStore => {
 };
 
 export const createGhmBearerAuthenticator = (
-  jwtService?: AccessJwtService,
+  jwtVerifier?: AccessJwtVerifier,
   accounts?: AccountAuthStateStore,
 ): GhmBearerAuthenticator => {
-  const resolvedJwt = jwtService ?? createAccessJwtService(loadEs256Keys());
+  // Resource API processes verify issuer tokens; they must never load the
+  // ES256 private signing key. Only the isolated Auth Issuer may sign tokens.
+  const resolvedJwt = jwtVerifier ?? createAccessJwtVerifier(
+    verificationKeyMapFromPublicKeys(loadEs256VerificationKeys()),
+  );
   const resolvedAccounts = accounts ?? defaultAccountStore();
   const extractBearer = (req: Request): string => {
     const header = req.header('authorization');
@@ -130,4 +135,10 @@ export const createGhmBearerAuthenticatorWithKeys = (
   keys: LoadedEs256Keys,
   accounts: AccountAuthStateStore,
 ): GhmBearerAuthenticator =>
-  createGhmBearerAuthenticator(createAccessJwtService(keys), accounts);
+  createGhmBearerAuthenticator(
+    createAccessJwtVerifier(new Map([
+      [keys.active.kid, keys.active.publicKeyPem],
+      ...(keys.previous ? [[keys.previous.kid, keys.previous.publicKeyPem] as [string, string]] : []),
+    ])),
+    accounts,
+  );

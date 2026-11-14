@@ -393,7 +393,7 @@ test('login issues ES256 access JWT with decimal sub and no role claim', async (
   const passwordHash = (await defaultPasswordHasher.hash('CorrectHorseBattery1')).passwordHash;
 
   const persistence: AuthPersistence = {
-    setPassword: async () => ({ passwordHash, argon2MemoryKib: 65536, argon2TimeCost: 3, argon2Parallelism: 1 }),
+    rehashPasswordIfUnchanged: async () => true,
     completeQuoteFlowMigrationReset: async () => ({ accountId: 42, loginEmail: 'user@example.com', revokedSessionCount: 0 }),
     resetPasswordWithRecovery: async () => ({ password: { passwordHash, argon2MemoryKib: 65536, argon2TimeCost: 3, argon2Parallelism: 1 }, revokedSessionCount: 0 }),
     lookupPasswordByEmail: async () => ({
@@ -421,35 +421,12 @@ test('login issues ES256 access JWT with decimal sub and no role claim', async (
       refreshCredentialId: 1,
       refreshTokenWire: 'refresh-wire-token',
     }),
-    validateSession: async () => ({
-      sessionId: 9,
-      accountId: 42,
-      sessionStatus: 'active',
-      accountStatus: 'active',
-      createdAt: new Date(),
-      lastSeenAt: new Date(),
-      absoluteExpiresAt: new Date(),
-      isUsable: true,
-      rejectReason: null,
-    }),
     rotateRefresh: async () => {
       throw new Error('unused');
     },
     issueRecovery: async () => ({ recoveryTokenWire: 'x', credentialId: 1, expiresAt: new Date() }),
-    redeemRecovery: async () => 1,
     lookupQuoteFlowMigrationResetEnrollment: async () => null,
     lookupExternalIdentity: async () => null,
-    linkBusinessExternalMapping: async () => ({
-      outcome: 'created' as const,
-      mapping: {
-        id: 1,
-        provider: 'supabase',
-        externalBusinessId: 'ext',
-        businessId: 1,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    }),
     revokeSessionByRefreshToken: async () => ({ found: true, sessionId: 9, accountId: 42 }),
   };
 

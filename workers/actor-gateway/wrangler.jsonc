@@ -1,0 +1,33 @@
+{
+  "name": "ghm-actor-gateway",
+  "main": "./index.ts",
+  "compatibility_date": "2026-11-14",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": false,
+  "preview_urls": false,
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "00000000000000000000000000000000",
+      "localConnectionString": "postgres://ghm_actor_gateway:actor-gateway-test-password@127.0.0.1:5432/ghm_disposable_test"
+    }
+  ],
+  "observability": {
+    "enabled": false
+  },
+  "ratelimits": [
+    {
+      "name": "ACTOR_GATEWAY_RATE_LIMITER",
+      "namespace_id": "41001",
+      "simple": {
+        "limit": 120,
+        "period": 60
+      }
+    }
+  ],
+  "alias": {
+    "body-parser": "ghm-worker-body-parser-stub"
+  }
+}

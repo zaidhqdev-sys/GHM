@@ -23,7 +23,8 @@ export const resolveResourceAuthRole = (state: AccountAuthState): GhmRole => {
 export const authContextFromAccountState = (
   accountId: number,
   state: AccountAuthState,
-): AuthContext => toLegacyAuthContext({ accountId }, resolveResourceAuthRole(state));
+  actorGatewayBearerToken?: string,
+): AuthContext => toLegacyAuthContext({ accountId }, resolveResourceAuthRole(state), actorGatewayBearerToken);
 
 export interface ResourceAuthDependencies {
   readonly ghmAuthenticator?: GhmBearerAuthenticator;
@@ -59,7 +60,7 @@ export const createRequireResourceAuth = (
       .authenticateAndLoadState(req)
       .then(({ context, state }) => {
         req.ghmAuthContext = context;
-        req.authContext = authContextFromAccountState(context.accountId, state);
+        req.authContext = authContextFromAccountState(context.accountId, state, token);
         next();
       })
       .catch((error: unknown) => {

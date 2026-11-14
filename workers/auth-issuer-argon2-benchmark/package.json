@@ -1,0 +1,9 @@
+{
+  "name": "ghm-auth-issuer-argon2-wasm-benchmark",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "hash-wasm": "4.13.0"
+  }
+}
