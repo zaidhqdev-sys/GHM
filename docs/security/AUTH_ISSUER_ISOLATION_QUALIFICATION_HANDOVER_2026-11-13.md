@@ -2976,3 +2976,10 @@ References:
 - https://developers.cloudflare.com/changelog/post/2026-08-04-nodejs-compat-default/
 
 Corrective change: the CI Wrangler pin has been advanced from `4.36.0` to `4.162.0`, the version explicitly identified by the failing runtime as the current available update. This remains a local dry-run/runtime-only toolchain change; it does not deploy anything or change account billing. The next CI run must confirm that the newer runtime starts the Worker and reaches the disposable PostgreSQL health check. No pass is claimed yet.
+
+
+### Wrangler 4.162.0 bundle check — failure pending diagnosis
+
+The first CI run using Wrangler `4.162.0` (run `43532654073`, source commit `bf3db4fa14a55ab3668cd61ee0ca90bc7728361a`) passed the application build but its Worker bundle dry-run step failed. The job interface exposed the failure conclusion but not the underlying step output. This is separate from the prior local runtime failure caused by the old 2025 runtime.
+
+The bundle step has now been changed to capture its stdout/stderr in `tmp/actor-gateway-worker-build/wrangler-bundle.log` and upload that file as a short-retention artifact even on failure. The next run will provide the exact cause. No deployment occurred.
