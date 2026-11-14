@@ -316,3 +316,19 @@ The active GHM construction branch now applies this `no_untrusted_role_membershi
 The production role catalog currently does not contain `ghm_auth_issuer`; the separate issuer service is not yet deployed. The current Render service inventory has `ghm-internal-runtime` as the only production GHM web service; no separate production Actor Gateway or Authentication Issuer service exists yet.
 
 This confirms the original security objective: normal Resource API execution must use the existing SQL-created `ghm_runtime` login, not the Dashboard-managed `ghm_app_user`/effective `ghm_db_user` connection. The administrator's membership is an administrative trust relationship, not a reason to expose that administrator connection to application code.
+
+## 2026-11-15 continuation — migrator connection timeout and support guidance reaffirmed
+
+The Resource API runtime credential has been independently verified from the operator's machine: `ghm_db`, authenticated as `ghm_runtime`. A separate hidden-input local test of `GHM_MIGRATOR_DATABASE_URL` timed out before PostgreSQL authentication or SQL execution (`timeout expired`, error code unavailable). It did not reach the identity assertion, `SET LOCAL ROLE ghm_schema_owner`, or ledger SELECT. This is not evidence of a bad password or broken role membership. The local URL/endpoint/network path still needs non-secret diagnostics.
+
+The existing design refinement remains authoritative and consistent with Amanda's final Render support confirmation:
+- Retain the Render Dashboard-managed default user for controlled administration.
+- Use SQL-created `ghm_runtime` directly for Resource API execution; this is now credential-verified.
+- Keep `ghm_migrator` as a separate SQL-created identity, used only by controlled migration tooling.
+- Do not re-add the migrator URL to the Resource API environment.
+- Preserve `ghm_migrator`'s SET-only path to `ghm_schema_owner`; the intended ledger read is read-only transaction + `SET LOCAL ROLE ghm_schema_owner` + SELECT.
+- Do not rotate/delete the Dashboard administrator, create a new app login, or copy Amanda's illustrative SQL as a shortcut.
+
+A production archive ledger extract inspected on 2026-11-14 contains 105 migration rows through `20261109210000` (`deactivate_unrecognized_public_directory_records`, applied 2026-11-09 20:50:23.763528+00). Treat this as a backup snapshot/reconciliation baseline, not as a live ledger query.
+
+No production database or Render changes were made during the timeout test. Continue with local non-secret URL metadata and DNS/TCP diagnostics before retrying the controlled migrator connection.
