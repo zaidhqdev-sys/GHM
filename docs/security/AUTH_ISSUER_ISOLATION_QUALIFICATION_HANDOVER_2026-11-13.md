@@ -3792,3 +3792,31 @@ Official references:
 - https://developers.cloudflare.com/hyperdrive/reference/supported-databases-and-features/
 - https://developers.cloudflare.com/hyperdrive/platform/pricing/
 - https://render.com/docs/postgresql-creating-connecting
+
+
+### Production migration-ledger authority path and current role graph — 2026-11-14
+
+Fresh read-only Render catalog queries against production 'ghm-db' / database 'ghm_db' (PostgreSQL 18) reconfirmed the following:
+
+- The migration ledger is 'ghm.ghm_schema_migrations', owned by 'ghm_schema_owner'. Its relation ACL is NULL (no explicit grants). The current query identity ('session_user=ghm_app_user', 'current_user=ghm_db_user') has no SELECT privilege. 'ghm_migrator' also has no direct schema USAGE or ledger SELECT, by design.
+- The source migration runner in 'src/db/migrate.ts' uses 'GHM_MIGRATOR_DATABASE_URL', verifies the login as 'ghm_migrator', then executes 'SET ROLE ghm_schema_owner' before resolving and reading the ledger's version/name/checksum rows. Its principal guard explicitly requires no direct 'ghm' schema USAGE and no direct relation/sequence privileges for the migrator, plus the exact SET-only owner membership. Therefore the intended authoritative ledger inspection path is the approved migrator identity/runner, not the Resource API connection. The live Render service inventory/environment does not currently prove that a production migrator credential is provisioned or safely available; do not print or request secret values.
+- The read-only Render query tool accepts one prepared SQL statement per call. A two-command 'SET LOCAL ROLE; SELECT ...' attempt was rejected with PostgreSQL 42601 before execution. No role was changed and no ledger data was read. No workaround or ad hoc grant was applied.
+
+The current role membership rows were captured with grantor and all three membership options:
+
+| Granted role | Member | Grantor | ADMIN | INHERIT | SET |
+|---|---|---|---:|---:|---:|
+| 'ghm_actor_gateway' | 'ghm_db_user' | 'postgres' | true | false | false |
+| 'ghm_migrator' | 'ghm_db_user' | 'postgres' | true | false | false |
+| 'ghm_payment_provider' | 'ghm_db_user' | 'postgres' | true | false | false |
+| 'ghm_runtime' | 'ghm_db_user' | 'postgres' | true | false | false |
+| 'ghm_schema_owner' | 'ghm_db_user' | 'postgres' | true | false | false |
+| 'ghm_runtime' | 'ghm_db_user' | 'ghm_db_user' | false | true | true |
+| 'ghm_schema_owner' | 'ghm_migrator' | 'ghm_db_user' | false | false | true |
+| 'ghm_db_user' | 'ghm_app_user' | 'postgres' | false | true | true |
+
+'ghm_db_user' remains LOGIN/INHERIT with CREATEDB and CREATEROLE, and has ADMIN OPTION over the five sensitive roles above. 'ghm_app_user' inherits 'ghm_db_user'. The duplicate runtime membership rows are distinct grant paths and must both be accounted for. These are read-only findings; no membership or role changes were made.
+
+Render metadata for 'ghm-db' reports PostgreSQL 18, status available, region Frankfurt, plan '0.1c-256mb', 1 GB disk, no HA, no connection pool, and external IP allowlist '0.0.0.0/0'. This is a current metadata snapshot, not a backup/restore verification. The broad external allowlist remains a network-hardening issue; do not change it until the Hyperdrive egress design is verified.
+
+**Next authoritative step:** establish a safe, approved way to run the existing migration runner in read-only/audit mode using the exact production 'ghm_migrator' credential, or a separately approved equivalent that preserves the same identity checks. It must emit only the ledger version/name/checksum inventory and compare it against repository migrations without applying pending SQL. Do not weaken the runner's identity contract, grant the Resource API access to the ledger, run the ordinary mutating migration command, or attempt a production cutover. First verify current backup/restore evidence and the exact production migrator connection target.
