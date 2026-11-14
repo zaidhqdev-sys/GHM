@@ -3523,3 +3523,12 @@ This proves the restricted login connects directly without assuming `ghm_db_user
 Only after the direct psql check succeeds, update GHM-Internal-Runtime's `DATABASE_URL` to the production `ghm_runtime` URL. Keep `DATABASE_SSL=true`. The current live deployment `c7cf1eb` reads `DATABASE_URL`; do not add only `GHM_RUNTIME_DATABASE_URL` yet because that name is required by the unmerged construction branch, not the deployed source. The migrator URL and migration host/name remain unchanged until a separate production migration credential and ledger-read procedure are ready.
 
 The Render environment update will restart the existing service even though repository auto-deploy is OFF. No service environment change has yet been made.
+
+
+### Current PR/branch state at this handover checkpoint
+
+- PR #272: open, draft, unmerged; head `integration/capability-gateway-qualification-20261110`, base `main`.
+- PR #276: open, draft, unmerged; head `construction/auth-issuer-stacked-on-pr272-20261113`, base `integration/capability-gateway-qualification-20261110`.
+- Latest handover branch head: `475d19d388b7f7d6f9c47dcb6d78990433eceedc`.
+- Latest source/workflow qualification: run `43536273084`, exact tested source/workflow commit `30d418d2498f765ac87f2c050dc4f18b0b46df36`, quality 73/73 and web-quality 11/11. Subsequent commits are documentation-only and are excluded from full CI by the workflow's paths-ignore rule.
+- No PR was merged, no Render auto-deploy was enabled, and no production change was performed.
