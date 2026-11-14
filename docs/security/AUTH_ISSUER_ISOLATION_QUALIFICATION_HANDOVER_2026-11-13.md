@@ -4726,3 +4726,44 @@ Thus all 63 production SECURITY DEFINER routines now have a known search_path se
 **Risk assessment refinement:** `replace_business_hours` does place `ghm` before `pg_catalog`, which is less conservative than the canonical pattern. However, the inspected runtime/admin identities have no CREATE privilege on `ghm` and cannot SET ROLE `ghm_schema_owner`; the current evidence does not establish an exploitable object-shadowing path. Preserve it as a hardening review item, not a confirmed vulnerability. Do not rewrite it or mass-normalize function settings without a tested migration and production approval.
 
 No production/local database, routine, schema privilege, role, ACL, credential, environment, service, migration, deployment, or backup was changed.
+
+
+### Current-main application call-site spot-check for production SECURITY DEFINER functions — 2026-11-14
+
+Before this work, the handover's latest production routine inventory and principal ACL comparison were re-read. This checkpoint adds current-main caller-path evidence for the highest-risk/most directly relevant functions; it does not repeat the 63-routine catalog query.
+
+Inspected current-main application files:
+- `src/resources/business-identity/repository.ts`
+- `src/resources/business-hours/repository.ts`
+- `src/resources/business-capability/repository.ts`
+- `src/resources/business-capability-evidence/repository.ts`
+- `src/resources/business-registration-identity/repository.ts`
+- `src/http/storage-router.ts`
+- `src/integrations/connect/business-adapter.ts`
+- `src/integrations/connect/integration-lifecycle.ts`
+- `src/integrations/connect/identity-adapter.ts`
+- `src/auth/ghm-auth-service.ts`
+- `src/auth/password-recovery.ts`
+- `src/auth/password-reset.ts`
+- `src/http/campaign-router.ts`
+- `src/http/commercial-router.ts`
+
+**Direct call-site matches established:**
+- `ghm.update_business_profile(bigint,bigint,jsonb)` is called by `src/resources/business-identity/repository.ts` using `SELECT * FROM ghm.update_business_profile($1, $2, $3::jsonb)`.
+- `ghm.replace_business_hours(bigint,bigint,jsonb)` is called by `src/resources/business-hours/repository.ts`.
+- `ghm.transition_business_capability_verification(bigint,text,text,bigint,text)` is called by `src/resources/business-capability/repository.ts`.
+- `ghm.transition_business_capability_evidence(bigint,text,bigint,text)` is called by `src/resources/business-capability-evidence/repository.ts`.
+- `ghm.read_business_registration_identity(bigint,bigint)` and `ghm.update_business_registration_identity(bigint,bigint,text,text,text)` are referenced by `src/resources/business-registration-identity/repository.ts`.
+- `ghm.set_business_logo_object(bigint,bigint,bigint)` and `ghm.storage_get_public_business_logo(bigint)` are referenced by `src/http/storage-router.ts`.
+- `ghm.auth_link_business_external_mapping(text,text,bigint)` is called by `src/integrations/connect/business-adapter.ts`.
+- Current-main `src/integrations/connect/integration-lifecycle.ts` calls `ghm.connect_integration_get($1)`; this routine was not in the captured 63 SECURITY DEFINER function list, so it must not be conflated with the integration lifecycle functions that are in that list.
+
+**Important result:** the above functions have concrete application call paths and should not be treated as unused or candidates for revocation. The inspected current-main code also performs direct table operations for several adjacent resources, so the existence of a SECURITY DEFINER routine does not imply it is the sole access path for that resource.
+
+**No false-positive attribution:** the current-main auth service and password recovery/reset files did not expose direct SQL function calls through the simple query pattern inspected. This is not proof that the related auth routines are unused; those paths may be mediated by a persistence abstraction or different query construction. Do not revoke auth function grants based on this spot-check.
+
+**Remaining scope:** a full 46-routine call-site matrix still requires inspecting all current-main repositories/adapters and the exact deployed commit `c7cf1eb`, not just this targeted sample. In particular, production-only/historical functions and current-main functions must be separated, and caller matches must be mapped to the deployed code version before any ACL proposal is considered.
+
+**Decision:** continue read-only source mapping. No grants should be changed based on this partial call-site inventory. The production migration-ledger audit, full source-to-live function definition/checksum reconciliation, and proof of the exact deployed runtime caller surface remain open.
+
+No production/local database, routine, ACL, role, membership, credential, environment, service, migration, deployment, payment flow, or paid resource was changed.
