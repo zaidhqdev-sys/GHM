@@ -2564,3 +2564,32 @@ Inspection of `scripts/forensic-migration-reconciliation.mjs`, `scripts/migratio
 The existing Render service inventory shows the production `GHM-Internal-Runtime` is on `main` with auto-deploy off. Render's service-details response did not expose environment-variable values or names, so this inspection did not establish whether a migrator URL exists there. Do not add one to the application service. The existing PR #277 handover separately records that no approved production migrator invocation path/credential is currently established.
 
 The documentation commit `7b54dc44a98fce51b4647e72d8fe07293ee71681` triggered CI run `43628479985`; latest observed state at this checkpoint is `in_progress`. No result is inferred before completion.
+
+
+### 2026-11-14 — live role-capability clarification
+
+A further read-only query against production `ghm_db` (Render Postgres service `dpg-dag0sdtbedkc7389vi2g-a`) returned:
+
+- `session_user = ghm_app_user`
+- `current_user = ghm_db_user`
+- `pg_has_role(current_user, 'ghm_migrator', 'member') = true`
+- `pg_has_role(session_user, 'ghm_migrator', 'member') = true`
+- `pg_has_role(current_user, 'ghm_schema_owner', 'member') = true`
+- `has_table_privilege(current_user, 'ghm.ghm_schema_migrations', 'SELECT') = false`
+
+Role attributes from `pg_roles`:
+
+| Role | LOGIN | INHERIT | SUPERUSER | CREATEDB | CREATEROLE | BYPASSRLS |
+|---|---:|---:|---:|---:|---:|---:|
+| `ghm_app_user` | yes | yes | no | no | no | no |
+| `ghm_db_user` | yes | yes | no | yes | yes | no |
+| `ghm_migrator` | yes | no | no | no | no | no |
+| `ghm_schema_owner` | no | no | no | no | no | no |
+
+This proves the application connection can assume the migrator role, but it does **not** satisfy the forensic audit's required connection identity: the script explicitly requires both `session_user` and pre-role-switch `current_user` to equal `ghm_migrator`. Do not run the audit through the application identity or weaken this check. No `SET ROLE`, grants, role changes, or writes were performed in this inspection.
+
+### Next authorized route
+
+The remaining task is to establish an actual direct login as the existing `ghm_migrator` principal using its already-provisioned credential/connection configuration, if one exists. Inspect the existing secret/connection configuration through the authorized Render dashboard or existing operator-controlled local configuration; do not expose credential values in chat or add a new credential to the application service. If no such credential/configuration exists, record that as the blocker and design a narrowly scoped, owner-approved provisioning step separately before running the read-only audit.
+
+No password, membership, role attribute, environment variable, service configuration, or database data was changed. Production remains unverified.
