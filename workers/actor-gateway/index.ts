@@ -68,7 +68,7 @@ const MAX_JSON_BODY_BYTES = 16 * 1024;
  */
 const workerJsonBodyParser: RequestHandler = (request, response, next) => {
   const contentType = request.headers['content-type'];
-  if (typeof contentType !== 'string' || !/^application\\/json(?:\\s*;|$)/i.test(contentType)) {
+  if (typeof contentType !== 'string' || !/^application\/json(?:\s*;|$)/i.test(contentType)) {
     next();
     return;
   }
