@@ -3388,3 +3388,19 @@ The read-only Render query principal was denied SELECT on `ghm.storage_object` w
 
 ### Disposition
 The original pending-upload CHECK-constraint defect is corrected in repository SQL and passed disposable qualification. Reclassify migration `20261110140000` from **BLOCKED AS WRITTEN** to **REMEDIATED IN SOURCE; PRODUCTION APPLICATION STILL PENDING**. This is not production approval or authorization to apply it. Recheck its preconditions and execution order at the controlled migration gate. No production migration, schema, data, role, grant, Render environment or deployment was changed in this review.
+
+
+## 2026-11-15 — production actor-gateway prerequisite recheck and Render service inventory
+
+A fresh read-only catalog query against Render `ghm-db` / `ghm_db` confirmed:
+- `ghm.assert_actor_gateway(bigint)` is absent.
+- `ghm.gateway_get_actor_identity(bigint)` is absent.
+- `ghm.gateway_read_business_registration_identity(bigint,bigint)` is absent.
+- `ghm.gateway_update_business_registration_identity(bigint,bigint,text,text,text)` is absent.
+- Existing underlying `ghm.read_business_registration_identity(bigint,bigint)` and `ghm.update_business_registration_identity(bigint,bigint,text,text,text)` are present.
+
+This is consistent with all four gateway migrations remaining unapplied; it is not a partial application. The migration dependency order remains #4 principal guard, then #5 self-identity read, then #6 registration read and #7 registration write wrappers. No production function, grant, or role was changed.
+
+A fresh Render workspace service inventory returned five web services. The only production GHM API is `ghm-internal-runtime` (main, auto-deploy OFF). Other GHM services are the legacy PayFast sandbox runtime/callback and the identity qualification service on the historical integration branch; these are not production Actor Gateway targets. No dedicated production Actor Gateway service exists in the current inventory. The separate `zaid-ai-workforce` service belongs to another repository and is not a GHM gateway target.
+
+No service was created, repurposed, or deployed. Given the standing no-new-paid-service constraint, do not create a dedicated Render service or repurpose sandbox services as a workaround. The gateway service/credential isolation and HTTP cutover therefore remain an explicit architecture/resource blocker; do not apply the gateway-dependent migrations or configure `GHM_ACTOR_GATEWAY_URL` until a no-cost, security-equivalent hosting arrangement is established and separately qualified. Keep the legacy Resource API path unchanged in the meantime.
