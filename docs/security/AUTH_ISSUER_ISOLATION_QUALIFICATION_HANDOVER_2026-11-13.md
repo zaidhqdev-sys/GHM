@@ -3580,3 +3580,17 @@ The Worker-specific JSON parser currently emits the 413 response for an oversize
 4. Do not deploy, create Hyperdrive resources, provision production secrets, attach a domain, or route traffic without a separately recorded zero-cost and rollback-qualified plan.
 
 **Current disposition:** Worker adapter source is locally qualified on the unchanged source commit; production connectivity and deployment are not qualified or authorized. Authentication Issuer isolation remains a separate security gate and must not be represented as completed by the Worker work.
+
+
+### Worker oversized-body early rejection correction — 2026-11-14
+
+The Worker-specific JSON parser was hardened without changing the shared Node/Render parser.
+
+- When the streamed JSON body crosses 16 KiB, the middleware now marks the request complete, clears buffered chunks, immediately sends HTTP 413 `payload_too_large`, and resumes/drains the request stream without retaining further bytes.
+- The later `end` handler returns immediately because the request has already been completed; it cannot emit a second response.
+- The Worker contract test now asserts that the 413 response is in the data-event threshold branch, that completion is marked, that buffered chunks are cleared, and that stream draining follows the immediate response.
+- Changed files: `workers/actor-gateway/index.ts` and `workers/actor-gateway/worker-contract.test.mjs`.
+- Branch: `security/actor-gateway-worker-body-limit-20261114`.
+- Source commits: `e15cb634e6aacf43cadd89159a6bd439390436ea` and `1e4a5d4d6786db5260f0b41b6e3b4775a1ee9e8c`.
+
+This is source-level remediation only. Exact-head CI, Worker bundle, TypeScript check and local Workerd/Hyperdrive smoke must pass before calling the correction qualified. No production or Cloudflare account changes have been made.
