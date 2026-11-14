@@ -19,13 +19,14 @@ export interface ActorGatewayDatabasePrivileges {
 export const assertActorGatewayDatabasePrivileges = (
   privileges: ActorGatewayDatabasePrivileges,
 ): void => {
-  const actual = [...privileges.executable_functions].sort();
-  const expected = [...privileges.expected_functions].sort();
+  const normalizeSignature = (signature: string): string => signature.replace(/,\\s*/g, ',');
+  const actual = privileges.executable_functions.map(normalizeSignature).sort();
+  const expected = privileges.expected_functions.map(normalizeSignature).sort();
   const campaignReviewFunctions = new Set([
     'ghm.gateway_create_campaign(bigint, bigint, uuid, text, text, bigint, text)',
     'ghm.gateway_update_campaign(bigint, bigint, uuid, text, text, bigint, text, text)',
     'ghm.gateway_get_business_directory_review_presentation(bigint, bigint, uuid, text, text, bigint)',
-  ]);
+  ].map(normalizeSignature));
   const preCampaignReviewExpected = expected.filter(signature => !campaignReviewFunctions.has(signature));
   const publicFunctions = [...privileges.public_executable_functions].sort();
   const runtimeFunctions = [...privileges.runtime_executable_functions].sort();
