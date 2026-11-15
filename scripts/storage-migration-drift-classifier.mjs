@@ -12,7 +12,7 @@ export const classifyStorageMigrationFourState = ({
   runtimeExecute,
   gatewayExecute,
 }) => {
-  if (!constraintDefinition || !functionDefinition) return 'UNKNOWN_DRIFT';
+  if (!constraintDefinition || !functionDefinition || constraintValidated !== true || returnType !== 'ghm.storage_object') return 'UNKNOWN_DRIFT';
 
   const constraint = String(constraintDefinition).replaceAll('"', '').replace(/\s+/g, ' ').toLowerCase();
   const fn = String(functionDefinition).replaceAll('"', '').replace(/\s+/g, ' ').toLowerCase();
