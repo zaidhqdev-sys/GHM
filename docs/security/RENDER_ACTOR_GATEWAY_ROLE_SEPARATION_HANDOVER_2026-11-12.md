@@ -1125,3 +1125,65 @@ Before any manual deployment:
 6. Prepare a staged reversible production cutover and rollback runbook. Only then consider Render changes and a manual deploy.
 
 No production migrations, manual cutover SQL, role/grant changes, credentials, secrets, Render settings, deployment, Cloudflare resources, DNS, routes or traffic were changed in this read-only readiness pass.
+
+
+## 2026-11-15 — production migration-authority and service configuration deep dive
+
+Follow-up read-only checks were completed after the first Render inventory. No SQL mutations or Render changes were made.
+
+### Migration ledger authority: exact finding
+
+A direct read of \`ghm.ghm_schema_migrations\` through Render's read-only SQL connector fails with PostgreSQL \`42501 permission denied\`. This is expected for the connector's application identity and is not evidence that the ledger is missing.
+
+Additional catalog checks establish:
+- \`ghm.ghm_schema_migrations\` exists as a view (\`relkind = 'v'\`) owned by \`ghm_schema_owner\`.
+- \`ghm_migrator\` exists, is LOGIN / NOINHERIT, and has no superuser, createdb, createrole, replication or bypass-RLS privileges.
+- \`ghm_migrator\` has exactly the intended direct membership in \`ghm_schema_owner\`: \`admin_option=false\`, \`inherit_option=false\`, \`set_option=true\`.
+- \`ghm_schema_owner\` is NOLOGIN, owns schema \`ghm\`, has database CREATE, and has no direct role memberships. The migrator is its only member.
+- \`ghm_migrator\` has no inherited schema USAGE/CREATE or direct relation privileges before explicitly setting the schema-owner role. Membership is SET-only.
+- The current Render SQL connector session is \`session_user=ghm_app_user\`, \`current_user=ghm_db_user\`; it cannot assume migrator authority. The connector cannot inspect ledger rows.
+- \`ghm_db_user\` still has ADMIN OPTION over \`ghm_migrator\` with \`set_option=false\`; do not infer that the application session can assume migrator authority.
+
+The repository's \`src/db/migrate.ts\` explicitly requires \`GHM_MIGRATOR_DATABASE_URL\`, validates that the session is exactly \`ghm_migrator\`, validates the SET-only membership and isolated schema-owner shape, then executes \`SET ROLE ghm_schema_owner\` before reading/updating the ledger. This is the correct supported route. Do not grant ledger SELECT to the app role or weaken migration-principal checks.
+
+### Production migration state remains unverified
+
+Production config \`config/pending-migrations.production.json\` lists seven migrations designated as pending:
+- \`20261110100000_create_account_onboarding_progress\`
+- \`20261110120000_create_business_relationship_outcome_read_models\`
+- \`20261110140000_allow_pending_storage_object_cleanup\`
+- \`20261110210000_add_actor_gateway_principal_guard\`
+- \`20261110220000_add_actor_gateway_self_identity_read\`
+- \`20261110230000_add_gateway_business_registration_identity_read\`
+- \`20261110233000_add_gateway_business_registration_identity_write\`
+
+This manifest is repository policy/input, not proof of the live production ledger. Do not assume these seven are all unapplied or apply them without live checksum reconciliation. The actual rows/checksums must be queried through the existing migrator connection after \`SET ROLE ghm_schema_owner\`, or via the approved local migration audit workflow. Do not copy credentials into chat or add them to the Resource API environment.
+
+### Merged code: service-specific configuration contract
+
+This is a source-derived variable-name checklist, not confirmation that values are configured in Render.
+
+**Existing GHM-Internal-Runtime / Resource API**
+- Required: \`NODE_ENV=production\`, \`PORT\`, \`GHM_RUNTIME_DATABASE_URL\` (direct login \`ghm_runtime\`), \`DATABASE_SSL=true\`, \`INVITE_CODE\`, \`CORS_ORIGINS\`.
+- Proxy: \`TRUST_PROXY_HOPS\` only after verifying Render's proxy topology; legacy \`TRUST_PROXY=true\` maps to one hop and must not be guessed.
+- Storage when configured: \`STORAGE_PROVIDER\`, \`STORAGE_ENDPOINT\`, \`STORAGE_REGION\`, \`STORAGE_BUCKET\`, \`STORAGE_ACCESS_KEY_ID\`, \`STORAGE_SECRET_ACCESS_KEY\`, \`STORAGE_FORCE_PATH_STYLE\`, upload/download TTL settings.
+- ES256 verification: \`GHM_JWT_ES256_PUBLIC_KEY_PEM\`, \`GHM_JWT_ES256_KID\`, optional previous public key/KID during controlled rotation.
+- \`GHM_ACTOR_GATEWAY_URL\` must remain unset until the gateway is deployed and verified. Never place gateway DB URL or issuer private secrets here.
+- \`GHM_MIGRATOR_DATABASE_URL\` is migration-only and must not be added to the long-running API service.
+
+**Dedicated Actor Gateway (not currently provisioned as production service)**
+- Required by source: \`GHM_ACTOR_GATEWAY_DATABASE_URL\` (direct login \`ghm_actor_gateway\`), \`GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET\`, ES256 public verification key/KID, and \`DATABASE_SSL_MODE\` aligned with verified production TLS.
+- It must use its own dedicated DB identity. Startup checks exact identity, role flags, membership boundaries and strict executable-function allow-list.
+
+**Dedicated Authentication Issuer (not currently provisioned as production service)**
+- Required by source: \`GHM_AUTH_ISSUER_DATABASE_URL\` (direct login \`ghm_auth_issuer\`), \`GHM_AUTH_ISSUER_DATABASE_SSL_MODE\`, explicit \`GHM_AUTH_ISSUER_TRUST_PROXY_HOPS\`, \`GHM_AUTH_ISSUER_CORS_ORIGINS\`, ES256 public verification key/KID, issuer-only \`GHM_JWT_ES256_PRIVATE_KEY_PEM\` and \`GHM_AUTH_TOKEN_PEPPER\`.
+- Private signing key and token pepper must exist only in the issuer service, never on Resource API or Actor Gateway.
+- Issuer startup checks exact identity and function allow-list; it fails closed if role, SQL functions, ACLs or keys are absent.
+
+### Immediate operator step — read-only ledger audit
+
+Use the already-configured local \`C:\\GHM\\.env\` value for \`GHM_MIGRATOR_DATABASE_URL\` without displaying or copying it. Connect to the explicit production database with \`DATABASE_SSL=true\`, validate \`session_user=current_user=ghm_migrator\`, then \`SET ROLE ghm_schema_owner\` and read ledger version/name/checksum rows. Run forensic migration reconciliation in audit-only mode first; do not run \`npm run migrate\`. If the local \`.env\` lacks the migrator URL, stop—do not substitute the app URL or paste secrets into chat.
+
+### Backup and deployment gate
+
+Existing handover evidence still identifies only the 2026-11-04 database archive; no newer verified production backup/restore evidence has been established. The live API deploy remains \`c7cf1eb\`; mainline implementation is merged and CI passed, but production API auto-deploy remains OFF. No service variables, roles, migrations, backups, deployments, DNS, routes or traffic were changed during this pass.
