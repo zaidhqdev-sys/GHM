@@ -1447,3 +1447,68 @@ These cutovers must not be run as a shortcut to resolve the migration audit. Eac
 PR #282 remains open and unmerged. Its latest head is `5e13c479c79e7e9518a0b78445eae927812682b5`; exact-head CI run `43660933075` completed successfully with both `quality` and `web-quality` jobs passing. This validates the runner code/tests only; it does not qualify or authorize production migrations. The migration-order guard is intended to stop before migration SQL if an older missing migration precedes a later applied version. The current ledger shows a contiguous missing suffix, but all 42 migration bodies still require review.
 
 No production migrations, cutovers, role/grant changes, secret provisioning, environment-variable changes, or deployments were performed. The production database transaction was read-only. Render support history and Amanda's explicit recommendation to keep the Dashboard-managed credential for administration while moving normal app execution to SQL-created logins remain preserved earlier in this handover.
+
+
+## 2026-11-15 — continuation recovery: current PR/branch inventory and migration suffix review
+
+This addendum reconciles the earlier migration handover statements against current GitHub state at main `35cf1d3a7462daee26bce78bd9f8a1aecbc8302d`. It records source review only. No production database, Render, secret, deployment, traffic, migration or cutover state was changed.
+
+### Current repository and PR inventory
+
+- Current main: `35cf1d3a7462daee26bce78bd9f8a1aecbc8302d`.
+- Current automatic migration files: 137.
+- Separate manual cutover files: 11.
+- Remote branches enumerated: 173.
+- Current open PR inventory: six (#282, #264, #243, #244, #233, #201). Earlier statements that #282 was the only open PR are superseded.
+- PR #282 remains open/unmerged at `5e13c479c79e7e9518a0b78445eae927812682b5`; exact-head run `43660933075` passed `quality` and `web-quality`.
+- PR #282 is 9 commits ahead and 4 behind current main (merge base `4b144e3d44568141ab44d2f3131f55b14a0db40b`). Reconcile/rebase and rerun exact-head CI before any merge decision. Green CI on its current head is not CI on a mainline-reconciled head.
+- #264 is an open documentation checkpoint. #243/#244 are a stacked draft feature pair. #233 and #201 remain unrelated draft work; neither is a prerequisite for production migration reconciliation.
+
+### Migration-related branch disposition
+
+The following branch comparisons were made against current main to avoid reviving superseded work:
+
+- `fix/exact-production-pending-migration-allowlist`: 2 commits ahead / 478 behind; changes the production pending allowlist. Do not merge, rebase or reuse its allowlist edits. The current seven-entry allowlist remains unchanged.
+- `fix/migration-provenance-reconciliation-20261109`: 71 ahead / 480 behind and contains historical provenance/retained-history/pending-allowlist changes. Treat as a stale historical candidate, not a current base.
+- `fix/migration-audit-ssl-url-override-20261115`: fully contained in main (0 ahead / 8 behind); no work to repeat.
+- `fix/production-migration-audit-tls-verification-20261115`: fully contained in main (0 ahead / 13 behind); no work to repeat.
+- `fix/migration-runner-strict-tls-20261115`: current PR #282 branch; 9 ahead / 4 behind and requires mainline reconciliation before merge.
+
+### Next ten migrations — source review findings
+
+The next timestamp-ordered batch after the first ten already reviewed in the prior checkpoint is:
+
+1. `20261110250000_add_gateway_capability_governance.sql`
+2. `20261110260000_gateway_supplier_classification_cutover.sql`
+3. `20261110265000_reconcile_business_profile_legacy_contract.sql`
+4. `20261110270000_gateway_business_profile_update.sql`
+5. `20261111020000_bind_capability_gateway_actor_to_signed_assertion.sql`
+6. `20261111030000_bind_supplier_gateway_actor_to_signed_assertion.sql`
+7. `20261111040000_bind_business_profile_gateway_actor_to_signed_assertion.sql`
+8. `20261111050000_bind_registration_and_self_identity_to_signed_gateway_actor.sql`
+9. `20261111060000_bind_gateway_assertions_to_request_context.sql`
+10. `20261111070000_add_signed_business_capability_mutations.sql`
+
+Source-level observations:
+
+- `20261110250000` creates four SECURITY DEFINER capability governance wrappers, owned by `ghm_schema_owner`, revokes PUBLIC/runtime/migrator execution and grants the gateway login execution.
+- `20261110260000` creates the supplier-classification gateway wrapper and revokes `ghm_runtime` execution on both the wrapper and legacy write function. This is a runtime API cutover-sensitive privilege change, despite being in the automatic migration directory.
+- `20261110265000` adds nullable latitude/longitude columns and paired/range constraints, then replaces the Business profile SECURITY DEFINER update function. Its dynamic SQL fragment is assembled from fixed internal strings; patch values are passed as parameters. No data backfill is present in this file.
+- `20261110270000` creates the Business profile gateway wrapper and revokes direct `ghm_runtime` execution on the legacy update function. This is also runtime API cutover-sensitive.
+- `20261111020000` installs/checks `pgcrypto` in schema `public`, creates owner-only assertion-secret and nonce tables, adds an expiry index, and introduces the initial HMAC v1 assertion verifier and gateway overloads. It drops the earlier unsigned capability gateway overloads and replaces them with signed overloads.
+- `20261111030000` and `20261111040000` extend the v1 operation allow-list and replace supplier/profile gateway overloads. `20261111050000` extends signed identity and registration read/write entry points.
+- `20261111060000` replaces the v1 assertion and gateway signatures with context-bound forms; every gateway operation binds the signature to the operation arguments. The migration drops the prior overload set before creating the new signatures.
+- `20261111070000` advances the verifier to the context-bound v2 payload and adds signed Business Capability/evidence operations. Evidence submission inserts a pending evidence row only after active-business membership and owner/administrator checks.
+
+### Explicit gates arising from this review
+
+1. Do not execute `20261110260000` or `20261110270000` until the production Resource API call path, Actor Gateway route availability, deployed service revision and traffic cutover sequence prove that no live request still depends on the revoked runtime function grants. The current production readiness record still says the Actor Gateway is not deployed and the live Resource API remains on the older `c7cf1eb` deployment with auto-deploy OFF.
+2. The signed gateway sequence is intentionally transitional. Do not cherry-pick, reorder, or apply only selected versions. Qualify the complete contiguous sequence and its intermediate-state compatibility.
+3. The assertion secret table is created empty. The migrations do not provision the HMAC secret. A separately controlled secret provisioning and verification procedure is required before signed gateway calls can work.
+4. Verify that `pgcrypto` is installed and that `public.hmac(bytea, bytea, text)` resolves in the target database. `CREATE EXTENSION IF NOT EXISTS ... WITH SCHEMA public` does not by itself prove an already-installed extension resides in the expected schema.
+5. Verify all dropped function signatures, dependencies, owners and effective grants against the production catalog and migration chain before any execution. The source review is not a substitute for disposable PostgreSQL qualification.
+6. These ten files are source-reviewed only in this continuation. They are not production-qualified, and the complete 42-migration suffix remains blocked.
+
+### Current stop condition
+
+Keep the production pending allowlist at seven entries and unchanged. Keep the migration runner fail-closed. Do not run the production migration executor, apply manual cutovers, change roles/grants/secrets, modify Render, deploy, or switch traffic until the complete migration suffix and its separate service cutovers have been qualified and documented.
