@@ -220,3 +220,19 @@ Changes:
 - Guard contract test: `34dc7bf0c469159137336455befda72f9c109d6c`
 
 This is code-level qualification only. No production migration was run. Before first production execution, the guard must be confirmed in the disposable PostgreSQL qualification and the production migration runner must be requalified against the latest head.
+
+
+### CI qualification update (2026-11-15)
+
+The first inventory-contract test run exposed the expected-set test still pinning the former seven-entry allowlist. That test was updated to pin all 42 entries; an intermediate edit had a malformed duplicate block, which was corrected before the successful run. No production state was touched during this correction.
+
+Latest exact PR-head CI: run `43757998434` (run #4961) completed successfully on commit `ae27246ed14e40c3da73bdb0da5ed6d43af5d9bc`:
+- TypeScript build passed.
+- Disposable PostgreSQL 18 applied the complete repository migration sequence successfully.
+- Actor Gateway local smoke test and database-principal qualification passed.
+- Full test suite passed.
+- Migration audit policy tests passed with the 42-entry inventory.
+- Remaining isolated PostgreSQL security/cutover qualifications passed.
+- Web quality/build/tests passed.
+
+This qualifies the current implementation on disposable CI infrastructure only. PR #285 remains a draft; no production migration has been executed and the independent Render role/backup/Actor Gateway service gates remain. Current branch has subsequent documentation-only handover commit(s) after the qualified code commit; if code changes are made, rerun exact-head CI before merge.
