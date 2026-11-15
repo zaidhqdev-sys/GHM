@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Pool } from 'pg';
 import { normalizeMigrationSqlForExecution } from '../dist/db/migration-checksum.js';
+import { getProductionMigrationPostBatchGuards } from '../dist/db/production-migration-batch.js';
 
 if (process.env.NODE_ENV !== 'test') {
   throw new Error('Production migration batch guard qualification is restricted to NODE_ENV=test');
@@ -29,7 +30,11 @@ const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: true } :
 const runtimePool = new Pool({ connectionString: runtimeUrl, ssl });
 const migratorPool = new Pool({ connectionString: migratorUrl, ssl });
 const functionSignature = 'ghm.update_business_supplier_classification(bigint,bigint,boolean)';
-const guardSql = 'REVOKE EXECUTE ON FUNCTION ghm.update_business_supplier_classification(bigint, bigint, boolean) FROM ghm_runtime';
+const guardSql = getProductionMigrationPostBatchGuards([
+  { version: '20261110010000', name: 'add_business_supplier_classification' },
+]);
+assert.equal(guardSql.length, 1, 'production runner must select exactly one supplier-classification guard');
+assert.match(guardSql[0], /^REVOKE EXECUTE ON FUNCTION ghm\\.update_business_supplier_classification\\(bigint, bigint, boolean\\) FROM ghm_runtime$/);
 const migrationPath = path.resolve(process.cwd(), 'database/migrations/20261110010000_add_business_supplier_classification.sql');
 
 const runtimePrivilege = async (pool) => {
@@ -67,7 +72,7 @@ try {
     assert.equal(duringMigrationBeforeGuard.rows[0]?.can_execute, true,
       'historical migration must first grant the transitional runtime privilege');
 
-    await client.query(guardSql);
+    for (const statement of guardSql) await client.query(statement);
     const afterGuard = await client.query(
       'SELECT has_function_privilege($1, $2::regprocedure, \'EXECUTE\') AS can_execute',
       ['ghm_runtime', functionSignature],
@@ -81,7 +86,7 @@ try {
     );
     assert.equal(owner.rows[0]?.owner, 'ghm_schema_owner');
     console.log('TRANSITIONAL MIGRATION GRANT OBSERVED INSIDE TRANSACTION: PASS');
-    console.log('SAME-TRANSACTION PRODUCTION GUARD DENIES RUNTIME EXECUTE: PASS');
+    console.log('ACTUAL RUNNER GUARD DENIES RUNTIME EXECUTE IN SAME TRANSACTION: PASS');
     console.log('SECURITY DEFINER FUNCTION OWNER PRESERVED: PASS');
 
     await client.query('ROLLBACK');
