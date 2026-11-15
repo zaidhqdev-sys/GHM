@@ -20,6 +20,7 @@ for (const [label, value] of [['runtime', runtimeUrl], ['migrator', migratorUrl]
 }
 const runtime = new Pool({ connectionString: runtimeUrl, ssl: false });
 const migrator = new Pool({ connectionString: migratorUrl, ssl: false });
+const inspection = await migrator.connect();
 const expectPrivilege = async (client, role, object, privilege, expected) => {
   const result = await client.query(
     'SELECT has_table_privilege($1, $2, $3) AS allowed',
@@ -28,6 +29,11 @@ const expectPrivilege = async (client, role, object, privilege, expected) => {
   assert.equal(result.rows[0]?.allowed, expected, `${role} ${privilege} on ${object}`);
 };
 try {
+  await inspection.query('BEGIN');
+  await inspection.query('SET LOCAL ROLE ghm_schema_owner');
+  const migratorIdentity = await inspection.query('SELECT session_user, current_user');
+  assert.deepEqual(migratorIdentity.rows[0], { session_user: 'ghm_migrator', current_user: 'ghm_schema_owner' });
+
   const identity = await runtime.query('SELECT current_database() AS db, session_user, current_user');
   assert.deepEqual(identity.rows[0], {
     db: expectedDatabase, session_user: 'ghm_runtime', current_user: 'ghm_runtime',
@@ -44,7 +50,7 @@ try {
     "SELECT has_sequence_privilege('ghm_runtime', 'ghm.account_onboarding_progress_id_seq', 'USAGE') AS usage, has_sequence_privilege('ghm_runtime', 'ghm.account_onboarding_progress_id_seq', 'SELECT') AS select",
   );
   assert.deepEqual(onboardingSequence.rows[0], { usage: true, select: true });
-  const onboardingConstraints = await migrator.query(
+  const onboardingConstraints = await inspection.query(
     "SELECT conname FROM pg_constraint WHERE conrelid = 'ghm.account_onboarding_progress'::regclass AND convalidated",
   );
   for (const name of [
@@ -137,5 +143,7 @@ try {
   console.log('MIGRATION 4 STORAGE ROW COMPATIBILITY + VALIDATED CONSTRAINT + FUNCTION ACL: PASS');
   console.log('DISPOSABLE FIRST-FOUR MIGRATION POST-APPLY QUALIFICATION: PASS');
 } finally {
+  await inspection.query('ROLLBACK').catch(() => undefined);
+  inspection.release();
   await Promise.all([runtime.end(), migrator.end()]);
 }
