@@ -49,7 +49,7 @@ export const registerCommercialRoutes = (
 ): void => {
   app.get('/api/v1/admin/commercial/launch-state', resourceAuthMiddleware, requireCommercialAdminRead, async (req: Request, res: Response) => {
     const rawLimit = req.query.limit;
-    const limit = rawLimit === undefined ? 100 : typeof rawLimit === 'string' && /^[1-9]\\d*$/.test(rawLimit) ? Number(rawLimit) : NaN;
+    const limit = rawLimit === undefined ? 100 : typeof rawLimit === 'string' && /^[1-9]\d*$/.test(rawLimit) ? Number(rawLimit) : NaN;
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 250 || Object.keys(req.query).some(key => key !== 'limit')) {
       res.status(400).json({ error: 'invalid_request' });
       return;
