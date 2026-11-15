@@ -3,6 +3,7 @@
 // an explicit operator acknowledgement, and BEGIN READ ONLY. Never executes DDL/DML.
 import { Pool } from 'pg';
 import 'dotenv/config';
+import { classifyStorageMigrationFourState } from './storage-migration-drift-classifier.mjs';
 
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL;
 if (!databaseUrl) throw new Error('GHM_MIGRATOR_DATABASE_URL is required');
@@ -120,8 +121,20 @@ try {
        WHERE n.nspname='ghm' AND p.proname='update_business_supplier_classification'
     `);
 
+    const storageMigrationFourState = classifyStorageMigrationFourState({
+      constraintDefinition: storageConstraint.rows[0]?.definition,
+      functionDefinition: storageFunction.rows[0]?.definition,
+      securityDefiner: storageFunction.rows[0]?.security_definer,
+      owner: storageFunction.rows[0]?.owner,
+      configuration: storageFunction.rows[0]?.configuration,
+      acl: storageFunction.rows[0]?.acl,
+      runtimeExecute: storageFunction.rows[0]?.runtime_execute,
+      gatewayExecute: storageFunction.rows[0]?.gateway_execute,
+    });
+
     const report = {
       verdict: 'READ_ONLY_PREFLIGHT_ONLY',
+      migration_4_schema_state: storageMigrationFourState,
       identity: who,
       tls_enforced_by_client: true,
       object_name_checks: objects.rows,
@@ -131,7 +144,7 @@ try {
       supplier_classification_function: supplierFunction.rows,
       warnings: [
         'This script does not authorize or execute any migration.',
-        'Production currently reports the post-migration-4 storage constraint and a SECURITY DEFINER storage_mark_deletion_pending(bigint) function while the migration ledger still lists migration 4 as pending. Capture and reconcile the exact function definition/ACL and constraint provenance before any rerun; do not blindly reapply or repair the ledger.',
+        'Migration 4 schema state is classified separately from the migration ledger. PRE_MIGRATION is only a structural match; POST_MIGRATION still requires ledger/provenance reconciliation. PARTIAL_DRIFT and UNKNOWN_DRIFT are hard stops. This preflight never authorizes execution or ledger repair.',
         'Migration 1 creates a SECURITY DEFINER supplier-classification function that accepts a caller-supplied account ID. It must revoke EXECUTE from PUBLIC, ghm_runtime and ghm_migrator; only the later signed gateway wrapper may call it as schema owner. Verify effective ACLs and exact-head disposable PostgreSQL qualification before execution.',
       ],
     };
