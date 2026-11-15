@@ -7,7 +7,7 @@ const baseline = {
   returnType: 'ghm.storage_object',
   constraintDefinition: "CHECK (((status = 'pending' AND available_at IS NULL AND deleted_at IS NULL) OR (status = 'available' AND available_at IS NOT NULL AND deleted_at IS NULL) OR (status = 'deletion_pending' AND available_at IS NOT NULL AND deleted_at IS NULL) OR (status = 'deleted' AND deleted_at IS NOT NULL)))",
   functionDefinition: "CREATE FUNCTION ghm.storage_mark_deletion_pending(p_object_id bigint) RETURNS ghm.storage_object LANGUAGE plpgsql SECURITY INVOKER SET search_path TO 'pg_catalog', 'ghm' AS $function$ BEGIN UPDATE ghm.storage_object SET status = 'deletion_pending' WHERE id = p_object_id AND status = 'available'; IF NOT FOUND THEN RAISE EXCEPTION 'storage object is not available or does not exist'; END IF; RETURN v_row; END; $function$",
-  securityDefiner: false,
+  securityDefiner: true,
   owner: 'ghm_schema_owner',
   configuration: ['search_path=pg_catalog, ghm'],
   acl: '{ghm_schema_owner=X/ghm_schema_owner,ghm_runtime=X/ghm_schema_owner}',
@@ -29,10 +29,21 @@ test('classifies exact migration-4 state', () => {
   }), 'POST_MIGRATION');
 });
 
-test('fails closed for production-shaped partial drift: definer conversion without migration-4 body/constraint', () => {
+test('classifies the exact October SECURITY DEFINER baseline as pre-migration', () => {
+  assert.equal(classifyStorageMigrationFourState(baseline), 'PRE_MIGRATION');
+});
+
+test('classifies unexpected baseline ACL authority as partial drift', () => {
   assert.equal(classifyStorageMigrationFourState({
     ...baseline,
-    securityDefiner: true,
+    acl: '{=X/owner,ghm_runtime=X/ghm_schema_owner,ghm_schema_owner=X/ghm_schema_owner}',
+  }), 'PARTIAL_DRIFT');
+});
+
+test('classifies unexpected baseline function authority as partial drift', () => {
+  assert.equal(classifyStorageMigrationFourState({
+    ...baseline,
+    securityDefiner: false,
   }), 'PARTIAL_DRIFT');
 });
 
