@@ -7,6 +7,7 @@ import { migrationSqlChecksum, matchesMigrationSqlChecksum, normalizeMigrationSq
 import { Pool, PoolClient } from 'pg';
 import { assertPostgresTargetConfiguration } from './postgres-target-guard';
 import { assertMigratorDatabaseIdentity, type MigratorDatabaseIdentity } from './migrator-principal';
+import { findOutOfOrderPendingMigration } from './migration-order';
 
 const databaseUrl = process.env.GHM_MIGRATOR_DATABASE_URL?.trim();
 const approvedTarget = assertPostgresTargetConfiguration(databaseUrl, {
@@ -194,6 +195,15 @@ const migrate = async (): Promise<void> => {
       ? await client.query<{ version: string; checksum: string }>(`SELECT version, checksum FROM ${ledgerTable}`)
       : { rows: [] as Array<{ version: string; checksum: string }> };
     const appliedByVersion = new Map(applied.rows.map((row) => [row.version, row.checksum]));
+    const outOfOrderPending = findOutOfOrderPendingMigration(
+      migrations,
+      new Set(appliedByVersion.keys()),
+    );
+    if (outOfOrderPending) {
+      throw new Error(
+        `Migration history gap: refusing to replay pending ${outOfOrderPending.pending.version}_${outOfOrderPending.pending.name} before already-applied ${outOfOrderPending.laterApplied.version}_${outOfOrderPending.laterApplied.name}`,
+      );
+    }
 
     for (const migration of migrations) {
       const existingChecksum = appliedByVersion.get(migration.version);
