@@ -22,11 +22,15 @@ const allowPending = process.argv.includes('--allow-pending');
 const migrationPattern = /^(\d{14})_([a-z0-9][a-z0-9_-]*)\.sql$/;
 const sha256Pattern = /^[a-f0-9]{64}$/;
 
+const fail = (message) => { throw new Error(message); };
+if (process.env.DATABASE_SSL !== 'true') {
+  fail('Production migration audit requires DATABASE_SSL=true with certificate verification enabled');
+}
+
 const client = new Client({
   connectionString: databaseUrl,
-  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
+  ssl: { rejectUnauthorized: true },
 });
-const fail = (message) => { throw new Error(message); };
 if (allowPending && auditTarget.target !== 'production') fail('Pending-migration allowance is restricted to the explicitly audited production pre-deploy target');
 
 const main = async () => {
