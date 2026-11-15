@@ -342,3 +342,15 @@ This qualifies the current implementation on disposable CI infrastructure only. 
 - This is the first observed end-to-end CI execution of the added qualification against the real compiled runner guard selector and PostgreSQL transaction semantics. It is not a production database execution.
 - At the time of this note, `web-quality` and Cloudflare Pages had passed; the overall `quality` job was still running later unrelated database/security qualification steps. Do not describe the whole workflow as green until the full job completes.
 - The guard qualification itself is now evidenced PASS. Production remains blocked by independent backup/recovery, Amanda/Render role-administration, and staged application/gateway prerequisites. No production DB changes.
+
+
+## 15. First-four post-apply PostgreSQL qualification added (2026-11-15)
+
+- Added `scripts/qualify-first-four-pending-migrations-postgres.mjs`, package command `npm run qualify:first-four-pending-migrations`, and a CI step immediately after the first-migration guard qualification.
+- The script refuses to run unless `NODE_ENV=test`, both distinct runtime/migrator URLs point to localhost, and the database is exactly `ghm_disposable_test`.
+- Migration 2 checks effective `ghm_runtime` SELECT/INSERT/UPDATE permissions, denial of DELETE/TRUNCATE/REFERENCES/TRIGGER, sequence USAGE/SELECT, and the presence of all six validated onboarding constraints.
+- Migration 3 checks effective runtime SELECT-only access across all four relationship/outcome tables, confirms the five relationship and six outcome reference seeds, and verifies the expected validated business-rule constraints.
+- Migration 4 inspects every existing row in the disposable storage table grouped by status against the proposed lifecycle predicate, verifies the lifecycle constraint is validated, and checks `storage_mark_deletion_pending(bigint)` is SECURITY DEFINER, owned by `ghm_schema_owner`, has the pinned search_path and runtime EXECUTE grant.
+- This is post-apply qualification on the disposable CI database, not production evidence. It does not read production data, mutate production state, or authorize the migrations.
+- The script has been added but the new exact-head CI has not yet been observed. Review any CI failure before proceeding.
+- No production storage status distribution was queried. Production migration 4 still requires a separate read-only status/count and catalog check before any production execution.
