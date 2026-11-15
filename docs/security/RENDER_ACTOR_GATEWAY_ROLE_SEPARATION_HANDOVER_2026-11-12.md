@@ -2136,3 +2136,52 @@ The existing Amanda support record and her confirmation remain the governing sup
 - November 4 archive ledger: **89 rows / latest `20261026120000`**.
 - Production migration execution, archive restore, production SQL writes, role/grant/secret changes, Render environment changes, deployments and allowlist edits: **BLOCKED**.
 - Next safe work: find and verify the provenance of a backup that actually matches the live production state, or produce a complete read-only row-level comparison using a fresh live ledger export. Do not repeat the archive extraction or source review already completed.
+
+
+## 2026-11-15 03:55Z — user-confirmed legacy Supabase archive classification
+
+### Provenance clarification from the owner
+
+The user explicitly confirmed that the PostgreSQL cluster archives in this local backup group were created by the user as backups from the legacy Supabase environment, because access to the old Supabase account was no longer available. This is direct owner-provided provenance and supersedes the earlier uncertainty that treated these cluster dumps as possible Render `ghm-db` recovery candidates.
+
+In particular, the inspected file:
+
+`C:\\Users\\zaidh\\Downloads\\db_cluster-23-09-2026@08-37-26.backup.gz`
+
+is classified as a **legacy Supabase cluster backup**, not a Render `ghm-db` production backup candidate. The user also identifies the related September 23 cluster archive(s) from this recovery batch as legacy Supabase backups. The separate filename containing `quoteflow` remains labelled as a QuoteFlow-related legacy archive by filename; its internal database identity was not independently inspected in this step.
+
+### October 12 archive — technical observations retained
+
+The metadata-only scan of `db_cluster-23-09-2026@08-37-26.backup.gz` established:
+
+- File size: 228,100 bytes.
+- Last modified: 2026-10-12 02:30:15.
+- Gzip signature: `1F 8B 08`.
+- Decompressed header: PostgreSQL database cluster dump.
+- Source PostgreSQL version: 17.6.
+- Database markers found: `postgres` and `template1`.
+- No `ghm.ghm_schema_migrations` COPY block was found.
+- No files were extracted, no SQL was executed, and no database was restored.
+
+The two database markers do not establish the full set of databases represented in the source Supabase project; they are simply the only database markers observed by this bounded scan. The user's direct provenance confirmation is the basis for classifying this file as legacy Supabase material.
+
+### Corrected backup-investigation scope
+
+- Legacy Supabase cluster archives are preserved as recovery/reference material for the former Supabase-backed Connect and QuoteFlow environment.
+- They are **not** to be treated as Render `ghm-db` production-baseline candidates and should not be repeatedly inspected for a GHM production migration ledger.
+- The November 4 and November 14 GHM-named archives remain separately classified with their existing evidence and unresolved provenance. The user's confirmation about the legacy Supabase cluster backup batch does not automatically reclassify those separately named GHM archives.
+- The Render production backup investigation must focus only on artifacts demonstrably created from the Render `ghm-db` service / `ghm_db` database, using source metadata, backup provenance, and a matching production ledger/schema state.
+- Do not restore any archive, start or stop a service, create a database, or spend money to recover the expired sandbox.
+
+### Repository / PR / branch recheck before this addendum
+
+The canonical handover was fetched from the repository default branch before appending this entry. The current open work rechecked in this continuation includes #282 (migration runner strict TLS/order guard), #243 (supplier classification), #244 (stacked Business Analytics), #264 (gateway registration identity documentation), #201 (QuoteFlow legal acceptance), and #233 (PayFast timezone handling). These remain open; none was merged or modified by this backup-provenance clarification. Existing migration, Supabase, Render and backup branch searches were performed; no branch was created, deleted, rebased, or updated.
+
+Amanda's Render support conversation remains preserved earlier in this handover. Her recommendation remains to retain the Dashboard-managed default credential for controlled administration and use SQL-created restricted login identities for normal application execution. The production role-membership concern remains unresolved; this archive classification did not change or re-test it.
+
+### Status
+
+- October 12 cluster dump provenance: **USER-CONFIRMED LEGACY SUPABASE BACKUP**.
+- September 23 cluster archive batch provenance: **USER-CONFIRMED LEGACY SUPABASE BACKUPS**; the QuoteFlow-labelled file's internal DB identity remains uninspected.
+- Render `ghm-db` production backup discovery: **STILL OPEN**.
+- No restore, SQL execution, production connection, database mutation, Render change, migration, deployment, branch update, or allowlist change occurred.
