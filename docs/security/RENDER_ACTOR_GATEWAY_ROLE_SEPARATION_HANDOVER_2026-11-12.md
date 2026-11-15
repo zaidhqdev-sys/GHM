@@ -3261,3 +3261,37 @@ Started a focused, no-migration GHM implementation to replace Connect's active `
 - Source-of-truth role-rule clarification: migration `20261110210000_add_actor_gateway_principal_guard.sql` and Worker startup check in `workers/actor-gateway/index.ts` intentionally permit exactly one membership involving the gateway: `ghm_db_user` may be a member of `ghm_actor_gateway` only with ADMIN OPTION=true, INHERIT=false, SET=false. `ghm_actor_gateway` must not itself be a member of any role, and no other role may be a member of it. Older handover statements saying "no memberships in either direction" are over-broad and superseded by this exact guard. This does not resolve whether production currently matches the guard; that requires a fresh, read-only production role-catalog check after the backup/role support gates are addressed.
 - Fresh verified production backup remains missing (only 4-Nov archive identified; stale for 10-Nov role work). Amanda's Render guidance remains: Dashboard-managed admin credential for administration; SQL-created restricted service logins for normal execution; preserve separate `ghm_runtime` and `ghm_migrator`, and the SET-only schema-owner path. Do not improvise grants.
 - No production database query or mutation, role/grant change, migration, secret provisioning, Cloudflare resource, Render service/configuration change, deployment, paid infrastructure, or Connect cutover was performed by this assessment.
+
+
+## 2026-11-15 — resolving the production GHM_ACTOR_GATEWAY_URL startup blocker
+
+### Exact contract from current source
+
+- `src/config.ts` reads `GHM_ACTOR_GATEWAY_URL` and validates it through `src/http/actor-gateway-url.ts`. It must be a credential-free HTTPS origin only: no path, query, fragment, username or password. HTTP is allowed only for localhost development.
+- `src/http/app.ts` explicitly throws `GHM_ACTOR_GATEWAY_URL is required when production storage is enabled` when `NODE_ENV=production`, storage configuration is present, and the gateway URL is absent. Do not disable production storage, remove this guard, or set a dummy value to bypass the gate.
+- Gateway clients append typed paths such as `/v1/storage/metadata`, `/v1/businesses/:businessId/registration-identity`, and other `/v1/...` operations to the configured origin. Therefore the Render value must be the Worker origin, not a route suffix.
+- Worker source is `workers/actor-gateway/index.ts`; Wrangler name is `ghm-actor-gateway`. Its current `wrangler.jsonc` has `workers_dev: false`, `preview_urls: false`, a zero placeholder Hyperdrive ID, no VPC binding, and no custom route. Thus **there is no valid deployed public Worker origin to put into Render today**.
+- Worker requests initialize the Hyperdrive pool and validate the database principal and ACL before serving any request. Startup/initialization failure returns HTTP 503. Its internal app has `GET /healthz` and typed authenticated `/v1/*` endpoints; protected routes require `Authorization: Bearer <GHM ES256 access token>`.
+- The Worker needs Hyperdrive plus its own Cloudflare secrets: public ES256 verification key material/current key ID (and optional previous public key), and `GHM_ACTOR_GATEWAY_CAPABILITY_ASSERTION_SECRET`. It must not receive the ES256 private key, token pepper, issuer DB URL, or ordinary API credentials.
+
+### Intended URL shape
+
+- Preferred first production address, if the Cloudflare account's `workers.dev` subdomain is available and approved: `https://ghm-actor-gateway.<account-workers-subdomain>.workers.dev`.
+- This is a **format only**, not an existing or verified URL. The account subdomain is unknown, and `workers_dev` is currently disabled. Do not paste this example into Render.
+- A verified custom HTTPS Worker route could be used instead if an owned domain and DNS zone are available, but no custom route/domain is currently configured or approved.
+- Once the Worker has actually deployed and its hostname is visible in Cloudflare, set Render `GHM_ACTOR_GATEWAY_URL` to that exact origin (no trailing path required; a trailing slash is normalized by the clients). Then verify `GET <origin>/healthz` returns 200 and authenticated typed routes work against the intended DB before considering the GHM runtime deployment ready. A 200 health response alone is not sufficient; verify a representative authenticated operation and rejection cases.
+
+### Deployment sequence — do not skip gates
+
+1. Resolve the private DB network path first. Current Wrangler config's all-zero Hyperdrive ID is a placeholder and cannot be used. The selected design requires a Cloudflare Workers VPC TCP service and a continuously running Cloudflare Tunnel host able to reach Render PostgreSQL privately.
+2. Current inventory found no eligible always-on, sufficiently isolated, no-additional-cost tunnel host. The existing GHM-Internal-Runtime is a Free Render web service and is not production-qualified; do not co-host the tunnel there as an assumed fix, use keepalive schedules, or repurpose sandbox services.
+3. Do not use public Hyperdrive ingress as an unreviewed shortcut. Render's current DB allowlist is `0.0.0.0/0`; this is broad ingress, not a narrow Cloudflare egress restriction. Do not treat its current presence as approval to rely on it.
+4. Before creating production Hyperdrive or setting Worker secrets, clear the production role/backup gates: Amanda/Render-supported role separation, verified `ghm_actor_gateway` ACL and effective privileges, and a fresh verified production backup/recovery point. No role/grant/secret change is implied by this handover.
+5. Only after those gates are cleared, configure the real Hyperdrive ID/VPC binding, secrets and public Worker hostname; deploy the Worker; verify health and authenticated typed operations; then set Render `GHM_ACTOR_GATEWAY_URL` to the observed origin.
+6. Deploy GHM manually (auto-deploy remains OFF), verify `/healthz` and `/readyz`, then test storage metadata plus representative gateway-backed operations end-to-end. Do not merge/release Connect PR #68 until production gateway-backed operations are confirmed.
+
+### Current decision
+
+The missing URL is not a typo or a Render variable that can be guessed. It is missing because the Actor Gateway has not been deployed and does not yet have a valid database connection binding. The correct resolution is to create and qualify the gateway's real Cloudflare deployment and only then configure the exact hostname in Render. Under the currently verified no-cost/host constraints, the network-host prerequisite remains unresolved, so keep the startup gate intact and the production deployment/cutover blocked.
+
+No Cloudflare resource, route, tunnel, Hyperdrive config, secret, Render variable, database role/grant, deployment, or product cutover was created or changed while documenting this resolution.
