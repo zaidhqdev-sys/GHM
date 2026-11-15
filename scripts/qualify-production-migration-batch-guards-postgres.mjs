@@ -5,7 +5,7 @@ import { Pool } from 'pg';
 import { normalizeMigrationSqlForExecution } from '../dist/db/migration-checksum.js';
 
 if (process.env.NODE_ENV !== 'test') {
-  throw new Error('Production migration batch guard qualification is restricted to NODE_ENV=test');
+  throw new Error('Supplier classification migration ACL qualification is restricted to NODE_ENV=test');
 }
 
 const runtimeUrl = process.env.GHM_RUNTIME_DATABASE_URL;
@@ -53,6 +53,7 @@ try {
   assert.equal(migratorIdentity.rows[0].current_user, 'ghm_migrator');
 
   const before = await runtimePrivilege(runtimePool);
+  assert.equal(before, false, 'runtime must not have supplier function EXECUTE before qualification replay');
   const client = await migratorPool.connect();
   try {
     await client.query(`SET ROLE ghm_schema_owner`);
@@ -60,27 +61,19 @@ try {
     const sql = await readFile(migrationPath, 'utf8');
     await client.query(normalizeMigrationSqlForExecution(sql));
 
-    const duringMigrationBeforeGuard = await client.query(
+    const afterMigration = await client.query(
       'SELECT has_function_privilege($1, $2::regprocedure, \'EXECUTE\') AS can_execute',
       ['ghm_runtime', functionSignature],
     );
-    assert.equal(duringMigrationBeforeGuard.rows[0]?.can_execute, false,
+    assert.equal(afterMigration.rows[0]?.can_execute, false,
       'supplier migration must not grant direct runtime execution to the caller-supplied actor identity function');
 
-    const afterGuard = await client.query(
-      'SELECT has_function_privilege($1, $2::regprocedure, \'EXECUTE\') AS can_execute',
-      ['ghm_runtime', functionSignature],
-    );
-    assert.equal(afterGuard.rows[0]?.can_execute, false,
-      'runtime must remain unable to execute the supplier identity function');
-
-    const owner = await client.query(
+        const owner = await client.query(
       'SELECT pg_get_userbyid(proowner) AS owner FROM pg_proc WHERE oid = $1::regprocedure',
       [functionSignature],
     );
     assert.equal(owner.rows[0]?.owner, 'ghm_schema_owner');
     console.log('SUPPLIER MIGRATION DOES NOT GRANT RUNTIME EXECUTE: PASS');
-    console.log('RUNTIME EXECUTE REMAINS DENIED IN THE MIGRATION TRANSACTION: PASS');
     console.log('SECURITY DEFINER FUNCTION OWNER PRESERVED: PASS');
 
     await client.query('ROLLBACK');
