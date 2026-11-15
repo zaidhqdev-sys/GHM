@@ -3210,3 +3210,16 @@ Started a focused, no-migration GHM implementation to replace Connect's active `
 - Connect PR #68 exact current head `5839bad513db77e204bcb0ae37e53d2153a95cd9` has successful exact-head run `43742292220`; it remains draft and depends on GHM integration/deployment before production consumer activation.
 - No production `ghm_db` access or mutation, Render configuration/deployment, migration execution, Connect branch change, or payment activation. PayFast remains paused.
 - Amanda's Render support constraints remain authoritative: retain Dashboard-managed admin; keep `ghm_runtime` and `ghm_migrator` separate; preserve the SET-only schema-owner path; do not improvise grants or add paid infrastructure.
+
+
+## 2026-11-15 — PR #283 merged after exact-head qualification
+
+- PR #283 `feat/admin-commercial-launch-read-20261115` merged successfully to `main`.
+- Merged commit: `37989fcf310d8d7049dd38bfc2469e228fee6ee5`.
+- Exact PR head: `5aca0e4be99fa339a37741513ebd3d409d97a9f3`; exact-head GitHub Actions run `43744168077` completed successfully: `quality` 73/73 steps passed and `web-quality` 11/11 steps passed, no failed steps.
+- PR branch ancestry was reconciled with current main before merge (0 commits behind); mergeability was true. The eight-file diff remained the handover and commercial read endpoint/service/repository/contracts plus tests.
+- Source review recorded: authenticated admin AuthContext enforcement, bounded 1–250 result limit, unsupported query-key rejection, service-level authorization/validation, deterministic bounded read-only repository query, no caller-provided account identity, no added migrations/grants/tables/provider calls/write paths. No submitted PR review or inline thread existed; this is the assistant's source-level review, not a claim of independent review approval.
+- Merge changes source on GitHub only. Render `ghm-internal-runtime` auto-deploy remains OFF; no production deployment, production `ghm_db` access/mutation, migration execution, Render environment/configuration change or payment activation was performed.
+- Next gate: verify merged main commit and production Render service configuration/deploy state; prepare a controlled manual deployment and endpoint smoke test only within the existing approved Render service and current environment. Keep Connect PR #68 draft until GHM endpoint is deployed and verified.
+- Connect PR #68 current consumer head `5839bad513db77e204bcb0ae37e53d2153a95cd9` has exact-head CI run `43742292220` successful. It remains unmerged pending deployed endpoint verification.
+- PayFast remains paused. Amanda's Render support constraints remain authoritative: retain Dashboard-managed admin; keep `ghm_runtime` and `ghm_migrator` separate; preserve the SET-only schema-owner path; no improvised grants or paid infrastructure.
