@@ -501,3 +501,12 @@ The owner-supplied production preflight observed that `ghm.update_business_suppl
 5. Keep the capability gateway cutover at migration 5 as a hard stop until its service/client deployment and separately qualified manual cutover are ready. Do not infer production readiness from merged source or disposable CI.
 
 Amanda's Render support conversation remains the source-of-truth operational guidance: Dashboard-managed default credential for controlled administration; SQL-created restricted logins for normal execution; retain separate runtime/migrator identities and the SET-only schema-owner path. The Render role-administration issue and fresh verified production recovery point remain independent production blockers.
+
+
+### Exact-head CI checkpoint after ACL correction
+
+- Current PR #285 head: `6234dd834a3fe2e196e085f899252dfb95145d68`.
+- GitHub Actions run `43766139175` (run number 5002) is running for this exact PR head. `web-quality` has passed; `quality` is still in progress.
+- The quality job is expected to execute the disposable PostgreSQL migration chain, the revised supplier ACL/rollback qualification, the first-four qualification, and the complete test suite. No pass is claimed until the run finishes successfully.
+- The earlier rapid-push runs `43765933938` and `43766098321` were cancelled by concurrency while commits were still being added; they are not failures of the code and are not qualification evidence.
+- PR #285 remains OPEN / DRAFT / mergeable. No production changes were made.
